@@ -6,7 +6,8 @@ import scala.util.hashing.{ MurmurHash3 => hashing }
 
 object Hashable {
 
-  type Binders = Array[BindingType]
+  class Binders(tp: BindingType, next: Binders)
+  class BinderPairs(tp1: BindingType, tp2: BindingType, next: BinderPairs)
 
   /** A hash value indicating that the underlying type is not
    *  cached in uniques.
