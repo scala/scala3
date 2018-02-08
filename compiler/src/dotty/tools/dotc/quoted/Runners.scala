@@ -3,11 +3,11 @@ package dotty.tools.dotc.quoted
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants._
-import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.printing.RefinedPrinter
 
 import scala.quoted.Expr
 import scala.quoted.Liftable.ConstantExpr
+import scala.runtime.BoxedUnit
 import scala.runtime.quoted._
 
 /** Default runners for quoted expressions */
@@ -23,7 +23,8 @@ object Runners {
         implicit val ctx = new QuoteDriver().initCtx
         ctx.settings.color.update("never")
         val printer = new RefinedPrinter(ctx)
-        printer.toText(Literal(Constant(expr.value))).mkString(Int.MaxValue, false)
+        if (expr.value == BoxedUnit.UNIT) "()"
+        else printer.toText(Literal(Constant(expr.value))).mkString(Int.MaxValue, false)
       case _ => new QuoteDriver().show(expr)
     }
 
