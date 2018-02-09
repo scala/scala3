@@ -3,6 +3,7 @@ package dotty.tools.dotc.config
 object Printers {
 
   class Printer {
+    val verbose = false
     def println(msg: => String): Unit = System.out.println(msg)
   }
 
