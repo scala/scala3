@@ -4383,8 +4383,8 @@ object Types {
     (implicit ctx: Context) extends TypeAccumulator[mutable.Set[NamedType]] {
     override def stopAtStatic = false
     def maybeAdd(x: mutable.Set[NamedType], tp: NamedType) = if (p(tp)) x += tp else x
-    val seen = new util.HashSet[Type](7) {
-      override def hash(x: Type): Int = x.hash
+    val seen = new util.HashSet[Type](64) {
+      override def hash(x: Type): Int = System.identityHashCode(x)
       override def isEqual(x: Type, y: Type) = x.eq(y)
     }
     def apply(x: mutable.Set[NamedType], tp: Type): mutable.Set[NamedType] =
