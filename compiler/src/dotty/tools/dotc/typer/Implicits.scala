@@ -186,7 +186,7 @@ object Implicits {
    *  @param outerCtx  the next outer context that makes visible further implicits
    */
   class ContextualImplicits(val refs: List[ImplicitRef], val outerImplicits: ContextualImplicits)(initctx: Context) extends ImplicitRefs(initctx) {
-    private val eligibleCache = new mutable.AnyRefMap[Type, List[Candidate]]
+    private val eligibleCache = new java.util.IdentityHashMap[Type, List[Candidate]]
 
     /** The level increases if current context has a different owner or scope than
      *  the context of the next-outer ImplicitRefs. This is however disabled under
@@ -211,8 +211,9 @@ object Implicits {
     /** The implicit references that are eligible for type `tp`. */
     def eligible(tp: Type): List[Candidate] = /*>|>*/ track(s"eligible in ctx") /*<|<*/ {
       if (tp.hash == NotCached) computeEligible(tp)
-      else eligibleCache get tp match {
-        case Some(eligibles) =>
+      else {
+        val eligibles = eligibleCache.get(tp)
+        if (eligibles != null) {
           def elided(ci: ContextualImplicits): Int = {
             val n = ci.refs.length
             if (ci.isOuterMost) n
@@ -220,18 +221,18 @@ object Implicits {
           }
           if (monitored) record(s"elided eligible refs", elided(this))
           eligibles
-        case None =>
-          if (ctx eq NoContext) Nil
-          else {
-            val savedEphemeral = ctx.typerState.ephemeral
-            ctx.typerState.ephemeral = false
-            try {
-              val result = computeEligible(tp)
-              if (ctx.typerState.ephemeral) record("ephemeral cache miss: eligible")
-              else eligibleCache(tp) = result
-              result
-            } finally ctx.typerState.ephemeral |= savedEphemeral
-          }
+        }
+        else if (ctx eq NoContext) Nil
+        else {
+          val savedEphemeral = ctx.typerState.ephemeral
+          ctx.typerState.ephemeral = false
+          try {
+            val result = computeEligible(tp)
+            if (ctx.typerState.ephemeral) record("ephemeral cache miss: eligible")
+            else eligibleCache.put(tp, result)
+            result
+          } finally ctx.typerState.ephemeral |= savedEphemeral
+        }
       }
     }
 

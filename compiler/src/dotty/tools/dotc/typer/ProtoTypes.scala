@@ -480,7 +480,7 @@ object ProtoTypes {
    */
   final def wildApprox(tp: Type, theMap: WildApproxMap, seen: Set[TypeParamRef])(implicit ctx: Context): Type = tp match {
     case tp: NamedType => // default case, inlined for speed
-      if (tp.symbol.isStatic) tp
+      if (tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
       else tp.derivedSelect(wildApprox(tp.prefix, theMap, seen))
     case tp @ AppliedType(tycon, args) =>
       wildApprox(tycon, theMap, seen) match {
@@ -540,7 +540,7 @@ object ProtoTypes {
       tp.derivedViewProto(
           wildApprox(tp.argType, theMap, seen),
           wildApprox(tp.resultType, theMap, seen))
-    case  _: ThisType | _: BoundType | NoPrefix => // default case, inlined for speed
+    case  _: ThisType | _: BoundType => // default case, inlined for speed
       tp
     case _ =>
       (if (theMap != null && seen.eq(theMap.seen)) theMap else new WildApproxMap(seen))

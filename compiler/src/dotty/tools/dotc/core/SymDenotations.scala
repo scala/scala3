@@ -461,7 +461,7 @@ object SymDenotations {
     /** Is symbol known to not exist? */
     final def isAbsent(implicit ctx: Context): Boolean = {
       ensureCompleted()
-      myInfo == NoType ||
+      (myInfo `eq` NoType) ||
       (this is (ModuleVal, butNot = Package)) && moduleClass.isAbsent
     }
 
@@ -1296,7 +1296,7 @@ object SymDenotations {
     private[this] var myMemberCachePeriod: Period = Nowhere
 
     /** A cache from types T to baseType(T, C) */
-    type BaseTypeMap = java.util.HashMap[CachedType, Type]
+    type BaseTypeMap = java.util.IdentityHashMap[CachedType, Type]
     private[this] var myBaseTypeCache: BaseTypeMap = null
     private[this] var myBaseTypeCachePeriod: Period = Nowhere
 
@@ -1720,7 +1720,7 @@ object SymDenotations {
                   btrCache.put(tp, basetp)
                 }
                 else btrCache.remove(tp)
-              } else if (basetp == NoPrefix)
+              } else if (basetp `eq` NoPrefix)
                 throw CyclicReference(this)
               basetp
             }
