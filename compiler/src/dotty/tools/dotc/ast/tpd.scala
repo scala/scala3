@@ -306,8 +306,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def prefixIsElidable(tp: NamedType)(implicit ctx: Context) = {
     val typeIsElidable = tp.prefix match {
-      case NoPrefix =>
-        true
       case pre: ThisType =>
         pre.cls.isStaticOwner ||
           tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
@@ -316,8 +314,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           // eg anonymous TypeMap inside TypeMap.andThen
       case pre: TermRef =>
         pre.symbol.is(Module) && pre.symbol.isStatic
-      case _ =>
-        false
+      case pre =>
+        pre `eq` NoPrefix
     }
     typeIsElidable ||
     tp.symbol.is(JavaStatic) ||

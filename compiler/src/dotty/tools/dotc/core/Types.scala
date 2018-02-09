@@ -1406,7 +1406,7 @@ object Types {
 
     /** Equality used for hash-consing; uses `eq` on all recursive invocations.
      */
-    def eql(that: Type): Boolean = this.equals(that)
+    def eql(that: Type): Boolean = this.iso(that, null)
 
     /** customized hash code of this type.
      *  NotCached for uncached types. Cached types
@@ -3883,7 +3883,7 @@ object Types {
       implicit val ctx = this.ctx
       tp match {
         case tp: NamedType =>
-          if (stopAtStatic && tp.symbol.isStatic) tp
+          if (stopAtStatic && tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
           else {
             val prefix1 = atVariance(variance max 0)(this(tp.prefix))
               // A prefix is never contravariant. Even if say `p.A` is used in a contravariant
@@ -4272,7 +4272,7 @@ object Types {
       record(s"foldOver total")
       tp match {
       case tp: TypeRef =>
-        if (stopAtStatic && tp.symbol.isStatic) x
+        if (stopAtStatic && tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) x
         else {
           val tp1 = tp.prefix.lookupRefined(tp.name)
           if (tp1.exists) this(x, tp1) else applyToPrefix(x, tp)
@@ -4302,10 +4302,8 @@ object Types {
         variance = -variance
         this(y, tp.resultType)
 
-      case NoPrefix => x
-
       case tp: TermRef =>
-        if (stopAtStatic && tp.currentSymbol.isStatic) x
+        if (stopAtStatic && tp.currentSymbol.isStatic || (tp.prefix `eq` NoPrefix)) x
         else applyToPrefix(x, tp)
 
       case tp: TypeVar =>
@@ -4385,11 +4383,14 @@ object Types {
     (implicit ctx: Context) extends TypeAccumulator[mutable.Set[NamedType]] {
     override def stopAtStatic = false
     def maybeAdd(x: mutable.Set[NamedType], tp: NamedType) = if (p(tp)) x += tp else x
-    val seen: mutable.Set[Type] = mutable.Set()
+    val seen = new util.HashSet[Type](7) {
+      override def hash(x: Type): Int = x.hash
+      override def isEqual(x: Type, y: Type) = x.eq(y)
+    }
     def apply(x: mutable.Set[NamedType], tp: Type): mutable.Set[NamedType] =
       if (seen contains tp) x
       else {
-        seen += tp
+        seen.addEntry(tp)
         tp match {
           case tp: TypeRef =>
             foldOver(maybeAdd(x, tp), tp)
