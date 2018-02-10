@@ -2663,7 +2663,6 @@ object Types {
     final def isHigherKinded = isInstanceOf[TypeProxy]
 
     private[this] var myParamRefs: List[ParamRefType] = null
-    private[this] var myStableHash: Byte = 0
 
     def paramRefs: List[ParamRefType] = {
       if (myParamRefs == null) myParamRefs = paramNames.indices.toList.map(newParamRef)
@@ -2696,20 +2695,24 @@ object Types {
           x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
           x => resType.subst(this, x))
 
+    protected def prefixString: String
+    final override def toString = s"$prefixString($paramNames, $paramInfos, $resType)"
+  }
+
+  abstract class HKLambda extends CachedProxyType with LambdaType {
+    final override def underlying(implicit ctx: Context) = resType
+
     override def computeHash(bs: Binders) =
       doHash(new Binders(this, bs), paramNames, resType, paramInfos)
 
-    override def stableHash = {
-      if (myStableHash == 0) myStableHash = if (resType.stableHash && paramInfos.stableHash) 1 else -1
-      myStableHash > 0
-    }
+    override def stableHash = resType.stableHash && paramInfos.stableHash
 
     final override def equals(that: Any) = equals(that, null)
 
     // No definition of `eql` --> fall back on equals, which calls iso
 
     final override def iso(that: Any, bs: BinderPairs) = that match {
-      case that: LambdaType =>
+      case that: HKLambda =>
         paramNames.eqElements(that.paramNames) &&
         companion.eq(that.companion) && {
           val bs1 = new BinderPairs(this, that, bs)
@@ -2719,16 +2722,12 @@ object Types {
       case _ =>
         false
     }
-
-    protected def prefixString: String
-    final override def toString = s"$prefixString($paramNames, $paramInfos, $resType)"
   }
 
-  abstract class HKLambda extends CachedProxyType with LambdaType {
-    final override def underlying(implicit ctx: Context) = resType
+  abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType {
+    final override def hashCode = System.identityHashCode(this)
+    final override def equals(other: Any) = this `eq` other.asInstanceOf[AnyRef]
   }
-
-  abstract class MethodOrPoly extends CachedGroundType with LambdaType with MethodicType
 
   trait TermLambda extends LambdaType { thisLambdaType =>
     import DepStatus._
