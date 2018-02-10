@@ -400,14 +400,11 @@ object ProtoTypes {
     /** Ensure that `tl` is not already in constraint, make a copy of necessary */
     def ensureFresh(tl: TypeLambda): TypeLambda =
       if (state.constraint contains tl) {
-      	var paramInfos = tl.paramInfos
-      	if (tl.isInstanceOf[HKLambda]) {
-      	  // HKLambdas care hash-consed, need to create an artificial difference by adding
-      	  // a LazyRef to a bound.
-          val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos
-          paramInfos = TypeBounds(lo, LazyRef(_ => hi)) :: pinfos1
-        }
-        ensureFresh(tl.newLikeThis(tl.paramNames, paramInfos, tl.resultType))
+      	// Type lambdas are hash-consed, need to create an artificial difference by adding
+      	// a LazyRef to a bound.
+        val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos
+        val newParamInfos = TypeBounds(lo, LazyRef(_ => hi)) :: pinfos1
+        ensureFresh(tl.newLikeThis(tl.paramNames, newParamInfos, tl.resultType))
       }
       else tl
     val added = ensureFresh(tl)
