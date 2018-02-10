@@ -3,10 +3,18 @@ package core
 
 import Types._
 import scala.util.hashing.{ MurmurHash3 => hashing }
+import annotation.tailrec
 
 object Hashable {
+ 
+  /** A null terminated list of BindingTypes. We use `null` here for efficiency */
+  class Binders(val tp: BindingType, val next: Binders)
 
-  type Binders = Array[BindingType]
+  /** A null terminated list of pairs of BindingTypes. Used for isomorphism tests. */
+  class BinderPairs(tp1: BindingType, tp2: BindingType, next: BinderPairs) {
+    @tailrec final def matches(t1: Type, t2: Type): Boolean =
+      (t1 `eq` tp1) && (t2 `eq` tp2) || next != null && next.matches(t1, t2)
+  }
 
   /** A hash value indicating that the underlying type is not
    *  cached in uniques.
@@ -36,7 +44,7 @@ trait Hashable {
     avoidSpecialHashes(hashing.finalizeHash(hashCode, arity))
 
   final def typeHash(bs: Binders, tp: Type) =
-    if (bs == null) tp.hash else tp.computeHash(bs)
+    if (bs == null || tp.stableHash) tp.hash else tp.computeHash(bs)
 
   def identityHash(bs: Binders) = avoidSpecialHashes(System.identityHashCode(this))
 
@@ -72,6 +80,7 @@ trait Hashable {
     finishHash(bs, hashing.mix(seed, elemHash), arity + 1, tps)
   }
 
+  
   protected final def doHash(x: Any): Int =
     finishHash(hashing.mix(hashSeed, x.hashCode), 1)
 
@@ -93,15 +102,14 @@ trait Hashable {
   protected final def doHash(bs: Binders, x1: Any, tp2: Type, tps3: List[Type]): Int =
     finishHash(bs, hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
 
-
-  protected final def doHash(bs: Binders, x1: Int, x2: Int): Int =
+  protected final def doHash(x1: Int, x2: Int): Int =
     finishHash(hashing.mix(hashing.mix(hashSeed, x1), x2), 1)
 
   protected final def addDelta(elemHash: Int, delta: Int) =
     if (elemHash == NotCached) NotCached
     else avoidSpecialHashes(elemHash + delta)
 
-  private def avoidSpecialHashes(h: Int) =
+  protected def avoidSpecialHashes(h: Int) =
     if (h == NotCached) NotCachedAlt
     else if (h == HashUnknown) HashUnknownAlt
     else h

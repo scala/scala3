@@ -397,9 +397,20 @@ object ProtoTypes {
         tt.withType(new TypeVar(tl.paramRefs(n), state, tt, ctx.owner))
       }
 
-    val added =
-      if (state.constraint contains tl) tl.newLikeThis(tl.paramNames, tl.paramInfos, tl.resultType)
+    /** Ensure that `tl` is not already in constraint, make a copy of necessary */
+    def ensureFresh(tl: TypeLambda): TypeLambda =
+      if (state.constraint contains tl) {
+      	var paramInfos = tl.paramInfos
+      	if (tl.isInstanceOf[HKLambda]) {
+      	  // HKLambdas care hash-consed, need to create an artificial difference by adding
+      	  // a LazyRef to a bound.
+          val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos
+          paramInfos = TypeBounds(lo, LazyRef(_ => hi)) :: pinfos1
+        }
+        ensureFresh(tl.newLikeThis(tl.paramNames, paramInfos, tl.resultType))
+      }
       else tl
+    val added = ensureFresh(tl)
     val tvars = if (addTypeVars) newTypeVars(added) else Nil
     ctx.typeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
     (added, tvars)
