@@ -83,7 +83,7 @@ import collection.mutable
         hb.continue = false
         println()
         println(hits.toList.sortBy(_._2).map{ case (x, y) => s"$x -> $y" } mkString "\n")
-        println(s"uniqieInfo (size, accesses, collisions): ${ctx.base.uniquesSizes}")
+        println(s"uniqueInfo (size, accesses, collisions): ${ctx.base.uniquesSizes}")
       }
     } else op
   }
