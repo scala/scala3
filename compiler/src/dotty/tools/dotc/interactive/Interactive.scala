@@ -84,7 +84,7 @@ object Interactive {
 
     (  sym == tree.symbol
     || sym.exists && sym == sourceSymbol(tree.symbol)
-    || include != 0 && sym.name == tree.symbol.name && sym.owner != tree.symbol.owner
+    || include != 0 && sym.name == tree.symbol.name && sym.maybeOwner != tree.symbol.maybeOwner
        && (  (include & Include.overridden) != 0 && overrides(sym, tree.symbol)
           || (include & Include.overriding) != 0 && overrides(tree.symbol, sym)
           )
@@ -99,6 +99,7 @@ object Interactive {
    *  @return offset and list of symbols for possible completions
    */
   // deprecated
+  // FIXME: Remove this method
   def completions(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): (Int, List[Symbol]) = {
     val path = pathTo(trees, pos)
     val boundary = enclosingDefinitionInPath(path).symbol
@@ -148,14 +149,17 @@ object Interactive {
            ref.name.isTermName,
            ref.name.isTypeName)
       case _ =>
-        println(i"COMPUTE from ${path.headOption}")
         (0, "", false, false)
     }
 
     /** Include in completion sets only symbols that
-     *   - start with given name prefix
-     *   - do not contain '$' except in prefix where it is explicitly written by user
-     *   - have same term/type kind as name prefix given so far
+     *   1. start with given name prefix, and
+     *   2. do not contain '$' except in prefix where it is explicitly written by user, and
+     *   3. have same term/type kind as name prefix given so far
+     *
+     *  The reason for (2) is that we do not want to present compiler-synthesized identifiers
+     *  as completion results. However, if a user explicitly writes all '$' characters in an
+     *  identifier, we should complete the rest.
      */
     def include(sym: Symbol) =
       sym.name.startsWith(prefix) &&
@@ -197,7 +201,9 @@ object Interactive {
           addMember(imp.site, name)
           addMember(imp.site, name.toTypeName)
         }
-        for (renamed <- imp.reverseMapping.keys) addImport(renamed)
+        // FIXME: We need to also take renamed items into account for completions,
+        // That means we have to return list of a pairs (Name, Symbol) instead of a list
+        // of symbols from `completions`.!=
         for (imported <- imp.originals if !imp.excluded.contains(imported)) addImport(imported)
         if (imp.isWildcardImport)
           for (mbr <- accessibleMembers(imp.site) if !imp.excluded.contains(mbr.name.toTermName))
@@ -209,8 +215,7 @@ object Interactive {
       implicit val ctx = ictx
 
       if (ctx.owner.isClass) {
-        for (mbr <- accessibleMembers(ctx.owner.thisType))
-          addMember(ctx.owner.thisType, mbr.name)
+        addAccessibleMembers(ctx.owner.thisType)
         ctx.owner.asClass.classInfo.selfInfo match {
           case selfSym: Symbol => add(selfSym)
           case _ =>
@@ -391,7 +396,7 @@ object Interactive {
           }
           localCtx
         case tree @ Template(constr, parents, self, _) =>
-          if ((constr :: self :: parents).exists(nested `eq` _)) ctx
+          if ((constr :: self :: parents).contains(nested)) ctx
           else contextOfStat(tree.body, nested, tree.symbol, outer.inClassContext(self.symbol))
         case _ =>
           outer

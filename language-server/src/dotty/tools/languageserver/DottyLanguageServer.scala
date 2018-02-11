@@ -65,9 +65,19 @@ class DottyLanguageServer extends LanguageServer
 
       myDrivers = new mutable.HashMap
       for (config <- configs) {
-        val classpathFlags = List("-classpath", (config.classDirectory +: config.dependencyClasspath).mkString(File.pathSeparator))
-        val sourcepathFlags = List("-sourcepath", config.sourceDirectories.mkString(File.pathSeparator), "-scansource")
-        val settings = defaultFlags ++ config.compilerArguments.toList ++ classpathFlags ++ sourcepathFlags
+        implicit class updateDeco(ss: List[String]): List[String] {
+          def update(pathKind: String, pathInfo: String) = {
+            val idx = ss.indexOf(pathKind)
+            val ss1 = if (idx >= 0) ss.take(idx) ++ ss.drop(idx + 2) else ss
+            ss1 ++ List(pathKind, pathInfo)
+          }
+        }
+        val settings =
+          defaultFlags ++
+          config.compilerArguments.toList
+            .update("-classpath", (config.classDirectory +: config.dependencyClasspath).mkString(File.pathSeparator))
+            .update("-sourcepath", config.sourceDirectories.mkString(File.pathSeparator)) :+
+          "-scansource"
         myDrivers.put(config, new InteractiveDriver(settings))
       }
     }
