@@ -167,26 +167,43 @@ object EtaExpansion extends LiftImpure {
    *
    *         { val xs = es; expr }
    *
-   *  If xarity matches the number of parameters in `mt`, the eta-expansion is
+   *  The result of the eta-expansion is either (1)
    *
    *         { val xs = es; (x1, ..., xn) => expr(x1, ..., xn) }
    *
-   * Note that the function value's parameters are untyped, hence the type will
-   * be supplied by the environment (or if missing be supplied by the target
-   * method as a fallback). On the other hand, if `xarity` is different from
-   * the number of parameters in `mt`, then we cannot propagate parameter types
-   * from the expected type, and we fallback to using the method's original
-   * parameter types instead.
+   *  or (2)
    *
-   * In either case, the result is an untyped tree, with `es` and `expr` as typed splices.
+   *         { val xs = es; (x1: T1, ..., xn: Tn) => expr(x1, ..., xn) }
+   *
+   *  or (3)
+   *
+   *         { val xs = es; (x1: T1, ..., xn: Tn) => expr(x1, ..., xn) _ }
+   *
+   *  where `T1, ..., Tn` are the paremeter types of the expanded method.
+   *
+   *  Case (3) applies if the method is curried, i.e. its result type is again a method
+   *  type. Case (2) applies if the expected arity of the function type `xarity` differs
+   *  from the number of parameters in `mt`. Case (1) applies if `mt` is uncurried
+   *  and its number of parameters equals `xarity`. In this case we can always infer
+   *  the parameter types later from the callee even if parameter types could not be
+   *  inferred from the expected type. Hence, we lose nothing by omitting parameter types
+   *  in the eta expansion. On the other hand omitting these parameters keeps the possibility
+   *  open that different parameters are inferred from the expected type, so we keep
+   *  more options open.
+   *
+   *  In each case, the result is an untyped tree, with `es` and `expr` as typed splices.
    */
   def etaExpand(tree: Tree, mt: MethodType, xarity: Int)(implicit ctx: Context): untpd.Tree = {
     import untpd._
     assert(!ctx.isAfterTyper)
     val defs = new mutable.ListBuffer[tpd.Tree]
     val lifted: Tree = TypedSplice(liftApp(defs, tree))
+    val isLastApplication = mt.resultType match {
+      case rt: MethodType => rt.isImplicitMethod
+      case _ => true
+    }
     val paramTypes: List[Tree] =
-      if (mt.paramInfos.length == xarity) mt.paramInfos map (_ => TypeTree())
+      if (isLastApplication && mt.paramInfos.length == xarity) mt.paramInfos map (_ => TypeTree())
       else mt.paramInfos map TypeTree
     val params = (mt.paramNames, paramTypes).zipped.map((name, tpe) =>
       ValDef(name, tpe, EmptyTree).withFlags(Synthetic | Param).withPos(tree.pos.startPos))
@@ -194,10 +211,7 @@ object EtaExpansion extends LiftImpure {
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
     var body: Tree = Apply(lifted, ids)
-    mt.resultType match {
-      case rt: MethodType if !rt.isImplicitMethod => body = PostfixOp(body, Ident(nme.WILDCARD))
-      case _ =>
-    }
+    if (!isLastApplication) body = PostfixOp(body, Ident(nme.WILDCARD))
     val fn = untpd.Function(params, body)
     if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
   }
