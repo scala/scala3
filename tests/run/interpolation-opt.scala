@@ -11,4 +11,13 @@ object Test extends App {
   // Test empty strings between elements
   println(raw"a$one$two${three}b")
   println(s"a$one$two${three}b")
+
+  // Test empty string interpolators
+  println(raw"")
+  println(s"")
+
+  // Make sure that StringContext still works with idents
+  val foo = "Hello"
+  val bar = "World"
+  println(StringContext(foo, bar).s(" "))
 }

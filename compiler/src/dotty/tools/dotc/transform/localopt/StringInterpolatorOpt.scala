@@ -19,20 +19,22 @@ class StringInterpolatorOpt extends MiniPhase {
   private object StringContextIntrinsic {
     def unapply(tree: Apply)(implicit ctx: Context): Option[(List[Tree], List[Tree])] = {
       tree match {
-        case Apply(Select(Apply(Select(Ident(nme.StringContext), nme.apply),
-                   List(SeqLiteral(strs, _))), id), List(SeqLiteral(elems, _))) =>
-          if (id == nme.raw_) Some(strs, elems)
-          else if (id == nme.s) {
-            try {
-              val escapedStrs = strs.mapConserve { str =>
-                val strValue = str.asInstanceOf[Literal].const.stringValue
-                val escapedValue = StringContext.processEscapes(strValue)
-                cpy.Literal(str)(Constant(escapedValue))
+        case Apply(Select(Apply(Select(ident, nme.apply), List(SeqLiteral(strs, _))), fn),
+            List(SeqLiteral(elems, _))) =>
+          if (ident.symbol.eq(defn.StringContextClass) && strs.forall(_.isInstanceOf[Literal])) {
+            if (fn == nme.raw_) Some(strs, elems)
+            else if (fn == nme.s) {
+              try {
+                val escapedStrs = strs.mapConserve { str =>
+                  val strValue = str.asInstanceOf[Literal].const.stringValue
+                  val escapedValue = StringContext.processEscapes(strValue)
+                  cpy.Literal(str)(Constant(escapedValue))
+                }
+                Some(escapedStrs, elems)
+              } catch {
+                case _: StringContext.InvalidEscapeException => None
               }
-              Some(escapedStrs, elems)
-            } catch {
-              case _: StringContext.InvalidEscapeException => None
-            }
+            } else None
           } else None
         case _ => None
       }
@@ -42,17 +44,18 @@ class StringInterpolatorOpt extends MiniPhase {
   override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
     tree match {
       case StringContextIntrinsic(strs: List[Tree], elems: List[Tree]) =>
-        val numLits = strs.length
-        strs.tail.foldLeft((0, strs.head)) { (acc: (Int, Tree), str: Tree) =>
-          val (i, result) = acc
-          val resultWithElem =
-            if (i < numLits - 1) result.select(defn.String_+).appliedTo(elems(i))
-            else result
-          val resultWithStr =
-            if (str.asInstanceOf[Literal].const.stringValue.isEmpty) resultWithElem
-            else resultWithElem.select(defn.String_+).appliedTo(str)
-          (i + 1, resultWithStr)
-        }._2
+        val stri = strs.iterator
+        val elemi = elems.iterator
+        var result = stri.next
+        def concat(tree: Tree): Unit = {
+          result = result.select(defn.String_+).appliedTo(tree)
+        }
+        while (elemi.hasNext) {
+          concat(elemi.next)
+          val str = stri.next
+          if (!str.asInstanceOf[Literal].const.stringValue.isEmpty) concat(str)
+        }
+        result
       case _ => tree
     }
   }

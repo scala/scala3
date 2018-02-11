@@ -583,6 +583,9 @@ class Definitions {
     lazy val StringAdd_plusR = StringAddClass.requiredMethodRef(nme.raw.PLUS)
     def StringAdd_+(implicit ctx: Context) = StringAdd_plusR.symbol
 
+  lazy val StringContextType: TypeRef       = ctx.requiredClassRef("scala.StringContext")
+  def StringContextClass(implicit ctx: Context) = StringContextType.symbol.asClass
+
   lazy val PartialFunctionType: TypeRef         = ctx.requiredClassRef("scala.PartialFunction")
   def PartialFunctionClass(implicit ctx: Context) = PartialFunctionType.symbol.asClass
   lazy val AbstractPartialFunctionType: TypeRef = ctx.requiredClassRef("scala.runtime.AbstractPartialFunction")
