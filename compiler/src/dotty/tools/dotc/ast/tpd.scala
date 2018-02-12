@@ -158,7 +158,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def TypeBoundsTree(lo: Tree, hi: Tree)(implicit ctx: Context): TypeBoundsTree =
     ta.assignType(untpd.TypeBoundsTree(lo, hi), lo, hi)
 
-  def Bind(sym: TermSymbol, body: Tree)(implicit ctx: Context): Bind =
+  def Bind(sym: Symbol, body: Tree)(implicit ctx: Context): Bind =
     ta.assignType(untpd.Bind(sym.name, body), sym)
 
   /** A pattern corresponding to `sym: tpe` */
@@ -826,14 +826,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      */
     def becomes(rhs: Tree)(implicit ctx: Context): Tree =
       if (tree.symbol is Method) {
-        val setr = tree match {
-          case Ident(_) =>
-            val setter = tree.symbol.setter
-            assert(setter.exists, tree.symbol.showLocated)
-            ref(tree.symbol.setter)
-          case Select(qual, _) => qual.select(tree.symbol.setter)
+        val setter = tree.symbol.setter
+        assert(setter.exists, tree.symbol.showLocated)
+        val qual = tree match {
+          case id: Ident => desugarIdentPrefix(id)
+          case Select(qual, _) => qual
         }
-        setr.appliedTo(rhs)
+        qual.select(setter).appliedTo(rhs)
       }
       else Assign(tree, rhs)
 
@@ -872,6 +871,27 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   implicit class ListOfTreeDecorator(val xs: List[tpd.Tree]) extends AnyVal {
     def tpes: List[Type] = xs map (_.tpe)
+  }
+
+  /** A trait for loaders that compute trees. Currently implemented just by DottyUnpickler. */
+  trait TreeProvider {
+    protected def computeTrees(implicit ctx: Context): List[Tree]
+
+    private[this] var myTrees: List[Tree] = null
+
+    /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
+    def trees(implicit ctx: Context): List[Tree] =
+      if (ctx.settings.YretainTrees.value) {
+        if (myTrees == null) myTrees = computeTrees
+        myTrees
+      } else computeTrees
+
+    /** Get first tree defined by this provider, or EmptyTree if none exists */
+    def tree(implicit ctx: Context): Tree =
+      trees.headOption.getOrElse(EmptyTree)
+
+    /** Is it possible that the tree to load contains a definition of or reference to `id`? */
+    def mightContain(id: String)(implicit ctx: Context) = true
   }
 
   // convert a numeric with a toXXX method
@@ -1011,6 +1031,23 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val file = call.symbol.sourceFile
     val encoding = ctx.settings.encoding.value
     if (file != null && file.exists) new SourceFile(file, Codec(encoding)) else NoSource
+  }
+
+  /** Desugar identifier into a select node. Return the tree itself if not possible */
+  def desugarIdent(tree: Ident)(implicit ctx: Context): Tree = {
+    val qual = desugarIdentPrefix(tree)
+    if (qual.isEmpty) tree
+    else qual.select(tree.symbol)
+  }
+
+  /** Recover identifier prefix (e.g. this) if it exists */
+  def desugarIdentPrefix(tree: Ident)(implicit ctx: Context): Tree = tree.tpe match {
+    case TermRef(prefix: TermRef, _) =>
+      ref(prefix)
+    case TermRef(prefix: ThisType, _) =>
+      This(prefix.cls)
+    case _ =>
+      EmptyTree
   }
 }
 

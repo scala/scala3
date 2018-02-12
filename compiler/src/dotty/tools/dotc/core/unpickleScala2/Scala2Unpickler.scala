@@ -66,8 +66,14 @@ object Scala2Unpickler {
       assert(lastArg isRef defn.ArrayClass)
       val elemtp0 :: Nil = lastArg.baseType(defn.ArrayClass).argInfos
       val elemtp = elemtp0 match {
-        case AndType(t1, t2) if t1.typeSymbol.isAbstractType && (t2 isRef defn.ObjectClass) =>
-          t1 // drop intersection with Object for abstract types in varargs. UnCurry can handle them.
+        case AndType(t1, t2) => // drop intersection with Object for abstract types an parameters in varargs. Erasure can handle them.
+          if (t2.isRef(defn.ObjectClass))
+            t1 match {
+              case t1: TypeParamRef => t1
+              case t1: TypeRef if t1.symbol.isAbstractOrParamType => t1
+              case _ => elemtp0
+            }
+          else elemtp0
         case _ =>
           elemtp0
       }
@@ -173,7 +179,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val ex = new BadSignature(
       i"""error reading Scala signature of $classRoot from $source:
          |error occurred at position $readIndex: $msg""")
-    if (ctx.debug || true) original.getOrElse(ex).printStackTrace() // temporarily enable printing of original failure signature to debug failing builds
+    if (ctx.settings.YdebugMissingRefs.value) original.getOrElse(ex).printStackTrace()
     throw ex
   }
 
@@ -409,7 +415,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               owner.info.decls.checkConsistent()
               if (slowSearch(name).exists)
                 System.err.println(i"**** slow search found: ${slowSearch(name)}")
-              if (ctx.debug) Thread.dumpStack()
+              if (ctx.settings.YdebugMissingRefs.value) Thread.dumpStack()
               ctx.newStubSymbol(owner, name, source)
             }
           }
@@ -608,7 +614,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     /** Force reading type params early, we need them in setClassInfo of subclasses. */
     def init()(implicit ctx: Context) = loadTypeParams
 
-    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
+    override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
       loadTypeParams
   }
 

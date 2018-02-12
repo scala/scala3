@@ -21,7 +21,7 @@ import StdNames._
 import NameOps._
 import NameKinds.LazyImplicitName
 import ast.tpd
-import tpd.Tree
+import tpd.{Tree, TreeProvider, TreeOps}
 import ast.TreeTypeMap
 import Constants.Constant
 import reporting.diagnostic.Message
@@ -29,7 +29,7 @@ import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
-import util.{NoSource, DotClass}
+import util.{NoSource, DotClass, Property}
 import scala.collection.JavaConverters._
 
 /** Creation methods for symbols */
@@ -219,6 +219,14 @@ trait Symbols { this: Context =>
       modFlags | PackageCreationFlags, clsFlags | PackageCreationFlags,
       Nil, decls)
 
+  /** Define a new symbol associated with a Bind or pattern wildcard and
+   *  make it gadt narrowable.
+   */
+  def newPatternBoundSymbol(name: Name, info: Type, pos: Position) = {
+    val sym = newSymbol(owner, name, Case, info, coord = pos)
+    if (name.isTypeName) gadt.setBounds(sym, info.bounds)
+    sym
+  }
 
   /** Create a stub symbol that will issue a missing reference error
    *  when attempted to be completed.
@@ -235,7 +243,6 @@ trait Symbols { this: Context =>
       case name: TypeName =>
         newClassSymbol(normalizedOwner, name, EmptyFlags, stubCompleter, assocFile = file)
     }
-    stubs = stub :: stubs
     stub
   }
 
@@ -369,7 +376,10 @@ trait Symbols { this: Context =>
   def requiredPackageRef(path: PreName): TermRef = requiredPackage(path).termRef
 
   def requiredClass(path: PreName): ClassSymbol =
-    base.staticRef(path.toTypeName).requiredSymbol(_.isClass).asClass
+    base.staticRef(path.toTypeName).requiredSymbol(_.isClass) match {
+      case cls: ClassSymbol => cls
+      case sym => defn.AnyClass
+    }
 
   def requiredClassRef(path: PreName): TypeRef = requiredClass(path).typeRef
 
@@ -391,6 +401,9 @@ trait Symbols { this: Context =>
 object Symbols {
 
   implicit def eqSymbol: Eq[Symbol, Symbol] = Eq
+
+  /** Tree attachment containing the identifiers in a tree as a sorted array */
+  val Ids = new Property.Key[Array[String]]
 
   /** A Symbol represents a Scala definition/declaration or a package.
    *  @param coord  The coordinates of the symbol (a position or an index)
@@ -496,12 +509,6 @@ object Symbols {
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(implicit ctx: Context): Boolean =
       lastDenot != null && lastDenot.initial.isStatic
-
-    /** A unique, densely packed integer tag for each class symbol, -1
-     *  for all other symbols. To save memory, this method
-     *  should be called only if class is a super class of some other class.
-     */
-    def superId(implicit ctx: Context): Int = -1
 
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(implicit ctx: Context): this.type = {
@@ -615,30 +622,60 @@ object Symbols {
 
     type ThisName = TypeName
 
+    type TreeOrProvider = AnyRef /* tpd.TreeProvider | tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree | Null */
+
+    private[this] var myTree: TreeOrProvider = tpd.EmptyTree
+
     /** If this is either:
       *   - a top-level class and `-Yretain-trees` is set
      *    - a top-level class loaded from TASTY and `-tasty` or `-Xlink` is set
       * then return the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
       * This will force the info of the class.
       */
-    def tree(implicit ctx: Context): tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = {
-      denot.info
-      // TODO: Consider storing this tree like we store lazy trees for inline functions
-      if (unpickler != null && !denot.isAbsent) {
-        assert(myTree.isEmpty)
-        val body = unpickler.body(ctx.addMode(Mode.ReadPositions))
-        myTree = body.headOption.getOrElse(tpd.EmptyTree)
-        if (!ctx.settings.fromTasty.value)
-          unpickler = null
-      }
-      myTree
-    }
-    private[this] var myTree: tpd.Tree /* tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree */ = tpd.EmptyTree
-    private[dotc] var unpickler: tasty.DottyUnpickler = _
+    def tree(implicit ctx: Context): Tree = treeContaining("")
 
-    private[dotc] def registerTree(tree: tpd.TypeDef)(implicit ctx: Context): Unit = {
-      if (ctx.settings.YretainTrees.value)
-        myTree = tree
+    /** Same as `tree` but load tree only if `id == ""` or the tree might contain `id`.
+     *  For Tasty trees this means consulting whether the name table defines `id`.
+     *  For already loaded trees, we maintain the referenced ids in an attachment.
+     */
+    def treeContaining(id: String)(implicit ctx: Context): Tree = denot.infoOrCompleter match {
+      case _: NoCompleter =>
+        tpd.EmptyTree
+      case _ =>
+        denot.ensureCompleted()
+        myTree match {
+          case fn: TreeProvider =>
+            if (id.isEmpty || fn.mightContain(id)) {
+              val tree = fn.tree
+              myTree = tree
+              tree
+            }
+            else tpd.EmptyTree
+          case tree: Tree @ unchecked =>
+            if (id.isEmpty || mightContain(tree, id)) tree else tpd.EmptyTree
+        }
+    }
+
+    def treeOrProvider: TreeOrProvider = myTree
+
+    private[dotc] def treeOrProvider_=(t: TreeOrProvider)(implicit ctx: Context): Unit =
+      myTree = t
+
+    private def mightContain(tree: Tree, id: String)(implicit ctx: Context): Boolean = {
+      val ids = tree.getAttachment(Ids) match {
+        case Some(ids) => ids
+        case None =>
+          val idSet = mutable.SortedSet[String]()
+          tree.foreachSubTree {
+            case tree: tpd.NameTree if tree.name.toTermName.isInstanceOf[SimpleName] =>
+              idSet += tree.name.toString
+            case _ =>
+          }
+          val ids = idSet.toArray
+          tree.putAttachment(Ids, ids)
+          ids
+      }
+      ids.binarySearch(id) >= 0
     }
 
     /** The source or class file from which this class was generated, null if not applicable. */
@@ -657,7 +694,7 @@ object Symbols {
     denot = underlying.denot
   }
 
-  @sharable val NoSymbol = new Symbol(NoCoord, 0) {
+  @sharable val NoSymbol: Symbol = new Symbol(NoCoord, 0) {
     override def associatedFile(implicit ctx: Context): AbstractFile = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = NoDenotation
   }
@@ -691,8 +728,6 @@ object Symbols {
 
   /** The current class */
   def currentClass(implicit ctx: Context): ClassSymbol = ctx.owner.enclosingClass.asClass
-
-  @sharable var stubs: List[Symbol] = Nil // diagnostic only
 
   /* Mutable map from symbols any T */
   class MutableSymbolMap[T](private[Symbols] val value: java.util.IdentityHashMap[Symbol, T]) extends AnyVal {

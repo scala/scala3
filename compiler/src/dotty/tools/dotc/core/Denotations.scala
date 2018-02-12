@@ -277,7 +277,7 @@ object Denotations {
       disambiguate(p) match {
         case m @ MissingRef(ownerd, name) =>
           if (generateStubs) {
-            m.ex.printStackTrace()
+            if (ctx.settings.YdebugMissingRefs.value) m.ex.printStackTrace()
             ctx.newStubSymbol(ownerd.symbol, name, source)
           }
           else NoSymbol
@@ -789,10 +789,7 @@ object Denotations {
       this match {
         case symd: SymDenotation =>
           if (ctx.stillValid(symd)) return updateValidity()
-          if (ctx.acceptStale(symd)) {
-            val newd = symd.owner.info.decls.lookup(symd.name)
-            return (newd.denot: SingleDenotation).orElse(symd).updateValidity()
-          }
+          if (ctx.acceptStale(symd)) return symd.currentSymbol.denot.orElse(symd).updateValidity()
         case _ =>
       }
       if (!symbol.exists) return updateValidity()
@@ -1115,7 +1112,7 @@ object Denotations {
    *  Produced by staticRef, consumed by requiredSymbol.
    */
   case class MissingRef(val owner: SingleDenotation, name: Name)(implicit ctx: Context) extends ErrorDenotation {
-    val ex: Exception = new Exception
+    val ex: Exception = new Exception // DEBUG
   }
 
   /** An error denotation that provides more info about alternatives

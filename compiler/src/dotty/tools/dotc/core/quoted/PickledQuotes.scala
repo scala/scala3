@@ -96,7 +96,7 @@ object PickledQuotes {
   private def unpickle(bytes: Array[Byte], splices: Seq[Any])(implicit ctx: Context): Tree = {
     val unpickler = new TastyUnpickler(bytes, splices)
     unpickler.enter(roots = Set(defn.RootPackage))
-    val tree = unpickler.body.head
+    val tree = unpickler.tree
     if (pickling ne noPrinter) {
       println(i"**** unpickled quote for \n${tree.show}")
       new TastyPrinter(bytes).printContents()

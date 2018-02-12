@@ -106,7 +106,6 @@ object Parsers {
     def sourcePos(off: Int = in.offset): SourcePosition =
       source atPos Position(off)
 
-
     /* ------------- ERROR HANDLING ------------------------------------------- */
     /** The offset where the last syntax error was reported, or if a skip to a
       *  safepoint occurred afterwards, the offset of the safe point.
@@ -128,7 +127,6 @@ object Parsers {
       */
     def syntaxError(msg: => Message, pos: Position): Unit =
       ctx.error(msg, source atPos pos)
-
   }
 
   class Parser(source: SourceFile)(implicit ctx: Context) extends ParserCommon(source) {

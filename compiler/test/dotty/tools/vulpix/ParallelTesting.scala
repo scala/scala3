@@ -345,7 +345,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           "javac",
           "-encoding", "UTF-8",
           "-classpath",
-          s".:${Jars.scalaLibrary}:${targetDir.getAbsolutePath}"
+          s"${Jars.scalaLibrary}:${targetDir.getAbsolutePath}"
         ) ++ flags.all.takeRight(2) ++ fs
 
         val process = Runtime.getRuntime.exec(fullArgs)
@@ -783,28 +783,21 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           }
         }
 
-        if (compilerCrashed) {
-          echo(s"Compiler crashed when compiling: ${testSource.title}")
+        def fail(msg: String): Unit = {
+          echo(msg)
           failTestSource(testSource)
         }
-        else if (expectedErrors != actualErrors) {
-          echo {
-            s"\nWrong number of errors encountered when compiling $testSource, expected: $expectedErrors, actual: $actualErrors\n"
-          }
-          failTestSource(testSource)
-        }
-        else if (hasMissingAnnotations()) {
-          echo {
-            s"\nErrors found on incorrect row numbers when compiling $testSource"
-          }
-          failTestSource(testSource)
-        }
-        else if (!errorMap.isEmpty) {
-          echo {
-            s"\nExpected error(s) have {<error position>=<unreported error>}: $errorMap"
-          }
-          failTestSource(testSource)
-        }
+
+        if (compilerCrashed)
+          fail(s"Compiler crashed when compiling: ${testSource.title}")
+        else if (actualErrors == 0)
+          fail(s"\nNo errors found when compiling neg test $testSource")
+        else if (expectedErrors != actualErrors)
+          fail(s"\nWrong number of errors encountered when compiling $testSource, expected: $expectedErrors, actual: $actualErrors")
+        else if (hasMissingAnnotations())
+          fail(s"\nErrors found on incorrect row numbers when compiling $testSource")
+        else if (!errorMap.isEmpty)
+          fail(s"\nExpected error(s) have {<error position>=<unreported error>}: $errorMap")
 
         registerCompletion(actualErrors)
       }
@@ -824,14 +817,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  "run" test:
    *
    *  ```
-   *  compileFile("../tests/pos/i1103.scala", opts).pos()
+   *  compileFile("tests/pos/i1103.scala", opts).pos()
    *  ```
    *
    *  These tests can be customized before calling one of the execution
    *  methods, for instance:
    *
    *  ```
-   *  compileFile("../tests/pos/i1103.scala", opts).times(2).verbose.pos()
+   *  compileFile("tests/pos/i1103.scala", opts).times(2).verbose.pos()
    *  ```
    *
    *  Which would compile `i1103.scala` twice with the verbose flag as a "pos"

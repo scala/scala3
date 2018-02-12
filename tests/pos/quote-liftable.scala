@@ -33,6 +33,7 @@ object Test {
   (1.0f: Expr[Float])
   (1.0: Expr[Double])
   ("abc": Expr[String])
+  ((): Expr[Unit])
 
   val xs: Expr[List[Int]] = 1 :: 2 :: 3 :: Nil
 }

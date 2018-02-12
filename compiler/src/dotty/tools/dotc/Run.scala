@@ -8,15 +8,18 @@ import Symbols._
 import Phases._
 import Types._
 import Scopes._
-import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
+import typer.{FrontEnd, ImportInfo, RefChecks, Typer}
 import Decorators._
 import io.{AbstractFile, PlainFile}
+
 import scala.io.Codec
 import util.{Set => _, _}
 import reporting.Reporter
 import transform.TreeChecker
 import rewrite.Rewrites
 import java.io.{BufferedWriter, OutputStreamWriter}
+
+import dotty.tools.dotc.profile.Profiler
 import printing.XprintMode
 import parsing.Parsers.Parser
 import typer.ImplicitRunInfo
@@ -24,6 +27,7 @@ import collection.mutable
 
 import scala.annotation.tailrec
 import dotty.tools.io.VirtualFile
+
 import scala.util.control.NonFatal
 
 /** A compiler run. Exports various methods to compile source files */
@@ -57,6 +61,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     (start.setRun(this) /: defn.RootImportFns)(addImport)
   }
 
+  private[this] var compiling = false
+
   private[this] var myCtx = rootContext(ictx)
 
   /** The context created for this run */
@@ -68,8 +74,6 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private[this] var myUnits: List[CompilationUnit] = _
   private[this] var myUnitsCached: List[CompilationUnit] = _
   private[this] var myFiles: Set[AbstractFile] = _
-  private[this] val myLateUnits = mutable.ListBuffer[CompilationUnit]()
-  private[this] var myLateFiles = mutable.Set[AbstractFile]()
 
   /** The compilation units currently being compiled, this may return different
     *  results over time.
@@ -91,11 +95,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     myFiles
   }
 
-  /** Units that are added from source completers but that are not compiled in current run. */
-  def lateUnits: List[CompilationUnit] = myLateUnits.toList
+  /** The source files of all late entered symbols, as a set */
+  private[this] var lateFiles = mutable.Set[AbstractFile]()
 
-  /** The source files of all late units, as a set */
-  def lateFiles: collection.Set[AbstractFile] = myLateFiles
+  /** Actions that need to be performed at the end of the current compilation run */
+  private[this] var finalizeActions = mutable.ListBuffer[() => Unit]()
 
   def getSource(fileName: String): SourceFile = {
     val f = new PlainFile(io.Path(fileName))
@@ -144,6 +148,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   protected def compileUnits()(implicit ctx: Context) = Stats.maybeMonitored {
     ctx.checkSingleThreaded()
+    compiling = true
 
     // If testing pickler, make sure to stop after pickling phase:
     val stopAfter =
@@ -156,11 +161,15 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
     def runPhases(implicit ctx: Context) = {
       var lastPrintedTree: PrintedTree = NoPrintedTree
+      val profiler = ctx.profiler
+
       for (phase <- ctx.allPhases)
         if (phase.isRunnable)
           Stats.trackTime(s"$phase ms ") {
             val start = System.currentTimeMillis
+            val profileBefore = profiler.beforePhase(phase)
             units = phase.runOn(units)
+            profiler.afterPhase(phase, profileBefore)
             if (ctx.settings.Xprint.value.containsPhase(phase)) {
               for (unit <- units) {
                 lastPrintedTree =
@@ -172,29 +181,39 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
             for (unit <- units)
               Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
           }
+
+      profiler.finished()
     }
 
     val runCtx = ctx.fresh
+    runCtx.setProfiler(Profiler())
     ctx.phases.foreach(_.initContext(runCtx))
     runPhases(runCtx)
     if (!ctx.reporter.hasErrors) Rewrites.writeBack()
+    while (finalizeActions.nonEmpty) {
+      val action = finalizeActions.remove(0)
+      action()
+    }
+    compiling = false
   }
 
   /** Enter top-level definitions of classes and objects contain in Scala source file `file`.
    *  The newly added symbols replace any previously entered symbols.
+   *  If `typeCheck = true`, also run typer on the compilation unit.
    */
-  def enterRoots(file: AbstractFile)(implicit ctx: Context): Unit =
+  def lateCompile(file: AbstractFile, typeCheck: Boolean)(implicit ctx: Context): Unit =
     if (!files.contains(file) && !lateFiles.contains(file)) {
+      lateFiles += file
       val unit = new CompilationUnit(getSource(file.path))
-      myLateUnits += unit
-      myLateFiles += file
-      enterRoots(unit)(runContext.fresh.setCompilationUnit(unit))
+      def process()(implicit ctx: Context) = {
+        unit.untpdTree = new Parser(unit.source).parse()
+        ctx.typer.lateEnter(unit.untpdTree)
+        def typeCheckUnit() = unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
+        if (typeCheck)
+          if (compiling) finalizeActions += (() => typeCheckUnit()) else typeCheckUnit()
+      }
+      process()(runContext.fresh.setCompilationUnit(unit))
     }
-
-  private def enterRoots(unit: CompilationUnit)(implicit ctx: Context): Unit = {
-    unit.untpdTree = new Parser(unit.source).parse()
-    ctx.typer.lateEnter(unit.untpdTree)
-  }
 
   private sealed trait PrintedTree
   private /*final*/ case class SomePrintedTree(phase: String, tree: String) extends PrintedTree

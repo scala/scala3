@@ -108,12 +108,15 @@ object Checking {
    *  in order to prevent scenarios that lead to self application of
    *  types. Self application needs to be avoided since it can lead to stack overflows.
    *  Test cases are neg/i2771.scala and neg/i2771b.scala.
+   *  A NoType paramBounds is used as a sign that checking should be suppressed.
    */
-  def preCheckKind(arg: Tree, paramBounds: TypeBounds)(implicit ctx: Context): Tree =
-    if (arg.tpe.widen.isRef(defn.NothingClass) || arg.tpe.hasSameKindAs(paramBounds.hi)) arg
+  def preCheckKind(arg: Tree, paramBounds: Type)(implicit ctx: Context): Tree =
+    if (arg.tpe.widen.isRef(defn.NothingClass) ||
+        !paramBounds.exists ||
+        arg.tpe.hasSameKindAs(paramBounds.bounds.hi)) arg
     else errorTree(arg, em"Type argument ${arg.tpe} has not the same kind as its bound $paramBounds")
 
-  def preCheckKinds(args: List[Tree], paramBoundss: List[TypeBounds])(implicit ctx: Context): List[Tree] = {
+  def preCheckKinds(args: List[Tree], paramBoundss: List[Type])(implicit ctx: Context): List[Tree] = {
     val args1 = args.zipWithConserve(paramBoundss)(preCheckKind)
     args1 ++ args.drop(paramBoundss.length)
       // add any arguments that do not correspond to a parameter back,
@@ -144,7 +147,7 @@ object Checking {
   def checkRealizable(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
     val rstatus = realizability(tp)
     if (rstatus ne Realizable)
-      ctx.errorOrMigrationWarning(em"$tp is not a legal path\n since it${rstatus.msg}", pos)
+      ctx.errorOrMigrationWarning(em"$tp is not a legal path\nsince it${rstatus.msg}", pos)
   }
 
   /** A type map which checks that the only cycles in a type are F-bounds
@@ -239,7 +242,7 @@ object Checking {
           }
           if (isInteresting(pre)) {
             val pre1 = this(pre, false, false)
-            if (locked.contains(tp) || tp.symbol.infoOrCompleter == NoCompleter)
+            if (locked.contains(tp) || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter])
               throw CyclicReference(tp.symbol)
             locked += tp
             try checkInfo(tp.info)
@@ -431,7 +434,7 @@ object Checking {
           var tp1 =
             if (isLeaked(tp.symbol)) {
               errors =
-                (() => em"non-private $sym refers to private ${tp.symbol}\n in its type signature ${sym.info}") :: errors
+                (() => em"non-private $sym refers to private ${tp.symbol}\nin its type signature ${sym.info}") :: errors
               tp
             }
             else mapOver(tp)
@@ -526,7 +529,7 @@ trait Checking {
       val sym = tree.tpe.termSymbol
       // The check is avoided inside Java compilation units because it always fails
       // on the singleton type Module.type.
-      if ((sym is Package) || ((sym is JavaModule) && !ctx.compilationUnit.isJava)) ctx.error(em"$sym is not a value", tree.pos)
+      if ((sym is Package) || ((sym is JavaModule) && !ctx.compilationUnit.isJava)) ctx.error(JavaSymbolIsNotAValue(sym), tree.pos)
     }
     tree
   }
@@ -620,7 +623,7 @@ trait Checking {
             def ofType = if (decl.isType) "" else em": ${other.info}"
             def explanation =
               if (!decl.isRealMethod) ""
-              else "\n (the definitions have matching type signatures)"
+              else "\n(the definitions have matching type signatures)"
             ctx.error(em"$decl is already defined as $other$ofType$explanation", decl.pos)
           }
           if (decl is Synthetic) doubleDefError(other, decl)

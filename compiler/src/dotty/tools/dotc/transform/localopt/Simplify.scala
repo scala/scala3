@@ -149,29 +149,15 @@ class Simplify extends MiniPhase with IdentityDenotTransformer {
 
 object Simplify {
   import tpd._
-  // TODO: This function is duplicated in jvm/DottyBackendInterface.scala, let's factor these out!
-  def desugarIdent(i: Ident)(implicit ctx: Context): Option[Select] = {
-    i.tpe match {
-      case TermRef(prefix: TermRef, _) =>
-        Some(ref(prefix).select(i.symbol))
-      case TermRef(prefix: ThisType, _) =>
-        Some(This(prefix.cls).select(i.symbol))
-      case _ => None
-    }
-  }
 
   /** Is this tree mutable, or java.lang.System.{in, out, err}? These three
    *  System members are the only static final fields that are mutable.
    *  See https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.5.4
    */
-  @tailrec def isEffectivelyMutable(t: Tree)(implicit ctx: Context): Boolean = t match {
+  def isEffectivelyMutable(t: Tree)(implicit ctx: Context): Boolean = t match {
     case _ if t.symbol.is(Mutable) => true
-    case s: Select => s.symbol.owner == defn.SystemModule
-    case i: Ident  =>
-      desugarIdent(i) match {
-        case Some(ident) => isEffectivelyMutable(ident)
-        case None => false
-      }
+    case _: Select | _: Ident =>
+      t.symbol.owner == defn.SystemModule
     case _ => false
   }
 

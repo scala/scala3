@@ -19,12 +19,12 @@ object Printers {
   val cyclicErrors: Printer = noPrinter
   val dottydoc: Printer = noPrinter
   val exhaustivity: Printer = noPrinter
-  val incremental: Printer = noPrinter
   val gadts: Printer = noPrinter
   val hk: Printer = noPrinter
   val implicits: Printer = noPrinter
   val implicitsDetailed: Printer = noPrinter
   val inlining: Printer = noPrinter
+  val interactiv: Printer = noPrinter
   val overload: Printer = noPrinter
   val patmatch: Printer = noPrinter
   val pickling: Printer = noPrinter

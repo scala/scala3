@@ -22,6 +22,7 @@ object Liftable {
     override def toString: String = s"Expr($value)"
   }
 
+  implicit def UnitIsLiftable: Liftable[Unit] = (x: Unit) => new ConstantExpr(x)
   implicit def BooleanIsLiftable: Liftable[Boolean] = (x: Boolean) => new ConstantExpr(x)
   implicit def ByteLiftable: Liftable[Byte] = (x: Byte) => new ConstantExpr(x)
   implicit def CharIsLiftable: Liftable[Char] = (x: Char) => new ConstantExpr(x)

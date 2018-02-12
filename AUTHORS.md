@@ -34,6 +34,11 @@ The majority of the dotty codebase is new code, with the exception of the compon
 > The lexical and syntactic analysis components were adapted from the current Scala compiler. They were originally authored by Martin Odersky,
 > Burak Emir, Paul Phillips, Lex Spoon, Sean McDirmid and others.
 
+`dotty.tools.dotc.profile`
+
+> The per-phase profiling support is taken mostly as is from [scala/scala](https://github.com/scala/scala).
+> The original author was Mike Skells.
+
 `dotty.tools.dotc.reporting`
 
 > Adapted from  [scala/scala](https://github.com/scala/scala) with some heavy modifications. They were originally authored by Matthias Zenger, Martin Odersky, and others.

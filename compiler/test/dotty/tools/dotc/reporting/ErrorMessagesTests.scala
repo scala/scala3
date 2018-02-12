@@ -805,15 +805,15 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     checkMessagesAfter("refchecks") {
       """
         |object AnonymousF {
-        |  val f = { case l@List(1,2,3) => Some(l) }
+        |  val f = { case x: Int => x + 1 }
         |}""".stripMargin
     }
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      val AnonymousFunctionMissingParamType(param, args, _, pt) = messages.last
+      assertMessageCount(1, messages)
+      val AnonymousFunctionMissingParamType(param, args, _, pt) = messages.head
       assertEquals("x$1", param.show)
-      assertEquals(s"List(ValDef(${param.show},TypeTree,EmptyTree))", args.toString)
       assertEquals("?", pt.show)
     }
 
@@ -1277,5 +1277,21 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val PolymorphicMethodMissingTypeInParent(rsym, parentSym) = messages.head
       assertEquals("method get", rsym.show)
       assertEquals("class Object", parentSym.show)
+    }
+
+  @Test def javaSymbolIsNotAValue =
+    checkMessagesAfter("checkStatic") {
+      """
+        |package p
+        |object O {
+        |  val v = p
+        |}
+      """.stripMargin
+    }.expect { (itcx, messages) =>
+      implicit val ctx: Context = itcx
+
+      assertMessageCount(1, messages)
+      val JavaSymbolIsNotAValue(symbol) = messages.head
+      assertEquals(symbol.show, "package p")
     }
 }

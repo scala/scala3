@@ -22,7 +22,6 @@ import Names._
 import StdNames._
 import NameKinds.DefaultGetterName
 import ProtoTypes._
-import EtaExpansion._
 import Inferencing._
 
 import collection.mutable
@@ -95,7 +94,7 @@ object Applications {
     def fail = {
       val addendum =
         if (ctx.scala2Mode && unapplyName == nme.unapplySeq)
-          "\n You might want to try to rewrite the extractor to use `unapply` instead."
+          "\nYou might want to try to rewrite the extractor to use `unapply` instead."
       ctx.error(em"$unapplyResult is not a valid result type of an $unapplyName method of an extractor$addendum", pos)
       Nil
     }
@@ -426,7 +425,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
 
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
-            if (!isJavaAnnotConstr(methRef.symbol)) liftFun()
+            if (!isJavaAnnotConstr(methRef.symbol))
+              liftFun()
             val getter = findDefaultGetter(n + numArgs(normalizedFun))
             if (getter.isEmpty) missingArg(n)
             else {
@@ -571,10 +571,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     def normalizedFun = myNormalizedFun
 
+    private def lifter(implicit ctx: Context) =
+      if (methRef.symbol.hasDefaultParams) LiftComplex else LiftImpure
+
     override def liftFun(): Unit =
       if (liftedDefs == null) {
         liftedDefs = new mutable.ListBuffer[Tree]
-        myNormalizedFun = liftApp(liftedDefs, myNormalizedFun)
+        myNormalizedFun = lifter.liftApp(liftedDefs, myNormalizedFun)
       }
 
     /** The index of the first difference between lists of trees `xs` and `ys`
@@ -608,13 +611,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
             // lift arguments in the definition order
             val argDefBuf = mutable.ListBuffer.empty[Tree]
-            typedArgs = liftArgs(argDefBuf, methType, typedArgs)
+            typedArgs = lifter.liftArgs(argDefBuf, methType, typedArgs)
 
             // Lifted arguments ordered based on the original order of typedArgBuf and
             // with all non-explicit default parameters at the end in declaration order.
             val orderedArgDefs = {
               // List of original arguments that are lifted by liftArgs
-              val impureArgs = typedArgBuf.filterNot(isPureExpr)
+              val impureArgs = typedArgBuf.filterNot(lifter.noLift)
               // Assuming stable sorting all non-explicit default parameters will remain in the end with the same order
               val defaultParamIndex = args.size
               // Mapping of index of each `liftable` into original args ordering
@@ -662,6 +665,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def argCtx(app: untpd.Tree)(implicit ctx: Context): Context =
     if (untpd.isSelfConstrCall(app)) ctx.thisCallArgContext else ctx
 
+  /** Typecheck application. Result could be an `Apply` node,
+   *  or, if application is an operator assignment, also an `Assign` or
+   *  Block node.
+   */
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
@@ -746,7 +753,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       val Apply(Select(lhs, name), rhss) = tree
       val lhs1 = typedExpr(lhs)
       val liftedDefs = new mutable.ListBuffer[Tree]
-      val lhs2 = untpd.TypedSplice(liftAssigned(liftedDefs, lhs1))
+      val lhs2 = untpd.TypedSplice(LiftComplex.liftAssigned(liftedDefs, lhs1))
       val assign = untpd.Assign(lhs2,
           untpd.Apply(untpd.Select(lhs2, name.asSimpleName.dropRight(1)), rhss))
       wrapDefs(liftedDefs, typed(assign))
@@ -778,7 +785,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
   /** Overridden in ReTyper to handle primitive operations that can be generated after erasure */
   protected def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(implicit ctx: Context): Tree =
-    throw new Error(i"unexpected type.\n fun = $fun,\n methPart(fun) = ${methPart(fun)},\n methPart(fun).tpe = ${methPart(fun).tpe},\n tpe = ${fun.tpe}")
+    throw new Error(i"unexpected type.\n  fun = $fun,\n  methPart(fun) = ${methPart(fun)},\n  methPart(fun).tpe = ${methPart(fun).tpe},\n  tpe = ${fun.tpe}")
 
   def typedNamedArgs(args: List[untpd.Tree])(implicit ctx: Context) =
     for (arg @ NamedArg(id, argtpt) <- args) yield {
@@ -890,10 +897,24 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** Produce a typed qual.unapply or qual.unapplySeq tree, or
      *  else if this fails follow a type alias and try again.
      */
-    val unapplyFn = trySelectUnapply(qual) { sel =>
+    var unapplyFn = trySelectUnapply(qual) { sel =>
       val qual1 = followTypeAlias(qual)
       if (qual1.isEmpty) notAnExtractor(sel)
       else trySelectUnapply(qual1)(_ => notAnExtractor(sel))
+    }
+
+    /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
+    def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {
+      case TypeApply(fn, args) =>
+        def addBinder(arg: Tree) = arg.tpe.stripTypeVar match {
+          case ref: TypeRef if bound.contains(ref.symbol) =>
+            tpd.Bind(ref.symbol, Ident(ref))
+          case _ =>
+            arg
+        }
+        tpd.cpy.TypeApply(unapp)(fn, args.mapConserve(addBinder))
+      case _ =>
+        unapp
     }
 
     def fromScala2x = unapplyFn.symbol.exists && (unapplyFn.symbol.owner is Scala2x)
@@ -923,27 +944,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             fullyDefinedType(unapplyArgType, "pattern selector", tree.pos)
             selType
           } else if (isSubTypeOfParent(unapplyArgType, selType)(ctx.addMode(Mode.GADTflexible))) {
-            maximizeType(unapplyArgType) match {
-              case Some(tvar) =>
-                def msg =
-                  ex"""There is no best instantiation of pattern type $unapplyArgType
-                      |that makes it a subtype of selector type $selType.
-                      |Non-variant type variable ${tvar.origin} cannot be uniquely instantiated."""
-                if (fromScala2x) {
-                  // We can't issue an error here, because in Scala 2, ::[B] is invariant
-                  // whereas List[+T] is covariant. According to the strict rule, a pattern
-                  // match of a List[C] against a case x :: xs is illegal, because
-                  // B cannot be uniquely instantiated. Of course :: should have been
-                  // covariant in the first place, but in the Scala libraries it isn't.
-                  // So for now we allow these kinds of patterns, even though they
-                  // can open unsoundness holes. See SI-7952 for an example of the hole this opens.
-                  if (ctx.settings.verbose.value) ctx.warning(msg, tree.pos)
-                } else {
-                  unapp.println(s" ${unapplyFn.symbol.owner} ${unapplyFn.symbol.owner is Scala2x}")
-                  ctx.strictWarning(msg, tree.pos)
-                }
-              case _ =>
-            }
+            val patternBound = maximizeType(unapplyArgType, tree.pos, fromScala2x)
+            if (patternBound.nonEmpty) unapplyFn = addBinders(unapplyFn, patternBound)
             unapp.println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
             unapplyArgType
           } else {
@@ -970,7 +972,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 args.init :+ argSeq
               case _ =>
                 val (regularArgs, varArgs) = args.splitAt(argTypes.length - 1)
-                regularArgs :+ untpd.SeqLiteral(varArgs, untpd.TypeTree())
+                regularArgs :+ untpd.SeqLiteral(varArgs, untpd.TypeTree()).withPos(tree.pos)
             }
           else if (argTypes.lengthCompare(1) == 0 && args.lengthCompare(1) > 0 && ctx.canAutoTuple)
             untpd.Tuple(args) :: Nil
@@ -1458,7 +1460,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
               fn.get.isInstanceOf[untpd.Match] &&
               formalsForArg.exists(_.isRef(defn.PartialFunctionClass))
             val commonFormal =
-              if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, newTypeVar(TypeBounds.empty))
+              if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, WildcardType)
               else defn.FunctionOf(commonParamTypes, WildcardType)
             overload.println(i"pretype arg $arg with expected type $commonFormal")
             pt.typedArg(arg, commonFormal)(ctx.addMode(Mode.ImplicitsEnabled))

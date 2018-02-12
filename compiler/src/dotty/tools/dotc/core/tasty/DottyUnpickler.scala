@@ -3,14 +3,14 @@ package dotc
 package core
 package tasty
 
-import Contexts._, SymDenotations._, Symbols._
+import Contexts._, SymDenotations._, Symbols._,  Decorators._
 import dotty.tools.dotc.ast.tpd
 import TastyUnpickler._, TastyBuffer._
 import util.Positions._
 import util.{SourceFile, NoSource}
 import Annotations.Annotation
-import core.Mode
 import classfile.ClassfileParser
+import Names.SimpleName
 
 object DottyUnpickler {
 
@@ -32,7 +32,7 @@ object DottyUnpickler {
 /** A class for unpickling Tasty trees and symbols.
  *  @param bytes         the bytearray containing the Tasty file from which we unpickle
  */
-class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
+class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with tpd.TreeProvider {
   import tpd._
   import DottyUnpickler._
 
@@ -50,15 +50,16 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
     new TreeSectionUnpickler(posUnpicklerOpt)
   }
 
-  /** Only used if `-Yretain-trees` is set. */
-  private[this] var myBody: List[Tree] = _
-  /** The unpickled trees, and the source file they come from. */
-  def body(implicit ctx: Context): List[Tree] = {
-    def computeBody() = treeUnpickler.unpickle()
-    if (ctx.settings.YretainTrees.value) {
-      if (myBody == null)
-        myBody = computeBody()
-      myBody
-    } else computeBody()
+  protected def computeTrees(implicit ctx: Context) = treeUnpickler.unpickle()
+
+  private[this] var ids: Array[String] = null
+
+  override def mightContain(id: String)(implicit ctx: Context): Boolean = {
+    if (ids == null)
+      ids =
+        unpickler.nameAtRef.contents.toArray.collect {
+          case name: SimpleName => name.toString
+        }.sorted
+    ids.binarySearch(id) >= 0
   }
 }

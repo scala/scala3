@@ -341,8 +341,21 @@ object desugar {
       (if (args.isEmpty) tycon else AppliedTypeTree(tycon, args))
         .withPos(cdef.pos.startPos)
 
-    def appliedRef(tycon: Tree, tparams: List[TypeDef] = constrTparams) =
-      appliedTypeTree(tycon, tparams map refOfDef)
+    def appliedRef(tycon: Tree, tparams: List[TypeDef] = constrTparams, widenHK: Boolean = false) = {
+      val targs = for (tparam <- tparams) yield {
+        val targ = refOfDef(tparam)
+        def fullyApplied(tparam: Tree): Tree = tparam match {
+          case TypeDef(_, LambdaTypeTree(tparams, body)) =>
+            AppliedTypeTree(targ, tparams.map(_ => TypeBoundsTree(EmptyTree, EmptyTree)))
+          case TypeDef(_, rhs: DerivedTypeTree) =>
+            fullyApplied(rhs.watched)
+          case _ =>
+            targ
+        }
+        if (widenHK) fullyApplied(tparam) else targ
+      }
+      appliedTypeTree(tycon, targs)
+    }
 
     // a reference to the class type bound by `cdef`, with type parameters coming from the constructor
     val classTypeRef = appliedRef(classTycon)
@@ -431,12 +444,16 @@ object desugar {
     //
     //    implicit def eqInstance[T1$1, ..., Tn$1, T1$2, ..., Tn$2](implicit
     //      ev1: Eq[T1$1, T1$2], ..., evn: Eq[Tn$1, Tn$2]])
-    //      : Eq[C[T1$1, ..., Tn$1], C[T1$2, ..., Tn$2]] = Eq
+    //      : Eq[C[T1$, ..., Tn$1], C[T1$2, ..., Tn$2]] = Eq
+    //
+    // If any of the T_i are higher-kinded, say `Ti[X1 >: L1 <: U1, ..., Xm >: Lm <: Um]`,
+    // the corresponding type parameters for $ev_i are `Ti$1[_, ..., _], Ti$2[_, ..., _]`
+    // (with m underscores `_`).
     def eqInstance = {
       val leftParams = constrTparams.map(derivedTypeParam(_, "$1"))
       val rightParams = constrTparams.map(derivedTypeParam(_, "$2"))
       val subInstances = (leftParams, rightParams).zipped.map((param1, param2) =>
-        appliedRef(ref(defn.EqType), List(param1, param2)))
+        appliedRef(ref(defn.EqType), List(param1, param2), widenHK = true))
       DefDef(
           name = nme.eqInstance,
           tparams = leftParams ++ rightParams,
@@ -725,6 +742,31 @@ object desugar {
       tree
   }
 
+  /** Translate infix operation expression
+    *
+    *     l op r     ==>    l.op(r)  if op is left-associative
+    *                ==>    r.op(l)  if op is right-associative
+    */
+  def binop(left: Tree, op: Ident, right: Tree)(implicit ctx: Context): Apply = {
+    def assignToNamedArg(arg: Tree) = arg match {
+      case Assign(Ident(name), rhs) => cpy.NamedArg(arg)(name, rhs)
+      case _ => arg
+    }
+    def makeOp(fn: Tree, arg: Tree, selectPos: Position) = {
+      val args: List[Tree] = arg match {
+        case Parens(arg) => assignToNamedArg(arg) :: Nil
+        case Tuple(args) => args.mapConserve(assignToNamedArg)
+        case _ => arg :: Nil
+      }
+      Apply(Select(fn, op.name).withPos(selectPos), args)
+    }
+
+    if (isLeftAssoc(op.name))
+      makeOp(left, right, Position(left.pos.start, op.pos.end, op.pos.start))
+    else
+      makeOp(right, left, Position(op.pos.start, right.pos.end))
+  }
+
   /** Make closure corresponding to function.
    *      params => body
    *  ==>
@@ -830,30 +872,6 @@ object desugar {
     def labelDefAndCall(lname: TermName, rhs: Tree, call: Tree) = {
       val ldef = DefDef(lname, Nil, ListOfNil, TypeTree(defn.UnitType), rhs).withFlags(Label | Synthetic)
       Block(ldef, call)
-    }
-
-    /** Translate infix operation expression  left op right
-     */
-    def makeBinop(left: Tree, op: Ident, right: Tree): Tree = {
-      def assignToNamedArg(arg: Tree) = arg match {
-        case Assign(Ident(name), rhs) => cpy.NamedArg(arg)(name, rhs)
-        case _ => arg
-      }
-      if (isLeftAssoc(op.name)) {
-        val args: List[Tree] = right match {
-          case Parens(arg) => assignToNamedArg(arg) :: Nil
-          case Tuple(args) => args mapConserve assignToNamedArg
-          case _ => right :: Nil
-        }
-        val selectPos = Position(left.pos.start, op.pos.end, op.pos.start)
-        Apply(Select(left, op.name).withPos(selectPos), args)
-      } else {
-        val x = UniqueName.fresh()
-        val selectPos = Position(op.pos.start, right.pos.end, op.pos.start)
-        new InfixOpBlock(
-          ValDef(x, TypeTree(), left).withMods(synthetic),
-          Apply(Select(right, op.name).withPos(selectPos), Ident(x).withPos(left.pos)))
-      }
     }
 
     /** Create tree for for-comprehension `<for (enums) do body>` or
@@ -1066,10 +1084,10 @@ object desugar {
           if (!op.isBackquoted && op.name == tpnme.raw.AMP) AndTypeTree(l, r)     // l & r
           else if (!op.isBackquoted && op.name == tpnme.raw.BAR) OrTypeTree(l, r) // l | r
           else AppliedTypeTree(op, l :: r :: Nil) // op[l, r]
-        else if (ctx.mode is Mode.Pattern)
+        else {
+          assert(ctx.mode is Mode.Pattern) // expressions are handled separately by `binop`
           Apply(op, l :: r :: Nil) // op(l, r)
-        else // l.op(r), or val x = r; l.op(x), plus handle named args specially
-          makeBinop(l, op, r)
+        }
       case PostfixOp(t, op) =>
         if ((ctx.mode is Mode.Type) && !op.isBackquoted && op.name == tpnme.raw.STAR) {
           val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType

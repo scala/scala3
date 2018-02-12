@@ -42,33 +42,6 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     var enteredSyms: List[Symbol] = Nil
   }
 
-  /** A tree substituter that also works for holes */
-  class SubstMap(
-    typeMap: Type => Type = IdentityTypeMap,
-    treeMap: Tree => Tree = identity _,
-    oldOwners: List[Symbol] = Nil,
-    newOwners: List[Symbol] = Nil,
-    substFrom: List[Symbol],
-    substTo: List[Symbol])(implicit ctx: Context)
-  extends TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo) {
-
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-      case Hole(n, args) =>
-        Hole(n, args.mapConserve(transform)).withPos(tree.pos).withType(mapType(tree.tpe))
-      case _ =>
-        super.transform(tree)
-    }
-
-    override def newMap(
-        typeMap: Type => Type,
-        treeMap: Tree => Tree,
-        oldOwners: List[Symbol],
-        newOwners: List[Symbol],
-        substFrom: List[Symbol],
-        substTo: List[Symbol])(implicit ctx: Context) =
-      new SubstMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
-  }
-
   /** Requiring that `paramRefs` consists of a single reference `seq` to a Seq[Any],
    *  a tree map that replaces each hole with index `n` with `seq(n)`, applied
    *  to any arguments in the hole.
@@ -148,7 +121,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         }
         importedTags.clear()
         Block(typeDefs,
-          new SubstMap(substFrom = itags.map(_._1.symbol), substTo = typeDefs.map(_.symbol))
+          new TreeTypeMap(substFrom = itags.map(_._1.symbol), substTo = typeDefs.map(_.symbol))
             .apply(expr))
       }
 
