@@ -501,8 +501,8 @@ object Build {
       baseDirectory in Test := baseDirectory.value / "..",
 
       test in Test := {
-        // Exclude legacy tests by default
-        (testOnly in Test).toTask(" -- --exclude-categories=dotty.LegacyTests").value
+        // Exclude VulpixMetaTests
+        (testOnly in Test).toTask(" -- --exclude-categories=dotty.VulpixMetaTests").value
       },
 
       testOptions in Test += Tests.Argument(
@@ -1148,8 +1148,7 @@ object Build {
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
       nonBootstrappedSettings(
-        addCommandAlias("run", "dotty-compiler/run") ++
-        addCommandAlias("legacyTests", "dotty-compiler/testOnly dotc.tests")
+        addCommandAlias("run", "dotty-compiler/run")
       )
 
     def asDottyCompiler(implicit mode: Mode): Project = project.withCommonSettings.
