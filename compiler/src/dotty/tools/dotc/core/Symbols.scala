@@ -667,7 +667,8 @@ object Symbols {
         case None =>
           val idSet = mutable.SortedSet[String]()
           tree.foreachSubTree {
-            case tree: tpd.NameTree if tree.name.isInstanceOf[SimpleName] => idSet += tree.name.toString
+            case tree: tpd.NameTree if tree.name.toTermName.isInstanceOf[SimpleName] =>
+              idSet += tree.name.toString
             case _ =>
           }
           val ids = idSet.toArray

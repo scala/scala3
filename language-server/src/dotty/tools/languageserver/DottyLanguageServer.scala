@@ -65,7 +65,7 @@ class DottyLanguageServer extends LanguageServer
 
       myDrivers = new mutable.HashMap
       for (config <- configs) {
-        implicit class updateDeco(ss: List[String]): List[String] {
+        implicit class updateDeco(ss: List[String]) {
           def update(pathKind: String, pathInfo: String) = {
             val idx = ss.indexOf(pathKind)
             val ss1 = if (idx >= 0) ss.take(idx) ++ ss.drop(idx + 2) else ss
