@@ -1388,8 +1388,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
         }
 
-      case pt @ PolyProto(targs1, pt1) =>
-        assert(targs.isEmpty)
+      case pt @ PolyProto(targs1, pt1) if targs.isEmpty =>
         val alts1 = alts filter pt.isMatchedBy
         resolveOverloaded(alts1, pt1, targs1)
 
