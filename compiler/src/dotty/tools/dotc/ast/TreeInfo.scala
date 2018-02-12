@@ -519,8 +519,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       val (meth, targs, argss) = decomposeCall(fn)
       (meth, targs, argss :+ args)
     case TypeApply(fn, targs) =>
-      val (meth, Nil, Nil) = decomposeCall(fn)
-      (meth, targs, Nil)
+      val (meth, targss, args) = decomposeCall(fn)
+      (meth, targs ++ targss, args)
     case _ =>
       (tree, Nil, Nil)
   }

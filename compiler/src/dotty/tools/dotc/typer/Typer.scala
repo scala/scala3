@@ -664,8 +664,7 @@ class Typer extends Namer
 
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) = track("typedBlock") {
     val (exprCtx, stats1) = typedBlockStats(tree.stats)
-    val ept = pt.notApplied
-    val expr1 = typedExpr(tree.expr, ept)(exprCtx)
+    val expr1 = typedExpr(tree.expr, pt.notApplied)(exprCtx)
     ensureNoLocalRefs(
       cpy.Block(tree)(stats1, expr1).withType(expr1.tpe), pt, localSyms(stats1))
   }
@@ -996,9 +995,7 @@ class Typer extends Namer
     cases mapconserve (typedCase(_, pt, selType, gadtSyms))
   }
 
-  /** Type a case. Overridden in ReTyper, that's why it's separate from
-   *  typedCases.
-   */
+  /** Type a case. */
   def typedCase(tree: untpd.CaseDef, pt: Type, selType: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = track("typedCase") {
     val originalCtx = ctx
 
