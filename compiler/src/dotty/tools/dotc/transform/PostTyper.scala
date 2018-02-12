@@ -44,8 +44,6 @@ import reporting.diagnostic.messages.{NotAMember, SuperCallsNotAllowedInline}
  *  (11) Minimizes `call` fields of `Inline` nodes to just point to the toplevel
  *       class from which code was inlined.
  *
- *  (12) Converts GADT bounds into normal type bounds
- *
  *  The reason for making this a macro transform is that some functions (in particular
  *  super and protected accessors and instantiation checks) are naturally top-down and
  *  don't lend themselves to the bottom-up approach of a mini phase. The other two functions
