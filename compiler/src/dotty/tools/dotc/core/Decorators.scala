@@ -201,5 +201,9 @@ object Decorators {
     def hl(args: Any*)(implicit ctx: Context): String =
       new SyntaxFormatter(sc).assemble(args).stripMargin
   }
+
+  implicit class ArrayInterpolator[T <: AnyRef](val arr: Array[T]) extends AnyVal {
+    def binarySearch(x: T): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object]], x)
+  }
 }
 

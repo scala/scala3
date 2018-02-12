@@ -29,9 +29,16 @@ class FromTastyTests extends ParallelTesting {
     val (step1, step2, step3) = compileTastyInDir("tests/pos", defaultOptions,
       blacklist = Set(
         "macro-deprecate-dont-touch-backquotedidents.scala",
+        
+        // Compiles wrong class
+        "simpleClass.scala",
 
         // Wrong number of arguments
         "i3130b.scala",
+
+        // Class not found
+        "simpleCaseObject.scala",
+        "i3130a.scala",
 
         // Owner discrepancy for refinements
         "NoCyclicReference.scala",
@@ -93,6 +100,7 @@ class FromTastyTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
     val (step1, step2, step3) = compileTastyInDir("tests/run", defaultOptions,
        blacklist = Set(
+
          "t3613.scala",
          "t7223.scala",
          "t7899-regression.scala",

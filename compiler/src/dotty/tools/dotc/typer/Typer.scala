@@ -1496,12 +1496,12 @@ class Typer extends Namer
       cdef.withType(UnspecifiedErrorType)
     } else {
       val dummy = localDummy(cls, impl)
-      val body1 = typedStats(impl.body, dummy)(inClassContext(self1.symbol))
+      val body1 = typedStats(impl.body, dummy)(ctx.inClassContext(self1.symbol))
       if (!ctx.isAfterTyper)
         cls.setNoInitsFlags((NoInitsInterface /: body1) ((fs, stat) => fs & defKind(stat)))
 
       // Expand comments and type usecases
-      cookComments(body1.map(_.symbol), self1.symbol)(localContext(cdef, cls).setNewScope)
+      cookComments(body1.map(_.symbol), self1.symbol)(ctx.localContext(cdef, cls).setNewScope)
 
       checkNoDoubleDefs(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
@@ -1523,7 +1523,7 @@ class Typer extends Namer
       // check value class constraints
       checkDerivedValueClass(cls, body1)
 
-      cls.registerTree(cdef1)
+      if (ctx.settings.YretainTrees.value) cls.treeOrProvider = cdef1
 
       cdef1
 
@@ -1604,15 +1604,12 @@ class Typer extends Namer
     // Package will not exist if a duplicate type has already been entered, see
     // `tests/neg/1708.scala`, else branch's error message should be supressed
     if (pkg.exists) {
-      val packageContext =
-        if (pkg is Package) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
-        else {
-          ctx.error(PackageNameAlreadyDefined(pkg), tree.pos)
-          ctx
-        }
-      val stats1 = typedStats(tree.stats, pkg.moduleClass)(packageContext)
+      if (!pkg.is(Package)) ctx.error(PackageNameAlreadyDefined(pkg), tree.pos)
+      val packageCtx = ctx.packageContext(tree, pkg)
+      val stats1 = typedStats(tree.stats, pkg.moduleClass)(packageCtx)
       cpy.PackageDef(tree)(pid1.asInstanceOf[RefTree], stats1) withType pkg.termRef
-    } else errorTree(tree, i"package ${tree.pid.name} does not exist")
+    }
+    else errorTree(tree, i"package ${tree.pid.name} does not exist")
   }
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = track("typedAnnotated") {
@@ -1708,15 +1705,6 @@ class Typer extends Namer
       NoSymbol
   }
 
-  /** A fresh local context with given tree and owner.
-   *  Owner might not exist (can happen for self valdefs), in which case
-   *  no owner is set in result context
-   */
-  protected def localContext(tree: untpd.Tree, owner: Symbol)(implicit ctx: Context): FreshContext = {
-    val freshCtx = ctx.fresh.setTree(tree)
-    if (owner.exists) freshCtx.setOwner(owner) else freshCtx
-  }
-
   protected def localTyper(sym: Symbol): Typer = nestedTyper.remove(sym).get
 
   def typedUnadapted(initTree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
@@ -1734,15 +1722,15 @@ class Typer extends Namer
             case tree: untpd.Bind => typedBind(tree, pt)
             case tree: untpd.ValDef =>
               if (tree.isEmpty) tpd.EmptyValDef
-              else typedValDef(tree, sym)(localContext(tree, sym).setNewScope)
+              else typedValDef(tree, sym)(ctx.localContext(tree, sym).setNewScope)
             case tree: untpd.DefDef =>
               val typer1 = localTyper(sym)
-              typer1.typedDefDef(tree, sym)(localContext(tree, sym).setTyper(typer1))
+              typer1.typedDefDef(tree, sym)(ctx.localContext(tree, sym).setTyper(typer1))
             case tree: untpd.TypeDef =>
               if (tree.isClassDef)
-                typedClassDef(tree, sym.asClass)(localContext(tree, sym).setMode(ctx.mode &~ Mode.InSuperCall))
+                typedClassDef(tree, sym.asClass)(ctx.localContext(tree, sym).setMode(ctx.mode &~ Mode.InSuperCall))
               else
-                typedTypeDef(tree, sym)(localContext(tree, sym).setNewScope)
+                typedTypeDef(tree, sym)(ctx.localContext(tree, sym).setNewScope)
             case _ => typedUnadapted(desugar(tree), pt)
           }
         }
@@ -1776,7 +1764,7 @@ class Typer extends Namer
           case tree: untpd.OrTypeTree => typedOrTypeTree(tree)
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)
           case tree: untpd.AppliedTypeTree => typedAppliedTypeTree(tree)
-          case tree: untpd.LambdaTypeTree => typedLambdaTypeTree(tree)(localContext(tree, NoSymbol).setNewScope)
+          case tree: untpd.LambdaTypeTree => typedLambdaTypeTree(tree)(ctx.localContext(tree, NoSymbol).setNewScope)
           case tree: untpd.ByNameTypeTree => typedByNameTypeTree(tree)
           case tree: untpd.TypeBoundsTree => typedTypeBoundsTree(tree, pt)
           case tree: untpd.Alternative => typedAlternative(tree, pt)

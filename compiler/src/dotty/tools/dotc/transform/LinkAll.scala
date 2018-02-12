@@ -8,6 +8,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Mode
 
 /** Loads all potentially reachable trees from tasty. ▲
  *  Only performed on whole world optimization mode. ▲ ▲
@@ -68,7 +69,7 @@ object LinkAll {
 
   private[LinkAll] def loadCompilationUnit(clsd: ClassDenotation)(implicit ctx: Context): Option[CompilationUnit] = {
     assert(ctx.settings.Xlink.value)
-    val tree = clsd.symbol.asClass.tree
+    val tree = clsd.symbol.asClass.tree(ctx.addMode(Mode.ReadPositions))
     if (tree.isEmpty) None
     else {
       ctx.log("Loading compilation unit for: " + clsd)

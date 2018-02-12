@@ -873,6 +873,27 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def tpes: List[Type] = xs map (_.tpe)
   }
 
+  /** A trait for loaders that compute trees. Currently implemented just by DottyUnpickler. */
+  trait TreeProvider {
+    protected def computeTrees(implicit ctx: Context): List[Tree]
+
+    private[this] var myTrees: List[Tree] = null
+
+    /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
+    def trees(implicit ctx: Context): List[Tree] =
+      if (ctx.settings.YretainTrees.value) {
+        if (myTrees == null) myTrees = computeTrees
+        myTrees
+      } else computeTrees
+
+    /** Get first tree defined by this provider, or EmptyTree if none exists */
+    def tree(implicit ctx: Context): Tree =
+      trees.headOption.getOrElse(EmptyTree)
+
+    /** Is it possible that the tree to load contains a definition of or reference to `id`? */
+    def mightContain(id: String)(implicit ctx: Context) = true
+  }
+
   // convert a numeric with a toXXX method
   def primitiveConversion(tree: Tree, numericCls: Symbol)(implicit ctx: Context): Tree = {
     val mname      = ("to" + numericCls.name).toTermName

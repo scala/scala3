@@ -131,7 +131,6 @@ object Contexts {
     private[this] var _typeAssigner: TypeAssigner = _
     protected def typeAssigner_=(typeAssigner: TypeAssigner) = _typeAssigner = typeAssigner
     def typeAssigner: TypeAssigner = _typeAssigner
-    def typer: Typer = _typeAssigner.asInstanceOf[Typer]
 
     /** The currently active import info */
     private[this] var _importInfo: ImportInfo = _
