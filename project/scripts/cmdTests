@@ -102,6 +102,7 @@ if ./project/scripts/sbt "dotty-compiler/testOnly dotty.tools.vulpix.VulpixMetaT
 fi
 tmp1=$(mktemp)
 cat "$tmp" | sed '/Test run started/,$!d' > "$tmp1"
+set +x # Or the code below produces too much noise
 while read expected <&4 && read actual <&3; do
   if [[ "$expected" != *"SKIP" ]]; then
     if [ "$actual" != "$expected" ]; then

@@ -21,14 +21,15 @@ class VulpixUnitTests extends ParallelTesting {
   def isInteractive = !sys.env.contains("DRONE")
   def testFilter = None
 
+  // To fail with something else than an AssertionError
+  def fail(): Unit = throw new Exception("didn't fail properly")
+
   @Test def missingFile: Unit =
     try {
       compileFile("tests/vulpix-tests/unit/i-dont-exist.scala", defaultOptions).expectFailure.checkExpectedErrors()
-      fail("didn't fail properly")
-    }
-    catch {
+      fail()
+    } catch {
       case _: IllegalArgumentException => // pass!
-      case NonFatal(_) => fail("wrong exception thrown")
     }
 
   @Test def pos1Error: Unit =
@@ -77,18 +78,20 @@ class VulpixUnitTests extends ParallelTesting {
     compileFile("tests/vulpix-tests/unit/deadlock.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def badJava: Unit =
-    try compileFile("tests/vulpix-tests/unit/BadJava.java", defaultOptions).suppressAllOutput.checkCompile()
-    catch {
-      case ae: AssertionError => assert(ae.getMessage.contains("java compilation failed"))
+    try {
+      compileFile("tests/vulpix-tests/unit/BadJava.java", defaultOptions).suppressAllOutput.checkCompile()
+      fail()
+    } catch {
+      case ae: AssertionError => assertTrue(ae.getMessage.contains("java compilation failed"))
     }
 
   @Test def runTimeout: Unit = {
     try {
       compileFile("tests/vulpix-tests/unit/timeout.scala", defaultOptions).checkRuns()
-      assert(false, "unreachable")
+      fail()
     } catch {
       case ae: AssertionError =>
-        assert(ae.getMessage == "Run test failed, but should not, reasons:\n  - test 'tests/vulpix-tests/unit/timeout.scala' timed out")
+        assertEquals(ae.getMessage, "Run test failed, but should not, reasons:\n  - test 'tests/vulpix-tests/unit/timeout.scala' timed out")
     }
   }
 }
