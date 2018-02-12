@@ -11,12 +11,13 @@ import scala.quoted.Expr
 
 import java.net.URLClassLoader
 
+import Runners.{Settings, Run, Show}
+
 class QuoteDriver extends Driver {
   import tpd._
 
-  def run[T](expr: Expr[T], settings: Runners.RunSettings): T = {
-    val ctx: Context = initCtx.fresh
-    ctx.settings.optimise.update(settings.optimise)(ctx)
+  def run[T](expr: Expr[T], settings: Settings[Run]): T = {
+    val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
 
     val outDir: AbstractFile = settings.outDir match {
       case Some(out) =>
@@ -39,25 +40,25 @@ class QuoteDriver extends Driver {
     method.invoke(instance).asInstanceOf[T]
   }
 
-  def show(expr: Expr[_]): String = {
+  def show(expr: Expr[_], settings: Settings[Show]): String = {
     def show(tree: Tree, ctx: Context): String = {
       val printer = new DecompilerPrinter(ctx)
       val pageWidth = ctx.settings.pageWidth.value(ctx)
       printer.toText(tree).mkString(pageWidth, false)
     }
-    withTree(expr, show)
+    withTree(expr, show, settings)
   }
 
-  def withTree[T](expr: Expr[_], f: (Tree, Context) => T): T = {
-    val ctx: Context = initCtx.fresh
-    ctx.settings.color.update("never")(ctx) // TODO support colored show
+  def withTree[T](expr: Expr[_], f: (Tree, Context) => T, settings: Settings[_]): T = {
+    val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
+
     var output: Option[T] = None
     def registerTree(tree: tpd.Tree)(ctx: Context): Unit = {
       assert(output.isEmpty)
       output = Some(f(tree, ctx))
     }
     new ExprDecompiler(registerTree).newRun(ctx).compileExpr(expr)
-    output.getOrElse(throw new Exception("Could not extact " + expr))
+    output.getOrElse(throw new Exception("Could not extract " + expr))
   }
 
   override def initCtx: Context = {
