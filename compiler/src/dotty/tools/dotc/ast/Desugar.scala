@@ -341,8 +341,21 @@ object desugar {
       (if (args.isEmpty) tycon else AppliedTypeTree(tycon, args))
         .withPos(cdef.pos.startPos)
 
-    def appliedRef(tycon: Tree, tparams: List[TypeDef] = constrTparams) =
-      appliedTypeTree(tycon, tparams map refOfDef)
+    def appliedRef(tycon: Tree, tparams: List[TypeDef] = constrTparams, widenHK: Boolean = false) = {
+      val targs = for (tparam <- tparams) yield {
+        val targ = refOfDef(tparam)
+        def fullyApplied(tparam: Tree): Tree = tparam match {
+          case TypeDef(_, LambdaTypeTree(tparams, body)) =>
+            AppliedTypeTree(targ, tparams.map(_ => TypeBoundsTree(EmptyTree, EmptyTree)))
+          case TypeDef(_, rhs: DerivedTypeTree) =>
+            fullyApplied(rhs.watched)
+          case _ =>
+            targ
+        }
+        if (widenHK) fullyApplied(tparam) else targ
+      }
+      appliedTypeTree(tycon, targs)
+    }
 
     // a reference to the class type bound by `cdef`, with type parameters coming from the constructor
     val classTypeRef = appliedRef(classTycon)
@@ -431,12 +444,16 @@ object desugar {
     //
     //    implicit def eqInstance[T1$1, ..., Tn$1, T1$2, ..., Tn$2](implicit
     //      ev1: Eq[T1$1, T1$2], ..., evn: Eq[Tn$1, Tn$2]])
-    //      : Eq[C[T1$1, ..., Tn$1], C[T1$2, ..., Tn$2]] = Eq
+    //      : Eq[C[T1$, ..., Tn$1], C[T1$2, ..., Tn$2]] = Eq
+    //
+    // If any of the T_i are higher-kinded, say `Ti[X1 >: L1 <: U1, ..., Xm >: Lm <: Um]`,
+    // the corresponding type parameters for $ev_i are `Ti$1[_, ..., _], Ti$2[_, ..., _]`
+    // (with m underscores `_`).
     def eqInstance = {
       val leftParams = constrTparams.map(derivedTypeParam(_, "$1"))
       val rightParams = constrTparams.map(derivedTypeParam(_, "$2"))
       val subInstances = (leftParams, rightParams).zipped.map((param1, param2) =>
-        appliedRef(ref(defn.EqType), List(param1, param2)))
+        appliedRef(ref(defn.EqType), List(param1, param2), widenHK = true))
       DefDef(
           name = nme.eqInstance,
           tparams = leftParams ++ rightParams,
