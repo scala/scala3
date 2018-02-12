@@ -22,7 +22,8 @@ class StringInterpolatorOpt extends MiniPhase {
         case Apply(Select(Apply(Select(ident, nme.apply), List(SeqLiteral(strs, _))), fn),
             List(SeqLiteral(elems, _))) =>
           val clsSym = ident.symbol.companionClass
-          if (clsSym.eq(defn.StringContextClass) && strs.forall(_.isInstanceOf[Literal])) {
+          if (clsSym.eq(defn.StringContextClass) && strs.forall(_.isInstanceOf[Literal])
+              && elems.length == strs.length - 1) {
             if (fn == nme.raw_) Some(strs, elems)
             else if (fn == nme.s) {
               try {
