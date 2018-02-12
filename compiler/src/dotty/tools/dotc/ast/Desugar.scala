@@ -342,7 +342,7 @@ object desugar {
         .withPos(cdef.pos.startPos)
 
     def appliedRef(tycon: Tree, tparams: List[TypeDef] = constrTparams, widenHK: Boolean = false) = {
-      var targs = for (tparam <- tparams) yield {
+      val targs = for (tparam <- tparams) yield {
         val targ = refOfDef(tparam)
         def fullyApplied(tparam: Tree): Tree = tparam match {
           case TypeDef(_, LambdaTypeTree(tparams, body)) =>
