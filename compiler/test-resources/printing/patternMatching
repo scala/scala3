@@ -1,0 +1,29 @@
+val aFruit: Fruit = Apple("red", 123)
+
+val Apple(color, weight) = aFruit
+
+sealed trait Fruit
+case class Apple(color: String, weight: Double) extends Fruit
+case class Orange(weight: Double) extends Fruit
+case class Melon(weight: Double) extends Fruit
+
+aFruit match {
+  case Apple(_, weight) => println(s"apple: $weight kgs")
+  case o: Orange => println(s"orange ${o.weight} kgs")
+  case m @ Melon(weight) => println(s"melon: ${m.weight} kgs")
+}
+result:
+[33mval[0m [36maFruit[0m: [35mFruit[0m = [35mApple[0m([31m"red"[0m, [31m123[0m)
+
+[33mval[0m [35mApple[0m([36mcolor[0m, [36mweight[0m) = aFruit
+
+[33msealed[0m [33mtrait[0m [35mFruit[0m
+[33mcase[0m [33mclass[0m [35mApple[0m(color: [35mString[0m, weight: [35mDouble[0m) [33mextends[0m [35mFruit[0m
+[33mcase[0m [33mclass[0m [35mOrange[0m(weight: [35mDouble[0m) [33mextends[0m [35mFruit[0m
+[33mcase[0m [33mclass[0m [35mMelon[0m(weight: [35mDouble[0m) [33mextends[0m [35mFruit[0m
+
+aFruit [33mmatch[0m {
+  [33mcase[0m [35mApple[0m([36m_[0m, [36mweight[0m) [35m=>[0m println(s[31m"apple: [36m$weight [31mkgs"[0m)
+  [33mcase[0m [36mo[0m: [35mOrange[0m [35m=>[0m println(s[31m"orange [36m${o.weight}[31m kgs"[0m)
+  [33mcase[0m [36mm[0m @ [35mMelon[0m([36mweight[0m) [35m=>[0m println(s[31m"melon: [36m${m.weight}[31m kgs"[0m)
+}

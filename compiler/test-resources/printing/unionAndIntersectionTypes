@@ -1,0 +1,15 @@
+type A = String|Int| Long
+type B = String |Int| Long
+type C = String | Int | Long
+type D = String&Int& Long
+type E = String &Int& Long
+type F = String & Int & Long
+fn[String|Char](input)
+result:
+[33mtype[0m [35mA[0m = [35mString[0m|[35mInt[0m| [35mLong[0m
+[33mtype[0m [35mB[0m = [35mString[0m |[35mInt[0m| [35mLong[0m
+[33mtype[0m [35mC[0m = [35mString[0m | [35mInt[0m | [35mLong[0m
+[33mtype[0m [35mD[0m = [35mString[0m&[35mInt[0m& [35mLong[0m
+[33mtype[0m [35mE[0m = [35mString[0m &[35mInt[0m& [35mLong[0m
+[33mtype[0m [35mF[0m = [35mString[0m & [35mInt[0m & [35mLong[0m
+fn[[35mString[0m|[35mChar[0m](input)
