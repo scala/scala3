@@ -1459,7 +1459,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
               fn.get.isInstanceOf[untpd.Match] &&
               formalsForArg.exists(_.isRef(defn.PartialFunctionClass))
             val commonFormal =
-              if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, newTypeVar(TypeBounds.empty))
+              if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, WildcardType)
               else defn.FunctionOf(commonParamTypes, WildcardType)
             overload.println(i"pretype arg $arg with expected type $commonFormal")
             pt.typedArg(arg, commonFormal)(ctx.addMode(Mode.ImplicitsEnabled))
