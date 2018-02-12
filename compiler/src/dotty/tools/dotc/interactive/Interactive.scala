@@ -355,8 +355,8 @@ object Interactive {
       ctx.exprContext(stat, exprOwner)
     case (imp: Import) :: rest =>
       contextOfStat(rest, stat, exprOwner, ctx.importContext(imp, imp.symbol(ctx)))
-    case _ =>
-      ctx
+    case _ :: rest =>
+      contextOfStat(rest, stat, exprOwner, ctx)
   }
 
   def contextOfPath(path: List[Tree])(implicit ctx: Context): Context = path match {
