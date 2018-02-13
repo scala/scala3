@@ -984,28 +984,39 @@ class Definitions {
     isNonDepFunctionType(tp.dropDependentRefinement)
 
   // Specialized type parameters defined for scala.Function{0,1,2}.
-  private lazy val Function1SpecializedParams: collection.Set[Type] =
+  lazy val Function1SpecializedParamTypes: collection.Set[TypeRef] =
     Set(IntType, LongType, FloatType, DoubleType)
-  private lazy val Function2SpecializedParams: collection.Set[Type] =
+  lazy val Function2SpecializedParamTypes: collection.Set[TypeRef] =
     Set(IntType, LongType, DoubleType)
-  private lazy val Function0SpecializedReturns: collection.Set[Type] =
-    ScalaNumericValueTypeList.toSet[Type] + UnitType + BooleanType
-  private lazy val Function1SpecializedReturns: collection.Set[Type] =
+  lazy val Function0SpecializedReturnTypes: collection.Set[TypeRef] =
+    ScalaNumericValueTypeList.toSet + UnitType + BooleanType
+  lazy val Function1SpecializedReturnTypes: collection.Set[TypeRef] =
     Set(UnitType, BooleanType, IntType, FloatType, LongType, DoubleType)
-  private lazy val Function2SpecializedReturns: collection.Set[Type] =
-    Function1SpecializedReturns
+  lazy val Function2SpecializedReturnTypes: collection.Set[TypeRef] =
+    Function1SpecializedReturnTypes
+
+  lazy val Function1SpecializedParamClasses =
+    new PerRun[collection.Set[Symbol]](implicit ctx => Function1SpecializedParamTypes.map(_.symbol))
+  lazy val Function2SpecializedParamClasses =
+    new PerRun[collection.Set[Symbol]](implicit ctx => Function2SpecializedParamTypes.map(_.symbol))
+  lazy val Function0SpecializedReturnClasses =
+    new PerRun[collection.Set[Symbol]](implicit ctx => Function0SpecializedReturnTypes.map(_.symbol))
+  lazy val Function1SpecializedReturnClasses =
+    new PerRun[collection.Set[Symbol]](implicit ctx => Function1SpecializedReturnTypes.map(_.symbol))
+  lazy val Function2SpecializedReturnClasses =
+    new PerRun[collection.Set[Symbol]](implicit ctx => Function2SpecializedReturnTypes.map(_.symbol))
 
   def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(implicit ctx: Context) =
-    isFunctionClass(cls) && (paramTypes match {
+    paramTypes.length <= 2 && cls.derivesFrom(FunctionClass(paramTypes.length)) && (paramTypes match {
       case Nil =>
-        Function0SpecializedReturns.contains(retType)
+        Function0SpecializedReturnClasses().contains(retType.typeSymbol)
       case List(paramType0) =>
-        Function1SpecializedParams.contains(paramType0) &&
-        Function1SpecializedReturns.contains(retType)
+        Function1SpecializedParamClasses().contains(paramType0.typeSymbol) &&
+        Function1SpecializedReturnClasses().contains(retType.typeSymbol)
       case List(paramType0, paramType1) =>
-        Function2SpecializedParams.contains(paramType0) &&
-        Function2SpecializedParams.contains(paramType1) &&
-        Function2SpecializedReturns.contains(retType)
+        Function2SpecializedParamClasses().contains(paramType0.typeSymbol) &&
+        Function2SpecializedParamClasses().contains(paramType1.typeSymbol) &&
+        Function2SpecializedReturnClasses().contains(retType.typeSymbol)
       case _ =>
         false
     })
