@@ -29,7 +29,7 @@ import scala.collection.mutable
  * <label> def foo(i: Int) = dough(i)
  * <label> def dough(i: Int) = if (i == 0) bar else foo(i-1)
  * <label> def bar = 2
- *   foo(100)
+ * foo(100)
  * ```
  *
  * Proposed way to generate this pattern in backend is:
@@ -49,7 +49,7 @@ import scala.collection.mutable
  * Unreachable jumps will be eliminated by local dead code analysis.
  * After JVM is smart enough to remove next-line jumps
  *
- * Note that his phase Ychecking this phase required softening scoping rules
+ * Note that Ychecking this phase requires softening scoping rules
  * as it intentionally allowed to break scoping rules inside methods for labels.
  * This is modified by setting `labelsReordered` flag in Phases.
  *
@@ -76,7 +76,12 @@ class LabelDefs extends MiniPhase {
             case t: DefDef =>
               assert(t.symbol is Label)
               EmptyTree
-            case _ => if (!labelDefs.isEmpty) super.transform(tree) else tree
+            case t: If =>
+              val elsep2 = transform(t.elsep)
+              val thenp2 = transform(t.thenp)
+              cpy.If(tree)(transform(t.cond), thenp2, elsep2)
+            case _ =>
+              if (!labelDefs.isEmpty) super.transform(tree) else tree
           }
         }
       }
