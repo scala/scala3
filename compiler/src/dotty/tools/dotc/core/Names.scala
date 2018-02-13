@@ -19,14 +19,6 @@ import java.util.HashMap
 object Names {
   import NameKinds._
 
-  /** A common class for things that can be turned into names.
-   *  Instances are both names and strings, the latter via a decorator.
-   */
-  trait PreName extends Any with Showable {
-    def toTypeName: TypeName
-    def toTermName: TermName
-  }
-
   implicit def eqName: Eq[Name, Name] = Eq
 
   /** A common superclass of Name and Symbol. After bootstrap, this should be
@@ -39,7 +31,7 @@ object Names {
    *  in a name table. A derived term name adds a tag, and possibly a number
    *  or a further simple name to some other name.
    */
-  abstract class Name extends Designator with PreName {
+  abstract class Name extends Designator with Showable {
 
     /** A type for names of the same kind as this name */
     type ThisName <: Name

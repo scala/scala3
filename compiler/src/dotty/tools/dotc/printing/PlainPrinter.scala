@@ -47,7 +47,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     if (homogenizedView)
       tp match {
         case tp: ThisType if tp.cls.is(Package) && !tp.cls.isEffectiveRoot =>
-          ctx.requiredPackage(tp.cls.fullName).termRef
+          ctx.requiredPackage(tp.cls.fullName.toTermName).termRef
         case tp: TypeVar if tp.isInstantiated =>
           homogenize(tp.instanceOpt)
         case AndType(tp1, tp2) =>

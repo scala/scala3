@@ -15,7 +15,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   val mixins: List[ClassSymbol] = cls.mixins
 
   lazy val JUnit4Annotations: List[Symbol] = List("Test", "Ignore", "Before", "After", "BeforeClass", "AfterClass").
-    map(n => ctx.getClassIfDefined("org.junit." + n)).
+    map(n => ctx.getClassIfDefined(s"org.junit.$n".toTypeName)).
     filter(_.exists)
 
   def implementation(member: TermSymbol): TermSymbol = {

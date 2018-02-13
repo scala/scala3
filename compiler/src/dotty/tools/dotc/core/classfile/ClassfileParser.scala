@@ -107,7 +107,7 @@ class ClassfileParser(
   /** Return the class symbol of the given name. */
   def classNameToSymbol(name: Name)(implicit ctx: Context): Symbol = innerClasses.get(name) match {
     case Some(entry) => innerClasses.classSymbol(entry)
-    case None => ctx.requiredClass(name)
+    case None => ctx.requiredClass(name.toTypeName)
   }
 
   var sawPrivateConstructor = false
@@ -887,7 +887,7 @@ class ClassfileParser(
         entry.outerName
       } else
         name
-      classNameToSymbol(tlName)
+      classNameToSymbol(tlName.toTypeName)
     }
 
     /** Return the class symbol for `entry`. It looks it up in its outer class.
@@ -912,7 +912,7 @@ class ClassfileParser(
 
       val outerName = entry.outerName.stripModuleClassSuffix
       val innerName = entry.originalName
-      val owner = classNameToSymbol(outerName)
+      val owner = classNameToSymbol(outerName.toTypeName)
       val result = getMember(owner, innerName.toTypeName)(ctx.withPhase(ctx.typerPhase))
       assert(result ne NoSymbol,
         i"""failure to resolve inner class:
@@ -1031,7 +1031,7 @@ class ClassfileParser(
         if (name.endsWith("$") && (name ne nme.nothingRuntimeClass) && (name ne nme.nullRuntimeClass))
           // Null$ and Nothing$ ARE classes
           c = ctx.requiredModule(name.dropRight(1))
-        else c = classNameToSymbol(name)
+        else c = classNameToSymbol(name.toTypeName)
         values(index) = c
       }
       c
@@ -1084,7 +1084,7 @@ class ClassfileParser(
           c = sigToType(name)
           values(index) = c
         } else {
-          val sym = classNameToSymbol(name)
+          val sym = classNameToSymbol(name.toTypeName)
           values(index) = sym
           c = sym.typeRef
         }

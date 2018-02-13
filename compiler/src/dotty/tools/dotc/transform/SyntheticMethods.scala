@@ -83,7 +83,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
         coord = clazz.coord).enteredAfter(thisPhase).asTerm
 
       def forwardToRuntime(vrefss: List[List[Tree]]): Tree =
-        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefss.head)
+        ref(defn.runtimeMethodRef(("_" + sym.name).toTermName)).appliedToArgs(This(clazz) :: vrefss.head)
 
       def ownName(vrefss: List[List[Tree]]): Tree =
         Literal(Constant(clazz.name.stripModuleClassSuffix.toString))
@@ -218,8 +218,8 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
         val acc = ctx.newSymbol(ctx.owner, "acc".toTermName, Mutable | Synthetic, defn.IntType, coord = ctx.owner.pos)
         val accDef = ValDef(acc, Literal(Constant(seed)))
         val mixes = for (accessor <- accessors) yield
-          Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
-        val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
+          Assign(ref(acc), ref(defn.staticsMethod("mix".toTermName)).appliedTo(ref(acc), hashImpl(accessor)))
+        val finish = ref(defn.staticsMethod("finalizeHash".toTermName)).appliedTo(ref(acc), Literal(Constant(accessors.size)))
         Block(accDef :: mixes, finish)
       } else {
         // Pre-compute the hash code
@@ -235,10 +235,10 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
         case tpnme.Boolean                         => If(ref(sym), Literal(Constant(1231)), Literal(Constant(1237)))
         case tpnme.Int                             => ref(sym)
         case tpnme.Short | tpnme.Byte | tpnme.Char => ref(sym).select(nme.toInt)
-        case tpnme.Long                            => ref(defn.staticsMethod("longHash")).appliedTo(ref(sym))
-        case tpnme.Double                          => ref(defn.staticsMethod("doubleHash")).appliedTo(ref(sym))
-        case tpnme.Float                           => ref(defn.staticsMethod("floatHash")).appliedTo(ref(sym))
-        case _                                     => ref(defn.staticsMethod("anyHash")).appliedTo(ref(sym))
+        case tpnme.Long                            => ref(defn.staticsMethod("longHash".toTermName)).appliedTo(ref(sym))
+        case tpnme.Double                          => ref(defn.staticsMethod("doubleHash".toTermName)).appliedTo(ref(sym))
+        case tpnme.Float                           => ref(defn.staticsMethod("floatHash".toTermName)).appliedTo(ref(sym))
+        case _                                     => ref(defn.staticsMethod("anyHash".toTermName)).appliedTo(ref(sym))
       }
 
     /** The class

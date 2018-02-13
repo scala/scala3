@@ -370,32 +370,38 @@ trait Symbols { this: Context =>
 
 // ----- Locating predefined symbols ----------------------------------------
 
-  def requiredPackage(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName, isPackage = true).requiredSymbol(_ is Package).asTerm
+  def requiredPackage(path: TermName): TermSymbol =
+    base.staticRef(path, isPackage = true).requiredSymbol(_ is Package).asTerm
 
-  def requiredPackageRef(path: PreName): TermRef = requiredPackage(path).termRef
-
-  def requiredClass(path: PreName): ClassSymbol =
-    base.staticRef(path.toTypeName).requiredSymbol(_.isClass) match {
-      case cls: ClassSymbol => cls
-      case sym => defn.AnyClass
-    }
-
-  def requiredClassRef(path: PreName): TypeRef = requiredClass(path).typeRef
+  def requiredPackageRef(path: TermName): TermRef = requiredPackage(path).termRef
 
   /** Get ClassSymbol if class is either defined in current compilation run
    *  or present on classpath.
    *  Returns NoSymbol otherwise. */
-  def getClassIfDefined(path: PreName): Symbol =
-    base.staticRef(path.toTypeName, generateStubs = false).requiredSymbol(_.isClass, generateStubs = false)
+  def getClassIfDefined(path: TypeName): Symbol =
+    base.staticRef(path, generateStubs = false).requiredSymbol(_.isClass, generateStubs = false)
 
-  def requiredModule(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName).requiredSymbol(_ is Module).asTerm
+  def requiredMethod(path: TermName): TermSymbol =
+    base.staticRef(path).requiredSymbol(_ is Method).asTerm
 
-  def requiredModuleRef(path: PreName): TermRef = requiredModule(path).termRef
+  // The following 4 methods have an overloaded String version because of
+  // their extensive use in Definitions.scala.
 
-  def requiredMethod(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName).requiredSymbol(_ is Method).asTerm
+  def requiredClass(path: String): ClassSymbol = requiredClass(path.toTypeName)
+  def requiredClass(path: TypeName): ClassSymbol =
+    base.staticRef(path).requiredSymbol(_.isClass) match {
+      case cls: ClassSymbol => cls
+      case sym => defn.AnyClass
+    }
+
+  def requiredClassRef(path: String): TypeRef = requiredClass(path.toTypeName).typeRef
+  def requiredClassRef(path: TypeName): TypeRef = requiredClass(path).typeRef
+
+  def requiredModule(path: String): TermSymbol = requiredModule(path.toTermName)
+  def requiredModule(path: TermName): TermSymbol = base.staticRef(path).requiredSymbol(_ is Module).asTerm
+
+  def requiredModuleRef(path: String): TermRef = requiredModuleRef(path.toTermName)
+  def requiredModuleRef(path: TermName): TermRef = requiredModule(path).termRef
 }
 
 object Symbols {
