@@ -79,7 +79,7 @@ object Trees {
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]
 
-    private[this] var myTpe: T = _
+    protected var myTpe: T @uncheckedVariance = _
 
     /** Destructively set the type of the tree. This should be called only when it is known that
      *  it is safe under sharing to do so. One use-case is in the withType method below
@@ -92,7 +92,7 @@ object Trees {
     /** The type of the tree. In case of an untyped tree,
      *   an UnAssignedTypeException is thrown. (Overridden by empty trees)
      */
-    def tpe: T @uncheckedVariance = {
+    final def tpe: T @uncheckedVariance = {
       if (myTpe == null)
         throw new UnAssignedTypeException(this)
       myTpe
@@ -756,7 +756,6 @@ object Trees {
   }
 
   trait WithoutTypeOrPos[-T >: Untyped] extends Tree[T] {
-    override def tpe: T @uncheckedVariance = NoType.asInstanceOf[T]
     override def withTypeUnchecked(tpe: Type) = this.asInstanceOf[ThisTree[Type]]
     override def pos = NoPosition
     override def setPos(pos: Position) = {}
@@ -769,6 +768,8 @@ object Trees {
    */
   case class Thicket[-T >: Untyped](trees: List[Tree[T]])
     extends Tree[T] with WithoutTypeOrPos[T] {
+    myTpe = NoType.asInstanceOf[T]
+
     type ThisTree[-T >: Untyped] = Thicket[T]
     override def isEmpty: Boolean = trees.isEmpty
     override def toList: List[Tree[T]] = flatten(trees)
@@ -787,6 +788,7 @@ object Trees {
 
   class EmptyValDef[T >: Untyped] extends ValDef[T](
     nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T]) with WithoutTypeOrPos[T] {
+    myTpe = NoType.asInstanceOf[T]
     override def isEmpty: Boolean = true
     setMods(untpd.Modifiers(PrivateLocal))
   }
