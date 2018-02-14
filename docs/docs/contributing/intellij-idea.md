@@ -6,7 +6,7 @@ title: Building Dotty with Intellij IDEA
 Setup
 -----
 
-You can setup IntelliJ [IDEA >= 2016.1](https://www.jetbrains.com/idea/nextversion) to run Dotty.
+You can setup IntelliJ [IDEA >= 2016.1](https://www.jetbrains.com/idea/download/) to run Dotty.
 
 Assuming you have cloned Dotty's repository from Github (and run `sbt managedSources` as described in [Getting Started](getting-started.md)),
 you can now proceed with importing it to IDEA by selecting the
