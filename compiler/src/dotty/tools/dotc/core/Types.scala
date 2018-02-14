@@ -134,7 +134,7 @@ object Types {
     }
 
     /** Is this type different from NoType? */
-    def exists: Boolean = true
+    final def exists: Boolean = !this.eq(NoType)
 
     /** This type, if it exists, otherwise `that` type */
     def orElse(that: => Type) = if (exists) this else that
@@ -3711,7 +3711,6 @@ object Types {
 
   /** Sentinel for "missing type" */
   @sharable case object NoType extends CachedGroundType {
-    override def exists = false
     override def computeHash(bs: Binders) = hashSeed
   }
 
