@@ -2,6 +2,8 @@ sealed trait Nat[+T]
 case class Zero() extends Nat[Nothing]
 case class Succ[T]() extends Nat[T]
 
+// +N is incorrect, as in `foo` we can have `N = Zero | Succ[Zero]`,
+// then it's correct for exhaustivity check to produce two warnings.
 sealed trait Vect[+N <: Nat[_], +T]
 case class VN[T]() extends Vect[Zero, T]
 case class VC[T, N <: Nat[_]](x: T, xs: Vect[N, T]) extends Vect[Succ[N], T]
