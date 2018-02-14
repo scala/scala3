@@ -6,6 +6,6 @@ object Test {
 
   // unwrapping composition: ok in scalac, ok in dotc
   val q: (String => Int => String) => (String) => (Int) => (Int => String) = int[Int => String]
-  val p: (String => String) => (String) => (Int) => String = int[String]
+  val p: (String => String) => (String) => (Int) => String = int
   val c2: (String => String) => (String) => (Int) => (Int) => String = q.compose(p)
 }

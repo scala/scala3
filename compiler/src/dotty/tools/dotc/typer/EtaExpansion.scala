@@ -192,6 +192,8 @@ object EtaExpansion extends LiftImpure {
    *  more options open.
    *
    *  In each case, the result is an untyped tree, with `es` and `expr` as typed splices.
+   *
+   *    F[V](x) ==> (x => F[X])
    */
   def etaExpand(tree: Tree, mt: MethodType, xarity: Int)(implicit ctx: Context): untpd.Tree = {
     import untpd._

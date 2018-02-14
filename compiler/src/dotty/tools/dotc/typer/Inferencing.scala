@@ -394,6 +394,20 @@ trait Inferencing { this: Typer =>
     }
     if (constraint.uninstVars exists qualifies) interpolate()
   }
+
+  /** The uninstantiated type variables introduced somehwere in `tree` */
+  def uninstBoundVars(tree: Tree)(implicit ctx: Context): List[TypeVar] = {
+    val buf = new mutable.ListBuffer[TypeVar]
+    tree.foreachSubTree {
+      case arg: TypeTree =>
+        arg.tpe match {
+          case tv: TypeVar if !tv.isInstantiated && tree.contains(tv.bindingTree) => buf += tv
+          case _ =>
+        }
+      case _ =>
+    }
+    buf.toList
+  }
 }
 
 /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
