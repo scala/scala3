@@ -126,7 +126,7 @@ object SymDenotations {
     final val name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol) {
+    initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol, initInfo) {
 
     //assert(symbol.id != 4940, name)
 
@@ -142,7 +142,6 @@ object SymDenotations {
     // ------ Getting and setting fields -----------------------------
 
     private[this] var myFlags: FlagSet = adaptFlags(initFlags)
-    private[this] var myInfo: Type = initInfo
     private[this] var myPrivateWithin: Symbol = initPrivateWithin
     private[this] var myAnnotations: List[Annotation] = Nil
 
@@ -201,17 +200,6 @@ object SymDenotations {
     final def is(fs: FlagConjunction, butNot: FlagSet)(implicit ctx: Context) =
       (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags) is (fs, butNot)
 
-    /** The type info.
-     *  The info is an instance of TypeType iff this is a type denotation
-     *  Uncompleted denotations set myInfo to a LazyType.
-     */
-    final def info(implicit ctx: Context): Type = {
-      def completeInfo = { // Written this way so that `info` is small enough to be inlined
-        completeFrom(myInfo.asInstanceOf[LazyType]); info
-      }
-      if (myInfo.isInstanceOf[LazyType]) completeInfo else myInfo
-    }
-
     /** The type info, or, if symbol is not yet completed, the completer */
     final def infoOrCompleter = myInfo
 
@@ -221,7 +209,7 @@ object SymDenotations {
       case _ => Some(myInfo)
     }
 
-    private def completeFrom(completer: LazyType)(implicit ctx: Context): Unit =
+    final def completeFrom(completer: LazyType)(implicit ctx: Context): Unit =
       if (Config.showCompletions) {
         println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
         indent += 1

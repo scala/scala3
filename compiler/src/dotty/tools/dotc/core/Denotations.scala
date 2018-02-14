@@ -23,6 +23,7 @@ import config.Config
 import util.common._
 import collection.mutable.ListBuffer
 import Decorators.SymbolIteratorDecorator
+import SymDenotations.LazyType
 
 /** Denotations represent the meaning of symbols and named types.
  *  The following diagram shows how the principal types of denotations
@@ -171,12 +172,19 @@ object Denotations {
    *
    *  @param symbol  The referencing symbol, or NoSymbol is none exists
    */
-  abstract class Denotation(val symbol: Symbol) extends PreDenotation with printing.Showable {
-
+  abstract class Denotation(val symbol: Symbol, protected var myInfo: Type) extends PreDenotation with printing.Showable {
     type AsSeenFromResult <: Denotation
 
-    /** The type info of the denotation, exists only for non-overloaded denotations */
-    def info(implicit ctx: Context): Type
+    /** The type info.
+     *  The info is an instance of TypeType iff this is a type denotation
+     *  Uncompleted denotations set myInfo to a LazyType.
+     */
+    final def info(implicit ctx: Context): Type = {
+      def completeInfo = { // Written this way so that `info` is small enough to be inlined
+        this.asInstanceOf[SymDenotation].completeFrom(myInfo.asInstanceOf[LazyType]); info
+      }
+      if (myInfo.isInstanceOf[LazyType]) completeInfo else myInfo
+    }
 
     /** The type info, or, if this is a SymDenotation where the symbol
      *  is not yet completed, the completer
@@ -646,7 +654,7 @@ object Denotations {
   }
 
   /** A non-overloaded denotation */
-  abstract class SingleDenotation(symbol: Symbol) extends Denotation(symbol) {
+  abstract class SingleDenotation(symbol: Symbol, initInfo: Type) extends Denotation(symbol, initInfo) {
     protected def newLikeThis(symbol: Symbol, info: Type): SingleDenotation
 
     final def name(implicit ctx: Context): Name = symbol.name
@@ -1076,16 +1084,15 @@ object Denotations {
     }
   }
 
-  abstract class NonSymSingleDenotation(symbol: Symbol) extends SingleDenotation(symbol) {
-    def infoOrCompleter: Type
-    def info(implicit ctx: Context) = infoOrCompleter
+  abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type) extends SingleDenotation(symbol, initInfo) {
+    def infoOrCompleter: Type = initInfo
     def isType = infoOrCompleter.isInstanceOf[TypeType]
   }
 
   class UniqueRefDenotation(
     symbol: Symbol,
-    val infoOrCompleter: Type,
-    initValidFor: Period) extends NonSymSingleDenotation(symbol) {
+    initInfo: Type,
+    initValidFor: Period) extends NonSymSingleDenotation(symbol, initInfo) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = true
     protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
@@ -1093,17 +1100,16 @@ object Denotations {
 
   class JointRefDenotation(
     symbol: Symbol,
-    val infoOrCompleter: Type,
-    initValidFor: Period) extends NonSymSingleDenotation(symbol) {
+    initInfo: Type,
+    initValidFor: Period) extends NonSymSingleDenotation(symbol, initInfo) {
     validFor = initValidFor
     override def hasUniqueSym = false
     protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
   }
 
-  class ErrorDenotation(implicit ctx: Context) extends NonSymSingleDenotation(NoSymbol) {
+  class ErrorDenotation(implicit ctx: Context) extends NonSymSingleDenotation(NoSymbol, NoType) {
     override def exists = false
     override def hasUniqueSym = false
-    def infoOrCompleter = NoType
     validFor = Period.allInRun(ctx.runId)
     protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = this
   }
@@ -1185,9 +1191,9 @@ object Denotations {
 
   /** An overloaded denotation consisting of the alternatives of both given denotations.
    */
-  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol) with MultiPreDenotation {
+  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol, NoType) with MultiPreDenotation {
     final def infoOrCompleter = multiHasNot("info")
-    final def info(implicit ctx: Context) = infoOrCompleter
+    // final def info(implicit ctx: Context) = infoOrCompleter
     final def validFor = denot1.validFor & denot2.validFor
     final def isType = false
     final def hasUniqueSym = false
