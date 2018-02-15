@@ -38,8 +38,8 @@ map into case classes or vals.
     an associated companion object that contains the defined cases, expanded according
     to rules (2 - 8).
 
-       sealed abstract class E ... extends <parents> with scala.Enum { <defs> }
-       object E { <cases> }
+        sealed abstract class E ... extends <parents> with scala.Enum { <defs> }
+        object E { <cases> }
 
 2. A simple case consisting of a comma-separated list of enum names
 
@@ -79,13 +79,13 @@ map into case classes or vals.
    rewritten with rule (7). Simple cases of enums with non-variant type
    parameters are not permitted.
 
-5.  A class case without an extends clause
+5. A class case without an extends clause
 
-       case C <type-params> <value-params>
+        case C <type-params> <value-params>
 
    of an enum `E` that does not take type parameters expands to
 
-       case C <type-params> <value-params> extends E
+        case C <type-params> <value-params> extends E
 
    This result is then further rewritten with rule (8).
 
