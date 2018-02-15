@@ -13,22 +13,11 @@ enum Color {
 
 This defines a new `sealed` class, `Color`, with three values, `Color.Red`,
 `Color.Green`, `Color.Blue`.  The color values are members of `Color`s
-companion object. The `Color` definition above is equivalent to the
-following more explicit definition of an _enum class_ and a companion
-object:
-
-```scala
-enum class Color
-object Color {
-  case Red
-  case Green
-  case Blue
-}
-```
+companion object.
 
 ### Parameterized enums
 
-Enum classes can be parameterized.
+Enums can be parameterized.
 
 ```scala
 enum Color(val rgb: Int) {
@@ -53,7 +42,7 @@ scala> red.enumTag
 val res0: Int = 0
 ```
 
-The companion object of an enum class also defines three utility methods.
+The companion object of an enum also defines three utility methods.
 The `enumValue` and `enumValueNamed` methods obtain an enum value
 by its tag or its name. The `enumValues` method returns all enum values
 defined in an enumeration in an `Iterable`.
@@ -69,20 +58,14 @@ val res3: collection.Iterable[Color] = MapLike(Red, Green, Blue)
 
 ### User-defined members of enums
 
-It is possible to add your own definitions to an enum class or its
-companion object.  To make clear what goes where you need to use the
-longer syntax which defines an enum class alongside its companion
-object explicitly. In the following example, we define some methods in
-class `Planet` and a `main` method in its companion object.
+It is possible to add your own definitions to an enum. Example:
 
 ```scala
-enum class Planet(mass: Double, radius: Double) {
+enum Planet(mass: Double, radius: Double) {
   private final val G = 6.67300E-11
   def surfaceGravity = G * mass / (radius * radius)
   def surfaceWeight(otherMass: Double) =  otherMass * surfaceGravity
-}
 
-object Planet {
   case MERCURY extends Planet(3.303e+23, 2.4397e6)
   case VENUS   extends Planet(4.869e+24, 6.0518e6)
   case EARTH   extends Planet(5.976e+24, 6.37814e6)
@@ -91,7 +74,13 @@ object Planet {
   case SATURN  extends Planet(5.688e+26, 6.0268e7)
   case URANUS  extends Planet(8.686e+25, 2.5559e7)
   case NEPTUNE extends Planet(1.024e+26, 2.4746e7)
+}
+```
 
+It is also possible to define an explicit companion object for an enum:
+
+```scala
+object Planet {
   def main(args: Array[String]) = {
     val earthWeight = args(0).toDouble
     val mass = earthWeight/EARTH.surfaceGravity
@@ -103,7 +92,7 @@ object Planet {
 
 ### Implementation
 
-Enum classes are represented as `sealed` classes that extend the `scala.Enum` trait.
+Enums are represented as `sealed` classes that extend the `scala.Enum` trait.
 This trait defines a single method, `enumTag`:
 
 ```scala

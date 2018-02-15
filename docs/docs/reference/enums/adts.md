@@ -10,28 +10,28 @@ how an `Option` type can be represented as an ADT:
 
 ```scala
 enum Option[+T] {
-  case Some[+T](x: T)
+  case Some(x: T)
   case None
 }
 ```
 
-This example introduces `Option` enum class with a covariant type
-parameter `T`, together with two cases, `Some` and `None`. `Some` is
-parameterized with a type parameter `T` and a value parameter `x`. It
-is a shorthand for writing a case class that extends `Option`. Since
-`None` is not parameterized it is treated as a normal enum value.
+This example introduces an `Option` enum with a covariant type
+parameter `T` consisting of two cases, `Some` and `None`. `Some` is
+parameterized with a value parameter `x`. It is a shorthand for writing a
+case class that extends `Option`. Since `None` is not parameterized, it
+is treated as a normal enum value.
 
 The `extends` clauses that were omitted in the example above can also
 be given explicitly:
 
 ```scala
 enum Option[+T] {
-  case Some[+T](x: T) extends Option[T]
-  case None           extends Option[Nothing]
+  case Some(x: T) extends Option[T]
+  case None       extends Option[Nothing]
 }
 ```
 
-Note that the parent type of `None` is inferred as
+Note that the parent type of the `None` value is inferred as
 `Option[Nothing]`. Generally, all covariant type parameters of the enum
 class are minimized in a compiler-generated extends clause whereas all
 contravariant type parameters are maximized. If `Option` was non-variant,
@@ -59,24 +59,22 @@ scala> new Option.Some(2)
 val res3: t2.Option.Some[Int] = Some(2)
 ```
 
-As all other enums, ADTs can have methods on both the enum class and
-its companion object. For instance, here is `Option` again, with an
-`isDefined` method and an `Option(...)` constructor.
+As all other enums, ADTs can define methods. For instance, here is `Option` again, with an
+`isDefined` method and an `Option(...)` constructor in its companion object.
 
 ```scala
-enum class Option[+T] {
-   def isDefined: Boolean
+enum Option[+T] {
+  case Some(x: T) extends Option[T]
+  case None
+
+  def isDefined: Boolean = this match {
+    case None => false
+    case some => true
+  }
 }
 object Option {
   def apply[T >: Null](x: T): Option[T] =
     if (x == null) None else Some(x)
-
-  case Some[+T](x: T) {
-     def isDefined = true
-  }
-  case None {
-     def isDefined = false
-  }
 }
 ```
 
@@ -98,23 +96,20 @@ enum Color(val rgb: Int) {
 
 ### Syntax of Enums
 
-Changes to the syntax fall in two categories: enum classes and cases inside enums.
+Changes to the syntax fall in two categories: enum definitions and cases inside enums.
 The changes are specified below as deltas with respect to the Scala syntax given [here](http://dotty.epfl.ch/docs/internals/syntax.html)
 
- 1. Enum definitions and enum classes are defined as follows:
+ 1. Enum definitions are defined as follows:
 
-        TmplDef ::=  `enum' `class’ ClassDef
-                 |   `enum' EnumDef
-        EnumDef ::=  id ClassConstr [`extends' [ConstrApps]]
-                     [nl] `{’ EnumCaseStat {semi EnumCaseStat} `}’
+        TmplDef   ::=  `enum' EnumDef
+        EnumDef   ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody
+        EnumBody  ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+        EnumStat  ::=  TemplateStat
+                    |  {Annotation [nl]} {Modifier} EnumCase
 
  2. Cases of enums are defined as follows:
 
-        EnumCaseStat  ::=  {Annotation [nl]} {Modifier} EnumCase
-        EnumCase      ::=  `case' (EnumClassDef | ObjectDef | ids)
-        EnumClassDef  ::=  id [ClsTpeParamClause | ClsParamClause]
-                           ClsParamClauses TemplateOpt
-        TemplateStat  ::=  ... | EnumCaseStat
+        EnumCase  ::=  `case' (id [ClsTpeParamClause] {ClsParamClause} | ids)
 
 ### Reference
 

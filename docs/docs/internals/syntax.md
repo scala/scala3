@@ -290,16 +290,6 @@ AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
 
 Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}                        Apply(tpe, args)
 
-TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’ (self, stats)
-TemplateStat      ::=  Import
-                    |  {Annotation [nl]} {Modifier} Def
-                    |  {Annotation [nl]} {Modifier} Dcl
-                    |  EnumCaseStat
-                    |  Expr1
-                    |
-SelfType          ::=  id [‘:’ InfixType] ‘=>’                                  ValDef(_, name, tpt, _)
-                    |  ‘this’ ‘:’ InfixType ‘=>’
-
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  StableId ‘.’ (id | ‘_’ | ImportSelectors)                Import(expr, sels)
 ImportSelectors   ::=  ‘{’ {ImportSelector ‘,’} (ImportSelector | ‘_’) ‘}’
@@ -335,19 +325,14 @@ DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                       
                     |  ‘this’ DefParamClause DefParamClauses                    DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
                        (‘=’ ConstrExpr | [nl] ConstrBlock)
 
-TmplDef           ::=  ([‘case’ | `enum'] ‘class’ | trait’) ClassDef
+TmplDef           ::=  ([‘case’] ‘class’ | trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  `enum' EnumDef
 ClassDef          ::=  id ClassConstr TemplateOpt                               ClassDef(mods, name, tparams, templ)
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses         with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id TemplateOpt                                           ModuleDef(mods, name, template)  // no constructor
-EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]]                  EnumDef(mods, name, tparams, template)
-                       [nl] ‘{’ EnumCaseStat {semi EnumCaseStat} ‘}’
-EnumCaseStat      ::=  {Annotation [nl]} {Modifier} EnumCase
-EnumCase          ::=  `case' (EnumClassDef | ObjectDef | ids)
-EnumClassDef      ::=  id [ClsTpeParamClause | ClsParamClause]                  ClassDef(mods, name, tparams, templ)
-                       ClsParamClauses TemplateOpt
+EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody         EnumDef(mods, name, tparams, template)
 TemplateOpt       ::=  [‘extends’ Template | [nl] TemplateBody]
 Template          ::=  ConstrApps [TemplateBody] | TemplateBody                 Template(constr, parents, self, stats)
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
@@ -356,6 +341,20 @@ ConstrExpr        ::=  SelfInvocation
                     |  ConstrBlock
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
 ConstrBlock       ::=  ‘{’ SelfInvocation {semi BlockStat} ‘}’
+
+TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’ (self, stats)
+TemplateStat      ::=  Import
+                    |  {Annotation [nl]} {Modifier} Def
+                    |  {Annotation [nl]} {Modifier} Dcl
+                    |  Expr1
+                    |
+SelfType          ::=  id [‘:’ InfixType] ‘=>’                                  ValDef(_, name, tpt, _)
+                    |  ‘this’ ‘:’ InfixType ‘=>’
+
+EnumBody          ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+EnumStat          ::=  TemplateStat
+                    |  {Annotation [nl]} {Modifier} EnumCase
+EnumCase          ::=  `case' (id [ClsTpeParamClause] {ClsParamClause} | ids)
 
 TopStatSeq        ::=  TopStat {semi TopStat}
 TopStat           ::=  {Annotation [nl]} {Modifier} TmplDef

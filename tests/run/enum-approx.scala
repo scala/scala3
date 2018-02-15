@@ -1,14 +1,14 @@
-enum class Fun[-T, +U >: Null] {
-  def f: T => U = null
-}
-object Fun {
-  case Identity[T, U >: Null](override val f: T => U) extends Fun[T, U]
-  case ConstNull {
-    override def f = x => null
+enum Fun[-T, +U >: Null] {
+  def f: T => U = this match {
+    case Identity(g) => g
+    case ConstNull => (_ => null)
+    case ConstNullClass() => (_ => null)
+    case ConstNullSimple => null
   }
-  case ConstNullClass() {
-    override def f = x => null
-  }
+
+  case Identity[T, U >: Null](g: T => U) extends Fun[T, U]
+  case ConstNull
+  case ConstNullClass()
   case ConstNullSimple
 }
 

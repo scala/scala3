@@ -3,7 +3,7 @@ layout: doc-page
 title: "Translation of Enums and ADTs"
 ---
 
-The compiler expands enum classes and cases to code that only uses
+The compiler expands enums and their cases to code that only uses
 Scala's other language features. As such, enums in Scala are
 convenient _syntactic sugar_, but they are not essential to understand
 Scala's core.
@@ -11,87 +11,116 @@ Scala's core.
 We now explain the expansion of enums in detail. First,
 some terminology and notational conventions:
 
- - We use `E` as a name of an enum class, and `C` as a name of an enum case that appears in the companion object of `E`.
- - We use `<...>` for syntactic constructs that in some circumstances might be empty. For instance `<body>` represents either the body of a case between `{...}` or nothing at all.
+ - We use `E` as a name of an enum, and `C` as a name of a case that appears in `E`.
+ - We use `<...>` for syntactic constructs that in some circumstances might be empty. For instance,
+   `<value-params>` represents one or more a parameter lists `(...)` or nothing at all.
 
  - Enum cases fall into three categories:
 
    - _Class cases_ are those cases that are parameterized, either with a type parameter section `[...]` or with one or more (possibly empty) parameter sections `(...)`.
-   - _Simple cases_ are cases of a non-generic enum class that have neither parameters nor an extends clause or body. That is, they consist of a name only.
+   - _Simple cases_ are cases of a non-generic enum that have neither parameters nor an extends clause or body. That is, they consist of a name only.
    - _Value cases_ are all cases that do not have a parameter section but that do have a (possibly generated) extends clause and/or a body.
 
   Simple cases and value cases are collectively called _singleton cases_.
 
 The desugaring rules imply that class cases are mapped to case classes, and singleton cases are mapped to `val` definitions.
 
-There are eight desugaring rules. Rules (1) and (2) desugar enums and
-enum classes. Rules (3) and (4) define extends clauses for cases that
-are missing them. Rules (5 - 7) define how such expanded cases map
-into case classes, case objects or vals. Finally, rule (8) expands
-comma separated simple cases into a sequence of cases.
+There are eight desugaring rules. Rule (1) desugar enum definitions. Rules
+(2) and (3) desugar simple cases. Rules (4) to (6) define extends clauses for cases that
+are missing them. Rules (7) and (8) define how such cases with extends clauses
+map into case classes or vals.
 
 1.  An `enum` definition
 
-         enum E ... { <cases> }
+         enum E ... { <defs> <cases> }
 
-    expands to an enum class and a companion object
+    expands to a `sealed` `abstract` class that extends the `scala.Enum` trait and
+    an associated companion object that contains the defined cases, expanded according
+    to rules (2 - 8).
 
-        enum class E ...
-        object E { <cases> }
+       sealed abstract class E ... extends <parents> with scala.Enum { <defs> }
+       object E { <cases> }
 
-2. An enum class definition
+2. A simple case consisting of a comma-separated list of enum names
 
-       enum class E ... extends <parents> ...
-
-    expands to a `sealed` `abstract` class that extends the `scala.Enum` trait:
-
-       sealed abstract class E ... extends <parents> with scala.Enum ...
-
-3. If `E` is an enum class without type parameters, then a case in its companion object without an extends clause
-
-       case C <params> <body>
-
-    expands to
-
-       case C <params> <body> extends E
-
-4. If `E` is an enum class with type parameters `Ts`, then a case in its
-   companion object without an extends clause
-
-       case C <params> <body>
-
-   expands according to two alternatives, depending whether `C` has type
-   parameters or not. If `C` has type parameters, they must have the same
-   names and appear in the same order as the enum type parameters `Ts`
-   (variances may be different, however). In this case
-
-       case C [Ts] <params> <body>
+       case C_1, ..., C_n
 
    expands to
 
-       case C[Ts] <params> extends E[Ts] <body>
+       case C_1; ...; case C_n
 
-   For the case where `C` does not have type parameters, assume `E`'s type
-   parameters are
+   Any modifiers or annotations on the original case extend to all expanded
+   cases.
 
-       V1 T1 > L1 <: U1 ,   ... ,    Vn Tn >: Ln <: Un      (n > 0)
+3. A simple case
 
-   where each of the variances `Vi` is either `'+'` or `'-'`. Then the case
+       case C
+
+   of an enum `E` that does not take type parameters expands to
+
+       val C = $new(n, "C")
+
+   Here, `$new` is a private method that creates an instance of of `E` (see
+   below).
+
+4. If `E` is an enum with type parameters
+
+        V1 T1 > L1 <: U1 ,   ... ,    Vn Tn >: Ln <: Un      (n > 0)
+
+   where each of the variances `Vi` is either `'+'` or `'-'`, then a simple case
+
+        case C
+
    expands to
 
-       case C <params> extends E[B1, ..., Bn] <body>
+       case C extends E[B1, ..., Bn]
 
-   where `Bi` is `Li` if `Vi = '+'` and `Ui` if `Vi = '-'`. It is an error if
-   `Bi` refers to some other type   parameter `Tj (j = 0,..,n-1)`. It is also
-   an error if `E` has type parameters that are non-variant.
+   where `Bi` is `Li` if `Vi = '+'` and `Ui` if `Vi = '-'`. This result is then further
+   rewritten with rule (7). Simple cases of enums with non-variant type
+   parameters are not permitted.
 
-5. A class case
+5.  A class case without an extends clause
 
-       case C <params> ...
+       case C <type-params> <value-params>
 
-   expands analogous to a final case class:
+   of an enum `E` that does not take type parameters expands to
 
-       final case class C <params> ...
+       case C <type-params> <value-params> extends E
+
+   This result is then further rewritten with rule (8).
+
+6. If `E` is an enum with type parameters `Ts`, a class case with neither type parameters nor
+   an extends clause
+
+        case C <value-params>
+
+   expands to
+
+        case C[Ts] <value-params> extends E[Ts]
+
+   This result is then further rewritten with rule (8). For class cases that have type parameters
+   themselves, an extends clause needs to be given explicitly.
+
+7. A value case
+
+       case C extends <parents>
+
+   expands to a value definition in `E`'s companion object:
+
+       val C = new <parents> { <body>; def enumTag = n; $values.register(this) }
+
+   where `n` is the ordinal number of the case in the companion object,
+   starting from 0.  The statement `$values.register(this)` registers the value
+   as one of the `enumValues` of the enumeration (see below). `$values` is a
+   compiler-defined private value in the companion object.
+
+8. A class case
+
+       case C <params> extends <parents>
+
+   expands analogous to a final case class in `E`'s companion object:
+
+       final case class C <params> extends <parents>
 
    However, unlike for a regular case class, the return type of the associated
    `apply` method is a fully parameterized type instance of the enum class `E`
@@ -103,40 +132,6 @@ comma separated simple cases into a sequence of cases.
    where `n` is the ordinal number of the case in the companion object,
    starting from 0.
 
-6. A value case
-
-       case C extends <parents> <body>
-
-   expands to a value definition
-
-       val C = new <parents> { <body>; def enumTag = n; $values.register(this) }
-
-   where `n` is the ordinal number of the case in the companion object,
-   starting from 0.  The statement `$values.register(this)` registers the value
-   as one of the `enumValues` of the enumeration (see below). `$values` is a
-   compiler-defined private value in the companion object.
-
-7. A simple case
-
-       case C
-
-   of an enum class `E` that does not take type parameters expands to
-
-       val C = $new(n, "C")
-
-   Here, `$new` is a private method that creates an instance of of `E` (see
-   below).
-
-8. A simple case consisting of a comma-separated list of enum names
-
-       case C_1, ..., C_n
-
-   expands to
-
-       case C_1; ...; case C_n
-
-   Any modifiers or annotations on the original case extend to all expanded
-   cases.
 
 ### Equality
 
@@ -149,7 +144,7 @@ be compared only to other values of the same enum type. Furtermore, generic
 
 ### Translation of Enumerations
 
-Non-generic enum classes `E` that define one or more singleton cases
+Non-generic enums `E` that define one or more singleton cases
 are called _enumerations_. Companion objects of enumerations define
 the following additional members.
 
