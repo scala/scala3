@@ -166,7 +166,7 @@ object Inferencing {
       case Apply(fn, _) => boundVars(fn, acc)
       case TypeApply(fn, targs) =>
         val tvars = targs.tpes.collect {
-          case tvar: TypeVar if !tvar.isInstantiated => tvar
+          case tvar: TypeVar if !tvar.isInstantiated && targs.contains(tvar.bindingTree) => tvar
         }
         boundVars(fn, acc ::: tvars)
       case Select(pre, _) => boundVars(pre, acc)
@@ -393,6 +393,20 @@ trait Inferencing { this: Typer =>
         }
     }
     if (constraint.uninstVars exists qualifies) interpolate()
+  }
+
+  /** The uninstantiated type variables introduced somehwere in `tree` */
+  def uninstBoundVars(tree: Tree)(implicit ctx: Context): List[TypeVar] = {
+    val buf = new mutable.ListBuffer[TypeVar]
+    tree.foreachSubTree {
+      case TypeApply(_, args) =>
+        args.tpes.foreach {
+          case tv: TypeVar if !tv.isInstantiated && tree.contains(tv.bindingTree) => buf += tv
+          case _ =>
+        }
+      case _ =>
+    }
+    buf.toList
   }
 }
 

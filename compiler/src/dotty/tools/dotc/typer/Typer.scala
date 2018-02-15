@@ -1970,7 +1970,7 @@ class Typer extends Namer
       if (!tree.denot.isOverloaded) {
       	// for overloaded trees: resolve overloading before simplifying
         if (tree.isDef) interpolateUndetVars(tree, tree.symbol, pt)
-        else if (!tree.tpe.widen.isInstanceOf[LambdaType]) interpolateUndetVars(tree, NoSymbol, pt)
+        else if (!tree.tpe.widen.isInstanceOf[MethodOrPoly]) interpolateUndetVars(tree, NoSymbol, pt)
         tree.overwriteType(tree.tpe.simplified)
       }
       adaptInterpolated(tree, pt)
@@ -2227,8 +2227,18 @@ class Typer extends Namer
       if (arity >= 0 &&
           !tree.symbol.isConstructor &&
           !ctx.mode.is(Mode.Pattern) &&
-          !(isSyntheticApply(tree) && !isExpandableApply))
-        typed(etaExpand(tree, wtp, arity), pt)
+          !(isSyntheticApply(tree) && !isExpandableApply)) {
+        // Eta expansion interacts in tricky ways with type variable instantiation
+        // because it can extend the region where type variables are bound (and therefore may not
+        // be interpolated). To avoid premature interpolations, we need to extend the
+        // bindingTree of variables as we go along. Test case in pos/i3945.scala.
+        val boundtvs = uninstBoundVars(tree)
+        val uexpanded = etaExpand(tree, wtp, arity)
+        boundtvs.foreach(_.bindingTree = uexpanded) // make boundtvs point to uexpanded so that they are _not_ interpolated
+        val texpanded = typedUnadapted(uexpanded, pt)
+        boundtvs.foreach(_.bindingTree = texpanded) // make boundtvs point to texpanded so that they _can_ be interpolated
+        adapt(texpanded, pt)
+      }
       else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
         adaptInterpolated(tpd.Apply(tree, Nil), pt)
       else if (wtp.isImplicitMethod)
