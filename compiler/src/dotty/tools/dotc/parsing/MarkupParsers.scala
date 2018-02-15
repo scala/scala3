@@ -314,22 +314,6 @@ object MarkupParsers {
       done
     }
 
-    /** Some try/catch/finally logic used by xLiteral and xLiteralPattern.  */
-    private def xLiteralCommon(f: () => Tree, ifTruncated: String => Unit): Tree = {
-      try return f()
-      catch {
-        case c @ TruncatedXMLControl  =>
-          ifTruncated(c.getMessage)
-        case c @ (MissingEndTagControl | ConfusedAboutBracesControl) =>
-          parser.syntaxError(c.getMessage + debugLastElem + ">", debugLastPos)
-        case _: ArrayIndexOutOfBoundsException =>
-          parser.syntaxError("missing end tag in XML literal for <%s>" format debugLastElem, debugLastPos)
-      }
-      finally parser.in resume Tokens.XMLSTART
-
-      parser.errorTermTree
-    }
-
     /** Use a lookahead parser to run speculative body, and return the first char afterward. */
     private def charComingAfter(body: => Unit): Char = {
       try {
@@ -343,8 +327,8 @@ object MarkupParsers {
     /** xLiteral = element { element }
      *  @return Scala representation of this xml literal
      */
-    def xLiteral: Tree = xLiteralCommon(
-      () => {
+    def xLiteral: Tree = {
+      try return {
         input = parser.in
         handle.isPattern = false
 
@@ -367,15 +351,24 @@ object MarkupParsers {
           assert(ts.length == 1)
           ts(0)
         }
-      },
-      msg => parser.incompleteInputError(msg)
-    )
+      } catch {
+        case c @ TruncatedXMLControl  =>
+        parser.incompleteInputError(c.getMessage)
+        case c @ (MissingEndTagControl | ConfusedAboutBracesControl) =>
+          parser.syntaxError(c.getMessage + debugLastElem + ">", debugLastPos)
+        case _: ArrayIndexOutOfBoundsException =>
+          parser.syntaxError("missing end tag in XML literal for <%s>" format debugLastElem, debugLastPos)
+      }
+      finally parser.in resume Tokens.XMLSTART
+
+      parser.errorTermTree
+    }
 
     /** @see xmlPattern. resynchronizes after successful parse
      *  @return this xml pattern
      */
-    def xLiteralPattern: Tree = xLiteralCommon(
-      () => {
+    def xLiteralPattern: Tree = {
+      try return {
         input = parser.in
         saving[Boolean, Tree](handle.isPattern, handle.isPattern = _) {
           handle.isPattern = true
@@ -383,9 +376,18 @@ object MarkupParsers {
           xSpaceOpt()
           tree
         }
-      },
-      msg => parser.syntaxError(msg, curOffset)
-    )
+      } catch {
+        case c @ TruncatedXMLControl  =>
+          parser.syntaxError(c.getMessage, curOffset)
+        case c @ (MissingEndTagControl | ConfusedAboutBracesControl) =>
+          parser.syntaxError(c.getMessage + debugLastElem + ">", debugLastPos)
+        case _: ArrayIndexOutOfBoundsException =>
+          parser.syntaxError("missing end tag in XML literal for <%s>" format debugLastElem, debugLastPos)
+      }
+      finally parser.in resume Tokens.XMLSTART
+
+      parser.errorTermTree
+    }
 
     def escapeToScala[A](op: => A, kind: String) = {
       xEmbeddedBlock = false
