@@ -79,7 +79,6 @@ object Try4 {
 
   object Test {
     def foo[N <: TNat, A, B](v1: Vect[N, A], v2: Vect[N, B]) =
-      //Warnings expected here!
       (v1, v2) match {
         case (VN(), VN())           => 1
         case (VC(x, xs), VC(y, ys)) => 2
