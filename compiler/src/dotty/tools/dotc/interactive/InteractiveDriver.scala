@@ -148,20 +148,24 @@ class InteractiveDriver(settings: List[String]) extends Driver {
     val names = new mutable.ListBuffer[String]
     dirClassPaths.foreach { dirCp =>
       val root = dirCp.dir.toPath
-      Files.walkFileTree(root, new SimpleFileVisitor[Path] {
-        override def visitFile(path: Path, attrs: BasicFileAttributes) = {
-          if (!attrs.isDirectory) {
-            val name = path.getFileName.toString
-            for {
-              tastySuffix <- tastySuffixes
-              if name.endsWith(tastySuffix)
-            } {
-              names += root.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix)
+      try
+        Files.walkFileTree(root, new SimpleFileVisitor[Path] {
+          override def visitFile(path: Path, attrs: BasicFileAttributes) = {
+            if (!attrs.isDirectory) {
+              val name = path.getFileName.toString
+              for {
+                tastySuffix <- tastySuffixes
+                if name.endsWith(tastySuffix)
+              } {
+                names += root.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix)
+              }
             }
+            FileVisitResult.CONTINUE
           }
-          FileVisitResult.CONTINUE
-        }
-      })
+        })
+      catch {
+        case _: NoSuchFileException =>
+      }
     }
     names.toList
   }
