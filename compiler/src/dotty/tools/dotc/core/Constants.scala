@@ -23,27 +23,9 @@ object Constants {
   final val EnumTag    = 13
   final val ScalaSymbolTag = 14
 
-  case class Constant(value: Any) extends printing.Showable {
+  class Constant(val value: Any, val tag: Int) extends printing.Showable with Product1[Any] {
     import java.lang.Double.doubleToRawLongBits
     import java.lang.Float.floatToRawIntBits
-
-    val tag: Int = value match {
-      case null            => NullTag
-      case x: Unit         => UnitTag
-      case x: Boolean      => BooleanTag
-      case x: Byte         => ByteTag
-      case x: Short        => ShortTag
-      case x: Int          => IntTag
-      case x: Long         => LongTag
-      case x: Float        => FloatTag
-      case x: Double       => DoubleTag
-      case x: String       => StringTag
-      case x: Char         => CharTag
-      case x: Type         => ClazzTag
-      case x: Symbol       => EnumTag
-      case x: scala.Symbol => ScalaSymbolTag
-      case _               => throw new Error("bad constant value: " + value + " of class " + value.getClass)
-    }
 
     def isByteRange: Boolean  = isIntRange && Byte.MinValue <= intValue && intValue <= Byte.MaxValue
     def isShortRange: Boolean = isIntRange && Short.MinValue <= intValue && intValue <= Short.MaxValue
@@ -235,5 +217,49 @@ object Constants {
       h = mix(h, equalHashValue.##)
       finalizeHash(h, length = 2)
     }
+
+    override def toString = s"Constant($value)"
+    def canEqual(x: Any) = true
+    def get     = value
+    def isEmpty = false
+    def _1      = value
+  }
+
+  object Constant {
+    def apply(x: Null)         = new Constant(x, NullTag)
+    def apply(x: Unit)         = new Constant(x, UnitTag)
+    def apply(x: Boolean)      = new Constant(x, BooleanTag)
+    def apply(x: Byte)         = new Constant(x, ByteTag)
+    def apply(x: Short)        = new Constant(x, ShortTag)
+    def apply(x: Int)          = new Constant(x, IntTag)
+    def apply(x: Long)         = new Constant(x, LongTag)
+    def apply(x: Float)        = new Constant(x, FloatTag)
+    def apply(x: Double)       = new Constant(x, DoubleTag)
+    def apply(x: String)       = new Constant(x, StringTag)
+    def apply(x: Char)         = new Constant(x, CharTag)
+    def apply(x: Type)         = new Constant(x, ClazzTag)
+    def apply(x: Symbol)       = new Constant(x, EnumTag)
+    def apply(x: scala.Symbol) = new Constant(x, ScalaSymbolTag)
+    def apply(value: Any)      =
+      new Constant(value,
+        value match {
+          case null            => NullTag
+          case x: Unit         => UnitTag
+          case x: Boolean      => BooleanTag
+          case x: Byte         => ByteTag
+          case x: Short        => ShortTag
+          case x: Int          => IntTag
+          case x: Long         => LongTag
+          case x: Float        => FloatTag
+          case x: Double       => DoubleTag
+          case x: String       => StringTag
+          case x: Char         => CharTag
+          case x: Type         => ClazzTag
+          case x: Symbol       => EnumTag
+          case x: scala.Symbol => ScalaSymbolTag
+        }
+      )
+
+    def unapply(c: Constant) = c
   }
 }
