@@ -18,7 +18,8 @@ $ sbt eclipse
 
 - Note: It is recommended to change the default output folder (in `Properties > java
    build path > Source`) to `dotty/classes` instead of `dotty/bin` because
-   `dotty/bin` is reserved for shell scripts.
+   `dotty/bin` is reserved for shell scripts. Each generated project file should
+   change the output folder to the correct one automatically.
 
 Optional: if you have `CLASSPATH` defined:
 
