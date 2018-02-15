@@ -2403,61 +2403,27 @@ object Types {
 
   // --- AndType/OrType ---------------------------------------------------------------
 
-  abstract class AndOrType extends CachedGroundType with ValueType {
-    def tp1: Type
-    def tp2: Type
-    def isAnd: Boolean
-    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type  // needed?
-
+  abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with ValueType {
     private[this] var myBaseClassesPeriod: Period = Nowhere
     private[this] var myBaseClasses: List[ClassSymbol] = _
-
-    /** Base classes of And are the merge of the operand base classes
-     *  For OrTypes, it's the intersection.
-     */
+    /** Base classes of are the merge of the operand base classes. */
     override final def baseClasses(implicit ctx: Context) = {
       if (myBaseClassesPeriod != ctx.period) {
         val bcs1 = tp1.baseClasses
         val bcs1set = BaseClassSet(bcs1)
         def recur(bcs2: List[ClassSymbol]): List[ClassSymbol] = bcs2 match {
           case bc2 :: bcs2rest =>
-            if (isAnd)
-              if (bcs1set contains bc2)
-                if (bc2.is(Trait)) recur(bcs2rest)
-                else bcs1 // common class, therefore rest is the same in both sequences
-              else bc2 :: recur(bcs2rest)
-            else
-              if (bcs1set contains bc2)
-                if (bc2.is(Trait)) bc2 :: recur(bcs2rest)
-                else bcs2
-              else recur(bcs2rest)
-          case nil =>
-            if (isAnd) bcs1 else bcs2
+            if (bcs1set contains bc2)
+              if (bc2.is(Trait)) recur(bcs2rest)
+              else bcs1 // common class, therefore rest is the same in both sequences
+            else bc2 :: recur(bcs2rest)
+          case nil => bcs1
         }
         myBaseClasses = recur(tp2.baseClasses)
         myBaseClassesPeriod = ctx.period
       }
       myBaseClasses
     }
-
-    override def computeHash(bs: Binders) = doHash(bs, tp1, tp2)
-    override def stableHash = tp1.stableHash && tp2.stableHash
-
-    override def eql(that: Type) = that match {
-      case that: AndOrType => isAnd == that.isAnd && tp1.eq(that.tp1) && tp2.eq(that.tp2)
-      case _ => false
-    }
-
-    override def iso(that: Any, bs: BinderPairs) = that match {
-      case that: AndOrType => isAnd == that.isAnd && tp1.equals(that.tp1, bs) && tp2.equals(that.tp2, bs)
-      case _ => false
-    }
-    // equals comes from case classes; no matching override is needed
-  }
-
-  abstract case class AndType(tp1: Type, tp2: Type) extends AndOrType {
-
-    def isAnd = true
 
     def derivedAndType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
@@ -2467,8 +2433,12 @@ object Types {
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else tp1 & tp2
 
-    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
-      derivedAndType(tp1, tp2)
+    override def computeHash(bs: Binders) = doHash(bs, tp1, tp2)
+
+    override def eql(that: Type) = that match {
+      case that: AndType => tp1.eq(that.tp1) && tp2.eq(that.tp2)
+      case _ => false
+    }
   }
 
   final class CachedAndType(tp1: Type, tp2: Type) extends AndType(tp1, tp2)
@@ -2497,11 +2467,31 @@ object Types {
         if (checkValid) apply(tp1, tp2) else unchecked(tp1, tp2)
   }
 
-  abstract case class OrType(tp1: Type, tp2: Type) extends AndOrType {
+  abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with ValueType {
+    private[this] var myBaseClassesPeriod: Period = Nowhere
+    private[this] var myBaseClasses: List[ClassSymbol] = _
+    /** Base classes of are the intersection of the operand base classes. */
+    override final def baseClasses(implicit ctx: Context) = {
+      if (myBaseClassesPeriod != ctx.period) {
+        val bcs1 = tp1.baseClasses
+        val bcs1set = BaseClassSet(bcs1)
+        def recur(bcs2: List[ClassSymbol]): List[ClassSymbol] = bcs2 match {
+          case bc2 :: bcs2rest =>
+            if (bcs1set contains bc2)
+              if (bc2.is(Trait)) bc2 :: recur(bcs2rest)
+              else bcs2
+            else recur(bcs2rest)
+          case nil =>
+            bcs2
+        }
+        myBaseClasses = recur(tp2.baseClasses)
+        myBaseClassesPeriod = ctx.period
+      }
+      myBaseClasses
+    }
 
     assert(tp1.isInstanceOf[ValueTypeOrWildcard] &&
            tp2.isInstanceOf[ValueTypeOrWildcard], s"$tp1 $tp2")
-    def isAnd = false
 
     private[this] var myJoin: Type = _
     private[this] var myJoinPeriod: Period = Nowhere
@@ -2521,8 +2511,12 @@ object Types {
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else OrType.make(tp1, tp2)
 
-    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
-      derivedOrType(tp1, tp2)
+    override def computeHash(bs: Binders) = doHash(bs, tp1, tp2)
+
+    override def eql(that: Type) = that match {
+      case that: OrType => tp1.eq(that.tp1) && tp2.eq(that.tp2)
+      case _ => false
+    }
   }
 
   final class CachedOrType(tp1: Type, tp2: Type) extends OrType(tp1, tp2)
@@ -3271,10 +3265,8 @@ object Types {
      */
     def occursIn(bound: Type, fromBelow: Boolean)(implicit ctx: Context): Boolean = bound.stripTypeVar match {
       case bound: ParamRef => bound == this
-      case bound: AndOrType =>
-        def occ1 = occursIn(bound.tp1, fromBelow)
-        def occ2 = occursIn(bound.tp2, fromBelow)
-        if (fromBelow == bound.isAnd) occ1 && occ2 else occ1 || occ2
+      case bound: AndType  => occursIn(bound.tp1, fromBelow) && occursIn(bound.tp2, fromBelow)
+      case bound: OrType   => occursIn(bound.tp1, fromBelow) || occursIn(bound.tp2, fromBelow)
       case _ => false
     }
   }
@@ -3866,8 +3858,10 @@ object Types {
       tp.derivedSuperType(thistp, supertp)
     protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
       tp.derivedAppliedType(tycon, args)
-    protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type): Type =
-      tp.derivedAndOrType(tp1, tp2)
+    protected def derivedAndType(tp: AndType, tp1: Type, tp2: Type): Type =
+      tp.derivedAndType(tp1, tp2)
+    protected def derivedOrType(tp: OrType, tp1: Type, tp2: Type): Type =
+      tp.derivedOrType(tp1, tp2)
     protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =
       tp.derivedAnnotatedType(underlying, annot)
     protected def derivedWildcardType(tp: WildcardType, bounds: Type): Type =
@@ -3959,8 +3953,11 @@ object Types {
         case tp: ClassInfo =>
           mapClassInfo(tp)
 
-         case tp: AndOrType =>
-          derivedAndOrType(tp, this(tp.tp1), this(tp.tp2))
+        case tp: AndType =>
+          derivedAndType(tp, this(tp.tp1), this(tp.tp2))
+
+        case tp: OrType =>
+          derivedOrType(tp, this(tp.tp1), this(tp.tp2))
 
         case tp: SkolemType =>
           tp
@@ -4212,11 +4209,13 @@ object Types {
           else tp.derivedAppliedType(tycon, args)
       }
 
-    override protected def derivedAndOrType(tp: AndOrType, tp1: Type, tp2: Type) =
-      if (isRange(tp1) || isRange(tp2))
-        if (tp.isAnd) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))
-        else range(lower(tp1) | lower(tp2), upper(tp1) | upper(tp2))
-      else tp.derivedAndOrType(tp1, tp2)
+    override protected def derivedAndType(tp: AndType, tp1: Type, tp2: Type) =
+      if (isRange(tp1) || isRange(tp2)) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))
+      else tp.derivedAndType(tp1, tp2)
+
+    override protected def derivedOrType(tp: OrType, tp1: Type, tp2: Type) =
+      if (isRange(tp1) || isRange(tp2)) range(lower(tp1) | lower(tp2), upper(tp1) | upper(tp2))
+      else tp.derivedOrType(tp1, tp2)
 
     override protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation) =
       underlying match {
@@ -4327,7 +4326,10 @@ object Types {
           this(y, hi)
         }
 
-      case tp: AndOrType =>
+      case tp: AndType =>
+        this(this(x, tp.tp1), tp.tp2)
+
+      case tp: OrType =>
         this(this(x, tp.tp1), tp.tp2)
 
       case AnnotatedType(underlying, annot) =>

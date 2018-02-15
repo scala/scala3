@@ -925,7 +925,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case tp @ RefinedType(parent, rname, rinfo) => tp.derivedRefinedType(fix(parent), rname, rinfo)
       case tp: TypeParamRef => fixOrElse(bounds(tp).hi, tp)
       case tp: TypeProxy => fixOrElse(tp.underlying, tp)
-      case tp: AndOrType => tp.derivedAndOrType(fix(tp.tp1), fix(tp.tp2))
+      case tp: AndType => tp.derivedAndType(fix(tp.tp1), fix(tp.tp2))
+      case tp: OrType  => tp.derivedOrType (fix(tp.tp1), fix(tp.tp2))
       case tp => tp
     }
     def fixOrElse(tp: Type, fallback: Type) = {
@@ -1075,7 +1076,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp: AppliedType => isCovered(tp.tycon)
     case tp: RefinedOrRecType => isCovered(tp.parent)
     case tp: AnnotatedType => isCovered(tp.underlying)
-    case tp: AndOrType => isCovered(tp.tp1) && isCovered(tp.tp2)
+    case tp: AndType => isCovered(tp.tp1) && isCovered(tp.tp2)
+    case tp: OrType  => isCovered(tp.tp1) && isCovered(tp.tp2)
     case _ => false
   }
 
@@ -1323,10 +1325,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         Nil
     }
 
-  private def recombineAndOr(tp: AndOrType, tp1: Type, tp2: Type) =
+  private def recombineAnd(tp: AndType, tp1: Type, tp2: Type) =
     if (!tp1.exists) tp2
     else if (!tp2.exists) tp1
-    else tp.derivedAndOrType(tp1, tp2)
+    else tp.derivedAndType(tp1, tp2)
 
   /** If some (&-operand of) this type is a supertype of `sub` replace it with `NoType`.
    */
@@ -1334,7 +1336,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     if (isSubTypeWhenFrozen(sub, tp)) NoType
     else tp match {
       case tp @ AndType(tp1, tp2) =>
-        recombineAndOr(tp, dropIfSuper(tp1, sub), dropIfSuper(tp2, sub))
+        recombineAnd(tp, dropIfSuper(tp1, sub), dropIfSuper(tp2, sub))
       case _ =>
         tp
     }

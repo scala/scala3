@@ -222,10 +222,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def dependentParams(tp: Type, isUpper: Boolean): List[TypeParamRef] = tp match {
     case param: TypeParamRef if contains(param) =>
       param :: (if (isUpper) upper(param) else lower(param))
-    case tp: AndOrType =>
-      val ps1 = dependentParams(tp.tp1, isUpper)
-      val ps2 = dependentParams(tp.tp2, isUpper)
-      if (isUpper == tp.isAnd) ps1.union(ps2) else ps1.intersect(ps2)
+    case tp: AndType => dependentParams(tp.tp1, isUpper).union    (dependentParams(tp.tp2, isUpper))
+    case tp: OrType  => dependentParams(tp.tp1, isUpper).intersect(dependentParams(tp.tp2, isUpper))
     case _ =>
       Nil
   }
@@ -260,11 +258,18 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case param: TypeParamRef if contains(param) =>
       if (!paramBuf.contains(param)) paramBuf += param
       NoType
-    case tp: AndOrType if isUpper == tp.isAnd =>
+    case tp: AndType if isUpper =>
       val tp1 = stripParams(tp.tp1, paramBuf, isUpper)
       val tp2 = stripParams(tp.tp2, paramBuf, isUpper)
       if (tp1.exists)
-        if (tp2.exists) tp.derivedAndOrType(tp1, tp2)
+        if (tp2.exists) tp.derivedAndType(tp1, tp2)
+        else tp1
+      else tp2
+    case tp: OrType if !isUpper =>
+      val tp1 = stripParams(tp.tp1, paramBuf, isUpper)
+      val tp2 = stripParams(tp.tp2, paramBuf, isUpper)
+      if (tp1.exists)
+        if (tp2.exists) tp.derivedOrType(tp1, tp2)
         else tp1
       else tp2
     case _ =>
@@ -395,24 +400,32 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       def replaceParam(tp: Type, atPoly: TypeLambda, atIdx: Int): Type = tp match {
         case bounds @ TypeBounds(lo, hi) =>
 
-          def recombine(andor: AndOrType, op: (Type, Boolean) => Type, isUpper: Boolean): Type = {
-            val tp1 = op(andor.tp1, isUpper)
-            val tp2 = op(andor.tp2, isUpper)
-            if ((tp1 eq andor.tp1) && (tp2 eq andor.tp2)) andor
-            else if (andor.isAnd) tp1 & tp2
+          def recombineAnd(and: AndType, op: (Type, Boolean) => Type, isUpper: Boolean): Type = {
+            val tp1 = op(and.tp1, isUpper)
+            val tp2 = op(and.tp2, isUpper)
+            if (tp1.eq(and.tp1) && tp2.eq(and.tp2)) and
+            else tp1 & tp2
+          }
+
+          def recombineOr(or: OrType, op: (Type, Boolean) => Type, isUpper: Boolean): Type = {
+            val tp1 = op(or.tp1, isUpper)
+            val tp2 = op(or.tp2, isUpper)
+            if (tp1.eq(or.tp1) && tp2.eq(or.tp2)) or
             else tp1 | tp2
           }
 
           def normalize(tp: Type, isUpper: Boolean): Type = tp match {
             case p: TypeParamRef if p.binder == atPoly && p.paramNum == atIdx =>
               if (isUpper) defn.AnyType else defn.NothingType
-            case tp: AndOrType if isUpper == tp.isAnd => recombine(tp, normalize, isUpper)
+            case tp: AndType if isUpper  => recombineAnd(tp, normalize, isUpper)
+            case tp: OrType  if !isUpper => recombineOr (tp, normalize, isUpper)
             case _ => tp
           }
 
           def replaceIn(tp: Type, isUpper: Boolean): Type = tp match {
             case `param` => normalize(replacement, isUpper)
-            case tp: AndOrType if isUpper == tp.isAnd => recombine(tp, replaceIn, isUpper)
+            case tp: AndType if isUpper  => recombineAnd(tp, replaceIn, isUpper)
+            case tp: OrType  if !isUpper => recombineOr (tp, replaceIn, isUpper)
             case _ => tp.substParam(param, replacement)
           }
 

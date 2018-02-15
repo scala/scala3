@@ -88,7 +88,8 @@ class CheckRealizable(implicit ctx: Context) {
       def isConcrete(tp: Type): Boolean = tp.dealias match {
         case tp: TypeRef => tp.symbol.isClass
         case tp: TypeProxy => isConcrete(tp.underlying)
-        case tp: AndOrType => isConcrete(tp.tp1) && isConcrete(tp.tp2)
+        case tp: AndType => isConcrete(tp.tp1) && isConcrete(tp.tp2)
+        case tp: OrType  => isConcrete(tp.tp1) && isConcrete(tp.tp2)
         case _ => false
       }
       if (!isConcrete(tp)) NotConcrete
