@@ -109,7 +109,7 @@ The changes are specified below as deltas with respect to the Scala syntax given
 
  2. Cases of enums are defined as follows:
 
-        EnumCase  ::=  `case' (id [ClsTpeParamClause] {ClsParamClause} | ids)
+        EnumCase  ::=  `case' (id ClassConstr [`extends' ConstrApps]] | ids)
 
 ### Reference
 

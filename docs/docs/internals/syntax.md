@@ -354,7 +354,7 @@ SelfType          ::=  id [‘:’ InfixType] ‘=>’                          
 EnumBody          ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
 EnumStat          ::=  TemplateStat
                     |  {Annotation [nl]} {Modifier} EnumCase
-EnumCase          ::=  `case' (id [ClsTpeParamClause] {ClsParamClause} | ids)
+EnumCase          ::=  `case' (id ClassConstr [`extends' ConstrApps]] | ids)
 
 TopStatSeq        ::=  TopStat {semi TopStat}
 TopStat           ::=  {Annotation [nl]} {Modifier} TmplDef
