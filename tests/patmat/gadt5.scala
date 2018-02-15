@@ -64,6 +64,8 @@ object Try3 {
         case (VN(), VN())           => 1
         case (VC(x, xs), VC(y, ys)) => 2
       }
+    //a call-site which would cause a MatchError (maybe that error should be tested)
+    def bar = foo[TZero | TSucc[_], Int, String](VN(), VC("", VN()))
   }
 }
 
