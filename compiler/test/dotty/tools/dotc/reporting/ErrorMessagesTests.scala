@@ -1294,4 +1294,16 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val JavaSymbolIsNotAValue(symbol) = messages.head
       assertEquals(symbol.show, "package p")
     }
+
+  @Test def i3187 =
+    checkMessagesAfter("genBCode") {
+      """
+        |package scala
+        |object collection
+      """.stripMargin
+    }.expect { (itcx, messages) =>
+      implicit val ctx: Context = itcx
+
+      assert(ctx.reporter.hasErrors)
+    }
 }
