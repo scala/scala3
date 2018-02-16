@@ -1152,7 +1152,7 @@ class Typer extends Namer
         tree.ensureCompletions
         tree.getAttachment(untpd.OriginalSymbol) match {
           case Some(origSym) =>
-            TypeTree(tree.derivedType(origSym)).withPos(tree.pos)
+            tree.derivedTree(origSym).withPos(tree.pos)
             // btw, no need to remove the attachment. The typed
             // tree is different from the untyped one, so the
             // untyped tree is no longer accessed after all

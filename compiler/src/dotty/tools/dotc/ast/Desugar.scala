@@ -33,11 +33,15 @@ object desugar {
 // ----- DerivedTypeTrees -----------------------------------
 
   class SetterParamTree extends DerivedTypeTree {
-    def derivedType(sym: Symbol)(implicit ctx: Context) = sym.info.resultType
+    def derivedTree(sym: Symbol)(implicit ctx: Context) = tpd.TypeTree(sym.info.resultType)
   }
 
   class TypeRefTree extends DerivedTypeTree {
-    def derivedType(sym: Symbol)(implicit ctx: Context) = sym.typeRef
+    def derivedTree(sym: Symbol)(implicit ctx: Context) = tpd.TypeTree(sym.typeRef)
+  }
+
+  class TermRefTree extends DerivedTypeTree {
+    def derivedTree(sym: Symbol)(implicit ctx: Context) = tpd.ref(sym)
   }
 
   /** A type tree that computes its type from an existing parameter.
@@ -73,7 +77,7 @@ object desugar {
      *
      *       parameter name  ==  reference name ++ suffix
      */
-    def derivedType(sym: Symbol)(implicit ctx: Context) = {
+    def derivedTree(sym: Symbol)(implicit ctx: Context) = {
       val relocate = new TypeMap {
         val originalOwner = sym.owner
         def apply(tp: Type) = tp match {
@@ -91,7 +95,7 @@ object desugar {
             mapOver(tp)
         }
       }
-      relocate(sym.info)
+      tpd.TypeTree(relocate(sym.info))
     }
   }
 
