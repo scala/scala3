@@ -2239,7 +2239,7 @@ object Parsers {
             }
             else
               ModuleDef(id.name.toTermName, caseTemplate(emptyConstructor))
-          caseDef.withMods(mods).setComment(in.getDocComment(start))
+          caseDef.withMods(mods1).setComment(in.getDocComment(start))
         }
       }
     }
