@@ -26,6 +26,7 @@ import Constants._
 import Applications._
 import ProtoTypes._
 import ErrorReporting._
+import Annotations.Annotation
 import reporting.diagnostic.{Message, MessageContainer}
 import Inferencing.fullyDefinedType
 import Trees._
@@ -685,22 +686,47 @@ trait Implicits { self: Typer =>
         }
     }
     def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
+    def userDefinedMessage(annot: Annotation, params: List[String], args: List[Type]): Option[String] =
+      for (Trees.Literal(Constant(raw: String)) <- annot.argument(0)) yield {
+        err.userDefinedErrorString(
+          raw,
+          params,
+          args)
+      }
     arg.tpe match {
       case ambi: AmbiguousImplicits =>
-        msg(s"ambiguous implicit arguments: ${ambi.explanation}${location("of")}")(
-            s"ambiguous implicit arguments of type ${pt.show} found${location("for")}")
+        val maybeAnnot = ambi.alt1.ref.symbol.getAnnotation(defn.ImplicitAmbiguousAnnot).map(
+          (_, ambi.alt1)
+        ).orElse(
+          ambi.alt2.ref.symbol.getAnnotation(defn.ImplicitAmbiguousAnnot).map(
+            (_, ambi.alt2)
+          )
+        )
+        val userDefined = maybeAnnot.flatMap { case (annot, alt) =>
+          val params = alt.ref.underlying match {
+            case p: PolyType => p.paramNames.map(_.toString)
+            case _           => Nil
+          }
+          def resolveTypes(targs: List[Tree])(implicit ctx: Context) =
+            targs.map(a => fullyDefinedType(a.tpe, "type argument", a.pos))
+          val args = alt.tree match {
+            case TypeApply(_, targs) =>
+              resolveTypes(targs)(ctx.fresh.setTyperState(alt.tstate))
+            case Block(List(DefDef(_, _, _, _, Apply(TypeApply(_, targs), _))), _) =>
+              resolveTypes(targs.asInstanceOf[List[Tree]])(ctx.fresh.setTyperState(alt.tstate))
+            case _ =>
+              Nil
+          }
+          userDefinedMessage(annot, params, args)
+        }
+        userDefined.map(msg(_)()).getOrElse(
+          msg(s"ambiguous implicit arguments: ${ambi.explanation}${location("of")}")(
+              s"ambiguous implicit arguments of type ${pt.show} found${location("for")}")
+        )
       case _ =>
-        val userDefined =
-          for {
-            notFound <- pt.typeSymbol.getAnnotation(defn.ImplicitNotFoundAnnot)
-            Trees.Literal(Constant(raw: String)) <- notFound.argument(0)
-          }
-          yield {
-            err.implicitNotFoundString(
-              raw,
-              pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
-              pt.argInfos)
-          }
+        val userDefined = pt.typeSymbol.getAnnotation(defn.ImplicitNotFoundAnnot).flatMap(
+          userDefinedMessage(_, pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString), pt.argInfos)
+        )
         msg(userDefined.getOrElse(em"no implicit argument of type $pt was found${location("for")}"))()
     }
   }
