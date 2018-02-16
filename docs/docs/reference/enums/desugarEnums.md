@@ -36,9 +36,13 @@ map into case classes or vals.
 
     expands to a `sealed` `abstract` class that extends the `scala.Enum` trait and
     an associated companion object that contains the defined cases, expanded according
-    to rules (2 - 8).
+    to rules (2 - 8). The enum trait starts with a compiler-generated import that imports
+    the names `<caseIds>` of all cases so that they can be used without prefix in the trait.
 
-        sealed abstract class E ... extends <parents> with scala.Enum { <defs> }
+        sealed abstract class E ... extends <parents> with scala.Enum {
+          import E.{ <caseIds> }
+          <defs>
+        }
         object E { <cases> }
 
 2. A simple case consisting of a comma-separated list of enum names

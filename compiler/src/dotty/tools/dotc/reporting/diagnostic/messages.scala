@@ -1783,16 +1783,6 @@ object messages {
       hl"""A class marked with the ${"final"} keyword cannot be extended"""
   }
 
-  case class EnumCaseDefinitionInNonEnumOwner(owner: Symbol)(implicit ctx: Context)
-    extends Message(EnumCaseDefinitionInNonEnumOwnerID) {
-      val kind = "Syntax"
-      val msg = em"case not allowed here, since owner ${owner} is not an ${"enum"} object"
-      val explanation =
-        hl"""${"enum"} cases are only allowed within the companion ${"object"} of an ${"enum class"}.
-            |If you want to create an ${"enum"} case, make sure the corresponding ${"enum class"} exists
-            |and has the ${"enum"} keyword."""
-  }
-
   case class ExpectedTypeBoundOrEquals(found: Token)(implicit ctx: Context)
     extends Message(ExpectedTypeBoundOrEqualsID) {
     val kind = "Syntax"

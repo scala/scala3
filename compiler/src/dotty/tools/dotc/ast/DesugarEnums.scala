@@ -6,7 +6,6 @@ import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
-import reporting.diagnostic.messages.EnumCaseDefinitionInNonEnumOwner
 import collection.mutable.ListBuffer
 import util.Property
 import typer.ErrorReporting._
@@ -23,20 +22,21 @@ object DesugarEnums {
   /** Attachment containing the number of enum cases and the smallest kind that was seen so far. */
   val EnumCaseCount = new Property.Key[(Int, CaseKind.Value)]
 
-  /** the enumeration class that is a companion of the current object */
-  def enumClass(implicit ctx: Context) = ctx.owner.linkedClass
+  /** The enumeration class that belongs to an enum case. This works no matter
+   *  whether the case is still in the enum class or it has been transferred to the
+   *  companion object.
+   */
+  def enumClass(implicit ctx: Context): Symbol = {
+    val cls = ctx.owner
+    if (cls.is(Module)) cls.linkedClass else cls
+  }
 
-  /** Is this an enum case that's situated in a companion object of an enum class? */
-  def isLegalEnumCase(tree: MemberDef)(implicit ctx: Context): Boolean =
-    tree.mods.hasMod[Mod.EnumCase] && enumCaseIsLegal(tree)
-
-  /** Is enum case `tree` situated in a companion object of an enum class? */
-  def enumCaseIsLegal(tree: Tree)(implicit ctx: Context): Boolean = (
-    ctx.owner.is(ModuleClass) && enumClass.derivesFrom(defn.EnumClass)
-    || { ctx.error(EnumCaseDefinitionInNonEnumOwner(ctx.owner), tree.pos)
-         false
-       }
-    )
+  /** Is `tree` an (untyped) enum case? */
+  def isEnumCase(tree: Tree)(implicit ctx: Context): Boolean = tree match {
+    case tree: MemberDef => tree.mods.hasMod[Mod.EnumCase]
+    case PatDef(mods, _, _, _) => mods.hasMod[Mod.EnumCase]
+    case _ => false
+  }
 
   /** A reference to the enum class `E`, possibly followed by type arguments.
    *  Each covariant type parameter is approximated by its lower bound.
@@ -69,7 +69,7 @@ object DesugarEnums {
   /** Add implied flags to an enum class or an enum case */
   def addEnumFlags(cdef: TypeDef)(implicit ctx: Context) =
     if (cdef.mods.hasMod[Mod.Enum]) cdef.withFlags(cdef.mods.flags | Abstract | Sealed)
-    else if (isLegalEnumCase(cdef)) cdef.withFlags(cdef.mods.flags | Final)
+    else if (isEnumCase(cdef)) cdef.withFlags(cdef.mods.flags | Final)
     else cdef
 
   private def valuesDot(name: String) = Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
@@ -193,24 +193,20 @@ object DesugarEnums {
   }
 
   /** Expand a module definition representing a parameterless enum case */
-  def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree =
+  def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree = {
+    assert(impl.body.isEmpty)
     if (impl.parents.isEmpty)
-      if (impl.body.isEmpty)
-        expandSimpleEnumCase(name, mods, pos)
-      else {
-        val parent = interpolatedEnumParent(pos)
-        expandEnumModule(name, cpy.Template(impl)(parents = parent :: Nil), mods, pos)
-      }
+      expandSimpleEnumCase(name, mods, pos)
     else {
       def toStringMeth =
         DefDef(nme.toString_, Nil, Nil, TypeTree(defn.StringType), Literal(Constant(name.toString)))
           .withFlags(Override)
       val (tagMeth, scaffolding) = enumTagMeth(CaseKind.Object)
-      val impl1 = cpy.Template(impl)(body =
-        impl.body ++ List(tagMeth, toStringMeth) ++ registerCall)
+      val impl1 = cpy.Template(impl)(body = List(tagMeth, toStringMeth) ++ registerCall)
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods | Final)
       flatTree(scaffolding ::: vdef :: Nil).withPos(pos)
     }
+  }
 
   /** Expand a simple enum case */
   def expandSimpleEnumCase(name: TermName, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree =

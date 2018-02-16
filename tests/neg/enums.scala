@@ -1,12 +1,8 @@
 package enums
 
 enum List[+T] {
-  case Cons[T](x: T, xs: List[T]) // ok
-  case Snoc[U](xs: List[U], x: U) // error: different type parameters
-}
-
-enum class X {
-  case Y // error: case not allowed here
+  case Cons[T](x: T, xs: List[T]) // error: missing extends
+  case Snoc[U](xs: List[U], x: U) // error: missing extends
 }
 
 enum E1[T] {
@@ -22,7 +18,7 @@ enum E3[-T <: Ordered[T]] {
 }
 
 enum Option[+T] {
-  case Some[T](x: T)
+  case Some(x: T)
   case None
 }
 
