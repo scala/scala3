@@ -136,7 +136,6 @@ map into case classes or vals.
    where `n` is the ordinal number of the case in the companion object,
    starting from 0.
 
-
 ### Equality
 
 An `enum` type contains a `scala.Eq` instance that restricts values of the `enum` type to
@@ -171,3 +170,20 @@ Companion objects that contain at least one simple case define in addition:
            def toString = name
            $values.register(this)   // register enum value so that `valueOf` and `values` can return it.
          }
+
+### Scopes for Enum Cases
+
+A case in an `enum` is treated similarly to a secondary constructor. It cannot access
+with simple identifiers value parameters or instance members of the enclosing `enum`.
+
+Even though translated enum cases are located in the enum's companion object, they
+cannot access with simple identifiers any members defined locally in the enclosing
+object either. The compiler is free to typecheck enum cases in the scope of the
+enclosing companion object but it must then flag any illegal accesses to the object's
+members.
+
+### Other Rules
+
+A normal case class which is not produced from an enum case is not allowed to extend
+`scala.Enum`. This ensures that the only cases of an anum are the ones that are
+explictly declared in it.
