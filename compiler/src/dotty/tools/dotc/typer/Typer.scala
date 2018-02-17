@@ -1405,6 +1405,10 @@ class Typer extends Namer
     // Overwrite inline body to make sure it is not evaluated twice
     if (sym.isInlineMethod) Inliner.registerInlineInfo(sym, _ => rhs1)
 
+    if (sym.isConstructor && !sym.isPrimaryConstructor)
+      for (param <- tparams1 ::: vparamss1.flatten)
+        checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
+
     assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
       //todo: make sure dependent method types do not depend on implicits or by-name params
   }
