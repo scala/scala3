@@ -320,7 +320,8 @@ object desugar {
     val constrTparams = impliedTparams.map(toDefParam)
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
-        if (isCaseClass) ctx.error(CaseClassMissingParamList(cdef), cdef.namePos)
+        if (isCaseClass && originalTparams.isEmpty)
+          ctx.error(CaseClassMissingParamList(cdef), cdef.namePos)
         ListOfNil
       }
       else originalVparamss.nestedMap(toDefParam)
