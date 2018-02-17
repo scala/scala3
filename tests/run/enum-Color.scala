@@ -1,5 +1,6 @@
 enum Color {
   case Red, Green, Blue
+  class Color  // Just to throw a spanner in the works
 }
 
 object Test {

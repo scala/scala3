@@ -17,6 +17,13 @@ enum E3[-T <: Ordered[T]] {
   case C // error: cannot determine type argument
 }
 
+enum E4 {
+  case C
+}
+
+case class C4() extends E4 // error: cannot extend enum
+case object O4 extends E4 // error: cannot extend enum
+
 enum Option[+T] {
   case Some(x: T)
   case None

@@ -22,7 +22,7 @@ import config.Printers.typr
  *
  *  Otherwise, everything is as in Typer.
  */
-class ReTyper extends Typer {
+class ReTyper extends Typer with ReChecking {
   import tpd._
 
   private def assertTyped(tree: untpd.Tree)(implicit ctx: Context): Unit =

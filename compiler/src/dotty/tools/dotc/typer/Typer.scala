@@ -1406,7 +1406,7 @@ class Typer extends Namer
     if (sym.isInlineMethod) Inliner.registerInlineInfo(sym, _ => rhs1)
 
     assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
-    //todo: make sure dependent method types do not depend on implicits or by-name params
+      //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedTypeDef") {
@@ -1506,6 +1506,7 @@ class Typer extends Namer
       checkVariance(impl1)
       if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.namePos)
+      if (cls.is(Case) && cls.derivesFrom(defn.EnumClass)) checkEnum(cdef, cls)
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
       if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
         val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
@@ -1813,6 +1814,8 @@ class Typer extends Namer
 
   def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[tpd.Tree] = {
     val buf = new mutable.ListBuffer[Tree]
+    val enumContexts = new mutable.HashMap[Symbol, Context]
+      // A map from `enum` symbols to the contexts enclosing their definitions
     @tailrec def traverse(stats: List[untpd.Tree])(implicit ctx: Context): List[Tree] = stats match {
       case (imp: untpd.Import) :: rest =>
         val imp1 = typed(imp)
@@ -1827,6 +1830,12 @@ class Typer extends Namer
               case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
                 buf ++= inlineExpansion(mdef1)
               case mdef1 =>
+                import untpd.modsDeco
+                mdef match {
+                  case mdef: untpd.TypeDef if mdef.mods.hasMod[untpd.Mod.Enum] =>
+                    enumContexts(mdef1.symbol) = ctx
+                  case _ =>
+                }
                 buf += mdef1
             }
             traverse(rest)
@@ -1846,7 +1855,7 @@ class Typer extends Namer
       val exprOwnerOpt = if (exprOwner == ctx.owner) None else Some(exprOwner)
       ctx.withProperty(ExprOwner, exprOwnerOpt)
     }
-    traverse(stats)(localCtx)
+    checkEnumCompanions(traverse(stats)(localCtx), enumContexts)
   }
 
   /** Given an inline method `mdef`, the method rewritten so that its body

@@ -28,6 +28,7 @@ import Decorators._
 import Uniques._
 import ErrorReporting.{err, errorType}
 import config.Printers.typr
+import NameKinds.DefaultGetterName
 
 import collection.mutable
 import SymDenotations.NoCompleter
@@ -741,9 +742,100 @@ trait Checking {
     tp.foreachPart(check, stopAtStatic = true)
     tp
   }
+
+  /** Check that all non-synthetic references of the form `<ident>` or
+   *  `this.<ident>` in `tree` that refer to a member of `badOwner` are
+   *  `allowed`.
+   */
+  def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(implicit ctx: Context): Unit = {
+    tree.foreachSubTree { tree =>
+      tree match {
+        case Ident(_) | Select(This(_), _) if tree.pos.isSourceDerived =>
+          val sym = tree.symbol
+          if (sym.maybeOwner == badOwner && !allowed(tree.asInstanceOf[RefTree].name, sym))
+            ctx.error(i"illegal reference to $sym from $where: $tree // ${tree.toString}", tree.pos)
+        case _ =>
+      }
+    }
+  }
+
+  /** Check that all case classes that extend `scala.Enum` are `enum` cases */
+  def checkEnum(cdef: untpd.TypeDef, cls: Symbol)(implicit ctx: Context): Unit = {
+    import untpd.modsDeco
+    def isEnumAnonCls =
+      cls.isAnonymousClass &&
+      cls.owner.isTerm &&
+      (cls.owner.flagsUNSAFE.is(Case) || cls.owner.name == nme.DOLLAR_NEW)
+    if (!cdef.mods.hasMod[untpd.Mod.EnumCase] && !isEnumAnonCls)
+      ctx.error(em"normal case $cls in ${cls.owner} cannot extend an enum", cdef.pos)
+  }
+
+  /** Check that all references coming from enum cases in an enum companion object
+   *  are legal.
+   *  @param  cdef     the enum companion object class
+   *  @param  enumCtx  the context immediately enclosing the corresponding enum
+   */
+  private def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(implicit ctx: Context): Unit = {
+    def check(tree: Tree) = {
+      // allow access to `sym` if a typedIdent just outside the enclosing enum
+      // would have produced the same symbol without errors
+      def allowAccess(name: Name, sym: Symbol): Boolean = {
+        val testCtx = enumCtx.fresh.setNewTyperState()
+        val ref = ctx.typer.typedIdent(untpd.Ident(name), WildcardType)(testCtx)
+        ref.symbol == sym && !testCtx.reporter.hasErrors
+      }
+      checkRefsLegal(tree, cdef.symbol, allowAccess, "enum case")
+    }
+    cdef.rhs match {
+      case impl: Template =>
+        for (stat <- impl.body)
+          if (stat.symbol.is(Case))
+            stat match {
+              case TypeDef(_, Template(DefDef(_, tparams, vparamss, _, _), parents, _, _)) =>
+                tparams.foreach(check)
+                vparamss.foreach(_.foreach(check))
+                parents.foreach(check)
+              case vdef: ValDef =>
+                vdef.rhs match {
+                  case Block((clsDef @ TypeDef(_, impl: Template)) :: Nil, _)
+                  if clsDef.symbol.isAnonymousClass =>
+                    impl.parents.foreach(check)
+                  case _ =>
+                }
+              case _ =>
+            }
+          else if (stat.symbol.is(Module) && stat.symbol.linkedClass.is(Case))
+            stat match {
+              case TypeDef(_, impl: Template) =>
+                for ((defaultGetter @
+                      DefDef(DefaultGetterName(nme.CONSTRUCTOR, _), _, _, _, _)) <- impl.body)
+                  check(defaultGetter.rhs)
+              case _ =>
+            }
+      case _ =>
+    }
+  }
+
+  /** Check all enum cases in all enum companions in `stats` for legal accesses.
+   *  @param  enumContexts  a map from`enum` symbols to the contexts enclosing their definitions
+   */
+  def checkEnumCompanions(stats: List[Tree], enumContexts: collection.Map[Symbol, Context])(implicit ctx: Context): List[Tree] = {
+    for (stat @ TypeDef(_, _) <- stats)
+      if (stat.symbol.is(Module))
+        for (enumContext <- enumContexts.get(stat.symbol.linkedClass))
+          checkEnumCaseRefsLegal(stat, enumContext)
+    stats
+  }
 }
 
-trait NoChecking extends Checking {
+trait ReChecking extends Checking {
+  import tpd._
+  override def checkEnum(cdef: untpd.TypeDef, cls: Symbol)(implicit ctx: Context): Unit = ()
+  override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(implicit ctx: Context): Unit = ()
+  override def checkEnumCompanions(stats: List[Tree], enumContexts: collection.Map[Symbol, Context])(implicit ctx: Context): List[Tree] = stats
+}
+
+trait NoChecking extends ReChecking {
   import tpd._
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
