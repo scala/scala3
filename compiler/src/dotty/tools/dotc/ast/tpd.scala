@@ -309,6 +309,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case NoPrefix =>
         true
       case pre: ThisType =>
+        tp.isType ||
         pre.cls.isStaticOwner ||
           tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
           // was ctx.owner.enclosingClass.derivesFrom(pre.cls) which was not tight enough
