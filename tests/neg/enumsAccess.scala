@@ -84,3 +84,13 @@ object test6 {
     val defaultX = 2
   }
 }
+
+object test7 {
+
+  trait Arg
+
+  enum E(x: Arg) {
+    case C extends E(this) // error: illegal reference to `this`
+  }
+  object E extends Arg
+}

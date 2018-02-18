@@ -745,18 +745,27 @@ trait Checking {
 
   /** Check that all non-synthetic references of the form `<ident>` or
    *  `this.<ident>` in `tree` that refer to a member of `badOwner` are
-   *  `allowed`.
+   *  `allowed`. Also check that there are no other explicit `this` references
+   *  to `badOwner`.
    */
   def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(implicit ctx: Context): Unit = {
-    tree.foreachSubTree { tree =>
-      tree match {
-        case Ident(_) | Select(This(_), _) if tree.pos.isSourceDerived =>
-          val sym = tree.symbol
-          if (sym.maybeOwner == badOwner && !allowed(tree.asInstanceOf[RefTree].name, sym))
-            ctx.error(i"illegal reference to $sym from $where: $tree // ${tree.toString}", tree.pos)
-        case _ =>
+    val checker = new TreeTraverser {
+      def traverse(t: Tree)(implicit ctx: Context) = {
+        def check(owner: Symbol, checkedSym: Symbol) =
+          if (t.pos.isSourceDerived && owner == badOwner)
+            t match {
+              case t: RefTree if allowed(t.name, checkedSym) =>
+              case _ => ctx.error(i"illegal reference to $checkedSym from $where", t.pos)
+            }
+        val sym = t.symbol
+        t match {
+          case Ident(_) | Select(This(_), _) => check(sym.maybeOwner, sym)
+          case This(_) => check(sym, sym)
+          case _ => traverseChildren(t)
+        }
       }
     }
+    checker.traverse(tree)
   }
 
   /** Check that all case classes that extend `scala.Enum` are `enum` cases */

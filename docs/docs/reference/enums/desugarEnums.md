@@ -173,14 +173,11 @@ Companion objects that contain at least one simple case define in addition:
 
 ### Scopes for Enum Cases
 
-A case in an `enum` is treated similarly to a secondary constructor. It cannot access
-with simple identifiers value parameters or instance members of the enclosing `enum`.
+A case in an `enum` is treated similarly to a secondary constructor. It can access neither the enclosing `enum` using `this`, nor its value parameters or instance members using simple
+identifiers.
 
-Even though translated enum cases are located in the enum's companion object, they
-cannot access with simple identifiers any members defined locally in the enclosing
-object either. The compiler is free to typecheck enum cases in the scope of the
-enclosing companion object but it must then flag any illegal accesses to the object's
-members.
+Even though translated enum cases are located in the enum's companion object, referencing
+this object or its members via `this` or a simple identifier is also illegal. The compiler typechecks enum cases in the scope of the enclosing companion object but flags any such illegal accesses as errors.
 
 ### Other Rules
 
