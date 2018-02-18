@@ -93,8 +93,7 @@ map into case classes or vals.
 
    This result is then further rewritten with rule (8).
 
-6. If `E` is an enum with type parameters `Ts`, a class case with neither type parameters nor
-   an extends clause
+6. If `E` is an enum with type parameters `Ts`, a class case with neither type parameters nor an extends clause
 
         case C <value-params>
 
@@ -102,8 +101,7 @@ map into case classes or vals.
 
         case C[Ts] <value-params> extends E[Ts]
 
-   This result is then further rewritten with rule (8). For class cases that have type parameters
-   themselves, an extends clause needs to be given explicitly.
+   This result is then further rewritten with rule (8). For class cases that have type parameters themselves, an extends clause needs to be given explicitly.
 
 7. A value case
 
@@ -159,7 +157,7 @@ the following additional members.
    - A method `enumValues` which returns an `Iterable[E]` of all singleton case
      values in `E`, in the order of their definitions.
 
-Companion objects that contain at least one simple case define in addition:
+Companion objects of enumerations that contain at least one simple case define in addition:
 
    - A private method `$new` which defines a new simple case value with given
      ordinal number and name. This method can be thought as being defined as
@@ -182,5 +180,5 @@ this object or its members via `this` or a simple identifier is also illegal. Th
 ### Other Rules
 
 A normal case class which is not produced from an enum case is not allowed to extend
-`scala.Enum`. This ensures that the only cases of an anum are the ones that are
+`scala.Enum`. This ensures that the only cases of an enum are the ones that are
 explictly declared in it.
