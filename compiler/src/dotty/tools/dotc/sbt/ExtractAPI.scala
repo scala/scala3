@@ -207,7 +207,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
     val selfType = apiType(sym.givenSelfType)
 
-    val name = ExtractDependencies.classNameAsString(sym)
+    val name = sym.fullName.stripModuleClassSuffix.mangledString
 
     val tparams = sym.typeParams.map(apiTypeParameter).toArray
 
@@ -316,7 +316,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       if (aIsClass == bIsClass) {
         if (aIsClass) {
           if (a.is(Module) == b.is(Module))
-            a.fullName.toString.compareTo(b.fullName.toString)
+            a.fullName.mangledString.compareTo(b.fullName.mangledString)
           else if (a.is(Module))
             -1
           else
@@ -340,10 +340,10 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     } else if (sym.isType) {
       apiTypeMember(sym.asType)
     } else if (sym.is(Mutable, butNot = Accessor)) {
-      api.Var.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
+      api.Var.of(sym.name.mangledString, apiAccess(sym), apiModifiers(sym),
         apiAnnotations(sym).toArray, apiType(sym.info))
     } else if (sym.isStable) {
-      api.Val.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
+      api.Val.of(sym.name.mangledString, apiAccess(sym), apiModifiers(sym),
         apiAnnotations(sym).toArray, apiType(sym.info))
     } else {
       apiDef(sym.asTerm)
@@ -370,7 +370,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
           } else
             (0 until pnames.length).map(Function.const(false))
         val params = (pnames, ptypes, defaults).zipped.map((pname, ptype, isDefault) =>
-          api.MethodParameter.of(pname.toString, apiType(ptype),
+          api.MethodParameter.of(pname.mangledString, apiType(ptype),
             isDefault, api.ParameterModifier.Plain))
         api.ParameterList.of(params.toArray, mt.isImplicitMethod) :: paramLists(restpe, params.length)
       case _ =>
@@ -380,20 +380,20 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     val tparams = sym.info match {
       case pt: TypeLambda =>
         (pt.paramNames, pt.paramInfos).zipped.map((pname, pbounds) =>
-          apiTypeParameter(pname.toString, 0, pbounds.lo, pbounds.hi))
+          apiTypeParameter(pname.mangledString, 0, pbounds.lo, pbounds.hi))
       case _ =>
         Nil
     }
     val vparamss = paramLists(sym.info)
     val retTp = sym.info.finalResultType.widenExpr
 
-    api.Def.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
+    api.Def.of(sym.name.mangledString, apiAccess(sym), apiModifiers(sym),
       apiAnnotations(sym).toArray, tparams.toArray, vparamss.toArray, apiType(retTp))
   }
 
   def apiTypeMember(sym: TypeSymbol): api.TypeMember = {
     val typeParams = Array[api.TypeParameter]()
-    val name = sym.name.toString
+    val name = sym.name.mangledString
     val access = apiAccess(sym)
     val modifiers = apiModifiers(sym)
     val as = apiAnnotations(sym)
@@ -439,7 +439,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
           sym.owner.thisType
         else
           tp.prefix
-        api.Projection.of(apiType(prefix), sym.name.toString)
+        api.Projection.of(apiType(prefix), sym.name.mangledString)
       case AppliedType(tycon, args) =>
         def processArg(arg: Type): api.Type = arg match {
           case arg @ TypeBounds(lo, hi) => // Handle wildcard parameters
@@ -463,7 +463,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         val apiRes = apiType(tl.resType)
         api.Polymorphic.of(apiRes, apiTparams.toArray)
       case rt: RefinedType =>
-        val name = rt.refinedName.toString
+        val name = rt.refinedName.mangledString
         val parent = apiType(rt.parent)
 
         def typeRefinement(name: String, tp: TypeBounds): api.TypeMember = tp match {
@@ -536,7 +536,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       case tp: ParamRef =>
         // TODO: Distinguishing parameters based on their names alone is not enough,
         // the binder is also needed (at least for type lambdas).
-        api.ParameterRef.of(tp.paramName.toString)
+        api.ParameterRef.of(tp.paramName.mangledString)
       case tp: LazyRef =>
         apiType(tp.ref)
       case tp: TypeVar =>
@@ -557,12 +557,12 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
   def apiThis(sym: Symbol): api.Singleton = {
     val pathComponents = sym.ownersIterator.takeWhile(!_.isEffectiveRoot)
-      .map(s => api.Id.of(s.name.toString))
+      .map(s => api.Id.of(s.name.mangledString))
     api.Singleton.of(api.Path.of(pathComponents.toArray.reverse ++ Array(Constants.thisPath)))
   }
 
   def apiTypeParameter(tparam: ParamInfo): api.TypeParameter =
-    apiTypeParameter(tparam.paramName.toString, tparam.paramVariance,
+    apiTypeParameter(tparam.paramName.mangledString, tparam.paramVariance,
       tparam.paramInfo.bounds.lo, tparam.paramInfo.bounds.hi)
 
   def apiTypeParameter(name: String, variance: Int, lo: Type, hi: Type): api.TypeParameter =
@@ -590,7 +590,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         if (sym.privateWithin eq NoSymbol)
           Constants.unqualified
         else
-          api.IdQualifier.of(sym.privateWithin.fullName.toString)
+          api.IdQualifier.of(sym.privateWithin.fullName.mangledString)
       if (sym.is(Protected))
         api.Protected.of(qualifier)
       else
@@ -617,7 +617,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       // To do this properly we would need a way to hash trees and types in
       // dotty itself.
       val printTypesCtx = ctx.fresh.setSetting(ctx.settings.XprintTypes, true)
-      annots += marker(Inliner.bodyToInline(s).show(printTypesCtx).toString)
+      annots += marker(Inliner.bodyToInline(s).show(printTypesCtx))
     }
 
     // In the Scala2 ExtractAPI phase we only extract annotations that extend
@@ -641,6 +641,6 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     // junit tests are annotated @org.junit.Test).
     api.Annotation.of(
       apiType(annot.tree.tpe), // Used by sbt to find tests to run
-      Array(api.AnnotationArgument.of("FULLTREE", annot.tree.show.toString)))
+      Array(api.AnnotationArgument.of("FULLTREE", annot.tree.show)))
   }
 }

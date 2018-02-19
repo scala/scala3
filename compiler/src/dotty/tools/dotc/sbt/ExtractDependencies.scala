@@ -87,9 +87,9 @@ class ExtractDependencies extends Phase {
       if (ctx.sbtCallback != null) {
         extractDeps.usedNames.foreach{
           case (rawClassName, usedNames) =>
-            val className = rawClassName.toString
+            val className = rawClassName
             usedNames.defaultNames.foreach { rawUsedName =>
-              val useName = rawUsedName.toString
+              val useName = rawUsedName.stripModuleClassSuffix.mangledString
               val useScopes =
                 usedNames.scopedNames.get(rawUsedName) match {
                   case None => EnumSet.of(UseScope.Default)
