@@ -402,7 +402,7 @@ object ProtoTypes {
       if (state.constraint contains tl) {
       	var paramInfos = tl.paramInfos
       	if (tl.isInstanceOf[HKLambda]) {
-      	  // HKLambdas care hash-consed, need to create an artificial difference by adding
+      	  // HKLambdas are hash-consed, need to create an artificial difference by adding
       	  // a LazyRef to a bound.
           val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos
           paramInfos = TypeBounds(lo, LazyRef(_ => hi)) :: pinfos1

@@ -1399,16 +1399,21 @@ object Types {
      */
     def simplified(implicit ctx: Context) = ctx.simplify(this, null)
 
+    /** Compare `this == that`, assuming corresponding binders in `bs` are equal.
+     *  The normal `equals` should be equivalent to `equals(that, null`)`.
+     *  We usually override `equals` when we override `iso` except if the
+     *  `equals` comes from a case class, so it already has the right definition anyway.
+     */
     final def equals(that: Any, bs: BinderPairs): Boolean =
       (this `eq` that.asInstanceOf[AnyRef]) || this.iso(that, bs)
 
-    /** Is `this` isomorphic to that, using comparer `e`?
+    /** Is `this` isomorphic to `that`, assuming pairs of matching binders `bs`?
      *  It is assumed that `this.ne(that)`.
      */
     protected def iso(that: Any, bs: BinderPairs): Boolean = this.equals(that)
 
     /** Equality used for hash-consing; uses `eq` on all recursive invocations,
-     *  except where a BindingType is inloved. The latter demand a deep isomorphism check.
+     *  except where a BindingType is involved. The latter demand a deep isomorphism check.
      */
     def eql(that: Type): Boolean = this.equals(that)
 
@@ -1536,7 +1541,7 @@ object Types {
      *  Otherise the standard identity hash.
      */
     override def identityHash(bs: Binders) = {
-       def recur(n: Int, tp: BindingType, rest: Binders): Int =
+      def recur(n: Int, tp: BindingType, rest: Binders): Int =
         if (this `eq` tp) finishHash(hashing.mix(hashSeed, n), 1)
         else if (rest == null) System.identityHashCode(this)
         else recur(n + 1, rest.tp, rest.next)
@@ -2320,6 +2325,7 @@ object Types {
         parent.equals(that.parent, bs)
       case _ => false
     }
+    // equals comes from case class; no matching override is needed
   }
 
   class CachedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)
@@ -2482,6 +2488,7 @@ object Types {
       case that: AndOrType => isAnd == that.isAnd && tp1.equals(that.tp1, bs) && tp2.equals(that.tp2, bs)
       case _ => false
     }
+    // equals comes from case classes; no matching override is needed
   }
 
   abstract case class AndType(tp1: Type, tp2: Type) extends AndOrType {
@@ -2624,6 +2631,7 @@ object Types {
       case that: ExprType => resType.equals(that.resType, bs)
       case _ => false
     }
+    // equals comes from case class; no matching override is needed
   }
 
   final class CachedExprType(resultType: Type) extends ExprType(resultType)
@@ -2727,6 +2735,22 @@ object Types {
   abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType {
     final override def hashCode = System.identityHashCode(this)
     final override def equals(other: Any) = this `eq` other.asInstanceOf[AnyRef]
+
+    final override def equals(that: Any) = equals(that, null)
+
+    // No definition of `eql` --> fall back on equals, which calls iso
+
+    final override def iso(that: Any, bs: BinderPairs) = that match {
+      case that: MethodOrPoly =>
+        paramNames.eqElements(that.paramNames) &&
+        companion.eq(that.companion) && {
+          val bs1 = new BinderPairs(this, that, bs)
+          paramInfos.equalElements(that.paramInfos, bs1) &&
+          resType.equals(that.resType, bs1)
+        }
+      case _ =>
+        false
+    }
   }
 
   trait TermLambda extends LambdaType { thisLambdaType =>
@@ -3192,6 +3216,7 @@ object Types {
       case that: AppliedType => tycon.equals(that.tycon, bs) && args.equalElements(that.args, bs)
       case _ => false
     }
+    // equals comes from case class; no matching override is needed
   }
 
   final class CachedAppliedType(tycon: Type, args: List[Type], hc: Int) extends AppliedType(tycon, args) {
@@ -3230,7 +3255,7 @@ object Types {
     override def equals(that: Any) = equals(that, null)
 
     override def iso(that: Any, bs: BinderPairs) = that match {
-      case that: ParamRef => binder.equalBinder(that.binder, bs) && paramNum == that.paramNum
+      case that: ParamRef => paramNum == that.paramNum && binder.equalBinder(that.binder, bs)
       case _ => false
     }
 
@@ -3617,6 +3642,7 @@ object Types {
       case that: TypeAlias => alias.equals(that.alias, bs)
       case _ => false
     }
+    // equals comes from case class; no matching override is needed
 
     override def eql(that: Type): Boolean = that match {
       case that: TypeAlias => alias.eq(that.alias)
@@ -3661,6 +3687,7 @@ object Types {
       case that: AnnotatedType => tpe.equals(that.tpe, bs) && (annot `eq` that.annot)
       case _ => false
     }
+    // equals comes from case class; no matching override is needed
   }
 
   object AnnotatedType {
@@ -3751,6 +3778,7 @@ object Types {
       case that: WildcardType => optBounds.equals(that.optBounds, bs)
       case _ => false
     }
+    // equals comes from case class; no matching override is needed
   }
 
   final class CachedWildcardType(optBounds: Type) extends WildcardType(optBounds)
