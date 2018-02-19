@@ -416,7 +416,7 @@ object CollectionStrawMan6 extends LowPriority {
   /** Concrete collection type: List */
   sealed trait List[+A]
   extends LinearSeq[A]
-     with SeqLike[A, List]
+     with LinearSeqLike[A, List]
      with Buildable[A, List[A]] {
 
     def fromIterable[B](c: Iterable[B]): List[B] = List.fromIterable(c)
@@ -605,7 +605,7 @@ object CollectionStrawMan6 extends LowPriority {
   }
 
   class LazyList[+A](expr: => LazyList.Evaluated[A])
-  extends LinearSeq[A] with SeqLike[A, LazyList] {
+  extends LinearSeq[A] with LinearSeqLike[A, LazyList] {
     private[this] var evaluated = false
     private[this] var result: LazyList.Evaluated[A] = _
 

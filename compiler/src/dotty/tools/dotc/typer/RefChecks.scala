@@ -594,12 +594,61 @@ object RefChecks {
           checkNoAbstractDecls(bc.asClass.superClass)
       }
 
+      // Check that every term member of this concrete class has a symbol that matches the member's type
+      // Member types are computed by intersecting the types of all members that have the same name
+      // and signature. But a member selection will pick one particular implementation, according to
+      // the rules of overriding and linearization. This method checks that the implementation has indeed
+      // a type that subsumes the full member type.
+      def checkMemberTypesOK() = {
+
+        // First compute all member names we need to check in `membersToCheck`.
+        // We do not check
+        //  - types
+        //  - synthetic members or bridges
+        //  - members in other concrete classes, since these have been checked before
+        //    (this is done for efficiency)
+        //  - members in a prefix of inherited parents that all come from Java or Scala2
+        //    (this is done to avoid false negatives since Scala2's rules for checking are different)
+        val membersToCheck = mutable.Set[Name]()
+        val seenClasses = mutable.Set[Symbol]()
+        def addDecls(cls: Symbol): Unit =
+          if (!seenClasses.contains(cls)) {
+            seenClasses.+=(cls)
+            for (mbr <- cls.info.decls)
+              if (mbr.isTerm && !mbr.is(Synthetic | Bridge) && mbr.memberCanMatchInheritedSymbols &&
+                  !membersToCheck.contains(mbr.name))
+                membersToCheck.+=(mbr.name)
+            cls.info.parents.map(_.classSymbol)
+              .filter(_.is(AbstractOrTrait))
+              .dropWhile(_.is(JavaDefined | Scala2x))
+              .foreach(addDecls)
+          }
+        addDecls(clazz)
+
+        // For each member, check that the type of its symbol, as seen from `self`
+        // can override the info of this member
+        for (name <- membersToCheck) {
+          for (mbrd <- self.member(name).alternatives) {
+            val mbr = mbrd.symbol
+            val mbrType = mbr.info.asSeenFrom(self, mbr.owner)
+            if (!mbrType.overrides(mbrd.info, matchLoosely = true))
+              ctx.errorOrMigrationWarning(
+                em"""${mbr.showLocated} is not a legal implementation of `$name' in $clazz
+                    |  its type             $mbrType
+                    |  does not conform to  ${mbrd.info}""",
+                (if (mbr.owner == clazz) mbr else clazz).pos)
+          }
+        }
+      }
+
       checkNoAbstractMembers()
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
 
       if (abstractErrors.nonEmpty)
         ctx.error(abstractErrorMessage, clazz.pos)
+
+      checkMemberTypesOK()
     } else if (clazz.is(Trait) && !(clazz derivesFrom defn.AnyValClass)) {
       // For non-AnyVal classes, prevent abstract methods in interfaces that override
       // final members in Object; see #4431
