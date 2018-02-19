@@ -10,7 +10,14 @@ pipeline:
   clone:
     image: plugins/git
     commands:
-      - ./project/scripts/ci-clone
+      # if build is PR rebase on top of target branch
+      - if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
+          git config user.email "dotty.bot@epfl.ch";
+          git config user.name "Dotty CI";
+          git pull "$DRONE_REMOTE_URL" "$DRONE_BRANCH";
+        fi
+      # clone submodules in parallelRiRem
+      - git submodule update --init --recursive --jobs 3
 
   # TESTS:
   # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
