@@ -106,7 +106,7 @@ class ClassfileParser(
 
   /** Return the class symbol of the given name. */
   def classNameToSymbol(name: Name)(implicit ctx: Context): Symbol = innerClasses.get(name) match {
-    case Some(entry) => innerClasses.classSymbol(entry.externalName)
+    case Some(entry) => innerClasses.classSymbol(entry)
     case None => ctx.requiredClass(name)
   }
 
@@ -368,13 +368,13 @@ class ClassfileParser(
         case ARRAY_TAG =>
           while ('0' <= sig(index) && sig(index) <= '9') index += 1
           var elemtp = sig2type(tparams, skiptvs)
-          // make unbounded Array[T] where T is a type variable into Ar ray[T with Object]
+          // make unbounded Array[T] where T is a type variable into Array[T with Object]
           // (this is necessary because such arrays have a representation which is incompatible
           // with arrays of primitive types.
           // NOTE that the comparison to Object only works for abstract types bounded by classes that are strict subclasses of Object
           // if the bound is exactly Object, it will have been converted to Any, and the comparison will fail
           // see also RestrictJavaArraysMap (when compiling java sources directly)
-          if (elemtp.typeSymbol.isAbstractType && !(elemtp.derivesFrom(defn.ObjectClass))) {
+          if (elemtp.typeSymbol.isAbstractOrParamType && !(elemtp.derivesFrom(defn.ObjectClass))) {
             elemtp = AndType(elemtp, defn.ObjectType)
           }
           defn.ArrayOf(elemtp)
@@ -890,54 +890,38 @@ class ClassfileParser(
       classNameToSymbol(tlName)
     }
 
-    /** Return the class symbol for `externalName`. It looks it up in its outer class.
+    /** Return the class symbol for `entry`. It looks it up in its outer class.
      *  Forces all outer class symbols to be completed.
-     *
-     *  If the given name is not an inner class, it returns the symbol found in `defn`.
      */
-    def classSymbol(externalName: Name)(implicit ctx: Context): Symbol = {
-      /** Return the symbol of `innerName`, having the given `externalName`. */
-      def innerSymbol(externalName: Name, innerName: Name, static: Boolean): Symbol = {
-        def getMember(sym: Symbol, name: Name)(implicit ctx: Context): Symbol =
-          if (static)
-            if (sym == classRoot.symbol) staticScope.lookup(name)
-            else {
-              var module = sym.companionModule
-              if (!module.exists && sym.isAbsent)
-                module = sym.scalacLinkedClass
-              module.info.member(name).symbol
-            }
-          else
-            if (sym == classRoot.symbol) instanceScope.lookup(name)
-            else sym.info.member(name).symbol
-
-        innerClasses.get(externalName) match {
-          case Some(entry) =>
-            val outerName = entry.outerName.stripModuleClassSuffix
-            val owner = classSymbol(outerName)
-            val result = ctx.atPhaseNotLaterThan(ctx.typerPhase) { implicit ctx =>
-              getMember(owner, innerName.toTypeName)
-            }
-            assert(result ne NoSymbol,
-              i"""failure to resolve inner class:
-                 |externalName = $externalName,
-                 |outerName = $outerName,
-                 |innerName = $innerName
-                 |owner.fullName = ${owner.showFullName}
-                 |while parsing ${classfile}""")
-            result
-
-          case None =>
-            classNameToSymbol(externalName)
+    def classSymbol(entry: InnerClassEntry)(implicit ctx: Context): Symbol = {
+      def getMember(sym: Symbol, name: Name)(implicit ctx: Context): Symbol =
+        if (isStatic(entry.jflags)) {
+          if (sym == classRoot.symbol)
+            staticScope.lookup(name)
+          else {
+            var module = sym.companionModule
+            if (!module.exists && sym.isAbsent)
+              module = sym.scalacLinkedClass
+            module.info.member(name).symbol
+          }
         }
-      }
+        else if (sym == classRoot.symbol)
+          instanceScope.lookup(name)
+        else
+          sym.info.member(name).symbol
 
-      get(externalName) match {
-        case Some(entry) =>
-          innerSymbol(entry.externalName, entry.originalName, isStatic(entry.jflags))
-        case None =>
-          classNameToSymbol(externalName)
-      }
+      val outerName = entry.outerName.stripModuleClassSuffix
+      val innerName = entry.originalName
+      val owner = classNameToSymbol(outerName)
+      val result = getMember(owner, innerName.toTypeName)(ctx.withPhase(ctx.typerPhase))
+      assert(result ne NoSymbol,
+        i"""failure to resolve inner class:
+           |externalName = ${entry.externalName},
+           |outerName = $outerName,
+           |innerName = $innerName
+           |owner.fullName = ${owner.showFullName}
+           |while parsing ${classfile}""")
+      result
     }
   }
 

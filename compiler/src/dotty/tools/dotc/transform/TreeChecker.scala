@@ -261,9 +261,6 @@ class TreeChecker extends Phase with SymTransformer {
 
     override def typedUnadapted(tree: untpd.Tree, pt: Type)(implicit ctx: Context): tpd.Tree = {
       val res = tree match {
-        case _: untpd.UnApply =>
-          // can't recheck patterns
-          tree.asInstanceOf[tpd.Tree]
         case _: untpd.TypedSplice | _: untpd.Thicket | _: EmptyValDef[_] =>
           super.typedUnadapted(tree)
         case _ if tree.isType =>
@@ -291,7 +288,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     def checkNotRepeated(tree: Tree)(implicit ctx: Context): tree.type = {
-      def allowedRepeated = (tree.symbol.flags is Case) && tree.tpe.widen.isRepeatedParam
+      def allowedRepeated = tree.tpe.widen.isRepeatedParam
 
       assert(!tree.tpe.widen.isRepeatedParam || allowedRepeated, i"repeated parameter type not allowed here: $tree")
       tree

@@ -14,8 +14,15 @@ abstract class Liftable[T] {
  */
 object Liftable {
 
-  final class ConstantExpr[T] private[Liftable](val value: T) extends Expr[T]
+  implicit class LiftExprOps[T](val x: T) extends AnyVal {
+    def toExpr(implicit liftable: Liftable[T]): Expr[T] = liftable.toExpr(x)
+  }
 
+  final class ConstantExpr[T] private[Liftable](val value: T) extends Expr[T] {
+    override def toString: String = s"Expr($value)"
+  }
+
+  implicit def UnitIsLiftable: Liftable[Unit] = (x: Unit) => new ConstantExpr(x)
   implicit def BooleanIsLiftable: Liftable[Boolean] = (x: Boolean) => new ConstantExpr(x)
   implicit def ByteLiftable: Liftable[Byte] = (x: Byte) => new ConstantExpr(x)
   implicit def CharIsLiftable: Liftable[Char] = (x: Char) => new ConstantExpr(x)

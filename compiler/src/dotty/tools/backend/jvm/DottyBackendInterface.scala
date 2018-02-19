@@ -444,16 +444,12 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   def desugarIdent(i: Ident): Option[tpd.Select] = {
     var found = desugared.get(i.tpe)
     if (found == null) {
-      i.tpe match {
-        case TermRef(prefix: TermRef, _) =>
-          found = tpd.ref(prefix).select(i.symbol)
-        case TermRef(prefix: ThisType, _) =>
-          found = tpd.This(prefix.cls).select(i.symbol)
-        case TermRef(NoPrefix, _) =>
-          if (i.symbol is Flags.Method) found = This(i.symbol.topLevelClass).select(i.symbol) // workaround #342 todo: remove after fixed
+      tpd.desugarIdent(i) match {
+        case sel: tpd.Select =>
+          desugared.put(i.tpe, sel)
+          found = sel
         case _ =>
       }
-      if (found != null) desugared.put(i.tpe, found)
     }
     if (found == null) None else Some(found)
   }
@@ -900,8 +896,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def decls: List[Symbol] = tp.decls.toList
 
-    def members: List[Symbol] =
-      tp.memberDenots(takeAllFilter, (name, buf) => buf ++= tp.member(name).alternatives).map(_.symbol).toList
+    def members: List[Symbol] = tp.allMembers.map(_.symbol).toList
 
     def typeSymbol: Symbol = tp.widenDealias.typeSymbol
 

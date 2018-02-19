@@ -177,7 +177,7 @@ object RefChecks {
               .filter(_.name != member.name)
               .map(_.show).distinct
             if (others1.isEmpty) ""
-            else i";\n other members with override errors are:: $others1%, %"
+            else i";\nother members with override errors are:: $others1%, %"
           }
           ctx.error(msg + othersMsg, clazz.pos)
       }
@@ -191,7 +191,7 @@ object RefChecks {
       def info = self.memberInfo(sym1)
       val infoStr =
         if (sym1.isAliasType) i", which equals ${info.bounds.hi}"
-        else if (sym1.isAbstractType) i" with bounds$info"
+        else if (sym1.isAbstractOrParamType) i" with bounds$info"
         else if (sym1.is(Module)) ""
         else if (sym1.isTerm) i" of type $info"
         else ""
@@ -216,14 +216,14 @@ object RefChecks {
           (other.owner isSubClass member.owner) && other.is(Deferred) && !member.is(Deferred)
         val addendum =
           if (isConcreteOverAbstract)
-            ";\n (Note that %s is abstract,\n  and is therefore overridden by concrete %s)".format(
+            ";\n  (Note that %s is abstract,\n  and is therefore overridden by concrete %s)".format(
               infoStringWithLocation(other),
               infoStringWithLocation(member))
           else if (ctx.settings.Ydebug.value)
             err.typeMismatchMsg(memberTp(self), otherTp(self))
           else ""
 
-        "error overriding %s;\n %s %s%s".format(
+        "error overriding %s;\n  %s %s%s".format(
           infoStringWithLocation(other), infoString(member), msg, addendum)
       }
 
@@ -913,7 +913,7 @@ class RefChecks extends MiniPhase { thisPhase =>
       }
       def underlyingClass(tp: Type): Symbol = {
         val sym = tp.widen.typeSymbol
-        if (sym.isAbstractType) underlyingClass(sym.info.bounds.hi)
+        if (sym.isAbstractOrParamType) underlyingClass(sym.info.bounds.hi)
         else sym
       }
       val actual   = underlyingClass(other.tpe)

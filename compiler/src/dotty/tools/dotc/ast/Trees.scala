@@ -113,7 +113,11 @@ object Trees {
      */
     def withType(tpe: Type)(implicit ctx: Context): ThisTree[Type] = {
       if (tpe.isInstanceOf[ErrorType])
-        assert(!Config.checkUnreportedErrors || ctx.reporter.errorsReported)
+        assert(!Config.checkUnreportedErrors ||
+               ctx.reporter.errorsReported ||
+               ctx.settings.YshowPrintErrors.value
+                 // under -Yshow-print-errors, errors might arise during printing, but they do not count as reported
+              )
       else if (Config.checkTreesConsistent)
         checkChildrenTyped(productIterator)
       withTypeUnchecked(tpe)
@@ -157,7 +161,7 @@ object Trees {
       case _ => NoType
     }
 
-    /** The denotation referred tno by this tree.
+    /** The denotation referred to by this tree.
      *  Defined for `DenotingTree`s and `ProxyTree`s, NoDenotation for other
      *  kinds of trees
      */
@@ -1320,7 +1324,8 @@ object Trees {
             this(this(x, arg), annot)
           case Thicket(ts) =>
             this(x, ts)
-          case _ if ctx.mode.is(Mode.Interactive) =>
+          case _ if ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive) =>
+            // In interactive mode, errors might come from previous runs.
             // In case of errors it may be that typed trees point to untyped ones.
             // The IDE can still traverse inside such trees, either in the run where errors
             // are reported, or in subsequent ones.

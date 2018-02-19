@@ -10,22 +10,28 @@ object Annotations {
 
   abstract class Annotation {
     def tree(implicit ctx: Context): Tree
+
     def symbol(implicit ctx: Context): Symbol =
       if (tree.symbol.isConstructor) tree.symbol.owner
       else tree.tpe.typeSymbol
+
     def matches(cls: Symbol)(implicit ctx: Context): Boolean = symbol.derivesFrom(cls)
+
     def appliesToModule: Boolean = true // for now; see remark in SymDenotations
 
     def derivedAnnotation(tree: Tree)(implicit ctx: Context) =
       if (tree eq this.tree) this else Annotation(tree)
 
     def arguments(implicit ctx: Context) = ast.tpd.arguments(tree)
+
     def argument(i: Int)(implicit ctx: Context): Option[Tree] = {
       val args = arguments
       if (i < args.length) Some(args(i)) else None
     }
     def argumentConstant(i: Int)(implicit ctx: Context): Option[Constant] =
       for (ConstantType(c) <- argument(i) map (_.tpe)) yield c
+
+    def isEvaluated: Boolean = true
 
     def ensureCompleted(implicit ctx: Context): Unit = tree
   }
@@ -43,6 +49,8 @@ object Annotations {
       if (myTree == null) myTree = complete(ctx)
       myTree
     }
+
+    override def isEvaluated = myTree != null
   }
 
   /** An annotation indicating the body of a right-hand side,
@@ -73,7 +81,7 @@ object Annotations {
       }
       myBody
     }
-    def isEvaluated = evaluated
+    override def isEvaluated = evaluated
   }
 
   object Annotation {

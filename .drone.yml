@@ -10,24 +10,24 @@ pipeline:
   clone:
     image: plugins/git
     commands:
-      - ./project/scripts/ci-clone
+      # if build is PR rebase on top of target branch
+      - if [ "$DRONE_BUILD_EVENT" = "pull_request" ]; then
+          git config user.email "dotty.bot@epfl.ch";
+          git config user.name "Dotty CI";
+          git pull "$DRONE_REMOTE_URL" "$DRONE_BRANCH";
+        fi
+      # clone submodules in parallelRiRem
+      - git submodule update --init --recursive --jobs 3
 
   # # TESTS:
   # # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
-  # test_legacy:
-  #   group: test
-  #   image: lampepfl/dotty:2018-01-17
-  #   commands:
-  #     - cp -R . /tmp/0/ && cd /tmp/0/
-  #     - ./project/scripts/sbt legacyTests
-
   # test:
   #   group: test
   #   image: lampepfl/dotty:2018-01-17
   #   commands:
   #     - cp -R . /tmp/1/ && cd /tmp/1/
   #     - ./project/scripts/sbt ";compile ;test"
-  #     - ./project/scripts/sbtTests
+  #     - ./project/scripts/cmdTests
 
   # test_bootstrapped:
   #   group: test
@@ -35,7 +35,6 @@ pipeline:
   #   commands:
   #     - cp -R . /tmp/2/ && cd /tmp/2/
   #     - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
-  #     - ./project/scripts/sbtBootstrappedTests
 
   # test_optimised:
   #   group: test

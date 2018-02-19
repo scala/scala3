@@ -7,4 +7,5 @@ import scala.quoted.Expr
 trait Runner[T] {
   def run(expr: Expr[T]): T
   def show(expr: Expr[T]): String
+  def toConstantOpt(expr: Expr[T]): Option[T]
 }

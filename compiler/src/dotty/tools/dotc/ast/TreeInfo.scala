@@ -311,9 +311,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   import tpd._
 
   /** The purity level of this statement.
-   *  @return   pure        if statement has no side effects
-   *            idempotent  if running the statement a second time has no side effects
-   *            impure      otherwise
+   *  @return   Pure        if statement has no side effects
+   *            Idempotent  if running the statement a second time has no side effects
+   *            Impure      otherwise
    */
   private def statPurity(tree: Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
     case EmptyTree
@@ -322,7 +322,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
        | DefDef(_, _, _, _, _) =>
       Pure
     case vdef @ ValDef(_, _, _) =>
-      if (vdef.symbol.flags is Mutable) Impure else exprPurity(vdef.rhs)
+      if (vdef.symbol.flags is Mutable) Impure else exprPurity(vdef.rhs) `min` Pure
     case _ =>
       Impure
       // TODO: It seem like this should be exprPurity(tree)
@@ -330,9 +330,10 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   }
 
   /** The purity level of this expression.
-   *  @return   pure        if expression has no side effects
-   *            idempotent  if running the expression a second time has no side effects
-   *            impure      otherwise
+   *  @return   SimplyPure  if expression has no side effects and cannot contain local definitions
+   *            Pure        if expression has no side effects
+   *            Idempotent  if running the expression a second time has no side effects
+   *            Impure      otherwise
    *
    *  Note that purity and idempotency are different. References to modules and lazy
    *  vals are impure (side-effecting) both because side-effecting code may be executed and because the first reference
@@ -345,7 +346,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
        | Super(_, _)
        | Literal(_)
        | Closure(_, _, _) =>
-      Pure
+      SimplyPure
     case Ident(_) =>
       refPurity(tree)
     case Select(qual, _) =>
@@ -366,7 +367,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       if (args.isEmpty && fn.symbol.is(Stable)) exprPurity(fn)
       else if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol))
         // A constant expression with pure arguments is pure.
-        minOf(exprPurity(fn), args.map(exprPurity))
+        minOf(exprPurity(fn), args.map(exprPurity)) `min` Pure
       else Impure
     case Typed(expr, _) =>
       exprPurity(expr)
@@ -382,25 +383,26 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   private def minOf(l0: PurityLevel, ls: List[PurityLevel]) = (l0 /: ls)(_ min _)
 
-  def isPureExpr(tree: Tree)(implicit ctx: Context) = exprPurity(tree) == Pure
+  def isSimplyPure(tree: Tree)(implicit ctx: Context) = exprPurity(tree) == SimplyPure
+  def isPureExpr(tree: Tree)(implicit ctx: Context) = exprPurity(tree) >= Pure
   def isIdempotentExpr(tree: Tree)(implicit ctx: Context) = exprPurity(tree) >= Idempotent
 
   /** The purity level of this reference.
    *  @return
-   *    pure        if reference is (nonlazy and stable) or to a parameterized function
-   *    idempotent  if reference is lazy and stable
-   *    impure      otherwise
+   *    SimplyPure  if reference is (nonlazy and stable) or to a parameterized function
+   *    Idempotent  if reference is lazy and stable
+   *    Impure      otherwise
    *  @DarkDimius: need to make sure that lazy accessor methods have Lazy and Stable
    *               flags set.
    */
   private def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel =
-    if (!tree.tpe.widen.isParameterless) Pure
+    if (!tree.tpe.widen.isParameterless) SimplyPure
     else if (!tree.symbol.isStable) Impure
     else if (tree.symbol.is(Lazy)) Idempotent // TODO add Module flag, sinxce Module vals or not Lazy from the start.
-    else Pure
+    else SimplyPure
 
   def isPureRef(tree: Tree)(implicit ctx: Context) =
-    refPurity(tree) == Pure
+    refPurity(tree) == SimplyPure
   def isIdempotentRef(tree: Tree)(implicit ctx: Context) =
     refPurity(tree) >= Idempotent
 
@@ -517,8 +519,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       val (meth, targs, argss) = decomposeCall(fn)
       (meth, targs, argss :+ args)
     case TypeApply(fn, targs) =>
-      val (meth, Nil, Nil) = decomposeCall(fn)
-      (meth, targs, Nil)
+      val (meth, targss, args) = decomposeCall(fn)
+      (meth, targs ++ targss, args)
     case _ =>
       (tree, Nil, Nil)
   }
@@ -534,9 +536,18 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
+  /** An extractor for def of a closure contained the block of the closure. */
+  object closureDef {
+    def unapply(tree: Tree): Option[DefDef] = tree match {
+      case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, closure: Closure) =>
+        Some(meth)
+      case _ => None
+    }
+  }
+
   /** If tree is a closure, its body, otherwise tree itself */
   def closureBody(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, Closure(_, _, _)) => meth.rhs
+    case closureDef(meth) => meth.rhs
     case _ => tree
   }
 
@@ -545,6 +556,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     val acc = new TreeAccumulator[List[Symbol]] {
       def apply(syms: List[Symbol], tree: Tree)(implicit ctx: Context) = tree match {
         case Bind(_, body) => apply(tree.symbol :: syms, body)
+        case Annotated(tree, id @ Ident(tpnme.BOUNDTYPE_ANNOT)) => apply(id.symbol :: syms, tree)
         case _ => foldOver(syms, tree)
       }
     }
@@ -715,6 +727,7 @@ object TreeInfo {
     def min(that: PurityLevel) = new PurityLevel(x min that.x)
   }
 
+  val SimplyPure = new PurityLevel(3)
   val Pure = new PurityLevel(2)
   val Idempotent = new PurityLevel(1)
   val Impure = new PurityLevel(0)

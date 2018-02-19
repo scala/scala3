@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+
+set -eux
+
+# check that benchmarks can run
+./project/scripts/sbt "dotty-bench/jmh:run 1 1 tests/pos/alias.scala"
+
+# check that `sbt dotc` compiles and `sbt dotr` runs it
+echo "testing sbt dotc and dotr"
+mkdir -p out/scriptedtest0
+./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0 ;dotr -classpath out/scriptedtest0 dotrtest.Test" > sbtdotr1.out
+cat sbtdotr1.out
+if grep -e "dotr test ok" sbtdotr1.out; then
+    echo "output ok"
+else
+    echo "failed output check"
+    exit -1
+fi
+
+# check that `sbt dotc` compiles and `sbt dotr` runs it
+#echo "testing sbt dotc -from-tasty and dotr -classpath"
+#mkdir out/scriptedtest1
+#mkdir out/scriptedtest2
+#./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/; dotc -from-tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test; dotr -classpath out/scriptedtest2/ dotrtest.Test" > sbtdotr2.out
+#cat sbtdotr2.out
+#if grep -e "dotr test ok" sbtdotr2.out; then
+#    echo "output ok"
+#else
+#    echo "failed output check"
+#    exit -1
+#fi
+
+# check that `sbt dotc -decompile` runs
+#echo "testing sbt dotc -decompile"
+#./project/scripts/sbt ";dotc -decompile -color:never -classpath out/scriptedtest1 dotrtest.Test" >  sbtdotc3.out
+#cat sbtdotc3.out
+#if grep -e "def main(args: Array\[String\]): Unit =" sbtdotc3.out; then
+#    echo "output ok"
+#else
+#    echo "failed output check"
+#    exit -1
+#fi
+#echo "testing sbt dotr with no -classpath"
+#./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala; dotr dotrtest.Test" > sbtdotr3.out
+#cat sbtdotr3.out
+#if grep -e "dotr test ok" sbtdotr3.out; then
+#    echo "output ok"
+#else
+#    exit -1
+#fi
+
+#echo "testing loading tasty from .tasty file in jar"
+#./project/scripts/sbt ";dotc -d out/scriptedtest4.jar -YemitTasty tests/pos/sbtDotrTest.scala; dotc -decompile -classpath out/scriptedtest4.jar -color:never dotrtest.Test" > sbtdot4.out
+#cat sbtdot4.out
+#if grep -e "def main(args: Array\[String\]): Unit =" sbtdot4.out; then
+#    echo "output ok"
+#else
+#    echo "failed output check"
+#    exit -1
+#fi
+
+echo "testing scala.quoted.Expr.run from sbt dotr"
+./project/scripts/sbt ";dotc -classpath compiler/target/scala-2.12/classes tests/run-with-compiler/quote-run.scala; dotr -with-compiler Test" > sbtdot5.out
+cat sbtdot5.out
+if grep -e "val a: Int = 3" sbtdot5.out; then
+    echo "output ok"
+else
+    echo "failed output check"
+    exit -1
+fi
+
+
+# check that benchmarks can run
+./project/scripts/sbt "dotty-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
+
+# setup for `dotc`/`dotr` script tests
+./project/scripts/sbt dist-bootstrapped/pack
+
+# check that `dotc` compiles and `dotr` runs it
+echo "testing ./bin/dotc and ./bin/dotr"
+mkdir -p out/scriptedtest0
+./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0
+./bin/dotr -classpath out/scriptedtest0 dotrtest.Test
+
+# check that `dotc -from-tasty` compiles and `dotr` runs it
+#
+#echo "testing ./bin/dotc -from-tasty and dotr -classpath"
+#mkdir -p out/scriptedtest1
+#mkdir -p out/scriptedtest2
+#./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/
+#./bin/dotc -from-tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test
+#./bin/dotr -classpath out/scriptedtest2/ dotrtest.Test
+
+# echo ":quit" | ./dist-bootstrapped/target/pack/bin/dotr  # not supported by CI
+mkdir -p _site && ./bin/dotd -project Hello -siteroot _site tests/run/hello.scala
+
+echo "running Vulpix meta test"
+tmp=$(mktemp)
+if ./project/scripts/sbt "dotty-compiler/testOnly dotty.tools.vulpix.VulpixMetaTests" > "$tmp" 2>&1; then
+  cat "$tmp"
+  echo "failed: sbt exited without error on VulpixMetaTests, these tests are expected to fail"
+  exit -1
+fi
+tmp1=$(mktemp)
+cat "$tmp" | sed '/Test run started/,$!d' > "$tmp1"
+set +x # Or the code below produces too much noise
+while read expected <&4 && read actual <&3; do
+  if [[ "$expected" != *"SKIP" ]]; then
+    if [ "$actual" != "$expected" ]; then
+      echo "failed Vulpix meta: the output of sbt differs from the expected output"
+      echo "expected : $expected"
+      echo "actual   : $actual"
+      exit -1
+    fi
+  fi
+done 3<"$tmp1" 4<"./tests/vulpix-tests/meta/sbt-output.check"

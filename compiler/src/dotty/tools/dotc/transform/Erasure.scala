@@ -620,25 +620,37 @@ object Erasure {
           //     def $anonfun1(x: Object): Object = $anonfun(BoxesRunTime.unboxToInt(x))
           //     val f: Function1 = closure($anonfun1)
           //
-          // In general, a bridge is needed when, after Erasure:
-          // - one of the parameter type of the closure method is a non-reference type,
-          //   and the corresponding type in the SAM is a reference type
-          // - or the result type of the closure method is an erased value type
-          //   and the result type in the SAM isn't
-          // However, the following exception exists: If the SAM is replaced by
-          // JFunction*mc* in [[FunctionalInterfaces]], no bridge is needed: the
-          // SAM contains default methods to handle adaptation
+          // In general a bridge is needed when, after Erasure, one of the
+          // parameter type or the result type of the closure method has a
+          // different type, and we cannot rely on auto-adaptation.
+          //
+          // Auto-adaptation works in the following cases:
+          // - If the SAM is replaced by JFunction*mc* in
+          //   [[FunctionalInterfaces]], no bridge is needed: the SAM contains
+          //   default methods to handle adaptation.
+          // - If a result type of the closure method is a primitive value type
+          //   different from Unit, we can rely on the auto-adaptation done by
+          //   LMF (because it only needs to box, not unbox, so no special
+          //   handling of null is required).
+          // - If the SAM is replaced by JProcedure* in
+          //   [[DottyBackendInterface]] (this only happens when no explicit SAM
+          //   type is given), no bridge is needed to box a Unit result type:
+          //   the SAM contains a default method to handle that.
           //
           // See test cases lambda-*.scala and t8017/ for concrete examples.
 
-          def isReferenceType(tp: Type) = !tp.isPrimitiveValueType && !tp.isErasedValueType
-
           if (!defn.isSpecializableFunction(implClosure.tpe.widen.classSymbol.asClass, implParamTypes, implResultType)) {
+            def autoAdaptedParam(tp: Type) = !tp.isErasedValueType && !tp.isPrimitiveValueType
+            val explicitSAMType = implClosure.tpt.tpe.exists
+            def autoAdaptedResult(tp: Type) = !tp.isErasedValueType &&
+              (!explicitSAMType || tp.typeSymbol != defn.UnitClass)
+            def sameSymbol(tp1: Type, tp2: Type) = tp1.typeSymbol == tp2.typeSymbol
+
             val paramAdaptationNeeded =
               (implParamTypes, samParamTypes).zipped.exists((implType, samType) =>
-                !isReferenceType(implType) && isReferenceType(samType))
+                !sameSymbol(implType, samType) && !autoAdaptedParam(implType))
             val resultAdaptationNeeded =
-              implResultType.isErasedValueType && !samResultType.isErasedValueType
+              !sameSymbol(implResultType, samResultType) && !autoAdaptedResult(implResultType)
 
             if (paramAdaptationNeeded || resultAdaptationNeeded) {
               val bridgeType =

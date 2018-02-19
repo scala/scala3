@@ -5,6 +5,7 @@ package core
 import Periods._, Contexts._, Symbols._, Denotations._, Names._, NameOps._, Annotations._
 import Types._, Flags._, Decorators._, DenotTransformers._, StdNames._, Scopes._, Comments._
 import NameOps._, NameKinds._, Phases._
+import TypeApplications.TypeParamInfo
 import Scopes.Scope
 import collection.mutable
 import collection.BitSet
@@ -18,7 +19,7 @@ import util.SimpleIdentityMap
 import util.Stats
 import java.util.WeakHashMap
 import config.Config
-import config.Printers.{incremental, noPrinter}
+import config.Printers.noPrinter
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages.BadSymbolicReference
 import reporting.trace
@@ -82,7 +83,7 @@ trait SymDenotations { this: Context =>
     }
     denot match {
       case denot: SymDenotation =>
-        def explainSym(msg: String) = explain(s"$msg\n defined = ${denot.definedPeriodsString}")
+        def explainSym(msg: String) = explain(s"$msg\ndefined = ${denot.definedPeriodsString}")
         if (denot.is(ValidForever) || denot.isRefinementClass) true
         else {
           implicit val ctx = this
@@ -206,7 +207,7 @@ object SymDenotations {
      *  Uncompleted denotations set myInfo to a LazyType.
      */
     final def info(implicit ctx: Context): Type = {
-      def completeInfo = {
+      def completeInfo = { // Written this way so that `info` is small enough to be inlined
         completeFrom(myInfo.asInstanceOf[LazyType]); info
       }
       if (myInfo.isInstanceOf[LazyType]) completeInfo else myInfo
@@ -530,13 +531,16 @@ object SymDenotations {
     }
 
     /** Is this symbol an abstract type? */
-    final def isAbstractType(implicit ctx: Context) = isType && (this is Deferred)
+    final def isAbstractType(implicit ctx: Context) = this is DeferredType
 
     /** Is this symbol an alias type? */
     final def isAliasType(implicit ctx: Context) = isAbstractOrAliasType && !(this is Deferred)
 
     /** Is this symbol an abstract or alias type? */
     final def isAbstractOrAliasType = isType & !isClass
+
+    /** Is this symbol an abstract type or type parameter? */
+    final def isAbstractOrParamType(implicit ctx: Context) = this is DeferredOrTypeParam
 
     /** Is this the denotation of a self symbol of some class?
      *  This is the case if one of two conditions holds:
@@ -957,7 +961,6 @@ object SymDenotations {
       }
     }
 
-
     /** The class with the same (type-) name as this module or module class,
       *  and which is also defined in the same scope and compilation unit.
       *  NoSymbol if this class does not exist.
@@ -1132,6 +1135,22 @@ object SymDenotations {
 
     /** The primary constructor of a class or trait, NoSymbol if not applicable. */
     def primaryConstructor(implicit ctx: Context): Symbol = NoSymbol
+
+    /** The current declaration in this symbol's class owner that has the same name
+     *  as this one, and, if there are several, also has the same signature.
+     */
+    def currentSymbol(implicit ctx: Context): Symbol = {
+      val candidates = owner.info.decls.lookupAll(name)
+      def test(sym: Symbol): Symbol =
+        if (sym == symbol || sym.signature == signature) sym
+        else if (candidates.hasNext) test(candidates.next)
+        else NoSymbol
+      if (candidates.hasNext) {
+        val sym = candidates.next
+        if (candidates.hasNext) test(sym) else sym
+      }
+      else NoSymbol
+    }
 
     // ----- type-related ------------------------------------------------
 
@@ -1914,6 +1933,11 @@ object SymDenotations {
       override def complete(denot: SymDenotation)(implicit ctx: Context) = self.complete(denot)
     }
 
+    /** The type parameters computed by the completer before completion has finished */
+    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeParamInfo] =
+      if (sym is Touched) Nil // return `Nil` instead of throwing a cyclic reference
+      else sym.info.typeParams
+
     def decls: Scope = myDecls
     def sourceModule(implicit ctx: Context): Symbol = mySourceModuleFn(ctx)
     def moduleClass(implicit ctx: Context): Symbol = myModuleClassFn(ctx)
@@ -1923,12 +1947,12 @@ object SymDenotations {
     def withModuleClass(moduleClassFn: Context => Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
   }
 
-  /** A subclass of LazyTypes where type parameters can be completed independently of
-   *  the info.
+  /** A subtrait of LazyTypes where completerTypeParams yields a List[TypeSymbol], which
+   *  should be completed independently of the info.
    */
   trait TypeParamsCompleter extends LazyType {
-    /** The type parameters computed by the completer before completion has finished */
-    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol]
+    override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
+      unsupported("completerTypeParams") // should be abstract, but Scala-2 will then compute the wrong type for it
   }
 
   val NoSymbolFn = (ctx: Context) => NoSymbol

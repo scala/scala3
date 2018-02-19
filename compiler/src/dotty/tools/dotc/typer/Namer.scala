@@ -27,6 +27,11 @@ import reporting.diagnostic.messages._
 trait NamerContextOps { this: Context =>
   import NamerContextOps._
 
+  def typer = ctx.typeAssigner match {
+    case typer: Typer => typer
+    case _ => new Typer
+  }
+
   /** Enter symbol into current class, if current class is owner of current context,
    *  or into current scope, if not. Should always be called instead of scope.enter
    *  in order to make sure that updates to class members are reflected in
@@ -86,6 +91,29 @@ trait NamerContextOps { this: Context =>
       .dropWhile(_.owner != sym)
       .dropWhile(_.owner == sym)
       .next()
+
+  /** A fresh local context with given tree and owner.
+   *  Owner might not exist (can happen for self valdefs), in which case
+   *  no owner is set in result context
+   */
+  def localContext(tree: untpd.Tree, owner: Symbol): FreshContext = {
+    val freshCtx = fresh.setTree(tree)
+    if (owner.exists) freshCtx.setOwner(owner) else freshCtx
+  }
+
+  /** A new context for the interior of a class */
+  def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/): Context = {
+    val localCtx: Context = ctx.fresh.setNewScope
+    selfInfo match {
+      case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)
+      case _ =>
+    }
+    localCtx
+  }
+
+  def packageContext(tree: untpd.PackageDef, pkg: Symbol): Context =
+    if (pkg is Package) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
+    else ctx
 
   /** The given type, unless `sym` is a constructor, in which case the
    *  type of the constructed instance is returned
@@ -228,11 +256,7 @@ class Namer { typer: Typer =>
 
   /** Record `sym` as the symbol defined by `tree` */
   def recordSym(sym: Symbol, tree: Tree)(implicit ctx: Context): Symbol = {
-    val refs = tree.attachmentOrElse(References, Nil)
-    if (refs.nonEmpty) {
-      tree.removeAttachment(References)
-      refs foreach (_.pushAttachment(OriginalSymbol, sym))
-    }
+    for (refs <- tree.removeAttachment(References); ref <- refs) ref.watching(sym)
     tree.pushAttachment(SymOfTree, sym)
     sym
   }
@@ -402,17 +426,6 @@ class Namer { typer: Typer =>
   def expanded(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case ddef: DefTree => ddef.attachmentOrElse(ExpandedTree, ddef)
     case _ => tree
-  }
-
-  /** A new context for the interior of a class */
-  def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/)(implicit ctx: Context): Context = {
-    val localCtx: Context = ctx.fresh.setNewScope
-    selfInfo match {
-      case sym: Symbol if sym.exists && sym.name != nme.WILDCARD =>
-        localCtx.scope.openForMutations.enter(sym)
-      case _ =>
-    }
-    localCtx
   }
 
   /** For all class definitions `stat` in `xstats`: If the companion class if
@@ -590,8 +603,10 @@ class Namer { typer: Typer =>
     def createLinks(classTree: TypeDef, moduleTree: TypeDef)(implicit ctx: Context) = {
       val claz = ctx.effectiveScope.lookup(classTree.name)
       val modl = ctx.effectiveScope.lookup(moduleTree.name)
-      ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, modl).entered
-      ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, modl, claz).entered
+      if (claz.isClass && modl.isClass) {
+        ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, modl).entered
+        ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, modl, claz).entered
+      }
     }
 
     def createCompanionLinks(implicit ctx: Context): Unit = {
@@ -826,7 +841,7 @@ class Namer { typer: Typer =>
     private[this] var nestedCtx: Context = null
     assert(!original.isClassDef)
 
-    def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] = {
+    override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] = {
       if (myTypeParams == null) {
         //println(i"completing type params of $sym in ${sym.owner}")
         nestedCtx = localContext(sym).setNewScope
@@ -925,7 +940,7 @@ class Namer { typer: Typer =>
         }
       }
 
-     addAnnotations(denot.symbol, original)
+      addAnnotations(denot.symbol, original)
 
       val selfInfo =
         if (self.isEmpty) NoType
@@ -950,7 +965,7 @@ class Namer { typer: Typer =>
       index(constr)
       annotate(constr :: params)
 
-      indexAndAnnotate(rest)(inClassContext(selfInfo))
+      indexAndAnnotate(rest)(ctx.inClassContext(selfInfo))
       symbolOfTree(constr).ensureCompleted()
 
       val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_)), cls.pos)
@@ -1133,7 +1148,7 @@ class Namer { typer: Typer =>
       case _: untpd.DerivedTypeTree =>
         WildcardType
       case TypeTree() =>
-        inferredType
+        checkMembersOK(inferredType, mdef.pos)
       case DependentTypeTree(tpFun) =>
         tpFun(paramss.head)
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
@@ -1231,6 +1246,7 @@ class Namer { typer: Typer =>
       sym.info = NoCompleter
       sym.info = checkNonCyclic(sym, unsafeInfo, reportErrors = true)
     }
+    sym.resetFlag(Provisional)
 
     // Here we pay the price for the cavalier setting info to TypeBounds.empty above.
     // We need to compensate by reloading the denotation of references that might

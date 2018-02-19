@@ -29,6 +29,11 @@ object overloaded {
   val r2 = map(x => x.toInt)
   val t2: Seq[Int] = r2
 
+  val rp1 = map { case x => x.toUpper }
+  val tp1: String = rp1
+  val rp2 = map { case x => x.toInt }
+  val tp2: Seq[Int] = rp2
+
   def flatMap(f: Char => String): String = ???
   def flatMap[U](f: Char => Seq[U]): Seq[U] = ???
   val r3 = flatMap(x => x.toString)
@@ -36,10 +41,17 @@ object overloaded {
   val r4 = flatMap(x => List(x))
   val t4: Seq[Char] = r4
 
+  val rp3 = flatMap { case x => x.toString }
+  val tp3: String = rp3
+  val rp4 = flatMap { case x => List(x) }
+  val tp4: Seq[Char] = rp4
+
   def bar(f: (Char, Char) => Unit): Unit = ???
   def bar(f: Char => Unit) = ???
   bar((x, y) => ())
   bar (x => ())
+  // bar { case (x, y) => () } // error: cannot test if value types are references
+  bar { case x => () }
 
   def combine(f: (Char, Int) => Int): Int = ???
   def combine(f: (String, Int) => String): String = ???
@@ -47,4 +59,10 @@ object overloaded {
   val t5: Int = r5
   val r6 = combine((x: String, y) => x ++ y.toString)
   val t6: String = r6
+
+  // Errors: The argument types of an anonymous function must be fully known
+  // val rp5 = combine { case (x: Char, y) => x + y }
+  // val tp5: Int = rp5
+  // val rp6 = combine { case (x: String, y) => x ++ y.toString }
+  // val tp6: String = rp6
 }

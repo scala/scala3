@@ -125,6 +125,8 @@ public enum ErrorMessageID {
     UnableToEmitSwitchID,
     MissingCompanionForStaticID,
     PolymorphicMethodMissingTypeInParentID,
+    ParamsNoInlineID,
+    JavaSymbolIsNotAValueID,
     ;
 
     public int errorNumber() {

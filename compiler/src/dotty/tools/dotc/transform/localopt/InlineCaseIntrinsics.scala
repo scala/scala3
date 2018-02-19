@@ -10,7 +10,6 @@ import core.Flags._
 import core.TypeApplications.noBounds
 import ast.Trees._
 import transform.SymUtils._
-import Simplify.desugarIdent
 import dotty.tools.dotc.ast.tpd
 
 /** Inline case class specific methods using desugarings assumptions.
@@ -109,10 +108,9 @@ class InlineCaseIntrinsics(val simplifyPhase: Simplify) extends Optimisation {
       def receiver(t: Tree): Type = t match {
         case t: Apply     => receiver(t.fun)
         case t: TypeApply => receiver(t.fun)
-        case t: Ident     => desugarIdent(t) match {
-          case Some(t) => receiver(t)
-          case _ => NoType
-        }
+        case t: Ident     =>
+          val prefix = desugarIdentPrefix(t)
+          prefix.tpe.widenDealias
         case t: Select => t.qualifier.tpe.widenDealias
       }
 

@@ -9,6 +9,7 @@ import scala.collection.{ mutable, immutable }
 import PartialFunction._
 import collection.mutable
 import util.common.alwaysZero
+import dotty.tools.dotc.transform.TreeGen
 
 object Definitions {
 
@@ -338,6 +339,11 @@ class Definitions {
     def Predef_classOf(implicit ctx: Context) = Predef_classOfR.symbol
     lazy val Predef_undefinedR = ScalaPredefModule.requiredMethodRef("???")
     def Predef_undefined(implicit ctx: Context) = Predef_undefinedR.symbol
+    // The set of all wrap{X, Ref}Array methods, where X is a value type
+    val Predef_wrapArray = new PerRun[collection.Set[Symbol]]({ implicit ctx =>
+      val methodNames = ScalaValueTypes.map(TreeGen.wrapArrayMethodName) + nme.wrapRefArray
+      methodNames.map(ScalaPredefModule.requiredMethodRef(_).symbol)
+    })
 
   lazy val ScalaRuntimeModuleRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
   def ScalaRuntimeModule(implicit ctx: Context) = ScalaRuntimeModuleRef.symbol
@@ -609,14 +615,20 @@ class Definitions {
   lazy val QuotedExprType = ctx.requiredClassRef("scala.quoted.Expr")
   def QuotedExprClass(implicit ctx: Context) = QuotedExprType.symbol.asClass
 
-    def QuotedExpr_~(implicit ctx: Context) = QuotedExprClass.requiredMethod(nme.UNARY_~)
-    def QuotedExpr_run(implicit ctx: Context) = QuotedExprClass.requiredMethod(nme.run)
+    lazy val QuotedExpr_spliceR = QuotedExprClass.requiredMethod(nme.UNARY_~)
+    def QuotedExpr_~(implicit ctx: Context) = QuotedExpr_spliceR.symbol
+    lazy val QuotedExpr_runR = QuotedExprClass.requiredMethodRef(nme.run)
+    def QuotedExpr_run(implicit ctx: Context) = QuotedExpr_runR.symbol
 
   lazy val QuotedTypeType = ctx.requiredClassRef("scala.quoted.Type")
   def QuotedTypeClass(implicit ctx: Context) = QuotedTypeType.symbol.asClass
 
-    def QuotedType_~(implicit ctx: Context) =
-      QuotedTypeClass.info.member(tpnme.UNARY_~).symbol.asType
+    lazy val QuotedType_spliceR = QuotedTypeClass.requiredType(tpnme.UNARY_~).typeRef
+    def QuotedType_~ = QuotedType_spliceR.symbol
+
+  lazy val QuotedTypeModule = QuotedTypeClass.companionModule
+    lazy val QuotedType_applyR = QuotedTypeModule.requiredMethodRef(nme.apply)
+    def QuotedType_apply(implicit ctx: Context) = QuotedType_applyR.symbol
 
   def Unpickler_unpickleExpr = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
   def Unpickler_unpickleType = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
@@ -972,28 +984,39 @@ class Definitions {
     isNonDepFunctionType(tp.dropDependentRefinement)
 
   // Specialized type parameters defined for scala.Function{0,1,2}.
-  private lazy val Function1SpecializedParams: collection.Set[Type] =
+  lazy val Function1SpecializedParamTypes: collection.Set[TypeRef] =
     Set(IntType, LongType, FloatType, DoubleType)
-  private lazy val Function2SpecializedParams: collection.Set[Type] =
+  lazy val Function2SpecializedParamTypes: collection.Set[TypeRef] =
     Set(IntType, LongType, DoubleType)
-  private lazy val Function0SpecializedReturns: collection.Set[Type] =
-    ScalaNumericValueTypeList.toSet[Type] + UnitType + BooleanType
-  private lazy val Function1SpecializedReturns: collection.Set[Type] =
+  lazy val Function0SpecializedReturnTypes: collection.Set[TypeRef] =
+    ScalaNumericValueTypeList.toSet + UnitType + BooleanType
+  lazy val Function1SpecializedReturnTypes: collection.Set[TypeRef] =
     Set(UnitType, BooleanType, IntType, FloatType, LongType, DoubleType)
-  private lazy val Function2SpecializedReturns: collection.Set[Type] =
-    Function1SpecializedReturns
+  lazy val Function2SpecializedReturnTypes: collection.Set[TypeRef] =
+    Function1SpecializedReturnTypes
+
+  lazy val Function1SpecializedParamClasses =
+    new PerRun[collection.Set[Symbol]](implicit ctx => Function1SpecializedParamTypes.map(_.symbol))
+  lazy val Function2SpecializedParamClasses =
+    new PerRun[collection.Set[Symbol]](implicit ctx => Function2SpecializedParamTypes.map(_.symbol))
+  lazy val Function0SpecializedReturnClasses =
+    new PerRun[collection.Set[Symbol]](implicit ctx => Function0SpecializedReturnTypes.map(_.symbol))
+  lazy val Function1SpecializedReturnClasses =
+    new PerRun[collection.Set[Symbol]](implicit ctx => Function1SpecializedReturnTypes.map(_.symbol))
+  lazy val Function2SpecializedReturnClasses =
+    new PerRun[collection.Set[Symbol]](implicit ctx => Function2SpecializedReturnTypes.map(_.symbol))
 
   def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(implicit ctx: Context) =
-    isFunctionClass(cls) && (paramTypes match {
+    paramTypes.length <= 2 && cls.derivesFrom(FunctionClass(paramTypes.length)) && (paramTypes match {
       case Nil =>
-        Function0SpecializedReturns.contains(retType)
+        Function0SpecializedReturnClasses().contains(retType.typeSymbol)
       case List(paramType0) =>
-        Function1SpecializedParams.contains(paramType0) &&
-        Function1SpecializedReturns.contains(retType)
+        Function1SpecializedParamClasses().contains(paramType0.typeSymbol) &&
+        Function1SpecializedReturnClasses().contains(retType.typeSymbol)
       case List(paramType0, paramType1) =>
-        Function2SpecializedParams.contains(paramType0) &&
-        Function2SpecializedParams.contains(paramType1) &&
-        Function2SpecializedReturns.contains(retType)
+        Function2SpecializedParamClasses().contains(paramType0.typeSymbol) &&
+        Function2SpecializedParamClasses().contains(paramType1.typeSymbol) &&
+        Function2SpecializedReturnClasses().contains(retType.typeSymbol)
       case _ =>
         false
     })

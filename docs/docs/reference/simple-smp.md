@@ -8,7 +8,7 @@ title: "The Meta-theory of Symmetric Meta-programming"
 23.12.2017
 
 This note presents a simplified variant of
-[symmetric meta-programming](./symmetric-meta-programming.md)
+[principled meta-programming](./principled-meta-programming.md)
 and sketches its soundness proof. The variant treats only dialogues
 between two stages. A program can have quotes which can contain
 splices (which can contain quotes, which can contain splices, and so

@@ -161,10 +161,6 @@ class TreePickler(pickler: TastyPickler) {
       pickleConstant(value)
     case tpe: NamedType =>
       val sym = tpe.symbol
-      def pickleDirectRef() = {
-        writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
-        pickleSymRef(sym)
-      }
       def pickleExternalRef(sym: Symbol) = {
         def pickleCore() = {
           pickleNameAndSig(sym.name, tpe.signature)
@@ -188,17 +184,10 @@ class TreePickler(pickler: TastyPickler) {
         writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
         pickleName(sym.fullName)
       }
-      else if (tpe.prefix == NoPrefix)
-        if (sym is Flags.BindDefinedType) {
-          registerDef(sym)
-          writeByte(BIND)
-          withLength {
-            pickleName(sym.name)
-            pickleType(sym.info)
-            pickleDirectRef()
-          }
-        }
-        else pickleDirectRef()
+      else if (tpe.prefix == NoPrefix) {
+        writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
+        pickleSymRef(sym)
+      }
       else if (isLocallyDefined(sym)) {
         writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
         pickleSymRef(sym); pickleType(tpe.prefix)
@@ -445,7 +434,9 @@ class TreePickler(pickler: TastyPickler) {
         case Bind(name, body) =>
           registerDef(tree.symbol)
           writeByte(BIND)
-          withLength { pickleName(name); pickleType(tree.symbol.info); pickleTree(body) }
+          withLength {
+            pickleName(name); pickleType(tree.symbol.info); pickleTree(body)
+          }
         case Alternative(alts) =>
           writeByte(ALTERNATIVE)
           withLength { alts.foreach(pickleTree) }
@@ -552,7 +543,10 @@ class TreePickler(pickler: TastyPickler) {
           withLength { pickleParams(tparams); pickleTree(body) }
         case TypeBoundsTree(lo, hi) =>
           writeByte(TYPEBOUNDStpt)
-          withLength { pickleTree(lo); pickleTree(hi) }
+          withLength {
+            pickleTree(lo);
+            if (hi ne lo) pickleTree(hi)
+          }
         case Hole(idx, args) =>
           writeByte(HOLE)
           withLength {

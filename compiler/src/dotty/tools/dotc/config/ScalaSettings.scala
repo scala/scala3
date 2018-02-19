@@ -77,6 +77,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val Ydebug = BooleanSetting("-Ydebug", "Increase the quantity of debugging output.")
   val YdebugTrace = BooleanSetting("-Ydebug-trace", "Trace core operations")
   val YdebugFlags = BooleanSetting("-Ydebug-flags", "Print all flags of definitions")
+  val YdebugMissingRefs = BooleanSetting("-Ydebug-missing-refs", "Print a stacktrace when a required symbol is missing")
   val YdebugNames = BooleanSetting("-Ydebug-names", "Show internal representation of names")
   val YdebugOwners = BooleanSetting("-Ydebug-owners", "Print all owners of definitions (requires -Yprint-syms)")
   val YtermConflict = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
@@ -112,6 +113,14 @@ class ScalaSettings extends Settings.SettingGroup {
   val YcheckAllPatmat = BooleanSetting("-Ycheck-all-patmat", "Check exhaustivity and redundancy of all pattern matching (used for testing the algorithm)")
   val YretainTrees = BooleanSetting("-Yretain-trees", "Retain trees for top-level classes, accessible from ClassSymbol#tree")
   val YshowTreeIds = BooleanSetting("-Yshow-tree-ids", "Uniquely tag all tree nodes in debugging output.")
+
+  val YprofileEnabled = BooleanSetting("-Yprofile-enabled", "Enable profiling.")
+  val YprofileDestination = StringSetting("-Yprofile-destination", "file", "where to send profiling output - specify a file, default is to the console.", "")
+      //.withPostSetHook( _ => YprofileEnabled.value = true )
+  val YprofileExternalTool = PhasesSetting("-Yprofile-external-tool", "Enable profiling for a phase using an external tool hook. Generally only useful for a single phase", "typer")
+      //.withPostSetHook( _ => YprofileEnabled.value = true )
+  val YprofileRunGcBetweenPhases = PhasesSetting("-Yprofile-run-gc", "Run a GC between phases - this allows heap size to be accurate at the expense of more time. Specify a list of phases, or *", "_")
+      //.withPostSetHook( _ => YprofileEnabled.value = true )
 
   /** Area-specific debug output */
   val YexplainLowlevel = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")

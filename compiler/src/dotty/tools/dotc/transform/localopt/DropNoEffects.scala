@@ -100,10 +100,9 @@ class DropNoEffects(val simplifyPhase: Simplify) extends Optimisation {
       cpy.Block(bl)(stats2, expr2)
 
     case t: Ident if !t.symbol.is(Method | Lazy) && !t.symbol.info.isInstanceOf[ExprType] || effectsDontEscape(t) =>
-      desugarIdent(t) match {
-        case Some(t) if !(t.qualifier.symbol.is(JavaDefined) && t.qualifier.symbol.is(Package)) => t
-        case _ => EmptyTree
-      }
+      val prefix = desugarIdentPrefix(t)
+      if (!prefix.isEmpty && !prefix.symbol.is(allOf(JavaDefined, Package))) t
+      else EmptyTree
 
     case app: Apply if app.fun.symbol.is(Label) && !app.tpe.finalResultType.derivesFrom(defn.UnitClass) =>
       // This is "the scary hack". It changes the return type to Unit, then

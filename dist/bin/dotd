@@ -35,6 +35,7 @@ DOTTY_DOC_LIB=$(find_lib "*dotty-doc*")
 # Set flexmark deps:
 FLEXMARK_LIBS=""
 FLEXMARK_LIBS+=$(find_lib "*flexmark-0*")$PSEP
+FLEXMARK_LIBS+=$(find_lib "*flexmark-formatter*")$PSEP
 FLEXMARK_LIBS+=$(find_lib "*flexmark-ext-anchorlink*")$PSEP
 FLEXMARK_LIBS+=$(find_lib "*flexmark-ext-autolink*")$PSEP
 FLEXMARK_LIBS+=$(find_lib "*flexmark-ext-emoji*")$PSEP

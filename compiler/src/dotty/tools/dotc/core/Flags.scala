@@ -327,9 +327,6 @@ object Flags {
   /** A method that has default params */
   final val DefaultParameterized = termFlag(27, "<defaultparam>")
 
-  /** A type that is defined by a type bind */
-  final val BindDefinedType = typeFlag(27, "<bind-defined>")
-
   /** Symbol is inlined */
   final val Inline = commonFlag(29, "inline")
 
@@ -574,8 +571,11 @@ object Flags {
   /** A synthetic or private definition */
   final val SyntheticOrPrivate = Synthetic | Private
 
-  /** A deferred member or a parameter accessor (these don't have right hand sides) */
-  final val DeferredOrParamOrAccessor = Deferred | Param | ParamAccessor
+  /** A deferred term member or a parameter or parameter accessor (these don't have right hand sides) */
+  final val DeferredOrTermParamOrAccessor = Deferred | TermParam | ParamAccessor
+
+  /** A deferred type member or parameter (these don't have right hand sides) */
+  final val DeferredOrTypeParam = Deferred | TypeParam
 
   /** value that's final or inline */
   final val FinalOrInline = Final | Inline

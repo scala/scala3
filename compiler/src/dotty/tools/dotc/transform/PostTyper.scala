@@ -150,7 +150,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         }
         val (tycon, args) = decompose(tree)
         tycon.tpe.widen match {
-          case tp: PolyType =>
+          case tp: PolyType if args.exists(isNamedArg) =>
             val (namedArgs, otherArgs) = args.partition(isNamedArg)
             val args1 = reorderArgs(tp.paramNames, namedArgs.asInstanceOf[List[NamedArg]], otherArgs)
             TypeApply(tycon, args1).withPos(tree.pos).withType(tree.tpe)

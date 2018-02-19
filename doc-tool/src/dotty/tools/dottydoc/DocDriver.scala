@@ -4,12 +4,11 @@ package dottydoc
 import dotty.tools.dottydoc.util.syntax._
 import core.ContextDottydoc
 import dotc.core.Contexts._
+import dotc.reporting.Reporter
 import dotc.{ Compiler, Driver }
-import model.Package
 import dotc.config._
 import dotc.core.Comments.ContextDoc
 import staticsite.Site
-import dotc.printing.Highlighting._
 
 /** `DocDriver` implements the main entry point to the Dotty documentation
  *  tool. It's methods are used by the external scala and java APIs.
@@ -33,16 +32,12 @@ class DocDriver extends Driver {
 
   override def newCompiler(implicit ctx: Context): Compiler = new DocCompiler
 
-  def compiledDocs(args: Array[String]): collection.Map[String, Package] = {
-    val (fileNames, ctx) = setup(args, initCtx.fresh)
-    doCompile(newCompiler(ctx), fileNames)(ctx)
+  override def process(args: Array[String], rootCtx: Context): Reporter = {
+    val (filesToDocument, ictx) = setup(args, initCtx.fresh)
 
-    ctx.docbase.packages
-  }
+    implicit val ctx: Context = ictx
+    val reporter = doCompile(newCompiler, filesToDocument)
 
-  override def main(args: Array[String]): Unit = {
-    implicit val (filesToDocument, ctx) = setup(args, initCtx.fresh)
-    val reporter = doCompile(newCompiler(ctx), filesToDocument)(ctx)
     val siteRoot = new java.io.File(ctx.settings.siteRoot.value)
     val projectName = ctx.settings.projectName.value
     val projectVersion = ctx.settings.projectVersion.value
@@ -60,7 +55,8 @@ class DocDriver extends Driver {
         .generateBlog()
 
       ctx.docbase.printSummary()
-      System.exit(if (reporter.hasErrors) 1 else 0)
     }
+
+    reporter
   }
 }

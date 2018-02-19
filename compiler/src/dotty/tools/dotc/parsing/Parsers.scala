@@ -106,7 +106,6 @@ object Parsers {
     def sourcePos(off: Int = in.offset): SourcePosition =
       source atPos Position(off)
 
-
     /* ------------- ERROR HANDLING ------------------------------------------- */
     /** The offset where the last syntax error was reported, or if a skip to a
       *  safepoint occurred afterwards, the offset of the safe point.
@@ -128,7 +127,6 @@ object Parsers {
       */
     def syntaxError(msg: => Message, pos: Position): Unit =
       ctx.error(msg, source atPos pos)
-
   }
 
   class Parser(source: SourceFile)(implicit ctx: Context) extends ParserCommon(source) {
@@ -432,6 +430,13 @@ object Parsers {
 
     def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
 
+    /** Is the token following the current one in `tokens`? */
+    def lookaheadIn(tokens: Token*): Boolean = {
+      val lookahead = in.lookaheadScanner
+      lookahead.nextToken()
+      tokens.contains(lookahead.token)
+    }
+
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
     var opStack: List[OpInfo] = Nil
@@ -470,11 +475,11 @@ object Parsers {
     def infixOps(
         first: Tree, canStartOperand: Token => Boolean, operand: () => Tree,
         isType: Boolean = false,
-        notAnOperator: Name = nme.EMPTY,
+        isOperator: => Boolean = true,
         maybePostfix: Boolean = false): Tree = {
       val base = opStack
       var top = first
-      while (isIdent && in.name != notAnOperator) {
+      while (isIdent && isOperator) {
         val op = if (isType) typeIdent() else termIdent()
         top = reduceStack(base, top, precedence(op.name), isLeftAssoc(op.name), op.name)
         opStack = OpInfo(top, op, in.offset) :: opStack
@@ -797,8 +802,12 @@ object Parsers {
      */
     def infixType(): Tree = infixTypeRest(refinedType())
 
+    /** Is current ident a `*`, and is it followed by a `)` or `,`? */
+    def isPostfixStar: Boolean =
+      in.name == nme.raw.STAR && lookaheadIn(RPAREN, COMMA)
+
     def infixTypeRest(t: Tree): Tree =
-      infixOps(t, canStartTypeTokens, refinedType, isType = true, notAnOperator = nme.raw.STAR)
+      infixOps(t, canStartTypeTokens, refinedType, isType = true, isOperator = !isPostfixStar)
 
     /** RefinedType        ::=  WithType {Annotation | [nl] Refinement}
      */
@@ -834,7 +843,7 @@ object Parsers {
     /** SimpleType       ::=  SimpleType TypeArgs
      *                     |  SimpleType `#' id
      *                     |  StableId
-     *                     |  [‘-’ | ‘+’ | ‘~’ | ‘!’] StableId
+     *                     |  ['~'] StableId
      *                     |  Path `.' type
      *                     |  `(' ArgTypes `)'
      *                     |  `_' TypeBounds
@@ -853,7 +862,7 @@ object Parsers {
         val start = in.skipToken()
         typeBounds().withPos(Position(start, in.lastOffset, start))
       }
-      else if (isIdent && nme.raw.isUnary(in.name))
+      else if (isIdent(nme.raw.TILDE) && lookaheadIn(IDENTIFIER, BACKQUOTED_IDENT))
         atPos(in.offset) { PrefixOp(typeIdent(), path(thisOK = true)) }
       else path(thisOK = false, handleSingletonType) match {
         case r @ SingletonTypeTree(_) => r
@@ -1556,7 +1565,7 @@ object Parsers {
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
-      infixOps(simplePattern(), canStartExpressionTokens, simplePattern, notAnOperator = nme.raw.BAR)
+      infixOps(simplePattern(), canStartExpressionTokens, simplePattern, isOperator = in.name != nme.raw.BAR)
 
     /** SimplePattern    ::= PatVar
      *                    |  Literal
@@ -1564,7 +1573,6 @@ object Parsers {
      *                    |  `(' [Patterns] `)'
      *                    |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
      *  SimplePattern1   ::= Path
-     *                    |  `{' Block `}'
      *                    |  SimplePattern1 `.' id
      *  PatVar           ::= id
      *                    |  `_'
@@ -1587,8 +1595,6 @@ object Parsers {
         } else wildIndent
       case LPAREN =>
         atPos(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
-      case LBRACE =>
-        dotSelectors(blockExpr())
       case XMLSTART =>
         xmlLiteralPattern()
       case _ =>

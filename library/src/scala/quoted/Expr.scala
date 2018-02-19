@@ -13,6 +13,8 @@ object Expr {
     ev.toExpr(x)
 
   implicit class AsFunction[T, U](private val f: Expr[T => U]) extends AnyVal {
-    def apply(x: Expr[T]): Expr[U] = ???
+    def apply(x: Expr[T]): Expr[U] = new FunctionAppliedTo[T, U](f, x)
   }
+
+  final class FunctionAppliedTo[T, U] private[Expr](val f: Expr[T => U], val x: Expr[T]) extends Expr[U]
 }

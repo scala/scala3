@@ -211,8 +211,8 @@ object TypeErasure {
     case tp: TypeAlias => isUnboundedGeneric(tp.alias)
     case tp: TypeBounds => !tp.hi.derivesFrom(defn.ObjectClass)
     case tp: TypeProxy => isUnboundedGeneric(tp.underlying)
-    case tp: AndType => isUnboundedGeneric(tp.tp1) || isUnboundedGeneric(tp.tp2)
-    case tp: OrType => isUnboundedGeneric(tp.tp1) && isUnboundedGeneric(tp.tp2)
+    case tp: AndType => isUnboundedGeneric(tp.tp1) && isUnboundedGeneric(tp.tp2)
+    case tp: OrType => isUnboundedGeneric(tp.tp1) || isUnboundedGeneric(tp.tp2)
     case _ => false
   }
 

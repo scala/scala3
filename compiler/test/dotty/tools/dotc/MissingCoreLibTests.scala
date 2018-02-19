@@ -11,7 +11,7 @@ class MissingCoreLibTests {
 
   @Test def missingDottyLib: Unit = {
     val classPath = mkClassPath(Jars.dottyCompiler :: Jars.dottyInterfaces :: Jars.dottyExtras) // missing Jars.dottyLib
-    val source = "../tests/pos/Foo.scala"
+    val source = "tests/pos/Foo.scala"
     val options = Array("-classpath", classPath, source)
     val reporter = Main.process(options)
     assertEquals(1, reporter.errorCount)

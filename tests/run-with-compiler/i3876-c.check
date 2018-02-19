@@ -1,0 +1,16 @@
+6
+{
+  val x$1: Int = 3
+  {
+    val f: 
+      Function1[Int, Int] 
+        {
+          def apply(x: Int): Int
+        }
+     = 
+      {
+        (x: Int) => x.+(x)
+      }
+    (f: (x: Int) => Int).apply(x$1)
+  }
+}

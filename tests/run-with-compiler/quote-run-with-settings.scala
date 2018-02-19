@@ -21,7 +21,7 @@ object Test {
 
     Files.deleteIfExists(classFile)
 
-    val settings = RunSettings(optimise = true, outDir = Some(outDir.toString))
+    val settings = Settings.run(optimise = true, outDir = Some(outDir.toString))
 
     println(run(expr, settings))
     assert(Files.exists(classFile))

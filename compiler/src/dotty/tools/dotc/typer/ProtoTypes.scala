@@ -418,7 +418,7 @@ object ProtoTypes {
 
   /** Create a new TypeVar that represents a dependent method parameter singleton */
   def newDepTypeVar(tp: Type)(implicit ctx: Context): TypeVar =
-    newTypeVar(TypeBounds.upper(AndType(tp, defn.SingletonClass.typeRef)))
+    newTypeVar(TypeBounds.upper(AndType(tp.widenExpr, defn.SingletonClass.typeRef)))
 
   /** The result type of `mt`, where all references to parameters of `mt` are
    *  replaced by either wildcards (if typevarsMissContext) or TypeParamRefs.
@@ -496,9 +496,7 @@ object ProtoTypes {
       tp.derivedTypeAlias(wildApprox(tp.alias, theMap, seen))
     case tp @ TypeParamRef(poly, pnum) =>
       def wildApproxBounds(bounds: TypeBounds) =
-        if (bounds.lo.isInstanceOf[NamedType] && bounds.hi.isInstanceOf[NamedType])
-          WildcardType(wildApprox(bounds, theMap, seen).bounds)
-        else if (seen.contains(tp)) WildcardType
+        if (seen.contains(tp)) WildcardType
         else WildcardType(wildApprox(bounds, theMap, seen + tp).bounds)
       def unconstrainedApprox = wildApproxBounds(poly.paramInfos(pnum))
       def approxPoly =
@@ -545,7 +543,8 @@ object ProtoTypes {
     case  _: ThisType | _: BoundType | NoPrefix => // default case, inlined for speed
       tp
     case _ =>
-      (if (theMap != null) theMap else new WildApproxMap(seen)).mapOver(tp)
+      (if (theMap != null && seen.eq(theMap.seen)) theMap else new WildApproxMap(seen))
+        .mapOver(tp)
   }
 
   @sharable object AssignProto extends UncachedGroundType with MatchAlways

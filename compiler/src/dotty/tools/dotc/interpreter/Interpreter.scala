@@ -8,6 +8,7 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.quoted.Quoted
@@ -82,20 +83,20 @@ class Interpreter(implicit ctx: Context) {
         val constructor = getConstructor(clazz, paramClasses)
         interpreted(constructor.newInstance(interpretedArgs: _*))
 
-      case _: RefTree | _: Apply if tree.symbol.isStatic =>
+      case _: RefTree if tree.symbol.isStatic =>
         val clazz = loadClass(tree.symbol.owner.companionModule.fullName)
-        val paramClasses = paramsSig(tree.symbol)
-        val interpretedArgs = Array.newBuilder[Object]
-        def interpretArgs(tree: Tree): Unit = tree match {
-          case Apply(fn, args) =>
-            interpretArgs(fn)
-            args.foreach(arg => interpretedArgs += interpretTreeImpl(arg, env))
-          case _ =>
-        }
-        interpretArgs(tree)
+        val method = getMethod(clazz, tree.symbol.name, Nil)
+        interpreted(method.invoke(null))
 
+      case tree: Apply =>
+        val evaluatedPrefix = if (tree.symbol.isStatic) null else interpretPrefix(tree, env)
+        val clazz =
+          if (tree.symbol.isStatic) loadClass(tree.symbol.owner.companionModule.fullName)
+          else evaluatedPrefix.getClass
+        val paramClasses = paramsSig(tree.symbol)
+        val interpretedArgs = interpretArgs(tree, env)
         val method = getMethod(clazz, tree.symbol.name, paramClasses)
-        interpreted(method.invoke(null, interpretedArgs.result(): _*))
+        interpreted(method.invoke(evaluatedPrefix, interpretedArgs: _*))
 
       case tree: Ident if env.contains(tree.symbol) =>
         env(tree.symbol)
@@ -114,11 +115,38 @@ class Interpreter(implicit ctx: Context) {
       case Typed(expr, _) =>
         interpretTreeImpl(expr, env)
 
+      // Getting the underlying value of a value class. The value class is evaluated as its boxed representation
+      // as values in the interpreter are `Object`s. Therefore we just get it from the enviroment as is.
+      case Select(qualifier, _)
+          if tree.symbol.owner.isValueClass && tree.symbol.is(ParamAccessor) && env.contains(qualifier.symbol) =>
+        env(qualifier.symbol)
+
+      case SeqLiteral(elems, _) =>
+        elems.map(elem => interpretTreeImpl(elem, env))
+
       case _ =>
         // TODO Add more precise descriptions of why it could not be interpreted.
         // This should be done after the full interpreter is implemented.
         throw new StopInterpretation(s"Could not interpret ${tree.show}. Consider extracting logic into a helper def.", tree.pos)
     }
+  }
+
+  private def interpretArgs(tree: Tree, env: Env): Seq[Object] = {
+    val b = Seq.newBuilder[Object]
+    def interpretArgs(tree: Tree): Unit = tree match {
+      case Apply(fn, args) =>
+        interpretArgs(fn)
+        args.foreach(arg => b += interpretTreeImpl(arg, env))
+      case _ =>
+    }
+    interpretArgs(tree)
+    b.result()
+  }
+
+  private def interpretPrefix(tree: Tree, env: Env): Object = tree match {
+    case Apply(qual, _) => interpretPrefix(qual, env)
+    case TypeApply(qual, _) => interpretPrefix(qual, env)
+    case Select(qual, _) => interpretTreeImpl(qual, env)
   }
 
   /** Interprets the statement and returns the updated environment */

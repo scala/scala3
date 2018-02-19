@@ -288,7 +288,7 @@ object Names {
     }
   }
 
-  /** A simple name is essentiall an interned string */
+  /** A simple name is essentially an interned string */
   final class SimpleName(val start: Int, val length: Int, @sharable private[Names] var next: SimpleName) extends TermName {
     // `next` is @sharable because it is only modified in the synchronized block of termName.
 

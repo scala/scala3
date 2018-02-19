@@ -50,25 +50,31 @@ class InteractiveDriver(settings: List[String]) extends Driver {
     override def default(key: URI) = Nil
   }
 
+  private val myCompilationUnits = new mutable.LinkedHashMap[URI, CompilationUnit]
+
   def openedFiles: Map[URI, SourceFile] = myOpenedFiles
   def openedTrees: Map[URI, List[SourceTree]] = myOpenedTrees
+  def compilationUnits: Map[URI, CompilationUnit] = myCompilationUnits
 
-  def allTrees(implicit ctx: Context): List[SourceTree] = {
+  def allTrees(implicit ctx: Context): List[SourceTree] = allTreesContaining("")
+
+  def allTreesContaining(id: String)(implicit ctx: Context): List[SourceTree] = {
     val fromSource = openedTrees.values.flatten.toList
     val fromClassPath = (dirClassPathClasses ++ zipClassPathClasses).flatMap { cls =>
       val className = cls.toTypeName
-      List(tree(className), tree(className.moduleClassName)).flatten
+      List(tree(className, id), tree(className.moduleClassName, id)).flatten
     }
     (fromSource ++ fromClassPath).distinct
   }
 
-  private def tree(className: TypeName)(implicit ctx: Context): Option[SourceTree] = {
+  private def tree(className: TypeName, id: String)(implicit ctx: Context): Option[SourceTree] = {
     val clsd = ctx.base.staticRef(className)
     clsd match {
       case clsd: ClassDenotation =>
-        SourceTree.fromSymbol(clsd.symbol.asClass)
+        clsd.ensureCompleted()
+        SourceTree.fromSymbol(clsd.symbol.asClass, id)
       case _ =>
-        sys.error(s"class not found: $className")
+        None
     }
   }
 
@@ -196,7 +202,7 @@ class InteractiveDriver(settings: List[String]) extends Driver {
             *  trees are not cleand twice.
             *  TODO: Find a less expensive way to check for those cycles.
             */
-            if (!seen(annot.tree))
+            if (annot.isEvaluated && !seen(annot.tree))
               cleanupTree(annot.tree)
           }
         }
@@ -226,9 +232,11 @@ class InteractiveDriver(settings: List[String]) extends Driver {
 
       run.compileSources(List(source))
       run.printSummary()
-      val t = ctx.run.units.head.tpdTree
+      val unit = ctx.run.units.head
+      val t = unit.tpdTree
       cleanup(t)
       myOpenedTrees(uri) = topLevelClassTrees(t, source)
+      myCompilationUnits(uri) = unit
 
       reporter.removeBufferedMessages
     }
@@ -243,6 +251,7 @@ class InteractiveDriver(settings: List[String]) extends Driver {
   def close(uri: URI): Unit = {
     myOpenedFiles.remove(uri)
     myOpenedTrees.remove(uri)
+    myCompilationUnits.remove(uri)
   }
 }
 

@@ -1,12 +1,13 @@
 package dotty.tools.dotc.core.quoted
 
 import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.config.Printers._
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.tasty.{TastyPickler, TastyPrinter, TastyString}
@@ -18,36 +19,27 @@ object PickledQuotes {
   import tpd._
 
   /** Pickle the quote into strings */
-  def pickleQuote(tree: Tree)(implicit ctx: Context): Tree = {
-    if (ctx.reporter.hasErrors) Literal(Constant("<error>"))
+  def pickleQuote(tree: Tree)(implicit ctx: Context): scala.runtime.quoted.Unpickler.Pickled = {
+    if (ctx.reporter.hasErrors) Nil
     else {
       val encapsulated = encapsulateQuote(tree)
       val pickled = pickle(encapsulated)
-      TastyString.pickle(pickled).foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>
-        acc.select("::".toTermName)
-          .appliedToType(defn.StringType)
-          .appliedTo(Literal(Constant(x)))
-      }
+      TastyString.pickle(pickled)
     }
   }
 
   /** Transform the expression into its fully spliced Tree */
   def quotedToTree(expr: quoted.Quoted)(implicit ctx: Context): Tree = expr match {
-    case expr: quoted.TastyQuoted => unpickleQuote(expr)
-    case expr: quoted.Liftable.ConstantExpr[_] => Literal(Constant(expr.value))
+    case expr: quoted.TastyQuoted =>
+      unpickleQuote(expr)
+    case expr: quoted.Liftable.ConstantExpr[_] =>
+      Literal(Constant(expr.value))
+    case expr: quoted.Expr.FunctionAppliedTo[_, _] =>
+      functionAppliedTo(quotedToTree(expr.f), quotedToTree(expr.x))
     case expr: quoted.Type.TaggedPrimitive[_] =>
-      val tpe = expr.ct match {
-        case ClassTag.Unit => defn.UnitType
-        case ClassTag.Byte => defn.ByteType
-        case ClassTag.Char => defn.CharType
-        case ClassTag.Short => defn.ShortType
-        case ClassTag.Int => defn.IntType
-        case ClassTag.Long => defn.LongType
-        case ClassTag.Float => defn.FloatType
-        case ClassTag.Double => defn.FloatType
-      }
-      TypeTree(tpe)
-    case expr: RawQuoted => expr.tree
+      classTagToTypeTree(expr.ct)
+    case expr: RawQuoted =>
+      expr.tree
   }
 
   /** Unpickle the tree contained in the TastyQuoted */
@@ -104,11 +96,49 @@ object PickledQuotes {
   private def unpickle(bytes: Array[Byte], splices: Seq[Any])(implicit ctx: Context): Tree = {
     val unpickler = new TastyUnpickler(bytes, splices)
     unpickler.enter(roots = Set(defn.RootPackage))
-    val tree = unpickler.body.head
+    val tree = unpickler.tree
     if (pickling ne noPrinter) {
       println(i"**** unpickled quote for \n${tree.show}")
       new TastyPrinter(bytes).printContents()
     }
     tree
+  }
+
+  private def classTagToTypeTree(ct: ClassTag[_])(implicit ctx: Context): TypeTree = {
+    val tpe = ct match {
+      case ClassTag.Unit => defn.UnitType
+      case ClassTag.Byte => defn.ByteType
+      case ClassTag.Char => defn.CharType
+      case ClassTag.Short => defn.ShortType
+      case ClassTag.Int => defn.IntType
+      case ClassTag.Long => defn.LongType
+      case ClassTag.Float => defn.FloatType
+      case ClassTag.Double => defn.FloatType
+    }
+    TypeTree(tpe)
+  }
+
+  private def functionAppliedTo(f: Tree, x: Tree)(implicit ctx: Context): Tree = {
+    val x1 = SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), x)
+    def x1Ref() = ref(x1.symbol)
+    def rec(f: Tree): Tree = f match {
+      case closureDef(ddef) =>
+        new TreeMap() {
+          private val paramSym = ddef.vparamss.head.head.symbol
+          override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+            case tree: Ident if tree.symbol == paramSym => x1Ref().withPos(tree.pos)
+            case _ => super.transform(tree)
+          }
+        }.transform(ddef.rhs)
+      case Block(stats, expr) =>
+        val applied = rec(expr)
+        if (stats.isEmpty) applied
+        else Block(stats, applied)
+      case Inlined(call, bindings, expansion) =>
+        Inlined(call, bindings, rec(expansion))
+      case _ =>
+        f.select(nme.apply).appliedTo(x1Ref())
+    }
+    Block(x1 :: Nil, rec(f))
   }
 }

@@ -37,21 +37,23 @@ case class SourceTree(tree: tpd.NameTree, source: SourceFile) {
     }
   }
 }
+
 object SourceTree {
-  def fromSymbol(sym: ClassSymbol)(implicit ctx: Context): Option[SourceTree] = {
+  def fromSymbol(sym: ClassSymbol, id: String = "")(implicit ctx: Context): Option[SourceTree] = {
     if (sym == defn.SourceFileAnnot || // FIXME: No SourceFile annotation on SourceFile itself
         sym.sourceFile == null) // FIXME: We cannot deal with external projects yet
       None
     else {
       import ast.Trees._
       def sourceTreeOfClass(tree: tpd.Tree): Option[SourceTree] = tree match {
-        case PackageDef(_, stats) => stats.flatMap(sourceTreeOfClass).headOption
+        case PackageDef(_, stats) =>
+          stats.flatMap(sourceTreeOfClass).headOption
         case tree: tpd.TypeDef if tree.symbol == sym =>
           val sourceFile = new SourceFile(sym.sourceFile, Codec.UTF8)
           Some(SourceTree(tree, sourceFile))
         case _ => None
       }
-      sourceTreeOfClass(sym.tree)
+      sourceTreeOfClass(sym.treeContaining(id))
     }
   }
 }

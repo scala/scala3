@@ -40,7 +40,11 @@ object desugar {
     def derivedType(sym: Symbol)(implicit ctx: Context) = sym.typeRef
   }
 
-  class DerivedFromParamTree extends DerivedTypeTree {
+  /** A type tree that computes its type from an existing parameter.
+   *  @param suffix  String difference between existing parameter (call it `P`) and parameter owning the
+   *                 DerivedTypeTree (call it `O`). We have: `O.name == P.name + suffix`.
+   */
+  class DerivedFromParamTree(suffix: String) extends DerivedTypeTree {
 
     /** Make sure that for all enclosing module classes their companion lasses
      *  are completed. Reason: We need the constructor of such companion classes to
@@ -58,12 +62,16 @@ object desugar {
 
     /** Return info of original symbol, where all references to siblings of the
      *  original symbol (i.e. sibling and original symbol have the same owner)
-     *  are rewired to same-named parameters or accessors in the scope enclosing
+     *  are rewired to like-named* parameters or accessors in the scope enclosing
      *  the current scope. The current scope is the scope owned by the defined symbol
      *  itself, that's why we have to look one scope further out. If the resulting
      *  type is an alias type, dealias it. This is necessary because the
      *  accessor of a type parameter is a private type alias that cannot be accessed
      *  from subclasses.
+     *
+     *  (*) like-named means:
+     *
+     *       parameter name  ==  reference name ++ suffix
      */
     def derivedType(sym: Symbol)(implicit ctx: Context) = {
       val relocate = new TypeMap {
@@ -71,11 +79,11 @@ object desugar {
         def apply(tp: Type) = tp match {
           case tp: NamedType if tp.symbol.exists && (tp.symbol.owner eq originalOwner) =>
             val defctx = ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next()
-            var local = defctx.denotNamed(tp.name).suchThat(_.isParamOrAccessor).symbol
+            var local = defctx.denotNamed(tp.name ++ suffix).suchThat(_.isParamOrAccessor).symbol
             if (local.exists) (defctx.owner.thisType select local).dealias
             else {
               def msg =
-                s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope}"
+                s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"
               if (ctx.reporter.errorsReported) ErrorType(msg)
               else throw new java.lang.Error(msg)
             }
@@ -88,14 +96,20 @@ object desugar {
   }
 
   /** A type definition copied from `tdef` with a rhs typetree derived from it */
-  def derivedTypeParam(tdef: TypeDef) =
+  def derivedTypeParam(tdef: TypeDef, suffix: String = ""): TypeDef =
     cpy.TypeDef(tdef)(
-      rhs = new DerivedFromParamTree() withPos tdef.rhs.pos watching tdef)
+      name = tdef.name ++ suffix,
+      rhs = new DerivedFromParamTree(suffix).withPos(tdef.rhs.pos).watching(tdef)
+    )
+
+  /** A derived type definition watching `sym` */
+  def derivedTypeParam(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
+    TypeDef(sym.name, new DerivedFromParamTree("").watching(sym)).withFlags(TypeParam)
 
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
   def derivedTermParam(vdef: ValDef) =
     cpy.ValDef(vdef)(
-      tpt = new DerivedFromParamTree() withPos vdef.tpt.pos watching vdef)
+      tpt = new DerivedFromParamTree("") withPos vdef.tpt.pos watching vdef)
 
 // ----- Desugar methods -------------------------------------------------
 
@@ -317,8 +331,8 @@ object desugar {
     }
     def anyRef = ref(defn.AnyRefAlias.typeRef)
 
-    val derivedTparams = constrTparams map derivedTypeParam
-    val derivedVparamss = constrVparamss nestedMap derivedTermParam
+    val derivedTparams = constrTparams.map(derivedTypeParam(_))
+    val derivedVparamss = constrVparamss.nestedMap(derivedTermParam(_))
     val arity = constrVparamss.head.length
 
     val classTycon: Tree = new TypeRefTree // watching is set at end of method
@@ -327,8 +341,21 @@ object desugar {
       (if (args.isEmpty) tycon else AppliedTypeTree(tycon, args))
         .withPos(cdef.pos.startPos)
 
-    def appliedRef(tycon: Tree, tparams: List[TypeDef] = constrTparams) =
-      appliedTypeTree(tycon, tparams map refOfDef)
+    def appliedRef(tycon: Tree, tparams: List[TypeDef] = constrTparams, widenHK: Boolean = false) = {
+      val targs = for (tparam <- tparams) yield {
+        val targ = refOfDef(tparam)
+        def fullyApplied(tparam: Tree): Tree = tparam match {
+          case TypeDef(_, LambdaTypeTree(tparams, body)) =>
+            AppliedTypeTree(targ, tparams.map(_ => TypeBoundsTree(EmptyTree, EmptyTree)))
+          case TypeDef(_, rhs: DerivedTypeTree) =>
+            fullyApplied(rhs.watched)
+          case _ =>
+            targ
+        }
+        if (widenHK) fullyApplied(tparam) else targ
+      }
+      appliedTypeTree(tycon, targs)
+    }
 
     // a reference to the class type bound by `cdef`, with type parameters coming from the constructor
     val classTypeRef = appliedRef(classTycon)
@@ -417,13 +444,16 @@ object desugar {
     //
     //    implicit def eqInstance[T1$1, ..., Tn$1, T1$2, ..., Tn$2](implicit
     //      ev1: Eq[T1$1, T1$2], ..., evn: Eq[Tn$1, Tn$2]])
-    //      : Eq[C[T1$1, ..., Tn$1], C[T1$2, ..., Tn$2]] = Eq
+    //      : Eq[C[T1$, ..., Tn$1], C[T1$2, ..., Tn$2]] = Eq
+    //
+    // If any of the T_i are higher-kinded, say `Ti[X1 >: L1 <: U1, ..., Xm >: Lm <: Um]`,
+    // the corresponding type parameters for $ev_i are `Ti$1[_, ..., _], Ti$2[_, ..., _]`
+    // (with m underscores `_`).
     def eqInstance = {
-      def append(tdef: TypeDef, str: String) = cpy.TypeDef(tdef)(name = tdef.name ++ str)
-      val leftParams = derivedTparams.map(append(_, "$1"))
-      val rightParams = derivedTparams.map(append(_, "$2"))
+      val leftParams = constrTparams.map(derivedTypeParam(_, "$1"))
+      val rightParams = constrTparams.map(derivedTypeParam(_, "$2"))
       val subInstances = (leftParams, rightParams).zipped.map((param1, param2) =>
-        appliedRef(ref(defn.EqType), List(param1, param2)))
+        appliedRef(ref(defn.EqType), List(param1, param2), widenHK = true))
       DefDef(
           name = nme.eqInstance,
           tparams = leftParams ++ rightParams,
@@ -456,19 +486,16 @@ object desugar {
     // For all other classes, the parent is AnyRef.
     val companions =
       if (isCaseClass) {
-        def extractType(t: Tree): Tree = t match {
-          case Apply(t1, _) => extractType(t1)
-          case TypeApply(t1, ts) => AppliedTypeTree(extractType(t1), ts)
-          case Select(t1, nme.CONSTRUCTOR) => extractType(t1)
-          case New(t1) => t1
-          case t1 => t1
-        }
         // The return type of the `apply` method
-        val applyResultTpt =
-          if (isEnumCase)
-            if (parents.isEmpty) enumClassTypeRef
-            else parents.map(extractType).reduceLeft(AndTypeTree)
-          else TypeTree()
+        val (applyResultTpt, widenDefs) =
+          if (!isEnumCase)
+            (TypeTree(), Nil)
+          else if (parents.isEmpty || enumClass.typeParams.isEmpty)
+            (enumClassTypeRef, Nil)
+          else {
+            val tparams = enumClass.typeParams.map(derivedTypeParam)
+            enumApplyResult(cdef, parents, tparams, appliedRef(enumClassRef, tparams))
+          }
 
         val parent =
           if (constrTparams.nonEmpty ||
@@ -479,11 +506,13 @@ object desugar {
             // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
             (constrVparamss :\ (if (isEnumCase) applyResultTpt else classTypeRef)) (
               (vparams, restpe) => Function(vparams map (_.tpt), restpe))
+        def widenedCreatorExpr =
+          (creatorExpr /: widenDefs)((rhs, meth) => Apply(Ident(meth.name), rhs :: Nil))
         val applyMeths =
           if (mods is Abstract) Nil
           else
-            DefDef(nme.apply, derivedTparams, derivedVparamss, applyResultTpt, creatorExpr)
-              .withFlags(Synthetic | (constr1.mods.flags & DefaultParameterized)) :: Nil
+            DefDef(nme.apply, derivedTparams, derivedVparamss, applyResultTpt, widenedCreatorExpr)
+              .withFlags(Synthetic | (constr1.mods.flags & DefaultParameterized)) :: widenDefs
         val unapplyMeth = {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
@@ -713,6 +742,31 @@ object desugar {
       tree
   }
 
+  /** Translate infix operation expression
+    *
+    *     l op r     ==>    l.op(r)  if op is left-associative
+    *                ==>    r.op(l)  if op is right-associative
+    */
+  def binop(left: Tree, op: Ident, right: Tree)(implicit ctx: Context): Apply = {
+    def assignToNamedArg(arg: Tree) = arg match {
+      case Assign(Ident(name), rhs) => cpy.NamedArg(arg)(name, rhs)
+      case _ => arg
+    }
+    def makeOp(fn: Tree, arg: Tree, selectPos: Position) = {
+      val args: List[Tree] = arg match {
+        case Parens(arg) => assignToNamedArg(arg) :: Nil
+        case Tuple(args) => args.mapConserve(assignToNamedArg)
+        case _ => arg :: Nil
+      }
+      Apply(Select(fn, op.name).withPos(selectPos), args)
+    }
+
+    if (isLeftAssoc(op.name))
+      makeOp(left, right, Position(left.pos.start, op.pos.end, op.pos.start))
+    else
+      makeOp(right, left, Position(op.pos.start, right.pos.end))
+  }
+
   /** Make closure corresponding to function.
    *      params => body
    *  ==>
@@ -818,30 +872,6 @@ object desugar {
     def labelDefAndCall(lname: TermName, rhs: Tree, call: Tree) = {
       val ldef = DefDef(lname, Nil, ListOfNil, TypeTree(defn.UnitType), rhs).withFlags(Label | Synthetic)
       Block(ldef, call)
-    }
-
-    /** Translate infix operation expression  left op right
-     */
-    def makeBinop(left: Tree, op: Ident, right: Tree): Tree = {
-      def assignToNamedArg(arg: Tree) = arg match {
-        case Assign(Ident(name), rhs) => cpy.NamedArg(arg)(name, rhs)
-        case _ => arg
-      }
-      if (isLeftAssoc(op.name)) {
-        val args: List[Tree] = right match {
-          case Parens(arg) => assignToNamedArg(arg) :: Nil
-          case Tuple(args) => args mapConserve assignToNamedArg
-          case _ => right :: Nil
-        }
-        val selectPos = Position(left.pos.start, op.pos.end, op.pos.start)
-        Apply(Select(left, op.name).withPos(selectPos), args)
-      } else {
-        val x = UniqueName.fresh()
-        val selectPos = Position(op.pos.start, right.pos.end, op.pos.start)
-        new InfixOpBlock(
-          ValDef(x, TypeTree(), left).withMods(synthetic),
-          Apply(Select(right, op.name).withPos(selectPos), Ident(x).withPos(left.pos)))
-      }
     }
 
     /** Create tree for for-comprehension `<for (enums) do body>` or
@@ -1054,10 +1084,10 @@ object desugar {
           if (!op.isBackquoted && op.name == tpnme.raw.AMP) AndTypeTree(l, r)     // l & r
           else if (!op.isBackquoted && op.name == tpnme.raw.BAR) OrTypeTree(l, r) // l | r
           else AppliedTypeTree(op, l :: r :: Nil) // op[l, r]
-        else if (ctx.mode is Mode.Pattern)
+        else {
+          assert(ctx.mode is Mode.Pattern) // expressions are handled separately by `binop`
           Apply(op, l :: r :: Nil) // op(l, r)
-        else // l.op(r), or val x = r; l.op(x), plus handle named args specially
-          makeBinop(l, op, r)
+        }
       case PostfixOp(t, op) =>
         if ((ctx.mode is Mode.Type) && !op.isBackquoted && op.name == tpnme.raw.STAR) {
           val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType

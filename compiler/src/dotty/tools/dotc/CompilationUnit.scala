@@ -35,7 +35,7 @@ object CompilationUnit {
   def mkCompilationUnit(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit =
     mkCompilationUnit(new SourceFile(clsd.symbol.associatedFile, Seq()), unpickled, forceTrees)
 
-  /** Make a compilation unit the given unpickled tree */
+  /** Make a compilation unit, given picked bytes and unpickled tree */
   def mkCompilationUnit(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit = {
     assert(!unpickled.isEmpty, unpickled)
     val unit1 = new CompilationUnit(source)

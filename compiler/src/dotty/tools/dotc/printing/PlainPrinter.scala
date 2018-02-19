@@ -196,7 +196,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
           else toText(tp.origin)
         }
       case tp: LazyRef =>
-        "LazyRef(" ~ toTextGlobal(tp.ref) ~ ")" // TODO: only print this during debug mode?
+        def refTxt =
+          try toTextGlobal(tp.ref)
+          catch {
+            case ex: Throwable => Str("...")
+          }
+        "LazyRef(" ~ refTxt ~ ")"
       case _ =>
         tp.fallbackToText(this)
     }
@@ -217,7 +222,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** If -uniqid is set, the hashcode of the lambda type, after a # */
   protected def lambdaHash(pt: LambdaType): Text =
-    if (ctx.settings.uniqid.value) "#" + pt.hashCode else ""
+    if (ctx.settings.uniqid.value)
+      try "#" + pt.hashCode
+      catch { case ex: NullPointerException => "" }
+    else ""
 
   /** If -uniqid is set, the unique id of symbol, after a # */
   protected def idString(sym: Symbol): String =

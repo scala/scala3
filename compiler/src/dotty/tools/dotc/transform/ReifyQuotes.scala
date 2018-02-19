@@ -13,6 +13,7 @@ import tasty.TreePickler.Hole
 import MegaPhase.MiniPhase
 import SymUtils._
 import NameKinds.OuterSelectName
+import typer.Implicits.SearchFailureType
 
 import scala.collection.mutable
 import dotty.tools.dotc.core.StdNames._
@@ -22,7 +23,7 @@ import dotty.tools.dotc.core.quoted._
 /** Translates quoted terms and types to `unpickle` method calls.
  *  Checks that the phase consistency principle (PCP) holds.
  */
-class ReifyQuotes extends MacroTransform {
+class ReifyQuotes extends MacroTransformWithImplicits {
   import ast.tpd._
 
   override def phaseName: String = "reifyQuotes"
@@ -39,33 +40,6 @@ class ReifyQuotes extends MacroTransform {
 
     /** A stack of entered symbols, to be unwound after scope exit */
     var enteredSyms: List[Symbol] = Nil
-  }
-
-  /** A tree substituter that also works for holes */
-  class SubstMap(
-    typeMap: Type => Type = IdentityTypeMap,
-    treeMap: Tree => Tree = identity _,
-    oldOwners: List[Symbol] = Nil,
-    newOwners: List[Symbol] = Nil,
-    substFrom: List[Symbol],
-    substTo: List[Symbol])(implicit ctx: Context)
-  extends TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo) {
-
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-      case Hole(n, args) =>
-        Hole(n, args.mapConserve(transform)).withPos(tree.pos).withType(mapType(tree.tpe))
-      case _ =>
-        super.transform(tree)
-    }
-
-    override def newMap(
-        typeMap: Type => Type,
-        treeMap: Tree => Tree,
-        oldOwners: List[Symbol],
-        newOwners: List[Symbol],
-        substFrom: List[Symbol],
-        substTo: List[Symbol])(implicit ctx: Context) =
-      new SubstMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
   }
 
   /** Requiring that `paramRefs` consists of a single reference `seq` to a Seq[Any],
@@ -101,7 +75,7 @@ class ReifyQuotes extends MacroTransform {
    *  @param  level      the current level, where quotes add one and splices subtract one level
    *  @param  levels     a stacked map from symbols to the levels in which they were defined
    */
-  private class Reifier(inQuote: Boolean, val outer: Reifier, val level: Int, levels: LevelInfo) extends Transformer {
+  private class Reifier(inQuote: Boolean, val outer: Reifier, val level: Int, levels: LevelInfo) extends ImplicitsTransformer {
     import levels._
 
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
@@ -114,12 +88,12 @@ class ReifyQuotes extends MacroTransform {
     /** A list of embedded quotes (if `inSplice = true`) or splices (if `inQuote = true`) */
     val embedded = new mutable.ListBuffer[Tree]
 
-    /** A map from type ref T to "expression of type `quoted.Type[T]`".
+    /** A map from type ref T to expressions of type `quoted.Type[T]`".
      *  These will be turned into splices using `addTags`
      */
-    val importedTypes = new mutable.LinkedHashSet[TypeRef]()
+    val importedTags = new mutable.LinkedHashMap[TypeRef, Tree]()
 
-    /** Assuming typeTagOfRef = `Type1 -> tag1, ..., TypeN -> tagN`, the expression
+    /** Assuming importedTags = `Type1 -> tag1, ..., TypeN -> tagN`, the expression
      *
      *      { type <Type1> = <tag1>.unary_~
      *        ...
@@ -127,16 +101,15 @@ class ReifyQuotes extends MacroTransform {
      *        <expr>
      *      }
      *
-     *  where all references to `TypeI` in `expr` are rewired to point to the locally
+     *  references to `TypeI` in `expr` are rewired to point to the locally
      *  defined versions. As a side effect, prepend the expressions `tag1, ..., `tagN`
-     *  as splices to `buf`.
+     *  as splices to `embedded`.
      */
     def addTags(expr: Tree)(implicit ctx: Context): Tree =
-      if (importedTypes.isEmpty) expr
+      if (importedTags.isEmpty) expr
       else {
-        val trefs = importedTypes.toList
-        val typeDefs = for (tref <- trefs) yield {
-          val tag = New(defn.QuotedTypeType.appliedTo(tref), Nil) // FIXME: should be an implicitly inferred defn.QuotedTypeType.appliedTo(tref)
+        val itags = importedTags.toList
+        val typeDefs = for ((tref, tag) <- itags) yield {
           val rhs = transform(tag.select(tpnme.UNARY_~))
           val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
           val original = tref.symbol.asType
@@ -146,9 +119,9 @@ class ReifyQuotes extends MacroTransform {
             info = TypeAlias(tag.tpe.select(tpnme.UNARY_~)))
           ctx.typeAssigner.assignType(untpd.TypeDef(original.name, alias), local)
         }
-        importedTypes.clear()
+        importedTags.clear()
         Block(typeDefs,
-          new SubstMap(substFrom = trefs.map(_.symbol), substTo = typeDefs.map(_.symbol))
+          new TreeTypeMap(substFrom = itags.map(_._1.symbol), substTo = typeDefs.map(_.symbol))
             .apply(expr))
       }
 
@@ -180,6 +153,29 @@ class ReifyQuotes extends MacroTransform {
     def spliceOutsideQuotes(pos: Position)(implicit ctx: Context) =
       ctx.error(i"splice outside quotes", pos)
 
+    /** Try to heal phase-inconsistent reference to type `T` using a local type definition.
+     *  @return None      if successful
+     *  @return Some(msg) if unsuccessful where `msg` is a potentially empty error message
+     *                    to be added to the "inconsistent phase" message.
+     */
+    def tryHeal(tp: Type, pos: Position)(implicit ctx: Context): Option[String] = tp match {
+      case tp: TypeRef =>
+        val reqType = defn.QuotedTypeType.appliedTo(tp)
+        val tag = ctx.typer.inferImplicitArg(reqType, pos)
+        tag.tpe match {
+          case fail: SearchFailureType =>
+            Some(i"""
+                    |
+                    | The access would be accepted with the right type tag, but
+                    | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
+          case _ =>
+            importedTags(tp) = nested(isQuote = false).transform(tag)
+            None
+        }
+      case _ =>
+        Some("")
+    }
+
     /** Check reference to `sym` for phase consistency, where `tp` is the underlying type
      *  by which we refer to `sym`.
      */
@@ -192,14 +188,10 @@ class ReifyQuotes extends MacroTransform {
       if (!isThis && sym.maybeOwner.isType)
         check(sym.owner, sym.owner.thisType, pos)
       else if (sym.exists && !sym.isStaticOwner && !levelOK(sym))
-        tp match {
-          case tp: TypeRef =>
-            importedTypes += tp
-          case _ =>
-            ctx.error(em"""access to $symStr from wrong staging level:
-                          | - the definition is at level ${levelOf(sym)},
-                          | - but the access is at level $level.""", pos)
-        }
+        for (errMsg <- tryHeal(tp, pos))
+          ctx.error(em"""access to $symStr from wrong staging level:
+                        | - the definition is at level ${levelOf(sym)},
+                        | - but the access is at level $level.$errMsg""", pos)
     }
 
     /** Check all named types and this-types in a given type for phase consistency. */
@@ -209,7 +201,7 @@ class ReifyQuotes extends MacroTransform {
           case tp: NamedType if tp.symbol.isSplice =>
             if (inQuote) outer.checkType(pos).foldOver(acc, tp)
             else {
-              spliceOutsideQuotes(pos)
+              if (tp.isTerm) spliceOutsideQuotes(pos)
               tp
             }
           case tp: NamedType =>
@@ -265,12 +257,17 @@ class ReifyQuotes extends MacroTransform {
       if (inSplice)
         makeHole(body1, splices, quote.tpe)
       else {
+        def liftList(list: List[Tree], tpe: Type): Tree = {
+          list.foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>
+            acc.select("::".toTermName).appliedToType(tpe).appliedTo(x)
+          }
+        }
         val isType = quote.tpe.isRef(defn.QuotedTypeClass)
         ref(if (isType) defn.Unpickler_unpickleType else defn.Unpickler_unpickleExpr)
           .appliedToType(if (isType) body1.tpe else body1.tpe.widen)
           .appliedTo(
-            PickledQuotes.pickleQuote(body1),
-            SeqLiteral(splices, TypeTree(defn.AnyType)))
+            liftList(PickledQuotes.pickleQuote(body1).map(x => Literal(Constant(x))), defn.StringType),
+            liftList(splices, defn.AnyType))
       }
     }.withPos(quote.pos)
 
