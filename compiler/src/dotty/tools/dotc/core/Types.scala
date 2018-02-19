@@ -2734,11 +2734,10 @@ object Types {
 
   abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType {
     final override def hashCode = System.identityHashCode(this)
-    final override def equals(other: Any) = this `eq` other.asInstanceOf[AnyRef]
 
     final override def equals(that: Any) = equals(that, null)
 
-    // No definition of `eql` --> fall back on equals, which calls iso
+    // No definition of `eql` --> fall back on equals, which is `eq`
 
     final override def iso(that: Any, bs: BinderPairs) = that match {
       case that: MethodOrPoly =>
