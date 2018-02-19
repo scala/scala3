@@ -608,16 +608,16 @@ object RefChecks {
         //  - members in other concrete classes, since these have been checked before
         //    (this is done for efficiency)
         //  - members in a prefix of inherited parents that all come from Java or Scala2
-        //    (this is done to avoid false negatives since Scala2's rules for checking are different)
-        val membersToCheck = mutable.Set[Name]()
-        val seenClasses = mutable.Set[Symbol]()
+        //    (this is done to avoid false positives since Scala2's rules for checking are different)
+        val membersToCheck = new util.HashSet[Name](4096)
+        val seenClasses = new util.HashSet[Symbol](256)
         def addDecls(cls: Symbol): Unit =
           if (!seenClasses.contains(cls)) {
-            seenClasses.+=(cls)
+            seenClasses.addEntry(cls)
             for (mbr <- cls.info.decls)
               if (mbr.isTerm && !mbr.is(Synthetic | Bridge) && mbr.memberCanMatchInheritedSymbols &&
                   !membersToCheck.contains(mbr.name))
-                membersToCheck.+=(mbr.name)
+                membersToCheck.addEntry(mbr.name)
             cls.info.parents.map(_.classSymbol)
               .filter(_.is(AbstractOrTrait))
               .dropWhile(_.is(JavaDefined | Scala2x))
