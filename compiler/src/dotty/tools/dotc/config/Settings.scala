@@ -88,7 +88,13 @@ object Settings {
         state.update(idx, x.asInstanceOf[T])
     }
 
-    def isDefaultIn(state: SettingsState) = valueIn(state) == default
+    def isDefaultIn(state: SettingsState): Boolean = valueIn(state) == default
+
+    def defaultValue: String = implicitly[ClassTag[T]] match {
+      case StringTag => default.asInstanceOf[String]
+      case IntTag => default.asInstanceOf[Int].toString
+      case _ => ""
+    }
 
     def legalChoices: String =
       if (choices.isEmpty) ""
