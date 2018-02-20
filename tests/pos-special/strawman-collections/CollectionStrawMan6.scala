@@ -168,7 +168,7 @@ object CollectionStrawMan6 extends LowPriority {
   trait Buildable[+A, +Repr] extends Any with IterableMonoTransforms[A, Repr]  {
 
     /** Creates a new builder. */
-    protected[this] def newBuilder: Builder[A, Repr]
+    protected[this] def newBuilder: Builder[A, Repr] @uncheckedVariance
 
     /** Optimized, push-based version of `partition`. */
     override def partition(p: A => Boolean): (Repr, Repr) = {
@@ -226,7 +226,7 @@ object CollectionStrawMan6 extends LowPriority {
     /** Create a collection of type `C[A]` from the elements of `coll`, which has
      *  the same element type as this collection. Overridden in StringOps and ArrayOps.
      */
-    protected[this] def fromIterableWithSameElemType(coll: Iterable[A]): C[A] = fromIterable(coll)
+    protected[this] def fromIterableWithSameElemType(coll: Iterable[A] @uncheckedVariance): C[A]@uncheckedVariance  = fromIterable(coll)
   }
 
   /** Base trait for Seq operations */
@@ -349,7 +349,7 @@ object CollectionStrawMan6 extends LowPriority {
    */
   trait IterableMonoTransforms[+A, +Repr] extends Any {
     protected def coll: Iterable[A]
-    protected[this] def fromIterableWithSameElemType(coll: Iterable[A]): Repr
+    protected[this] def fromIterableWithSameElemType(coll: Iterable[A] @uncheckedVariance): Repr
 
     /** All elements satisfying predicate `p` */
     def filter(p: A => Boolean): Repr = fromIterableWithSameElemType(View.Filter(coll, p))
@@ -420,7 +420,7 @@ object CollectionStrawMan6 extends LowPriority {
 
     def fromIterable[B](c: Iterable[B]): List[B] = List.fromIterable(c)
 
-    protected[this] def newBuilder = new ListBuffer[A].mapResult(_.toList)
+    protected[this] def newBuilder = new ListBuffer[A].mapResult(_.toList): @uncheckedVariance
 
     /** Prepend element */
     def :: [B >: A](elem: B): List[B] =  new ::(elem, this)
