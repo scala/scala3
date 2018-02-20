@@ -830,7 +830,9 @@ trait Checking {
           case _: ValDef | _: TypeDef => stat.symbol.is(Case)
           case _ => false
         }
-        val cases = for (stat <- impl.body if isCase(stat)) yield untpd.Ident(stat.symbol.name)
+        val cases =
+          for (stat <- impl.body if isCase(stat))
+          yield untpd.Ident(stat.symbol.name.toTermName)
         val caseImport: Import = Import(ref(cdef.symbol), cases)
         val caseCtx = enumCtx.importContext(caseImport, caseImport.symbol)
         for (stat <- impl.body) checkCaseOrDefault(stat, caseCtx)
