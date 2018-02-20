@@ -186,7 +186,7 @@ object Inferencing {
    *  Invariant refinement can be assumed if `PatternType`'s class(es) are final or
    *  case classes (because of `RefChecks#checkCaseClassInheritanceInvariant`).
    */
-  def constrainPatternType(tp: Type, pt: Type)(implicit ctx: Context) = {
+  def constrainPatternType(tp: Type, pt: Type)(implicit ctx: Context): Boolean = {
     def refinementIsInvariant(tp: Type): Boolean = tp match {
       case tp: ClassInfo => tp.cls.is(Final) || tp.cls.is(Case)
       case tp: TypeProxy => refinementIsInvariant(tp.underlying)
@@ -207,7 +207,7 @@ object Inferencing {
     }
 
     val widePt = if (ctx.scala2Mode || refinementIsInvariant(tp)) pt else widenVariantParams(pt)
-    (tp <:< widePt)(ctx.addMode(Mode.GADTflexible))
+    tp <:< widePt
   }
 
   /** The list of uninstantiated type variables bound by some prefix of type `T` which
