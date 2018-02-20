@@ -641,6 +641,27 @@ object RefChecks {
         }
       }
 
+      /** Check that inheriting a case class does not constitute a variant refinement
+       *  of a base type of the case class. It is because of this restriction that we
+       *  can assume invariant refinement for case classes in `constrainPatternType`.
+       */
+      def checkCaseClassInheritanceInvariant() = {
+        for (caseCls <- clazz.info.baseClasses.tail.find(_.is(Case)))
+          for (bc <- caseCls.info.baseClasses.tail)
+            if (bc.typeParams.exists(_.paramVariance != 0)) {
+              val caseBT = self.baseType(caseCls)
+              val thisBT = self.baseType(bc)
+              val combinedBT = caseBT.baseType(bc)
+              if (!(thisBT =:= combinedBT))
+                ctx.errorOrMigrationWarning(
+                  em"""illegal inheritance: $clazz inherits case $caseCls
+                      |but the two have different base type instances for $bc.
+                      |
+                      |  Basetype for $clazz: $thisBT
+                      |  Basetype via $caseCls: $combinedBT""", clazz.pos)
+            }
+      }
+
       checkNoAbstractMembers()
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
@@ -649,6 +670,7 @@ object RefChecks {
         ctx.error(abstractErrorMessage, clazz.pos)
 
       checkMemberTypesOK()
+      checkCaseClassInheritanceInvariant()
     } else if (clazz.is(Trait) && !(clazz derivesFrom defn.AnyValClass)) {
       // For non-AnyVal classes, prevent abstract methods in interfaces that override
       // final members in Object; see #4431

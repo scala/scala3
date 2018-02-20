@@ -176,12 +176,15 @@ object Inferencing {
    *  `DynamicScrutineeType`?
    *
    *   - If `DynamicScrutineeType` refines the type parameters of `StaticScrutineeType`
-   *     in the same way as `PatternType`, the subtype test `PatternType <:< StaticScrutineeType`
-   *     tells us all we need to know.
+   *     in the same way as `PatternType` ("invariant refinement"), the subtype test
+   *     `PatternType <:< StaticScrutineeType` tells us all we need to know.
    *   - Otherwise, if variant refinement is a possibility we can only make predictions
    *     about invariant parameters of `StaticScrutineeType`. Hence we do a subtype test
    *     where `PatternType <: widenVariantParams(StaticScrutineeType)`, where `widenVariantParams`
    *     replaces all type argument of variant parameters with empty bounds.
+   *
+   *  Invariant refinement can be assumed if `PatternType`'s class(es) are final or
+   *  case classes (because of `RefChecks#checkCaseClassInheritanceInvariant`).
    */
   def constrainPatternType(tp: Type, pt: Type)(implicit ctx: Context) = {
     def refinementIsInvariant(tp: Type): Boolean = tp match {
