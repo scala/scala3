@@ -21,4 +21,7 @@ object FInterpolation {
     val args1: Expr[Seq[Any]] = liftSeq(args)
     '{  (~str).format(~args1: _*) }
   }
+
+  def hello = "hello"
+
 }

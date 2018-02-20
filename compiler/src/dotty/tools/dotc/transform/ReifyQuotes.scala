@@ -322,10 +322,19 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             stats.foreach(markDef)
             mapOverTree(last)
           case Inlined(call, bindings, expansion @ Select(body, name)) if expansion.symbol.isSplice =>
-            // To maintain phase consistency, convert inlined expressions of the form
-            // `{ bindings; ~expansion }` to `~{ bindings; expansion }`
-            if (level == 0) transform(Splicer.splice(cpy.Inlined(tree)(call, bindings, body)))
-            else transform(cpy.Select(expansion)(cpy.Inlined(tree)(call, bindings, body), name))
+            if (level == 0) {
+              // To maintain phase consistency, we move the binding of the this parameter into the spliced code
+              val (thisBindings, otherBindings) = bindings.partition {
+                case vdef: ValDef => vdef.symbol.is(Synthetic) // Assume that only _this bindings are tagged with Synthetic
+                case _ => false
+              }
+              val splicedBody = Splicer.splice(seq(thisBindings, body))
+              transform(cpy.Inlined(tree)(call, otherBindings, splicedBody))
+            } else {
+              // To maintain phase consistency, convert inlined expressions of the form
+              // `{ bindings; ~expansion }` to `~{ bindings; expansion }`
+              transform(cpy.Select(expansion)(cpy.Inlined(tree)(call, bindings, body), name))
+            }
           case _: Import =>
             tree
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
