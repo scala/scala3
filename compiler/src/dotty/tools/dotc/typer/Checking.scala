@@ -785,42 +785,55 @@ trait Checking {
    *  @param  enumCtx  the context immediately enclosing the corresponding enum
    */
   private def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(implicit ctx: Context): Unit = {
-    def check(tree: Tree) = {
-      // allow access to `sym` if a typedIdent just outside the enclosing enum
-      // would have produced the same symbol without errors
-      def allowAccess(name: Name, sym: Symbol): Boolean = {
-        val testCtx = enumCtx.fresh.setNewTyperState()
-        val ref = ctx.typer.typedIdent(untpd.Ident(name), WildcardType)(testCtx)
-        ref.symbol == sym && !testCtx.reporter.hasErrors
+
+    def checkCaseOrDefault(stat: Tree, caseCtx: Context) = {
+
+      def check(tree: Tree) = {
+        // allow access to `sym` if a typedIdent just outside the enclosing enum
+        // would have produced the same symbol without errors
+        def allowAccess(name: Name, sym: Symbol): Boolean = {
+          val testCtx = caseCtx.fresh.setNewTyperState()
+          val ref = ctx.typer.typedIdent(untpd.Ident(name), WildcardType)(testCtx)
+          ref.symbol == sym && !testCtx.reporter.hasErrors
+        }
+        checkRefsLegal(tree, cdef.symbol, allowAccess, "enum case")
       }
-      checkRefsLegal(tree, cdef.symbol, allowAccess, "enum case")
+
+      if (stat.symbol.is(Case))
+        stat match {
+          case TypeDef(_, Template(DefDef(_, tparams, vparamss, _, _), parents, _, _)) =>
+            tparams.foreach(check)
+            vparamss.foreach(_.foreach(check))
+            parents.foreach(check)
+          case vdef: ValDef =>
+            vdef.rhs match {
+              case Block((clsDef @ TypeDef(_, impl: Template)) :: Nil, _)
+              if clsDef.symbol.isAnonymousClass =>
+                impl.parents.foreach(check)
+              case _ =>
+            }
+          case _ =>
+        }
+      else if (stat.symbol.is(Module) && stat.symbol.linkedClass.is(Case))
+        stat match {
+          case TypeDef(_, impl: Template) =>
+            for ((defaultGetter @
+                  DefDef(DefaultGetterName(nme.CONSTRUCTOR, _), _, _, _, _)) <- impl.body)
+              check(defaultGetter.rhs)
+          case _ =>
+        }
     }
+
     cdef.rhs match {
       case impl: Template =>
-        for (stat <- impl.body)
-          if (stat.symbol.is(Case))
-            stat match {
-              case TypeDef(_, Template(DefDef(_, tparams, vparamss, _, _), parents, _, _)) =>
-                tparams.foreach(check)
-                vparamss.foreach(_.foreach(check))
-                parents.foreach(check)
-              case vdef: ValDef =>
-                vdef.rhs match {
-                  case Block((clsDef @ TypeDef(_, impl: Template)) :: Nil, _)
-                  if clsDef.symbol.isAnonymousClass =>
-                    impl.parents.foreach(check)
-                  case _ =>
-                }
-              case _ =>
-            }
-          else if (stat.symbol.is(Module) && stat.symbol.linkedClass.is(Case))
-            stat match {
-              case TypeDef(_, impl: Template) =>
-                for ((defaultGetter @
-                      DefDef(DefaultGetterName(nme.CONSTRUCTOR, _), _, _, _, _)) <- impl.body)
-                  check(defaultGetter.rhs)
-              case _ =>
-            }
+        def isCase(stat: Tree) = stat match {
+          case _: ValDef | _: TypeDef => stat.symbol.is(Case)
+          case _ => false
+        }
+        val cases = for (stat <- impl.body if isCase(stat)) yield untpd.Ident(stat.symbol.name)
+        val caseImport: Import = Import(ref(cdef.symbol), cases)
+        val caseCtx = enumCtx.importContext(caseImport, caseImport.symbol)
+        for (stat <- impl.body) checkCaseOrDefault(stat, caseCtx)
       case _ =>
     }
   }

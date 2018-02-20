@@ -100,6 +100,14 @@ object Test5 {
   }
 }
 
+object Test6 {
+  enum Color(val x: Int) {
+    case Green  extends Color(3)
+    case Red    extends Color(2)
+    case Violet extends Color(Green.x + Red.x)
+  }
+}
+
 object SerializationTest {
   object Types extends Enumeration { val X, Y = Value }
   class A extends java.io.Serializable { val types = Types.values }
