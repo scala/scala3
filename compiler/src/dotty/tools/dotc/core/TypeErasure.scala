@@ -78,7 +78,7 @@ object TypeErasure {
    */
   abstract case class ErasedValueType(tycon: TypeRef, erasedUnderlying: Type)
   extends CachedGroundType with ValueType {
-    override def computeHash = doHash(tycon, erasedUnderlying)
+    override def computeHash(bs: Hashable.Binders) = doHash(bs, tycon, erasedUnderlying)
   }
 
   final class CachedErasedValueType(tycon: TypeRef, erasedUnderlying: Type)
@@ -429,9 +429,11 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         tp.derivedClassInfo(NoPrefix, erasedParents, erasedDecls, erasedRef(tp.selfType))
           // can't replace selftype by NoType because this would lose the sourceModule link
       }
-    case NoType | NoPrefix | _: ErrorType | JavaArrayType(_) =>
+    case _: ErrorType | JavaArrayType(_) =>
       tp
     case tp: WildcardType if wildcardOK =>
+      tp
+    case tp if (tp `eq` NoType) || (tp `eq` NoPrefix) =>
       tp
   }
 

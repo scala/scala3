@@ -54,7 +54,7 @@ object Uniques {
     }
 
     def enterIfNew(prefix: Type, designator: Designator, isTerm: Boolean)(implicit ctx: Context): NamedType = {
-      val h = doHash(designator, prefix)
+      val h = doHash(null, designator, prefix)
       if (monitored) recordCaching(h, classOf[NamedType])
       def newType =
         if (isTerm) new CachedTermRef(prefix, designator, h)
@@ -80,7 +80,7 @@ object Uniques {
     }
 
     def enterIfNew(tycon: Type, args: List[Type]): AppliedType = {
-      val h = doHash(tycon, args)
+      val h = doHash(null, tycon, args)
       def newType = new CachedAppliedType(tycon, args, h)
       if (monitored) recordCaching(h, classOf[CachedAppliedType])
       if (h == NotCached) newType
