@@ -1320,7 +1320,12 @@ class Typer extends Namer
       case _ =>
         if (tree.name == nme.WILDCARD) body1
         else {
-          val sym = ctx.newPatternBoundSymbol(tree.name, body1.tpe.underlyingIfRepeated(isJava = false), tree.pos)
+          // for a singleton pattern like `x @ Nil`, `x` should get the type from the scrutinee
+          // see tests/neg/i3200b.scala and SI-1503
+          val symTp =
+            if (body1.tpe.isInstanceOf[TermRef]) pt1
+            else body1.tpe.underlyingIfRepeated(isJava = false)
+          val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.pos)
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.pos)
           assignType(cpy.Bind(tree)(tree.name, body1), sym)
