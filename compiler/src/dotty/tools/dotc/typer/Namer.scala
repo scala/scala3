@@ -613,22 +613,24 @@ class Namer { typer: Typer =>
     def createLinks(classTree: TypeDef, moduleTree: TypeDef)(implicit ctx: Context) = {
       val claz = ctx.effectiveScope.lookup(classTree.name)
       val modl = ctx.effectiveScope.lookup(moduleTree.name)
-      if (claz.isClass && modl.isClass) {
-        ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, modl).entered
-        ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, modl, claz).entered
-      }
+      if (modl.isClass)
+        if (claz.isClass) {
+          ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, modl).entered
+          ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, modl, claz).entered
+        }
+        else if (claz.is(Opaque))
+          ctx.synthesizeCompanionMethod(nme.COMPANION_TYPE_METHOD, claz, modl).entered
     }
 
     def createCompanionLinks(implicit ctx: Context): Unit = {
       val classDef  = mutable.Map[TypeName, TypeDef]()
       val moduleDef = mutable.Map[TypeName, TypeDef]()
 
-      def updateCache(cdef: TypeDef): Unit = {
-        if (!cdef.isClassDef || cdef.mods.is(Package)) return
-
-        if (cdef.mods.is(ModuleClass)) moduleDef(cdef.name) = cdef
-        else classDef(cdef.name) = cdef
-      }
+      def updateCache(cdef: TypeDef): Unit =
+        if (cdef.isClassDef && !cdef.mods.is(Package) || cdef.mods.is(Opaque)) {
+          if (cdef.mods.is(ModuleClass)) moduleDef(cdef.name) = cdef
+          else classDef(cdef.name) = cdef
+        }
 
       for (stat <- stats)
         expanded(stat) match {

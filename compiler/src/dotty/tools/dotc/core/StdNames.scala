@@ -145,6 +145,7 @@ object StdNames {
     val INITIALIZER_PREFIX: N         = "initial$"
     val COMPANION_MODULE_METHOD: N    = "companion$module"
     val COMPANION_CLASS_METHOD: N     = "companion$class"
+    val COMPANION_TYPE_METHOD: N      = "companion$type"
     val BOUNDTYPE_ANNOT: N            = "$boundType$"
     val QUOTE: N                      = "'"
     val TYPE_QUOTE: N                = "type_'"
