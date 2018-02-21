@@ -383,6 +383,8 @@ object Checking {
         fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
+    if (sym.is(Unused))
+      checkApplicable(Unused, !sym.is(MutableOrLazy))
   }
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
@@ -501,10 +503,12 @@ object Checking {
             if (param.is(Mutable))
               ctx.error(ValueClassParameterMayNotBeAVar(clazz, param), param.pos)
             if (param.info.isPhantom)
-              ctx.error("value class first parameter must not be phantom", param.pos)
+              ctx.error("First parameter of value class must not be phantom", param.pos)
+            else if (param.is(Unused))
+              ctx.error("First parameter of value class cannot be `unused`", param.pos)
             else {
-              for (p <- params if !p.info.isPhantom)
-                ctx.error("value class can only have one non phantom parameter", p.pos)
+              for (p <- params if !(p.info.isPhantom || p.is(Unused)))
+                ctx.error("value class can only have one non `unused` parameter", p.pos)
             }
           case Nil =>
             ctx.error(ValueClassNeedsOneValParam(clazz), clazz.pos)

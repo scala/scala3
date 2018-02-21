@@ -1,0 +1,2 @@
+public <U> int MyUnused$.f1()
+U <: java.lang.Object

@@ -93,4 +93,5 @@ object Mode {
 
   /** We are in the IDE */
   val Interactive = newMode(20, "Interactive")
+
 }

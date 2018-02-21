@@ -1713,15 +1713,16 @@ object messages {
     }
   }
 
-  case class ImplicitFunctionTypeNeedsNonEmptyParameterList()(implicit ctx: Context)
-    extends Message(ImplicitFunctionTypeNeedsNonEmptyParameterListID) {
+  case class FunctionTypeNeedsNonEmptyParameterList(isImplicit: Boolean = true, isUnused: Boolean = true)(implicit ctx: Context)
+    extends Message(FunctionTypeNeedsNonEmptyParameterListID) {
     val kind = "Syntax"
-    val msg = "implicit function type needs non-empty parameter list"
+    val mods = ((isImplicit, "implicit") :: (isUnused, "unused") :: Nil).filter(_._1).mkString(" ")
+    val msg = mods + " function type needs non-empty parameter list"
     val explanation = {
-      val code1 = "type Transactional[T] = implicit Transaction => T"
+      val code1 = s"type Transactional[T] = $mods Transaction => T"
       val code2 = "val cl: implicit A => B"
-      hl"""It is not allowed to leave implicit function parameter list empty.
-         |Possible ways to define implicit function type:
+      hl"""It is not allowed to leave $mods function parameter list empty.
+         |Possible ways to define $mods function type:
          |
          |$code1
          |

@@ -178,16 +178,18 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
+          checkNotUnused(tree)
           handleMeta(tree.symbol)
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
             case _ => tree
           }
         case tree @ Select(qual, name) =>
+          checkNotUnused(tree)
           handleMeta(tree.symbol)
           if (name.isTypeName) {
             Checking.checkRealizable(qual.tpe, qual.pos.focus)
-            super.transform(tree)
+            super.transform(tree)(ctx.addMode(Mode.Type))
           }
           else
             transformSelect(tree, Nil)
@@ -308,5 +310,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           println(i"error while transforming $tree")
           throw ex
       }
+
+    private def checkNotUnused(tree: RefTree)(implicit ctx: Context): Unit = {
+      if (tree.symbol.is(Unused) && !ctx.mode.is(Mode.Type)) {
+        val msg =
+          if (tree.symbol.is(CaseAccessor)) "First parameter list of case class may not contain `unused` parameters"
+          else i"${tree.symbol} is declared as unused, but is in fact used"
+        ctx.error(msg, tree.pos)
+      }
+    }
   }
 }

@@ -239,8 +239,13 @@ object GenericSignatures {
           methodResultSig(restpe)
 
         case mtpe: MethodType =>
-          // phantom method parameters do not make it to the bytecode.
-          val params = mtpe.paramInfoss.flatten.filterNot(_.isPhantom)
+          // unused method parameters do not make it to the bytecode.
+          def effectiveParamInfoss(t: Type)(implicit ctx: Context): List[List[Type]] = t match {
+            case t: MethodType if t.isUnusedMethod => effectiveParamInfoss(t.resType)
+            case t: MethodType => t.paramInfos.filterNot(_.isPhantom) :: effectiveParamInfoss(t.resType)
+            case _ => Nil
+          }
+          val params = effectiveParamInfoss(mtpe).flatten
           val restpe = mtpe.finalResultType
           builder.append('(')
           // TODO: Update once we support varargs

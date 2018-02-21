@@ -779,7 +779,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             checkCanEqual(left.tpe.widen, right.tpe.widen, app.pos)
         case _ =>
       }
-      app
+      app match {
+        case Apply(fun, args) if fun.tpe.widen.isUnusedMethod =>
+          tpd.cpy.Apply(app)(fun = fun, args = args.map(arg => normalizeUnusedExpr(arg, "This argument is given to an unused parameter. ")))
+        case _ => app
+      }
     }
   }
 
@@ -1393,7 +1397,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         val alts1 = alts filter pt.isMatchedBy
         resolveOverloaded(alts1, pt1, targs1)
 
-      case defn.FunctionOf(args, resultType, _) =>
+      case defn.FunctionOf(args, resultType, _, _) =>
         narrowByTypes(alts, args, resultType)
 
       case pt =>
@@ -1440,7 +1444,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           val formalsForArg: List[Type] = altFormals.map(_.head)
           def argTypesOfFormal(formal: Type): List[Type] =
             formal match {
-              case defn.FunctionOf(args, result, isImplicit) => args
+              case defn.FunctionOf(args, result, isImplicit, isUnused) => args
               case defn.PartialFunctionOf(arg, result) => arg :: Nil
               case _ => Nil
             }
@@ -1535,6 +1539,23 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val harmonizedElems = harmonize(origElems)
     if (harmonizedElems ne origElems) ctx.typerState.constraint = origConstraint
     harmonizedElems
+  }
+
+  /** Transforms the tree into a its default tree.
+   *  Performed to shrink the tree that is known to be erased later.
+   */
+  protected def normalizeUnusedExpr(tree: Tree, msg: String)(implicit ctx: Context): Tree = {
+    if (!isPureExpr(tree))
+      ctx.warning(msg + "This expression will not be evaluated.", tree.pos)
+    defaultValue(tree.tpe)
+  }
+
+  /** Transforms the rhs tree into a its default tree if it is in an `unused` val/def.
+   *  Performed to shrink the tree that is known to be erased later.
+   */
+  protected def normalizeUnusedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) = {
+    if (sym.is(Unused) && rhs.tpe.exists) normalizeUnusedExpr(rhs, "Expression is on the RHS of an `unused` " + sym.showKind + ". ")
+    else rhs
   }
 
   /** If all `types` are numeric value types, and they are not all the same type,

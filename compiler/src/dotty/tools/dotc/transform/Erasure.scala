@@ -457,12 +457,15 @@ object Erasure {
     private def runtimeCallWithProtoArgs(name: Name, pt: Type, args: Tree*)(implicit ctx: Context): Tree = {
       val meth = defn.runtimeMethodRef(name)
       val followingParams = meth.symbol.info.firstParamTypes.drop(args.length)
-      val followingArgs = protoArgs(pt).zipWithConserve(followingParams)(typedExpr).asInstanceOf[List[tpd.Tree]]
+      val followingArgs = protoArgs(pt, meth.widen).zipWithConserve(followingParams)(typedExpr).asInstanceOf[List[tpd.Tree]]
       ref(meth).appliedToArgs(args.toList ++ followingArgs)
     }
 
-    private def protoArgs(pt: Type): List[untpd.Tree] = pt match {
-      case pt: FunProto => pt.args ++ protoArgs(pt.resType)
+    private def protoArgs(pt: Type, methTp: Type): List[untpd.Tree] = (pt, methTp) match {
+      case (pt: FunProto, methTp: MethodType) if methTp.isUnusedMethod =>
+        protoArgs(pt.resType, methTp.resType)
+      case (pt: FunProto, methTp: MethodType) =>
+        pt.args ++ protoArgs(pt.resType, methTp.resType)
       case _ => Nil
     }
 
@@ -496,15 +499,19 @@ object Erasure {
           fun1.tpe.widen match {
             case mt: MethodType =>
               val outers = outer.args(fun.asInstanceOf[tpd.Tree]) // can't use fun1 here because its type is already erased
-              var args0 = outers ::: args ++ protoArgs(pt)
+              val ownArgs = if (mt.paramNames.nonEmpty && !mt.isUnusedMethod) args else Nil
+              var args0 = outers ::: ownArgs ::: protoArgs(pt, tree.typeOpt)
+
               if (args0.length > MaxImplementedFunctionArity && mt.paramInfos.length == 1) {
                 val bunchedArgs = untpd.JavaSeqLiteral(args0, TypeTree(defn.ObjectType))
                   .withType(defn.ArrayOf(defn.ObjectType))
                 args0 = bunchedArgs :: Nil
               }
               // Arguments are phantom if an only if the parameters are phantom, guaranteed by the separation of type lattices
-              val args1 = args0.filterConserve(arg => !wasPhantom(arg.typeOpt)).zipWithConserve(mt.paramInfos)(typedExpr)
-              untpd.cpy.Apply(tree)(fun1, args1) withType mt.resultType
+              val args1 = args0.filterConserve(arg => !wasPhantom(arg.typeOpt))
+              assert(args1 hasSameLengthAs mt.paramInfos)
+              val args2 = args1.zipWithConserve(mt.paramInfos)(typedExpr)
+              untpd.cpy.Apply(tree)(fun1, args2) withType mt.resultType
             case _ =>
               throw new MatchError(i"tree $tree has unexpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")
           }
@@ -564,6 +571,7 @@ object Erasure {
         vparamss1 = (tpd.ValDef(bunchedParam) :: Nil) :: Nil
         rhs1 = untpd.Block(paramDefs, rhs1)
       }
+      vparamss1 = vparamss1.mapConserve(_.filterConserve(!_.symbol.is(Flags.Unused)))
       vparamss1 = vparamss1.mapConserve(_.filterConserve(vparam => !wasPhantom(vparam.tpe)))
       if (sym.is(Flags.ParamAccessor) && wasPhantom(ddef.tpt.tpe)) {
         sym.resetFlag(Flags.ParamAccessor)
