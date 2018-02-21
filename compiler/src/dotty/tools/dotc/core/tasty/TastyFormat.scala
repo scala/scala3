@@ -183,6 +183,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   OVERRIDE
                   INLINE                              // inline method
                   MACRO                               // inline method containing toplevel splices
+                  OPAQUE                              // opaque type
                   STATIC                              // mapped to static Java member
                   OBJECT                              // an object or its class
                   TRAIT                               // a trait
@@ -299,6 +300,7 @@ object TastyFormat {
   final val DEFAULTparameterized = 30
   final val STABLE = 31
   final val MACRO = 32
+  final val OPAQUE = 33
 
   // Cat. 2:    tag Nat
 
@@ -410,7 +412,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= MACRO ||
+    firstSimpleTreeTag <= tag && tag <= OPAQUE ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -432,6 +434,7 @@ object TastyFormat {
        | OVERRIDE
        | INLINE
        | MACRO
+       | OPAQUE
        | STATIC
        | OBJECT
        | TRAIT
@@ -486,6 +489,7 @@ object TastyFormat {
     case OVERRIDE => "OVERRIDE"
     case INLINE => "INLINE"
     case MACRO => "MACRO"
+    case OPAQUE => "OPAQUE"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
     case TRAIT => "TRAIT"
