@@ -251,8 +251,11 @@ object Flags {
 
   final val AccessorOrSealed = Accessor.toCommonFlags
 
- /** A mutable var */
+  /** A mutable var */
   final val Mutable = termFlag(12, "mutable")
+
+  /** An opqaue type */
+  final val Opaque = typeFlag(12, "opaque")
 
   /** Symbol is local to current class (i.e. private[this] or protected[this]
    *  pre: Private or Protected are also set
@@ -264,7 +267,7 @@ object Flags {
    */
   final val ParamAccessor = termFlag(14, "<paramaccessor>")
 
-    /** A value or class implementing a module */
+  /** A value or class implementing a module */
   final val Module = commonFlag(15, "module")
   final val ModuleVal = Module.toTermFlags
   final val ModuleClass = Module.toTypeFlags
@@ -441,12 +444,12 @@ object Flags {
   /** Flags representing source modifiers */
   final val SourceModifierFlags =
     commonFlags(Private, Protected, Abstract, Final, Inline,
-     Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic, Erased)
+     Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic, Erased, Opaque)
 
   /** Flags representing modifiers that can appear in trees */
   final val ModifierFlags =
-    SourceModifierFlags | Module | Param | Synthetic | Package | Local |
-    commonFlags(Mutable)
+    SourceModifierFlags | Module | Param | Synthetic | Package | Local
+      // | Mutable is subsumed by commonFlags(Opaque) from SourceModifierFlags
       // | Trait is subsumed by commonFlags(Lazy) from SourceModifierFlags
 
   assert(ModifierFlags.isTermFlags && ModifierFlags.isTypeFlags)

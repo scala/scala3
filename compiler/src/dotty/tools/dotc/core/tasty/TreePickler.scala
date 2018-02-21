@@ -608,6 +608,7 @@ class TreePickler(pickler: TastyPickler) {
       if (flags is Trait) writeByte(TRAIT)
       if (flags is Covariant) writeByte(COVARIANT)
       if (flags is Contravariant) writeByte(CONTRAVARIANT)
+      if (flags is Opaque) writeByte(OPAQUE)
     }
     sym.annotations.foreach(pickleAnnotation(sym, _))
   }
