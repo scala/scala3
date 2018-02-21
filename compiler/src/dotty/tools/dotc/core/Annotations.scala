@@ -173,6 +173,18 @@ object Annotations {
         else None
     }
 
+    /** Extractor for opaque alias annotations */
+    object OpaqueAlias {
+      def apply(tp: Type)(implicit ctx: Context): Annotation =
+        Annotation(TypeTree(defn.OpaqueAliasAnnotType.appliedTo(tp)))
+      def unapply(ann: Annotation)(implicit ctx: Context) =
+        if (ann.symbol == defn.OpaqueAliasAnnot) {
+          val AppliedType(tycon, arg :: Nil) = ann.tree.tpe
+          Some(arg)
+        }
+        else None
+    }
+
     def makeSourceFile(path: String)(implicit ctx: Context) =
       apply(defn.SourceFileAnnot, Literal(Constant(path)))
   }

@@ -528,6 +528,7 @@ class TreeUnpickler(reader: TastyReader,
             // avoids space leaks by not capturing the current context
           forkAt(rhsStart).readTerm()
         })
+      sym.normalizeOpaque()
       goto(start)
       sym
     }

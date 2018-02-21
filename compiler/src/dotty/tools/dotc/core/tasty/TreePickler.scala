@@ -617,8 +617,8 @@ class TreePickler(pickler: TastyPickler) {
       // a different toplevel class, it is impossible to pickle a reference to it.
       // Such annotations will be reconstituted when unpickling the child class.
       // See tests/pickling/i3149.scala
-    case _ => ann.symbol == defn.BodyAnnot
-      // inline bodies are reconstituted automatically when unpickling
+    case _ => ann.symbol == defn.BodyAnnot || ann.symbol == defn.OpaqueAliasAnnot
+      // inline bodies and opaque aliases are reconstituted automatically when unpickling
   }
 
   def pickleAnnotation(owner: Symbol, ann: Annotation)(implicit ctx: Context) =
