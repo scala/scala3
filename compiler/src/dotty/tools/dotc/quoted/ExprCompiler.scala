@@ -61,7 +61,7 @@ class ExprCompiler(directory: AbstractFile) extends Compiler {
         case exprUnit: ExprCompilationUnit =>
           val tree =
             if (putInClass) inClass(exprUnit.expr)
-            else PickledQuotes.quotedToTree(exprUnit.expr)
+            else PickledQuotes.quotedExprToTree(exprUnit.expr)
           val source = new SourceFile("", Seq())
           CompilationUnit.mkCompilationUnit(source, tree, forceTrees = true)
       }
@@ -80,7 +80,7 @@ class ExprCompiler(directory: AbstractFile) extends Compiler {
       cls.enter(ctx.newDefaultConstructor(cls), EmptyScope)
       val meth = ctx.newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
 
-      val quoted = PickledQuotes.quotedToTree(expr)(ctx.withOwner(meth))
+      val quoted = PickledQuotes.quotedExprToTree(expr)(ctx.withOwner(meth))
 
       val run = DefDef(meth, quoted)
       val classTree = ClassDef(cls, DefDef(cls.primaryConstructor.asTerm), run :: Nil)

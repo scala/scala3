@@ -20,8 +20,9 @@ import config.Printers.pickling
 import typer.Checking
 import config.Config
 import dotty.tools.dotc.core.quoted.PickledQuotes
-import dotty.tools.dotc.interpreter.RawQuoted
 import scala.quoted
+import scala.quoted.Types.TreeType
+import scala.quoted.Exprs.TreeExpr
 
 /** Unpickler for typed trees
  *  @param reader          the reader from which to unpickle
@@ -296,7 +297,7 @@ class TreeUnpickler(reader: TastyReader,
             case ENUMconst =>
               ConstantType(Constant(readTermRef().termSymbol))
             case HOLE =>
-              readHole(end).tpe
+              readHole(end, isType = true).tpe
           }
         assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
         result
@@ -1076,7 +1077,7 @@ class TreeUnpickler(reader: TastyReader,
               val hi = if (currentAddr == end) lo else readTpt()
               TypeBoundsTree(lo, hi)
             case HOLE =>
-              readHole(end)
+              readHole(end, isType = false)
             case _ =>
               readPathTerm()
           }
@@ -1127,14 +1128,23 @@ class TreeUnpickler(reader: TastyReader,
       new LazyReader(localReader, op)
     }
 
-    def readHole(end: Addr)(implicit ctx: Context): Tree = {
+    def readHole(end: Addr, isType: Boolean)(implicit ctx: Context): Tree = {
       val idx = readNat()
       val args = until(end)(readTerm())
       val splice = splices(idx)
-      val quotedType =
-        if (args.isEmpty) splice.asInstanceOf[quoted.Quoted]
-        else splice.asInstanceOf[Seq[Any] => quoted.Quoted](args.map(RawQuoted.apply))
-      PickledQuotes.quotedToTree(quotedType)
+
+      if (isType) {
+        val quotedType =
+          if (args.isEmpty) splice.asInstanceOf[quoted.Type[_]]
+          else splice.asInstanceOf[Seq[Any] => quoted.Type[_]](args.map(tree => new TreeType(tree)))
+        PickledQuotes.quotedTypeToTree(quotedType)
+      } else {
+        val quotedExpr =
+          if (args.isEmpty) splice.asInstanceOf[quoted.Expr[_]]
+          else splice.asInstanceOf[Seq[Any] => quoted.Expr[_]](args.map(tree => new TreeExpr(tree)))
+        PickledQuotes.quotedExprToTree(quotedExpr)
+      }
+
     }
 
 // ------ Setting positions ------------------------------------------------

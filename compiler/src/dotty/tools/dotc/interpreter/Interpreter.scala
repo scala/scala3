@@ -72,7 +72,9 @@ class Interpreter(implicit ctx: Context) {
     implicit val pos: Position = tree.pos
 
     tree match {
-      case Quoted(quotedTree) => RawQuoted(quotedTree)
+      case Quoted(quotedTree) =>
+        if (tree.isTerm) new scala.quoted.Exprs.TreeExpr(quotedTree)
+        else new scala.quoted.Types.TreeType(quotedTree)
 
       case Literal(Constant(c)) => c.asInstanceOf[Object]
 
