@@ -334,6 +334,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
               else seq(stagedBindings, cpy.Select(expansion)(cpy.Inlined(tree)(call, splicedBindings, body), name))
             transform(tree1)
 
+            // due to value-discarding which converts an { e } into { e; () })
             if (tree.tpe =:= defn.UnitType) Block(tree1 :: Nil, Literal(Constant(())))
             else tree1
           case _: Import =>
