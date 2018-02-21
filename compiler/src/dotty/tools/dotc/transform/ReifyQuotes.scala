@@ -332,11 +332,11 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             val tree1 =
               if (level == 0) cpy.Inlined(tree)(call, stagedBindings, Splicer.splice(seq(splicedBindings, body)))
               else seq(stagedBindings, cpy.Select(expansion)(cpy.Inlined(tree)(call, splicedBindings, body), name))
-            transform(tree1)
+            val tree2 = transform(tree1)
 
             // due to value-discarding which converts an { e } into { e; () })
-            if (tree.tpe =:= defn.UnitType) Block(tree1 :: Nil, Literal(Constant(())))
-            else tree1
+            if (tree.tpe =:= defn.UnitType) Block(tree2 :: Nil, Literal(Constant(())))
+            else tree2
           case _: Import =>
             tree
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
