@@ -321,16 +321,22 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             val last = enteredSyms
             stats.foreach(markDef)
             mapOverTree(last)
-          case Inlined(call, bindings, expansion @ Select(body, name)) if expansion.symbol.isSplice =>
+
+          case Inlined(call, bindings, InlineSplice(expansion @ Select(body, name))) =>
             // To maintain phase consistency, we move the binding of the this parameter into the spliced code
             val (splicedBindings, stagedBindings) = bindings.partition {
               case vdef: ValDef => vdef.symbol.is(Synthetic) // Assume that only _this bindings are tagged with Synthetic
               case _ => false
             }
+
             val tree1 =
               if (level == 0) cpy.Inlined(tree)(call, stagedBindings, Splicer.splice(seq(splicedBindings, body)))
               else seq(stagedBindings, cpy.Select(expansion)(cpy.Inlined(tree)(call, splicedBindings, body), name))
-            transform(tree1)
+            val tree2 = transform(tree1)
+
+            // due to value-discarding which converts an { e } into { e; () })
+            if (tree.tpe =:= defn.UnitType) Block(tree2 :: Nil, Literal(Constant(())))
+            else tree2
           case _: Import =>
             tree
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
@@ -343,5 +349,20 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             checkLevel(mapOverTree(enteredSyms))
         }
       }
+
+    /** InlineSplice is used to detect cases where the expansion
+     *  consists of a (possibly multiple & nested) block or a sole expression.
+     */
+    object InlineSplice {
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Select] = {
+        tree match {
+          case expansion: Select if expansion.symbol.isSplice =>
+            Some(expansion)
+          case Block(List(stat), Literal(Constant(()))) => unapply(stat)
+          case Block(Nil, expr) => unapply(expr)
+          case _ => None
+        }
+      }
+    }
   }
 }

@@ -6,13 +6,13 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.interpreter._
 
-/** Utility class to slice quoted expressions */
+/** Utility class to splice quoted expressions */
 object Splicer {
   import tpd._
 
   /** Splice the Tree for a Quoted expression. `~'(xyz)` becomes `xyz`
    *  and for `~xyz` the tree of `xyz` is interpreted for which the
-   *  resulting expression is return as a `Tree`
+   *  resulting expression is returned as a `Tree`
    */
   def splice(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
