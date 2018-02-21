@@ -380,6 +380,14 @@ object SymDenotations {
       case _ => unforcedDecls.openForMutations
     }
 
+    final def normalizeOpaque()(implicit ctx: Context) = {
+      if (is(Opaque)) {
+        addAnnotation(Annotation.OpaqueAlias(info))
+        setFlag(Deferred)
+        info = TypeBounds.empty
+      }
+    }
+
     // ------ Names ----------------------------------------------
 
     /** The expanded name of this denotation. */

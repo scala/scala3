@@ -842,6 +842,7 @@ class Namer { typer: Typer =>
       addInlineInfo(denot)
       denot.info = typeSig(sym)
       Checking.checkWellFormed(sym)
+      denot.normalizeOpaque()
       denot.info = avoidPrivateLeaks(sym, sym.pos)
     }
   }
