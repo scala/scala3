@@ -103,10 +103,19 @@ trait NamerContextOps { this: Context =>
 
   /** A new context for the interior of a class */
   def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/): Context = {
-    val localCtx: Context = ctx.fresh.setNewScope
+    var localCtx: FreshContext = ctx.fresh.setNewScope
     selfInfo match {
       case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)
       case _ =>
+    }
+    if (ctx.owner.is(Module)) {
+      val opaq = ctx.owner.companionOpaqueType
+      opaq.getAnnotation(defn.OpaqueAliasAnnot) match {
+        case Some(Annotation.OpaqueAlias(rhs)) =>
+          localCtx = localCtx.setFreshGADTBounds
+          localCtx.gadt.setBounds(opaq, TypeAlias(rhs))
+        case _ =>
+      }
     }
     localCtx
   }
@@ -505,7 +514,6 @@ class Namer { typer: Typer =>
       enumClass.addAnnotation(Annotation.Child(sym))
     case _ =>
   }
-
 
   def setDocstring(sym: Symbol, tree: Tree)(implicit ctx: Context) = tree match {
     case t: MemberDef if t.rawComment.isDefined =>
