@@ -341,11 +341,10 @@ object Interactive {
     }
 
   def pathTo(tree: Tree, pos: Position)(implicit ctx: Context): List[Tree] =
-    if (tree.pos.contains(pos)) {
-      // FIXME: We shouldn't need a cast. Change NavigateAST.pathTo to return a List of Tree?
-      val path = NavigateAST.pathTo(pos, tree, skipZeroExtent = true).asInstanceOf[List[untpd.Tree]]
-      path.dropWhile(!_.hasType) collect { case t: tpd.Tree @unchecked => t }
-    }
+    if (tree.pos.contains(pos))
+      NavigateAST.pathTo(pos, tree, skipZeroExtent = true)
+        .collect { case t: untpd.Tree => t }
+        .dropWhile(!_.hasType).asInstanceOf[List[tpd.Tree]]
     else Nil
 
   def contextOfStat(stats: List[Tree], stat: Tree, exprOwner: Symbol, ctx: Context): Context = stats match {
