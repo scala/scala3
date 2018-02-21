@@ -168,7 +168,12 @@ object Formatting {
       case param: TypeParamRef =>
         s"is a type variable${addendum("constraint", ctx.typeComparer.bounds(param))}"
       case sym: Symbol =>
-        s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", sym.info)}"
+        val info =
+          if (ctx.gadt.bounds.contains(sym))
+            sym.info & ctx.gadt.bounds(sym)
+          else
+            sym.info
+        s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
       case tp: SkolemType =>
         s"is an unknown value of type ${tp.widen.show}"
     }
@@ -183,7 +188,11 @@ object Formatting {
     def needsExplanation(entry: Recorded) = entry match {
       case param: TypeParamRef => ctx.typerState.constraint.contains(param)
       case skolem: SkolemType => true
-      case _ => false
+      case sym: Symbol =>
+        ctx.gadt.bounds.contains(sym) && ctx.gadt.bounds(sym) != TypeBounds.empty
+      case _ =>
+        assert(false, "unreachable")
+        false
     }
 
     val toExplain: List[(String, Recorded)] = seen.toList.flatMap {
