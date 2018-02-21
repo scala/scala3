@@ -380,11 +380,22 @@ object SymDenotations {
       case _ => unforcedDecls.openForMutations
     }
 
+    /** If this is an opaque type alias, mark it as Deferred with empty bounds
+     *  while storing the former right-hand side in an OpaqueAlias annotation.
+     */
     final def normalizeOpaque()(implicit ctx: Context) = {
+      def abstractRHS(tp: Type): Type = tp match {
+        case tp: HKTypeLambda => tp.derivedLambdaType(resType = abstractRHS(tp.resType))
+        case _ => defn.AnyType
+      }
       if (is(Opaque)) {
-        addAnnotation(Annotation.OpaqueAlias(info.bounds.lo))
-        setFlag(Deferred)
-        info = TypeBounds.empty
+        info match {
+          case tp @ TypeAlias(alias) =>
+            addAnnotation(Annotation.OpaqueAlias(alias))
+            info = TypeBounds(defn.NothingType, abstractRHS(alias))
+            setFlag(Deferred)
+          case _ =>
+        }
       }
     }
 
