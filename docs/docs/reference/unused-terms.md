@@ -34,7 +34,7 @@ m.turnedOn.turnedOn // ERROR
 
 Note that in the code above the actual implicit arguments for `IsOff` are never used at runtime; they serve only to establish the right constraints at compile time.
 As these parameters are never used at runtime there is not real need to have them around, but they still need to be
-present at runtime to be able to do separate compilation and retain binary compatiblity.
+present in some form in the generated code to be able to do separate compilation and retain binary compatiblity.
 
 How to define unused parameter?
 -------------------------------
