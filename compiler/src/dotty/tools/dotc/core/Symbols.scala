@@ -638,22 +638,22 @@ object Symbols {
      *  For Tasty trees this means consulting whether the name table defines `id`.
      *  For already loaded trees, we maintain the referenced ids in an attachment.
      */
-    def treeContaining(id: String)(implicit ctx: Context): Tree = denot.infoOrCompleter match {
-      case _: NoCompleter =>
-        tpd.EmptyTree
-      case _ =>
-        denot.ensureCompleted()
-        myTree match {
-          case fn: TreeProvider =>
-            if (id.isEmpty || fn.mightContain(id)) {
-              val tree = fn.tree
-              myTree = tree
-              tree
-            }
-            else tpd.EmptyTree
-          case tree: Tree @ unchecked =>
-            if (id.isEmpty || mightContain(tree, id)) tree else tpd.EmptyTree
-        }
+    def treeContaining(id: String)(implicit ctx: Context): Tree = {
+      denot.infoOrCompleter match {
+        case _: NoCompleter =>
+        case _ => denot.ensureCompleted()
+      }
+      myTree match {
+        case fn: TreeProvider =>
+          if (id.isEmpty || fn.mightContain(id)) {
+            val tree = fn.tree
+            myTree = tree
+            tree
+          }
+          else tpd.EmptyTree
+        case tree: Tree @ unchecked =>
+          if (id.isEmpty || mightContain(tree, id)) tree else tpd.EmptyTree
+      }
     }
 
     def treeOrProvider: TreeOrProvider = myTree
