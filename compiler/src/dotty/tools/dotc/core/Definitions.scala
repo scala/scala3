@@ -674,6 +674,8 @@ class Definitions {
   def ChildAnnot(implicit ctx: Context) = ChildAnnotType.symbol.asClass
   lazy val OpaqueAliasAnnotType = ctx.requiredClassRef("scala.annotation.internal.OpaqueAlias")
   def OpaqueAliasAnnot(implicit ctx: Context) = OpaqueAliasAnnotType.symbol.asClass
+  lazy val LinkedTypeAnnotType = ctx.requiredClassRef("scala.annotation.internal.LinkedType")
+  def LinkedTypeAnnot(implicit ctx: Context) = LinkedTypeAnnotType.symbol.asClass
   lazy val CovariantBetweenAnnotType = ctx.requiredClassRef("scala.annotation.internal.CovariantBetween")
   def CovariantBetweenAnnot(implicit ctx: Context) = CovariantBetweenAnnotType.symbol.asClass
   lazy val ContravariantBetweenAnnotType = ctx.requiredClassRef("scala.annotation.internal.ContravariantBetween")

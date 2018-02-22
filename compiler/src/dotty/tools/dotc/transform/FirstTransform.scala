@@ -109,10 +109,13 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     }
 
     def registerCompanion(name: TermName, forClass: Symbol): TermSymbol = {
-      val (modul, mcCompanion, classCompanion) = newCompanion(name, forClass)
+      val modul = newCompanion(name, forClass)
       if (ctx.owner.isClass) modul.enteredAfter(thisPhase)
-      mcCompanion.enteredAfter(thisPhase)
-      classCompanion.enteredAfter(thisPhase)
+      val modcls = modul.moduleClass
+      modcls.registerCompanion(forClass)
+      val cls1 = forClass.copySymDenotation()
+      cls1.registerCompanion(modcls)
+      cls1.installAfter(thisPhase)
       modul
     }
 
@@ -133,15 +136,9 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     addMissingCompanions(reorder(stats, Nil))
   }
 
-  private def newCompanion(name: TermName, forClass: Symbol)(implicit ctx: Context) = {
-    val modul = ctx.newCompleteModuleSymbol(forClass.owner, name, Synthetic, Synthetic,
+  private def newCompanion(name: TermName, forClass: Symbol)(implicit ctx: Context) =
+    ctx.newCompleteModuleSymbol(forClass.owner, name, Synthetic, Synthetic,
       defn.ObjectType :: Nil, Scopes.newScope, assocFile = forClass.asClass.assocFile)
-    val mc = modul.moduleClass
-
-    val mcComp = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, forClass, mc)
-    val classComp = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, mc, forClass)
-    (modul, mcComp, classComp)
-  }
 
   /** elimiate self in Template */
   override def transformTemplate(impl: Template)(implicit ctx: Context): Tree = {
