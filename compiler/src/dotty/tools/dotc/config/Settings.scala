@@ -90,15 +90,6 @@ object Settings {
 
     def isDefaultIn(state: SettingsState): Boolean = valueIn(state) == default
 
-    def defaultValue: String = implicitly[ClassTag[T]] match {
-      case StringTag => default.asInstanceOf[String]
-      case IntTag => default.asInstanceOf[Int].toString
-      case _ =>
-        // For now, skip the default values that do not make sense for the user of course.
-        // For example 'false' for the version command.
-        ""
-    }
-
     def legalChoices: String =
       if (choices.isEmpty) ""
       else choices match {
