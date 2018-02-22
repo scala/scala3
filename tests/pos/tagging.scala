@@ -15,8 +15,6 @@ object tagging {
       ct
   }
 
-  import Tagged._
-
   type @@[S, T] = Tagged[S, T]
 
   implicit class UntagOps[S, T](st: S @@ T) extends AnyVal {
