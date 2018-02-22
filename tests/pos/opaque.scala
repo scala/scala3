@@ -1,3 +1,4 @@
+import Predef.{any2stringadd => _, _}
 object opaquetypes {
   opaque type Logarithm = Double
 
@@ -26,7 +27,10 @@ object usesites {
   val l = Logarithm(1.0)
   val l2 = Logarithm(2.0)
   val l3 = l * l2
-  val l4 = l + l2
+  val l4 = l + l2  // currently requires any2stringadd to be disabled because
+                   // as a contextual implicit this takes precedence over the
+                   // implicit scope implicit LogarithmOps.
+                   // TODO: Remove any2stringadd
   val d = l3.toDouble
-  val l4: Logarithm = (1.0).asInstanceOf[Logarithm]
+  val l5: Logarithm = (1.0).asInstanceOf[Logarithm]
 }
