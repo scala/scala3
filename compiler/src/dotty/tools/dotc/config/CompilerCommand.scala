@@ -71,14 +71,15 @@ object CompilerCommand extends DotClass {
       val ss                  = (ctx.settings.allSettings filter cond).toList sortBy (_.name)
       val width               = (ss map (_.name.length)).max
       def format(s: String)   = ("%-" + width + "s") format s
-      def formatSettings(name: String, value: String) = if (value.nonEmpty) format("\n") ++ s"  $name: $value." else ""
-      def helpStr(s: Setting[_]) = {
-        val help = StringBuilder.newBuilder
-        help.append(s"${format(s.name)} ${s.description}")
-        help.append(formatSettings("Default", s.defaultValue))
-        help.append(formatSettings("Choices", s.legalChoices))
-        help.toString
+      def formatSettings(name: String, value: String) = {
+        if (value.nonEmpty)
+        // the format here is helping to make empty padding and put the additional information exactly under the description.
+          s"\n${format("")} $name: $value."
+        else
+          ""
       }
+      def helpStr(s: Setting[_]) =
+        s"${format(s.name)} ${s.description} ${formatSettings("Default", s.defaultValue)} ${formatSettings("Choices", s.legalChoices)}"
       ss map helpStr mkString "\n"
     }
 
