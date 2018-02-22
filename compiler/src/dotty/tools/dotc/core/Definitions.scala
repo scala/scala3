@@ -537,6 +537,8 @@ class Definitions {
   lazy val EqualsPatternClass = enterSpecialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, Seq(AnyType))
 
   lazy val RepeatedParamClass = enterSpecialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, Seq(ObjectType, SeqType))
+  lazy val LinkedTypeAnnot    = enterSpecialPolyClass(tpnme.LINKED_TYPE, EmptyFlags, Seq(AnyType))
+  lazy val OpaqueAliasAnnot   = enterSpecialPolyClass(tpnme.OPAQUE_ALIAS, EmptyFlags, Seq(AnyType))
 
   // fundamental classes
   lazy val StringClass                = ctx.requiredClass("java.lang.String")
@@ -683,10 +685,6 @@ class Definitions {
   def BodyAnnot(implicit ctx: Context) = BodyAnnotType.symbol.asClass
   lazy val ChildAnnotType = ctx.requiredClassRef("scala.annotation.internal.Child")
   def ChildAnnot(implicit ctx: Context) = ChildAnnotType.symbol.asClass
-  lazy val OpaqueAliasAnnotType = ctx.requiredClassRef("scala.annotation.internal.OpaqueAlias")
-  def OpaqueAliasAnnot(implicit ctx: Context) = OpaqueAliasAnnotType.symbol.asClass
-  lazy val LinkedTypeAnnotType = ctx.requiredClassRef("scala.annotation.internal.LinkedType")
-  def LinkedTypeAnnot(implicit ctx: Context) = LinkedTypeAnnotType.symbol.asClass
   lazy val CovariantBetweenAnnotType = ctx.requiredClassRef("scala.annotation.internal.CovariantBetween")
   def CovariantBetweenAnnot(implicit ctx: Context) = CovariantBetweenAnnotType.symbol.asClass
   lazy val ContravariantBetweenAnnotType = ctx.requiredClassRef("scala.annotation.internal.ContravariantBetween")
@@ -1175,6 +1173,8 @@ class Definitions {
     AnyKindClass,
     RepeatedParamClass,
     ByNameParamClass2x,
+    LinkedTypeAnnot,
+    OpaqueAliasAnnot,
     AnyValClass,
     NullClass,
     NothingClass,

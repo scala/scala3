@@ -105,14 +105,11 @@ trait SymDenotations { this: Context =>
   }
 
   /** Configurable: Accept stale symbol with warning if in IDE */
-  def staleOK(denot: SingleDenotation) =
-    Config.ignoreStaleInIDE && mode.is(Mode.Interactive) ||
-    denot.symbol.owner == defn.LinkedTypeAnnot
-      // LinkedType's type parameter might be stale if LinkedType itself is compiled since it is loaded early
+  def staleOK = Config.ignoreStaleInIDE && mode.is(Mode.Interactive)
 
   /** Possibly accept stale symbol with warning if in IDE */
   def acceptStale(denot: SingleDenotation): Boolean =
-    staleOK(denot) && {
+    staleOK && {
       ctx.echo(denot.staleSymbolMsg)
       true
     }
