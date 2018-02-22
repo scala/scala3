@@ -1104,7 +1104,7 @@ class TreeUnpickler(reader: TastyReader,
       }
 
     def readCases(end: Addr)(implicit ctx: Context): List[CaseDef] =
-      collectWhile((nextByte == CASEDEF || nextByte == SHAREDterm) && currentAddr != end) {
+      collectWhile((nextUnsharedTag == CASEDEF) && currentAddr != end) {
         if (nextByte == SHAREDterm) {
           readByte()
           forkAt(readAddr()).readCase()(ctx.fresh.setNewScope)
@@ -1114,7 +1114,7 @@ class TreeUnpickler(reader: TastyReader,
 
     def readCase()(implicit ctx: Context): CaseDef = {
       val start = currentAddr
-      readByte()
+      assert(readByte() == CASEDEF)
       val end = readEnd()
       val pat = readTerm()
       val rhs = readTerm()
