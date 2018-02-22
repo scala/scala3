@@ -910,8 +910,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
     def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {
       case TypeApply(fn, args) =>
+        var remain = bound.toSet
         def addBinder(arg: Tree) = arg.tpe.stripTypeVar match {
-          case ref: TypeRef if bound.contains(ref.symbol) =>
+          case ref: TypeRef if remain.contains(ref.symbol) =>
+            remain -= ref.symbol
             tpd.Bind(ref.symbol, Ident(ref))
           case _ =>
             arg
