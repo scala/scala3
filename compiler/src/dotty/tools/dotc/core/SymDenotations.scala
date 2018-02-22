@@ -551,6 +551,11 @@ object SymDenotations {
     /** Is this symbol an abstract type or type parameter? */
     final def isAbstractOrParamType(implicit ctx: Context) = this is DeferredOrTypeParam
 
+    /** Can this symbol have a companion module?
+     *  This is the case if it is a class or an opaque type alias.
+     */
+    final def canHaveCompanion(implicit ctx: Context) = isClass || is(Opaque)
+
     /** Is this the denotation of a self symbol of some class?
      *  This is the case if one of two conditions holds:
      *  1. It is the symbol referred to in the selfInfo part of the ClassInfo
