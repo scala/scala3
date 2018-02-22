@@ -47,10 +47,10 @@ following operations would be valid because they use functionality implemented i
 But the following operations would lead to type errors:
 
 ```scala
-val d: Double = l       // error: found: Logarithm, required: Double
-val l2: Logarithm = 1.0 // error: found: Double, required: Logarithm
-l * 2                   // error: found: Int(2), required: Logarithm
-l / l2                  // error: `/` is not a member fo Logarithm
+  val d: Double = l       // error: found: Logarithm, required: Double
+  val l2: Logarithm = 1.0 // error: found: Double, required: Logarithm
+  l * 2                   // error: found: Int(2), required: Logarithm
+  l / l2                  // error: `/` is not a member fo Logarithm
 ```
 
 For more details, see [Scala SIP 35](https://docs.scala-lang.org/sips/opaque-types.html).
