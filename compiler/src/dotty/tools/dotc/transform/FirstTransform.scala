@@ -15,6 +15,7 @@ import Contexts.Context
 import Symbols._
 import SymDenotations._
 import Decorators._
+import Annotations._
 import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import scala.collection.mutable
@@ -30,13 +31,14 @@ import StdNames._
  *   - eliminates some kinds of trees: Imports, NamedArgs
  *   - stubs out native methods
  *   - eliminates self tree in Template and self symbol in ClassInfo
+ *   - rewrites opaque type aliases to normal alias types
  *   - collapses all type trees to trees of class TypeTree
  *   - converts idempotent expressions with constant types
  *   - drops branches of ifs using the rules
  *          if (true) A else B    ==> A
  *          if (false) A else B   ==> B
  */
-class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
+class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName = "firstTransform"
@@ -53,12 +55,27 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     ctx
   }
 
-  /** eliminate self symbol in ClassInfo */
-  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
+  /** Two transforms:
+   *   1. eliminate self symbol in ClassInfo
+   *   2. Rewrite opaque type aliases to normal alias types
+   */
+  def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = sym.info match {
     case tp @ ClassInfo(_, _, _, _, self: Symbol) =>
-      tp.derivedClassInfo(selfInfo = self.info)
+      sym.copySymDenotation(info = tp.derivedClassInfo(selfInfo = self.info))
+        .copyCaches(sym, ctx.phase.next)
     case _ =>
-      tp
+      if (sym.is(Opaque))
+        sym.getAnnotation(defn.OpaqueAliasAnnot) match {
+          case Some(Annotation.OpaqueAlias(rhs)) =>
+            val result = sym.copySymDenotation(info = TypeAlias(rhs))
+            result.removeAnnotation(defn.OpaqueAliasAnnot)
+            result.resetFlag(Opaque)
+            result.resetFlag(Deferred)
+            result
+          case _ =>
+            sym
+        }
+      else sym
   }
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
