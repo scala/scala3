@@ -106,6 +106,7 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes) +
     compileFilesInDir("tests/pos-kind-polymorphism", defaultOptions and "-Ykind-polymorphism") +
     compileDir("tests/pos/i1137-1", defaultOptions and "-Yemit-tasty") +
+    compileDir("tests/neg-custom-args/isInstanceOf", defaultOptions and "-Xfatal-warnings") +
     compileFile(
       // succeeds despite -Xfatal-warnings because of -nowarn
       "tests/neg-custom-args/fatal-warnings/xfatalWarnings.scala",
