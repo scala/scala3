@@ -120,11 +120,8 @@ object Scala2Unpickler {
     val scalacCompanion = denot.classSymbol.scalacLinkedClass
 
     def registerCompanionPair(module: Symbol, claz: Symbol) = {
-      import transform.SymUtils._
-      module.registerCompanionMethod(nme.COMPANION_CLASS_METHOD, claz)
-      if (claz.isClass) {
-        claz.registerCompanionMethod(nme.COMPANION_MODULE_METHOD, module)
-      }
+      module.registerCompanion(claz)
+      if (claz.isClass) claz.registerCompanion(module)
     }
 
     if (denot.flagsUNSAFE is Module) {

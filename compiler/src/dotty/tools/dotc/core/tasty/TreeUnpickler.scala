@@ -743,14 +743,12 @@ class TreeUnpickler(reader: TastyReader,
             def isCodefined =
               roots.contains(companion.denot) == seenRoots.contains(companion)
             if (companion.exists && isCodefined) {
-              if (sym is Module) {
-                if (companion.isClass)
-                  sym.registerCompanionMethod(nme.COMPANION_CLASS_METHOD, companion)
-                else if (companion.is(Opaque))
-                  sym.registerCompanionMethod(nme.COMPANION_TYPE_METHOD, companion)
+              if (companion.isClass)
+                sym.registerCompanion(companion)
+              else if (sym.is(Module) && companion.is(Opaque)) {
+                sym.registerCompanion(companion)
+                companion.registerCompanion(sym)
               }
-              else
-                sym.registerCompanionMethod(nme.COMPANION_MODULE_METHOD, companion)
             }
             TypeDef(readTemplate(localCtx))
           } else {
