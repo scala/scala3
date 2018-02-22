@@ -621,13 +621,10 @@ class Namer { typer: Typer =>
     def createLinks(classTree: TypeDef, moduleTree: TypeDef)(implicit ctx: Context) = {
       val claz = ctx.effectiveScope.lookup(classTree.name)
       val modl = ctx.effectiveScope.lookup(moduleTree.name)
-      if (modl.isClass)
-        if (claz.isClass) {
-          ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, modl).entered
-          ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, modl, claz).entered
-        }
-        else if (claz.is(Opaque))
-          ctx.synthesizeCompanionMethod(nme.COMPANION_TYPE_METHOD, claz, modl).entered
+      if (modl.isClass && (claz.isClass || claz.is(Opaque))) {
+        modl.registerCompanion(claz)
+        claz.registerCompanion(modl)
+      }
     }
 
     def createCompanionLinks(implicit ctx: Context): Unit = {

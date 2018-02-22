@@ -173,17 +173,23 @@ object Annotations {
         else None
     }
 
-    /** Extractor for opaque alias annotations */
-    object OpaqueAlias {
+    /** A generic extractor for annotations carrying types */
+    class TypeHintExtractor(cls: Context => ClassSymbol) {
       def apply(tp: Type)(implicit ctx: Context): Annotation =
-        Annotation(TypeTree(defn.OpaqueAliasAnnotType.appliedTo(tp)))
-      def unapply(ann: Annotation)(implicit ctx: Context) =
-        if (ann.symbol == defn.OpaqueAliasAnnot) {
+        Annotation(TypeTree(cls(ctx).typeRef.appliedTo(tp)))
+      def unapply(ann: Annotation)(implicit ctx: Context): Option[Type] =
+        if (ann.symbol == cls(ctx)) {
           val AppliedType(tycon, arg :: Nil) = ann.tree.tpe
           Some(arg)
         }
         else None
     }
+
+    /** Extractor for opaque alias annotations */
+    object OpaqueAlias extends TypeHintExtractor(implicit ctx => defn.OpaqueAliasAnnot)
+
+    /** Extractpr for linked type annotations */
+    object LinkedType extends TypeHintExtractor(implicit ctx => defn.LinkedTypeAnnot)
 
     def makeSourceFile(path: String)(implicit ctx: Context) =
       apply(defn.SourceFileAnnot, Literal(Constant(path)))
