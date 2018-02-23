@@ -66,7 +66,7 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
     case _ =>
       if (sym.is(Opaque))
         sym.getAnnotation(defn.OpaqueAliasAnnot) match {
-          case Some(Annotation.OpaqueAlias(rhs)) =>
+          case Some(Annotation.OpaqueAlias(rhs, _)) =>
             val result = sym.copySymDenotation(info = TypeAlias(rhs))
             result.removeAnnotation(defn.OpaqueAliasAnnot)
             result.resetFlag(Opaque)
