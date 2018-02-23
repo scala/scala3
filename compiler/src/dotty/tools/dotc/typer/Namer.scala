@@ -111,7 +111,7 @@ trait NamerContextOps { this: Context =>
     if (ctx.owner.is(Module)) {
       val opaq = ctx.owner.companionOpaqueType
       opaq.getAnnotation(defn.OpaqueAliasAnnot) match {
-        case Some(Annotation.OpaqueAlias(rhs)) =>
+        case Some(Annotation.OpaqueAlias(rhs, _)) =>
           localCtx = localCtx.setFreshGADTBounds
           localCtx.gadt.setBounds(opaq, TypeAlias(rhs))
         case _ =>

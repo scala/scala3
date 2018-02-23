@@ -391,7 +391,8 @@ object SymDenotations {
       if (is(Opaque)) {
         info match {
           case tp @ TypeAlias(alias) =>
-            addAnnotation(Annotation.OpaqueAlias(alias))
+            val companion = companionNamed(name.moduleClassName).sourceModule
+            addAnnotation(Annotation.OpaqueAlias(alias, companion))
             info = TypeBounds(defn.NothingType, abstractRHS(alias))
             setFlag(Deferred)
           case _ =>
@@ -968,10 +969,17 @@ object SymDenotations {
      */
     final def companionModule(implicit ctx: Context): Symbol =
       if (is(Module)) sourceModule
-      else getAnnotation(defn.LinkedTypeAnnot) match {
-        case Some(Annotation.LinkedType(linked: TypeRef)) => linked.symbol.sourceModule
-        case _ => NoSymbol
-      }
+      else if (is(Opaque))
+        getAnnotation(defn.OpaqueAliasAnnot) match {
+          case Some(Annotation.OpaqueAlias(_, ref)) => ref
+          case _ => NoSymbol
+        }
+      else
+        getAnnotation(defn.LinkedTypeAnnot) match {
+          case Some(Annotation.LinkedType(linked: TypeRef)) =>
+            linked.symbol.sourceModule
+          case _ => NoSymbol
+        }
 
     private def companionType(implicit ctx: Context): Symbol =
       if (is(Package)) NoSymbol
