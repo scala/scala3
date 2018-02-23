@@ -185,23 +185,6 @@ object Annotations {
         else None
     }
 
-    /** Extractor for opaque alias annotations */
-    object OpaqueAlias {
-      def apply(tp: Type, companion: Symbol)(implicit ctx: Context): Annotation = {
-        val arg = if (companion.exists) RefinedType(tp, nme.companion, companion.termRef) else tp
-        Annotation(TypeTree(defn.OpaqueAliasAnnot.typeRef.appliedTo(arg)))
-      }
-      def unapply(ann: Annotation)(implicit ctx: Context): Option[(Type, Symbol)] =
-        if (ann.symbol == defn.OpaqueAliasAnnot) {
-          ann.tree.tpe match {
-            case AppliedType(_, RefinedType(tp, nme.companion, ref) :: Nil) => Some((tp, ref.termSymbol))
-            case AppliedType(_, tp :: Nil) => Some((tp, NoSymbol))
-            case _ => None
-          }
-        }
-        else None
-    }
-
     /** Extractor for linked type annotations */
     object LinkedType extends TypeHintExtractor(implicit ctx => defn.LinkedTypeAnnot)
 

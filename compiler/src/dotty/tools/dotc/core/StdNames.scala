@@ -246,6 +246,7 @@ object StdNames {
 
     // Compiler-internal
     val ANYname: N                  = "<anyname>"
+    val COMPANION: N                = "<companion>"
     val CONSTRUCTOR: N              = "<init>"
     val STATIC_CONSTRUCTOR: N       = "<clinit>"
     val DEFAULT_CASE: N             = "defaultCase$"
@@ -394,7 +395,6 @@ object StdNames {
     val classOf: N              = "classOf"
     val clone_ : N              = "clone"
  //   val conforms : N             = "conforms" // Dotty deviation: no special treatment of conforms, so the occurrence of the name here would cause to unintended implicit shadowing. Should find a less common name for it in Predef.
-    val companion: N            = "companion"
     val copy: N                 = "copy"
     val currentMirror: N        = "currentMirror"
     val create: N               = "create"
