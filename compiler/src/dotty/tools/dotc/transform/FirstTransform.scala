@@ -64,17 +64,12 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
       sym.copySymDenotation(info = tp.derivedClassInfo(selfInfo = self.info))
         .copyCaches(sym, ctx.phase.next)
     case _ =>
-      if (sym.is(Opaque))
-        sym.getAnnotation(defn.OpaqueAliasAnnot) match {
-          case Some(Annotation.OpaqueAlias(rhs, _)) =>
-            val result = sym.copySymDenotation(info = TypeAlias(rhs))
-            result.removeAnnotation(defn.OpaqueAliasAnnot)
-            result.resetFlag(Opaque)
-            result.resetFlag(Deferred)
-            result
-          case _ =>
-            sym
-        }
+      if (sym.is(Opaque)) {
+        val result = sym.copySymDenotation(info = TypeAlias(sym.opaqueAlias))
+        result.removeAnnotation(defn.OpaqueAliasAnnot)
+        result.resetFlag(Opaque | Deferred)
+        result
+      }
       else sym
   }
 
