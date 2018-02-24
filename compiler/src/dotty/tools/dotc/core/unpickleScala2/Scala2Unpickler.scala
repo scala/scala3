@@ -121,14 +121,13 @@ object Scala2Unpickler {
 
     def registerCompanionPair(module: Symbol, claz: Symbol) = {
       module.registerCompanion(claz)
-      if (claz.isClass) claz.registerCompanion(module)
+      claz.registerCompanion(module)
     }
 
-    if (denot.flagsUNSAFE is Module) {
+    if (denot.flagsUNSAFE is Module)
       registerCompanionPair(denot.classSymbol, scalacCompanion)
-    } else {
+    else
       registerCompanionPair(scalacCompanion, denot.classSymbol)
-    }
 
     tempInfo.finalize(denot, normalizedParents) // install final info, except possibly for typeparams ordering
     denot.ensureTypeParamsInCorrectOrder()
