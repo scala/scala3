@@ -49,8 +49,9 @@
     "tsc": "./node_modules/.bin/tsc",
     "vscode:prepublish": "npm run update-all && ./node_modules/.bin/tsc -p ./",
     "compile": "./node_modules/.bin/tsc -p ./",
-    "update-all": "npm install && node ./node_modules/vscode/bin/install && curl -L -o out/coursier https://github.com/coursier/coursier/raw/v1.0.0/coursier",
-    "test": "node ./node_modules/vscode/bin/test"
+    "update-all": "npm install",
+    "test": "node ./node_modules/vscode/bin/test",
+    "postinstall": "node ./node_modules/vscode/bin/install && curl -L -o out/coursier https://github.com/coursier/coursier/raw/v1.0.0/coursier"
   },
   "extensionDependencies": [
     "daltonjorge.scala"
