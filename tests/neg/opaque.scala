@@ -1,4 +1,5 @@
 object opaquetypes {
+
   opaque val x: Int = 1 // error
 
   opaque class Foo // error
@@ -6,6 +7,8 @@ object opaquetypes {
   opaque type T // error
 
   opaque type U <: String // error
+
+  opaque type Fix[F[_]] = F[Fix[F]] // error: cyclic
 
   opaque type O = String
 
