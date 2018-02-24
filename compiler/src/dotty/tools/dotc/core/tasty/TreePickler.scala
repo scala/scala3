@@ -619,7 +619,7 @@ class TreePickler(pickler: TastyPickler) {
       // See tests/pickling/i3149.scala
     case _ =>
       val sym = ann.symbol
-      sym == defn.BodyAnnot || sym == defn.OpaqueAliasAnnot || sym == defn.LinkedTypeAnnot
+      sym == defn.BodyAnnot || sym == defn.OpaqueAliasAnnot
         // these are reconstituted automatically when unpickling
   }
 
