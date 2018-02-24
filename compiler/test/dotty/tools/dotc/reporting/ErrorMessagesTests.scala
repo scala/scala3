@@ -986,19 +986,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     assertEquals(parent.show, "class A")
   }
 
-  @Test def enumCaseDefinitionInNonEnumOwner =
-    checkMessagesAfter("frontend") {
-      """object Qux {
-        |  case Foo
-        |}
-      """.stripMargin
-    }.expect { (ictx, messages) =>
-      implicit val ctx: Context = ictx
-      assertMessageCount(1, messages)
-      val EnumCaseDefinitionInNonEnumOwner(owner) :: Nil = messages
-      assertEquals("object Qux", owner.show)
-    }
-
   @Test def tailrecNotApplicableNeitherPrivateNorFinal =
     checkMessagesAfter("tailrec") {
     """

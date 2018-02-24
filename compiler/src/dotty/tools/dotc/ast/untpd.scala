@@ -229,8 +229,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
      */
     def ensureCompletions(implicit ctx: Context): Unit = ()
 
-    /** The method that computes the type of this tree */
-    def derivedType(originalSym: Symbol)(implicit ctx: Context): Type
+    /** The method that computes the tree with the derived type */
+    def derivedTree(originalSym: Symbol)(implicit ctx: Context): tpd.Tree
   }
 
     /** Property key containing TypeTrees whose type is computed

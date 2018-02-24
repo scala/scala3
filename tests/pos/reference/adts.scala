@@ -2,7 +2,7 @@ package adts
 object t1 {
 
 enum Option[+T] {
-  case Some[T](x: T)
+  case Some(x: T)
   case None
 }
 
@@ -11,8 +11,8 @@ enum Option[+T] {
 object t2 {
 
 enum Option[+T] {
-  case Some[T](x: T) extends Option[T]
-  case None          extends Option[Nothing]
+  case Some(x: T) extends Option[T]
+  case None       extends Option[Nothing]
 }
 
 
@@ -27,19 +27,18 @@ enum Color(val rgb: Int) {
 
 object t3 {
 
-enum class Option[+T] {
-   def isDefined: Boolean
+enum Option[+T] {
+  case Some(x: T) extends Option[T]
+  case None
+
+  def isDefined: Boolean = this match {
+    case None => false
+    case some => true
+  }
 }
 object Option {
   def apply[T >: Null](x: T): Option[T] =
     if (x == null) None else Some(x)
-
-  case Some[+T](x: T) {
-     def isDefined = true
-  }
-  case None {
-     def isDefined = false
-  }
 }
 
 }

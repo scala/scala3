@@ -33,11 +33,15 @@ object desugar {
 // ----- DerivedTypeTrees -----------------------------------
 
   class SetterParamTree extends DerivedTypeTree {
-    def derivedType(sym: Symbol)(implicit ctx: Context) = sym.info.resultType
+    def derivedTree(sym: Symbol)(implicit ctx: Context) = tpd.TypeTree(sym.info.resultType)
   }
 
   class TypeRefTree extends DerivedTypeTree {
-    def derivedType(sym: Symbol)(implicit ctx: Context) = sym.typeRef
+    def derivedTree(sym: Symbol)(implicit ctx: Context) = tpd.TypeTree(sym.typeRef)
+  }
+
+  class TermRefTree extends DerivedTypeTree {
+    def derivedTree(sym: Symbol)(implicit ctx: Context) = tpd.ref(sym)
   }
 
   /** A type tree that computes its type from an existing parameter.
@@ -73,7 +77,7 @@ object desugar {
      *
      *       parameter name  ==  reference name ++ suffix
      */
-    def derivedType(sym: Symbol)(implicit ctx: Context) = {
+    def derivedTree(sym: Symbol)(implicit ctx: Context) = {
       val relocate = new TypeMap {
         val originalOwner = sym.owner
         def apply(tp: Type) = tp match {
@@ -91,7 +95,7 @@ object desugar {
             mapOver(tp)
         }
       }
-      relocate(sym.info)
+      tpd.TypeTree(relocate(sym.info))
     }
   }
 
@@ -301,34 +305,56 @@ object desugar {
     val isCaseObject = mods.is(Case) && mods.is(Module)
     val isImplicit = mods.is(Implicit)
     val isEnum = mods.hasMod[Mod.Enum] && !mods.is(Module)
-    val isEnumCase = isLegalEnumCase(cdef)
+    val isEnumCase = mods.hasMod[Mod.EnumCase]
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
-    // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
-
+      // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
 
     val originalTparams = constr1.tparams
     val originalVparamss = constr1.vparamss
-    val constrTparams = originalTparams.map(toDefParam)
+    lazy val derivedEnumParams = enumClass.typeParams.map(derivedTypeParam)
+    val impliedTparams =
+      if (isEnumCase && originalTparams.isEmpty)
+        derivedEnumParams.map(tdef => tdef.withFlags(tdef.mods.flags | PrivateLocal))
+      else
+        originalTparams
+    val constrTparams = impliedTparams.map(toDefParam)
     val constrVparamss =
       if (originalVparamss.isEmpty) { // ensure parameter list is non-empty
-        if (isCaseClass) ctx.error(CaseClassMissingParamList(cdef), cdef.namePos)
+        if (isCaseClass && originalTparams.isEmpty)
+          ctx.error(CaseClassMissingParamList(cdef), cdef.namePos)
         ListOfNil
       }
       else originalVparamss.nestedMap(toDefParam)
     val constr = cpy.DefDef(constr1)(tparams = constrTparams, vparamss = constrVparamss)
 
-    // Add constructor type parameters and evidence implicit parameters
-    // to auxiliary constructors
-    val normalizedBody = impl.body map {
-      case ddef: DefDef if ddef.name.isConstructorName =>
-        decompose(
-          defDef(
-            addEvidenceParams(
-              cpy.DefDef(ddef)(tparams = constrTparams),
-              evidenceParams(constr1).map(toDefParam))))
-      case stat =>
-        stat
+    val (normalizedBody, enumCases, enumCompanionRef) = {
+      // Add constructor type parameters and evidence implicit parameters
+      // to auxiliary constructors; set defaultGetters as a side effect.
+      def expandConstructor(tree: Tree) = tree match {
+        case ddef: DefDef if ddef.name.isConstructorName =>
+          decompose(
+            defDef(
+              addEvidenceParams(
+                cpy.DefDef(ddef)(tparams = constrTparams),
+                evidenceParams(constr1).map(toDefParam))))
+        case stat =>
+          stat
+      }
+      // The Identifiers defined by a case
+      def caseIds(tree: Tree) = tree match {
+        case tree: MemberDef => Ident(tree.name.toTermName) :: Nil
+        case PatDef(_, ids, _, _) => ids
+      }
+      val stats = impl.body.map(expandConstructor)
+      if (isEnum) {
+        val (enumCases, enumStats) = stats.partition(DesugarEnums.isEnumCase)
+        val enumCompanionRef = new TermRefTree()
+        val enumImport = Import(enumCompanionRef, enumCases.flatMap(caseIds))
+        (enumImport :: enumStats, enumCases, enumCompanionRef)
+      }
+      else (stats, Nil, EmptyTree)
     }
+
     def anyRef = ref(defn.AnyRefAlias.typeRef)
 
     val derivedTparams = constrTparams.map(derivedTypeParam(_))
@@ -361,20 +387,16 @@ object desugar {
     val classTypeRef = appliedRef(classTycon)
 
     // a reference to `enumClass`, with type parameters coming from the case constructor
-    lazy val enumClassTypeRef = enumClass.primaryConstructor.info match {
-      case info: PolyType =>
-        if (constrTparams.isEmpty)
-          interpolatedEnumParent(cdef.pos.startPos)
-        else if ((constrTparams.corresponds(info.paramNames))((param, name) => param.name == name))
-          appliedRef(enumClassRef)
-        else {
-          ctx.error(i"explicit extends clause needed because type parameters of case and enum class differ"
-              , cdef.pos.startPos)
-          appliedTypeTree(enumClassRef, constrTparams map (_ => anyRef))
-        }
-      case _ =>
+    lazy val enumClassTypeRef =
+      if (enumClass.typeParams.isEmpty)
         enumClassRef
-    }
+      else if (originalTparams.isEmpty)
+        appliedRef(enumClassRef)
+      else {
+        ctx.error(i"explicit extends clause needed because both enum case and enum class have type parameters"
+            , cdef.pos.startPos)
+        appliedTypeTree(enumClassRef, constrTparams map (_ => anyRef))
+      }
 
     // new C[Ts](paramss)
     lazy val creatorExpr = New(classTypeRef, constrVparamss nestedMap refOfDef)
@@ -428,6 +450,7 @@ object desugar {
     }
 
     // Case classes and case objects get Product parents
+    // Enum cases get an inferred parent if no parents are given
     var parents1 = parents
     if (isEnumCase && parents.isEmpty)
       parents1 = enumClassTypeRef :: Nil
@@ -473,7 +496,7 @@ object desugar {
             .withMods(companionMods | Synthetic))
       .withPos(cdef.pos).toList
 
-    val companionMeths = defaultGetters ::: eqInstances
+    val companionMembers = defaultGetters ::: eqInstances ::: enumCases
 
     // The companion object definitions, if a companion is needed, Nil otherwise.
     // companion definitions include:
@@ -486,18 +509,17 @@ object desugar {
     // For all other classes, the parent is AnyRef.
     val companions =
       if (isCaseClass) {
-        // The return type of the `apply` method
+        // The return type of the `apply` method, and an (empty or singleton) list
+        // of widening coercions
         val (applyResultTpt, widenDefs) =
           if (!isEnumCase)
             (TypeTree(), Nil)
           else if (parents.isEmpty || enumClass.typeParams.isEmpty)
             (enumClassTypeRef, Nil)
-          else {
-            val tparams = enumClass.typeParams.map(derivedTypeParam)
-            enumApplyResult(cdef, parents, tparams, appliedRef(enumClassRef, tparams))
-          }
+          else
+            enumApplyResult(cdef, parents, derivedEnumParams, appliedRef(enumClassRef, derivedEnumParams))
 
-        val parent =
+        val companionParent =
           if (constrTparams.nonEmpty ||
               constrVparamss.length > 1 ||
               mods.is(Abstract) ||
@@ -519,10 +541,10 @@ object desugar {
           DefDef(nme.unapply, derivedTparams, (unapplyParam :: Nil) :: Nil, TypeTree(), unapplyRHS)
             .withMods(synthetic)
         }
-        companionDefs(parent, applyMeths ::: unapplyMeth :: companionMeths)
+        companionDefs(companionParent, applyMeths ::: unapplyMeth :: companionMembers)
       }
-      else if (companionMeths.nonEmpty)
-        companionDefs(anyRef, companionMeths)
+      else if (companionMembers.nonEmpty)
+        companionDefs(anyRef, companionMembers)
       else if (isValueClass) {
         constr0.vparamss match {
           case (_ :: Nil) :: _ => companionDefs(anyRef, Nil)
@@ -530,6 +552,13 @@ object desugar {
         }
       }
       else Nil
+
+    enumCompanionRef match {
+      case ref: TermRefTree => // have the enum import watch the companion object
+        val (modVal: ValDef) :: _ = companions
+        ref.watching(modVal)
+      case _ =>
+    }
 
     // For an implicit class C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, .., pMN: TMN), the method
     //     synthetic implicit C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, ..., pMN: TMN): C[Ts] =
@@ -563,7 +592,7 @@ object desugar {
     }
 
     val cdef1 = addEnumFlags {
-      val originalTparamsIt = originalTparams.toIterator
+      val originalTparamsIt = impliedTparams.toIterator
       val originalVparamsIt = originalVparamss.toIterator.flatten
       val tparamAccessors = derivedTparams.map(_.withMods(originalTparamsIt.next().mods))
       val caseAccessor = if (isCaseClass) CaseAccessor else EmptyFlags
@@ -603,7 +632,7 @@ object desugar {
     val moduleName = checkNotReservedName(mdef).asTermName
     val impl = mdef.impl
     val mods = mdef.mods
-    lazy val isEnumCase = isLegalEnumCase(mdef)
+    lazy val isEnumCase = mods.hasMod[Mod.EnumCase]
     if (mods is Package)
       PackageDef(Ident(moduleName), cpy.ModuleDef(mdef)(nme.PACKAGE, impl).withMods(mods &~ Package) :: Nil)
     else if (isEnumCase)
@@ -650,7 +679,7 @@ object desugar {
    */
   def patDef(pdef: PatDef)(implicit ctx: Context): Tree = flatTree {
     val PatDef(mods, pats, tpt, rhs) = pdef
-    if (mods.hasMod[Mod.EnumCase] && enumCaseIsLegal(pdef))
+    if (mods.hasMod[Mod.EnumCase])
       pats map {
         case id: Ident =>
           expandSimpleEnumCase(id.name.asTermName, mods,

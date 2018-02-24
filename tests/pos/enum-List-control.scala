@@ -1,10 +1,16 @@
 abstract sealed class List[T] extends Enum
 object List {
-  final case class Cons[T](x: T, xs: List[T]) extends List[T] {
+  final class Cons[T](x: T, xs: List[T]) extends List[T] {
     def enumTag = 0
   }
-  final case class Nil[T]() extends List[T] {
+  object Cons {
+    def apply[T](x: T, xs: List[T]): List[T] = new Cons(x, xs)
+  }
+  final class Nil[T]() extends List[T] {
     def enumTag = 1
+  }
+  object Nil {
+    def apply[T](): List[T] = new Nil()
   }
 }
 object Test {

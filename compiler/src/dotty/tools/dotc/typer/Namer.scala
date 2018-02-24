@@ -526,6 +526,13 @@ class Namer { typer: Typer =>
       mdef.putAttachment(ExpandedTree, Thicket(trees.filter(_ != tree)))
     }
 
+    /** Transfer all references to `from` to `to` */
+    def transferReferences(from: ValDef, to: ValDef): Unit = {
+      val fromRefs = from.removeAttachment(References).getOrElse(Nil)
+      val toRefs = to.removeAttachment(References).getOrElse(Nil)
+      to.putAttachment(References, fromRefs ++ toRefs)
+    }
+
     /** Merge the module class `modCls` in the expanded tree of `mdef` with the given stats */
     def mergeModuleClass(mdef: Tree, modCls: TypeDef, stats: List[Tree]): TypeDef = {
       var res: TypeDef = null
@@ -580,9 +587,12 @@ class Namer { typer: Typer =>
               case vdef @ ValDef(name, _, _) if valid(vdef) =>
                 moduleValDef.get(name) match {
                   case Some((stat1, vdef1)) =>
-                    if (vdef.mods.is(Synthetic) && !vdef1.mods.is(Synthetic))
+                    if (vdef.mods.is(Synthetic) && !vdef1.mods.is(Synthetic)) {
+                      transferReferences(vdef, vdef1)
                       removeInExpanded(stat, vdef)
+                    }
                     else if (!vdef.mods.is(Synthetic) && vdef1.mods.is(Synthetic)) {
+                      transferReferences(vdef1, vdef)
                       removeInExpanded(stat1, vdef1)
                       moduleValDef(name) = (stat, vdef)
                     }
