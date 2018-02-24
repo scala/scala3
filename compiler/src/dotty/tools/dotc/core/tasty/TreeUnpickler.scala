@@ -742,7 +742,7 @@ class TreeUnpickler(reader: TastyReader,
             // be missing from the Tasty file. So we check explicitly for that.
             def isCodefined = roots.contains(companion.denot) == seenRoots.contains(companion)
 
-            if (companion.canHaveCompanion && isCodefined) sym.registerCompanion(companion)
+            if (companion.exists && isCodefined) sym.registerCompanion(companion)
             TypeDef(readTemplate(localCtx))
           } else {
             sym.info = TypeBounds.empty // needed to avoid cyclic references when unpicklin rhs, see i3816.scala

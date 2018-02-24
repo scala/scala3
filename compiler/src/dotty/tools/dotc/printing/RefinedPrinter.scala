@@ -694,11 +694,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     Text(annotations.map(annotText), " ") ~~ flagsText ~~ (Str(kw) provided !suppressKw)
   }
 
-  protected def filterModTextAnnots(annots: List[untpd.Tree]): List[untpd.Tree] =
-    annots filter {
-      case tpt: TypeTree[_] => tpt.typeOpt.typeSymbol != defn.LinkedTypeAnnot
-      case _ => true
-    }
+  protected def filterModTextAnnots(annots: List[untpd.Tree]): List[untpd.Tree] = annots
 
   def optText(name: Name)(encl: Text => Text): Text =
     if (name.isEmpty) "" else encl(toText(name))

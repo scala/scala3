@@ -620,11 +620,9 @@ class Namer { typer: Typer =>
     def createLinks(classTree: TypeDef, moduleTree: TypeDef)(implicit ctx: Context) = {
       val claz = ctx.effectiveScope.lookup(classTree.name)
       val modl = ctx.effectiveScope.lookup(moduleTree.name)
-      if (modl.isClass && claz.canHaveCompanion) {
-        modl.registerCompanion(claz)
-        claz.registerCompanion(modl)
-      }
-    }
+      modl.registerCompanion(claz)
+      claz.registerCompanion(modl)
+   }
 
     def createCompanionLinks(implicit ctx: Context): Unit = {
       val classDef  = mutable.Map[TypeName, TypeDef]()

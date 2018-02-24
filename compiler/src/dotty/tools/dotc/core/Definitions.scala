@@ -530,7 +530,6 @@ class Definitions {
   lazy val EqualsPatternClass = enterSpecialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, Seq(AnyType))
 
   lazy val RepeatedParamClass = enterSpecialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, Seq(ObjectType, SeqType))
-  lazy val LinkedTypeAnnot    = enterSpecialPolyClass(tpnme.LINKED_TYPE, EmptyFlags, Seq(AnyType))
   lazy val OpaqueAliasAnnot   = enterSpecialPolyClass(tpnme.OPAQUE_ALIAS, EmptyFlags, Seq(AnyType))
 
   // fundamental classes
@@ -1159,7 +1158,6 @@ class Definitions {
     AnyRefAlias,
     RepeatedParamClass,
     ByNameParamClass2x,
-    LinkedTypeAnnot,
     OpaqueAliasAnnot,
     AnyValClass,
     NullClass,

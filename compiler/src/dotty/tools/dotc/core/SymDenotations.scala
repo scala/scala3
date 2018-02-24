@@ -960,11 +960,12 @@ object SymDenotations {
     final def enclosingPackageClass(implicit ctx: Context): Symbol =
       if (this is PackageClass) symbol else owner.enclosingPackageClass
 
-    /** Register target as a companion */
-    def registerCompanion(target: Symbol)(implicit ctx: Context) =
-      if (exists && target.exists && !unforcedIsAbsent && !target.unforcedIsAbsent &&
-          !myAnnotations.exists(_.symbol == defn.LinkedTypeAnnot))
-        addAnnotation(Annotation.LinkedType(target.typeRef))
+    /** Register target as a companion; overridden in ClassDenotation */
+    def registerCompanion(target: Symbol)(implicit ctx: Context) = ()
+
+    /** The registered companion; overridden in ClassDenotation */
+    def registeredCompanion(implicit ctx: Context): Symbol = NoSymbol
+    def registeredCompanion_=(c: Symbol): Unit = ()
 
     /** The module object with the same (term-) name as this class or module class,
      *  and which is also defined in the same scope and compilation unit.
@@ -982,20 +983,12 @@ object SymDenotations {
             }
           case None => NoSymbol
         }
-      else
-        getAnnotation(defn.LinkedTypeAnnot) match {
-          case Some(Annotation.LinkedType(linked: TypeRef)) =>
-            linked.symbol.sourceModule
-          case _ => NoSymbol
-        }
+      else registeredCompanion.sourceModule
 
     private def companionType(implicit ctx: Context): Symbol =
       if (is(Package)) NoSymbol
       else if (is(ModuleVal)) moduleClass.denot.companionType
-      else getAnnotation(defn.LinkedTypeAnnot) match {
-        case Some(Annotation.LinkedType(linked: TypeRef)) => linked.symbol
-        case _ => NoSymbol
-      }
+      else registeredCompanion
 
     /** The class with the same (type-) name as this module or module class,
      *  and which is also defined in the same scope and compilation unit.
@@ -1287,6 +1280,7 @@ object SymDenotations {
       val annotations1 = if (annotations != null) annotations else this.annotations
       val d = ctx.SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
       d.annotations = annotations1
+      d.registeredCompanion = registeredCompanion
       d
     }
 
@@ -1853,6 +1847,16 @@ object SymDenotations {
             .copyCaches(this, phase.next)
             .installAfter(phase)
       }
+
+    private[this] var myCompanion: Symbol = NoSymbol
+
+    /** Register companion class */
+    override def registerCompanion(companion: Symbol)(implicit ctx: Context) =
+      if (companion.canHaveCompanion && !unforcedIsAbsent && !companion.unforcedIsAbsent)
+        myCompanion = companion
+
+    override def registeredCompanion(implicit ctx: Context) = { ensureCompleted(); myCompanion }
+    override def registeredCompanion_=(c: Symbol) = { myCompanion = c }
   }
 
   /** The denotation of a package class.
