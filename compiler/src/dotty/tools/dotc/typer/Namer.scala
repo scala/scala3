@@ -1120,7 +1120,7 @@ class Namer { typer: Typer =>
       val deskolemize = new ApproximatingTypeMap {
         def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/ {
           tp match {
-            case tp: SkolemType => range(tp.bottomType, atVariance(1)(apply(tp.info)))
+            case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
             case _ => mapOver(tp)
           }
         }

@@ -95,7 +95,7 @@ trait TypeAssigner {
         if toAvoid(tp.symbol) || partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
           tp.info.widenExpr.dealias match {
             case info: SingletonType => apply(info)
-            case info => range(tp.info.bottomType, apply(info))
+            case info => range(defn.NothingType, apply(info))
           }
         case tp: TypeRef if toAvoid(tp.symbol) =>
           tp.info match {
@@ -104,14 +104,14 @@ trait TypeAssigner {
             case TypeBounds(lo, hi) =>
               range(atVariance(-variance)(apply(lo)), apply(hi))
             case info: ClassInfo =>
-              range(tp.bottomType, apply(classBound(info)))
+              range(defn.NothingType, apply(classBound(info)))
             case _ =>
-              range(tp.bottomType, tp.topType) // should happen only in error cases
+              range(defn.NothingType, defn.AnyType) // should happen only in error cases
           }
         case tp: ThisType if toAvoid(tp.cls) =>
-          range(tp.bottomType, apply(classBound(tp.cls.classInfo)))
+          range(defn.NothingType, apply(classBound(tp.cls.classInfo)))
         case tp: SkolemType if partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
-          range(tp.info.bottomType, apply(tp.info))
+          range(defn.NothingType, apply(tp.info))
         case tp: TypeVar if ctx.typerState.constraint.contains(tp) =>
           val lo = ctx.typeComparer.instanceType(
             tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)
@@ -139,7 +139,7 @@ trait TypeAssigner {
           else if (upper(pre).member(tp.name).exists)
             super.derivedSelect(tp, pre)
           else
-            range(tp.bottomType, tp.topType)
+            range(defn.NothingType, defn.AnyType)
         }
     }
 
@@ -450,7 +450,7 @@ trait TypeAssigner {
     tree.withType(avoidingType(expansion, bindings))
 
   def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) =
-    tree.withType(lubInSameUniverse(thenp :: elsep :: Nil, "branches of an if/else"))
+    tree.withType(thenp.tpe | elsep.tpe)
 
   def assignType(tree: untpd.Closure, meth: Tree, target: Tree)(implicit ctx: Context) =
     tree.withType(
@@ -460,18 +460,15 @@ trait TypeAssigner {
   def assignType(tree: untpd.CaseDef, body: Tree)(implicit ctx: Context) =
     tree.withType(body.tpe)
 
-  def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) = {
-    if (tree.selector.typeOpt.isPhantom)
-      ctx.error("cannot pattern match on values of a phantom type", tree.selector.pos)
-    tree.withType(lubInSameUniverse(cases, "branches of a match"))
-  }
+  def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) =
+    tree.withType(ctx.typeComparer.lub(cases.tpes))
 
   def assignType(tree: untpd.Return)(implicit ctx: Context) =
     tree.withType(defn.NothingType)
 
   def assignType(tree: untpd.Try, expr: Tree, cases: List[CaseDef])(implicit ctx: Context) =
     if (cases.isEmpty) tree.withType(expr.tpe)
-    else tree.withType(lubInSameUniverse(expr :: cases, "branches of a try"))
+    else tree.withType(ctx.typeComparer.lub(expr.tpe :: cases.tpes))
 
   def assignType(tree: untpd.SeqLiteral, elems: List[Tree], elemtpt: Tree)(implicit ctx: Context) = {
     val ownType = tree match {
@@ -485,10 +482,10 @@ trait TypeAssigner {
     tree.withType(ref.tpe)
 
   def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
-    tree.withType(inSameUniverse(AndType(_, _), left.tpe, right, "an `&`"))
+    tree.withType(AndType(left.tpe, right.tpe))
 
   def assignType(tree: untpd.OrTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
-    tree.withType(inSameUniverse(OrType(_, _), left.tpe, right, "an `|`"))
+    tree.withType(OrType(left.tpe, right.tpe))
 
   /** Assign type of RefinedType.
    *  Refinements are typed as if they were members of refinement class `refineCls`.
@@ -521,9 +518,7 @@ trait TypeAssigner {
     tree.withType(ExprType(result.tpe))
 
   def assignType(tree: untpd.TypeBoundsTree, lo: Tree, hi: Tree)(implicit ctx: Context) =
-    tree.withType(
-        if (lo eq hi) TypeAlias(lo.tpe)
-        else inSameUniverse(TypeBounds(_, _), lo.tpe, hi, "type bounds"))
+    tree.withType(if (lo eq hi) TypeAlias(lo.tpe) else TypeBounds(lo.tpe, hi.tpe))
 
   def assignType(tree: untpd.Bind, sym: Symbol)(implicit ctx: Context) =
     tree.withType(NamedType(NoPrefix, sym))
@@ -554,23 +549,6 @@ trait TypeAssigner {
   def assignType(tree: untpd.PackageDef, pid: Tree)(implicit ctx: Context) =
     tree.withType(pid.symbol.termRef)
 
-  /** Ensure that `tree2`'s type is in the same universe as `tree1`. If that's the case, return
-   *  `op` applied to both types.
-   *  If not, issue an error and return `tree1`'s type.
-   */
-  private def inSameUniverse(op: (Type, Type) => Type, tp1: Type, tree2: Tree, relationship: => String)(implicit ctx: Context): Type =
-    if (tp1.topType == tree2.tpe.topType)
-      op(tp1, tree2.tpe)
-    else {
-      ctx.error(ex"$tp1 and ${tree2.tpe} are in different universes. They cannot be combined in $relationship", tree2.pos)
-      tp1
-    }
-
-  private def lubInSameUniverse(trees: List[Tree], relationship: => String)(implicit ctx: Context): Type =
-    trees match {
-      case first :: rest => (first.tpe /: rest)(inSameUniverse(_ | _, _, _, relationship))
-      case Nil => defn.NothingType
-    }
 }
 
 object TypeAssigner extends TypeAssigner

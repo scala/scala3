@@ -380,8 +380,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClassRef(tp)
       else if (sym == defn.ArrayClass) apply(tp.appliedTo(TypeBounds.empty)) // i966 shows that we can hit a raw Array type.
       else if (defn.isSyntheticFunctionClass(sym)) defn.erasedFunctionType(sym)
-      else if (defn.isPhantomTerminalClass(sym)) defn.ErasedPhantomType
-      else if (sym eq defn.PhantomClass) defn.ObjectType // To erase the definitions of Phantom.{assume, Any, Nothing}
       else eraseNormalClassRef(tp)
     case tp: AppliedType =>
       if (tp.tycon.isRef(defn.ArrayClass)) eraseArray(tp)

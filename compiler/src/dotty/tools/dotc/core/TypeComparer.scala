@@ -50,7 +50,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private[this] var myAnyClass: ClassSymbol = null
   private[this] var myNothingClass: ClassSymbol = null
   private[this] var myNullClass: ClassSymbol = null
-  private[this] var myPhantomNothingClass: ClassSymbol = null
   private[this] var myObjectClass: ClassSymbol = null
   private[this] var myAnyType: TypeRef = null
   private[this] var myNothingType: TypeRef = null
@@ -66,10 +65,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   def NullClass = {
     if (myNullClass == null) myNullClass = defn.NullClass
     myNullClass
-  }
-  def PhantomNothingClass = {
-    if (myPhantomNothingClass == null) myPhantomNothingClass = defn.Phantom_NothingClass
-    myPhantomNothingClass
   }
   def ObjectClass = {
     if (myObjectClass == null) myObjectClass = defn.ObjectClass
@@ -287,7 +282,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             if (recur(info1.alias, tp2)) return true
             if (tp1.prefix.isStable) return false
           case _ =>
-            if (tp1 eq NothingType) return tp1 == tp2.bottomType
+            if (tp1 eq NothingType) return true
         }
         thirdTry
       case tp1: TypeParamRef =>
@@ -586,9 +581,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               case _ => false
             }
             val sym1 = tp1.symbol
-            (sym1 eq NothingClass) && tp2.isValueTypeOrLambda && !tp2.isPhantom ||
-            (sym1 eq NullClass) && isNullable(tp2) ||
-            (sym1 eq PhantomNothingClass) && tp1.topType == tp2.topType
+            (sym1 eq NothingClass) && tp2.isValueTypeOrLambda ||
+            (sym1 eq NullClass) && isNullable(tp2)
         }
       case tp1 @ AppliedType(tycon1, args1) =>
         compareAppliedType1(tp1, tycon1, args1)

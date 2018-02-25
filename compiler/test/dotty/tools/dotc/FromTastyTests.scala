@@ -83,9 +83,6 @@ class FromTastyTests extends ParallelTesting {
 
         // Infinite compilation
         "t3612.scala",
-
-        "phantom-Eq.scala",
-        "phantom-Evidence.scala",
       )
     )
     step1.checkCompile() // Compile all files to generate the class files with tasty
@@ -147,32 +144,6 @@ class FromTastyTests extends ParallelTesting {
          "unused-21.scala",
          "unused-23.scala",
          "unused-value-class.scala",
-         "phantom-methods-12.scala",
-         "phantom-methods-8.scala",
-         "phantom-methods-2.scala",
-         "phantom-methods-9.scala",
-         "phantom-methods-13.scala",
-         "phantom-methods-14.scala",
-         "phantom-decls-4.scala",
-         "phantom-self-1.scala",
-         "phantom-val-2.scala",
-         "phantom-3.scala",
-         "phantom-OnHList.scala",
-         "phantom-1.scala",
-         "phantom-4.scala",
-         "phantom-5.scala",
-         "phantom-methods-1.scala",
-         "phantom-val.scala",
-         "phantom-decls-2.scala",
-         "phantom-assume-1.scala",
-         "phantom-methods-10.scala",
-         "phantom-methods-7.scala",
-         "phantom-methods-6.scala",
-         "phantom-methods-11.scala",
-         "phantom-erased-methods.scala",
-         "phantom-methods-5.scala",
-         "phantom-2.scala",
-         "phantom-param-accessor.scala",
        )
     )
     step1.checkCompile() // Compile all files to generate the class files with tasty

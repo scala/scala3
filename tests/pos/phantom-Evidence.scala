@@ -22,7 +22,7 @@ object WithNormalState {
 
 }
 
-object Utils extends Phantom {
-  type =::=[From, To] <: this.Any
-  implicit unused def tpEquals[A]: A =::= A = assume
+object Utils {
+  type =::=[From, To]
+  implicit unused def tpEquals[A]: A =::= A = ???
 }

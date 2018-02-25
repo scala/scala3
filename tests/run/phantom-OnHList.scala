@@ -86,8 +86,8 @@ object Appender {
 
 // Type level "only" computation of type Out ------------------------------------------------------
 
-object PhantomAppender extends Phantom {
-  type Aux[L1 <: HList, L2 <: HList, O <: HList] <: this.Any
-  implicit unused def caseHNil[L <: HList]: Aux[HNil, L, L] = assume
-  implicit unused def caseHCons[H, T <: HList, L <: HList, O <: HList](implicit unused p: Aux[T, L, O]): Aux[H :: T, L, H :: O] = assume
+object PhantomAppender {
+  type Aux[L1 <: HList, L2 <: HList, O <: HList]
+  implicit unused def caseHNil[L <: HList]: Aux[HNil, L, L] = ???
+  implicit unused def caseHCons[H, T <: HList, L <: HList, O <: HList](implicit unused p: Aux[T, L, O]): Aux[H :: T, L, H :: O] = ???
 }

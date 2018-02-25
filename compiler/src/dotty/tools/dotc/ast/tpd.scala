@@ -442,7 +442,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else if (tpw isRef defn.DoubleClass) Literal(Constant(0d))
     else if (tpw isRef defn.ByteClass) Literal(Constant(0.toByte))
     else if (tpw isRef defn.ShortClass) Literal(Constant(0.toShort))
-    else if (tpw.isPhantom) Literal(Constant(null)).withType(tpw)
     else Literal(Constant(null)).select(defn.Any_asInstanceOf).appliedToType(tpe)
   }
 
