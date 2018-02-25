@@ -1,17 +1,15 @@
 'use strict';
 
-import {
-	IPCMessageReader, IPCMessageWriter,
-	createConnection, IConnection, TextDocumentSyncKind,
-	TextDocuments, TextDocument, Diagnostic, DiagnosticSeverity,
-	InitializeParams, InitializeResult, TextDocumentPositionParams,
-	CompletionItem, CompletionItemKind
-} from 'vscode-languageserver';
-
 import * as net from 'net';
 
-let argv = process.argv.slice(2)
-let port = argv.shift()
+let argv: string[] = process.argv.slice(2)
+const firstArg: string | undefined = argv.shift()
+let port: string
+if (firstArg === undefined) {
+  throw new Error('Expected port as the first argument')
+} else {
+  port = firstArg
+}
 
 let client = new net.Socket()
 client.setEncoding('utf8')
