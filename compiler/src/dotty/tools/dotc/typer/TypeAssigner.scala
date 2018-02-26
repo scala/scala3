@@ -362,7 +362,7 @@ trait TypeAssigner {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
         if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping)
-          if (fntpe.isDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
+          if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
           else fntpe.resultType
         else
           errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)

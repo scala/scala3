@@ -1362,7 +1362,7 @@ object Types {
         val funType = defn.FunctionOf(
           formals1 mapConserve (_.underlyingIfRepeated(mt.isJavaMethod)),
           mt.nonDependentResultApprox, isImplicit, isUnused)
-        if (mt.isDependent) RefinedType(funType, nme.apply, mt)
+        if (mt.isResultDependent) RefinedType(funType, nme.apply, mt)
         else funType
     }
 
@@ -2668,7 +2668,7 @@ object Types {
 
     override def resultType(implicit ctx: Context) = resType
 
-    def isDependent(implicit ctx: Context): Boolean
+    def isResultDependent(implicit ctx: Context): Boolean
     def isParamDependent(implicit ctx: Context): Boolean
 
     final def isTermLambda = isInstanceOf[TermLambda]
@@ -2683,7 +2683,7 @@ object Types {
     }
 
     final def instantiate(argTypes: => List[Type])(implicit ctx: Context): Type =
-      if (isDependent) resultType.substParams(this, argTypes)
+      if (isResultDependent) resultType.substParams(this, argTypes)
       else resultType
 
     def companion: LambdaTypeCompanion[ThisName, PInfo, This]
@@ -2845,7 +2845,7 @@ object Types {
     /** Does result type contain references to parameters of this method type,
      *  which cannot be eliminated by de-aliasing?
      */
-    def isDependent(implicit ctx: Context): Boolean = dependencyStatus == TrueDeps
+    def isResultDependent(implicit ctx: Context): Boolean = dependencyStatus == TrueDeps
 
     /** Does one of the parameter types contain references to earlier parameters
      *  of this method type which cannot be eliminated by de-aliasing?
@@ -2856,7 +2856,7 @@ object Types {
 
     /** The least supertype of `resultType` that does not contain parameter dependencies */
     def nonDependentResultApprox(implicit ctx: Context): Type =
-      if (isDependent) {
+      if (isResultDependent) {
         val dropDependencies = new ApproximatingTypeMap {
           def apply(tp: Type) = tp match {
             case tp @ TermParamRef(thisLambdaType, _) =>
@@ -3007,7 +3007,7 @@ object Types {
     type This <: TypeLambda
     type ParamRefType = TypeParamRef
 
-    def isDependent(implicit ctx: Context): Boolean = true
+    def isResultDependent(implicit ctx: Context): Boolean = true
     def isParamDependent(implicit ctx: Context): Boolean = true
 
     def newParamRef(n: Int) = new TypeParamRef(this, n) {}
