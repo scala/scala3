@@ -161,18 +161,22 @@ class ReifyQuotes extends MacroTransformWithImplicits {
      */
     def tryHeal(tp: Type, pos: Position)(implicit ctx: Context): Option[String] = tp match {
       case tp: TypeRef =>
-        val reqType = defn.QuotedTypeType.appliedTo(tp)
-        val tag = ctx.typer.inferImplicitArg(reqType, pos)
-        tag.tpe match {
-          case fail: SearchFailureType =>
-            Some(i"""
-                    |
-                    | The access would be accepted with the right type tag, but
-                    | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
-          case _ =>
-            if (level > 0) // TODO do we need to find the tag for level 0?
+        if (level == 0) {
+          assert(ctx.owner.is(Macro))
+          None
+        } else {
+          val reqType = defn.QuotedTypeType.appliedTo(tp)
+          val tag = ctx.typer.inferImplicitArg(reqType, pos)
+          tag.tpe match {
+            case fail: SearchFailureType =>
+              Some(i"""
+                      |
+                      | The access would be accepted with the right type tag, but
+                      | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
+            case _ =>
               importedTags(tp) = nested(isQuote = false).transform(tag)
-            None
+              None
+          }
         }
       case _ =>
         Some("")
