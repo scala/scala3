@@ -11,6 +11,13 @@ import language.higherKinds
 import collection.mutable.ListBuffer
 import reflect.ClassTag
 
+/**
+  * Module untpd defines the type untpd.Tree of untyped trees as produced by the parser. The typechecker transforms
+  * untyped trees to typed trees (tpd.Tree).
+  *
+  * Some constructors of untpd.Tree are not available available for tpd.Tree: they represent nodes that are desugared
+  * by the typechecker. All those constructors are defined below (as case classes).
+  */
 object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   // ----- Tree cases that exist in untyped form only ------------------
