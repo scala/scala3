@@ -11,17 +11,17 @@ import scala.quoted.Exprs.ValueExpr
 import scala.runtime.quoted._
 
 /** Default runners for quoted expressions */
-object Runners {
+object Toolbox {
   import tpd._
 
   type Run
   type Show
 
-  implicit def runner[T]: Runner[T] = new Runner[T] {
+  implicit def toolbox[T]: Toolbox[T] = new Toolbox[T] {
 
-    def run(expr: Expr[T]): T = Runners.run(expr, Settings.run())
+    def run(expr: Expr[T]): T = Toolbox.run(expr, Settings.run())
 
-    def show(expr: Expr[T]): String = Runners.show(expr, Settings.show())
+    def show(expr: Expr[T]): String = Toolbox.show(expr, Settings.show())
 
     def toConstantOpt(expr: Expr[T]): Option[T] = {
       def toConstantOpt(tree: Tree): Option[T] = tree match {
