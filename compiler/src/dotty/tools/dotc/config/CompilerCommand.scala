@@ -74,7 +74,7 @@ object CompilerCommand extends DotClass {
       val width               = (ss map (_.name.length)).max
       def format(s: String)   = ("%-" + width + "s") format s
       def helpStr(s: Setting[_]) = {
-        def defaultValue(setting: Setting[_]) = setting.default match {
+        def defaultValue = s.default match {
           case _: Int | _: String => s.default.toString
           case _ =>
             // For now, skip the default values that do not make sense for the end user.
@@ -88,7 +88,7 @@ object CompilerCommand extends DotClass {
           else
             ""
         }
-        s"${format(s.name)} ${s.description} ${formatSetting("Default", defaultValue(s))} ${formatSetting("Choices", s.legalChoices)}"
+        s"${format(s.name)} ${s.description}${formatSetting("Default", defaultValue)}${formatSetting("Choices", s.legalChoices)}"
       }
       ss map helpStr mkString "\n"
     }
