@@ -1831,8 +1831,10 @@ object Parsers {
      *  DefParams         ::=  DefParam {`,' DefParam}
      *  DefParam          ::=  {Annotation} [`inline'] Param
      *  Param             ::=  id `:' ParamType [`=' Expr]
+     *  ImplicitParamClause ::=  [nl] ‘(’ ImplicitMods ClsParams ‘)’)
+     *  ImplicitMods      ::=  `implicit` [`unused`] | `unused` `implicit`
      */
-    def paramClauses(owner: Name, ofCaseClass: Boolean = false): List[List[ValDef]] = {
+    def paramClauses(owner: Name, ofCaseClass: Boolean = false, ofAugmentation: Boolean = false): List[List[ValDef]] = {
       var imods: Modifiers = EmptyModifiers
       var implicitOffset = -1 // use once
       var firstClauseOfCaseClass = ofCaseClass
@@ -1878,7 +1880,7 @@ object Parsers {
         }
       }
       def paramClause(): List[ValDef] = inParens {
-        if (in.token == RPAREN) Nil
+        if (!ofAugmentation && in.token == RPAREN) Nil
         else {
           def funArgMods(): Unit = {
             if (in.token == IMPLICIT) {
@@ -1891,7 +1893,8 @@ object Parsers {
             }
           }
           funArgMods()
-
+          if (ofAugmentation && !imods.is(Implicit))
+            syntaxError(i"parameters of augment clause must be implicit")
           commaSeparated(() => param())
         }
       }
@@ -1901,7 +1904,7 @@ object Parsers {
           imods = EmptyModifiers
           paramClause() :: {
             firstClauseOfCaseClass = false
-            if (imods is Implicit) Nil else clauses()
+            if (imods.is(Implicit) || ofAugmentation) Nil else clauses()
           }
         } else Nil
       }
@@ -2180,7 +2183,7 @@ object Parsers {
       }
     }
 
-    /** ClassDef ::= id ClassConstr TemplateOpt
+    /** ClassDef ::= id ClassConstr [TemplateClause]
      */
     def classDef(start: Offset, mods: Modifiers): TypeDef = atPos(start, nameStart) {
       classDefRest(start, mods, ident().toTypeName)
@@ -2188,7 +2191,7 @@ object Parsers {
 
     def classDefRest(start: Offset, mods: Modifiers, name: TypeName): TypeDef = {
       val constr = classConstr(name, isCaseClass = mods is Case)
-      val templ = templateOpt(constr)
+      val templ = templateClauseOpt(constr)
       TypeDef(name, templ).withMods(mods).setComment(in.getDocComment(start))
     }
 
@@ -2197,7 +2200,7 @@ object Parsers {
     def classConstr(owner: Name, isCaseClass: Boolean = false): DefDef = atPos(in.lastOffset) {
       val tparams = typeParamClauseOpt(ParamOwner.Class)
       val cmods = fromWithinClassConstr(constrModsOpt(owner))
-      val vparamss = paramClauses(owner, isCaseClass)
+      val vparamss = paramClauses(owner, ofCaseClass = isCaseClass)
       makeConstructor(tparams, vparamss).withMods(cmods)
     }
 
@@ -2206,14 +2209,14 @@ object Parsers {
     def constrModsOpt(owner: Name): Modifiers =
       modifiers(accessModifierTokens, annotsAsMods())
 
-    /** ObjectDef       ::= id TemplateOpt
+    /** ObjectDef       ::= id [TemplateClause]
      */
     def objectDef(start: Offset, mods: Modifiers): ModuleDef = atPos(start, nameStart) {
       objectDefRest(start, mods, ident())
     }
 
     def objectDefRest(start: Offset, mods: Modifiers, name: TermName): ModuleDef = {
-      val template = templateOpt(emptyConstructor)
+      val template = templateClauseOpt(emptyConstructor)
       ModuleDef(name, template).withMods(mods).setComment(in.getDocComment(start))
     }
 
@@ -2223,7 +2226,7 @@ object Parsers {
       val modName = ident()
       val clsName = modName.toTypeName
       val constr = classConstr(clsName)
-      val impl = templateOpt(constr, isEnum = true)
+      val impl = templateClauseOpt(constr, isEnum = true, bodyRequired = true)
       TypeDef(clsName, impl).withMods(addMod(mods, enumMod)).setComment(in.getDocComment(start))
     }
 
@@ -2269,6 +2272,19 @@ object Parsers {
       Template(constr, parents, EmptyValDef, Nil)
     }
 
+    /** Augmentation  ::=  ‘augment’ (id | [id] ClassTypeParamClause)
+     *                     [[nl] ImplicitParamClause] TemplateClause
+     */
+    def augmentation(): Augment = atPos(in.skipToken(), nameStart) {
+      val (name, tparams) =
+        if (isIdent) (ident().toTypeName, typeParamClauseOpt(ParamOwner.Class))
+        else (tpnme.EMPTY, typeParamClause(ParamOwner.Class))
+       val vparamss = paramClauses(name, ofAugmentation = true)
+      val constr = makeConstructor(tparams, vparamss)
+      val templ = templateClauseOpt(constr, bodyRequired = true)
+      Augment(name, templ)
+    }
+
 /* -------- TEMPLATES ------------------------------------------- */
 
     /** ConstrApp         ::=  SimpleType {ParArgumentExprs}
@@ -2285,26 +2301,27 @@ object Parsers {
      *  @return  a pair consisting of the template, and a boolean which indicates
      *           whether the template misses a body (i.e. no {...} part).
      */
-    def template(constr: DefDef, isEnum: Boolean = false): (Template, Boolean) = {
+    def template(constr: DefDef, isEnum: Boolean = false, bodyRequired: Boolean = false): (Template, Boolean) = {
       newLineOptWhenFollowedBy(LBRACE)
       if (in.token == LBRACE) (templateBodyOpt(constr, Nil, isEnum), false)
       else {
         val parents = tokenSeparated(WITH, constrApp)
         newLineOptWhenFollowedBy(LBRACE)
-        if (isEnum && in.token != LBRACE)
+        if (bodyRequired && in.token != LBRACE)
           syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token))
         val missingBody = in.token != LBRACE
         (templateBodyOpt(constr, parents, isEnum), missingBody)
       }
     }
 
-    /** TemplateOpt = [`extends' Template | TemplateBody]
+    /** TemplateClause = `extends' Template | TemplateBody
+     *  TemplateClauseOpt = [TemplateClause]
      */
-    def templateOpt(constr: DefDef, isEnum: Boolean = false): Template =
-      if (in.token == EXTENDS) { in.nextToken(); template(constr, isEnum)._1 }
+    def templateClauseOpt(constr: DefDef, isEnum: Boolean = false, bodyRequired: Boolean = false): Template =
+      if (in.token == EXTENDS) { in.nextToken(); template(constr, isEnum, bodyRequired)._1 }
       else {
         newLineOptWhenFollowedBy(LBRACE)
-        if (in.token == LBRACE) template(constr, isEnum)._1
+        if (in.token == LBRACE || bodyRequired) template(constr, isEnum, bodyRequired)._1
         else Template(constr, Nil, EmptyValDef, Nil)
       }
 
@@ -2380,6 +2397,7 @@ object Parsers {
      *  TemplateStat     ::= Import
      *                     | Annotations Modifiers Def
      *                     | Annotations Modifiers Dcl
+     *                     | Augmentation
      *                     | Expr1
      *                     |
      *  EnumStat         ::= TemplateStat
@@ -2410,6 +2428,8 @@ object Parsers {
         setLastStatOffset()
         if (in.token == IMPORT)
           stats ++= importClause()
+        else if (in.token == AUGMENT)
+          stats += augmentation()
         else if (isExprIntro)
           stats += expr1()
         else if (isDefIntro(modifierTokensOrCase))
@@ -2454,6 +2474,7 @@ object Parsers {
      *  BlockStat    ::= Import
      *                 | Annotations [implicit] [lazy] Def
      *                 | Annotations LocalModifiers TmplDef
+     *                 | Augmentation
      *                 | Expr1
      *                 |
      */
@@ -2464,6 +2485,8 @@ object Parsers {
         setLastStatOffset()
         if (in.token == IMPORT)
           stats ++= importClause()
+        else if (in.token == AUGMENT)
+          stats += augmentation()
         else if (isExprIntro)
           stats += expr(Location.InBlock)
         else if (isDefIntro(localModifierTokens))

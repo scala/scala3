@@ -42,6 +42,7 @@ object StdNames {
     final val AbstractFunction           = "AbstractFunction"
     final val Tuple                      = "Tuple"
     final val Product                    = "Product"
+    final val Augmentation               = "Augmentation"
 
     def sanitize(str: String) = str.replaceAll("""[<>]""", """\$""")
   }
@@ -255,17 +256,6 @@ object StdNames {
     val FAKE_LOCAL_THIS: N          = "this$"
     val LAZY_FIELD_OFFSET: N        = "OFFSET$"
     val LAZY_SLOW_SUFFIX: N         = "$lzycompute"
-    val UNIVERSE_BUILD_PREFIX: N    = "$u.build."
-    val UNIVERSE_BUILD: N           = "$u.build"
-    val UNIVERSE_PREFIX: N          = "$u."
-    val UNIVERSE_SHORT: N           = "$u"
-    val MIRROR_PREFIX: N            = "$m."
-    val MIRROR_SHORT: N             = "$m"
-    val MIRROR_UNTYPED: N           = "$m$untyped"
-    val REIFY_FREE_PREFIX: N        = "free$"
-    val REIFY_FREE_THIS_SUFFIX: N   = "$this"
-    val REIFY_FREE_VALUE_SUFFIX: N  = "$value"
-    val REIFY_SYMDEF_PREFIX: N      = "symdef$"
     val OUTER: N                    = "$outer"
     val REFINE_CLASS: N             = "<refinement>"
     val ROOTPKG: N                  = "_root_"
