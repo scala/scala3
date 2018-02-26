@@ -741,7 +741,7 @@ class Typer extends Namer
       case SAMType(meth) =>
         val mt @ MethodTpe(_, formals, restpe) = meth.info
         (formals,
-         if (mt.isDependent)
+         if (mt.isResultDependent)
            untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef)))
          else
            typeTree(restpe))

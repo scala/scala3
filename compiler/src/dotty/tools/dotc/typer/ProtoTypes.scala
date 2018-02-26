@@ -435,7 +435,7 @@ object ProtoTypes {
    *  replaced by either wildcards (if typevarsMissContext) or TypeParamRefs.
    */
   def resultTypeApprox(mt: MethodType)(implicit ctx: Context): Type =
-    if (mt.isDependent) {
+    if (mt.isResultDependent) {
       def replacement(tp: Type) =
         if (ctx.mode.is(Mode.TypevarsMissContext)) WildcardType else newDepTypeVar(tp)
       mt.resultType.substParams(mt, mt.paramInfos.map(replacement))
@@ -464,7 +464,7 @@ object ProtoTypes {
         normalize(constrained(poly).resultType, pt)
       case mt: MethodType =>
         if (mt.isImplicitMethod) normalize(resultTypeApprox(mt), pt)
-        else if (mt.isDependent) tp
+        else if (mt.isResultDependent) tp
         else {
           val rt = normalize(mt.resultType, pt)
           pt match {
