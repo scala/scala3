@@ -179,6 +179,7 @@ object Tokens extends TokensCommon {
   final val ENUM = 63;             enter(ENUM, "enum")
   final val ERASED = 64;           enter(ERASED, "erased")
   final val OPAQUE = 65;           enter(OPAQUE, "opaque")
+  final val AUGMENT = 66;          enter(AUGMENT, "augment")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -199,7 +200,7 @@ object Tokens extends TokensCommon {
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
-  final val alphaKeywords = tokenRange(IF, OPAQUE)
+  final val alphaKeywords = tokenRange(IF, AUGMENT)
   final val symbolicKeywords = tokenRange(USCORE, VIEWBOUND)
   final val symbolicTokens = tokenRange(COMMA, VIEWBOUND)
   final val keywords = alphaKeywords | symbolicKeywords
@@ -239,7 +240,7 @@ object Tokens extends TokensCommon {
 
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens = defIntroTokens | modifierTokens | BitSet(
-    IMPORT, PACKAGE)
+    IMPORT, PACKAGE, AUGMENT)
 
   final val canStartStatTokens = canStartExpressionTokens | mustStartStatTokens | BitSet(
     AT, CASE)

@@ -11,6 +11,7 @@ import language.higherKinds
 import typer.FrontEnd
 import collection.mutable.ListBuffer
 import util.Property
+import config.Printers.desugr
 import reporting.diagnostic.messages._
 import reporting.trace
 
@@ -749,6 +750,61 @@ object desugar {
     Bind(name, Ident(nme.WILDCARD)).withPos(tree.pos)
   }
 
+  /**     augment <name> <type-params> <params> extends <parents> { <body>} }
+   *   ->
+   *      implicit class <deconame> <type-params> ($this: name <type-args>) <params>
+   *      extends <parents> { <body1> }
+   *
+   *      augment <type-param> <params> extends <parents> { <body>} }
+   *   ->
+   *      implicit class <deconame> <type-param> ($this: <type-arg>) <params>
+   *      extends <parents> { <body1> }
+   *
+   *  where
+   *
+   *    <deconame>  = <name>To<parent>$<n>    where <parent> is first extended class name
+   *                = <name>Augmentation$<n>  if no such <parent> exists
+   *    <n>         = counter making prefix unique
+   *    <type-args> = references to <type-params>
+   *    <body1>     = <body> with each occurrence of unqualified `this` substituted by `$this`.
+   */
+  def augmentation(tree: Augment)(implicit ctx: Context): Tree = {
+    val Augment(name, impl) = tree
+    val constr @ DefDef(_, tparams, vparamss, _, _) = impl.constr
+    var decorated: Tree = Ident(name)
+    if (tparams.nonEmpty)
+      decorated =
+        if (name.isEmpty) refOfDef(tparams.head)
+        else AppliedTypeTree(decorated, tparams.map(refOfDef))
+    val firstParam = ValDef(nme.SELF, decorated, EmptyTree).withFlags(Private | Local | ParamAccessor)
+    val constr1 = cpy.DefDef(constr)(vparamss = (firstParam :: Nil) :: vparamss)
+    val substThis = new UntypedTreeMap {
+      override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+        case This(Ident(tpnme.EMPTY)) => Ident(nme.SELF).withPos(tree.pos)
+        case _ => super.transform(tree)
+      }
+    }
+    def targetSuffix(tree: Tree): String = tree match {
+      case Apply(tycon, args) => targetSuffix(tycon)
+      case TypeApply(tycon, args) => targetSuffix(tycon)
+      case Select(pre, nme.CONSTRUCTOR) => targetSuffix(pre)
+      case New(tpt) => targetSuffix(tpt)
+      case AppliedTypeTree(tycon, _) => targetSuffix(tycon)
+      case tree: RefTree => "To" ++ tree.name.toString
+      case _ => str.Augmentation
+    }
+    val decoName: TypeName = impl.parents match {
+      case parent :: _ => name ++ targetSuffix(parent)
+      case  _ => name ++ str.Augmentation
+    }
+    val icls =
+      TypeDef(UniqueName.fresh(decoName.toTermName).toTypeName,
+        cpy.Template(impl)(constr = constr1, body = substThis.transform(impl.body)))
+        .withFlags(Implicit)
+    desugr.println(i"desugar $name --> $icls")
+    classDef(icls)
+  }
+
   def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case tree: ValDef => valDef(tree)
     case tree: TypeDef => if (tree.isClassDef) classDef(tree) else tree
@@ -757,6 +813,7 @@ object desugar {
       else defDef(tree)
     case tree: ModuleDef => moduleDef(tree)
     case tree: PatDef => patDef(tree)
+    case tree: Augment => augmentation(tree)
   }
 
   /**     { stats; <empty > }

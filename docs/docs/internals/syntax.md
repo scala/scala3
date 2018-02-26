@@ -120,7 +120,6 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 Type              ::=  [FunArgMods] FunArgTypes ‘=>’ Type                       Function(ts, t)
                     |  HkTypeParamClause ‘=>’ Type                              TypeLambda(ps, t)
                     |  InfixType
-FunArgMods        ::=  { `implicit` | `erased` }
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
                     |  '(' TypedFunParam {',' TypedFunParam } ')'
@@ -209,6 +208,7 @@ Block             ::=  {BlockStat semi} [BlockResult]                           
 BlockStat         ::=  Import
                     |  {Annotation} [‘implicit’ | ‘lazy’] Def
                     |  {Annotation} {LocalModifier} TmplDef
+                    |  Augmentation
                     |  Expr1
 
 ForExpr           ::=  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’)        ForYield(enums, expr)
@@ -241,6 +241,9 @@ PatVar            ::=  varid
 Patterns          ::=  Pattern {‘,’ Pattern}
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                                       Apply(fn, pats)
                     |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
+
+Augmentation      ::=  ‘augment’ (id | [id] ClsTypeParamClause)
+                       [[nl] ImplicitParamClause] TemplateClause                Augment(name, templ)
 ```
 
 ### Type and Value Parameters
@@ -261,6 +264,8 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] |
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [FunArgMods] ClsParams ‘)’]
 ClsParamClause    ::=  [nl] ‘(’ [ClsParams] ‘)’
+ImplicitParamClause
+                  ::=  [nl] ‘(’ ImplicitMods ClsParams ‘)’)
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
@@ -289,6 +294,8 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘opaque’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
+FunArgMods        ::=  { `implicit` | `erased` }
+ImplicitMods      ::=  `implicit` [`erased`] | `erased` `implicit`
 
 Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}                        Apply(tpe, args)
 
@@ -330,12 +337,12 @@ DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                       
 TmplDef           ::=  ([‘case’] ‘class’ | trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  `enum' EnumDef
-ClassDef          ::=  id ClassConstr TemplateOpt                               ClassDef(mods, name, tparams, templ)
-ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses         with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
+ClassDef          ::=  id ClassConstr [TemplateClause]                          TypeDef(mods, name, templ)
+ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
-ObjectDef         ::=  id TemplateOpt                                           ModuleDef(mods, name, template)  // no constructor
-EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody         EnumDef(mods, name, tparams, template)
-TemplateOpt       ::=  [‘extends’ Template | [nl] TemplateBody]
+ObjectDef         ::=  id [TemplateClause]                                      ModuleDef(mods, name, template)  // no constructor
+EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody         TypeDef(mods, name, template)
+TemplateClause    ::=  [‘extends’ Template | [nl] TemplateBody]
 Template          ::=  ConstrApps [TemplateBody] | TemplateBody                 Template(constr, parents, self, stats)
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
 ConstrApp         ::=  AnnotType {ArgumentExprs}                                Apply(tp, args)
@@ -348,6 +355,7 @@ TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} 
 TemplateStat      ::=  Import
                     |  {Annotation [nl]} {Modifier} Def
                     |  {Annotation [nl]} {Modifier} Dcl
+                    |  Augmentation
                     |  Expr1
                     |
 SelfType          ::=  id [‘:’ InfixType] ‘=>’                                  ValDef(_, name, tpt, _)
