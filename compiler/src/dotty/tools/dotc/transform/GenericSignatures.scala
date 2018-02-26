@@ -281,7 +281,7 @@ object GenericSignatures {
         case _ =>
           val etp = erasure(tp)
           if (etp eq tp) throw new UnknownSig
-          else jsig(etp)
+          else jsig(etp, toplevel, primitiveOK)
       }
     }
     val throwsArgs = sym0.annotations flatMap ThrownException.unapply
