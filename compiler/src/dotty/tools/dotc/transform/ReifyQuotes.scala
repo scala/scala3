@@ -77,6 +77,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
    */
   private class Reifier(inQuote: Boolean, val outer: Reifier, val level: Int, levels: LevelInfo) extends ImplicitsTransformer {
     import levels._
+    assert(level >= 0)
 
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
     def nested(isQuote: Boolean): Reifier =
@@ -169,7 +170,8 @@ class ReifyQuotes extends MacroTransformWithImplicits {
                     | The access would be accepted with the right type tag, but
                     | ${ctx.typer.missingArgMsg(tag, reqType, "")}""")
           case _ =>
-            importedTags(tp) = nested(isQuote = false).transform(tag)
+            if (level > 0) // TODO do we need to find the tag for level 0?
+              importedTags(tp) = nested(isQuote = false).transform(tag)
             None
         }
       case _ =>
