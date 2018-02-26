@@ -21,9 +21,10 @@ object Test {
 
     Files.deleteIfExists(classFile)
 
-    val settings = Settings.run(optimise = true, outDir = Some(outDir.toString))
-
-    println(run(expr, settings))
-    assert(Files.exists(classFile))
+    {
+      implicit val settings = Settings.run(optimise = true, outDir = Some(outDir.toString))
+      println(expr.run)
+      assert(Files.exists(classFile))
+    }
   }
 }
