@@ -155,6 +155,25 @@ object desugar {
        ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | Implicit)
     }
 
+  private def desugarTypeBindings(
+        bindings: List[TypeDef],
+        forPrimaryConstructor: Boolean = false)(implicit ctx: Context): (List[TypeDef], List[ValDef]) = {
+    val epbuf = new ListBuffer[ValDef]
+    def desugarContextBounds(rhs: Tree): Tree = rhs match {
+      case ContextBounds(tbounds, cxbounds) =>
+        epbuf ++= makeImplicitParameters(cxbounds, forPrimaryConstructor)
+        tbounds
+      case LambdaTypeTree(tparams, body) =>
+        cpy.LambdaTypeTree(rhs)(tparams, desugarContextBounds(body))
+      case _ =>
+        rhs
+    }
+    val bindings1 = bindings mapConserve { tparam =>
+      cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
+    }
+    (bindings1, epbuf.toList)
+  }
+
   /** Expand context bounds to evidence params. E.g.,
    *
    *      def f[T >: L <: H : B](params)
@@ -172,21 +191,8 @@ object desugar {
   private def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val DefDef(name, tparams, vparamss, tpt, rhs) = meth
     val mods = meth.mods
-    val epbuf = new ListBuffer[ValDef]
-    def desugarContextBounds(rhs: Tree): Tree = rhs match {
-      case ContextBounds(tbounds, cxbounds) =>
-        epbuf ++= makeImplicitParameters(cxbounds, isPrimaryConstructor)
-        tbounds
-      case LambdaTypeTree(tparams, body) =>
-        cpy.LambdaTypeTree(rhs)(tparams, desugarContextBounds(body))
-      case _ =>
-        rhs
-    }
-    val tparams1 = tparams mapConserve { tparam =>
-      cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
-    }
-
-    val meth1 = addEvidenceParams(cpy.DefDef(meth)(tparams = tparams1), epbuf.toList)
+    val (tparams1, evidenceParams) = desugarTypeBindings(tparams, isPrimaryConstructor)
+    val meth1 = addEvidenceParams(cpy.DefDef(meth)(tparams = tparams1), evidenceParams)
 
     /** The longest prefix of parameter lists in vparamss whose total length does not exceed `n` */
     def takeUpTo(vparamss: List[List[ValDef]], n: Int): List[List[ValDef]] = vparamss match {
@@ -742,6 +748,20 @@ object desugar {
               else derivedValDef(original, named, tpt, selector(n), mods)
           flatTree(firstDef :: restDefs)
       }
+  }
+
+  def decomposeTypePattern(tree: Tree)(implicit ctx: Context): (Tree, List[TypeDef]) = {
+    val bindingsBuf = new ListBuffer[TypeDef]
+    val elimTypeDefs = new untpd.TreeMap {
+      override def transform(tree: Tree)(implicit ctx: Context) = tree match {
+        case tree: TypeDef =>
+          bindingsBuf += tree
+          Ident(tree.name).withPos(tree.pos)
+        case _ =>
+          super.transform(tree)
+      }
+    }
+    (elimTypeDefs.transform(tree), bindingsBuf.toList)
   }
 
   /** Expand variable identifier x to x @ _ */

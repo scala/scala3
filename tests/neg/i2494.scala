@@ -1,2 +1,2 @@
-enum
-object // error // error // error
+enum   // error: cyclic reference
+object // error // error

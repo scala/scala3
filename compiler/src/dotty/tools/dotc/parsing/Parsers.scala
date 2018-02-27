@@ -323,6 +323,20 @@ object Parsers {
       finally inEnum = saved
     }
 
+    private[this] var inTypePattern = false
+    private[this] var inBindingTypePattern = false
+    private def withinTypePattern[T](binding: Boolean)(body: => T): T = {
+      val savedInType = inTypePattern
+      val savedInBinding = inBindingTypePattern
+      inTypePattern = true
+      if (binding) inBindingTypePattern = true
+      try body
+      finally {
+        inTypePattern = savedInType
+        inBindingTypePattern = savedInBinding
+      }
+    }
+
     def migrationWarningOrError(msg: String, offset: Int = in.offset) =
       if (in.isScala2Mode)
         ctx.migrationWarning(msg, source atPos Position(offset))
@@ -917,7 +931,16 @@ object Parsers {
           else Nil
         first :: rest
       }
-      def typParser() = if (wildOK) typ() else toplevelTyp()
+      def typParser() =
+        if (in.token == TYPE && inTypePattern)
+          if (inBindingTypePattern)
+            typeParamCore(in.skipToken(), isConcreteOwner = true)
+          else
+            atPos(in.skipToken(), nameStart) {
+              Bind(ident().toTypeName, Ident(nme.WILDCARD))
+            }
+        else if (wildOK) typ()
+        else toplevelTyp()
       if (namedOK && in.token == IDENTIFIER)
         typParser() match {
           case Ident(name) if in.token == EQUALS =>
@@ -998,7 +1021,7 @@ object Parsers {
 
     def typeDependingOn(location: Location.Value): Tree =
       if (location == Location.InParens) typ()
-      else if (location == Location.InPattern) refinedType()
+      else if (location == Location.InPattern) withinTypePattern(binding = false)(refinedType())
       else infixType()
 
     /** Checks whether `t` is a wildcard type.
@@ -1058,7 +1081,7 @@ object Parsers {
      *                      |  PostfixExpr `match' `{' CaseClauses `}'
      *  Bindings          ::= `(' [Binding {`,' Binding}] `)'
      *  Binding           ::= (id | `_') [`:' Type]
-     *  Ascription        ::= `:' CompoundType
+     *  Ascription        ::= `:' InfixType
      *                      | `:' Annotation {Annotation}
      *                      | `:' `_' `*'
      */
@@ -1178,6 +1201,13 @@ object Parsers {
         t
     }
 
+    /**  Ascription        ::= `:' InfixType
+     *                       | `:' Annotation {Annotation}
+     *                       | `:' `_' `*'
+     *   PatternAscription ::= `:' TypePattern
+     *                       | `:' `_' `*'
+     *   TypePattern       ::= RefinedType
+     */
     def ascription(t: Tree, location: Location.Value) = atPos(startOffset(t)) {
       in.skipToken()
       in.token match {
@@ -1539,7 +1569,7 @@ object Parsers {
       if (isIdent(nme.raw.BAR)) { in.nextToken(); pattern1() :: patternAlts() }
       else Nil
 
-    /**  Pattern1          ::= PatVar Ascription
+    /**  Pattern1          ::= PatVar PatternAscription
      *                      |  Pattern2
      */
     def pattern1(): Tree = {
@@ -1774,11 +1804,11 @@ object Parsers {
  /* -------- PARAMETERS ------------------------------------------- */
 
     /** ClsTypeParamClause::=  `[' ClsTypeParam {`,' ClsTypeParam} `]'
-     *  ClsTypeParam      ::=  {Annotation} [`+' | `-']
-     *                         id [HkTypeParamClause] TypeParamBounds
+     *  ClsTypeParam      ::=  {Annotation} [`+' | `-'] TypeParamCore
      *
      *  DefTypeParamClause::=  `[' DefTypeParam {`,' DefTypeParam} `]'
-     *  DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
+     *  DefTypeParam      ::=  {Annotation} TypeParamCore
+     *  TypeParamCore     ::=  id [HkTypeParamClause] TypeParamBounds
      *
      *  TypTypeParamCaluse::=  `[' TypTypeParam {`,' TypTypeParam} `]'
      *  TypTypeParam      ::=  {Annotation} id [HkTypePamClause] TypeBounds
@@ -1802,21 +1832,24 @@ object Parsers {
             else EmptyFlags
           }
         }
-        atPos(start, nameStart) {
-          val name =
-            if (isConcreteOwner || in.token != USCORE) ident().toTypeName
-            else {
-              in.nextToken()
-              WildcardParamName.fresh().toTypeName
-            }
-          val hkparams = typeParamClauseOpt(ParamOwner.TypeParam)
-          val bounds =
-            if (isConcreteOwner) typeParamBounds(name)
-            else typeBounds()
-          TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
-        }
+        typeParamCore(start, isConcreteOwner).withMods(mods)
       }
       commaSeparated(() => typeParam())
+    }
+
+    /** TypeParamCore  ::=  id [HkTypeParamClause] TypeParamBounds */
+    def typeParamCore(start: Offset, isConcreteOwner: Boolean): TypeDef = atPos(start, nameStart) {
+      val name =
+        if (in.token == USCORE && !isConcreteOwner) {
+          in.nextToken()
+          WildcardParamName.fresh().toTypeName
+        }
+        else ident().toTypeName
+      val hkparams = typeParamClauseOpt(ParamOwner.TypeParam)
+      val bounds =
+        if (isConcreteOwner) typeParamBounds(name)
+        else typeBounds()
+      TypeDef(name, lambdaAbstract(hkparams, bounds))
     }
 
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =

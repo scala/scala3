@@ -120,6 +120,8 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 Type              ::=  [FunArgMods] FunArgTypes ‘=>’ Type                       Function(ts, t)
                     |  HkTypeParamClause ‘=>’ Type                              TypeLambda(ps, t)
                     |  InfixType
+                    |  ‘type’ TypeParamCore
+                       (if inside a BindingTypePattern)
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
                     |  '(' TypedFunParam {',' TypedFunParam } ')'
@@ -137,8 +139,10 @@ SimpleType        ::=  SimpleType TypeArgs                                      
                     |  ‘_’ TypeBounds
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
                     |  SimpleLiteral                                            SingletonTypeTree(l)
-ArgTypes          ::=  Type {‘,’ Type}
-                    |  NamedTypeArg {‘,’ NamedTypeArg}
+ArgTypes          ::=  ArgType {‘,’ ArgType}
+ArgType           ::=  Type
+                    |  ‘type’ id
+                       (if inside a TypePattern)
 FunArgType        ::=  Type
                     |  ‘=>’ Type                                                PrefixOp(=>, t)
 ParamType         ::=  [‘=>’] ParamValueType
@@ -225,7 +229,7 @@ CaseClauses       ::=  CaseClause { CaseClause }                                
 CaseClause        ::=  ‘case’ (Pattern [Guard] ‘=>’ Block | INT)                CaseDef(pat, guard?, block)   // block starts at =>
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
-Pattern1          ::=  PatVar ‘:’ RefinedType                                   Bind(name, Typed(Ident(wildcard), tpe))
+Pattern1          ::=  PatVar ‘:’ TypePattern                                   Bind(name, Typed(Ident(wildcard), tpe))
                     |  Pattern2
 Pattern2          ::=  [id ‘@’] InfixPattern                                    Bind(name, pat)
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                  InfixOp(pat, op, pat)
@@ -238,22 +242,23 @@ SimplePattern1    ::=  Path
                     |  SimplePattern1 ‘.’ id
 PatVar            ::=  varid
                     |  ‘_’
+BindingTypePattern::=  Type
+TypePattern       ::=  RefinedType
 Patterns          ::=  Pattern {‘,’ Pattern}
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                                       Apply(fn, pats)
                     |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
 
-Augmentation      ::=  ‘augment’ (id | [id] ClsTypeParamClause)
+Augmentation      ::=  ‘augment’ BindingTypePattern
                        [[nl] ImplicitParamClause] TemplateClause                Augment(name, templ)
 ```
 
 ### Type and Value Parameters
 ```ebnf
 ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
-ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]                                   TypeDef(Modifiers, name, tparams, bounds)
-                       id [HkTypeParamClause] TypeParamBounds                   Bound(below, above, context)
-
+ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’] TypeParamCore                   TypeDef(Modifiers, name, tparams, bounds)
 DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
-DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
+DefTypeParam      ::=  {Annotation} TypeParamCore
+TypeParamCore     ::=  id [HkTypeParamClause] TypeParamBounds                   Bound(below, above, context)
 
 TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
 TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeBounds
