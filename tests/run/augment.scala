@@ -63,7 +63,7 @@ object augments {
     def === (that: T): Boolean
   }
 
-  augment (type T: Eql) extends HasEql[T] {
+  augment eqlToHasEql @ (type T: Eql) extends HasEql[T] {
     def === (that: T): Boolean = implicitly[Eql[T]].eql(this, that)
   }
 
@@ -79,18 +79,24 @@ object augments {
       this.height == that.height
   }
 
-// Generic augments with additional parameters
+}
 
-  augment List[List[type U]] {
+object augments2 {
+  import augments.{Eql, eqlToHasEql}
+  // Nested generic arguments
+
+  augment flatLists @ List[List[type U]] {
     def flattened: List[U] = (this :\ (Nil: List[U]))(_ ++ _)
   }
 
-  augment (type T: Eql, T) {
+  augment samePairs @ (type T: Eql, T) {
     def isSame = this._1 === this._2
   }
+
 }
 
 import augments._
+import augments2.{flatLists, samePairs}
 object Test extends App {
   val c = Circle(0, 1, 2)
   println(c.area)
@@ -116,5 +122,5 @@ object Test extends App {
   println(List(List(1), List(2, 3)).flattened.maxx)
   println(Array(1, 2, 3).maxx)
   println((2, 3).isSame)
-  println((3, 3).isSame)
+  println(samePairs((3, 3)).isSame)
 }

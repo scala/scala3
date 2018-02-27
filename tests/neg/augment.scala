@@ -73,19 +73,24 @@ object augments {
       this.width == that.width &&
       this.height == that.height
   }
+}
 
-// Generic augments with additional parameters
+object augments2 {
+  import augments.Eql
+  // Nested generic arguments
 
-  augment List[List[type U]] {
+  augment flatLists @ List[List[type U]] {
     def flattened: List[U] = (this :\ (Nil: List[U]))(_ ++ _)
   }
 
-  augment (type T: Eql, T) {
-    def isSame = this._1 === this._2
+  augment samePairs @ (type T: Eql, T) {
+    def isSame: Boolean = this._1 === this._2 // error: === is not a member
   }
+
 }
 
 import augments._
+import augments2._
 object Test extends App {
   val c = Circle(0, 1, 2)
   println(c.area)
