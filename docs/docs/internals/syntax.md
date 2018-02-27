@@ -248,7 +248,9 @@ ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                               
                     |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
 
 Augmentation      ::=  ‘augment’ BindingTypePattern
-                       [[nl] ImplicitParamClause] TemplateClause                Augment(name, templ)
+                       [[nl] ImplicitParamClause] AugmentClause                 Augment(name, templ)
+AugmentClause     ::=  ‘extends’ Template
+                    |  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 BindingTypePattern::=  AnnotType
 ```
 
