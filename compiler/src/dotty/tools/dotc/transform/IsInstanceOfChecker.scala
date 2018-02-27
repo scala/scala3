@@ -46,16 +46,16 @@ object Checkable {
    *  1. if `P` is a singleton type, TRUE
    *  2. if `P` is WildcardType, TRUE
    *  3. if `P = T @unchecked`, TRUE
-   *  3. if `P` refers to an abstract type member, FALSE
-   *  4. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
-   *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
+   *  4. if `P` refers to an abstract type member, FALSE
+   *  5. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
+   *  6. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
    *     (b) instantiate `Xs` with the constraint `pre.F[Xs] <:< X`
    *     (c) `pre.F[Xs] <:< P2`, where `P2` is `P` with pattern binder types (e.g., `_$1`)
    *         replaced with `WildcardType`.
-   *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
-   *  7. if `P` is a refinement type, FALSE
-   *  8. otherwise, TRUE
+   *  7. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
+   *  8. if `P` is a refinement type, FALSE
+   *  9. otherwise, TRUE
    */
   def checkable(X: Type, P: Type)(implicit ctx: Context): Boolean = {
     def Psym = P.dealias.typeSymbol
