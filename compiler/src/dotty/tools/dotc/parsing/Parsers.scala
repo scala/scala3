@@ -2304,14 +2304,25 @@ object Parsers {
     }
 
     /** Augmentation       ::=  ‘augment’ BindingTypePattern
-     *                          [[nl] ImplicitParamClause] TemplateClause
+     *                          [[nl] ImplicitParamClause] Additions
      *  BindingTypePattern ::=  AnnotType
+     *  Additions         ::=  ‘extends’ Template
+     *                      |  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
      */
     def augmentation(): Augment = atPos(in.skipToken(), nameStart) {
       val augmented = withinTypePattern(binding = true)(annotType())
       val vparamss = paramClauses(tpnme.EMPTY, ofAugmentation = true).take(1)
       val constr = makeConstructor(Nil, vparamss)
+      val isSimpleExtension = in.token != EXTENDS
       val templ = templateClauseOpt(constr, bodyRequired = true)
+      if (isSimpleExtension) {
+        def checkDef(tree: Tree) = tree match {
+          case _: DefDef | EmptyValDef => // ok
+          case _ => syntaxError("`def` expected", tree.pos.startPos)
+        }
+        checkDef(templ.self)
+        templ.body.foreach(checkDef)
+      }
       Augment(augmented, templ)
     }
 
