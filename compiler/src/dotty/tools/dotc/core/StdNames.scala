@@ -42,7 +42,6 @@ object StdNames {
     final val AbstractFunction           = "AbstractFunction"
     final val Tuple                      = "Tuple"
     final val Product                    = "Product"
-    final val Augmentation               = "Augmentation"
 
     def sanitize(str: String) = str.replaceAll("""[<>]""", """\$""")
   }

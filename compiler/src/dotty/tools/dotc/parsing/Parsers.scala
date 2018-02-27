@@ -2303,13 +2303,18 @@ object Parsers {
       Template(constr, parents, EmptyValDef, Nil)
     }
 
-    /** Augmentation       ::=  ‘augment’ BindingTypePattern
+    /** Augmentation       ::=  ‘augment’ [id @] BindingTypePattern
      *                          [[nl] ImplicitParamClause] Additions
      *  BindingTypePattern ::=  AnnotType
      *  Additions         ::=  ‘extends’ Template
      *                      |  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
      */
     def augmentation(): Augment = atPos(in.skipToken(), nameStart) {
+      var id: Tree = EmptyTree
+      if (isIdent && lookaheadIn(AT)) {
+        id = typeIdent()
+        in.nextToken()
+      }
       val augmented = withinTypePattern(binding = true)(annotType())
       val vparamss = paramClauses(tpnme.EMPTY, ofAugmentation = true).take(1)
       val constr = makeConstructor(Nil, vparamss)
@@ -2323,7 +2328,7 @@ object Parsers {
         checkDef(templ.self)
         templ.body.foreach(checkDef)
       }
-      Augment(augmented, templ)
+      Augment(id, augmented, templ)
     }
 
 /* -------- TEMPLATES ------------------------------------------- */

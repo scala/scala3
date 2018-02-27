@@ -771,7 +771,7 @@ object desugar {
     (elimTypeDefs.transform(tree), bindingsBuf.toList)
   }
 
-  /**     augment <type-pattern> <params> extends <parents> { <body>} }
+  /**     augment [<id> @] <type-pattern> <params> extends <parents> { <body>} }
    *   ->
    *      implicit class <deconame> <type-params> ($this: <decorated>) <combined-params>
    *      extends <parents> { <body1> }
@@ -781,7 +781,8 @@ object desugar {
    *    (<decorated>, <type-params0>) = decomposeTypePattern(<type-pattern>)
    *    (<type-params>, <evidence-params>) = desugarTypeBindings(<type-params0>)
    *    <combined-params> = <params> concatenated with <evidence-params> in one clause
-   *    <deconame>  = <from>To<parent>_in_<location>$$<n>    where <parent> is first extended class name
+   *    <deconame>  = <id>                                   if there is a `id @` binding
+   *                = <from>To<parent>_in_<location>$$<n>    where <parent> is first extended class name
    *
    *                = <from>Augmentation_in_<location>$$<n>  if no such <parent> exists
    *    <from>      = underlying type name of <decorated>
@@ -791,7 +792,7 @@ object desugar {
    *
    *   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    *
-   *     augment <type-pattern> <params> { <body> }
+   *     augment [<id> @] <type-pattern> <params> { <body> }
    *  ->
    *     implicit class <deconame> <type-params> ($this: <decorated>)
    *     extends AnyVal { <body2> }
@@ -802,7 +803,7 @@ object desugar {
    *    <deconame>, <type-params> are as above.
    */
   def augmentation(tree: Augment)(implicit ctx: Context): Tree = {
-    val Augment(augmented, impl) = tree
+    val Augment(id, augmented, impl) = tree
     val isSimpleExtension =
       impl.parents.isEmpty &&
       impl.self.isEmpty &&
@@ -810,14 +811,18 @@ object desugar {
     val (decorated, bindings) = decomposeTypePattern(augmented)
     val (typeParams, evidenceParams) =
       desugarTypeBindings(bindings, forPrimaryConstructor = !isSimpleExtension)
-    val decoName = {
-      def clsName(tree: Tree): String = leadingName("", tree)
-      val fromName = clsName(augmented)
-      val toName = impl.parents match {
-        case parent :: _ if !clsName(parent).isEmpty => "To" + clsName(parent)
-        case _ => str.Augmentation
-      }
-      s"${fromName}${toName}_in_${ctx.owner.topLevelClass.flatName}"
+    val decoName = id match {
+      case Ident(name) =>
+        name.asTypeName
+      case EmptyTree =>
+        def clsName(tree: Tree): String = leadingName("", tree)
+        val fromName = clsName(augmented)
+        val toName = impl.parents match {
+          case parent :: _ if !clsName(parent).isEmpty => "To" + clsName(parent)
+          case _ => "Augmentation"
+        }
+        val prefix = s"${fromName}${toName}_in_${ctx.owner.topLevelClass.flatName}"
+        UniqueName.fresh(prefix.toTermName).toTypeName
     }
 
     val firstParam = ValDef(nme.SELF, decorated, EmptyTree).withFlags(Private | Local | ParamAccessor)
@@ -842,7 +847,7 @@ object desugar {
       constr1 = addEvidenceParams(constr1, evidenceParams)
 
     val icls =
-      TypeDef(UniqueName.fresh(decoName.toTermName).toTypeName,
+      TypeDef(decoName,
         cpy.Template(impl)(constr = constr1, parents = parents1, body = body1))
         .withFlags(Implicit)
     desugr.println(i"desugar $augmented --> $icls")

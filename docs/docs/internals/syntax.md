@@ -247,7 +247,7 @@ Patterns          ::=  Pattern {‘,’ Pattern}
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                                       Apply(fn, pats)
                     |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
 
-Augmentation      ::=  ‘augment’ BindingTypePattern
+Augmentation      ::=  ‘augment’ [id ‘@’] BindingTypePattern
                        [[nl] ImplicitParamClause] AugmentClause                 Augment(name, templ)
 AugmentClause     ::=  ‘extends’ Template
                     |  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
