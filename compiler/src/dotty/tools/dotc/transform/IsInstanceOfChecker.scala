@@ -43,19 +43,19 @@ object Checkable {
 
   /** Whether `(x:X).isInstanceOf[P]` can be checked at runtime?
    *
+   *  Replace `T @unchecked` and pattern binder types (e.g., `_$1`) in P with WildcardType, then check:
+   *
    *  1. if `P` is a singleton type, TRUE
    *  2. if `P` is WildcardType, TRUE
-   *  3. if `P = T @unchecked`, TRUE
-   *  4. if `P` refers to an abstract type member or type parameter, FALSE
-   *  5. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
-   *  6. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
+   *  3. if `P` refers to an abstract type member or type parameter, FALSE
+   *  4. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
+   *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
    *     (b) instantiate `Xs` with the constraint `pre.F[Xs] <:< X`
-   *     (c) `pre.F[Xs] <:< P2`, where `P2` is `P` with pattern binder types (e.g., `_$1`)
-   *         replaced with `WildcardType`.
-   *  7. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
-   *  8. if `P` is a refinement type, FALSE
-   *  9. otherwise, TRUE
+   *     (c) `pre.F[Xs] <:< P`
+   *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
+   *  7. if `P` is a refinement type, FALSE
+   *  8. otherwise, TRUE
    */
   def checkable(X: Type, P: Type)(implicit ctx: Context): Boolean = {
     def Psym = P.dealias.typeSymbol
@@ -73,7 +73,7 @@ object Checkable {
     }
 
     def isClassDetermined(tpe: AppliedType)(implicit ctx: Context) = {
-      val AppliedType(tycon, args) = tpe
+      val AppliedType(tycon, _) = tpe
       val tvars = tycon.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
       val P1 = tycon.appliedTo(tvars)
 
@@ -81,15 +81,13 @@ object Checkable {
       debug.println("X : " + X.widen)
 
       !(P1 <:< X.widen) || {
-        val P2   = replaceBinderMap.apply(P)
-        val res  = isFullyDefined(P1, ForceDegree.noBottom) && P1 <:< P2
-        debug.println("P2: " + P2.show)
-        debug.println("P1 <:< P2 = " + res)
+        val res  = isFullyDefined(P1, ForceDegree.noBottom) && P1 <:< tpe
+        debug.println("P1 <:< P = " + res)
         res
       }
     }
 
-    val res = P match {
+    val res = replaceBinderMap.apply(P) match {
       case _: SingletonType     => true
       case WildcardType         => true
       case defn.ArrayOf(tpT)    =>
@@ -100,9 +98,9 @@ object Checkable {
       case tpe: AppliedType     => !isAbstract && isClassDetermined(tpe)
       case AndType(tp1, tp2)    => checkable(X, tp1) && checkable(X, tp2)
       case OrType(tp1, tp2)     => checkable(X, tp1) && checkable(X, tp2)
-      case AnnotatedType(t, an) => an.symbol == defn.UncheckedAnnot || checkable(X, t)
+      case AnnotatedType(t, an) => checkable(X, t)
       case _: RefinedType       => false
-      case _                    => replaceBinderMap.apply(P) == WildcardType || !isAbstract
+      case _                    => !isAbstract
     }
 
     debug.println(i"checking  ${X.show} isInstanceOf ${P} = $res")
