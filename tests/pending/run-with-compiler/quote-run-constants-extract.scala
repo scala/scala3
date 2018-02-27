@@ -1,6 +1,6 @@
 import scala.quoted._
 
-import dotty.tools.dotc.quoted.Runners._
+import dotty.tools.dotc.quoted.Toolbox._
 
 object Test {
 

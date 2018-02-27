@@ -1,7 +1,7 @@
 
 import java.nio.file.{Files, Paths}
 
-import dotty.tools.dotc.quoted.Runners._
+import dotty.tools.dotc.quoted.Toolbox._
 
 import scala.quoted._
 
