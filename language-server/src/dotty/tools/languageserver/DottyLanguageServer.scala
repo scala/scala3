@@ -100,18 +100,7 @@ class DottyLanguageServer extends LanguageServer
   }
 
   private def checkMemory() =
-    if (Memory.isCritical())
-      CompletableFutures.computeAsync { _ => restart(); new Object() }
-        // new Object() necessary or we get a BootstrapMethodError:
-        //
-        // Caused by: java.lang.invoke.LambdaConversionException: Type mismatch for lambda expected return: void is not convertible to class java.lang.Object
-        // at java.lang.invoke.AbstractValidatingLambdaMetafactory.validateMetafactoryArgs(AbstractValidatingLambdaMetafactory.java:286)
-        // at java.lang.invoke.LambdaMetafactory.metafactory(LambdaMetafactory.java:303)
-        // at java.lang.invoke.CallSite.makeSite(CallSite.java:302)
-        // ... 11 more
-        //
-        // This looks like a problem with Dottys code generation for void-returning closures passed
-        // to Java methods. (or SAM functions in general?)
+    if (Memory.isCritical()) CompletableFutures.computeAsync { _ => restart() }
 
   /** The driver instance responsible for compiling `uri` */
   def driverFor(uri: URI): InteractiveDriver = {
