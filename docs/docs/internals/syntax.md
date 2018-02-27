@@ -242,7 +242,6 @@ SimplePattern1    ::=  Path
                     |  SimplePattern1 ‘.’ id
 PatVar            ::=  varid
                     |  ‘_’
-BindingTypePattern::=  Type
 TypePattern       ::=  RefinedType
 Patterns          ::=  Pattern {‘,’ Pattern}
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                                       Apply(fn, pats)
@@ -250,6 +249,7 @@ ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                               
 
 Augmentation      ::=  ‘augment’ BindingTypePattern
                        [[nl] ImplicitParamClause] TemplateClause                Augment(name, templ)
+BindingTypePattern::=  Type
 ```
 
 ### Type and Value Parameters

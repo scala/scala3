@@ -1805,14 +1805,12 @@ object Parsers {
 
     /** ClsTypeParamClause::=  `[' ClsTypeParam {`,' ClsTypeParam} `]'
      *  ClsTypeParam      ::=  {Annotation} [`+' | `-'] TypeParamCore
-     *
      *  DefTypeParamClause::=  `[' DefTypeParam {`,' DefTypeParam} `]'
      *  DefTypeParam      ::=  {Annotation} TypeParamCore
      *  TypeParamCore     ::=  id [HkTypeParamClause] TypeParamBounds
      *
      *  TypTypeParamCaluse::=  `[' TypTypeParam {`,' TypTypeParam} `]'
      *  TypTypeParam      ::=  {Annotation} id [HkTypePamClause] TypeBounds
-     *
      *  HkTypeParamClause ::=  `[' HkTypeParam {`,' HkTypeParam} `]'
      *  HkTypeParam       ::=  {Annotation} ['+' | `-'] (id [HkTypePamClause] | _') TypeBounds
      */

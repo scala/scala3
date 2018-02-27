@@ -10,4 +10,7 @@ class Test[A] {
   def g(cmd: Message[A]): Unit = cmd match {
     case s: Script[z] => s.iterator.foreach(x => g(x))
   }
+  def h(cmd: Message[A]): Unit = cmd match {
+    case s: Script[type Z] => s.iterator.foreach(x => g(x))
+  }
 }

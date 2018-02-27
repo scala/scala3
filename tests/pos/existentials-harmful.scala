@@ -47,7 +47,7 @@ object ExistentialsConsideredHarmful {
   // Type annotation on bc is required ... possible compiler bug?
   // val bc : BoxCarrier[_ <: Animal] = aBox match {
   val bc = aBox match {
-    case tb : TransportBox[a] => new BoxCarrier(tb) {
+    case tb : TransportBox[type A] => new BoxCarrier(tb) {
       def speed: Int = 12
     }
   }

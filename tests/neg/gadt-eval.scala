@@ -20,7 +20,7 @@ object Test {
   def eval2[T](e: Exp[T]): T = e match {
     case e: Lit =>
       e.value
-    case e: Pair[t1, t2] =>
+    case e: Pair[type t1, type t2] =>
       (eval(e.fst), eval(e.fst)) // error:
         //-- [E007] Type Mismatch Error: tests/neg/gadt-eval.scala:24:6 ------------------
         //24 |      (eval(e.fst), eval(e.fst))
