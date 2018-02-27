@@ -47,6 +47,10 @@ object augments {
     def isSquare: Boolean = implicitly[Eql[T]].eql(this.width, this.height)
   }
 
+  augment Rectangle[type T](implicit ev: Eql[T]) {
+    def isNotSquare: Boolean = !implicitly[Eql[T]].eql(this.width, this.height)
+  }
+
 // Simple generic augments
 
   augment (type T) {
@@ -61,6 +65,10 @@ object augments {
 
   augment (type T: Eql) extends HasEql[T] {
     def === (that: T): Boolean = implicitly[Eql[T]].eql(this, that)
+  }
+
+  augment (type T)(implicit ev: Eql[T]) {
+    def ==== (that: T): Boolean = implicitly[Eql[T]].eql(this, that)
   }
 
   augment Rectangle[type T: Eql] extends HasEql[Rectangle[T]] {
@@ -97,8 +105,12 @@ object Test extends App {
   val r2 = Rectangle(0, 0, 2, 3)
   println(r1.isSquare)
   println(r2.isSquare)
+  println(r2.isNotSquare)
+  println(r1.isNotSquare)
   println(r1 === r1)
   println(r1 === r2)
+  println(1 ==== 1)
+  println(1 ==== 2)
   println(List(1, 2, 3).second)
   println(List(List(1), List(2, 3)).flattened)
   println(List(List(1), List(2, 3)).flattened.maxx)

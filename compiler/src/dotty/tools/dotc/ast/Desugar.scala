@@ -300,6 +300,7 @@ object desugar {
     def isAnyVal(tree: Tree): Boolean = tree match {
       case Ident(tpnme.AnyVal) => true
       case Select(qual, tpnme.AnyVal) => isScala(qual)
+      case TypedSplice(tree) => tree.tpe.isRef(defn.AnyValClass)
       case _ => false
     }
     def isScala(tree: Tree): Boolean = tree match {
@@ -770,51 +771,47 @@ object desugar {
     (elimTypeDefs.transform(tree), bindingsBuf.toList)
   }
 
-  /**     augment <name> <type-params> <params> extends <parents> { <body>} }
+  /**     augment <type-pattern> <params> extends <parents> { <body>} }
    *   ->
-   *      implicit class <deconame> <type-params> ($this: name <type-args>) <params>
-   *      extends <parents> { <body1> }
-   *
-   *      augment <type-param> <params> extends <parents> { <body>} }
-   *   ->
-   *      implicit class <deconame> <type-param> ($this: <type-arg>) <params>
+   *      implicit class <deconame> <type-params> ($this: <decorated>) <combined-params>
    *      extends <parents> { <body1> }
    *
    *  where
    *
-   *    <deconame>  = <name>To<parent>$<n>    where <parent> is first extended class name
-   *                = <name>Augmentation$<n>  if no such <parent> exists
+   *    (<decorated>, <type-params0>) = decomposeTypePattern(<type-pattern>)
+   *    (<type-params>, <evidence-params>) = desugarTypeBindings(<type-params0>)
+   *    <combined-params> = <params> concatenated with <evidence-params> in one clause
+   *    <deconame>  = <from>To<parent>_in_<location>$$<n>    where <parent> is first extended class name
+   *
+   *                = <from>Augmentation_in_<location>$$<n>  if no such <parent> exists
+   *    <from>      = underlying type name of <decorated>
+   *    <location>  = flat name of enclosing toplevel class
    *    <n>         = counter making prefix unique
-   *    <type-args> = references to <type-params>
    *    <body1>     = <body> with each occurrence of unqualified `this` substituted by `$this`.
+   *
+   *   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   *
+   *     augment <type-pattern> <params> { <body> }
+   *  ->
+   *     implicit class <deconame> <type-params> ($this: <decorated>)
+   *     extends AnyVal { <body2> }
+   *
+   *  where
+   *
+   *    <body2> = <body1> where each method definition gets <combined-params> as last parameter section.
+   *    <deconame>, <type-params> are as above.
    */
   def augmentation(tree: Augment)(implicit ctx: Context): Tree = {
     val Augment(augmented, impl) = tree
-    val constr @ DefDef(_, Nil, vparamss, _, _) = impl.constr
+    val isSimpleExtension =
+      impl.parents.isEmpty &&
+      impl.self.isEmpty &&
+      impl.body.forall(_.isInstanceOf[DefDef])
     val (decorated, bindings) = decomposeTypePattern(augmented)
-    val firstParam = ValDef(nme.SELF, decorated, EmptyTree).withFlags(Private | Local | ParamAccessor)
-    val constr1 =
-      cpy.DefDef(constr)(
-        tparams = bindings.map(_.withFlags(Param | Private | Local)),
-        vparamss = (firstParam :: Nil) :: vparamss)
-    val substThis = new UntypedTreeMap {
-      override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-        case This(Ident(tpnme.EMPTY)) => Ident(nme.SELF).withPos(tree.pos)
-        case _ => super.transform(tree)
-      }
-    }
+    val (typeParams, evidenceParams) =
+      desugarTypeBindings(bindings, forPrimaryConstructor = !isSimpleExtension)
     val decoName = {
-      def clsName(tree: Tree): String = tree match {
-        case Apply(tycon, args) => clsName(tycon)
-        case TypeApply(tycon, args) => clsName(tycon)
-        case Select(pre, nme.CONSTRUCTOR) => clsName(pre)
-        case New(tpt) => clsName(tpt)
-        case AppliedTypeTree(tycon, _) => clsName(tycon)
-        case tree: RefTree if tree.name.isTypeName => tree.name.toString
-        case Parens(tree) => clsName(tree)
-        case tree: TypeDef => tree.name.toString
-        case _ => ""
-      }
+      def clsName(tree: Tree): String = leadingName("", tree)
       val fromName = clsName(augmented)
       val toName = impl.parents match {
         case parent :: _ if !clsName(parent).isEmpty => "To" + clsName(parent)
@@ -822,12 +819,55 @@ object desugar {
       }
       s"${fromName}${toName}_in_${ctx.owner.topLevelClass.flatName}"
     }
+
+    val firstParam = ValDef(nme.SELF, decorated, EmptyTree).withFlags(Private | Local | ParamAccessor)
+    var constr1 =
+      cpy.DefDef(impl.constr)(
+        tparams = typeParams.map(_.withFlags(Param | Private | Local)),
+        vparamss = (firstParam :: Nil) :: impl.constr.vparamss)
+    var parents1 = impl.parents
+    var body1 = substThis.transform(impl.body)
+    if (isSimpleExtension) {
+      constr1 = cpy.DefDef(constr1)(vparamss = constr1.vparamss.take(1))
+      parents1 = ref(defn.AnyValType) :: Nil
+      body1 = body1.map {
+        case ddef: DefDef =>
+          def resetFlags(vdef: ValDef) =
+            vdef.withMods(vdef.mods &~ PrivateLocalParamAccessor | Param)
+          val originalParams = impl.constr.vparamss.headOption.getOrElse(Nil).map(resetFlags)
+          addEvidenceParams(addEvidenceParams(ddef, originalParams), evidenceParams)
+      }
+    }
+    else
+      constr1 = addEvidenceParams(constr1, evidenceParams)
+
     val icls =
       TypeDef(UniqueName.fresh(decoName.toTermName).toTypeName,
-        cpy.Template(impl)(constr = constr1, body = substThis.transform(impl.body)))
+        cpy.Template(impl)(constr = constr1, parents = parents1, body = body1))
         .withFlags(Implicit)
     desugr.println(i"desugar $augmented --> $icls")
     classDef(icls)
+  }
+
+  private val substThis = new UntypedTreeMap {
+    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      case This(Ident(tpnme.EMPTY)) => Ident(nme.SELF).withPos(tree.pos)
+      case _ => super.transform(tree)
+    }
+  }
+
+  private val leadingName = new UntypedTreeAccumulator[String] {
+    override def apply(x: String, tree: Tree)(implicit ctx: Context): String =
+      if (x.isEmpty)
+        tree match {
+          case Select(pre, nme.CONSTRUCTOR) => foldOver(x, pre)
+          case tree: RefTree if tree.name.isTypeName => tree.name.toString
+          case tree: TypeDef => tree.name.toString
+          case tree: Tuple => "Tuple"
+          case tree: Function => "Function"
+          case _ => foldOver(x, tree)
+        }
+      else x
   }
 
   def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
