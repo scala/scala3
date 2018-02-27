@@ -45,6 +45,7 @@ object Checkable {
    *
    *  1. if `P` is a singleton type, TRUE
    *  2. if `P` is WildcardType, TRUE
+   *  3. if `P = T @unchecked`, TRUE
    *  3. if `P` refers to an abstract type member, FALSE
    *  4. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
    *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
@@ -73,7 +74,7 @@ object Checkable {
       val tvars = tycon.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
       val P1 = tycon.appliedTo(tvars)
 
-      debug.println("P1 : " + P1)
+      debug.println("P1 : " + P1.show)
       debug.println("X : " + X.widen)
 
       !(P1 <:< X.widen) || {
@@ -81,8 +82,7 @@ object Checkable {
         isFullyDefined(P1, ForceDegree.noBottom)
         val P2   = replaceBinderMap.apply(P)
         val res  = P1 <:< P2
-        debug.println("P1: " + P1)
-        debug.println("P2: " + P2)
+        debug.println("P2: " + P2.show)
         debug.println("P1 <:< P2 = " + res)
         res
       }
@@ -99,7 +99,8 @@ object Checkable {
       case tpe: AppliedType     => !isAbstract && isClassDetermined(tpe)(ctx.fresh.setFreshGADTBounds)
       case AndType(tp1, tp2)    => checkable(X, tp1) && checkable(X, tp2)
       case OrType(tp1, tp2)     => checkable(X, tp1) && checkable(X, tp2)
-      case AnnotatedType(tp, _) => checkable(X, tp)
+      case AnnotatedType(t, an) => an.symbol == defn.UncheckedAnnot || checkable(X, t)
+      case _: RefinedType       => false
       case _                    => replaceBinderMap.apply(P) == WildcardType || !isAbstract
     }
 
