@@ -811,14 +811,16 @@ object desugar {
         case New(tpt) => clsName(tpt)
         case AppliedTypeTree(tycon, _) => clsName(tycon)
         case tree: RefTree if tree.name.isTypeName => tree.name.toString
+        case Parens(tree) => clsName(tree)
+        case tree: TypeDef => tree.name.toString
         case _ => ""
       }
       val fromName = clsName(augmented)
       val toName = impl.parents match {
-        case parent :: _ if !clsName(parent).isEmpty => clsName(parent)
+        case parent :: _ if !clsName(parent).isEmpty => "To" + clsName(parent)
         case _ => str.Augmentation
       }
-      fromName ++ toName
+      s"${fromName}${toName}_in_${ctx.owner.topLevelClass.flatName}"
     }
     val icls =
       TypeDef(UniqueName.fresh(decoName.toTermName).toTypeName,

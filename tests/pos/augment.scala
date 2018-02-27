@@ -63,7 +63,7 @@ object augments {
     def === (that: T): Boolean = implicitly[Eql[T]].eql(this, that)
   }
 
-  augment Rectangle[type T: Eql] {
+  augment Rectangle[type T: Eql] extends HasEql[Rectangle[T]] {
     def === (that: Rectangle[T]) =
       this.x === that.x &&
       this.y === that.y &&
