@@ -29,8 +29,8 @@ object augments {
 
 // Specific trait implementations
 
-  augment List[Int] {
-    import java.lang._
+  augment List[Int] { self => // error: `def` expected
+    import java.lang._ // error: `def` expected
     def maxx = (0 /: this)(_ `max` _)
   }
 
