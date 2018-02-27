@@ -3,6 +3,6 @@ object pmbugbounds {
   class Foo[t <: Bar] {}
 
   (new Foo[Bar]) match {
-    case _ : Foo[x] => null
+    case _ : Foo[type X] => null
   }
 }

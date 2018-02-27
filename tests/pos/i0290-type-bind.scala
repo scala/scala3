@@ -3,6 +3,9 @@ object foo{
   x match {
     case t: List[tt] => t.head.asInstanceOf[tt]
   }
+  x match {
+    case t: List[type tt] => t.head.asInstanceOf[tt]
+  }
 }
 
 object bar {
@@ -12,8 +15,8 @@ object bar {
   val x: AnyRef = new C
 
   x match {
-    case x: C[u] =>
-      def x: u = x
+    case x: C[type U] =>
+      def x: U = x
       val s: Seq[_] = x
   }
 }
