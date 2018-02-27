@@ -235,8 +235,8 @@ object Parsers {
       }
     }
 
-    def warning(msg: => Message, sourcePos: SourcePosition) =
-      ctx.warning(msg, sourcePos)
+    def warning(msg: => Message, pos: SourcePosition) =
+      ctx.warning(msg, pos)
 
     def warning(msg: => Message, offset: Int = in.offset) =
       ctx.warning(msg, source atPos Position(offset))

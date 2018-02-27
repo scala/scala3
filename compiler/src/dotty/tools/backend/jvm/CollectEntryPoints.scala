@@ -67,7 +67,7 @@ object CollectEntryPoints{
     def fail(msg: String, pos: Position = sym.pos) = {
       ctx.warning(          sym.name +
         s" has a main method with parameter type Array[String], but ${toDenot(sym).fullName} will not be a runnable program.\n  Reason: $msg",
-        sourcePos(sym.pos)
+        sym.pos
         // TODO: make this next claim true, if possible
         //   by generating valid main methods as static in module classes
         //   not sure what the jvm allows here

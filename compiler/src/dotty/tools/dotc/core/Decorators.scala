@@ -160,7 +160,7 @@ object Decorators {
     }
   }
 
-  implicit def sourcePos(pos: Position)(implicit ctx: Context): SourcePosition = {
+  def sourcePos(pos: Position)(implicit ctx: Context): SourcePosition = {
     def recur(inlinedCalls: List[Tree], pos: Position): SourcePosition = inlinedCalls match {
       case inlinedCall :: rest =>
         sourceFile(inlinedCall).atPos(pos).withOuter(recur(rest, inlinedCall.pos))
