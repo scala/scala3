@@ -2303,17 +2303,16 @@ object Parsers {
       Template(constr, parents, EmptyValDef, Nil)
     }
 
-    /** Augmentation  ::=  ‘augment’ (id | [id] ClassTypeParamClause)
-     *                     [[nl] ImplicitParamClause] TemplateClause
+    /** Augmentation       ::=  ‘augment’ BindingTypePattern
+     *                          [[nl] ImplicitParamClause] TemplateClause
+     *  BindingTypePattern ::=  AnnotType
      */
     def augmentation(): Augment = atPos(in.skipToken(), nameStart) {
-      val (name, tparams) =
-        if (isIdent) (ident().toTypeName, typeParamClauseOpt(ParamOwner.Class))
-        else (tpnme.EMPTY, typeParamClause(ParamOwner.Class))
-       val vparamss = paramClauses(name, ofAugmentation = true)
-      val constr = makeConstructor(tparams, vparamss)
+      val augmented = withinTypePattern(binding = true)(annotType())
+      val vparamss = paramClauses(tpnme.EMPTY, ofAugmentation = true).take(1)
+      val constr = makeConstructor(Nil, vparamss)
       val templ = templateClauseOpt(constr, bodyRequired = true)
-      Augment(name, templ)
+      Augment(augmented, templ)
     }
 
 /* -------- TEMPLATES ------------------------------------------- */

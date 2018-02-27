@@ -40,8 +40,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def withName(name: Name)(implicit ctx: Context) = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
-  /** augment name impl */
-  case class Augment(name: TypeName, impl: Template) extends DefTree
+  /** augment augmented impl */
+  case class Augment(augmented: Tree, impl: Template) extends DefTree
 
   case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree) extends TermTree
 
@@ -414,9 +414,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: ModuleDef if (name eq tree.name) && (impl eq tree.impl) => tree
       case _ => finalize(tree, untpd.ModuleDef(name, impl))
     }
-    def Augment(tree: Tree)(name: TypeName, impl: Template) = tree match {
-      case tree: Augment if (name eq tree.name) && (impl eq tree.impl) => tree
-      case _ => finalize(tree, untpd.Augment(name, impl))
+    def Augment(tree: Tree)(augmented: Tree, impl: Template) = tree match {
+      case tree: Augment if (augmented eq tree.augmented) && (impl eq tree.impl) => tree
+      case _ => finalize(tree, untpd.Augment(augmented, impl))
     }
     def ParsedTry(tree: Tree)(expr: Tree, handler: Tree, finalizer: Tree) = tree match {
       case tree: ParsedTry

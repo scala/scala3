@@ -249,7 +249,7 @@ ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                               
 
 Augmentation      ::=  ‘augment’ BindingTypePattern
                        [[nl] ImplicitParamClause] TemplateClause                Augment(name, templ)
-BindingTypePattern::=  Type
+BindingTypePattern::=  AnnotType
 ```
 
 ### Type and Value Parameters
