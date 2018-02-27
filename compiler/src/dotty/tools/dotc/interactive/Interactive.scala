@@ -344,7 +344,7 @@ object Interactive {
     if (tree.pos.contains(pos)) {
       // FIXME: We shouldn't need a cast. Change NavigateAST.pathTo to return a List of Tree?
       val path = NavigateAST.pathTo(pos, tree, skipZeroExtent = true).asInstanceOf[List[untpd.Tree]]
-      path.dropWhile(!_.hasType).asInstanceOf[List[tpd.Tree]]
+      path.dropWhile(!_.hasType) collect { case t: tpd.Tree @unchecked => t }
     }
     else Nil
 
@@ -365,7 +365,7 @@ object Interactive {
     case nested :: encl :: rest =>
       import typer.Typer._
       val outer = contextOfPath(encl :: rest)
-      encl match {
+      try encl match {
         case tree @ PackageDef(pkg, stats) =>
           assert(tree.symbol.exists)
           if (nested `eq` pkg) outer
@@ -400,6 +400,9 @@ object Interactive {
           else contextOfStat(tree.body, nested, tree.symbol, outer.inClassContext(self.symbol))
         case _ =>
           outer
+      }
+      catch {
+        case ex: CyclicReference => outer
       }
   }
 
