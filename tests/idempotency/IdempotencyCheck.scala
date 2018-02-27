@@ -53,7 +53,7 @@ object IdempotencyCheck {
         val tastyBytes1 = JFiles.readAllBytes(tasty1)
         val tastyBytes2 = JFiles.readAllBytes(tasty2)
         if (java.util.Arrays.equals(tastyBytes1, tastyBytes2))
-          println(s"Idempotency test failed between $class1 and $class1 (same tasty)")
+          println(s"Idempotency test failed between $class1 and $class2 (same tasty)")
         else
           println(s"Idempotency test failed between $tasty1 and $tasty2")
         /* Dump bytes to console, could be useful if issue only appears in CI.
