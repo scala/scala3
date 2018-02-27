@@ -46,7 +46,7 @@ object Checkable {
    *  1. if `P` is a singleton type, TRUE
    *  2. if `P` is WildcardType, TRUE
    *  3. if `P = T @unchecked`, TRUE
-   *  4. if `P` refers to an abstract type member, FALSE
+   *  4. if `P` refers to an abstract type member or type parameter, FALSE
    *  5. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
    *  6. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
