@@ -21,17 +21,17 @@ object augments {
 
 // Generic trait implementations
 
-  augment List[T] {
+  augment List[type T] {
     def second = this.tail.head
   }
 
-  // cf implementation of Array#summ below
-  augment List[T <: Int] {
+// Specific trait implementations
+
+  augment List[Int] {
     def maxx = (0 /: this)(_ `max` _)
   }
 
-  // cf implementation of Array#summ below
-  augment Array[T >: Int <: Int] {
+  augment Array[Int] {
     def maxx = (0 /: this)(_ `max` _)
   }
 
@@ -43,13 +43,13 @@ object augments {
     def eql (x: T, y: T): Boolean
   }
 
-  augment Rectangle[T: Eql] {
+  augment Rectangle[type T: Eql] {
     def isSquare: Boolean = implicitly[Eql[T]].eql(this.width, this.height)
   }
 
 // Simple generic augments
 
-  augment [T] {
+  augment (type T) {
     def ~[U](that: U): (T, U) = (this, that)
   }
 
@@ -59,11 +59,11 @@ object augments {
     def === (that: T): Boolean
   }
 
-  augment [T: Eql] extends HasEql[T] {
+  augment (type T: Eql) extends HasEql[T] {
     def === (that: T): Boolean = implicitly[Eql[T]].eql(this, that)
   }
 
-  augment Rectangle[T: Eql] {
+  augment Rectangle[type T: Eql] {
     def === (that: Rectangle[T]) =
       this.x === that.x &&
       this.y === that.y &&
@@ -71,21 +71,13 @@ object augments {
       this.height == that.height
   }
 
-  augment [T <: List[Int]] {
-    def summ = (0 /: this)(_ + _)
-  }
-
-  augment [T <: Array[Int]] {
-    def summ = (0 /: this)(_ + _)
-  }
-
 // Generic augments with additional parameters
 
-  augment [T <: List[List[U]], U] {
+  augment List[List[type U]] {
     def flattened: List[U] = (this :\ (Nil: List[U]))(_ ++ _)
   }
 
-  augment [T <: (U, U), U: Eql] {
+  augment (type T: Eql, T) {
     def isSame = this._1 === this._2
   }
 }
@@ -110,9 +102,7 @@ object Test extends App {
   println(List(1, 2, 3).second)
   println(List(List(1), List(2, 3)).flattened)
   println(List(List(1), List(2, 3)).flattened.maxx)
-  println(List(List(1), List(2, 3)).flattened.summ)
   println(Array(1, 2, 3).maxx)
-  println(Array(1, 2, 3).summ)
   println((2, 3).isSame)
   println((3, 3).isSame)
 }

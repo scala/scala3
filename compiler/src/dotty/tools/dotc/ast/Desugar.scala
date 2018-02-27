@@ -750,9 +750,15 @@ object desugar {
       }
   }
 
+  /** Expand variable identifier x to x @ _ */
+  def patternVar(tree: Tree)(implicit ctx: Context) = {
+    val Ident(name) = tree
+    Bind(name, Ident(nme.WILDCARD)).withPos(tree.pos)
+  }
+
   def decomposeTypePattern(tree: Tree)(implicit ctx: Context): (Tree, List[TypeDef]) = {
     val bindingsBuf = new ListBuffer[TypeDef]
-    val elimTypeDefs = new untpd.TreeMap {
+    val elimTypeDefs = new untpd.UntypedTreeMap {
       override def transform(tree: Tree)(implicit ctx: Context) = tree match {
         case tree: TypeDef =>
           bindingsBuf += tree
@@ -762,12 +768,6 @@ object desugar {
       }
     }
     (elimTypeDefs.transform(tree), bindingsBuf.toList)
-  }
-
-  /** Expand variable identifier x to x @ _ */
-  def patternVar(tree: Tree)(implicit ctx: Context) = {
-    val Ident(name) = tree
-    Bind(name, Ident(nme.WILDCARD)).withPos(tree.pos)
   }
 
   /**     augment <name> <type-params> <params> extends <parents> { <body>} }
@@ -789,33 +789,36 @@ object desugar {
    *    <body1>     = <body> with each occurrence of unqualified `this` substituted by `$this`.
    */
   def augmentation(tree: Augment)(implicit ctx: Context): Tree = {
-    val Augment(name, impl) = tree
-    val constr @ DefDef(_, tparams, vparamss, _, _) = impl.constr
-    var decorated: Tree = Ident(name)
-    if (tparams.nonEmpty)
-      decorated =
-        if (name.isEmpty) refOfDef(tparams.head)
-        else AppliedTypeTree(decorated, tparams.map(refOfDef))
+    val Augment(augmented, impl) = tree
+    val constr @ DefDef(_, Nil, vparamss, _, _) = impl.constr
+    val (decorated, bindings) = decomposeTypePattern(augmented)
     val firstParam = ValDef(nme.SELF, decorated, EmptyTree).withFlags(Private | Local | ParamAccessor)
-    val constr1 = cpy.DefDef(constr)(vparamss = (firstParam :: Nil) :: vparamss)
+    val constr1 =
+      cpy.DefDef(constr)(
+        tparams = bindings.map(_.withFlags(Param | Private | Local)),
+        vparamss = (firstParam :: Nil) :: vparamss)
     val substThis = new UntypedTreeMap {
       override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
         case This(Ident(tpnme.EMPTY)) => Ident(nme.SELF).withPos(tree.pos)
         case _ => super.transform(tree)
       }
     }
-    def targetSuffix(tree: Tree): String = tree match {
-      case Apply(tycon, args) => targetSuffix(tycon)
-      case TypeApply(tycon, args) => targetSuffix(tycon)
-      case Select(pre, nme.CONSTRUCTOR) => targetSuffix(pre)
-      case New(tpt) => targetSuffix(tpt)
-      case AppliedTypeTree(tycon, _) => targetSuffix(tycon)
-      case tree: RefTree => "To" ++ tree.name.toString
-      case _ => str.Augmentation
-    }
-    val decoName: TypeName = impl.parents match {
-      case parent :: _ => name ++ targetSuffix(parent)
-      case  _ => name ++ str.Augmentation
+    val decoName = {
+      def clsName(tree: Tree): String = tree match {
+        case Apply(tycon, args) => clsName(tycon)
+        case TypeApply(tycon, args) => clsName(tycon)
+        case Select(pre, nme.CONSTRUCTOR) => clsName(pre)
+        case New(tpt) => clsName(tpt)
+        case AppliedTypeTree(tycon, _) => clsName(tycon)
+        case tree: RefTree if tree.name.isTypeName => tree.name.toString
+        case _ => ""
+      }
+      val fromName = clsName(augmented)
+      val toName = impl.parents match {
+        case parent :: _ if !clsName(parent).isEmpty => clsName(parent)
+        case _ => str.Augmentation
+      }
+      fromName ++ toName
     }
     val icls =
       TypeDef(UniqueName.fresh(decoName.toTermName).toTypeName,
