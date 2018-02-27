@@ -824,7 +824,7 @@ object desugar {
       TypeDef(UniqueName.fresh(decoName.toTermName).toTypeName,
         cpy.Template(impl)(constr = constr1, body = substThis.transform(impl.body)))
         .withFlags(Implicit)
-    desugr.println(i"desugar $name --> $icls")
+    desugr.println(i"desugar $augmented --> $icls")
     classDef(icls)
   }
 
