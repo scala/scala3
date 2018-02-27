@@ -190,7 +190,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/neg-custom-args/noimports2.scala", defaultOptions.and("-Yno-imports")) +
     compileFile("tests/neg-custom-args/i3882.scala", allowDeepSubtypes) +
     compileFile("tests/neg-custom-args/i1754.scala", allowDeepSubtypes) +
-    compileDir("tests/neg-custom-args/isInstanceOf", defaultOptions and "-Xfatal-warnings") +
+    compileFilesInDir("tests/neg-custom-args/isInstanceOf", defaultOptions and "-Xfatal-warnings") +
     compileFile("tests/neg-custom-args/i3627.scala", allowDeepSubtypes)
   }.checkExpectedErrors()
 

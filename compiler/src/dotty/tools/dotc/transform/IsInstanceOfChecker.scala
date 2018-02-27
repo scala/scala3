@@ -78,10 +78,8 @@ object Checkable {
       debug.println("X : " + X.widen)
 
       !(P1 <:< X.widen) || {
-        // val syms = maximizeType(P1, Psym.pos, fromScala2x = false)
-        isFullyDefined(P1, ForceDegree.noBottom)
         val P2   = replaceBinderMap.apply(P)
-        val res  = P1 <:< P2
+        val res  = isFullyDefined(P1, ForceDegree.noBottom) && P1 <:< P2
         debug.println("P2: " + P2.show)
         debug.println("P1 <:< P2 = " + res)
         res
@@ -96,7 +94,7 @@ object Checkable {
           case defn.ArrayOf(tpE)   => checkable(tpE, tpT)
           case _                   => checkable(defn.AnyType, tpT)
         }
-      case tpe: AppliedType     => !isAbstract && isClassDetermined(tpe)(ctx.fresh.setFreshGADTBounds)
+      case tpe: AppliedType     => !isAbstract && isClassDetermined(tpe)
       case AndType(tp1, tp2)    => checkable(X, tp1) && checkable(X, tp2)
       case OrType(tp1, tp2)     => checkable(X, tp1) && checkable(X, tp2)
       case AnnotatedType(t, an) => an.symbol == defn.UncheckedAnnot || checkable(X, t)
