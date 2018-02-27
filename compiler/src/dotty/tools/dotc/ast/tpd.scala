@@ -372,7 +372,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       ref(defn.DottyArraysModule).select(defn.newArrayMethod).withPos(pos)
 
     if (!ctx.erasedTypes) {
-      assert(!TypeErasure.isUnboundedGeneric(elemTpe)) //needs to be done during typer. See Applications.convertNewGenericArray
+      assert(!TypeErasure.isGeneric(elemTpe)) //needs to be done during typer. See Applications.convertNewGenericArray
       newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
     } else  // after erasure
       newArr.appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)

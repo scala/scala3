@@ -831,7 +831,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           .select(defn.newGenericArrayMethod).withPos(tree.pos)
           .appliedToTypeTrees(targs).appliedToArgs(args)
 
-      if (TypeErasure.isUnboundedGeneric(targ.tpe))
+      if (TypeErasure.isGeneric(targ.tpe))
         newGenericArrayCall
       else tree
     case _ =>
