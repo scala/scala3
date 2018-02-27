@@ -1050,7 +1050,7 @@ object Denotations {
     /** Show declaration string; useful for showing declarations
      *  as seen from subclasses.
      */
-    def showDcl(implicit ctx: Context): String = ctx.dclText(this).show
+    def showDcl(implicit ctx: Context): String = ctx.printer.dclText(this).show
 
     override def toString =
       if (symbol == NoSymbol) symbol.toString

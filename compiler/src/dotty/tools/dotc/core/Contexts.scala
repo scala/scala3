@@ -686,9 +686,6 @@ object Contexts {
 
   object Context {
 
-    /** Implicit conversion that injects all printer operations into a context */
-    implicit def toPrinter(ctx: Context): Printer = ctx.printer
-
     /** implicit conversion that injects all ContextBase members into a context */
     implicit def toBase(ctx: Context): ContextBase = ctx.base
 
