@@ -34,7 +34,8 @@ class MoveStatics extends MiniPhase with SymTransformer {
   override def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] = {
     if (ctx.owner.is(Flags.Package)) {
       val (classes, others) = trees.partition(x => x.isInstanceOf[TypeDef] && x.symbol.isClass)
-      val pairs = classes.groupBy(_.symbol.name.stripModuleClassSuffix).asInstanceOf[Map[Name, List[TypeDef]]]
+      // TODO make a groupBy that builds linked maps
+      val pairs = classes.groupBy(_.symbol.name.stripModuleClassSuffix).asInstanceOf[Map[Name, List[TypeDef]]].toList.sortBy(_._1.toString)
 
       def rebuild(orig: TypeDef, newBody: List[Tree]): Tree = {
         if (orig eq null) return EmptyTree
@@ -73,7 +74,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
               if (classes.head.symbol.is(Flags.Module)) move(classes.head, null)
               else List(rebuild(classes.head, classes.head.rhs.asInstanceOf[Template].body))
             else move(classes.head, classes.tail.head)
-      Trees.flatten(newPairs.toList.flatten ++ others)
+      Trees.flatten(newPairs.flatten ++ others)
     } else trees
   }
 }
