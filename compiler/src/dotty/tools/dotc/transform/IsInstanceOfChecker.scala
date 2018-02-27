@@ -20,7 +20,7 @@ class IsInstanceOfChecker extends MiniPhase {
     def ensureCheckable(qual: Tree, pt: Tree): Tree = {
       if (!Checkable.checkable(qual.tpe, pt.tpe))
          ctx.warning(
-           s"the type test for ${pt} cannot be checked at runtime",
+           s"the type test for ${pt.show} cannot be checked at runtime",
            tree.pos
          )
 
@@ -43,16 +43,18 @@ object Checkable {
 
   /** Whether `(x:X).isInstanceOf[P]` can be checked at runtime?
    *
-   *  0. if `P` is a singleton type, TRUE
-   *  1. if `P` refers to an abstract type member, FALSE
-   *  2. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
-   *  3. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
+   *  1. if `P` is a singleton type, TRUE
+   *  2. if `P` is WildcardType, TRUE
+   *  3. if `P` refers to an abstract type member, FALSE
+   *  4. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
+   *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
    *     (b) instantiate `Xs` with the constraint `pre.F[Xs] <:< X`
    *     (c) `pre.F[Xs] <:< P2`, where `P2` is `P` with pattern binder types (e.g., `_$1`)
    *         replaced with `WildcardType`.
-   *  4. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
-   *  5. otherwise, TRUE
+   *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
+   *  7. if `P` is a refinement type, FALSE
+   *  8. otherwise, TRUE
    */
   def checkable(X: Type, P: Type)(implicit ctx: Context): Boolean = {
     def Psym = P.dealias.typeSymbol
@@ -86,8 +88,9 @@ object Checkable {
       }
     }
 
-    P match {
+    val res = P match {
       case _: SingletonType     => true
+      case WildcardType         => true
       case defn.ArrayOf(tpT)    =>
         X match {
           case defn.ArrayOf(tpE)   => checkable(tpE, tpT)
@@ -96,7 +99,12 @@ object Checkable {
       case tpe: AppliedType     => !isAbstract && isClassDetermined(tpe)(ctx.fresh.setFreshGADTBounds)
       case AndType(tp1, tp2)    => checkable(X, tp1) && checkable(X, tp2)
       case OrType(tp1, tp2)     => checkable(X, tp1) && checkable(X, tp2)
-      case _                    => !isAbstract
+      case AnnotatedType(tp, _) => checkable(X, tp)
+      case _                    => replaceBinderMap.apply(P) == WildcardType || !isAbstract
     }
+
+    debug.println(i"checking  ${X.show} isInstanceOf ${P} = $res")
+
+    res
   }
 }

@@ -31,7 +31,7 @@ object Printers {
   val plugins: Printer = noPrinter
   val simplify: Printer = noPrinter
   val subtyping: Printer = noPrinter
-  val transforms: Printer = new Printer
+  val transforms: Printer = noPrinter
   val typr: Printer = noPrinter
   val unapp: Printer = noPrinter
   val variances: Printer = noPrinter
