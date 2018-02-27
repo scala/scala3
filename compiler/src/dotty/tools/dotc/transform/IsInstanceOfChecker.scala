@@ -8,7 +8,7 @@ import Contexts.Context, Types._, Decorators._, Symbols._, typer._
 import TypeUtils._, Flags._
 import config.Printers.{ transforms => debug }
 
-/** check runtime realizability of type test
+/** Check runtime realizability of type test, see the documentation for `Checkable`.
  */
 class IsInstanceOfChecker extends MiniPhase {
 
@@ -20,7 +20,7 @@ class IsInstanceOfChecker extends MiniPhase {
     def ensureCheckable(qual: Tree, pt: Tree): Tree = {
       if (!Checkable.checkable(qual.tpe, pt.tpe))
          ctx.warning(
-           s"the type test for ${pt.show} cannot be checked at runtime",
+           s"the type test for ${pt} cannot be checked at runtime",
            tree.pos
          )
 
@@ -43,42 +43,60 @@ object Checkable {
 
   /** Whether `(x:X).isInstanceOf[P]` can be checked at runtime?
    *
-   *  The following cases are not checkable at runtime:
-   *
-   *  1. if `P` refers to an abstract type member
-   *  2. if `P` is `pre.F[Ts]` and `pre.F` refers to a class:
+   *  0. if `P` is a singleton type, TRUE
+   *  1. if `P` refers to an abstract type member, FALSE
+   *  2. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
+   *  3. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
    *     (b) instantiate `Xs` with the constraint `pre.F[Xs] <:< X`
-   *     (c) `pre.F[Xs] <:< P` doesn't hold
-   *  3. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
+   *     (c) `pre.F[Xs] <:< P2`, where `P2` is `P` with pattern binder types (e.g., `_$1`)
+   *         replaced with `WildcardType`.
+   *  4. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
+   *  5. otherwise, TRUE
    */
   def checkable(X: Type, P: Type)(implicit ctx: Context): Boolean = {
     def Psym = P.dealias.typeSymbol
 
     def isAbstract = !Psym.isClass
 
-    def isClassDetermined(tpe: AppliedType) = {
+    def replaceBinderMap(implicit ctx: Context) = new TypeMap {
+      def apply(tp: Type) = tp match {
+        case tref: TypeRef if !tref.typeSymbol.isClass && tref.symbol.is(Case) => WildcardType
+        case _ => mapOver(tp)
+      }
+    }
+
+    def isClassDetermined(tpe: AppliedType)(implicit ctx: Context) = {
       val AppliedType(tycon, args) = tpe
       val tvars = tycon.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
-      val P2 = tycon.appliedTo(tvars)
+      val P1 = tycon.appliedTo(tvars)
 
-      debug.println("P2 : " + P2)
-      debug.println("X : " + X)
+      debug.println("P1 : " + P1)
+      debug.println("X : " + X.widen)
 
-      !(P2 <:< X.widen) || {
-        val syms = maximizeType(P2, Psym.pos, fromScala2x = false)
-        val res = P2 <:< P
-        debug.println("P2: " + P2.show)
-        debug.println("P2 <:< P = " + res)
+      !(P1 <:< X.widen) || {
+        // val syms = maximizeType(P1, Psym.pos, fromScala2x = false)
+        isFullyDefined(P1, ForceDegree.noBottom)
+        val P2   = replaceBinderMap.apply(P)
+        val res  = P1 <:< P2
+        debug.println("P1: " + P1)
+        debug.println("P2: " + P2)
+        debug.println("P1 <:< P2 = " + res)
         res
       }
     }
 
     P match {
-      case tpe: AppliedType  => !isAbstract && isClassDetermined(tpe)
-      case AndType(tp1, tp2) => checkable(X, tp1) && checkable(X, tp2)
-      case OrType(tp1, tp2)  => checkable(X, tp1) && checkable(X, tp2)
-      case _                 => !isAbstract
+      case _: SingletonType     => true
+      case defn.ArrayOf(tpT)    =>
+        X match {
+          case defn.ArrayOf(tpE)   => checkable(tpE, tpT)
+          case _                   => checkable(defn.AnyType, tpT)
+        }
+      case tpe: AppliedType     => !isAbstract && isClassDetermined(tpe)(ctx.fresh.setFreshGADTBounds)
+      case AndType(tp1, tp2)    => checkable(X, tp1) && checkable(X, tp2)
+      case OrType(tp1, tp2)     => checkable(X, tp1) && checkable(X, tp2)
+      case _                    => !isAbstract
     }
   }
 }
