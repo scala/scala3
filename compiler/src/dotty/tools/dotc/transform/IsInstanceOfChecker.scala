@@ -64,7 +64,10 @@ object Checkable {
 
     def replaceBinderMap(implicit ctx: Context) = new TypeMap {
       def apply(tp: Type) = tp match {
-        case tref: TypeRef if !tref.typeSymbol.isClass && tref.symbol.is(Case) => WildcardType
+        case tref: TypeRef
+        if !tref.typeSymbol.isClass && tref.symbol.is(Case) => WildcardType
+        case AnnotatedType(_, annot)
+        if annot.symbol == defn.UncheckedAnnot => WildcardType
         case _ => mapOver(tp)
       }
     }
