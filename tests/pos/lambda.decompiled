@@ -1,5 +1,5 @@
 ================================================================================
-../out/posTestFromTasty/pos/lambda/foo/Foo.class
+out/posTestFromTasty/pos/lambda/foo/Foo.class
 --------------------------------------------------------------------------------
 package foo {
   class Foo() extends Object() {

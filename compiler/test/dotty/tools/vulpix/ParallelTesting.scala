@@ -1312,7 +1312,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
 object ParallelTesting {
 
-  def defaultOutputDir: String = "../out/"
+  def defaultOutputDir: String = "out/"
 
   def isSourceFile(f: JFile): Boolean = {
     val name = f.getName

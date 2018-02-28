@@ -16,7 +16,7 @@ object Test {
     println(expr.run)
     println()
 
-    val outDir = Paths.get("../out/out-quoted-1")
+    val outDir = Paths.get("out/out-quoted-1")
     val classFile = outDir.resolve("Quoted.class")
 
     Files.deleteIfExists(classFile)
