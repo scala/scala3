@@ -30,6 +30,9 @@ class FromTastyTests extends ParallelTesting {
       blacklist = Set(
         "macro-deprecate-dont-touch-backquotedidents.scala",
 
+        // Class not found
+        "i3130a.scala",
+
         // Owner discrepancy for refinements
         "lambdalift-1.scala",
 
