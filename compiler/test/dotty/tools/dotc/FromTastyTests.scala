@@ -36,10 +36,6 @@ class FromTastyTests extends ParallelTesting {
         // Wrong number of arguments
         "i3130b.scala",
 
-        // Class not found
-        "simpleCaseObject.scala",
-        "i3130a.scala",
-
         // Owner discrepancy for refinements
         "NoCyclicReference.scala",
         "i1795.scala",
