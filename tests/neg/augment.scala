@@ -10,6 +10,10 @@ object augments {
     private val p = math.Pi       // error: `def` expected
   }
 
+  augment Circle {
+    def circumference = radius * math.Pi * 2 // error: not found
+  }
+
 // Trait implementations
 
   trait HasArea {

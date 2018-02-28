@@ -29,6 +29,16 @@ sidebar:
               url: docs/reference/dependent-function-types.html
             - title: Literal Singleton Types
               url: docs/reference/singleton-types.html
+        - title: Augmentations
+          subsection:
+            - title: Method Augmentations
+              url: docs/reference/augments/method-augments.html
+            - title: Type Patterns
+              url: docs/reference/augments/type-patterns.html
+            - title: Trait Augmentations
+              url: docs/reference/augments/trait-augments.html
+            - title: Translation of Augmentations
+              url: docs/reference/augments/translation.html
         - title: Enums
           subsection:
             - title: Enumerations

@@ -10,4 +10,12 @@ object Test {
     case _: C[type T] =>
       val x: T = 3
   }
+
+  import collection.immutable.SortedSet
+  val s: Set[Int] = SortedSet(1, 2, 3)
+  s match {
+    case _: SortedSet[type T] =>
+      val x: T = 3
+    case _ =>
+  }
 }
