@@ -8,6 +8,7 @@ import Flags._
 import Names._
 import Symbols._
 import NameOps._
+import NameKinds.{AugmentName, ExpandedName}
 import Constants._
 import TypeErasure.ErasedValueType
 import Contexts.Context
@@ -15,7 +16,7 @@ import Scopes.Scope
 import Denotations._
 import SymDenotations._
 import Annotations.Annotation
-import StdNames.{nme, tpnme}
+import StdNames.{nme, tpnme, str}
 import ast.{Trees, tpd, untpd}
 import typer.{Implicits, Inliner, Namer}
 import typer.ProtoTypes._
@@ -721,6 +722,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         case info: ImportType => return s"import $info.expr.show"
         case _ =>
       }
+    sym.name.toTermName match {
+      case AugmentName(ExpandedName(_, core), n) =>
+        assert(core.startsWith(str.AUGMENT))
+        return Str(s"augmentation ${core.drop(str.AUGMENT.length)}") ~ (Str(s"/$n") provided n > 1)
+      case _ =>
+    }
+
     if (sym.is(ModuleClass))
       kindString(sym) ~~ (nameString(sym.name.stripModuleClassSuffix) + idString(sym))
     else

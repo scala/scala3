@@ -6,7 +6,7 @@ import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._, transform.SymUtils._
-import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
+import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName, AugmentName}
 import language.higherKinds
 import typer.FrontEnd
 import collection.mutable.ListBuffer
@@ -778,16 +778,16 @@ object desugar {
    *
    *  where
    *
+   *    <deco-name> = <id>, if there is a `<id> @` binding
+   *                = unqiue, expanded name relative to top-level class of <deco-core>, otherwise
+   *    <deco-core> = "_augment_<from>_to_<to>"   if <to> is nonempty
+   *                = "_augment_<from>"           otherwise
+   *    <from>      = underlying type name of <decorated>, or ""
+   *    <to>        = underlying type name of first extended parent, or ""
+   *
    *    (<decorated>, <type-params0>) = decomposeTypePattern(<type-pattern>)
    *    (<type-params>, <evidence-params>) = desugarTypeBindings(<type-params0>)
    *    <combined-params> = <params> concatenated with <evidence-params> in one clause
-   *    <deconame>  = <id>                                   if there is a `id @` binding
-   *                = <from>To<parent>_in_<location>$$<n>    where <parent> is first extended class name
-   *
-   *                = <from>Augmentation_in_<location>$$<n>  if no such <parent> exists
-   *    <from>      = underlying type name of <decorated>
-   *    <location>  = flat name of enclosing toplevel class
-   *    <n>         = counter making prefix unique
    *    <body1>     = <body> with each occurrence of unqualified `this` substituted by `$this`.
    *
    *   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -800,7 +800,7 @@ object desugar {
    *  where
    *
    *    <body2> = <body1> where each method definition gets <combined-params> as last parameter section.
-   *    <deconame>, <type-params> are as above.
+   *    <deco-name>, <type-params> are as above.
    */
   def augmentation(tree: Augment)(implicit ctx: Context): Tree = {
     val Augment(id, augmented, impl) = tree
@@ -818,11 +818,11 @@ object desugar {
         def clsName(tree: Tree): String = leadingName("", tree)
         val fromName = clsName(augmented)
         val toName = impl.parents match {
-          case parent :: _ if !clsName(parent).isEmpty => "To" + clsName(parent)
-          case _ => "Augmentation"
+          case parent :: _ if !clsName(parent).isEmpty => "_to_" + clsName(parent)
+          case _ => ""
         }
-        val prefix = s"${fromName}${toName}_in_${ctx.owner.topLevelClass.flatName}"
-        UniqueName.fresh(prefix.toTermName).toTypeName
+        val core = s"${str.AUGMENT}$fromName$toName".toTermName
+        AugmentName.fresh(core.expandedName(ctx.owner.topLevelClass)).toTypeName
     }
 
     val firstParam = ValDef(nme.SELF, decorated, EmptyTree).withFlags(Private | Local | ParamAccessor)
