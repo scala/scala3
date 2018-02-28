@@ -88,7 +88,8 @@ object Checkable {
     def recur(X: Type, P: Type): Boolean = P match {
       case _: SingletonType     => true
       case WildcardType         => true
-      case _ if isAbstract(P)   => X <:< P
+      case _: TypeProxy
+      if isAbstract(P)          => X <:< P
       case defn.ArrayOf(tpT)    =>
         X match {
           case defn.ArrayOf(tpE)   => recur(tpE, tpT)
