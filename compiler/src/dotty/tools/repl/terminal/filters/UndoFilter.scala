@@ -40,7 +40,7 @@ case class UndoFilter(maxUndo: Int = 25) extends DelegateFilter("UndoFilter") {
   var undoIndex = 0
   /**
     * An enum representing what the user is "currently" doing. Used to
-    * collapse sequential actions into one undo step: e.g. 10 plai 
+    * collapse sequential actions into one undo step: e.g. 10 plai
     * chars typed becomes 1 undo step, or 10 chars deleted becomes one undo
     * step, but 4 chars typed followed by 3 chars deleted followed by 3 chars
     * typed gets grouped into 3 different undo steps
@@ -147,8 +147,8 @@ object UndoState {
 }
 
 object UndoFilter {
-  val undoMsg       = Ansi.Color.Blue(" ...undoing last action, `Alt -` or `Esc -` to redo")
-  val cannotUndoMsg = Ansi.Color.Blue(" ...no more actions to undo")
-  val redoMsg       = Ansi.Color.Blue(" ...redoing last action")
-  val cannotRedoMsg = Ansi.Color.Blue(" ...no more actions to redo")
+  val undoMsg       = Ansi.Color.Blue(Ansi.Str.parse(" ...undoing last action, `Alt -` or `Esc -` to redo"))
+  val cannotUndoMsg = Ansi.Color.Blue(Ansi.Str.parse(" ...no more actions to undo"))
+  val redoMsg       = Ansi.Color.Blue(Ansi.Str.parse(" ...redoing last action"))
+  val cannotRedoMsg = Ansi.Color.Blue(Ansi.Str.parse(" ...no more actions to redo"))
 }

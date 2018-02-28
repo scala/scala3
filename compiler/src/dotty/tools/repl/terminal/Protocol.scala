@@ -10,7 +10,7 @@ case class TermState(
   inputs: LazyList[Int],
   buffer: Vector[Char],
   cursor: Int,
-  msg: Ansi.Str = ""
+  msg: Ansi.Str = Ansi.Str.parse("")
 ) extends TermAction
 
 object TermState {

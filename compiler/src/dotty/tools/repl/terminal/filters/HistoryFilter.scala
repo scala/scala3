@@ -106,7 +106,7 @@ class HistoryFilter(
     searchHistory(historyIndex - 1, -1, b, b)
 
   def wrap(rest: LazyList[Int], out: (Vector[Char], Int, String)) =
-    TS(rest, out._1, out._2, out._3)
+    TS(rest, out._1, out._2, Ansi.Str.parse(out._3))
 
   def ctrlR(b: Vector[Char], c: Int) =
     if (activeSearch) up(b, c)

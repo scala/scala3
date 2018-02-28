@@ -301,7 +301,7 @@ object Terminal {
     lazy val ansi = new AnsiNav(writer)
     lazy val (width, _, initialConfig) = TTY.init()
     try {
-      readChar(TermState(LazyList.continually(reader.read()), Vector.empty, 0, ""), 0)
+      readChar(TermState(LazyList.continually(reader.read()), Vector.empty, 0, Ansi.Str.parse("")), 0)
     }
     finally {
 
