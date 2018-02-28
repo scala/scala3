@@ -20,7 +20,7 @@ class SettingsTests {
   @Test def jarOutput: Unit = {
     val classPath = mkClassPath(Jars.dottyTestDeps)
     val source = "tests/pos/Foo.scala"
-    val out = Paths.get("../out/jaredFoo.jar").normalize
+    val out = Paths.get("out/jaredFoo.jar").normalize
     if (Files.exists(out)) Files.delete(out)
     val options = Array("-classpath", classPath, "-d", out.toString, source)
     val reporter = Main.process(options)
