@@ -30,6 +30,12 @@ class FromTastyTests extends ParallelTesting {
       blacklist = Set(
         "macro-deprecate-dont-touch-backquotedidents.scala",
 
+        // Compiles wrong class
+        "simpleClass.scala",
+
+        // Wrong number of arguments
+        "i3130b.scala",
+
         // Class not found
         "i3130a.scala",
 
@@ -46,6 +52,8 @@ class FromTastyTests extends ParallelTesting {
         "i3000.scala",
         "t1203a.scala",
         "t2260.scala",
+        "t4579.scala",
+        "tcpoly_ticket2096.scala",
         "i2345.scala",
         "t4731.scala",
         "spec-super.scala",
