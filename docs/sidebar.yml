@@ -33,8 +33,6 @@ sidebar:
           subsection:
             - title: Method Augmentations
               url: docs/reference/augments/method-augments.html
-            - title: Type Patterns
-              url: docs/reference/augments/type-patterns.html
             - title: Trait Augmentations
               url: docs/reference/augments/trait-augments.html
             - title: Translation of Augmentations
@@ -113,6 +111,8 @@ sidebar:
               url: docs/reference/dropped/auto-apply.html
             - title: Weak Conformance
               url: docs/reference/dropped/weak-conformance.html
+            - title: Implicit and Value Classes
+              url: docs/reference/dropped/implicit-value-classes.html
     - title: Contributing
       subsection:
         - title: Getting Started
