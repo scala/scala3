@@ -73,6 +73,10 @@ object augments {
       this.width == that.width &&
       this.height == that.height
   }
+
+  augment List[List[type U]] {
+    def flattened: List[U] = (this :\ (Nil: List[U]))(_ ++ _)
+  }
 }
 
 object augments2 {
@@ -108,8 +112,7 @@ object Test extends App {
   println(r1 === r1)
   println(r1 === r2)
   println(List(1, 2, 3).second)
-  println(List(List(1), List(2, 3)).flattened)
-  println(List(List(1), List(2, 3)).flattened.maxx)
+  println(List(List(1), List(2, 3)).flattened) // error: type error + note that implicit conversions are ambiguous
   println(Array(1, 2, 3).maxx)
   println((2, 3).isSame)
   println((3, 3).isSame)

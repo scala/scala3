@@ -78,7 +78,6 @@ object augments {
       this.width == that.width &&
       this.height == that.height
   }
-
 }
 
 object augments2 {
