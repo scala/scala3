@@ -92,7 +92,7 @@ class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer with F
           else if (!sym.is(Deferred) && !sym.setter.exists &&
                    !sym.info.resultType.isInstanceOf[ConstantType])
             traitSetter(sym.asTerm).enteredAfter(thisPhase)
-        if ((sym.is(PrivateAccessor) && !sym.name.is(ExpandedName) &&
+        if ((sym.isBoth(Private, and = Accessor) && !sym.name.is(ExpandedName) &&
           (sym.isGetter || sym.isSetter)) // strangely, Scala 2 fields are also methods that have Accessor set.
           || sym.isSuperAccessor) // scala2 superaccessors are pickled as private, but are compiled as public expanded
           sym.ensureNotPrivate.installAfter(thisPhase)

@@ -115,7 +115,7 @@ object Scala2Unpickler {
       if (tsym.exists) tsym.setFlag(TypeParam)
       else denot.enter(tparam, decls)
     }
-    if (!(denot.flagsUNSAFE is JavaModule)) ensureConstructor(denot.symbol.asClass, decls)
+    if (!denot.flagsUNSAFE.isBoth(JavaDefined, and = Module)) ensureConstructor(denot.symbol.asClass, decls)
 
     val scalacCompanion = denot.classSymbol.scalacLinkedClass
 
@@ -435,7 +435,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val owner = readSymbolRef()
 
     var flags = unpickleScalaFlags(readLongNat(), name.isTypeName)
-    if (flags is DefaultParameter) {
+    if (flags.isBoth(Param, and = DefaultParameterized)) {
       // DefaultParameterized flag now on method, not parameter
       //assert(flags is Param, s"$name0 in $owner")
       flags = flags &~ DefaultParameterized

@@ -192,7 +192,7 @@ class TreeChecker extends Phase with SymTransformer {
     /** assert Java classes are not used as objects */
     def assertIdentNotJavaClass(tree: Tree)(implicit ctx: Context): Unit = tree match {
       case _ : untpd.Ident =>
-        assert(!tree.symbol.is(JavaModule), "Java class can't be used as value: " + tree)
+        assert(!tree.symbol.isBoth(JavaDefined, and = Module), "Java class can't be used as value: " + tree)
       case _ =>
     }
 

@@ -384,7 +384,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
 
     def isSyntheticScala2Unapply(sym: Symbol) =
-      sym.is(SyntheticCase) && sym.owner.is(Scala2x)
+      sym.isBoth(Synthetic, and = Case) && sym.owner.is(Scala2x)
 
     val mt @ MethodType(_) = unapp.widen
 
@@ -576,7 +576,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case tp: RefinedType =>
         recur(tp.parent)
       case tp: TypeRef =>
-        recur(tp.prefix) && !(tp.classSymbol.is(AbstractFinal))
+        recur(tp.prefix) && !(tp.classSymbol.isBoth(Abstract, and = Final))
       case _ =>
         true
     }
@@ -708,7 +708,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         canDecompose(and.tp1) || canDecompose(and.tp2)
       }) ||
       tp.isRef(defn.BooleanClass) ||
-      tp.classSymbol.is(allOf(Enum, Sealed))  // Enum value doesn't have Sealed flag
+      tp.classSymbol.isBoth(Enum, and = Sealed)  // Enum value doesn't have Sealed flag
 
     debug.println(s"decomposable: ${tp.show} = $res")
 

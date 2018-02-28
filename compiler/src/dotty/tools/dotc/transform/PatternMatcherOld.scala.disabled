@@ -1231,7 +1231,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
       val pt = match_.tpe.widen //repeatedToSeq(origPt)
 
       // val packedPt = repeatedToSeq(typer.packedType(match_, context.owner))
-      selectorSym.setFlag(Flags.SyntheticCase)
+      selectorSym.setFlag(Flags.Synthetic | Flags.Case)
 
       // pt = Any* occurs when compiling test/files/pos/annotDepMethType.scala  with -Xexperimental
       val combined = combineCases(sel, selectorSym, nonSyntheticCases map translateCase(selectorSym, pt), pt, ctx.owner, defaultOverride)

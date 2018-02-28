@@ -321,7 +321,7 @@ object RefChecks {
         (member.flags & AccessFlags).isEmpty // member is public
         || // - or -
         (!other.is(Protected) || member.is(Protected)) && // if o is protected, so is m, and
-        (ob.isContainedIn(mb) || other.is(JavaProtected)) // m relaxes o's access boundary,
+        (ob.isContainedIn(mb) || other.isBoth(JavaDefined, and = Protected)) // m relaxes o's access boundary,
         // or o is Java defined and protected (see #3946)
         )
       if (!isOverrideAccessOK) {
@@ -341,7 +341,7 @@ object RefChecks {
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.
         // Also excluded under Scala2 mode are overrides of default methods of Java traits.
         if (autoOverride(member) ||
-            other.owner.is(JavaTrait) && ctx.testScala2Mode("`override' modifier required when a Java 8 default method is re-implemented", member.pos))
+            other.owner.isJavaTrait && ctx.testScala2Mode("`override' modifier required when a Java 8 default method is re-implemented", member.pos))
           member.setFlag(Override)
         else if (member.owner != clazz && other.owner != clazz && !(other.owner derivesFrom member.owner))
           emitOverrideError(
@@ -375,7 +375,7 @@ object RefChecks {
         overrideError("must be declared lazy to override a lazy value")
       } else if (member.is(Macro, butNot = Scala2x)) { // (1.9)
         overrideError("is a macro, may not override anything")
-      } else if (other.is(Deferred) && member.is(Scala2Macro) && member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.10)
+      } else if (other.is(Deferred) && member.isBoth(Macro, and = Scala2x) && member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.10)
         overrideError("cannot be used here - term macros cannot override abstract methods")
       } else if (other.is(Macro) && !member.is(Macro)) { // (1.11)
         overrideError("cannot be used here - only term macros can override term macros")

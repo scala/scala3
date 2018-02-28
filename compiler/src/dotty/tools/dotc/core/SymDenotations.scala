@@ -180,25 +180,40 @@ object SymDenotations {
         if (myInfo.isInstanceOf[SymbolLoader]) FromStartFlags
         else AfterLoadFlags)
 
-    /** Has this denotation one of the flags in `fs` set? */
+    /** Does this denotation have one of the flags in `fs` set? */
     final def is(fs: FlagSet)(implicit ctx: Context) =
       (if (isCurrent(fs)) myFlags else flags) is fs
 
-    /** Has this denotation one of the flags in `fs` set, whereas none of the flags
-     *  in `butNot` are set?
+    /** Does this denotation have at least one of the flags in `fs` set, and
+     *  none of the flags in `butNot` set?
      */
     final def is(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context) =
-      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags) is (fs, butNot)
+      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags) is (fs, butNot = butNot)
 
-    /** Has this denotation all of the flags in `fs` set? */
-    final def is(fs: FlagConjunction)(implicit ctx: Context) =
-      (if (isCurrent(fs)) myFlags else flags) is fs
-
-    /** Has this denotation all of the flags in `fs` set, whereas none of the flags
-     *  in `butNot` are set?
+    /** Does this denotation have at least one of the flags in `fs` set,
+     *  and at least one of the flags in `and` set?
      */
-    final def is(fs: FlagConjunction, butNot: FlagSet)(implicit ctx: Context) =
-      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags) is (fs, butNot)
+    final def isBoth(fs: FlagSet, and: FlagSet)(implicit ctx: Context) =
+       (if (isCurrent(fs) && isCurrent(and)) myFlags else flags) isBoth (fs, and)
+
+    /** Does this denotation have at least one of the flags in `fs` set,
+     *  and at least one of the flags in `and` set,
+     *  and none of the flags in `butNot` set?
+     */
+    final def isBoth(fs: FlagSet, and: FlagSet, butNot: FlagSet)(implicit ctx: Context) =
+       (if (isCurrent(fs) && isCurrent(and) && isCurrent(butNot)) myFlags else flags) isBoth (fs, and = and, butNot = butNot)
+
+    /** A type parameter of a class or trait */
+    final def isClassTypeParam(implicit ctx: Context) =
+      isBoth(TypeParam, and = Private)
+
+    /** A Java interface, potentially with default methods */
+    final def isJavaTrait(implicit ctx: Context) =
+      is(JavaDefined) && is(Trait) && is(NoInits)
+
+    /** A parameter forwarder */
+    final def isParamForwarder(implicit ctx: Context) =
+      is(Method) && is(Stable) && is(ParamAccessor)
 
     /** The type info, or, if symbol is not yet completed, the completer */
     final def infoOrCompleter = myInfo
@@ -770,7 +785,7 @@ object SymDenotations {
 
     def isSkolem: Boolean = name == nme.SKOLEM
 
-    def isInlineMethod(implicit ctx: Context): Boolean = is(InlineMethod, butNot = Accessor)
+    def isInlineMethod(implicit ctx: Context): Boolean = isBoth(Inline, and = Method, butNot = Accessor)
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,
@@ -1113,7 +1128,7 @@ object SymDenotations {
     final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol = {
       val fs = flags
       if (fs is Private) owner
-      else if (fs is StaticProtected) defn.RootClass
+      else if (fs.isBoth(Protected, and = JavaStatic)) defn.RootClass
       else if (privateWithin.exists && !ctx.phase.erasedTypes) privateWithin
       else if (fs is Protected) base
       else defn.RootClass

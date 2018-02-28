@@ -494,14 +494,14 @@ class Namer { typer: Typer =>
     // We don't check for clazz.superClass == JavaEnumClass, because this causes a illegal
     // cyclic reference error. See the commit message for details.
     //  if (ctx.compilationUnit.isJava) ctx.owner.companionClass.is(Enum) else ctx.owner.is(Enum)
-    vd.mods.is(allOf(Enum,  Stable, JavaStatic, JavaDefined)) // && ownerHasEnumFlag
+    vd.mods.isBoth(Enum, and = Stable) && vd.mods.isBoth(JavaStatic, JavaDefined) // && ownerHasEnumFlag
   }
 
   /** Add java enum constants */
   def addEnumConstants(mdef: DefTree, sym: Symbol)(implicit ctx: Context): Unit = mdef match {
     case vdef: ValDef if (isEnumConstant(vdef)) =>
       val enumClass = sym.owner.linkedClass
-      if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
+      if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.Abstract | Flags.Sealed)
       enumClass.addAnnotation(Annotation.Child(sym))
     case _ =>
   }

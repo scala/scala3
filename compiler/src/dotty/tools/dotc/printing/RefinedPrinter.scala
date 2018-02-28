@@ -683,7 +683,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def annotText(tree: untpd.Tree): Text = "@" ~ constrText(tree) // DD
 
   protected def modText(mods: untpd.Modifiers, kw: String): Text = { // DD
-    val suppressKw = if (enclDefIsClass) mods is ParamAndLocal else mods is Param
+    val suppressKw = if (enclDefIsClass) mods isBoth(Param, and = Local) else mods is Param
     var flagMask =
       if (ctx.settings.YdebugFlags.value) AnyFlags
       else if (suppressKw) PrintableFlags &~ Private
@@ -712,8 +712,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override protected def treatAsTypeParam(sym: Symbol): Boolean = sym is TypeParam
 
   override protected def treatAsTypeArg(sym: Symbol) =
-    sym.isType && (sym is ProtectedLocal) &&
-      (sym.allOverriddenSymbols exists (_ is TypeParam))
+    sym.isType && sym.isBoth(Protected, and = Local) &&
+      sym.allOverriddenSymbols.exists(_ is TypeParam)
 
   override def toText(sym: Symbol): Text = {
     if (sym.isImport)

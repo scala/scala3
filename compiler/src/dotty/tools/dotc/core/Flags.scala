@@ -4,7 +4,6 @@ package core
 import language.implicitConversions
 
 object Flags {
-
   /** A FlagSet represents a set of flags. Flags are encoded as follows:
    *  The first two bits indicate whether a flagset applies to terms,
    *  to types, or to both.  Bits 2..63 are available for properties
@@ -15,8 +14,7 @@ object Flags {
    */
   case class FlagSet(val bits: Long) extends AnyVal {
 
-    /** The union of this flag set and the given flag set
-     */
+    /** The union of this flag set and the given flag set */
     def | (that: FlagSet): FlagSet =
       if (bits == 0) that
       else if (that.bits == 0) this
@@ -39,6 +37,10 @@ object Flags {
 
     /** Does this flag set have a non-empty intersection with the given flag set?
      *  This means that both the kind flags and the carrier bits have non-empty intersection.
+     *
+     *  Note that `.is(flagA | flagB)` returns true if this flag set contains
+     *  EITHER `flagA` OR `flagB`. To test for both conjunction of both flags,
+     *  use `.is(flagA, and = flagB)`.
      */
     def is(flags: FlagSet): Boolean = {
       val fs = bits & flags.bits
@@ -48,22 +50,18 @@ object Flags {
    /** Does this flag set have a non-empty intersection with the given flag set,
     *  and at the same time contain none of the flags in the `butNot` set?
     */
-    def is(flags: FlagSet, butNot: FlagSet): Boolean = is(flags) && !is(butNot)
+    def is(flags: FlagSet, butNot: FlagSet): Boolean =
+      is(flags) && !is(butNot)
 
-    /** Does this flag set have all of the flags in given flag conjunction?
-     *  Pre: The intersection of the typeflags of both sets must be non-empty.
-     */
-    def is(flags: FlagConjunction): Boolean = {
-      val fs = bits & flags.bits
-      (fs & KINDFLAGS) != 0 &&
-      (fs >>> TYPESHIFT) == (flags.bits >>> TYPESHIFT)
-    }
+    /** Does this flag set have both of the given flags? */
+    def isBoth(flags: FlagSet, and: FlagSet): Boolean =
+      is(flags) && is(and)
 
     /** Does this flag set have all of the flags in given flag conjunction?
      *  and at the same time contain none of the flags in the `butNot` set?
-     *  Pre: The intersection of the typeflags of both sets must be non-empty.
      */
-    def is(flags: FlagConjunction, butNot: FlagSet): Boolean = is(flags) && !is(butNot)
+    def isBoth(flags: FlagSet, and: FlagSet, butNot: FlagSet): Boolean =
+      is(flags) && is(and) && !is(butNot)
 
     def isEmpty = (bits & ~KINDFLAGS) == 0
 
@@ -119,14 +117,6 @@ object Flags {
     override def toString = flagStrings.mkString(" ")
   }
 
-  /** A class representing flag sets that should be tested
-   *  conjunctively. I.e. for a flag conjunction `fc`,
-   *  `x is fc` tests whether `x` contains all flags in `fc`.
-   */
-  case class FlagConjunction(bits: Long) {
-    override def toString = FlagSet(bits).toString
-  }
-
   private final val TYPESHIFT = 2
   private final val TERMindex = 0
   private final val TYPEindex = 1
@@ -177,19 +167,6 @@ object Flags {
     for (f <- flagss)
       flag |= f
     flag
-  }
-
-  /** The conjunction of all flags in given flag set */
-  def allOf(flags1: FlagSet, flags2: FlagSet): FlagConjunction = {
-    assert(flags1.numFlags == 1 && flags2.numFlags == 1, "Flags.allOf doesn't support flag " + (if (flags1.numFlags != 1) flags1 else flags2))
-    FlagConjunction((flags1 | flags2).bits)
-  }
-
-  /** The conjunction of all flags in given flag set */
-  def allOf(flags1: FlagSet, flags2: FlagSet, flags3: FlagSet, flagss: FlagSet*): FlagConjunction = {
-    val flags0 = allOf(flags1, flags2) | flags3
-    assert(flags3.numFlags == 1 && flagss.forall(_.numFlags == 1), "Flags.allOf doesn't support flag " + (if (flags3.numFlags != 1) flags3 else flagss.find(_.numFlags != 1)))
-    FlagConjunction((flags0 | union(flagss: _*)).bits)
   }
 
   def commonFlags(flagss: FlagSet*) = union(flagss.map(_.toCommonFlags): _*)
@@ -550,18 +527,6 @@ object Flags {
   /** Labeled `private`, `final`, or `inline` */
   final val PrivateOrFinalOrInline = Private | Final | Inline
 
-  /** A private method */
-  final val PrivateMethod = allOf(Private, Method)
-
-  /** A private accessor */
-  final val PrivateAccessor = allOf(Private, Accessor)
-
-  /** An inline method */
-  final val InlineMethod = allOf(Inline, Method)
-
-  /** An inline parameter */
-  final val InlineParam = allOf(Inline, Param)
-
   /** A term parameter or parameter accessor */
   final val TermParamOrAccessor = Param | ParamAccessor
 
@@ -583,76 +548,9 @@ object Flags {
   /** value that's final or inline */
   final val FinalOrInline = Final | Inline
 
-  /** A covariant type parameter instance */
-  final val LocalCovariant = allOf(Local, Covariant)
-
-  /** A contravariant type parameter instance */
-  final val LocalContravariant = allOf(Local, Contravariant)
-
   /** Has defined or inherited default parameters */
   final val HasDefaultParams = DefaultParameterized | InheritedDefaultParams
 
   /** Is valid forever */
   final val ValidForever = Package | Permanent | Scala2ExistentialCommon
-
-  /** A type parameter of a class or trait */
-  final val ClassTypeParam = allOf(TypeParam, Private)
-
-  /** Is a default parameter in Scala 2*/
-  final val DefaultParameter = allOf(Param, DefaultParameterized)
-
-  /** A Scala 2 Macro */
-  final val Scala2Macro = allOf(Macro, Scala2x)
-
-  /** A trait that does not need to be initialized */
-  final val NoInitsTrait = allOf(Trait, NoInits)
-
-  /** A Java interface, potentially with default methods */
-  final val JavaTrait = allOf(JavaDefined, Trait, NoInits)
-
-    /** A Java interface */ // TODO when unpickling, reconstitute from context
-  final val JavaInterface = allOf(JavaDefined, Trait)
-
-  /** A Java companion object */
-  final val JavaModule = allOf(JavaDefined, Module)
-
-  /** A Java companion object */
-  final val JavaProtected = allOf(JavaDefined, Protected)
-
-  /** Labeled private[this] */
-  final val PrivateLocal = allOf(Private, Local)
-
-  /** A private[this] parameter accessor */
-  final val PrivateLocalParamAccessor = allOf(Private, Local, ParamAccessor)
-
-  /** A parameter forwarder */
-  final val ParamForwarder = allOf(Method, Stable, ParamAccessor)
-
-  /** A private[this] parameter */
-  final val PrivateLocalParam = allOf(Private, Local, Param)
-
-  /** A private parameter accessor */
-  final val PrivateParamAccessor = allOf(Private, ParamAccessor)
-
-  /** A local parameter */
-  final val ParamAndLocal = allOf(Param, Local)
-
-  /** Labeled protected[this] */
-  final val ProtectedLocal = allOf(Protected, Local)
-
-  /** Java symbol which is `protected` and `static` */
-  final val StaticProtected = allOf(JavaDefined, Protected, JavaStatic)
-
-  final val AbstractFinal = allOf(Abstract, Final)
-  final val AbstractSealed = allOf(Abstract, Sealed)
-  final val SyntheticArtifact = allOf(Synthetic, Artifact)
-  final val SyntheticModule = allOf(Synthetic, Module)
-  final val SyntheticTermParam = allOf(Synthetic, TermParam)
-  final val SyntheticTypeParam = allOf(Synthetic, TypeParam)
-  final val SyntheticCase = allOf(Synthetic, Case)
-  final val AbstractAndOverride = allOf(Abstract, Override)
-  final val Scala2Trait = allOf(Scala2x, Trait)
-
-  implicit def conjToFlagSet(conj: FlagConjunction): FlagSet =
-    FlagSet(conj.bits)
 }

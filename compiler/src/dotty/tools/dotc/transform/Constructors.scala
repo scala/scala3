@@ -99,7 +99,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
    */
   override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = {
     def emptyRhsOK(sym: Symbol) =
-      sym.is(LazyOrDeferred) || sym.isConstructor && sym.owner.is(NoInitsTrait)
+      sym.is(LazyOrDeferred) || sym.isConstructor && sym.owner.isBoth(NoInits, and = Trait)
     tree match {
       case tree: ValDef if tree.symbol.exists && tree.symbol.owner.isClass && !tree.symbol.is(Lazy) && !tree.symbol.hasAnnotation(defn.ScalaStaticAnnot) =>
         assert(tree.rhs.isEmpty, i"$tree: initializer should be moved to constructors")
@@ -119,9 +119,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
    *  constructor.
    */
   private def mightBeDropped(sym: Symbol)(implicit ctx: Context) =
-    sym.is(Private, butNot = MethodOrLazy) && !sym.is(MutableParamAccessor)
-
-  private final val MutableParamAccessor = allOf(Mutable, ParamAccessor)
+    sym.is(Private, butNot = MethodOrLazy) && !sym.isBoth(Mutable, and = ParamAccessor)
 
   override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = {
     val cls = ctx.owner.asClass
@@ -273,7 +271,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
     val finalConstrStats = copyParams ::: mappedSuperCalls ::: lazyAssignments ::: stats
     val expandedConstr =
-      if (cls.is(NoInitsTrait)) {
+      if (cls.isBoth(NoInits, and = Trait)) {
         assert(finalConstrStats.isEmpty)
         constr
       }

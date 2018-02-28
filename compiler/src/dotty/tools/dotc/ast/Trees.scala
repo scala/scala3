@@ -761,7 +761,7 @@ object Trees {
     nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T]) with WithoutTypeOrPos[T] {
     myTpe = NoType.asInstanceOf[T]
     override def isEmpty: Boolean = true
-    setMods(untpd.Modifiers(PrivateLocal))
+    setMods(untpd.Modifiers(Private | Local))
   }
 
   @sharable val theEmptyTree: Thicket[Type] = Thicket(Nil)

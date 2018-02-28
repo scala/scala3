@@ -46,7 +46,7 @@ class JavaPlatform extends Platform {
 
   /** Is the SAMType `cls` also a SAM under the rules of the JVM? */
   def isSam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
-    cls.is(NoInitsTrait) &&
+    cls.isBoth(NoInits, and = Trait) &&
     cls.superClass == defn.ObjectClass &&
     cls.directlyInheritedTraits.forall(_.is(NoInits)) &&
     !ExplicitOuter.needsOuterIfReferenced(cls) &&

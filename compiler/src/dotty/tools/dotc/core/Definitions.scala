@@ -325,11 +325,11 @@ class Definitions {
       useCompleter = true)
 
   lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
+    ScalaPackageClass, tpnme.Nothing, Abstract | Final, List(AnyClass.typeRef))
   def NothingType = NothingClass.typeRef
   lazy val RuntimeNothingModuleRef = ctx.requiredModuleRef("scala.runtime.Nothing")
   lazy val NullClass: ClassSymbol = enterCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Null, AbstractFinal, List(ObjectClass.typeRef))
+    ScalaPackageClass, tpnme.Null, Abstract | Final, List(ObjectClass.typeRef))
   def NullType = NullClass.typeRef
   lazy val RuntimeNullModuleRef = ctx.requiredModuleRef("scala.runtime.Null")
 

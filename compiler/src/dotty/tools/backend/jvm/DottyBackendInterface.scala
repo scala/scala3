@@ -498,7 +498,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     // unrelated change.
        ctx.base.settings.YnoGenericSig.value
     || sym.is(Flags.Artifact)
-    || sym.is(Flags.allOf(Flags.Method, Flags.Lifted))
+    || sym.isBoth(Flags.Method, and = Flags.Lifted)
     || sym.is(Flags.Bridge)
   )
 
@@ -679,7 +679,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isConstructor: Boolean = toDenot(sym).isConstructor
     def isAnonymousFunction: Boolean = toDenot(sym).isAnonymousFunction
     def isMethod: Boolean = sym is Flags.Method
-    def isPublic: Boolean =  sym.flags.is(Flags.EmptyFlags, Flags.Private | Flags.Protected)
+    def isPublic: Boolean =  sym.flags.is(Flags.EmptyFlags, butNot=Flags.Private | Flags.Protected)
     def isSynthetic: Boolean = sym is Flags.Synthetic
     def isPackageClass: Boolean = sym is Flags.PackageClass
     def isModuleClass: Boolean = sym is Flags.ModuleClass
@@ -716,7 +716,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isDeprecated: Boolean = false
     def isMutable: Boolean = sym is Flags.Mutable
     def hasAbstractFlag: Boolean =
-      (sym is Flags.Abstract) || (sym is Flags.JavaInterface) || (sym is Flags.Trait)
+      (sym is Flags.Abstract) || (sym is Flags.Trait)
     def hasModuleFlag: Boolean = sym is Flags.Module
     def isSynchronized: Boolean = sym is Flags.Synchronized
     def isNonBottomSubClass(other: Symbol): Boolean = sym.derivesFrom(other)

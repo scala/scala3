@@ -223,7 +223,7 @@ object Types {
      *  from the ThisType of `symd`'s owner.
      */
     def isArgPrefixOf(symd: SymDenotation)(implicit ctx: Context) =
-      symd.is(ClassTypeParam) && {
+      symd.isClassTypeParam && {
         this match {
           case tp: ThisType => tp.cls ne symd.owner
           case _ => true
@@ -1969,7 +1969,7 @@ object Types {
       else if (prefix.isBottomType) prefix
       else if (isType) {
         val res =
-          if (currentSymbol.is(ClassTypeParam)) argForParam(prefix)
+          if (currentSymbol.isClassTypeParam) argForParam(prefix)
           else prefix.lookupRefined(name)
         if (res.exists) res
         else if (Config.splitProjections)
@@ -4130,7 +4130,7 @@ object Types {
       else pre match {
         case Range(preLo, preHi) =>
           val forwarded =
-            if (tp.symbol.is(ClassTypeParam)) expandParam(tp, preHi)
+            if (tp.symbol.isClassTypeParam) expandParam(tp, preHi)
             else tryWiden(tp, preHi)
           forwarded.orElse(
             range(super.derivedSelect(tp, preLo), super.derivedSelect(tp, preHi)))
