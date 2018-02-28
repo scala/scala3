@@ -17,11 +17,26 @@ object Toolbox {
   type Run
   type Show
 
-  implicit def toolbox[T]: Toolbox[T] = new Toolbox[T] {
+  implicit def toolbox[T](implicit
+      runSettings: Settings[Run] = Settings.run(),
+      showSettings: Settings[Show] = Settings.show()
+    ): Toolbox[T] = new Toolbox[T] {
 
-    def run(expr: Expr[T]): T = Toolbox.run(expr, Settings.run())
+    def run(expr: Expr[T]): T = expr match {
+      case expr: ValueExpr[T] => expr.value
+      case _ => new QuoteDriver().run(expr, runSettings)
+    }
 
-    def show(expr: Expr[T]): String = Toolbox.show(expr, Settings.show())
+    def show(expr: Expr[T]): String = expr match {
+      case expr: ValueExpr[T] =>
+        implicit val ctx = new QuoteDriver().initCtx
+        if (showSettings.compilerArgs.contains("-color:never"))
+          ctx.settings.color.update("never")
+        val printer = new RefinedPrinter(ctx)
+        if (expr.value == BoxedUnit.UNIT) "()"
+        else printer.toText(Literal(Constant(expr.value))).mkString(Int.MaxValue, false)
+      case _ => new QuoteDriver().show(expr, showSettings)
+    }
 
     def toConstantOpt(expr: Expr[T]): Option[T] = {
       def toConstantOpt(tree: Tree): Option[T] = tree match {
@@ -36,22 +51,6 @@ object Toolbox {
       }
     }
 
-  }
-
-  def run[T](expr: Expr[T], settings: Settings[Run]): T = expr match {
-    case expr: ValueExpr[T] => expr.value
-    case _ => new QuoteDriver().run(expr, settings)
-  }
-
-  def show[T](expr: Expr[T], settings: Settings[Show]): String = expr match {
-    case expr: ValueExpr[T] =>
-      implicit val ctx = new QuoteDriver().initCtx
-      if (settings.compilerArgs.contains("-color:never"))
-        ctx.settings.color.update("never")
-      val printer = new RefinedPrinter(ctx)
-      if (expr.value == BoxedUnit.UNIT) "()"
-      else printer.toText(Literal(Constant(expr.value))).mkString(Int.MaxValue, false)
-    case _ => new QuoteDriver().show(expr, settings)
   }
 
   class Settings[T] private (val outDir: Option[String], val compilerArgs: List[String])
