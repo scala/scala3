@@ -94,6 +94,46 @@ object augments2 {
 
 }
 
+object docs {
+  augment Seq[String] {
+    def longestStrings: Seq[String] = {
+      val maxLength = this.map(_.length).max
+      this.filter(_.length == maxLength)
+    }
+  }
+
+  augment List[List[type T]] {
+    def flattened: List[T] = this.foldLeft[List[T]](Nil)(_ ++ _)
+  }
+
+  augment Seq[type T: math.Ordering] {
+    def indexOfLargest  = this.zipWithIndex.maxBy(_._1)._2
+    def indexOfSmallest = this.zipWithIndex.minBy(_._1)._2
+  }
+
+  object PostConditions {
+    opaque type EnsureResult[T] = T
+
+    private object EnsureResult {
+      def wrap[T](x: T): EnsureResult[T] = x
+      def unwrap[T](x: EnsureResult[T]): T = x
+    }
+
+    def result[T](implicit er: EnsureResult[T]): T = EnsureResult.unwrap(er)
+
+    augment (type T) {
+      def ensuring[U](f: implicit EnsureResult[T] => Boolean): T = {
+        assert(f(EnsureResult.wrap(this)))
+        this
+      }
+    }
+  }
+  import PostConditions._
+
+  val s = List(1, 2, 3).sum.ensuring(result == 6)
+
+}
+
 import augments._
 import augments2.{flatLists, samePairs}
 object Test extends App {
