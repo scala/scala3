@@ -222,8 +222,8 @@ trait Symbols { this: Context =>
   /** Define a new symbol associated with a Bind or pattern wildcard and
    *  make it gadt narrowable.
    */
-  def newPatternBoundSymbol(name: Name, info: Type, pos: Position) = {
-    val sym = newSymbol(owner, name, Case, info, coord = pos)
+  def newPatternBoundSymbol(name: Name, info: Type, coord: Coord) = {
+    val sym = newSymbol(owner, name, Case, info, coord = coord)
     if (name.isTypeName) gadt.setBounds(sym, info.bounds)
     sym
   }

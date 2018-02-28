@@ -808,23 +808,25 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       else Nil
 
     def annotations: List[Annotation] = toDenot(sym).annotations
-    def companionModuleMembers: List[Symbol] =  {
+
+    def companionModuleMembers: List[Symbol] = {
       // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
       // not local classes of the companion module (E in the exmaple) that were lifted by lambdalift.
       if (linkedClass.isTopLevelModuleClass) /*exitingPickler*/ linkedClass.memberClasses
       else Nil
     }
+
     def fieldSymbols: List[Symbol] = {
       toDenot(sym).info.decls.filter(p => p.isTerm && !p.is(Flags.Method))
     }
+
     def methodSymbols: List[Symbol] =
       for (f <- toDenot(sym).info.decls.toList if f.isMethod && f.isTerm && !f.isModule) yield f
+
     def serialVUID: Option[Long] = None
 
-
-    def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
-      ctx.newSymbol(sym, name.toTermName, FlagSet(flags), tpe, NoSymbol, pos)
-    }
+    def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol =
+      ctx.newSymbol(sym, name.toTermName, FlagSet(flags), tpe, NoSymbol, pos.toCoord)
 
     def getter(clz: Symbol): Symbol = decorateSymbol(sym).getter
     def setter(clz: Symbol): Symbol = decorateSymbol(sym).setter

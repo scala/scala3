@@ -85,7 +85,7 @@ object PatternMatcher {
 
     private def newVar(rhs: Tree, flags: FlagSet): TermSymbol =
       ctx.newSymbol(ctx.owner, PatMatStdBinderName.fresh(), Synthetic | Case | flags,
-        sanitize(rhs.tpe), coord = rhs.pos)
+        sanitize(rhs.tpe), coord = rhs.coord)
         // TODO: Drop Case once we use everywhere else `isPatmatGenerated`.
 
     /** The plan `let x = rhs in body(x)` where `x` is a fresh variable */

@@ -143,8 +143,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
         val holderImpl = ctx.requiredClass("dotty.runtime." + holderType)
 
-        val holderSymbol = ctx.newSymbol(x.symbol.owner, holderName, containerFlags, holderImpl.typeRef, coord = x.pos)
-        val initSymbol = ctx.newSymbol(x.symbol.owner, initName, initFlags, MethodType(Nil, tpe), coord = x.pos)
+        val holderSymbol = ctx.newSymbol(x.symbol.owner, holderName, containerFlags, holderImpl.typeRef, coord = x.coord)
+        val initSymbol = ctx.newSymbol(x.symbol.owner, initName, initFlags, MethodType(Nil, tpe), coord = x.coord)
         val result = ref(holderSymbol).select(lazyNme.value).withPos(x.pos)
         val flag = ref(holderSymbol).select(lazyNme.initialized)
         val initer = valueInitter.changeOwnerAfter(x.symbol, initSymbol, this)

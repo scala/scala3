@@ -48,7 +48,7 @@ abstract class Lifter {
       val name = UniqueName.fresh(prefix)
       var liftedType = fullyDefinedType(expr.tpe.widen, "lifted expression", expr.pos)
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
-      val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags, liftedType, coord = positionCoord(expr.pos))
+      val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags, liftedType, coord = expr.coord)
       defs += liftedDef(lifted, expr).withPos(expr.pos.focus)
       ref(lifted.termRef).withPos(expr.pos)
     }

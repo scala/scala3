@@ -123,6 +123,10 @@ object Positions {
       else
         s"${left}no position${right}"
     }
+
+    def toCoord: Coord =
+      if (exists) new Coord(-(point + 1))
+      else NoCoord
   }
 
   private def fromOffsets(start: Int, end: Int, pointDelta: Int) = {
@@ -166,8 +170,9 @@ object Positions {
   }
 
   /** An index coordinate */
-  implicit def indexCoord(n: Int): Coord = new Coord(n + 1)
-  implicit def positionCoord(pos: Position): Coord =
+  def indexCoord(n: Int): Coord = new Coord(n + 1)
+
+  def pos2coord(pos: Position): Coord =
     if (pos.exists) new Coord(-(pos.point + 1))
     else NoCoord
 

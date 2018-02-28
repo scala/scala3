@@ -71,9 +71,8 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
   trait CodegenCore {
 
     // assert(owner ne null); assert(owner ne NoSymbol)
-    def freshSym(pos: Position, tp: Type = NoType, unique: UniqueNameKind = PatMatStdBinderName, owner: Symbol = ctx.owner) = {
-      ctx.newSymbol(owner, unique.fresh(), Flags.Synthetic | Flags.Case, tp, coord = pos)
-    }
+    def freshSym(pos: Position, tp: Type = NoType, unique: UniqueNameKind = PatMatStdBinderName, owner: Symbol = ctx.owner) =
+      ctx.newSymbol(owner, unique.fresh(), Flags.Synthetic | Flags.Case, tp, coord = pos.toCoord)
 
     def newSynthCaseLabel(unique: UniqueNameKind, tpe: Type, owner: Symbol = ctx.owner) =
       ctx.newSymbol(owner, unique.fresh(), Flags.Label | Flags.Synthetic | Flags.Method, tpe).asTerm

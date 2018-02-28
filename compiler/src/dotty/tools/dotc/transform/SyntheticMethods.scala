@@ -160,7 +160,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
      *  If `C` is a value class the initial `eq` test is omitted.
      */
     def equalsBody(that: Tree)(implicit ctx: Context): Tree = {
-      val thatAsClazz = ctx.newSymbol(ctx.owner, nme.x_0, Synthetic, clazzType, coord = ctx.owner.pos) // x$0
+      val thatAsClazz = ctx.newSymbol(ctx.owner, nme.x_0, Synthetic, clazzType, coord = ctx.owner.coord) // x$0
       def wildcardAscription(tp: Type) = Typed(Underscore(tp), TypeTree(tp))
       val pattern = Bind(thatAsClazz, wildcardAscription(clazzType)) // x$0 @ (_: C)
       val comparisons = accessors map { accessor =>
@@ -215,7 +215,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
     def caseHashCodeBody(implicit ctx: Context): Tree = {
       val seed = clazz.fullName.toString.hashCode
       if (accessors.nonEmpty) {
-        val acc = ctx.newSymbol(ctx.owner, "acc".toTermName, Mutable | Synthetic, defn.IntType, coord = ctx.owner.pos)
+        val acc = ctx.newSymbol(ctx.owner, "acc".toTermName, Mutable | Synthetic, defn.IntType, coord = ctx.owner.coord)
         val accDef = ValDef(acc, Literal(Constant(seed)))
         val mixes = for (accessor <- accessors) yield
           Assign(ref(acc), ref(defn.staticsMethod("mix".toTermName)).appliedTo(ref(acc), hashImpl(accessor)))

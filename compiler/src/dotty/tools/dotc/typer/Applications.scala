@@ -950,7 +950,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             fullyDefinedType(unapplyArgType, "pattern selector", tree.pos)
             selType
           } else if (isSubTypeOfParent(unapplyArgType, selType)(ctx.addMode(Mode.GADTflexible))) {
-            val patternBound = maximizeType(unapplyArgType, tree.pos, fromScala2x)
+            val patternBound = maximizeType(unapplyArgType, tree.coord, fromScala2x)
             if (patternBound.nonEmpty) unapplyFn = addBinders(unapplyFn, patternBound)
             unapp.println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
             unapplyArgType

@@ -88,7 +88,7 @@ class TryCatchPatterns extends MiniPhase {
     else {
       val exName = ExceptionBinderName.fresh()
       val fallbackSelector =
-        ctx.newSymbol(ctx.owner, exName, Flags.Synthetic | Flags.Case, defn.ThrowableType, coord = pos)
+        ctx.newSymbol(ctx.owner, exName, Flags.Synthetic | Flags.Case, defn.ThrowableType, coord = pos.toCoord)
       val sel = Ident(fallbackSelector.termRef).withPos(pos)
       val rethrow = CaseDef(EmptyTree, EmptyTree, Throw(ref(fallbackSelector)))
       Some(CaseDef(
