@@ -78,7 +78,7 @@ augment List[type T] {
 ```
 
 The `type T` argument indicates that the augment applies to `List[T]`s for any type `T`.
-We also say that `type T` introduces `T` as a variable in the type pattern `List[type T]`.
+We also say that `type T` introduces `T` as a _variable_ in the type pattern `List[type T]`.
 Type variables may appear anywhere in a type pattern. Example:
 
 ```scala

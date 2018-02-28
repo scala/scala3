@@ -19,13 +19,13 @@ object augments {
     def area = this.radius * this.radius * math.Pi
   }
 
-// Generic trait implementations
+// Generic augmentations
 
   augment List[type T] {
     def second = this.tail.head
   }
 
-// Specific trait implementations
+// Specific augmentations
 
   augment List[Int] {
     def maxx = (0 /: this)(_ `max` _)
