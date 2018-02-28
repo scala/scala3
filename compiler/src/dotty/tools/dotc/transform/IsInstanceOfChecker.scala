@@ -47,7 +47,7 @@ object Checkable {
    *
    *  1. if `P` is a singleton type, TRUE
    *  2. if `P` is WildcardType, TRUE
-   *  3. if `P` refers to an abstract type member or type parameter, FALSE
+   *  3. if `P` refers to an abstract type member or type parameter, `X <:< P`
    *  4. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
    *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
@@ -88,19 +88,20 @@ object Checkable {
     }
 
     val res = replaceBinderMap.apply(P) match {
+      case _ if isAbstract      => X <:< P
       case _: SingletonType     => true
       case WildcardType         => true
       case defn.ArrayOf(tpT)    =>
-        X match {
+        X.widen match {
           case defn.ArrayOf(tpE)   => checkable(tpE, tpT)
           case _                   => checkable(defn.AnyType, tpT)
         }
-      case tpe: AppliedType     => !isAbstract && isClassDetermined(tpe)
+      case tpe: AppliedType     => isClassDetermined(tpe)
       case AndType(tp1, tp2)    => checkable(X, tp1) && checkable(X, tp2)
       case OrType(tp1, tp2)     => checkable(X, tp1) && checkable(X, tp2)
       case AnnotatedType(t, an) => checkable(X, t)
       case _: RefinedType       => false
-      case _                    => !isAbstract
+      case _                    => true
     }
 
     debug.println(i"checking  ${X.show} isInstanceOf ${P} = $res")
