@@ -58,9 +58,7 @@ object Checkable {
    *  8. otherwise, TRUE
    */
   def checkable(X: Type, P: Type)(implicit ctx: Context): Boolean = {
-    def Psym = P.dealias.typeSymbol
-
-    def isAbstract = !Psym.isClass
+    def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
 
     def replaceBinderMap(implicit ctx: Context) = new TypeMap {
       def apply(tp: Type) = tp match {
@@ -72,37 +70,39 @@ object Checkable {
       }
     }
 
-    def isClassDetermined(tpe: AppliedType)(implicit ctx: Context) = {
-      val AppliedType(tycon, _) = tpe
+    def isClassDetermined(X: Type, P: AppliedType)(implicit ctx: Context) = {
+      val AppliedType(tycon, _) = P
       val tvars = tycon.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
       val P1 = tycon.appliedTo(tvars)
 
       debug.println("P1 : " + P1.show)
-      debug.println("X : " + X.widen)
+      debug.println("X : " + X.show)
 
-      !(P1 <:< X.widen) || {
-        val res  = isFullyDefined(P1, ForceDegree.noBottom) && P1 <:< tpe
+      !(P1 <:< X) || {
+        val res  = isFullyDefined(P1, ForceDegree.noBottom) && P1 <:< P
         debug.println("P1 <:< P = " + res)
         res
       }
     }
 
-    val res = replaceBinderMap.apply(P) match {
-      case _ if isAbstract      => X <:< P
+    def recur(X: Type, P: Type): Boolean = P match {
       case _: SingletonType     => true
       case WildcardType         => true
+      case _ if isAbstract(P)   => X <:< P
       case defn.ArrayOf(tpT)    =>
-        X.widen match {
-          case defn.ArrayOf(tpE)   => checkable(tpE, tpT)
-          case _                   => checkable(defn.AnyType, tpT)
+        X match {
+          case defn.ArrayOf(tpE)   => recur(tpE, tpT)
+          case _                   => recur(defn.AnyType, tpT)
         }
-      case tpe: AppliedType     => isClassDetermined(tpe)
-      case AndType(tp1, tp2)    => checkable(X, tp1) && checkable(X, tp2)
-      case OrType(tp1, tp2)     => checkable(X, tp1) && checkable(X, tp2)
-      case AnnotatedType(t, an) => checkable(X, t)
+      case tpe: AppliedType     => isClassDetermined(X, tpe)
+      case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
+      case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
+      case AnnotatedType(t, an) => recur(X, t)
       case _: RefinedType       => false
       case _                    => true
     }
+
+    val res = recur(X.widen, replaceBinderMap.apply(P))
 
     debug.println(i"checking  ${X.show} isInstanceOf ${P} = $res")
 
