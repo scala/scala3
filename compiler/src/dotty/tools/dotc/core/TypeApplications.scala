@@ -154,10 +154,11 @@ object TypeApplications {
   }
 }
 
-import TypeApplications._
-
 /** A decorator that provides methods for modeling type application */
-class TypeApplications(val self: Type) extends AnyVal {
+trait TypeApplications extends Any {
+  def self: Type
+
+  import TypeApplications._
 
   /** The type parameters of this type are:
    *  For a ClassInfo type, the type parameters of its class.

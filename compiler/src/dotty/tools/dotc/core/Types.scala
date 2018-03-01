@@ -4560,12 +4560,12 @@ object Types {
   }
 
   // ----- Decorator implicits --------------------------------------------
-
-  implicit def decorateTypeApplications(tpe: Type): TypeApplications = new TypeApplications(tpe)
+  implicit class TypeApplicationsypyp(val self: Type) extends AnyVal with TypeApplications
 
   implicit class typeListDeco(val tps1: List[Type]) extends AnyVal {
     @tailrec def stableHash: Boolean =
       tps1.isEmpty || tps1.head.stableHash && tps1.tail.stableHash
+
     @tailrec def equalElements(tps2: List[Type], bs: BinderPairs): Boolean =
       (tps1 `eq` tps2) || {
         if (tps1.isEmpty) tps2.isEmpty
