@@ -16,10 +16,7 @@ object Splicer {
    */
   def splice(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
-    case tree: RefTree => reflectiveSplice(tree)
-    case tree: Apply => reflectiveSplice(tree)
-    case tree: Inlined => reflectiveSplice(tree)
-    case tree: Block => reflectiveSplice(tree)
+    case _ => reflectiveSplice(tree)
   }
 
   /** Splice the Tree for a Quoted expression which is constructed via a reflective call to the given method */

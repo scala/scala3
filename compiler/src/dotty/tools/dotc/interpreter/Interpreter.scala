@@ -63,17 +63,13 @@ class Interpreter(implicit ctx: Context) {
    *  If some error is encountered while interpreting a ctx.error is emitted and a StopInterpretation is thrown.
    */
   private def interpretTreeImpl(tree: Tree, env: Env): Object = {
-    ctx.debuglog(
-      s"""Interpreting:
-        |${tree.show}
-        |$env
-      """.stripMargin)
+    // println(s"Interpreting:\n${tree.show}\n$env\n")
 
     implicit val pos: Position = tree.pos
 
     tree match {
       case Quoted(quotedTree) =>
-        if (tree.isTerm) new scala.quoted.Exprs.TreeExpr(quotedTree)
+        if (quotedTree.isTerm) new scala.quoted.Exprs.TreeExpr(quotedTree)
         else new scala.quoted.Types.TreeType(quotedTree)
 
       case Literal(Constant(c)) => c.asInstanceOf[Object]
@@ -113,6 +109,9 @@ class Interpreter(implicit ctx: Context) {
       case Inlined(_, bindings, expansion) =>
         val env2 = bindings.foldLeft(env)((acc, x) => interpretStat(x, acc))
         interpretTreeImpl(expansion, env2)
+
+      case TypeApply(fn, _) =>
+        interpretTreeImpl(fn, env)
 
       case Typed(expr, _) =>
         interpretTreeImpl(expr, env)
