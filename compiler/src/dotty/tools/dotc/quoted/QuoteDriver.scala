@@ -44,7 +44,8 @@ class QuoteDriver extends Driver {
     def show(tree: Tree, ctx: Context): String = {
       val printer = new DecompilerPrinter(ctx)
       val pageWidth = ctx.settings.pageWidth.value(ctx)
-      printer.toText(tree).mkString(pageWidth, false)
+      val tree1 = (new TreeCleaner).transform(tree)(ctx)
+      printer.toText(tree1).mkString(pageWidth, false)
     }
     withTree(expr, show, settings)
   }
