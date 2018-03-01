@@ -71,8 +71,29 @@ object Option {
 You can visit our website for more information about [enumerations](/docs/reference/enums/enums.html)
 and how we can use them to model [Algebraic Data Types](/docs/reference/enums/adts.html).
 
-### Unused Parameters [#3342](https://github.com/lampepfl/dotty/pull/3342)
-TODO
+### Unused Parameters [#3342](https://github.com/lampepfl/dotty/pull/3342) and remove Phantom types [#3410](https://github.com/lampepfl/dotty/pull/3410)
+The keyword `unsued` can be placed on parameters, `val` and `def` to enforce that no reference to
+those terms is ever used (recursively). As they are never used, they can safely be removed during compilation.
+These have similar semantics as _phantom types_ but with the added advantage that any type can be an unused parameter. They can be used to add implicit type constraints that are only relevant at compilation time.
+
+```scala
+// A function that requires an implicit evidence of type X =:= Y but never uses it.
+// The parameter will be removed and the argument will not be evaluated.
+def apply(implicit unused ev: X =:= Y) =
+  foo(ev) // `ev` can be an argument to foo as foo will also never use it
+def foo(unused x:  X =:= Y) = ()
+```
+
+The previous code will be transformed to the following:
+
+```scala
+def apply() = // unused parameter will be removed
+  foo() // foo is called without the unused parameter
+def foo() = () // unused parameter will be removed
+```
+
+[Documentation](/docs/reference/unused-parameters.html)
+
 
 ## Trying out Dotty
 ### Scastie
