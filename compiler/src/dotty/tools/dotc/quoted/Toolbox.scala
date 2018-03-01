@@ -53,7 +53,7 @@ object Toolbox {
 
   }
 
-  class Settings[T] private (val outDir: Option[String], val compilerArgs: List[String])
+  class Settings[T] private (val outDir: Option[String], val rawTree: Boolean, val compilerArgs: List[String])
 
   object Settings {
 
@@ -69,19 +69,22 @@ object Toolbox {
         ): Settings[Run] = {
       var compilerArgs1 = compilerArgs
       if (optimise) compilerArgs1 = "-optimise" :: compilerArgs1
-      new Settings(outDir, compilerArgs1)
+      new Settings(outDir, false, compilerArgs1)
     }
 
     /** Quote show settings
+     *  @param color Print output with colors
+     *  @param rawTree Do not remove quote tree artifacts
      *  @param compilerArgs Compiler arguments. Use only if you know what you are doing.
      */
     def show(
         color: Boolean = false,
+        rawTree: Boolean = false,
         compilerArgs: List[String] = Nil
         ): Settings[Show] = {
       var compilerArgs1 = compilerArgs
       compilerArgs1 = s"-color:${if (color) "always" else "never"}" :: compilerArgs1
-      new Settings(None, compilerArgs1)
+      new Settings(None, rawTree, compilerArgs1)
     }
 
   }
