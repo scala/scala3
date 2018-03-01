@@ -503,12 +503,10 @@ object Checking {
           case param :: params =>
             if (param.is(Mutable))
               ctx.error(ValueClassParameterMayNotBeAVar(clazz, param), param.pos)
-            if (param.info.isPhantom)
-              ctx.error("First parameter of value class must not be phantom", param.pos)
-            else if (param.is(Unused))
-              ctx.error("First parameter of value class cannot be `unused`", param.pos)
+            if (param.is(Unused))
+              ctx.error("value class first parameter cannot be `unused`", param.pos)
             else {
-              for (p <- params if !(p.info.isPhantom || p.is(Unused)))
+              for (p <- params if !p.is(Unused))
                 ctx.error("value class can only have one non `unused` parameter", p.pos)
             }
           case Nil =>

@@ -107,7 +107,6 @@ import Decorators._
       if (sym eq defn.NothingClass) Throw(Literal(Constant(null)))
       else if (sym eq defn.NullClass) Literal(Constant(null))
       else if (sym eq defn.BoxedUnitClass) ref(defn.BoxedUnit_UNIT)
-      else if (sym eq defn.ErasedPhantomClass) ref(defn.ErasedPhantom_UNIT)
       else {
         assert(false, sym + " has no erased bottom tree")
         EmptyTree
@@ -120,11 +119,8 @@ import Decorators._
       def adaptToField(tree: Tree): Tree =
         if (tree.isEmpty) tree else tree.ensureConforms(field.info.widen)
 
-      def isErasableBottomField(cls: Symbol): Boolean = {
-        // TODO: For Scala.js, return false if this field is in a js.Object unless it is an ErasedPhantomClass.
-        !field.isVolatile &&
-        ((cls eq defn.NothingClass) || (cls eq defn.NullClass) || (cls eq defn.BoxedUnitClass) || (cls eq defn.ErasedPhantomClass))
-      }
+      def isErasableBottomField(cls: Symbol): Boolean =
+        !field.isVolatile && ((cls eq defn.NothingClass) || (cls eq defn.NullClass) || (cls eq defn.BoxedUnitClass))
 
       if (sym.isGetter) {
         var rhs = tree.rhs.changeOwnerAfter(sym, field, thisPhase)

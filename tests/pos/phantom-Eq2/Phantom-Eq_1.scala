@@ -1,20 +1,21 @@
 
 /* This is a version of ../pos/phantomEq.scala that tests phantom with separate compilation */
-object EqUtil extends Phantom {
+object EqUtil {
 
-  type PhantomEq[-L, -R] <: this.Any
+  final class PhantomEq[-L, -R] private[EqUtil]()
   type PhantomEqEq[T] = PhantomEq[T, T]
 
   implicit class EqualsDeco[T](val x: T) extends AnyVal {
-    def ===[U] (y: U)(implicit ce: PhantomEq[T, U]) = x.equals(y)
+    def ===[U] (y: U)(implicit unused ce: PhantomEq[T, U]) = x.equals(y)
   }
 
-  implicit def eqString: PhantomEqEq[String] = assume
-  implicit def eqInt: PhantomEqEq[Int]       = assume
-  implicit def eqDouble: PhantomEqEq[Double] = assume
+  implicit unused def eqString: PhantomEqEq[String] = new PhantomEq[String, String]
+  implicit unused def eqInt: PhantomEqEq[Int]       = new PhantomEq[Int, Int]
+  implicit unused def eqDouble: PhantomEqEq[Double] = new PhantomEq[Double, Double]
 
-  implicit def eqByteNum: PhantomEq[Byte, Number] = assume
-  implicit def eqNumByte: PhantomEq[Number, Byte] = assume
+  implicit unused def eqByteNum: PhantomEq[Byte, Number] = new PhantomEq[Byte, Number]
+  implicit unused def eqNumByte: PhantomEq[Number, Byte] = new PhantomEq[Number, Byte]
 
-  implicit def eqSeq[T, U](implicit eq: PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] = assume
+  implicit unused def eqSeq[T, U](implicit unused eq: PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] =
+    new PhantomEq[Seq[T], Seq[U]]
 }

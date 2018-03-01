@@ -212,8 +212,6 @@ object GenericSignatures {
             else
               jsig(unboxedSeen, toplevel, primitiveOK)
           }
-          else if (tp.isPhantom)
-            jsig(defn.ErasedPhantomType)
           else if (sym.isClass)
             classSig
           else
@@ -242,7 +240,7 @@ object GenericSignatures {
           // unused method parameters do not make it to the bytecode.
           def effectiveParamInfoss(t: Type)(implicit ctx: Context): List[List[Type]] = t match {
             case t: MethodType if t.isUnusedMethod => effectiveParamInfoss(t.resType)
-            case t: MethodType => t.paramInfos.filterNot(_.isPhantom) :: effectiveParamInfoss(t.resType)
+            case t: MethodType => t.paramInfos :: effectiveParamInfoss(t.resType)
             case _ => Nil
           }
           val params = effectiveParamInfoss(mtpe).flatten

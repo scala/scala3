@@ -1268,8 +1268,8 @@ class Typer extends Namer
     val lo1 = typed(lo)
     val hi1 = typed(hi)
 
-    val lo2 = if (lo1.isEmpty) typed(untpd.TypeTree(hi1.typeOpt.bottomType)) else lo1
-    val hi2 = if (hi1.isEmpty) typed(untpd.TypeTree(lo1.typeOpt.topType)) else hi1
+    val lo2 = if (lo1.isEmpty) typed(untpd.TypeTree(defn.NothingType)) else lo1
+    val hi2 = if (hi1.isEmpty) typed(untpd.TypeTree(defn.AnyType)) else hi1
 
     val tree1 = assignType(cpy.TypeBoundsTree(tree)(lo2, hi2), lo2, hi2)
     if (ctx.mode.is(Mode.Pattern)) {
@@ -1519,10 +1519,6 @@ class Typer extends Namer
         ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", isScala2Feature = true,
           cls, isRequired, cdef.pos)
       }
-
-      // Check that phantom lattices are defined in a static object
-      if (cls.classParents.exists(_.typeSymbol eq defn.PhantomClass) && !cls.isStaticOwner)
-        ctx.error("only static objects can extend scala.Phantom", cdef.pos)
 
       // check value class constraints
       checkDerivedValueClass(cls, body1)

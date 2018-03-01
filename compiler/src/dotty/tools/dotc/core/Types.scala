@@ -193,57 +193,16 @@ object Types {
         }
       }
 
-    /** Returns true if the type is a phantom type
-     *   - true if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
-     *   - false otherwise
-     */
-    final def isPhantom(implicit ctx: Context): Boolean = phantomLatticeType.exists
-
-    /** Returns the top type of the lattice
-     *   - XYX.Any if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
-     *   - scala.Any otherwise
-     */
-    final def topType(implicit ctx: Context): Type = {
-      val lattice = phantomLatticeType
-      if (lattice.exists) lattice.select(tpnme.Any)
-      else defn.AnyType
-    }
-
-    /** Returns the bottom type of the lattice
-     *   - XYZ.Nothing if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
-     *   - scala.Nothing otherwise
-     */
-    final def bottomType(implicit ctx: Context): Type = {
-      val lattice = phantomLatticeType
-      if (lattice.exists) lattice.select(tpnme.Nothing)
-      else defn.NothingType
-    }
-
     /** Is this type exactly Nothing (no vars, aliases, refinements etc allowed)? */
     def isBottomType(implicit ctx: Context): Boolean = this match {
-      case tp: TypeRef =>
-        val sym = tp.symbol
-        (sym eq defn.NothingClass) || (sym eq defn.Phantom_NothingClass)
+      case tp: TypeRef => tp.symbol eq defn.NothingClass
       case _ => false
     }
 
       /** Is this type exactly Any (no vars, aliases, refinements etc allowed)? */
     def isTopType(implicit ctx: Context): Boolean = this match {
-      case tp: TypeRef =>
-        val sym = tp.symbol
-        (sym eq defn.AnyClass) || (sym eq defn.Phantom_AnyClass)
+      case tp: TypeRef => tp.symbol eq defn.AnyClass
       case _ => false
-    }
-
-    /** Returns the type of the phantom lattice (i.e. the prefix of the phantom type)
-      *   - XYZ if XYZ extends scala.Phantom and this type is upper bounded XYZ.Any
-      *   - NoType otherwise
-      */
-    private final def phantomLatticeType(implicit ctx: Context): Type = widen match {
-      case tp: ClassInfo if defn.isPhantomTerminalClass(tp.classSymbol) => tp.prefix
-      case tp: TypeProxy => tp.underlying.phantomLatticeType
-      case tp: AndOrType => tp.tp1.phantomLatticeType
-      case _ => NoType
     }
 
     /** Is this type a (possibly aliased) singleton type? */
@@ -2860,7 +2819,7 @@ object Types {
         val dropDependencies = new ApproximatingTypeMap {
           def apply(tp: Type) = tp match {
             case tp @ TermParamRef(thisLambdaType, _) =>
-              range(tp.bottomType, atVariance(1)(apply(tp.underlying)))
+              range(defn.NothingType, atVariance(1)(apply(tp.underlying)))
             case _ => mapOver(tp)
           }
         }
@@ -4177,7 +4136,7 @@ object Types {
             case Range(infoLo: TypeBounds, infoHi: TypeBounds) =>
               assert(variance == 0)
               if (!infoLo.isAlias && !infoHi.isAlias) propagate(infoLo, infoHi)
-              else range(tp.bottomType, tp.parent)
+              else range(defn.NothingType, tp.parent)
             case Range(infoLo, infoHi) =>
               propagate(infoLo, infoHi)
             case _ =>
@@ -4209,7 +4168,7 @@ object Types {
       else tp.derivedTypeBounds(lo, hi)
 
     override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type) =
-      if (isRange(thistp) || isRange(supertp)) range(thistp.bottomType, thistp.topType)
+      if (isRange(thistp) || isRange(supertp)) range(defn.NothingType, defn.AnyType)
       else tp.derivedSuperType(thistp, supertp)
 
     override protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
@@ -4246,7 +4205,7 @@ object Types {
               if (distributeArgs(args, tp.typeParams))
                 range(tp.derivedAppliedType(tycon, loBuf.toList),
                       tp.derivedAppliedType(tycon, hiBuf.toList))
-              else range(tp.bottomType, tp.topType)
+              else range(defn.NothingType, defn.AnyType)
                 // TODO: can we give a better bound than `topType`?
             }
           }
