@@ -138,7 +138,7 @@ object Formatting {
       seen.record(super.ParamRefNameString(param), param)
 
     override def toTextRef(tp: SingletonType): Text = tp match {
-      case tp: SkolemType => seen.record(tp.repr.toString, tp)
+      case tp: SkolemType => seen.record(tp.repr.toString, tp).toText
       case _ => super.toTextRef(tp)
     }
   }

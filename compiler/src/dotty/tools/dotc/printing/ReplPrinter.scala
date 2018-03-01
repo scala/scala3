@@ -22,8 +22,8 @@ class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
     ": " ~ toText(tp.resType)
 
   override def toText(sym: Symbol): Text =
-    if (sym.name.isReplAssignName) nameString(sym.name)
-    else keyString(sym) ~~ nameString(sym.name.stripModuleClassSuffix)
+    if (sym.name.isReplAssignName) nameString(sym.name).toText
+    else keyString(sym).toText ~~ nameString(sym.name.stripModuleClassSuffix)
 
   override def toText(const: Constant): Text =
     if (const.tag == Constants.StringTag) Str('"' + const.value.toString + '"')
@@ -33,8 +33,8 @@ class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
     toText(sym) ~ {
       if (sym.is(Method)) toText(sym.info)
       else if (sym.isType && sym.info.isInstanceOf[TypeAlias]) toText(sym.info)
-      else if (sym.isType || sym.isClass) ""
-      else ":" ~~ toText(sym.info)
+      else if (sym.isType || sym.isClass) "".toText
+      else ":".toText ~~ toText(sym.info)
     }
   }
 }
