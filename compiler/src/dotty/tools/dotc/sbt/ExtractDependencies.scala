@@ -89,7 +89,7 @@ class ExtractDependencies extends Phase {
           case (rawClassName, usedNames) =>
             val className = rawClassName
             usedNames.defaultNames.foreach { rawUsedName =>
-              val useName = rawUsedName.stripModuleClassSuffix.mangledString
+              val useName = rawUsedName.toString
               val useScopes =
                 usedNames.scopedNames.get(rawUsedName) match {
                   case None => EnumSet.of(UseScope.Default)
@@ -179,7 +179,7 @@ class ExtractDependencies extends Phase {
 
 object ExtractDependencies {
   def classNameAsString(sym: Symbol)(implicit ctx: Context): String =
-    sym.fullName.stripModuleClassSuffix.mangledString // fullName in scalac strips module class suffix
+    sym.fullName.toString
 
   def isLocal(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.ownersIterator.exists(_.isTerm)
@@ -294,7 +294,7 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
   private class PatMatDependencyTraverser(ctx0: Context) extends ExtractTypesCollector(ctx0) {
     override protected def addDependency(symbol: Symbol)(implicit ctx: Context): Unit = {
       if (!ignoreDependency(symbol) && symbol.is(Sealed)) {
-        val encName = nonLocalEnclosingClass(ctx.owner).fullName.stripModuleClassSuffix.mangledString
+        val encName = nonLocalEnclosingClass(ctx.owner).fullName.toString
         val nameUsed = _usedNames.getOrElseUpdate(encName, new NameUsedInClass)
 
         nameUsed.defaultNames += symbol.name
