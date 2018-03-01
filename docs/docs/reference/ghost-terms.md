@@ -183,21 +183,21 @@ Note that there is no subtype relation between `ghost T => R` and `T => R` (or `
 
 4) Eta expansion
 
-if `def f(ghost x: T): U` then `f: (ghost T) => U`.
+If `def f(ghost x: T): U` then `f: (ghost T) => U`.
 
 5) Erasure Semantics
 
 * All `ghost` paramters are removed from the function
-* All argument to `ghost` paramters are not passed to the function
+* All argument for `ghost` parameters are not passed to the function
 * All `ghost` definitions are removed
 * All `(ghost T1, T2, ..., TN) => R` and `(implicit ghost T1, T2, ..., TN) => R` become `() => R`
 
 6) Overloading
 
-Method with `ghost` parameters will follow the normal overloading constraints after erasure.
+Methods with `ghost` parameters will follow the normal overloading constraints after erasure.
 
 7) Overriding
 
 * Member definitions overidding each other must both be `ghost` or not be `ghost`
-* `def foo(x: T): U` cannot be overriden by `def foo(ghost x: T): U` an viceversa
+* `def foo(x: T): U` cannot be overriden by `def foo(ghost x: T): U` and vice versa
 
