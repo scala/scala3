@@ -828,8 +828,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol =
       ctx.newSymbol(sym, name.toTermName, FlagSet(flags), tpe, NoSymbol, pos.toCoord)
 
-    def getter(clz: Symbol): Symbol = decorateSymbol(sym).getter
-    def setter(clz: Symbol): Symbol = decorateSymbol(sym).setter
+    def getter(clz: Symbol): Symbol = new SymUtilsOps(sym).getter
+    def setter(clz: Symbol): Symbol = new SymUtilsOps(sym).setter
 
     def moduleSuffix: String = "" // todo: validate that names already have $ suffix
     def outputDirectory: AbstractFile = DottyBackendInterface.this.outputDirectory
@@ -842,7 +842,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
      * Redundant interfaces are removed unless there is a super call to them.
      */
     def superInterfaces: List[Symbol] = {
-      val directlyInheritedTraits = decorateSymbol(sym).directlyInheritedTraits
+      val directlyInheritedTraits = new SymUtilsOps(sym).directlyInheritedTraits
       val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
       val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.symbol.asClass.baseClasses.drop(1)).toSet
       val superCalls = superCallsMap.getOrElse(sym, Set.empty)

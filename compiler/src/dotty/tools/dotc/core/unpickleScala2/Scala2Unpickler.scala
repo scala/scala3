@@ -575,9 +575,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
             if (denot.isConstructor) addConstructorTypeParams(denot)
             if (atEnd) {
-              assert(!denot.isSuperAccessor, denot)
+              assert(!denot.symbol.isSuperAccessor, denot)
             } else {
-              assert(denot.is(ParamAccessor) || denot.isSuperAccessor, denot)
+              assert(denot.is(ParamAccessor) || denot.symbol.isSuperAccessor, denot)
               def disambiguate(alt: Symbol) = { // !!! DEBUG
                 trace.onDebug(s"disambiguating ${denot.info} =:= ${denot.owner.thisType.memberInfo(alt)} ${denot.owner}") {
                   denot.info matches denot.owner.thisType.memberInfo(alt)
