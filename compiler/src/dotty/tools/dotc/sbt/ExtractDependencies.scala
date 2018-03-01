@@ -179,7 +179,7 @@ class ExtractDependencies extends Phase {
 
 object ExtractDependencies {
   def classNameAsString(sym: Symbol)(implicit ctx: Context): String =
-    sym.fullName.toString
+    sym.fullName.stripModuleClassSuffix.toString
 
   def isLocal(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.ownersIterator.exists(_.isTerm)
@@ -269,7 +269,7 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
           _topLevelDependencies += ClassDependency(currentClass, tlClass)
         }
       }
-      addUsedName(nonLocalEnclosingClass(ctx.owner), sym.name)
+      addUsedName(nonLocalEnclosingClass(ctx.owner), sym.name.stripModuleClassSuffix)
     }
 
   private def nonLocalEnclosingClass(sym: Symbol)(implicit ctx: Context): Symbol =
@@ -294,7 +294,7 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
   private class PatMatDependencyTraverser(ctx0: Context) extends ExtractTypesCollector(ctx0) {
     override protected def addDependency(symbol: Symbol)(implicit ctx: Context): Unit = {
       if (!ignoreDependency(symbol) && symbol.is(Sealed)) {
-        val encName = nonLocalEnclosingClass(ctx.owner).fullName.toString
+        val encName = nonLocalEnclosingClass(ctx.owner).fullName.stripModuleClassSuffix.toString
         val nameUsed = _usedNames.getOrElseUpdate(encName, new NameUsedInClass)
 
         nameUsed.defaultNames += symbol.name

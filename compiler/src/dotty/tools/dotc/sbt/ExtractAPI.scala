@@ -207,7 +207,8 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
     val selfType = apiType(sym.givenSelfType)
 
-    val name = sym.fullName.toString
+    val name = sym.fullName.stripModuleClassSuffix.toString
+      // We strip module class suffix. Zinc relies on a class and its companion having the same name
 
     val tparams = sym.typeParams.map(apiTypeParameter).toArray
 
@@ -241,7 +242,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
     val javaPlatform = ctx.platform.asInstanceOf[JavaPlatform]
     if (sym.isStatic && defType == DefinitionType.Module && javaPlatform.hasJavaMainMethod(sym)) {
-      _mainClasses += sym.fullName.stripModuleClassSuffix.toString // required for sbt to find the static main method
+      _mainClasses += name
     }
 
     api.ClassLikeDef.of(name, acc, modifiers, anns, tparams, defType)
