@@ -152,6 +152,5 @@ to make sure that our regression suite includes your library.
 [@biboudis]: https://github.com/biboudis
 [@allanrenucci]: https://github.com/allanrenucci
 [@Blaisorblade]: https://github.com/Blaisorblade
-[@Blaisorblade]: https://github.com/Blaisorblade
 [@Duhemm]: https://github.com/duhemm
 
