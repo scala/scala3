@@ -45,14 +45,14 @@ object Checkable {
    *
    *  Replace `T @unchecked` and pattern binder types (e.g., `_$1`) in P with WildcardType, then check:
    *
-   *  1. if `P` is a singleton type, TRUE
-   *  2. if `P` is WildcardType, TRUE
+   *  1. if `X <:< P`, TRUE
+   *  2. if `P` is a singleton type, TRUE
    *  3. if `P` refers to an abstract type member or type parameter, `X <:< P`
    *  4. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
    *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
-   *     (b) `pre.F[Xs] <:< X` with `Xs` instantiated as `Es`
-   *     (c) `pre.F[Es] <:< P`
+   *     (b) constrain `Xs` with `pre.F[Xs] <:< X` (may fail)
+   *     (c) instantiate Xs and check `pre.F[Xs] <:< P`
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, FALSE
    *  8. otherwise, TRUE
@@ -76,33 +76,34 @@ object Checkable {
       val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
       val P1 = tycon.appliedTo(tvars)
 
+      debug.println("P : " + P.show)
       debug.println("P1 : " + P1.show)
       debug.println("X : " + X.show)
 
-      (P1 <:< X) && {
-        val res  = isFullyDefined(P1, ForceDegree.noBottom) && P1 <:< P
-        debug.println("P1 <:< P = " + res)
-        res
-      }
+      P1 <:< X  // may fail, ignore
+
+      val res  = isFullyDefined(P1, ForceDegree.noBottom) && P1 <:< P
+      debug.println("P1 : " + P1)
+      debug.println("P1 <:< P = " + res)
+      res
     }
 
-    def recur(X: Type, P: Type): Boolean = P match {
+    def recur(X: Type, P: Type): Boolean = (X <:< P) || (P match {
       case _: SingletonType     => true
-      case WildcardType         => true
       case _: TypeProxy
-      if isAbstract(P)          => X <:< P
+      if isAbstract(P)          => false
       case defn.ArrayOf(tpT)    =>
         X match {
           case defn.ArrayOf(tpE)   => recur(tpE, tpT)
           case _                   => recur(defn.AnyType, tpT)
         }
-      case tpe: AppliedType     => isClassDetermined(X, tpe)
+      case tpe: AppliedType     => isClassDetermined(X, tpe)(ctx.fresh.setNewTyperState())
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
       case AnnotatedType(t, an) => recur(X, t)
       case _: RefinedType       => false
       case _                    => true
-    }
+    })
 
     val res = recur(X.widen, replaceBinderMap.apply(P))
 
