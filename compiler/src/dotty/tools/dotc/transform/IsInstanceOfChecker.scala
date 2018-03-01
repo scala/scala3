@@ -4,7 +4,7 @@ package transform
 import util.Positions._
 import MegaPhase.MiniPhase
 import core._
-import Contexts.Context, Types._, Decorators._, Symbols._, typer._
+import Contexts.Context, Types._, Decorators._, Symbols._, typer._, ast._
 import TypeUtils._, Flags._
 import config.Printers.{ transforms => debug }
 
@@ -51,8 +51,8 @@ object Checkable {
    *  4. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
    *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
-   *     (b) instantiate `Xs` with the constraint `pre.F[Xs] <:< X`
-   *     (c) `pre.F[Xs] <:< P`
+   *     (b) `pre.F[Xs] <:< X` with `Xs` instantiated as `Es`
+   *     (c) `pre.F[Es] <:< P`
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, FALSE
    *  8. otherwise, TRUE
@@ -72,13 +72,14 @@ object Checkable {
 
     def isClassDetermined(X: Type, P: AppliedType)(implicit ctx: Context) = {
       val AppliedType(tycon, _) = P
-      val tvars = tycon.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
+      val typeLambda = tycon.ensureHK.asInstanceOf[TypeLambda]
+      val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
       val P1 = tycon.appliedTo(tvars)
 
       debug.println("P1 : " + P1.show)
       debug.println("X : " + X.show)
 
-      !(P1 <:< X) || {
+      (P1 <:< X) && {
         val res  = isFullyDefined(P1, ForceDegree.noBottom) && P1 <:< P
         debug.println("P1 <:< P = " + res)
         res
