@@ -313,6 +313,29 @@ object Inferencing {
 
     propagate(accu(SimpleIdentityMap.Empty, tp))
   }
+
+  private def varianceInContext(tvar: TypeVar)(implicit ctx: Context): FlagSet = {
+    object accu extends TypeAccumulator[FlagSet] {
+      def apply(fs: FlagSet, t: Type): FlagSet =
+        if (fs == EmptyFlags) fs
+        else if (t eq tvar)
+          if (variance > 0) fs &~ Contravariant
+          else if (variance < 0) fs &~ Covariant
+          else EmptyFlags
+        else foldOver(fs, t)
+    }
+    val constraint = ctx.typerState.constraint
+    val tparam = tvar.origin
+    (VarianceFlags /: constraint.uninstVars) { (fs, tv) =>
+      if ((tv `eq` tvar) || (fs == EmptyFlags)) fs
+      else {
+        val otherParam = tv.origin
+        val fs1 = if (constraint.isLess(tparam, otherParam)) fs &~ Covariant else fs
+        val fs2 = if (constraint.isLess(otherParam, tparam)) fs1 &~ Contravariant else fs1
+        accu(fs2, constraint.entry(otherParam))
+      }
+    }
+  }
 }
 
 trait Inferencing { this: Typer =>
@@ -389,7 +412,8 @@ trait Inferencing { this: Typer =>
         if (!(vs contains tvar) && qualifies(tvar)) {
           typr.println(s"instantiating non-occurring ${tvar.show} in ${tp.show} / $tp")
           ensureConstrained()
-          tvar.instantiate(fromBelow = tvar.hasLowerBound)
+          tvar.instantiate(
+            fromBelow = tvar.hasLowerBound || !varianceInContext(tvar).is(Covariant))
         }
     }
     if (constraint.uninstVars exists qualifies) interpolate()
