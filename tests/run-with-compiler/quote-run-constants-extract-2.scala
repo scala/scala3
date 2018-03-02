@@ -5,31 +5,9 @@ import dotty.tools.dotc.quoted.Toolbox._
 object Test {
 
   def main(args: Array[String]): Unit = {
-    (3: Expr[Int]) match { case Constant(n) => println(n) }
-    '(4) match { case Constant(n) => println(n) }
-    '("abc") match { case Constant(n) => println(n) }
-    '(null) match { case Constant(n) => println(n) }
-
-    '(new Object) match { case Constant(n) => println(n); case _ => println("OK") }
-
-
     // 2 is a lifted constant
     println(power(2, 3.0).show)
     println(power(2, 3.0).run)
-
-    // n is a lifted constant
-    val n = 2
-    println(power(n, 4.0).show)
-    println(power(n, 4.0).run)
-
-    // n is a constant in a quote
-    println(power('(2), 5.0).show)
-    println(power('(2), 5.0).run)
-
-    // n2 is clearly not a constant
-    val n2 = '{ println("foo"); 2 }
-    println(power(n2, 6.0).show)
-    println(power(n2, 6.0).run)
   }
 
   def power(n: Expr[Int], x: Expr[Double]): Expr[Double] = {
