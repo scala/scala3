@@ -120,7 +120,7 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 Type              ::=  [FunArgMods] FunArgTypes ‘=>’ Type                       Function(ts, t)
                     |  HkTypeParamClause ‘=>’ Type                              TypeLambda(ps, t)
                     |  InfixType
-FunArgMods        ::=  { `implicit` | `unused` }
+FunArgMods        ::=  { `implicit` | `ghost` }
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
                     |  '(' TypedFunParam {',' TypedFunParam } ')'

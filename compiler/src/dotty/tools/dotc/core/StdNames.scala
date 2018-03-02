@@ -36,9 +36,9 @@ object StdNames {
     final val MODULE_INSTANCE_FIELD      = "MODULE$"
 
     final val Function                   = "Function"
-    final val UnusedFunction             = "UnusedFunction"
+    final val GhostFunction              = "GhostFunction"
     final val ImplicitFunction           = "ImplicitFunction"
-    final val UnusedImplicitFunction     = "UnusedImplicitFunction"
+    final val GhostImplicitFunction      = "GhostImplicitFunction"
     final val AbstractFunction           = "AbstractFunction"
     final val Tuple                      = "Tuple"
     final val Product                    = "Product"

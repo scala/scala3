@@ -18,15 +18,15 @@ object EqUtil {
   type PhantomEqEq[T] = PhantomEq[T, T]
 
   implicit class EqualsDeco[T](val x: T) extends AnyVal {
-    def ===[U] (y: U)(implicit unused ce: PhantomEq[T, U]) = x.equals(y)
+    def ===[U] (y: U)(implicit ghost ce: PhantomEq[T, U]) = x.equals(y)
   }
 
-  implicit unused def eqString: PhantomEqEq[String] = ???
-  implicit unused def eqInt: PhantomEqEq[Int]       = ???
-  implicit unused def eqDouble: PhantomEqEq[Double] = ???
+  implicit ghost def eqString: PhantomEqEq[String] = ???
+  implicit ghost def eqInt: PhantomEqEq[Int]       = ???
+  implicit ghost def eqDouble: PhantomEqEq[Double] = ???
 
-  implicit unused def eqByteNum: PhantomEq[Byte, Number] = ???
-  implicit unused def eqNumByte: PhantomEq[Number, Byte] = ???
+  implicit ghost def eqByteNum: PhantomEq[Byte, Number] = ???
+  implicit ghost def eqNumByte: PhantomEq[Number, Byte] = ???
 
-  implicit unused def eqSeq[T, U](implicit unused eq: PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] = ???
+  implicit ghost def eqSeq[T, U](implicit ghost eq: PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] = ???
 }

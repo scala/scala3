@@ -452,7 +452,7 @@ object Erasure {
     }
 
     private def protoArgs(pt: Type, methTp: Type): List[untpd.Tree] = (pt, methTp) match {
-      case (pt: FunProto, methTp: MethodType) if methTp.isUnusedMethod =>
+      case (pt: FunProto, methTp: MethodType) if methTp.isGhostMethod =>
         protoArgs(pt.resType, methTp.resType)
       case (pt: FunProto, methTp: MethodType) =>
         pt.args ++ protoArgs(pt.resType, methTp.resType)
@@ -489,7 +489,7 @@ object Erasure {
           fun1.tpe.widen match {
             case mt: MethodType =>
               val outers = outer.args(fun.asInstanceOf[tpd.Tree]) // can't use fun1 here because its type is already erased
-              val ownArgs = if (mt.paramNames.nonEmpty && !mt.isUnusedMethod) args else Nil
+              val ownArgs = if (mt.paramNames.nonEmpty && !mt.isGhostMethod) args else Nil
               var args0 = outers ::: ownArgs ::: protoArgs(pt, tree.typeOpt)
 
               if (args0.length > MaxImplementedFunctionArity && mt.paramInfos.length == 1) {
@@ -559,7 +559,7 @@ object Erasure {
         vparamss1 = (tpd.ValDef(bunchedParam) :: Nil) :: Nil
         rhs1 = untpd.Block(paramDefs, rhs1)
       }
-      vparamss1 = vparamss1.mapConserve(_.filterConserve(!_.symbol.is(Flags.Unused)))
+      vparamss1 = vparamss1.mapConserve(_.filterConserve(!_.symbol.is(Flags.Ghost)))
       val ddef1 = untpd.cpy.DefDef(ddef)(
         tparams = Nil,
         vparamss = vparamss1,
