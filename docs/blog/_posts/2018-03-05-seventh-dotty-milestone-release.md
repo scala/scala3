@@ -47,7 +47,7 @@ object Option {
      def isDefined = false
   }
 
-  def apply[T(x: T): Option[T] = if (x == null) None else Some(x)
+  def apply[T](x: T): Option[T] = if (x == null) None else Some(x)
 }
 ```
 
@@ -59,7 +59,7 @@ enum Option[+T] {
 
   def isDefined: Boolean = this match {
     case None => false
-    case some => true
+    case Some(_) => true
   }
 }
 
