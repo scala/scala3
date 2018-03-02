@@ -66,11 +66,10 @@ class ReadTastyTreesFromClasses extends FrontEnd {
           clsd.infoOrCompleter match {
             case info: ClassfileLoader =>
               info.load(clsd) // sets cls.treeOrProvider and cls.moduleClass.treeProvider as a side-effect
-              def moduleClass = clsd.owner.info.member(className.moduleClassName).symbol
-              compilationUnit(clsd.classSymbol).orElse(compilationUnit(moduleClass))
             case _ =>
-              alreadyLoaded()
           }
+          def moduleClass = clsd.owner.info.member(className.moduleClassName).symbol
+          compilationUnit(clsd.classSymbol).orElse(compilationUnit(moduleClass))
         case _ =>
           cannotUnpickle(s"no class file was found")
       }

@@ -29,9 +29,7 @@ class FromTastyTests extends ParallelTesting {
     val (step1, step2, step3) = compileTastyInDir("tests/pos", defaultOptions,
       blacklist = Set(
         "macro-deprecate-dont-touch-backquotedidents.scala",
-
-        // Compiles wrong class
-        "simpleClass.scala",
+        "t247.scala",
 
         // Wrong number of arguments
         "i3130b.scala",
@@ -84,6 +82,7 @@ class FromTastyTests extends ParallelTesting {
        blacklist = Set(
 
          "t7223.scala",
+         "t5428.scala",
 
          // Missing position
          "Course-2002-13.scala",

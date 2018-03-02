@@ -1,14 +1,14 @@
 ================================================================================
-out/posTestFromTasty/pos2/simpleClass/foo/B.class
+out/posTestFromTasty/pos2/simpleClass-2/foo/B.class
 --------------------------------------------------------------------------------
 package foo {
-  class B() extends foo.A() {}
+  class B() extends Object() {}
 }
 --------------------------------------------------------------------------------
 ================================================================================
-out/posTestFromTasty/pos2/simpleClass/foo/A.class
+out/posTestFromTasty/pos2/simpleClass-2/foo/A.class
 --------------------------------------------------------------------------------
 package foo {
-  class A() extends Object() {}
+  class A() extends foo.B() {}
 }
 --------------------------------------------------------------------------------
