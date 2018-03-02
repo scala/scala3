@@ -1,0 +1,2 @@
+public <U> int MyGhost$.f1()
+U <: java.lang.Object

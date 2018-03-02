@@ -115,12 +115,12 @@ class FromTastyTests extends ParallelTesting {
          "phantom-poly-4.scala",
 
          // Issue with JFunction1$mcI$sp/T
-         "unused-15.scala",
-         "unused-17.scala",
-         "unused-20.scala",
-         "unused-21.scala",
-         "unused-23.scala",
-         "unused-value-class.scala",
+         "ghost-15.scala",
+         "ghost-17.scala",
+         "ghost-20.scala",
+         "ghost-21.scala",
+         "ghost-23.scala",
+         "ghost-value-class.scala",
        )
     )
     step1.checkCompile() // Compile all files to generate the class files with tasty

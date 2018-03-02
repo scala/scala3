@@ -118,7 +118,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Implicit() extends Mod(Flags.ImplicitCommon)
 
-    case class Unused() extends Mod(Flags.Unused)
+    case class Ghost() extends Mod(Flags.Ghost)
 
     case class Final() extends Mod(Flags.Final)
 

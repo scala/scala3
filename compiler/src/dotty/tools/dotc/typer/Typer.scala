@@ -759,16 +759,16 @@ class Typer extends Namer
 
   def typedFunctionType(tree: untpd.Function, pt: Type)(implicit ctx: Context) = {
     val untpd.Function(args, body) = tree
-    val (isImplicit, isUnused) = tree match {
+    val (isImplicit, isGhost) = tree match {
       case tree: untpd.NonEmptyFunction =>
-        if (args.nonEmpty) (tree.mods.is(Implicit), tree.mods.is(Unused))
+        if (args.nonEmpty) (tree.mods.is(Implicit), tree.mods.is(Ghost))
         else {
           ctx.error(FunctionTypeNeedsNonEmptyParameterList(), tree.pos)
           (false, false)
         }
       case _ => (false, false)
     }
-    val funCls = defn.FunctionClass(args.length, isImplicit, isUnused)
+    val funCls = defn.FunctionClass(args.length, isImplicit, isGhost)
 
     /** Typechecks dependent function type with given parameters `params` */
     def typedDependent(params: List[ValDef])(implicit ctx: Context): Tree = {
@@ -1344,7 +1344,7 @@ class Typer extends Namer
     val tpt1 = checkSimpleKinded(typedType(tpt))
     val rhs1 = vdef.rhs match {
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
-      case rhs => normalizeUnusedRhs(typedExpr(rhs, tpt1.tpe), sym)
+      case rhs => normalizeGhostRhs(typedExpr(rhs, tpt1.tpe), sym)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     if (sym.is(Inline, butNot = DeferredOrTermParamOrAccessor))
@@ -1402,7 +1402,7 @@ class Typer extends Namer
       (tparams1, sym.owner.typeParams).zipped.foreach ((tdef, tparam) =>
         rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
     }
-    val rhs1 = normalizeUnusedRhs(typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx), sym)
+    val rhs1 = normalizeGhostRhs(typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx), sym)
 
     // Overwrite inline body to make sure it is not evaluated twice
     if (sym.isInlineMethod) Inliner.registerInlineInfo(sym, _ => rhs1)
@@ -2139,8 +2139,8 @@ class Typer extends Namer
                 arg :: implicitArgs(formals1)
             }
         }
-        def eraseUnusedArgs(args: List[Tree]): List[Tree] = {
-          if (!wtp.isUnusedMethod) args
+        def eraseGhostArgs(args: List[Tree]): List[Tree] = {
+          if (!wtp.isGhostMethod) args
           else args.map { arg =>
             arg.tpe match {
               case tpe if tpe.isStable => arg
@@ -2149,7 +2149,7 @@ class Typer extends Namer
             }
           }
         }
-        val args = eraseUnusedArgs(implicitArgs(wtp.paramInfos))
+        val args = eraseGhostArgs(implicitArgs(wtp.paramInfos))
 
 
         def propagatedFailure(args: List[Tree]): Type = args match {

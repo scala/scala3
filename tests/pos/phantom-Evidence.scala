@@ -10,8 +10,8 @@ object WithNormalState {
     def newInstance(): Instance[Off] = new Instance[Off]
   }
   class Instance[S <: State] private {
-    def getOnInstance(implicit unused ev: S =::= Off): Instance[On] = new Instance[On] // phantom parameter ev is erased
-    def getOffInstance(implicit unused ev: S =::= On): Instance[Off] = new Instance[Off] // phantom parameter ev is erased
+    def getOnInstance(implicit ghost ev: S =::= Off): Instance[On] = new Instance[On] // phantom parameter ev is erased
+    def getOffInstance(implicit ghost ev: S =::= On): Instance[Off] = new Instance[Off] // phantom parameter ev is erased
   }
 
   def run() = {
@@ -24,5 +24,5 @@ object WithNormalState {
 
 object Utils {
   type =::=[From, To]
-  implicit unused def tpEquals[A]: A =::= A = ???
+  implicit ghost def tpEquals[A]: A =::= A = ???
 }

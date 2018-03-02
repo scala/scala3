@@ -88,7 +88,7 @@ class Definitions {
     newClassSymbol(ScalaPackageClass, name, EmptyFlags, completer).entered
   }
 
-  /** The trait FunctionN, ImplicitFunctionN, UnusedFunctionN or UnusedImplicitFunction, for some N
+  /** The trait FunctionN, ImplicitFunctionN, GhostFunctionN or GhostImplicitFunction, for some N
    *  @param  name   The name of the trait to be created
    *
    *  FunctionN traits follow this template:
@@ -107,19 +107,19 @@ class Definitions {
    *        def apply(implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
-   *  UnusedFunctionN traits follow this template:
+   *  GhostFunctionN traits follow this template:
    *
-   *      trait UnusedFunctionN[T0,...,T{N-1}, R] extends Object {
-   *        def apply(unused $x0: T0, ..., $x{N_1}: T{N-1}): R
+   *      trait GhostFunctionN[T0,...,T{N-1}, R] extends Object {
+   *        def apply(ghost $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
-   *  UnusedImplicitFunctionN traits follow this template:
+   *  GhostImplicitFunctionN traits follow this template:
    *
-   *      trait UnusedImplicitFunctionN[T0,...,T{N-1}, R] extends Object with UnusedFunctionN[T0,...,T{N-1}, R] {
-   *        def apply(unused implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
+   *      trait GhostImplicitFunctionN[T0,...,T{N-1}, R] extends Object with GhostFunctionN[T0,...,T{N-1}, R] {
+   *        def apply(ghost implicit $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
-   *  UnusedFunctionN and UnusedImplicitFunctionN erase to Function0.
+   *  GhostFunctionN and GhostImplicitFunctionN erase to Function0.
    */
   def newFunctionNTrait(name: TypeName): ClassSymbol = {
     val completer = new LazyType {
@@ -132,10 +132,10 @@ class Definitions {
           enterTypeParam(cls, paramNamePrefix ++ "T" ++ (i + 1).toString, Contravariant, decls).typeRef
         }
         val resParamRef = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls).typeRef
-        val methodType = MethodType.maker(isJava = false, name.isImplicitFunction, name.isUnusedFunction)
+        val methodType = MethodType.maker(isJava = false, name.isImplicitFunction, name.isGhostFunction)
         val parentTraits =
           if (!name.isImplicitFunction) Nil
-          else FunctionType(arity, isUnused = name.isUnusedFunction).appliedTo(argParamRefs ::: resParamRef :: Nil) :: Nil
+          else FunctionType(arity, isGhost = name.isGhostFunction).appliedTo(argParamRefs ::: resParamRef :: Nil) :: Nil
         decls.enter(newMethod(cls, nme.apply, methodType(argParamRefs, resParamRef), Deferred))
         denot.info =
           ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: parentTraits, decls)
@@ -756,14 +756,14 @@ class Definitions {
     sym.owner.linkedClass.typeRef
 
   object FunctionOf {
-    def apply(args: List[Type], resultType: Type, isImplicit: Boolean = false, isUnused: Boolean = false)(implicit ctx: Context) =
-      FunctionType(args.length, isImplicit, isUnused).appliedTo(args ::: resultType :: Nil)
+    def apply(args: List[Type], resultType: Type, isImplicit: Boolean = false, isGhost: Boolean = false)(implicit ctx: Context) =
+      FunctionType(args.length, isImplicit, isGhost).appliedTo(args ::: resultType :: Nil)
     def unapply(ft: Type)(implicit ctx: Context) = {
       val tsym = ft.typeSymbol
       if (isFunctionClass(tsym)) {
         val targs = ft.dealias.argInfos
         if (targs.isEmpty) None
-        else Some(targs.init, targs.last, tsym.name.isImplicitFunction, tsym.name.isUnusedFunction)
+        else Some(targs.init, targs.last, tsym.name.isImplicitFunction, tsym.name.isGhostFunction)
       }
       else None
     }
@@ -827,18 +827,18 @@ class Definitions {
 
   lazy val TupleType = mkArityArray("scala.Tuple", MaxTupleArity, 2)
 
-  def FunctionClass(n: Int, isImplicit: Boolean = false, isUnused: Boolean = false)(implicit ctx: Context) = {
-    if (isImplicit && isUnused) {
+  def FunctionClass(n: Int, isImplicit: Boolean = false, isGhost: Boolean = false)(implicit ctx: Context) = {
+    if (isImplicit && isGhost) {
       require(n > 0)
-      ctx.requiredClass("scala.UnusedImplicitFunction" + n.toString)
+      ctx.requiredClass("scala.GhostImplicitFunction" + n.toString)
     }
     else if (isImplicit) {
       require(n > 0)
       ctx.requiredClass("scala.ImplicitFunction" + n.toString)
     }
-    else if (isUnused) {
+    else if (isGhost) {
       require(n > 0)
-      ctx.requiredClass("scala.UnusedFunction" + n.toString)
+      ctx.requiredClass("scala.GhostFunction" + n.toString)
     }
     else if (n <= MaxImplementedFunctionArity) FunctionClassPerRun()(ctx)(n)
     else ctx.requiredClass("scala.Function" + n.toString)
@@ -847,9 +847,9 @@ class Definitions {
     lazy val Function0_applyR = ImplementedFunctionType(0).symbol.requiredMethodRef(nme.apply)
     def Function0_apply(implicit ctx: Context) = Function0_applyR.symbol
 
-  def FunctionType(n: Int, isImplicit: Boolean = false, isUnused: Boolean = false)(implicit ctx: Context): TypeRef =
-    if (n <= MaxImplementedFunctionArity && (!isImplicit || ctx.erasedTypes) && !isUnused) ImplementedFunctionType(n)
-    else FunctionClass(n, isImplicit, isUnused).typeRef
+  def FunctionType(n: Int, isImplicit: Boolean = false, isGhost: Boolean = false)(implicit ctx: Context): TypeRef =
+    if (n <= MaxImplementedFunctionArity && (!isImplicit || ctx.erasedTypes) && !isGhost) ImplementedFunctionType(n)
+    else FunctionClass(n, isImplicit, isGhost).typeRef
 
   private lazy val TupleTypes: Set[TypeRef] = TupleType.toSet
 
@@ -874,22 +874,22 @@ class Definitions {
   /** Is a function class.
    *   - FunctionN for N >= 0
    *   - ImplicitFunctionN for N > 0
-   *   - UnusedFunctionN for N > 0
-   *   - UnusedImplicitFunctionN for N > 0
+   *   - GhostFunctionN for N > 0
+   *   - GhostImplicitFunctionN for N > 0
    */
   def isFunctionClass(cls: Symbol) = scalaClassName(cls).isFunction
 
   /** Is an implicit function class.
    *   - ImplicitFunctionN for N > 0
-   *   - UnusedImplicitFunctionN for N > 0
+   *   - GhostImplicitFunctionN for N > 0
    */
   def isImplicitFunctionClass(cls: Symbol) = scalaClassName(cls).isImplicitFunction
 
-  /** Is an unused function class.
-   *   - UnusedFunctionN for N > 0
-   *   - UnusedImplicitFunctionN for N > 0
+  /** Is an ghost function class.
+   *   - GhostFunctionN for N > 0
+   *   - GhostImplicitFunctionN for N > 0
    */
-  def isUnusedFunctionClass(cls: Symbol) = scalaClassName(cls).isUnusedFunction
+  def isGhostFunctionClass(cls: Symbol) = scalaClassName(cls).isGhostFunction
 
   /** Is a class that will be erased to FunctionXXL
    *   - FunctionN for N >= 22
@@ -915,13 +915,13 @@ class Definitions {
    *    - FunctionN for 22 > N >= 0 remains as FunctionN
    *    - ImplicitFunctionN for N > 22 becomes FunctionXXL
    *    - ImplicitFunctionN for 22 > N >= 0 becomes FunctionN
-   *    - UnusedFunctionN becomes Function0
-   *    - ImplicitUnusedFunctionN becomes Function0
+   *    - GhostFunctionN becomes Function0
+   *    - ImplicitGhostFunctionN becomes Function0
    *    - anything else becomes a NoSymbol
    */
   def erasedFunctionClass(cls: Symbol): Symbol = {
     val arity = scalaClassName(cls).functionArity
-    if (cls.name.isUnusedFunction) FunctionClass(0)
+    if (cls.name.isGhostFunction) FunctionClass(0)
     else if (arity > 22) FunctionXXLClass
     else if (arity >= 0) FunctionClass(arity)
     else NoSymbol
@@ -932,13 +932,13 @@ class Definitions {
    *    - FunctionN for 22 > N >= 0 remains as FunctionN
    *    - ImplicitFunctionN for N > 22 becomes FunctionXXL
    *    - ImplicitFunctionN for 22 > N >= 0 becomes FunctionN
-   *    - UnusedFunctionN becomes Function0
-   *    - ImplicitUnusedFunctionN becomes Function0
+   *    - GhostFunctionN becomes Function0
+   *    - ImplicitGhostFunctionN becomes Function0
    *    - anything else becomes a NoType
    */
   def erasedFunctionType(cls: Symbol): Type = {
     val arity = scalaClassName(cls).functionArity
-    if (cls.name.isUnusedFunction) FunctionType(0)
+    if (cls.name.isGhostFunction) FunctionType(0)
     else if (arity > 22) FunctionXXLType
     else if (arity >= 0) FunctionType(arity)
     else NoType
@@ -1008,7 +1008,7 @@ class Definitions {
   def isNonDepFunctionType(tp: Type)(implicit ctx: Context) = {
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
-    arity >= 0 && isFunctionClass(sym) && tp.isRef(FunctionType(arity, sym.name.isImplicitFunction, sym.name.isUnusedFunction).typeSymbol)
+    arity >= 0 && isFunctionClass(sym) && tp.isRef(FunctionType(arity, sym.name.isImplicitFunction, sym.name.isGhostFunction).typeSymbol)
   }
 
   /** Is `tp` a representation of a (possibly depenent) function type or an alias of such? */
@@ -1074,8 +1074,8 @@ class Definitions {
   def isImplicitFunctionType(tp: Type)(implicit ctx: Context): Boolean =
     asImplicitFunctionType(tp).exists
 
-  def isUnusedFunctionType(tp: Type)(implicit ctx: Context) =
-    isFunctionType(tp) && tp.dealias.typeSymbol.name.isUnusedFunction
+  def isGhostFunctionType(tp: Type)(implicit ctx: Context) =
+    isFunctionType(tp) && tp.dealias.typeSymbol.name.isGhostFunction
 
   // ----- primitive value class machinery ------------------------------------------
 

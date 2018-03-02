@@ -237,9 +237,9 @@ object GenericSignatures {
           methodResultSig(restpe)
 
         case mtpe: MethodType =>
-          // unused method parameters do not make it to the bytecode.
+          // ghost method parameters do not make it to the bytecode.
           def effectiveParamInfoss(t: Type)(implicit ctx: Context): List[List[Type]] = t match {
-            case t: MethodType if t.isUnusedMethod => effectiveParamInfoss(t.resType)
+            case t: MethodType if t.isGhostMethod => effectiveParamInfoss(t.resType)
             case t: MethodType => t.paramInfos :: effectiveParamInfoss(t.resType)
             case _ => Nil
           }
