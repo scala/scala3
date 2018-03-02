@@ -74,7 +74,7 @@ and how we can use them to model [Algebraic Data Types](/docs/reference/enums/ad
 ### Ghost terms [#3342](https://github.com/lampepfl/dotty/pull/3342) and removing phantom types [#3410](https://github.com/lampepfl/dotty/pull/3410)
 The keyword `ghost` can be placed on parameters, `val` and `def` to enforce that no reference to
 those terms is ever used (recursively). As they are never used, they can safely be removed during compilation.
-These have similar semantics as _phantom types_ but with the added advantage that any type can be a ghost parameter. They can be used to add implicit type constraints that are only relevant at compilation time.
+Ghost terms replace _phantom types_: they have similar semantics, but with the added advantage that any type can be a ghost parameter. They can be used to add implicit type constraints that are only relevant at compilation time.
 
 ```scala
 // A function that requires an implicit evidence of type X =:= Y but never uses it.
