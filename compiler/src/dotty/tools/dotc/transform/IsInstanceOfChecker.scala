@@ -43,11 +43,18 @@ object Checkable {
 
   /** Whether `(x:X).isInstanceOf[P]` can be checked at runtime?
    *
-   *  Replace `T @unchecked` and pattern binder types (e.g., `_$1`) in P with WildcardType, then check:
+   *  First do the following substitution:
+   *  (a) replace `T @unchecked` and pattern binder types (e.g., `_$1`) in P with WildcardType
+   *  (b) replace pattern binder types (e.g., `_$1`) in X:
+   *      - variance = 1  : hiBound
+   *      - variance = -1 : loBound
+   *      - variance = 0  : OrType(Any, Nothing)
+   *
+   *  Then check:
    *
    *  1. if `X <:< P`, TRUE
    *  2. if `P` is a singleton type, TRUE
-   *  3. if `P` refers to an abstract type member or type parameter, `X <:< P`
+   *  3. if `P` refers to an abstract type member or type parameter, FALSE
    *  4. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
    *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
@@ -60,12 +67,23 @@ object Checkable {
   def checkable(X: Type, P: Type)(implicit ctx: Context): Boolean = {
     def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
 
-    def replaceBinderMap(implicit ctx: Context) = new TypeMap {
+    def replaceP(implicit ctx: Context) = new TypeMap {
       def apply(tp: Type) = tp match {
         case tref: TypeRef
         if !tref.typeSymbol.isClass && tref.symbol.is(Case) => WildcardType
         case AnnotatedType(_, annot)
         if annot.symbol == defn.UncheckedAnnot => WildcardType
+        case _ => mapOver(tp)
+      }
+    }
+
+    def replaceX(implicit ctx: Context) = new TypeMap {
+      def apply(tp: Type) = tp match {
+        case tref: TypeRef
+        if !tref.typeSymbol.isClass && tref.symbol.is(Case) =>
+          if (variance == 1) tref.info.hiBound
+          else if (variance == -1) tref.info.loBound
+          else OrType(defn.AnyType, defn.NothingType)
         case _ => mapOver(tp)
       }
     }
@@ -85,6 +103,7 @@ object Checkable {
       val res  = isFullyDefined(P1, ForceDegree.noBottom) && P1 <:< P
       debug.println("P1 : " + P1)
       debug.println("P1 <:< P = " + res)
+
       res
     }
 
@@ -105,7 +124,7 @@ object Checkable {
       case _                    => true
     })
 
-    val res = recur(X.widen, replaceBinderMap.apply(P))
+    val res = recur(replaceX.apply(X.widen), replaceP.apply(P))
 
     debug.println(i"checking  ${X.show} isInstanceOf ${P} = $res")
 
