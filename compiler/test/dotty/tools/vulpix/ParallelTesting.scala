@@ -433,7 +433,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       def hasTastyFileToClassName(f: JFile): String =
         targetDir.toPath.relativize(f.toPath).toString.dropRight(".hasTasty".length).replace('/', '.')
-      val classes = flattenFiles(targetDir).filter(isHasTastyFile).map(hasTastyFileToClassName)
+      val classes = flattenFiles(targetDir).filter(isHasTastyFile).map(hasTastyFileToClassName).sorted
 
       val reporter =
         TestReporter.reporter(realStdout, logLevel =
