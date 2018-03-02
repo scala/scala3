@@ -2079,4 +2079,10 @@ object messages {
     }
     val explanation = ""
   }
+
+  case class DoubleDeclaration(decl: Symbol, previousSymbol: Symbol)(implicit ctx: Context) extends Message(DoubleDeclarationID) {
+    val kind = "Duplicate Symbol"
+    val msg = hl"$decl is already defined as $previousSymbol${previousSymbol.showExtendedLocation}"
+    val explanation = ""
+  }
 }

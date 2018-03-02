@@ -627,7 +627,7 @@ trait Checking {
             def explanation =
               if (!decl.isRealMethod) ""
               else "\n(the definitions have matching type signatures)"
-            ctx.error(em"$decl is already defined as $other$ofType$explanation", decl.pos)
+            ctx.error(DoubleDeclaration(decl, other), decl.pos)
           }
           if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
