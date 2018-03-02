@@ -1202,7 +1202,8 @@ object SymDenotations {
       case tp: ExprType => hasSkolems(tp.resType)
       case tp: AppliedType => hasSkolems(tp.tycon) || tp.args.exists(hasSkolems)
       case tp: LambdaType => tp.paramInfos.exists(hasSkolems) || hasSkolems(tp.resType)
-      case tp: AndOrType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
+      case tp: AndType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
+      case tp: OrType  => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
       case tp: AnnotatedType => hasSkolems(tp.tpe)
       case _ => false
     }
@@ -1641,9 +1642,9 @@ object SymDenotations {
           case tp: TypeRef if tp.symbol.isClass => true
           case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
           //case tp: TypeProxy => inCache(tp.underlying) // disabled, can re-enable insyead of last two lines for performance testing
-          //case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
           case tp: TypeProxy => isCachable(tp.underlying, btrCache)
-          case tp: AndOrType => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
+          case tp: AndType => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
+          case tp: OrType  => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
           case _ => true
         }
       }

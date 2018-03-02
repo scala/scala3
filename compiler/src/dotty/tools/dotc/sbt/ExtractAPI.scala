@@ -450,17 +450,11 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         // `recType` would lead to an infinite recursion, we avoid this by
         //  computing the representation of `recType` lazily.
         apiLazy(recType)
-      case tp: AndOrType =>
-        val parents = List(apiType(tp.tp1), apiType(tp.tp2))
-
-        // TODO: Add a real representation for AndOrTypes in xsbti. The order of
-        // types in an `AndOrType` does not change the API, so the API hash should
-        // be symmetric.
+      case tp: AndType =>
+        combineApiTypes(apiType(tp.tp1), apiType(tp.tp2))
+      case tp: OrType =>
         val s = combineApiTypes(apiType(tp.tp1), apiType(tp.tp2))
-        if (tp.isAnd)
-          s
-        else
-          withMarker(s, orMarker)
+        withMarker(s, orMarker)
       case ExprType(resultType) =>
         withMarker(apiType(resultType), byNameMarker)
       case ConstantType(constant) =>

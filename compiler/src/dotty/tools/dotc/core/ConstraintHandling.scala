@@ -53,7 +53,8 @@ trait ConstraintHandling {
         val b = bound.dealias
         (b eq param) || {
           b match {
-            case b: AndOrType => occursIn(b.tp1) || occursIn(b.tp2)
+            case b: AndType => occursIn(b.tp1) || occursIn(b.tp2)
+            case b: OrType  => occursIn(b.tp1) || occursIn(b.tp2)
             case b: TypeVar => occursIn(b.origin)
             case b: TermRef => occursIn(b.underlying)
             case _ => false
@@ -256,7 +257,8 @@ trait ConstraintHandling {
     def isFullyDefined(tp: Type): Boolean = tp match {
       case tp: TypeVar => tp.isInstantiated && isFullyDefined(tp.instanceOpt)
       case tp: TypeProxy => isFullyDefined(tp.underlying)
-      case tp: AndOrType => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
+      case tp: AndType => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
+      case tp: OrType  => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
       case _ => true
     }
     def isOrType(tp: Type): Boolean = tp.stripTypeVar.dealias match {
@@ -430,10 +432,15 @@ trait ConstraintHandling {
        *  @return The pruned type if all `addLess` calls succeed, `NoType` otherwise.
        */
       def prune(bound: Type): Type = bound match {
-        case bound: AndOrType =>
+        case bound: AndType =>
           val p1 = prune(bound.tp1)
           val p2 = prune(bound.tp2)
-          if (p1.exists && p2.exists) bound.derivedAndOrType(p1, p2)
+          if (p1.exists && p2.exists) bound.derivedAndType(p1, p2)
+          else NoType
+        case bound: OrType =>
+          val p1 = prune(bound.tp1)
+          val p2 = prune(bound.tp2)
+          if (p1.exists && p2.exists) bound.derivedOrType(p1, p2)
           else NoType
         case bound: TypeVar if constraint contains bound.origin =>
           prune(bound.underlying)

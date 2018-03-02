@@ -315,8 +315,9 @@ object MarkupParsers {
     }
 
     /** Some try/catch/finally logic used by xLiteral and xLiteralPattern.  */
-    private def xLiteralCommon(f: () => Tree, ifTruncated: String => Unit): Tree = {
-      try return f()
+    @inline private def xLiteralCommon(f: () => Tree, ifTruncated: String => Unit): Tree = {
+      var output: Tree = null.asInstanceOf[Tree]
+      try output = f()
       catch {
         case c @ TruncatedXMLControl  =>
           ifTruncated(c.getMessage)
@@ -327,7 +328,10 @@ object MarkupParsers {
       }
       finally parser.in resume Tokens.XMLSTART
 
-      parser.errorTermTree
+      if (output == null)
+        parser.errorTermTree
+      else
+        output
     }
 
     /** Use a lookahead parser to run speculative body, and return the first char afterward. */
