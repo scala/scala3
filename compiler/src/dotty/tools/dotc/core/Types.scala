@@ -591,7 +591,13 @@ object Types {
         ctx.typerState.constraint.entry(tp) match {
           case bounds: TypeBounds if bounds ne next =>
             ctx.typerState.ephemeral = true
-            go(bounds.hi)
+            val upper = go(bounds.hi)
+            if (upper.exists) upper
+            else {
+              val lower = go(bounds.lo)
+              if (!lower.exists) upper
+              else ctx.typeComparer.addMemberBound(tp, bounds.lo, lower)
+            }
           case _ =>
             go(next)
         }

@@ -394,7 +394,7 @@ object ProtoTypes {
       for (n <- (0 until tl.paramNames.length).toList)
       yield {
         val tt = new TypeTree().withPos(owningTree.pos)
-        tt.withType(new TypeVar(tl.paramRefs(n), state, tt, ctx.owner))
+        tt.withType(new TypeVar(tl.paramRefs(n), state, tt, ctx.owner, ctx.typeVarLevel))
       }
 
     /** Ensure that `tl` is not already in constraint, make a copy of necessary */

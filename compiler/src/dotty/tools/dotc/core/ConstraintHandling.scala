@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._
+import Types._, Contexts._, Symbols._, Denotations.Denotation, SymDenotations.NoDenotation
 import Decorators._
 import config.Config
 import config.Printers.{constr, typr}
@@ -129,6 +129,11 @@ trait ConstraintHandling {
     constr.println(i"added $description = $res ${ctx.typerState.hashesStr}")
     res
   }
+
+  def addMemberBound(param: TypeParamRef, lower: Type, member: Denotation): Denotation =
+    (member /: member.alternatives.map(_.symbol.owner).distinct) { (mbr, baseCls) =>
+      if (addUpperBound(param, lower.baseType(baseCls))) member else NoDenotation
+    }
 
   /** Make p2 = p1, transfer all bounds of p2 to p1
    *  @pre  less(p1)(p2)
