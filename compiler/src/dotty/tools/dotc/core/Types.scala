@@ -3380,7 +3380,8 @@ object Types {
       }
 
     /** Is the variable already instantiated? */
-    def isInstantiated(implicit ctx: Context) = instanceOpt.exists
+    def isInstantiated(implicit ctx: Context) =
+      inst.exists || ctx.typerState.instType(this).exists
 
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
