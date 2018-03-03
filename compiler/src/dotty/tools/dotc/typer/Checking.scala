@@ -623,10 +623,6 @@ trait Checking {
         typr.println(i"conflict? $decl $other")
         if (decl.matches(other)) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit = {
-            def ofType = if (decl.isType) "" else em": ${other.info}"
-            def explanation =
-              if (!decl.isRealMethod) ""
-              else "\n(the definitions have matching type signatures)"
             ctx.error(DoubleDeclaration(decl, other), decl.pos)
           }
           if (decl is Synthetic) doubleDefError(other, decl)
