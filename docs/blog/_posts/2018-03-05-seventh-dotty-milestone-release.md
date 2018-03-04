@@ -39,6 +39,7 @@ Let's consider how `Option` can be represented as an enum. Previously using an e
 enum class Option[+T] {
    def isDefined: Boolean
 }
+
 object Option {
   case Some[+T](x: T) {
      def isDefined = true
@@ -68,32 +69,40 @@ object Option {
 }
 ```
 
-You can visit our website for more information about [enumerations](/docs/reference/enums/enums.html)
-and how we can use them to model [Algebraic Data Types](/docs/reference/enums/adts.html).
 
-### Ghost terms [#3342](https://github.com/lampepfl/dotty/pull/3342) and removing phantom types [#3410](https://github.com/lampepfl/dotty/pull/3410)
-The keyword `ghost` can be placed on parameters, `val` and `def` to enforce that no reference to
-those terms is ever used (recursively). As they are never used, they can safely be removed during compilation.
-Ghost terms replace _phantom types_: they have similar semantics, but with the added advantage that any type can be a ghost parameter. They can be used to add implicit type constraints that are only relevant at compilation time.
+For more information about [Enumerations](/docs/reference/enums/enums.html) and how to use them to
+model [Algebraic Data Types](/docs/reference/enums/adts.html), visit the respective sections in our
+documentation.
 
-```scala
-// A function that requires an implicit evidence of type X =:= Y but never uses it.
-// The parameter will be removed and the argument will not be evaluated.
-def apply(implicit ghost ev: X =:= Y) =
-  foo(ev) // `ev` can be an argument to foo as foo will also never use it
-def foo(ghost x:  X =:= Y) = ()
-```
+### Ghost terms [#3342](https://github.com/lampepfl/dotty/pull/3342)
+The `ghost` modifier can be used on parameters, `val` and `def` to enforce that no reference to
+those terms is ever used. As they are never used, they can safely be removed during compilation.
 
-The previous code will be transformed to the following:
+One particular use case is to add implicit type constraints that are only relevant at compilation
+time. For example, let's consider the following implementation of `flatten`.
 
 ```scala
-def apply() = // ghost parameter will be removed
-  foo() // foo is called without the ghost parameter
-def foo() = () // ghost parameter will be removed
+class List[X] {
+  def flatten[Y](implicit ghost ev: X <:< List[Y]): List[Y] = {
+    val buffer = new mutable.ListBuffer[Y]
+    this.foreach(e => buffer ++= e.asInstanceOf[List[Y]])
+    buffer.toList
+  }
+}
+
+List(List(1, 2), List(3)).flatten // List(1, 2, 3)
+List(1, 2, 3).flatten             // error: Cannot prove that Int <:< List[Y]
 ```
 
-[Documentation](/docs/reference/ghost-terms.html)
+The implicit evidence `ev` is only used to constrain the type parameter `X` of `List` such that we
+can safely cast from `X` to `List[_]`. The usage of the `ghost` modifier ensures that the evidence
+is not used and can be safely removed at compilation time.
 
+For more information, visit the [Ghost Terms](/docs/reference/ghost-terms.html) section of our
+documentation.
+
+**Note**: Ghost terms replace _phantom types_: they have similar semantics, but with the added
+advantage that any type can be a ghost parameter. See [#3410](https://github.com/lampepfl/dotty/pull/3410).
 
 ## Trying out Dotty
 ### Scastie
