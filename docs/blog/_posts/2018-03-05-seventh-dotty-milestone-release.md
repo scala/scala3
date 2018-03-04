@@ -118,10 +118,19 @@ Try it out in [Visual Studio Code](http://dotty.epfl.ch/docs/usage/ide-support.h
 
 ### Improvements in GADT type inference
 
-XXX add examples.
+GADTs are case class hierarchies similar to this one:
+```scala
+sealed trait Expr[T]
+case class IntExpr(i: Int) extends Expr[Int]
+case class BoolExpr(b: Boolean) extends Expr[Boolean]
+```
+where different constructors, such as `IntExpr` and `BoolExpr`, pass different type argument to the super trait. Hence, typechecking a pattern match on `v: Expr[T]` requires special care: for instance, if `v = IntExpr(5)` then `T` must be `Int`.
+
+<!-- XXX add examples of GADT issues, possibly in terms of the above example -->
+
 We have fixed multiple bugs about GADT type checking and exhaustiveness checking, especially for invariant GADTs, including
 [#1754](https://github.com/lampepfl/dotty/issues/1754),
-[#3645](https://github.com/lampepfl/dotty/issues/3645)
+[#3645](https://github.com/lampepfl/dotty/issues/3645),
 [#3999](https://github.com/lampepfl/dotty/issues/3999)
 and improved handling of matches using repeated type variables
 [#4030](https://github.com/lampepfl/dotty/issues/4030). We have also made
