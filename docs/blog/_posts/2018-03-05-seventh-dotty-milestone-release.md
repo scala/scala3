@@ -118,23 +118,62 @@ Try it out in [Visual Studio Code](http://dotty.epfl.ch/docs/usage/ide-support.h
 
 ### Improvements in GADT type inference
 
-GADTs are case class hierarchies similar to this one:
+GADT typechecking is an advanced feature that got significantly improved in this
+release. GADTs are case class hierarchies similar to this one:
+
 ```scala
-sealed trait Expr[T]
-case class IntExpr(i: Int) extends Expr[Int]
-case class BoolExpr(b: Boolean) extends Expr[Boolean]
+sealed trait Exp[T]
+case class IntLit(n: Int) extends Exp[Int]
+case class BooleanLit(b: Boolean) extends Exp[Boolean]
+
+case class GenLit[T](t: T) extends Exp[T]
+case class Plus(e1: Exp[Int], e2: Exp[Int]) extends Exp[Int]
+case class Fun[S, T](f: Exp[S] => Exp[T]) extends Exp[S => T]
+case class App[T, U](f: Exp[T => U], e: Exp[T]) extends Exp[U]
 ```
-where different constructors, such as `IntExpr` and `BoolExpr`, pass different type argument to the super trait. Hence, typechecking a pattern match on `v: Expr[T]` requires special care: for instance, if `v = IntExpr(5)` then `T` must be `Int`.
 
-<!-- XXX add examples of GADT issues, possibly in terms of the above example -->
+where different constructors, such as `IntLit` and `BooleanLit`, pass different type argument to the super trait. Hence, typechecking a pattern match on `v: Exp[T]` requires special care: for instance, if `v = IntLit(5)` then `T` must be `Int`. This enables writing a typed interpreter `eval[T](e: Exp[T]): T`. In each pattern matching branch
 
+```scala
+object Interpreter {
+  def eval[T](e: Exp[T]): T = e match {
+    case IntLit(n) => // Here T = Int and n: Int
+      n
+    case BooleanLit(b) => // Similarly, here T = Boolean and b: Boolean
+      b
+
+    case GenLit(t) => //Here t: T
+
+      // the next line is an error, but was allowed before the fix to https://github.com/lampepfl/dotty/issues/1754:
+      //val w: GenLit[Nothing] = w
+
+      t
+
+    case Plus(e1, e2) =>
+      // Here T = Int and e1, e2: Exp[Int]
+      eval(e1) + eval(e2)
+
+    // The next cases triggered warnings before the fix to
+    // https://github.com/lampepfl/dotty/issues/3666
+
+    case f: Fun[s, t]  => // Here T = s => t
+      (v: s) => eval(f.f(GenLit(v)))
+
+    case App(f, e)     => // Here f: Exp[s, T] and e: Exp[s]
+      eval(f)(eval(e))
+  }
+}
+```
+
+Earlier Dotty releases had issues typechecking such interpreters.
 We have fixed multiple bugs about GADT type checking and exhaustiveness checking, especially for invariant GADTs, including
+[#3666](https://github.com/lampepfl/dotty/issues/3666),
 [#1754](https://github.com/lampepfl/dotty/issues/1754),
 [#3645](https://github.com/lampepfl/dotty/issues/3645),
-[#3999](https://github.com/lampepfl/dotty/issues/3999)
 and improved handling of matches using repeated type variables
-[#4030](https://github.com/lampepfl/dotty/issues/4030). We have also made
-error messages more informative [#3990](https://github.com/lampepfl/dotty/pull/3990).
+[#4030](https://github.com/lampepfl/dotty/issues/4030).
+More test cases appear in [#3999](https://github.com/lampepfl/dotty/pull/3999).
+We have also made error messages more informative [#3990](https://github.com/lampepfl/dotty/pull/3990).
 Fixes to covariant GADTs ([#3989](https://github.com/lampepfl/dotty/issues/3989)/
 [#4013](https://github.com/lampepfl/dotty/pull/4013)) have been deferred to next release.
 
