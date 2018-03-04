@@ -38,3 +38,29 @@ object i3666 {
     eval(exp)(Env.empty)
   }
 }
+// A HOAS well-typed interpreter
+object i3666Hoas {
+  sealed trait Exp[T]
+  case class IntLit(n: Int) extends Exp[Int]
+  case class BooleanLit(b: Boolean) extends Exp[Boolean]
+
+  case class GenLit[T](t: T) extends Exp[T]
+  case class Plus(e1: Exp[Int], e2: Exp[Int]) extends Exp[Int]
+  case class Fun[S, T](f: Exp[S] => Exp[T]) extends Exp[S => T]
+  case class App[T, U](f: Exp[T => U], e: Exp[T]) extends Exp[U]
+
+
+  def eval[T](e: Exp[T]): T = e match {
+    case IntLit(n) => n
+    case BooleanLit(b) => b
+    case GenLit(t) => t
+    case Plus(e1, e2) => eval(e1) + eval(e2)
+    case f: Fun[s, t]  =>
+      (v: s) => eval(f.f(GenLit(v)))
+    case App(f, e) => eval(f)(eval(e))
+  }
+
+  val exp = App(Fun[S = Int](x => Plus(x, IntLit(1))), IntLit(2))
+
+  eval(exp)
+}
