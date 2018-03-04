@@ -1888,7 +1888,7 @@ object Parsers {
       def paramClause(): List[ValDef] = inParens {
         if (in.token == RPAREN) Nil
         else {
-          def funArgMods(): Unit = {
+          @tailrec def funArgMods(): Unit = {
             if (in.token == IMPLICIT) {
               implicitOffset = in.offset
               imods = addMod(imods, atPos(accept(IMPLICIT)) { Mod.Implicit() })
