@@ -1839,7 +1839,16 @@ object Parsers {
         val start = in.offset
         var mods = annotsAsMods()
         if (owner.isTypeName) {
-          mods = modifiers(start = mods) | ParamAccessor
+          mods = modifiers(start = mods)
+          if (mods.is(Lazy))
+            syntaxError("`lazy' modifier not allowed here. Use call-by-name parameters instead")
+          mods =
+            if (mods.is(Sealed)) {
+              syntaxError("`sealed' modifier can be used only for classes")
+              mods // Adding ParamAccessor would crash
+            } else {
+              mods | ParamAccessor
+            }
           mods =
             atPos(start, in.offset) {
               if (in.token == VAL) {
