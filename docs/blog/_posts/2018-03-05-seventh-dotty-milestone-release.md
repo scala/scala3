@@ -18,7 +18,7 @@ You can learn more about Dotty on our [website](http://dotty.epfl.ch).
 
 <!--more-->
 
-This is our seventh scheduled release according to our [6-week release schedule](/docs/usage/version-numbers.html).
+This is our seventh scheduled release according to our [6-week release schedule](http://dotty.epfl.ch/docs/usage/version-numbers.html).
 The [previous technology preview](https://github.com/lampepfl/dotty/releases/tag/0.6.0-RC1) focussed
 on bug fixes and stability work.
 
@@ -70,9 +70,10 @@ object Option {
 ```
 
 
-For more information about [Enumerations](/docs/reference/enums/enums.html) and how to use them to
-model [Algebraic Data Types](/docs/reference/enums/adts.html), visit the respective sections in our
-documentation.
+For more information about [Enumerations](http://dotty.epfl.ch/docs/reference/enums/enums.html)
+and how to use them to model [Algebraic Data Types](http://dotty.epfl.ch/docs/reference/enums/adts.html),
+visit the respective sections in our documentation.
+
 
 ### Ghost terms [#3342](https://github.com/lampepfl/dotty/pull/3342)
 The `ghost` modifier can be used on parameters, `val` and `def` to enforce that no reference to
@@ -98,11 +99,23 @@ The implicit evidence `ev` is only used to constrain the type parameter `X` of `
 can safely cast from `X` to `List[_]`. The usage of the `ghost` modifier ensures that the evidence
 is not used and can be safely removed at compilation time.
 
-For more information, visit the [Ghost Terms](/docs/reference/ghost-terms.html) section of our
-documentation.
+For more information, visit the [Ghost Terms](http://dotty.epfl.ch/docs/reference/ghost-terms.html)
+section of our documentation.
 
 **Note**: Ghost terms replace _phantom types_: they have similar semantics, but with the added
 advantage that any type can be a ghost parameter. See [#3410](https://github.com/lampepfl/dotty/pull/3410).
+
+
+### Improved IDE support [#3960](https://github.com/lampepfl/dotty/pull/3960)
+The Dotty language server now supports context sensitive IDE completions. Completions now include
+local and imported definitions. Members completions take possible implicit conversions into account.
+
+<!-- A GIF would be nice? -->
+
+We also improved the `find references` functionality. It is more robust and much faster!
+
+Try it out in [Visual Studio Code](http://dotty.epfl.ch/docs/usage/ide-support.html)!
+
 
 ## Trying out Dotty
 ### Scastie
