@@ -16,10 +16,6 @@ your Eclipse distribution of choice and enable the Scala IDE from the Eclipse Ma
 $ sbt eclipse
 ```
 
-- Note: It is recommended to change the default output folder (in `Properties > java
-   build path > Source`) to `dotty/classes` instead of `dotty/bin` because
-   `dotty/bin` is reserved for shell scripts.
-
 Optional: if you have `CLASSPATH` defined:
 
 1. Update your classpath to contain any new required external libraries to run

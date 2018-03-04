@@ -125,9 +125,21 @@ object Build {
     // published version.
     runCode := (run in `dotty-language-server`).toTask("").value,
 
+    // Configure genereated Eclipse projects following
+    //https://github.com/sbt/sbteclipse/wiki/Using-sbteclipse.
+
     // include sources in eclipse (downloads source code for all dependencies)
     //http://stackoverflow.com/questions/10472840/how-to-attach-sources-to-sbt-managed-dependencies-in-scala-ide#answer-11683728
-    EclipseKeys.withSource := true
+    EclipseKeys.withSource := true,
+
+    // Also Javadoc
+    EclipseKeys.withJavadoc := true,
+
+    // Avoid outputting classes in `bin/` which we reserve for scripts.
+    EclipseKeys.eclipseOutput := Some("classes"),
+
+    // Dotty supports only Java 1.8, so let's inform Eclipse.
+    EclipseKeys.executionEnvironment := Some(EclipseExecutionEnvironment.JavaSE18)
   )
 
   // Settings shared globally (scoped in Global). Used in build.sbt

@@ -422,7 +422,7 @@ trait ConstraintHandling {
        *  by the bound).
        *
        *  Narrowing a constraint is better than widening it, because narrowing leads
-       *  to incompleteness (which we face anyway, see for instance eitherIsSubType)
+       *  to incompleteness (which we face anyway, see for instance TypeComparer.either)
        *  but widening leads to unsoundness.
        *
        *  A test case that demonstrates the problem is i864.scala.

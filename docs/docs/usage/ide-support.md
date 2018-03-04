@@ -21,7 +21,8 @@ Usage
    is the case if you can start the IDE by running `code` in a terminal. This
    is the default on all systems except Mac where you'll need to follow these
    instructions: https://code.visualstudio.com/docs/setup/mac#_command-line
-3. In your project, run:
+3. Make sure `npm` is installed and available on the PATH.
+4. In your project, run:
 ```shell
 sbt launchIDE
 ```
