@@ -116,6 +116,18 @@ We also improved the `find references` functionality. It is more robust and much
 
 Try it out in [Visual Studio Code](http://dotty.epfl.ch/docs/usage/ide-support.html)!
 
+### Improvements in GADT type inference
+
+XXX add examples.
+We have fixed multiple bugs about GADT type checking and exhaustiveness checking, especially for invariant GADTs, including
+[#1754](https://github.com/lampepfl/dotty/issues/1754),
+[#3645](https://github.com/lampepfl/dotty/issues/3645)
+[#3999](https://github.com/lampepfl/dotty/issues/3999)
+and improved handling of matches using repeated type variables
+[#4030](https://github.com/lampepfl/dotty/issues/4030). We have also made
+error messages more informative [#3990](https://github.com/lampepfl/dotty/pull/3990).
+Fixes to covariant GADTs ([#3989](https://github.com/lampepfl/dotty/issues/3989)/
+[#4013](https://github.com/lampepfl/dotty/pull/4013)) have been deferred to next release.
 
 ## Trying out Dotty
 ### Scastie
