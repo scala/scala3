@@ -21,11 +21,15 @@ object trace {
   }
 
   @inline
-  def apply[T](question: => String, printer: Printers.Printer, show: Boolean)(op: => T)(implicit ctx: Context): T = {
+  def apply[T](question: => String, printer: Printers.Printer, showOp: Any => String)(op: => T)(implicit ctx: Context): T = {
     def op1 = op
     if (!Config.tracingEnabled || printer.eq(config.Printers.noPrinter)) op1
-    else doTrace[T](question, printer, show)(op1)
+    else doTrace[T](question, printer, showOp)(op1)
   }
+
+  @inline
+  def apply[T](question: => String, printer: Printers.Printer, show: Boolean)(op: => T)(implicit ctx: Context): T =
+    apply[T](question, printer, if (show) showShowable(_) else alwaysToString)(op)
 
   @inline
   def apply[T](question: => String, printer: Printers.Printer)(op: => T)(implicit ctx: Context): T =
@@ -39,16 +43,21 @@ object trace {
   def apply[T](question: => String)(op: => T)(implicit ctx: Context): T =
     apply[T](question, Printers.default, false)(op)
 
-  private def doTrace[T](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)
-                                (op: => T)(implicit ctx: Context): T = {
-    def resStr(res: Any): String = res match {
-      case res: printing.Showable if show => res.show
-      case _ => String.valueOf(res)
-    }
+  private def showShowable(x: Any)(implicit ctx: Context) = x match {
+    case x: printing.Showable => x.show
+    case _ => String.valueOf(x)
+  }
+
+  private val alwaysToString = (x: Any) => String.valueOf(x)
+
+  private def doTrace[T](question: => String,
+                         printer: Printers.Printer = Printers.default,
+                         showOp: Any => String = alwaysToString)
+                        (op: => T)(implicit ctx: Context): T = {
     // Avoid evaluating question multiple time, since each evaluation
     // may cause some extra logging output.
     lazy val q: String = question
-    apply[T](s"==> $q?", (res: Any) => s"<== $q = ${resStr(res)}")(op)
+    apply[T](s"==> $q?", (res: Any) => s"<== $q = ${showOp(res)}")(op)
   }
 
   def apply[T](leading: => String, trailing: Any => String)(op: => T)(implicit ctx: Context): T =
