@@ -28,8 +28,11 @@ object trace {
   }
 
   @inline
-  def apply[T](question: => String, printer: Printers.Printer, show: Boolean)(op: => T)(implicit ctx: Context): T =
-    apply[T](question, printer, if (show) showShowable(_) else alwaysToString)(op)
+  def apply[T](question: => String, printer: Printers.Printer, show: Boolean)(op: => T)(implicit ctx: Context): T = {
+    def op1 = op
+    if (!Config.tracingEnabled || printer.eq(config.Printers.noPrinter)) op1
+    else doTrace[T](question, printer, if (show) showShowable(_) else alwaysToString)(op1)
+  }
 
   @inline
   def apply[T](question: => String, printer: Printers.Printer)(op: => T)(implicit ctx: Context): T =
