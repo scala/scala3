@@ -124,7 +124,6 @@ release. GADTs are case class hierarchies similar to this one:
 ```scala
 sealed trait Exp[T]
 case class IntLit(n: Int) extends Exp[Int]
-case class BooleanLit(b: Boolean) extends Exp[Boolean]
 
 case class GenLit[T](t: T) extends Exp[T]
 case class Plus(e1: Exp[Int], e2: Exp[Int]) extends Exp[Int]
@@ -132,15 +131,13 @@ case class Fun[S, T](f: Exp[S] => Exp[T]) extends Exp[S => T]
 case class App[T, U](f: Exp[T => U], e: Exp[T]) extends Exp[U]
 ```
 
-where different constructors, such as `IntLit` and `BooleanLit`, pass different type argument to the super trait. Hence, typechecking a pattern match on `v: Exp[T]` requires special care: for instance, if `v = IntLit(5)` then `T` must be `Int`. This enables writing a typed interpreter `eval[T](e: Exp[T]): T`. In each pattern matching branch
+where different constructors, such as `IntLit` and `Fun`, pass different type argument to the super trait. Hence, typechecking a pattern match on `v: Exp[T]` requires special care: for instance, if `v = IntLit(5)` then `T` must be `Int`. This enables writing a typed interpreter `eval[T](e: Exp[T]): T`. In each pattern matching branch
 
 ```scala
 object Interpreter {
   def eval[T](e: Exp[T]): T = e match {
     case IntLit(n) => // Here T = Int and n: Int
       n
-    case BooleanLit(b) => // Similarly, here T = Boolean and b: Boolean
-      b
 
     case gl: GenLit[_]     => // Here in fact gl: GenLit[T]
 
