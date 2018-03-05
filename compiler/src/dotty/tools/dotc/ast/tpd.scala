@@ -202,8 +202,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case tp: MethodType =>
         def valueParam(name: TermName, info: Type): TermSymbol = {
           val maybeImplicit = if (tp.isImplicitMethod) Implicit else EmptyFlags
-          val maybeGhost = if (tp.isGhostMethod) Ghost else EmptyFlags
-          ctx.newSymbol(sym, name, TermParam | maybeImplicit | maybeGhost, info, coord = sym.coord)
+          val maybeErased = if (tp.isErasedMethod) Erased else EmptyFlags
+          ctx.newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
         }
         val params = (tp.paramNames, tp.paramInfos).zipped.map(valueParam)
         val (paramss, rtp) = valueParamss(tp.instantiate(params map (_.termRef)))

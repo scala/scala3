@@ -1400,13 +1400,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *
    *  In these cases, a MergeError is thrown.
    */
-  final def andType(tp1: Type, tp2: Type, erased: Boolean = ctx.erasedTypes) = trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
+  final def andType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes) = trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
     val t1 = distributeAnd(tp1, tp2)
     if (t1.exists) t1
     else {
       val t2 = distributeAnd(tp2, tp1)
       if (t2.exists) t2
-      else if (erased) erasedGlb(tp1, tp2, isJava = false)
+      else if (isErased) erasedGlb(tp1, tp2, isJava = false)
       else liftIfHK(tp1, tp2, AndType(_, _), _ & _)
     }
   }
@@ -1421,16 +1421,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  the types are in conflict of each other. (@see `andType` for an enumeration
    *  of these cases). In cases of conflict a `MergeError` is raised.
    *
-   *  @param erased   Apply erasure semantics. If erased is true, instead of creating
+   *  @param isErased Apply erasure semantics. If erased is true, instead of creating
    *                  an OrType, the lub will be computed using TypeCreator#erasedLub.
    */
-  final def orType(tp1: Type, tp2: Type, erased: Boolean = ctx.erasedTypes) = {
+  final def orType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes) = {
     val t1 = distributeOr(tp1, tp2)
     if (t1.exists) t1
     else {
       val t2 = distributeOr(tp2, tp1)
       if (t2.exists) t2
-      else if (erased) erasedLub(tp1, tp2)
+      else if (isErased) erasedLub(tp1, tp2)
       else liftIfHK(tp1, tp2, OrType(_, _), _ | _)
     }
   }

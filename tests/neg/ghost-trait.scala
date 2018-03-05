@@ -1,1 +1,0 @@
-ghost trait Test // error

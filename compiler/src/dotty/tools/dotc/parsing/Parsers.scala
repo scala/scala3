@@ -732,7 +732,7 @@ object Parsers {
       def functionRest(params: List[Tree]): Tree =
         atPos(start, accept(ARROW)) {
           val t = typ()
-          if (imods.is(Implicit) || imods.is(Ghost)) new NonEmptyFunction(params, t, imods)
+          if (imods.is(Implicit) || imods.is(Erased)) new NonEmptyFunction(params, t, imods)
           else Function(params, t)
         }
       def funArgTypesRest(first: Tree, following: () => Tree) = {
@@ -1068,7 +1068,7 @@ object Parsers {
 
     def expr(location: Location.Value): Tree = {
       val start = in.offset
-      if (in.token == IMPLICIT || in.token == GHOST) {
+      if (in.token == IMPLICIT || in.token == ERASED) {
         val imods = modifiers(funArgMods)
         implicitClosure(start, location, imods)
       } else {
@@ -1642,7 +1642,7 @@ object Parsers {
       case ABSTRACT  => Mod.Abstract()
       case FINAL     => Mod.Final()
       case IMPLICIT  => Mod.Implicit()
-      case GHOST     => Mod.Ghost()
+      case ERASED    => Mod.Erased()
       case INLINE    => Mod.Inline()
       case LAZY      => Mod.Lazy()
       case OVERRIDE  => Mod.Override()
@@ -1731,9 +1731,9 @@ object Parsers {
       normalize(loop(start))
     }
 
-    /** FunArgMods ::= { `implicit` | `ghost` }
+    /** FunArgMods ::= { `implicit` | `erased` }
      */
-    def funArgMods = BitSet(IMPLICIT, GHOST)
+    def funArgMods = BitSet(IMPLICIT, ERASED)
 
     /** Wrap annotation or constructor in New(...).<init> */
     def wrapNew(tpt: Tree) = Select(New(tpt), nme.CONSTRUCTOR)
@@ -1822,11 +1822,11 @@ object Parsers {
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
     /** ClsParamClauses   ::=  {ClsParamClause} [[nl] `(' [FunArgMods] ClsParams `)']
-     *  ClsParamClause    ::=  [nl] `(' [`ghost'] [ClsParams] ')'
+     *  ClsParamClause    ::=  [nl] `(' [`erased'] [ClsParams] ')'
      *  ClsParams         ::=  ClsParam {`' ClsParam}
      *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var') | `inline'] Param
      *  DefParamClauses   ::=  {DefParamClause} [[nl] `(' [FunArgMods] DefParams `)']
-     *  DefParamClause    ::=  [nl] `(' [`ghost'] [DefParams] ')'
+     *  DefParamClause    ::=  [nl] `(' [`erased'] [DefParams] ')'
      *  DefParams         ::=  DefParam {`,' DefParam}
      *  DefParam          ::=  {Annotation} [`inline'] Param
      *  Param             ::=  id `:' ParamType [`=' Expr]
@@ -1884,8 +1884,8 @@ object Parsers {
               implicitOffset = in.offset
               imods = addMod(imods, atPos(accept(IMPLICIT)) { Mod.Implicit() })
               funArgMods()
-            } else if (in.token == GHOST) {
-              imods = addMod(imods, atPos(accept(GHOST)) { Mod.Ghost() })
+            } else if (in.token == ERASED) {
+              imods = addMod(imods, atPos(accept(ERASED)) { Mod.Erased() })
               funArgMods()
             }
           }
@@ -2466,7 +2466,7 @@ object Parsers {
         else if (isExprIntro)
           stats += expr(Location.InBlock)
         else if (isDefIntro(localModifierTokens))
-          if (in.token == IMPLICIT || in.token == GHOST) {
+          if (in.token == IMPLICIT || in.token == ERASED) {
             val start = in.offset
             var imods = modifiers(funArgMods)
             if (isBindingIntro) stats += implicitClosure(start, Location.InBlock, imods)

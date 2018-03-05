@@ -132,14 +132,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def toTextTuple(args: List[Type]): Text =
       "(" ~ Text(args.map(argText), ", ") ~ ")"
 
-    def toTextFunction(args: List[Type], isImplicit: Boolean, isGhost: Boolean): Text =
+    def toTextFunction(args: List[Type], isImplicit: Boolean, isErased: Boolean): Text =
       changePrec(GlobalPrec) {
         val argStr: Text =
           if (args.length == 2 && !defn.isTupleType(args.head))
             atPrec(InfixPrec) { argText(args.head) }
           else
             toTextTuple(args.init)
-        (keywordText("ghost ") provided isGhost) ~ (keywordText("implicit ") provided isImplicit) ~ argStr ~ " => " ~ argText(args.last)
+        (keywordText("erased ") provided isErased) ~ (keywordText("implicit ") provided isImplicit) ~ argStr ~ " => " ~ argText(args.last)
       }
 
     def toTextDependentFunction(appType: MethodType): Text = {
@@ -174,7 +174,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case AppliedType(tycon, args) =>
         val cls = tycon.typeSymbol
         if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
-        if (defn.isFunctionClass(cls)) return toTextFunction(args, cls.name.isImplicitFunction, cls.name.isGhostFunction)
+        if (defn.isFunctionClass(cls)) return toTextFunction(args, cls.name.isImplicitFunction, cls.name.isErasedFunction)
         if (defn.isTupleClass(cls)) return toTextTuple(args)
         if (isInfixType(tp)) return toTextInfixType(tycon, args)
       case EtaExpansion(tycon) =>
@@ -745,7 +745,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else if (sym.isClass && flags.is(Case)) "case class"
     else if (flags is Module) "object"
     else if (sym.isTerm && !flags.is(Param) && flags.is(Implicit)) "implicit val"
-    else if (sym.isTerm && !flags.is(Param) && flags.is(Ghost)) "ghost val"
+    else if (sym.isTerm && !flags.is(Param) && flags.is(Erased)) "erased val"
     else super.keyString(sym)
   }
 

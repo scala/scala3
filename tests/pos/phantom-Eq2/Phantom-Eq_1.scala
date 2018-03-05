@@ -6,16 +6,16 @@ object EqUtil {
   type PhantomEqEq[T] = PhantomEq[T, T]
 
   implicit class EqualsDeco[T](val x: T) extends AnyVal {
-    def ===[U] (y: U)(implicit ghost ce: PhantomEq[T, U]) = x.equals(y)
+    def ===[U] (y: U)(implicit erased ce: PhantomEq[T, U]) = x.equals(y)
   }
 
-  implicit ghost def eqString: PhantomEqEq[String] = new PhantomEq[String, String]
-  implicit ghost def eqInt: PhantomEqEq[Int]       = new PhantomEq[Int, Int]
-  implicit ghost def eqDouble: PhantomEqEq[Double] = new PhantomEq[Double, Double]
+  implicit erased def eqString: PhantomEqEq[String] = new PhantomEq[String, String]
+  implicit erased def eqInt: PhantomEqEq[Int]       = new PhantomEq[Int, Int]
+  implicit erased def eqDouble: PhantomEqEq[Double] = new PhantomEq[Double, Double]
 
-  implicit ghost def eqByteNum: PhantomEq[Byte, Number] = new PhantomEq[Byte, Number]
-  implicit ghost def eqNumByte: PhantomEq[Number, Byte] = new PhantomEq[Number, Byte]
+  implicit erased def eqByteNum: PhantomEq[Byte, Number] = new PhantomEq[Byte, Number]
+  implicit erased def eqNumByte: PhantomEq[Number, Byte] = new PhantomEq[Number, Byte]
 
-  implicit ghost def eqSeq[T, U](implicit ghost eq: PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] =
+  implicit erased def eqSeq[T, U](implicit erased eq: PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] =
     new PhantomEq[Seq[T], Seq[U]]
 }

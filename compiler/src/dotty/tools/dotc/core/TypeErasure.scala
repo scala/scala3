@@ -406,11 +406,11 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     case AndType(tp1, tp2) =>
       erasedGlb(this(tp1), this(tp2), isJava)
     case OrType(tp1, tp2) =>
-      ctx.typeComparer.orType(this(tp1), this(tp2), erased = true)
+      ctx.typeComparer.orType(this(tp1), this(tp2), isErased = true)
     case tp: MethodType =>
       def paramErasure(tpToErase: Type) =
         erasureFn(tp.isJavaMethod, semiEraseVCs, isConstructor, wildcardOK)(tpToErase)
-      val (names, formals0) = if (tp.isGhostMethod) (Nil, Nil) else (tp.paramNames, tp.paramInfos)
+      val (names, formals0) = if (tp.isErasedMethod) (Nil, Nil) else (tp.paramNames, tp.paramInfos)
       val formals = formals0.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {
         case rt: MethodType =>
@@ -558,9 +558,9 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       case tp: WildcardType =>
         sigName(tp.optBounds)
       case _ =>
-        val erased = this(tp)
-        assert(erased ne tp, tp)
-        sigName(erased)
+        val erasedTp = this(tp)
+        assert(erasedTp ne tp, tp)
+        sigName(erasedTp)
     }
   } catch {
     case ex: AssertionError =>

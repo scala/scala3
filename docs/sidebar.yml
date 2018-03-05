@@ -53,8 +53,8 @@ sidebar:
               url: docs/reference/auto-parameter-tupling.html
             - title: Named Type Arguments
               url: docs/reference/named-typeargs.html
-            - title: Ghost Terms
-              url: docs/reference/ghost-terms.html
+            - title: Erased Terms
+              url: docs/reference/erased-terms.html
             - title: Local Optimisations
               url: docs/reference/optimisations.html
         - title: Changed Features

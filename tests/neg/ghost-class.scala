@@ -1,1 +1,0 @@
-ghost class Test // error

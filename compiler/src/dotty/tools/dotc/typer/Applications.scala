@@ -780,8 +780,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         case _ =>
       }
       app match {
-        case Apply(fun, args) if fun.tpe.widen.isGhostMethod =>
-          tpd.cpy.Apply(app)(fun = fun, args = args.map(arg => normalizeGhostExpr(arg, "This argument is given to an ghost parameter. ")))
+        case Apply(fun, args) if fun.tpe.widen.isErasedMethod =>
+          tpd.cpy.Apply(app)(fun = fun, args = args.map(arg => normalizeErasedExpr(arg, "This argument is given to an erased parameter. ")))
         case _ => app
       }
     }
@@ -1446,7 +1446,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           val formalsForArg: List[Type] = altFormals.map(_.head)
           def argTypesOfFormal(formal: Type): List[Type] =
             formal match {
-              case defn.FunctionOf(args, result, isImplicit, isGhost) => args
+              case defn.FunctionOf(args, result, isImplicit, isErased) => args
               case defn.PartialFunctionOf(arg, result) => arg :: Nil
               case _ => Nil
             }
@@ -1546,17 +1546,17 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   /** Transforms the tree into a its default tree.
    *  Performed to shrink the tree that is known to be erased later.
    */
-  protected def normalizeGhostExpr(tree: Tree, msg: String)(implicit ctx: Context): Tree = {
+  protected def normalizeErasedExpr(tree: Tree, msg: String)(implicit ctx: Context): Tree = {
     if (!isPureExpr(tree))
       ctx.warning(msg + "This expression will not be evaluated.", tree.pos)
     defaultValue(tree.tpe)
   }
 
-  /** Transforms the rhs tree into a its default tree if it is in an `ghost` val/def.
+  /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
    *  Performed to shrink the tree that is known to be erased later.
    */
-  protected def normalizeGhostRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) = {
-    if (sym.is(Ghost) && rhs.tpe.exists) normalizeGhostExpr(rhs, "Expression is on the RHS of an `ghost` " + sym.showKind + ". ")
+  protected def normalizeErasedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) = {
+    if (sym.is(Erased) && rhs.tpe.exists) normalizeErasedExpr(rhs, "Expression is on the RHS of an `erased` " + sym.showKind + ". ")
     else rhs
   }
 
