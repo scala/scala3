@@ -2454,7 +2454,7 @@ object Parsers {
 
     /** BlockStatSeq ::= { BlockStat semi } [ResultExpr]
      *  BlockStat    ::= Import
-     *                 | Annotations [implicit] [lazy] Def
+     *                 | Annotations [implicit] [erased] [lazy] Def
      *                 | Annotations LocalModifiers TmplDef
      *                 | Expr1
      *                 |
