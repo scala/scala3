@@ -1800,16 +1800,17 @@ class Typer extends Namer
     typed(ifun, pt)
   }
 
-  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ trace(i"typing $tree", typr, show = true) /*<|<*/ {
-    record(s"typed $getClass")
-    record("typed total")
-    assertPositioned(tree)
-    try adapt(typedUnadapted(tree, pt), pt)
-    catch {
-      case ex: CyclicReference => errorTree(tree, cyclicErrorMsg(ex))
-      case ex: TypeError => errorTree(tree, ex.getMessage)
+  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
+    trace(i"typing $tree", typr, show = true) {
+      record(s"typed $getClass")
+      record("typed total")
+      assertPositioned(tree)
+      try adapt(typedUnadapted(tree, pt), pt)
+      catch {
+        case ex: CyclicReference => errorTree(tree, cyclicErrorMsg(ex))
+        case ex: TypeError => errorTree(tree, ex.getMessage)
+      }
     }
-  }
 
   def typedTrees(trees: List[untpd.Tree])(implicit ctx: Context): List[Tree] =
     trees mapconserve (typed(_))
@@ -1977,7 +1978,11 @@ class Typer extends Namer
   }
 
   def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = /*>|>*/ track("adapt") /*<|<*/ {
-    /*>|>*/ trace(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
+    def showWithType(x: Any) = x match {
+      case tree: tpd.Tree @unchecked => i"$tree of type ${tree.tpe}"
+      case _ => String.valueOf(x)
+    }
+    /*>|>*/ trace(i"adapting $tree of type ${tree.tpe} to $pt", typr, showOp = showWithType) /*<|<*/ {
       if (!tree.denot.isOverloaded) {
       	// for overloaded trees: resolve overloading before simplifying
         if (tree.isDef) interpolateUndetVars(tree, tree.symbol, pt)
