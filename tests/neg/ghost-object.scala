@@ -1,1 +1,0 @@
-ghost object Test // error

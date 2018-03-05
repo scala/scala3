@@ -384,8 +384,8 @@ object Checking {
         fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
-    if (sym.is(Ghost))
-      checkApplicable(Ghost, !sym.is(MutableOrLazy))
+    if (sym.is(Erased))
+      checkApplicable(Erased, !sym.is(MutableOrLazy))
   }
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
@@ -503,11 +503,11 @@ object Checking {
           case param :: params =>
             if (param.is(Mutable))
               ctx.error(ValueClassParameterMayNotBeAVar(clazz, param), param.pos)
-            if (param.is(Ghost))
-              ctx.error("value class first parameter cannot be `ghost`", param.pos)
+            if (param.is(Erased))
+              ctx.error("value class first parameter cannot be `erased`", param.pos)
             else {
-              for (p <- params if !p.is(Ghost))
-                ctx.error("value class can only have one non `ghost` parameter", p.pos)
+              for (p <- params if !p.is(Erased))
+                ctx.error("value class can only have one non `erased` parameter", p.pos)
             }
           case Nil =>
             ctx.error(ValueClassNeedsOneValParam(clazz), clazz.pos)

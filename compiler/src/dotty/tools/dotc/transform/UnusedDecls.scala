@@ -9,14 +9,14 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
-/** This phase removes ghost declarations of val`s (except for parameters).
+/** This phase removes erased declarations of val`s (except for parameters).
  *
- *  `ghost val x = ...` are removed
+ *  `erased val x = ...` are removed
  */
-class GhostDecls extends MiniPhase with InfoTransformer {
+class ErasedDecls extends MiniPhase with InfoTransformer {
   import tpd._
 
-  override def phaseName: String = "ghostDecls"
+  override def phaseName: String = "erasedDecls"
 
   override def runsAfterGroupsOf: Set[Class[_ <: Phase]] = Set(
     classOf[PatternMatcher] // Make sure pattern match errors are emitted
@@ -24,7 +24,7 @@ class GhostDecls extends MiniPhase with InfoTransformer {
 
   /** Check what the phase achieves, to be called at any point after it is finished. */
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
-    case tree: ValOrDefDef if !tree.symbol.is(Param) => assert(!tree.symbol.is(Ghost, butNot = Param))
+    case tree: ValOrDefDef if !tree.symbol.is(Param) => assert(!tree.symbol.is(Erased, butNot = Param))
     case _ =>
   }
 
@@ -35,15 +35,15 @@ class GhostDecls extends MiniPhase with InfoTransformer {
   override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree = transformValOrDefDef(tree)
 
   private def transformValOrDefDef(tree: ValOrDefDef)(implicit ctx: Context): Tree =
-    if (tree.symbol.is(Ghost, butNot = Param)) EmptyTree else tree
+    if (tree.symbol.is(Erased, butNot = Param)) EmptyTree else tree
 
 
   /* Info transform */
 
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
     case tp: ClassInfo =>
-      if (tp.classSymbol.is(JavaDefined) || !tp.decls.iterator.exists(_.is(Ghost))) tp
-      else tp.derivedClassInfo(decls = tp.decls.filteredScope(!_.is(Ghost)))
+      if (tp.classSymbol.is(JavaDefined) || !tp.decls.iterator.exists(_.is(Erased))) tp
+      else tp.derivedClassInfo(decls = tp.decls.filteredScope(!_.is(Erased)))
     case _ => tp
   }
 }

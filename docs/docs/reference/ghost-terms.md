@@ -1,9 +1,9 @@
 ---
 layout: doc-page
-title: "Ghost Terms"
+title: "Erased Terms"
 ---
 
-Why ghost terms?
+Why erased terms?
 ----------------------
 The following examples shows an implementation of a simple state machine which can be in a state `On` or `Off`.
 The machine can change state from `Off` to `On` with `turnedOn` only if it is currently `Off`. This last constraint is
@@ -36,51 +36,51 @@ Note that in the code above the actual implicit arguments for `IsOff` are never 
 As these terms are never used at runtime there is not real need to have them around, but they still need to be
 present in some form in the generated code to be able to do separate compilation and retain binary compatiblity.
 
-How to define ghost terms?
+How to define erased terms?
 -------------------------------
-Parameters of methods and functions can be declared as ghost, placing `ghost` at the start of the parameter list (like `implicit`).
+Parameters of methods and functions can be declared as erased, placing `erased` at the start of the parameter list (like `implicit`).
 
 ```scala
-def methodWithGhostEv(ghost ev: Ev): Int = 42
+def methodWithErasedEv(erased ev: Ev): Int = 42
 
-val lambdaWithGhostEv: ghost Ev => Int = 
-  ghost (ev: Ev) => 42
+val lambdaWithErasedEv: erased Ev => Int =
+  erased (ev: Ev) => 42
 ```
 
-`ghost` parameters will not be usable for computations, though they can be used as arguments to other `ghost` parameters.
+`erased` parameters will not be usable for computations, though they can be used as arguments to other `erased` parameters.
 
 ```scala
-def methodWithGhostInt1(ghost i: Int): Int =
+def methodWithErasedInt1(erased i: Int): Int =
   i + 42 // ERROR: can not use i
 
-def methodWithGhostInt2(ghost i: Int): Int =
-  methodWithGhostInt1(i) // OK
+def methodWithErasedInt2(erased i: Int): Int =
+  methodWithErasedInt1(i) // OK
 ```
 
-Not only parameters can be marked as ghost, `val` and `def` can also be marked with `ghost`. These will also only be usable as arguments to `ghost` parameters.
+Not only parameters can be marked as erased, `val` and `def` can also be marked with `erased`. These will also only be usable as arguments to `erased` parameters.
 
 ```scala
-ghost val ghostEvidence: Ev = ...
-methodWithGhostEv(ghostEvidence)
+erased val erasedEvidence: Ev = ...
+methodWithErasedEv(erasedEvidence)
 ```
 
-What happens with ghost values at runtime?
+What happens with erased values at runtime?
 -------------------------------------------
-As `ghost` are guaranteed not to be used in computations, they can and will be erased.
+As `erased` are guaranteed not to be used in computations, they can and will be erased.
 
 ```scala
-// becomes def methodWithGhostEv(): Int at runtime
-def methodWithGhostEv(ghost ev: Ev): Int = ...  
+// becomes def methodWithErasedEv(): Int at runtime
+def methodWithErasedEv(erased ev: Ev): Int = ...
 
 def evidence1: Ev = ...
-ghost def ghostEvidence2: Ev = ... // does not exist at runtime
-ghost val ghostEvidence3: Ev = ... // does not exist at runtime
+erased def erasedEvidence2: Ev = ... // does not exist at runtime
+erased val erasedEvidence3: Ev = ... // does not exist at runtime
 
-// evidence1 is not evaluated and no value is passed to methodWithGhostEv
-methodWithGhostEv(evidence1)
+// evidence1 is not evaluated and no value is passed to methodWithErasedEv
+methodWithErasedEv(evidence1)
 ```
 
-State machine with ghost evidence example
+State machine with erased evidence example
 ------------------------------------------
 The following example is an extended implementation of a simple state machine which can be in a state `On` or `Off`.
 The machine can change state from `Off` to `On` with `turnedOn` only if it is currently `Off`, 
@@ -90,9 +90,9 @@ For example, not allowing calling `turnedOff` on in an `Off` state as we would r
 that will not be found.
 
 As the implicit evidences of `turnedOn` and `turnedOff` are not used in the bodies of those functions 
-we can mark them as `ghost`. This will remove the evidence parameters at runtime, but we would still 
+we can mark them as `erased`. This will remove the evidence parameters at runtime, but we would still
 evaluate the `isOn` and `isOff` implicits that where found as arguments.
-As `isOn` and `isOff` are not used except as as `ghost` arguments, we can mark them as `ghost`, hence 
+As `isOn` and `isOff` are not used except as as `erased` arguments, we can mark them as `erased`, hence
 removing the evaluation of the `isOn` and `isOff` evidences.
 
 ```scala
@@ -113,13 +113,13 @@ object IsOff {
 class IsOn[S <: State]
 object IsOn {
   // def isOn will not exist at runtime, the compiler will only require that this evidence exists at compile time
-  ghost implicit val isOn: IsOn[On] = new IsOn[On]
+  erased implicit val isOn: IsOn[On] = new IsOn[On]
 }
 
 class Machine[S <: State] private {
   // ev will disapear from both functions
-  def turnedOn(implicit ghost ev: IsOff[S]): Machine[On] = new Machine[On]
-  def turnedOff(implicit ghost ev: IsOn[S]): Machine[Off] = new Machine[Off]
+  def turnedOn(implicit erased ev: IsOff[S]): Machine[On] = new Machine[On]
+  def turnedOff(implicit erased ev: IsOn[S]): Machine[Off] = new Machine[Off]
 }
 
 object Machine {
@@ -147,50 +147,50 @@ object Test {
 Rules
 -----
 
-1) The `ghost` modifier can appear:
+1) The `erased` modifier can appear:
 * At the start of a parameter block of a method, function or class
 * In a method definition
 * In a `val` definition (but not `lazy val` or `var`)
 
 ```scala
-ghost val x = ...
-ghost def f = ...
+erased val x = ...
+erased def f = ...
 
-def g(ghost x: Int) = ...
+def g(erased x: Int) = ...
 
-(ghost x: Int) => ...
-def h(x: ghost Int => Int) = ...
+(erased x: Int) => ...
+def h(x: erased Int => Int) = ...
 
-class K(ghost x: Int) { ... }
+class K(erased x: Int) { ... }
 ```
 
-2) A reference to an `ghost` definition can only be used
-* Inside the expression of argument to an `ghost` parameter
-* Inside the body of an `ghost` `val` or `def`
+2) A reference to an `erased` definition can only be used
+* Inside the expression of argument to an `erased` parameter
+* Inside the body of an `erased` `val` or `def`
 
 3) Functions
-* `(ghost x1: T1, x2: T2, ..., xN: TN) => y : (ghost T1, T2, ..., TN) => R`
-* `(implicit ghost x1: T1, x2: T2, ..., xN: TN) => y : (implicit ghost T1, T2, ..., TN) => R`
-* `implicit ghost T1 => R  <:<  ghost T1 => R`
-* `(implicit ghost T1, T2) => R  <:<  (ghost T1, T2) => R`
+* `(erased x1: T1, x2: T2, ..., xN: TN) => y : (erased T1, T2, ..., TN) => R`
+* `(implicit erased x1: T1, x2: T2, ..., xN: TN) => y : (implicit erased T1, T2, ..., TN) => R`
+* `implicit erased T1 => R  <:<  erased T1 => R`
+* `(implicit erased T1, T2) => R  <:<  (erased T1, T2) => R`
 *  ...
 
-Note that there is no subtype relation between `ghost T => R` and `T => R` (or `implicit ghost T => R` and `implicit T => R`)
+Note that there is no subtype relation between `erased T => R` and `T => R` (or `implicit erased T => R` and `implicit T => R`)
 
 4) Eta expansion
-if `def f(ghost x: T): U` then `f: (ghost T) => U`.
+if `def f(erased x: T): U` then `f: (erased T) => U`.
 
 
 5) Erasure Semantics
-* All `ghost` paramters are removed from the function
-* All argument to `ghost` paramters are not passed to the function
-* All `ghost` definitions are removed
-* All `(ghost T1, T2, ..., TN) => R` and `(implicit ghost T1, T2, ..., TN) => R` become `() => R`
+* All `erased` paramters are removed from the function
+* All argument to `erased` paramters are not passed to the function
+* All `erased` definitions are removed
+* All `(erased T1, T2, ..., TN) => R` and `(implicit erased T1, T2, ..., TN) => R` become `() => R`
 
 6) Overloading
-Method with `ghost` parameters will follow the normal overloading constraints after erasure.
+Method with `erased` parameters will follow the normal overloading constraints after erasure.
 
 7) Overriding
-* Member definitions overidding each other must both be `ghost` or not be `ghost`
-* `def foo(x: T): U` cannot be overriden by `def foo(ghost x: T): U` an viceversa
+* Member definitions overidding each other must both be `erased` or not be `erased`
+* `def foo(x: T): U` cannot be overriden by `def foo(erased x: T): U` an viceversa
 

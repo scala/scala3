@@ -322,9 +322,9 @@ object Erasure {
 
     override def promote(tree: untpd.Tree)(implicit ctx: Context): tree.ThisTree[Type] = {
       assert(tree.hasType)
-      val erased = erasedType(tree)
-      ctx.log(s"promoting ${tree.show}: ${erased.showWithUnderlying()}")
-      tree.withType(erased)
+      val erasedTp = erasedType(tree)
+      ctx.log(s"promoting ${tree.show}: ${erasedTp.showWithUnderlying()}")
+      tree.withType(erasedTp)
     }
 
     /** When erasing most TypeTrees we should not semi-erase value types.
@@ -452,7 +452,7 @@ object Erasure {
     }
 
     private def protoArgs(pt: Type, methTp: Type): List[untpd.Tree] = (pt, methTp) match {
-      case (pt: FunProto, methTp: MethodType) if methTp.isGhostMethod =>
+      case (pt: FunProto, methTp: MethodType) if methTp.isErasedMethod =>
         protoArgs(pt.resType, methTp.resType)
       case (pt: FunProto, methTp: MethodType) =>
         pt.args ++ protoArgs(pt.resType, methTp.resType)
@@ -489,7 +489,7 @@ object Erasure {
           fun1.tpe.widen match {
             case mt: MethodType =>
               val outers = outer.args(fun.asInstanceOf[tpd.Tree]) // can't use fun1 here because its type is already erased
-              val ownArgs = if (mt.paramNames.nonEmpty && !mt.isGhostMethod) args else Nil
+              val ownArgs = if (mt.paramNames.nonEmpty && !mt.isErasedMethod) args else Nil
               var args0 = outers ::: ownArgs ::: protoArgs(pt, tree.typeOpt)
 
               if (args0.length > MaxImplementedFunctionArity && mt.paramInfos.length == 1) {
@@ -559,7 +559,7 @@ object Erasure {
         vparamss1 = (tpd.ValDef(bunchedParam) :: Nil) :: Nil
         rhs1 = untpd.Block(paramDefs, rhs1)
       }
-      vparamss1 = vparamss1.mapConserve(_.filterConserve(!_.symbol.is(Flags.Ghost)))
+      vparamss1 = vparamss1.mapConserve(_.filterConserve(!_.symbol.is(Flags.Erased)))
       val ddef1 = untpd.cpy.DefDef(ddef)(
         tparams = Nil,
         vparamss = vparamss1,

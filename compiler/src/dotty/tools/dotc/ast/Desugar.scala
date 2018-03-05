@@ -262,7 +262,7 @@ object desugar {
   private def toDefParam(tparam: TypeDef): TypeDef =
     tparam.withMods(tparam.rawMods & EmptyFlags | Param)
   private def toDefParam(vparam: ValDef): ValDef =
-    vparam.withMods(vparam.rawMods & (Implicit | Ghost) | Param)
+    vparam.withMods(vparam.rawMods & (Implicit | Erased) | Param)
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {

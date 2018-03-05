@@ -1,0 +1,2 @@
+public <U> int MyErased$.f1()
+U <: java.lang.Object
