@@ -87,6 +87,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YdisableFlatCpCaching  = BooleanSetting("-YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
 
   val YnoImports = BooleanSetting("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
+  val YnoInline = BooleanSetting("-Yno-inline", "Suppress inlining.")
   val YnoGenericSig = BooleanSetting("-Yno-generic-signatures", "Suppress generation of generic signatures for Java.")
   val YnoPredef = BooleanSetting("-Yno-predef", "Compile without importing Predef.")
   val Yskip = PhasesSetting("-Yskip", "Skip")
@@ -126,7 +127,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YexplainLowlevel = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
   val YnoDoubleBindings = BooleanSetting("-Yno-double-bindings", "Assert no namedtype is bound twice (should be enabled only if program is error-free).")
   val YshowVarBounds = BooleanSetting("-Yshow-var-bounds", "Print type variables with their bounds")
-  val YnoInline = BooleanSetting("-Yno-inline", "Suppress inlining.")
+  val YshowNoInline = BooleanSetting("-Yshow-no-inline", "Show inlined code without the 'inlined from' info")
 
   /** Linker specific flags */
   val optimise = BooleanSetting("-optimise", "Generates faster bytecode by applying local optimisations to the .program") withAbbreviation "-optimize"
