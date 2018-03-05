@@ -131,7 +131,7 @@ case class Fun[S, T](f: Exp[S] => Exp[T]) extends Exp[S => T]
 case class App[T, U](f: Exp[T => U], e: Exp[T]) extends Exp[U]
 ```
 
-where different constructors, such as `IntLit` and `Fun`, pass different type argument to the super trait. Hence, typechecking a pattern match on `v: Exp[T]` requires special care: for instance, if `v = IntLit(5)` then `T` must be `Int`. This enables writing a typed interpreter `eval[T](e: Exp[T]): T`. In each pattern matching branch
+where different constructors, such as `IntLit` and `Fun`, pass different type argument to the super trait. Hence, typechecking a pattern match on `v: Exp[T]` requires special care: for instance, if `v = IntLit(5)` then the typechecker must realize that `T` must be `Int`. This enables writing a typed interpreter `eval[T](e: Exp[T]): T`, where say the `IntLit` branch can return an `Int`:
 
 ```scala
 object Interpreter {
@@ -169,7 +169,6 @@ We have fixed multiple bugs about GADT type checking and exhaustiveness checking
 [#3645](https://github.com/lampepfl/dotty/issues/3645),
 and improved handling of matches using repeated type variables
 [#4030](https://github.com/lampepfl/dotty/issues/4030).
-More test cases appear in [#3999](https://github.com/lampepfl/dotty/pull/3999).
 We have also made error messages more informative [#3990](https://github.com/lampepfl/dotty/pull/3990).
 Fixes to covariant GADTs ([#3989](https://github.com/lampepfl/dotty/issues/3989)/
 [#4013](https://github.com/lampepfl/dotty/pull/4013)) have been deferred to next release.
