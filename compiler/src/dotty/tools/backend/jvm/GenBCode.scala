@@ -270,16 +270,15 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
         for ((cls, clsFile) <- classNodes.zip(classFiles)) {
           if (cls != null) {
+            val className = cls.name.replace('/', '.')
             if (ctx.compilerCallback != null)
-              ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(clsFile), fullClassName)
+              ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(clsFile), className)
             if (ctx.sbtCallback != null) {
-              // ctx.sbtCallback.generatedClass(sourceFile.jfile.orElse(null), clsFile.file, fullClassName)
-              // TODO: Check
               if (isLocal)
                 ctx.sbtCallback.generatedLocalClass(sourceFile.jfile.orElse(null), clsFile.file)
               else {
                 ctx.sbtCallback.generatedNonLocalClass(sourceFile.jfile.orElse(null), clsFile.file,
-                  cls.name, fullClassName)
+                  className, fullClassName)
               }
             }
           }

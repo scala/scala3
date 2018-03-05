@@ -139,23 +139,25 @@ class ExtractDependencies extends Phase {
       ctx.sbtCallback.binaryDependency(file, binaryClassName, fromClassName, sourceFile, context)
 
     def processExternalDependency(depFile: AbstractFile) = {
-      def binaryClassName(classSegments: List[String]) =
-            classSegments.mkString(".").stripSuffix(".class")
+
+      val binaryClassName = ctx.atPhase(ctx.flattenPhase) { implicit ctx =>
+        dep.to.fullName.toString
+      }
 
       depFile match {
         case ze: ZipArchive#Entry => // The dependency comes from a JAR
           for (zip <- ze.underlyingSource; zipFile <- Option(zip.file)) {
-            val classSegments = io.File(ze.path).segments
-            binaryDependency(zipFile, binaryClassName(classSegments))
+            binaryDependency(zipFile, binaryClassName)
           }
 
         case pf: PlainFile => // The dependency comes from a class file
-          val packages = dep.to.ownersIterator
-            .filter(x => x.is(PackageClass) && !x.isEffectiveRoot).length
-            // We can recover the fully qualified name of a classfile from
-            // its path
-            val classSegments = pf.givenPath.segments.takeRight(packages + 1)
-            binaryDependency(pf.file, binaryClassName(classSegments))
+          val classFile =
+            if (dep.to.is(ModuleClass, butNot = Scala2x))
+              new File(pf.path.stripSuffix(".class") + "$.class")
+                // Module Class loaded from TASTY are loaded from their companion class file.
+                // We recover the name of the module class file.
+            else pf.file
+          binaryDependency(classFile, binaryClassName)
 
         case _ =>
           ctx.warning(s"sbt-deps: Ignoring dependency $depFile of class ${depFile.getClass}}")
