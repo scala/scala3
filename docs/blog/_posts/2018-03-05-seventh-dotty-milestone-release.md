@@ -24,7 +24,7 @@ on bug fixes and stability work.
 
 ## What’s new in the 0.7.0-RC1 technology preview?
 
-### Enums Simplicification [#4003](https://github.com/lampepfl/dotty/pull/4003)
+### Enum Simplification [#4003](https://github.com/lampepfl/dotty/pull/4003)
 The previously introduced syntax and rules for enum were arguably too complex. We can considerably
 simplify them by taking away one capability: that cases can have bodies which can define members.
 Arguably, if we choose an ADT decomposition of a problem, it's good style to write all methods using
@@ -75,8 +75,8 @@ and how to use them to model [Algebraic Data Types](http://dotty.epfl.ch/docs/re
 visit the respective sections in our documentation.
 
 
-### Ghost terms [#3342](https://github.com/lampepfl/dotty/pull/3342)
-The `ghost` modifier can be used on parameters, `val` and `def` to enforce that no reference to
+### Erased terms [#3342](https://github.com/lampepfl/dotty/pull/3342)
+The `erased` modifier can be used on parameters, `val` and `def` to enforce that no reference to
 those terms is ever used. As they are never used, they can safely be removed during compilation.
 
 One particular use case is to add implicit type constraints that are only relevant at compilation
@@ -84,7 +84,7 @@ time. For example, let's consider the following implementation of `flatten`.
 
 ```scala
 class List[X] {
-  def flatten[Y](implicit ghost ev: X <:< List[Y]): List[Y] = {
+  def flatten[Y](implicit erased ev: X <:< List[Y]): List[Y] = {
     val buffer = new mutable.ListBuffer[Y]
     this.foreach(e => buffer ++= e.asInstanceOf[List[Y]])
     buffer.toList
@@ -96,14 +96,14 @@ List(1, 2, 3).flatten             // error: Cannot prove that Int <:< List[Y]
 ```
 
 The implicit evidence `ev` is only used to constrain the type parameter `X` of `List` such that we
-can safely cast from `X` to `List[_]`. The usage of the `ghost` modifier ensures that the evidence
+can safely cast from `X` to `List[_]`. The usage of the `erased` modifier ensures that the evidence
 is not used and can be safely removed at compilation time.
 
-For more information, visit the [Ghost Terms](http://dotty.epfl.ch/docs/reference/ghost-terms.html)
+For more information, visit the [Erased Terms](http://dotty.epfl.ch/docs/reference/erased-terms.html)
 section of our documentation.
 
-**Note**: Ghost terms replace _phantom types_: they have similar semantics, but with the added
-advantage that any type can be a ghost parameter. See [#3410](https://github.com/lampepfl/dotty/pull/3410).
+**Note**: Erased terms replace _phantom types_: they have similar semantics, but with the added
+advantage that any type can be an erased parameter. See [#3410](https://github.com/lampepfl/dotty/pull/3410).
 
 
 ### Improved IDE support [#3960](https://github.com/lampepfl/dotty/pull/3960)
