@@ -216,6 +216,16 @@ object TypeErasure {
     case _ => false
   }
 
+  /** Is `tp` an abstract type or polymorphic type parameter, or another unbounded generic type? */
+  def isGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias match {
+    case tp: TypeRef => !tp.symbol.isClass
+    case tp: TypeParamRef => true
+    case tp: TypeProxy => isGeneric(tp.underlying)
+    case tp: AndType => isGeneric(tp.tp1) || isGeneric(tp.tp2)
+    case tp: OrType => isGeneric(tp.tp1) || isGeneric(tp.tp2)
+    case _ => false
+  }
+
   /** The erased least upper bound is computed as follows
    *  - if both argument are arrays of objects, an array of the erased lub of the element types
    *  - if both arguments are arrays of same primitives, an array of this primitive
