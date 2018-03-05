@@ -61,9 +61,6 @@ object Build {
   }
   val dottyNonBootstrappedVersion = dottyVersion + "-nonbootstrapped"
 
-  val DRONE_MEM = "dotty.drone.mem"
-
-
   val agentOptions = List(
     // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
     // "-agentpath:/home/dark/opt/yjp-2013-build-13072/bin/linux-x86-64/libyjpagent.so"
@@ -133,19 +130,13 @@ object Build {
 
   // Settings shared globally (scoped in Global). Used in build.sbt
   lazy val globalSettings = Def.settings(
-    // Override `runCode` from sbt-dotty to use the language-server and
-    // vscode extension from the source repository of dotty instead of a
-    // published version.
-    runCode := (run in `dotty-language-server`).toTask("").value,
-
     onLoad := (onLoad in Global).value andThen { state =>
       def exists(submodule: String) = {
         val path = Paths.get(submodule)
         Files.exists(path) && {
           val fileStream = Files.list(path)
-          val nonEmpty = fileStream.iterator().hasNext()
-          fileStream.close()
-          nonEmpty
+          try fileStream.iterator().hasNext()
+          finally fileStream.close()
         }
       }
 
@@ -546,7 +537,7 @@ object Build {
         } yield "-Xbootclasspath/p:" + path
 
         val ci_build = // propagate if this is a ci build
-          sys.props.get(DRONE_MEM) match {
+          sys.props.get("dotty.drone.mem") match {
             case Some(prop) => List("-Xmx" + prop)
             case _ => List()
           }
