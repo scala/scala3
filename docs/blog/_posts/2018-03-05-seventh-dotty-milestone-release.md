@@ -142,12 +142,12 @@ object Interpreter {
     case BooleanLit(b) => // Similarly, here T = Boolean and b: Boolean
       b
 
-    case GenLit(t) => //Here t: T
+    case gl: GenLit[_]     => // Here in fact gl: GenLit[T]
 
-      // the next line is an error, but was allowed before the fix to https://github.com/lampepfl/dotty/issues/1754:
-      //val w: GenLit[Nothing] = w
+      // the next line was incorrectly allowed before the fix to https://github.com/lampepfl/dotty/issues/1754:
+      //val gl1: GenLit[Nothing] = gl
 
-      t
+      gl.t
 
     case Plus(e1, e2) =>
       // Here T = Int and e1, e2: Exp[Int]
