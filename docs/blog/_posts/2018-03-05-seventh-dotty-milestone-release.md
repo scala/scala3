@@ -162,7 +162,7 @@ object Interpreter {
 }
 ```
 
-Earlier Dotty releases had issues typechecking such interpreters.
+Earlier Scalac and Dotty releases had issues typechecking such interpreters.
 We have fixed multiple bugs about GADT type checking and exhaustiveness checking, especially for invariant GADTs, including
 [#3666](https://github.com/lampepfl/dotty/issues/3666),
 [#1754](https://github.com/lampepfl/dotty/issues/1754),
