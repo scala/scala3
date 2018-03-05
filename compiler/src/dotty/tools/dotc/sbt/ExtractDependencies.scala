@@ -141,7 +141,8 @@ class ExtractDependencies extends Phase {
     def processExternalDependency(depFile: AbstractFile) = {
 
       val binaryClassName = ctx.atPhase(ctx.flattenPhase) { implicit ctx =>
-        dep.to.fullName.toString
+        if (dep.to.is(JavaDefined)) dep.to.fullName.stripModuleClassSuffix.toString
+        else dep.to.fullName.toString
       }
 
       depFile match {
@@ -151,13 +152,7 @@ class ExtractDependencies extends Phase {
           }
 
         case pf: PlainFile => // The dependency comes from a class file
-          val classFile =
-            if (dep.to.is(ModuleClass, butNot = Scala2x))
-              new File(pf.path.stripSuffix(".class") + "$.class")
-                // Module Class loaded from TASTY are loaded from their companion class file.
-                // We recover the name of the module class file.
-            else pf.file
-          binaryDependency(classFile, binaryClassName)
+          binaryDependency(pf.file, binaryClassName)
 
         case _ =>
           ctx.warning(s"sbt-deps: Ignoring dependency $depFile of class ${depFile.getClass}}")
