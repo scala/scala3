@@ -96,6 +96,41 @@ object Types {
       nextId
     }
 
+    /** A cache indicating whether the type was still provisional, last time we checked */
+    @sharable private var mightBeProvisional = true
+
+    /** Is this type still provisional? This is the case if the type contains, or depends on,
+     *  uninstantiated type variables or type symbols that have the Provisional flag set.
+     *  This is an antimonotonic property - once a type is not provisional, it stays so forever.
+     */
+    def isProvisional(implicit ctx: Context) = mightBeProvisional && testProvisional
+
+    private def testProvisional(implicit ctx: Context) = {
+      val accu = new TypeAccumulator[Boolean] {
+        override def apply(x: Boolean, t: Type) =
+          x || t.mightBeProvisional && {
+            t.mightBeProvisional = t match {
+              case t: TypeVar =>
+                !t.inst.exists
+              case t: TypeRef =>
+                (t: Type).mightBeProvisional = false // break cycles
+                t.symbol.is(Provisional) ||
+                apply(x, t.prefix) || {
+                  t.info match {
+                    case TypeAlias(alias) => apply(x, alias)
+                    case TypeBounds(lo, hi) => apply(apply(x, lo), hi)
+                    case _ => false
+                  }
+                }
+              case _ =>
+                foldOver(x, t)
+            }
+            t.mightBeProvisional
+          }
+      }
+      accu.apply(false, this)
+    }
+
     /** Is this type different from NoType? */
     def exists: Boolean = true
 
@@ -590,7 +625,6 @@ object Types {
         val next = tp.underlying
         ctx.typerState.constraint.entry(tp) match {
           case bounds: TypeBounds if bounds ne next =>
-            ctx.typerState.ephemeral = true
             go(bounds.hi)
           case _ =>
             go(next)
@@ -1667,9 +1701,7 @@ object Types {
     private def computeDenot(implicit ctx: Context): Denotation = {
 
       def finish(d: Denotation) = {
-        if (ctx.typerState.ephemeral)
-          record("ephemeral cache miss: memberDenot")
-        else if (d.exists)
+        if (d.exists)
           // Avoid storing NoDenotations in the cache - we will not be able to recover from
           // them. The situation might arise that a type has NoDenotation in some later
           // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
@@ -1696,23 +1728,19 @@ object Types {
             finish(symd.current)
       }
 
-      val savedEphemeral = ctx.typerState.ephemeral
-      ctx.typerState.ephemeral = false
-      try
-        lastDenotation match {
-          case lastd0: SingleDenotation =>
-            val lastd = lastd0.skipRemoved
-            if (lastd.validFor.runId == ctx.runId) finish(lastd.current)
-            else lastd match {
-              case lastd: SymDenotation =>
-                if (ctx.stillValid(lastd)) finish(lastd.current)
-                else finish(memberDenot(lastd.initial.name, allowPrivate = false))
-              case _ =>
-                fromDesignator
-            }
-          case _ => fromDesignator
-        }
-      finally ctx.typerState.ephemeral |= savedEphemeral
+      lastDenotation match {
+        case lastd0: SingleDenotation =>
+          val lastd = lastd0.skipRemoved
+          if (lastd.validFor.runId == ctx.runId) finish(lastd.current)
+          else lastd match {
+            case lastd: SymDenotation =>
+              if (ctx.stillValid(lastd)) finish(lastd.current)
+              else finish(memberDenot(lastd.initial.name, allowPrivate = false))
+            case _ =>
+              fromDesignator
+          }
+        case _ => fromDesignator
+      }
     }
 
     private def disambiguate(d: Denotation)(implicit ctx: Context): Denotation =
@@ -1797,7 +1825,7 @@ object Types {
 
       lastDenotation = denot
       lastSymbol = denot.symbol
-      checkedPeriod = ctx.period
+      checkedPeriod = if (prefix.isProvisional) Nowhere else ctx.period
       designator match {
         case sym: Symbol if designator ne lastSymbol =>
           designator = lastSymbol.asInstanceOf[Designator{ type ThisName = self.ThisName }]
@@ -3138,20 +3166,13 @@ object Types {
 
     override def superType(implicit ctx: Context): Type = {
       if (ctx.period != validSuper) {
-        validSuper = ctx.period
         cachedSuper = tycon match {
           case tycon: HKTypeLambda => defn.AnyType
-          case tycon: TypeVar if !tycon.inst.exists =>
-            // supertype not stable, since underlying might change
-            validSuper = Nowhere
-            tycon.underlying.applyIfParameterized(args)
-          case tycon: TypeRef if tycon.symbol.isClass =>
-            tycon
-          case tycon: TypeProxy =>
-            if (tycon.typeSymbol.is(Provisional)) validSuper = Nowhere
-            tycon.superType.applyIfParameterized(args)
+          case tycon: TypeRef if tycon.symbol.isClass => tycon
+          case tycon: TypeProxy => tycon.superType.applyIfParameterized(args)
           case _ => defn.AnyType
         }
+        validSuper = if (tycon.isProvisional) Nowhere else ctx.period
       }
       cachedSuper
     }
@@ -3360,10 +3381,7 @@ object Types {
      *  uninstantiated
      */
     def instanceOpt(implicit ctx: Context): Type =
-      if (inst.exists) inst else {
-        ctx.typerState.ephemeral = true
-        ctx.typerState.instType(this)
-      }
+      if (inst.exists) inst else ctx.typerState.instType(this)
 
     /** Is the variable already instantiated? */
     def isInstantiated(implicit ctx: Context) = instanceOpt.exists
@@ -3403,11 +3421,7 @@ object Types {
     /** If the variable is instantiated, its instance, otherwise its origin */
     override def underlying(implicit ctx: Context): Type = {
       val inst = instanceOpt
-      if (inst.exists) inst
-      else {
-        ctx.typerState.ephemeral = true
-        origin
-      }
+      if (inst.exists) inst else origin
     }
 
     override def computeHash(bs: Binders): Int = identityHash(bs)

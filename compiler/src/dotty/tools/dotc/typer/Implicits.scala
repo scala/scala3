@@ -224,14 +224,9 @@ object Implicits {
         }
         else if (ctx eq NoContext) Nil
         else {
-          val savedEphemeral = ctx.typerState.ephemeral
-          ctx.typerState.ephemeral = false
-          try {
-            val result = computeEligible(tp)
-            if (ctx.typerState.ephemeral) record("ephemeral cache miss: eligible")
-            else eligibleCache.put(tp, result)
-            result
-          } finally ctx.typerState.ephemeral |= savedEphemeral
+          val result = computeEligible(tp)
+          eligibleCache.put(tp, result)
+          result
         }
       }
     }
@@ -470,27 +465,20 @@ trait ImplicitRunInfo { self: Run =>
      *  @param isLifted    Type `tp` is the result of a `liftToClasses` application
      */
     def iscope(tp: Type, isLifted: Boolean = false): OfTypeImplicits = {
-      val canCache = Config.cacheImplicitScopes && tp.hash != NotCached
+      val canCache = Config.cacheImplicitScopes && tp.hash != NotCached && !tp.isProvisional
       def computeIScope() = {
-        val savedEphemeral = ctx.typerState.ephemeral
-        ctx.typerState.ephemeral = false
-        try {
-          val liftedTp = if (isLifted) tp else liftToClasses(tp)
-          val refs =
-            if (liftedTp ne tp)
-              iscope(liftedTp, isLifted = true).companionRefs
-            else
-              collectCompanions(tp)
-          val result = new OfTypeImplicits(tp, refs)(ctx)
-          if (ctx.typerState.ephemeral)
-            record("ephemeral cache miss: implicitScope")
-          else if (canCache &&
-                   ((tp eq rootTp) ||          // first type traversed is always cached
-                    !incomplete.contains(tp))) // other types are cached if they are not incomplete
-            implicitScopeCache(tp) = result
-          result
-        }
-        finally ctx.typerState.ephemeral |= savedEphemeral
+        val liftedTp = if (isLifted) tp else liftToClasses(tp)
+        val refs =
+          if (liftedTp ne tp)
+            iscope(liftedTp, isLifted = true).companionRefs
+          else
+            collectCompanions(tp)
+        val result = new OfTypeImplicits(tp, refs)(ctx)
+        if (canCache &&
+            ((tp eq rootTp) ||          // first type traversed is always cached
+             !incomplete.contains(tp))) // other types are cached if they are not incomplete
+          implicitScopeCache(tp) = result
+        result
       }
       if (canCache) implicitScopeCache.getOrElse(tp, computeIScope())
       else computeIScope()

@@ -42,19 +42,6 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
   private val previousConstraint =
     if (previous == null) constraint else previous.constraint
 
-  private[this] var myEphemeral: Boolean =
-    if (previous == null) false else previous.ephemeral
-
-  /** The ephemeral flag is set as a side effect if an operation accesses
-   *  the underlying type of a type variable. The reason we need this flag is
-   *  that any such operation is not referentially transparent; it might logically change
-   *  its value at the moment the type variable is instantiated. Caching code needs to
-   *  check the ephemeral flag; If the flag is set during an operation, the result
-   *  of that operation should not be cached.
-   */
-  def ephemeral = myEphemeral
-  def ephemeral_=(x: Boolean): Unit = { myEphemeral = x }
-
   private[this] var myIsCommittable = true
 
   def isCommittable = myIsCommittable
@@ -159,7 +146,6 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
     constraint foreachTypeVar { tvar =>
       if (tvar.owningState.get eq this) tvar.owningState = new WeakReference(targetState)
     }
-    targetState.ephemeral |= ephemeral
     targetState.gc()
     reporter.flush()
     isCommitted = true
