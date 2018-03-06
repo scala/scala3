@@ -216,10 +216,25 @@ If you have questions or any sort of feedback, feel free to send us a message on
 ## Contributing
 Thank you to all the contributors who made this release possible!
 
-According to `git shortlog -sn --no-merges 0.6.0-RC1..0.7.0-RC1` these are:
+According to `git shortlog -sn --no-merges 0.6.0..0.7.0-RC1` these are:
 
 ```
-TODO
+   182  Martin Odersky
+    94  Nicolas Stucki
+    48  Olivier Blanvillain
+    38  liu fengyun
+    16  Allan Renucci
+    15  Guillaume Martres
+    11  Aggelos Biboudis
+     5  Abel Nieto
+     5  Paolo G. Giarrusso
+     4  Fengyun Liu
+     2  Georg Schmid
+     1  Jonathan Skowera
+     1  Fedor Shiriaev
+     1  Alexander Slesarenko
+     1  benkobalog
+     1  Jimin Hsieh
 ```
 
 If you want to get your hands dirty and contribute to Dotty, now is a good time to get involved!
