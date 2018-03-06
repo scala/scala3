@@ -55,17 +55,7 @@ class ExtractDependencies extends Phase {
     val dumpInc = ctx.settings.YdumpSbtInc.value
     val forceRun = dumpInc || ctx.settings.YforceSbtPhases.value
     if ((ctx.sbtCallback != null || forceRun) && !unit.isJava) {
-      val sourceFile = unit.source.file
-      val responsibleOfImports = firstClassOrModule(unit.tpdTree) match {
-        case None =>
-          ctx.warning("""|No class, trait or object is defined in the compilation unit.
-                         |The incremental compiler cannot record the dependency information in such case.
-                         |Some errors like unused import referring to a non-existent class might not be reported.
-                         |""".stripMargin, unit.tpdTree.pos)
-          defn.RootClass
-        case Some(sym) => sym
-      }
-      val extractDeps = new ExtractDependenciesCollector(responsibleOfImports)
+      val extractDeps = new ExtractDependenciesCollector
       extractDeps.traverse(unit.tpdTree)
 
       if (dumpInc) {
@@ -74,6 +64,7 @@ class ExtractDependencies extends Phase {
         Arrays.sort(names)
         Arrays.sort(deps)
 
+        val sourceFile = unit.source.file
         val pw = io.File(sourceFile.jpath).changeExtension("inc").toFile.printWriter()
         try {
           pw.println(s"// usedNames: ${names.mkString(",")}")
@@ -94,23 +85,6 @@ class ExtractDependencies extends Phase {
         extractDeps.dependencies.foreach(recordDependency)
       }
     }
-  }
-
-  private def firstClassOrModule(tree: tpd.Tree)(implicit ctx: Context): Option[Symbol] = {
-    import tpd._
-    val acc = new TreeAccumulator[Option[Symbol]] {
-      def apply(x: Option[Symbol], t: Tree)(implicit ctx: Context) =
-        if (x.isDefined) x
-        else t match {
-          case moduleDef: Thicket =>
-            Some(moduleDef.symbol)
-          case typeDef: TypeDef =>
-            Some(typeDef.symbol)
-          case other =>
-            foldOver(x, other)
-        }
-    }
-    acc(None, tree)
   }
 
   /*
@@ -209,7 +183,7 @@ private final class UsedNamesInClass {
  *  specially, see the subsection "Dependencies introduced by member reference and
  *  inheritance" in the "Name hashing algorithm" section.
  */
-private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implicit val ctx: Context) extends tpd.TreeTraverser { thisTreeTraverser =>
+private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeTraverser =>
   import tpd._
   import ExtractDependencies._
 
@@ -225,7 +199,50 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
    */
   def dependencies: Set[ClassDependency] = _dependencies
 
-  private def addUsedName(enclosingSym: Symbol, name: Name) = {
+  /** Top level import dependencies are registered as coming from a first top level
+   *  class/trait/object declared in the compilation unit. If none exists, issue warning.
+   */
+  private[this] var _responsibleForImports: Symbol = _
+  private def responsibleForImports(implicit ctx: Context) = {
+    def firstClassOrModule(tree: Tree) = {
+      val acc = new TreeAccumulator[Symbol] {
+        def apply(x: Symbol, t: Tree)(implicit ctx: Context) =
+          t match {
+            case typeDef: TypeDef =>
+              typeDef.symbol
+            case other =>
+              foldOver(x, other)
+          }
+      }
+      acc(NoSymbol, tree)
+    }
+
+    if (_responsibleForImports == null) {
+      val tree = ctx.compilationUnit.tpdTree
+      _responsibleForImports = firstClassOrModule(tree)
+      if (_responsibleForImports == NoSymbol)
+          ctx.warning("""|No class, trait or object is defined in the compilation unit.
+                         |The incremental compiler cannot record the dependency information in such case.
+                         |Some errors like unused import referring to a non-existent class might not be reported.
+                         |""".stripMargin, tree.pos)
+    }
+    _responsibleForImports
+  }
+
+  /**
+   * Resolves dependency source (that is, the closest non-local enclosing
+   * class from a given `currentOwner` set by the `Traverser`).
+   *
+   * TODO: cache and/or optimise?
+   */
+  private def resolveDependencySource(implicit ctx: Context): Symbol = {
+    def isNonLocalClass(sym: Symbol) = sym.isClass && !isLocal(sym)
+    //val source = ctx.owner.ownersIterator.find(isNonLocalClass).get // Zinc
+    val source = currentClass
+    if (source.isEffectiveRoot) responsibleForImports else source
+  }
+
+  private def addUsedName(enclosingSym: Symbol, name: Name)(implicit ctx: Context) = {
     val enclosingName =
       if (enclosingSym == defn.RootClass) classNameAsString(responsibleForImports)
       else classNameAsString(enclosingSym)
@@ -236,40 +253,26 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
   private def addDependency(sym: Symbol)(implicit ctx: Context): Unit =
     if (!ignoreDependency(sym)) {
       val tlClass = sym.topLevelClass
+      val from = resolveDependencySource
       if (tlClass.ne(NoSymbol)) {
-        if (currentClass == defn.RootClass) {
-          _dependencies += ClassDependency(responsibleForImports, tlClass, DependencyByMemberRef)
-        } else {
-          // Some synthetic type aliases like AnyRef do not belong to any class
-          _dependencies += ClassDependency(currentClass, tlClass, DependencyByMemberRef)
-        }
+        _dependencies += ClassDependency(from, tlClass, DependencyByMemberRef)
       }
-      addUsedName(nonLocalEnclosingClass(ctx.owner), sym.name.stripModuleClassSuffix)
+      addUsedName(from, sym.name.stripModuleClassSuffix)
     }
 
-  private def nonLocalEnclosingClass(sym: Symbol)(implicit ctx: Context): Symbol =
-    sym.enclosingClass match {
-      case NoSymbol => NoSymbol
-      case csym =>
-        if (isLocal(csym))
-          nonLocalEnclosingClass(csym.owner)
-        else
-          csym
-    }
-
-  private def ignoreDependency(sym: Symbol) =
+  private def ignoreDependency(sym: Symbol)(implicit ctx: Context) =
     sym.eq(NoSymbol) ||
     sym.isEffectiveRoot ||
     sym.isAnonymousFunction ||
     sym.isAnonymousClass
 
   private def addInheritanceDependency(parent: Symbol)(implicit ctx: Context): Unit =
-    _dependencies += ClassDependency(currentClass, parent.topLevelClass, DependencyByInheritance)
+    _dependencies += ClassDependency(resolveDependencySource, parent.topLevelClass, DependencyByInheritance)
 
   private class PatMatDependencyTraverser(ctx0: Context) extends ExtractTypesCollector(ctx0) {
     override protected def addDependency(symbol: Symbol)(implicit ctx: Context): Unit = {
       if (!ignoreDependency(symbol) && symbol.is(Sealed)) {
-        val encName = nonLocalEnclosingClass(ctx.owner).fullName.stripModuleClassSuffix.toString
+        val encName = classNameAsString(resolveDependencySource)
         val nameUsed = _usedNames.getOrElseUpdate(encName, new UsedNamesInClass)
 
         nameUsed.update(symbol.name, UseScope.Default)
@@ -299,7 +302,7 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
           case Thicket(Ident(name) :: Ident(rename) :: Nil) =>
             addImported(name)
             if (rename ne nme.WILDCARD) {
-              addUsedName(nonLocalEnclosingClass(ctx.owner), rename)
+              addUsedName(resolveDependencySource, rename)
             }
           case _ =>
         }
