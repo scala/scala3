@@ -70,17 +70,14 @@ class ExtractDependencies extends Phase {
 
       if (dumpInc) {
         val names = extractDeps.usedNames.map(_.toString).toArray[Object]
-        val deps = extractDeps.topLevelDependencies.map(_.toString).toArray[Object]
-        val inhDeps = extractDeps.topLevelInheritanceDependencies.map(_.toString).toArray[Object]
+        val deps = extractDeps.dependencies.map(_.toString).toArray[Object]
         Arrays.sort(names)
         Arrays.sort(deps)
-        Arrays.sort(inhDeps)
 
         val pw = io.File(sourceFile.jpath).changeExtension("inc").toFile.printWriter()
         try {
           pw.println(s"// usedNames: ${names.mkString(",")}")
-          pw.println(s"// topLevelDependencies: ${deps.mkString(",")}")
-          pw.println(s"// topLevelInheritanceDependencies: ${inhDeps.mkString(",")}")
+          pw.println(s"// Dependencies: ${deps.mkString(",")}")
         } finally pw.close()
       }
 
@@ -102,9 +99,7 @@ class ExtractDependencies extends Phase {
             }
         }
 
-        // FIXME: https://github.com/sbt/zinc/commit/05482d131346d645375263e1420d2cd19b2ea6ef
-        extractDeps.topLevelDependencies.foreach(dep => recordDependency(dep, DependencyByMemberRef, allowLocal = true))
-        extractDeps.topLevelInheritanceDependencies.foreach(dep => recordDependency(dep, DependencyByInheritance, allowLocal = true))
+        extractDeps.dependencies.foreach(recordDependency)
       }
     }
   }
@@ -131,12 +126,12 @@ class ExtractDependencies extends Phase {
    * that is coming from either source code (not necessarily compiled in this compilation
    * run) or from class file and calls respective callback method.
    */
-  def recordDependency(dep: ClassDependency, context: DependencyContext, allowLocal: Boolean)(implicit ctx: Context): Unit = {
+  def recordDependency(dep: ClassDependency)(implicit ctx: Context): Unit = {
     val fromClassName = classNameAsString(dep.from)
     val sourceFile = ctx.compilationUnit.source.file.file
 
     def binaryDependency(file: File, binaryClassName: String) =
-      ctx.sbtCallback.binaryDependency(file, binaryClassName, fromClassName, sourceFile, context)
+      ctx.sbtCallback.binaryDependency(file, binaryClassName, fromClassName, sourceFile, dep.context)
 
     def processExternalDependency(depFile: AbstractFile) = {
       def binaryClassName(classSegments: List[String]) =
@@ -164,6 +159,8 @@ class ExtractDependencies extends Phase {
 
     val depFile = dep.to.associatedFile
     if (depFile != null) {
+      // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
+      def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
       if (depFile.extension == "class") {
         // Dependency is external -- source is undefined
         processExternalDependency(depFile)
@@ -171,7 +168,7 @@ class ExtractDependencies extends Phase {
         // We cannot ignore dependencies coming from the same source file because
         // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
         val toClassName = classNameAsString(dep.to)
-        ctx.sbtCallback.classDependency(toClassName, fromClassName, context)
+        ctx.sbtCallback.classDependency(toClassName, fromClassName, dep.context)
       }
     }
   }
@@ -185,7 +182,7 @@ object ExtractDependencies {
     sym.ownersIterator.exists(_.isTerm)
 }
 
-private case class ClassDependency(from: Symbol, to: Symbol)
+private case class ClassDependency(from: Symbol, to: Symbol, context: DependencyContext)
 
 private final class NameUsedInClass {
   // Default names and other scopes are separated for performance reasons
@@ -229,24 +226,16 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
   import ExtractDependencies._
 
   private[this] val _usedNames = new mutable.HashMap[String, NameUsedInClass]
-  private[this] val _topLevelDependencies = new mutable.HashSet[ClassDependency]
-  private[this] val _topLevelInheritanceDependencies = new mutable.HashSet[ClassDependency]
+  private[this] val _dependencies = new mutable.HashSet[ClassDependency]
 
   /** The names used in this class, this does not include names which are only
    *  defined and not referenced.
    */
   def usedNames: collection.Map[String, NameUsedInClass] = _usedNames
 
-  /** The set of top-level classes that the compilation unit depends on
-   *  because it refers to these classes or something defined in them.
-   *  This is always a superset of `topLevelInheritanceDependencies` by definition.
+  /** The set of class dependencies from this compilation unit.
    */
-  def topLevelDependencies: Set[ClassDependency] = _topLevelDependencies
-
-  /** The set of top-level classes that the compilation unit extends or that
-   *  contain a non-top-level class that the compilaion unit extends.
-   */
-  def topLevelInheritanceDependencies: Set[ClassDependency] = _topLevelInheritanceDependencies
+  def dependencies: Set[ClassDependency] = _dependencies
 
   private def addUsedName(enclosingSym: Symbol, name: Name) = {
     val enclosingName =
@@ -263,10 +252,10 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
       val tlClass = sym.topLevelClass
       if (tlClass.ne(NoSymbol)) {
         if (currentClass == defn.RootClass) {
-          _topLevelDependencies += ClassDependency(responsibleForImports, tlClass)
+          _dependencies += ClassDependency(responsibleForImports, tlClass, DependencyByMemberRef)
         } else {
           // Some synthetic type aliases like AnyRef do not belong to any class
-          _topLevelDependencies += ClassDependency(currentClass, tlClass)
+          _dependencies += ClassDependency(currentClass, tlClass, DependencyByMemberRef)
         }
       }
       addUsedName(nonLocalEnclosingClass(ctx.owner), sym.name.stripModuleClassSuffix)
@@ -289,7 +278,7 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
     sym.isAnonymousClass
 
   private def addInheritanceDependency(parent: Symbol)(implicit ctx: Context): Unit =
-    _topLevelInheritanceDependencies += ClassDependency(currentClass, parent.topLevelClass)
+    _dependencies += ClassDependency(currentClass, parent.topLevelClass, DependencyByInheritance)
 
   private class PatMatDependencyTraverser(ctx0: Context) extends ExtractTypesCollector(ctx0) {
     override protected def addDependency(symbol: Symbol)(implicit ctx: Context): Unit = {
