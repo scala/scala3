@@ -116,59 +116,72 @@ We also improved the `find references` functionality. It is more robust and much
 
 Try it out in [Visual Studio Code](http://dotty.epfl.ch/docs/usage/ide-support.html)!
 
-### Improvements in GADT type inference
+### Better and safer types in pattern matching (improved GADT support)
 
-GADT typechecking is an advanced feature that got significantly improved in this
-release. GADTs are case class hierarchies similar to this one:
-
+Consider the following implementation of an evaluator for a very simple
+language containing only integer literals (`Lit`) and pairs (`Pair`):
 ```scala
-sealed trait Exp[T]
-case class IntLit(n: Int) extends Exp[Int]
+sealed trait Exp
+case class Lit(value: Int) extends Exp
+case class Pair(fst: Exp, snd: Exp) extends Exp
 
-case class GenLit[T](t: T) extends Exp[T]
-case class Fun[S, T](f: Exp[S] => Exp[T]) extends Exp[S => T]
-case class App[T, U](f: Exp[T => U], e: Exp[T]) extends Exp[U]
-```
-
-where different constructors, such as `IntLit` and `Fun`, pass different type argument to the super
-trait. Hence, typechecking a pattern match on `v: Exp[T]` requires special care. For instance, if
-`v = IntLit(5)` then the typechecker must realize that `T` must be `Int`. This enables writing a
-typed interpreter `eval[T](e: Exp[T]): T`, where say the `IntLit` branch can return an `Int`:
-
-```scala
-object Interpreter {
-  def eval[T](e: Exp[T]): T = e match {
-    case IntLit(n) => // Here T = Int and n: Int
-      n
-
-    case gl: GenLit[_]     => // Here in fact gl: GenLit[T]
-      // the next line was incorrectly allowed before the fix to https://github.com/lampepfl/dotty/issues/1754
-      // val gl1: GenLit[Nothing] = gl
-
-      gl.t
-
-    // The next cases triggered spurious warnings before the fix to
-    // https://github.com/lampepfl/dotty/issues/3666
-
-    case f: Fun[s, t]  => // Here T = s => t
-      (v: s) => eval(f.f(GenLit(v)))
-
-    case App(f, e)     => // Here f: Exp[s, T] and e: Exp[s]
-      eval(f)(eval(e))
+object Evaluator {
+  def eval(e: Exp): Any = e match {
+    case Lit(x) =>
+      x
+    case Pair(a, b) =>
+      (eval(a), eval(b))
+  }
+  def main(args: Array[String]): Unit = {
+    println(eval(Lit(1))) // 1
+    println(eval(Pair(Pair(Lit(1), Lit(2)), Lit(3)))) // ((1,2),3)
   }
 }
 ```
 
-Scala 2 and Dotty have issues typechecking such interpreters.
-In this release we fixed multiple bugs about GADT type checking and exhaustiveness checking, including
-[#3666](https://github.com/lampepfl/dotty/issues/3666),
-[#1754](https://github.com/lampepfl/dotty/issues/1754),
-[#3645](https://github.com/lampepfl/dotty/issues/3645),
-[#4030](https://github.com/lampepfl/dotty/issues/4030).
-Error messages are now more informative [#3990](https://github.com/lampepfl/dotty/pull/3990).
+This code is correct but it's not very type-safe since `eval` returns a value
+of type `Any`, we can do better by adding a type parameter to `Exp` that
+represents the result type of evaluating  expression:
 
-Fixes to covariant GADTs ([#3989](https://github.com/lampepfl/dotty/issues/3989)/
-[#4013](https://github.com/lampepfl/dotty/pull/4013)) have been deferred to next release.
+```scala
+sealed trait Exp[T]
+case class Lit(value: Int) extends Exp[Int]
+case class Pair[A, B](fst: Exp[A], snd: Exp[B]) extends Exp[(A, B)]
+
+object Evaluator {
+  def eval[T](e: Exp[T]): T = e match {
+    case Lit(x) =>
+      // In this case, T = Int
+      x
+    case Pair(a, b) =>
+      // In this case, T = (A, B) where A is the type of a and B is the type of b
+      (eval(a), eval(b))
+}
+```
+
+Now the expression `Pair(Pair(Lit(1), Lit(2)), Lit(3)))` has type `Exp[((Int,
+Int), Int)]` and calling `eval` on it will return a value of type `((Int,
+Int), Int)` instead of `Any`.
+
+Something subtle is going on in the definition of `eval` here: its result type
+is `T` which is a type parameter that could be instantiated to anything, and
+yet in the `Lit` case we are able to return a value of type `Int`, and in the
+`Pair` case a value of a tuple type. In each case the typechecker has been able
+to constrain the type of `T` through unification (e.g. if `e` matches `Lit(x)`
+then `Lit` is a subtype of `Exp[T]`, so `T` must be equal to `Int`). This is
+usually referred to as **GADT support** in Scala since it closely mirrors the
+behavior of [Generalized Algebraic Data
+Types](https://en.wikipedia.org/wiki/Generalized_algebraic_data_type) in
+Haskell and other languages.
+
+GADTs have been a part of Scala for a long time, but in Dotty 0.7.0-RC1 we
+significantly improved their implementation to catch more issues at
+compile-time. For example, writing `(eval(a), eval(a))` instead of `(eval(a),
+(eval(b)))` in the example above should be an error, but it was not caught by
+Scala 2 or previous versions of Dotty, whereas we now get a type mismatch error
+as expected. More work remains to be done to fix the remaining [GADT-related
+issues](https://github.com/lampepfl/dotty/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+gadt),
+but so far no show-stopper has been found.
 
 ## Trying out Dotty
 ### Scastie
