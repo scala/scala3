@@ -126,12 +126,14 @@ sealed trait Exp[T]
 case class IntLit(n: Int) extends Exp[Int]
 
 case class GenLit[T](t: T) extends Exp[T]
-case class Plus(e1: Exp[Int], e2: Exp[Int]) extends Exp[Int]
 case class Fun[S, T](f: Exp[S] => Exp[T]) extends Exp[S => T]
 case class App[T, U](f: Exp[T => U], e: Exp[T]) extends Exp[U]
 ```
 
-where different constructors, such as `IntLit` and `Fun`, pass different type argument to the super trait. Hence, typechecking a pattern match on `v: Exp[T]` requires special care: for instance, if `v = IntLit(5)` then the typechecker must realize that `T` must be `Int`. This enables writing a typed interpreter `eval[T](e: Exp[T]): T`, where say the `IntLit` branch can return an `Int`:
+where different constructors, such as `IntLit` and `Fun`, pass different type argument to the super
+trait. Hence, typechecking a pattern match on `v: Exp[T]` requires special care. For instance, if
+`v = IntLit(5)` then the typechecker must realize that `T` must be `Int`. This enables writing a
+typed interpreter `eval[T](e: Exp[T]): T`, where say the `IntLit` branch can return an `Int`:
 
 ```scala
 object Interpreter {
@@ -140,17 +142,12 @@ object Interpreter {
       n
 
     case gl: GenLit[_]     => // Here in fact gl: GenLit[T]
-
-      // the next line was incorrectly allowed before the fix to https://github.com/lampepfl/dotty/issues/1754:
-      //val gl1: GenLit[Nothing] = gl
+      // the next line was incorrectly allowed before the fix to https://github.com/lampepfl/dotty/issues/1754
+      // val gl1: GenLit[Nothing] = gl
 
       gl.t
 
-    case Plus(e1, e2) =>
-      // Here T = Int and e1, e2: Exp[Int]
-      eval(e1) + eval(e2)
-
-    // The next cases triggered warnings before the fix to
+    // The next cases triggered spurious warnings before the fix to
     // https://github.com/lampepfl/dotty/issues/3666
 
     case f: Fun[s, t]  => // Here T = s => t
@@ -163,13 +160,13 @@ object Interpreter {
 ```
 
 Earlier Scalac and Dotty releases had issues typechecking such interpreters.
-We have fixed multiple bugs about GADT type checking and exhaustiveness checking, especially for invariant GADTs, including
+We fixed multiple bugs about GADT type checking and exhaustiveness checking, including
 [#3666](https://github.com/lampepfl/dotty/issues/3666),
 [#1754](https://github.com/lampepfl/dotty/issues/1754),
 [#3645](https://github.com/lampepfl/dotty/issues/3645),
-and improved handling of matches using repeated type variables
 [#4030](https://github.com/lampepfl/dotty/issues/4030).
-We have also made error messages more informative [#3990](https://github.com/lampepfl/dotty/pull/3990).
+Error messages are now more informative [#3990](https://github.com/lampepfl/dotty/pull/3990).
+
 Fixes to covariant GADTs ([#3989](https://github.com/lampepfl/dotty/issues/3989)/
 [#4013](https://github.com/lampepfl/dotty/pull/4013)) have been deferred to next release.
 
