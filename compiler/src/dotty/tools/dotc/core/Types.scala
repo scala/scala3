@@ -111,7 +111,7 @@ object Types {
           x || t.mightBeProvisional && {
             t.mightBeProvisional = t match {
               case t: TypeVar =>
-                !t.inst.exists
+                !t.inst.exists || apply(x, t.inst)
               case t: TypeRef =>
                 (t: Type).mightBeProvisional = false // break cycles
                 t.symbol.is(Provisional) ||
@@ -1691,7 +1691,7 @@ object Types {
      *  attempt in `denot` does not yield a denotation.
      */
     private def denotAt(lastd: Denotation, now: Period)(implicit ctx: Context): Denotation = {
-      if (lastd != null && (lastd.validFor contains now)) {
+      if (lastd != null && (lastd.validFor contains now) && checkedPeriod != Nowhere) {
         checkedPeriod = now
         lastd
       }
@@ -1731,10 +1731,10 @@ object Types {
       lastDenotation match {
         case lastd0: SingleDenotation =>
           val lastd = lastd0.skipRemoved
-          if (lastd.validFor.runId == ctx.runId) finish(lastd.current)
+          if (lastd.validFor.runId == ctx.runId && (checkedPeriod != Nowhere)) finish(lastd.current)
           else lastd match {
             case lastd: SymDenotation =>
-              if (ctx.stillValid(lastd)) finish(lastd.current)
+              if (ctx.stillValid(lastd) && (checkedPeriod != Nowhere)) finish(lastd.current)
               else finish(memberDenot(lastd.initial.name, allowPrivate = false))
             case _ =>
               fromDesignator
