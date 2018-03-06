@@ -159,8 +159,8 @@ object Interpreter {
 }
 ```
 
-Earlier Scalac and Dotty releases had issues typechecking such interpreters.
-We fixed multiple bugs about GADT type checking and exhaustiveness checking, including
+Scala 2 and Dotty have issues typechecking such interpreters.
+In this release we fixed multiple bugs about GADT type checking and exhaustiveness checking, including
 [#3666](https://github.com/lampepfl/dotty/issues/3666),
 [#1754](https://github.com/lampepfl/dotty/issues/1754),
 [#3645](https://github.com/lampepfl/dotty/issues/3645),
