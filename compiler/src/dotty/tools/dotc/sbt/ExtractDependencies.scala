@@ -69,7 +69,7 @@ class ExtractDependencies extends Phase {
       extractDeps.traverse(unit.tpdTree)
 
       if (dumpInc) {
-        val names = extractDeps.usedNames.map(_.toString).toArray[Object]
+        val names = extractDeps.usedNames.map { case (clazz, names) => s"$clazz: $names" }.toArray[Object]
         val deps = extractDeps.dependencies.map(_.toString).toArray[Object]
         Arrays.sort(names)
         Arrays.sort(deps)
@@ -82,20 +82,12 @@ class ExtractDependencies extends Phase {
       }
 
       if (ctx.sbtCallback != null) {
-        extractDeps.usedNames.foreach{
-          case (rawClassName, usedNames) =>
-            val className = rawClassName
-            usedNames.defaultNames.foreach { rawUsedName =>
-              val useName = rawUsedName.toString
-              val useScopes =
-                usedNames.scopedNames.get(rawUsedName) match {
-                  case None => EnumSet.of(UseScope.Default)
-                  case Some(existingScopes) =>
-                    existingScopes.add(UseScope.Default)
-                    existingScopes
-                }
-
-              ctx.sbtCallback.usedName(className, useName, useScopes)
+        extractDeps.usedNames.foreach {
+          case (clazz, usedNames) =>
+            val className = clazz
+            usedNames.names.foreach {
+              case (usedName, scopes) =>
+                ctx.sbtCallback.usedName(className, usedName.toString, scopes)
             }
         }
 
@@ -184,29 +176,25 @@ object ExtractDependencies {
 
 private case class ClassDependency(from: Symbol, to: Symbol, context: DependencyContext)
 
-private final class NameUsedInClass {
-  // Default names and other scopes are separated for performance reasons
-  val defaultNames: mutable.Set[Name] = new mutable.HashSet[Name]
-  val scopedNames: mutable.Map[Name, EnumSet[UseScope]] = new mutable.HashMap[Name, EnumSet[UseScope]].withDefault(_ => EnumSet.noneOf(classOf[UseScope]))
+private final class UsedNamesInClass {
+  private val _names = new mutable.HashMap[Name, EnumSet[UseScope]]
+  def names: collection.Map[Name, EnumSet[UseScope]] = _names
 
-  // We have to leave with commas on ends
+  def update(name: Name, scope: UseScope): Unit = {
+    val scopes = _names.getOrElseUpdate(name, EnumSet.noneOf(classOf[UseScope]))
+    scopes.add(scope)
+  }
+
   override def toString(): String = {
-    val builder = new StringBuilder(": ")
-    defaultNames.foreach { name =>
-      builder.append(name.toString.trim)
-      val otherScopes = scopedNames.get(name)
-      scopedNames.get(name) match {
-        case None =>
-        case Some(otherScopes) =>
-          // Pickling tests fail when this is turned in an anonymous class
-          class Consumer extends java.util.function.Consumer[UseScope]() {
-            override def accept(scope: UseScope): Unit =
-              builder.append(scope.name()).append(", ")
-          }
-          builder.append(" in [")
-          otherScopes.forEach(new Consumer)
-          builder.append("]")
-      }
+    val builder = new StringBuilder
+    names.foreach { case (name, scopes) =>
+      builder.append(name.mangledString)
+      builder.append(" in [")
+      scopes.forEach(new java.util.function.Consumer[UseScope]() { // TODO: Adapt to SAM type when #2732 is fixed
+        override def accept(scope: UseScope): Unit =
+          builder.append(scope.toString)
+      })
+      builder.append("]")
       builder.append(", ")
     }
     builder.toString()
@@ -225,13 +213,13 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
   import tpd._
   import ExtractDependencies._
 
-  private[this] val _usedNames = new mutable.HashMap[String, NameUsedInClass]
+  private[this] val _usedNames = new mutable.HashMap[String, UsedNamesInClass]
   private[this] val _dependencies = new mutable.HashSet[ClassDependency]
 
   /** The names used in this class, this does not include names which are only
    *  defined and not referenced.
    */
-  def usedNames: collection.Map[String, NameUsedInClass] = _usedNames
+  def usedNames: collection.Map[String, UsedNamesInClass] = _usedNames
 
   /** The set of class dependencies from this compilation unit.
    */
@@ -241,10 +229,8 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
     val enclosingName =
       if (enclosingSym == defn.RootClass) classNameAsString(responsibleForImports)
       else classNameAsString(enclosingSym)
-    val nameUsed = _usedNames.getOrElseUpdate(enclosingName, new NameUsedInClass)
-    nameUsed.defaultNames += name
-    // TODO: Set correct scope
-    nameUsed.scopedNames(name).add(UseScope.Default)
+    val nameUsed = _usedNames.getOrElseUpdate(enclosingName, new UsedNamesInClass)
+    nameUsed.update(name, UseScope.Default)
   }
 
   private def addDependency(sym: Symbol)(implicit ctx: Context): Unit =
@@ -284,10 +270,10 @@ private class ExtractDependenciesCollector(responsibleForImports: Symbol)(implic
     override protected def addDependency(symbol: Symbol)(implicit ctx: Context): Unit = {
       if (!ignoreDependency(symbol) && symbol.is(Sealed)) {
         val encName = nonLocalEnclosingClass(ctx.owner).fullName.stripModuleClassSuffix.toString
-        val nameUsed = _usedNames.getOrElseUpdate(encName, new NameUsedInClass)
+        val nameUsed = _usedNames.getOrElseUpdate(encName, new UsedNamesInClass)
 
-        nameUsed.defaultNames += symbol.name
-        nameUsed.scopedNames(symbol.name).add(UseScope.PatMatTarget)
+        nameUsed.update(symbol.name, UseScope.Default)
+        nameUsed.update(symbol.name, UseScope.PatMatTarget)
       }
     }
   }
