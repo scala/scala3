@@ -132,10 +132,9 @@ object Evaluator {
     case Pair(a, b) =>
       (eval(a), eval(b))
   }
-  def main(args: Array[String]): Unit = {
-    println(eval(Lit(1))) // 1
-    println(eval(Pair(Pair(Lit(1), Lit(2)), Lit(3)))) // ((1,2),3)
-  }
+
+  eval(Lit(1))                             // 1: Any
+  eval(Pair(Pair(Lit(1), Lit(2)), Lit(3))) // ((1, 2), 3) : Any
 }
 ```
 
@@ -157,6 +156,9 @@ object Evaluator {
       // In this case, T = (A, B) where A is the type of a and B is the type of b
       (eval(a), eval(b))
   }
+
+  eval(Lit(1))                             // 1: Int
+  eval(Pair(Pair(Lit(1), Lit(2)), Lit(3))) // ((1, 2), 3) : ((Int, Int), Int)
 }
 ```
 
