@@ -48,7 +48,7 @@ object Checkable {
    *  (b) replace pattern binder types (e.g., `_$1`) in X:
    *      - variance = 1  : hiBound
    *      - variance = -1 : loBound
-   *      - variance = 0  : OrType(Any, Nothing)
+   *      - variance = 0  : OrType(Any, Nothing) // TODO: use original type param bounds
    *
    *  Then check:
    *

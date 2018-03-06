@@ -3,6 +3,7 @@ class Test {
 
   x match {
     case _: List[Int @unchecked] => 5
+    case _: List[Int] @unchecked => 5
   }
 
   def foo(x: Any): Boolean =
