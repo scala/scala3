@@ -141,7 +141,7 @@ object Evaluator {
 
 This code is correct but it's not very type-safe since `eval` returns a value
 of type `Any`, we can do better by adding a type parameter to `Exp` that
-represents the result type of evaluating  expression:
+represents the result type of evaluating the expression:
 
 ```scala
 sealed trait Exp[T]
@@ -156,6 +156,7 @@ object Evaluator {
     case Pair(a, b) =>
       // In this case, T = (A, B) where A is the type of a and B is the type of b
       (eval(a), eval(b))
+  }
 }
 ```
 
@@ -177,7 +178,7 @@ Haskell and other languages.
 GADTs have been a part of Scala for a long time, but in Dotty 0.7.0-RC1 we
 significantly improved their implementation to catch more issues at
 compile-time. For example, writing `(eval(a), eval(a))` instead of `(eval(a),
-(eval(b)))` in the example above should be an error, but it was not caught by
+eval(b))` in the example above should be an error, but it was not caught by
 Scala 2 or previous versions of Dotty, whereas we now get a type mismatch error
 as expected. More work remains to be done to fix the remaining [GADT-related
 issues](https://github.com/lampepfl/dotty/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+gadt),
