@@ -20,6 +20,7 @@ import config.Printers.{typr, constr}
 import annotation.tailrec
 import reporting._
 import collection.mutable
+import config.Config
 
 object Inferencing {
 
@@ -161,12 +162,15 @@ object Inferencing {
    *    - The prefix `p` of a selection `p.f`.
    *    - The result expression `e` of a block `{s1; .. sn; e}`.
    */
-  def tvarsInParams(tree: Tree)(implicit ctx: Context): List[TypeVar] = {
+  def tvarsInParams(tree: Tree, locked: TypeVars)(implicit ctx: Context): List[TypeVar] = {
     @tailrec def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
       case Apply(fn, _) => boundVars(fn, acc)
       case TypeApply(fn, targs) =>
-        val tvars = targs.tpes.collect {
-          case tvar: TypeVar if !tvar.isInstantiated && targs.contains(tvar.bindingTree) => tvar
+        val tvars = targs.filter(_.isInstanceOf[TypeVarBinder[_]]).tpes.collect {
+          case tvar: TypeVar
+          if !tvar.isInstantiated &&
+             ctx.typerState.ownedVars.contains(tvar) &&
+             !locked.contains(tvar) => tvar
         }
         boundVars(fn, acc ::: tvars)
       case Select(pre, _) => boundVars(pre, acc)
@@ -228,7 +232,7 @@ object Inferencing {
    *            to instantiate undetermined type variables that occur non-variantly
    */
   def maximizeType(tp: Type, pos: Position, fromScala2x: Boolean)(implicit ctx: Context): List[Symbol] = Stats.track("maximizeType") {
-    val vs = variances(tp, alwaysTrue)
+    val vs = variances(tp)
     val patternBound = new mutable.ListBuffer[Symbol]
     vs foreachBinding { (tvar, v) =>
       if (v == 1) tvar.instantiate(fromBelow = false)
@@ -265,14 +269,14 @@ object Inferencing {
    *
    *  we want to instantiate U to x.type right away. No need to wait further.
    */
-  private def variances(tp: Type, include: TypeVar => Boolean)(implicit ctx: Context): VarianceMap = Stats.track("variances") {
+  private def variances(tp: Type)(implicit ctx: Context): VarianceMap = Stats.track("variances") {
     val constraint = ctx.typerState.constraint
 
     object accu extends TypeAccumulator[VarianceMap] {
       def setVariance(v: Int) = variance = v
       def apply(vmap: VarianceMap, t: Type): VarianceMap = t match {
         case t: TypeVar
-        if !t.isInstantiated && (ctx.typerState.constraint contains t) && include(t) =>
+        if !t.isInstantiated && ctx.typerState.constraint.contains(t) =>
           val v = vmap(t)
           if (v == null) vmap.updated(t, variance)
           else if (v == variance || v == 0) vmap
@@ -313,71 +317,47 @@ object Inferencing {
 
     propagate(accu(SimpleIdentityMap.Empty, tp))
   }
-
-  private def varianceInContext(tvar: TypeVar)(implicit ctx: Context): FlagSet = {
-    object accu extends TypeAccumulator[FlagSet] {
-      def apply(fs: FlagSet, t: Type): FlagSet =
-        if (fs == EmptyFlags) fs
-        else if (t eq tvar)
-          if (variance > 0) fs &~ Contravariant
-          else if (variance < 0) fs &~ Covariant
-          else EmptyFlags
-        else foldOver(fs, t)
-    }
-    val constraint = ctx.typerState.constraint
-    val tparam = tvar.origin
-    (VarianceFlags /: constraint.uninstVars) { (fs, tv) =>
-      if ((tv `eq` tvar) || (fs == EmptyFlags)) fs
-      else {
-        val otherParam = tv.origin
-        val fs1 = if (constraint.isLess(tparam, otherParam)) fs &~ Covariant else fs
-        val fs2 = if (constraint.isLess(otherParam, tparam)) fs1 &~ Contravariant else fs1
-        accu(fs2, constraint.entry(otherParam))
-      }
-    }
-  }
 }
 
 trait Inferencing { this: Typer =>
   import Inferencing._
   import tpd._
 
-  /** Interpolate those undetermined type variables in the widened type of this tree
-   *  which are introduced by type application contained in the tree.
-   *  If such a variable appears covariantly in type `tp` or does not appear at all,
-   *  approximate it by its lower bound. Otherwise, if it appears contravariantly
-   *  in type `tp` approximate it by its upper bound.
-   *  @param ownedBy  if it is different from NoSymbol, all type variables owned by
-   *                  `ownedBy` qualify, independent of position.
-   *                  Without that second condition, it can be that certain variables escape
-   *                  interpolation, for instance when their tree was eta-lifted, so
-   *                  the typechecked tree is no longer the tree in which the variable
-   *                  was declared. A concrete example of this phenomenon can be
-   *                  observed when compiling core.TypeOps#asSeenFrom.
+  /** Interpolate undetermined type variables in the widened type of this tree.
+   *  @param tree    the tree whose type is interpolated
+   *  @param pt      the expected result type
+   *  @param locked  the set of type variables of the current typer state that cannot be interpolated
+   *                 at the present time
+   *  Eligible for interpolation are all type variables owned by the current typerstate
+   *  that are not in locked. Type variables occurring co- (respectively, contra-) variantly in the type
+   *  are minimized (respectvely, maximized). Non occurring type variables are minimized if they
+   *  have a lower bound different from Nothing, maximized otherwise. Type variables appearing
+   *  non-variantly in the type are left untouched.
+   *
+   *  Note that even type variables that do not appear directly in a type, can occur with
+   *  some variance in the type, because of the constraints. E.g if `X` occurs co-variantly in `T`
+   *  and we have a constraint
+   *
+   *      Y <: X
+   *
+   *  Then `Y` also occurs co-variantly in `T` because it needs to be minimized in order to constrain
+   *  `T` the least. See `variances` for more detail.
    */
-  def interpolateUndetVars(tree: Tree, ownedBy: Symbol, pt: Type)(implicit ctx: Context): Unit = {
-    val constraint = ctx.typerState.constraint
-    val qualifies = (tvar: TypeVar) =>
-      (tree contains tvar.bindingTree) || ownedBy.exists && tvar.owner == ownedBy
-    def interpolate() = Stats.track("interpolateUndetVars") {
-      val tp = tree.tpe.widen
-      constr.println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${constraint.uninstVars map (tvar => s"${tvar.show}@${tvar.bindingTree.pos}")}")
-      constr.println(s"qualifying undet vars: ${constraint.uninstVars filter qualifies map (tvar => s"$tvar / ${tvar.show}")}, constraint: ${constraint.show}")
-
-      val vs = variances(tp, qualifies)
-      val hasUnreportedErrors = ctx.typerState.reporter match {
-        case r: StoreReporter if r.hasErrors => true
-        case _ => false
-      }
-
-      var isConstrained = tree.isInstanceOf[Apply] || tree.tpe.isInstanceOf[MethodOrPoly]
-
-      def ensureConstrained() = if (!isConstrained) {
-        isConstrained = true
+  def interpolateTypeVars(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type = {
+    val state = ctx.typerState
+    if (state.ownedVars.size > locked.size) {
+      val qualifying = state.ownedVars -- locked
+      typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, owned vars = ${state.ownedVars.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
+      val resultAlreadyConstrained =
+        tree.isInstanceOf[Apply] || tree.tpe.isInstanceOf[MethodOrPoly]
+      if (!resultAlreadyConstrained)
         constrainResult(tree.tpe, pt)
-      }
+          // This is needed because it could establish singleton type upper bounds. See i2998.scala.
 
-      // Avoid interpolating variables if typerstate has unreported errors.
+      val tp = tree.tpe.widen
+      val vs = variances(tp)
+
+      // Avoid interpolating variables occurring in tree's type if typerstate has unreported errors.
       // Reason: The errors might reflect unsatisfiable constraints. In that
       // case interpolating without taking account the constraints risks producing
       // nonsensical types that then in turn produce incomprehensible errors.
@@ -397,40 +377,29 @@ trait Inferencing { this: Typer =>
       //     found   : Int(1)
       //     required: String
       //     val y: List[List[String]] = List(List(1))
-      if (!hasUnreportedErrors)
-        vs foreachBinding { (tvar, v) =>
-          if (v != 0 && ctx.typerState.constraint.contains(tvar)) {
-            // previous interpolations could have already instantiated `tvar`
-            // through unification, that's why we have to check again whether `tvar`
-            // is contained in the current constraint.
-            typr.println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
-            ensureConstrained()
-            tvar.instantiate(fromBelow = v == 1)
+      val hasUnreportedErrors = state.reporter match {
+        case r: StoreReporter if r.hasErrors => true
+        case _ => false
+      }
+      def constraint = state.constraint
+      for (tvar <- qualifying)
+        if (!tvar.isInstantiated && state.constraint.contains(tvar)) {
+          // Needs to be checked again, since previous interpolations could already have
+          // instantiated `tvar` through unification.
+          val v = vs(tvar)
+          if (v == null) {
+            typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = ${tvar.hasLowerBound}, $constraint")
+            tvar.instantiate(fromBelow = tvar.hasLowerBound)
           }
-        }
-      for (tvar <- constraint.uninstVars)
-        if (!(vs contains tvar) && qualifies(tvar)) {
-          typr.println(s"instantiating non-occurring ${tvar.show} in ${tp.show} / $tp")
-          ensureConstrained()
-          tvar.instantiate(
-            fromBelow = tvar.hasLowerBound || !varianceInContext(tvar).is(Covariant))
+          else if (!hasUnreportedErrors)
+            if (v.intValue != 0) {
+              typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
+              tvar.instantiate(fromBelow = v.intValue == 1)
+            }
+            else typr.println(i"no interpolation for nonvariant $tvar in $state")
         }
     }
-    if (constraint.uninstVars exists qualifies) interpolate()
-  }
-
-  /** The uninstantiated type variables introduced somehwere in `tree` */
-  def uninstBoundVars(tree: Tree)(implicit ctx: Context): List[TypeVar] = {
-    val buf = new mutable.ListBuffer[TypeVar]
-    tree.foreachSubTree {
-      case TypeApply(_, args) =>
-        args.tpes.foreach {
-          case tv: TypeVar if !tv.isInstantiated && tree.contains(tv.bindingTree) => buf += tv
-          case _ =>
-        }
-      case _ =>
-    }
-    buf.toList
+    tree
   }
 }
 

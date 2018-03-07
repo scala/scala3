@@ -18,7 +18,7 @@ import Denotations._
 import Periods._
 import util.Positions.{Position, NoPosition}
 import util.Stats._
-import util.DotClass
+import util.{DotClass, SimpleIdentitySet}
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages.CyclicReferenceInvolving
 import ast.tpd._
@@ -94,6 +94,41 @@ object Types {
 //      if (nextId == 19555)
 //        println("foo")
       nextId
+    }
+
+    /** A cache indicating whether the type was still provisional, last time we checked */
+    @sharable private var mightBeProvisional = true
+
+    /** Is this type still provisional? This is the case if the type contains, or depends on,
+     *  uninstantiated type variables or type symbols that have the Provisional flag set.
+     *  This is an antimonotonic property - once a type is not provisional, it stays so forever.
+     */
+    def isProvisional(implicit ctx: Context) = mightBeProvisional && testProvisional
+
+    private def testProvisional(implicit ctx: Context) = {
+      val accu = new TypeAccumulator[Boolean] {
+        override def apply(x: Boolean, t: Type) =
+          x || t.mightBeProvisional && {
+            t.mightBeProvisional = t match {
+              case t: TypeVar =>
+                !t.inst.exists || apply(x, t.inst)
+              case t: TypeRef =>
+                (t: Type).mightBeProvisional = false // break cycles
+                t.symbol.is(Provisional) ||
+                apply(x, t.prefix) || {
+                  t.info match {
+                    case TypeAlias(alias) => apply(x, alias)
+                    case TypeBounds(lo, hi) => apply(apply(x, lo), hi)
+                    case _ => false
+                  }
+                }
+              case _ =>
+                foldOver(x, t)
+            }
+            t.mightBeProvisional
+          }
+      }
+      accu.apply(false, this)
     }
 
     /** Is this type different from NoType? */
@@ -590,7 +625,6 @@ object Types {
         val next = tp.underlying
         ctx.typerState.constraint.entry(tp) match {
           case bounds: TypeBounds if bounds ne next =>
-            ctx.typerState.ephemeral = true
             go(bounds.hi)
           case _ =>
             go(next)
@@ -949,25 +983,25 @@ object Types {
         this
     }
 
-    private def dealias(keepAnnots: Boolean)(implicit ctx: Context): Type = this match {
+    private def dealias1(keepAnnots: Boolean)(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else tp.info match {
-          case TypeAlias(tp) => tp.dealias(keepAnnots): @tailrec
+          case TypeAlias(tp) => tp.dealias1(keepAnnots): @tailrec
           case _ => tp
         }
       case app @ AppliedType(tycon, args) =>
-        val tycon1 = tycon.dealias(keepAnnots)
-        if (tycon1 ne tycon) app.superType.dealias(keepAnnots): @tailrec
+        val tycon1 = tycon.dealias1(keepAnnots)
+        if (tycon1 ne tycon) app.superType.dealias1(keepAnnots): @tailrec
         else this
       case tp: TypeVar =>
         val tp1 = tp.instanceOpt
-        if (tp1.exists) tp1.dealias(keepAnnots): @tailrec else tp
+        if (tp1.exists) tp1.dealias1(keepAnnots): @tailrec else tp
       case tp: AnnotatedType =>
-        val tp1 = tp.tpe.dealias(keepAnnots)
+        val tp1 = tp.tpe.dealias1(keepAnnots)
         if (keepAnnots) tp.derivedAnnotatedType(tp1, tp.annot) else tp1
       case tp: LazyRef =>
-        tp.ref.dealias(keepAnnots): @tailrec
+        tp.ref.dealias1(keepAnnots): @tailrec
       case _ => this
     }
 
@@ -976,14 +1010,14 @@ object Types {
      *  Goes through annotated types and rewraps annotations on the result.
      */
     final def dealiasKeepAnnots(implicit ctx: Context): Type =
-      dealias(keepAnnots = true)
+      dealias1(keepAnnots = true)
 
     /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
      *  TypeVars until type is no longer alias type, annotated type, LazyRef,
      *  or instantiated type variable.
      */
     final def dealias(implicit ctx: Context): Type =
-      dealias(keepAnnots = false)
+      dealias1(keepAnnots = false)
 
     /** Perform successive widenings and dealiasings until none can be applied anymore */
     @tailrec final def widenDealias(implicit ctx: Context): Type = {
@@ -1657,7 +1691,7 @@ object Types {
      *  attempt in `denot` does not yield a denotation.
      */
     private def denotAt(lastd: Denotation, now: Period)(implicit ctx: Context): Denotation = {
-      if (lastd != null && (lastd.validFor contains now)) {
+      if (checkedPeriod != Nowhere && lastd.validFor.contains(now)) {
         checkedPeriod = now
         lastd
       }
@@ -1667,9 +1701,7 @@ object Types {
     private def computeDenot(implicit ctx: Context): Denotation = {
 
       def finish(d: Denotation) = {
-        if (ctx.typerState.ephemeral)
-          record("ephemeral cache miss: memberDenot")
-        else if (d.exists)
+        if (d.exists)
           // Avoid storing NoDenotations in the cache - we will not be able to recover from
           // them. The situation might arise that a type has NoDenotation in some later
           // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
@@ -1696,23 +1728,19 @@ object Types {
             finish(symd.current)
       }
 
-      val savedEphemeral = ctx.typerState.ephemeral
-      ctx.typerState.ephemeral = false
-      try
-        lastDenotation match {
-          case lastd0: SingleDenotation =>
-            val lastd = lastd0.skipRemoved
-            if (lastd.validFor.runId == ctx.runId) finish(lastd.current)
-            else lastd match {
-              case lastd: SymDenotation =>
-                if (ctx.stillValid(lastd)) finish(lastd.current)
-                else finish(memberDenot(lastd.initial.name, allowPrivate = false))
-              case _ =>
-                fromDesignator
-            }
-          case _ => fromDesignator
-        }
-      finally ctx.typerState.ephemeral |= savedEphemeral
+      lastDenotation match {
+        case lastd0: SingleDenotation =>
+          val lastd = lastd0.skipRemoved
+          if (lastd.validFor.runId == ctx.runId && (checkedPeriod != Nowhere)) finish(lastd.current)
+          else lastd match {
+            case lastd: SymDenotation =>
+              if (ctx.stillValid(lastd) && (checkedPeriod != Nowhere)) finish(lastd.current)
+              else finish(memberDenot(lastd.initial.name, allowPrivate = false))
+            case _ =>
+              fromDesignator
+          }
+        case _ => fromDesignator
+      }
     }
 
     private def disambiguate(d: Denotation)(implicit ctx: Context): Denotation =
@@ -1797,7 +1825,7 @@ object Types {
 
       lastDenotation = denot
       lastSymbol = denot.symbol
-      checkedPeriod = ctx.period
+      checkedPeriod = if (prefix.isProvisional) Nowhere else ctx.period
       designator match {
         case sym: Symbol if designator ne lastSymbol =>
           designator = lastSymbol.asInstanceOf[Designator{ type ThisName = self.ThisName }]
@@ -3138,20 +3166,13 @@ object Types {
 
     override def superType(implicit ctx: Context): Type = {
       if (ctx.period != validSuper) {
-        validSuper = ctx.period
         cachedSuper = tycon match {
           case tycon: HKTypeLambda => defn.AnyType
-          case tycon: TypeVar if !tycon.inst.exists =>
-            // supertype not stable, since underlying might change
-            validSuper = Nowhere
-            tycon.underlying.applyIfParameterized(args)
-          case tycon: TypeRef if tycon.symbol.isClass =>
-            tycon
-          case tycon: TypeProxy =>
-            if (tycon.typeSymbol.is(Provisional)) validSuper = Nowhere
-            tycon.superType.applyIfParameterized(args)
+          case tycon: TypeRef if tycon.symbol.isClass => tycon
+          case tycon: TypeProxy => tycon.superType.applyIfParameterized(args)
           case _ => defn.AnyType
         }
+        validSuper = if (tycon.isProvisional) Nowhere else ctx.period
       }
       cachedSuper
     }
@@ -3333,14 +3354,11 @@ object Types {
    *
    *  @param  origin        The parameter that's tracked by the type variable.
    *  @param  creatorState  The typer state in which the variable was created.
-   *  @param  bindingTree   The TypeTree which introduces the type variable, or EmptyTree
-   *                        if the type variable does not correspond to a source term.
-   *  @paran  owner         The current owner if the context where the variable was created.
    *
    *  `owningTree` and `owner` are used to determine whether a type-variable can be instantiated
    *  at some given point. See `Inferencing#interpolateUndetVars`.
    */
-  final class TypeVar(val origin: TypeParamRef, creatorState: TyperState, var bindingTree: untpd.Tree, val owner: Symbol) extends CachedProxyType with ValueType {
+  final class TypeVar(val origin: TypeParamRef, creatorState: TyperState) extends CachedProxyType with ValueType {
 
     /** The permanent instance type of the variable, or NoType is none is given yet */
     private[this] var myInst: Type = NoType
@@ -3348,7 +3366,10 @@ object Types {
     private[core] def inst = myInst
     private[core] def inst_=(tp: Type) = {
       myInst = tp
-      if (tp.exists) owningState = null // no longer needed; null out to avoid a memory leak
+      if (tp.exists) {
+        owningState.get.ownedVars -= this
+        owningState = null // no longer needed; null out to avoid a memory leak
+      }
     }
 
     /** The state owning the variable. This is at first `creatorState`, but it can
@@ -3360,10 +3381,7 @@ object Types {
      *  uninstantiated
      */
     def instanceOpt(implicit ctx: Context): Type =
-      if (inst.exists) inst else {
-        ctx.typerState.ephemeral = true
-        ctx.typerState.instType(this)
-      }
+      if (inst.exists) inst else ctx.typerState.instType(this)
 
     /** Is the variable already instantiated? */
     def isInstantiated(implicit ctx: Context) = instanceOpt.exists
@@ -3403,11 +3421,7 @@ object Types {
     /** If the variable is instantiated, its instance, otherwise its origin */
     override def underlying(implicit ctx: Context): Type = {
       val inst = instanceOpt
-      if (inst.exists) inst
-      else {
-        ctx.typerState.ephemeral = true
-        origin
-      }
+      if (inst.exists) inst else origin
     }
 
     override def computeHash(bs: Binders): Int = identityHash(bs)
@@ -3418,6 +3432,8 @@ object Types {
       s"TypeVar($origin$instStr)"
     }
   }
+
+  type TypeVars = SimpleIdentitySet[TypeVar]
 
   // ------ ClassInfo, Type Bounds ------------------------------------------------------------
 

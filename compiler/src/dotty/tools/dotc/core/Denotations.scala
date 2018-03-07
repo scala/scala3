@@ -130,7 +130,7 @@ object Denotations {
         if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom) {
           cachedAsSeenFrom = computeAsSeenFrom(pre)
           cachedPrefix = pre
-          validAsSeenFrom = ctx.period
+          validAsSeenFrom = if (pre.isProvisional) Nowhere else ctx.period
         }
         cachedAsSeenFrom
       } else computeAsSeenFrom(pre)

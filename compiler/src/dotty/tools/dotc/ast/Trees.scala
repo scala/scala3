@@ -573,6 +573,11 @@ object Trees {
       s"TypeTree${if (hasType) s"[$typeOpt]" else ""}"
   }
 
+  /** A type tree that defines a new type variable. Its type is always a TypeVar.
+   *  Every TypeVar is created as the type of one TypeVarBinder.
+   */
+  class TypeVarBinder[-T >: Untyped] extends TypeTree[T]
+
   /** ref.type */
   case class SingletonTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])
     extends DenotingTree[T] with TypTree[T] {

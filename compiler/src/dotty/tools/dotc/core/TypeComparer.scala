@@ -1191,6 +1191,26 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     isSubRef(tp1, tp2) && isSubRef(tp2, tp1)
   }
 
+  /** If the range `tp1..tp2` consist of a single type, that type, otherwise NoType`.
+   *  This is the case if `tp1 =:= tp2`, but also if `tp1 <:< tp2`, `tp1` is a singleton type,
+   *  and `tp2` derives from `scala.Singleton` (or vice-versa). Examples of the latter case:
+   *
+   *     "name".type .. Singleton
+   *     "name".type .. String & Singleton
+   *     Singleton .. "name".type
+   *     String & Singleton .. "name".type
+   *
+   *  All consist of the single type `"name".type`.
+   */
+  def singletonInterval(tp1: Type, tp2: Type): Type = {
+    def isSingletonBounds(lo: Type, hi: Type) =
+      lo.isSingleton && hi.derivesFrom(defn.SingletonClass) && isSubTypeWhenFrozen(lo, hi)
+    if (isSameTypeWhenFrozen(tp1, tp2)) tp1
+    else if (isSingletonBounds(tp1, tp2)) tp1
+    else if (isSingletonBounds(tp2, tp1)) tp2
+    else NoType
+  }
+
   /** The greatest lower bound of two types */
   def glb(tp1: Type, tp2: Type): Type = /*>|>*/ trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
@@ -1279,9 +1299,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case tparam :: tparamsRest =>
         val arg1 :: args1Rest = args1
         val arg2 :: args2Rest = args2
+        val common = singletonInterval(arg1, arg2)
         val v = tparam.paramVariance
         val lubArg =
-          if (isSameTypeWhenFrozen(arg1, arg2)) arg1
+          if (common.exists) common
           else if (v > 0) lub(arg1.hiBound, arg2.hiBound, canConstrain)
           else if (v < 0) glb(arg1.loBound, arg2.loBound)
           else TypeBounds(glb(arg1.loBound, arg2.loBound),
@@ -1310,9 +1331,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case tparam :: tparamsRest =>
         val arg1 :: args1Rest = args1
         val arg2 :: args2Rest = args2
+        val common = singletonInterval(arg1, arg2)
         val v = tparam.paramVariance
         val glbArg =
-          if (isSameTypeWhenFrozen(arg1, arg2)) arg1
+          if (common.exists) common
           else if (v > 0) glb(arg1.hiBound, arg2.hiBound)
           else if (v < 0) lub(arg1.loBound, arg2.loBound)
           else if (arg1.isInstanceOf[TypeBounds] || arg2.isInstanceOf[TypeBounds])

@@ -675,14 +675,16 @@ object Erasure {
       super.typedStats(stats1, exprOwner).filter(!_.isEmpty)
     }
 
-    override def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
+    override def adapt(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree =
       trace(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
-        assert(ctx.phase == ctx.erasurePhase.next, ctx.phase)
+        assert(ctx.phase == ctx.erasurePhase || ctx.phase == ctx.erasurePhase.next, ctx.phase)
         if (tree.isEmpty) tree
         else if (ctx.mode is Mode.Pattern) tree // TODO: replace with assertion once pattern matcher is active
         else adaptToType(tree, pt)
       }
-  }
+
+    override def simplify(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type = tree
+}
 
   def takesBridges(sym: Symbol)(implicit ctx: Context) =
     sym.isClass && !sym.is(Flags.Trait | Flags.Package)
