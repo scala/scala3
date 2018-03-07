@@ -105,7 +105,9 @@ object Checkable {
         val bounds = ctx.typerState.constraint.entry(tvar.origin)
         if (bounds.loBound =:= bounds.hiBound)
           tvar.instantiateWith(bounds.loBound)
-        else {
+        else if (tycon.classSymbol.is(Final))  // 3324g.scala cannot happen because of final
+          instantiateSelected(P1, tvar :: Nil)
+        else {                                 // see 3324g.scala
           val wildCard = ctx.newSymbol(ctx.owner, WildcardParamName.fresh().toTypeName, Case, tvar.origin.underlying, coord = pos)
           tvar.instantiateWith(wildCard.typeRef)
         }
