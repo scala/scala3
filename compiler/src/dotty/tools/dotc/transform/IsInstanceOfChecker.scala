@@ -4,7 +4,7 @@ package transform
 import util.Positions._
 import MegaPhase.MiniPhase
 import core._
-import Contexts.Context, Types._, Decorators._, Symbols._, typer._, ast._
+import Contexts.Context, Types._, Decorators._, Symbols._, typer._, ast._, NameKinds._
 import TypeUtils._, Flags._
 import config.Printers.{ transforms => debug }
 
@@ -18,7 +18,7 @@ class IsInstanceOfChecker extends MiniPhase {
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = {
     def ensureCheckable(qual: Tree, pt: Tree): Tree = {
-      if (!Checkable.checkable(qual.tpe, pt.tpe))
+      if (!Checkable.checkable(qual.tpe, pt.tpe, tree.pos))
          ctx.warning(
            s"the type test for ${pt.show} cannot be checked at runtime",
            tree.pos
@@ -58,13 +58,14 @@ object Checkable {
    *  4. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
    *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
-   *     (b) constrain `Xs` with `pre.F[Xs] <:< X` (may fail)
+   *     (b) constrain `Xs` with `pre.F[Xs] <:< X`,
+   *         if `X` cannot be uniquely determined, instantiate `X` with fresh type symbol.
    *     (c) instantiate Xs and check `pre.F[Xs] <:< P`
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, FALSE
    *  8. otherwise, TRUE
    */
-  def checkable(X: Type, P: Type)(implicit ctx: Context): Boolean = {
+  def checkable(X: Type, P: Type, pos: Position)(implicit ctx: Context): Boolean = {
     def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
 
     def replaceP(implicit ctx: Context) = new TypeMap {
@@ -100,7 +101,17 @@ object Checkable {
 
       P1 <:< X  // may fail, ignore
 
-      val res  = isFullyDefined(P1, ForceDegree.noBottom) && P1 <:< P
+      tvars.foreach { case tvar: TypeVar =>
+        val bounds = ctx.typerState.constraint.entry(tvar.origin)
+        if (bounds.loBound =:= bounds.hiBound)
+          tvar.instantiateWith(bounds.loBound)
+        else {
+          val wildCard = ctx.newSymbol(ctx.owner, WildcardParamName.fresh().toTypeName, Case, tvar.origin.underlying, coord = pos)
+          tvar.instantiateWith(wildCard.typeRef)
+        }
+      }
+
+      val res = P1 <:< P
       debug.println("P1 : " + P1)
       debug.println("P1 <:< P = " + res)
 
@@ -119,7 +130,7 @@ object Checkable {
       case tpe: AppliedType     => isClassDetermined(X, tpe)(ctx.fresh.setNewTyperState())
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
-      case AnnotatedType(t, an) => recur(X, t)
+      case AnnotatedType(t, _)  => recur(X, t)
       case _: RefinedType       => false
       case _                    => true
     })

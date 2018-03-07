@@ -159,6 +159,9 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
      *  ```
      *
      *  If `C` is a value class the initial `eq` test is omitted.
+     *
+     *  `@unchecked` is needed for parametric case classes.
+     *
      */
     def equalsBody(that: Tree)(implicit ctx: Context): Tree = {
       val thatAsClazz = ctx.newSymbol(ctx.owner, nme.x_0, Synthetic, clazzType, coord = ctx.owner.pos) // x$0
@@ -253,6 +256,8 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
      *  ```
      *  def canEqual(that: Any) = that.isInstanceOf[C @unchecked]
      *  ```
+     *
+     *  `@unchecked` is needed for parametric case classes.
      */
     def canEqualBody(that: Tree): Tree = that.isInstance(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot)))
 
