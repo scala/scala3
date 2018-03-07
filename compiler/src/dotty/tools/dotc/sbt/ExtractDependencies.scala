@@ -266,8 +266,16 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     sym.isAnonymousFunction ||
     sym.isAnonymousClass
 
-  private def addInheritanceDependency(parent: Symbol)(implicit ctx: Context): Unit =
-    _dependencies += ClassDependency(resolveDependencySource, parent.topLevelClass, DependencyByInheritance)
+  private def addInheritanceDependency(tree: Template)(implicit ctx: Context): Unit =
+    if (tree.parents.nonEmpty) {
+      val depContext =
+        if (isLocal(tree.symbol.owner)) LocalDependencyByInheritance
+        else DependencyByInheritance
+      val from = resolveDependencySource
+      tree.parents.foreach { parent =>
+        _dependencies += ClassDependency(from, parent.tpe.classSymbol.topLevelClass, depContext)
+      }
+    }
 
   /** Traverse the tree of a source file and record the dependencies which
    *  can be retrieved using `topLevelDependencies`, `topLevelInheritanceDependencies`,
@@ -303,8 +311,8 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
       case ref: RefTree =>
         addDependency(ref.symbol)
         addTypeDependency(ref.tpe)
-      case t @ Template(_, parents, _, _) =>
-        t.parents.foreach(p => addInheritanceDependency(p.tpe.classSymbol))
+      case t: Template =>
+        addInheritanceDependency(t)
       case _ =>
     }
     traverseChildren(tree)
