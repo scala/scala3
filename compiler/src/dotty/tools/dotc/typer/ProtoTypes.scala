@@ -394,8 +394,8 @@ object ProtoTypes {
     def newTypeVars(tl: TypeLambda): List[TypeTree] =
       for (n <- (0 until tl.paramNames.length).toList)
       yield {
-        val tt = new TypeTree().withPos(owningTree.pos)
-        val tvar = new TypeVar(tl.paramRefs(n), state, tt, ctx.owner)
+        val tt = new TypeVarBinder().withPos(owningTree.pos)
+        val tvar = new TypeVar(tl.paramRefs(n), state)
         state.ownedVars += tvar
         tt.withType(tvar)
       }

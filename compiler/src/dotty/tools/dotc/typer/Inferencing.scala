@@ -166,10 +166,9 @@ object Inferencing {
     @tailrec def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
       case Apply(fn, _) => boundVars(fn, acc)
       case TypeApply(fn, targs) =>
-        val tvars = targs.tpes.collect {
+        val tvars = targs.filter(_.isInstanceOf[TypeVarBinder[_]]).tpes.collect {
           case tvar: TypeVar
           if !tvar.isInstantiated &&
-             targs.contains(tvar.bindingTree) &&
              ctx.typerState.ownedVars.contains(tvar) &&
              !locked.contains(tvar) => tvar
         }
