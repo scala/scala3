@@ -240,16 +240,32 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     _responsibleForImports
   }
 
+  private[this] var lastOwner: Symbol = _
+  private[this] var lastDepSource: Symbol = _
+
   /**
    * Resolves dependency source (that is, the closest non-local enclosing
-   * class from a given `currentOwner` set by the `Traverser`).
-   *
-   * TODO: cache and/or optimise?
+   * class from a given `ctx.owner`
    */
   private def resolveDependencySource(implicit ctx: Context): Symbol = {
-    def isNonLocalClass(sym: Symbol) = sym.isClass && !isLocal(sym)
-    val source = ctx.owner.ownersIterator.find(isNonLocalClass).get
-    if (source.is(PackageClass)) responsibleForImports else source
+    def resolveDepSource: Symbol = {
+      val owners = ctx.owner.ownersIterator
+      while (owners.hasNext) {
+        val source = owners.next()
+        def isLocal = !owners.exists(_.isTerm) // side-effectful: consume iterator elements
+        if (source.isClass && isLocal) return source
+        else if (source.is(PackageClass)) return responsibleForImports
+      }
+      assert(false, "unreachable")
+      NoSymbol
+    }
+
+    if (lastOwner != ctx.owner) {
+      lastOwner = ctx.owner
+      lastDepSource = resolveDepSource
+    }
+
+    lastDepSource
   }
 
   private def addUsedName(fromClass: Symbol, name: Name, scope: UseScope): Unit = {
