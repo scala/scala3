@@ -2,6 +2,9 @@ package dotty.tools.dotc.util
 
 import collection.mutable.ListBuffer
 
+/** A simple linked map with `eq` as the key comparison, optimized for small maps.
+ *  It has linear complexity for `apply`, `updated`, and `remove`.
+ */
 abstract class SimpleIdentityMap[K <: AnyRef, +V >: Null <: AnyRef] extends (K => V) {
   def size: Int
   def apply(k: K): V

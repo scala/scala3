@@ -591,7 +591,13 @@ object Types {
         ctx.typerState.constraint.entry(tp) match {
           case bounds: TypeBounds if bounds ne next =>
             ctx.typerState.ephemeral = true
-            go(bounds.hi)
+            val upper = go(bounds.hi)
+            if (upper.exists) upper
+            else {
+              val lower = go(bounds.lo)
+              if (!lower.exists) upper
+              else ctx.typeComparer.addMemberBound(tp, bounds.lo, lower)
+            }
           case _ =>
             go(next)
         }
@@ -3366,7 +3372,8 @@ object Types {
       }
 
     /** Is the variable already instantiated? */
-    def isInstantiated(implicit ctx: Context) = instanceOpt.exists
+    def isInstantiated(implicit ctx: Context) =
+      inst.exists || ctx.typerState.instType(this).exists
 
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
