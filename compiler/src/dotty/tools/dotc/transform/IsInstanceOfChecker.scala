@@ -101,17 +101,24 @@ object Checkable {
 
       P1 <:< X  // may fail, ignore
 
-      tvars.foreach { case tvar: TypeVar =>
-        val bounds = ctx.typerState.constraint.entry(tvar.origin)
-        if (bounds.loBound =:= bounds.hiBound)
-          tvar.instantiateWith(bounds.loBound)
-        else if (tycon.classSymbol.is(Final))  // 3324g.scala cannot happen because of final
-          instantiateSelected(P1, tvar :: Nil)
-        else {                                 // see 3324g.scala
-          val wildCard = ctx.newSymbol(ctx.owner, WildcardParamName.fresh().toTypeName, Case, tvar.origin.underlying, coord = pos)
-          tvar.instantiateWith(wildCard.typeRef)
+      // 3324g.scala cannot happen in such cases
+      def canInstantiate =
+        tycon.classSymbol.is(Final) ||
+        !X.classSymbol.is(Trait)    ||
+        X.classSymbol.typeParams.isEmpty
+
+      if (canInstantiate)
+        maximizeType(P1, pos, fromScala2x = true) // use `fromScala2x = true` to force instantiate invariant tvars
+      else
+        tvars.foreach { case tvar: TypeVar =>
+          val bounds = ctx.typerState.constraint.entry(tvar.origin)
+          if (bounds.loBound =:= bounds.hiBound)
+            tvar.instantiateWith(bounds.loBound)
+          else { // 3324g.scala
+            val wildCard = ctx.newSymbol(ctx.owner, WildcardParamName.fresh().toTypeName, Case, tvar.origin.underlying, coord = pos)
+            tvar.instantiateWith(wildCard.typeRef)
+          }
         }
-      }
 
       val res = P1 <:< P
       debug.println("P1 : " + P1)
