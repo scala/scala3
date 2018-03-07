@@ -1807,12 +1807,13 @@ class Typer extends Namer
 
   /** Interpolate and simplify the type of the given tree. */
   protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type = {
-    if (!tree.denot.isOverloaded) {
-      // for overloaded trees: resolve overloading before simplifying
-      if (tree.isDef || !tree.tpe.widen.isInstanceOf[MethodOrPoly])
+    if (!tree.denot.isOverloaded) // for overloaded trees: resolve overloading before simplifying
+      if (!tree.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
+          || tree.isDef)                             // ... unless tree is a definition
+      {
         interpolateTypeVars(tree, pt, locked)
-      tree.overwriteType(tree.tpe.simplified) // ??? can we move in?
-    }
+        tree.overwriteType(tree.tpe.simplified)
+      }
     tree
   }
 
