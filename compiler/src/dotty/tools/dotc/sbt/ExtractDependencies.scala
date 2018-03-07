@@ -75,7 +75,7 @@ class ExtractDependencies extends Phase {
       if (ctx.sbtCallback != null) {
         extractDeps.usedNames.foreach {
           case (clazz, usedNames) =>
-            val className = clazz
+            val className = classNameAsString(clazz)
             usedNames.names.foreach {
               case (usedName, scopes) =>
                 ctx.sbtCallback.usedName(className, usedName.toString, scopes)
@@ -187,13 +187,13 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
   import tpd._
   import ExtractDependencies._
 
-  private[this] val _usedNames = new mutable.HashMap[String, UsedNamesInClass]
+  private[this] val _usedNames = new mutable.HashMap[Symbol, UsedNamesInClass]
   private[this] val _dependencies = new mutable.HashSet[ClassDependency]
 
   /** The names used in this class, this does not include names which are only
    *  defined and not referenced.
    */
-  def usedNames: collection.Map[String, UsedNamesInClass] = _usedNames
+  def usedNames: collection.Map[Symbol, UsedNamesInClass] = _usedNames
 
   /** The set of class dependencies from this compilation unit.
    */
@@ -242,12 +242,17 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     if (source.isEffectiveRoot) responsibleForImports else source
   }
 
-  private def addUsedName(enclosingSym: Symbol, name: Name, scope: UseScope)(implicit ctx: Context) = {
-    val enclosingName =
-      if (enclosingSym == defn.RootClass) classNameAsString(responsibleForImports)
-      else classNameAsString(enclosingSym)
-    val nameUsed = _usedNames.getOrElseUpdate(enclosingName, new UsedNamesInClass)
-    nameUsed.update(name, scope)
+  private def addUsedName(fromClass: Symbol, name: Name, scope: UseScope): Unit = {
+    val usedName = _usedNames.getOrElseUpdate(fromClass, new UsedNamesInClass)
+    usedName.update(name, scope)
+  }
+
+  private def addUsedName(name: Name, scope: UseScope)(implicit ctx: Context): Unit = {
+    val fromClass = resolveDependencySource
+    if (fromClass ne NoSymbol) {
+      assert(fromClass.isClass)
+      addUsedName(fromClass, name, scope)
+    }
   }
 
   private def addDependency(sym: Symbol)(implicit ctx: Context): Unit =
@@ -298,7 +303,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
           case Thicket(Ident(name) :: Ident(rename) :: Nil) =>
             addImported(name)
             if (rename ne nme.WILDCARD) {
-              addUsedName(resolveDependencySource, rename, UseScope.Default)
+              addUsedName(rename, UseScope.Default)
             }
           case _ =>
         }
@@ -389,10 +394,9 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     val traverser = new TypeDependencyTraverser {
       def addDependency(symbol: Symbol) =
         if (!ignoreDependency(symbol) && symbol.is(Sealed)) {
-          val enclosingSym = resolveDependencySource
           val usedName = symbol.name.stripModuleClassSuffix
-          addUsedName(enclosingSym, usedName, UseScope.Default)
-          addUsedName(enclosingSym, usedName, UseScope.PatMatTarget)
+          addUsedName(usedName, UseScope.Default)
+          addUsedName(usedName, UseScope.PatMatTarget)
         }
     }
     traverser.traverse(tpe)
