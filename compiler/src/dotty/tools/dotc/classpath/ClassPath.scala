@@ -6,12 +6,8 @@ package dotty.tools.dotc.classpath
 import dotty.tools.io.AbstractFile
 import dotty.tools.io.ClassRepresentation
 
-case class ClassPathEntries(packages: Seq[PackageEntry], classesAndSources: Seq[ClassRepresentation])
-
-object ClassPathEntries {
-  import scala.language.implicitConversions
-  // to have working unzip method
-  implicit def entry2Tuple(entry: ClassPathEntries): (Seq[PackageEntry], Seq[ClassRepresentation]) = (entry.packages, entry.classesAndSources)
+case class ClassPathEntries(packages: Seq[PackageEntry], classesAndSources: Seq[ClassRepresentation]) {
+  def toTuple = (packages, classesAndSources)
 }
 
 trait ClassFileEntry extends ClassRepresentation {
