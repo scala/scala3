@@ -295,9 +295,9 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
 
   private def ignoreDependency(sym: Symbol)(implicit ctx: Context) =
     sym.eq(NoSymbol) ||
-    sym.isEffectiveRoot ||
     sym.isAnonymousFunction ||
-    sym.isAnonymousClass
+    sym.isAnonymousClass ||
+    sym.is(PackageClass)
 
   /** Traverse the tree of a source file and record the dependencies and used names which
    *  can be retrieved using `dependencies` and`usedNames`.
