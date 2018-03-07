@@ -1691,7 +1691,7 @@ object Types {
      *  attempt in `denot` does not yield a denotation.
      */
     private def denotAt(lastd: Denotation, now: Period)(implicit ctx: Context): Denotation = {
-      if (lastd != null && (lastd.validFor contains now) && checkedPeriod != Nowhere) {
+      if (checkedPeriod != Nowhere && lastd.validFor.contains(now)) {
         checkedPeriod = now
         lastd
       }
