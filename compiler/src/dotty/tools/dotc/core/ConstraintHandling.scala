@@ -254,6 +254,9 @@ trait ConstraintHandling {
       case tp: SingletonType => true
       case AndType(tp1, tp2) => isMultiSingleton(tp1) | isMultiSingleton(tp2)
       case OrType(tp1, tp2) => isMultiSingleton(tp1) & isMultiSingleton(tp2)
+      case tp: TypeRef => isMultiSingleton(tp.info.hiBound)
+      case tp: TypeVar => isMultiSingleton(tp.underlying)
+      case tp: TypeParamRef => isMultiSingleton(bounds(tp).hi)
       case _ => false
     }
     def isFullyDefined(tp: Type): Boolean = tp match {
