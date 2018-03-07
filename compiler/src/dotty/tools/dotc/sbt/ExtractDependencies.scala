@@ -268,7 +268,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
 
   private def addMemberRefDependency(sym: Symbol)(implicit ctx: Context): Unit =
     if (!ignoreDependency(sym)) {
-      val depClass = sym.topLevelClass // FIXME should be enclOrModuleClass(sym) in Zinc > 1.0
+      val depClass = enclOrModuleClass(sym)
       // assert(depClass.isClass, s"$depClass, $sym, ${sym.isClass}")
 
       if (depClass ne NoSymbol) {
