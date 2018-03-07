@@ -18,12 +18,10 @@ object TyperState {
   @sharable private var nextId: Int = 0
 }
 
-class TyperState(previous: TyperState /* | Null */) extends DotClass with Showable {
+class TyperState(previous: TyperState /* | Null */) {
 
   val id = TyperState.nextId
   TyperState.nextId += 1
-
-  //assert(id != 146)
 
   private[this] var myReporter =
     if (previous == null) new ConsoleReporter() else previous.reporter
@@ -181,8 +179,7 @@ class TyperState(previous: TyperState /* | Null */) extends DotClass with Showab
       constraint = constraint.remove(poly)
   }
 
-  override def toText(printer: Printer): Text = s"TS[$id]"
+  override def toString: String = s"TS[$id]"
 
-  def hashesStr: String =
-    if (previous == null) "" else hashCode.toString + " -> " + previous.hashesStr
+  def stateChainStr: String = s"$this${if (previous == null) "" else previous.stateChainStr}"
 }
