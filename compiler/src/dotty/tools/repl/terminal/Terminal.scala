@@ -315,7 +315,7 @@ object Terminal {
   }
 }
 object Prompt {
-  implicit def construct(prompt: String): Prompt = {
+  def fromString(prompt: String): Prompt = {
     val parsedPrompt = Ansi.Str.parse(prompt)
     val index = parsedPrompt.plainText.lastIndexOf('\n')
     val (_, last) = parsedPrompt.splitAt(index+1)
