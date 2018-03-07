@@ -772,7 +772,6 @@ trait Checking {
 
   /** Check that all case classes that extend `scala.Enum` are `enum` cases */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol)(implicit ctx: Context): Unit = {
-    import untpd.modsDeco
     def isEnumAnonCls =
       cls.isAnonymousClass &&
       cls.owner.isTerm &&

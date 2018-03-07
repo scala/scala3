@@ -310,7 +310,7 @@ object Trees {
 
     private[this] var myMods: untpd.Modifiers = null
 
-    private[dotc] def rawMods: untpd.Modifiers =
+    def mods: untpd.Modifiers =
       if (myMods == null) untpd.EmptyModifiers else myMods
 
     def rawComment: Option[Comment] = getAttachment(DocComment)
@@ -338,7 +338,7 @@ object Trees {
      */
     def namePos =
       if (pos.exists)
-        if (rawMods.is(Synthetic)) Position(pos.point, pos.point)
+        if (mods.is(Synthetic)) Position(pos.point, pos.point)
         else Position(pos.point, pos.point + name.stripModuleClassSuffix.lastPart.length, pos.point)
       else pos
   }

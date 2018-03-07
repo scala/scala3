@@ -381,14 +381,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A repeated argument such as `arg: _*` */
   def repeated(arg: Tree)(implicit ctx: Context) = Typed(arg, Ident(tpnme.WILDCARD_STAR))
 
-// ----- Accessing modifiers ----------------------------------------------------
-
-  abstract class ModsDecorator { def mods: Modifiers }
-
-  implicit class modsDeco(val mdef: MemberDef)(implicit ctx: Context) {
-    def mods = mdef.rawMods
-  }
-
 // --------- Copier/Transformer/Accumulator classes for untyped trees -----
 
   override val cpy: UntypedTreeCopier = new UntypedTreeCopier
@@ -400,7 +392,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     def postProcess(tree: Tree, copied: MemberDef): copied.ThisTree[Untyped] = {
       tree match {
-        case tree: MemberDef => copied.withMods(tree.rawMods)
+        case tree: MemberDef => copied.withMods(tree.mods)
         case _ => copied
       }
     }.asInstanceOf[copied.ThisTree[Untyped]]

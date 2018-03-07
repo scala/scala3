@@ -1333,7 +1333,7 @@ class Typer extends Namer
       }
     }
     // necessary in order to mark the typed ahead annotations as definitely typed:
-    untpd.modsDeco(mdef).mods.annotations.foreach(typedAnnotation(_)(annotCtx))
+    mdef.mods.annotations.foreach(typedAnnotation(_)(annotCtx))
   }
 
   def typedAnnotation(annot: untpd.Tree)(implicit ctx: Context): Tree = track("typedAnnotation") {
@@ -1861,7 +1861,6 @@ class Typer extends Namer
               case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
                 buf ++= inlineExpansion(mdef1)
               case mdef1 =>
-                import untpd.modsDeco
                 mdef match {
                   case mdef: untpd.TypeDef if mdef.mods.hasMod[untpd.Mod.Enum] =>
                     enumContexts(mdef1.symbol) = ctx

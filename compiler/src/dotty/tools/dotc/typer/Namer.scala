@@ -745,7 +745,7 @@ class Namer { typer: Typer =>
       while (c.owner != target) c = c.outer
       c
     }
-    for (annotTree <- untpd.modsDeco(stat).mods.annotations) {
+    for (annotTree <- stat.mods.annotations) {
       val cls = typedAheadAnnotation(annotTree)(annotCtx)
       if (sym.unforcedAnnotation(cls).isEmpty) {
         val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))

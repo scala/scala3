@@ -260,9 +260,9 @@ object desugar {
   @sharable private val synthetic = Modifiers(Synthetic)
 
   private def toDefParam(tparam: TypeDef): TypeDef =
-    tparam.withMods(tparam.rawMods & EmptyFlags | Param)
+    tparam.withMods(tparam.mods & EmptyFlags | Param)
   private def toDefParam(vparam: ValDef): ValDef =
-    vparam.withMods(vparam.rawMods & (Implicit | Erased) | Param)
+    vparam.withMods(vparam.mods & (Implicit | Erased) | Param)
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
