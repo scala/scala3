@@ -70,8 +70,7 @@ class CollectEntryPoints extends MiniPhase {
     }
     def precise(implicit ctx: Context) = {
       val companion = sym.companionClass //sym.asClass.linkedClassOfClass
-      val javaPlatform = ctx.platform.asInstanceOf[JavaPlatform]
-      if (javaPlatform.hasJavaMainMethod(companion))
+      if (ctx.platform.hasMainMethod(companion))
         failNoForwarder("companion contains its own main method")
       else if (companion.exists && companion.info.member(nme.main).exists)
       // this is only because forwarders aren't smart enough yet
@@ -80,7 +79,7 @@ class CollectEntryPoints extends MiniPhase {
         failNoForwarder("companion is a trait")
       // Now either succeed, or issue some additional warnings for things which look like
       // attempts to be java main methods.
-      else (possibles exists (x => javaPlatform.isJavaMainMethod(x.symbol))) || {
+      else (possibles exists (x => ctx.platform.isMainMethod(x.symbol))) || {
         possibles exists {
           m =>
             m.symbol.info match {
@@ -90,7 +89,7 @@ class CollectEntryPoints extends MiniPhase {
                 if (t.resultType :: t.paramInfos exists (_.typeSymbol.isAbstractType))
                   fail("main methods cannot refer to type parameters or abstract types.", m.symbol.pos)
                 else
-                  javaPlatform.isJavaMainMethod(m.symbol) || fail("main method must have exact signature (Array[String])Unit", m.symbol.pos)
+                  ctx.platform.isMainMethod(m.symbol) || fail("main method must have exact signature (Array[String])Unit", m.symbol.pos)
               case tp =>
                 fail(s"don't know what this is: $tp", m.symbol.pos)
             }

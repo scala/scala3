@@ -228,20 +228,9 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       name, acc, modifiers, anns, defType, api.SafeLazy.strict(selfType), api.SafeLazy.strict(structure), Constants.emptyStringArray,
       childrenOfSealedClass, topLevel, tparams)
 
-    // if (name.toString.contains("DottyPredef")) {
-    //   println("sym: " + sym)
-    //   println("name: " + name)
-    //   ctx.atPhase(ctx.flattenPhase.next) { implicit ctx =>
-    //     println("flatten: " + sym.fullName.toString)
-    //     println("flattenm: " + sym.fullName.mangledString)
-    //   }
-    //   println("flattenx: " + toDenot(sym.binaryName.toString)
-    // }
-
     allNonLocalClassesInSrc += cl
 
-    val javaPlatform = ctx.platform.asInstanceOf[JavaPlatform]
-    if (sym.isStatic && defType == DefinitionType.Module && javaPlatform.hasJavaMainMethod(sym)) {
+    if (sym.isStatic && defType == DefinitionType.Module && ctx.platform.hasMainMethod(sym)) {
       _mainClasses += name
     }
 

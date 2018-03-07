@@ -161,6 +161,7 @@ object ExtractDependencies {
 
 private case class ClassDependency(from: Symbol, to: Symbol, context: DependencyContext)
 
+/** An object that maintain the set of used names from within a class */
 private final class UsedNamesInClass {
   private val _names = new mutable.HashMap[Name, EnumSet[UseScope]]
   def names: collection.Map[Name, EnumSet[UseScope]] = _names
