@@ -3,7 +3,7 @@ layout: doc-page
 title: "Method Augmentations"
 ---
 
-Method augmentations are a way to define _extension methods_. Here is a simple one:
+Method augmentation is a way to define _extension methods_. Here is a simple example:
 
 ```scala
 case class Circle(x: Double, y: Double, radius: Double)
@@ -36,7 +36,7 @@ gives a compilation error:
 
 ### Scope of Augment Clauses
 
-Augment clauses can appear anywhere in a program; there is no need to co-define them with the types they augment. Extension methods are available whereever their defining augment clause is in scope.  Augment clauses can be inherited or wildcard-imported like normal definitions. This is usually sufficient to control their visibility. If more control is desired, one can also attach a name to an augment clause, like this:
+Augment clauses can appear anywhere in a program; there is no need to co-define them with the types they augment. Extension methods are available wherever their defining augment clause is in scope.  Augment clauses can be inherited or wildcard-imported like normal definitions. This is usually sufficient to control their visibility. If more control is desired, one can also attach a name to an augment clause, like this:
 
 ```scala
 package shapeOps

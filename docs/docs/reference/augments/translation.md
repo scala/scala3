@@ -66,7 +66,7 @@ Let again `(<tparams>, <T>)` be the decomposition of `<TP>`. This augmentation i
     implicit class <id> <tparams> ($this: <T>) <params> extends <parents> { <body'> }
 
 As before, `<body'>` results from `<body>` by replacing any occurrence of `this` with `$this`. However, all
-parameters in <params> now stay on the class definition, instead of beging distributed to all members in `<body>`. This is necessary in general, since `<body>` might contain value definitions or other statements that cannot be
+parameters in <params> now stay on the class definition, instead of being distributed to all members in `<body>`. This is necessary in general, since `<body>` might contain value definitions or other statements that cannot be
 parameterized.
 
 For example, the trait augmentation
