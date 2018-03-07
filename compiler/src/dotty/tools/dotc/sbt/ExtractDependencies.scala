@@ -54,26 +54,33 @@ class ExtractDependencies extends Phase {
     val unit = ctx.compilationUnit
     val dumpInc = ctx.settings.YdumpSbtInc.value
     val forceRun = dumpInc || ctx.settings.YforceSbtPhases.value
-    if ((ctx.sbtCallback != null || forceRun) && !unit.isJava) {
-      val extractDeps = new ExtractDependenciesCollector
-      extractDeps.traverse(unit.tpdTree)
+    val shouldRun = !unit.isJava && (ctx.sbtCallback != null || forceRun)
+
+    if (shouldRun) {
+      val collector = new ExtractDependenciesCollector
+      collector.traverse(unit.tpdTree)
 
       if (dumpInc) {
-        val names = extractDeps.usedNames.map { case (clazz, names) => s"$clazz: $names" }.toArray[Object]
-        val deps = extractDeps.dependencies.map(_.toString).toArray[Object]
-        Arrays.sort(names)
+        val deps = collector.dependencies.map(_.toString).toArray[Object]
+        val names = collector.usedNames.map { case (clazz, names) => s"$clazz: $names" }.toArray[Object]
         Arrays.sort(deps)
+        Arrays.sort(names)
 
-        val sourceFile = unit.source.file
-        val pw = io.File(sourceFile.jpath).changeExtension("inc").toFile.printWriter()
+        val pw = io.File(unit.source.file.jpath).changeExtension("inc").toFile.printWriter()
+        // val pw = Console.out
         try {
-          pw.println(s"// usedNames: ${names.mkString(",")}")
-          pw.println(s"// Dependencies: ${deps.mkString(",")}")
+          pw.println("Used Names:")
+          pw.println("===========")
+          names.foreach(pw.println)
+          pw.println()
+          pw.println("Dependencies:")
+          pw.println("=============")
+          deps.foreach(pw.println)
         } finally pw.close()
       }
 
       if (ctx.sbtCallback != null) {
-        extractDeps.usedNames.foreach {
+        collector.usedNames.foreach {
           case (clazz, usedNames) =>
             val className = classNameAsString(clazz)
             usedNames.names.foreach {
@@ -82,7 +89,7 @@ class ExtractDependencies extends Phase {
             }
         }
 
-        extractDeps.dependencies.foreach(recordDependency)
+        collector.dependencies.foreach(recordDependency)
       }
     }
   }
@@ -146,6 +153,10 @@ object ExtractDependencies {
 
   def isLocal(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.ownersIterator.exists(_.isTerm)
+
+  /** Return the enclosing class or the module class if it's a module. */
+  def enclOrModuleClass(dep: Symbol)(implicit ctx: Context): Symbol =
+    if (dep.is(ModuleVal)) dep.moduleClass else dep.enclosingClass
 }
 
 private case class ClassDependency(from: Symbol, to: Symbol, context: DependencyContext)
@@ -255,21 +266,21 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     }
   }
 
-  private def addDependency(sym: Symbol)(implicit ctx: Context): Unit =
+  private def addMemberRefDependency(sym: Symbol)(implicit ctx: Context): Unit =
     if (!ignoreDependency(sym)) {
-      val tlClass = sym.topLevelClass
-      val from = resolveDependencySource
-      if (tlClass.ne(NoSymbol)) {
-        _dependencies += ClassDependency(from, tlClass, DependencyByMemberRef)
-      }
-      addUsedName(from, sym.name.stripModuleClassSuffix, UseScope.Default)
-    }
+      val depClass = sym.topLevelClass // FIXME should be enclOrModuleClass(sym) in Zinc > 1.0
+      // assert(depClass.isClass, s"$depClass, $sym, ${sym.isClass}")
 
-  private def ignoreDependency(sym: Symbol)(implicit ctx: Context) =
-    sym.eq(NoSymbol) ||
-    sym.isEffectiveRoot ||
-    sym.isAnonymousFunction ||
-    sym.isAnonymousClass
+      if (depClass ne NoSymbol) {
+        assert(depClass.isClass)
+        val fromClass = resolveDependencySource
+        if (fromClass ne NoSymbol) {
+          assert(fromClass.isClass)
+          _dependencies += ClassDependency(fromClass, depClass, DependencyByMemberRef)
+          addUsedName(fromClass, sym.name.stripModuleClassSuffix, UseScope.Default)
+        }
+      }
+    }
 
   private def addInheritanceDependency(tree: Template)(implicit ctx: Context): Unit =
     if (tree.parents.nonEmpty) {
@@ -278,13 +289,18 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
         else DependencyByInheritance
       val from = resolveDependencySource
       tree.parents.foreach { parent =>
-        _dependencies += ClassDependency(from, parent.tpe.classSymbol.topLevelClass, depContext)
+        _dependencies += ClassDependency(from, parent.tpe.classSymbol, depContext)
       }
     }
 
-  /** Traverse the tree of a source file and record the dependencies which
-   *  can be retrieved using `topLevelDependencies`, `topLevelInheritanceDependencies`,
-   *  and `usedNames`
+  private def ignoreDependency(sym: Symbol)(implicit ctx: Context) =
+    sym.eq(NoSymbol) ||
+    sym.isEffectiveRoot ||
+    sym.isAnonymousFunction ||
+    sym.isAnonymousClass
+
+  /** Traverse the tree of a source file and record the dependencies and used names which
+   *  can be retrieved using `dependencies` and`usedNames`.
    */
   override def traverse(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
@@ -294,8 +310,8 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
         def lookupImported(name: Name) = expr.tpe.member(name).symbol
         def addImported(name: Name) = {
           // importing a name means importing both a term and a type (if they exist)
-          addDependency(lookupImported(name.toTermName))
-          addDependency(lookupImported(name.toTypeName))
+          addMemberRefDependency(lookupImported(name.toTermName))
+          addMemberRefDependency(lookupImported(name.toTypeName))
         }
         selectors foreach {
           case Ident(name) =>
@@ -314,7 +330,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
       case t: TypeTree =>
         addTypeDependency(t.tpe)
       case ref: RefTree =>
-        addDependency(ref.symbol)
+        addMemberRefDependency(ref.symbol)
         addTypeDependency(ref.tpe)
       case t: Template =>
         addInheritanceDependency(t)
@@ -385,7 +401,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
 
   def addTypeDependency(tpe: Type)(implicit ctx: Context) = {
     val traverser = new TypeDependencyTraverser {
-      def addDependency(symbol: Symbol) = thisTreeTraverser.addDependency(symbol)
+      def addDependency(symbol: Symbol) = addMemberRefDependency(symbol)
     }
     traverser.traverse(tpe)
   }
@@ -395,7 +411,6 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
       def addDependency(symbol: Symbol) =
         if (!ignoreDependency(symbol) && symbol.is(Sealed)) {
           val usedName = symbol.name.stripModuleClassSuffix
-          addUsedName(usedName, UseScope.Default)
           addUsedName(usedName, UseScope.PatMatTarget)
         }
     }
