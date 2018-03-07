@@ -341,7 +341,7 @@ trait Inferencing { this: Typer =>
    *      Y <: X
    *
    *  Then `Y` also occurs co-variantly in `T` because it needs to be minimized in order to constrain
-   *  `T` teh least. See `variances` for more detail.
+   *  `T` the least. See `variances` for more detail.
    */
   def interpolateTypeVars(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type = {
     val state = ctx.typerState

@@ -76,7 +76,7 @@ class TyperState(previous: TyperState /* | Null */) {
   /** The uninstantiated variables */
   def uninstVars = constraint.uninstVars
 
-  /** The set of uninstantiated type varibles which have this state as their owning state */
+  /** The set of uninstantiated type variables which have this state as their owning state */
   private[this] var myOwnedVars: TypeVars = SimpleIdentitySet.empty
   def ownedVars = myOwnedVars
   def ownedVars_=(vs: TypeVars): Unit = myOwnedVars = vs
