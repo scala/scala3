@@ -983,25 +983,25 @@ object Types {
         this
     }
 
-    private def dealias(keepAnnots: Boolean)(implicit ctx: Context): Type = this match {
+    private def dealias1(keepAnnots: Boolean)(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else tp.info match {
-          case TypeAlias(tp) => tp.dealias(keepAnnots): @tailrec
+          case TypeAlias(tp) => tp.dealias1(keepAnnots): @tailrec
           case _ => tp
         }
       case app @ AppliedType(tycon, args) =>
-        val tycon1 = tycon.dealias(keepAnnots)
-        if (tycon1 ne tycon) app.superType.dealias(keepAnnots): @tailrec
+        val tycon1 = tycon.dealias1(keepAnnots)
+        if (tycon1 ne tycon) app.superType.dealias1(keepAnnots): @tailrec
         else this
       case tp: TypeVar =>
         val tp1 = tp.instanceOpt
-        if (tp1.exists) tp1.dealias(keepAnnots): @tailrec else tp
+        if (tp1.exists) tp1.dealias1(keepAnnots): @tailrec else tp
       case tp: AnnotatedType =>
-        val tp1 = tp.tpe.dealias(keepAnnots)
+        val tp1 = tp.tpe.dealias1(keepAnnots)
         if (keepAnnots) tp.derivedAnnotatedType(tp1, tp.annot) else tp1
       case tp: LazyRef =>
-        tp.ref.dealias(keepAnnots): @tailrec
+        tp.ref.dealias1(keepAnnots): @tailrec
       case _ => this
     }
 
@@ -1010,14 +1010,14 @@ object Types {
      *  Goes through annotated types and rewraps annotations on the result.
      */
     final def dealiasKeepAnnots(implicit ctx: Context): Type =
-      dealias(keepAnnots = true)
+      dealias1(keepAnnots = true)
 
     /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
      *  TypeVars until type is no longer alias type, annotated type, LazyRef,
      *  or instantiated type variable.
      */
     final def dealias(implicit ctx: Context): Type =
-      dealias(keepAnnots = false)
+      dealias1(keepAnnots = false)
 
     /** Perform successive widenings and dealiasings until none can be applied anymore */
     @tailrec final def widenDealias(implicit ctx: Context): Type = {
