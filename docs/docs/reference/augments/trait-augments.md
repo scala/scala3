@@ -15,7 +15,7 @@ augment circleOps @ Circle extends HasArea {
 }
 ```
 
-This augemntation makes `Circle` implement the `HasArea` trait. Specifically, it defines an implicit subclass of `HasArea`
+This augmentation makes `Circle` implement the `HasArea` trait. Specifically, it defines an implicit subclass of `HasArea`
 which takes a `Circle` as argument and provides the given implementation. Hence, the implementation of the augmentation above would be like this
 
 ```scala
