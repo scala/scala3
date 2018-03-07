@@ -768,7 +768,7 @@ trait Implicits { self: Typer =>
         case result: SearchSuccess =>
           result.tstate.commit()
           implicits.println(i"success: $result")
-          implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} ${ctx.typerState.hashesStr}")
+          implicits.println(i"committing ${result.tstate.constraint} yielding ${ctx.typerState.constraint} in ${ctx.typerState}")
           result
         case result: SearchFailure if result.isAmbiguous =>
           val deepPt = pt.deepenProto
@@ -828,11 +828,12 @@ trait Implicits { self: Typer =>
     def typedImplicit(cand: Candidate, contextual: Boolean)(implicit ctx: Context): SearchResult = track("typedImplicit") { trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
       val ref = cand.ref
       var generated: Tree = tpd.ref(ref).withPos(pos.startPos)
+      val locked = ctx.typerState.ownedVars
       if (!argument.isEmpty)
         generated = typedUnadapted(
           untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),
-          pt)
-      val generated1 = adapt(generated, pt)
+          pt, locked)
+      val generated1 = adapt(generated, pt, locked)
       lazy val shadowing =
         typed(untpd.Ident(cand.implicitRef.implicitName) withPos pos.toSynthetic, funProto)(
           nestedContext().addMode(Mode.ImplicitShadowing).setExploreTyperState())

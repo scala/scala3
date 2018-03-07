@@ -5,7 +5,7 @@ package core
 import Types._
 import Flags._
 import Contexts._
-import util.{SimpleIdentityMap, DotClass}
+import util.{SimpleIdentityMap, SimpleIdentitySet, DotClass}
 import reporting._
 import printing.{Showable, Printer}
 import printing.Texts._
@@ -75,6 +75,11 @@ class TyperState(previous: TyperState /* | Null */) {
 
   /** The uninstantiated variables */
   def uninstVars = constraint.uninstVars
+
+  /** The set of uninstantiated type varibles which have this state as their owning state */
+  private[this] var myOwnedVars: TypeVars = SimpleIdentitySet.empty
+  def ownedVars = myOwnedVars
+  def ownedVars_=(vs: TypeVars): Unit = myOwnedVars = vs
 
   /** Gives for each instantiated type var that does not yet have its `inst` field
    *  set, the instance value stored in the constraint. Storing instances in constraints
@@ -154,6 +159,7 @@ class TyperState(previous: TyperState /* | Null */) {
     constraint foreachTypeVar { tvar =>
       if (tvar.owningState.get eq this) tvar.owningState = new WeakReference(targetState)
     }
+    targetState.ownedVars ++= ownedVars
     targetState.gc()
     reporter.flush()
     isCommitted = true

@@ -39,6 +39,7 @@ import rewrite.Rewrites.patch
 import NavigateAST._
 import transform.SymUtils._
 import reporting.trace
+import config.Config
 
 import language.implicitConversions
 import printing.SyntaxHighlighting._
@@ -614,8 +615,9 @@ class Typer extends Namer
           untpd.Apply(wrappedUpdate, (args map (untpd.TypedSplice(_))) :+ tree.rhs)
         typed(appliedUpdate, pt)
       case lhs =>
-        val lhsCore = typedUnadapted(lhs, AssignProto)
-        def lhs1 = typed(untpd.TypedSplice(lhsCore))
+        val locked = ctx.typerState.ownedVars
+        val lhsCore = typedUnadapted(lhs, AssignProto, locked)
+        def lhs1 = typed(untpd.TypedSplice(lhsCore), WildcardType, locked)
 
         def reassignmentToVal =
           errorTree(cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)),
@@ -646,7 +648,7 @@ class Typer extends Namer
                   val setterTypeRaw = pre.select(setterName, setter)
                   val setterType = ensureAccessible(setterTypeRaw, isSuperSelection(lhsCore), tree.pos)
                   val lhs2 = untpd.rename(lhsCore, setterName).withType(setterType)
-                  typedUnadapted(untpd.Apply(untpd.TypedSplice(lhs2), tree.rhs :: Nil))
+                  typedUnadapted(untpd.Apply(untpd.TypedSplice(lhs2), tree.rhs :: Nil), WildcardType, locked)
                 case _ =>
                   reassignmentToVal
               }
@@ -1707,7 +1709,16 @@ class Typer extends Namer
 
   protected def localTyper(sym: Symbol): Typer = nestedTyper.remove(sym).get
 
-  def typedUnadapted(initTree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
+  def typedUnadapted(initTree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
+    typedUnadapted(initTree, pt, ctx.typerState.ownedVars)
+
+  /** Typecheck tree without adapting it, returning a typed tree.
+   *  @param initTree    the untyped tree
+   *  @param pt          the expected result type
+   *  @param locked      the set of type variables of the current typer state that cannot be interpolated
+   *                     at the present time
+   */
+  def typedUnadapted(initTree: untpd.Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree = {
     record("typedUnadapted")
     val xtree = expanded(initTree)
     xtree.removeAttachment(TypedAhead) match {
@@ -1731,7 +1742,7 @@ class Typer extends Namer
                 typedClassDef(tree, sym.asClass)(ctx.localContext(tree, sym).setMode(ctx.mode &~ Mode.InSuperCall))
               else
                 typedTypeDef(tree, sym)(ctx.localContext(tree, sym).setNewScope)
-            case _ => typedUnadapted(desugar(tree), pt)
+            case _ => typedUnadapted(desugar(tree), pt, locked)
           }
         }
 
@@ -1776,11 +1787,11 @@ class Typer extends Namer
           case tree: untpd.InfixOp if ctx.mode.isExpr => typedInfixOp(tree, pt)
           case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
-          case _ => typedUnadapted(desugar(tree), pt)
+          case _ => typedUnadapted(desugar(tree), pt, locked)
         }
 
         val ifpt = defn.asImplicitFunctionType(pt)
-        if (ifpt.exists &&
+        val result = if (ifpt.exists &&
             xtree.isTerm &&
             !untpd.isImplicitClosure(xtree) &&
             !ctx.mode.is(Mode.ImplicitShadowing) &&
@@ -1790,7 +1801,19 @@ class Typer extends Namer
           case xtree: untpd.NameTree => typedNamed(xtree, pt)
           case xtree => typedUnnamed(xtree)
         }
+        simplify(result, pt, locked)
     }
+  }
+
+  /** Interpolate and simplify the type of the given tree. */
+  protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type = {
+    if (!tree.denot.isOverloaded) {
+      // for overloaded trees: resolve overloading before simplifying
+      if (tree.isDef || !tree.tpe.widen.isInstanceOf[MethodOrPoly])
+        interpolateTypeVars(tree, pt, locked)
+      tree.overwriteType(tree.tpe.simplified) // ??? can we move in?
+    }
+    tree
   }
 
   protected def makeImplicitFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree = {
@@ -1800,17 +1823,21 @@ class Typer extends Namer
     typed(ifun, pt)
   }
 
-  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
+  /** Typecheck and adapt tree, returning a typed tree. Parameters as for `typedUnadapted` */
+  def typed(tree: untpd.Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree =
     trace(i"typing $tree", typr, show = true) {
       record(s"typed $getClass")
       record("typed total")
       assertPositioned(tree)
-      try adapt(typedUnadapted(tree, pt), pt)
+      try adapt(typedUnadapted(tree, pt, locked), pt, locked)
       catch {
         case ex: CyclicReference => errorTree(tree, cyclicErrorMsg(ex))
         case ex: TypeError => errorTree(tree, ex.getMessage)
       }
     }
+
+  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
+    typed(tree, pt, ctx.typerState.ownedVars)
 
   def typedTrees(trees: List[untpd.Tree])(implicit ctx: Context): List[Tree] =
     trees mapconserve (typed(_))
@@ -1924,7 +1951,7 @@ class Typer extends Namer
    *    around the qualifier part `qual` so that the result conforms to the expected type
    *    with wildcard result type.
    */
-  def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: => Tree)(implicit ctx: Context): Tree = {
+  def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType, locked: TypeVars)(fallBack: => Tree)(implicit ctx: Context): Tree = {
 
     def isMethod(tree: Tree) = tree.tpe match {
       case ref: TermRef => ref.denot.alternatives.forall(_.info.widen.isInstanceOf[MethodicType])
@@ -1941,11 +1968,11 @@ class Typer extends Namer
       val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
       sel.pushAttachment(InsertedApply, ())
       if (sel.tpe.isError) sel
-      else try adapt(sel, pt) finally sel.removeAttachment(InsertedApply)
+      else try adapt(simplify(sel, pt, locked), pt, locked) finally sel.removeAttachment(InsertedApply)
     }
 
     def tryImplicit =
-      tryInsertImplicitOnQualifier(tree, pt).getOrElse(fallBack)
+      tryInsertImplicitOnQualifier(tree, pt, locked).getOrElse(fallBack)
 
     pt match {
       case pt @ FunProto(Nil, _, _)
@@ -1963,39 +1990,19 @@ class Typer extends Namer
   /** If this tree is a select node `qual.name`, try to insert an implicit conversion
    *  `c` around `qual` so that `c(qual).name` conforms to `pt`.
    */
-  def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Option[Tree] = trace(i"try insert impl on qualifier $tree $pt") {
+  def tryInsertImplicitOnQualifier(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Option[Tree] = trace(i"try insert impl on qualifier $tree $pt") {
     tree match {
       case Select(qual, name) if name != nme.CONSTRUCTOR =>
         val qualProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
         tryEither { implicit ctx =>
-          val qual1 = adaptInterpolated(qual, qualProto)
+          val qual1 = adapt(qual, qualProto, locked)
           if ((qual eq qual1) || ctx.reporter.hasErrors) None
-          else Some(typed(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt))
+          else Some(typed(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt, locked))
         } { (_, _) => None
         }
       case _ => None
     }
   }
-
-  def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = /*>|>*/ track("adapt") /*<|<*/ {
-    def showWithType(x: Any) = x match {
-      case tree: tpd.Tree @unchecked => i"$tree of type ${tree.tpe}"
-      case _ => String.valueOf(x)
-    }
-    /*>|>*/ trace(i"adapting $tree of type ${tree.tpe} to $pt", typr, showOp = showWithType) /*<|<*/ {
-      if (!tree.denot.isOverloaded) {
-      	// for overloaded trees: resolve overloading before simplifying
-        if (tree.isDef) interpolateUndetVars(tree, tree.symbol, pt)
-        else if (!tree.tpe.widen.isInstanceOf[MethodOrPoly]) interpolateUndetVars(tree, NoSymbol, pt)
-        tree.overwriteType(tree.tpe.simplified)
-      }
-      adaptInterpolated(tree, pt)
-    }
-  }
-
-  /** (-1) For expressions with annotated types, let AnnotationCheckers decide what to do
-   *  (0) Convert expressions with constant types to literals (unless in interactive/scaladoc mode)
-   */
 
   /** Perform the following adaptations of expression, pattern or type `tree` wrt to
    *  given prototype `pt`:
@@ -2030,68 +2037,82 @@ class Typer extends Namer
    *  (13) When in mode EXPRmode, apply AnnotationChecker conversion if expected type is annotated.
    *  (14) When in mode EXPRmode, apply a view
    *  If all this fails, error
+   *  Parameters as for `typedUnadapted`.
    */
-  def adaptInterpolated(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
+  def adapt(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree = /*>|>*/ track("adapt") /*<|<*/ {
+    def showWithType(x: Any) = x match {
+      case tree: tpd.Tree @unchecked => i"$tree of type ${tree.tpe}"
+      case _ => String.valueOf(x)
+    }
+    adapt1(tree, pt, locked)
+  }
 
+  def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
+    adapt(tree, pt, ctx.typerState.ownedVars)
+  }
+
+  private def adapt1(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree = {
     assert(pt.exists)
-
     def methodStr = err.refStr(methPart(tree).tpe)
+
+    def readapt(tree: Tree)(implicit ctx: Context) = adapt(tree, pt, locked)
+    def readaptSimplified(tree: Tree)(implicit ctx: Context) = readapt(simplify(tree, pt, locked))
 
     def missingArgs(mt: MethodType) = {
       ctx.error(MissingEmptyArgumentList(methPart(tree).symbol), tree.pos)
       tree.withType(mt.resultType)
     }
 
-    def adaptOverloaded(ref: TermRef) = {
-      val altDenots = ref.denot.alternatives
-      typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
-      val alts = altDenots.map(TermRef(ref.prefix, ref.name, _))
-      resolveOverloaded(alts, pt) match {
-        case alt :: Nil =>
-          adapt(tree.withType(alt), pt)
-        case Nil =>
-          def noMatches =
-            errorTree(tree,
-              em"""none of the ${err.overloadedAltsStr(altDenots)}
-                  |match ${err.expectedTypeStr(pt)}""")
-          def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
-          pt match {
-            case pt: FunProto =>
-              tryInsertApplyOrImplicit(tree, pt)(noMatches)
-            case _ =>
-              if (altDenots exists (_.info.paramInfoss == ListOfNil))
-                typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt)
-              else
-                noMatches
-          }
-        case alts =>
-          val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
-          errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt)(err))
-      }
-    }
-
-    def isUnary(tp: Type): Boolean = tp match {
-      case tp: MethodicType =>
-        tp.firstParamTypes match {
-          case ptype :: Nil => !ptype.isRepeatedParam
-          case _ => false
+      def adaptOverloaded(ref: TermRef) = {
+        val altDenots = ref.denot.alternatives
+        typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
+        val alts = altDenots.map(TermRef(ref.prefix, ref.name, _))
+        resolveOverloaded(alts, pt) match {
+          case alt :: Nil =>
+            readaptSimplified(tree.withType(alt))
+          case Nil =>
+            def noMatches =
+              errorTree(tree,
+                em"""none of the ${err.overloadedAltsStr(altDenots)}
+                    |match ${err.expectedTypeStr(pt)}""")
+            def hasEmptyParams(denot: SingleDenotation) = denot.info.paramInfoss == ListOfNil
+            pt match {
+              case pt: FunProto =>
+                tryInsertApplyOrImplicit(tree, pt, locked)(noMatches)
+              case _ =>
+                if (altDenots exists (_.info.paramInfoss == ListOfNil))
+                  typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt, locked)
+                else
+                  noMatches
+            }
+          case alts =>
+            val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
+            errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt)(err))
         }
-      case tp: TermRef =>
-        tp.denot.alternatives.forall(alt => isUnary(alt.info))
-      case _ =>
-        false
-    }
-
-    def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
-      case _: MethodOrPoly =>
-        if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && ctx.canAutoTuple)
-          adaptInterpolated(tree, pt.tupled)
-        else
-          tree
-      case _ => tryInsertApplyOrImplicit(tree, pt) {
-        errorTree(tree, MethodDoesNotTakeParameters(tree, methPart(tree).tpe)(err))
       }
-    }
+
+      def isUnary(tp: Type): Boolean = tp match {
+        case tp: MethodicType =>
+          tp.firstParamTypes match {
+            case ptype :: Nil => !ptype.isRepeatedParam
+            case _ => false
+          }
+        case tp: TermRef =>
+          tp.denot.alternatives.forall(alt => isUnary(alt.info))
+        case _ =>
+          false
+      }
+
+      def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
+        case _: MethodOrPoly =>
+          if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && ctx.canAutoTuple)
+            adapt(tree, pt.tupled, locked)
+          else
+            tree
+        case _ => tryInsertApplyOrImplicit(tree, pt, locked) {
+          errorTree(tree, MethodDoesNotTakeParameters(tree, methPart(tree).tpe)(err))
+        }
+      }
 
     /** If `tp` is a TypeVar which is fully constrained (i.e. its upper bound `hi` conforms
      *  to its lower bound `lo`), replace `tp` by `hi`. This is necessary to
@@ -2121,7 +2142,7 @@ class Typer extends Namer
 
     def adaptNoArgsImplicitMethod(wtp: MethodType): Tree = {
       assert(wtp.isImplicitMethod)
-      val tvarsToInstantiate = tvarsInParams(tree)
+      val tvarsToInstantiate = tvarsInParams(tree, locked)
       wtp.paramInfos.foreach(instantiateSelected(_, tvarsToInstantiate))
       val constr = ctx.typerState.constraint
 
@@ -2199,13 +2220,13 @@ class Typer extends Namer
               if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }
             tryEither { implicit ctx =>
-              typed(untpd.Apply(untpd.TypedSplice(tree), namedArgs), pt)
+              typed(untpd.Apply(untpd.TypedSplice(tree), namedArgs), pt, locked)
             } { (_, _) =>
               issueErrors()
             }
           } else issueErrors()
         }
-        else adapt(tpd.Apply(tree, args), pt)
+        else readaptSimplified(tpd.Apply(tree, args))
       }
       addImplicitArgs(argCtx(tree))
     }
@@ -2254,20 +2275,10 @@ class Typer extends Namer
       if (arity >= 0 &&
           !tree.symbol.isConstructor &&
           !ctx.mode.is(Mode.Pattern) &&
-          !(isSyntheticApply(tree) && !isExpandableApply)) {
-        // Eta expansion interacts in tricky ways with type variable instantiation
-        // because it can extend the region where type variables are bound (and therefore may not
-        // be interpolated). To avoid premature interpolations, we need to extend the
-        // bindingTree of variables as we go along. Test case in pos/i3945.scala.
-        val boundtvs = uninstBoundVars(tree)
-        val uexpanded = etaExpand(tree, wtp, arity)
-        boundtvs.foreach(_.bindingTree = uexpanded) // make boundtvs point to uexpanded so that they are _not_ interpolated
-        val texpanded = typedUnadapted(uexpanded, pt)
-        boundtvs.foreach(_.bindingTree = texpanded) // make boundtvs point to texpanded so that they _can_ be interpolated
-        adapt(texpanded, pt)
-      }
+          !(isSyntheticApply(tree) && !isExpandableApply))
+        simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
       else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
-        adaptInterpolated(tpd.Apply(tree, Nil), pt)
+        readaptSimplified(tpd.Apply(tree, Nil))
       else if (wtp.isImplicitMethod)
         err.typeMismatch(tree, pt)
       else
@@ -2281,7 +2292,7 @@ class Typer extends Namer
           !isApplyProto(pt) &&
           !ctx.isAfterTyper) {
         typr.println(i"insert apply on implicit $tree")
-        typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
+        typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt, locked)
       }
       else if (ctx.mode is Mode.Pattern) {
         checkEqualityEvidence(tree, pt)
@@ -2295,7 +2306,7 @@ class Typer extends Namer
             !ctx.settings.YnoInline.value &&
             !ctx.isAfterTyper &&
             !ctx.reporter.hasErrors)
-          adapt(Inliner.inlineCall(tree, pt), pt)
+          readaptSimplified(Inliner.inlineCall(tree, pt))
         else if (ctx.typeComparer.GADTused && pt.isValueType)
           // Insert an explicit cast, so that -Ycheck in later phases succeeds.
           // I suspect, but am not 100% sure that this might affect inferred types,
@@ -2331,7 +2342,7 @@ class Typer extends Namer
       lazy val resultMatch = constrainResult(wtp, followAlias(pt))
       wtp match {
         case wtp: ExprType =>
-          adaptInterpolated(tree.withType(wtp.resultType), pt)
+          readaptSimplified(tree.withType(wtp.resultType))
         case wtp: MethodType if wtp.isImplicitMethod && (resultMatch || !functionExpected) =>
           if (resultMatch || ctx.mode.is(Mode.ImplicitsEnabled)) adaptNoArgsImplicitMethod(wtp)
           else {
@@ -2384,7 +2395,7 @@ class Typer extends Namer
       if (pt isRef defn.UnitClass)
         // local adaptation makes sure every adapted tree conforms to its pt
         // so will take the code path that decides on inlining
-        return tpd.Block(adapt(tree, WildcardType) :: Nil, Literal(Constant(())))
+        return tpd.Block(adapt(tree, WildcardType, locked) :: Nil, Literal(Constant(())))
       // convert function literal to SAM closure
       tree match {
         case closure(Nil, id @ Ident(nme.ANON_FUN), _)
@@ -2405,12 +2416,12 @@ class Typer extends Namer
       val prevConstraint = ctx.typerState.constraint
       def recover(failure: SearchFailureType) =
         if (isFullyDefined(wtp, force = ForceDegree.all) &&
-            ctx.typerState.constraint.ne(prevConstraint)) adapt(tree, pt)
+            ctx.typerState.constraint.ne(prevConstraint)) readapt(tree)
         else err.typeMismatch(tree, pt, failure)
       if (ctx.mode.is(Mode.ImplicitsEnabled))
         inferView(tree, pt) match {
           case SearchSuccess(inferred, _, _) =>
-            adapt(inferred, pt)(ctx.retractMode(Mode.ImplicitsEnabled))
+            readapt(inferred)(ctx.retractMode(Mode.ImplicitsEnabled))
           case failure: SearchFailure =>
             if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous)
               // don't report the failure but return the tree unchanged. This
@@ -2463,7 +2474,7 @@ class Typer extends Namer
           pt match {
             case pt: FunProto
             if pt.args.lengthCompare(1) > 0 && isUnary(ref) && ctx.canAutoTuple =>
-              adaptInterpolated(tree, pt.tupled)
+              adapt(tree, pt.tupled, locked)
             case _ =>
               adaptOverloaded(ref)
           }
@@ -2475,16 +2486,15 @@ class Typer extends Namer
               case _ => Nil
             }
             if (typeArgs.isEmpty) typeArgs = constrained(poly, tree)._2
-            convertNewGenericArray(
-              adaptInterpolated(tree.appliedToTypeTrees(typeArgs), pt))
+            convertNewGenericArray(readapt(tree.appliedToTypeTrees(typeArgs)))
           }
         case wtp =>
-          if (isStructuralTermSelect(tree)) adapt(handleStructural(tree), pt)
+          if (isStructuralTermSelect(tree)) readaptSimplified(handleStructural(tree))
           else pt match {
             case pt: FunProto =>
               adaptToArgs(wtp, pt)
             case pt: PolyProto =>
-              tryInsertApplyOrImplicit(tree, pt)(tree) // error will be reported in typedTypeApply
+              tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
             case _ =>
               if (ctx.mode is Mode.Type) adaptType(tree.tpe)
               else adaptNoArgs(wtp)

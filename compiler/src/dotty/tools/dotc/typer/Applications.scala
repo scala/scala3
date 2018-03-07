@@ -546,7 +546,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     init()
 
     def addArg(arg: Tree, formal: Type): Unit =
-      typedArgBuf += adaptInterpolated(arg, formal.widenExpr)
+      typedArgBuf += adapt(arg, formal.widenExpr)
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
@@ -711,7 +711,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
        *  part. Return an optional value to indicate success.
        */
       def tryWithImplicitOnQualifier(fun1: Tree, proto: FunProto)(implicit ctx: Context): Option[Tree] =
-        tryInsertImplicitOnQualifier(fun1, proto) flatMap { fun2 =>
+        tryInsertImplicitOnQualifier(fun1, proto, ctx.typerState.ownedVars) flatMap { fun2 =>
           tryEither {
             implicit ctx => Some(simpleApply(fun2, proto)): Option[Tree]
           } {
@@ -1519,11 +1519,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  If the resulting trees all have the same type, return them instead of the original ones.
    */
   def harmonize(trees: List[Tree])(implicit ctx: Context): List[Tree] = {
-    def adapt(tree: Tree, pt: Type): Tree = tree match {
-      case cdef: CaseDef => tpd.cpy.CaseDef(cdef)(body = adapt(cdef.body, pt))
-      case _ => adaptInterpolated(tree, pt)
+    def adaptDeep(tree: Tree, pt: Type): Tree = tree match {
+      case cdef: CaseDef => tpd.cpy.CaseDef(cdef)(body = adaptDeep(cdef.body, pt))
+      case _ => adapt(tree, pt)
     }
-    if (ctx.isAfterTyper) trees else harmonizeWith(trees)(_.tpe, adapt)
+    if (ctx.isAfterTyper) trees else harmonizeWith(trees)(_.tpe, adaptDeep)
   }
 
   /** Apply a transformation `harmonize` on the results of operation `op`.

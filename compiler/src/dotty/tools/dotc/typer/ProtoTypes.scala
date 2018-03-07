@@ -241,8 +241,9 @@ object ProtoTypes {
      *  used to avoid repeated typings of trees when backtracking.
      */
     def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
-      val targ = cacheTypedArg(arg, typer.typedUnadapted(_, formal))
-      typer.adapt(targ, formal)
+      val locked = ctx.typerState.ownedVars
+      val targ = cacheTypedArg(arg, typer.typedUnadapted(_, formal, locked))
+      typer.adapt(targ, formal, locked)
     }
 
     /** The type of the argument `arg`.
@@ -394,7 +395,9 @@ object ProtoTypes {
       for (n <- (0 until tl.paramNames.length).toList)
       yield {
         val tt = new TypeTree().withPos(owningTree.pos)
-        tt.withType(new TypeVar(tl.paramRefs(n), state, tt, ctx.owner))
+        val tvar = new TypeVar(tl.paramRefs(n), state, tt, ctx.owner)
+        state.ownedVars += tvar
+        tt.withType(tvar)
       }
 
     /** Ensure that `tl` is not already in constraint, make a copy of necessary */

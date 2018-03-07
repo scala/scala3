@@ -18,7 +18,7 @@ import Denotations._
 import Periods._
 import util.Positions.{Position, NoPosition}
 import util.Stats._
-import util.DotClass
+import util.{DotClass, SimpleIdentitySet}
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages.CyclicReferenceInvolving
 import ast.tpd._
@@ -3369,7 +3369,10 @@ object Types {
     private[core] def inst = myInst
     private[core] def inst_=(tp: Type) = {
       myInst = tp
-      if (tp.exists) owningState = null // no longer needed; null out to avoid a memory leak
+      if (tp.exists) {
+        owningState.get.ownedVars -= this
+        owningState = null // no longer needed; null out to avoid a memory leak
+      }
     }
 
     /** The state owning the variable. This is at first `creatorState`, but it can
@@ -3432,6 +3435,8 @@ object Types {
       s"TypeVar($origin$instStr)"
     }
   }
+
+  type TypeVars = SimpleIdentitySet[TypeVar]
 
   // ------ ClassInfo, Type Bounds ------------------------------------------------------------
 
