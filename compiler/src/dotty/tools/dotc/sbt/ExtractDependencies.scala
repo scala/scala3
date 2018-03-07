@@ -248,9 +248,8 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
    */
   private def resolveDependencySource(implicit ctx: Context): Symbol = {
     def isNonLocalClass(sym: Symbol) = sym.isClass && !isLocal(sym)
-    //val source = ctx.owner.ownersIterator.find(isNonLocalClass).get // Zinc
-    val source = currentClass
-    if (source.isEffectiveRoot) responsibleForImports else source
+    val source = ctx.owner.ownersIterator.find(isNonLocalClass).get
+    if (source.is(PackageClass)) responsibleForImports else source
   }
 
   private def addUsedName(fromClass: Symbol, name: Name, scope: UseScope): Unit = {
