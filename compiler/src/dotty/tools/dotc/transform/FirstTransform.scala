@@ -15,6 +15,7 @@ import Contexts.Context
 import Symbols._
 import SymDenotations._
 import Decorators._
+import Annotations._
 import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import scala.collection.mutable
@@ -30,13 +31,14 @@ import StdNames._
  *   - eliminates some kinds of trees: Imports, NamedArgs
  *   - stubs out native methods
  *   - eliminates self tree in Template and self symbol in ClassInfo
+ *   - rewrites opaque type aliases to normal alias types
  *   - collapses all type trees to trees of class TypeTree
  *   - converts idempotent expressions with constant types
  *   - drops branches of ifs using the rules
  *          if (true) A else B    ==> A
  *          if (false) A else B   ==> B
  */
-class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
+class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName = "firstTransform"
@@ -53,12 +55,22 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     ctx
   }
 
-  /** eliminate self symbol in ClassInfo */
-  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
+  /** Two transforms:
+   *   1. eliminate self symbol in ClassInfo
+   *   2. Rewrite opaque type aliases to normal alias types
+   */
+  def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = sym.info match {
     case tp @ ClassInfo(_, _, _, _, self: Symbol) =>
-      tp.derivedClassInfo(selfInfo = self.info)
+      sym.copySymDenotation(info = tp.derivedClassInfo(selfInfo = self.info))
+        .copyCaches(sym, ctx.phase.next)
     case _ =>
-      tp
+      if (sym.is(Opaque)) {
+        val result = sym.copySymDenotation(info = TypeAlias(sym.opaqueAlias))
+        result.removeAnnotation(defn.OpaqueAliasAnnot)
+        result.resetFlag(Opaque | Deferred)
+        result
+      }
+      else sym
   }
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
@@ -109,10 +121,13 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     }
 
     def registerCompanion(name: TermName, forClass: Symbol): TermSymbol = {
-      val (modul, mcCompanion, classCompanion) = newCompanion(name, forClass)
+      val modul = newCompanion(name, forClass)
       if (ctx.owner.isClass) modul.enteredAfter(thisPhase)
-      mcCompanion.enteredAfter(thisPhase)
-      classCompanion.enteredAfter(thisPhase)
+      val modcls = modul.moduleClass
+      modcls.registerCompanion(forClass)
+      val cls1 = forClass.copySymDenotation()
+      cls1.registerCompanion(modcls)
+      cls1.installAfter(thisPhase)
       modul
     }
 
@@ -133,15 +148,9 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     addMissingCompanions(reorder(stats, Nil))
   }
 
-  private def newCompanion(name: TermName, forClass: Symbol)(implicit ctx: Context) = {
-    val modul = ctx.newCompleteModuleSymbol(forClass.owner, name, Synthetic, Synthetic,
+  private def newCompanion(name: TermName, forClass: Symbol)(implicit ctx: Context) =
+    ctx.newCompleteModuleSymbol(forClass.owner, name, Synthetic, Synthetic,
       defn.ObjectType :: Nil, Scopes.newScope, assocFile = forClass.asClass.assocFile)
-    val mc = modul.moduleClass
-
-    val mcComp = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, forClass, mc)
-    val classComp = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, mc, forClass)
-    (modul, mcComp, classComp)
-  }
 
   /** elimiate self in Template */
   override def transformTemplate(impl: Template)(implicit ctx: Context): Tree = {

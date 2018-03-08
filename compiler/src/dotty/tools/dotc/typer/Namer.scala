@@ -103,10 +103,18 @@ trait NamerContextOps { this: Context =>
 
   /** A new context for the interior of a class */
   def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/): Context = {
-    val localCtx: Context = ctx.fresh.setNewScope
+    var localCtx: FreshContext = ctx.fresh.setNewScope
     selfInfo match {
       case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)
       case _ =>
+    }
+    if (ctx.owner.is(Module)) {
+      val opaq = ctx.owner.companionOpaqueType
+      val alias = opaq.opaqueAlias
+      if (alias.exists) {
+        localCtx = localCtx.setFreshGADTBounds
+        localCtx.gadt.setBounds(opaq, TypeAlias(alias))
+      }
     }
     localCtx
   }
@@ -506,7 +514,6 @@ class Namer { typer: Typer =>
     case _ =>
   }
 
-
   def setDocstring(sym: Symbol, tree: Tree)(implicit ctx: Context) = tree match {
     case t: MemberDef if t.rawComment.isDefined =>
       ctx.docCtx.foreach(_.addDocstring(sym, t.rawComment))
@@ -613,22 +620,19 @@ class Namer { typer: Typer =>
     def createLinks(classTree: TypeDef, moduleTree: TypeDef)(implicit ctx: Context) = {
       val claz = ctx.effectiveScope.lookup(classTree.name)
       val modl = ctx.effectiveScope.lookup(moduleTree.name)
-      if (claz.isClass && modl.isClass) {
-        ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, modl).entered
-        ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, modl, claz).entered
-      }
-    }
+      modl.registerCompanion(claz)
+      claz.registerCompanion(modl)
+   }
 
     def createCompanionLinks(implicit ctx: Context): Unit = {
       val classDef  = mutable.Map[TypeName, TypeDef]()
       val moduleDef = mutable.Map[TypeName, TypeDef]()
 
-      def updateCache(cdef: TypeDef): Unit = {
-        if (!cdef.isClassDef || cdef.mods.is(Package)) return
-
-        if (cdef.mods.is(ModuleClass)) moduleDef(cdef.name) = cdef
-        else classDef(cdef.name) = cdef
-      }
+      def updateCache(cdef: TypeDef): Unit =
+        if (cdef.isClassDef && !cdef.mods.is(Package) || cdef.mods.is(Opaque)) {
+          if (cdef.mods.is(ModuleClass)) moduleDef(cdef.name) = cdef
+          else classDef(cdef.name) = cdef
+        }
 
       for (stat <- stats)
         expanded(stat) match {
@@ -842,6 +846,7 @@ class Namer { typer: Typer =>
       addInlineInfo(denot)
       denot.info = typeSig(sym)
       Checking.checkWellFormed(sym)
+      denot.normalizeOpaque()
       denot.info = avoidPrivateLeaks(sym, sym.pos)
     }
   }

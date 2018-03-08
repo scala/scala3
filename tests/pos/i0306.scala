@@ -5,8 +5,8 @@ object bar {
   val x: AnyRef = new C
 
   val y = x match {
-    case x: C[u] =>
-      def xx: u = xx
+    case x: C[type U] =>
+      def xx: U = xx
       xx
   }
 

@@ -44,7 +44,7 @@ object ExhaustivityWarnBugReportMinimal {
 
   val v2: (Some[_], Int) = (???, ???)
   v2 match {
-    case (x: Some[t], _) =>
+    case (x: Some[type t], _) =>
   }
 
   val v3: (Option[_], FoundNode[_]) = (???, ???)

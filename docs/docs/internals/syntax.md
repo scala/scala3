@@ -120,7 +120,8 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 Type              ::=  [FunArgMods] FunArgTypes ‘=>’ Type                       Function(ts, t)
                     |  HkTypeParamClause ‘=>’ Type                              TypeLambda(ps, t)
                     |  InfixType
-FunArgMods        ::=  { `implicit` | `erased` }
+                    |  ‘type’ TypeParamCore
+                       (if inside a BindingTypePattern)
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
                     |  '(' TypedFunParam {',' TypedFunParam } ')'
@@ -138,8 +139,10 @@ SimpleType        ::=  SimpleType TypeArgs                                      
                     |  ‘_’ TypeBounds
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
                     |  SimpleLiteral                                            SingletonTypeTree(l)
-ArgTypes          ::=  Type {‘,’ Type}
-                    |  NamedTypeArg {‘,’ NamedTypeArg}
+ArgTypes          ::=  ArgType {‘,’ ArgType}
+ArgType           ::=  Type
+                    |  ‘type’ id
+                       (if inside a TypePattern)
 FunArgType        ::=  Type
                     |  ‘=>’ Type                                                PrefixOp(=>, t)
 ParamType         ::=  [‘=>’] ParamValueType
@@ -209,6 +212,7 @@ Block             ::=  {BlockStat semi} [BlockResult]                           
 BlockStat         ::=  Import
                     |  {Annotation} [‘implicit’ | ‘lazy’] Def
                     |  {Annotation} {LocalModifier} TmplDef
+                    |  Augmentation
                     |  Expr1
 
 ForExpr           ::=  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’)        ForYield(enums, expr)
@@ -225,7 +229,7 @@ CaseClauses       ::=  CaseClause { CaseClause }                                
 CaseClause        ::=  ‘case’ (Pattern [Guard] ‘=>’ Block | INT)                CaseDef(pat, guard?, block)   // block starts at =>
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
-Pattern1          ::=  PatVar ‘:’ RefinedType                                   Bind(name, Typed(Ident(wildcard), tpe))
+Pattern1          ::=  PatVar ‘:’ TypePattern                                   Bind(name, Typed(Ident(wildcard), tpe))
                     |  Pattern2
 Pattern2          ::=  [id ‘@’] InfixPattern                                    Bind(name, pat)
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                  InfixOp(pat, op, pat)
@@ -238,19 +242,25 @@ SimplePattern1    ::=  Path
                     |  SimplePattern1 ‘.’ id
 PatVar            ::=  varid
                     |  ‘_’
+TypePattern       ::=  RefinedType
 Patterns          ::=  Pattern {‘,’ Pattern}
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                                       Apply(fn, pats)
                     |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
+
+Augmentation      ::=  ‘augment’ [id ‘@’] BindingTypePattern
+                       [[nl] ImplicitParamClause] AugmentClause                 Augment(name, templ)
+AugmentClause     ::=  ‘extends’ Template
+                    |  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
+BindingTypePattern::=  AnnotType
 ```
 
 ### Type and Value Parameters
 ```ebnf
 ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
-ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]                                   TypeDef(Modifiers, name, tparams, bounds)
-                       id [HkTypeParamClause] TypeParamBounds                   Bound(below, above, context)
-
+ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’] TypeParamCore                   TypeDef(Modifiers, name, tparams, bounds)
 DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
-DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
+DefTypeParam      ::=  {Annotation} TypeParamCore
+TypeParamCore     ::=  id [HkTypeParamClause] TypeParamBounds                   Bound(below, above, context)
 
 TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
 TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeBounds
@@ -261,6 +271,8 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (Id[HkTypeParamClause] |
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [FunArgMods] ClsParams ‘)’]
 ClsParamClause    ::=  [nl] ‘(’ [ClsParams] ‘)’
+ImplicitParamClause
+                  ::=  [nl] ‘(’ ImplicitMods ClsParams ‘)’)
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
@@ -286,8 +298,11 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘sealed’
                     |  ‘implicit’
                     |  ‘lazy’
+                    |  ‘opaque’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
+FunArgMods        ::=  { `implicit` | `erased` }
+ImplicitMods      ::=  `implicit` [`erased`] | `erased` `implicit`
 
 Annotation        ::=  ‘@’ SimpleType {ParArgumentExprs}                        Apply(tpe, args)
 
@@ -329,12 +344,12 @@ DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                       
 TmplDef           ::=  ([‘case’] ‘class’ | trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  `enum' EnumDef
-ClassDef          ::=  id ClassConstr TemplateOpt                               ClassDef(mods, name, tparams, templ)
-ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses         with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
+ClassDef          ::=  id ClassConstr [TemplateClause]                          TypeDef(mods, name, templ)
+ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
-ObjectDef         ::=  id TemplateOpt                                           ModuleDef(mods, name, template)  // no constructor
-EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody         EnumDef(mods, name, tparams, template)
-TemplateOpt       ::=  [‘extends’ Template | [nl] TemplateBody]
+ObjectDef         ::=  id [TemplateClause]                                      ModuleDef(mods, name, template)  // no constructor
+EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody         TypeDef(mods, name, template)
+TemplateClause    ::=  [‘extends’ Template | [nl] TemplateBody]
 Template          ::=  ConstrApps [TemplateBody] | TemplateBody                 Template(constr, parents, self, stats)
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
 ConstrApp         ::=  AnnotType {ArgumentExprs}                                Apply(tp, args)
@@ -347,6 +362,7 @@ TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} 
 TemplateStat      ::=  Import
                     |  {Annotation [nl]} {Modifier} Def
                     |  {Annotation [nl]} {Modifier} Dcl
+                    |  Augmentation
                     |  Expr1
                     |
 SelfType          ::=  id [‘:’ InfixType] ‘=>’                                  ValDef(_, name, tpt, _)

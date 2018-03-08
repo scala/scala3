@@ -2184,7 +2184,7 @@ object Types {
       if (ctx.erasedTypes) tref
       else cls.info match {
         case cinfo: ClassInfo => cinfo.selfType
-        case cinfo: ErrorType if ctx.mode.is(Mode.Interactive) => cinfo
+        case _: ErrorType | NoType if ctx.mode.is(Mode.Interactive) => cls.info
           // can happen in IDE if `cls` is stale
       }
 

@@ -6,8 +6,8 @@ object Test {
 
     override def equals(other: Any) = other match {
       case o: c => x == o.x
-      case xs: List[c] => false
-      case ys: List[d18383] => false
+      case xs: List[type C] => false
+      case ys: List[type d18383] => false
       case _ => false
     }
 

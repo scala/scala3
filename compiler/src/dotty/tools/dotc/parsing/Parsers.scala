@@ -323,6 +323,20 @@ object Parsers {
       finally inEnum = saved
     }
 
+    private[this] var inTypePattern = false
+    private[this] var inBindingTypePattern = false
+    private def withinTypePattern[T](binding: Boolean)(body: => T): T = {
+      val savedInType = inTypePattern
+      val savedInBinding = inBindingTypePattern
+      inTypePattern = true
+      if (binding) inBindingTypePattern = true
+      try body
+      finally {
+        inTypePattern = savedInType
+        inBindingTypePattern = savedInBinding
+      }
+    }
+
     def migrationWarningOrError(msg: String, offset: Int = in.offset) =
       if (in.isScala2Mode)
         ctx.migrationWarning(msg, source atPos Position(offset))
@@ -917,7 +931,16 @@ object Parsers {
           else Nil
         first :: rest
       }
-      def typParser() = if (wildOK) typ() else toplevelTyp()
+      def typParser() =
+        if (in.token == TYPE && inTypePattern)
+          if (inBindingTypePattern)
+            typeParamCore(in.skipToken(), isConcreteOwner = true)
+          else
+            atPos(in.skipToken(), nameStart) {
+              Bind(ident().toTypeName, Ident(nme.WILDCARD))
+            }
+        else if (wildOK) typ()
+        else toplevelTyp()
       if (namedOK && in.token == IDENTIFIER)
         typParser() match {
           case Ident(name) if in.token == EQUALS =>
@@ -998,7 +1021,7 @@ object Parsers {
 
     def typeDependingOn(location: Location.Value): Tree =
       if (location == Location.InParens) typ()
-      else if (location == Location.InPattern) refinedType()
+      else if (location == Location.InPattern) withinTypePattern(binding = false)(refinedType())
       else infixType()
 
     /** Checks whether `t` is a wildcard type.
@@ -1058,7 +1081,7 @@ object Parsers {
      *                      |  PostfixExpr `match' `{' CaseClauses `}'
      *  Bindings          ::= `(' [Binding {`,' Binding}] `)'
      *  Binding           ::= (id | `_') [`:' Type]
-     *  Ascription        ::= `:' CompoundType
+     *  Ascription        ::= `:' InfixType
      *                      | `:' Annotation {Annotation}
      *                      | `:' `_' `*'
      */
@@ -1178,6 +1201,13 @@ object Parsers {
         t
     }
 
+    /**  Ascription        ::= `:' InfixType
+     *                       | `:' Annotation {Annotation}
+     *                       | `:' `_' `*'
+     *   PatternAscription ::= `:' TypePattern
+     *                       | `:' `_' `*'
+     *   TypePattern       ::= RefinedType
+     */
     def ascription(t: Tree, location: Location.Value) = atPos(startOffset(t)) {
       in.skipToken()
       in.token match {
@@ -1539,7 +1569,7 @@ object Parsers {
       if (isIdent(nme.raw.BAR)) { in.nextToken(); pattern1() :: patternAlts() }
       else Nil
 
-    /**  Pattern1          ::= PatVar Ascription
+    /**  Pattern1          ::= PatVar PatternAscription
      *                      |  Pattern2
      */
     def pattern1(): Tree = {
@@ -1649,6 +1679,7 @@ object Parsers {
       case PRIVATE   => Mod.Private()
       case PROTECTED => Mod.Protected()
       case SEALED    => Mod.Sealed()
+      case OPAQUE    => Mod.Opaque()
     }
 
     /** Drop `private' modifier when followed by a qualifier.
@@ -1773,15 +1804,13 @@ object Parsers {
  /* -------- PARAMETERS ------------------------------------------- */
 
     /** ClsTypeParamClause::=  `[' ClsTypeParam {`,' ClsTypeParam} `]'
-     *  ClsTypeParam      ::=  {Annotation} [`+' | `-']
-     *                         id [HkTypeParamClause] TypeParamBounds
-     *
+     *  ClsTypeParam      ::=  {Annotation} [`+' | `-'] TypeParamCore
      *  DefTypeParamClause::=  `[' DefTypeParam {`,' DefTypeParam} `]'
-     *  DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
+     *  DefTypeParam      ::=  {Annotation} TypeParamCore
+     *  TypeParamCore     ::=  id [HkTypeParamClause] TypeParamBounds
      *
      *  TypTypeParamCaluse::=  `[' TypTypeParam {`,' TypTypeParam} `]'
      *  TypTypeParam      ::=  {Annotation} id [HkTypePamClause] TypeBounds
-     *
      *  HkTypeParamClause ::=  `[' HkTypeParam {`,' HkTypeParam} `]'
      *  HkTypeParam       ::=  {Annotation} ['+' | `-'] (id [HkTypePamClause] | _') TypeBounds
      */
@@ -1801,21 +1830,24 @@ object Parsers {
             else EmptyFlags
           }
         }
-        atPos(start, nameStart) {
-          val name =
-            if (isConcreteOwner || in.token != USCORE) ident().toTypeName
-            else {
-              in.nextToken()
-              WildcardParamName.fresh().toTypeName
-            }
-          val hkparams = typeParamClauseOpt(ParamOwner.TypeParam)
-          val bounds =
-            if (isConcreteOwner) typeParamBounds(name)
-            else typeBounds()
-          TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
-        }
+        typeParamCore(start, isConcreteOwner).withMods(mods)
       }
       commaSeparated(() => typeParam())
+    }
+
+    /** TypeParamCore  ::=  id [HkTypeParamClause] TypeParamBounds */
+    def typeParamCore(start: Offset, isConcreteOwner: Boolean): TypeDef = atPos(start, nameStart) {
+      val name =
+        if (in.token == USCORE && !isConcreteOwner) {
+          in.nextToken()
+          WildcardParamName.fresh().toTypeName
+        }
+        else ident().toTypeName
+      val hkparams = typeParamClauseOpt(ParamOwner.TypeParam)
+      val bounds =
+        if (isConcreteOwner) typeParamBounds(name)
+        else typeBounds()
+      TypeDef(name, lambdaAbstract(hkparams, bounds))
     }
 
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
@@ -1830,8 +1862,10 @@ object Parsers {
      *  DefParams         ::=  DefParam {`,' DefParam}
      *  DefParam          ::=  {Annotation} [`inline'] Param
      *  Param             ::=  id `:' ParamType [`=' Expr]
+     *  ImplicitParamClause ::=  [nl] ‘(’ ImplicitMods ClsParams ‘)’)
+     *  ImplicitMods      ::=  `implicit` [`unused`] | `unused` `implicit`
      */
-    def paramClauses(owner: Name, ofCaseClass: Boolean = false): List[List[ValDef]] = {
+    def paramClauses(owner: Name, ofCaseClass: Boolean = false, ofAugmentation: Boolean = false): List[List[ValDef]] = {
       var imods: Modifiers = EmptyModifiers
       var implicitOffset = -1 // use once
       var firstClauseOfCaseClass = ofCaseClass
@@ -1877,7 +1911,7 @@ object Parsers {
         }
       }
       def paramClause(): List[ValDef] = inParens {
-        if (in.token == RPAREN) Nil
+        if (!ofAugmentation && in.token == RPAREN) Nil
         else {
           def funArgMods(): Unit = {
             if (in.token == IMPLICIT) {
@@ -1890,7 +1924,8 @@ object Parsers {
             }
           }
           funArgMods()
-
+          if (ofAugmentation && !imods.is(Implicit))
+            syntaxError(i"parameters of augment clause must be implicit")
           commaSeparated(() => param())
         }
       }
@@ -1900,7 +1935,7 @@ object Parsers {
           imods = EmptyModifiers
           paramClause() :: {
             firstClauseOfCaseClass = false
-            if (imods is Implicit) Nil else clauses()
+            if (imods.is(Implicit) || ofAugmentation) Nil else clauses()
           }
         } else Nil
       }
@@ -2179,7 +2214,7 @@ object Parsers {
       }
     }
 
-    /** ClassDef ::= id ClassConstr TemplateOpt
+    /** ClassDef ::= id ClassConstr [TemplateClause]
      */
     def classDef(start: Offset, mods: Modifiers): TypeDef = atPos(start, nameStart) {
       classDefRest(start, mods, ident().toTypeName)
@@ -2187,7 +2222,7 @@ object Parsers {
 
     def classDefRest(start: Offset, mods: Modifiers, name: TypeName): TypeDef = {
       val constr = classConstr(name, isCaseClass = mods is Case)
-      val templ = templateOpt(constr)
+      val templ = templateClauseOpt(constr)
       TypeDef(name, templ).withMods(mods).setComment(in.getDocComment(start))
     }
 
@@ -2196,7 +2231,7 @@ object Parsers {
     def classConstr(owner: Name, isCaseClass: Boolean = false): DefDef = atPos(in.lastOffset) {
       val tparams = typeParamClauseOpt(ParamOwner.Class)
       val cmods = fromWithinClassConstr(constrModsOpt(owner))
-      val vparamss = paramClauses(owner, isCaseClass)
+      val vparamss = paramClauses(owner, ofCaseClass = isCaseClass)
       makeConstructor(tparams, vparamss).withMods(cmods)
     }
 
@@ -2205,14 +2240,14 @@ object Parsers {
     def constrModsOpt(owner: Name): Modifiers =
       modifiers(accessModifierTokens, annotsAsMods())
 
-    /** ObjectDef       ::= id TemplateOpt
+    /** ObjectDef       ::= id [TemplateClause]
      */
     def objectDef(start: Offset, mods: Modifiers): ModuleDef = atPos(start, nameStart) {
       objectDefRest(start, mods, ident())
     }
 
     def objectDefRest(start: Offset, mods: Modifiers, name: TermName): ModuleDef = {
-      val template = templateOpt(emptyConstructor)
+      val template = templateClauseOpt(emptyConstructor)
       ModuleDef(name, template).withMods(mods).setComment(in.getDocComment(start))
     }
 
@@ -2222,7 +2257,7 @@ object Parsers {
       val modName = ident()
       val clsName = modName.toTypeName
       val constr = classConstr(clsName)
-      val impl = templateOpt(constr, isEnum = true)
+      val impl = templateClauseOpt(constr, isEnum = true, bodyRequired = true)
       TypeDef(clsName, impl).withMods(addMod(mods, enumMod)).setComment(in.getDocComment(start))
     }
 
@@ -2268,6 +2303,34 @@ object Parsers {
       Template(constr, parents, EmptyValDef, Nil)
     }
 
+    /** Augmentation       ::=  ‘augment’ [id @] BindingTypePattern
+     *                          [[nl] ImplicitParamClause] Additions
+     *  BindingTypePattern ::=  AnnotType
+     *  Additions         ::=  ‘extends’ Template
+     *                      |  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
+     */
+    def augmentation(): Augment = atPos(in.skipToken(), nameStart) {
+      var id: Tree = EmptyTree
+      if (isIdent && lookaheadIn(AT)) {
+        id = typeIdent()
+        in.nextToken()
+      }
+      val augmented = withinTypePattern(binding = true)(annotType())
+      val vparamss = paramClauses(tpnme.EMPTY, ofAugmentation = true).take(1)
+      val constr = makeConstructor(Nil, vparamss)
+      val isSimpleExtension = in.token != EXTENDS
+      val templ = templateClauseOpt(constr, bodyRequired = true)
+      if (isSimpleExtension) {
+        def checkDef(tree: Tree) = tree match {
+          case _: DefDef | EmptyValDef => // ok
+          case _ => syntaxError("`def` expected", tree.pos.startPos)
+        }
+        checkDef(templ.self)
+        templ.body.foreach(checkDef)
+      }
+      Augment(id, augmented, templ)
+    }
+
 /* -------- TEMPLATES ------------------------------------------- */
 
     /** ConstrApp         ::=  SimpleType {ParArgumentExprs}
@@ -2284,26 +2347,27 @@ object Parsers {
      *  @return  a pair consisting of the template, and a boolean which indicates
      *           whether the template misses a body (i.e. no {...} part).
      */
-    def template(constr: DefDef, isEnum: Boolean = false): (Template, Boolean) = {
+    def template(constr: DefDef, isEnum: Boolean = false, bodyRequired: Boolean = false): (Template, Boolean) = {
       newLineOptWhenFollowedBy(LBRACE)
       if (in.token == LBRACE) (templateBodyOpt(constr, Nil, isEnum), false)
       else {
         val parents = tokenSeparated(WITH, constrApp)
         newLineOptWhenFollowedBy(LBRACE)
-        if (isEnum && in.token != LBRACE)
+        if (bodyRequired && in.token != LBRACE)
           syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token))
         val missingBody = in.token != LBRACE
         (templateBodyOpt(constr, parents, isEnum), missingBody)
       }
     }
 
-    /** TemplateOpt = [`extends' Template | TemplateBody]
+    /** TemplateClause = `extends' Template | TemplateBody
+     *  TemplateClauseOpt = [TemplateClause]
      */
-    def templateOpt(constr: DefDef, isEnum: Boolean = false): Template =
-      if (in.token == EXTENDS) { in.nextToken(); template(constr, isEnum)._1 }
+    def templateClauseOpt(constr: DefDef, isEnum: Boolean = false, bodyRequired: Boolean = false): Template =
+      if (in.token == EXTENDS) { in.nextToken(); template(constr, isEnum, bodyRequired)._1 }
       else {
         newLineOptWhenFollowedBy(LBRACE)
-        if (in.token == LBRACE) template(constr, isEnum)._1
+        if (in.token == LBRACE || bodyRequired) template(constr, isEnum, bodyRequired)._1
         else Template(constr, Nil, EmptyValDef, Nil)
       }
 
@@ -2379,6 +2443,7 @@ object Parsers {
      *  TemplateStat     ::= Import
      *                     | Annotations Modifiers Def
      *                     | Annotations Modifiers Dcl
+     *                     | Augmentation
      *                     | Expr1
      *                     |
      *  EnumStat         ::= TemplateStat
@@ -2409,6 +2474,8 @@ object Parsers {
         setLastStatOffset()
         if (in.token == IMPORT)
           stats ++= importClause()
+        else if (in.token == AUGMENT)
+          stats += augmentation()
         else if (isExprIntro)
           stats += expr1()
         else if (isDefIntro(modifierTokensOrCase))
@@ -2453,6 +2520,7 @@ object Parsers {
      *  BlockStat    ::= Import
      *                 | Annotations [implicit] [lazy] Def
      *                 | Annotations LocalModifiers TmplDef
+     *                 | Augmentation
      *                 | Expr1
      *                 |
      */
@@ -2463,6 +2531,8 @@ object Parsers {
         setLastStatOffset()
         if (in.token == IMPORT)
           stats ++= importClause()
+        else if (in.token == AUGMENT)
+          stats += augmentation()
         else if (isExprIntro)
           stats += expr(Location.InBlock)
         else if (isDefIntro(localModifierTokens))
