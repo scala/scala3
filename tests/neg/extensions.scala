@@ -28,7 +28,7 @@ object extensions {
     def area = this.radius * this.radius * math.Pi
   }
 
-  extend Circle2 extends HasArea {} // error: `implements` or `{` expected
+  extend Circle2 extends HasArea {} // error: `implements` or `{` expected // error: `def` expected
 
   extend Circle implements HasAreaClass {
     def area = this.radius * this.radius * math.Pi
@@ -69,30 +69,7 @@ object extensions {
   extend (type T) {
     def ~[U](that: U): (T, U) = (this, that)
   }
-
-// Conditional generic extensions
-
-  trait HasEql[T] {
-    def === (that: T): Boolean
-  }
-
-  extend (type T: Eql) implements HasEql[T] {
-    def === (that: T): Boolean = implicitly[Eql[T]].eql(this, that)
-  }
-
-  extend Rectangle[type T: Eql] implements HasEql[Rectangle[T]] {
-    def === (that: Rectangle[T]) =
-      this.x === that.x &&
-      this.y === that.y &&
-      this.width == that.width &&
-      this.height == that.height
-  }
-
-  extend List[List[type U]] {
-    def flattened: List[U] = (this :\ (Nil: List[U]))(_ ++ _)
-  }
 }
-
 
 object extensions1 {
   extend List[List[type T]] {

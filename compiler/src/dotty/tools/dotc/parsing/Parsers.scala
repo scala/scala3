@@ -2323,7 +2323,7 @@ object Parsers {
           val templ = templateClauseOpt(constr, bodyRequired = true)
           def checkDef(tree: Tree) = tree match {
             case _: DefDef | EmptyValDef => // ok
-            case _ => syntaxError("`def` expected", tree.pos.startPos)
+            case _ => syntaxError("`def` expected", tree.pos.startPos.orElse(templ.pos.startPos))
           }
           checkDef(templ.self)
           templ.body.foreach(checkDef)
