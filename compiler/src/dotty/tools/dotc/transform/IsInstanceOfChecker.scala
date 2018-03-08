@@ -58,8 +58,7 @@ object Checkable {
    *  4. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
    *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
-   *     (b) constrain `Xs` with `pre.F[Xs] <:< X`,
-   *         if `X` cannot be uniquely determined, instantiate `X` with fresh type symbol.
+   *     (b) constrain `Xs` with `pre.F[Xs] <:< X`
    *     (c) instantiate Xs and check `pre.F[Xs] <:< P`
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, FALSE
@@ -101,26 +100,7 @@ object Checkable {
 
       P1 <:< X  // may fail, ignore
 
-      // 3324g.scala cannot happen in such cases
-      def canInstantiate =
-        tycon.classSymbol.is(Final) ||
-        !X.classSymbol.is(Trait)    ||
-        X.classSymbol.typeParams.isEmpty
-
-      if (canInstantiate)
-        maximizeType(P1, pos, fromScala2x = true) // use `fromScala2x = true` to force instantiate invariant tvars
-      else
-        tvars.foreach { case tvar: TypeVar =>
-          val bounds = ctx.typerState.constraint.entry(tvar.origin)
-          if (bounds.loBound =:= bounds.hiBound)
-            tvar.instantiateWith(bounds.loBound)
-          else { // 3324g.scala
-            val wildCard = ctx.newSymbol(ctx.owner, WildcardParamName.fresh().toTypeName, Case, tvar.origin.underlying, coord = pos)
-            tvar.instantiateWith(wildCard.typeRef)
-          }
-        }
-
-      val res = P1 <:< P
+      val res = isFullyDefined(P1, ForceDegree.noBottom) &&  P1 <:< P
       debug.println("P1 : " + P1)
       debug.println("P1 <:< P = " + res)
 
