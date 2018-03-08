@@ -13,7 +13,7 @@ object opaquetypes {
     // This is the first way to unlift the logarithm type
     def exponent(l: Logarithm): Double = l
 
-    augment Logarithm {
+    extend Logarithm {
       // This is the second way to unlift the logarithm type
       def toDouble: Double = math.exp(this)
       def +(that: Logarithm): Logarithm = Logarithm(math.exp(this) + math.exp(that))

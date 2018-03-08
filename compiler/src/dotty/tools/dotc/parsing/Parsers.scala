@@ -1865,7 +1865,7 @@ object Parsers {
      *  ImplicitParamClause ::=  [nl] ‘(’ ImplicitMods ClsParams ‘)’)
      *  ImplicitMods      ::=  `implicit` [`unused`] | `unused` `implicit`
      */
-    def paramClauses(owner: Name, ofCaseClass: Boolean = false, ofAugmentation: Boolean = false): List[List[ValDef]] = {
+    def paramClauses(owner: Name, ofCaseClass: Boolean = false, ofExtension: Boolean = false): List[List[ValDef]] = {
       var imods: Modifiers = EmptyModifiers
       var implicitOffset = -1 // use once
       var firstClauseOfCaseClass = ofCaseClass
@@ -1911,7 +1911,7 @@ object Parsers {
         }
       }
       def paramClause(): List[ValDef] = inParens {
-        if (!ofAugmentation && in.token == RPAREN) Nil
+        if (!ofExtension && in.token == RPAREN) Nil
         else {
           def funArgMods(): Unit = {
             if (in.token == IMPLICIT) {
@@ -1924,8 +1924,8 @@ object Parsers {
             }
           }
           funArgMods()
-          if (ofAugmentation && !imods.is(Implicit))
-            syntaxError(i"parameters of augment clause must be implicit")
+          if (ofExtension && !imods.is(Implicit))
+            syntaxError(i"parameters of extension must be implicit")
           commaSeparated(() => param())
         }
       }
@@ -1935,7 +1935,7 @@ object Parsers {
           imods = EmptyModifiers
           paramClause() :: {
             firstClauseOfCaseClass = false
-            if (imods.is(Implicit) || ofAugmentation) Nil else clauses()
+            if (imods.is(Implicit) || ofExtension) Nil else clauses()
           }
         } else Nil
       }
@@ -2303,32 +2303,33 @@ object Parsers {
       Template(constr, parents, EmptyValDef, Nil)
     }
 
-    /** Augmentation       ::=  ‘augment’ [id @] BindingTypePattern
-     *                          [[nl] ImplicitParamClause] Additions
+    /** Extension          ::=  ‘extend’ BindingTypePattern
+     *                          [[nl] ImplicitParamClause] ExtensionClause
      *  BindingTypePattern ::=  AnnotType
-     *  Additions         ::=  ‘extends’ Template
-     *                      |  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
+     *  ExtensionClause    ::=  ‘implements’ Template
+     *                       |  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
      */
-    def augmentation(): Augment = atPos(in.skipToken(), nameStart) {
-      var id: Tree = EmptyTree
-      if (isIdent && lookaheadIn(AT)) {
-        id = typeIdent()
-        in.nextToken()
-      }
-      val augmented = withinTypePattern(binding = true)(annotType())
-      val vparamss = paramClauses(tpnme.EMPTY, ofAugmentation = true).take(1)
+    def extension(): Extension = atPos(in.skipToken(), nameStart) {
+      val extended = withinTypePattern(binding = true)(annotType())
+      val vparamss = paramClauses(tpnme.EMPTY, ofExtension = true).take(1)
       val constr = makeConstructor(Nil, vparamss)
-      val isSimpleExtension = in.token != EXTENDS
-      val templ = templateClauseOpt(constr, bodyRequired = true)
-      if (isSimpleExtension) {
-        def checkDef(tree: Tree) = tree match {
-          case _: DefDef | EmptyValDef => // ok
-          case _ => syntaxError("`def` expected", tree.pos.startPos)
+      val templ =
+        if (in.token == IMPLEMENTS) {
+          in.nextToken()
+          template(constr, bodyRequired = true)._1
         }
-        checkDef(templ.self)
-        templ.body.foreach(checkDef)
-      }
-      Augment(id, augmented, templ)
+        else {
+          if (in.token == EXTENDS) syntaxError("`implements` or `{` expected")
+          val templ = templateClauseOpt(constr, bodyRequired = true)
+          def checkDef(tree: Tree) = tree match {
+            case _: DefDef | EmptyValDef => // ok
+            case _ => syntaxError("`def` expected", tree.pos.startPos)
+          }
+          checkDef(templ.self)
+          templ.body.foreach(checkDef)
+          templ
+        }
+      Extension(extended, templ)
     }
 
 /* -------- TEMPLATES ------------------------------------------- */
@@ -2364,7 +2365,10 @@ object Parsers {
      *  TemplateClauseOpt = [TemplateClause]
      */
     def templateClauseOpt(constr: DefDef, isEnum: Boolean = false, bodyRequired: Boolean = false): Template =
-      if (in.token == EXTENDS) { in.nextToken(); template(constr, isEnum, bodyRequired)._1 }
+      if (in.token == EXTENDS) {
+        in.nextToken()
+        template(constr, isEnum, bodyRequired)._1
+      }
       else {
         newLineOptWhenFollowedBy(LBRACE)
         if (in.token == LBRACE || bodyRequired) template(constr, isEnum, bodyRequired)._1
@@ -2443,7 +2447,7 @@ object Parsers {
      *  TemplateStat     ::= Import
      *                     | Annotations Modifiers Def
      *                     | Annotations Modifiers Dcl
-     *                     | Augmentation
+     *                     | Extension
      *                     | Expr1
      *                     |
      *  EnumStat         ::= TemplateStat
@@ -2474,8 +2478,8 @@ object Parsers {
         setLastStatOffset()
         if (in.token == IMPORT)
           stats ++= importClause()
-        else if (in.token == AUGMENT)
-          stats += augmentation()
+        else if (in.token == EXTEND)
+          stats += extension()
         else if (isExprIntro)
           stats += expr1()
         else if (isDefIntro(modifierTokensOrCase))
@@ -2520,7 +2524,7 @@ object Parsers {
      *  BlockStat    ::= Import
      *                 | Annotations [implicit] [lazy] Def
      *                 | Annotations LocalModifiers TmplDef
-     *                 | Augmentation
+     *                 | Extension
      *                 | Expr1
      *                 |
      */
@@ -2531,8 +2535,8 @@ object Parsers {
         setLastStatOffset()
         if (in.token == IMPORT)
           stats ++= importClause()
-        else if (in.token == AUGMENT)
-          stats += augmentation()
+        else if (in.token == EXTEND)
+          stats += extension()
         else if (isExprIntro)
           stats += expr(Location.InBlock)
         else if (isDefIntro(localModifierTokens))

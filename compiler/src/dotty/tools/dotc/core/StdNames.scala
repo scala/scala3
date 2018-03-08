@@ -28,7 +28,6 @@ object StdNames {
     final val LOCALDUMMY_PREFIX        = "<local "       // owner of local blocks
     final val ANON_CLASS               = "$anon"
     final val ANON_FUN                 = "$anonfun"
-    final val AUGMENT                  = "_augment_"
 
     final val REPL_SESSION_LINE  = "rs$line$"
     final val REPL_ASSIGN_SUFFIX = "$assign"

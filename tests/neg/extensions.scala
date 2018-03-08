@@ -1,16 +1,18 @@
 import Predef.{any2stringadd => _, _}
-object augments {
+object extensions {
 
 // Simple extension methods
 
   case class Circle(x: Double, y: Double, radius: Double)
 
-  augment Circle {
+  extend Circle {
     def circumference = this.radius * math.Pi * 2
     private val p = math.Pi       // error: `def` expected
   }
 
-  augment Circle {
+  type Circle2 = Circle
+
+  extend Circle2 {
     def circumference = radius * math.Pi * 2 // error: not found
   }
 
@@ -20,25 +22,33 @@ object augments {
     def area: Double
   }
 
-  augment Circle extends HasArea {
+  abstract class HasAreaClass extends HasArea
+
+  extend Circle implements HasArea {
+    def area = this.radius * this.radius * math.Pi
+  }
+
+  extend Circle2 extends HasArea {} // error: `implements` or `{` expected
+
+  extend Circle implements HasAreaClass {
     def area = this.radius * this.radius * math.Pi
   }
 
 // Generic trait implementations
 
-  augment List[type T] {
+  extend List[type T] {
     type I = Int                 // error: `def` expected
     def second = this.tail.head
   }
 
 // Specific trait implementations
 
-  augment List[Int] { self => // error: `def` expected
+  extend List[Int] { self => // error: `def` expected
     import java.lang._ // error: `def` expected
     def maxx = (0 /: this)(_ `max` _)
   }
 
-  augment Array[Int] {
+  extend Array[Int] {
     def maxx = (0 /: this)(_ `max` _)
   }
 
@@ -50,27 +60,27 @@ object augments {
     def eql (x: T, y: T): Boolean
   }
 
-  augment Rectangle[type T: Eql] {
+  extend Rectangle[type T: Eql] {
     def isSquare: Boolean = implicitly[Eql[T]].eql(this.width, this.height)
   }
 
-// Simple generic augments
+// Simple generic extensions
 
-  augment (type T) {
+  extend (type T) {
     def ~[U](that: U): (T, U) = (this, that)
   }
 
-// Conditional generic augments
+// Conditional generic extensions
 
   trait HasEql[T] {
     def === (that: T): Boolean
   }
 
-  augment (type T: Eql) extends HasEql[T] {
+  extend (type T: Eql) implements HasEql[T] {
     def === (that: T): Boolean = implicitly[Eql[T]].eql(this, that)
   }
 
-  augment Rectangle[type T: Eql] extends HasEql[Rectangle[T]] {
+  extend Rectangle[type T: Eql] implements HasEql[Rectangle[T]] {
     def === (that: Rectangle[T]) =
       this.x === that.x &&
       this.y === that.y &&
@@ -78,46 +88,34 @@ object augments {
       this.height == that.height
   }
 
-  augment List[List[type U]] {
+  extend List[List[type U]] {
     def flattened: List[U] = (this :\ (Nil: List[U]))(_ ++ _)
   }
 }
 
-object augments2 {
-  import augments.Eql
+
+object extensions1 {
+  extend List[List[type T]] {
+    def flattened: List[T] = (this :\ (Nil: List[T]))(_ ++ _)
+  }
+}
+
+object extensions2 {
+  import extensions.Eql
   // Nested generic arguments
 
-  augment flatLists @ List[List[type U]] {
+  extend List[List[type U]] {
     def flattened: List[U] = (this :\ (Nil: List[U]))(_ ++ _)
   }
 
-  augment samePairs @ (type T: Eql, T) {
+  extend (type T: Eql, T) {
     def isSame: Boolean = this._1 === this._2 // error: === is not a member
   }
 
 }
 
-import augments._
-import augments2._
+import extensions1._
+import extensions2._
 object Test extends App {
-  val c = Circle(0, 1, 2)
-  println(c.area)
-
-  implicit object IntHasEql extends Eql[Int] {
-    def eql (x: Int, y: Int): Boolean = x == y
-  }
-
-  println(1 ~ "a")
-
-  val r1 = Rectangle(0, 0, 2, 2)
-  val r2 = Rectangle(0, 0, 2, 3)
-  println(r1.isSquare)
-  println(r2.isSquare)
-  println(r1 === r1)
-  println(r1 === r2)
-  println(List(1, 2, 3).second)
   println(List(List(1), List(2, 3)).flattened) // error: type error + note that implicit conversions are ambiguous
-  println(Array(1, 2, 3).maxx)
-  println((2, 3).isSame)
-  println((3, 3).isSame)
 }

@@ -29,14 +29,14 @@ sidebar:
               url: docs/reference/dependent-function-types.html
             - title: Literal Singleton Types
               url: docs/reference/singleton-types.html
-        - title: Augmentations
+        - title: Extend Clauses
           subsection:
-            - title: Method Augmentations
-              url: docs/reference/augments/method-augments.html
-            - title: Trait Augmentations
-              url: docs/reference/augments/trait-augments.html
-            - title: Translation of Augmentations
-              url: docs/reference/augments/translation.html
+            - title: Extension Methods
+              url: docs/reference/extend/extension-methods.html
+            - title: Extension Implementations
+              url: docs/reference/extend/extension-implementations.html
+            - title: Translation of Extensions
+              url: docs/reference/extend/translation.html
         - title: Enums
           subsection:
             - title: Enumerations

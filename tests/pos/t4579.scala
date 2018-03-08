@@ -111,7 +111,7 @@ object LispCaseClasses extends Lisp {
         def lookup(n: String): Data =
           if (n == name) expr(this) else Environment.this.lookup(n);
       }
-    def extend(name: String, v: Data) = extendRec(name, (env1 => v));
+    def `extend`(name: String, v: Data) = extendRec(name, (env1 => v));
   }
   val EmptyEnvironment = new Environment {
     def lookup(n: String): Data = lispError("undefined: " + n);
@@ -165,7 +165,7 @@ object LispCaseClasses extends Lisp {
     case CONS(SYM("def"), CONS(SYM(name), CONS(y, CONS(z, NIL())))) =>
       eval(z, env.extendRec(name, (env1 => eval(y, env1))))
     case CONS(SYM("val"), CONS(SYM(name), CONS(y, CONS(z, NIL())))) =>
-      eval(z, env.extend(name, eval(y, env)))
+      eval(z, env.`extend`(name, eval(y, env)))
     case CONS(SYM("lambda"), CONS(params, CONS(y, NIL()))) =>
       mkLambda(params, y, env)
     case CONS(SYM("if"), CONS(c, CONS(t, CONS(e, NIL())))) =>
@@ -194,7 +194,7 @@ object LispCaseClasses extends Lisp {
         case (List(), List()) =>
           env
         case (p :: ps1, arg :: args1) =>
-          extendEnv(env.extend(p, arg), ps1, args1)
+          extendEnv(env.`extend`(p, arg), ps1, args1)
         case _ =>
           lispError("wrong number of arguments")
       }
@@ -208,26 +208,26 @@ object LispCaseClasses extends Lisp {
   }
 
   val globalEnv = EmptyEnvironment
-    .extend("=", FUN({
+    .`extend`("=", FUN({
       case List(NUM(arg1),NUM(arg2)) => NUM(if (arg1 == arg2) 1 else 0)
       case List(STR(arg1),STR(arg2)) => NUM(if (arg1 == arg2) 1 else 0)}))
-    .extend("+", FUN({
+    .`extend`("+", FUN({
       case List(NUM(arg1),NUM(arg2)) => NUM(arg1 + arg2)
       case List(STR(arg1),STR(arg2)) => STR(arg1 + arg2)}))
-    .extend("-", FUN({
+    .`extend`("-", FUN({
       case List(NUM(arg1),NUM(arg2)) => NUM(arg1 - arg2)}))
-    .extend("*", FUN({
+    .`extend`("*", FUN({
       case List(NUM(arg1),NUM(arg2)) => NUM(arg1 * arg2)}))
-    .extend("/", FUN({
+    .`extend`("/", FUN({
       case List(NUM(arg1),NUM(arg2)) => NUM(arg1 / arg2)}))
-    .extend("car", FUN({
+    .`extend`("car", FUN({
       case List(CONS(x, xs)) => x}))
-    .extend("cdr", FUN({
+    .`extend`("cdr", FUN({
       case List(CONS(x, xs)) => xs}))
-    .extend("null?", FUN({
+    .`extend`("null?", FUN({
       case List(NIL()) => NUM(1)
       case _ => NUM(0)}))
-    .extend("cons", FUN({
+    .`extend`("cons", FUN({
       case List(x, y) => CONS(x, y)}));
 
   def evaluate(x: Data): Data = eval(normalize(x), globalEnv);
@@ -279,7 +279,7 @@ object LispAny extends Lisp {
         def lookup(n: String): Data =
           if (n == name) expr(this) else Environment.this.lookup(n);
       }
-    def extend(name: String, v: Data) = extendRec(name, (env1 => v));
+    def `extend`(name: String, v: Data) = extendRec(name, (env1 => v));
   }
   val EmptyEnvironment = new Environment {
     def lookup(n: String): Data = lispError("undefined: " + n);
@@ -345,7 +345,7 @@ object LispAny extends Lisp {
     case 'def :: Symbol(name) :: y :: z :: Nil =>
       eval(z, env.extendRec(name, (env1 => eval(y, env1))))
     case 'val :: Symbol(name) :: y :: z :: Nil =>
-      eval(z, env.extend(name, eval(y, env)))
+      eval(z, env.`extend`(name, eval(y, env)))
     case 'lambda :: params :: y :: Nil =>
       mkLambda(params, y, env)
     case 'if :: c :: y :: z :: Nil =>
@@ -385,7 +385,7 @@ object LispAny extends Lisp {
         case (List(), List()) =>
           env
         case (p :: ps1, arg :: args1) =>
-          extendEnv(env.extend(p, arg), ps1, args1)
+          extendEnv(env.`extend`(p, arg), ps1, args1)
         case _ =>
           lispError("wrong number of arguments")
       }
@@ -399,25 +399,25 @@ object LispAny extends Lisp {
   }
 
   val globalEnv = EmptyEnvironment
-    .extend("=", Lambda{
+    .`extend`("=", Lambda{
       case List(arg1, arg2) => if (arg1 == arg2) 1 else 0})
-    .extend("+", Lambda{
+    .`extend`("+", Lambda{
       case List(arg1: Int, arg2: Int) => arg1 + arg2
       case List(arg1: String, arg2: String) => arg1 + arg2})
-    .extend("-", Lambda{
+    .`extend`("-", Lambda{
       case List(arg1: Int, arg2: Int) => arg1 - arg2})
-    .extend("*", Lambda{
+    .`extend`("*", Lambda{
       case List(arg1: Int, arg2: Int) => arg1 * arg2})
-    .extend("/", Lambda{
+    .`extend`("/", Lambda{
       case List(arg1: Int, arg2: Int) => arg1 / arg2})
-    .extend("nil", Nil)
-    .extend("cons", Lambda{
+    .`extend`("nil", Nil)
+    .`extend`("cons", Lambda{
       case List(arg1, arg2) => arg1 :: asList(arg2)})
-    .extend("car", Lambda{
+    .`extend`("car", Lambda{
       case List(x :: xs) => x})
-    .extend("cdr", Lambda{
+    .`extend`("cdr", Lambda{
       case List(x :: xs) => xs})
-    .extend("null?", Lambda{
+    .`extend`("null?", Lambda{
       case List(Nil) => 1
       case _ => 0});
 

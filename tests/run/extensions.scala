@@ -1,11 +1,11 @@
 import Predef.{any2stringadd => _, _}
-object augments {
+object extensions {
 
 // Simple extension methods
 
   case class Circle(x: Double, y: Double, radius: Double)
 
-  augment Circle {
+  extend Circle {
     def circumference = this.radius * math.Pi * 2
   }
 
@@ -15,23 +15,23 @@ object augments {
     def area: Double
   }
 
-  augment Circle extends HasArea {
+  extend Circle implements HasArea {
     def area = this.radius * this.radius * math.Pi
   }
 
-// Generic augmentations
+// Generic extendations
 
-  augment List[type T] {
+  extend List[type T] {
     def second = this.tail.head
   }
 
-// Specific augmentations
+// Specific extendations
 
-  augment List[Int] {
+  extend List[Int] {
     def maxx = (0 /: this)(_ `max` _)
   }
 
-  augment Array[Int] {
+  extend Array[Int] {
     def maxx = (0 /: this)(_ `max` _)
   }
 
@@ -43,35 +43,35 @@ object augments {
     def eql (x: T, y: T): Boolean
   }
 
-  augment Rectangle[type T: Eql] {
+  extend Rectangle[type T: Eql] {
     def isSquare: Boolean = implicitly[Eql[T]].eql(this.width, this.height)
   }
 
-  augment Rectangle[type T](implicit ev: Eql[T]) {
+  extend Rectangle[type T](implicit ev: Eql[T]) {
     def isNotSquare: Boolean = !implicitly[Eql[T]].eql(this.width, this.height)
   }
 
-// Simple generic augments
+// Simple generic extensions
 
-  augment (type T) {
+  extend (type T) {
     def ~[U](that: U): (T, U) = (this, that)
   }
 
-// Conditional generic augments
+// Conditional generic extensions
 
   trait HasEql[T] {
     def === (that: T): Boolean
   }
 
-  augment eqlToHasEql @ (type T: Eql) extends HasEql[T] {
-    def === (that: T): Boolean = implicitly[Eql[T]].eql(this, that)
+  extend (type S: Eql) implements HasEql[S] {
+    def === (that: S): Boolean = implicitly[Eql[S]].eql(this, that)
   }
 
-  augment (type T)(implicit ev: Eql[T]) {
-    def ==== (that: T): Boolean = implicitly[Eql[T]].eql(this, that)
+  extend (type T2)(implicit ev: Eql[T2]) {
+    def ==== (that: T2): Boolean = implicitly[Eql[T2]].eql(this, that)
   }
 
-  augment Rectangle[type T: Eql] extends HasEql[Rectangle[T]] {
+  extend Rectangle[type T: Eql] implements HasEql[Rectangle[T]] {
     def === (that: Rectangle[T]) =
       this.x === that.x &&
       this.y === that.y &&
@@ -80,33 +80,34 @@ object augments {
   }
 }
 
-object augments2 {
-  import augments.{Eql, eqlToHasEql}
+object extensions2 {
+  import extensions.{Eql, extend_type_S_Eql_S_implements_HasEql_S}
   // Nested generic arguments
 
-  augment flatLists @ List[List[type U]] {
+  extend List[List[type U]] {
     def flattened: List[U] = (this :\ (Nil: List[U]))(_ ++ _)
   }
 
-  augment samePairs @ (type T: Eql, T) {
+  extend (type T: Eql, T) {
     def isSame = this._1 === this._2
+    def isSame2 = extend_type_S_Eql_S_implements_HasEql_S(this._1) == this._2
   }
 
 }
 
 object docs {
-  augment Seq[String] {
+  extend Seq[String] {
     def longestStrings: Seq[String] = {
       val maxLength = this.map(_.length).max
       this.filter(_.length == maxLength)
     }
   }
 
-  augment List[List[type T]] {
+  extend List[List[type T]] {
     def flattened: List[T] = this.foldLeft[List[T]](Nil)(_ ++ _)
   }
 
-  augment Seq[type T: math.Ordering] {
+  extend Seq[type T: math.Ordering] {
     def indexOfLargest  = this.zipWithIndex.maxBy(_._1)._2
     def indexOfSmallest = this.zipWithIndex.minBy(_._1)._2
   }
@@ -121,7 +122,7 @@ object docs {
 
     def result[T](implicit er: EnsureResult[T]): T = EnsureResult.unwrap(er)
 
-    augment (type T) {
+    extend (type T) {
       def ensuring[U](f: implicit EnsureResult[T] => Boolean): T = {
         assert(f(EnsureResult.wrap(this)))
         this
@@ -134,8 +135,8 @@ object docs {
 
 }
 
-import augments._
-import augments2.{flatLists, samePairs}
+import extensions._
+import extensions2._
 object Test extends App {
   val c = Circle(0, 1, 2)
   println(c.area)
@@ -161,5 +162,5 @@ object Test extends App {
   println(List(List(1), List(2, 3)).flattened.maxx)
   println(Array(1, 2, 3).maxx)
   println((2, 3).isSame)
-  println(samePairs((3, 3)).isSame)
+  println(extend_type_T_Eql_T_T((3, 3)).isSame)
 }

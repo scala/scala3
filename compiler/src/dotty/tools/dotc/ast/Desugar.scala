@@ -4,9 +4,10 @@ package ast
 
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
+import util.Chars.isIdentifierPart
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._, transform.SymUtils._
-import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName, AugmentName}
+import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import language.higherKinds
 import typer.FrontEnd
 import collection.mutable.ListBuffer
@@ -771,20 +772,39 @@ object desugar {
     (elimTypeDefs.transform(tree), bindingsBuf.toList)
   }
 
-  /**     augment [<id> @] <type-pattern> <params> extends <parents> { <body>} }
+  private val collectNames = new untpd.UntypedTreeAccumulator[ListBuffer[String]] {
+    override def apply(buf: ListBuffer[String], tree: Tree)(implicit ctx: Context): ListBuffer[String] = tree match {
+      case Ident(name) =>
+        buf += name.toString
+      case Select(qual, name) =>
+        apply(buf, qual) += name.toString
+      case TypeDef(name, rhs) =>
+        apply(buf += "type" += name.toString, rhs)
+      case Apply(fn, _) =>
+        apply(buf, fn)
+      case _ =>
+        foldOver(buf, tree)
+    }
+  }
+
+  private def extensionName(ext: Extension)(implicit ctx: Context): TypeName = {
+    var buf = collectNames(new ListBuffer[String] += "extend", ext.extended)
+    if (ext.impl.parents.nonEmpty)
+      buf = collectNames(buf += "implements", ext.impl.parents)
+    val ids = buf.toList.map(_.filter(isIdentifierPart)).filter(!_.isEmpty)
+    ids.mkString("_").toTypeName
+  }
+
+  /**     extend <type-pattern> <params> implements <parents> { <body>} }
    *   ->
-   *      implicit class <deconame> <type-params> ($this: <decorated>) <combined-params>
+   *      implicit class <extension-name> <type-params> ($this: <extended>) <combined-params>
    *      extends <parents> { <body1> }
    *
    *  where
    *
-   *    <deco-name> = <id>, if there is a `<id> @` binding
-   *                = unqiue, expanded name relative to top-level class of <deco-core>, otherwise
-   *    <deco-core> = "_augment_<from>_to_<to>"   if <to> is nonempty
-   *                = "_augment_<from>"           otherwise
-   *    <from>      = underlying type name of <decorated>, or ""
-   *    <to>        = underlying type name of first extended parent, or ""
-   *
+   *    <extension-name> = concatenation of all alphanumeric characters between and including `extend` and `{`,
+   *                       mapping every sequence of other characters to a single `_`.
+    *
    *    (<decorated>, <type-params0>) = decomposeTypePattern(<type-pattern>)
    *    (<type-params>, <evidence-params>) = desugarTypeBindings(<type-params0>)
    *    <combined-params> = <params> concatenated with <evidence-params> in one clause
@@ -792,38 +812,23 @@ object desugar {
    *
    *   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    *
-   *     augment [<id> @] <type-pattern> <params> { <body> }
+   *     extend <type-pattern> <params> { <body> }
    *  ->
-   *     implicit class <deconame> <type-params> ($this: <decorated>)
+   *     implicit class <extension-name> <type-params> ($this: <extended>)
    *     extends AnyVal { <body2> }
    *
    *  where
    *
    *    <body2> = <body1> where each method definition gets <combined-params> as last parameter section.
-   *    <deco-name>, <type-params> are as above.
+   *    <extenion-name>, <type-params> are as above.
    */
-  def augmentation(tree: Augment)(implicit ctx: Context): Tree = {
-    val Augment(id, augmented, impl) = tree
-    val isSimpleExtension =
-      impl.parents.isEmpty &&
-      impl.self.isEmpty &&
-      impl.body.forall(_.isInstanceOf[DefDef])
-    val (decorated, bindings) = decomposeTypePattern(augmented)
+  def extension(tree: Extension)(implicit ctx: Context): Tree = {
+    val Extension(extended, impl) = tree
+    val isSimpleExtension = impl.parents.isEmpty
+    val (decorated, bindings) = decomposeTypePattern(extended)
     val (typeParams, evidenceParams) =
       desugarTypeBindings(bindings, forPrimaryConstructor = !isSimpleExtension)
-    val decoName = id match {
-      case Ident(name) =>
-        name.asTypeName
-      case EmptyTree =>
-        def clsName(tree: Tree): String = leadingName("", tree)
-        val fromName = clsName(augmented)
-        val toName = impl.parents match {
-          case parent :: _ if !clsName(parent).isEmpty => "_to_" + clsName(parent)
-          case _ => ""
-        }
-        val core = s"${str.AUGMENT}$fromName$toName".toTermName
-        AugmentName.fresh(core.expandedName(ctx.owner.topLevelClass)).toTypeName
-    }
+    val extName = extensionName(tree)
 
     val firstParam = ValDef(nme.SELF, decorated, EmptyTree).withFlags(Private | Local | ParamAccessor)
     var constr1 =
@@ -841,16 +846,18 @@ object desugar {
             vdef.withMods(vdef.mods &~ PrivateLocalParamAccessor | Param)
           val originalParams = impl.constr.vparamss.headOption.getOrElse(Nil).map(resetFlags)
           addEvidenceParams(addEvidenceParams(ddef, originalParams), evidenceParams)
+        case other =>
+          other
       }
     }
     else
       constr1 = addEvidenceParams(constr1, evidenceParams)
 
     val icls =
-      TypeDef(decoName,
+      TypeDef(extName,
         cpy.Template(impl)(constr = constr1, parents = parents1, body = body1))
         .withFlags(Implicit)
-    desugr.println(i"desugar $augmented --> $icls")
+    desugr.println(i"desugar $extended --> $icls")
     classDef(icls)
   }
 
@@ -883,7 +890,7 @@ object desugar {
       else defDef(tree)
     case tree: ModuleDef => moduleDef(tree)
     case tree: PatDef => patDef(tree)
-    case tree: Augment => augmentation(tree)
+    case tree: Extension => extension(tree)
   }
 
   /**     { stats; <empty > }

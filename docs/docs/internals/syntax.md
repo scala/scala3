@@ -212,7 +212,7 @@ Block             ::=  {BlockStat semi} [BlockResult]                           
 BlockStat         ::=  Import
                     |  {Annotation} [‘implicit’ | ‘lazy’] Def
                     |  {Annotation} {LocalModifier} TmplDef
-                    |  Augmentation
+                    |  Extension
                     |  Expr1
 
 ForExpr           ::=  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’)        ForYield(enums, expr)
@@ -247,9 +247,9 @@ Patterns          ::=  Pattern {‘,’ Pattern}
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                                       Apply(fn, pats)
                     |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
 
-Augmentation      ::=  ‘augment’ [id ‘@’] BindingTypePattern
-                       [[nl] ImplicitParamClause] AugmentClause                 Augment(name, templ)
-AugmentClause     ::=  ‘extends’ Template
+Extension         ::=  ‘extend’ BindingTypePattern
+                       [[nl] ImplicitParamClause] ExtensionClause               Extension(name, templ)
+ExtensionClause   ::=  ‘implements’ Template
                     |  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
 BindingTypePattern::=  AnnotType
 ```
@@ -362,7 +362,7 @@ TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} 
 TemplateStat      ::=  Import
                     |  {Annotation [nl]} {Modifier} Def
                     |  {Annotation [nl]} {Modifier} Dcl
-                    |  Augmentation
+                    |  Extension
                     |  Expr1
                     |
 SelfType          ::=  id [‘:’ InfixType] ‘=>’                                  ValDef(_, name, tpt, _)

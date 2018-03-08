@@ -1,19 +1,19 @@
 ---
 layout: doc-page
-title: "Method Augmentations"
+title: "Extension Methods"
 ---
 
-Method augmentation is a way to define _extension methods_. Here is a simple example:
+Extension methods allow one to add methods to a type after the type is defined. Example:
 
 ```scala
 case class Circle(x: Double, y: Double, radius: Double)
 
-augment Circle {
+extend Circle {
   def circumference: Double = this.radius * math.Pi * 2
 }
 ```
 
-The `augment Circle` clause adds an extension method `circumference` to values of class `Circle`. Like regular methods, extension methods can be invoked with infix `.`:
+The `extend Circle` clause adds an extension method `circumference` to values of class `Circle`. Like regular methods, extension methods can be invoked with infix `.`:
 
 ```scala
   val circle = Circle(0, 0, 1)
@@ -34,31 +34,28 @@ gives a compilation error:
    |                        not found: radius
 ```
 
-### Scope of Augment Clauses
+### Scope of Extend Clauses
 
-Augment clauses can appear anywhere in a program; there is no need to co-define them with the types they augment. Extension methods are available wherever their defining augment clause is in scope.  Augment clauses can be inherited or wildcard-imported like normal definitions. This is usually sufficient to control their visibility. If more control is desired, one can also attach a name to an augment clause, like this:
+Extend clauses can appear anywhere in a program; there is no need to co-define them with the types they extend. Extension methods are available wherever their defining extend clause is in scope.  Extend clauses can be inherited or wildcard-imported like normal definitions. This is usually sufficient to control their visibility. If more control is desired, one can wrap extend clauses in objects, like this:
 
 ```scala
-package shapeOps
-
-augment circleOps @ Circle {
-  def circumference: Double = this.radius * math.Pi * 2
-  def area: Double = this.radius * this.radius * math.Pi
+object circleOps {
+  extend Circle {
+    def circumference: Double = this.radius * math.Pi * 2
+    def area: Double = this.radius * this.radius * math.Pi
+  }
 }
-```
-Labelled augments can be imported individually by their name:
-
-```scala
-import shapeOps.circleOps    // makes circumference and area available
+...
+import circleOps._
 ```
 
-### Augmented Types
+### Extended Types
 
-An augment clause may add methods to arbitrary types. For instance, the following
+An extension can add methods to arbitrary types. For instance, the following
 clause adds a `longestStrings` extension method to a `Seq[String]`:
 
 ```scala
-augment Seq[String] {
+extend Seq[String] {
   def longestStrings: Seq[String] = {
     val maxLength = this.map(_.length).max
     this.filter(_.length == maxLength)
@@ -66,23 +63,21 @@ augment Seq[String] {
 }
 ```
 
-### Augmented Type Patterns
+### Extended Type Patterns
 
-The previous example augmented a specific instance of a generic type. It is also possible
-to augment a generic type itself, using a _type pattern_:
+The previous example extended a specific instance of a generic type. It is also possible
+to extend a generic type itself, using a _type pattern_:
 
 ```scala
-augment List[type T] {
+extend List[type T] {
   def second: T = this.tail.head
 }
 ```
 
-The `type T` argument indicates that the augment applies to `List[T]`s for any type `T`.
-We also say that `type T` introduces `T` as a _variable_ in the type pattern `List[type T]`.
-Type variables may appear anywhere in a type pattern. Example:
+The `type T` argument indicates that the extension applies to `List[T]`s for any type `T`. We also say that `type T` introduces `T` as a _variable_ in the type pattern `List[type T]`. Type variables may appear anywhere in a type pattern. Example:
 
 ```scala
-augment List[List[type T]] {
+extend List[List[type T]] {
   def flattened: List[T] = this.foldLeft[List[T]](Nil)(_ ++ _)
 }
 ```
@@ -109,12 +104,12 @@ While being more regular wrt term variables in patterns, this usage is harder to
 
 Type patterns in cases only come in unbounded form; the bounds defined in the next section are not applicable to them.
 
-### Bounds in Augmented Type Patterns
+### Bounds in Extended Type Patterns
 
-It is also possible to use bounds for the type variables in an augmented type pattern. Examples:
+It is also possible to use bounds for the type variables in an extended type pattern. Examples:
 
 ```scala
-augment List[type T <: Shape] {
+extend List[type T <: Shape] {
   def totalArea = this.map(_.area).sum
 }
 ```
@@ -122,7 +117,7 @@ augment List[type T <: Shape] {
 Context-bounds are also supported:
 
 ```scala
-augment Seq[type T: math.Ordering] {
+extend Seq[type T: math.Ordering] {
   def indexOfLargest  = this.zipWithIndex.maxBy(_._1)._2
   def indexOfSmallest = this.zipWithIndex.minBy(_._1)._2
 }
@@ -133,7 +128,7 @@ augment Seq[type T: math.Ordering] {
 The standard translation of context bounds expands the bound in the last example to an implicit _evidence_ parameter of type `math.Ordering[T]`. It is also possible to give evidence parameters explicitly. The following example is equivalent to the previous one:
 
 ```scala
-augment Seq[type T](implicit ev: math.Ordering[T]) {
+extend Seq[type T](implicit ev: math.Ordering[T]) {
   def indexOfLargest  = this.zipWithIndex.maxBy(_._1)._2
   def indexOfSmallest = this.zipWithIndex.minBy(_._1)._2
 }
@@ -143,16 +138,16 @@ There can be only one parameter clause following a type pattern and it must be i
 
 ### Toplevel Type Variables
 
-A type pattern consisting of a top-level typevariable introduces a fully generic augmentation. For instance, the following augment introduces `x ~ y` as an alias
+A type pattern consisting of a top-level typevariable introduces a fully generic extension. For instance, the following extension introduces `x ~ y` as an alias
 for `(x, y)`:
 
 ```scala
-augment (type T) {
+extend (type T) {
   def ~ [U](that: U) = (this, that)
 }
 ```
 
-As a larger example, here is a way to define constructs for checking arbitrary postconditions using `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque aliases, implicit function types, and augments to provide a zero-overhead abstraction.
+As a larger example, here is a way to define constructs for checking arbitrary postconditions using `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque aliases, implicit function types, and extensions to provide a zero-overhead abstraction.
 
 ```scala
 object PostConditions {
@@ -165,7 +160,7 @@ object PostConditions {
 
   def result[T](implicit er: WrappedResult[T]): T = WrappedResult.unwrap(er)
 
-  augment (type T) {
+  extend (type T) {
     def ensuring[U](condition: implicit WrappedResult[T] => Boolean): T = {
       implicit val wrapped = WrappedResult.wrap(this)
       assert(condition)
