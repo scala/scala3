@@ -133,12 +133,7 @@ object TypeErasure {
     erasureFn(isJava = false, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(erasureCtx)
 
   def sigName(tp: Type, isJava: Boolean)(implicit ctx: Context): TypeName = {
-    val normTp =
-      if (tp.isRepeatedParam) {
-        val seqClass = if (isJava) defn.ArrayClass else defn.SeqClass
-        tp.translateParameterized(defn.RepeatedParamClass, seqClass)
-      }
-      else tp
+    val normTp = tp.underlyingIfRepeated(isJava)
     val erase = erasureFn(isJava, semiEraseVCs = false, isConstructor = false, wildcardOK = true)
     erase.sigName(normTp)(erasureCtx)
   }
@@ -394,6 +389,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       else eraseNormalClassRef(tp)
     case tp: AppliedType =>
       if (tp.tycon.isRef(defn.ArrayClass)) eraseArray(tp)
+      else if (tp.isRepeatedParam) apply(tp.underlyingIfRepeated(isJava))
       else apply(tp.superType)
     case _: TermRef | _: ThisType =>
       this(tp.widen)
