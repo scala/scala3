@@ -249,22 +249,22 @@ object Build {
     // Compile using the non-bootstrapped and non-published dotty
     managedScalaInstance := false,
     scalaInstance := {
-      val updateResult = update.value
-      val (libraryJar, compilerJar) =
-        if (bootstrapFromPublishedJars.value) {
-          val jars = updateResult.select(
+      val updateReport = update.value
+      var libraryJar = packageBin.in(`dotty-library`, Compile).value
+      var compilerJar = packageBin.in(`dotty-compiler`, Compile).value
+
+      if (bootstrapFromPublishedJars.value) {
+        val jars = updateReport.select(
             configuration = configurationFilter(Configurations.ScalaTool.name),
             module = moduleFilter(),
             artifact = artifactFilter(extension = "jar")
           )
-          (jars.find(_.getName.startsWith("dotty-library_2.12")).get,
-           jars.find(_.getName.startsWith("dotty-compiler_2.12")).get)
-        } else
-          ((packageBin in (`dotty-library`, Compile)).value: @sbtUnchecked,
-           (packageBin in (`dotty-compiler`, Compile)).value: @sbtUnchecked)
+        libraryJar = jars.find(_.getName.startsWith("dotty-library_2.12")).get
+        compilerJar = jars.find(_.getName.startsWith("dotty-compiler_2.12")).get
+      }
 
       // All compiler dependencies except the library
-      val otherDependencies = (dependencyClasspath in (`dotty-compiler`, Compile)).value
+      val otherDependencies = dependencyClasspath.in(`dotty-compiler`, Compile).value
         .filterNot(_.get(artifact.key).exists(_.name == "dotty-library"))
         .map(_.data)
 
@@ -362,8 +362,8 @@ object Build {
       val dottyInterfaces =jars("dotty-interfaces")
       val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
       val sources =
-        (unmanagedSources in (Compile, compile)).value ++
-          (unmanagedSources in (`dotty-compiler`, Compile)).value
+        unmanagedSources.in(Compile, compile).value ++
+        unmanagedSources.in(`dotty-compiler`, Compile).value
       val args = Seq(
         "-siteroot", "docs",
         "-project", "Dotty",
@@ -488,7 +488,7 @@ object Build {
         "org.scala-lang.modules" % "scala-asm" % "6.0.0-scala-1", // used by the backend
         ("org.scala-lang.modules" %% "scala-xml" % "1.0.6").withDottyCompat(scalaVersion.value),
         "org.scala-lang" % "scala-library" % scalacVersion % "test",
-        Dependencies.`compiler-interface`,
+        Dependencies.compilerInterface(sbtVersion.value),
       ),
 
       // For convenience, change the baseDirectory when running the compiler
@@ -675,19 +675,19 @@ object Build {
     // packageAll packages all and then returns a map with the abs location
     packageAll := {
       Map(
-        "dotty-interfaces" -> (packageBin in (`dotty-interfaces`, Compile)).value,
-        "dotty-compiler" -> (packageBin in Compile).value,
-        "dotty-library" -> (packageBin in (`dotty-library`, Compile)).value,
-        "dotty-compiler-test" -> (packageBin in Test).value
+        "dotty-interfaces"    -> packageBin.in(`dotty-interfaces`, Compile).value,
+        "dotty-compiler"      -> packageBin.in(Compile).value,
+        "dotty-library"       -> packageBin.in(`dotty-library`, Compile).value,
+        "dotty-compiler-test" -> packageBin.in(Test).value
       ).mapValues(_.getAbsolutePath)
     }
   )
 
   lazy val bootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
     packageAll := {
-      (packageAll in `dotty-compiler`).value ++ Seq(
-        ("dotty-compiler" -> (packageBin in Compile).value.getAbsolutePath),
-        ("dotty-library" -> (packageBin in (`dotty-library-bootstrapped`, Compile)).value.getAbsolutePath)
+      packageAll.in(`dotty-compiler`).value ++ Seq(
+        "dotty-compiler" -> packageBin.in(Compile).value.getAbsolutePath,
+        "dotty-library"  -> packageBin.in(`dotty-library-bootstrapped`, Compile).value.getAbsolutePath
       )
     }
   )
@@ -738,8 +738,8 @@ object Build {
     description := "sbt compiler bridge for Dotty",
     resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:api
     libraryDependencies ++= Seq(
-      Dependencies.`compiler-interface`,
-      (Dependencies.`zinc-apiinfo` % Test).withDottyCompat(scalaVersion.value),
+      Dependencies.compilerInterface(sbtVersion.value),
+      (Dependencies.zincApiinfo(sbtVersion.value) % Test).withDottyCompat(scalaVersion.value),
       ("org.specs2" %% "specs2-core" % "3.9.1" % Test).withDottyCompat(scalaVersion.value),
       ("org.specs2" %% "specs2-junit" % "3.9.1" % Test).withDottyCompat(scalaVersion.value)
     ),
@@ -836,7 +836,7 @@ object Build {
       // Keep in sync with inject-sbt-dotty.sbt
       libraryDependencies ++= Seq(
         Dependencies.`jackson-databind`,
-        Dependencies.`compiler-interface`
+        Dependencies.compilerInterface(sbtVersion.value)
       ),
       unmanagedSourceDirectories in Compile +=
         baseDirectory.value / "../language-server/src/dotty/tools/languageserver/config",
@@ -871,12 +871,13 @@ object Build {
       includeFilter in unmanagedSources := NothingFilter | "*.ts" | "**.json",
       watchSources in Global ++= (unmanagedSources in Compile).value,
       compile in Compile := {
-        val coursier = baseDirectory.value / "out/coursier"
-        val packageJson = baseDirectory.value / "package.json"
+        val workingDir = baseDirectory.value
+        val coursier = workingDir / "out/coursier"
+        val packageJson = workingDir / "package.json"
         if (!coursier.exists || packageJson.lastModified > coursier.lastModified)
-          runProcess(Seq("npm", "run", "update-all"), wait = true, directory = baseDirectory.value: @sbtUnchecked)
+          runProcess(Seq("npm", "run", "update-all"), wait = true, directory = workingDir)
         val tsc = baseDirectory.value / "node_modules" / ".bin" / "tsc"
-        runProcess(Seq(tsc.getAbsolutePath, "--pretty", "--project", baseDirectory.value.getAbsolutePath), wait = true)
+        runProcess(Seq(tsc.getAbsolutePath, "--pretty", "--project", workingDir.getAbsolutePath), wait = true)
 
         // Currently, vscode-dotty depends on daltonjorge.scala for syntax highlighting,
         // this is not automatically installed when starting the extension in development mode

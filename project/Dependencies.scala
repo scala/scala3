@@ -13,17 +13,6 @@ object Dependencies {
   val `jackson-dataformat-yaml` =
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
-  private def readPropertyFile(file: String): Properties = {
-    val prop = new Properties()
-    val input = new FileInputStream(file)
-    try {
-      prop.load(input)
-      prop
-    }
-    finally input.close
-  }
-
-  private val sbtVersion = readPropertyFile("project/build.properties").getProperty("sbt.version")
-  val `compiler-interface` = "org.scala-sbt" % "compiler-interface" % sbtVersion
-  val `zinc-apiinfo` = "org.scala-sbt" %% "zinc-apiinfo" % sbtVersion
+  def compilerInterface(sbtVersion: String) = "org.scala-sbt" % "compiler-interface" % sbtVersion
+  def zincApiinfo(sbtVersion: String) = "org.scala-sbt" %% "zinc-apiinfo" % sbtVersion
 }
