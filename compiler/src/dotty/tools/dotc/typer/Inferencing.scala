@@ -9,7 +9,7 @@ import Trees._
 import Constants._
 import Scopes._
 import ProtoTypes._
-import NameKinds.WildcardParamName
+import NameKinds.UniqueName
 import annotation.unchecked
 import util.Positions._
 import util.{Stats, SimpleIdentityMap}
@@ -242,7 +242,7 @@ object Inferencing {
         if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
           tvar.instantiate(fromBelow = false)
         else {
-          val wildCard = ctx.newPatternBoundSymbol(WildcardParamName.fresh().toTypeName, bounds, pos)
+          val wildCard = ctx.newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, pos)
           tvar.instantiateWith(wildCard.typeRef)
           patternBound += wildCard
         }

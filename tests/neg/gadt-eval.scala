@@ -11,10 +11,10 @@ object Test {
         // -- [E007] Type Mismatch Error: tests/neg/gadt-eval.scala:10:6 ------------------
         // 10 |      (eval(a), eval(a))
         // |      ^^^^^^^^^^^^^^^^^^
-        // |    found:    (_$1, _$1)
+        // |    found:    (A$1, A$1)
         // |    required: T
         // |
-        // |    where:    T is a type in method eval which is an alias of (_$1, _$2)
+        // |    where:    T is a type in method eval which is an alias of (A$1, B$1)
   }
 
   def eval2[T](e: Exp[T]): T = e match {
