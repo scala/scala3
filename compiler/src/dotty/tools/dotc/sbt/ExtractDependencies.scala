@@ -255,7 +255,6 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
         val source = owners.next()
         def isLocal = !owners.exists(_.isTerm) // side-effectful: consume iterator elements
         if (source.isClass && isLocal) return source
-        else if (source.is(PackageClass)) return responsibleForImports
       }
       assert(false, "unreachable")
       NoSymbol
@@ -263,7 +262,8 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
 
     if (lastOwner != ctx.owner) {
       lastOwner = ctx.owner
-      lastDepSource = resolveDepSource
+      val source = resolveDepSource
+      lastDepSource = if (source.is(PackageClass)) responsibleForImports else source
     }
 
     lastDepSource
