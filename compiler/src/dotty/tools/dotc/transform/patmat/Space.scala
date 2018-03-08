@@ -6,8 +6,8 @@ import core._
 import Types._
 import Contexts._
 import Flags._
-import ast.Trees._
-import ast.tpd
+import ast._
+import Trees._
 import Decorators._
 import Symbols._
 import StdNames._
@@ -299,7 +299,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     if (res) Typ(and, true) else Empty
   }
 
-  /* Whether the extractor is irrefutable */
+  /** Whether the extractor is irrefutable */
   def irrefutable(unapp: Tree): Boolean = {
     // TODO: optionless patmat
     unapp.tpe.widen.finalResultType.isRef(scalaSomeClass) ||
@@ -307,8 +307,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       productArity(unapp.tpe.widen.finalResultType) > 0
   }
 
-  /** Return the space that represents the pattern `pat`
-   */
+  /** Return the space that represents the pattern `pat` */
   def project(pat: Tree): Space = pat match {
     case Literal(c) =>
       if (c.value.isInstanceOf[Symbol])
@@ -326,9 +325,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         if (fun.symbol.owner == scalaSeqFactoryClass)
           projectSeq(pats)
         else
-          Prod(pat.tpe.stripAnnots, fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
+          Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
       else
-        Prod(pat.tpe.stripAnnots, fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
+        Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, tpt) =>
       Typ(erase(expr.tpe.stripAnnots), true)
