@@ -120,8 +120,6 @@ class SymbolLoaders {
 
     val completer = new SourcefileLoader(src)
     if (ctx.settings.scansource.value && ctx.run != null) {
-      System.out.print(i"scanning $src ...")
-      System.out.flush()
       if (src.exists && !src.isDirectory) {
         val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toList
 
