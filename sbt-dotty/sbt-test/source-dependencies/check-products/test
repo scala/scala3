@@ -1,0 +1,2 @@
+> compile
+> checkProducts A.scala: A.class A$.class

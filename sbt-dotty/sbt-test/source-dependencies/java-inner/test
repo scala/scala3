@@ -1,0 +1,6 @@
+> compile
+> checkProducts A.java: A.class A$B.class
+> checkProducts C.java: C.class
+> checkDependencies A: A.B
+> checkDependencies A.B: A D
+> checkDependencies C: A A.B
