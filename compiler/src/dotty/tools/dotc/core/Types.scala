@@ -88,13 +88,13 @@ object Types {
 
 // ----- Tests -----------------------------------------------------
 
-    // debug only: a unique identifier for a type
-    val uniqId = {
-      nextId = nextId + 1
+//    // debug only: a unique identifier for a type
+//    val uniqId = {
+//      nextId = nextId + 1
 //      if (nextId == 19555)
 //        println("foo")
-      nextId
-    }
+//      nextId
+//    }
 
     /** A cache indicating whether the type was still provisional, last time we checked */
     @sharable private var mightBeProvisional = true
@@ -122,6 +122,8 @@ object Types {
                     case _ => false
                   }
                 }
+              case t: LazyRef =>
+                !t.completed || apply(x, t.ref)
               case _ =>
                 foldOver(x, t)
             }
@@ -2260,6 +2262,7 @@ object Types {
       myRef
     }
     def evaluating = computed && myRef == null
+    def completed = myRef != null
     override def underlying(implicit ctx: Context) = ref
     override def toString = s"LazyRef(${if (computed) myRef else "..."})"
     override def equals(other: Any) = this.eq(other.asInstanceOf[AnyRef])
