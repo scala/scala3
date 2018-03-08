@@ -944,7 +944,8 @@ class Namer { typer: Typer =>
         if (cls.isRefinementClass) ptype
         else {
           val pt = checkClassType(ptype, parent.pos,
-              traitReq = parent ne parents.head, stablePrefixReq = true)
+              traitReq = (parent `ne` parents.head) || original.mods.hasMod[Mod.TraitImplementation],
+              stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
               case Select(qual: Super, _) if ctx.scala2Mode =>

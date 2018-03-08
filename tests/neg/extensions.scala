@@ -30,7 +30,7 @@ object extensions {
 
   extend Circle2 extends HasArea {} // error: `implements` or `{` expected // error: `def` expected
 
-  extend Circle implements HasAreaClass {
+  extend Circle implements HasAreaClass { // error: class HasAreaClass is not a trait
     def area = this.radius * this.radius * math.Pi
   }
 

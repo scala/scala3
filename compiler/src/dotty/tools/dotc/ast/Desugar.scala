@@ -853,10 +853,13 @@ object desugar {
     else
       constr1 = addEvidenceParams(constr1, evidenceParams)
 
+    val mods =
+      if (isSimpleExtension) EmptyModifiers
+      else EmptyModifiers.withAddedMod(Mod.TraitImplementation())
     val icls =
       TypeDef(extName,
         cpy.Template(impl)(constr = constr1, parents = parents1, body = body1))
-        .withFlags(Implicit)
+        .withMods(mods.withFlags(Implicit))
     desugr.println(i"desugar $extended --> $icls")
     classDef(icls)
   }
