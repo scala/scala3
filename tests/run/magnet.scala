@@ -15,17 +15,17 @@ object magnets {
 
   object CompletionMagnet {
 
-    extend (StatusCode, type T: Marshaller) implements CompletionMagnet {
+    extend (StatusCode, type T: Marshaller) : CompletionMagnet {
       type Result = String
       def apply(): String = implicitly[Marshaller[T]].marshall(this._2)
     }
 
-    extend Future[HttpResponse] implements CompletionMagnet {
+    extend Future[HttpResponse] : CompletionMagnet {
       type Result = Int
       def apply(): Int = 1
     }
 
-    extend Future[StatusCode] implements CompletionMagnet {
+    extend Future[StatusCode] : CompletionMagnet {
       type Result = Int
       def apply(): Int = 2
     }

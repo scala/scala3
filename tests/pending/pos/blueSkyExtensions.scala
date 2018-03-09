@@ -67,6 +67,11 @@ object blueSkyExtensions {
     def map[B](f: A => B): This[B]
   }
 
+  // Generically, `pure[A]{.map(f)}^n`
+  def develop[A, F[X] : Functor[X]](n: Int, f: A => A): F[A] =
+    if (n == 0) Functor.static[F].pure[A]
+    else develop[A, F](n - 1, f).map(f)
+
   trait Monad[A] extends Functor[A] {
     static def pure[A]: This[A]
 
