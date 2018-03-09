@@ -22,15 +22,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def maxToTextRecursions = 100
 
   protected final def controlled(op: => Text): Text =
-    if (ctx.toTextRecursions < maxToTextRecursions && ctx.toTextRecursions < maxSummarized)
+    if (ctx.base.toTextRecursions < maxToTextRecursions && ctx.base.toTextRecursions < maxSummarized)
       try {
-        ctx.toTextRecursions += 1
+        ctx.base.toTextRecursions += 1
         op
       } finally {
-        ctx.toTextRecursions -= 1
+        ctx.base.toTextRecursions -= 1
       }
     else {
-      if (ctx.toTextRecursions >= maxToTextRecursions)
+      if (ctx.base.toTextRecursions >= maxToTextRecursions)
         recursionLimitExceeded()
       "...".toText
     }
@@ -523,7 +523,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def summarized[T](depth: Int)(op: => T): T = {
     val saved = maxSummarized
-    maxSummarized = ctx.toTextRecursions + depth
+    maxSummarized = ctx.base.toTextRecursions + depth
     try op
     finally maxSummarized = depth
   }

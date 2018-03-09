@@ -424,6 +424,31 @@ object Contexts {
       "Context(\n" +
       (outersIterator map ( ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = ${iinfo(ctx)}") mkString "\n")
     }
+
+    def typerPhase               = base.typerPhase
+    def picklerPhase             = base.picklerPhase
+    def refchecksPhase           = base.refchecksPhase
+    def patmatPhase              = base.patmatPhase
+    def elimRepeatedPhase        = base.elimRepeatedPhase
+    def extensionMethodsPhase    = base.extensionMethodsPhase
+    def explicitOuterPhase       = base.explicitOuterPhase
+    def gettersPhase             = base.gettersPhase
+    def erasurePhase             = base.erasurePhase
+    def elimErasedValueTypePhase = base.elimErasedValueTypePhase
+    def lambdaLiftPhase          = base.lambdaLiftPhase
+    def flattenPhase             = base.flattenPhase
+    def genBCodePhase            = base.genBCodePhase
+    def phases                   = base.phases
+
+    def settings                 = base.settings
+    def definitions              = base.definitions
+    def platform                 = base.platform
+    def pendingUnderlying        = base.pendingUnderlying
+    def uniqueNamedTypes         = base.uniqueNamedTypes
+    def uniques                  = base.uniques
+    def nextId                   = base.nextId
+
+    def initialize()(implicit ctx: Context) = base.initialize()(ctx)
   }
 
   /** A condensed context provides only a small memory footprint over
@@ -516,7 +541,7 @@ object Contexts {
   /** A class defining the initial context with given context base
    *  and set of possible settings.
    */
-  private class InitialContext(val base: ContextBase, settings: SettingGroup) extends FreshContext {
+  private class InitialContext(val base: ContextBase, settingsGroup: SettingGroup) extends FreshContext {
     outer = NoContext
     period = InitialPeriod
     mode = Mode.None
@@ -525,7 +550,7 @@ object Contexts {
     tree = untpd.EmptyTree
     typeAssigner = TypeAssigner
     moreProperties = Map.empty
-    store = initialStore.updated(settingsStateLoc, settings.defaultState)
+    store = initialStore.updated(settingsStateLoc, settingsGroup.defaultState)
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchHistory(0, Map())
     gadt = EmptyGADTMap
@@ -681,14 +706,6 @@ object Contexts {
     def checkSingleThreaded() =
       if (thread == null) thread = Thread.currentThread()
       else assert(thread == Thread.currentThread(), "illegal multithreaded access to ContextBase")
-  }
-
-  object Context {
-
-    /** implicit conversion that injects all ContextBase members into a context */
-    implicit def toBase(ctx: Context): ContextBase = ctx.base
-
-    // @sharable val theBase = new ContextBase // !!! DEBUG, so that we can use a minimal context for reporting even in code that normally cannot access a context
   }
 
   class GADTMap(initBounds: SimpleIdentityMap[Symbol, TypeBounds]) extends util.DotClass {

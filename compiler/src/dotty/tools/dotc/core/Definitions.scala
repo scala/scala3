@@ -189,12 +189,12 @@ class Definitions {
   }
 
   lazy val RootClass: ClassSymbol = ctx.newPackageSymbol(
-    NoSymbol, nme.ROOT, (root, rootcls) => ctx.rootLoader(root)).moduleClass.asClass
+    NoSymbol, nme.ROOT, (root, rootcls) => ctx.base.rootLoader(root)).moduleClass.asClass
   lazy val RootPackage: TermSymbol = ctx.newSymbol(
     NoSymbol, nme.ROOTPKG, PackageCreationFlags, TypeRef(NoPrefix, RootClass))
 
   lazy val EmptyPackageVal = ctx.newPackageSymbol(
-    RootClass, nme.EMPTY_PACKAGE, (emptypkg, emptycls) => ctx.rootLoader(emptypkg)).entered
+    RootClass, nme.EMPTY_PACKAGE, (emptypkg, emptycls) => ctx.base.rootLoader(emptypkg)).entered
   lazy val EmptyPackageClass = EmptyPackageVal.moduleClass.asClass
 
   /** A package in which we can place all methods that are interpreted specially by the compiler */

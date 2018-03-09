@@ -22,7 +22,7 @@ object DenotTransformers {
   trait DenotTransformer extends Phase {
 
     /** The last phase during which the transformed denotations are valid */
-    def lastPhaseId(implicit ctx: Context) = ctx.nextDenotTransformerId(id + 1)
+    def lastPhaseId(implicit ctx: Context) = ctx.base.nextDenotTransformerId(id + 1)
 
     /** The validity period of the transformer in the given context */
     def validFor(implicit ctx: Context): Period =
