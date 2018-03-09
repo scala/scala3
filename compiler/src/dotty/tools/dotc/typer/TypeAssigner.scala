@@ -236,8 +236,12 @@ trait TypeAssigner {
     if (reallyExists(mbr)) site.select(name, mbr)
     else if (site.derivesFrom(defn.DynamicClass) && !Dynamic.isDynamicMethod(name)) {
       TryDynamicCallType
-    } else {
-      if (site.isErroneous || name.toTermName == nme.ERROR) UnspecifiedErrorType
+    }
+    else {
+      val site1 = site.followGADT
+      if (site1.exists) selectionType(site1, name, pos)
+      else if (site.isErroneous || name.toTermName == nme.ERROR)
+        UnspecifiedErrorType
       else {
         def kind = if (name.isTypeName) "type" else "value"
         def addendum =

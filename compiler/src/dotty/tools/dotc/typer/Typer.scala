@@ -2114,8 +2114,11 @@ class Typer extends Namer
                   noMatches
             }
           case alts =>
-            val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
-            errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt)(err))
+            if (tree.tpe.isErroneous || pt.isErroneous) tree.withType(UnspecifiedErrorType)
+            else {
+              val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
+              errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt)(err))
+            }
         }
       }
 
