@@ -739,9 +739,7 @@ object Build {
     resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:api
     libraryDependencies ++= Seq(
       Dependencies.compilerInterface(sbtVersion.value),
-      (Dependencies.zincApiinfo(sbtVersion.value) % Test).withDottyCompat(scalaVersion.value),
-      ("org.specs2" %% "specs2-core" % "3.9.1" % Test).withDottyCompat(scalaVersion.value),
-      ("org.specs2" %% "specs2-junit" % "3.9.1" % Test).withDottyCompat(scalaVersion.value)
+      (Dependencies.zincApiinfo(sbtVersion.value) % Test).withDottyCompat(scalaVersion.value)
     ),
     // The sources should be published with crossPaths := false since they
     // need to be compiled by the project using the bridge.
