@@ -42,18 +42,15 @@ class InterceptedMethods extends MiniPhase {
 
   private[this] var primitiveGetClassMethods: Set[Symbol] = _
 
-  var Any_## : Symbol = _ // cached for performance reason
-
   /** perform context-dependant initialization */
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
-    this.Any_## = defn.Any_##
     primitiveGetClassMethods = Set[Symbol]() ++ defn.ScalaValueClasses().map(x => x.requiredMethod(nme.getClass_))
     ctx
   }
 
   // this should be removed if we have guarantee that ## will get Apply node
   override def transformSelect(tree: tpd.Select)(implicit ctx: Context): Tree = {
-    if (tree.symbol.isTerm && (Any_## eq tree.symbol.asTerm)) {
+    if (tree.symbol.isTerm && (defn.Any_## eq tree.symbol.asTerm)) {
       val rewrite = poundPoundValue(tree.qualifier)
       ctx.log(s"$phaseName rewrote $tree to $rewrite")
       rewrite
@@ -92,11 +89,8 @@ class InterceptedMethods extends MiniPhase {
         }
 
     }
-    val Any_## = this.Any_##
     val Any_!= = defn.Any_!=
     val rewrite: Tree = tree.fun.symbol match {
-      case Any_## =>
-        poundPoundValue(qual)
       case Any_!= =>
         qual.select(defn.Any_==).appliedToArgs(tree.args).select(defn.Boolean_!)
         /*
