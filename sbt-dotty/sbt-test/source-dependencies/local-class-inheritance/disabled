@@ -1,9 +1,12 @@
-# Verifies if dependencies introduced by Java inheritance by local classes are handled correctly.
-# See sbt-test 'local-class-inheritance' for a similar test in Scala.
+# TODO: Implement checkRecompilations
+
+# Verifies if dependencies introduced by inheritance by local classes are handled correctly.
+# They are different from regular inheritance dependencies because they should not be
+# invalidated transitively, see: https://github.com/sbt/sbt/issues/1104#issuecomment-169146039
 
 > compile
 
-$ copy-file changes/A2.java A.java
+$ copy-file changes/A2.scala A.scala
 > compile
 # D should be compiled only at the beginning; it depends by inheritance only
 # on C and C's public interface is not affected by changes to A

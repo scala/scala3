@@ -428,7 +428,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         // that some API changed when it didn't, leading to overcompilation
         // (recompiling more things than what is needed for incremental
         // compilation to be correct).
-        val prefix = if (sym.owner.is(Package))
+        val prefix = if (sym.maybeOwner.is(Package)) // { type T } here T does not have an owner
           sym.owner.thisType
         else
           tp.prefix

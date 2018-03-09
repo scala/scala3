@@ -1,3 +1,5 @@
+# TODO: Implement checkProducts, checkDependencies
+
 > compile
 > checkProducts A.java: A.class A$B.class
 > checkProducts C.java: C.class
