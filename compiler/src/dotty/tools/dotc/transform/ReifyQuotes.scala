@@ -65,7 +65,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     if (ctx.compilationUnit.containsQuotesOrSplices) super.run
 
   protected def newTransformer(implicit ctx: Context): Transformer =
-    new Reifier(inQuote = false, null, 0, new LevelInfo)
+    new Reifier(inQuote = false, null, 0, new LevelInfo, new mutable.ListBuffer[Tree])
 
   private class LevelInfo {
     /** A map from locally defined symbols to the staging levels of their definitions */
@@ -92,20 +92,21 @@ class ReifyQuotes extends MacroTransformWithImplicits {
    *  @param  outer      the next outer reifier, null is this is the topmost transformer
    *  @param  level      the current level, where quotes add one and splices subtract one level
    *  @param  levels     a stacked map from symbols to the levels in which they were defined
+   *  @param  embedded   a list of embedded quotes (if `inSplice = true`) or splices (if `inQuote = true`
    */
-  private class Reifier(inQuote: Boolean, val outer: Reifier, val level: Int, levels: LevelInfo) extends ImplicitsTransformer {
+  private class Reifier(inQuote: Boolean, val outer: Reifier, val level: Int, levels: LevelInfo,
+      val embedded: mutable.ListBuffer[Tree]) extends ImplicitsTransformer {
     import levels._
     assert(level >= 0)
 
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
-    def nested(isQuote: Boolean): Reifier =
-      new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, levels)
+    def nested(isQuote: Boolean): Reifier = {
+      val nestedEmbedded = if (level > 1 || (level == 1 && isQuote)) embedded else new mutable.ListBuffer[Tree]
+      new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, levels, nestedEmbedded)
+    }
 
     /** We are in a `~(...)` context that is not shadowed by a nested `'(...)` */
     def inSplice = outer != null && !inQuote
-
-    /** A list of embedded quotes (if `inSplice = true`) or splices (if `inQuote = true`) */
-    val embedded = new mutable.ListBuffer[Tree]
 
     /** A map from type ref T to expressions of type `quoted.Type[T]`".
      *  These will be turned into splices using `addTags`
@@ -281,9 +282,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     private def quotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
       val isType = quote.symbol eq defn.typeQuoteMethod
       if (level > 0) {
-        val reifier = nested(isQuote = true)
-        val body1 = reifier.transform(body)
-        embedded ++= reifier.embedded
+        val body1 = nested(isQuote = true).transform(body)
         // Keep quotes in quotes as trees to reduce pickled size and have a Expr.show without pickled quotes embedded
         if (isType) ref(defn.typeQuoteMethod).appliedToType(body1.tpe.widen)
         else ref(defn.quoteMethod).appliedToType(body1.tpe.widen).appliedTo(body1)
@@ -305,9 +304,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
      */
     private def splice(splice: Select)(implicit ctx: Context): Tree = {
       if (level > 1) {
-        val reifier = nested(isQuote = false)
-        val body1 = reifier.transform(splice.qualifier)
-        embedded ++= reifier.embedded
+        val body1 = nested(isQuote = false).transform(splice.qualifier)
         body1.select(splice.name)
       }
       else if (!inQuote && level == 0) {
