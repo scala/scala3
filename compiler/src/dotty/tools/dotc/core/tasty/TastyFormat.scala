@@ -228,7 +228,7 @@ object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
   val MajorVersion = 4
-  val MinorVersion = 0
+  val MinorVersion = 1
 
   /** Tags used to serialize names */
   class NameTags {
