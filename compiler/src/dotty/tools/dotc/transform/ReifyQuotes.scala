@@ -70,6 +70,21 @@ class ReifyQuotes extends MacroTransformWithImplicits {
   private class LevelInfo {
     /** A map from locally defined symbols to the staging levels of their definitions */
     val levelOf = new mutable.HashMap[Symbol, Int]
+
+    /** Register a reference defined in a quote but used in another quote nested in a splice.
+     *  Returns a lifted version of the reference that needs to be used in its place.
+     *     '{
+     *        val x = ???
+     *        { ... '{ ... x ... } ... }.unary_~
+     *      }
+     *  Lifting the `x` in `{ ... '{ ... x ... } ... }.unary_~` will return a `x$1.unary_~` for which the `x$1`
+     *  be created by some outer reifier.
+     *
+     *  This transformation is only applied to definitions at staging level 1.
+     *
+     *  See `needsLifting`
+     */
+    val lifters = new mutable.HashMap[Symbol, RefTree => Tree]
   }
 
   /** The main transformer class
@@ -354,44 +369,21 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth))
     }
 
-    /** Register a reference defined in a quote but used in another quote nested in a splice.
-     *  Returns a lifted version of the reference that needs to be used in its place.
-     *     '{
-     *        val x = ???
-     *        { ... '{ ... x ... } ... }.unary_~
-     *      }
-     *  Lifting the `x` in `{ ... '{ ... x ... } ... }.unary_~` will return a `x$1.unary_~` for which the `x$1`
-     *  be created by some outer reifier.
-     *
-     *  This transformation is only applied to definitions at staging level 1.
-     *
-     *  See `needsLifting`
-     */
-    def lift(tree: RefTree)(implicit ctx: Context): Select =
-      if (!(level == 0 && outer.enteredSyms.contains(tree.symbol))) outer.lift(tree)
-      else lifter(tree).select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~)
-    private[this] var lifter: RefTree => Tree = null
-
     private def transformWithLifter(tree: Tree)(
         lifter: mutable.ListBuffer[Tree] => RefTree => Tree)(implicit ctx: Context): Tree = {
       val lifted = new mutable.ListBuffer[Tree]
-      this.lifter = lifter(lifted)
+      val lifter2 = lifter(lifted)
+      outer.enteredSyms.foreach(s => lifters.put(s, lifter2))
       val tree2 = transform(tree)
-      this.lifter = null
+      lifters --= outer.enteredSyms
       seq(lifted.result(), tree2)
     }
 
     /** Returns true if this tree will be lifted by `makeLambda` */
     private def needsLifting(tree: RefTree)(implicit ctx: Context): Boolean = {
-      def isInLiftedTree(reifier: Reifier): Boolean =
-        if (reifier.level == 0) true
-        else if (reifier.level == 1 && reifier.enteredSyms.contains(tree.symbol)) false
-        else isInLiftedTree(reifier.outer)
-      level == 1 &&
-      !tree.symbol.is(Inline) &&
-      levelOf.get(tree.symbol).contains(1) &&
-      !enteredSyms.contains(tree.symbol) &&
-      isInLiftedTree(outer)
+      // Check phase consistency and presence of lifter
+      level == 1 && !tree.symbol.is(Inline) && levelOf.get(tree.symbol).contains(1) &&
+      lifters.contains(tree.symbol)
     }
 
     /** Transform `tree` and return the resulting tree and all `embedded` quotes
@@ -426,7 +418,8 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           case tree: Select if tree.symbol.isSplice =>
             splice(tree)
           case tree: RefTree if needsLifting(tree) =>
-            splice(outer.lift(tree))
+            val lift = lifters(tree.symbol)
+            splice(lift(tree).select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
           case Block(stats, _) =>
             val last = enteredSyms
             stats.foreach(markDef)
