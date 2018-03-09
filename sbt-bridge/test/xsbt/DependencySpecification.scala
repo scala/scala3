@@ -1,92 +1,156 @@
-/** Adapted from https://github.com/sbt/sbt/blob/0.13/compile/interface/src/test/scala/xsbt/DependencySpecification.scala */
 package xsbt
-
-import org.junit.runner.RunWith
-import xsbti.api.ClassLike
-import xsbti.api.Def
-import xsbt.api.SameAPI
-import org.specs2.mutable.Specification
-import org.specs2.runner.JUnitRunner
 
 import xsbti.TestCallback.ExtractedClassDependencies
 
-@RunWith(classOf[JUnitRunner])
-class DependencySpecification extends Specification {
+import org.junit.Test
+import org.junit.Assert._
 
-  "Extracted source dependencies from public members" in {
+class DependencySpecification {
+
+  @Test
+  def extractedClassDependenciesFromPublicMembers = {
     val classDependencies = extractClassDependenciesPublic
     val memberRef = classDependencies.memberRef
     val inheritance = classDependencies.inheritance
-    memberRef("A") === Set.empty
-    inheritance("A") === Set.empty
-    memberRef("B") === Set("A", "D")
-    inheritance("B") === Set("D")
-    memberRef("C") === Set("A")
-    inheritance("C") === Set.empty
-    memberRef("D") === Set.empty
-    inheritance("D") === Set.empty
-    memberRef("E") === Set.empty
-    inheritance("E") === Set.empty
-    memberRef("F") === Set("A", "B", "C", "D", "E", "G")
-    inheritance("F") === Set("A", "E")
-    memberRef("H") === Set("B", "E", "G")
+    assertEquals(memberRef("A"),   Set.empty)
+    assertEquals(inheritance("A"), Set.empty)
+    assertEquals(memberRef("B"),   Set("A", "D"))
+    assertEquals(inheritance("B"), Set("D"))
+    assertEquals(memberRef("C"),   Set("A"))
+    assertEquals(inheritance("C"), Set.empty)
+    assertEquals(memberRef("D"),   Set.empty)
+    assertEquals(inheritance("D"), Set.empty)
+    assertEquals(memberRef("E"),   Set.empty)
+    assertEquals(inheritance("E"), Set.empty)
+    assertEquals(memberRef("F"),   Set("A", "B", "D", "E", "G", "C")) // C is the underlying type of MyC
+    assertEquals(inheritance("F"), Set("A", "E"))
+    assertEquals(memberRef("H"),   Set("B", "E", "G"))
     // aliases and applied type constructors are expanded so we have inheritance dependency on B
-    inheritance("H") === Set("B", "E")
+    assertEquals(inheritance("H"), Set("B", "E"))
   }
 
-  "Extracted source dependencies from private members" in {
-    val classDependencies = extractClassDependenciesPrivate
+  @Test
+  def extractedClassDependenciesFromLocalMembers = {
+    val classDependencies = extractClassDependenciesLocal
     val memberRef = classDependencies.memberRef
     val inheritance = classDependencies.inheritance
-    memberRef("A") === Set.empty
-    inheritance("A") === Set.empty
-    memberRef("B") === Set.empty
-    inheritance("B") === Set.empty
-    memberRef("C.Inner1") === Set("A")
-    inheritance("C.Inner1") === Set("A")
-    memberRef("D._$Inner2") === Set("B")
-    inheritance("D._$Inner2") === Set("B")
+    val localInheritance = classDependencies.localInheritance
+    assertEquals(memberRef("A"),          Set.empty)
+    assertEquals(inheritance("A"),        Set.empty)
+    assertEquals(memberRef("B"),          Set.empty)
+    assertEquals(inheritance("B"),        Set.empty)
+    assertEquals(memberRef("C.Inner1"),   Set("A"))
+    assertEquals(inheritance("C.Inner1"), Set("A"))
+    assertEquals(memberRef("D"),          Set("B"))
+    assertEquals(inheritance("D"),        Set.empty)
+    assertEquals(localInheritance("D"),   Set("B"))
+    assertEquals(memberRef("E"),          Set("B"))
+    assertEquals(inheritance("E"),        Set.empty)
+    assertEquals(localInheritance("E"),   Set("B"))
   }
 
-  "Extracted source dependencies with trait as first parent" in {
+  @Test
+  def extractedClassDependenciesWithTraitAsFirstParent = {
     val classDependencies = extractClassDependenciesTraitAsFirstPatent
     val memberRef = classDependencies.memberRef
     val inheritance = classDependencies.inheritance
-    memberRef("A") === Set.empty
-    inheritance("A") === Set.empty
-    memberRef("B") === Set("A")
-    inheritance("B") === Set("A")
+    assertEquals(memberRef("A"),    Set.empty)
+    assertEquals(inheritance("A"),  Set.empty)
+    assertEquals(memberRef("B"),    Set("A"))
+    assertEquals(inheritance("B"),  Set("A"))
     // verify that memberRef captures the oddity described in documentation of `Relations.inheritance`
     // we are mainly interested whether dependency on A is captured in `memberRef` relation so
     // the invariant that says that memberRef is superset of inheritance relation is preserved
-    memberRef("C") === Set("A", "B")
-    inheritance("C") === Set("A", "B")
+    assertEquals(memberRef("C"),   Set("A", "B"))
+    assertEquals(inheritance("C"), Set("A", "B"))
     // same as above but indirect (C -> B -> A), note that only A is visible here
-    memberRef("D") === Set("A", "C")
-    inheritance("D") === Set("A", "C")
+    assertEquals(memberRef("D"),   Set("A", "C"))
+    assertEquals(inheritance("D"), Set("A", "C"))
   }
 
-  /*
-  "Extracted source dependencies from macro arguments" in {
-    val classDependencies = extractClassDependenciesFromMacroArgument
+  @Test
+  def extractedClassDependenciesFromARefinement = {
+    val srcFoo =
+      "object Outer {\n  class Inner { type Xyz }\n\n  type TypeInner = Inner { type Xyz = Int }\n}"
+    val srcBar = "object Bar {\n  def bar: Outer.TypeInner = null\n}"
+
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val classDependencies =
+      compilerForTesting.extractDependenciesFromSrcs(srcFoo, srcBar)
+
     val memberRef = classDependencies.memberRef
     val inheritance = classDependencies.inheritance
-
-    memberRef("A") === Set("B", "C")
-    inheritance("A") === Set.empty
-    memberRef("B") === Set.empty
-    inheritance("B") === Set.empty
-    memberRef("C") === Set.empty
-    inheritance("C") === Set.empty
+    assertEquals(memberRef("Outer"),   Set.empty)
+    assertEquals(inheritance("Outer"), Set.empty)
+    assertEquals(memberRef("Bar"),     Set("Outer", "Outer$.Inner"))
+    assertEquals(inheritance("Bar"),   Set.empty)
   }
-  */
+
+  @Test
+  def extractedClassDependenciesOnAnObjectCorrectly = {
+    val srcA =
+      """object A {
+        |   def foo = { B; () }
+        |}""".stripMargin
+    val srcB = "object B"
+
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val classDependencies =
+      compilerForTesting.extractDependenciesFromSrcs(srcA, srcB)
+
+    val memberRef = classDependencies.memberRef
+    val inheritance = classDependencies.inheritance
+    assertEquals(memberRef("A"),   Set("B"))
+    assertEquals(inheritance("A"), Set.empty)
+    assertEquals(memberRef("B"),   Set.empty)
+    assertEquals(inheritance("B"), Set.empty)
+  }
+
+  @Test
+  def extractedTopLevelImportDependencies = {
+    val srcA =
+      """
+        |package abc
+        |object A {
+        |  class Inner
+        |}
+        |class A2""".stripMargin
+    val srcB = "import abc.A; import abc.A.Inner; class B"
+    val srcC = "import abc.{A, A2}; class C"
+    val srcD = "import abc.{A2 => Foo}; class D"
+    val srcE = "import abc.A._; class E"
+    val srcF = "import abc._; class F"
+    val srcG =
+      """|package foo {
+         |  package bar {
+         |    import abc.A
+         |    class G
+         |  }
+         |}
+      """.stripMargin
+    val srcH = "class H { import abc.A }"
+
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val deps = compilerForTesting
+      .extractDependenciesFromSrcs(srcA, srcB, srcC, srcD, srcE, srcF, srcG, srcH)
+      .memberRef
+
+    assertEquals(deps("A"),         Set.empty)
+    assertEquals(deps("B"),         Set("abc.A", "abc.A$.Inner"))
+    assertEquals(deps("C"),         Set("abc.A", "abc.A2"))
+    assertEquals(deps("D"),         Set("abc.A2"))
+    assertEquals(deps("E"),         Set("abc.A"))
+    assertEquals(deps("F"),         Set.empty)
+    assertEquals(deps("foo.bar.G"), Set("abc.A"))
+    assertEquals(deps("H"),         Set("abc.A"))
+  }
 
   private def extractClassDependenciesPublic: ExtractedClassDependencies = {
     val srcA = "class A"
     val srcB = "class B extends D[A]"
     val srcC = """|class C {
-		  |  def a: A = null
-		  |}""".stripMargin
+      |  def a: A = null
+      |}""".stripMargin
     val srcD = "class D[T]"
     val srcE = "trait E[T]"
     val srcF = "trait F extends A with E[D[B]] { self: G.MyC => }"
@@ -97,20 +161,21 @@ class DependencySpecification extends Specification {
     val srcH = "trait H extends G.T[Int] with (E[Int] @unchecked)"
 
     val compilerForTesting = new ScalaCompilerForUnitTesting
-    val classDependencies = compilerForTesting.extractDependenciesFromSrcs(srcA, srcB, srcC,
-      srcD, srcE, srcF, srcG, srcH)
+    val classDependencies =
+      compilerForTesting.extractDependenciesFromSrcs(srcA, srcB, srcC, srcD, srcE, srcF, srcG, srcH)
     classDependencies
   }
 
-  private def extractClassDependenciesPrivate: ExtractedClassDependencies = {
+  private def extractClassDependenciesLocal: ExtractedClassDependencies = {
     val srcA = "class A"
     val srcB = "class B"
     val srcC = "class C { private class Inner1 extends A }"
     val srcD = "class D { def foo: Unit = { class Inner2 extends B } }"
+    val srcE = "class E { def foo: Unit = { new B {} } }"
 
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val classDependencies =
-      compilerForTesting.extractDependenciesFromSrcs(srcA, srcB, srcC, srcD)
+      compilerForTesting.extractDependenciesFromSrcs(srcA, srcB, srcC, srcD, srcE)
     classDependencies
   }
 
@@ -125,27 +190,4 @@ class DependencySpecification extends Specification {
       compilerForTesting.extractDependenciesFromSrcs(srcA, srcB, srcC, srcD)
     classDependencies
   }
-
-  /*
-  private def extractClassDependenciesFromMacroArgument: ExtractedClassDependencies = {
-    val srcA = "class A { println(B.printTree(C.foo)) }"
-    val srcB = """
-			|import scala.language.experimental.macros
-			|import scala.reflect.macros._
-			|object B {
-			|  def printTree(arg: Any) = macro printTreeImpl
-			|  def printTreeImpl(c: Context)(arg: c.Expr[Any]): c.Expr[String] = {
-			|    val argStr = arg.tree.toString
-			|    val literalStr = c.universe.Literal(c.universe.Constant(argStr))
-			|    c.Expr[String](literalStr)
-			|  }
-			|}""".stripMargin
-    val srcC = "object C { val foo = 1 }"
-
-    val compilerForTesting = new ScalaCompilerForUnitTesting(nameHashing = true)
-    val classDependencies =
-      compilerForTesting.extractDependenciesFromSrcs(List(Map('B -> srcB, 'C -> srcC), Map('A -> srcA)))
-    classDependencies
-  }
-  */
 }

@@ -1,45 +1,126 @@
-/** Adapted from https://github.com/sbt/sbt/blob/0.13/compile/interface/src/test/scala/xsbt/ExtractAPISpecification.scala */
 package xsbt
 
-import org.junit.runner.RunWith
 import xsbti.api._
-import dotty.tools.dotc.sbt.DefaultShowAPI
-import org.specs2.mutable.Specification
-import org.specs2.runner.JUnitRunner
+import xsbt.api.SameAPI
 
-@RunWith(classOf[JUnitRunner])
-class ExtractAPISpecification extends Specification {
+import org.junit.{ Test, Ignore }
+import org.junit.Assert._
 
-  "Existential types in method signatures" should {
-    "have stable names" in { stableExistentialNames }
+class ExtractAPISpecification {
+
+  @Test
+  def extractChildrenOfSealedClass = {
+    def compileAndGetFooClassApi(src: String): ClassLike = {
+      val compilerForTesting = new ScalaCompilerForUnitTesting
+      val apis = compilerForTesting.extractApiFromSrc(src)
+      val FooApi = apis.find(_.name() == "Foo").get
+      FooApi
+    }
+    val src1 =
+      """|sealed abstract class Foo
+         |case class C1(x: Int) extends Foo
+         |""".stripMargin
+    val fooClassApi1 = compileAndGetFooClassApi(src1)
+    val src2 =
+      """|sealed abstract class Foo
+         |case class C1(x: Int) extends Foo
+         |case class C2(x: Int) extends Foo
+         |""".stripMargin
+    val fooClassApi2 = compileAndGetFooClassApi(src2)
+    assertFalse(SameAPI(fooClassApi1, fooClassApi2))
   }
 
-  def stableExistentialNames: Boolean = {
+  @Ignore
+  def extractDefinitionTypeOfPackageObject = {
+    val src = "package object foo".stripMargin
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val apis = compilerForTesting.extractApiFromSrc(src)
+    val Seq(fooClassApi) = apis.toSeq
+    assertEquals(fooClassApi.definitionType, DefinitionType.PackageModule)
+  }
+
+  @Test
+  def extractNestedClasses = {
+    val src =
+      """class A {
+        |  class B
+        |}""".stripMargin
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val apis = compilerForTesting.extractApiFromSrc(src).map(c => c.name -> c).toMap
+    assertEquals(apis.keys, Set("A", "A.B"))
+  }
+
+  @Test
+  def extractLocalClasses = {
+    val src =
+      """class A
+        |class B
+        |class C { def foo: Unit = { class Inner2 extends B } }
+        |class D { def foo: Unit = { new B {} } }""".stripMargin
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val apis = compilerForTesting.extractApiFromSrc(src).map(c => c.name -> c).toMap
+    assertEquals(apis.keys, Set("A", "B", "C", "D"))
+  }
+
+  @Ignore
+  def extractFlatApiOfNestedClass = {
+    def compileAndGetFooClassApi(src: String): ClassLike = {
+      val compilerForTesting = new ScalaCompilerForUnitTesting
+      val apis = compilerForTesting.extractApiFromSrc(src)
+      val FooApi = apis.find(_.name() == "Foo").get
+      FooApi
+    }
+    val src1 =
+      """class Foo {
+        |  class A
+        |}""".stripMargin
+    val fooClassApi1 = compileAndGetFooClassApi(src1)
+    val src2 =
+      """class Foo {
+        |  class A {
+        |    def foo: Int = 123
+        |  }
+        |}""".stripMargin
+    val fooClassApi2 = compileAndGetFooClassApi(src2)
+    assertTrue(SameAPI(fooClassApi1, fooClassApi2))
+  }
+
+  @Test
+  def extractPivateClasses = {
+    val src =
+      """private class A
+        |class B { private class Inner1 extends A }
+        |""".stripMargin
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val apis = compilerForTesting.extractApiFromSrc(src).map(c => c.name -> c).toMap
+    assertEquals(apis.keys, Set("A", "B", "B.Inner1"))
+  }
+
+  @Test
+  def extractStableExistentialNames = {
     def compileAndGetFooMethodApi(src: String): Def = {
       val compilerForTesting = new ScalaCompilerForUnitTesting
       val sourceApi = compilerForTesting.extractApiFromSrc(src)
-      val FooApi = sourceApi.find(_.name() == "Foo").get.asInstanceOf[ClassLike]
+      val FooApi = sourceApi.find(_.name() == "Foo").get
       val fooMethodApi = FooApi.structure().declared().find(_.name == "foo").get
       fooMethodApi.asInstanceOf[Def]
     }
     val src1 = """
-                 |class Box[T]
-                 |class Foo {
-                 |	def foo: Box[_] = null
-                 |
-                 }""".stripMargin
+        |class Box[T]
+        |class Foo {
+        | def foo: Box[_] = null
+        |
+        }""".stripMargin
     val fooMethodApi1 = compileAndGetFooMethodApi(src1)
     val src2 = """
-                 |class Box[T]
-                 |class Foo {
-                 |  def bar: Box[_] = null
-                 |  def foo: Box[_] = null
-                 |}""".stripMargin
+        |class Box[T]
+        |class Foo {
+          |   def bar: Box[_] = null
+        | def foo: Box[_] = null
+        |
+        }""".stripMargin
     val fooMethodApi2 = compileAndGetFooMethodApi(src2)
-
-    fooMethodApi1 == fooMethodApi2
-    // Fails because xsbt.api is compiled with Scala 2.10
-    // SameAPI.apply(fooMethodApi1, fooMethodApi2)
+    assertTrue("APIs are not the same.", SameAPI(fooMethodApi1, fooMethodApi2))
   }
 
   /**
@@ -47,45 +128,68 @@ class ExtractAPISpecification extends Specification {
    * is stable between compiling from source and unpickling. We compare extracted APIs of Global when Global
    * is compiled together with Namers or Namers is compiled first and then Global refers
    * to Namers by unpickling types from class files.
-   *
-   * See https://github.com/sbt/sbt/issues/2504
    */
-  "Self variable and no self type" in {
-    def selectNamer(api: Seq[Definition]): ClassLike = {
-      def selectClass(defs: Iterable[Definition], name: String): ClassLike = defs.collectFirst {
-        case cls: ClassLike if cls.name == name => cls
-      }.get
-      selectClass(api, "Namers.Namer")
+  @Ignore
+  def extractStableRepresentationOfSelfVariableThatHasNoSelfType = {
+    def selectNamer(apis: Seq[ClassLike]): ClassLike = {
+      // TODO: this doesn't work yet because inherited classes are not extracted
+      apis.find(_.name == "Global.Foo.Namer").get
     }
     val src1 =
       """|class Namers {
-         |  class Namer { thisNamer => }
-         |}
-         |""".stripMargin
+        |  class Namer { thisNamer => }
+        |}
+        |""".stripMargin
     val src2 =
       """|class Global {
-         |  class Foo extends Namers
-         |}
-         |""".stripMargin
+        |  class Foo extends Namers
+        |}
+        |""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
-    val apis = compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = false)(List(src1, src2), List(src2))
+    val apis =
+      compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = false)(List(src1, src2),
+                                                                            List(src2))
     val _ :: src2Api1 :: src2Api2 :: Nil = apis.toList
     val namerApi1 = selectNamer(src2Api1)
     val namerApi2 = selectNamer(src2Api2)
+    assertTrue(SameAPI(namerApi1, namerApi2))
+  }
 
-    DefaultShowAPI(namerApi1) == DefaultShowAPI(namerApi2)
-    // Fails because xsbt.api is compiled with Scala 2.10
-    // SameAPI(namerApi1, namerApi2)
+  @Ignore
+  def extractDifferentRepresentationForAnInheritedClass = {
+    val src =
+      """|class A[T] {
+         |  abstract class AA { def t: T }
+         |}
+         |class B extends A[Int]
+      """.stripMargin
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val apis = compilerForTesting.extractApiFromSrc(src).map(a => a.name -> a).toMap
+    assertEquals(apis.keySet, Set("A", "A.AA", "B", "B.AA"))
+    assertNotEquals(apis("A.AA"), apis("B.AA"))
+  }
+
+  @Test
+  def handlePackageObjectsAndTypeCompanions = {
+    val src =
+      """|package object abc {
+         |  type BuildInfoKey = BuildInfoKey.Entry[_]
+         |  object BuildInfoKey {
+         |    sealed trait Entry[A]
+         |  }
+         |}
+      """.stripMargin
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val apis = compilerForTesting.extractApiFromSrc(src).map(a => a.name -> a).toMap
+    assertEquals(apis.keySet, Set("abc.package", "abc.package$.BuildInfoKey", "abc.package$.BuildInfoKey$.Entry"))
   }
 
   /**
    * Checks if self type is properly extracted in various cases of declaring a self type
-   * with our without a self variable.
+   * with or without a self variable.
    */
-  "Self type" in {
-    def collectFirstClass(defs: Iterable[Definition]): ClassLike = defs.collectFirst {
-      case c: ClassLike => c
-    }.get
+  @Ignore
+  def representASelfTypeCorrectly = {
     val srcX = "trait X"
     val srcY = "trait Y"
     val srcC1 = "class C1 { this: C1 => }"
@@ -94,21 +198,19 @@ class ExtractAPISpecification extends Specification {
     val srcC4 = "class C4 { thisC: X => }"
     val srcC5 = "class C5 extends AnyRef with X with Y { self: X with Y => }"
     val srcC6 = "class C6 extends AnyRef with X { self: X with Y => }"
-    // val srcC7 = "class C7 { _ => }" // DOTTY: Syntax not supported
+    // val srcC7 = "class C7 { _ => }"
     val srcC8 = "class C8 { self => }"
     val compilerForTesting = new ScalaCompilerForUnitTesting
-    val apis = compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = true)(
-      List(srcX, srcY, srcC1, srcC2, srcC3, srcC4, srcC5, srcC6, srcC8)
-    ).map(collectFirstClass)
-    val emptyType = EmptyType.create()
+    val apis = compilerForTesting
+      .extractApisFromSrcs(reuseCompilerInstance = true)(
+        List(srcX, srcY, srcC1, srcC2, srcC3, srcC4, srcC5, srcC6, srcC8)
+      )
+      .map(_.head)
+    val emptyType = EmptyType.of()
     def hasSelfType(c: ClassLike): Boolean =
       c.selfType != emptyType
     val (withSelfType, withoutSelfType) = apis.partition(hasSelfType)
-    // DOTTY: In the scalac ExtractAPI phase, the self-type is only
-    // extracted if it differs from the type of the class for stability
-    // reasons. This isn't necessary in dotty because we always pickle
-    // the self type.
-    withSelfType.map(_.name).toSet === Set("C1", "C2", "C3", "C4", "C5", "C6", "C8")
-    withoutSelfType.map(_.name).toSet === Set("X", "Y")
+    assertEquals(withSelfType.map(_.name).toSet, Set("C3", "C4", "C5", "C6"))
+    assertEquals(withoutSelfType.map(_.name).toSet, Set("X", "Y", "C1", "C2", "C8"))
   }
 }
