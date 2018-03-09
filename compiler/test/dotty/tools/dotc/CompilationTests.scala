@@ -337,7 +337,7 @@ class CompilationTests extends ParallelTesting {
       new CompilationTest(targets)
     }
 
-    compileFilesInDir("../tests/plugins/neg").checkExpectedErrors()
+    compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
   }
 
   private val (compilerSources, backendSources, backendJvmSources) = {
