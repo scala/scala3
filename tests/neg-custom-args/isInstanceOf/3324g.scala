@@ -12,7 +12,7 @@ class Test {
   }
 
   def quux[T](a: A[T]): Unit = a match {
-    case _: B[T] => // err-or: cannot handle this for now
+    case _: B[T] => // should be an error!!
   }
 
   quux(new C[Int])
