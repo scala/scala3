@@ -92,11 +92,8 @@ class InterceptedMethods extends MiniPhase {
         }
 
     }
-    val Any_## = this.Any_##
     val Any_!= = defn.Any_!=
     val rewrite: Tree = tree.fun.symbol match {
-      case Any_## =>
-        poundPoundValue(qual)
       case Any_!= =>
         qual.select(defn.Any_==).appliedToArgs(tree.args).select(defn.Boolean_!)
         /*
