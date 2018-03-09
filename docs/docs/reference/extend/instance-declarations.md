@@ -38,7 +38,7 @@ trait Eql[T] {
 }
 
 trait HasEql[T] {
-  def === (that: T)
+  def === (that: T): Boolean
 }
 ```
 
