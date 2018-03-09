@@ -176,9 +176,6 @@ class Definitions {
   private def enterT1ParameterlessMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
     enterPolyMethod(cls, name, 1, resultTypeFn, flags)
 
-  private def enterT1EmptyParamsMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
-    enterPolyMethod(cls, name, 1, pt => MethodType(Nil, resultTypeFn(pt)), flags)
-
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[TypeRef] = {
     val arr = new Array[TypeRef](arity + 1)
     for (i <- countFrom to arity) arr(i) = ctx.requiredClassRef(name + i)
