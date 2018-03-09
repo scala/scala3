@@ -88,9 +88,6 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def accessorNamed(name: TermName)(implicit ctx: Context): Symbol =
     self.owner.info.decl(name).suchThat(_ is Accessor).symbol
 
-  def paramAccessors(implicit ctx: Context): List[Symbol] =
-    self.info.decls.filter(_ is ParamAccessor)
-
   def caseAccessors(implicit ctx: Context): List[Symbol] =
     self.info.decls.filter(_ is CaseAccessor)
 
