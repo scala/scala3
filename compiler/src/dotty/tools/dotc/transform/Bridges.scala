@@ -104,15 +104,13 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
   /** Add all necessary bridges to template statements `stats`, and remove at the same
    *  time deferred methods in `stats` that are replaced by a bridge with the same signature.
    */
-  def add(stats: List[untpd.Tree]): List[untpd.Tree] =
-    if (root.is(Trait)) stats
-    else {
-      val opc = new BridgesCursor()(preErasureCtx)
-      while (opc.hasNext) {
-        if (!opc.overriding.is(Deferred)) addBridgeIfNeeded(opc.overriding, opc.overridden)
-        opc.next()
-      }
-      if (bridges.isEmpty) stats
-      else stats.filterNot(stat => toBeRemoved contains stat.symbol) ::: bridges.toList
+  def add(stats: List[untpd.Tree]): List[untpd.Tree] = {
+    val opc = new BridgesCursor()(preErasureCtx)
+    while (opc.hasNext) {
+      if (!opc.overriding.is(Deferred)) addBridgeIfNeeded(opc.overriding, opc.overridden)
+      opc.next()
     }
+    if (bridges.isEmpty) stats
+    else stats.filterNot(stat => toBeRemoved contains stat.symbol) ::: bridges.toList
+  }
 }
