@@ -47,17 +47,17 @@ object StdNames {
   }
 
   abstract class DefinedNames[N <: Name] {
-    protected implicit def fromString(s: String): N
-    protected def fromName(name: Name): N = fromString(name.toString)
+    protected def n(s: String): N
+    protected def fromName(name: Name): N = n(name.toString)
 
     private val kws = mutable.Set[N]()
-    protected def kw(name: N) = { kws += name; name }
+    protected def kw(s: String) = { val name = n(s); kws += name; name }
 
     final val keywords: collection.Set[N] = kws
   }
 
   abstract class ScalaNames[N <: Name] extends DefinedNames[N] {
-    protected def encode(s: String): N = fromName(fromString(s).encode)
+    protected def encode(s: String): N = fromName(n(s).encode)
 
 // Keywords, need to come first -----------------------
 
@@ -115,531 +115,526 @@ object StdNames {
     final val HASHkw: N      = kw("#")
     final val ATkw: N        = kw("@")
 
-    val ANON_CLASS: N                 = str.ANON_CLASS
-    val ANON_FUN: N                   = str.ANON_FUN
-    val BITMAP_PREFIX: N              = "bitmap$"  // @darkdimius: $bitmap? Also, the next 4 names are unused.
-    val BITMAP_NORMAL: N              = BITMAP_PREFIX         // initialization bitmap for public/protected lazy vals
-    val BITMAP_TRANSIENT: N           = BITMAP_PREFIX + "trans$"    // initialization bitmap for transient lazy vals
-    val BITMAP_CHECKINIT: N           = BITMAP_PREFIX + "init$"      // initialization bitmap for checkinit values
-    val BITMAP_CHECKINIT_TRANSIENT: N = BITMAP_PREFIX + "inittrans$" // initialization bitmap for transient checkinit values
-    val DEFAULT_GETTER: N             = str.DEFAULT_GETTER
-    val DEFAULT_GETTER_INIT: N        = "$lessinit$greater"
-    val DO_WHILE_PREFIX: N            = "doWhile$"
-    val DOLLAR_VALUES: N              = "$values"
-    val DOLLAR_NEW: N                 = "$new"
-    val EMPTY: N                      = ""
-    val EMPTY_PACKAGE: N              = "<empty>"
-    val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"
-    val EXPAND_SEPARATOR: N           = str.EXPAND_SEPARATOR
-    val IMPL_CLASS_SUFFIX: N          = "$class"
-    val IMPORT: N                     = "<import>"
-    val MODULE_SUFFIX: N              = str.MODULE_SUFFIX
-    val OPS_PACKAGE: N                = "<special-ops>"
-    val OVERLOADED: N                 = "<overloaded>"
-    val PACKAGE: N                    = "package"
-    val ROOT: N                       = "<root>"
-    val SPECIALIZED_SUFFIX: N         = "$sp"
-    val SUPER_PREFIX: N               = "super$"
-    val WHILE_PREFIX: N               = "while$"
-    val DEFAULT_EXCEPTION_NAME: N     = "ex$"
-    val INITIALIZER_PREFIX: N         = "initial$"
-    val COMPANION_MODULE_METHOD: N    = "companion$module"
-    val COMPANION_CLASS_METHOD: N     = "companion$class"
-    val BOUNDTYPE_ANNOT: N            = "$boundType$"
-    val QUOTE: N                      = "'"
-    val TYPE_QUOTE: N                = "type_'"
-    val TRAIT_SETTER_SEPARATOR: N     = str.TRAIT_SETTER_SEPARATOR
+    val ANON_CLASS: N                 = n(str.ANON_CLASS)
+    val ANON_FUN: N                   = n(str.ANON_FUN)
+    val BITMAP_PREFIX: N              = n("bitmap$")  // @darkdimius: $bitmap?
+    val DEFAULT_GETTER: N             = n(str.DEFAULT_GETTER)
+    val DEFAULT_GETTER_INIT: N        = n("$lessinit$greater")
+    val DO_WHILE_PREFIX: N            = n("doWhile$")
+    val DOLLAR_VALUES: N              = n("$values")
+    val DOLLAR_NEW: N                 = n("$new")
+    val EMPTY: N                      = n("")
+    val EMPTY_PACKAGE: N              = n("<empty>")
+    val EXCEPTION_RESULT_PREFIX: N    = n("exceptionResult")
+    val EXPAND_SEPARATOR: N           = n(str.EXPAND_SEPARATOR)
+    val IMPL_CLASS_SUFFIX: N          = n("$class")
+    val IMPORT: N                     = n("<import>")
+    val MODULE_SUFFIX: N              = n(str.MODULE_SUFFIX)
+    val OPS_PACKAGE: N                = n("<special-ops>")
+    val OVERLOADED: N                 = n("<overloaded>")
+    val PACKAGE: N                    = n("package")
+    val ROOT: N                       = n("<root>")
+    val SPECIALIZED_SUFFIX: N         = n("$sp")
+    val SUPER_PREFIX: N               = n("super$")
+    val WHILE_PREFIX: N               = n("while$")
+    val DEFAULT_EXCEPTION_NAME: N     = n("ex$")
+    val INITIALIZER_PREFIX: N         = n("initial$")
+    val COMPANION_MODULE_METHOD: N    = n("companion$module")
+    val COMPANION_CLASS_METHOD: N     = n("companion$class")
+    val BOUNDTYPE_ANNOT: N            = n("$boundType$")
+    val QUOTE: N                      = n("'")
+    val TYPE_QUOTE: N                 = n("type_'")
+    val TRAIT_SETTER_SEPARATOR: N     = n(str.TRAIT_SETTER_SEPARATOR)
 
     // value types (and AnyRef) are all used as terms as well
     // as (at least) arguments to the @specialize annotation.
-    final val Boolean: N = "Boolean"
-    final val Byte: N    = "Byte"
-    final val Char: N    = "Char"
-    final val Double: N  = "Double"
-    final val Float: N   = "Float"
-    final val Int: N     = "Int"
-    final val Long: N    = "Long"
-    final val Short: N   = "Short"
-    final val Unit: N    = "Unit"
+    final val Boolean: N = n("Boolean")
+    final val Byte: N    = n("Byte")
+    final val Char: N    = n("Char")
+    final val Double: N  = n("Double")
+    final val Float: N   = n("Float")
+    final val Int: N     = n("Int")
+    final val Long: N    = n("Long")
+    final val Short: N   = n("Short")
+    final val Unit: N    = n("Unit")
 
     final val ScalaValueNames: scala.List[N] =
       scala.List(Byte, Char, Short, Int, Long, Float, Double, Boolean, Unit)
 
     // some types whose companions we utilize
-    final val AnyRef: N     = "AnyRef"
-    final val Array: N      = "Array"
-    final val List: N       = "List"
-    final val Seq: N        = "Seq"
-    final val Symbol: N     = "Symbol"
-    final val ClassTag: N   = "ClassTag"
-    final val classTag: N   = "classTag"
-    final val WeakTypeTag: N = "WeakTypeTag"
-    final val TypeTag : N   = "TypeTag"
-    final val typeTag: N    = "typeTag"
-    final val Expr: N       = "Expr"
-    final val String: N     = "String"
-    final val Annotation: N = "Annotation"
+    final val AnyRef: N      = n("AnyRef")
+    final val Array: N       = n("Array")
+    final val List: N        = n("List")
+    final val Seq: N         = n("Seq")
+    final val Symbol: N      = n("Symbol")
+    final val ClassTag: N    = n("ClassTag")
+    final val classTag: N    = n("classTag")
+    final val WeakTypeTag: N = n("WeakTypeTag")
+    final val TypeTag : N    = n("TypeTag")
+    final val typeTag: N     = n("typeTag")
+    final val Expr: N        = n("Expr")
+    final val String: N      = n("String")
+    final val Annotation: N  = n("Annotation")
 
     // fictions we use as both types and terms
-    final val ERROR: N    = "<error>"
-    final val NO_NAME: N  = "<none>"  // formerly NOSYMBOL
-    final val WILDCARD: N = "_"
+    final val ERROR: N    = n("<error>")
+    final val NO_NAME: N  = n("<none>")  // formerly NOSYMBOL
+    final val WILDCARD: N = n("_")
 
 // ----- Type names -----------------------------------------
 
-    final val BYNAME_PARAM_CLASS: N             = "<byname>"
-    final val EQUALS_PATTERN: N                 = "<equals>"
-    final val LOCAL_CHILD: N                    = "<local child>"
-    final val REPEATED_PARAM_CLASS: N           = "<repeated>"
-    final val WILDCARD_STAR: N                  = "_*"
-    final val REIFY_TREECREATOR_PREFIX: N       = "$treecreator"
-    final val REIFY_TYPECREATOR_PREFIX: N       = "$typecreator"
+    final val BYNAME_PARAM_CLASS: N             = n("<byname>")
+    final val EQUALS_PATTERN: N                 = n("<equals>")
+    final val LOCAL_CHILD: N                    = n("<local child>")
+    final val REPEATED_PARAM_CLASS: N           = n("<repeated>")
+    final val WILDCARD_STAR: N                  = n("_*")
+    final val REIFY_TREECREATOR_PREFIX: N       = n("$treecreator")
+    final val REIFY_TYPECREATOR_PREFIX: N       = n("$typecreator")
 
-    final val Any: N                 = "Any"
-    final val AnyVal: N              = "AnyVal"
-    final val ExprApi: N             = "ExprApi"
-    final val Mirror: N              = "Mirror"
-    final val Nothing: N             = "Nothing"
-    final val Null: N                = "Null"
-    final val Object: N              = "Object"
-    final val PartialFunction: N     = "PartialFunction"
-    final val PrefixType: N          = "PrefixType"
-    final val Serializable: N        = "Serializable"
-    final val Singleton: N           = "Singleton"
-    final val Throwable: N           = "Throwable"
+    final val Any: N                 = n("Any")
+    final val AnyVal: N              = n("AnyVal")
+    final val ExprApi: N             = n("ExprApi")
+    final val Mirror: N              = n("Mirror")
+    final val Nothing: N             = n("Nothing")
+    final val Null: N                = n("Null")
+    final val Object: N              = n("Object")
+    final val PartialFunction: N     = n("PartialFunction")
+    final val PrefixType: N          = n("PrefixType")
+    final val Serializable: N        = n("Serializable")
+    final val Singleton: N           = n("Singleton")
+    final val Throwable: N           = n("Throwable")
 
-    final val ClassfileAnnotation: N = "ClassfileAnnotation"
-    final val ClassManifest: N       = "ClassManifest"
-    final val Enum: N                = "Enum"
-    final val Group: N               = "Group"
-    final val Tree: N                = "Tree"
-    final val Type : N               = "Type"
-    final val TypeTree: N            = "TypeTree"
+    final val ClassfileAnnotation: N = n("ClassfileAnnotation")
+    final val ClassManifest: N       = n("ClassManifest")
+    final val Enum: N                = n("Enum")
+    final val Group: N               = n("Group")
+    final val Tree: N                = n("Tree")
+    final val Type : N               = n("Type")
+    final val TypeTree: N            = n("TypeTree")
 
     // Annotation simple names, used in Namer
-    final val BeanPropertyAnnot: N = "BeanProperty"
-    final val BooleanBeanPropertyAnnot: N = "BooleanBeanProperty"
-    final val bridgeAnnot: N = "bridge"
+    final val BeanPropertyAnnot: N = n("BeanProperty")
+    final val BooleanBeanPropertyAnnot: N = n("BooleanBeanProperty")
+    final val bridgeAnnot: N = n("bridge")
 
     // Classfile Attributes
-    final val AnnotationDefaultATTR: N      = "AnnotationDefault"
-    final val BridgeATTR: N                 = "Bridge"
-    final val ClassfileAnnotationATTR: N    = "RuntimeInvisibleAnnotations" // RetentionPolicy.CLASS. Currently not used (Apr 2009).
-    final val CodeATTR: N                   = "Code"
-    final val ConstantValueATTR: N          = "ConstantValue"
-    final val DeprecatedATTR: N             = "Deprecated"
-    final val ExceptionsATTR: N             = "Exceptions"
-    final val InnerClassesATTR: N           = "InnerClasses"
-    final val LineNumberTableATTR: N        = "LineNumberTable"
-    final val LocalVariableTableATTR: N     = "LocalVariableTable"
-    final val RuntimeAnnotationATTR: N      = "RuntimeVisibleAnnotations"   // RetentionPolicy.RUNTIME
-    final val RuntimeParamAnnotationATTR: N = "RuntimeVisibleParameterAnnotations" // RetentionPolicy.RUNTIME (annotations on parameters)
-    final val ScalaATTR: N                  = "Scala"
-    final val ScalaSignatureATTR: N         = "ScalaSig"
-    final val TASTYATTR: N                  = "TASTY"
-    final val SignatureATTR: N              = "Signature"
-    final val SourceFileATTR: N             = "SourceFile"
-    final val SyntheticATTR: N              = "Synthetic"
-
+    final val AnnotationDefaultATTR: N      = n("AnnotationDefault")
+    final val BridgeATTR: N                 = n("Bridge")
+    final val ClassfileAnnotationATTR: N    = n("RuntimeInvisibleAnnotations") // RetentionPolicy.CLASS. Currently not used (Apr 2009).
+    final val CodeATTR: N                   = n("Code")
+    final val ConstantValueATTR: N          = n("ConstantValue")
+    final val DeprecatedATTR: N             = n("Deprecated")
+    final val ExceptionsATTR: N             = n("Exceptions")
+    final val InnerClassesATTR: N           = n("InnerClasses")
+    final val LineNumberTableATTR: N        = n("LineNumberTable")
+    final val LocalVariableTableATTR: N     = n("LocalVariableTable")
+    final val RuntimeAnnotationATTR: N      = n("RuntimeVisibleAnnotations")   // RetentionPolicy.RUNTIME
+    final val RuntimeParamAnnotationATTR: N = n("RuntimeVisibleParameterAnnotations") // RetentionPolicy.RUNTIME (annotations on parameters)
+    final val ScalaATTR: N                  = n("Scala")
+    final val ScalaSignatureATTR: N         = n("ScalaSig")
+    final val TASTYATTR: N                  = n("TASTY")
+    final val SignatureATTR: N              = n("Signature")
+    final val SourceFileATTR: N             = n("SourceFile")
+    final val SyntheticATTR: N              = n("Synthetic")
 
 // ----- Term names -----------------------------------------
 
     // Compiler-internal
-    val ANYname: N                  = "<anyname>"
-    val CONSTRUCTOR: N              = "<init>"
-    val STATIC_CONSTRUCTOR: N       = "<clinit>"
-    val DEFAULT_CASE: N             = "defaultCase$"
-    val EVT2U: N                    = "evt2u$"
-    val EQEQ_LOCAL_VAR: N           = "eqEqTemp$"
-    val FAKE_LOCAL_THIS: N          = "this$"
-    val LAZY_FIELD_OFFSET: N        = "OFFSET$"
-    val LAZY_SLOW_SUFFIX: N         = "$lzycompute"
-    val UNIVERSE_BUILD_PREFIX: N    = "$u.build."
-    val UNIVERSE_BUILD: N           = "$u.build"
-    val UNIVERSE_PREFIX: N          = "$u."
-    val UNIVERSE_SHORT: N           = "$u"
-    val MIRROR_PREFIX: N            = "$m."
-    val MIRROR_SHORT: N             = "$m"
-    val MIRROR_UNTYPED: N           = "$m$untyped"
-    val REIFY_FREE_PREFIX: N        = "free$"
-    val REIFY_FREE_THIS_SUFFIX: N   = "$this"
-    val REIFY_FREE_VALUE_SUFFIX: N  = "$value"
-    val REIFY_SYMDEF_PREFIX: N      = "symdef$"
-    val OUTER: N                    = "$outer"
-    val REFINE_CLASS: N             = "<refinement>"
-    val ROOTPKG: N                  = "_root_"
-    val SELECTOR_DUMMY: N           = "<unapply-selector>"
-    val SELF: N                     = "$this"
-    val SKOLEM: N                   = "<skolem>"
-    val SPECIALIZED_INSTANCE: N     = "specInstance$"
-    val THIS: N                     = "_$this"
-    val TRAIT_CONSTRUCTOR: N        = "$init$"
-    val U2EVT: N                    = "u2evt$"
-    val ALLARGS: N                  = "$allArgs"
+    val ANYname: N                  = n("<anyname>")
+    val CONSTRUCTOR: N              = n("<init>")
+    val STATIC_CONSTRUCTOR: N       = n("<clinit>")
+    val DEFAULT_CASE: N             = n("defaultCase$")
+    val EVT2U: N                    = n("evt2u$")
+    val EQEQ_LOCAL_VAR: N           = n("eqEqTemp$")
+    val FAKE_LOCAL_THIS: N          = n("this$")
+    val LAZY_FIELD_OFFSET: N        = n("OFFSET$")
+    val LAZY_SLOW_SUFFIX: N         = n("$lzycompute")
+    val UNIVERSE_BUILD_PREFIX: N    = n("$u.build.")
+    val UNIVERSE_BUILD: N           = n("$u.build")
+    val UNIVERSE_PREFIX: N          = n("$u.")
+    val UNIVERSE_SHORT: N           = n("$u")
+    val MIRROR_PREFIX: N            = n("$m.")
+    val MIRROR_SHORT: N             = n("$m")
+    val MIRROR_UNTYPED: N           = n("$m$untyped")
+    val REIFY_FREE_PREFIX: N        = n("free$")
+    val REIFY_FREE_THIS_SUFFIX: N   = n("$this")
+    val REIFY_FREE_VALUE_SUFFIX: N  = n("$value")
+    val REIFY_SYMDEF_PREFIX: N      = n("symdef$")
+    val OUTER: N                    = n("$outer")
+    val REFINE_CLASS: N             = n("<refinement>")
+    val ROOTPKG: N                  = n("_root_")
+    val SELECTOR_DUMMY: N           = n("<unapply-selector>")
+    val SELF: N                     = n("$this")
+    val SKOLEM: N                   = n("<skolem>")
+    val SPECIALIZED_INSTANCE: N     = n("specInstance$")
+    val THIS: N                     = n("_$this")
+    val TRAIT_CONSTRUCTOR: N        = n("$init$")
+    val U2EVT: N                    = n("u2evt$")
+    val ALLARGS: N                  = n("$allArgs")
 
-    final val Nil: N                = "Nil"
-    final val Predef: N             = "Predef"
-    final val ScalaRunTime: N       = "ScalaRunTime"
-    final val Some: N               = "Some"
+    final val Nil: N                = n("Nil")
+    final val Predef: N             = n("Predef")
+    final val ScalaRunTime: N       = n("ScalaRunTime")
+    final val Some: N               = n("Some")
 
-    val x_0 : N  = "x$0"
-    val x_1 : N  = "x$1"
-    val x_2 : N  = "x$2"
-    val x_3 : N  = "x$3"
-    val x_4 : N  = "x$4"
-    val x_5 : N  = "x$5"
-    val x_6 : N  = "x$6"
-    val x_7 : N  = "x$7"
-    val x_8 : N  = "x$8"
-    val x_9 : N  = "x$9"
-    val _1 : N  = "_1"
-    val _2 : N  = "_2"
-    val _3 : N  = "_3"
-    val _4 : N  = "_4"
-    val _5 : N  = "_5"
-    val _6 : N  = "_6"
-    val _7 : N  = "_7"
-    val _8 : N  = "_8"
-    val _9 : N  = "_9"
-    val _10 : N = "_10"
-    val _11 : N = "_11"
-    val _12 : N = "_12"
-    val _13 : N = "_13"
-    val _14 : N = "_14"
-    val _15 : N = "_15"
-    val _16 : N = "_16"
-    val _17 : N = "_17"
-    val _18 : N = "_18"
-    val _19 : N = "_19"
-    val _20 : N = "_20"
-    val _21 : N = "_21"
-    val _22 : N = "_22"
+    val x_0 : N  = n("x$0")
+    val x_1 : N  = n("x$1")
+    val x_2 : N  = n("x$2")
+    val x_3 : N  = n("x$3")
+    val x_4 : N  = n("x$4")
+    val x_5 : N  = n("x$5")
+    val x_6 : N  = n("x$6")
+    val x_7 : N  = n("x$7")
+    val x_8 : N  = n("x$8")
+    val x_9 : N  = n("x$9")
+    val _1 : N   = n("_1")
+    val _2 : N   = n("_2")
+    val _3 : N   = n("_3")
+    val _4 : N   = n("_4")
+    val _5 : N   = n("_5")
+    val _6 : N   = n("_6")
+    val _7 : N   = n("_7")
+    val _8 : N   = n("_8")
+    val _9 : N   = n("_9")
+    val _10 : N  = n("_10")
+    val _11 : N  = n("_11")
+    val _12 : N  = n("_12")
+    val _13 : N  = n("_13")
+    val _14 : N  = n("_14")
+    val _15 : N  = n("_15")
+    val _16 : N  = n("_16")
+    val _17 : N  = n("_17")
+    val _18 : N  = n("_18")
+    val _19 : N  = n("_19")
+    val _20 : N  = n("_20")
+    val _21 : N  = n("_21")
+    val _22 : N  = n("_22")
 
-    val ??? : N = "???"
+    val ??? : N = n("???")
 
-    val genericWrapArray: N     = "genericWrapArray"
-    def wrapRefArray: N         = "wrapRefArray"
-    def wrapXArray(clsName: Name): N = "wrap" + clsName + "Array"
+    val genericWrapArray: N     = n("genericWrapArray")
+    def wrapRefArray: N         = n("wrapRefArray")
+    def wrapXArray(clsName: Name): N = n("wrap" + clsName + "Array")
 
     // Compiler utilized names
 
-    val AnnotatedType: N        = "AnnotatedType"
-    val AppliedTypeTree: N      = "AppliedTypeTree"
-    val ArrayAnnotArg: N        = "ArrayAnnotArg"
-    val Constant: N             = "Constant"
-    val ConstantType: N         = "ConstantType"
-    val doubleHash: N           = "doubleHash"
-    val ExistentialTypeTree: N  = "ExistentialTypeTree"
-    val Flag : N                = "Flag"
-    val floatHash: N            = "floatHash"
-    val Ident: N                = "Ident"
-    val Import: N               = "Import"
-    val Literal: N              = "Literal"
-    val LiteralAnnotArg: N      = "LiteralAnnotArg"
-    val longHash: N             = "longHash"
-    val Modifiers: N            = "Modifiers"
-    val NestedAnnotArg: N       = "NestedAnnotArg"
-    val NoFlags: N              = "NoFlags"
-    val NoPrefix: N             = "NoPrefix"
-    val NoSymbol: N             = "NoSymbol"
-    val NoType: N               = "NoType"
-    val Pair: N                 = "Pair"
-    val Ref: N                  = "Ref"
-    val RootPackage: N          = "RootPackage"
-    val RootClass: N            = "RootClass"
-    val Scala2: N               = "Scala2"
-    val Select: N               = "Select"
-    val StringContext: N        = "StringContext"
-    val This: N                 = "This"
-    val ThisType: N             = "ThisType"
-    val Tuple2: N               = "Tuple2"
-    val TYPE_ : N               = "TYPE"
-    val TypeApply: N            = "TypeApply"
-    val TypeRef: N              = "TypeRef"
-    val UNIT : N                = "UNIT"
-    val add_ : N                = "add"
-    val annotation: N           = "annotation"
-    val anyHash: N              = "anyHash"
-    val anyValClass: N          = "anyValClass"
-    val append: N               = "append"
-    val apply: N                = "apply"
-    val applyDynamic: N         = "applyDynamic"
-    val applyDynamicNamed: N    = "applyDynamicNamed"
-    val applyOrElse: N          = "applyOrElse"
-    val args : N                = "args"
-    val argv : N                = "argv"
-    val arrayClass: N           = "arrayClass"
-    val arrayElementClass: N    = "arrayElementClass"
-    val arrayValue: N           = "arrayValue"
-    val array_apply : N         = "array_apply"
-    val array_clone : N         = "array_clone"
-    val array_length : N        = "array_length"
-    val array_update : N        = "array_update"
-    val arraycopy: N            = "arraycopy"
-    val asTerm: N               = "asTerm"
-    val asModule: N             = "asModule"
-    val asMethod: N             = "asMethod"
-    val asType: N               = "asType"
-    val asClass: N              = "asClass"
-    val asInstanceOf_ : N       = "asInstanceOf"
-    val assert_ : N             = "assert"
-    val assume_ : N             = "assume"
-    val box: N                  = "box"
-    val build : N               = "build"
-    val bytes: N                = "bytes"
-    val canEqual_ : N           = "canEqual"
-    val cbnArg: N               = "<cbn-arg>"
-    val checkInitialized: N     = "checkInitialized"
-    val ClassManifestFactory: N = "ClassManifestFactory"
-    val classOf: N              = "classOf"
-    val clone_ : N              = "clone"
-    val conforms_ : N           = "$conforms"
-    val copy: N                 = "copy"
-    val currentMirror: N        = "currentMirror"
-    val create: N               = "create"
-    val definitions: N          = "definitions"
-    val delayedInit: N          = "delayedInit"
-    val delayedInitArg: N       = "delayedInit$body"
-    val drop: N                 = "drop"
-    val dynamics: N             = "dynamics"
-    val elem: N                 = "elem"
-    val emptyValDef: N          = "emptyValDef"
-    val ensureAccessible : N    = "ensureAccessible"
-    val enumTag: N              = "enumTag"
-    val eq: N                   = "eq"
-    val eqInstance: N           = "eqInstance"
-    val equalsNumChar : N       = "equalsNumChar"
-    val equalsNumNum : N        = "equalsNumNum"
-    val equalsNumObject : N     = "equalsNumObject"
-    val equals_ : N             = "equals"
-    val error: N                = "error"
-    val eval: N                 = "eval"
-    val eqAny: N                = "eqAny"
-    val ex: N                   = "ex"
-    val experimental: N         = "experimental"
-    val f: N                    = "f"
-    val false_ : N              = "false"
-    val filter: N               = "filter"
-    val finalize_ : N           = "finalize"
-    val find_ : N               = "find"
-    val flagsFromBits : N       = "flagsFromBits"
-    val flatMap: N              = "flatMap"
-    val foreach: N              = "foreach"
-    val genericArrayOps: N      = "genericArrayOps"
-    val get: N                  = "get"
-    val getClass_ : N           = "getClass"
-    val getOrElse: N            = "getOrElse"
-    val hasNext: N              = "hasNext"
-    val hashCode_ : N           = "hashCode"
-    val hash_ : N               = "hash"
-    val head: N                 = "head"
-    val higherKinds: N          = "higherKinds"
-    val identity: N             = "identity"
-    val implicitly: N           = "implicitly"
-    val in: N                   = "in"
-    val info: N                 = "info"
-    val inlinedEquals: N        = "inlinedEquals"
-    val isArray: N              = "isArray"
-    val isDefinedAt: N          = "isDefinedAt"
-    val isDefinedAtImpl: N      = "$isDefinedAt"
-    val isDefined: N            = "isDefined"
-    val isEmpty: N              = "isEmpty"
-    val isInstanceOf_ : N       = "isInstanceOf"
-    val isInstanceOfPM: N       = "$isInstanceOf$"
-    val java: N                 = "java"
-    val key: N                  = "key"
-    val lang: N                 = "lang"
-    val length: N               = "length"
-    val lengthCompare: N        = "lengthCompare"
-    val `macro` : N             = "macro"
-    val macroThis : N           = "_this"
-    val macroContext : N        = "c"
-    val main: N                 = "main"
-    val manifest: N             = "manifest"
-    val ManifestFactory: N      = "ManifestFactory"
-    val manifestToTypeTag: N    = "manifestToTypeTag"
-    val map: N                  = "map"
-    val materializeClassTag: N  = "materializeClassTag"
-    val materializeWeakTypeTag: N = "materializeWeakTypeTag"
-    val materializeTypeTag: N   = "materializeTypeTag"
-    val mirror : N              = "mirror"
-    val moduleClass : N         = "moduleClass"
-    val name: N                 = "name"
-    val ne: N                   = "ne"
-    val newFreeTerm: N          = "newFreeTerm"
-    val newFreeType: N          = "newFreeType"
-    val newScopeWith: N         = "newScopeWith"
-    val next: N                 = "next"
-    val nmeNewTermName: N       = "newTermName"
-    val nmeNewTypeName: N       = "newTypeName"
-    val noAutoTupling: N        = "noAutoTupling"
-    val normalize: N            = "normalize"
-    val notifyAll_ : N          = "notifyAll"
-    val notify_ : N             = "notify"
-    val null_ : N               = "null"
-    val ofDim: N                = "ofDim"
-    val origin: N               = "origin"
-    val prefix : N              = "prefix"
-    val productArity: N         = "productArity"
-    val productElement: N       = "productElement"
-    val productIterator: N      = "productIterator"
-    val productPrefix: N        = "productPrefix"
-    val readResolve: N          = "readResolve"
-    val reflect : N             = "reflect"
-    val reify : N               = "reify"
-    val rootMirror : N          = "rootMirror"
-    val run: N                  = "run"
-    val runOrElse: N            = "runOrElse"
-    val runtime: N              = "runtime"
-    val runtimeClass: N         = "runtimeClass"
-    val runtimeMirror: N        = "runtimeMirror"
-    val sameElements: N         = "sameElements"
-    val scala_ : N              = "scala"
-    val scalaShadowing : N      = "scalaShadowing"
-    val selectDynamic: N        = "selectDynamic"
-    val selectDynamicMethod: N  = "selectDynamicMethod"
-    val selectOverloadedMethod: N = "selectOverloadedMethod"
-    val selectTerm: N           = "selectTerm"
-    val selectType: N           = "selectType"
-    val self: N                 = "self"
-    val seqToArray: N           = "seqToArray"
-    val setAccessible: N        = "setAccessible"
-    val setAnnotations: N       = "setAnnotations"
-    val setSymbol: N            = "setSymbol"
-    val setType: N              = "setType"
-    val setTypeSignature: N     = "setTypeSignature"
-    val splice: N               = "splice"
-    val staticClass : N         = "staticClass"
-    val staticModule : N        = "staticModule"
-    val staticPackage : N       = "staticPackage"
-    val strictEquality: N       = "strictEquality"
-    val synchronized_ : N       = "synchronized"
-    val tag: N                  = "tag"
-    val tail: N                 = "tail"
-    val `then` : N              = "then"
-    val this_ : N               = "this"
-    val thisPrefix : N          = "thisPrefix"
-    val throw_ : N              = "throw"
-    val toArray: N              = "toArray"
-    val toList: N               = "toList"
-    val toObjectArray : N       = "toObjectArray"
-    val toSeq: N                = "toSeq"
-    val toString_ : N           = "toString"
-    val toTypeConstructor: N    = "toTypeConstructor"
-    val tpe : N                 = "tpe"
-    val tree : N                = "tree"
-    val true_ : N               = "true"
-    val typedProductIterator: N = "typedProductIterator"
-    val typeTagToManifest: N    = "typeTagToManifest"
-    val unapply: N              = "unapply"
-    val unapplySeq: N           = "unapplySeq"
-    val unbox: N                = "unbox"
-    val universe: N             = "universe"
-    val update: N               = "update"
-    val updateDynamic: N        = "updateDynamic"
-    val value: N                = "value"
-    val valueOf : N             = "valueOf"
-    val values: N               = "values"
-    val view_ : N               = "view"
-    val wait_ : N               = "wait"
-    val withFilter: N           = "withFilter"
-    val withFilterIfRefutable: N = "withFilterIfRefutable$"
-    val wrap: N                 = "wrap"
-    val zero: N                 = "zero"
-    val zip: N                  = "zip"
-    val nothingRuntimeClass: N  = "scala.runtime.Nothing$"
-    val nullRuntimeClass: N     = "scala.runtime.Null$"
+    val AnnotatedType: N          = n("AnnotatedType")
+    val AppliedTypeTree: N        = n("AppliedTypeTree")
+    val ArrayAnnotArg: N          = n("ArrayAnnotArg")
+    val Constant: N               = n("Constant")
+    val ConstantType: N           = n("ConstantType")
+    val doubleHash: N             = n("doubleHash")
+    val ExistentialTypeTree: N    = n("ExistentialTypeTree")
+    val Flag : N                  = n("Flag")
+    val floatHash: N              = n("floatHash")
+    val Ident: N                  = n("Ident")
+    val Import: N                 = n("Import")
+    val Literal: N                = n("Literal")
+    val LiteralAnnotArg: N        = n("LiteralAnnotArg")
+    val longHash: N               = n("longHash")
+    val Modifiers: N              = n("Modifiers")
+    val NestedAnnotArg: N         = n("NestedAnnotArg")
+    val NoFlags: N                = n("NoFlags")
+    val NoPrefix: N               = n("NoPrefix")
+    val NoSymbol: N               = n("NoSymbol")
+    val NoType: N                 = n("NoType")
+    val Pair: N                   = n("Pair")
+    val Ref: N                    = n("Ref")
+    val RootPackage: N            = n("RootPackage")
+    val RootClass: N              = n("RootClass")
+    val Scala2: N                 = n("Scala2")
+    val Select: N                 = n("Select")
+    val StringContext: N          = n("StringContext")
+    val This: N                   = n("This")
+    val ThisType: N               = n("ThisType")
+    val Tuple2: N                 = n("Tuple2")
+    val TYPE_ : N                 = n("TYPE")
+    val TypeApply: N              = n("TypeApply")
+    val TypeRef: N                = n("TypeRef")
+    val UNIT : N                  = n("UNIT")
+    val add_ : N                  = n("add")
+    val annotation: N             = n("annotation")
+    val anyHash: N                = n("anyHash")
+    val anyValClass: N            = n("anyValClass")
+    val append: N                 = n("append")
+    val apply: N                  = n("apply")
+    val applyDynamic: N           = n("applyDynamic")
+    val applyDynamicNamed: N      = n("applyDynamicNamed")
+    val applyOrElse: N            = n("applyOrElse")
+    val args : N                  = n("args")
+    val argv : N                  = n("argv")
+    val arrayClass: N             = n("arrayClass")
+    val arrayElementClass: N      = n("arrayElementClass")
+    val arrayValue: N             = n("arrayValue")
+    val array_apply : N           = n("array_apply")
+    val array_clone : N           = n("array_clone")
+    val array_length : N          = n("array_length")
+    val array_update : N          = n("array_update")
+    val arraycopy: N              = n("arraycopy")
+    val asTerm: N                 = n("asTerm")
+    val asModule: N               = n("asModule")
+    val asMethod: N               = n("asMethod")
+    val asType: N                 = n("asType")
+    val asClass: N                = n("asClass")
+    val asInstanceOf_ : N         = n("asInstanceOf")
+    val assert_ : N               = n("assert")
+    val assume_ : N               = n("assume")
+    val box: N                    = n("box")
+    val build : N                 = n("build")
+    val bytes: N                  = n("bytes")
+    val canEqual_ : N             = n("canEqual")
+    val cbnArg: N                 = n("<cbn-arg>")
+    val checkInitialized: N       = n("checkInitialized")
+    val ClassManifestFactory: N   = n("ClassManifestFactory")
+    val classOf: N                = n("classOf")
+    val clone_ : N                = n("clone")
+    val conforms_ : N             = n("conforms")
+    val copy: N                   = n("copy")
+    val currentMirror: N          = n("currentMirror")
+    val create: N                 = n("create")
+    val definitions: N            = n("definitions")
+    val delayedInit: N            = n("delayedInit")
+    val delayedInitArg: N         = n("delayedInit$body")
+    val drop: N                   = n("drop")
+    val dynamics: N               = n("dynamics")
+    val elem: N                   = n("elem")
+    val emptyValDef: N            = n("emptyValDef")
+    val ensureAccessible : N      = n("ensureAccessible")
+    val enumTag: N                = n("enumTag")
+    val eq: N                     = n("eq")
+    val eqInstance: N             = n("eqInstance")
+    val equalsNumChar : N         = n("equalsNumChar")
+    val equalsNumNum : N          = n("equalsNumNum")
+    val equalsNumObject : N       = n("equalsNumObject")
+    val equals_ : N               = n("equals")
+    val error: N                  = n("error")
+    val eval: N                   = n("eval")
+    val eqAny: N                  = n("eqAny")
+    val ex: N                     = n("ex")
+    val experimental: N           = n("experimental")
+    val f: N                      = n("f")
+    val false_ : N                = n("false")
+    val filter: N                 = n("filter")
+    val finalize_ : N             = n("finalize")
+    val find_ : N                 = n("find")
+    val flagsFromBits : N         = n("flagsFromBits")
+    val flatMap: N                = n("flatMap")
+    val foreach: N                = n("foreach")
+    val genericArrayOps: N        = n("genericArrayOps")
+    val get: N                    = n("get")
+    val getClass_ : N             = n("getClass")
+    val getOrElse: N              = n("getOrElse")
+    val hasNext: N                = n("hasNext")
+    val hashCode_ : N             = n("hashCode")
+    val hash_ : N                 = n("hash")
+    val head: N                   = n("head")
+    val higherKinds: N            = n("higherKinds")
+    val identity: N               = n("identity")
+    val implicitly: N             = n("implicitly")
+    val in: N                     = n("in")
+    val info: N                   = n("info")
+    val inlinedEquals: N          = n("inlinedEquals")
+    val isArray: N                = n("isArray")
+    val isDefinedAt: N            = n("isDefinedAt")
+    val isDefinedAtImpl: N        = n("$isDefinedAt")
+    val isDefined: N              = n("isDefined")
+    val isEmpty: N                = n("isEmpty")
+    val isInstanceOf_ : N         = n("isInstanceOf")
+    val isInstanceOfPM: N         = n("$isInstanceOf$")
+    val java: N                   = n("java")
+    val key: N                    = n("key")
+    val lang: N                   = n("lang")
+    val length: N                 = n("length")
+    val lengthCompare: N          = n("lengthCompare")
+    val `macro` : N               = n("macro")
+    val macroThis : N             = n("_this")
+    val macroContext : N          = n("c")
+    val main: N                   = n("main")
+    val manifest: N               = n("manifest")
+    val ManifestFactory: N        = n("ManifestFactory")
+    val manifestToTypeTag: N      = n("manifestToTypeTag")
+    val map: N                    = n("map")
+    val materializeClassTag: N    = n("materializeClassTag")
+    val materializeWeakTypeTag: N = n("materializeWeakTypeTag")
+    val materializeTypeTag: N     = n("materializeTypeTag")
+    val mirror : N                = n("mirror")
+    val moduleClass : N           = n("moduleClass")
+    val name: N                   = n("name")
+    val ne: N                     = n("ne")
+    val newFreeTerm: N            = n("newFreeTerm")
+    val newFreeType: N            = n("newFreeType")
+    val newScopeWith: N           = n("newScopeWith")
+    val next: N                   = n("next")
+    val nmeNewTermName: N         = n("newTermName")
+    val nmeNewTypeName: N         = n("newTypeName")
+    val noAutoTupling: N          = n("noAutoTupling")
+    val normalize: N              = n("normalize")
+    val notifyAll_ : N            = n("notifyAll")
+    val notify_ : N               = n("notify")
+    val null_ : N                 = n("null")
+    val ofDim: N                  = n("ofDim")
+    val origin: N                 = n("origin")
+    val prefix : N                = n("prefix")
+    val productArity: N           = n("productArity")
+    val productElement: N         = n("productElement")
+    val productIterator: N        = n("productIterator")
+    val productPrefix: N          = n("productPrefix")
+    val readResolve: N            = n("readResolve")
+    val reflect : N               = n("reflect")
+    val reify : N                 = n("reify")
+    val rootMirror : N            = n("rootMirror")
+    val run: N                    = n("run")
+    val runOrElse: N              = n("runOrElse")
+    val runtime: N                = n("runtime")
+    val runtimeClass: N           = n("runtimeClass")
+    val runtimeMirror: N          = n("runtimeMirror")
+    val sameElements: N           = n("sameElements")
+    val scala_ : N                = n("scala")
+    val scalaShadowing : N        = n("scalaShadowing")
+    val selectDynamic: N          = n("selectDynamic")
+    val selectDynamicMethod: N    = n("selectDynamicMethod")
+    val selectOverloadedMethod: N = n("selectOverloadedMethod")
+    val selectTerm: N             = n("selectTerm")
+    val selectType: N             = n("selectType")
+    val self: N                   = n("self")
+    val seqToArray: N             = n("seqToArray")
+    val setAccessible: N          = n("setAccessible")
+    val setAnnotations: N         = n("setAnnotations")
+    val setSymbol: N              = n("setSymbol")
+    val setType: N                = n("setType")
+    val setTypeSignature: N       = n("setTypeSignature")
+    val splice: N                 = n("splice")
+    val staticClass : N           = n("staticClass")
+    val staticModule : N          = n("staticModule")
+    val staticPackage : N         = n("staticPackage")
+    val strictEquality: N         = n("strictEquality")
+    val synchronized_ : N         = n("synchronized")
+    val tag: N                    = n("tag")
+    val tail: N                   = n("tail")
+    val `then` : N                = n("then")
+    val this_ : N                 = n("this")
+    val thisPrefix : N            = n("thisPrefix")
+    val throw_ : N                = n("throw")
+    val toArray: N                = n("toArray")
+    val toList: N                 = n("toList")
+    val toObjectArray : N         = n("toObjectArray")
+    val toSeq: N                  = n("toSeq")
+    val toString_ : N             = n("toString")
+    val toTypeConstructor: N      = n("toTypeConstructor")
+    val tpe : N                   = n("tpe")
+    val tree : N                  = n("tree")
+    val true_ : N                 = n("true")
+    val typedProductIterator: N   = n("typedProductIterator")
+    val typeTagToManifest: N      = n("typeTagToManifest")
+    val unapply: N                = n("unapply")
+    val unapplySeq: N             = n("unapplySeq")
+    val unbox: N                  = n("unbox")
+    val universe: N               = n("universe")
+    val update: N                 = n("update")
+    val updateDynamic: N          = n("updateDynamic")
+    val value: N                  = n("value")
+    val valueOf : N               = n("valueOf")
+    val values: N                 = n("values")
+    val view_ : N                 = n("view")
+    val wait_ : N                 = n("wait")
+    val withFilter: N             = n("withFilter")
+    val withFilterIfRefutable: N  = n("withFilterIfRefutable$")
+    val wrap: N                   = n("wrap")
+    val zero: N                   = n("zero")
+    val zip: N                    = n("zip")
+    val nothingRuntimeClass: N    = n("scala.runtime.Nothing$")
+    val nullRuntimeClass: N       = n("scala.runtime.Null$")
 
-    val synthSwitch: N          = "$synthSwitch"
-    val _scope: N               = "$scope"
+    val synthSwitch: N            = n("$synthSwitch")
+    val _scope: N                 = n("$scope")
 
-    val nothingClass: N         = "Nothing$"
-    val nullClass: N            = "Null$"
+    val nothingClass: N           = n("Nothing$")
+    val nullClass: N              = n("Null$")
 
     val falseModuleClassNames = Set(nothingClass, nullClass, nothingRuntimeClass, nullRuntimeClass)
 
     // unencoded operators
     object raw {
-      final val AMP  : N  = "&"
-      final val BANG : N  = "!"
-      final val BAR  : N  = "|"
-      final val DOLLAR: N = "$"
-      final val GE: N     = ">="
-      final val LE: N     = "<="
-      final val MINUS: N  = "-"
-      final val NE: N     = "!="
-      final val PLUS : N  = "+"
-      final val SLASH: N  = "/"
-      final val STAR : N  = "*"
-      final val TILDE: N  = "~"
+      final val AMP  : N  = n("&")
+      final val BANG : N  = n("!")
+      final val BAR  : N  = n("|")
+      final val DOLLAR: N = n("$")
+      final val GE: N     = n(">=")
+      final val LE: N     = n("<=")
+      final val MINUS: N  = n("-")
+      final val NE: N     = n("!=")
+      final val PLUS : N  = n("+")
+      final val SLASH: N  = n("/")
+      final val STAR : N  = n("*")
+      final val TILDE: N  = n("~")
 
       final val isUnary: Set[Name] = Set(MINUS, PLUS, TILDE, BANG)
     }
 
     object specializedTypeNames {
-      final val Boolean: N = "Z"
-      final val Byte: N    = "B"
-      final val Char: N    = "C"
-      final val Short: N   = "S"
-      final val Int: N     = "I"
-      final val Long: N    = "J"
-      final val Float: N   = "F"
-      final val Double: N  = "D"
-      final val Void: N    = "V"
-      final val Object: N  = "L"
+      final val Boolean: N = n("Z")
+      final val Byte: N    = n("B")
+      final val Char: N    = n("C")
+      final val Short: N   = n("S")
+      final val Int: N     = n("I")
+      final val Long: N    = n("J")
+      final val Float: N   = n("F")
+      final val Double: N  = n("D")
+      final val Void: N    = n("V")
+      final val Object: N  = n("L")
 
-      final val prefix: N = "$m"
-      final val separator: N = "c"
-      final val suffix: N = "$sp"
+      final val prefix: N = n("$m")
+      final val separator: N = n("c")
+      final val suffix: N = n("$sp")
     }
 
     // value-conversion methods
-    val toByte: N   = "toByte"
-    val toShort: N  = "toShort"
-    val toChar: N   = "toChar"
-    val toInt: N    = "toInt"
-    val toLong: N   = "toLong"
-    val toFloat: N  = "toFloat"
-    val toDouble: N = "toDouble"
+    val toByte: N   = n("toByte")
+    val toShort: N  = n("toShort")
+    val toChar: N   = n("toChar")
+    val toInt: N    = n("toInt")
+    val toLong: N   = n("toLong")
+    val toFloat: N  = n("toFloat")
+    val toDouble: N = n("toDouble")
 
     // primitive operation methods for structural types mostly
     // overlap with the above, but not for these two.
-    val toCharacter: N = "toCharacter"
-    val toInteger: N   = "toInteger"
+    val toCharacter: N = n("toCharacter")
+    val toInteger: N   = n("toInteger")
 
     def newLazyValSlowComputeName(lzyValName: N) = lzyValName ++ LAZY_SLOW_SUFFIX
 
     // ASCII names for operators
-    val ADD      : N = "+"
-    val AND      : N = "&"
-    val ASR      : N = ">>"
-    val DIV      : N = "/"
-    val EQ       : N = "=="
-    val EQL      : N = "="
-    val GE       : N = ">="
-    val GT       : N = ">"
-    val HASHHASH : N = "##"
-    val LE       : N = "<="
-    val LSL      : N = "<<"
-    val LSR      : N = ">>>"
-    val LT       : N = "<"
-    val MINUS    : N = "-"
-    val MOD      : N = "%"
-    val MUL      : N = "*"
-    val NE       : N = "!="
-    val OR       : N = "|"
+    val ADD      : N = n("+")
+    val AND      : N = n("&")
+    val ASR      : N = n(">>")
+    val DIV      : N = n("/")
+    val EQ       : N = n("==")
+    val EQL      : N = n("=")
+    val GE       : N = n(">=")
+    val GT       : N = n(">")
+    val HASHHASH : N = n("##")
+    val LE       : N = n("<=")
+    val LSL      : N = n("<<")
+    val LSR      : N = n(">>>")
+    val LT       : N = n("<")
+    val MINUS    : N = n("-")
+    val MOD      : N = n("%")
+    val MUL      : N = n("*")
+    val NE       : N = n("!=")
+    val OR       : N = n("|")
     val PLUS     = ADD    // technically redundant, but ADD looks funny with MINUS
     val SUB      = MINUS  // ... as does SUB with PLUS
-    val XOR      : N = "^"
-    val ZAND     : N = "&&"
-    val ZOR      : N = "||"
+    val XOR      : N = n("^")
+    val ZAND     : N = n("&&")
+    val ZOR      : N = n("||")
 
     // unary operators
-    val UNARY_PREFIX: N = "unary_"
-    val UNARY_~ : N = "unary_~"
-    val UNARY_+ : N = "unary_+"
-    val UNARY_- : N = "unary_-"
-    val UNARY_! : N = "unary_!"
+    val UNARY_PREFIX: N = n("unary_")
+    val UNARY_~ : N = n("unary_~")
+    val UNARY_+ : N = n("unary_+")
+    val UNARY_- : N = n("unary_-")
+    val UNARY_! : N = n("unary_!")
 
     // Grouped here so Cleanup knows what tests to perform.
     val CommonOpNames   = Set[Name](OR, XOR, AND, EQ, NE)
@@ -652,36 +647,36 @@ object StdNames {
       ++ CommonOpNames
     )
 
-    val add: N                    = "add"
-    val complement: N             = "complement"
-    val divide: N                 = "divide"
-    val multiply: N               = "multiply"
-    val negate: N                 = "negate"
-    val positive: N               = "positive"
-    val shiftLogicalRight: N      = "shiftLogicalRight"
-    val shiftSignedLeft: N        = "shiftSignedLeft"
-    val shiftSignedRight: N       = "shiftSignedRight"
-    val subtract: N               = "subtract"
-    val takeAnd: N                = "takeAnd"
-    val takeConditionalAnd: N     = "takeConditionalAnd"
-    val takeConditionalOr: N      = "takeConditionalOr"
-    val takeModulo: N             = "takeModulo"
-    val takeNot: N                = "takeNot"
-    val takeOr: N                 = "takeOr"
-    val takeXor: N                = "takeXor"
-    val testEqual: N              = "testEqual"
-    val testGreaterOrEqualThan: N = "testGreaterOrEqualThan"
-    val testGreaterThan: N        = "testGreaterThan"
-    val testLessOrEqualThan: N    = "testLessOrEqualThan"
-    val testLessThan: N           = "testLessThan"
-    val testNotEqual: N           = "testNotEqual"
+    val add: N                    = n("add")
+    val complement: N             = n("complement")
+    val divide: N                 = n("divide")
+    val multiply: N               = n("multiply")
+    val negate: N                 = n("negate")
+    val positive: N               = n("positive")
+    val shiftLogicalRight: N      = n("shiftLogicalRight")
+    val shiftSignedLeft: N        = n("shiftSignedLeft")
+    val shiftSignedRight: N       = n("shiftSignedRight")
+    val subtract: N               = n("subtract")
+    val takeAnd: N                = n("takeAnd")
+    val takeConditionalAnd: N     = n("takeConditionalAnd")
+    val takeConditionalOr: N      = n("takeConditionalOr")
+    val takeModulo: N             = n("takeModulo")
+    val takeNot: N                = n("takeNot")
+    val takeOr: N                 = n("takeOr")
+    val takeXor: N                = n("takeXor")
+    val testEqual: N              = n("testEqual")
+    val testGreaterOrEqualThan: N = n("testGreaterOrEqualThan")
+    val testGreaterThan: N        = n("testGreaterThan")
+    val testLessOrEqualThan: N    = n("testLessOrEqualThan")
+    val testLessThan: N           = n("testLessThan")
+    val testNotEqual: N           = n("testNotEqual")
 
-    val isBoxedNumberOrBoolean: N = "isBoxedNumberOrBoolean"
-    val isBoxedNumber: N = "isBoxedNumber"
+    val isBoxedNumberOrBoolean: N = n("isBoxedNumberOrBoolean")
+    val isBoxedNumber: N = n("isBoxedNumber")
   }
 
   class ScalaTermNames extends ScalaNames[TermName] {
-    protected implicit def fromString(s: String): TermName = termName(s)
+    protected def n(s: String): TermName = termName(s)
 
     @switch def syntheticParamName(i: Int): TermName = i match {
       case 0  => x_0
@@ -728,12 +723,12 @@ object StdNames {
 
     def newBitmapName(bitmapPrefix: TermName, n: Int): TermName = bitmapPrefix ++ n.toString
 
-    def selectorName(n: Int): TermName = "_" + (n + 1)
+    def selectorName(x: Int): TermName = n("_" + (x + 1))
 
     object primitive {
-      val arrayApply: TermName  = "[]apply"
-      val arrayUpdate: TermName = "[]update"
-      val arrayLength: TermName = "[]length"
+      val arrayApply: TermName  = n("[]apply")
+      val arrayUpdate: TermName = n("[]update")
+      val arrayLength: TermName = n("[]length")
       val names: Set[Name] = Set(arrayApply, arrayUpdate, arrayLength)
     }
 
@@ -741,13 +736,13 @@ object StdNames {
   }
 
   class ScalaTypeNames extends ScalaNames[TypeName] {
-    protected implicit def fromString(s: String): TypeName = typeName(s)
+    protected def n(s: String): TypeName = typeName(s)
 
-    def syntheticTypeParamName(i: Int): TypeName = "X" + i
+    def syntheticTypeParamName(i: Int): TypeName = n("X" + i)
 
     final val Conforms = encode("<:<")
 
-    final val Uninstantiated: TypeName = "?$"
+    final val Uninstantiated: TypeName = n("?$")
   }
 
   abstract class JavaNames[N <: Name] extends DefinedNames[N] {
@@ -802,43 +797,43 @@ object StdNames {
     final val VOLATILEkw: N     = kw("volatile")
     final val WHILEkw: N        = kw("while")
 
-    final val BoxedBoolean: N       = "java.lang.Boolean"
-    final val BoxedByte: N          = "java.lang.Byte"
-    final val BoxedCharacter: N     = "java.lang.Character"
-    final val BoxedDouble: N        = "java.lang.Double"
-    final val BoxedFloat: N         = "java.lang.Float"
-    final val BoxedInteger: N       = "java.lang.Integer"
-    final val BoxedLong: N          = "java.lang.Long"
-    final val BoxedNumber: N        = "java.lang.Number"
-    final val BoxedShort: N         = "java.lang.Short"
-    final val Class: N              = "java.lang.Class"
-    final val IOOBException: N      = "java.lang.IndexOutOfBoundsException"
-    final val InvTargetException: N = "java.lang.reflect.InvocationTargetException"
-    final val MethodAsObject: N     = "java.lang.reflect.Method"
-    final val NPException: N        = "java.lang.NullPointerException"
-    final val Object: N             = "java.lang.Object"
-    final val String: N             = "java.lang.String"
-    final val Throwable: N          = "java.lang.Throwable"
+    final val BoxedBoolean: N       = n("java.lang.Boolean")
+    final val BoxedByte: N          = n("java.lang.Byte")
+    final val BoxedCharacter: N     = n("java.lang.Character")
+    final val BoxedDouble: N        = n("java.lang.Double")
+    final val BoxedFloat: N         = n("java.lang.Float")
+    final val BoxedInteger: N       = n("java.lang.Integer")
+    final val BoxedLong: N          = n("java.lang.Long")
+    final val BoxedNumber: N        = n("java.lang.Number")
+    final val BoxedShort: N         = n("java.lang.Short")
+    final val Class: N              = n("java.lang.Class")
+    final val IOOBException: N      = n("java.lang.IndexOutOfBoundsException")
+    final val InvTargetException: N = n("java.lang.reflect.InvocationTargetException")
+    final val MethodAsObject: N     = n("java.lang.reflect.Method")
+    final val NPException: N        = n("java.lang.NullPointerException")
+    final val Object: N             = n("java.lang.Object")
+    final val String: N             = n("java.lang.String")
+    final val Throwable: N          = n("java.lang.Throwable")
 
-    final val ForName: N          = "forName"
-    final val GetCause: N         = "getCause"
-    final val GetClass: N         = "getClass"
-    final val GetClassLoader: N   = "getClassLoader"
-    final val GetComponentType: N = "getComponentType"
-    final val GetMethod: N        = "getMethod"
-    final val Invoke: N           = "invoke"
-    final val JavaLang: N         = "java.lang"
+    final val ForName: N          = n("forName")
+    final val GetCause: N         = n("getCause")
+    final val GetClass: N         = n("getClass")
+    final val GetClassLoader: N   = n("getClassLoader")
+    final val GetComponentType: N = n("getComponentType")
+    final val GetMethod: N        = n("getMethod")
+    final val Invoke: N           = n("invoke")
+    final val JavaLang: N         = n("java.lang")
 
-    final val BeanProperty: N        = "scala.beans.BeanProperty"
-    final val BooleanBeanProperty: N = "scala.beans.BooleanBeanProperty"
-    final val JavaSerializable: N    = "java.io.Serializable"
+    final val BeanProperty: N        = n("scala.beans.BeanProperty")
+    final val BooleanBeanProperty: N = n("scala.beans.BooleanBeanProperty")
+    final val JavaSerializable: N    = n("java.io.Serializable")
    }
 
   class JavaTermNames extends JavaNames[TermName] {
-    protected def fromString(s: String): TermName = termName(s)
+    protected def n(s: String): TermName = termName(s)
   }
   class JavaTypeNames extends JavaNames[TypeName] {
-    protected def fromString(s: String): TypeName = typeName(s)
+    protected def n(s: String): TypeName = typeName(s)
   }
 
   val nme = new ScalaTermNames

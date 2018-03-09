@@ -34,29 +34,29 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
   private[parsing] var isPattern: Boolean = _
 
   private object xmltypes extends ScalaTypeNames {
-    val _Comment: TypeName             = "Comment"
-    val _Elem: TypeName                = "Elem"
-    val _EntityRef: TypeName           = "EntityRef"
-    val _Group: TypeName               = "Group"
-    val _MetaData: TypeName            = "MetaData"
-    val _NamespaceBinding: TypeName    = "NamespaceBinding"
-    val _NodeBuffer: TypeName          = "NodeBuffer"
-    val _PrefixedAttribute: TypeName   = "PrefixedAttribute"
-    val _ProcInstr: TypeName           = "ProcInstr"
-    val _Text: TypeName                = "Text"
-    val _Unparsed: TypeName            = "Unparsed"
-    val _UnprefixedAttribute: TypeName = "UnprefixedAttribute"
+    val _Comment: TypeName             = n("Comment")
+    val _Elem: TypeName                = n("Elem")
+    val _EntityRef: TypeName           = n("EntityRef")
+    val _Group: TypeName               = n("Group")
+    val _MetaData: TypeName            = n("MetaData")
+    val _NamespaceBinding: TypeName    = n("NamespaceBinding")
+    val _NodeBuffer: TypeName          = n("NodeBuffer")
+    val _PrefixedAttribute: TypeName   = n("PrefixedAttribute")
+    val _ProcInstr: TypeName           = n("ProcInstr")
+    val _Text: TypeName                = n("Text")
+    val _Unparsed: TypeName            = n("Unparsed")
+    val _UnprefixedAttribute: TypeName = n("UnprefixedAttribute")
   }
 
   private object xmlterms extends ScalaTermNames {
-    val _Null: TermName     = "Null"
-    val __Elem: TermName    = "Elem"
-    val __Text: TermName    = "Text"
-    val _buf: TermName      = "$buf"
-    val _md: TermName       = "$md"
-    val _plus: TermName     = "&+"
-    val _tmpscope: TermName = "$tmpscope"
-    val _xml: TermName      = "xml"
+    val _Null: TermName     = n("Null")
+    val __Elem: TermName    = n("Elem")
+    val __Text: TermName    = n("Text")
+    val _buf: TermName      = n("$buf")
+    val _md: TermName       = n("$md")
+    val _plus: TermName     = n("&+")
+    val _tmpscope: TermName = n("$tmpscope")
+    val _xml: TermName      = n("xml")
   }
 
   import xmltypes.{_Comment, _Elem, _EntityRef, _Group, _MetaData, _NamespaceBinding, _NodeBuffer,
