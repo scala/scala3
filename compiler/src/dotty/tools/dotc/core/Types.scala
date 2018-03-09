@@ -263,7 +263,7 @@ object Types {
     }
 
     /** Is some part of this type produced as a repair for an error? */
-    final def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError, forceLazy = false)
+    def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError, forceLazy = false)
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     @tailrec final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = stripTypeVar match {
@@ -1282,6 +1282,23 @@ object Types {
      *  layer of it. Otherwise the type itself.
      */
     def deepenProto(implicit ctx: Context): Type = this
+
+    /** If this is a TypeRef or an Application of a GADT-bound type, replace the
+     *  GADT reference by its upper GADT bound. Otherwise NoType.
+     */
+    def followGADT(implicit ctx: Context): Type = widenDealias match {
+      case site: TypeRef if site.symbol.is(Opaque) =>
+        ctx.gadt.bounds(site.symbol) match {
+          case TypeBounds(_, hi) => hi
+          case _ => NoType
+        }
+      case AppliedType(tycon, args) =>
+        val tycon1 = tycon.followGADT
+        if (tycon1.exists) tycon1.appliedTo(args)
+        else NoType
+      case _ =>
+        NoType
+    }
 
 // ----- Substitutions -----------------------------------------------------
 
