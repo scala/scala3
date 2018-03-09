@@ -665,7 +665,7 @@ object Erasure {
       }
     }
 
-    override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context) =
+    override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): Tree =
       EmptyTree
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
@@ -684,8 +684,8 @@ object Erasure {
       }
 
     override def simplify(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type = tree
-}
+  }
 
-  def takesBridges(sym: Symbol)(implicit ctx: Context) =
+  private def takesBridges(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.isClass && !sym.is(Flags.Trait | Flags.Package)
 }
