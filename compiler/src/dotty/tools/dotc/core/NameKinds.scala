@@ -213,9 +213,13 @@ object NameKinds {
       safePrefix + info.num
     }
 
-    /** Generate fresh unique name of this kind with given prefix name */
+    /** Generate fresh unique term name of this kind with given prefix name */
     def fresh(prefix: TermName = EmptyTermName)(implicit ctx: Context): TermName =
       ctx.freshNames.newName(prefix, this)
+
+    /** Generate fresh unique type name of this kind with given prefix name */
+    def fresh(prefix: TypeName)(implicit ctx: Context): TypeName =
+      fresh(prefix.toTermName).toTypeName
 
     uniqueNameKinds(separator) = this
   }
