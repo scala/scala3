@@ -773,13 +773,17 @@ object desugar {
   }
 
   private val collectNames = new untpd.UntypedTreeAccumulator[ListBuffer[String]] {
+    def add(buf: ListBuffer[String], name: Name): ListBuffer[String] = {
+      val alpha = name.toString.filter(isIdentifierPart)
+      if (alpha.isEmpty) buf else buf += alpha
+    }
     override def apply(buf: ListBuffer[String], tree: Tree)(implicit ctx: Context): ListBuffer[String] = tree match {
       case Ident(name) =>
-        buf += name.toString
+        add(buf, name)
       case Select(qual, name) =>
-        apply(buf, qual) += name.toString
+        add(apply(buf, qual), name)
       case TypeDef(name, rhs) =>
-        apply(buf += "type" += name.toString, rhs)
+        apply(add(buf += "type", name), rhs)
       case Apply(fn, _) =>
         apply(buf, fn)
       case _ =>
@@ -790,12 +794,11 @@ object desugar {
   private def extensionName(ext: Extension)(implicit ctx: Context): TypeName = {
     var buf = collectNames(new ListBuffer[String] += "extend", ext.extended)
     if (ext.impl.parents.nonEmpty)
-      buf = collectNames(buf += "implements", ext.impl.parents)
-    val ids = buf.toList.map(_.filter(isIdentifierPart)).filter(!_.isEmpty)
-    ids.mkString("_").toTypeName
+      buf = collectNames(buf += "", ext.impl.parents)
+    buf.toList.mkString("_").toTypeName
   }
 
-  /**     extend <type-pattern> <params> implements <parents> { <body>} }
+  /**     extend <type-pattern> <params> : <parents> { <body>} }
    *   ->
    *      implicit class <extension-name> <type-params> ($this: <extended>) <combined-params>
    *      extends <parents> { <body1> }
@@ -855,7 +858,7 @@ object desugar {
 
     val mods =
       if (isSimpleExtension) EmptyModifiers
-      else EmptyModifiers.withAddedMod(Mod.TraitImplementation())
+      else EmptyModifiers.withAddedMod(Mod.InstanceDecl())
     val icls =
       TypeDef(extName,
         cpy.Template(impl)(constr = constr1, parents = parents1, body = body1))

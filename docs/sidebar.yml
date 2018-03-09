@@ -33,8 +33,8 @@ sidebar:
           subsection:
             - title: Extension Methods
               url: docs/reference/extend/extension-methods.html
-            - title: Extension Implementations
-              url: docs/reference/extend/extension-implementations.html
+            - title: Instance Declarations
+              url: docs/reference/extend/instance-declarations.html
             - title: Translation of Extensions
               url: docs/reference/extend/translation.html
         - title: Enums

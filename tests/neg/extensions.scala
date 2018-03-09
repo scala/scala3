@@ -24,13 +24,13 @@ object extensions {
 
   abstract class HasAreaClass extends HasArea
 
-  extend Circle implements HasArea {
+  extend Circle : HasArea {
     def area = this.radius * this.radius * math.Pi
   }
 
-  extend Circle2 extends HasArea {} // error: `implements` or `{` expected // error: `def` expected
+  extend Circle2 extends HasArea {} // error: `:` or `{` expected // error: `def` expected
 
-  extend Circle implements HasAreaClass { // error: class HasAreaClass is not a trait
+  extend Circle : HasAreaClass { // error: class HasAreaClass is not a trait
     def area = this.radius * this.radius * math.Pi
   }
 

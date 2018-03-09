@@ -15,7 +15,7 @@ object extensions {
     def area: Double
   }
 
-  extend Circle implements HasArea {
+  extend Circle : HasArea {
     def area = this.radius * this.radius * math.Pi
   }
 
@@ -63,7 +63,7 @@ object extensions {
     def === (that: T): Boolean
   }
 
-  extend (type S: Eql) implements HasEql[S] {
+  extend (type S : Eql) : HasEql[S] {
     def === (that: S): Boolean = implicitly[Eql[S]].eql(this, that)
   }
 
@@ -71,7 +71,7 @@ object extensions {
     def ==== (that: T2): Boolean = implicitly[Eql[T2]].eql(this, that)
   }
 
-  extend Rectangle[type T: Eql] implements HasEql[Rectangle[T]] {
+  extend Rectangle[type T : Eql] : HasEql[Rectangle[T]] {
     def === (that: Rectangle[T]) =
       this.x === that.x &&
       this.y === that.y &&
@@ -81,16 +81,16 @@ object extensions {
 }
 
 object extensions2 {
-  import extensions.{Eql, extend_type_S_Eql_S_implements_HasEql_S}
+  import extensions.{Eql, extend_type_S_Eql_S__HasEql_S}
   // Nested generic arguments
 
   extend List[List[type U]] {
     def flattened: List[U] = (this :\ (Nil: List[U]))(_ ++ _)
   }
 
-  extend (type T: Eql, T) {
+  extend (type T : Eql, T) {
     def isSame = this._1 === this._2
-    def isSame2 = extend_type_S_Eql_S_implements_HasEql_S(this._1) == this._2
+    def isSame2 = extend_type_S_Eql_S__HasEql_S(this._1) == this._2
   }
 
 }

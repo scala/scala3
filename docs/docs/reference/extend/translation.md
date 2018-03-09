@@ -5,7 +5,7 @@ title: "Translation of Extensions"
 
 Extensons are closely related to implicit classes and can be translated into them. In short,
 an extension that just adds extension methods translates into an implicit value class whereas
-an extension with an `implements` clause translates
+an instance declaration translates
 into a regular implicit class. The following sections sketch this translation.
 
 Conversely, it is conceivable (and desirable) to replace most usages of implicit classes and value classes by extensions and [opaque types](../opaques.html). We plan to [drop](../dropped/implicit-value-classes.html)
@@ -31,7 +31,9 @@ Extensions are anonymous -- the first identifier given in an extension designate
  2. Drop an implicit parameter list if one is given and also drop any value arguments to parent constructors.
  3. Drop any tokens that are not keywords of identifiers.
  4. In each token resulting from the previous step, drop all characters that are not legal parts of alphanumeric identifiers. This leaves all characters that satisfy the `java.lang.Character.isUnicodeIdentifierPart` predicate as well as `$`. Among Ascii characters, the retained characters are all letters, digits, as well as `_` and `$`.
- 5. Concatenate all non-empty strings resulting from the previous step with `_` separators.
+ 5. Concatenate all non-empty strings resulting from the previous step with `_` separators,
+    except use `__` (i.e. two underscores) between identifiers coming from the type pattern
+    and identifiers coming from the implemented traits (if there are any).
 
 It is an error if two extensions defined in the same scope have the same computed name. These double definition errors can always be avoided by grouping augments together or, as a last resort, defining suitable type aliases. The scheme gives stable names that do not depend on the order in which definitions are given.
 
@@ -69,11 +71,11 @@ implicit class extend_Seq_type_T_math_Ordering [T]($this: List[T]) extends AnyVa
 }
 ```
 
-### Translation of Extension Implementations
+### Translation of Instance Declarations
 
 Now, assume an extension
 
-    extend <TP> <params> implements <parents> { <body> }
+    extend <TP> <params> : <parents> { <body> }
 
 Let again `(<tparams>, <T>)` be the decomposition of `<TP>`. This extension is translated to
 
@@ -87,7 +89,7 @@ parameterized.
 For example, the extension
 
 ```scala
-extend (type T: Eql) implements HasEql[T] {
+extend (type T: Eql) : HasEql[T] {
   def === (that: T): Boolean = implicitly[Eql[T]].eql(this, that)
 }
 ```
@@ -95,7 +97,7 @@ extend (type T: Eql) implements HasEql[T] {
 would be translated to
 
 ```scala
-implicit class extend_type_T_Eql_implements_HasEql_T [T]
+implicit class extend_type_T_Eql__HasEql_T [T]
                   ($this: T)(implicit $ev: Eql[T]) extends HasEql[T] {
     def === (that: T): Boolean = implicitly[Eql[T]].eql($this, that)
   }

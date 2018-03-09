@@ -143,7 +143,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class EnumCase() extends Mod(Flags.EmptyFlags)
 
-    case class TraitImplementation() extends Mod(Flags.EmptyFlags)
+    case class InstanceDecl() extends Mod(Flags.EmptyFlags)
   }
 
   /** Modifiers and annotations for definitions

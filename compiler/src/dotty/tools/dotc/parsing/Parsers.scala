@@ -2306,7 +2306,7 @@ object Parsers {
     /** Extension          ::=  ‘extend’ BindingTypePattern
      *                          [[nl] ImplicitParamClause] ExtensionClause
      *  BindingTypePattern ::=  AnnotType
-     *  ExtensionClause    ::=  ‘implements’ Template
+     *  ExtensionClause    ::=  : Template
      *                       |  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
      */
     def extension(): Extension = atPos(in.skipToken(), nameStart) {
@@ -2314,12 +2314,12 @@ object Parsers {
       val vparamss = paramClauses(tpnme.EMPTY, ofExtension = true).take(1)
       val constr = makeConstructor(Nil, vparamss)
       val templ =
-        if (in.token == IMPLEMENTS) {
+        if (in.token == COLON) {
           in.nextToken()
           template(constr, bodyRequired = true)._1
         }
         else {
-          if (in.token == EXTENDS) syntaxError("`implements` or `{` expected")
+          if (in.token == EXTENDS) syntaxError("`:` or `{` expected")
           val templ = templateClauseOpt(constr, bodyRequired = true)
           def checkDef(tree: Tree) = tree match {
             case _: DefDef | EmptyValDef => // ok
