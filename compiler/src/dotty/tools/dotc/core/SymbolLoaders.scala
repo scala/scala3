@@ -161,7 +161,6 @@ class SymbolLoaders {
 
         val unit = new CompilationUnit(ctx.run.getSource(src.path))
         enterScanned(unit)(ctx.run.runContext.fresh.setCompilationUnit(unit))
-        System.out.println(" done")
       }
     }
     else enterClassAndModule(owner, name, completer, scope = scope)
