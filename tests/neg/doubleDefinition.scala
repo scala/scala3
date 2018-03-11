@@ -124,3 +124,10 @@ class Test17 {
 		val foo = ""
 	}
 }
+
+// no error when overloading
+
+class Test18 {
+	def foo(a: A) = 1
+	def foo(b: B) = 1
+}
