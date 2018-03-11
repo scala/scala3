@@ -97,10 +97,10 @@ object ProtoTypes {
   abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
   extends CachedProxyType with ProtoType with ValueTypeOrProto {
 
-    /** Is the set of members of this type unknown? This is the caes if:
+    /** Is the set of members of this type unknown? This is the case if:
      *  1. The type has Nothing or Wildcard as a prefix or underlying type
      *  2. The type has an uninstantiated TypeVar as a prefix or underlying type,
-     *  or as an upper bound of a prefix and underlying type.
+     *  or as an upper bound of a prefix or underlying type.
      */
     private def hasUnknownMembers(tp: Type)(implicit ctx: Context): Boolean = tp match {
       case tp: TypeVar => !tp.isInstantiated
