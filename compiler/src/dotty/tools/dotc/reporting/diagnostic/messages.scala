@@ -2080,18 +2080,18 @@ object messages {
     val explanation = ""
   }
 
-  case class DoubleDeclaration(decl: Symbol, previousSymbol: Symbol)(implicit ctx: Context) extends Message(DoubleDeclarationID) {
+  case class DoubleDeclaration(decl: Symbol, previousDecl: Symbol)(implicit ctx: Context) extends Message(DoubleDeclarationID) {
     val kind = "Duplicate Symbol"
     val msg = {
-      val details = if (decl.isRealMethod && previousSymbol.isRealMethod) {
+      val details = if (decl.isRealMethod && previousDecl.isRealMethod) {
         // compare the signatures when both symbols represent methods
-        decl.asTerm.signature.matchDegree(previousSymbol.asTerm.signature) match {
+        decl.asTerm.signature.matchDegree(previousDecl.asTerm.signature) match {
           case Signature.NoMatch => ""
           case Signature.ParamMatch => "\nOverloads with equal parameter types but different return types are not allowed."
           case Signature.FullMatch => "\nThe definitions have the same signature after erasure."
         }
       } else ""
-      hl"${decl.showLocated} is already defined as ${previousSymbol.showDcl} in line ${previousSymbol.pos.line + 1}." + details
+      hl"${decl.showLocated} is already defined as ${previousDecl.showDcl} in line ${previousDecl.pos.line + 1}." + details
     }
     val explanation = ""
   }
