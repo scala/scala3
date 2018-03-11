@@ -445,7 +445,7 @@ object Erasure {
       }
 
     private def runtimeCallWithProtoArgs(name: Name, pt: Type, args: Tree*)(implicit ctx: Context): Tree = {
-      val meth = defn.runtimeMethodRef(name)
+      val meth = defn.runtimeMethodRef(name.toTermName)
       val followingParams = meth.symbol.info.firstParamTypes.drop(args.length)
       val followingArgs = protoArgs(pt, meth.widen).zipWithConserve(followingParams)(typedExpr).asInstanceOf[List[tpd.Tree]]
       ref(meth).appliedToArgs(args.toList ++ followingArgs)

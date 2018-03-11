@@ -77,7 +77,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
     def currentClass = ctx.owner.enclosingClass.asClass
     app match {
       case Apply(sel @ Select(Super(_, _), _), args)
-      if sel.symbol.owner.is(Scala2xTrait) && currentClass.mixins.contains(sel.symbol.owner) =>
+      if sel.symbol.owner.isBoth(Scala2x, and = Trait) && currentClass.mixins.contains(sel.symbol.owner) =>
         val impl = implMethod(sel.symbol)
         if (impl.exists) Apply(ref(impl), This(currentClass) :: args).withPos(app.pos)
         else app // could have been an abstract method in a trait linked to from a super constructor
@@ -105,6 +105,4 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
           .symbol
     else throw new AssertionError(i"no impl method for $meth")
   }
-
-  private val Scala2xTrait = allOf(Scala2x, Trait)
 }

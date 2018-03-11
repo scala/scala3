@@ -601,7 +601,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         " := " ~ tp.toText(printer)
     }
     val indent = 3
-    val header: Text = "Constraint("
+    val header: Text = "Constraint(".toText
     val uninstVarsText = " uninstVars = " ~
       Text(uninstVars map (_.toText(printer)), ", ") ~ ";"
     val constrainedText =
@@ -626,7 +626,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
               Text(ups.map(_.toText(printer)), ", ")
         Text(deps, "\n")
       }
-    Text.lines(List(header, uninstVarsText, constrainedText, boundsText, orderingText, ")"))
+    Text.lines(List(header, uninstVarsText, constrainedText, boundsText, orderingText, ")".toText))
   }
 
   override def toString: String = {

@@ -13,15 +13,10 @@ import printing.Formatting._
 
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
-
-  /** Turns Strings into PreNames, adding toType/TermName methods */
-  implicit class PreNamedString(val s: String) extends AnyVal with PreName {
+  implicit class StringDecorator(val s: String) extends AnyVal {
     def toTypeName: TypeName = typeName(s)
     def toTermName: TermName = termName(s)
-    def toText(printer: Printer): Text = Str(s)
-  }
 
-  implicit class StringDecorator(val s: String) extends AnyVal {
     def splitWhere(f: Char => Boolean, doDropIndex: Boolean): Option[(String, String)] = {
       def splitAt(idx: Int, doDropIndex: Boolean): Option[(String, String)] =
         if (idx == -1) None
@@ -165,7 +160,7 @@ object Decorators {
     }
   }
 
-  implicit def sourcePos(pos: Position)(implicit ctx: Context): SourcePosition = {
+  def sourcePos(pos: Position)(implicit ctx: Context): SourcePosition = {
     def recur(inlinedCalls: List[Tree], pos: Position): SourcePosition = inlinedCalls match {
       case inlinedCall :: rest =>
         sourceFile(inlinedCall).atPos(pos).withOuter(recur(rest, inlinedCall.pos))

@@ -175,7 +175,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info), rhs), sym)
 
   def SyntheticValDef(name: TermName, rhs: Tree)(implicit ctx: Context): ValDef =
-    ValDef(ctx.newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.pos), rhs)
+    ValDef(ctx.newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.coord), rhs)
 
   def DefDef(sym: TermSymbol, tparams: List[TypeSymbol], vparamss: List[List[TermSymbol]],
              resultType: Type, rhs: Tree)(implicit ctx: Context): DefDef =
@@ -270,7 +270,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (parents.head.classSymbol.is(Trait)) parents.head.parents.head :: parents
       else parents
     val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic, parents1,
-        coord = fns.map(_.pos).reduceLeft(_ union _))
+        coord = fns.map(_.pos).reduceLeft(_ union _).toCoord)
     val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil).entered
     def forwarder(fn: TermSymbol, name: TermName) = {
       val fwdMeth = fn.copy(cls, name, Synthetic | Method).entered.asTerm
@@ -284,7 +284,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }
   def WhileDo(owner: Symbol, cond: Tree, body: List[Tree])(implicit ctx: Context): Tree = {
     val sym = ctx.newSymbol(owner, nme.WHILE_PREFIX, Flags.Label | Flags.Synthetic,
-      MethodType(Nil, defn.UnitType), coord = cond.pos)
+      MethodType(Nil, defn.UnitType), coord = cond.coord)
 
     val call = Apply(ref(sym), Nil)
     val rhs = If(cond, Block(body, call), unitLiteral)

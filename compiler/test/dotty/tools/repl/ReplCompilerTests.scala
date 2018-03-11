@@ -14,23 +14,23 @@ import ReplTest._
 class ReplCompilerTests extends ReplTest {
 
   @Test def compileSingle: Unit = fromInitialState { implicit state =>
-    compiler.compile("def foo: 1 = 1").stateOrFail
+    compiler.compile("def foo: 1 = 1".toParsed).stateOrFail
   }
 
 
   @Test def compileTwo =
     fromInitialState { implicit state =>
-      compiler.compile("def foo: 1 = 1").stateOrFail
+      compiler.compile("def foo: 1 = 1".toParsed).stateOrFail
     }
     .andThen { implicit state =>
-      val s2 = compiler.compile("def foo(i: Int): i.type = i").stateOrFail
+      val s2 = compiler.compile("def foo(i: Int): i.type = i".toParsed).stateOrFail
       assert(s2.objectIndex == 2,
              s"Wrong object offset: expected 2 got ${s2.objectIndex}")
     }
 
   @Test def inspectSingle =
     fromInitialState { implicit state =>
-      val untpdTree = compiler.compile("def foo: 1 = 1").map(_._1.untpdTree)
+      val untpdTree = compiler.compile("def foo: 1 = 1".toParsed).map(_._1.untpdTree)
 
       untpdTree.fold(
         onErrors,
@@ -44,7 +44,7 @@ class ReplCompilerTests extends ReplTest {
     }
 
   @Test def testVar = fromInitialState { implicit state =>
-    compile("var x = 5")
+    compile("var x = 5".toParsed)
     assertEquals("var x: Int = 5\n", storedOutput())
   }
 
@@ -54,7 +54,7 @@ class ReplCompilerTests extends ReplTest {
          |val x = 5 + 5
          |1 + 1
          |var y = 5
-         |10 + 10""".stripMargin
+         |10 + 10""".stripMargin.toParsed
     }
 
     val expected = Set("def foo: Int",
@@ -68,12 +68,12 @@ class ReplCompilerTests extends ReplTest {
 
   @Test def testImportMutable =
     fromInitialState { implicit state =>
-      compile("import scala.collection.mutable")
+      compile("import scala.collection.mutable".toParsed)
     }
     .andThen { implicit state =>
       assert(state.imports.nonEmpty, "Didn't add import to `State` after compilation")
 
-      compile("""mutable.Map("one" -> 1)""")
+      compile("""mutable.Map("one" -> 1)""".toParsed)
 
       assertEquals(
         "val res0: scala.collection.mutable.Map[String, Int] = Map(one -> 1)\n",
@@ -82,9 +82,9 @@ class ReplCompilerTests extends ReplTest {
     }
 
   @Test def rebindVariable =
-    fromInitialState { implicit s => compile("var x = 5") }
+    fromInitialState { implicit s => compile("var x = 5".toParsed) }
     .andThen { implicit s =>
-      compile("x = 10")
+      compile("x = 10".toParsed)
       assertEquals(
         """|var x: Int = 5
            |x: Int = 10
@@ -96,28 +96,28 @@ class ReplCompilerTests extends ReplTest {
   // FIXME: Tests are not run in isolation, the classloader is corrupted after the first exception
   @Ignore def i3305: Unit = {
     fromInitialState { implicit s =>
-      compile("null.toString")
+      compile("null.toString".toParsed)
       assertTrue(storedOutput().startsWith("java.lang.NullPointerException"))
     }
 
     fromInitialState { implicit s =>
-      compile("def foo: Int = 1 + foo; foo")
+      compile("def foo: Int = 1 + foo; foo".toParsed)
       assertTrue(storedOutput().startsWith("def foo: Int\njava.lang.StackOverflowError"))
     }
 
     fromInitialState { implicit s =>
-      compile("""throw new IllegalArgumentException("Hello")""")
+      compile("""throw new IllegalArgumentException("Hello")""".toParsed)
       assertTrue(storedOutput().startsWith("java.lang.IllegalArgumentException: Hello"))
     }
 
     fromInitialState { implicit s =>
-      compile("val (x, y) = null")
+      compile("val (x, y) = null".toParsed)
       assertTrue(storedOutput().startsWith("scala.MatchError: null"))
     }
   }
 
   @Test def i2789: Unit = fromInitialState { implicit state =>
-    compile("(x: Int) => println(x)")
+    compile("(x: Int) => println(x)".toParsed)
     assertTrue(storedOutput().startsWith("val res0: Int => Unit ="))
   }
 }

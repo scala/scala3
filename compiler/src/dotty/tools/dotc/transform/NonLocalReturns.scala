@@ -39,7 +39,7 @@ class NonLocalReturns extends MiniPhase {
   private def nonLocalReturnKey(meth: Symbol)(implicit ctx: Context) =
     nonLocalReturnKeys.getOrElseUpdate(meth,
       ctx.newSymbol(
-        meth, NonLocalReturnKeyName.fresh(), Synthetic, defn.ObjectType, coord = meth.pos))
+        meth, NonLocalReturnKeyName.fresh(), Synthetic, defn.ObjectType, coord = meth.coord))
 
   /** Generate a non-local return throw with given return expression from given method.
    *  I.e. for the method's non-local return key, generate:
@@ -70,7 +70,7 @@ class NonLocalReturns extends MiniPhase {
   private def nonLocalReturnTry(body: Tree, key: TermSymbol, meth: Symbol)(implicit ctx: Context) = {
     val keyDef = ValDef(key, New(defn.ObjectType, Nil))
     val nonLocalReturnControl = defn.NonLocalReturnControlType
-    val ex = ctx.newSymbol(meth, nme.ex, EmptyFlags, nonLocalReturnControl, coord = body.pos)
+    val ex = ctx.newSymbol(meth, nme.ex, EmptyFlags, nonLocalReturnControl, coord = body.coord)
     val pat = BindTyped(ex, nonLocalReturnControl)
     val rhs = If(
         ref(ex).select(nme.key).appliedToNone.select(nme.eq).appliedTo(ref(key)),

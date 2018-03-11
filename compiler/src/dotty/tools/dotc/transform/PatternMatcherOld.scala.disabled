@@ -71,9 +71,8 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
   trait CodegenCore {
 
     // assert(owner ne null); assert(owner ne NoSymbol)
-    def freshSym(pos: Position, tp: Type = NoType, unique: UniqueNameKind = PatMatStdBinderName, owner: Symbol = ctx.owner) = {
-      ctx.newSymbol(owner, unique.fresh(), Flags.Synthetic | Flags.Case, tp, coord = pos)
-    }
+    def freshSym(pos: Position, tp: Type = NoType, unique: UniqueNameKind = PatMatStdBinderName, owner: Symbol = ctx.owner) =
+      ctx.newSymbol(owner, unique.fresh(), Flags.Synthetic | Flags.Case, tp, coord = pos.toCoord)
 
     def newSynthCaseLabel(unique: UniqueNameKind, tpe: Type, owner: Symbol = ctx.owner) =
       ctx.newSymbol(owner, unique.fresh(), Flags.Label | Flags.Synthetic | Flags.Method, tpe).asTerm
@@ -1231,7 +1230,7 @@ class PatternMatcherOld extends MiniPhase with DenotTransformer {
       val pt = match_.tpe.widen //repeatedToSeq(origPt)
 
       // val packedPt = repeatedToSeq(typer.packedType(match_, context.owner))
-      selectorSym.setFlag(Flags.SyntheticCase)
+      selectorSym.setFlag(Flags.Synthetic | Flags.Case)
 
       // pt = Any* occurs when compiling test/files/pos/annotDepMethType.scala  with -Xexperimental
       val combined = combineCases(sel, selectorSym, nonSyntheticCases map translateCase(selectorSym, pt), pt, ctx.owner, defaultOverride)

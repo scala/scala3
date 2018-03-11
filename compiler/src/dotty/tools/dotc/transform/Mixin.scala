@@ -179,10 +179,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
     def superCallOpt(baseCls: Symbol): List[Tree] = superCalls.get(baseCls) match {
       case Some(call) =>
-        if (defn.NotRuntimeClasses.contains(baseCls) || baseCls.is(NoInitsTrait)) Nil
+        if (defn.NotRuntimeClasses.contains(baseCls) || baseCls.isBoth(NoInits, and = Trait)) Nil
         else call :: Nil
       case None =>
-        if (baseCls.is(NoInitsTrait) || defn.NoInitClasses.contains(baseCls) || defn.isFunctionClass(baseCls)) Nil
+        if (baseCls.isBoth(NoInits, and = Trait) || defn.NoInitClasses.contains(baseCls) || defn.isFunctionClass(baseCls)) Nil
         else {
           //println(i"synth super call ${baseCls.primaryConstructor}: ${baseCls.primaryConstructor.info}")
           transformFollowingDeep(superRef(baseCls.primaryConstructor).appliedToNone) :: Nil

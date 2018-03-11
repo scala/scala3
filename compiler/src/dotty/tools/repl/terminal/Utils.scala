@@ -202,7 +202,7 @@ object FrontEndUtils {
     transpose(grouped).iterator.flatMap { group =>
       val last = group.last
       group.init.map(
-        x => x ++ " " * (width / columns - x.length)
+        x => x ++ Ansi.Str.parse(" " * (width / columns - x.length))
       ) :+ last :+ Ansi.Str.parse(newLine)
     }
     .map(_.render)

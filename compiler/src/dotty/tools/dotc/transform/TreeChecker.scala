@@ -102,7 +102,7 @@ class TreeChecker extends Phase with SymTransformer {
   def phaseName: String = "Ycheck"
 
   def run(implicit ctx: Context): Unit = {
-    check(ctx.allPhases, ctx)
+    check(ctx.base.allPhases, ctx)
   }
 
   private def previousPhases(phases: List[Phase])(implicit ctx: Context): List[Phase] = phases match {
@@ -119,7 +119,7 @@ class TreeChecker extends Phase with SymTransformer {
 
   def check(phasesToRun: Seq[Phase], ctx: Context) = {
     val prevPhase = ctx.phase.prev // can be a mini-phase
-    val squahsedPhase = ctx.squashed(prevPhase)
+    val squahsedPhase = ctx.base.squashed(prevPhase)
     ctx.echo(s"checking ${ctx.compilationUnit} after phase ${squahsedPhase}")
 
     assertSelectWrapsNew(ctx.compilationUnit.tpdTree)(ctx)
@@ -192,7 +192,7 @@ class TreeChecker extends Phase with SymTransformer {
     /** assert Java classes are not used as objects */
     def assertIdentNotJavaClass(tree: Tree)(implicit ctx: Context): Unit = tree match {
       case _ : untpd.Ident =>
-        assert(!tree.symbol.is(JavaModule), "Java class can't be used as value: " + tree)
+        assert(!tree.symbol.isBoth(JavaDefined, and = Module), "Java class can't be used as value: " + tree)
       case _ =>
     }
 

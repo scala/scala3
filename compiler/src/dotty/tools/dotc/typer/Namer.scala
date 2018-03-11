@@ -333,7 +333,7 @@ class Namer { typer: Typer =>
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
-            ctx.newClassSymbol(ctx.owner, name, _, _, _, tree.namePos, ctx.source.file))
+            ctx.newClassSymbol(ctx.owner, name, _, _, _, tree.coord, ctx.source.file))
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
@@ -365,9 +365,9 @@ class Namer { typer: Typer =>
         val info = adjustIfModule(completer, tree)
         createOrRefine[Symbol](tree, name, flags | deferred | method | higherKinded,
           _ => info,
-          (fs, _, pwithin) => ctx.newSymbol(ctx.owner, name, fs, info, pwithin, tree.namePos))
+          (fs, _, pwithin) => ctx.newSymbol(ctx.owner, name, fs, info, pwithin, tree.coord))
       case tree: Import =>
-        recordSym(ctx.newImportSymbol(ctx.owner, new Completer(tree), tree.pos), tree)
+        recordSym(ctx.newImportSymbol(ctx.owner, new Completer(tree), tree.coord), tree)
       case _ =>
         NoSymbol
     }
@@ -494,14 +494,14 @@ class Namer { typer: Typer =>
     // We don't check for clazz.superClass == JavaEnumClass, because this causes a illegal
     // cyclic reference error. See the commit message for details.
     //  if (ctx.compilationUnit.isJava) ctx.owner.companionClass.is(Enum) else ctx.owner.is(Enum)
-    vd.mods.is(allOf(Enum,  Stable, JavaStatic, JavaDefined)) // && ownerHasEnumFlag
+    vd.mods.isBoth(Enum, and = Stable) && vd.mods.isBoth(JavaStatic, JavaDefined) // && ownerHasEnumFlag
   }
 
   /** Add java enum constants */
   def addEnumConstants(mdef: DefTree, sym: Symbol)(implicit ctx: Context): Unit = mdef match {
     case vdef: ValDef if (isEnumConstant(vdef)) =>
       val enumClass = sym.owner.linkedClass
-      if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
+      if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.Abstract | Flags.Sealed)
       enumClass.addAnnotation(Annotation.Child(sym))
     case _ =>
   }
@@ -745,7 +745,7 @@ class Namer { typer: Typer =>
       while (c.owner != target) c = c.outer
       c
     }
-    for (annotTree <- untpd.modsDeco(stat).mods.annotations) {
+    for (annotTree <- stat.mods.annotations) {
       val cls = typedAheadAnnotation(annotTree)(annotCtx)
       if (sym.unforcedAnnotation(cls).isEmpty) {
         val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
@@ -958,7 +958,7 @@ class Namer { typer: Typer =>
           val moduleType = cls.owner.thisType select sourceModule
           if (self.name == nme.WILDCARD) moduleType
           else recordSym(
-            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.pos),
+            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.coord),
             self)
         }
         else createSymbol(self)

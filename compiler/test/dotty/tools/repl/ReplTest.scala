@@ -44,12 +44,14 @@ class ReplTest extends ReplDriver(
   def storedOutput(): String =
     stripColor(out.asInstanceOf[StoringPrintStream].flushStored())
 
-  protected implicit def toParsed(expr: String)(implicit state: State): Parsed = {
-    implicit val ctx = state.run.runContext
-    ParseResult(expr) match {
-      case pr: Parsed => pr
-      case pr =>
-        throw new java.lang.AssertionError(s"Expected parsed, got: $pr")
+  implicit class StringToParsed(expr: String) {
+    def toParsed(implicit state: State): Parsed = {
+      implicit val ctx = state.run.runContext
+      ParseResult(expr) match {
+        case pr: Parsed => pr
+        case pr =>
+          throw new java.lang.AssertionError(s"Expected parsed, got: $pr")
+      }
     }
   }
 

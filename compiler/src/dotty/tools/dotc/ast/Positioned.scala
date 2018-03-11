@@ -16,9 +16,11 @@ abstract class Positioned extends DotClass with Product {
 
   setPos(initialPos)
 
-  /** The item's position.
-   */
+  /** The item's position. */
   def pos: Position = curPos
+
+  /** The item's coord. */
+  def coord: Coord = curPos.toCoord
 
  /** Destructively update `curPos` to given position. Also, set any missing
    *  positions in children.

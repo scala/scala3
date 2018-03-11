@@ -339,7 +339,7 @@ object Checking {
       if (sym.is(flag))
         fail(AbstractMemberMayNotHaveModifier(sym, flag))
     def checkNoConflict(flag1: FlagSet, flag2: FlagSet) =
-      if (sym.is(allOf(flag1, flag2)))
+      if (sym.isBoth(flag1, flag2))
         fail(i"illegal combination of modifiers: `$flag1` and `$flag2` for: $sym")
     def checkApplicable(flag: FlagSet, ok: Boolean) =
       if (!ok && !sym.is(Synthetic))
@@ -532,7 +532,7 @@ trait Checking {
       val sym = tree.tpe.termSymbol
       // The check is avoided inside Java compilation units because it always fails
       // on the singleton type Module.type.
-      if ((sym is Package) || ((sym is JavaModule) && !ctx.compilationUnit.isJava)) ctx.error(JavaSymbolIsNotAValue(sym), tree.pos)
+      if (sym.is(Package) || sym.isBoth(JavaDefined, and = Module) && !ctx.compilationUnit.isJava) ctx.error(JavaSymbolIsNotAValue(sym), tree.pos)
     }
     tree
   }
@@ -602,7 +602,7 @@ trait Checking {
   /** Check that `tree` is a pure expression of constant type */
   def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context): Unit =
     tree.tpe match {
-      case tp: TermRef if tp.symbol.is(InlineParam) => // ok
+      case tp: TermRef if tp.symbol.isBoth(Inline, and = Param) => // ok
       case tp => tp.widenTermRefExpr match {
         case tp: ConstantType if isPureExpr(tree) => // ok
         case tp if defn.isFunctionType(tp) && isPureExpr(tree) => // ok
@@ -772,7 +772,6 @@ trait Checking {
 
   /** Check that all case classes that extend `scala.Enum` are `enum` cases */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol)(implicit ctx: Context): Unit = {
-    import untpd.modsDeco
     def isEnumAnonCls =
       cls.isAnonymousClass &&
       cls.owner.isTerm &&

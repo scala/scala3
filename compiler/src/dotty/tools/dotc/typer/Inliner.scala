@@ -70,7 +70,7 @@ object Inliner {
           name = if (tree.isTerm) accessorName.toTermName else accessorName.toTypeName,
           flags = if (tree.isTerm) Synthetic | Method else Synthetic,
           info = accessorInfo,
-          coord = tree.pos).entered
+          coord = tree.coord).entered
 
       /** Add an accessor to a non-public method and replace the original access with a
        *  call to the accessor.
@@ -337,7 +337,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   computeParamBindings(meth.info, targs, argss)
 
   private def newSym(name: Name, flags: FlagSet, info: Type): Symbol =
-    ctx.newSymbol(ctx.owner, name, flags, info, coord = call.pos)
+    ctx.newSymbol(ctx.owner, name, flags, info, coord = call.coord)
 
   /** Populate `paramBinding` and `bindingsBuf` by matching parameters with
    *  corresponding arguments. `bindingbuf` will be further extended later by

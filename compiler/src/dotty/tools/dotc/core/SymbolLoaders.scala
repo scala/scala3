@@ -8,7 +8,7 @@ import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
 import classpath._
 import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, util.Positions._, Names._
 import StdNames._, NameOps._
-import Decorators.{PreNamedString, StringInterpolators}
+import Decorators.{StringDecorator, StringInterpolators}
 import classfile.ClassfileParser
 import util.Stats
 import Decorators._
@@ -43,19 +43,19 @@ class SymbolLoaders {
   /** Enter class with given `name` into scope of `owner`.
    */
   def enterClass(
-      owner: Symbol, name: PreName, completer: SymbolLoader,
+      owner: Symbol, name: TypeName, completer: SymbolLoader,
       flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
-    val cls = ctx.newClassSymbol(owner, name.toTypeName.unmangleClassName.decode, flags, completer, assocFile = completer.sourceFileOrNull)
+    val cls = ctx.newClassSymbol(owner, name.unmangleClassName.decode, flags, completer, assocFile = completer.sourceFileOrNull)
     enterNew(owner, cls, completer, scope)
   }
 
   /** Enter module with given `name` into scope of `owner`.
    */
   def enterModule(
-      owner: Symbol, name: PreName, completer: SymbolLoader,
+      owner: Symbol, name: TermName, completer: SymbolLoader,
       modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
     val module = ctx.newModuleSymbol(
-      owner, name.toTermName.decode, modFlags, clsFlags,
+      owner, name.decode, modFlags, clsFlags,
       (module, _) => completer.proxy withDecls newScope withSourceModule (_ => module),
       assocFile = completer.sourceFileOrNull)
     enterNew(owner, module, completer, scope)
@@ -95,11 +95,11 @@ class SymbolLoaders {
    *  and give them `completer` as type.
    */
   def enterClassAndModule(
-      owner: Symbol, name: PreName, completer: SymbolLoader,
+      owner: Symbol, name: Name, completer: SymbolLoader,
       flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
-    val clazz = enterClass(owner, name, completer, flags, scope)
+    val clazz = enterClass(owner, name.toTypeName, completer, flags, scope)
     val module = enterModule(
-      owner, name, completer,
+      owner, name.toTermName, completer,
       modFlags = flags.toTermFlags & RetainedModuleValFlags,
       clsFlags = flags.toTypeFlags & RetainedModuleClassFlags,
       scope = scope)
@@ -115,7 +115,7 @@ class SymbolLoaders {
    *  All entered symbols are given a source completer of `src` as info.
    */
   def enterToplevelsFromSource(
-      owner: Symbol, name: PreName, src: AbstractFile,
+      owner: Symbol, name: TermName, src: AbstractFile,
       scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
 
     val completer = new SourcefileLoader(src)
@@ -183,12 +183,12 @@ class SymbolLoaders {
     ((classRep.binary, classRep.source): @unchecked) match {
       case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
         if (ctx.settings.verbose.value) ctx.inform("[symloader] picked up newer source file for " + src.path)
-        enterToplevelsFromSource(owner, classRep.name, src)
+        enterToplevelsFromSource(owner, classRep.name.toTermName, src)
       case (None, Some(src)) =>
         if (ctx.settings.verbose.value) ctx.inform("[symloader] no class, picked up source file for " + src.path)
-        enterToplevelsFromSource(owner, classRep.name, src)
+        enterToplevelsFromSource(owner, classRep.name.toTermName, src)
       case (Some(bin), _) =>
-        enterClassAndModule(owner, classRep.name, ctx.platform.newClassLoader(bin))
+        enterClassAndModule(owner, classRep.name.toTermName, ctx.platform.newClassLoader(bin))
     }
   }
 

@@ -101,7 +101,7 @@ class DropNoEffects(val simplifyPhase: Simplify) extends Optimisation {
 
     case t: Ident if !t.symbol.is(Method | Lazy) && !t.symbol.info.isInstanceOf[ExprType] || effectsDontEscape(t) =>
       val prefix = desugarIdentPrefix(t)
-      if (!prefix.isEmpty && !prefix.symbol.is(allOf(JavaDefined, Package))) t
+      if (!prefix.isEmpty && !prefix.symbol.isBoth(JavaDefined, and = Package)) t
       else EmptyTree
 
     case app: Apply if app.fun.symbol.is(Label) && !app.tpe.finalResultType.derivesFrom(defn.UnitClass) =>

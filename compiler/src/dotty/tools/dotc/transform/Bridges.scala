@@ -81,8 +81,8 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
       owner = root,
       flags = (member.flags | Method | Bridge | Artifact) &~
         (Accessor | ParamAccessor | CaseAccessor | Deferred | Lazy | Module),
-      coord = bridgePosFor(member))
-      .enteredAfter(ctx.erasurePhase.asInstanceOf[DenotTransformer]).asTerm
+      coord = bridgePosFor(member).toCoord)
+      .enteredAfter(ctx.base.erasurePhase.asInstanceOf[DenotTransformer]).asTerm
 
     ctx.debuglog(
       i"""generating bridge from ${other.showLocated}: ${other.info}

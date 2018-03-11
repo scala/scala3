@@ -49,7 +49,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     addCompanionPhases.exists(_.isCompanionNeeded(cls))
 
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
-    addCompanionPhases = ctx.phasePlan.flatMap(_ collect { case p: NeedsCompanions => p })
+    addCompanionPhases = ctx.base.phasePlan.flatMap(_ collect { case p: NeedsCompanions => p })
     ctx
   }
 

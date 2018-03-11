@@ -112,7 +112,7 @@ object Ansi {
   object Str {
     @sharable lazy val ansiRegex = "\u001B\\[[;\\d]*m".r
 
-    implicit def parse(raw: CharSequence): Str = {
+    def parse(raw: CharSequence): Str = {
       val chars        = new Array[Char](raw.length)
       val colors       = new Array[Short](raw.length)
       var currentIndex = 0

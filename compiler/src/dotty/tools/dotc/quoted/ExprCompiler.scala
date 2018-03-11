@@ -76,9 +76,9 @@ class ExprCompiler(directory: AbstractFile) extends Compiler {
       val assocFile = new PlainFile(Path("<quote>"))
 
       val cls = ctx.newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,
-        defn.ObjectType :: Nil, newScope, coord = pos, assocFile = assocFile).entered.asClass
+        defn.ObjectType :: Nil, newScope, coord = pos.toCoord, assocFile = assocFile).entered.asClass
       cls.enter(ctx.newDefaultConstructor(cls), EmptyScope)
-      val meth = ctx.newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
+      val meth = ctx.newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos.toCoord).entered
 
       val quoted = PickledQuotes.quotedExprToTree(expr)(ctx.withOwner(meth))
 

@@ -153,7 +153,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     mods: List[Mod] = Nil) extends Positioned with Cloneable {
 
     def is(fs: FlagSet): Boolean = flags is fs
-    def is(fc: FlagConjunction): Boolean = flags is fc
+    def isBoth(fc: FlagSet, and: FlagSet): Boolean = flags.isBoth(fc, and)
     def is(fc: FlagSet, butNot: FlagSet): Boolean = flags.is(fc, butNot = butNot)
 
     def | (fs: FlagSet): Modifiers = withFlags(flags | fs)
@@ -349,7 +349,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     makeConstructor(Nil, Nil)
 
   def makeSelfDef(name: TermName, tpt: Tree)(implicit ctx: Context) =
-    ValDef(name, tpt, EmptyTree).withFlags(PrivateLocal)
+    ValDef(name, tpt, EmptyTree).withFlags(Private | Local)
 
   def makeTupleOrParens(ts: List[Tree])(implicit ctx: Context) = ts match {
     case t :: Nil => Parens(t)
@@ -365,7 +365,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     ValDef(pname, tpe, EmptyTree).withMods(mods | Param)
 
   def makeSyntheticParameter(n: Int = 1, tpt: Tree = TypeTree())(implicit ctx: Context): ValDef =
-    ValDef(nme.syntheticParamName(n), tpt, EmptyTree).withFlags(SyntheticTermParam)
+    ValDef(nme.syntheticParamName(n), tpt, EmptyTree).withFlags(Synthetic | TermParam)
 
   def lambdaAbstract(tparams: List[TypeDef], tpt: Tree)(implicit ctx: Context) =
     if (tparams.isEmpty) tpt else LambdaTypeTree(tparams, tpt)
@@ -381,14 +381,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A repeated argument such as `arg: _*` */
   def repeated(arg: Tree)(implicit ctx: Context) = Typed(arg, Ident(tpnme.WILDCARD_STAR))
 
-// ----- Accessing modifiers ----------------------------------------------------
-
-  abstract class ModsDecorator { def mods: Modifiers }
-
-  implicit class modsDeco(val mdef: MemberDef)(implicit ctx: Context) {
-    def mods = mdef.rawMods
-  }
-
 // --------- Copier/Transformer/Accumulator classes for untyped trees -----
 
   override val cpy: UntypedTreeCopier = new UntypedTreeCopier
@@ -400,7 +392,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     def postProcess(tree: Tree, copied: MemberDef): copied.ThisTree[Untyped] = {
       tree match {
-        case tree: MemberDef => copied.withMods(tree.rawMods)
+        case tree: MemberDef => copied.withMods(tree.mods)
         case _ => copied
       }
     }.asInstanceOf[copied.ThisTree[Untyped]]

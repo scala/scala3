@@ -18,7 +18,7 @@ trait Showable extends Any {
   /** A fallback text representation, if the pattern matching
    *  in Printers does not have a case for this showable element
    */
-  def fallbackToText(printer: Printer): Text = toString
+  def fallbackToText(printer: Printer): Text = toString.toText
 
   /** The string representation of this showable element. */
   def show(implicit ctx: Context): String = toText(ctx.printer).show

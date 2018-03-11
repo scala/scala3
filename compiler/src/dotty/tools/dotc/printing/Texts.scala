@@ -1,6 +1,5 @@
 package dotty.tools.dotc
 package printing
-import language.implicitConversions
 
 object Texts {
 
@@ -84,7 +83,7 @@ object Texts {
 
     def stripPrefix(pre: String): Text = this match {
       case Str(s, _) =>
-        if (s.startsWith(pre)) s drop pre.length else s
+        (if (s.startsWith(pre)) s drop pre.length else s).toText
       case Fluid(relems) =>
         val elems = relems.reverse
         val head = elems.head.stripPrefix(pre)
@@ -133,12 +132,15 @@ object Texts {
       sb.toString
     }
 
-    def ~ (that: Text) =
+    def ~ (that: String): Text = this ~ that.toText
+    def ~~ (that: String): Text = this ~~ that.toText
+
+    def ~ (that: Text): Text =
       if (this.isEmpty) that
       else if (that.isEmpty) this
       else Fluid(that :: this :: Nil)
 
-    def ~~ (that: Text) =
+    def ~~ (that: Text): Text =
       if (this.isEmpty) that
       else if (that.isEmpty) this
       else Fluid(that :: Str(" ") :: this :: Nil)
@@ -161,7 +163,7 @@ object Texts {
       else {
         val ys = xs filterNot (_.isEmpty)
         if (ys.isEmpty) Str("")
-        else ys reduce (_ ~ sep ~ _)
+        else ys reduce (_ ~ sep.toText ~ _)
       }
     }
 
@@ -182,8 +184,6 @@ object Texts {
 
   class Closed(relems: List[Text]) extends Fluid(relems)
 
-  implicit def stringToText(s: String): Text = Str(s)
-
   /** Inclusive line range */
   case class LineRange(start: Int, end: Int) {
     def union(that: LineRange): LineRange = LineRange(start min that.start, end max that.end)
@@ -194,4 +194,9 @@ object Texts {
   }
 
   object EmptyLineRange extends LineRange(Int.MaxValue, Int.MinValue)
+
+  implicit class StringToText(val s: String) extends AnyVal {
+    def toText: Text = Str(s)
+    def ~ (that: Text): Text = Str(s) ~ that
+  }
 }

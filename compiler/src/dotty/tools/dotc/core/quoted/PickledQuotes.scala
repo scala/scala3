@@ -72,7 +72,7 @@ object PickledQuotes {
    */
   private def encapsulateQuote(tree: Tree)(implicit ctx: Context): Tree = {
     val name = (if (tree.isTerm) "$quote" else "$typeQuote").toTermName
-    val sym = ctx.newSymbol(ctx.owner, name, Synthetic, defn.AnyType, coord = tree.pos)
+    val sym = ctx.newSymbol(ctx.owner, name, Synthetic, defn.AnyType, coord = tree.coord)
     val encoded =
       if (tree.isTerm) tree
       else Literal(Constant(null)).select(nme.asInstanceOf_).appliedToTypeTrees(tree :: Nil)

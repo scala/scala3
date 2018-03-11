@@ -134,7 +134,7 @@ object Types {
     }
 
     /** Is this type different from NoType? */
-    def exists: Boolean = true
+    final def exists: Boolean = !this.eq(NoType)
 
     /** This type, if it exists, otherwise `that` type */
     def orElse(that: => Type) = if (exists) this else that
@@ -223,7 +223,7 @@ object Types {
      *  from the ThisType of `symd`'s owner.
      */
     def isArgPrefixOf(symd: SymDenotation)(implicit ctx: Context) =
-      symd.is(ClassTypeParam) && {
+      symd.isClassTypeParam && {
         this match {
           case tp: ThisType => tp.cls ne symd.owner
           case _ => true
@@ -587,14 +587,14 @@ object Types {
           val jointInfo =
             if (rinfo.isAlias) rinfo
             else if (pdenot.info.isAlias) pdenot.info
-            else if (ctx.pendingMemberSearches.contains(name)) pdenot.info safe_& rinfo
+            else if (ctx.base.pendingMemberSearches.contains(name)) pdenot.info safe_& rinfo
             else pdenot.info recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         } else {
           pdenot & (
             new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)),
             pre,
-            safeIntersection = ctx.pendingMemberSearches.contains(name))
+            safeIntersection = ctx.base.pendingMemberSearches.contains(name))
         }
       }
 
@@ -639,17 +639,17 @@ object Types {
         case d => d
       }
       def goAnd(l: Type, r: Type) = {
-        go(l) & (go(r), pre, safeIntersection = ctx.pendingMemberSearches.contains(name))
+        go(l) & (go(r), pre, safeIntersection = ctx.base.pendingMemberSearches.contains(name))
       }
 
-      val recCount = ctx.findMemberCount
+      val recCount = ctx.base.findMemberCount
       if (recCount >= Config.LogPendingFindMemberThreshold) {
         if (ctx.property(TypeOps.findMemberLimit).isDefined &&
-            ctx.findMemberCount > Config.PendingFindMemberLimit)
+            ctx.base.findMemberCount > Config.PendingFindMemberLimit)
           return NoDenotation
-        ctx.pendingMemberSearches = name :: ctx.pendingMemberSearches
+        ctx.base.pendingMemberSearches = name :: ctx.base.pendingMemberSearches
       }
-      ctx.findMemberCount = recCount + 1
+      ctx.base.findMemberCount = recCount + 1
       //assert(ctx.findMemberCount < 20)
       try go(this)
       catch {
@@ -659,8 +659,8 @@ object Types {
       }
       finally {
         if (recCount >= Config.LogPendingFindMemberThreshold)
-          ctx.pendingMemberSearches = ctx.pendingMemberSearches.tail
-        ctx.findMemberCount = recCount
+          ctx.base.pendingMemberSearches = ctx.base.pendingMemberSearches.tail
+        ctx.base.findMemberCount = recCount
       }
     }
 
@@ -1904,8 +1904,8 @@ object Types {
      *  not loop before the error is detected.
      */
     final def controlled[T](op: => T)(implicit ctx: Context): T = try {
-      ctx.underlyingRecursions += 1
-      if (ctx.underlyingRecursions < Config.LogPendingUnderlyingThreshold)
+      ctx.base.underlyingRecursions += 1
+      if (ctx.base.underlyingRecursions < Config.LogPendingUnderlyingThreshold)
         op
       else if (ctx.pendingUnderlying contains this)
         throw CyclicReference(symbol)
@@ -1917,7 +1917,7 @@ object Types {
           ctx.pendingUnderlying -= this
         }
     } finally {
-      ctx.underlyingRecursions -= 1
+      ctx.base.underlyingRecursions -= 1
     }
 
     /** The argument corresponding to class type parameter `tparam` as seen from
@@ -1969,7 +1969,7 @@ object Types {
       else if (prefix.isBottomType) prefix
       else if (isType) {
         val res =
-          if (currentSymbol.is(ClassTypeParam)) argForParam(prefix)
+          if (currentSymbol.isClassTypeParam) argForParam(prefix)
           else prefix.lookupRefined(name)
         if (res.exists) res
         else if (Config.splitProjections)
@@ -3711,7 +3711,6 @@ object Types {
 
   /** Sentinel for "missing type" */
   @sharable case object NoType extends CachedGroundType {
-    override def exists = false
     override def computeHash(bs: Binders) = hashSeed
   }
 
@@ -3733,7 +3732,7 @@ object Types {
     def apply(msg: => Message)(implicit ctx: Context): ErrorType = {
       val et = new ErrorType {
         def msg(implicit ctx: Context): Message =
-          ctx.errorTypeMsg.get(this) match {
+          ctx.base.errorTypeMsg.get(this) match {
             case Some(msgFun) => msgFun()
             case None => "error message from previous run no longer available"
           }
@@ -4131,7 +4130,7 @@ object Types {
       else pre match {
         case Range(preLo, preHi) =>
           val forwarded =
-            if (tp.symbol.is(ClassTypeParam)) expandParam(tp, preHi)
+            if (tp.symbol.isClassTypeParam) expandParam(tp, preHi)
             else tryWiden(tp, preHi)
           forwarded.orElse(
             range(super.derivedSelect(tp, preLo), super.derivedSelect(tp, preHi)))
@@ -4561,12 +4560,12 @@ object Types {
   }
 
   // ----- Decorator implicits --------------------------------------------
-
-  implicit def decorateTypeApplications(tpe: Type): TypeApplications = new TypeApplications(tpe)
+  implicit class TypeApplicationsypyp(val self: Type) extends AnyVal with TypeApplications
 
   implicit class typeListDeco(val tps1: List[Type]) extends AnyVal {
     @tailrec def stableHash: Boolean =
       tps1.isEmpty || tps1.head.stableHash && tps1.tail.stableHash
+
     @tailrec def equalElements(tps2: List[Type], bs: BinderPairs): Boolean =
       (tps1 `eq` tps2) || {
         if (tps1.isEmpty) tps2.isEmpty

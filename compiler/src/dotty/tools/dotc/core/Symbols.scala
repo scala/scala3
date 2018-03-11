@@ -222,8 +222,8 @@ trait Symbols { this: Context =>
   /** Define a new symbol associated with a Bind or pattern wildcard and
    *  make it gadt narrowable.
    */
-  def newPatternBoundSymbol(name: Name, info: Type, pos: Position) = {
-    val sym = newSymbol(owner, name, Case, info, coord = pos)
+  def newPatternBoundSymbol(name: Name, info: Type, coord: Coord) = {
+    val sym = newSymbol(owner, name, Case, info, coord = coord)
     if (name.isTypeName) gadt.setBounds(sym, info.bounds)
     sym
   }
@@ -309,11 +309,11 @@ trait Symbols { this: Context =>
   /** Create a new skolem symbol. This is not the same as SkolemType, even though the
    *  motivation (create a singleton referencing to a type) is similar.
    */
-  def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
+  def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, Synthetic | Artifact | NonMember | Permanent, tp)
 
   def newErrorSymbol(owner: Symbol, name: Name, msg: => Message) = {
     val errType = ErrorType(msg)
-    newSymbol(owner, name, SyntheticArtifact,
+    newSymbol(owner, name, Synthetic | Artifact,
         if (name.isTypeName) TypeAlias(errType) else errType)
   }
 
@@ -370,32 +370,38 @@ trait Symbols { this: Context =>
 
 // ----- Locating predefined symbols ----------------------------------------
 
-  def requiredPackage(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName, isPackage = true).requiredSymbol(_ is Package).asTerm
+  def requiredPackage(path: TermName): TermSymbol =
+    base.staticRef(path, isPackage = true).requiredSymbol(_ is Package).asTerm
 
-  def requiredPackageRef(path: PreName): TermRef = requiredPackage(path).termRef
-
-  def requiredClass(path: PreName): ClassSymbol =
-    base.staticRef(path.toTypeName).requiredSymbol(_.isClass) match {
-      case cls: ClassSymbol => cls
-      case sym => defn.AnyClass
-    }
-
-  def requiredClassRef(path: PreName): TypeRef = requiredClass(path).typeRef
+  def requiredPackageRef(path: TermName): TermRef = requiredPackage(path).termRef
 
   /** Get ClassSymbol if class is either defined in current compilation run
    *  or present on classpath.
    *  Returns NoSymbol otherwise. */
-  def getClassIfDefined(path: PreName): Symbol =
-    base.staticRef(path.toTypeName, generateStubs = false).requiredSymbol(_.isClass, generateStubs = false)
+  def getClassIfDefined(path: TypeName): Symbol =
+    base.staticRef(path, generateStubs = false).requiredSymbol(_.isClass, generateStubs = false)
 
-  def requiredModule(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName).requiredSymbol(_ is Module).asTerm
+  def requiredMethod(path: TermName): TermSymbol =
+    base.staticRef(path).requiredSymbol(_ is Method).asTerm
 
-  def requiredModuleRef(path: PreName): TermRef = requiredModule(path).termRef
+  // The following 4 methods have an overloaded String version because of
+  // their extensive use in Definitions.scala.
 
-  def requiredMethod(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName).requiredSymbol(_ is Method).asTerm
+  def requiredClass(path: String): ClassSymbol = requiredClass(path.toTypeName)
+  def requiredClass(path: TypeName): ClassSymbol =
+    base.staticRef(path).requiredSymbol(_.isClass) match {
+      case cls: ClassSymbol => cls
+      case sym => defn.AnyClass
+    }
+
+  def requiredClassRef(path: String): TypeRef = requiredClass(path.toTypeName).typeRef
+  def requiredClassRef(path: TypeName): TypeRef = requiredClass(path).typeRef
+
+  def requiredModule(path: String): TermSymbol = requiredModule(path.toTermName)
+  def requiredModule(path: TermName): TermSymbol = base.staticRef(path).requiredSymbol(_ is Module).asTerm
+
+  def requiredModuleRef(path: String): TermRef = requiredModuleRef(path.toTermName)
+  def requiredModuleRef(path: TermName): TermRef = requiredModule(path).termRef
 }
 
 object Symbols {
@@ -604,12 +610,12 @@ object Symbols {
 
     def toText(printer: Printer): Text = printer.toText(this)
 
-    def showLocated(implicit ctx: Context): String = ctx.locatedText(this).show
-    def showExtendedLocation(implicit ctx: Context): String = ctx.extendedLocationText(this).show
-    def showDcl(implicit ctx: Context): String = ctx.dclText(this).show
-    def showKind(implicit ctx: Context): String = ctx.kindString(this)
-    def showName(implicit ctx: Context): String = ctx.nameString(this)
-    def showFullName(implicit ctx: Context): String = ctx.fullNameString(this)
+    def showLocated(implicit ctx: Context): String = ctx.printer.locatedText(this).show
+    def showExtendedLocation(implicit ctx: Context): String = ctx.printer.extendedLocationText(this).show
+    def showDcl(implicit ctx: Context): String = ctx.printer.dclText(this).show
+    def showKind(implicit ctx: Context): String = ctx.printer.kindString(this)
+    def showName(implicit ctx: Context): String = ctx.printer.nameString(this)
+    def showFullName(implicit ctx: Context): String = ctx.printer.fullNameString(this)
 
     override def hashCode() = id // for debugging.
   }

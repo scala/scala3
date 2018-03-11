@@ -154,9 +154,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   lazy val Predef_classOf: Symbol = defn.ScalaPredefModule.requiredMethod(nme.classOf)
 
   lazy val AnnotationRetentionAttr = ctx.requiredClass("java.lang.annotation.Retention")
-  lazy val AnnotationRetentionSourceAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
-  lazy val AnnotationRetentionClassAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
-  lazy val AnnotationRetentionRuntimeAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
+  lazy val AnnotationRetentionSourceAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE".toTermName)
+  lazy val AnnotationRetentionClassAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS".toTermName)
+  lazy val AnnotationRetentionRuntimeAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME".toTermName)
   lazy val JavaAnnotationClass = ctx.requiredClass("java.lang.annotation.Annotation")
 
   def boxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses().map{x => // @darkdimius Are you sure this should be a def?
@@ -366,7 +366,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   def getAnnotPickle(jclassName: String, sym: Symbol): Option[Annotation] = None
 
 
-  def getRequiredClass(fullname: String): Symbol = ctx.requiredClass(fullname.toTermName)
+  def getRequiredClass(fullname: String): Symbol = ctx.requiredClass(fullname)
 
   def getClassIfDefined(fullname: String): Symbol = NoSymbol // used only for android. todo: implement
 
@@ -376,12 +376,12 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   def requiredClass[T](implicit evidence: ClassTag[T]): Symbol =
-    ctx.requiredClass(erasureString(evidence.runtimeClass).toTermName)
+    ctx.requiredClass(erasureString(evidence.runtimeClass))
 
   def requiredModule[T](implicit evidence: ClassTag[T]): Symbol = {
     val moduleName = erasureString(evidence.runtimeClass)
     val className = if (moduleName.endsWith("$")) moduleName.dropRight(1)  else moduleName
-    ctx.requiredModule(className.toTermName)
+    ctx.requiredModule(className)
   }
 
 
@@ -498,7 +498,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     // unrelated change.
        ctx.base.settings.YnoGenericSig.value
     || sym.is(Flags.Artifact)
-    || sym.is(Flags.allOf(Flags.Method, Flags.Lifted))
+    || sym.isBoth(Flags.Method, and = Flags.Lifted)
     || sym.is(Flags.Bridge)
   )
 
@@ -679,7 +679,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isConstructor: Boolean = toDenot(sym).isConstructor
     def isAnonymousFunction: Boolean = toDenot(sym).isAnonymousFunction
     def isMethod: Boolean = sym is Flags.Method
-    def isPublic: Boolean =  sym.flags.is(Flags.EmptyFlags, Flags.Private | Flags.Protected)
+    def isPublic: Boolean =  sym.flags.is(Flags.EmptyFlags, butNot=Flags.Private | Flags.Protected)
     def isSynthetic: Boolean = sym is Flags.Synthetic
     def isPackageClass: Boolean = sym is Flags.PackageClass
     def isModuleClass: Boolean = sym is Flags.ModuleClass
@@ -716,7 +716,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isDeprecated: Boolean = false
     def isMutable: Boolean = sym is Flags.Mutable
     def hasAbstractFlag: Boolean =
-      (sym is Flags.Abstract) || (sym is Flags.JavaInterface) || (sym is Flags.Trait)
+      (sym is Flags.Abstract) || (sym is Flags.Trait)
     def hasModuleFlag: Boolean = sym is Flags.Module
     def isSynchronized: Boolean = sym is Flags.Synchronized
     def isNonBottomSubClass(other: Symbol): Boolean = sym.derivesFrom(other)
@@ -808,26 +808,28 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       else Nil
 
     def annotations: List[Annotation] = toDenot(sym).annotations
-    def companionModuleMembers: List[Symbol] =  {
+
+    def companionModuleMembers: List[Symbol] = {
       // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
       // not local classes of the companion module (E in the exmaple) that were lifted by lambdalift.
       if (linkedClass.isTopLevelModuleClass) /*exitingPickler*/ linkedClass.memberClasses
       else Nil
     }
+
     def fieldSymbols: List[Symbol] = {
       toDenot(sym).info.decls.filter(p => p.isTerm && !p.is(Flags.Method))
     }
+
     def methodSymbols: List[Symbol] =
       for (f <- toDenot(sym).info.decls.toList if f.isMethod && f.isTerm && !f.isModule) yield f
+
     def serialVUID: Option[Long] = None
 
+    def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol =
+      ctx.newSymbol(sym, name.toTermName, FlagSet(flags), tpe, NoSymbol, pos.toCoord)
 
-    def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
-      ctx.newSymbol(sym, name.toTermName, FlagSet(flags), tpe, NoSymbol, pos)
-    }
-
-    def getter(clz: Symbol): Symbol = decorateSymbol(sym).getter
-    def setter(clz: Symbol): Symbol = decorateSymbol(sym).setter
+    def getter(clz: Symbol): Symbol = new SymUtilsOps(sym).getter
+    def setter(clz: Symbol): Symbol = new SymUtilsOps(sym).setter
 
     def moduleSuffix: String = "" // todo: validate that names already have $ suffix
     def outputDirectory: AbstractFile = DottyBackendInterface.this.outputDirectory
@@ -840,7 +842,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
      * Redundant interfaces are removed unless there is a super call to them.
      */
     def superInterfaces: List[Symbol] = {
-      val directlyInheritedTraits = decorateSymbol(sym).directlyInheritedTraits
+      val directlyInheritedTraits = new SymUtilsOps(sym).directlyInheritedTraits
       val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
       val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.symbol.asClass.baseClasses.drop(1)).toSet
       val superCalls = superCallsMap.getOrElse(sym, Set.empty)
@@ -1193,8 +1195,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         val arity = field.meth.tpe.widenDealias.paramTypes.size - _1.size
         val returnsUnit = field.meth.tpe.widenDealias.resultType.classSymbol == UnitClass
         if (returnsUnit)
-          ctx.requiredClass(("scala.compat.java8.JProcedure" + arity).toTermName)
-        else ctx.requiredClass(("scala.compat.java8.JFunction" + arity).toTermName)
+          ctx.requiredClass("scala.compat.java8.JProcedure" + arity)
+        else ctx.requiredClass("scala.compat.java8.JFunction" + arity)
       }
     }
   }

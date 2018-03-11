@@ -8,6 +8,7 @@ import scala.collection.mutable.StringBuilder
 import core.Contexts.Context
 import util.Chars
 import Highlighting.{Highlight, HighlightBuffer}
+import dotty.tools.dotc.printing.Texts._
 
 /** This object provides functions for syntax highlighting in the REPL */
 object SyntaxHighlighting {

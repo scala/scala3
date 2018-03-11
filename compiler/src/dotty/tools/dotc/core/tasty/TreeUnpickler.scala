@@ -1164,7 +1164,7 @@ class TreeUnpickler(reader: TastyReader,
     def coordAt(addr: Addr)(implicit ctx: Context): Coord = {
       val pos = posAt(addr)
       if (pos.exists)
-        positionCoord(pos)
+        pos.toCoord
       else
         indexCoord(addr.index)
     }

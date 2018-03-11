@@ -795,7 +795,7 @@ class Typer extends Namer
     args match {
       case ValDef(_, _, _) :: _ =>
         typedDependent(args.asInstanceOf[List[ValDef]])(
-          ctx.fresh.setOwner(ctx.newRefinedClassSymbol(tree.pos)).setNewScope)
+          ctx.fresh.setOwner(ctx.newRefinedClassSymbol(tree.coord)).setNewScope)
       case _ =>
         typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt)
     }
@@ -1283,7 +1283,7 @@ class Typer extends Namer
       //val ptt = if (lo.isEmpty && hi.isEmpty) pt else
       if (ctx.isAfterTyper) tree1
       else {
-        val wildcardSym = ctx.newPatternBoundSymbol(tpnme.WILDCARD, tree1.tpe & pt, tree.pos)
+        val wildcardSym = ctx.newPatternBoundSymbol(tpnme.WILDCARD, tree1.tpe & pt, tree.coord)
         untpd.Bind(tpnme.WILDCARD, tree1).withType(wildcardSym.typeRef)
       }
     }
@@ -1304,7 +1304,7 @@ class Typer extends Namer
       case _ =>
         if (tree.name == nme.WILDCARD) body1
         else {
-          val sym = ctx.newPatternBoundSymbol(tree.name, body1.tpe.underlyingIfRepeated(isJava = false), tree.pos)
+          val sym = ctx.newPatternBoundSymbol(tree.name, body1.tpe.underlyingIfRepeated(isJava = false), tree.coord)
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.pos)
           assignType(cpy.Bind(tree)(tree.name, body1), sym)
@@ -1333,7 +1333,7 @@ class Typer extends Namer
       }
     }
     // necessary in order to mark the typed ahead annotations as definitely typed:
-    untpd.modsDeco(mdef).mods.annotations.foreach(typedAnnotation(_)(annotCtx))
+    mdef.mods.annotations.foreach(typedAnnotation(_)(annotCtx))
   }
 
   def typedAnnotation(annot: untpd.Tree)(implicit ctx: Context): Tree = track("typedAnnotation") {
@@ -1590,7 +1590,7 @@ class Typer extends Namer
   def checkVariance(tree: Tree)(implicit ctx: Context) = VarianceChecker.check(tree)
 
   def localDummy(cls: ClassSymbol, impl: untpd.Template)(implicit ctx: Context): Symbol =
-    ctx.newLocalDummy(cls, impl.pos)
+    ctx.newLocalDummy(cls, impl.coord)
 
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = track("typedImport") {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
@@ -1861,7 +1861,6 @@ class Typer extends Namer
               case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
                 buf ++= inlineExpansion(mdef1)
               case mdef1 =>
-                import untpd.modsDeco
                 mdef match {
                   case mdef: untpd.TypeDef if mdef.mods.hasMod[untpd.Mod.Enum] =>
                     enumContexts(mdef1.symbol) = ctx

@@ -48,7 +48,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
       def printNat() = print(Yellow(" " + readNat()).show)
       def printName() = {
         val idx = readNat()
-        print(nameColor(" " + idx + " [" + nameRefToString(NameRef(idx)) + "]").show)
+        print(nameColor(" " + idx + " [" + nameRefToString(NameRef(idx)) + "]"))
       }
       def printTree(): Unit = {
         newLine()

@@ -85,7 +85,7 @@ object PatternMatcher {
 
     private def newVar(rhs: Tree, flags: FlagSet): TermSymbol =
       ctx.newSymbol(ctx.owner, PatMatStdBinderName.fresh(), Synthetic | Case | flags,
-        sanitize(rhs.tpe), coord = rhs.pos)
+        sanitize(rhs.tpe), coord = rhs.coord)
         // TODO: Drop Case once we use everywhere else `isPatmatGenerated`.
 
     /** The plan `let x = rhs in body(x)` where `x` is a fresh variable */
@@ -286,7 +286,7 @@ object PatternMatcher {
         lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
 
         def isSyntheticScala2Unapply(sym: Symbol) =
-          sym.is(SyntheticCase) && sym.owner.is(Scala2x)
+          sym.isBoth(Synthetic, and = Case) && sym.owner.is(Scala2x)
 
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
           matchArgsPlan(caseAccessors.map(ref(scrutinee).select(_)), args, onSuccess)

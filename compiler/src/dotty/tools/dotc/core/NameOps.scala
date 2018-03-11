@@ -5,7 +5,7 @@ import java.security.MessageDigest
 import scala.annotation.switch
 import scala.io.Codec
 import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._
-import Decorators.PreNamedString
+import Decorators.StringDecorator
 import util.{Chars, NameTransformer}
 import Chars.isOperatorPart
 import Definitions._
@@ -58,7 +58,7 @@ object NameOps {
       case _ => false
     }
 
-    def likeSpaced(n: PreName): N =
+    def likeSpaced(n: Name): N =
       (if (name.isTermName) n.toTermName else n.toTypeName).asInstanceOf[N]
 
     def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR

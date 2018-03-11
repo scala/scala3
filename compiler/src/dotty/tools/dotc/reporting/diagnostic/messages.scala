@@ -1828,7 +1828,7 @@ object messages {
     val kind = "Compatibility"
     val msg = "Failure to eliminate existential type. Proceed at own risk."
     val explanation = {
-      val originalType = ctx.dclsText(boundSyms, "; ").show
+      val originalType = ctx.printer.dclsText(boundSyms, "; ").show
       hl"""original type    : $tp forSome ${originalType}
           |reduces to       : $tp1
           |type used instead: $tp2"""
@@ -1968,7 +1968,7 @@ object messages {
 
     val msg = {
       val denotationOwner = denot.owner
-      val denotationName = ctx.fresh.setSetting(ctx.settings.YdebugNames, true).nameString(denot.name)
+      val denotationName = ctx.fresh.setSetting(ctx.settings.YdebugNames, true).printer.nameString(denot.name)
       val file = denot.symbol.associatedFile
       val (location, src) =
         if (file != null) (s" in $file", file.toString)

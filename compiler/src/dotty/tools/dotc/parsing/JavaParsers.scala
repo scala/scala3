@@ -125,7 +125,7 @@ object JavaParsers {
       // can call it.
       if (needsDummyConstr) {
         stats1 = constr1 :: stats1
-        constr1 = makeConstructor(List(scalaDot(tpnme.Unit)), tparams, Flags.JavaDefined | Flags.PrivateLocal)
+        constr1 = makeConstructor(List(scalaDot(tpnme.Unit)), tparams, Flags.JavaDefined | Flags.Private | Flags.Local)
       }
       Template(constr1.asInstanceOf[DefDef], parents, EmptyValDef, stats1)
     }
@@ -406,7 +406,7 @@ object JavaParsers {
       throw new RuntimeException
     }
 
-    def typeParams(flags: FlagSet = Flags.JavaDefined | Flags.PrivateLocal | Flags.Param): List[TypeDef] =
+    def typeParams(flags: FlagSet = Flags.JavaDefined | Flags.Private | Flags.Local | Flags.Param): List[TypeDef] =
       if (in.token == LT) {
         in.nextToken()
         val tparams = repsep(() => typeParam(flags), COMMA)
@@ -716,7 +716,7 @@ object JavaParsers {
       val iface = atPos(start, nameOffset) {
         TypeDef(
           name,
-          makeTemplate(parents, body, tparams, false)).withMods(mods | Flags.Trait | Flags.JavaInterface | Flags.Abstract)
+          makeTemplate(parents, body, tparams, false)).withMods(mods | Flags.Trait | Flags.JavaDefined | Flags.Abstract)
       }
       addCompanionObject(statics, iface)
     }

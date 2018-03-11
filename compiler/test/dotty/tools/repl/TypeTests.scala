@@ -18,7 +18,7 @@ class TypeTests extends ReplTest {
   }
 
   @Test def typeOfX =
-    fromInitialState { implicit s => compile("val x = 5") }
+    fromInitialState { implicit s => compile("val x = 5".toParsed) }
     .andThen { implicit s =>
       compiler.typeOf("x")
               .fold(onErrors, assertEquals("Int", _))

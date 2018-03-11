@@ -122,7 +122,7 @@ private[repl] class AmmoniteReader(out: OutputStream,
     val prompt = Console.BLUE + "scala> " + Console.RESET
 
     Terminal
-      .readLine(prompt, reader, writer, allFilters, displayTransform)
+      .readLine(Prompt.fromString(prompt), reader, writer, allFilters, displayTransform)
       .map {
         case Result(source) => ParseResult(source)
         case Interrupt => SigKill

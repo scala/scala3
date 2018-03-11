@@ -126,7 +126,7 @@ object desugar {
     val ValDef(name, tpt, rhs) = vdef
     val mods = vdef.mods
     val setterNeeded =
-      (mods is Mutable) && ctx.owner.isClass && (!(mods is PrivateLocal) || (ctx.owner is Trait))
+      mods.is(Mutable) && ctx.owner.isClass && (!mods.isBoth(Private, and = Local) || ctx.owner.is(Trait))
     if (setterNeeded) {
       // TODO: copy of vdef as getter needed?
       // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos?
@@ -149,7 +149,7 @@ object desugar {
 
   def makeImplicitParameters(tpts: List[Tree], forPrimaryConstructor: Boolean = false)(implicit ctx: Context) =
     for (tpt <- tpts) yield {
-       val paramFlags: FlagSet = if (forPrimaryConstructor) PrivateLocalParamAccessor else Param
+       val paramFlags: FlagSet = if (forPrimaryConstructor) Private | Local | ParamAccessor else Param
        val epname = EvidenceParamName.fresh()
        ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | Implicit)
     }
@@ -260,9 +260,9 @@ object desugar {
   @sharable private val synthetic = Modifiers(Synthetic)
 
   private def toDefParam(tparam: TypeDef): TypeDef =
-    tparam.withMods(tparam.rawMods & EmptyFlags | Param)
+    tparam.withMods(tparam.mods & EmptyFlags | Param)
   private def toDefParam(vparam: ValDef): ValDef =
-    vparam.withMods(vparam.rawMods & (Implicit | Erased) | Param)
+    vparam.withMods(vparam.mods & (Implicit | Erased) | Param)
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
@@ -314,7 +314,7 @@ object desugar {
     lazy val derivedEnumParams = enumClass.typeParams.map(derivedTypeParam)
     val impliedTparams =
       if (isEnumCase && originalTparams.isEmpty)
-        derivedEnumParams.map(tdef => tdef.withFlags(tdef.mods.flags | PrivateLocal))
+        derivedEnumParams.map(tdef => tdef.withFlags(tdef.mods.flags | Private | Local))
       else
         originalTparams
     val constrTparams = impliedTparams.map(toDefParam)
@@ -729,7 +729,7 @@ object desugar {
         case _ =>
           val tmpName = UniqueName.fresh()
           val patMods =
-            mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
+            mods & Lazy | Synthetic | (if (ctx.owner.isClass) Private | Local else EmptyFlags)
           val firstDef =
             ValDef(tmpName, TypeTree(), matchExpr)
               .withPos(pat.pos.union(rhs.pos)).withMods(patMods)

@@ -43,7 +43,7 @@ class FunctionalInterfaces extends MiniPhase {
       val interfaceName = (functionName ++ implParamTypes.length.toString).specializedFor(implParamTypes ::: implResultType :: Nil, names, Nil, Nil)
 
       // symbols loaded from classpath aren't defined in periods earlier than when they where loaded
-      val interface = ctx.withPhase(ctx.typerPhase).requiredClass(functionPackage ++ interfaceName)
+      val interface = ctx.withPhase(ctx.typerPhase).requiredClass((functionPackage ++ interfaceName).toTypeName)
       val tpt = tpd.TypeTree(interface.asType.appliedRef)
       tpd.Closure(tree.env, tree.meth, tpt)
     } else tree
