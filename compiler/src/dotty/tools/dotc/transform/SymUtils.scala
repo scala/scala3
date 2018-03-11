@@ -138,7 +138,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
    *                  entered at this point).
    */
   def registerIfChild(late: Boolean = false)(implicit ctx: Context): Unit = {
-    def register(child: Symbol, parent: Type): Unit = {
+    def register(child: Symbol, parent: Type) = {
       val cls = parent.classSymbol
       if (cls.is(Sealed) && (!late || child.isInaccessibleChildOf(cls)))
         cls.addAnnotation(Annotation.Child(child))
