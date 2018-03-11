@@ -2088,7 +2088,7 @@ object messages {
         case Signature.ParamMatch => "\nOverloads with equal parameter types but different return types are not allowed."
         case Signature.FullMatch => "\nThe definitions have the same signature after erasure."
       }
-      hl"${decl.showLocated} is already defined as ${previousSymbol.showDcl} in line ${previousSymbol.pos.line}." + details
+      hl"${decl.showLocated} is already defined as ${previousSymbol.showDcl} in line ${previousSymbol.pos.line + 1}." + details
     }
     val explanation = ""
   }

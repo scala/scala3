@@ -9,14 +9,7 @@ class Test1 {
 
 
 class Test2 {
-
-
-
-	def foo(
-		       x: List[A]
-	       ): Function1[A,
-		A] =
-		???
+	def foo(x: List[A]): Function1[A, A] = ???
 	def foo(x: List[B]): Function1[B, B] = ??? // error: same jvm signature
 	// scalac calls this "have same type after erasure"
 }
