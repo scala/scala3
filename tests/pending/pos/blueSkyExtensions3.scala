@@ -26,20 +26,29 @@ object blueSkyExtensions {
     def + (that: This): This
   }
 
-  trait Monoid extends SemiGroup {
-    static def unit: This
+  trait Monoid extends SemiGroup
+  object {
+    def unit: This
   }
 
   extend Int : Monoid {
-    static def unit = 0
-
     def + (that: Int) = this + that
   }
+  object {
+    static def unit = 0
+  }
+
+  class C {
+    static Foo
+    static Bar
+  }
+  object Foo extends FooStatic BarStatic BazStatic
 
   extend String : Monoid {
-    static def unit = ""
-
     def + (that: Int) = this ++ that
+  }
+  object {
+    def unit = ""
   }
 
 // Ord
@@ -64,32 +73,36 @@ object blueSkyExtensions {
 // Functor and Monad
 
   trait Functor[A] {
-    static type ThisC[A] <: Functor[A]
-    static def pure[A]: ThisC[A]
-
     def map[B](f: A => B): ThisC[B]
+  }
+  object {
+    type ThisC[A] <: Functor[A]
+    def pure[A]: ThisC[A]
   }
 
   // Generically, `pure[A]{.map(f)}^n`
   def develop[A, F[X] : Functor[X]](n: Int, f: A => A): F[A] =
-    if (n == 0) Functor.statics[F].pure[A]
+    if (n == 0) Functor.companion[F].pure[A]
     else develop[A, F](n - 1, f).map(f)
 
   trait Monad[A] extends Functor[A] {
-    static type ThisC[A] <: Monad[A]
-    
     def flatMap[B](f: A => ThisC[B]): ThisC[B]
     def map[B](f: A => B) = this.flatMap(f.andThen(pure))
   }
+  object {
+    type ThisC[A] <: Monad[A]
+    def pure[A]: ThisC[A]
+  }
 
   extend List[type T] : Monad[T] {
-    static type ThisC[A] = List[A]
-    static def pure[A] = Nil
-
     def flatMap[B](f: A => List[B]): List[B] = this match {
       case x :: xs => f(x) ++ xs.flatMap(f)
       case Nil => Nil
     }
+  }
+  object {
+    type ThisC[A] = List[A]
+    def pure[A] = Nil
   }
 
   extend (type T[X]: Monad[X])[T[type A]] {
@@ -99,43 +112,49 @@ object blueSkyExtensions {
 // Iterables
 
   trait MonoIterable[A] {
-    static type ThisC[A] <: MonoIterable[A]
-    static def empty: This[A]
-    static def apply(xs: A*): This[A]
-
-    def filter(p: A => Boolean): This[A]
+    def filter(p: A => Boolean): ThisC[A]
+  }
+  object {
+    type ThisC[A] <: MonoIterable[A]
+    def empty: ThisC[A]
+    def apply(xs: A*): ThisC[A]
   }
 
   trait Iterable[A] extends MonoIterable[A] {
-    static type ThisC[A] <: Iterable[A]
-    
     def map[B](f: A => B): ThisC[B]
     def flatMap[B](f: A => ThisC[B]): ThisC[B]
   }
+  object {
+    type ThisC[A] <: Iterable[A]
+  }
 
   extend String : MonoIterable[Char] {
-    static type ThisC[A] = String
-    static def empty = ""
-    static def apply(xs: A*) = xs.mkString
-
     def filter(p: Char => Boolean): String = ...
     def map(f: Char => Char): String = ...
   }
+  object {
+    type ThisC[A] = String
+    def empty = ""
+    def apply(xs: A*) = xs.mkString
+  }
 
   extend String : Iterable[Char] {
-    static type ThisC[A] = IndexedSeq[A]
-
     def map[B](f: Char => B): IndexedSeq[B] = ...
     def flatMap[B](f: Char => IndexedSeq[B]): IndexedSeq[B] = ...
   }
+  object {
+    type ThisC[A] = IndexedSeq[A]
+  }
 
   extend List[type T] : Iterable[T] {
-    static type ThisC[A] = List[A]
-    static def empty = Nil
-    static def apply(xs: A*) = (xs /: Nil)(_ :: _)
-
     def filter(p: T => Boolean): List[T] = ...
     def map[B](f: T => B): List[B] = ...
     def flatMap[B](f: T => List[B]): List[B] = ...
   }
+  object {
+    type ThisC[A] = List[A]
+    def empty = Nil
+    def apply(xs: A*) = (xs /: Nil)(_ :: _)
+  }
+
 }
