@@ -2085,7 +2085,7 @@ object messages {
     val msg = {
       val details = if (decl.isRealMethod && previousDecl.isRealMethod) {
         // compare the signatures when both symbols represent methods
-        decl.asTerm.signature.matchDegree(previousDecl.asTerm.signature) match {
+        decl.signature.matchDegree(previousDecl.signature) match {
           /* case Signature.NoMatch => // can't happen because decl.matches(previousDecl) is checked before reporting this error */
           case Signature.ParamMatch => "\nOverloads with equal parameter types but different return types are not allowed."
           case _ /* Signature.FullMatch */ => "\nThe definitions have the same signature after erasure."
