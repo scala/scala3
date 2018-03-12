@@ -35,6 +35,8 @@ object Exprs {
     override def toString: String = s"Expr($value)"
   }
 
+  def valueExpr[T](value: T): ValueExpr[T] = new ValueExpr[T](value)
+
   /** An Expr backed by a tree. Only the current compiler trees are allowed. */
   final class TreeExpr[Tree](val tree: Tree) extends quoted.Expr[Any] {
     override def toString: String = s"Expr(<raw>)"

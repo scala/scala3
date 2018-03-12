@@ -12,6 +12,7 @@ import tasty.TreePickler.Hole
 import MegaPhase.MiniPhase
 import SymUtils._
 import NameKinds._
+import dotty.tools.dotc.ast.tpd.Tree
 import typer.Implicits.SearchFailureType
 
 import scala.collection.mutable
@@ -290,12 +291,25 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       }
       else {
         val (body1, splices) = nested(isQuote = true).split(body)
+        pickledQuote(body1, splices, isType).withPos(quote.pos)
+      }
+    }
+
+    private def pickledQuote(body: Tree, splices: List[Tree], isType: Boolean)(implicit ctx: Context) = {
+      def pickleAsValue[T](value: T) =
+        ref(defn.QuotedExprs_valueExpr).appliedToType(body.tpe.widen).appliedTo(Literal(Constant(value)))
+      def pickleAsTasty() = {
         val meth =
-          if (isType) ref(defn.Unpickler_unpickleType).appliedToType(body1.tpe)
-          else ref(defn.Unpickler_unpickleExpr).appliedToType(body1.tpe.widen)
+          if (isType) ref(defn.Unpickler_unpickleType).appliedToType(body.tpe)
+          else ref(defn.Unpickler_unpickleExpr).appliedToType(body.tpe.widen)
         meth.appliedTo(
-            liftList(PickledQuotes.pickleQuote(body1).map(x => Literal(Constant(x))), defn.StringType),
-            liftList(splices, defn.AnyType)).withPos(quote.pos)
+          liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType),
+          liftList(splices, defn.AnyType))
+      }
+      if (splices.nonEmpty) pickleAsTasty()
+      else ReifyQuotes.toValue(body) match {
+        case Some(value) => pickleAsValue(value)
+        case _ => pickleAsTasty()
       }
     }
 
@@ -471,5 +485,14 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         }
       }
     }
+  }
+}
+
+object ReifyQuotes {
+  def toValue(tree: Tree): Option[Any] = tree match {
+    case Literal(Constant(c)) => Some(c)
+    case Block(Nil, e) => toValue(e)
+    case Inlined(_, Nil, e) => toValue(e)
+    case _ => None
   }
 }

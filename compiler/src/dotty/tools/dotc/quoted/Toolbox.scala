@@ -4,6 +4,7 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.printing.RefinedPrinter
+import dotty.tools.dotc.transform.ReifyQuotes
 
 import scala.quoted.Expr
 import scala.runtime.BoxedUnit
