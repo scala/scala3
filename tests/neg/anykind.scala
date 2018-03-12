@@ -6,6 +6,8 @@ object AnyKinds {
     type T0 = AnyKind[String] // error
     type T1 = X[Int]  // error
     type T2 = X { type F = Int } // error
+    type T3 <: List & AnyKind // error // error
+    type T4 <: Int & AnyKind // error
     val x: X = ???   // error
   }
 
