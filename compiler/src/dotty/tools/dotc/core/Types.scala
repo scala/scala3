@@ -508,7 +508,9 @@ object Types {
             case tp1 => tp1
           })
         case tp: TypeRef =>
-          tp.denot.findMember(name, pre, excluded)
+          val mbr = tp.denot.findMember(name, pre, excluded)
+          if (mbr.exists) mbr
+          else followGADT.findMember(name, pre, excluded)
         case tp: AppliedType =>
           goApplied(tp)
         case tp: ThisType =>
@@ -2132,7 +2134,13 @@ object Types {
     override def designator = myDesignator
     override protected def designator_=(d: Designator) = myDesignator = d
 
-    override def underlying(implicit ctx: Context): Type = info
+    override def underlying(implicit ctx: Context): Type = {
+      if (symbol.is(Opaque)) {
+        val gadtBounds = ctx.gadt.bounds(symbol)
+        if (gadtBounds != null) return gadtBounds
+      }
+      info
+    }
   }
 
   final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {
