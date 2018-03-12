@@ -27,6 +27,8 @@ object Show extends LowPrioShow {
     * @return a string describing how to escape the give char in source code.
     */
   private def escapeChar(c: Char): String = c match {
+    // From 2.12 spec, `charEscapeSeq`:
+    // ‘\‘ (‘b‘ | ‘t‘ | ‘n‘ | ‘f‘ | ‘r‘ | ‘"‘ | ‘'‘ | ‘\‘)
     case '\b' => "\\b"
     case '\t' => "\\t"
     case '\n' => "\\n"
@@ -39,8 +41,6 @@ object Show extends LowPrioShow {
   }
 
   implicit val stringShow: Show[String] = new Show[String] {
-    // From 2.12 spec, `charEscapeSeq`:
-    // ‘\‘ (‘b‘ | ‘t‘ | ‘n‘ | ‘f‘ | ‘r‘ | ‘"‘ | ‘'‘ | ‘\‘)
     def show(str: String) = str.flatMap(escapeChar).mkString("\"", "", "\"")
   }
 
