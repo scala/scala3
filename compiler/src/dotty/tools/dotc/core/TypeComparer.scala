@@ -48,15 +48,21 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private[this] var totalCount = 0
 
   private[this] var myAnyClass: ClassSymbol = null
+  private[this] var myAnyKindClass: ClassSymbol = null
   private[this] var myNothingClass: ClassSymbol = null
   private[this] var myNullClass: ClassSymbol = null
   private[this] var myObjectClass: ClassSymbol = null
   private[this] var myAnyType: TypeRef = null
+  private[this] var myAnyKindType: TypeRef = null
   private[this] var myNothingType: TypeRef = null
 
   def AnyClass = {
     if (myAnyClass == null) myAnyClass = defn.AnyClass
     myAnyClass
+  }
+  def AnyKindClass = {
+    if (myAnyKindClass == null) myAnyKindClass = defn.AnyKindClass
+    myAnyKindClass
   }
   def NothingClass = {
     if (myNothingClass == null) myNothingClass = defn.NothingClass
@@ -73,6 +79,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   def AnyType = {
     if (myAnyType == null) myAnyType = AnyClass.typeRef
     myAnyType
+  }
+  def AnyKindType = {
+    if (myAnyKindType == null) myAnyKindType = AnyKindClass.typeRef
+    myAnyKindType
   }
   def NothingType = {
     if (myNothingType == null) myNothingType = NothingClass.typeRef
@@ -367,8 +377,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case _ =>
         val cls2 = tp2.symbol
         if (cls2.isClass) {
-          if (cls2.typeParams.nonEmpty && tp1.isHK)
-            recur(tp1, EtaExpansion(cls2.typeRef))
+          if (cls2 eq AnyKindClass)
+            return true
           else {
             val base = tp1.baseType(cls2)
             if (base.exists) {
@@ -540,7 +550,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         def compareTypeBounds = tp1 match {
           case tp1 @ TypeBounds(lo1, hi1) =>
             ((lo2 eq NothingType) || isSubType(lo2, lo1)) &&
-            ((hi2 eq AnyType) || isSubType(hi1, hi2))
+            ((hi2 eq AnyType) || (hi2 eq AnyKindType) || isSubType(hi1, hi2))
           case tp1: ClassInfo =>
             tp2 contains tp1
           case _ =>
@@ -1216,8 +1226,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp2
     else if (!tp2.exists) tp1
-    else if ((tp1 isRef AnyClass) || (tp2 isRef NothingClass)) tp2
-    else if ((tp2 isRef AnyClass) || (tp1 isRef NothingClass)) tp1
+    else if ((tp1 isRef AnyClass) || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) tp2
+    else if ((tp2 isRef AnyClass) || (tp2 isRef AnyKindClass) || (tp1 isRef NothingClass)) tp1
     else tp2 match {  // normalize to disjunctive normal form if possible.
       case OrType(tp21, tp22) =>
         tp1 & tp21 | tp1 & tp22
@@ -1265,8 +1275,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
-    else if ((tp1 isRef AnyClass) || (tp2 isRef NothingClass)) tp1
-    else if ((tp2 isRef AnyClass) || (tp1 isRef NothingClass)) tp2
+    else if ((tp1 isRef AnyClass) || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) tp1
+    else if ((tp2 isRef AnyClass) || (tp2 isRef AnyKindClass) || (tp1 isRef NothingClass)) tp2
     else {
       val t1 = mergeIfSuper(tp1, tp2, canConstrain)
       if (t1.exists) t1

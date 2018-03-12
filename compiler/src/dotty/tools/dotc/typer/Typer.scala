@@ -2147,7 +2147,7 @@ class Typer extends Namer
 
     def adaptNoArgsImplicitMethod(wtp: MethodType): Tree = {
       assert(wtp.isImplicitMethod)
-      val tvarsToInstantiate = tvarsInParams(tree, locked)
+      val tvarsToInstantiate = tvarsInParams(tree, locked).distinct
       wtp.paramInfos.foreach(instantiateSelected(_, tvarsToInstantiate))
       val constr = ctx.typerState.constraint
 

@@ -1462,7 +1462,9 @@ object messages {
 
   case class MissingTypeParameterFor(tpe: Type)(implicit ctx: Context)
     extends Message(MissingTypeParameterForID) {
-    val msg = hl"missing type parameter for ${tpe}"
+    val msg =
+      if (tpe.derivesFrom(defn.AnyKindClass)) hl"${tpe} cannot be used as a value type"
+      else hl"missing type parameter for ${tpe}"
     val kind = "Syntax"
     val explanation = ""
   }

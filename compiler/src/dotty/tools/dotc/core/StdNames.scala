@@ -196,6 +196,7 @@ object StdNames {
     final val REIFY_TYPECREATOR_PREFIX: N       = "$typecreator"
 
     final val Any: N                 = "Any"
+    final val AnyKind: N             = "AnyKind"
     final val AnyVal: N              = "AnyVal"
     final val ExprApi: N             = "ExprApi"
     final val Mirror: N              = "Mirror"

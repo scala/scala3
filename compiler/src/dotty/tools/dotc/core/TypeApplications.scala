@@ -207,12 +207,17 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => Nil
   }
 
-  /** Is self type higher-kinded (i.e. of kind != "*")? */
+  /** Is self type higher-kinded (i.e. of kind != "*")
+   *  or any-kinded (i.e. has AnyKind as upper bound)?
+   */
   def isHK(implicit ctx: Context): Boolean = hkResult.exists
 
-  /** If self type is higher-kinded, its result type, otherwise NoType */
+  /** If self type is higher-kinded, its result type, otherwise NoType.
+   *  Note: The hkResult of an any-kinded type is again AnyKind.
+   */
   def hkResult(implicit ctx: Context): Type = self.dealias match {
-    case self: TypeRef => self.info.hkResult
+    case self: TypeRef =>
+      if (self.symbol == defn.AnyKindClass) self else self.info.hkResult
     case self: AppliedType =>
       if (self.tycon.typeSymbol.isClass) NoType else self.superType.hkResult
     case self: HKTypeLambda => self.resultType
@@ -226,17 +231,24 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => NoType
   }
 
-  /** Do self and other have the same kinds (not counting bounds and variances) */
+  /** Do self and other have the same kinds (not counting bounds and variances)?
+   *  Note: An any-kinded type "has the same kind" as any other type.
+   */
   def hasSameKindAs(other: Type)(implicit ctx: Context): Boolean = {
-    // println(i"check kind $self $other") // DEBUG
+    def isAnyKind(tp: Type) = tp match {
+      case tp: TypeRef => tp.symbol == defn.AnyKindClass
+      case _ => false
+    }
     val selfResult = self.hkResult
     val otherResult = other.hkResult
-    if (selfResult.exists)
-      otherResult.exists &&
-      selfResult.hasSameKindAs(otherResult) &&
-      self.typeParams.corresponds(other.typeParams)((sparam, oparam) =>
-        sparam.paramInfo.hasSameKindAs(oparam.paramInfo))
-    else !otherResult.exists
+    isAnyKind(selfResult) || isAnyKind(otherResult) ||
+    { if (selfResult.exists)
+        otherResult.exists &&
+        selfResult.hasSameKindAs(otherResult) &&
+        self.typeParams.corresponds(other.typeParams)((sparam, oparam) =>
+          sparam.paramInfo.hasSameKindAs(oparam.paramInfo))
+      else !otherResult.exists
+    }
   }
 
   /** Dealias type if it can be done without forcing the TypeRef's info */
