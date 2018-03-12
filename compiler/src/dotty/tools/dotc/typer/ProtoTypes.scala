@@ -97,8 +97,30 @@ object ProtoTypes {
   abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
   extends CachedProxyType with ProtoType with ValueTypeOrProto {
 
+    /** Is the set of members of this type unknown? This is the case if:
+     *  1. The type has Nothing or Wildcard as a prefix or underlying type
+     *  2. The type has an uninstantiated TypeVar as a prefix or underlying type,
+     *  or as an upper bound of a prefix or underlying type.
+     */
+    private def hasUnknownMembers(tp: Type)(implicit ctx: Context): Boolean = tp match {
+      case tp: TypeVar => !tp.isInstantiated
+      case tp: WildcardType => true
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        sym == defn.NothingClass ||
+        !sym.isStatic && {
+          hasUnknownMembers(tp.prefix) || {
+            val bound = tp.info.hiBound
+            bound.isProvisional && hasUnknownMembers(bound)
+          }
+        }
+      case tp: TypeProxy => hasUnknownMembers(tp.superType)
+      case _ => false
+    }
+
     override def isMatchedBy(tp1: Type)(implicit ctx: Context) = {
-      name == nme.WILDCARD || {
+      name == nme.WILDCARD || hasUnknownMembers(tp1) ||
+      {
         val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
         def qualifies(m: SingleDenotation) =
           memberProto.isRef(defn.UnitClass) ||
