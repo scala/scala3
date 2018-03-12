@@ -585,6 +585,7 @@ class Definitions {
 
   lazy val StringContextType: TypeRef       = ctx.requiredClassRef("scala.StringContext")
   def StringContextClass(implicit ctx: Context) = StringContextType.symbol.asClass
+  def StringContextModule(implicit ctx: Context) = StringContextClass.companionClass
 
   lazy val PartialFunctionType: TypeRef         = ctx.requiredClassRef("scala.PartialFunction")
   def PartialFunctionClass(implicit ctx: Context) = PartialFunctionType.symbol.asClass
