@@ -101,22 +101,32 @@ trait NamerContextOps { this: Context =>
     if (owner.exists) freshCtx.setOwner(owner) else freshCtx
   }
 
+  /** If `owner` is a companion object of an opaque type, record the alias
+   *  in the GADT bounds of `freshCtx.
+   */
+  def handleOpaqueCompanion(freshCtx: FreshContext, owner: Symbol): FreshContext = {
+    if (owner.is(Module)) {
+      val opaq = owner.companionOpaqueType
+      val alias = opaq.opaqueAlias
+      if (alias.exists) {
+        println(i"set GADT bounds of $opaq : $alias")
+        val result = freshCtx.setFreshGADTBounds
+        result.gadt.setBounds(opaq, TypeAlias(alias))
+        result
+      }
+      else freshCtx
+    }
+    else freshCtx
+  }
+
   /** A new context for the interior of a class */
   def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/): Context = {
-    var localCtx: FreshContext = ctx.fresh.setNewScope
+    val localCtx: FreshContext = ctx.fresh.setNewScope
     selfInfo match {
       case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)
       case _ =>
     }
-    if (ctx.owner.is(Module)) {
-      val opaq = ctx.owner.companionOpaqueType
-      val alias = opaq.opaqueAlias
-      if (alias.exists) {
-        localCtx = localCtx.setFreshGADTBounds
-        localCtx.gadt.setBounds(opaq, TypeAlias(alias))
-      }
-    }
-    localCtx
+    handleOpaqueCompanion(localCtx, ctx.owner)
   }
 
   def packageContext(tree: untpd.PackageDef, pkg: Symbol): Context =
