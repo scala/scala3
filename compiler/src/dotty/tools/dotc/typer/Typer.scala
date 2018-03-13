@@ -1233,7 +1233,24 @@ class Typer extends Namer
                 tparam.ensureCompleted() // This is needed to get the test `compileParSetSubset` to work
               case _ =>
             }
-          if (desugaredArg.isType) typed(desugaredArg, argPt)
+          if (desugaredArg.isType) {
+            var res = typed(desugaredArg, argPt)
+            arg match {
+              case TypeBoundsTree(EmptyTree, EmptyTree)
+              if tparam.paramInfo.isHK &&
+                 tpt1.tpe.typeParamSymbols.nonEmpty &&
+                 !ctx.mode.is(Mode.Pattern) =>
+                // An unbounded `_` automatically adapts to type parameter bounds. This means:
+                // If we have wildcard application C[_], where `C` is a class replace
+                // with C[_ >: L <: H] where `L` and `H` are the bounds of the corresponding
+                // type parameter in `C`, avoiding any referemces to parameters of `C`.
+                // The transform does not apply for patters, where empty bounds translate to
+                // wildcard identifiers `_` instead.
+                res = res.withType(avoid(tparam.paramInfo, tpt1.tpe.typeParamSymbols))
+              case _ =>
+            }
+            res
+          }
           else desugaredArg.withType(UnspecifiedErrorType)
         }
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
