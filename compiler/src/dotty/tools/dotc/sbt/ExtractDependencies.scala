@@ -270,7 +270,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
 
   private def addUsedName(name: Name, scope: UseScope)(implicit ctx: Context): Unit = {
     val fromClass = resolveDependencySource
-    if (fromClass.exists) {
+    if (fromClass.exists) { // can happen when visiting imports
       assert(fromClass.isClass)
       addUsedName(fromClass, name, scope)
     }
@@ -287,16 +287,13 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
   private def addMemberRefDependency(sym: Symbol)(implicit ctx: Context): Unit =
     if (!ignoreDependency(sym)) {
       val enclOrModuleClass = if (sym.is(ModuleVal)) sym.moduleClass else sym.enclosingClass
-      // assert(enclOrModuleClass.isClass, s"$depClass, $sym"))
+      assert(enclOrModuleClass.isClass, s"$enclOrModuleClass, $sym")
 
-      if (enclOrModuleClass.exists) {
-        assert(enclOrModuleClass.isClass)
-        val fromClass = resolveDependencySource
-        if (fromClass.exists) {
-          assert(fromClass.isClass)
-          _dependencies += ClassDependency(fromClass, enclOrModuleClass, DependencyByMemberRef)
-          addUsedName(fromClass, mangledName(sym), UseScope.Default)
-        }
+      val fromClass = resolveDependencySource
+      if (fromClass.exists) { // can happen when visiting imports
+        assert(fromClass.isClass)
+        _dependencies += ClassDependency(fromClass, enclOrModuleClass, DependencyByMemberRef)
+        addUsedName(fromClass, mangledName(sym), UseScope.Default)
       }
     }
 
