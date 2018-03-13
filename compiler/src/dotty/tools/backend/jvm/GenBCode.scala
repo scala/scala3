@@ -13,6 +13,7 @@ import scala.tools.nsc.backend.jvm._
 import dotty.tools.dotc
 import dotty.tools.dotc.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.transform.Erasure
+import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.interfaces
 import java.util.Optional
 
@@ -265,7 +266,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         // ----------- sbt's callbacks
 
         val (fullClassName, isLocal) = ctx.atPhase(ctx.sbtExtractDependenciesPhase) { implicit ctx =>
-          (ExtractDependencies.classNameAsString(claszSymbol), ExtractDependencies.isLocal(claszSymbol))
+          (ExtractDependencies.classNameAsString(claszSymbol), claszSymbol.isLocal)
         }
 
         for ((cls, clsFile) <- classNodes.zip(classFiles)) {

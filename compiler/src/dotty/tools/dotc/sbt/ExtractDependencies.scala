@@ -6,6 +6,7 @@ import core._, core.Decorators._
 import util.NoSource.{file => NoSourceFile}
 import Contexts._, Flags._, Phases._, Trees._, Types._, Symbols._
 import Names._, NameOps._, StdNames._
+import transform.SymUtils._
 
 import scala.collection.{Set, mutable}
 
@@ -150,9 +151,6 @@ class ExtractDependencies extends Phase {
 object ExtractDependencies {
   def classNameAsString(sym: Symbol)(implicit ctx: Context): String =
     sym.fullName.stripModuleClassSuffix.toString
-
-  def isLocal(sym: Symbol)(implicit ctx: Context): Boolean =
-    sym.ownersIterator.exists(_.isTerm)
 
   /** Return the enclosing class or the module class if it's a module. */
   def enclOrModuleClass(dep: Symbol)(implicit ctx: Context): Symbol =
@@ -301,7 +299,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
   private def addInheritanceDependency(tree: Template)(implicit ctx: Context): Unit =
     if (tree.parents.nonEmpty) {
       val depContext =
-        if (isLocal(tree.symbol.owner)) LocalDependencyByInheritance
+        if (tree.symbol.owner.isLocal) LocalDependencyByInheritance
         else DependencyByInheritance
       val from = resolveDependencySource
       tree.parents.foreach { parent =>
