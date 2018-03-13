@@ -151,10 +151,6 @@ class ExtractDependencies extends Phase {
 object ExtractDependencies {
   def classNameAsString(sym: Symbol)(implicit ctx: Context): String =
     sym.fullName.stripModuleClassSuffix.toString
-
-  /** Return the enclosing class or the module class if it's a module. */
-  def enclOrModuleClass(dep: Symbol)(implicit ctx: Context): Symbol =
-    if (dep.is(ModuleVal)) dep.moduleClass else dep.enclosingClass
 }
 
 private case class ClassDependency(from: Symbol, to: Symbol, context: DependencyContext)
@@ -230,7 +226,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     if (_responsibleForImports == null) {
       val tree = ctx.compilationUnit.tpdTree
       _responsibleForImports = firstClassOrModule(tree)
-      if (_responsibleForImports == NoSymbol)
+      if (!_responsibleForImports.exists)
           ctx.warning("""|No class, trait or object is defined in the compilation unit.
                          |The incremental compiler cannot record the dependency information in such case.
                          |Some errors like unused import referring to a non-existent class might not be reported.
@@ -274,24 +270,32 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
 
   private def addUsedName(name: Name, scope: UseScope)(implicit ctx: Context): Unit = {
     val fromClass = resolveDependencySource
-    if (fromClass ne NoSymbol) {
+    if (fromClass.exists) {
       assert(fromClass.isClass)
       addUsedName(fromClass, name, scope)
     }
   }
 
+  /** Mangle a JVM symbol name in a format better suited for internal uses by sbt. */
+  private def mangledName(sym: Symbol)(implicit ctx: Context): Name = {
+    def constructorName = sym.enclosingClass.fullName ++ ";init;"
+
+    if (sym.isConstructor) constructorName
+    else sym.name.stripModuleClassSuffix
+  }
+
   private def addMemberRefDependency(sym: Symbol)(implicit ctx: Context): Unit =
     if (!ignoreDependency(sym)) {
-      val depClass = enclOrModuleClass(sym)
-      // assert(depClass.isClass, s"$depClass, $sym, ${sym.isClass}")
+      val enclOrModuleClass = if (sym.is(ModuleVal)) sym.moduleClass else sym.enclosingClass
+      // assert(enclOrModuleClass.isClass, s"$depClass, $sym"))
 
-      if (depClass ne NoSymbol) {
-        assert(depClass.isClass)
+      if (enclOrModuleClass.exists) {
+        assert(enclOrModuleClass.isClass)
         val fromClass = resolveDependencySource
-        if (fromClass ne NoSymbol) {
+        if (fromClass.exists) {
           assert(fromClass.isClass)
-          _dependencies += ClassDependency(fromClass, depClass, DependencyByMemberRef)
-          addUsedName(fromClass, sym.name.stripModuleClassSuffix, UseScope.Default)
+          _dependencies += ClassDependency(fromClass, enclOrModuleClass, DependencyByMemberRef)
+          addUsedName(fromClass, mangledName(sym), UseScope.Default)
         }
       }
     }
@@ -308,7 +312,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     }
 
   private def ignoreDependency(sym: Symbol)(implicit ctx: Context) =
-    sym.eq(NoSymbol) ||
+    !sym.exists ||
     sym.isAnonymousFunction ||
     sym.isAnonymousClass ||
     sym.is(PackageClass)
@@ -424,7 +428,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     val traverser = new TypeDependencyTraverser {
       def addDependency(symbol: Symbol) =
         if (!ignoreDependency(symbol) && symbol.is(Sealed)) {
-          val usedName = symbol.name.stripModuleClassSuffix
+          val usedName = mangledName(symbol)
           addUsedName(usedName, UseScope.PatMatTarget)
         }
     }

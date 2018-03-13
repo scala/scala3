@@ -310,7 +310,7 @@ class ExtractUsedNamesSpecification {
     // The default parent of a class is "AnyRef" which is an alias for "Object"
     "AnyRef",
     "Object",
-    "java;lang;Object;init;"
+    "java.lang.Object;init;"
   )
 
 }
