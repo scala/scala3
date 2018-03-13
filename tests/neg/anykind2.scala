@@ -16,5 +16,6 @@ object AnyKinds {
   g[List]     // error
   g[Nothing]  // OK
 
+  1.asInstanceOf[AnyKind] // error
 
 }
