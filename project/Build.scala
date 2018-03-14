@@ -915,7 +915,7 @@ object Build {
         val coursier = baseDirectory.value / "out/coursier"
         val packageJson = baseDirectory.value / "package.json"
         if (!coursier.exists || packageJson.lastModified > coursier.lastModified)
-          runProcess(Seq("npm", "run", "update-all"), wait = true, directory = baseDirectory.value)
+          runProcess(Seq("npm", "install"), wait = true, directory = baseDirectory.value)
         val tsc = baseDirectory.value / "node_modules" / ".bin" / "tsc"
         runProcess(Seq(tsc.getAbsolutePath, "--pretty", "--project", baseDirectory.value.getAbsolutePath), wait = true)
 
