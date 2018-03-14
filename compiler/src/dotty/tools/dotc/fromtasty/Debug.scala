@@ -36,7 +36,7 @@ object Debug {
     val fromTastyOut = Files.createDirectory(tmpOut.resolve("from-tasty"))
 
     val ext = "hasTasty"
-    val classes = Directory(fromSourcesOut).walk.filter(x => x.isFile && x.extension == ext).map { x =>
+    val classes = Directory(fromSourcesOut).walk.filter(x => x.isFile && x.`extension` == ext).map { x =>
       val source = x.toString
       // transform foo/bar/Baz.hasTasty into foo.bar.Baz
       source.substring(fromSourcesOut.toString.length + 1, source.length - ext.length - 1).replace('/', '.')

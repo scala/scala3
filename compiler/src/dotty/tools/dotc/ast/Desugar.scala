@@ -785,7 +785,7 @@ object desugar {
    *
    *    <body2> = <body1> where each method definition gets <combined-params> as last parameter section.
    */
-  def extension(tree: Extension)(implicit ctx: Context): Tree = {
+  def extensionDef(tree: Extension)(implicit ctx: Context): Tree = {
     val Extension(name, extended, impl) = tree
     val isSimpleExtension = impl.parents.isEmpty
 
@@ -832,7 +832,7 @@ object desugar {
       else defDef(tree)
     case tree: ModuleDef => moduleDef(tree)
     case tree: PatDef => patDef(tree)
-    case tree: Extension => extension(tree)
+    case tree: Extension => extensionDef(tree)
   }
 
   /**     { stats; <empty > }

@@ -45,7 +45,7 @@ class PatmatExhaustivityTest {
     val reporter = TestReporter.simplifiedReporter(new PrintWriter(stringBuffer))
 
     val files = Directory(path).list.toList
-      .filter(f => f.extension == "scala" || f.extension == "java" )
+      .filter(f => f.`extension` == "scala" || f.`extension` == "java" )
       .map(_.jpath.toString)
 
     try {
@@ -69,7 +69,7 @@ class PatmatExhaustivityTest {
   @Test
   def patmatExhaustivity: Unit = {
     val res = Directory(testsDir).list.toList
-      .filter(f => f.extension == "scala" || f.isDirectory)
+      .filter(f => f.`extension` == "scala" || f.isDirectory)
       .map { f =>
         if (f.isDirectory)
           compileDir(f.jpath)

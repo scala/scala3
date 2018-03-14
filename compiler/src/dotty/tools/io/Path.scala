@@ -35,10 +35,10 @@ import scala.util.Random.alphanumeric
 object Path {
   def isExtensionJarOrZip(jpath: JPath): Boolean = isExtensionJarOrZip(jpath.getFileName.toString)
   def isExtensionJarOrZip(name: String): Boolean = {
-    val ext = extension(name)
+    val ext = `extension`(name)
     ext == "jar" || ext == "zip"
   }
-  def extension(name: String): String = {
+  def `extension`(name: String): String = {
     var i = name.length - 1
     while (i >= 0 && name.charAt(i) != '.')
       i -= 1
@@ -138,7 +138,7 @@ class Path private[io] (val jpath: JPath) {
     if (p isSame this) Nil else p :: p.parents
   }
   // if name ends with an extension (e.g. "foo.jpg") returns the extension ("jpg"), otherwise ""
-  def extension: String = {
+  def `extension`: String = {
     var i = name.length - 1
     while (i >= 0 && name.charAt(i) != '.')
       i -= 1
@@ -148,17 +148,17 @@ class Path private[io] (val jpath: JPath) {
   }
   // compares against extensions in a CASE INSENSITIVE way.
   def hasExtension(ext: String, exts: String*) = {
-    val lower = extension.toLowerCase
+    val lower = `extension`.toLowerCase
     ext.toLowerCase == lower || exts.exists(_.toLowerCase == lower)
   }
   // returns the filename without the extension.
-  def stripExtension: String = name stripSuffix ("." + extension)
+  def stripExtension: String = name stripSuffix ("." + `extension`)
   // returns the Path with the extension.
   def addExtension(ext: String): Path = new Path(jpath.resolveSibling(name + ext))
   // changes the existing extension out for a new one, or adds it
   // if the current path has none.
   def changeExtension(ext: String): Path =
-    if (extension == "") addExtension(ext)
+    if (`extension` == "") addExtension(ext)
     else new Path(jpath.resolveSibling(stripExtension + "." + ext))
 
   // conditionally execute

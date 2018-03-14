@@ -1,2 +1,2 @@
-enum
+enum // error
 object // error // error
