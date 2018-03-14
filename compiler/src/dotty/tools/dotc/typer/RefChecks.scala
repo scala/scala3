@@ -343,7 +343,10 @@ object RefChecks {
         if (autoOverride(member) ||
             other.owner.is(JavaTrait) && ctx.testScala2Mode("`override' modifier required when a Java 8 default method is re-implemented", member.pos))
           member.setFlag(Override)
-        else if (member.owner != clazz && other.owner != clazz && !(other.owner derivesFrom member.owner))
+        else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))
+          () // OK, don't complain about type aliases which are equal
+        else if (member.owner != clazz && other.owner != clazz &&
+                 !(other.owner derivesFrom member.owner))
           emitOverrideError(
             clazz + " inherits conflicting members:\n  "
               + infoStringWithLocation(other) + "  and\n  " + infoStringWithLocation(member)
