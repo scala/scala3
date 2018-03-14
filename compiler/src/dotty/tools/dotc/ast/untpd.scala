@@ -41,7 +41,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   /** extend extended impl */
-  case class Extension(name: TypeName, extended: Tree, impl: Template) extends DefTree
+  case class Extension(name: TypeName, extended: Tree, impl: Template) extends MemberDef
 
   case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree) extends TermTree
 
@@ -143,7 +143,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class EnumCase() extends Mod(Flags.EmptyFlags)
 
-    case class InstanceDecl() extends Mod(Flags.EmptyFlags)
+    case class Extension() extends Mod(Flags.EmptyFlags)
   }
 
   /** Modifiers and annotations for definitions
