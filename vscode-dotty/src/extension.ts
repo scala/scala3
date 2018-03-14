@@ -2,14 +2,12 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { spawn } from 'child_process';
 
 import * as cpp from 'child-process-promise';
 
-import { commands, workspace, Disposable, ExtensionContext, Uri } from 'vscode';
-import { Executable, LanguageClient, LanguageClientOptions, SettingMonitor, ServerOptions, TransportKind } from 'vscode-languageclient';
-import * as lc from 'vscode-languageclient';
+import { ExtensionContext } from 'vscode';
 import * as vscode from 'vscode';
+import { LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient';
 
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
@@ -45,7 +43,7 @@ export function activate(context: ExtensionContext) {
   })
 }
 
-function fetchAndRun(artifact: String) {
+function fetchAndRun(artifact: string) {
   const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
 
   vscode.window.withProgress({
@@ -64,15 +62,15 @@ function fetchAndRun(artifact: String) {
 
     let classPath = ""
 
-    coursierProc.stdout.on('data', (data) => {
+    coursierProc.stdout.on('data', (data: Buffer) => {
       classPath += data.toString().trim()
     })
-    coursierProc.stderr.on('data', (data) => {
+    coursierProc.stderr.on('data', (data: Buffer) => {
       let msg = data.toString()
       outputChannel.append(msg)
     })
 
-    coursierProc.on('close', (code) => {
+    coursierProc.on('close', (code: number) => {
       if (code != 0) {
         let msg = "Fetching the language server failed."
         outputChannel.append(msg)
