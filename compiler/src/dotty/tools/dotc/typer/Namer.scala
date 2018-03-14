@@ -109,7 +109,6 @@ trait NamerContextOps { this: Context =>
       val opaq = owner.companionOpaqueType
       val alias = opaq.opaqueAlias
       if (alias.exists) {
-        println(i"set GADT bounds of $opaq : $alias")
         val result = freshCtx.setFreshGADTBounds
         result.gadt.setBounds(opaq, TypeAlias(alias))
         result
