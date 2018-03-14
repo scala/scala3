@@ -330,13 +330,13 @@ DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                       
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
+                    |  ‘extension’ ExtensionDef
 ClassDef          ::=  id ClassConstr [TemplateClause]                          ClassDef(mods, name, tparams, templ)
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses         with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [TemplateClause]                                      ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody         TypeDef(mods, name, template)
-Extension         ::=  'extension' id [ExtensionParams]                         Extension(name, templ)
-                       'for' Type ExtensionClause
+ExtensionDef      ::=  id [ExtensionParams] 'for' AnnotType ExtensionClause     Extension(name, type, templ)
 ExtensionParams   ::=  [ClsTypeParamClause] [[nl] ImplicitParamClause]
 ExtensionClause   ::=  [`:` Template]
                     |  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’

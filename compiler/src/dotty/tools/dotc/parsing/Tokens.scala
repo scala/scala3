@@ -179,6 +179,7 @@ object Tokens extends TokensCommon {
   final val ENUM = 63;             enter(ENUM, "enum")
   final val ERASED = 64;           enter(ERASED, "erased")
   final val OPAQUE = 65;           enter(OPAQUE, "opaque")
+  final val EXTENSION = 66;        enter(EXTENSION, "extension")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -199,7 +200,7 @@ object Tokens extends TokensCommon {
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
-  final val alphaKeywords = tokenRange(IF, OPAQUE)
+  final val alphaKeywords = tokenRange(IF, EXTENSION)
   final val symbolicKeywords = tokenRange(USCORE, VIEWBOUND)
   final val symbolicTokens = tokenRange(COMMA, VIEWBOUND)
   final val keywords = alphaKeywords | symbolicKeywords
@@ -220,7 +221,7 @@ object Tokens extends TokensCommon {
 
   final val canStartBindingTokens = identifierTokens | BitSet(USCORE, LPAREN)
 
-  final val templateIntroTokens = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
+  final val templateIntroTokens = BitSet(CLASS, TRAIT, OBJECT, ENUM, EXTENSION, CASECLASS, CASEOBJECT)
 
   final val dclIntroTokens = BitSet(DEF, VAL, VAR, TYPE)
 
