@@ -1,3 +1,3 @@
 {
-  dotty.runtime.Arrays.newGenericArray[Int](3)(reflect.ClassTag.Int)
+  new Array[List[Int]](1)
 }

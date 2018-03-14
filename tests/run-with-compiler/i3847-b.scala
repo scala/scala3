@@ -3,8 +3,8 @@ import scala.quoted._
 import scala.reflect.ClassTag
 
 object Arrays {
-  implicit def ArrayIsLiftable[T: Liftable](implicit t: Type[T], ct: Expr[ClassTag[T]]): Liftable[Array[List[T]]] = (arr: Array[List[T]]) => '{
-    new Array[List[~t]](3)
+  implicit def ArrayIsLiftable[T: Liftable](implicit t: Type[T]): Liftable[Array[List[T]]] = (arr: Array[List[T]]) => '{
+    new Array[List[~t]](~(arr.length: Expr[Int]))
     // TODO add elements
   }
 }
