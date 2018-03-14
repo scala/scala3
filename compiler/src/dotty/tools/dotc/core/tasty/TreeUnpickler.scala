@@ -1122,10 +1122,10 @@ class TreeUnpickler(reader: TastyReader,
       setPos(start, CaseDef(pat, guard, rhs))
     }
 
-    def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context => T): Trees.Lazy[T] = {
+    def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context => T)(implicit ctx: Context): Trees.Lazy[T] = {
       val localReader = fork
       goto(end)
-      new LazyReader(localReader, op)
+      new LazyReader(localReader, ctx.owner, op)
     }
 
     def readHole(end: Addr, isType: Boolean)(implicit ctx: Context): Tree = {
@@ -1177,10 +1177,10 @@ class TreeUnpickler(reader: TastyReader,
     }
   }
 
-  class LazyReader[T <: AnyRef](reader: TreeReader, op: TreeReader => Context => T) extends Trees.Lazy[T] {
+  class LazyReader[T <: AnyRef](reader: TreeReader, owner: Symbol, op: TreeReader => Context => T) extends Trees.Lazy[T] {
     def complete(implicit ctx: Context): T = {
-      pickling.println(i"starting to read at ${reader.reader.currentAddr}")
-      op(reader)(ctx.withPhaseNoLater(ctx.picklerPhase))
+      pickling.println(i"starting to read at ${reader.reader.currentAddr} with owner $owner")
+      op(reader)(ctx.withPhaseNoLater(ctx.picklerPhase).withOwner(owner))
     }
   }
 

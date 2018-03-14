@@ -58,9 +58,6 @@ class FromTastyTests extends ParallelTesting {
         "spec-sparsearray-old.scala",
         "collections_1.scala",
 
-        // Anonymous method not defined
-        "i3067.scala",
-
         // Infinite compilation
         "t3612.scala",
       )
