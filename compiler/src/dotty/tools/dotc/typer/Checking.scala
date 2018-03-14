@@ -45,7 +45,7 @@ object Checking {
    */
   def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context): Unit = {
     (args, boundss).zipped.foreach { (arg, bound) =>
-      if (!bound.isHK && arg.tpe.isHK)
+      if (!bound.isLambdaSub && arg.tpe.isLambdaSub)
         // see MissingTypeParameterFor
         ctx.error(ex"missing type parameter(s) for $arg", arg.pos)
     }
@@ -657,7 +657,7 @@ trait Checking {
 
   /** Check that `tpt` does not define a higher-kinded type */
   def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree =
-    if (tpt.tpe.isHK && !ctx.compilationUnit.isJava) {
+    if (tpt.tpe.isLambdaSub && !ctx.compilationUnit.isJava) {
         // be more lenient with missing type params in Java,
         // needed to make pos/java-interop/t1196 work.
       errorTree(tpt, MissingTypeParameterFor(tpt.tpe))

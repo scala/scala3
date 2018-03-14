@@ -380,7 +380,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           if (cls2.typeParams.isEmpty) {
             if (cls2 eq AnyKindClass) return true
             if (tp1.isRef(defn.NothingClass)) return true
-            if (tp1.isHK) return false
+            if (tp1.isLambdaSub) return false
+              // Note: We would like to replace this by `if (tp1.hasHigherKind)`
+              // but right now we cannot since some parts of the standard library rely on the
+              // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
             val base = tp1.baseType(cls2)
             if (base.exists && base.ne(tp1))
               return isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow)
@@ -391,7 +394,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             val base = tp1.baseType(cls2)
             if (base.typeSymbol == cls2) return true
           }
-          else if (tp1.isHK && !tp1.isRef(defn.AnyKindClass))
+          else if (tp1.isLambdaSub && !tp1.isRef(defn.AnyKindClass))
             return recur(tp1, EtaExpansion(cls2.typeRef))
         }
         fourthTry
@@ -551,7 +554,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         def compareTypeBounds = tp1 match {
           case tp1 @ TypeBounds(lo1, hi1) =>
             ((lo2 eq NothingType) || isSubType(lo2, lo1)) &&
-            ((hi2 eq AnyType) && !hi1.isHK || (hi2 eq AnyKindType) || isSubType(hi1, hi2))
+            ((hi2 eq AnyType) && !hi1.isLambdaSub || (hi2 eq AnyKindType) || isSubType(hi1, hi2))
           case tp1: ClassInfo =>
             tp2 contains tp1
           case _ =>
@@ -621,7 +624,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           case EtaExpansion(tycon1) => recur(tycon1, tp2)
           case _ => tp2 match {
             case tp2: HKTypeLambda => false // this case was covered in thirdTry
-            case _ => tp2.isHK && isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefs))
+            case _ => tp2.isLambdaSub && isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefs))
           }
         }
         compareHKLambda
@@ -729,7 +732,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
                     tl => tp1base.tycon.appliedTo(args1.take(lengthDiff) ++
                             tparams1.indices.toList.map(tl.paramRefs(_))))
                 (ctx.mode.is(Mode.TypevarsMissContext) ||
-                  tryInstantiate(tycon2, tycon1.ensureHK)) &&
+                  tryInstantiate(tycon2, tycon1.ensureLambdaSub)) &&
                   recur(tp1, tycon1.appliedTo(args2))
               }
             }
@@ -812,7 +815,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         case param1: TypeParamRef =>
           def canInstantiate = tp2 match {
             case AppliedType(tycon2, args2) =>
-              tryInstantiate(param1, tycon2.ensureHK) && isSubArgs(args1, args2, tp1, tycon2.typeParams)
+              tryInstantiate(param1, tycon2.ensureLambdaSub) && isSubArgs(args1, args2, tp1, tycon2.typeParams)
             case _ =>
               false
           }
@@ -1227,8 +1230,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp2
     else if (!tp2.exists) tp1
-    else if ((tp1 isRef AnyClass) && !tp2.isHK || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) tp2
-    else if ((tp2 isRef AnyClass) && !tp1.isHK || (tp2 isRef AnyKindClass) || (tp1 isRef NothingClass)) tp1
+    else if ((tp1 isRef AnyClass) && !tp2.isLambdaSub || (tp1 isRef AnyKindClass) || (tp2 isRef NothingClass)) tp2
+    else if ((tp2 isRef AnyClass) && !tp1.isLambdaSub || (tp2 isRef AnyKindClass) || (tp1 isRef NothingClass)) tp1
     else tp2 match {  // normalize to disjunctive normal form if possible.
       case OrType(tp21, tp22) =>
         tp1 & tp21 | tp1 & tp22

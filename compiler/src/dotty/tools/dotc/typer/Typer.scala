@@ -1237,7 +1237,7 @@ class Typer extends Namer
             var res = typed(desugaredArg, argPt)
             arg match {
               case TypeBoundsTree(EmptyTree, EmptyTree)
-              if tparam.paramInfo.isHK &&
+              if tparam.paramInfo.isLambdaSub &&
                  tpt1.tpe.typeParamSymbols.nonEmpty &&
                  !ctx.mode.is(Mode.Pattern) =>
                 // An unbounded `_` automatically adapts to type parameter bounds. This means:

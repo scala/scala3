@@ -197,7 +197,7 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** If `self` is a higher-kinded type, its type parameters, otherwise Nil */
   final def hkTypeParams(implicit ctx: Context): List[TypeParamInfo] =
-    if (isHK) typeParams else Nil
+    if (isLambdaSub) typeParams else Nil
 
   /** If `self` is a generic class, its type parameter symbols, otherwise Nil */
   final def typeParamSymbols(implicit ctx: Context): List[TypeSymbol] = typeParams match {
@@ -207,10 +207,12 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => Nil
   }
 
-  /** Is self type higher-kinded (i.e. of kind != "*")
-   *  or any-kinded (i.e. has AnyKind as upper bound)?
-   */
-  def isHK(implicit ctx: Context): Boolean = hkResult.exists
+  /** Is self type bounded by a type lambda or AnyKind? */
+  def isLambdaSub(implicit ctx: Context): Boolean = hkResult.exists
+
+  /** Is self type of kind != "*"? */
+  def hasHigherKind(implicit ctx: Context): Boolean =
+    typeParams.nonEmpty || self.isRef(defn.AnyKindClass)
 
   /** If self type is higher-kinded, its result type, otherwise NoType.
    *  Note: The hkResult of an any-kinded type is again AnyKind.
@@ -268,9 +270,9 @@ class TypeApplications(val self: Type) extends AnyVal {
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
   }
 
-  /** If self is not higher-kinded, eta expand it. */
-  def ensureHK(implicit ctx: Context): Type =
-    if (isHK) self else EtaExpansion(self)
+  /** If self is not lambda-bound, eta expand it. */
+  def ensureLambdaSub(implicit ctx: Context): Type =
+    if (isLambdaSub) self else EtaExpansion(self)
 
   /** Eta expand if `self` is a (non-lambda) class reference and `bound` is a higher-kinded type */
   def EtaExpandIfHK(bound: Type)(implicit ctx: Context): Type = {
