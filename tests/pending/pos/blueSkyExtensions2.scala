@@ -112,9 +112,7 @@ object blueSkyExtensions {
 // Functor and Monad
 
   trait Functor[A] {
-    object type ThisC[A] <: Functor[A]
-    object def pure[A]: ThisC[A]
-
+    static def pure[A]: This[A]
     def map[B](f: A => B): ThisC[B]
   }
 
@@ -185,12 +183,5 @@ object blueSkyExtensions {
     def filter(p: T => Boolean): List[T] = ...
     def map[B](f: T => B): List[B] = ...
     def flatMap[B](f: T => List[B]): List[B] = ...
-  }
-
-  class Foo {
-
-  }
-  object Foo {
-
   }
 }

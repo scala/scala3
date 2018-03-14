@@ -30,12 +30,12 @@ object blueSkyExtensions {
     static def unit: This
   }
 
-  extend Int : Monoid {
+  extension IntMonoid for Int : Monoid {
     static def unit = 0
     def + (that: Int) = this + that
   }
 
-  extend String : Monoid {
+  extension StringMonoid for String : Monoid {
     static def unit = ""
     def + (that: Int) = this ++ that
   }
@@ -51,7 +51,7 @@ object blueSkyExtensions {
     def > (that: This) = compareTo > 0
   }
 
-  extend List[type T : Ord] : Ord {
+  extension ListOrd[T : Ord] for List[T] : Ord {
     def compareTo(that: List[T]): Int = (this, that) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -79,7 +79,7 @@ object blueSkyExtensions {
     def map[B](f: A => B) = this.flatMap(f.andThen(pure))
   }
 
-  extend List[type T] : Monad[T] {
+  extension ListMonad[T] for List[T] : Monad[T] {
     static def pure[A] = Nil
 
     def flatMap[B](f: A => List[B]): List[B] = this match {
@@ -88,7 +88,7 @@ object blueSkyExtensions {
     }
   }
 
-  extend (type T[X]: Monad[X])[T[type A]] {
+  extension MonadFlatten[T[X]: Monad[X]] for T[T[A]] {
     def flatten: T[A] = this.flatMap(identity)
   }
 
@@ -106,7 +106,7 @@ object blueSkyExtensions {
     def flatMap[B](f: A => This[B]): This[B]
   }
 
-  extend String : MonoIterable[Char] {
+  extension StringMonoIterable for String : MonoIterable[Char] {
     static type This[A] = String
     static def empty = ""
     static def apply(xs: A*) = xs.mkString
@@ -115,14 +115,14 @@ object blueSkyExtensions {
     def map(f: Char => Char): String = ...
   }
 
-  extend String : Iterable[Char] {
+  extension StringIterable for String : Iterable[Char] {
     static type This[A] = IndexedSeq[A]
 
     def map[B](f: Char => B): IndexedSeq[B] = ...
     def flatMap[B](f: Char => IndexedSeq[B]): IndexedSeq[B] = ...
   }
 
-  extend List[type T] : Iterable[T] {
+  extension ListIterable[T] for List[T] : Iterable[T] {
     static type This[A] = List[A]
     static def empty = Nil
     static def apply(xs: A*) = (xs /: Nil)(_ :: _)
