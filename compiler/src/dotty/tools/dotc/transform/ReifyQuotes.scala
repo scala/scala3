@@ -184,7 +184,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     def tryHeal(tp: Type, pos: Position)(implicit ctx: Context): Option[String] = tp match {
       case tp: TypeRef =>
         if (level == 0) {
-          assert(ctx.owner.is(Macro))
+          assert(ctx.owner.ownersIterator.exists(_.is(Macro)))
           None
         } else {
           val reqType = defn.QuotedTypeType.appliedTo(tp)
