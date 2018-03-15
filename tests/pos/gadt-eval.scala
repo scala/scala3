@@ -13,7 +13,7 @@ object Test {
   def eval2[T](e: Exp[T]): T = e match {
     case e: Lit =>
       e.value
-    case e: Pair[t1, t2] =>
+    case e: Pair[type T1, type T2] =>
       (eval(e.fst), eval(e.snd))
   }
 }

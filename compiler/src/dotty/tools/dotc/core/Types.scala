@@ -263,7 +263,7 @@ object Types {
     }
 
     /** Is some part of this type produced as a repair for an error? */
-    final def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError, forceLazy = false)
+    def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError, forceLazy = false)
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     @tailrec final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = stripTypeVar match {
@@ -508,7 +508,9 @@ object Types {
             case tp1 => tp1
           })
         case tp: TypeRef =>
-          tp.denot.findMember(name, pre, excluded)
+          val mbr = tp.denot.findMember(name, pre, excluded)
+          if (mbr.exists) mbr
+          else followGADT.findMember(name, pre, excluded)
         case tp: AppliedType =>
           goApplied(tp)
         case tp: ThisType =>
@@ -989,7 +991,7 @@ object Types {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else tp.info match {
-          case TypeAlias(tp) => tp.dealias1(keepAnnots): @tailrec
+          case TypeAlias(alias) => alias.dealias1(keepAnnots): @tailrec
           case _ => tp
         }
       case app @ AppliedType(tycon, args) =>
@@ -1282,6 +1284,23 @@ object Types {
      *  layer of it. Otherwise the type itself.
      */
     def deepenProto(implicit ctx: Context): Type = this
+
+    /** If this is a TypeRef or an Application of a GADT-bound type, replace the
+     *  GADT reference by its upper GADT bound. Otherwise NoType.
+     */
+    def followGADT(implicit ctx: Context): Type = widenDealias match {
+      case site: TypeRef if site.symbol.is(Opaque) =>
+        ctx.gadt.bounds(site.symbol) match {
+          case TypeBounds(_, hi) => hi
+          case _ => NoType
+        }
+      case AppliedType(tycon, args) =>
+        val tycon1 = tycon.followGADT
+        if (tycon1.exists) tycon1.appliedTo(args)
+        else NoType
+      case _ =>
+        NoType
+    }
 
 // ----- Substitutions -----------------------------------------------------
 
@@ -2115,7 +2134,13 @@ object Types {
     override def designator = myDesignator
     override protected def designator_=(d: Designator) = myDesignator = d
 
-    override def underlying(implicit ctx: Context): Type = info
+    override def underlying(implicit ctx: Context): Type = {
+      if (symbol.is(Opaque)) {
+        val gadtBounds = ctx.gadt.bounds(symbol)
+        if (gadtBounds != null) return gadtBounds
+      }
+      info
+    }
   }
 
   final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {

@@ -6,6 +6,7 @@ import core._
 import ast._
 import Contexts._, Types._, Flags._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
 import NameKinds.DepParamName
+import SymDenotations.NoDenotation
 import Trees._
 import Constants._
 import Scopes._
@@ -126,8 +127,9 @@ object ProtoTypes {
           memberProto.isRef(defn.UnitClass) ||
           compat.normalizedCompatible(NamedType(tp1, name, m), memberProto)
             // Note: can't use `m.info` here because if `m` is a method, `m.info`
-            //       loses knowledge about `m`'s default arguments.
+            //       loses knowledge about `m`'s default arguments. ||
         mbr match { // hasAltWith inlined for performance
+          case NoDenotation => tp1.exists && isMatchedBy(tp1.followGADT)
           case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
           case _ => mbr hasAltWith qualifies
         }
@@ -303,6 +305,9 @@ object ProtoTypes {
     }
 
     def isDropped: Boolean = toDrop
+
+    override def isErroneous(implicit ctx: Context): Boolean =
+      myTypedArgs.tpes.exists(_.widen.isErroneous)
 
     override def toString = s"FunProto(${args mkString ","} => $resultType)"
 

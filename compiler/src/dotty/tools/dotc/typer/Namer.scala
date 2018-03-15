@@ -101,14 +101,32 @@ trait NamerContextOps { this: Context =>
     if (owner.exists) freshCtx.setOwner(owner) else freshCtx
   }
 
+  /** If `owner` is a companion object of an opaque type, record the alias
+   *  in the GADT bounds of `freshCtx.
+   */
+  def handleOpaqueCompanion(freshCtx: FreshContext, owner: Symbol): FreshContext = {
+    if (owner.is(Module)) {
+      val opaq = owner.companionOpaqueType
+      val alias = opaq.opaqueAlias
+      if (alias.exists) {
+        println(i"set GADT bounds of $opaq : $alias")
+        val result = freshCtx.setFreshGADTBounds
+        result.gadt.setBounds(opaq, TypeAlias(alias))
+        result
+      }
+      else freshCtx
+    }
+    else freshCtx
+  }
+
   /** A new context for the interior of a class */
   def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/): Context = {
-    val localCtx: Context = ctx.fresh.setNewScope
+    val localCtx: FreshContext = ctx.fresh.setNewScope
     selfInfo match {
       case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)
       case _ =>
     }
-    localCtx
+    handleOpaqueCompanion(localCtx, ctx.owner)
   }
 
   def packageContext(tree: untpd.PackageDef, pkg: Symbol): Context =
@@ -506,7 +524,6 @@ class Namer { typer: Typer =>
     case _ =>
   }
 
-
   def setDocstring(sym: Symbol, tree: Tree)(implicit ctx: Context) = tree match {
     case t: MemberDef if t.rawComment.isDefined =>
       ctx.docCtx.foreach(_.addDocstring(sym, t.rawComment))
@@ -613,22 +630,19 @@ class Namer { typer: Typer =>
     def createLinks(classTree: TypeDef, moduleTree: TypeDef)(implicit ctx: Context) = {
       val claz = ctx.effectiveScope.lookup(classTree.name)
       val modl = ctx.effectiveScope.lookup(moduleTree.name)
-      if (claz.isClass && modl.isClass) {
-        ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, modl).entered
-        ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, modl, claz).entered
-      }
-    }
+      modl.registerCompanion(claz)
+      claz.registerCompanion(modl)
+   }
 
     def createCompanionLinks(implicit ctx: Context): Unit = {
       val classDef  = mutable.Map[TypeName, TypeDef]()
       val moduleDef = mutable.Map[TypeName, TypeDef]()
 
-      def updateCache(cdef: TypeDef): Unit = {
-        if (!cdef.isClassDef || cdef.mods.is(Package)) return
-
-        if (cdef.mods.is(ModuleClass)) moduleDef(cdef.name) = cdef
-        else classDef(cdef.name) = cdef
-      }
+      def updateCache(cdef: TypeDef): Unit =
+        if (cdef.isClassDef && !cdef.mods.is(Package) || cdef.mods.is(Opaque)) {
+          if (cdef.mods.is(ModuleClass)) moduleDef(cdef.name) = cdef
+          else classDef(cdef.name) = cdef
+        }
 
       for (stat <- stats)
         expanded(stat) match {
@@ -842,6 +856,7 @@ class Namer { typer: Typer =>
       addInlineInfo(denot)
       denot.info = typeSig(sym)
       Checking.checkWellFormed(sym)
+      denot.normalizeOpaque()
       denot.info = avoidPrivateLeaks(sym, sym.pos)
     }
   }
@@ -929,7 +944,8 @@ class Namer { typer: Typer =>
         if (cls.isRefinementClass) ptype
         else {
           val pt = checkClassType(ptype, parent.pos,
-              traitReq = parent ne parents.head, stablePrefixReq = true)
+              traitReq = (parent `ne` parents.head) || original.mods.hasMod[Mod.InstanceDecl],
+              stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
               case Select(qual: Super, _) if ctx.scala2Mode =>

@@ -40,6 +40,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def withName(name: Name)(implicit ctx: Context) = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
+  /** extend extended impl */
+  case class Extension(extended: Tree, impl: Template) extends DefTree
+
   case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree) extends TermTree
 
   case class SymbolLit(str: String) extends TermTree
@@ -124,6 +127,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Sealed() extends Mod(Flags.Sealed)
 
+    case class Opaque() extends Mod(Flags.Opaque)
+
     case class Override() extends Mod(Flags.Override)
 
     case class Abstract() extends Mod(Flags.Abstract)
@@ -137,6 +142,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case class Enum() extends Mod(Flags.EmptyFlags)
 
     case class EnumCase() extends Mod(Flags.EmptyFlags)
+
+    case class InstanceDecl() extends Mod(Flags.EmptyFlags)
   }
 
   /** Modifiers and annotations for definitions
@@ -408,6 +415,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def ModuleDef(tree: Tree)(name: TermName, impl: Template) = tree match {
       case tree: ModuleDef if (name eq tree.name) && (impl eq tree.impl) => tree
       case _ => finalize(tree, untpd.ModuleDef(name, impl))
+    }
+    def Extension(tree: Tree)(extended: Tree, impl: Template) = tree match {
+      case tree: Extension if (extended eq tree.extended) && (impl eq tree.impl) => tree
+      case _ => finalize(tree, untpd.Extension(extended, impl))
     }
     def ParsedTry(tree: Tree)(expr: Tree, handler: Tree, finalizer: Tree) = tree match {
       case tree: ParsedTry

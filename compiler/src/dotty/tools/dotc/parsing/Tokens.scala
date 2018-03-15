@@ -178,6 +178,8 @@ object Tokens extends TokensCommon {
   final val INLINE = 62;           enter(INLINE, "inline")
   final val ENUM = 63;             enter(ENUM, "enum")
   final val ERASED = 64;           enter(ERASED, "erased")
+  final val OPAQUE = 65;           enter(OPAQUE, "opaque")
+  final val EXTEND = 66;           enter(EXTEND, "extend")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -198,7 +200,7 @@ object Tokens extends TokensCommon {
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
-  final val alphaKeywords = tokenRange(IF, ERASED)
+  final val alphaKeywords = tokenRange(IF, EXTEND)
   final val symbolicKeywords = tokenRange(USCORE, VIEWBOUND)
   final val symbolicTokens = tokenRange(COMMA, VIEWBOUND)
   final val keywords = alphaKeywords | symbolicKeywords
@@ -226,7 +228,7 @@ object Tokens extends TokensCommon {
   final val defIntroTokens = templateIntroTokens | dclIntroTokens
 
   final val localModifierTokens = BitSet(
-    ABSTRACT, FINAL, SEALED, IMPLICIT, INLINE, LAZY, ERASED)
+    ABSTRACT, FINAL, SEALED, IMPLICIT, INLINE, LAZY, ERASED, OPAQUE)
 
   final val accessModifierTokens = BitSet(
     PRIVATE, PROTECTED)
@@ -238,7 +240,7 @@ object Tokens extends TokensCommon {
 
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens = defIntroTokens | modifierTokens | BitSet(
-    IMPORT, PACKAGE)
+    IMPORT, PACKAGE, EXTEND)
 
   final val canStartStatTokens = canStartExpressionTokens | mustStartStatTokens | BitSet(
     AT, CASE)
