@@ -786,23 +786,24 @@ object desugar {
    *    <body2> = <body1> where each method definition gets <combined-params> as last parameter section.
    */
   def extensionDef(tree: Extension)(implicit ctx: Context): Tree = {
-    val Extension(name, extended, impl) = tree
+    val Extension(name, constr, extended, impl) = tree
     val isSimpleExtension = impl.parents.isEmpty
 
     val firstParams = ValDef(nme.SELF, extended, EmptyTree).withFlags(Private | Local | ParamAccessor) :: Nil
-    val body1 = substThis.transform(impl.body)
+    val importSelf = Import(Ident(nme.SELF), Ident(nme.WILDCARD) :: Nil)
+    val body1 = importSelf :: substThis.transform(impl.body)
     val impl1 =
       if (isSimpleExtension) {
         val (typeParams, evidenceParams) =
-          desugarTypeBindings(impl.constr.tparams, forPrimaryConstructor = false)
+          desugarTypeBindings(constr.tparams, forPrimaryConstructor = false)
         cpy.Template(impl)(
-          constr = cpy.DefDef(impl.constr)(tparams = typeParams, vparamss = firstParams :: Nil),
+          constr = cpy.DefDef(constr)(tparams = typeParams, vparamss = firstParams :: Nil),
           parents = ref(defn.AnyValType) :: Nil,
           body = body1.map {
             case ddef: DefDef =>
               def resetFlags(vdef: ValDef) =
                 vdef.withMods(vdef.mods &~ PrivateLocalParamAccessor | Param)
-              val originalParams = impl.constr.vparamss.headOption.getOrElse(Nil).map(resetFlags)
+              val originalParams = constr.vparamss.headOption.getOrElse(Nil).map(resetFlags)
               addEvidenceParams(addEvidenceParams(ddef, originalParams), evidenceParams)
             case other =>
               other
@@ -810,10 +811,13 @@ object desugar {
       }
       else
         cpy.Template(impl)(
-          constr = cpy.DefDef(impl.constr)(vparamss = firstParams :: impl.constr.vparamss),
+          constr = cpy.DefDef(constr)(vparamss = firstParams :: constr.vparamss),
           body = body1)
-    val icls = TypeDef(name, impl1).withMods(tree.mods.withAddedMod(Mod.Extension()) | Implicit)
-    desugr.println(i"desugar $extended --> $icls")
+    val mods1 =
+      if (isSimpleExtension) tree.mods
+      else tree.mods.withAddedMod(Mod.InstanceDcl())
+    val icls = TypeDef(name, impl1).withMods(mods1 | Implicit)
+    desugr.println(i"desugar $tree --> $icls")
     classDef(icls)
   }
 

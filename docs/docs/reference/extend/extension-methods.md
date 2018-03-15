@@ -122,7 +122,7 @@ object PostConditions {
 
   def result[T](implicit er: WrappedResult[T]): T = WrappedResult.unwrap(er)
 
-  extenson Ensuring[T] for T {
+  extension Ensuring[T] for T {
     def ensuring(condition: implicit WrappedResult[T] => Boolean): T = {
       implicit val wrapped = WrappedResult.wrap(this)
       assert(condition)

@@ -2291,16 +2291,16 @@ object Parsers {
       val name = ident().toTypeName
       val tparams = typeParamClauseOpt(ParamOwner.Class)
       val vparamss = paramClauses(tpnme.EMPTY, ofExtension = true).take(1)
-      val constr = makeConstructor(Nil, vparamss)
+      val constr = makeConstructor(tparams, vparamss)
       accept(FOR)
       val extended = annotType()
       val templ =
         if (in.token == COLON) {
           in.nextToken()
-          template(constr, bodyRequired = true)._1
+          template(emptyConstructor, bodyRequired = true)._1
         }
         else {
-          val templ = templateClauseOpt(constr, bodyRequired = true)
+          val templ = templateClauseOpt(emptyConstructor, bodyRequired = true)
           def checkDef(tree: Tree) = tree match {
             case _: DefDef | EmptyValDef => // ok
             case _ => syntaxError("`def` expected", tree.pos.startPos.orElse(templ.pos.startPos))
@@ -2309,7 +2309,7 @@ object Parsers {
           templ.body.foreach(checkDef)
           templ
         }
-      Extension(name, extended, templ)
+      Extension(name, constr, extended, templ)
     }
 
 /* -------- TEMPLATES ------------------------------------------- */

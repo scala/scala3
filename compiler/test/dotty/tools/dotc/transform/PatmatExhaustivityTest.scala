@@ -78,7 +78,7 @@ class PatmatExhaustivityTest {
       }
 
     val failed = res.filter { case (_, expected, actual) => expected != actual }
-    val ignored = Directory(testsDir).list.toList.filter(_.extension == "ignore")
+    val ignored = Directory(testsDir).list.toList.filter(_.`extension` == "ignore")
 
     failed.foreach { case (file, expected, actual) =>
       println(s"\n----------------- incorrect output for $file --------------\n" +

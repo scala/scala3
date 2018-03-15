@@ -40,8 +40,15 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def withName(name: Name)(implicit ctx: Context) = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
-  /** extend extended impl */
-  case class Extension(name: TypeName, extended: Tree, impl: Template) extends MemberDef
+  /** extension name tparams vparamss for tpt impl
+   *
+   *  where `tparams` and `vparamss` are part of `constr`.
+   */
+  case class Extension(name: TypeName, constr: DefDef, tpt: Tree, impl: Template)
+  extends MemberDef{
+    type ThisTree[-T >: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with Extension
+    def withName(name: Name)(implicit ctx: Context) = cpy.Extension(this)(name.toTypeName, constr, tpt, impl)
+  }
 
   case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree) extends TermTree
 
@@ -143,7 +150,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class EnumCase() extends Mod(Flags.EmptyFlags)
 
-    case class Extension() extends Mod(Flags.EmptyFlags)
+    case class InstanceDcl() extends Mod(Flags.EmptyFlags)
   }
 
   /** Modifiers and annotations for definitions
@@ -416,6 +423,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: ModuleDef if (name eq tree.name) && (impl eq tree.impl) => tree
       case _ => finalize(tree, untpd.ModuleDef(name, impl))
     }
+    def Extension(tree: Tree)(name: TypeName, constr: DefDef, tpt: Tree, impl: Template) = tree match {
+      case tree: Extension if (name eq tree.name) && (constr eq tree.constr) && (tpt eq tree.tpt) && (impl eq tree.impl) => tree
+      case _ => finalize(tree, untpd.Extension(name, constr, tpt, impl))
+    }
     def ParsedTry(tree: Tree)(expr: Tree, handler: Tree, finalizer: Tree) = tree match {
       case tree: ParsedTry
         if (expr eq tree.expr) && (handler eq tree.handler) && (finalizer eq tree.finalizer) => tree
@@ -499,6 +510,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case ModuleDef(name, impl) =>
         cpy.ModuleDef(tree)(name, transformSub(impl))
+      case Extension(name, constr, tpt, impl) =>
+        cpy.Extension(tree)(name, transformSub(constr), transform(tpt), transformSub(impl))
       case ParsedTry(expr, handler, finalizer) =>
         cpy.ParsedTry(tree)(transform(expr), transform(handler), transform(finalizer))
       case SymbolLit(str) =>
@@ -548,6 +561,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def foldOver(x: X, tree: Tree)(implicit ctx: Context): X = tree match {
       case ModuleDef(name, impl) =>
         this(x, impl)
+      case Extension(name, constr, tpt, impl) =>
+        this(this(this(x, constr), tpt), impl)
       case ParsedTry(expr, handler, finalizer) =>
         this(this(this(x, expr), handler), finalizer)
       case SymbolLit(str) =>
