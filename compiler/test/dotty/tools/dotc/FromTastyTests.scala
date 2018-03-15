@@ -29,8 +29,6 @@ class FromTastyTests extends ParallelTesting {
     val (step1, step2, step3) = compileTastyInDir("tests/pos", defaultOptions,
       blacklist = Set(
 
-        "opaque-immutable-array.scala",
-
         "macro-deprecate-dont-touch-backquotedidents.scala",
         "t247.scala",
 

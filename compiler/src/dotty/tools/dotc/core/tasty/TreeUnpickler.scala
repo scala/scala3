@@ -986,7 +986,7 @@ class TreeUnpickler(reader: TastyReader,
       def readLengthTerm(): Tree = {
         val end = readEnd()
 
-        def readBlock(mkTree: (List[Tree], Tree) => Tree): Tree = {
+        def readBlock(mkTree: (List[Tree], Tree) => Tree)(implicit ctx: Context): Tree = {
           val exprReader = fork
           skipTree()
           val stats = readStats(ctx.owner, end)
@@ -1015,7 +1015,8 @@ class TreeUnpickler(reader: TastyReader,
               readBlock(Block)
             case INLINED =>
               val call = readTerm()
-              readBlock((defs, expr) => Inlined(call, defs.asInstanceOf[List[MemberDef]], expr))
+              val inlineCtx = tpd.inlineContext(call)
+              readBlock((defs, expr) => Inlined(call, defs.asInstanceOf[List[MemberDef]], expr))(inlineCtx)
             case IF =>
               If(readTerm(), readTerm(), readTerm())
             case LAMBDA =>

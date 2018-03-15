@@ -238,9 +238,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           // In the case of macros we keep the call to be able to reconstruct the parameters that
           // are passed to the macro. This same simplification is applied in ReifiedQuotes when the
           // macro splices are evaluated.
+          def symTrace =
+            if (call.symbol.owner.companionOpaqueType.exists) call.symbol.owner
+            else call.symbol.topLevelClass
           val callTrace =
             if (call.symbol.is(Macro)) call
-            else Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
+            else Ident(symTrace.typeRef).withPos(call.pos)
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion))
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {
