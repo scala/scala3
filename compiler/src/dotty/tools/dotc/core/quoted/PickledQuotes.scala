@@ -51,7 +51,8 @@ object PickledQuotes {
     val tastyBytes = TastyString.unpickle(expr.tasty)
     val unpickled = unpickle(tastyBytes, expr.args)
     unpickled match {
-      case PackageDef(_, (vdef: ValDef) :: Nil) => vdef.rhs
+      case PackageDef(_, (vdef: ValDef) :: Nil) =>
+        vdef.rhs.changeOwner(vdef.symbol, ctx.owner)
     }
   }
 
@@ -62,6 +63,7 @@ object PickledQuotes {
     unpickled match {
       case PackageDef(_, (vdef: ValDef) :: Nil) =>
         vdef.rhs.asInstanceOf[TypeApply].args.head
+          .changeOwner(vdef.symbol, ctx.owner)
     }
   }
 
