@@ -91,10 +91,6 @@ class FromTastyTests extends ParallelTesting {
          // Closure type miss match
          "eff-dependent.scala",
 
-         // Unpickling tree without owner
-         "patmat-bind-typed.scala",
-         "t8395.scala",
-
          // Issue unpickling universes
          "phantom-decls-1.scala",
          "phantom-decls-3.scala",
