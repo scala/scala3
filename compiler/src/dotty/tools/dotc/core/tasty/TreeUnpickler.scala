@@ -144,10 +144,11 @@ class TreeUnpickler(reader: TastyReader,
             else {
               for (i <- 0 until nrefs) readNat()
               if (tag == BIND) {
-                buf += new OwnerTree(start, tag, fork, end)
-                goto(end)
+                // a Bind is never the owner of anything, so we set `end = start`
+                buf += new OwnerTree(start, tag, fork, end = start)
               }
-              else scanTrees(buf, end)
+
+              scanTrees(buf, end)
             }
           }
           else if (tag >= firstNatASTTreeTag) { readNat(); scanTree(buf) }
