@@ -116,10 +116,6 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     cpy.Template(impl)(self = EmptyValDef)
   }
 
-  /** Eliminate empty package definitions that may have been stored in the TASTY trees */
-  override def transformPackageDef(tree: PackageDef)(implicit ctx: Context): Tree =
-    if (tree.stats.isEmpty) EmptyTree else tree
-
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context) = {
     if (ddef.symbol.hasAnnotation(defn.NativeAnnot)) {
       ddef.symbol.resetFlag(Deferred)

@@ -633,7 +633,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** The tree containing only the top-level classes and objects matching either `cls` or its companion object */
   def sliceTopLevel(tree: Tree, cls: ClassSymbol)(implicit ctx: Context): List[Tree] = tree match {
     case PackageDef(pid, stats) =>
-      cpy.PackageDef(tree)(pid, stats.flatMap(sliceTopLevel(_, cls))) :: Nil
+      val slicedStats = stats.flatMap(sliceTopLevel(_, cls))
+      if (!slicedStats.isEmpty)
+        cpy.PackageDef(tree)(pid, slicedStats) :: Nil
+      else
+        Nil
     case tdef: TypeDef =>
       val sym = tdef.symbol
       assert(sym.isClass)
