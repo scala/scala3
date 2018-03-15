@@ -47,7 +47,6 @@ class FromTastyTests extends ParallelTesting {
         "hklub0.scala",
 
         // Missing position
-        "i3000.scala",
         "t1203a.scala",
         "t2260.scala",
         "t4579.scala",
