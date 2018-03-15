@@ -317,13 +317,14 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       }
     }
 
-    /** Transforms the contents of a splice nested
+    /** Transforms the contents of a nested splice
+     *  Assuming
      *     '{
      *        val x = ???
      *        val y = ???
      *        { ... '{ ... x .. y ... } ... }.unary_~
      *      }
-     *
+     *  then the spliced subexpression
      *     { ... '{ ... x ... y ... } ... }
      *  will be transformed to
      *     (args: Seq[Any]) => {
