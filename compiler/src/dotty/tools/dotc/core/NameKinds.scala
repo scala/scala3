@@ -63,7 +63,7 @@ object NameKinds {
     def infoString: String
   }
 
-  object SimpleNameKind extends NameKind(UTF8) { self =>
+  object SimpleNameKind extends NameKind(UTF8) {
     type ThisInfo = Info
     val info = new Info
     def mkString(underlying: TermName, info: ThisInfo) = unsupported("mkString")

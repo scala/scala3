@@ -11,7 +11,7 @@ object desugar {
   def foo1(first: Int, second: Int = 2)(third: Int = 3) = first + second
   def foo2(first: Int)(second: Int = 2)(third: Int = 3) = first + second
 
-  object caseClasses { self =>
+  object caseClasses {
     trait List[+T] {
       def head: T
       def tail: List[T]
