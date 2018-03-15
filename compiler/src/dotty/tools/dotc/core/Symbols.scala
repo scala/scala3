@@ -409,11 +409,23 @@ object Symbols {
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
-  class Symbol private[Symbols] (val coord: Coord, val id: Int) extends Designator with ParamInfo with printing.Showable {
+  class Symbol private[Symbols] (private[this] var myCoord: Coord, val id: Int) extends Designator with ParamInfo with printing.Showable {
 
     type ThisName <: Name
 
     //assert(id != 723)
+
+    def coord: Coord = myCoord
+    /** Set the coordinate of this class, this is only useful when the coordinate is
+     *  not known at symbol creation. This is the case for root symbols
+     *  unpickled from TASTY.
+     *
+     *  @pre coord == NoCoord
+     */
+    private[core] def coord_=(c: Coord) = {
+      assert(myCoord == NoCoord)
+      myCoord = c
+    }
 
     /** The last denotation of this symbol */
     private[this] var lastDenot: SymDenotation = _
@@ -628,7 +640,7 @@ object Symbols {
 
     /** If this is either:
       *   - a top-level class and `-Yretain-trees` is set
-     *    - a top-level class loaded from TASTY and `-tasty` or `-Xlink` is set
+      *   - a top-level class loaded from TASTY and `-tasty` or `-Xlink` is set
       * then return the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
       * This will force the info of the class.
       */
