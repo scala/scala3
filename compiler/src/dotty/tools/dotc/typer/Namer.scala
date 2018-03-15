@@ -954,13 +954,7 @@ class Namer { typer: Typer =>
 
       val selfInfo =
         if (self.isEmpty) NoType
-        else if (cls.is(Module)) {
-          val moduleType = cls.owner.thisType select sourceModule
-          if (self.name == nme.WILDCARD) moduleType
-          else recordSym(
-            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.pos),
-            self)
-        }
+        else if (cls.is(Module)) cls.owner.thisType.select(sourceModule)
         else createSymbol(self)
 
       // pre-set info, so that parent types can refer to type params
