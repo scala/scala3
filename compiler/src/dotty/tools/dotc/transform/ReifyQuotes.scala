@@ -336,7 +336,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             }
 
             val tree1 =
-              if (level == 0) cpy.Inlined(tree)(call, stagedBindings, Splicer.splice(seq(splicedBindings, body)))
+              if (level == 0) cpy.Inlined(tree)(call, stagedBindings, Splicer.splice(seq(splicedBindings, body).withPos(tree.pos)))
               else seq(stagedBindings, cpy.Select(expansion)(cpy.Inlined(tree)(call, splicedBindings, body), name))
             val tree2 = transform(tree1)
 
