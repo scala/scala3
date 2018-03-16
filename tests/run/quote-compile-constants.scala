@@ -14,5 +14,8 @@ object Test {
     println(('(4.0f)).getClass)
     println(('(5.0d)).getClass)
     println(('("xyz")).getClass)
+    println(('()).getClass)
+    println(('{()}).getClass)
+    println(('{{()}}).getClass)
   }
 }
