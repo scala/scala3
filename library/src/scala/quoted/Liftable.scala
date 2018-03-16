@@ -20,7 +20,6 @@ object Liftable {
     def toExpr(implicit liftable: Liftable[T]): Expr[T] = liftable.toExpr(x)
   }
 
-  implicit def UnitIsLiftable: Liftable[Unit] = (x: Unit) => new ValueExpr(x)
   implicit def BooleanIsLiftable: Liftable[Boolean] = (x: Boolean) => new ValueExpr(x)
   implicit def ByteLiftable: Liftable[Byte] = (x: Byte) => new ValueExpr(x)
   implicit def CharIsLiftable: Liftable[Char] = (x: Char) => new ValueExpr(x)
