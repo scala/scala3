@@ -1650,6 +1650,7 @@ object Parsers {
       case PROTECTED => Mod.Protected()
       case SEALED    => Mod.Sealed()
     }
+    private def flagsOfModToken(tok: Int): FlagSet = modOfToken(tok).flags
 
     /** Drop `private' modifier when followed by a qualifier.
      *  Contract `abstract' and `override' to ABSOVERRIDE
@@ -1705,7 +1706,14 @@ object Parsers {
         }
       } else mods
 
-    /** {Annotation} {Modifier}
+    /**
+     * Extend the start Modifiers by parsing modifier tokens in the allowed BitSet, appearing in any order.
+     * Ignore modifier tokens in the parsedSeparately BitSet, so that the caller can parse them after modifier returns
+     * (suitable to parse `AllowedModifiers* lazy`).
+     * Report modifier tokens that appear neither in allowed nor in parsedSeparately.
+     *
+     * Grammar:
+     * {Annotation} {Modifier}
      *  Modifiers      ::= {Modifier}
      *  LocalModifiers ::= {LocalModifier}
      *  AccessModifier ::= (private | protected) [AccessQualifier]
@@ -1714,7 +1722,7 @@ object Parsers {
      *                  |  override
      *  LocalModifier  ::= abstract | final | sealed | implicit | lazy
      */
-    def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers()): Modifiers = {
+    def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers(), parsedSeparately: BitSet = BitSet.empty): Modifiers = {
       @tailrec
       def loop(mods: Modifiers): Modifiers = {
         if (allowed contains in.token) {
@@ -1725,6 +1733,8 @@ object Parsers {
           in.nextToken()
           loop(mods)
         } else {
+          if ((modifierTokens contains in.token) && !(parsedSeparately contains in.token))
+            syntaxError(hl"Modifier `${flagsOfModToken(in.token)}' not allowed at this position")
           mods
         }
       }
@@ -1839,7 +1849,10 @@ object Parsers {
         val start = in.offset
         var mods = annotsAsMods()
         if (owner.isTypeName) {
-          mods = modifiers(start = mods) | ParamAccessor
+          // Adding ParamAccessor would crash
+          mods = modifiers(start = mods, allowed = modifierTokens - SEALED) | ParamAccessor
+          if (mods.is(Lazy))
+            syntaxError("`lazy' modifier not allowed here. Use call-by-name parameters instead")
           mods =
             atPos(start, in.offset) {
               if (in.token == VAL) {
@@ -1879,7 +1892,7 @@ object Parsers {
       def paramClause(): List[ValDef] = inParens {
         if (in.token == RPAREN) Nil
         else {
-          def funArgMods(): Unit = {
+          @tailrec def funArgMods(): Unit = {
             if (in.token == IMPLICIT) {
               implicitOffset = in.offset
               imods = addMod(imods, atPos(accept(IMPLICIT)) { Mod.Implicit() })
@@ -2451,7 +2464,7 @@ object Parsers {
 
     /** BlockStatSeq ::= { BlockStat semi } [ResultExpr]
      *  BlockStat    ::= Import
-     *                 | Annotations [implicit] [lazy] Def
+     *                 | Annotations [implicit] [erased] [lazy] Def
      *                 | Annotations LocalModifiers TmplDef
      *                 | Expr1
      *                 |
@@ -2468,7 +2481,7 @@ object Parsers {
         else if (isDefIntro(localModifierTokens))
           if (in.token == IMPLICIT || in.token == ERASED) {
             val start = in.offset
-            var imods = modifiers(funArgMods)
+            var imods = modifiers(funArgMods, parsedSeparately = BitSet(LAZY))
             if (isBindingIntro) stats += implicitClosure(start, Location.InBlock, imods)
             else stats +++= localDef(start, imods)
           } else {
