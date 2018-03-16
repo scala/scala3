@@ -1,7 +1,6 @@
 import dotty.tools.dotc.ast.Trees.Import
 
 import scala.quoted._
-import scala.quoted.Liftable._
 
 object Macros {
   sealed trait Nat

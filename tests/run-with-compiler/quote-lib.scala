@@ -1,6 +1,5 @@
 
 import scala.quoted._
-import scala.quoted.Liftable._
 import dotty.tools.dotc.quoted.Toolbox._
 
 import liftable.Units._
@@ -43,7 +42,6 @@ object Test {
 
 package liftable {
   import scala.quoted.Liftable
-  import scala.quoted.Liftable._
   import scala.reflect.ClassTag
 
   object Exprs {

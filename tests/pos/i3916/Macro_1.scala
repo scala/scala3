@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.Liftable._
 
 class FInterpolatorHelper(val sc: StringContext) extends AnyVal {
   inline def ff(arg1: Any): String = ~FInterpolation.fInterpolation(sc, Seq('(arg1)))

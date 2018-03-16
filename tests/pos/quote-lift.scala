@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.Liftable._
 
 object Test {
 

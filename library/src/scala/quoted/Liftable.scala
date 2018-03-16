@@ -15,11 +15,6 @@ abstract class Liftable[T] {
  *  gives an alternative implementation using just the basic staging system.
  */
 object Liftable {
-
-  implicit class LiftExprOps[T](val x: T) extends AnyVal {
-    def toExpr(implicit ev: Liftable[T]): Expr[T] = ev.toExpr(x)
-  }
-
   implicit def BooleanIsLiftable: Liftable[Boolean] = (x: Boolean) => new ValueExpr(x)
   implicit def ByteLiftable: Liftable[Byte] = (x: Byte) => new ValueExpr(x)
   implicit def CharIsLiftable: Liftable[Char] = (x: Char) => new ValueExpr(x)

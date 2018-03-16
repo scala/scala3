@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.quoted.Liftable._
 
 import dotty.tools.dotc.quoted.Toolbox._
 

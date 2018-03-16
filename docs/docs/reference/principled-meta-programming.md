@@ -527,17 +527,17 @@ work since replacing `n` by `’n` in the clause would not be phase
 correct.
 
 What happens instead "under the hood" is an extension method `toExpr` is added: `n.toExpr`
-is expanded to `new scala.quoted.Liftable.LiftExprOps(n).toExpr`. The `toExpr` extension
+is expanded to `new scala.quoted.LiftExprOps(n).toExpr`. The `toExpr` extension
 is defined in the companion object of class `Liftable` as follows:
 
-    object Liftable {
+    package object quoted {
       implicit class LiftExprOps[T](val x: T) extends AnyVal {
         def toExpr(implicit ev: Liftable[T]): Expr[T] = ev.toExpr(x)
       }
     }
 
 The extension says that values of types implementing the `Liftable` type class can be
-converted ("lifted") to `Expr` values using `toExpr` when `Liftable._` is imported.
+converted ("lifted") to `Expr` values using `toExpr` when `scala.quoted._` is imported.
 Dotty comes with instance definitions of `Liftable` for
 several types including `Boolean`, `String`, and all primitive number
 types. For example, `Int` values can be converted to `Expr[Int]`

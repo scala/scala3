@@ -1,7 +1,5 @@
 import scala.quoted._
 
-import scala.quoted.Liftable._
-
 object Test {
 
   implicit def IntIsLiftable: Liftable[Int] = new {
