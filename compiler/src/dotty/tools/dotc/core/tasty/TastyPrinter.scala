@@ -84,7 +84,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
         }
         else if (tag >= firstNatASTTreeTag) {
           tag match {
-            case IDENT | IDENTtpt | SELECT | TERMREF | TYPEREF | SELFDEF => printName()
+            case IDENT | IDENTtpt | SELECT | SELECTtpt | TERMREF | TYPEREF | SELFDEF => printName()
             case _ => printNat()
           }
           printTree()
