@@ -10,8 +10,6 @@ sealed abstract class Expr[T] {
 }
 
 object Expr {
-  implicit def toExpr[T](x: T)(implicit ev: Liftable[T]): Expr[T] =
-    ev.toExpr(x)
 
   implicit class AsFunction[T, U](private val f: Expr[T => U]) extends AnyVal {
     def apply(x: Expr[T]): Expr[U] = new Exprs.FunctionAppliedTo[T, U](f, x)
@@ -25,7 +23,7 @@ object Expr {
 object Exprs {
   /** An Expr backed by a pickled TASTY tree */
   final class TastyExpr[T](val tasty: Pickled, val args: Seq[Any]) extends Expr[T] {
-    override def toString(): String = s"Expr(<pickled>)"
+    override def toString: String = s"Expr(<pickled>)"
   }
 
   /** An Expr backed by a value.

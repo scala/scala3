@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.Liftable._
 
 class FInterpolatorHelper(val sc: StringContext) extends AnyVal {
   inline def ff(arg1: Any): String = ~FInterpolation.fInterpolation(sc, Seq('(arg1)))
@@ -14,7 +15,7 @@ object FInterpolation {
   }
 
   def fInterpolation(sc: StringContext, args: Seq[Expr[Any]]): Expr[String] = {
-    val str: Expr[String] = sc.parts.mkString("")
+    val str: Expr[String] = sc.parts.mkString("").toExpr
     val args1: Expr[Seq[Any]] = liftSeq(args)
     '{  (~str).format(~args1: _*) }
   }

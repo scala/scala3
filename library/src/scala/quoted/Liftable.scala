@@ -6,7 +6,7 @@ import scala.quoted.Exprs.ValueExpr
  *  without going through an explicit `'(...)` operation.
  */
 abstract class Liftable[T] {
-  implicit def toExpr(x: T): Expr[T]
+  def toExpr(x: T): Expr[T]
 }
 
 /** Some liftable base types. To be completed with at least all types
@@ -17,7 +17,7 @@ abstract class Liftable[T] {
 object Liftable {
 
   implicit class LiftExprOps[T](val x: T) extends AnyVal {
-    def toExpr(implicit liftable: Liftable[T]): Expr[T] = liftable.toExpr(x)
+    def toExpr(implicit ev: Liftable[T]): Expr[T] = ev.toExpr(x)
   }
 
   implicit def BooleanIsLiftable: Liftable[Boolean] = (x: Boolean) => new ValueExpr(x)

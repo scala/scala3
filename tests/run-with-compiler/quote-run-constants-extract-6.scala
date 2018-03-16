@@ -1,4 +1,5 @@
 import scala.quoted._
+import scala.quoted.Liftable._
 
 import dotty.tools.dotc.quoted.Toolbox._
 
@@ -7,8 +8,8 @@ object Test {
   def main(args: Array[String]): Unit = {
     // n2 is clearly not a constant
     val n2 = '{ println("foo"); 2 }
-    println(power(n2, 6.0).show)
-    println(power(n2, 6.0).run)
+    println(power(n2, 6.0.toExpr).show)
+    println(power(n2, 6.0.toExpr).run)
   }
 
   def power(n: Expr[Int], x: Expr[Double]): Expr[Double] = {
