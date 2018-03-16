@@ -647,21 +647,11 @@ object RefChecks {
        */
       def checkCaseClassInheritanceInvariant() = {
         for (caseCls <- clazz.info.baseClasses.tail.find(_.is(Case)))
-          for (bc <- caseCls.info.baseClasses.tail)
-            if (bc.typeParams.exists(_.paramVariance != 0)) {
-              val caseBT = self.baseType(caseCls)
-              val thisBT = self.baseType(bc)
-              val combinedBT = caseBT.baseType(bc)
-              if (!(thisBT =:= combinedBT))
-                ctx.errorOrMigrationWarning(
-                  em"""illegal inheritance: $clazz inherits case $caseCls
-                      |but the two have different base type instances for $bc.
-                      |
-                      |  Basetype for $clazz: $thisBT
-                      |  Basetype via $caseCls: $combinedBT""", clazz.pos)
-            }
+          for (baseCls <- caseCls.info.baseClasses.tail)
+            if (baseCls.typeParams.exists(_.paramVariance != 0))
+              for (problem <- variantInheritanceProblems(baseCls, caseCls, "non-variant", "case "))
+                ctx.errorOrMigrationWarning(problem(), clazz.pos)
       }
-
       checkNoAbstractMembers()
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
@@ -682,6 +672,51 @@ object RefChecks {
         if (overridden.is(Final))
           ctx.error(TraitRedefinedFinalMethodFromAnyRef(overridden), decl.pos)
       }
+    }
+
+    if (!clazz.is(Trait)) {
+      // check that parameterized base classes and traits are typed in the same way as from the superclass
+      // I.e. say we have
+      //
+      //    Sub extends Super extends* Base
+      //
+      // where `Base` has value parameters. Enforce that
+      //
+      //    Sub.thisType.baseType(Base)  =:=  Sub.thisType.baseType(Super).baseType(Base)
+      //
+      // This is necessary because parameter values are determined directly or indirectly
+      // by `Super`. So we cannot pretend they have a different type when seen from `Sub`.
+      def checkParameterizedTraitsOK() = {
+        val mixins = clazz.mixins
+        for {
+          cls <- clazz.info.baseClasses.tail
+          if cls.paramAccessors.nonEmpty && !mixins.contains(cls)
+          problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, "parameterized", "super")
+        } ctx.error(problem(), clazz.pos)
+      }
+
+      checkParameterizedTraitsOK()
+    }
+
+    /** Check that `site` does not inherit conflicting generic instances of `baseCls`,
+     *  when doing a direct base type or going via intermediate class `middle`. I.e, we require:
+     *
+     *     site.baseType(baseCls)  =:=  site.baseType(middle).baseType(baseCls)
+     *
+     *  Return an optional by name error message if this test fails.
+     */
+    def variantInheritanceProblems(
+        baseCls: Symbol, middle: Symbol, baseStr: String, middleStr: String): Option[() => String] = {
+      val superBT = self.baseType(middle)
+      val thisBT = self.baseType(baseCls)
+      val combinedBT = superBT.baseType(baseCls)
+      if (combinedBT =:= thisBT) None // ok
+      else
+        Some(() =>
+          em"""illegal inheritance: $clazz inherits conflicting instances of $baseStr base $baseCls.
+              |
+              |  Direct basetype: $thisBT
+              |  Basetype via $middleStr$middle: $combinedBT""")
     }
 
     /* Returns whether there is a symbol declared in class `inclazz`

@@ -190,7 +190,8 @@ object Inferencing {
     def refinementIsInvariant(tp: Type): Boolean = tp match {
       case tp: ClassInfo => tp.cls.is(Final) || tp.cls.is(Case)
       case tp: TypeProxy => refinementIsInvariant(tp.underlying)
-      case tp: AndOrType => refinementIsInvariant(tp.tp1) && refinementIsInvariant(tp.tp2)
+      case tp: AndType => refinementIsInvariant(tp.tp1) && refinementIsInvariant(tp.tp2)
+      case tp: OrType => refinementIsInvariant(tp.tp1) && refinementIsInvariant(tp.tp2)
       case _ => false
     }
 
