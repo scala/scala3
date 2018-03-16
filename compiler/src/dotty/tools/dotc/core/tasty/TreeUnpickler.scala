@@ -1133,19 +1133,14 @@ class TreeUnpickler(reader: TastyReader,
       val idx = readNat()
       val args = until(end)(readTerm())
       val splice = splices(idx)
-
+      val reifiedArgs = args.map(arg => if (arg.isTerm) new TreeExpr(arg) else new TreeType(arg))
       if (isType) {
-        val quotedType =
-          if (args.isEmpty) splice.asInstanceOf[quoted.Type[_]]
-          else splice.asInstanceOf[Seq[Any] => quoted.Type[_]](args.map(tree => new TreeType(tree)))
+        val quotedType = splice.asInstanceOf[Seq[Any] => quoted.Type[_]](reifiedArgs)
         PickledQuotes.quotedTypeToTree(quotedType)
       } else {
-        val quotedExpr =
-          if (args.isEmpty) splice.asInstanceOf[quoted.Expr[_]]
-          else splice.asInstanceOf[Seq[Any] => quoted.Expr[_]](args.map(tree => new TreeExpr(tree)))
+        val quotedExpr = splice.asInstanceOf[Seq[Any] => quoted.Expr[_]](reifiedArgs)
         PickledQuotes.quotedExprToTree(quotedExpr)
       }
-
     }
 
 // ------ Setting positions ------------------------------------------------
