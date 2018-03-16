@@ -46,6 +46,9 @@ class FromTastyTests extends ParallelTesting {
         // Type miss match after unpickling
         "hklub0.scala",
 
+         // Closure type miss match
+        "i4125.scala",
+
         // Missing position
         "t1203a.scala",
         "t2260.scala",
