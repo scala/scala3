@@ -1839,7 +1839,7 @@ object Parsers {
         val start = in.offset
         var mods = annotsAsMods()
         if (owner.isTypeName) {
-          mods = modifiers(start = mods) | ParamAccessor
+          mods = addFlag(modifiers(start = mods), ParamAccessor)
           mods =
             atPos(start, in.offset) {
               if (in.token == VAL) {

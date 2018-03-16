@@ -338,9 +338,10 @@ object Checking {
     def checkWithDeferred(flag: FlagSet) =
       if (sym.is(flag))
         fail(AbstractMemberMayNotHaveModifier(sym, flag))
-    def checkNoConflict(flag1: FlagSet, flag2: FlagSet) =
-      if (sym.is(allOf(flag1, flag2)))
-        fail(i"illegal combination of modifiers: `$flag1` and `$flag2` for: $sym")
+    def checkNoConflict(flag1: FlagSet, flag2: FlagSet, msg: => String) =
+      if (sym.is(allOf(flag1, flag2))) fail(msg)
+    def checkCombination(flag1: FlagSet, flag2: FlagSet) =
+      checkNoConflict(flag1, flag2, i"illegal combination of modifiers: `$flag1` and `$flag2` for: $sym")
     def checkApplicable(flag: FlagSet, ok: Boolean) =
       if (!ok && !sym.is(Synthetic))
         fail(i"modifier `$flag` is not allowed for this definition")
@@ -373,10 +374,11 @@ object Checking {
     }
     if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
       fail(CannotExtendAnyVal(sym))
-    checkNoConflict(Final, Sealed)
-    checkNoConflict(Private, Protected)
-    checkNoConflict(Abstract, Override)
-    checkNoConflict(Lazy, Inline)
+    checkCombination(Final, Sealed)
+    checkCombination(Private, Protected)
+    checkCombination(Abstract, Override)
+    checkCombination(Lazy, Inline)
+    checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
     if (sym.is(Inline)) checkApplicable(Inline, sym.isTerm && !sym.is(Mutable | Module))
     if (sym.is(Lazy)) checkApplicable(Lazy, !sym.is(Method | Mutable))
     if (sym.isType && !sym.is(Deferred))
