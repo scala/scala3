@@ -4513,6 +4513,8 @@ object Types {
       else if (lo `eq` hi) lo
       else Range(lower(lo), upper(hi))
 
+    protected def emptyRange: Type = range(defn.NothingType, defn.AnyType)
+
     protected def isRange(tp: Type): Boolean = tp.isInstanceOf[Range]
 
     protected def lower(tp: Type): Type = tp match {
@@ -4586,7 +4588,7 @@ object Types {
           forwarded.orElse(
             range(super.derivedSelect(tp, preLo).loBound, super.derivedSelect(tp, preHi).hiBound))
         case _ =>
-          super.derivedSelect(tp, pre) match {
+          if (pre == defn.AnyType) pre else super.derivedSelect(tp, pre) match {
             case TypeBounds(lo, hi) => range(lo, hi)
             case tp => tp
           }
@@ -4637,7 +4639,7 @@ object Types {
       else tp.derivedTypeBounds(lo, hi)
 
     override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type): Type =
-      if (isRange(thistp) || isRange(supertp)) range(defn.NothingType, defn.AnyType)
+      if (isRange(thistp) || isRange(supertp)) emptyRange
       else tp.derivedSuperType(thistp, supertp)
 
     override protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =

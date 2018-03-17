@@ -13,6 +13,7 @@ import NameOps._
 import collection.mutable
 import reporting.diagnostic.messages._
 import Checking.checkNoPrivateLeaks
+import CheckRealizable._
 
 trait TypeAssigner {
   import tpd._
@@ -105,7 +106,7 @@ trait TypeAssigner {
             case info: ClassInfo =>
               range(defn.NothingType, apply(classBound(info)))
             case _ =>
-              range(defn.NothingType, defn.AnyType) // should happen only in error cases
+              emptyRange // should happen only in error cases
           }
         case tp: ThisType if toAvoid(tp.cls) =>
           range(defn.NothingType, apply(classBound(tp.cls.classInfo)))
@@ -340,13 +341,31 @@ trait TypeAssigner {
     }
   }
 
-  /** Substitute argument type `argType` for parameter `pref` in type `tp`,
-   *  skolemizing the argument type if it is not stable and `pref` occurs in `tp`.
+  /** Substitute argument type `argType` for parameter `pref` in type `tp`, but
+   *  take special measures if the argument is not realizable:
+   *  1. If the widened argument type is known to have good bounds,
+   *     substitute the skolemized argument type.
+   *  2. If the widened argument type is not known to have good bounds, eliminate all references
+   *     to the parameter in `tp`.
+   *  (2) is necessary since even with a skolemized type we might break subtyping if
+   *  bounds are bad. This could lead to errors not being detected. A test case is the second
+   *  failure in neg/i4031.scala
    */
-  def safeSubstParam(tp: Type, pref: ParamRef, argType: Type)(implicit ctx: Context): Type = {
+  def safeSubstParam(tp: Type, pref: ParamRef, argType: Type, initVariance: Int = 1)(implicit ctx: Context): Type = {
     val tp1 = tp.substParam(pref, argType)
-    if ((tp1 eq tp) || argType.isStable) tp1
-    else tp.substParam(pref, SkolemType(argType.widen))
+    if ((tp1 eq tp) || argType.isStableRealizable) tp1
+    else {
+      val widenedArgType = argType.widen
+      if (realizability(widenedArgType) == Realizable)
+        tp.substParam(pref, SkolemType(widenedArgType))
+      else {
+        val avoidParam = new ApproximatingTypeMap {
+          variance = initVariance
+          def apply(t: Type) = if (t `eq` pref) emptyRange else mapOver(t)
+        }
+        avoidParam(tp)
+      }
+    }
   }
 
   /** Substitute types of all arguments `args` for corresponding `params` in `tp`.
