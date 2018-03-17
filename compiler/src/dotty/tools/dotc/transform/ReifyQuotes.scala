@@ -297,7 +297,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
 
     private def pickledQuote(body: Tree, splices: List[Tree], isType: Boolean)(implicit ctx: Context) = {
       def pickleAsValue[T](value: T) =
-        ref(defn.QuotedExprs_valueExpr).appliedToType(body.tpe.widen).appliedTo(Literal(Constant(value)))
+        ref(defn.Unpickler_liftedExpr).appliedToType(body.tpe.widen).appliedTo(Literal(Constant(value)))
       def pickleAsTasty() = {
         val meth =
           if (isType) ref(defn.Unpickler_unpickleType).appliedToType(body.tpe)

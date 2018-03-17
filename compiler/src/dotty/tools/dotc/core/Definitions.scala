@@ -628,9 +628,6 @@ class Definitions {
   lazy val QuotedExprsModule = ctx.requiredModule("scala.quoted.Exprs")
   def QuotedExprsClass(implicit ctx: Context) = QuotedExprsModule.symbol.asClass
 
-    lazy val QuotedExprs_valueExprR = QuotedExprsModule.requiredMethod("valueExpr")
-    def QuotedExprs_valueExpr(implicit ctx: Context) = QuotedExprs_valueExprR.symbol
-
   lazy val QuotedTypeType = ctx.requiredClassRef("scala.quoted.Type")
   def QuotedTypeClass(implicit ctx: Context) = QuotedTypeType.symbol.asClass
 
@@ -642,6 +639,7 @@ class Definitions {
     def QuotedType_apply(implicit ctx: Context) = QuotedType_applyR.symbol
 
   def Unpickler_unpickleExpr = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
+  def Unpickler_liftedExpr = ctx.requiredMethod("scala.runtime.quoted.Unpickler.liftedExpr")
   def Unpickler_unpickleType = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")

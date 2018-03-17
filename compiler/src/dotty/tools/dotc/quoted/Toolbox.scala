@@ -4,11 +4,10 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.printing.RefinedPrinter
-import dotty.tools.dotc.transform.ReifyQuotes
 
 import scala.quoted.Expr
 import scala.runtime.BoxedUnit
-import scala.quoted.Exprs.ValueExpr
+import scala.quoted.Exprs.LiftedExpr
 import scala.runtime.quoted._
 
 /** Default runners for quoted expressions */
@@ -24,12 +23,12 @@ object Toolbox {
     ): Toolbox[T] = new Toolbox[T] {
 
     def run(expr: Expr[T]): T = expr match {
-      case expr: ValueExpr[T] => expr.value
+      case expr: LiftedExpr[T] => expr.value
       case _ => new QuoteDriver().run(expr, runSettings)
     }
 
     def show(expr: Expr[T]): String = expr match {
-      case expr: ValueExpr[T] =>
+      case expr: LiftedExpr[T] =>
         implicit val ctx = new QuoteDriver().initCtx
         if (showSettings.compilerArgs.contains("-color:never"))
           ctx.settings.color.update("never")
@@ -47,7 +46,7 @@ object Toolbox {
         case _ => None
       }
       expr match {
-        case expr: ValueExpr[T] => Some(expr.value)
+        case expr: LiftedExpr[T] => Some(expr.value)
         case _ => new QuoteDriver().withTree(expr, (tree, _) => toConstantOpt(tree), Settings.run())
       }
     }
