@@ -11,7 +11,6 @@ import core.NameOps._
 import transform.MegaPhase.MiniPhase
 import config.Printers.simplify
 import ast.tpd
-import dotty.tools.dotc.core.PhantomErasure
 
 import scala.annotation.tailrec
 
@@ -170,8 +169,6 @@ object Simplify {
                             sym.owner.is(CaseClass)                  &&
                             sym.name.isSelectorName                  &&
                             !sym.info.decls.exists(_.is(Mutable | Lazy)) // Conservatively covers case class A(var x: Int)
-    val isErasedPhantom   = PhantomErasure.isErasedPhantom(sym)
-
-    isImmutableGetter || isCaseAccessor || isProductAccessor || isErasedPhantom
+    isImmutableGetter || isCaseAccessor || isProductAccessor
   }
 }

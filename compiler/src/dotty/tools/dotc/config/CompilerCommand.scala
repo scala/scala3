@@ -2,10 +2,12 @@ package dotty.tools.dotc
 package config
 
 import java.nio.file.{Files, Paths}
+
 import Settings._
 import core.Contexts._
 import util.DotClass
 import Properties._
+
 import scala.collection.JavaConverters._
 
 object CompilerCommand extends DotClass {
@@ -71,7 +73,23 @@ object CompilerCommand extends DotClass {
       val ss                  = (ctx.settings.allSettings filter cond).toList sortBy (_.name)
       val width               = (ss map (_.name.length)).max
       def format(s: String)   = ("%-" + width + "s") format s
-      def helpStr(s: Setting[_]) = s"${format(s.name)} ${s.description}"
+      def helpStr(s: Setting[_]) = {
+        def defaultValue = s.default match {
+          case _: Int | _: String => s.default.toString
+          case _ =>
+            // For now, skip the default values that do not make sense for the end user.
+            // For example 'false' for the version command.
+            ""
+        }
+        def formatSetting(name: String, value: String) = {
+          if (value.nonEmpty)
+          // the format here is helping to make empty padding and put the additional information exactly under the description.
+            s"\n${format("")} $name: $value."
+          else
+            ""
+        }
+        s"${format(s.name)} ${s.description}${formatSetting("Default", defaultValue)}${formatSetting("Choices", s.legalChoices)}"
+      }
       ss map helpStr mkString "\n"
     }
 

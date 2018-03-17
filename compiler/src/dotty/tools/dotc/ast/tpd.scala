@@ -202,7 +202,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case tp: MethodType =>
         def valueParam(name: TermName, info: Type): TermSymbol = {
           val maybeImplicit = if (tp.isImplicitMethod) Implicit else EmptyFlags
-          ctx.newSymbol(sym, name, TermParam | maybeImplicit, info, coord = sym.coord)
+          val maybeErased = if (tp.isErasedMethod) Erased else EmptyFlags
+          ctx.newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
         }
         val params = (tp.paramNames, tp.paramInfos).zipped.map(valueParam)
         val (paramss, rtp) = valueParamss(tp.instantiate(params map (_.termRef)))
@@ -306,9 +307,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def prefixIsElidable(tp: NamedType)(implicit ctx: Context) = {
     val typeIsElidable = tp.prefix match {
-      case NoPrefix =>
-        true
       case pre: ThisType =>
+        tp.isType ||
         pre.cls.isStaticOwner ||
           tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
           // was ctx.owner.enclosingClass.derivesFrom(pre.cls) which was not tight enough
@@ -316,8 +316,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           // eg anonymous TypeMap inside TypeMap.andThen
       case pre: TermRef =>
         pre.symbol.is(Module) && pre.symbol.isStatic
-      case _ =>
-        false
+      case pre =>
+        pre `eq` NoPrefix
     }
     typeIsElidable ||
     tp.symbol.is(JavaStatic) ||
@@ -372,7 +372,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       ref(defn.DottyArraysModule).select(defn.newArrayMethod).withPos(pos)
 
     if (!ctx.erasedTypes) {
-      assert(!TypeErasure.isUnboundedGeneric(elemTpe)) //needs to be done during typer. See Applications.convertNewGenericArray
+      assert(!TypeErasure.isGeneric(elemTpe)) //needs to be done during typer. See Applications.convertNewGenericArray
       newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
     } else  // after erasure
       newArr.appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
@@ -871,6 +871,27 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   implicit class ListOfTreeDecorator(val xs: List[tpd.Tree]) extends AnyVal {
     def tpes: List[Type] = xs map (_.tpe)
+  }
+
+  /** A trait for loaders that compute trees. Currently implemented just by DottyUnpickler. */
+  trait TreeProvider {
+    protected def computeTrees(implicit ctx: Context): List[Tree]
+
+    private[this] var myTrees: List[Tree] = null
+
+    /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
+    def trees(implicit ctx: Context): List[Tree] =
+      if (ctx.settings.YretainTrees.value) {
+        if (myTrees == null) myTrees = computeTrees
+        myTrees
+      } else computeTrees
+
+    /** Get first tree defined by this provider, or EmptyTree if none exists */
+    def tree(implicit ctx: Context): Tree =
+      trees.headOption.getOrElse(EmptyTree)
+
+    /** Is it possible that the tree to load contains a definition of or reference to `id`? */
+    def mightContain(id: String)(implicit ctx: Context) = true
   }
 
   // convert a numeric with a toXXX method

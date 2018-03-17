@@ -24,7 +24,7 @@ import reporting._, reporting.diagnostic.MessageContainer
 import util._
 
 /** A Driver subclass designed to be used from IDEs */
-class InteractiveDriver(settings: List[String]) extends Driver {
+class InteractiveDriver(val settings: List[String]) extends Driver {
   import tpd._
   import InteractiveDriver._
 
@@ -50,25 +50,31 @@ class InteractiveDriver(settings: List[String]) extends Driver {
     override def default(key: URI) = Nil
   }
 
+  private val myCompilationUnits = new mutable.LinkedHashMap[URI, CompilationUnit]
+
   def openedFiles: Map[URI, SourceFile] = myOpenedFiles
   def openedTrees: Map[URI, List[SourceTree]] = myOpenedTrees
+  def compilationUnits: Map[URI, CompilationUnit] = myCompilationUnits
 
-  def allTrees(implicit ctx: Context): List[SourceTree] = {
+  def allTrees(implicit ctx: Context): List[SourceTree] = allTreesContaining("")
+
+  def allTreesContaining(id: String)(implicit ctx: Context): List[SourceTree] = {
     val fromSource = openedTrees.values.flatten.toList
     val fromClassPath = (dirClassPathClasses ++ zipClassPathClasses).flatMap { cls =>
       val className = cls.toTypeName
-      List(tree(className), tree(className.moduleClassName)).flatten
+      List(tree(className, id), tree(className.moduleClassName, id)).flatten
     }
     (fromSource ++ fromClassPath).distinct
   }
 
-  private def tree(className: TypeName)(implicit ctx: Context): Option[SourceTree] = {
+  private def tree(className: TypeName, id: String)(implicit ctx: Context): Option[SourceTree] = {
     val clsd = ctx.base.staticRef(className)
     clsd match {
       case clsd: ClassDenotation =>
-        SourceTree.fromSymbol(clsd.symbol.asClass)
+        clsd.ensureCompleted()
+        SourceTree.fromSymbol(clsd.symbol.asClass, id)
       case _ =>
-        sys.error(s"class not found: $className")
+        None
     }
   }
 
@@ -142,20 +148,24 @@ class InteractiveDriver(settings: List[String]) extends Driver {
     val names = new mutable.ListBuffer[String]
     dirClassPaths.foreach { dirCp =>
       val root = dirCp.dir.toPath
-      Files.walkFileTree(root, new SimpleFileVisitor[Path] {
-        override def visitFile(path: Path, attrs: BasicFileAttributes) = {
-          if (!attrs.isDirectory) {
-            val name = path.getFileName.toString
-            for {
-              tastySuffix <- tastySuffixes
-              if name.endsWith(tastySuffix)
-            } {
-              names += root.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix)
+      try
+        Files.walkFileTree(root, new SimpleFileVisitor[Path] {
+          override def visitFile(path: Path, attrs: BasicFileAttributes) = {
+            if (!attrs.isDirectory) {
+              val name = path.getFileName.toString
+              for {
+                tastySuffix <- tastySuffixes
+                if name.endsWith(tastySuffix)
+              } {
+                names += root.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix)
+              }
             }
+            FileVisitResult.CONTINUE
           }
-          FileVisitResult.CONTINUE
-        }
-      })
+        })
+      catch {
+        case _: NoSuchFileException =>
+      }
     }
     names.toList
   }
@@ -196,7 +206,7 @@ class InteractiveDriver(settings: List[String]) extends Driver {
             *  trees are not cleand twice.
             *  TODO: Find a less expensive way to check for those cycles.
             */
-            if (!seen(annot.tree))
+            if (annot.isEvaluated && !seen(annot.tree))
               cleanupTree(annot.tree)
           }
         }
@@ -206,7 +216,17 @@ class InteractiveDriver(settings: List[String]) extends Driver {
     cleanupTree(tree)
   }
 
-  def run(uri: URI, sourceCode: String): List[MessageContainer] = {
+  private def toSource(uri: URI, sourceCode: String): SourceFile = {
+    val virtualFile = new VirtualFile(uri.toString, Paths.get(uri).toString)
+    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
+    writer.write(sourceCode)
+    writer.close()
+    new SourceFile(virtualFile, Codec.UTF8)
+  }
+
+  def run(uri: URI, sourceCode: String): List[MessageContainer] = run(uri, toSource(uri, sourceCode))
+
+  def run(uri: URI, source: SourceFile): List[MessageContainer] = {
     val previousCtx = myCtx
     try {
       val reporter =
@@ -217,18 +237,15 @@ class InteractiveDriver(settings: List[String]) extends Driver {
 
       implicit val ctx = myCtx
 
-      val virtualFile = new VirtualFile(uri.toString, Paths.get(uri).toString)
-      val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
-      writer.write(sourceCode)
-      writer.close()
-      val source = new SourceFile(virtualFile, Codec.UTF8)
       myOpenedFiles(uri) = source
 
       run.compileSources(List(source))
       run.printSummary()
-      val t = ctx.run.units.head.tpdTree
+      val unit = ctx.run.units.head
+      val t = unit.tpdTree
       cleanup(t)
       myOpenedTrees(uri) = topLevelClassTrees(t, source)
+      myCompilationUnits(uri) = unit
 
       reporter.removeBufferedMessages
     }
@@ -243,6 +260,7 @@ class InteractiveDriver(settings: List[String]) extends Driver {
   def close(uri: URI): Unit = {
     myOpenedFiles.remove(uri)
     myOpenedTrees.remove(uri)
+    myCompilationUnits.remove(uri)
   }
 }
 

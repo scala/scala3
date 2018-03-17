@@ -29,7 +29,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
   import SymUtils._
 
   /** All traits implemented by a class or trait except for those inherited through the superclass. */
-  def directlyInheritedTraits(implicit ctx: Context) = {
+  def directlyInheritedTraits(implicit ctx: Context): List[ClassSymbol] = {
     val superCls = self.asClass.superClass
     val baseClasses = self.asClass.baseClasses
     if (baseClasses.isEmpty) Nil
@@ -39,7 +39,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
   /** All traits implemented by a class, except for those inherited through the superclass.
    *  The empty list if `self` is a trait.
    */
-  def mixins(implicit ctx: Context) = {
+  def mixins(implicit ctx: Context): List[ClassSymbol] = {
     if (self is Trait) Nil
     else directlyInheritedTraits
   }
@@ -50,15 +50,15 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def isTypeTestOrCast(implicit ctx: Context): Boolean =
     self == defn.Any_asInstanceOf || isTypeTest
 
-  def isVolatile(implicit ctx: Context) = self.hasAnnotation(defn.VolatileAnnot)
+  def isVolatile(implicit ctx: Context): Boolean = self.hasAnnotation(defn.VolatileAnnot)
 
-  def isAnyOverride(implicit ctx: Context) = self.is(Override) || self.is(AbsOverride)
+  def isAnyOverride(implicit ctx: Context): Boolean = self.is(Override) || self.is(AbsOverride)
     // careful: AbsOverride is a term only flag. combining with Override would catch only terms.
 
-  def isSuperAccessor(implicit ctx: Context) = self.name.is(SuperAccessorName)
+  def isSuperAccessor(implicit ctx: Context): Boolean = self.name.is(SuperAccessorName)
 
   /** A type or term parameter or a term parameter accessor */
-  def isParamOrAccessor(implicit ctx: Context) =
+  def isParamOrAccessor(implicit ctx: Context): Boolean =
     self.is(Param) || self.is(ParamAccessor)
 
   /** If this is a constructor, its owner: otherwise this. */
@@ -87,9 +87,6 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   def accessorNamed(name: TermName)(implicit ctx: Context): Symbol =
     self.owner.info.decl(name).suchThat(_ is Accessor).symbol
-
-  def paramAccessors(implicit ctx: Context): List[Symbol] =
-    self.info.decls.filter(_ is ParamAccessor)
 
   def caseAccessors(implicit ctx: Context): List[Symbol] =
     self.info.decls.filter(_ is CaseAccessor)
@@ -159,7 +156,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
    *  defined in a different toplevel class than its supposed parent class `cls`?
    *  Such children are not pickled, and have to be reconstituted manually.
    */
-  def isInaccessibleChildOf(cls: Symbol)(implicit ctx: Context) =
+  def isInaccessibleChildOf(cls: Symbol)(implicit ctx: Context): Boolean =
     self.isLocal && !cls.topLevelClass.isLinkedWith(self.topLevelClass)
 
   /** If this is a sealed class, its known children */
@@ -169,7 +166,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
     }
 
   /** Is symbol directly or indirectly owned by a term symbol? */
-  @tailrec def isLocal(implicit ctx: Context): Boolean = {
+  @tailrec final def isLocal(implicit ctx: Context): Boolean = {
     val owner = self.owner
     if (owner.isTerm) true
     else if (owner.is(Package)) false

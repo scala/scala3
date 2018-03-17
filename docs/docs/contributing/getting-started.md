@@ -7,18 +7,20 @@ title: Getting Started
 
 Requirements
 ------------
-Make sure that you are using Java 8 or later. The output of `java -version`
-should contain `1.8`.
+Make sure that you are using Java 8: The output of `java -version` should
+contain `1.8`. Work to support Java 9 is
+[ongoing](https://github.com/lampepfl/dotty/pull/3138).
 
 Compiling and Running
 ---------------------
 Start by cloning the repository:
 
 ```bash
-$ git clone --recursive https://github.com/lampepfl/dotty.git
+$ git clone --recursive --single-branch https://github.com/lampepfl/dotty.git
 $ cd dotty
 $ sbt managedSources # Needed for IDE import to succeed
 ```
+Pass `--single-branch` to clone only the master branch, otherwise cloning will be *much* slower (details in [issue #3236](https://github.com/lampepfl/dotty/issues/3236)).
 
 Dotty provides a standard sbt build: compiling, running and starting a repl can
 all be done from within sbt:

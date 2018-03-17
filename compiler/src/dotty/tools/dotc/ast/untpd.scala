@@ -50,15 +50,14 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    */
   case class InterpolatedString(id: TermName, segments: List[Tree]) extends TermTree
 
+  /** A function type */
   case class Function(args: List[Tree], body: Tree) extends Tree {
     override def isTerm = body.isTerm
     override def isType = body.isType
   }
 
-  /** An implicit function type */
-  class ImplicitFunction(args: List[Tree], body: Tree) extends Function(args, body) {
-    override def toString = s"ImplicitFunction($args, $body)"
-  }
+  /** A function type that should have non empty args */
+  class NonEmptyFunction(args: List[Tree], body: Tree, val mods: Modifiers) extends Function(args, body)
 
   /** A function created from a wildcard expression
    *  @param  placeHolderParams  a list of definitions of synthetic parameters
@@ -118,6 +117,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case class Var() extends Mod(Flags.Mutable)
 
     case class Implicit() extends Mod(Flags.ImplicitCommon)
+
+    case class Erased() extends Mod(Flags.Erased)
 
     case class Final() extends Mod(Flags.Final)
 
@@ -228,8 +229,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
      */
     def ensureCompletions(implicit ctx: Context): Unit = ()
 
-    /** The method that computes the type of this tree */
-    def derivedType(originalSym: Symbol)(implicit ctx: Context): Type
+    /** The method that computes the tree with the derived type */
+    def derivedTree(originalSym: Symbol)(implicit ctx: Context): tpd.Tree
   }
 
     /** Property key containing TypeTrees whose type is computed

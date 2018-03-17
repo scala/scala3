@@ -1,0 +1,3 @@
+method 'some' called with arguments '' and implicit argument 'foo'
+method 'ints' called with arguments '1', '2', '3' and implicit argument 'foo'
+method 'strings' called with arguments 'a', 'b', 'c' and implicit argument 'foo'

@@ -50,7 +50,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   private[this] var myAnyClass: ClassSymbol = null
   private[this] var myNothingClass: ClassSymbol = null
   private[this] var myNullClass: ClassSymbol = null
-  private[this] var myPhantomNothingClass: ClassSymbol = null
   private[this] var myObjectClass: ClassSymbol = null
   private[this] var myAnyType: TypeRef = null
   private[this] var myNothingType: TypeRef = null
@@ -66,10 +65,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   def NullClass = {
     if (myNullClass == null) myNullClass = defn.NullClass
     myNullClass
-  }
-  def PhantomNothingClass = {
-    if (myPhantomNothingClass == null) myPhantomNothingClass = defn.Phantom_NothingClass
-    myPhantomNothingClass
   }
   def ObjectClass = {
     if (myObjectClass == null) myObjectClass = defn.ObjectClass
@@ -287,7 +282,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             if (recur(info1.alias, tp2)) return true
             if (tp1.prefix.isStable) return false
           case _ =>
-            if (tp1 eq NothingType) return tp1 == tp2.bottomType
+            if (tp1 eq NothingType) return true
         }
         thirdTry
       case tp1: TypeParamRef =>
@@ -586,9 +581,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               case _ => false
             }
             val sym1 = tp1.symbol
-            (sym1 eq NothingClass) && tp2.isValueTypeOrLambda && !tp2.isPhantom ||
-            (sym1 eq NullClass) && isNullable(tp2) ||
-            (sym1 eq PhantomNothingClass) && tp1.topType == tp2.topType
+            (sym1 eq NothingClass) && tp2.isValueTypeOrLambda ||
+            (sym1 eq NullClass) && isNullable(tp2)
         }
       case tp1 @ AppliedType(tycon1, args1) =>
         compareAppliedType1(tp1, tycon1, args1)
@@ -931,7 +925,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case tp @ RefinedType(parent, rname, rinfo) => tp.derivedRefinedType(fix(parent), rname, rinfo)
       case tp: TypeParamRef => fixOrElse(bounds(tp).hi, tp)
       case tp: TypeProxy => fixOrElse(tp.underlying, tp)
-      case tp: AndOrType => tp.derivedAndOrType(fix(tp.tp1), fix(tp.tp2))
+      case tp: AndType => tp.derivedAndType(fix(tp.tp1), fix(tp.tp2))
+      case tp: OrType  => tp.derivedOrType (fix(tp.tp1), fix(tp.tp2))
       case tp => tp
     }
     def fixOrElse(tp: Type, fallback: Type) = {
@@ -1081,7 +1076,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     case tp: AppliedType => isCovered(tp.tycon)
     case tp: RefinedOrRecType => isCovered(tp.parent)
     case tp: AnnotatedType => isCovered(tp.underlying)
-    case tp: AndOrType => isCovered(tp.tp1) && isCovered(tp.tp2)
+    case tp: AndType => isCovered(tp.tp1) && isCovered(tp.tp2)
+    case tp: OrType  => isCovered(tp.tp1) && isCovered(tp.tp2)
     case _ => false
   }
 
@@ -1195,6 +1191,26 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     isSubRef(tp1, tp2) && isSubRef(tp2, tp1)
   }
 
+  /** If the range `tp1..tp2` consist of a single type, that type, otherwise NoType`.
+   *  This is the case if `tp1 =:= tp2`, but also if `tp1 <:< tp2`, `tp1` is a singleton type,
+   *  and `tp2` derives from `scala.Singleton` (or vice-versa). Examples of the latter case:
+   *
+   *     "name".type .. Singleton
+   *     "name".type .. String & Singleton
+   *     Singleton .. "name".type
+   *     String & Singleton .. "name".type
+   *
+   *  All consist of the single type `"name".type`.
+   */
+  def singletonInterval(tp1: Type, tp2: Type): Type = {
+    def isSingletonBounds(lo: Type, hi: Type) =
+      lo.isSingleton && hi.derivesFrom(defn.SingletonClass) && isSubTypeWhenFrozen(lo, hi)
+    if (isSameTypeWhenFrozen(tp1, tp2)) tp1
+    else if (isSingletonBounds(tp1, tp2)) tp1
+    else if (isSingletonBounds(tp2, tp1)) tp2
+    else NoType
+  }
+
   /** The greatest lower bound of two types */
   def glb(tp1: Type, tp2: Type): Type = /*>|>*/ trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
@@ -1283,9 +1299,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case tparam :: tparamsRest =>
         val arg1 :: args1Rest = args1
         val arg2 :: args2Rest = args2
+        val common = singletonInterval(arg1, arg2)
         val v = tparam.paramVariance
         val lubArg =
-          if (isSameTypeWhenFrozen(arg1, arg2)) arg1
+          if (common.exists) common
           else if (v > 0) lub(arg1.hiBound, arg2.hiBound, canConstrain)
           else if (v < 0) glb(arg1.loBound, arg2.loBound)
           else TypeBounds(glb(arg1.loBound, arg2.loBound),
@@ -1314,9 +1331,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case tparam :: tparamsRest =>
         val arg1 :: args1Rest = args1
         val arg2 :: args2Rest = args2
+        val common = singletonInterval(arg1, arg2)
         val v = tparam.paramVariance
         val glbArg =
-          if (isSameTypeWhenFrozen(arg1, arg2)) arg1
+          if (common.exists) common
           else if (v > 0) glb(arg1.hiBound, arg2.hiBound)
           else if (v < 0) lub(arg1.loBound, arg2.loBound)
           else if (arg1.isInstanceOf[TypeBounds] || arg2.isInstanceOf[TypeBounds])
@@ -1329,10 +1347,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         Nil
     }
 
-  private def recombineAndOr(tp: AndOrType, tp1: Type, tp2: Type) =
+  private def recombineAnd(tp: AndType, tp1: Type, tp2: Type) =
     if (!tp1.exists) tp2
     else if (!tp2.exists) tp1
-    else tp.derivedAndOrType(tp1, tp2)
+    else tp.derivedAndType(tp1, tp2)
 
   /** If some (&-operand of) this type is a supertype of `sub` replace it with `NoType`.
    */
@@ -1340,7 +1358,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
     if (isSubTypeWhenFrozen(sub, tp)) NoType
     else tp match {
       case tp @ AndType(tp1, tp2) =>
-        recombineAndOr(tp, dropIfSuper(tp1, sub), dropIfSuper(tp2, sub))
+        recombineAnd(tp, dropIfSuper(tp1, sub), dropIfSuper(tp2, sub))
       case _ =>
         tp
     }
@@ -1404,13 +1422,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *
    *  In these cases, a MergeError is thrown.
    */
-  final def andType(tp1: Type, tp2: Type, erased: Boolean = ctx.erasedTypes) = trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
+  final def andType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes) = trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
     val t1 = distributeAnd(tp1, tp2)
     if (t1.exists) t1
     else {
       val t2 = distributeAnd(tp2, tp1)
       if (t2.exists) t2
-      else if (erased) erasedGlb(tp1, tp2, isJava = false)
+      else if (isErased) erasedGlb(tp1, tp2, isJava = false)
       else liftIfHK(tp1, tp2, AndType(_, _), _ & _)
     }
   }
@@ -1425,16 +1443,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  the types are in conflict of each other. (@see `andType` for an enumeration
    *  of these cases). In cases of conflict a `MergeError` is raised.
    *
-   *  @param erased   Apply erasure semantics. If erased is true, instead of creating
+   *  @param isErased Apply erasure semantics. If erased is true, instead of creating
    *                  an OrType, the lub will be computed using TypeCreator#erasedLub.
    */
-  final def orType(tp1: Type, tp2: Type, erased: Boolean = ctx.erasedTypes) = {
+  final def orType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes) = {
     val t1 = distributeOr(tp1, tp2)
     if (t1.exists) t1
     else {
       val t2 = distributeOr(tp2, tp1)
       if (t2.exists) t2
-      else if (erased) erasedLub(tp1, tp2)
+      else if (isErased) erasedLub(tp1, tp2)
       else liftIfHK(tp1, tp2, OrType(_, _), _ | _)
     }
   }

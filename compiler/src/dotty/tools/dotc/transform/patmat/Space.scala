@@ -6,8 +6,8 @@ import core._
 import Types._
 import Contexts._
 import Flags._
-import ast.Trees._
-import ast.tpd
+import ast._
+import Trees._
 import Decorators._
 import Symbols._
 import StdNames._
@@ -299,7 +299,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     if (res) Typ(and, true) else Empty
   }
 
-  /* Whether the extractor is irrefutable */
+  /** Whether the extractor is irrefutable */
   def irrefutable(unapp: Tree): Boolean = {
     // TODO: optionless patmat
     unapp.tpe.widen.finalResultType.isRef(scalaSomeClass) ||
@@ -307,8 +307,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       productArity(unapp.tpe.widen.finalResultType) > 0
   }
 
-  /** Return the space that represents the pattern `pat`
-   */
+  /** Return the space that represents the pattern `pat` */
   def project(pat: Tree): Space = pat match {
     case Literal(c) =>
       if (c.value.isInstanceOf[Symbol])
@@ -326,9 +325,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         if (fun.symbol.owner == scalaSeqFactoryClass)
           projectSeq(pats)
         else
-          Prod(pat.tpe.stripAnnots, fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
+          Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
       else
-        Prod(pat.tpe.stripAnnots, fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
+        Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, tpt) =>
       Typ(erase(expr.tpe.stripAnnots), true)
@@ -600,38 +599,28 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def instantiate(tp1: NamedType, tp2: Type)(implicit ctx: Context): Type = {
     // expose abstract type references to their bounds or tvars according to variance
     class AbstractTypeMap(maximize: Boolean)(implicit ctx: Context) extends TypeMap {
-      def expose(tp: TypeRef): Type = {
-        val lo = this(tp.info.loBound)
-        val hi = this(tp.info.hiBound)
-        val exposed =
-          if (variance == 0)
-            newTypeVar(TypeBounds(lo, hi))
-          else if (variance == 1)
-            if (maximize) hi else lo
-          else
-            if (maximize) lo else hi
-
-        debug.println(s"$tp exposed to =====> $exposed")
-        exposed
-      }
+      def expose(lo: Type, hi: Type): Type =
+        if (variance == 0)
+          newTypeVar(TypeBounds(lo, hi))
+        else if (variance == 1)
+          if (maximize) hi else lo
+        else
+          if (maximize) lo else hi
 
       def apply(tp: Type): Type = tp match {
         case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
+          val lo = this(tp.info.loBound)
+          val hi = this(tp.info.hiBound)
           // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
-          expose(tp)
+          val exposed = expose(lo, hi)
+          debug.println(s"$tp exposed to =====> $exposed")
+          exposed
 
         case AppliedType(tycon: TypeRef, args) if tycon.underlying.isInstanceOf[TypeBounds] =>
           val args2 = args.map(this)
           val lo = this(tycon.info.loBound).applyIfParameterized(args2)
           val hi = this(tycon.info.hiBound).applyIfParameterized(args2)
-          val exposed =
-            if (variance == 0)
-              newTypeVar(TypeBounds(lo, hi))
-            else if (variance == 1)
-              if (maximize) hi else lo
-            else
-              if (maximize) lo else hi
-
+          val exposed = expose(lo, hi)
           debug.println(s"$tp exposed to =====> $exposed")
           exposed
 

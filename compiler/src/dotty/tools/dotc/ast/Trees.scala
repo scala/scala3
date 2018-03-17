@@ -161,7 +161,7 @@ object Trees {
       case _ => NoType
     }
 
-    /** The denotation referred tno by this tree.
+    /** The denotation referred to by this tree.
      *  Defined for `DenotingTree`s and `ProxyTree`s, NoDenotation for other
      *  kinds of trees
      */
@@ -572,6 +572,11 @@ object Trees {
     override def toString =
       s"TypeTree${if (hasType) s"[$typeOpt]" else ""}"
   }
+
+  /** A type tree that defines a new type variable. Its type is always a TypeVar.
+   *  Every TypeVar is created as the type of one TypeVarBinder.
+   */
+  class TypeVarBinder[-T >: Untyped] extends TypeTree[T]
 
   /** ref.type */
   case class SingletonTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])
@@ -1324,7 +1329,8 @@ object Trees {
             this(this(x, arg), annot)
           case Thicket(ts) =>
             this(x, ts)
-          case _ if ctx.mode.is(Mode.Interactive) =>
+          case _ if ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive) =>
+            // In interactive mode, errors might come from previous runs.
             // In case of errors it may be that typed trees point to untyped ones.
             // The IDE can still traverse inside such trees, either in the run where errors
             // are reported, or in subsequent ones.

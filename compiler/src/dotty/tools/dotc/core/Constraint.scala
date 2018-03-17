@@ -128,12 +128,11 @@ abstract class Constraint extends Showable {
   /** Check whether predicate holds for all parameters in constraint */
   def forallParams(p: TypeParamRef => Boolean): Boolean
 
-  /** Perform operation `op` on all typevars, or only on uninstantiated
-   *  typevars, depending on whether `uninstOnly` is set or not.
-   */
+  /** Perform operation `op` on all typevars that do not have their `inst` field set. */
   def foreachTypeVar(op: TypeVar => Unit): Unit
 
-  /** The uninstantiated typevars of this constraint */
+  /** The uninstantiated typevars of this constraint, which still have a bounds constraint
+   */
   def uninstVars: collection.Seq[TypeVar]
 
   /** The weakest constraint that subsumes both this constraint and `other` */

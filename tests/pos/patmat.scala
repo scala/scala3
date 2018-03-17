@@ -1,5 +1,4 @@
 object Test {
-
   val xs = List(1, 2, 3)
 
   xs match {
@@ -36,7 +35,7 @@ object Test {
   }
 
   enum Option[+T] {
-    case Some[+T](value: T)
+    case Some(value: T)
     case None
   }
   import Option._

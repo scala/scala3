@@ -88,7 +88,7 @@ elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
   else
     cp_arg+="$PSEP$CLASS_PATH"
   fi
-  if [ $class_path_count > 1 ]; then
+  if [ "$class_path_count" -gt 1 ]; then
     echo "warning: multiple classpaths are found, dotr only use the last one."
   fi
   if [ $with_compiler == true ]; then

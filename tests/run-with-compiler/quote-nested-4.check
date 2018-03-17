@@ -1,0 +1,4 @@
+{
+  val t: quoted.Type[String] = <special-ops>.type_'[String]
+  t: quoted.Type[String]
+}

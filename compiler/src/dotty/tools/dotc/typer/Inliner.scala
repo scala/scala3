@@ -394,7 +394,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) =>
       val proxyName = s"${tpe.cls.name}_this".toTermName
       val proxyType = tpe.asSeenFrom(prefix.tpe, meth.owner)
-      thisProxy(tpe.cls) = newSym(proxyName, EmptyFlags, proxyType).termRef
+      thisProxy(tpe.cls) = newSym(proxyName, Synthetic, proxyType).termRef
       if (!tpe.cls.isStaticOwner)
         registerType(meth.owner.thisType) // make sure we have a base from which to outer-select
     case tpe: NamedType
@@ -478,7 +478,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
         paramProxy.get(tree.tpe) match {
           case Some(t) if tree.isTerm && t.isSingleton => singleton(t).withPos(tree.pos)
           case Some(t) if tree.isType => TypeTree(t).withPos(tree.pos)
-          case None => tree
+          case _ => tree
         }
       case _ => tree
     }}

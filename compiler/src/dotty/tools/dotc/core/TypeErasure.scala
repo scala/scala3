@@ -78,7 +78,7 @@ object TypeErasure {
    */
   abstract case class ErasedValueType(tycon: TypeRef, erasedUnderlying: Type)
   extends CachedGroundType with ValueType {
-    override def computeHash = doHash(tycon, erasedUnderlying)
+    override def computeHash(bs: Hashable.Binders) = doHash(bs, tycon, erasedUnderlying)
   }
 
   final class CachedErasedValueType(tycon: TypeRef, erasedUnderlying: Type)
@@ -133,12 +133,7 @@ object TypeErasure {
     erasureFn(isJava = false, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(erasureCtx)
 
   def sigName(tp: Type, isJava: Boolean)(implicit ctx: Context): TypeName = {
-    val normTp =
-      if (tp.isRepeatedParam) {
-        val seqClass = if (isJava) defn.ArrayClass else defn.SeqClass
-        tp.translateParameterized(defn.RepeatedParamClass, seqClass)
-      }
-      else tp
+    val normTp = tp.underlyingIfRepeated(isJava)
     val erase = erasureFn(isJava, semiEraseVCs = false, isConstructor = false, wildcardOK = true)
     erase.sigName(normTp)(erasureCtx)
   }
@@ -213,6 +208,16 @@ object TypeErasure {
     case tp: TypeProxy => isUnboundedGeneric(tp.underlying)
     case tp: AndType => isUnboundedGeneric(tp.tp1) && isUnboundedGeneric(tp.tp2)
     case tp: OrType => isUnboundedGeneric(tp.tp1) || isUnboundedGeneric(tp.tp2)
+    case _ => false
+  }
+
+  /** Is `tp` an abstract type or polymorphic type parameter, or another unbounded generic type? */
+  def isGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias match {
+    case tp: TypeRef => !tp.symbol.isClass
+    case tp: TypeParamRef => true
+    case tp: TypeProxy => isGeneric(tp.underlying)
+    case tp: AndType => isGeneric(tp.tp1) || isGeneric(tp.tp2)
+    case tp: OrType => isGeneric(tp.tp1) || isGeneric(tp.tp2)
     case _ => false
   }
 
@@ -322,7 +327,8 @@ object TypeErasure {
     case tp: TypeParamRef => false
     case tp: TypeBounds => false
     case tp: TypeProxy => hasStableErasure(tp.superType)
-    case tp: AndOrType => hasStableErasure(tp.tp1) && hasStableErasure(tp.tp2)
+    case tp: AndType => hasStableErasure(tp.tp1) && hasStableErasure(tp.tp2)
+    case tp: OrType  => hasStableErasure(tp.tp1) && hasStableErasure(tp.tp2)
     case _ => false
   }
 }
@@ -380,11 +386,10 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClassRef(tp)
       else if (sym == defn.ArrayClass) apply(tp.appliedTo(TypeBounds.empty)) // i966 shows that we can hit a raw Array type.
       else if (defn.isSyntheticFunctionClass(sym)) defn.erasedFunctionType(sym)
-      else if (defn.isPhantomTerminalClass(sym)) PhantomErasure.erasedPhantomType
-      else if (sym eq defn.PhantomClass) defn.ObjectType // To erase the definitions of Phantom.{assume, Any, Nothing}
       else eraseNormalClassRef(tp)
     case tp: AppliedType =>
       if (tp.tycon.isRef(defn.ArrayClass)) eraseArray(tp)
+      else if (tp.isRepeatedParam) apply(tp.underlyingIfRepeated(isJava))
       else apply(tp.superType)
     case _: TermRef | _: ThisType =>
       this(tp.widen)
@@ -397,13 +402,11 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     case AndType(tp1, tp2) =>
       erasedGlb(this(tp1), this(tp2), isJava)
     case OrType(tp1, tp2) =>
-      ctx.typeComparer.orType(this(tp1), this(tp2), erased = true)
+      ctx.typeComparer.orType(this(tp1), this(tp2), isErased = true)
     case tp: MethodType =>
       def paramErasure(tpToErase: Type) =
         erasureFn(tp.isJavaMethod, semiEraseVCs, isConstructor, wildcardOK)(tpToErase)
-      val (names, formals0) =
-        if (tp.paramInfos.exists(_.isPhantom)) tp.paramNames.zip(tp.paramInfos).filterNot(_._2.isPhantom).unzip
-        else (tp.paramNames, tp.paramInfos)
+      val (names, formals0) = if (tp.isErasedMethod) (Nil, Nil) else (tp.paramNames, tp.paramInfos)
       val formals = formals0.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {
         case rt: MethodType =>
@@ -429,9 +432,11 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         tp.derivedClassInfo(NoPrefix, erasedParents, erasedDecls, erasedRef(tp.selfType))
           // can't replace selftype by NoType because this would lose the sourceModule link
       }
-    case NoType | NoPrefix | _: ErrorType | JavaArrayType(_) =>
+    case _: ErrorType | JavaArrayType(_) =>
       tp
     case tp: WildcardType if wildcardOK =>
+      tp
+    case tp if (tp `eq` NoType) || (tp `eq` NoPrefix) =>
       tp
   }
 
@@ -524,8 +529,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         }
         if (defn.isSyntheticFunctionClass(sym))
           sigName(defn.erasedFunctionType(sym))
-        else if (defn.isPhantomTerminalClass(tp.symbol))
-          sigName(PhantomErasure.erasedPhantomType)
         else
           normalizeClass(sym.asClass).fullName.asTypeName
       case tp: AppliedType =>
@@ -551,9 +554,9 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       case tp: WildcardType =>
         sigName(tp.optBounds)
       case _ =>
-        val erased = this(tp)
-        assert(erased ne tp, tp)
-        sigName(erased)
+        val erasedTp = this(tp)
+        assert(erasedTp ne tp, tp)
+        sigName(erasedTp)
     }
   } catch {
     case ex: AssertionError =>

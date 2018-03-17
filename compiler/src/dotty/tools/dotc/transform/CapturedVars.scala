@@ -111,10 +111,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
       def boxMethod(name: TermName): Tree =
         ref(vble.info.classSymbol.companionModule.info.member(name).symbol)
       cpy.ValDef(vdef)(
-        rhs = vdef.rhs match {
-          case EmptyTree => boxMethod(nme.zero).appliedToNone.withPos(vdef.pos)
-          case arg => boxMethod(nme.create).appliedTo(arg)
-        },
+        rhs = boxMethod(nme.create).appliedTo(vdef.rhs),
         tpt = TypeTree(vble.info).withPos(vdef.tpt.pos))
     } else vdef
   }

@@ -1,7 +1,7 @@
 package scala.quoted
 
-import scala.runtime.quoted.Runner
+import scala.runtime.quoted.Toolbox
 
 object Constant {
-  def unapply[T](expr: Expr[T])(implicit runner: Runner[T]): Option[T] = runner.toConstantOpt(expr)
+  def unapply[T](expr: Expr[T])(implicit runner: Toolbox[T]): Option[T] = runner.toConstantOpt(expr)
 }

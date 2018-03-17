@@ -63,16 +63,14 @@ class Interpreter(implicit ctx: Context) {
    *  If some error is encountered while interpreting a ctx.error is emitted and a StopInterpretation is thrown.
    */
   private def interpretTreeImpl(tree: Tree, env: Env): Object = {
-    ctx.debuglog(
-      s"""Interpreting:
-        |${tree.show}
-        |$env
-      """.stripMargin)
+    // println(s"Interpreting:\n${tree.show}\n$env\n")
 
     implicit val pos: Position = tree.pos
 
     tree match {
-      case Quoted(quotedTree) => RawQuoted(quotedTree)
+      case Quoted(quotedTree) =>
+        if (quotedTree.isTerm) new scala.quoted.Exprs.TreeExpr(quotedTree)
+        else new scala.quoted.Types.TreeType(quotedTree)
 
       case Literal(Constant(c)) => c.asInstanceOf[Object]
 
@@ -81,12 +79,12 @@ class Interpreter(implicit ctx: Context) {
         val paramClasses = paramsSig(fn.symbol)
         val interpretedArgs = args.map(arg => interpretTreeImpl(arg, env))
         val constructor = getConstructor(clazz, paramClasses)
-        interpreted(constructor.newInstance(interpretedArgs: _*))
+        stopIfRuntimeException(constructor.newInstance(interpretedArgs: _*))
 
       case _: RefTree if tree.symbol.isStatic =>
         val clazz = loadClass(tree.symbol.owner.companionModule.fullName)
         val method = getMethod(clazz, tree.symbol.name, Nil)
-        interpreted(method.invoke(null))
+        stopIfRuntimeException(method.invoke(null))
 
       case tree: Apply =>
         val evaluatedPrefix = if (tree.symbol.isStatic) null else interpretPrefix(tree, env)
@@ -96,7 +94,7 @@ class Interpreter(implicit ctx: Context) {
         val paramClasses = paramsSig(tree.symbol)
         val interpretedArgs = interpretArgs(tree, env)
         val method = getMethod(clazz, tree.symbol.name, paramClasses)
-        interpreted(method.invoke(evaluatedPrefix, interpretedArgs: _*))
+        stopIfRuntimeException(method.invoke(evaluatedPrefix, interpretedArgs: _*))
 
       case tree: Ident if env.contains(tree.symbol) =>
         env(tree.symbol)
@@ -112,14 +110,21 @@ class Interpreter(implicit ctx: Context) {
         val env2 = bindings.foldLeft(env)((acc, x) => interpretStat(x, acc))
         interpretTreeImpl(expansion, env2)
 
+      case TypeApply(fn, _) =>
+        interpretTreeImpl(fn, env)
+
       case Typed(expr, _) =>
         interpretTreeImpl(expr, env)
 
-      // Getting the underlying value of a value class. The value class is evaluated as its boxed representation
-      // as values in the interpreter are `Object`s. Therefore we just get it from the enviroment as is.
-      case Select(qualifier, _)
+      case Select(qualifier, name)
           if tree.symbol.owner.isValueClass && tree.symbol.is(ParamAccessor) && env.contains(qualifier.symbol) =>
-        env(qualifier.symbol)
+        val value = env(qualifier.symbol)
+        val clazz = value.getClass
+        if (clazz.getCanonicalName != tree.symbol.owner.showFullName) value // Already unboxed
+        else {
+          val method = getMethod(clazz, name, Nil)
+          stopIfRuntimeException(method.invoke(value))
+        }
 
       case SeqLiteral(elems, _) =>
         elems.map(elem => interpretTreeImpl(elem, env))
@@ -187,7 +192,7 @@ class Interpreter(implicit ctx: Context) {
     }
   }
 
-  private def interpreted[T](thunk: => T)(implicit pos: Position): T = {
+  private def stopIfRuntimeException[T](thunk: => T)(implicit pos: Position): T = {
     try thunk
     catch {
       case ex: RuntimeException =>

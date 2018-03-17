@@ -36,7 +36,9 @@ object StdNames {
     final val MODULE_INSTANCE_FIELD      = "MODULE$"
 
     final val Function                   = "Function"
+    final val ErasedFunction             = "ErasedFunction"
     final val ImplicitFunction           = "ImplicitFunction"
+    final val ErasedImplicitFunction     = "ErasedImplicitFunction"
     final val AbstractFunction           = "AbstractFunction"
     final val Tuple                      = "Tuple"
     final val Product                    = "Product"
@@ -239,7 +241,6 @@ object StdNames {
     final val SourceFileATTR: N             = "SourceFile"
     final val SyntheticATTR: N              = "Synthetic"
 
-    final val Phantom: N = "Phantom"
 
 // ----- Term names -----------------------------------------
 

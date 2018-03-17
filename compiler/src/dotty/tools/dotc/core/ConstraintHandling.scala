@@ -53,7 +53,8 @@ trait ConstraintHandling {
         val b = bound.dealias
         (b eq param) || {
           b match {
-            case b: AndOrType => occursIn(b.tp1) || occursIn(b.tp2)
+            case b: AndType => occursIn(b.tp1) || occursIn(b.tp2)
+            case b: OrType  => occursIn(b.tp1) || occursIn(b.tp2)
             case b: TypeVar => occursIn(b.origin)
             case b: TermRef => occursIn(b.underlying)
             case _ => false
@@ -85,6 +86,8 @@ trait ConstraintHandling {
     finally homogenizeArgs = saved
   }
 
+  private def location(implicit ctx: Context) = "" // i"in ${ctx.typerState.stateChainStr}" // use for debugging
+
   protected def addUpperBound(param: TypeParamRef, bound: Type): Boolean = {
     def description = i"constraint $param <: $bound to\n$constraint"
     if (bound.isRef(defn.NothingClass) && ctx.typerState.isGlobalCommittable) {
@@ -92,12 +95,12 @@ trait ConstraintHandling {
       if (Config.failOnInstantiationToNothing) assert(false, msg)
       else ctx.log(msg)
     }
-    constr.println(i"adding $description in ${ctx.typerState.hashesStr}")
+    constr.println(i"adding $description$location")
     val lower = constraint.lower(param)
     val res =
       addOneBound(param, bound, isUpper = true) &&
       lower.forall(addOneBound(_, bound, isUpper = true))
-    constr.println(i"added $description = $res in ${ctx.typerState.hashesStr}")
+    constr.println(i"added $description = $res$location")
     res
   }
 
@@ -108,7 +111,7 @@ trait ConstraintHandling {
     val res =
       addOneBound(param, bound, isUpper = false) &&
       upper.forall(addOneBound(_, bound, isUpper = false))
-    constr.println(i"added $description = $res in ${ctx.typerState.hashesStr}")
+    constr.println(i"added $description = $res$location")
     res
   }
 
@@ -121,12 +124,12 @@ trait ConstraintHandling {
         val up2 = p2 :: constraint.exclusiveUpper(p2, p1)
         val lo1 = constraint.nonParamBounds(p1).lo
         val hi2 = constraint.nonParamBounds(p2).hi
-        constr.println(i"adding $description down1 = $down1, up2 = $up2 ${ctx.typerState.hashesStr}")
+        constr.println(i"adding $description down1 = $down1, up2 = $up2$location")
         constraint = constraint.addLess(p1, p2)
         down1.forall(addOneBound(_, hi2, isUpper = true)) &&
         up2.forall(addOneBound(_, lo1, isUpper = false))
       }
-    constr.println(i"added $description = $res ${ctx.typerState.hashesStr}")
+    constr.println(i"added $description = $res$location")
     res
   }
 
@@ -251,12 +254,16 @@ trait ConstraintHandling {
       case tp: SingletonType => true
       case AndType(tp1, tp2) => isMultiSingleton(tp1) | isMultiSingleton(tp2)
       case OrType(tp1, tp2) => isMultiSingleton(tp1) & isMultiSingleton(tp2)
+      case tp: TypeRef => isMultiSingleton(tp.info.hiBound)
+      case tp: TypeVar => isMultiSingleton(tp.underlying)
+      case tp: TypeParamRef => isMultiSingleton(bounds(tp).hi)
       case _ => false
     }
     def isFullyDefined(tp: Type): Boolean = tp match {
       case tp: TypeVar => tp.isInstantiated && isFullyDefined(tp.instanceOpt)
       case tp: TypeProxy => isFullyDefined(tp.underlying)
-      case tp: AndOrType => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
+      case tp: AndType => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
+      case tp: OrType  => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
       case _ => true
     }
     def isOrType(tp: Type): Boolean = tp.stripTypeVar.dealias match {
@@ -430,10 +437,15 @@ trait ConstraintHandling {
        *  @return The pruned type if all `addLess` calls succeed, `NoType` otherwise.
        */
       def prune(bound: Type): Type = bound match {
-        case bound: AndOrType =>
+        case bound: AndType =>
           val p1 = prune(bound.tp1)
           val p2 = prune(bound.tp2)
-          if (p1.exists && p2.exists) bound.derivedAndOrType(p1, p2)
+          if (p1.exists && p2.exists) bound.derivedAndType(p1, p2)
+          else NoType
+        case bound: OrType =>
+          val p1 = prune(bound.tp1)
+          val p2 = prune(bound.tp2)
+          if (p1.exists && p2.exists) bound.derivedOrType(p1, p2)
           else NoType
         case bound: TypeVar if constraint contains bound.origin =>
           prune(bound.underlying)

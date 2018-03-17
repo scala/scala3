@@ -1,7 +1,7 @@
-enum class Ducks
+enum Ducks {
+  case Dewey
+}
 
 object Ducks {
-  case Dewey
-
   def wooohoo: Int = 1
 }

@@ -40,7 +40,7 @@ object ExposedValues extends AutoPlugin {
 
 object Build {
 
-  val baseVersion = "0.7.0"
+  val baseVersion = "0.8.0"
   val scalacVersion = "2.12.4"
 
   val dottyOrganization = "ch.epfl.lamp"
@@ -501,8 +501,8 @@ object Build {
       baseDirectory in Test := baseDirectory.value / "..",
 
       test in Test := {
-        // Exclude legacy tests by default
-        (testOnly in Test).toTask(" -- --exclude-categories=dotty.LegacyTests").value
+        // Exclude VulpixMetaTests
+        (testOnly in Test).toTask(" -- --exclude-categories=dotty.VulpixMetaTests").value
       },
 
       testOptions in Test += Tests.Argument(
@@ -915,7 +915,7 @@ object Build {
         val coursier = baseDirectory.value / "out/coursier"
         val packageJson = baseDirectory.value / "package.json"
         if (!coursier.exists || packageJson.lastModified > coursier.lastModified)
-          runProcess(Seq("npm", "run", "update-all"), wait = true, directory = baseDirectory.value)
+          runProcess(Seq("npm", "install"), wait = true, directory = baseDirectory.value)
         val tsc = baseDirectory.value / "node_modules" / ".bin" / "tsc"
         runProcess(Seq(tsc.getAbsolutePath, "--pretty", "--project", baseDirectory.value.getAbsolutePath), wait = true)
 
@@ -1148,8 +1148,7 @@ object Build {
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
       nonBootstrappedSettings(
-        addCommandAlias("run", "dotty-compiler/run") ++
-        addCommandAlias("legacyTests", "dotty-compiler/testOnly dotc.tests")
+        addCommandAlias("run", "dotty-compiler/run")
       )
 
     def asDottyCompiler(implicit mode: Mode): Project = project.withCommonSettings.

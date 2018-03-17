@@ -24,6 +24,8 @@ import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.MessageContainer
 import util._
 import interactive._, interactive.InteractiveDriver._
+import Interactive.Include
+import config.Printers.interactiv
 
 import languageserver.config.ProjectConfig
 
@@ -64,13 +66,41 @@ class DottyLanguageServer extends LanguageServer
 
       myDrivers = new mutable.HashMap
       for (config <- configs) {
-        val classpathFlags = List("-classpath", (config.classDirectory +: config.dependencyClasspath).mkString(File.pathSeparator))
-        val settings = defaultFlags ++ config.compilerArguments.toList ++ classpathFlags
-        myDrivers.put(config, new InteractiveDriver(settings))
+        implicit class updateDeco(ss: List[String]) {
+          def update(pathKind: String, pathInfo: String) = {
+            val idx = ss.indexOf(pathKind)
+            val ss1 = if (idx >= 0) ss.take(idx) ++ ss.drop(idx + 2) else ss
+            ss1 ++ List(pathKind, pathInfo)
+          }
+        }
+        val settings =
+          defaultFlags ++
+          config.compilerArguments.toList
+            .update("-classpath", (config.classDirectory +: config.dependencyClasspath).mkString(File.pathSeparator))
+            .update("-sourcepath", config.sourceDirectories.mkString(File.pathSeparator)) :+
+          "-scansource"
+        myDrivers(config) = new InteractiveDriver(settings)
       }
     }
     myDrivers
   }
+
+  /** Restart all presentation compiler drivers, copying open files over */
+  private def restart() = thisServer.synchronized {
+    interactiv.println("restarting presentation compiler")
+    val driverConfigs = for ((config, driver) <- myDrivers.toList) yield
+      (config, new InteractiveDriver(driver.settings), driver.openedFiles)
+    for ((config, driver, _) <- driverConfigs)
+      myDrivers(config) = driver
+    System.gc()
+    for ((_, driver, opened) <- driverConfigs; (uri, source) <- opened)
+      driver.run(uri, source)
+    if (Memory.isCritical())
+      println(s"WARNING: Insufficient memory to run Scala language server on these projects.")
+  }
+
+  private def checkMemory() =
+    if (Memory.isCritical()) CompletableFutures.computeAsync { _ => restart() }
 
   /** The driver instance responsible for compiling `uri` */
   def driverFor(uri: URI): InteractiveDriver = {
@@ -100,10 +130,11 @@ class DottyLanguageServer extends LanguageServer
   }
 
   private[this] def computeAsync[R](fun: CancelChecker => R): CompletableFuture[R] =
-    CompletableFutures.computeAsync({(cancelToken: CancelChecker) =>
+    CompletableFutures.computeAsync { cancelToken =>
       // We do not support any concurrent use of the compiler currently.
       thisServer.synchronized {
         cancelToken.checkCanceled()
+        checkMemory()
         try {
           fun(cancelToken)
         } catch {
@@ -112,7 +143,7 @@ class DottyLanguageServer extends LanguageServer
             throw ex
         }
       }
-    })
+    }
 
   override def initialize(params: InitializeParams) = computeAsync { cancelToken =>
     rootUri = params.getRootUri
@@ -148,6 +179,7 @@ class DottyLanguageServer extends LanguageServer
   }
 
   override def didOpen(params: DidOpenTextDocumentParams): Unit = thisServer.synchronized {
+    checkMemory()
     val document = params.getTextDocument
     val uri = new URI(document.getUri)
     val driver = driverFor(uri)
@@ -161,6 +193,7 @@ class DottyLanguageServer extends LanguageServer
   }
 
   override def didChange(params: DidChangeTextDocumentParams): Unit = thisServer.synchronized {
+    checkMemory()
     val document = params.getTextDocument
     val uri = new URI(document.getUri)
     val driver = driverFor(uri)
@@ -200,30 +233,39 @@ class DottyLanguageServer extends LanguageServer
     implicit val ctx = driver.currentCtx
 
     val pos = sourcePosition(driver, uri, params.getPosition)
-    val items = Interactive.completions(driver.openedTrees(uri), pos)._2
+    val items = driver.compilationUnits.get(uri) match {
+      case Some(unit) => Interactive.completions(pos)(ctx.fresh.setCompilationUnit(unit))._2
+      case None => Nil
+    }
 
     JEither.forRight(new CompletionList(
       /*isIncomplete = */ false, items.map(completionItem).asJava))
   }
 
+  /** If cursor is on a reference, show its definition and all overriding definitions in
+   *  the same source as the primary definition.
+   *  If cursor is on a definition, show this definition together with all overridden
+   *  and overriding definitions (in all sources).
+   */
   override def definition(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
     implicit val ctx = driver.currentCtx
 
     val pos = sourcePosition(driver, uri, params.getPosition)
-    val sym = Interactive.enclosingSourceSymbol(driver.openedTrees(uri), pos)
+    val enclTree = Interactive.enclosingTree(driver.openedTrees(uri), pos)
+    val sym = Interactive.sourceSymbol(enclTree.symbol)
 
     if (sym == NoSymbol) Nil.asJava
     else {
-      // This returns the position of sym as well as the overrides of sym, but
-      // for performance we only look for overrides in the file where sym is
-      // defined.
-      // We need a configuration option to choose how "go to definition" should
-      // behave with respect to overriding and overriden definitions, ideally
-      // this should be part of the LSP protocol.
-      val trees = SourceTree.fromSymbol(sym.topLevelClass.asClass).toList
-      val defs = Interactive.namedTrees(trees, includeReferences = false, includeOverriden = true, sym)
+      val (trees, include) =
+        if (enclTree.isInstanceOf[MemberDef])
+          (driver.allTreesContaining(sym.name.sourceModuleName.toString),
+           Include.overriding | Include.overridden)
+        else
+          (SourceTree.fromSymbol(sym.topLevelClass.asClass).toList,
+           Include.overriding)
+      val defs = Interactive.namedTrees(trees, include, sym)
       defs.map(d => location(d.namePos)).asJava
     }
   }
@@ -242,10 +284,10 @@ class DottyLanguageServer extends LanguageServer
       // FIXME: this will search for references in all trees on the classpath, but we really
       // only need to look for trees in the target directory if the symbol is defined in the
       // current project
-      val trees = driver.allTrees
+      val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
       val refs = Interactive.namedTrees(trees, includeReferences = true, (tree: tpd.NameTree) =>
         (includeDeclaration || !Interactive.isDefinition(tree))
-          && Interactive.matchSymbol(tree, sym, includeOverriden = true))
+          && Interactive.matchSymbol(tree, sym, Include.overriding))
 
       refs.map(ref => location(ref.namePos)).asJava
     }
@@ -261,13 +303,13 @@ class DottyLanguageServer extends LanguageServer
 
     if (sym == NoSymbol) new WorkspaceEdit()
     else {
-      val trees = driver.allTrees
+      val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
       val linkedSym = sym.linkedClass
       val newName = params.getNewName
 
       val refs = Interactive.namedTrees(trees, includeReferences = true, tree =>
-        (Interactive.matchSymbol(tree, sym, includeOverriden = true)
-          || (linkedSym != NoSymbol && Interactive.matchSymbol(tree, linkedSym, includeOverriden = true))))
+        (Interactive.matchSymbol(tree, sym, Include.overriding)
+          || (linkedSym != NoSymbol && Interactive.matchSymbol(tree, linkedSym, Include.overriding))))
 
       val changes = refs.groupBy(ref => toUri(ref.source).toString).mapValues(_.map(ref => new TextEdit(range(ref.namePos), newName)).asJava)
 
@@ -286,7 +328,7 @@ class DottyLanguageServer extends LanguageServer
 
     if (sym == NoSymbol) Nil.asJava
     else {
-      val refs = Interactive.namedTrees(uriTrees, includeReferences = true, includeOverriden = true, sym)
+      val refs = Interactive.namedTrees(uriTrees, Include.references | Include.overriding, sym)
       refs.map(ref => new DocumentHighlight(range(ref.namePos), DocumentHighlightKind.Read)).asJava
     }
   }

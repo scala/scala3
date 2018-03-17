@@ -22,7 +22,7 @@ class InterfaceEntryPointTest {
   @Test def runCompilerFromInterface = {
     val sources =
       List("tests/pos/HelloWorld.scala").map(p => Paths.get(p).toAbsolutePath().toString)
-    val out = Paths.get("../out/").toAbsolutePath()
+    val out = Paths.get("out/").toAbsolutePath()
     if (Files.notExists(out))
       Files.createDirectory(out)
 

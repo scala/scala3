@@ -1,0 +1,4 @@
+{
+  val a: quoted.Expr[Int] = <special-ops>.'[Int](4)
+  <special-ops>.'[Int](a.unary_~)
+}

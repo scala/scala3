@@ -24,7 +24,7 @@ class DecompilationPrinter extends Phase {
       var os: OutputStream = null
       var ps: PrintStream = null
       try {
-        os = File(outputDir + ".decompiled").outputStream()
+        os = File(outputDir + ".decompiled").outputStream(append = true)
         ps = new PrintStream(os)
         printToOutput(ps)
       } finally {

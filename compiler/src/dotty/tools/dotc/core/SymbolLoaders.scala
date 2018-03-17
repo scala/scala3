@@ -14,6 +14,7 @@ import util.Stats
 import Decorators._
 import scala.util.control.NonFatal
 import ast.Trees._
+import ast.tpd
 import parsing.Parsers.OutlineParser
 import reporting.trace
 
@@ -118,7 +119,7 @@ class SymbolLoaders {
       scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
 
     val completer = new SourcefileLoader(src)
-    if (ctx.settings.scansource.value) {
+    if (ctx.settings.scansource.value && ctx.run != null) {
       if (src.exists && !src.isDirectory) {
         val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toList
 
@@ -206,7 +207,7 @@ class SymbolLoaders {
     Stats.record("package scopes")
 
     /** The scope of a package. This is different from a normal scope
-  	 *  in three aspects:
+  	 *  in two aspects:
 	   *
 	   *   1. Names of scope entries are kept in mangled form.
 	   *   2. Some function types in the `scala` package are synthesized.
@@ -338,15 +339,8 @@ abstract class SymbolLoader extends LazyType {
         postProcess(root.scalacLinkedClass.denot)
     }
   }
-}
 
-class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
-
-  override def sourceFileOrNull: AbstractFile = classfile
-
-  def description(implicit ctx: Context) = "class file " + classfile.toString
-
-  def rootDenots(rootDenot: ClassDenotation)(implicit ctx: Context): (ClassDenotation, ClassDenotation) = {
+  protected def rootDenots(rootDenot: ClassDenotation)(implicit ctx: Context): (ClassDenotation, ClassDenotation) = {
     val linkedDenot = rootDenot.scalacLinkedClass.denot match {
       case d: ClassDenotation => d
       case d =>
@@ -368,6 +362,13 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
     if (rootDenot is ModuleClass) (linkedDenot, rootDenot)
     else (rootDenot, linkedDenot)
   }
+}
+
+class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
+
+  override def sourceFileOrNull: AbstractFile = classfile
+
+  def description(implicit ctx: Context) = "class file " + classfile.toString
 
   override def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
     load(root)
@@ -379,8 +380,8 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
     if (mayLoadTreesFromTasty) {
       result match {
         case Some(unpickler: tasty.DottyUnpickler) =>
-          classRoot.symbol.asClass.unpickler = unpickler
-          moduleRoot.symbol.asClass.unpickler = unpickler
+          classRoot.classSymbol.treeOrProvider = unpickler
+          moduleRoot.classSymbol.treeOrProvider = unpickler
         case _ =>
       }
     }
@@ -394,5 +395,5 @@ class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
   def description(implicit ctx: Context) = "source file " + srcfile.toString
   override def sourceFileOrNull = srcfile
   def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
-    ctx.run.enterRoots(srcfile)
+    ctx.run.lateCompile(srcfile, typeCheck = ctx.settings.YretainTrees.value)
 }

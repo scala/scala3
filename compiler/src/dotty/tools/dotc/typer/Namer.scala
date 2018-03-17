@@ -27,6 +27,11 @@ import reporting.diagnostic.messages._
 trait NamerContextOps { this: Context =>
   import NamerContextOps._
 
+  def typer = ctx.typeAssigner match {
+    case typer: Typer => typer
+    case _ => new Typer
+  }
+
   /** Enter symbol into current class, if current class is owner of current context,
    *  or into current scope, if not. Should always be called instead of scope.enter
    *  in order to make sure that updates to class members are reflected in
@@ -87,6 +92,29 @@ trait NamerContextOps { this: Context =>
       .dropWhile(_.owner == sym)
       .next()
 
+  /** A fresh local context with given tree and owner.
+   *  Owner might not exist (can happen for self valdefs), in which case
+   *  no owner is set in result context
+   */
+  def localContext(tree: untpd.Tree, owner: Symbol): FreshContext = {
+    val freshCtx = fresh.setTree(tree)
+    if (owner.exists) freshCtx.setOwner(owner) else freshCtx
+  }
+
+  /** A new context for the interior of a class */
+  def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/): Context = {
+    val localCtx: Context = ctx.fresh.setNewScope
+    selfInfo match {
+      case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)
+      case _ =>
+    }
+    localCtx
+  }
+
+  def packageContext(tree: untpd.PackageDef, pkg: Symbol): Context =
+    if (pkg is Package) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
+    else ctx
+
   /** The given type, unless `sym` is a constructor, in which case the
    *  type of the constructed instance is returned
    */
@@ -106,10 +134,10 @@ trait NamerContextOps { this: Context =>
   def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(implicit ctx: Context): Type = {
     val monotpe =
       (valueParamss :\ resultType) { (params, resultType) =>
-        val make =
-          if (params.nonEmpty && (params.head is Implicit)) ImplicitMethodType
-          else if (isJava) JavaMethodType
-          else MethodType
+        val (isImplicit, isErased) =
+          if (params.isEmpty) (false, false)
+          else (params.head is Implicit, params.head is Erased)
+        val make = MethodType.maker(isJava, isImplicit, isErased)
         if (isJava)
           for (param <- params)
             if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
@@ -400,17 +428,6 @@ class Namer { typer: Typer =>
     case _ => tree
   }
 
-  /** A new context for the interior of a class */
-  def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/)(implicit ctx: Context): Context = {
-    val localCtx: Context = ctx.fresh.setNewScope
-    selfInfo match {
-      case sym: Symbol if sym.exists && sym.name != nme.WILDCARD =>
-        localCtx.scope.openForMutations.enter(sym)
-      case _ =>
-    }
-    localCtx
-  }
-
   /** For all class definitions `stat` in `xstats`: If the companion class if
     * not also defined in `xstats`, invalidate it by setting its info to
     * NoType.
@@ -509,6 +526,13 @@ class Namer { typer: Typer =>
       mdef.putAttachment(ExpandedTree, Thicket(trees.filter(_ != tree)))
     }
 
+    /** Transfer all references to `from` to `to` */
+    def transferReferences(from: ValDef, to: ValDef): Unit = {
+      val fromRefs = from.removeAttachment(References).getOrElse(Nil)
+      val toRefs = to.removeAttachment(References).getOrElse(Nil)
+      to.putAttachment(References, fromRefs ++ toRefs)
+    }
+
     /** Merge the module class `modCls` in the expanded tree of `mdef` with the given stats */
     def mergeModuleClass(mdef: Tree, modCls: TypeDef, stats: List[Tree]): TypeDef = {
       var res: TypeDef = null
@@ -563,9 +587,12 @@ class Namer { typer: Typer =>
               case vdef @ ValDef(name, _, _) if valid(vdef) =>
                 moduleValDef.get(name) match {
                   case Some((stat1, vdef1)) =>
-                    if (vdef.mods.is(Synthetic) && !vdef1.mods.is(Synthetic))
+                    if (vdef.mods.is(Synthetic) && !vdef1.mods.is(Synthetic)) {
+                      transferReferences(vdef, vdef1)
                       removeInExpanded(stat, vdef)
+                    }
                     else if (!vdef.mods.is(Synthetic) && vdef1.mods.is(Synthetic)) {
+                      transferReferences(vdef1, vdef)
                       removeInExpanded(stat1, vdef1)
                       moduleValDef(name) = (stat, vdef)
                     }
@@ -927,13 +954,7 @@ class Namer { typer: Typer =>
 
       val selfInfo =
         if (self.isEmpty) NoType
-        else if (cls.is(Module)) {
-          val moduleType = cls.owner.thisType select sourceModule
-          if (self.name == nme.WILDCARD) moduleType
-          else recordSym(
-            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.pos),
-            self)
-        }
+        else if (cls.is(Module)) cls.owner.thisType.select(sourceModule)
         else createSymbol(self)
 
       // pre-set info, so that parent types can refer to type params
@@ -948,7 +969,7 @@ class Namer { typer: Typer =>
       index(constr)
       annotate(constr :: params)
 
-      indexAndAnnotate(rest)(inClassContext(selfInfo))
+      indexAndAnnotate(rest)(ctx.inClassContext(selfInfo))
       symbolOfTree(constr).ensureCompleted()
 
       val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_)), cls.pos)
@@ -1103,7 +1124,7 @@ class Namer { typer: Typer =>
       val deskolemize = new ApproximatingTypeMap {
         def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/ {
           tp match {
-            case tp: SkolemType => range(tp.bottomType, atVariance(1)(apply(tp.info)))
+            case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
             case _ => mapOver(tp)
           }
         }

@@ -93,7 +93,7 @@ public enum ErrorMessageID {
     SuperCallsNotAllowedInlineID,
     ModifiersNotAllowedID,
     WildcardOnTypeArgumentNotAllowedOnNewID,
-    ImplicitFunctionTypeNeedsNonEmptyParameterListID,
+    FunctionTypeNeedsNonEmptyParameterListID,
     WrongNumberOfParametersID,
     DuplicatePrivateProtectedQualifierID,
     ExpectedStartOfTopLevelDefinitionID,

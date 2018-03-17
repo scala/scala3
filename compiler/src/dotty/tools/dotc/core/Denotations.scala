@@ -130,7 +130,7 @@ object Denotations {
         if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom) {
           cachedAsSeenFrom = computeAsSeenFrom(pre)
           cachedPrefix = pre
-          validAsSeenFrom = ctx.period
+          validAsSeenFrom = if (pre.isProvisional) Nowhere else ctx.period
         }
         cachedAsSeenFrom
       } else computeAsSeenFrom(pre)
@@ -789,10 +789,7 @@ object Denotations {
       this match {
         case symd: SymDenotation =>
           if (ctx.stillValid(symd)) return updateValidity()
-          if (ctx.acceptStale(symd)) {
-            val newd = symd.owner.info.decls.lookup(symd.name)
-            return (newd.denot: SingleDenotation).orElse(symd).updateValidity()
-          }
+          if (ctx.acceptStale(symd)) return symd.currentSymbol.denot.orElse(symd).updateValidity()
         case _ =>
       }
       if (!symbol.exists) return updateValidity()
