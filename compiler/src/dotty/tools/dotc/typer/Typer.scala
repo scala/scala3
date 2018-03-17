@@ -777,7 +777,7 @@ class Typer extends Namer
       completeParams(params)
       val params1 = params.map(typedExpr(_).asInstanceOf[ValDef])
       val resultTpt = typed(body)
-      val companion = if (isImplicit) ImplicitMethodType else MethodType
+      val companion = MethodType.maker(isImplicit = isImplicit, isErased = isErased)
       val mt = companion.fromSymbols(params1.map(_.symbol), resultTpt.tpe)
       if (mt.isParamDependent)
         ctx.error(i"$mt is an illegal function type because it has inter-parameter dependencies", tree.pos)

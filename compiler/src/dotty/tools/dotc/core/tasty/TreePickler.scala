@@ -251,7 +251,7 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: PolyType if richTypes =>
       pickleMethodic(POLYtype, tpe)
     case tpe: MethodType if richTypes =>
-      pickleMethodic(METHODtype, tpe)
+      pickleMethodic(methodType(isImplicit = tpe.isImplicitMethod, isErased = tpe.isErasedMethod), tpe)
     case tpe: ParamRef =>
       assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")
     case tpe: LazyRef =>

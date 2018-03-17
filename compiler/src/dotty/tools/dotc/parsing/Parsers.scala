@@ -759,8 +759,8 @@ object Parsers {
               case Ident(name) if name != tpnme.WILDCARD && in.token == COLON =>
                 isValParamList = true
                 funArgTypesRest(
-                    typedFunParam(paramStart, name.toTermName),
-                    () => typedFunParam(in.offset, ident()))
+                    typedFunParam(paramStart, name.toTermName, imods),
+                    () => typedFunParam(in.offset, ident(), imods))
               case t =>
                 funArgTypesRest(t, funArgType)
             }
@@ -800,9 +800,9 @@ object Parsers {
     }
 
     /** TypedFunParam   ::= id ':' Type */
-    def typedFunParam(start: Offset, name: TermName): Tree = atPos(start) {
+    def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): Tree = atPos(start) {
       accept(COLON)
-      makeParameter(name, typ(), Modifiers(Param))
+      makeParameter(name, typ(), mods | Param)
     }
 
     /** InfixType ::= RefinedType {id [nl] refinedType}
