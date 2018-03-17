@@ -478,8 +478,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             addArg(typedArg(arg, formal), formal)
             if (methodType.isParamDependent && typeOfArg(arg).exists)
               // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
-              safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg))
-            else identity
+              safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg), initVariance = -1)
+            else
+              identity
           }
 
           def missingArg(n: Int): Unit = {
