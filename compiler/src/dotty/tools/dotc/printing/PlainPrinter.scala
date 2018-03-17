@@ -142,7 +142,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TypeParamRef =>
         ParamRefNameString(tp) ~ lambdaHash(tp.binder)
       case tp: SingletonType =>
-        toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
+        toTextRef(tp) ~ ".type"
       case AppliedType(tycon, args) =>
         (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
       case tp: RefinedType =>
