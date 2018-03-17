@@ -69,7 +69,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
               printName(); printTree(); printTrees()
             case RETURN | HOLE =>
               printNat(); printTrees()
-            case METHODtype | POLYtype | TYPELAMBDAtype =>
+            case METHODtype | IMPLICITMETHODtype | ERASEDMETHODtype | ERASEDIMPLICITMETHODtype | POLYtype | TYPELAMBDAtype =>
               printTree()
               until(end) { printName(); printTree() }
             case PARAMtype =>
