@@ -593,6 +593,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags is Scala2x) writeByte(SCALA2X)
     if (sym.isTerm) {
       if (flags is Implicit) writeByte(IMPLICIT)
+      if (flags is Erased) writeByte(ERASED)
       if ((flags is Lazy) && !(sym is Module)) writeByte(LAZY)
       if (flags is AbsOverride) { writeByte(ABSTRACT); writeByte(OVERRIDE) }
       if (flags is Mutable) writeByte(MUTABLE)

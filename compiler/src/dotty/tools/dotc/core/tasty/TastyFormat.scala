@@ -227,7 +227,7 @@ object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
   val MajorVersion = 5
-  val MinorVersion = 0
+  val MinorVersion = 1
 
   /** Tags used to serialize names */
   class NameTags {
@@ -299,6 +299,7 @@ object TastyFormat {
   final val DEFAULTparameterized = 30
   final val STABLE = 31
   final val MACRO = 32
+  final val ERASED = 33
 
   // Cat. 2:    tag Nat
 
@@ -424,7 +425,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= MACRO ||
+    firstSimpleTreeTag <= tag && tag <= ERASED ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -442,6 +443,7 @@ object TastyFormat {
        | SEALED
        | CASE
        | IMPLICIT
+       | ERASED
        | LAZY
        | OVERRIDE
        | INLINE
@@ -496,6 +498,7 @@ object TastyFormat {
     case SEALED => "SEALED"
     case CASE => "CASE"
     case IMPLICIT => "IMPLICIT"
+    case ERASED => "ERASED"
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
     case INLINE => "INLINE"
