@@ -19,6 +19,7 @@ import Periods._
 import util.Positions.{Position, NoPosition}
 import util.Stats._
 import util.{DotClass, SimpleIdentitySet}
+import CheckRealizable._
 import reporting.diagnostic.Message
 import ast.tpd._
 import ast.TreeTypeMap
@@ -157,6 +158,12 @@ object Types {
       case tp: AnnotatedType => tp.parent.isStable
       case _ => false
     }
+
+    /** Does this type denote a realizable stable reference? Much more expensive to checl
+     *  than isStable, that's why some of the checks are done later in PostTyper.
+     */
+    final def isRealizable(implicit ctx: Context): Boolean =
+      isStable && realizability(this) == Realizable
 
     /** Is this type a (possibly refined or applied or aliased) type reference
      *  to the given type symbol?
@@ -4190,6 +4197,8 @@ object Types {
       else if (variance < 0) lo
       else Range(lower(lo), upper(hi))
 
+    protected def emptyRange = range(defn.NothingType, defn.AnyType)
+
     protected def isRange(tp: Type) = tp.isInstanceOf[Range]
 
     protected def lower(tp: Type) = tp match {
@@ -4258,7 +4267,7 @@ object Types {
           forwarded.orElse(
             range(super.derivedSelect(tp, preLo), super.derivedSelect(tp, preHi)))
         case _ =>
-          super.derivedSelect(tp, pre)
+          if (pre == defn.AnyType) pre else super.derivedSelect(tp, pre)
       }
 
     override protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type) =
@@ -4306,7 +4315,7 @@ object Types {
       else tp.derivedTypeBounds(lo, hi)
 
     override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type) =
-      if (isRange(thistp) || isRange(supertp)) range(defn.NothingType, defn.AnyType)
+      if (isRange(thistp) || isRange(supertp)) emptyRange
       else tp.derivedSuperType(thistp, supertp)
 
     override protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =

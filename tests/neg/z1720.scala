@@ -3,8 +3,8 @@ package test
 class Thing {
   def info: Info[this.type] = InfoRepository.getInfo(this)
   def info2: Info[this.type] = {
-    val self: this.type = this
-    InfoRepository.getInfo(self)
+    def self: this.type = this
+    InfoRepository.getInfo(self) // error: not a legal path
   }
 }
 
