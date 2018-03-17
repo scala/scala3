@@ -589,12 +589,14 @@ object SymDenotations {
       )
 
     /** Is this a denotation of a stable term (or an arbitrary type)? */
-    final def isStable(implicit ctx: Context) =
-      isType || is(StableOrErased) || !is(UnstableValue) && !info.isInstanceOf[ExprType]
+    final def isStable(implicit ctx: Context) = {
+      def isUnstableValue = is(UnstableValue) || info.isInstanceOf[ExprType]
+      isType || is(StableOrErased) || !isUnstableValue
+    }
 
     /** Is this a denotation of a class that does not have - either direct or inherited -
-     *  initaliazion code?
-     */
+      *  initaliazion code?
+      */
     def isNoInitsClass(implicit ctx: Context) =
       isClass && asClass.baseClasses.forall(_.is(NoInits))
 
