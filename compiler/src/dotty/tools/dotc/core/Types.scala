@@ -1967,6 +1967,7 @@ object Types {
     def derivedSelect(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this
       else if (prefix.isBottomType) prefix
+      else if (prefix.isInstanceOf[WildcardType]) WildcardType
       else if (isType) {
         val res =
           if (currentSymbol.is(ClassTypeParam)) argForParam(prefix)
