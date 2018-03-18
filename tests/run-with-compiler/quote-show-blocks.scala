@@ -2,7 +2,6 @@
 import dotty.tools.dotc.quoted.Toolbox._
 
 import scala.quoted._
-import scala.quoted.Liftable._
 
 object Test {
   def main(args: Array[String]): Unit = {
