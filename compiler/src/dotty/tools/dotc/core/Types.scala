@@ -1967,37 +1967,34 @@ object Types {
     def derivedSelect(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this
       else if (prefix.isBottomType) prefix
-      else if (prefix.isInstanceOf[WildcardType]) WildcardType
-      else if (isType) {
-        val res =
-          if (currentSymbol.is(ClassTypeParam)) argForParam(prefix)
-          else prefix.lookupRefined(name)
-        if (res.exists) res
-        else if (Config.splitProjections)
-          prefix match {
-            case prefix: AndType =>
-              def isMissing(tp: Type) = tp match {
-                case tp: TypeRef => !tp.info.exists
-                case _ => false
-              }
-              val derived1 = derivedSelect(prefix.tp1)
-              val derived2 = derivedSelect(prefix.tp2)
-              return (
-                if (isMissing(derived1)) derived2
-                else if (isMissing(derived2)) derived1
-                else prefix.derivedAndType(derived1, derived2))
-            case prefix: OrType =>
-              val derived1 = derivedSelect(prefix.tp1)
-              val derived2 = derivedSelect(prefix.tp2)
-              return prefix.derivedOrType(derived1, derived2)
-            case _ =>
-              withPrefix(prefix)
-          }
+      else {
+        if (isType) {
+          val res =
+            if (currentSymbol.is(ClassTypeParam)) argForParam(prefix)
+            else prefix.lookupRefined(name)
+          if (res.exists) return res
+          if (Config.splitProjections)
+            prefix match {
+              case prefix: AndType =>
+                def isMissing(tp: Type) = tp match {
+                  case tp: TypeRef => !tp.info.exists
+                  case _ => false
+                }
+                val derived1 = derivedSelect(prefix.tp1)
+                val derived2 = derivedSelect(prefix.tp2)
+                return (
+                  if (isMissing(derived1)) derived2
+                  else if (isMissing(derived2)) derived1
+                  else prefix.derivedAndType(derived1, derived2))
+              case prefix: OrType =>
+                val derived1 = derivedSelect(prefix.tp1)
+                val derived2 = derivedSelect(prefix.tp2)
+                return prefix.derivedOrType(derived1, derived2)
+              case _ =>
+            }
+        }
+        if (prefix.isInstanceOf[WildcardType]) WildcardType
         else withPrefix(prefix)
-      }
-      else prefix match {
-        case _: WildcardType => WildcardType
-        case _ => withPrefix(prefix)
       }
 
     /** A reference like this one, but with the given symbol, if it exists */
