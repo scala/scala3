@@ -565,6 +565,7 @@ class TreeUnpickler(reader: TastyReader,
           case SEALED => addFlag(Sealed)
           case CASE => addFlag(Case)
           case IMPLICIT => addFlag(Implicit)
+          case ERASED => addFlag(Erased)
           case LAZY => addFlag(Lazy)
           case OVERRIDE => addFlag(Override)
           case INLINE => addFlag(Inline)
