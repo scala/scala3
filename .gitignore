@@ -73,3 +73,6 @@ compiler/after-pickling.txt
 *.dotty-ide-version
 
 *.decompiled.out
+
+# The vscode app for testing
+vscode-dotty/.vscode-test
