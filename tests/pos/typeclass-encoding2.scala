@@ -81,22 +81,22 @@ object semiGroups {
     type Impl[T] = Extension[T, Monoid] with MonoidCommon
   }
 
-  implicit object IntOps extends Extension[Int, Monoid] with MonoidCommon { self =>
+  implicit object IntOps extends Extension[Int, Monoid] with MonoidCommon {
     type This = Int
     type Instance = Monoid
     def unit: Int = 0
     def inject($this: Int) = new Monoid {
-      val common: self.type = self
+      val common: IntOps.this.type = IntOps.this
       def add(that: This): This = $this + that
     }
   }
 
-  implicit object StringOps extends Extension[String, Monoid] with MonoidCommon { self =>
+  implicit object StringOps extends Extension[String, Monoid] with MonoidCommon {
     type This = String
     type Instance = Monoid
     def unit = ""
     def inject($this: String) = new Monoid {
-      val common: self.type = self
+      val common: StringOps.this.type = StringOps.this
       def add(that: This): This = $this.concat(that)
     }
   }
@@ -159,12 +159,12 @@ object ord {
     type Impl[T] = Extension[T, Ord] with OrdCommon
   }
 
-  implicit object IntOrd extends Extension[Int, Ord] with OrdCommon { self =>
+  implicit object IntOrd extends Extension[Int, Ord] with OrdCommon {
     type This = Int
     type Instance = Ord
     val minimum: Int = Int.MinValue
     def inject($this: Int) = new Ord {
-      val common: self.type = self
+      val common: IntOrd.this.type = IntOrd.this
       def compareTo(that: This): Int =
         if (this < that) -1 else if (this > that) +1 else 0
     }
@@ -293,12 +293,12 @@ object functors {
     if (n == 0) Functor.impl[F].pure(x)
     else develop(n - 1, x, f).map(f)
 
-  implicit object ListMonad extends Extension1[List, Monad] with MonadCommon { self =>
+  implicit object ListMonad extends Extension1[List, Monad] with MonadCommon {
     type This[A] = List[A]
     type Instance = Monad
     def pure[A](x: A) = x :: Nil
     def inject[A]($this: List[A]) = new Monad[A] {
-      val common: self.type = self
+      val common: ListMonad.this.type = ListMonad
       def flatMap[B](f: A => List[B]): List[B] = $this.flatMap(f)
     }
   }
