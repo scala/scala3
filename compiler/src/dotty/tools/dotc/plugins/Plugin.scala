@@ -16,7 +16,7 @@ trait PluginPhase extends MiniPhase {
   def runsBefore: Set[Class[_ <: Phase]] = Set.empty
 }
 
-trait Plugin {
+sealed trait Plugin {
   /** The name of this plugin */
   def name: String
 
@@ -28,23 +28,7 @@ trait Plugin {
    *  Research plugin receives a phase plan and return a new phase plan, while
    *  non-research plugin returns a list of phases to be inserted.
    */
-  def research: Boolean = false
-
-
-  /** Non-research plugins should override this method to return the phases
-   *
-   *  @param options: commandline options to the plugin, `-P:plugname:opt1,opt2` becomes List(opt1, opt2)
-   *  @return a list of phases to be added to the phase plan
-   */
-  def init(options: List[String]): List[PluginPhase] = ???
-
-  /** Research plugins should override this method to return the new phase plan
-   *
-   *  @param options: commandline options to the plugin, `-P:plugname:opt1,opt2` becomes List(opt1, opt2)
-   *  @param plan: the given phase plan
-   *  @return the new phase plan
-   */
-  def init(options: List[String], plan: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = ???
+  def research: Boolean = isInstanceOf[ResearchPlugin]
 
   /** A description of this plugin's options, suitable as a response
    *  to the -help command-line option.  Conventionally, the options
@@ -53,11 +37,25 @@ trait Plugin {
   val optionsHelp: Option[String] = None
 }
 
-/** ...
- *
- *  @author Lex Spoon
- *  @version 1.0, 2007-5-21
- */
+trait StandardPlugin extends Plugin {
+  /** Non-research plugins should override this method to return the phases
+   *
+   *  @param options: commandline options to the plugin, `-P:plugname:opt1,opt2` becomes List(opt1, opt2)
+   *  @return a list of phases to be added to the phase plan
+   */
+  def init(options: List[String]): List[PluginPhase]
+}
+
+trait ResearchPlugin extends Plugin {
+  /** Research plugins should override this method to return the new phase plan
+   *
+   *  @param options: commandline options to the plugin, `-P:plugname:opt1,opt2` becomes List(opt1, opt2)
+   *  @param plan: the given phase plan
+   *  @return the new phase plan
+   */
+  def init(options: List[String], plan: List[List[Phase]])(implicit ctx: Context): List[List[Phase]]
+}
+
 object Plugin {
 
   private val PluginXML = "scalac-plugin.xml"
@@ -71,21 +69,6 @@ object Plugin {
 
     new java.net.URLClassLoader(urls.toArray, compilerLoader)
   }
-
-  /** Try to load a plugin description from the specified location.
-   */
-  private def loadDescriptionFromJar(jarp: Path): Try[PluginDescription] = {
-    // XXX Return to this once we have more ARM support
-    def read(is: InputStream) =
-      if (is == null) throw new PluginLoadException(jarp.path, s"Missing $PluginXML in $jarp")
-      else PluginDescription.fromXML(is)
-
-    val xmlEntry = new java.util.jar.JarEntry(PluginXML)
-    Try(read(new Jar(jarp.jpath.toFile).getEntryStream(xmlEntry)))
-  }
-
-  private def loadDescriptionFromFile(f: Path): Try[PluginDescription] =
-    Try(PluginDescription.fromXML(new java.io.FileInputStream(f.jpath.toFile)))
 
   type AnyClass = Class[_]
 
@@ -115,6 +98,20 @@ object Plugin {
     dirs: List[Path],
     ignoring: List[String]): List[Try[AnyClass]] =
   {
+
+    def loadDescriptionFromDir(f: Path): Try[PluginDescription] =
+      Try(PluginDescription.fromXML(new java.io.FileInputStream((f / PluginXML).jpath.toFile)))
+
+    def loadDescriptionFromJar(jarp: Path): Try[PluginDescription] = {
+      // XXX Return to this once we have more ARM support
+      def read(is: InputStream) =
+        if (is == null) throw new PluginLoadException(jarp.path, s"Missing $PluginXML in $jarp")
+        else PluginDescription.fromXML(is)
+
+      val xmlEntry = new java.util.jar.JarEntry(PluginXML)
+      Try(read(new Jar(jarp.jpath.toFile).getEntryStream(xmlEntry)))
+    }
+
     // List[(jar, Try(descriptor))] in dir
     def scan(d: Directory) =
       d.files.toList sortBy (_.name) filter (Jar isJarOrZip _) map (j => (j, loadDescriptionFromJar(j)))
@@ -134,7 +131,7 @@ object Plugin {
       def loop(qs: List[Path]): Try[PluginDescription] = qs match {
         case Nil       => Failure(new MissingPluginException(ps))
         case p :: rest =>
-          if (p.isDirectory) loadDescriptionFromFile(p.toDirectory / PluginXML) orElse loop(rest)
+          if (p.isDirectory) loadDescriptionFromDir(p.toDirectory) orElse loop(rest)
           else if (p.isFile) loadDescriptionFromJar(p.toFile) orElse loop(rest)
           else loop(rest)
       }

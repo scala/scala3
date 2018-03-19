@@ -128,11 +128,11 @@ trait Plugins {
     }
 
     // schedule plugins according to ordering constraints
-    val pluginPhases = plugins.filter(!_.research).flatMap(plug => plug.init(options(plug)))
+    val pluginPhases = plugins.collect { case p: StandardPlugin => p }.flatMap { plug => plug.init(options(plug)) }
     val updatedPlan = Plugins.schedule(plan, pluginPhases)
 
     // add research plugins
-    plugins.filter(_.research).foldRight(updatedPlan) { (plug, plan) => plug.init(options(plug), plan) }
+    plugins.collect { case p: ResearchPlugin => p }.foldRight(updatedPlan) { (plug, plan) => plug.init(options(plug), plan) }
   }
 }
 

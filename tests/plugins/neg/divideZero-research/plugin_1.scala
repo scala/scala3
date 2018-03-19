@@ -1,7 +1,7 @@
 import dotty.tools.dotc._
 import core._
 import Contexts.Context
-import plugins.Plugin
+import plugins._
 import Phases.Phase
 import ast.tpd
 import transform.MegaPhase.MiniPhase
@@ -10,11 +10,9 @@ import Symbols.Symbol
 import Constants.Constant
 import StdNames._
 
-class DivideZero extends MiniPhase with Plugin {
+class DivideZero extends MiniPhase with ResearchPlugin {
   val name: String = "divideZero"
   override val description: String = "divide zero check"
-
-  override val research = true
 
   val phaseName = name
 

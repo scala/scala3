@@ -1,7 +1,7 @@
 import dotty.tools.dotc._
 import core._
 import Contexts.Context
-import plugins.{Plugin, PluginPhase}
+import plugins._
 import Phases.Phase
 import ast.tpd
 import transform.MegaPhase.MiniPhase
@@ -11,7 +11,7 @@ import Constants.Constant
 import transform.{LinkAll, Pickler}
 import StdNames._
 
-class DivideZero extends PluginPhase with Plugin {
+class DivideZero extends PluginPhase with StandardPlugin {
   val name: String = "divideZero"
   override val description: String = "divide zero check"
 
