@@ -159,7 +159,7 @@ object Types {
       case _ => false
     }
 
-    /** Does this type denote a realizable stable reference? Much more expensive to checl
+    /** Does this type denote a realizable stable reference? Much more expensive to check
      *  than isStable, that's why some of the checks are done later in PostTyper.
      */
     final def isRealizable(implicit ctx: Context): Boolean =
