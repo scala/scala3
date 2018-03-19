@@ -1512,7 +1512,7 @@ class Typer extends Namer
       // Expand comments and type usecases
       cookComments(body1.map(_.symbol), self1.symbol)(ctx.localContext(cdef, cls).setNewScope)
 
-      checkNoDoubleDefs(cls)
+      checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
         .withType(dummy.termRef)
       checkVariance(impl1)

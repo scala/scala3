@@ -2079,4 +2079,20 @@ object messages {
     }
     val explanation = ""
   }
+
+  case class DoubleDeclaration(decl: Symbol, previousDecl: Symbol)(implicit ctx: Context) extends Message(DoubleDeclarationID) {
+    val kind = "Duplicate Symbol"
+    val msg = {
+      val details = if (decl.isRealMethod && previousDecl.isRealMethod) {
+        // compare the signatures when both symbols represent methods
+        decl.signature.matchDegree(previousDecl.signature) match {
+          /* case Signature.NoMatch => // can't happen because decl.matches(previousDecl) is checked before reporting this error */
+          case Signature.ParamMatch => "\nOverloads with matching parameter types are not allowed."
+          case _ /* Signature.FullMatch */ => "\nThe definitions have matching type signatures after erasure."
+        }
+      } else ""
+      hl"${decl.showLocated} is already defined as ${previousDecl.showDcl} at line ${previousDecl.pos.line + 1}." + details
+    }
+    val explanation = ""
+  }
 }

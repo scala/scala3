@@ -2,12 +2,10 @@ package dotty.tools
 package dotc
 package reporting
 
-import core.Contexts.Context
-import diagnostic.messages._
-import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.core.Flags.FlagSet
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types.WildcardType
 import dotty.tools.dotc.parsing.Tokens
+import dotty.tools.dotc.reporting.diagnostic.messages._
 import org.junit.Assert._
 import org.junit.Test
 
@@ -1293,4 +1291,19 @@ class ErrorMessagesTests extends ErrorMessagesTest {
 
       assert(ctx.reporter.hasErrors)
     }
+
+  @Test def typeDoubleDeclaration =
+    checkMessagesAfter("frontend") {
+      """
+        |class Foo {
+        |  val a = 1
+        |  val a = 2
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val DoubleDeclaration(symbol, previousSymbol) :: Nil = messages
+      assertEquals(symbol.name.mangledString, "a")
+  }
 }

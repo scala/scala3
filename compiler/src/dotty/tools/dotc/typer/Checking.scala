@@ -613,23 +613,19 @@ trait Checking {
       }
     }
 
-  /** Check that class does not define same symbol twice */
-  def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = {
+  /** Check that class does not declare same symbol twice */
+  def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = {
     val seen = new mutable.HashMap[Name, List[Symbol]] {
       override def default(key: Name) = Nil
     }
-    typr.println(i"check no double defs $cls")
+    typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit = {
       for (other <- seen(decl.name)) {
         typr.println(i"conflict? $decl $other")
         if (decl.matches(other)) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit = {
-            def ofType = if (decl.isType) "" else em": ${other.info}"
-            def explanation =
-              if (!decl.isRealMethod) ""
-              else "\n(the definitions have matching type signatures)"
-            ctx.error(em"$decl is already defined as $other$ofType$explanation", decl.pos)
+            ctx.error(DoubleDeclaration(decl, other), decl.pos)
           }
           if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
@@ -872,7 +868,7 @@ trait NoChecking extends ReChecking {
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context) = ()
-  override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
+  override def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt
   override def checkNotSingleton(tpt: Tree, where: String)(implicit ctx: Context): Tree = tpt
