@@ -105,6 +105,7 @@ object ProtoTypes {
     private def hasUnknownMembers(tp: Type)(implicit ctx: Context): Boolean = tp match {
       case tp: TypeVar => !tp.isInstantiated
       case tp: WildcardType => true
+      case NoType => true
       case tp: TypeRef =>
         val sym = tp.symbol
         sym == defn.NothingClass ||
@@ -114,6 +115,7 @@ object ProtoTypes {
             bound.isProvisional && hasUnknownMembers(bound)
           }
         }
+      case tp: AppliedType => hasUnknownMembers(tp.tycon) || hasUnknownMembers(tp.superType)
       case tp: TypeProxy => hasUnknownMembers(tp.superType)
       case _ => false
     }
