@@ -19,6 +19,7 @@ import java.net.URLClassLoader
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 
+
 /** Tree interpreter that can interpret
  *   * Literal constants
  *   * Calls to static methods
@@ -130,8 +131,6 @@ class Interpreter(implicit ctx: Context) {
         elems.map(elem => interpretTreeImpl(elem, env))
 
       case _ =>
-        // TODO Add more precise descriptions of why it could not be interpreted.
-        // This should be done after the full interpreter is implemented.
         throw new StopInterpretation(s"Could not interpret ${tree.show}. Consider extracting logic into a helper def.", tree.pos)
     }
   }
