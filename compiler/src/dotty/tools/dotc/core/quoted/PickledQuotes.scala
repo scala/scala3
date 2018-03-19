@@ -143,7 +143,7 @@ object PickledQuotes {
             case tree: Ident if tree.symbol == paramSym => x1Ref().withPos(tree.pos)
             case _ => super.transform(tree)
           }
-        }.transform(ddef.rhs)
+        }.transform(ddef.rhs).changeOwner(ddef.symbol, ctx.owner)
       case Block(stats, expr) =>
         val applied = rec(expr)
         if (stats.isEmpty) applied
