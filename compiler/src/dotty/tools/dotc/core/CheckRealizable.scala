@@ -126,6 +126,7 @@ class CheckRealizable(implicit ctx: Context) {
     val refinementProblems =
       for {
         name <- refinedNames(tp)
+        if (name.isTypeName)
         mbr <- tp.member(name).alternatives
         if !(mbr.info.loBound <:< mbr.info.hiBound)
       }
