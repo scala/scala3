@@ -1,4 +1,4 @@
-/** A possible type class encoding for
+/** 1. Simple type classes with monomorphic implementations and direct extensions.
 
     trait SemiGroup extends TypeClass {
       def add(that: This): This
@@ -23,33 +23,42 @@
       def unit = ""
     }
 
+    enum Nat extends Monoid {
+      case Z
+      case S(n: Nat)
+
+      def add(that: Nat): Nat = this match {
+        case S => that
+        case S(n) => S(n.add(that))
+      }
+    }
+    common {
+      def unit = Z
+    }
+
     def sum[T: Monoid](xs: List[T]): T =
       (Monod.impl[T].unit /: xs)(_ `add` _)
 */
 object runtime {
 
   trait TypeClass {
-    val common: TypeClassCommon
-    type This = common.This
+    val commons: TypeClassCommon
+    type This = commons.This
   }
 
   trait TypeClassCommon { self =>
     type This
     type Instance <: TypeClass
-    def inject(x: This): Instance { val common: self.type }
+    def inject(x: This): Instance { val commons: self.type }
   }
 
   trait TypeClassCompanion {
-    type Impl[T] <: Extension[T]
+    type Impl[T] <: TypeClassCommon { type This = T }
     def impl[T](implicit ev: Impl[T]): Impl[T] = ev
   }
 
-  trait Extension[From] extends TypeClassCommon {
-    type This = From
-  }
-
   implicit def inject[From](x: From)
-      (implicit ev: Extension[From]): ev.Instance { type This = From } =
+      (implicit ev: TypeClassCommon { type This = From }): ev.Instance { type This = From } =
     ev.inject(x)
 }
 import runtime._
@@ -57,54 +66,79 @@ import runtime._
 object semiGroups {
 
   trait SemiGroup extends TypeClass {
-    val common: SemiGroupCommon
-    import common._
+    val commons: SemiGroupCommon
+    import commons._
     def add(that: This): This
   }
   trait SemiGroupCommon extends TypeClassCommon {
     type Instance <: SemiGroup
   }
   object SemiGroup extends TypeClassCompanion {
-    type Impl[T] = Extension[T] with SemiGroupCommon
+    type Impl[T] = SemiGroupCommon { type This = T }
   }
 
   trait Monoid extends SemiGroup {
-    val common: MonoidCommon
-    import common._
+    val commons: MonoidCommon
+    import commons._
   }
   trait MonoidCommon extends SemiGroupCommon {
     type Instance <: Monoid
     def unit: This
   }
   object Monoid extends TypeClassCompanion {
-    type Impl[T] = Extension[T] with MonoidCommon
+    type Impl[T] = MonoidCommon { type This = T }
   }
 
-  implicit object IntOps extends Extension[Int] with MonoidCommon {
+  implicit object IntOps extends MonoidCommon {
     type This = Int
     type Instance = Monoid
     def unit: Int = 0
     def inject($this: Int) = new Monoid {
-      val common: IntOps.this.type = IntOps.this
+      val commons: IntOps.this.type = IntOps.this
       def add(that: This): This = $this + that
     }
   }
 
-  implicit object StringOps extends Extension[String] with MonoidCommon {
+  implicit object StringOps extends MonoidCommon {
     type This = String
     type Instance = Monoid
     def unit = ""
     def inject($this: String) = new Monoid {
-      val common: StringOps.this.type = StringOps.this
+      val commons: StringOps.this.type = StringOps.this
       def add(that: This): This = $this.concat(that)
     }
   }
 
+  enum Nat extends Monoid {
+    case Z
+    case S(n: Nat)
+
+    def add(that: Nat): Nat = this match {
+      case Z => that
+      case S(n) => S(n.add(that))
+    }
+
+    val commons: Nat.type = Nat
+  }
+  object Nat extends MonoidCommon {
+    type This = Nat
+    type Instance = Nat
+    def unit = Nat.Z
+    def inject($this: Nat) = $this
+  }
+  import Nat.{Z, S}
+
+  implicit def NatOps: Nat.type = Nat
+
   def sum[T](xs: List[T])(implicit ev: Monoid.Impl[T]) =
     (Monoid.impl[T].unit /: xs)((x, y) => x `add` y)
+
+  sum(List(1, 2, 3))
+  sum(List("hello ", "world!"))
+  sum(List(Z, S(Z), S(S(Z))))
 }
 
-/** Encoding for
+/** 2. Generic implementations of simple type classes.
 
     trait Ord extends TypeClass {
       def compareTo(that: This): Int
@@ -144,8 +178,8 @@ object semiGroups {
 object ord {
 
   trait Ord extends TypeClass {
-    val common: OrdCommon
-    import common._
+    val commons: OrdCommon
+    import commons._
     def compareTo(that: This): Int
     def < (that: This) = compareTo(that) < 0
     def > (that: This) = compareTo(that) > 0
@@ -155,27 +189,28 @@ object ord {
     def minimum: This
   }
   object Ord extends TypeClassCompanion {
-    type Impl[T] = Extension[T] with OrdCommon
+    type Impl[T] = OrdCommon { type This = T }
   }
 
-  implicit object IntOrd extends Extension[Int] with OrdCommon {
+  implicit object IntOrd extends OrdCommon {
     type This = Int
     type Instance = Ord
     val minimum: Int = Int.MinValue
     def inject($this: Int) = new Ord {
-      val common: IntOrd.this.type = IntOrd.this
+      val commons: IntOrd.this.type = IntOrd.this
+      import commons._
       def compareTo(that: This): Int =
         if (this < that) -1 else if (this > that) +1 else 0
     }
   }
 
-  class ListOrd[T](implicit ev: Ord.Impl[T])
-  extends Extension[List[T]] with OrdCommon { self =>
+  class ListOrd[T](implicit ev: Ord.Impl[T]) extends OrdCommon { self =>
     type This = List[T]
     type Instance = Ord
     def minimum: List[T] = Nil
     def inject($this: List[T]) = new Ord {
-      val common: self.type = self
+      val commons: self.type = self
+      import commons._
       def compareTo(that: List[T]): Int = ($this, that) match {
         case (Nil, Nil) => 0
         case (Nil, _) => -1
@@ -197,9 +232,13 @@ object ord {
     val smallest = Ord.impl[T].minimum
     (smallest /: xs)(min)
   }
+
+  inf(List[Int]())
+  inf(List(List(1, 2), List(1, 2, 3)))
+  inf(List(List(List(1), List(2)), List(List(1), List(2), List(3))))
 }
 
-/** Encoding for
+/** 3. Higher-kinded type classes
 
     trait Functor[A] extends TypeClass1 {
       def map[B](f: A => B): This[B]
@@ -234,27 +273,23 @@ object ord {
 object runtime1 {
 
   trait TypeClass1 {
-    val common: TypeClassCommon1
-    type This = common.This
+    val commons: TypeClassCommon1
+    type This = commons.This
   }
 
   trait TypeClassCommon1 { self =>
     type This[X]
     type Instance[X] <: TypeClass1
-    def inject[A](x: This[A]): Instance[A] { val common: self.type }
+    def inject[A](x: This[A]): Instance[A] { val commons: self.type }
   }
 
   trait TypeClassCompanion1 {
-    type Impl[T[_]] <: Extension1[T]
+    type Impl[T[_]] <: TypeClassCommon1 { type This = T }
     def impl[T[_]](implicit ev: Impl[T]): Impl[T] = ev
   }
 
-  trait Extension1[From[_]] extends TypeClassCommon1 {
-    type This[X] = From[X]
-  }
-
   implicit def inject1[A, From[_]](x: From[A])
-      (implicit ev: Extension1[From]): ev.Instance[A] { type This = From } =
+      (implicit ev: TypeClassCommon1 { type This = From }): ev.Instance[A] { type This = From } =
     ev.inject(x)
 }
 import runtime1._
@@ -262,8 +297,8 @@ import runtime1._
 object functors {
 
   trait Functor[A] extends TypeClass1 {
-    val common: FunctorCommon
-    import common._
+    val commons: FunctorCommon
+    import commons._
     def map[B](f: A => B): This[B]
   }
   trait FunctorCommon extends TypeClassCommon1 {
@@ -271,38 +306,41 @@ object functors {
     def pure[A](x: A): This[A]
   }
   object Functor extends TypeClassCompanion1 {
-    type Impl[T[_]] = Extension1[T] with FunctorCommon
+    type Impl[T[_]] = FunctorCommon { type This = T }
   }
 
   trait Monad[A] extends Functor[A] {
-    val common: MonadCommon
-    import common._
+    val commons: MonadCommon
+    import commons._
     def flatMap[B](f: A => This[B]): This[B]
-    def map[B](f: A => B) = this.flatMap(f.andThen(common.pure))
+    def map[B](f: A => B) = this.flatMap(f.andThen(commons.pure))
   }
   trait MonadCommon extends FunctorCommon {
     type Instance[X] <: Monad[X]
   }
   object Monad extends TypeClassCompanion1 {
-    type Impl[T[_]] = Extension1[T] with MonadCommon
+    type Impl[T[_]] = MonadCommon { type This = T }
   }
 
   def develop[A, F[X]](n: Int, x: A, f: A => A)(implicit ev: Functor.Impl[F]): F[A] =
     if (n == 0) Functor.impl[F].pure(x)
     else develop(n - 1, x, f).map(f)
 
-  implicit object ListMonad extends Extension1[List] with MonadCommon {
-    type This[A] = List[A]
+  implicit object ListMonad extends MonadCommon {
+    type This = List
     type Instance = Monad
     def pure[A](x: A) = x :: Nil
     def inject[A]($this: List[A]) = new Monad[A] {
-      val common: ListMonad.this.type = ListMonad
+      val commons: ListMonad.this.type = ListMonad
+      import commons._
       def flatMap[B](f: A => List[B]): List[B] = $this.flatMap(f)
     }
   }
 
   object MonadFlatten {
-    def flatten[T[_], A]($this: T[T[A]])(implicit ev: Monad.Impl[T]): T[A] =
+    def flattened[T[_], A]($this: T[T[A]])(implicit ev: Monad.Impl[T]): T[A] =
       $this.flatMap(identity  )
   }
+
+  MonadFlatten.flattened(List(List(1, 2, 3), List(4, 5)))
 }
