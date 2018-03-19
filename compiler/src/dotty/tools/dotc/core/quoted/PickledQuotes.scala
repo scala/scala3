@@ -1,7 +1,7 @@
 package dotty.tools.dotc.core.quoted
 
 import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
 import dotty.tools.dotc.config.Printers._
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts._
@@ -137,13 +137,12 @@ object PickledQuotes {
     def x1Ref() = ref(x1.symbol)
     def rec(f: Tree): Tree = f match {
       case closureDef(ddef) =>
-        new TreeMap() {
-          private val paramSym = ddef.vparamss.head.head.symbol
-          override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-            case tree: Ident if tree.symbol == paramSym => x1Ref().withPos(tree.pos)
-            case _ => super.transform(tree)
-          }
-        }.transform(ddef.rhs).changeOwner(ddef.symbol, ctx.owner)
+        val paramSym = ddef.vparamss.head.head.symbol
+        new TreeTypeMap(
+          oldOwners = ddef.symbol :: Nil,
+          newOwners = ctx.owner :: Nil,
+          treeMap = tree => if (tree.symbol == paramSym) x1Ref().withPos(tree.pos) else tree
+        ).transform(ddef.rhs)
       case Block(stats, expr) =>
         val applied = rec(expr)
         if (stats.isEmpty) applied
