@@ -624,9 +624,9 @@ trait Checking {
       for (other <- seen(decl.name)) {
         typr.println(i"conflict? $decl $other")
         if (decl.matches(other)) {
-          def doubleDefError(decl: Symbol, other: Symbol): Unit = {
-            ctx.error(DoubleDeclaration(decl, other), decl.pos)
-          }
+          def doubleDefError(decl: Symbol, other: Symbol): Unit =
+            if (!decl.info.isErroneous && !other.info.isErroneous)
+              ctx.error(DoubleDeclaration(decl, other), decl.pos)
           if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
         }
