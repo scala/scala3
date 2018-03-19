@@ -507,7 +507,7 @@ The compiler takes an environment that maps variable names to Scala `Expr`s.
 
     def compile(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
       case Num(n) =>
-        n
+        n.toExpr
       case Plus(e1, e2) =>
         ’(~compile(e1, env) + ~compile(e2, env))
       case Var(x) =>
@@ -520,24 +520,25 @@ Running `compile(letExp, Map())` would yield the following Scala code:
 
     ’{ val y = 3; (2 + y) + 4 }
 
-The body of the first clause, `case Num(n) => n`, looks suspicious. `n`
-is declared as an `Int`, yet the result of `compile` is declared to be
-`Expr[Int]`. Shouldn’t `n` be quoted? In fact this would not
+The body of the first clause, `case Num(n) => n.toExpr`, looks suspicious. `n`
+is declared as an `Int`, yet it is conveted to an `Expr[Int]` with `toExpr`.
+Shouldn’t `n` be quoted? In fact this would not
 work since replacing `n` by `’n` in the clause would not be phase
 correct.
 
-What happens instead "under the hood" is an implicit conversion: `n`
-is expanded to `scala.quoted.Expr.toExpr(n)`. The `toExpr` conversion
-is defined in the companion object of class `Expr` as follows:
+What happens instead "under the hood" is an extension method `toExpr` is added: `n.toExpr`
+is expanded to `new scala.quoted.LiftExprOps(n).toExpr`. The `toExpr` extension
+is defined in the companion object of class `Liftable` as follows:
 
-    object Expr {
-      implicit def toExpr[T](x: T)(implicit ev: Liftable[T]): Expr[T] =
-        ev.toExpr(x)
+    package object quoted {
+      implicit class LiftExprOps[T](val x: T) extends AnyVal {
+        def toExpr(implicit ev: Liftable[T]): Expr[T] = ev.toExpr(x)
+      }
     }
 
-The conversion says that values of types implementing the `Liftable`
-type class can be converted ("lifted") automatically to `Expr`
-values. Dotty comes with instance definitions of `Liftable` for
+The extension says that values of types implementing the `Liftable` type class can be
+converted ("lifted") to `Expr` values using `toExpr` when `scala.quoted._` is imported.
+Dotty comes with instance definitions of `Liftable` for
 several types including `Boolean`, `String`, and all primitive number
 types. For example, `Int` values can be converted to `Expr[Int]`
 values by wrapping the value in a `Literal` tree node. This makes use
@@ -570,7 +571,7 @@ a `List` is liftable if its element type is:
 
     implicit def ListIsLiftable[T: Liftable]: Liftable[List[T]] = new {
       def toExpr(xs: List[T]): Expr[List[T]] = xs match {
-        case x :: xs1 => ’(~implicitly[Liftable[T]].toExpr(x) :: ~toExpr(xs1))
+        case x :: xs1 => ’(~x.toExpr :: ~toExpr(xs1))
         case Nil => ’(Nil: List[T])
       }
     }

@@ -6,8 +6,8 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     // n is a constant in a quote
-    println(power('(2), 5.0).show)
-    println(power('(2), 5.0).run)
+    println(power('(2), 5.0.toExpr).show)
+    println(power('(2), 5.0.toExpr).run)
   }
 
   def power(n: Expr[Int], x: Expr[Double]): Expr[Double] = {

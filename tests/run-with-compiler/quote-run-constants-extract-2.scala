@@ -6,8 +6,8 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     // 2 is a lifted constant
-    println(power(2, 3.0).show)
-    println(power(2, 3.0).run)
+    println(power(2.toExpr, 3.0.toExpr).show)
+    println(power(2.toExpr, 3.0.toExpr).run)
   }
 
   def power(n: Expr[Int], x: Expr[Double]): Expr[Double] = {
