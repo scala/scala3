@@ -40,17 +40,16 @@ object runtime {
   }
 
   trait TypeClassCompanion {
-    type Impl[T] <: Extension[T, _]
+    type Impl[T] <: Extension[T]
     def impl[T](implicit ev: Impl[T]): Impl[T] = ev
   }
 
-  trait Extension[From, To <: TypeClass] extends TypeClassCommon {
+  trait Extension[From] extends TypeClassCommon {
     type This = From
-    type Instance = To
   }
 
   implicit def inject[From](x: From)
-      (implicit ev: Extension[From, _]): ev.Instance { type This = From } =
+      (implicit ev: Extension[From]): ev.Instance { type This = From } =
     ev.inject(x)
 }
 import runtime._
@@ -66,7 +65,7 @@ object semiGroups {
     type Instance <: SemiGroup
   }
   object SemiGroup extends TypeClassCompanion {
-    type Impl[T] = Extension[T, SemiGroup] with SemiGroupCommon
+    type Impl[T] = Extension[T] with SemiGroupCommon
   }
 
   trait Monoid extends SemiGroup {
@@ -78,10 +77,10 @@ object semiGroups {
     def unit: This
   }
   object Monoid extends TypeClassCompanion {
-    type Impl[T] = Extension[T, Monoid] with MonoidCommon
+    type Impl[T] = Extension[T] with MonoidCommon
   }
 
-  implicit object IntOps extends Extension[Int, Monoid] with MonoidCommon {
+  implicit object IntOps extends Extension[Int] with MonoidCommon {
     type This = Int
     type Instance = Monoid
     def unit: Int = 0
@@ -91,7 +90,7 @@ object semiGroups {
     }
   }
 
-  implicit object StringOps extends Extension[String, Monoid] with MonoidCommon {
+  implicit object StringOps extends Extension[String] with MonoidCommon {
     type This = String
     type Instance = Monoid
     def unit = ""
@@ -101,7 +100,7 @@ object semiGroups {
     }
   }
 
-  def sum[T](xs: List[T])(implicit $ev: Monoid.Impl[T]) =
+  def sum[T](xs: List[T])(implicit ev: Monoid.Impl[T]) =
     (Monoid.impl[T].unit /: xs)((x, y) => x `add` y)
 }
 
@@ -156,10 +155,10 @@ object ord {
     def minimum: This
   }
   object Ord extends TypeClassCompanion {
-    type Impl[T] = Extension[T, Ord] with OrdCommon
+    type Impl[T] = Extension[T] with OrdCommon
   }
 
-  implicit object IntOrd extends Extension[Int, Ord] with OrdCommon {
+  implicit object IntOrd extends Extension[Int] with OrdCommon {
     type This = Int
     type Instance = Ord
     val minimum: Int = Int.MinValue
@@ -171,7 +170,7 @@ object ord {
   }
 
   class ListOrd[T](implicit ev: Ord.Impl[T])
-  extends Extension[List[T], Ord] with OrdCommon { self =>
+  extends Extension[List[T]] with OrdCommon { self =>
     type This = List[T]
     type Instance = Ord
     def minimum: List[T] = Nil
@@ -246,17 +245,16 @@ object runtime1 {
   }
 
   trait TypeClassCompanion1 {
-    type Impl[T[_]] <: Extension1[T, _]
+    type Impl[T[_]] <: Extension1[T]
     def impl[T[_]](implicit ev: Impl[T]): Impl[T] = ev
   }
 
-  trait Extension1[From[_], To[X] <: TypeClass1] extends TypeClassCommon1 {
+  trait Extension1[From[_]] extends TypeClassCommon1 {
     type This[X] = From[X]
-    type Instance[X] = To[X]
   }
 
   implicit def inject1[A, From[_]](x: From[A])
-      (implicit ev: Extension1[From, _]): ev.Instance[A] { type This = From } =
+      (implicit ev: Extension1[From]): ev.Instance[A] { type This = From } =
     ev.inject(x)
 }
 import runtime1._
@@ -273,7 +271,7 @@ object functors {
     def pure[A](x: A): This[A]
   }
   object Functor extends TypeClassCompanion1 {
-    type Impl[T[_]] = Extension1[T, Functor] with FunctorCommon
+    type Impl[T[_]] = Extension1[T] with FunctorCommon
   }
 
   trait Monad[A] extends Functor[A] {
@@ -286,14 +284,14 @@ object functors {
     type Instance[X] <: Monad[X]
   }
   object Monad extends TypeClassCompanion1 {
-    type Impl[T[_]] = Extension1[T, Monad] with MonadCommon
+    type Impl[T[_]] = Extension1[T] with MonadCommon
   }
 
   def develop[A, F[X]](n: Int, x: A, f: A => A)(implicit ev: Functor.Impl[F]): F[A] =
     if (n == 0) Functor.impl[F].pure(x)
     else develop(n - 1, x, f).map(f)
 
-  implicit object ListMonad extends Extension1[List, Monad] with MonadCommon {
+  implicit object ListMonad extends Extension1[List] with MonadCommon {
     type This[A] = List[A]
     type Instance = Monad
     def pure[A](x: A) = x :: Nil

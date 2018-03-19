@@ -115,6 +115,7 @@ object ProtoTypes {
             bound.isProvisional && hasUnknownMembers(bound)
           }
         }
+      case tp: AppliedType => hasUnknownMembers(tp.tycon) || hasUnknownMembers(tp.superType)
       case tp: TypeProxy => hasUnknownMembers(tp.superType)
       case _ => false
     }
