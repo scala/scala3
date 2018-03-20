@@ -546,7 +546,7 @@ trait Implicits { self: Typer =>
 
     /** If `formal` is of the form ClassTag[T], where `T` is a class type,
      *  synthesize a class tag for `T`.
-   	 */
+     */
     def synthesizedClassTag(formal: Type): Tree = formal.argInfos match {
       case arg :: Nil =>
         fullyDefinedType(arg, "ClassTag argument", pos) match {
@@ -591,7 +591,7 @@ trait Implicits { self: Typer =>
 
     /** If `formal` is of the form Eq[T, U], where no `Eq` instance exists for
      *  either `T` or `U`, synthesize `Eq.eqAny[T, U]` as solution.
-   	 */
+     */
     def synthesizedEq(formal: Type)(implicit ctx: Context): Tree = {
       //println(i"synth eq $formal / ${formal.argTypes}%, %")
       formal.argTypes match {
@@ -686,23 +686,21 @@ trait Implicits { self: Typer =>
         }
     }
     def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
-    def userDefinedMessage(annot: Annotation, params: List[String], args: List[Type]): Option[String] =
-      for (Trees.Literal(Constant(raw: String)) <- annot.argument(0)) yield {
-        err.userDefinedErrorString(
-          raw,
-          params,
-          args)
-      }
+
+    def userDefinedMsg(sym: Symbol, cls: Symbol) = for {
+      ann <- sym.getAnnotation(cls)
+      Trees.Literal(Constant(msg: String)) <- ann.argument(0)
+    } yield msg
+
+
     arg.tpe match {
       case ambi: AmbiguousImplicits =>
-        val maybeAnnot = ambi.alt1.ref.symbol.getAnnotation(defn.ImplicitAmbiguousAnnot).map(
-          (_, ambi.alt1)
-        ).orElse(
-          ambi.alt2.ref.symbol.getAnnotation(defn.ImplicitAmbiguousAnnot).map(
-            (_, ambi.alt2)
-          )
-        )
-        val userDefined = maybeAnnot.flatMap { case (annot, alt) =>
+        object AmbiguousImplicitMsg {
+          def unapply(search: SearchSuccess) =
+            userDefinedMsg(search.ref.symbol, defn.ImplicitAmbiguousAnnot)
+        }
+
+        def userDefinedAmbiguousImplicitMsg(alt: SearchSuccess, raw: String) = {
           val params = alt.ref.underlying match {
             case p: PolyType => p.paramNames.map(_.toString)
             case _           => Nil
@@ -717,16 +715,25 @@ trait Implicits { self: Typer =>
             case _ =>
               Nil
           }
-          userDefinedMessage(annot, params, args)
+          err.userDefinedErrorString(raw, params, args)
         }
-        userDefined.map(msg(_)()).getOrElse(
-          msg(s"ambiguous implicit arguments: ${ambi.explanation}${location("of")}")(
-              s"ambiguous implicit arguments of type ${pt.show} found${location("for")}")
-        )
+
+        (ambi.alt1, ambi.alt2) match {
+          case (AmbiguousImplicitMsg(msg), _) =>
+            userDefinedAmbiguousImplicitMsg(ambi.alt1, msg)
+          case (_, AmbiguousImplicitMsg(msg)) =>
+            userDefinedAmbiguousImplicitMsg(ambi.alt2, msg)
+          case _ =>
+            msg(s"ambiguous implicit arguments: ${ambi.explanation}${location("of")}")(
+                s"ambiguous implicit arguments of type ${pt.show} found${location("for")}")
+        }
+
       case _ =>
-        val userDefined = pt.typeSymbol.getAnnotation(defn.ImplicitNotFoundAnnot).flatMap(
-          userDefinedMessage(_, pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString), pt.argInfos)
-        )
+        val userDefined = userDefinedMsg(pt.typeSymbol, defn.ImplicitNotFoundAnnot).map(raw =>
+          err.userDefinedErrorString(
+            raw,
+            pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
+            pt.argInfos))
         msg(userDefined.getOrElse(em"no implicit argument of type $pt was found${location("for")}"))()
     }
   }
