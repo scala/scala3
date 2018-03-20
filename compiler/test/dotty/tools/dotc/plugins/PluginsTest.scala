@@ -37,7 +37,7 @@ class PluginsTest {
     List(new P8)
   )
 
-  def classOfPhase(p: PluginPhase): Class[_ <: PluginPhase] = p.getClass.asInstanceOf[Class[_ <: PluginPhase]]
+  implicit def clazzToName(cls: Class[_]): String = cls.getName
 
   def debugPlan(plan: List[List[Phase]]): Unit = {
     println(plan.mkString("plan:\n- ", "\n- ", ""))
@@ -94,7 +94,7 @@ class PluginsTest {
   def orderingTwoPlugins1 = {
     object M1 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
-      override val runsBefore = Set(classOfPhase(M2), classOf[P7], classOf[P8])
+      override val runsBefore = Set(M2.phaseName, classOf[P7], classOf[P8])
     }
     object M2 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
@@ -115,7 +115,7 @@ class PluginsTest {
   @Test
   def orderingTwoPlugins2 = {
     object M1 extends TestPhase {
-      override val runsAfter = Set(classOf[P3d], classOfPhase(M2))
+      override val runsAfter = Set(classOf[P3d], M2.phaseName)
     }
     object M2 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
@@ -136,7 +136,7 @@ class PluginsTest {
   @Test
   def orderingTwoPlugins3 = {
     object M1 extends TestPhase {
-      override val runsAfter = Set(classOf[P3d], classOfPhase(M2))
+      override val runsAfter = Set(classOf[P3d], M2.phaseName)
       override val runsBefore = Set(classOf[P7], classOf[P8])
     }
     object M2 extends TestPhase {
@@ -159,7 +159,7 @@ class PluginsTest {
   def orderingTwoPlugins4 = {
     object M1 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
-      override val runsBefore = Set(classOfPhase(M2), classOf[P7])
+      override val runsBefore = Set(M2.phaseName, classOf[P7])
     }
     object M2 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
@@ -181,14 +181,14 @@ class PluginsTest {
   def orderingTransitive = {
     object M1 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
-      override val runsBefore = Set(classOfPhase(M2), classOf[P7])
+      override val runsBefore = Set(M2.phaseName, classOf[P7])
     }
     object M2 extends TestPhase {
       override val runsAfter = Set(classOf[P3d])
       override val runsBefore = Set(classOf[P5], classOf[P8])
     }
     object M3 extends TestPhase {
-      override val runsAfter = Set(classOfPhase(M2), classOf[P2])
+      override val runsAfter = Set(M2.phaseName, classOf[P2])
       override val runsBefore = Set(classOf[P4], classOf[P8])
     }
 

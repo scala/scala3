@@ -13,7 +13,7 @@ import scala.collection.mutable
 import scala.util.{ Try, Success, Failure }
 
 trait PluginPhase extends MiniPhase {
-  def runsBefore: Set[Class[_ <: Phase]] = Set.empty
+  def runsBefore: Set[String] = Set.empty
 }
 
 sealed trait Plugin {

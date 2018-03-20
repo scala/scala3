@@ -17,7 +17,7 @@ class ElimOuterSelect extends MiniPhase {
 
   override def phaseName: String = "elimOuterSelect"
 
-  override def runsAfterGroupsOf = Set(classOf[ExplicitOuter])
+  override def runsAfterGroupsOf = Set(ExplicitOuter.name)
     // ExplicitOuter needs to have run to completion before so that all classes
     // that need an outer accessor have one.
 

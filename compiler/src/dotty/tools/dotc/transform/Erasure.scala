@@ -30,12 +30,13 @@ import ExplicitOuter._
 import core.Mode
 import reporting.trace
 
+
 class Erasure extends Phase with DenotTransformer {
 
-  override def phaseName: String = "erasure"
+  override def phaseName: String = Erasure.name
 
   /** List of names of phases that should precede this phase */
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[InterceptedMethods], classOf[Splitter], classOf[ElimRepeated])
+  override def runsAfter = Set(InterceptedMethods.name, Splitter.name, ElimRepeated.name)
 
   override def changesMembers: Boolean = true   // the phase adds bridges
   override def changesParents: Boolean = true // the phase drops Any
@@ -145,6 +146,8 @@ class Erasure extends Phase with DenotTransformer {
 object Erasure {
   import tpd._
   import TypeTestsCasts._
+
+  val name = "erasure"
 
   object Boxing {
 

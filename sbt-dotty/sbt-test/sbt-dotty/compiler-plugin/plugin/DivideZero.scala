@@ -18,8 +18,8 @@ class DivideZero extends PluginPhase with StandardPlugin {
 
   val phaseName = name
 
-  override val runsAfter = Set(classOf[Pickler])
-  override val runsBefore = Set(classOf[LinkAll])
+  override val runsAfter = Set(Pickler.phaseName)
+  override val runsBefore = Set(LinkAll.phaseName)
 
   override def init(options: List[String]): List[PluginPhase] = this :: Nil
 
