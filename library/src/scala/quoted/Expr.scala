@@ -26,10 +26,10 @@ object Exprs {
     override def toString: String = s"Expr(<pickled>)"
   }
 
-  /** An Expr backed by a value.
+  /** An Expr backed by a lifted value.
    *  Values can only be of type Boolean, Byte, Short, Char, Int, Long, Float, Double, Unit, String or Null.
    */
-  final class ValueExpr[T](val value: T) extends Expr[T] {
+  final class LiftedExpr[T](val value: T) extends Expr[T] {
     override def toString: String = s"Expr($value)"
   }
 
