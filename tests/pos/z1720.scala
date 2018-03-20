@@ -3,7 +3,7 @@ package test
 class Thing {
   def info: Info[this.type] = InfoRepository.getInfo(this)
   def info2: Info[this.type] = {
-    val self: this.type = this
+    def self: this.type = this
     InfoRepository.getInfo(self)
   }
 }

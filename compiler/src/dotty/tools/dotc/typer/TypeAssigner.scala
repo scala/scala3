@@ -353,7 +353,7 @@ trait TypeAssigner {
    */
   def safeSubstParam(tp: Type, pref: ParamRef, argType: Type, initVariance: Int = 1)(implicit ctx: Context): Type = {
     val tp1 = tp.substParam(pref, argType)
-    if ((tp1 eq tp) || argType.isRealizable) tp1
+    if ((tp1 eq tp) || argType.isStableRealizable) tp1
     else {
       val widenedArgType = argType.widen
       if (realizability(widenedArgType) == Realizable)
