@@ -13,6 +13,7 @@ import MegaPhase.MiniPhase
 import SymUtils._
 import NameKinds._
 import dotty.tools.dotc.ast.tpd.Tree
+import dotty.tools.dotc.core.DenotTransformers.InfoTransformer
 import typer.Implicits.SearchFailureType
 
 import scala.collection.mutable
@@ -56,8 +57,32 @@ import dotty.tools.dotc.core.quoted._
  *     )
  *    ```
  *  and then performs the same transformation on `'{ ... x1$1.unary_~ ... x2$1.unary_~ ...}`.
+ *
+ *
+ *  For inline macro definitions we assume that we have a single ~ directly as the RHS.
+ *  We will transform the definition from
+ *    ```
+ *    inline def foo[T1, ...](inline x1: X, ..., y1: Y, ....): Z = ~{ ... T1 ... x ... '(y) ... }
+ *    ```
+ *  to
+ *    ```
+ *    inline def foo[T1, ...](inline x1: X, ..., y1: Y, ....): Seq[Any] => Object = { (args: Seq[Any]) => {
+ *      val T1$1 = args(0).asInstanceOf[Type[T1]]
+ *      ...
+ *      val x1$1 = args(0).asInstanceOf[X]
+ *      ...
+ *      val y1$1 = args(1).asInstanceOf[Expr[Y]]
+ *      ...
+ *      { ... T1$1.unary_~ ... x ... '(y1$1.unary_~) ... }
+ *    }
+ *    ```
+ *  Note: the parameters of `foo` are kept for simple overloading resolution but they are not used in the body of `foo`.
+ *
+ *  At inline site we will call reflectively the static method `foo` with dummy parameters, which will return a
+ *  precompiled version of the function that will evaluate the `Expr[Z]` that `foo` produces. The lambda is then called
+ *  at the inline site with the lifted arguments of the inlined call.
  */
-class ReifyQuotes extends MacroTransformWithImplicits {
+class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
   import ast.tpd._
 
   override def phaseName: String = "reifyQuotes"
@@ -408,13 +433,15 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         var i = 0
         transformWithCapturer(tree)(
           (captured: mutable.Map[Symbol, Tree]) => {
-            (tree: RefTree) => {
+            (tree: Tree) => {
               def newCapture = {
+                val tpw = tree.tpe.widen
                 val argTpe =
-                  if (tree.isTerm) defn.QuotedExprType.appliedTo(tree.tpe.widen)
-                  else defn.QuotedTypeType.appliedTo(defn.AnyType)
+                  if (tree.isType) defn.QuotedTypeType.appliedTo(tpw)
+                  else if (tree.symbol.is(Inline)) tpw // inlined term
+                  else defn.QuotedExprType.appliedTo(tpw)
                 val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argTpe)
-                val capturedArg = SyntheticValDef(UniqueName.fresh(tree.name.toTermName).toTermName, selectArg)
+                val capturedArg = SyntheticValDef(UniqueName.fresh(tree.symbol.name.toTermName).toTermName, selectArg)
                 i += 1
                 embedded += tree
                 captured.put(tree.symbol, capturedArg)
@@ -432,11 +459,12 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth))
     }
 
-    private def transformWithCapturer(tree: Tree)(
-        capturer: mutable.Map[Symbol, Tree] => RefTree => Tree)(implicit ctx: Context): Tree = {
+    private def transformWithCapturer(tree: Tree)(capturer: mutable.Map[Symbol, Tree] => Tree => Tree)(implicit ctx: Context): Tree = {
       val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
       val captured2 = capturer(captured)
       outer.enteredSyms.foreach(s => capturers.put(s, captured2))
+      if (ctx.owner.owner.is(Macro))
+        outer.enteredSyms.reverse.foreach(s => captured2(ref(s)))
       val tree2 = transform(tree)
       capturers --= outer.enteredSyms
       seq(captured.result().valuesIterator.toList, tree2)
@@ -445,8 +473,9 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     /** Returns true if this tree will be captured by `makeLambda` */
     private def isCaptured(tree: RefTree, level: Int)(implicit ctx: Context): Boolean = {
       // Check phase consistency and presence of capturer
-      level == 1 && !tree.symbol.is(Inline) && levelOf.get(tree.symbol).contains(1) &&
-      capturers.contains(tree.symbol)
+      ( (level == 1 && levelOf.get(tree.symbol).contains(1)) ||
+        (level == 0 && tree.symbol.is(Inline))
+      ) && capturers.contains(tree.symbol)
     }
 
     /** Transform `tree` and return the resulting tree and all `embedded` quotes
@@ -485,7 +514,8 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             splice(tree)
           case tree: RefTree if isCaptured(tree, level) =>
             val capturer = capturers(tree.symbol)
-            splice(capturer(tree).select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
+            if (tree.symbol.is(Inline)) capturer(tree)
+            else splice(capturer(tree).select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
           case Block(stats, _) =>
             val last = enteredSyms
             stats.foreach(markDef)
@@ -498,7 +528,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             }
 
             val tree1 =
-              if (level == 0) cpy.Inlined(tree)(call, stagedBindings, Splicer.splice(seq(splicedBindings, body).withPos(tree.pos)))
+              if (level == 0) cpy.Inlined(tree)(call, stagedBindings, Splicer.splice(body, call, splicedBindings, tree.pos).withPos(tree.pos))
               else seq(stagedBindings, cpy.Select(expansion)(cpy.Inlined(tree)(call, splicedBindings, body), name))
             val tree2 = transform(tree1)
 
@@ -513,9 +543,12 @@ class ReifyQuotes extends MacroTransformWithImplicits {
                 if (!tree.symbol.isStatic)
                   ctx.error("Inline macro method must be a static method.", tree.pos)
                 markDef(tree)
-                nested(isQuote = true).transform(tree)
-                  // check macro code as it if appeared in a quoted context
-                cpy.DefDef(tree)(rhs = EmptyTree)
+                val reifier = nested(isQuote = true)
+                reifier.transform(tree) // Ignore output, we only need the its embedding
+                assert(reifier.embedded.size == 1)
+                val lambda = reifier.embedded.head
+                // replace macro code by lambda used to evaluate the macro expansion
+                cpy.DefDef(tree)(tpt = TypeTree(macroReturnType), rhs = lambda)
               case _ =>
                 ctx.error(
                   """Malformed inline macro.
@@ -556,6 +589,27 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       }
     }
   }
+
+  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = {
+    /** Transforms the return type of
+     *    inline def foo(...): X = ~(...)
+     *  to
+     *    inline def foo(...): Seq[Any] => Expr[Any] = (args: Seq[Any]) => ...
+     */
+    def transform(tp: Type): Type = tp match {
+      case tp: MethodType => MethodType(tp.paramNames, tp.paramInfos, transform(tp.resType))
+      case tp: PolyType => PolyType(tp.paramNames, tp.paramInfos, transform(tp.resType))
+      case tp: ExprType => ExprType(transform(tp.resType))
+      case _ => macroReturnType
+    }
+    transform(tp)
+  }
+
+  override protected def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.is(Macro)
+
+  /** Returns the type of the compiled macro as a lambda: Seq[Any] => Object */
+  private def macroReturnType(implicit ctx: Context): Type =
+    defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), defn.ObjectType)
 }
 
 object ReifyQuotes {
