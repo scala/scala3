@@ -18,6 +18,7 @@ import Denotations._
 import Periods._
 import util.Stats._
 import util.SimpleIdentitySet
+import CheckRealizable._
 import reporting.diagnostic.Message
 import ast.tpd._
 import ast.TreeTypeMap
@@ -156,6 +157,12 @@ object Types {
       case tp: AnnotatedType => tp.parent.isStable
       case _ => false
     }
+
+    /** Does this type denote a realizable stable reference? Much more expensive to check
+     *  than isStable, that's why some of the checks are done later in PostTyper.
+     */
+    final def isStableRealizable(implicit ctx: Context): Boolean =
+      isStable && realizability(this) == Realizable
 
     /** Is this type a (possibly refined or applied or aliased) type reference
      *  to the given type symbol?
