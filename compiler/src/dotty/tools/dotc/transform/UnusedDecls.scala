@@ -40,11 +40,11 @@ class ErasedDecls extends MiniPhase with InfoTransformer {
 
   /* Info transform */
 
-  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = {
-    if (sym.is(JavaDefined) || sym.is(Scala2x)) tp
-    else tp match {
-      case tp: ClassInfo => tp.derivedClassInfo(decls = tp.decls.filteredScope(!_.is(Erased)))
-      case _ => tp
-    }
+  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
+    case tp: ClassInfo => tp.derivedClassInfo(decls = tp.decls.filteredScope(!_.is(Erased)))
+    case _ => tp
   }
+
+  override protected def mayChange(sym: Symbol)(implicit ctx: Context): Boolean =
+    sym.isClass && !sym.is(JavaDefined) && !sym.is(Scala2x)
 }
