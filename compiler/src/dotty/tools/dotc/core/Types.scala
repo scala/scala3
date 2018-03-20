@@ -4588,7 +4588,7 @@ object Types {
           forwarded.orElse(
             range(super.derivedSelect(tp, preLo).loBound, super.derivedSelect(tp, preHi).hiBound))
         case _ =>
-          if (pre == defn.AnyType) pre else super.derivedSelect(tp, pre) match {
+          super.derivedSelect(tp, pre) match {
             case TypeBounds(lo, hi) => range(lo, hi)
             case tp => tp
           }
