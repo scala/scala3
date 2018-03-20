@@ -147,7 +147,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   }
 
   protected def compileUnits()(implicit ctx: Context) = Stats.maybeMonitored {
-    ctx.checkSingleThreaded()
+    if (!ctx.mode.is(Mode.Interactive)) // IDEs might have multi-threaded access, accesses are synchronized
+      ctx.checkSingleThreaded()
+
     compiling = true
 
     // If testing pickler, make sure to stop after pickling phase:

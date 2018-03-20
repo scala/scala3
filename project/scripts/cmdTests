@@ -2,101 +2,85 @@
 
 set -eux
 
+SBT="./project/scripts/sbt" # if run on CI
+# SBT="sbt" # if run locally
+
+SOURCE="tests/pos/HelloWorld.scala"
+MAIN="HelloWorld"
+EXPECTED_OUTPUT="hello world"
+COMPILER_CP="compiler/target/scala-2.12/classes" # FIXME: This is not very reliable
+
 # check that benchmarks can run
-./project/scripts/sbt "dotty-bench/jmh:run 1 1 tests/pos/alias.scala"
+"$SBT" "dotty-bench/jmh:run 1 1 tests/pos/alias.scala"
+"$SBT" "dotty-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
+
+OUT=$(mktemp -d)
+OUT1=$(mktemp -d)
+tmp=$(mktemp)
+
+clear_out()
+{
+  local out="$1"
+  rm -rf "$out/*"
+}
 
 # check that `sbt dotc` compiles and `sbt dotr` runs it
 echo "testing sbt dotc and dotr"
-mkdir -p out/scriptedtest0
-./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0 ;dotr -classpath out/scriptedtest0 dotrtest.Test" > sbtdotr1.out
-cat sbtdotr1.out
-if grep -e "dotr test ok" sbtdotr1.out; then
-    echo "output ok"
-else
-    echo "failed output check"
-    exit -1
-fi
+"$SBT" ";dotc $SOURCE -d $OUT ;dotr -classpath $OUT $MAIN" > "$tmp"
+grep -qe "$EXPECTED_OUTPUT" "$tmp"
 
 # check that `sbt dotc` compiles and `sbt dotr` runs it
-#echo "testing sbt dotc -from-tasty and dotr -classpath"
-#mkdir out/scriptedtest1
-#mkdir out/scriptedtest2
-#./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/; dotc -from-tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test; dotr -classpath out/scriptedtest2/ dotrtest.Test" > sbtdotr2.out
-#cat sbtdotr2.out
-#if grep -e "dotr test ok" sbtdotr2.out; then
-#    echo "output ok"
-#else
-#    echo "failed output check"
-#    exit -1
-#fi
+echo "testing sbt dotc -from-tasty and dotr -classpath"
+clear_out "$OUT"
+"$SBT" ";dotc $SOURCE -d $OUT ;dotc -from-tasty -classpath $OUT -d $OUT1 $MAIN ;dotr -classpath $OUT1 $MAIN" > "$tmp"
+grep -qe "$EXPECTED_OUTPUT" "$tmp"
 
 # check that `sbt dotc -decompile` runs
-#echo "testing sbt dotc -decompile"
-#./project/scripts/sbt ";dotc -decompile -color:never -classpath out/scriptedtest1 dotrtest.Test" >  sbtdotc3.out
-#cat sbtdotc3.out
-#if grep -e "def main(args: Array\[String\]): Unit =" sbtdotc3.out; then
-#    echo "output ok"
-#else
-#    echo "failed output check"
-#    exit -1
-#fi
-#echo "testing sbt dotr with no -classpath"
-#./project/scripts/sbt ";dotc tests/pos/sbtDotrTest.scala; dotr dotrtest.Test" > sbtdotr3.out
-#cat sbtdotr3.out
-#if grep -e "dotr test ok" sbtdotr3.out; then
-#    echo "output ok"
-#else
-#    exit -1
-#fi
+echo "testing sbt dotc -decompile"
+"$SBT" ";dotc -decompile -color:never -classpath $OUT $MAIN" > "$tmp"
+grep -qe "def main(args: Array\[String\]): Unit =" "$tmp"
 
-#echo "testing loading tasty from .tasty file in jar"
-#./project/scripts/sbt ";dotc -d out/scriptedtest4.jar -YemitTasty tests/pos/sbtDotrTest.scala; dotc -decompile -classpath out/scriptedtest4.jar -color:never dotrtest.Test" > sbtdot4.out
-#cat sbtdot4.out
-#if grep -e "def main(args: Array\[String\]): Unit =" sbtdot4.out; then
-#    echo "output ok"
-#else
-#    echo "failed output check"
-#    exit -1
-#fi
+echo "testing sbt dotr with no -classpath"
+clear_out "$OUT"
+"$SBT" ";dotc $SOURCE ; dotr $MAIN" > "$tmp"
+grep -qe "$EXPECTED_OUTPUT" "$tmp"
+
+echo "testing loading tasty from .tasty file in jar"
+clear_out "$OUT"
+"$SBT" ";dotc -d $OUT/out.jar -Yemit-tasty $SOURCE; dotc -decompile -classpath $OUT/out.jar -color:never $MAIN" > "$tmp"
+grep -qe "def main(args: Array\[String\]): Unit =" "$tmp"
 
 echo "testing scala.quoted.Expr.run from sbt dotr"
-./project/scripts/sbt ";dotc -classpath compiler/target/scala-2.12/classes tests/run-with-compiler/quote-run.scala; dotr -with-compiler Test" > sbtdot5.out
-cat sbtdot5.out
-if grep -e "val a: Int = 3" sbtdot5.out; then
-    echo "output ok"
-else
-    echo "failed output check"
-    exit -1
-fi
+"$SBT" ";dotty-compiler/compile ;dotc -classpath $COMPILER_CP tests/run-with-compiler/quote-run.scala; dotr -with-compiler Test" > "$tmp"
+grep -qe "val a: Int = 3" "$tmp"
 
-
-# check that benchmarks can run
-./project/scripts/sbt "dotty-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
 
 # setup for `dotc`/`dotr` script tests
-./project/scripts/sbt dist-bootstrapped/pack
+"$SBT" dist-bootstrapped/pack
 
 # check that `dotc` compiles and `dotr` runs it
 echo "testing ./bin/dotc and ./bin/dotr"
-mkdir -p out/scriptedtest0
-./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest0
-./bin/dotr -classpath out/scriptedtest0 dotrtest.Test
+clear_out "$OUT"
+./bin/dotc "$SOURCE" -d "$OUT"
+./bin/dotr -classpath "$OUT" "$MAIN" > "$tmp"
+test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 
 # check that `dotc -from-tasty` compiles and `dotr` runs it
-#
-#echo "testing ./bin/dotc -from-tasty and dotr -classpath"
-#mkdir -p out/scriptedtest1
-#mkdir -p out/scriptedtest2
-#./bin/dotc tests/pos/sbtDotrTest.scala -d out/scriptedtest1/
-#./bin/dotc -from-tasty -classpath out/scriptedtest1/ -d out/scriptedtest2/ dotrtest.Test
-#./bin/dotr -classpath out/scriptedtest2/ dotrtest.Test
+echo "testing ./bin/dotc -from-tasty and dotr -classpath"
+clear_out "$OUT1"
+./bin/dotc -from-tasty -classpath "$OUT" -d "$OUT1" "$MAIN"
+./bin/dotr -classpath "$OUT1" "$MAIN" > "$tmp"
+test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 
 # echo ":quit" | ./dist-bootstrapped/target/pack/bin/dotr  # not supported by CI
-mkdir -p _site && ./bin/dotd -project Hello -siteroot _site tests/run/hello.scala
+
+echo "testing ./bin/dotd"
+clear_out "$OUT"
+./bin/dotd -project Hello -siteroot "$OUT" "$SOURCE"
 
 echo "running Vulpix meta test"
 tmp=$(mktemp)
-if ./project/scripts/sbt "dotty-compiler/testOnly dotty.tools.vulpix.VulpixMetaTests" > "$tmp" 2>&1; then
+if "$SBT" "dotty-compiler/testOnly dotty.tools.vulpix.VulpixMetaTests" > "$tmp" 2>&1; then
   cat "$tmp"
   echo "failed: sbt exited without error on VulpixMetaTests, these tests are expected to fail"
   exit -1

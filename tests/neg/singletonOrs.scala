@@ -1,6 +1,6 @@
 object Test {
-   def foo: 1 | 2 = 1 // error // error
-   def bar: 3 | 4 = foo // error // error
-   def foo: 1 | 2 = 1 // error // error
-   def bar: 1 = foo
+   def a: 1 | 2 = 1 // error // error
+   def b: 3 | 4 = a // error // error
+   def c: 1 | 2 = 1 // error // error
+   def d: 1 = a
 }

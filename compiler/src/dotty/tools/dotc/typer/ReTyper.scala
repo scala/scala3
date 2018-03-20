@@ -22,7 +22,7 @@ import config.Printers.typr
  *
  *  Otherwise, everything is as in Typer.
  */
-class ReTyper extends Typer {
+class ReTyper extends Typer with ReChecking {
   import tpd._
 
   private def assertTyped(tree: untpd.Tree)(implicit ctx: Context): Unit =
@@ -93,7 +93,7 @@ class ReTyper extends Typer {
   override def index(trees: List[untpd.Tree])(implicit ctx: Context) = ctx
   override def annotate(trees: List[untpd.Tree])(implicit ctx: Context) = ()
 
-  override def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: => Tree)(implicit ctx: Context): Tree =
+  override def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType, locked: TypeVars)(fallBack: => Tree)(implicit ctx: Context): Tree =
     fallBack
 
   override def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit = ()
@@ -109,8 +109,8 @@ class ReTyper extends Typer {
       super.handleUnexpectedFunType(tree, fun)
   }
 
-  override def typedUnadapted(tree: untpd.Tree, pt: Type)(implicit ctx: Context) =
-    try super.typedUnadapted(tree, pt)
+  override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(implicit ctx: Context) =
+    try super.typedUnadapted(tree, pt, locked)
     catch {
       case NonFatal(ex) =>
         if (ctx.isAfterTyper)

@@ -17,8 +17,11 @@ object FInterpolation {
   }
 
   def fInterpolation(sc: StringContext, args: Seq[Expr[Any]]): Expr[String] = {
-    val str: Expr[String] = sc.parts.mkString("")
+    val str: Expr[String] = sc.parts.mkString("").toExpr
     val args1: Expr[Seq[Any]] = liftSeq(args)
     '{  (~str).format(~args1: _*) }
   }
+
+  def hello = "hello"
+
 }

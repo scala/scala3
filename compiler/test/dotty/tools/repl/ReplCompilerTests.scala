@@ -120,4 +120,9 @@ class ReplCompilerTests extends ReplTest {
     compile("(x: Int) => println(x)")
     assertTrue(storedOutput().startsWith("val res0: Int => Unit ="))
   }
+
+  @Test def byNameParam: Unit = fromInitialState { implicit state =>
+    compile("def f(g: => Int): Int = g")
+    assertTrue(storedOutput().startsWith("def f(g: => Int): Int"))
+  }
 }

@@ -20,40 +20,46 @@ its installed on your local machine). Otherwise, specify it by pressing *New*.
 
 ![](../../images/idea/idea-sdk.png "Select the JDK")
 
-On the final window we must select which modules we can import. Here, we are presented with the full list of SBT projects
-that are defined in Dotty. You can either select all (expect performance degradation by IDEA if you select all) or
+Next we must select which modules we can import. IDEA version 2017.1 and earlier presents the full list of SBT modules
+that are defined in Dotty. You can either select all (expect performance degradation if you select all) or
 select only the `dotty` module. In order to do that, unselect all modules and select on `dotty`. IDEA, then, automatically
 selects all the necessary dependencies and you press OK.
 
 ![](../../images/idea/idea-sbt.png "Select modules to import")
 
+In IDEA version 2017.2 and later, wait for the project to load. Then right click on `dotty` in the project explorer
+and select `Load/Unload Modules...`. Select only `dotty`, accept when IDEA asks to add its dependencies and press OK.
+
 Running/Debugging
 -------
 
-To run the compiler you can do it either as an sbt command or via debugging the compiler.
-For the first option you can fire up sbt from the `Terminal` window of IDEA or you can do it externally.
-For example, to run a test you can write with or without flags:
+To run the compiler you can do it either as an sbt command or a shell script. Open an external terminal.
+For the first option, a test can be run as follows.
 
 ```shell
-$ dotc tests/pos/Arrays.scala
+$ sbt
+> dotc tests/pos/Arrays.scala
+```
+For the second option, the compiler can be run using a script in the `bin` directory:
+
+```shell
+$ ./bin/dotc tests/pos/Arrays.scala
 ```
 
-If you are interested in debugging the compiler you can enable the necessary agent on the JVM.
-This is done in two steps. For the first step you need to pass the 
-necessary flag to the running VM. For convenience, this is already in comments on the `Build.scala` file under the
-`project` directory. The string you need to uncomment is the following:
-
-> `"-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"`
-
-Uncomment the line and reload the project file with the `reload` command on sbt. 
-Now, each time you run `dotc` the compiler listens at the designated address and waits the agent to connect.
-For, the second step you need to create a configuration for Debug through IDEA: 
+If you are interested in debugging the compiler, you can use a remote debugging configuration.
+This is done by launching dotc's JVM with the JDWP agent loaded. To that end, run
+```shell
+$ ./bin/dotc -debug tests/pos/Arrays.scala
+```
+Then when dotc starts, it will suspend and wait for a debugger to connect on port `5005`.
+Next a configuration for Debug must be created in IDEA: 
 
 > Run > Edit Configurations > Add New Configuration > (select) Remote
 
 ![](../../images/idea/idea-debug.png "Create a Debug Configuration")
 
-Now every time you run `dotc` you can set your breakpoints and hit the `Debug dotty-debug` button (since we used that name for 
- the sample configuration above). The default data on the configuration match the enabled agent on the VM so, probably,
+Under `Search sources using module's classpath` select `dotty`. Set breakpoints as desired.
+Then hit the button whose tooltip says `Debug dotty-debug` (since we used `dotty-debug` for the name of
+the sample configuration above) in IDEA to connect the debugger to the JVM and begin debugging. The default data on the debug configuration matches the enabled agent on the VM so, probably,
  you will not need to change anything else.
  

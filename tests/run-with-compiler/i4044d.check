@@ -1,0 +1,5 @@
+evaluating inner quote
+{
+  val b: Int = 3
+  b.+(3)
+}

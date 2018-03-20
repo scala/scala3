@@ -237,8 +237,11 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: AnnotatedType =>
       writeByte(ANNOTATEDtype)
       withLength { pickleType(tpe.tpe, richTypes); pickleTree(tpe.annot.tree) }
-    case tpe: AndOrType =>
-      writeByte(if (tpe.isAnd) ANDtype else ORtype)
+    case tpe: AndType =>
+      writeByte(ANDtype)
+      withLength { pickleType(tpe.tp1, richTypes); pickleType(tpe.tp2, richTypes) }
+    case tpe: OrType =>
+      writeByte(ORtype)
       withLength { pickleType(tpe.tp1, richTypes); pickleType(tpe.tp2, richTypes) }
     case tpe: ExprType =>
       writeByte(BYNAMEtype)
@@ -248,7 +251,7 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: PolyType if richTypes =>
       pickleMethodic(POLYtype, tpe)
     case tpe: MethodType if richTypes =>
-      pickleMethodic(METHODtype, tpe)
+      pickleMethodic(methodType(isImplicit = tpe.isImplicitMethod, isErased = tpe.isErasedMethod), tpe)
     case tpe: ParamRef =>
       assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")
     case tpe: LazyRef =>
@@ -590,6 +593,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags is Scala2x) writeByte(SCALA2X)
     if (sym.isTerm) {
       if (flags is Implicit) writeByte(IMPLICIT)
+      if (flags is Erased) writeByte(ERASED)
       if ((flags is Lazy) && !(sym is Module)) writeByte(LAZY)
       if (flags is AbsOverride) { writeByte(ABSTRACT); writeByte(OVERRIDE) }
       if (flags is Mutable) writeByte(MUTABLE)

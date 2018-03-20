@@ -15,7 +15,7 @@ Diff (expected on the left, actual right):
 [info] Test dotty.tools.vulpix.VulpixMetaTests.compileNeg started
 Testing tests/vulpix-tests/meta/neg/missing-error-annotation.scala
 
-Wrong number of errors encountered when compiling ../out/VulpixMetaTests/neg/missing-error-annotation, expected: 0, actual: 2
+Wrong number of errors encountered when compiling out/VulpixMetaTests/neg/missing-error-annotation, expected: 0, actual: 2
 [error] Test dotty.tools.vulpix.VulpixMetaTests.compileNeg failed: java.lang.AssertionError: Neg test shouldn't have failed, but did. Reasons:
 [error]
 [error]   - encountered 2 error(s), took 0.093 sec SKIP

@@ -1,17 +1,19 @@
 package dotty.tools.dotc.core.quoted
 
 import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
 import dotty.tools.dotc.config.Printers._
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.tasty.{TastyPickler, TastyPrinter, TastyString}
-import dotty.tools.dotc.interpreter.RawQuoted
+
+import scala.quoted.Types._
+import scala.quoted.Exprs._
 
 import scala.reflect.ClassTag
 
@@ -29,27 +31,39 @@ object PickledQuotes {
   }
 
   /** Transform the expression into its fully spliced Tree */
-  def quotedToTree(expr: quoted.Quoted)(implicit ctx: Context): Tree = expr match {
-    case expr: quoted.TastyQuoted =>
-      unpickleQuote(expr)
-    case expr: quoted.Liftable.ConstantExpr[_] =>
-      Literal(Constant(expr.value))
-    case expr: quoted.Expr.FunctionAppliedTo[_, _] =>
-      functionAppliedTo(quotedToTree(expr.f), quotedToTree(expr.x))
-    case expr: quoted.Type.TaggedPrimitive[_] =>
-      classTagToTypeTree(expr.ct)
-    case expr: RawQuoted =>
-      expr.tree
+  def quotedExprToTree(expr: quoted.Expr[_])(implicit ctx: Context): Tree = expr match {
+    case expr: TastyExpr[_] => unpickleExpr(expr)
+    case expr: ValueExpr[_] => Literal(Constant(expr.value))
+    case expr: TreeExpr[Tree] @unchecked => expr.tree
+    case expr: FunctionAppliedTo[_, _] =>
+      functionAppliedTo(quotedExprToTree(expr.f), quotedExprToTree(expr.x))
   }
 
-  /** Unpickle the tree contained in the TastyQuoted */
-  private def unpickleQuote(expr: quoted.TastyQuoted)(implicit ctx: Context): Tree = {
+  /** Transform the expression into its fully spliced TypeTree */
+  def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: Context): Tree = expr match {
+    case expr: TastyType[_] => unpickleType(expr)
+    case expr: TaggedType[_] => classTagToTypeTree(expr.ct)
+    case expr: TreeType[Tree] @unchecked => expr.tree
+  }
+
+  /** Unpickle the tree contained in the TastyExpr */
+  private def unpickleExpr(expr: TastyExpr[_])(implicit ctx: Context): Tree = {
     val tastyBytes = TastyString.unpickle(expr.tasty)
     val unpickled = unpickle(tastyBytes, expr.args)
     unpickled match {
       case PackageDef(_, (vdef: ValDef) :: Nil) =>
-        if (vdef.name == "$quote".toTermName) vdef.rhs
-        else vdef.rhs.asInstanceOf[TypeApply].args.head
+        vdef.rhs.changeOwner(vdef.symbol, ctx.owner)
+    }
+  }
+
+  /** Unpickle the tree contained in the TastyType */
+  private def unpickleType(ttpe: TastyType[_])(implicit ctx: Context): Tree = {
+    val tastyBytes = TastyString.unpickle(ttpe.tasty)
+    val unpickled = unpickle(tastyBytes, ttpe.args)
+    unpickled match {
+      case PackageDef(_, (vdef: ValDef) :: Nil) =>
+        vdef.rhs.asInstanceOf[TypeApply].args.head
+          .changeOwner(vdef.symbol, ctx.owner)
     }
   }
 
@@ -123,13 +137,12 @@ object PickledQuotes {
     def x1Ref() = ref(x1.symbol)
     def rec(f: Tree): Tree = f match {
       case closureDef(ddef) =>
-        new TreeMap() {
-          private val paramSym = ddef.vparamss.head.head.symbol
-          override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-            case tree: Ident if tree.symbol == paramSym => x1Ref().withPos(tree.pos)
-            case _ => super.transform(tree)
-          }
-        }.transform(ddef.rhs)
+        val paramSym = ddef.vparamss.head.head.symbol
+        new TreeTypeMap(
+          oldOwners = ddef.symbol :: Nil,
+          newOwners = ctx.owner :: Nil,
+          treeMap = tree => if (tree.symbol == paramSym) x1Ref().withPos(tree.pos) else tree
+        ).transform(ddef.rhs)
       case Block(stats, expr) =>
         val applied = rec(expr)
         if (stats.isEmpty) applied

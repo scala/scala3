@@ -24,16 +24,15 @@ object Test {
     }
   }
 
-  (true: Expr[Boolean])
-  (1: Expr[Byte])
-  ('a': Expr[Char])
-  (1: Expr[Short])
-  (1: Expr[Int])
-  (1L: Expr[Long])
-  (1.0f: Expr[Float])
-  (1.0: Expr[Double])
-  ("abc": Expr[String])
-  ((): Expr[Unit])
+  true.toExpr
+  1.toExpr
+  'a'.toExpr
+  1.toExpr
+  1.toExpr
+  1L.toExpr
+  1.0f.toExpr
+  1.0.toExpr
+  "abc".toExpr
 
-  val xs: Expr[List[Int]] = 1 :: 2 :: 3 :: Nil
+  val xs: Expr[List[Int]] = (1 :: 2 :: 3 :: Nil).toExpr
 }

@@ -82,7 +82,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       arg match {
         case arg: Typed if isWildcardStarArg(arg) =>
           if (tree.fun.symbol.is(JavaDefined) && arg.expr.tpe.derivesFrom(defn.SeqClass))
-            seqToArray(arg.expr, formal.translateParameterized(defn.RepeatedParamClass, defn.ArrayClass))
+            seqToArray(arg.expr, formal.underlyingIfRepeated(isJava = true))
           else arg.expr
         case arg => arg
       }

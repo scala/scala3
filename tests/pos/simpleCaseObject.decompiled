@@ -1,5 +1,5 @@
 ================================================================================
-../out/posTestFromTasty/pos/simpleCaseObject/foo/Foo.class
+out/posTestFromTasty/pos/simpleCaseObject/foo/Foo.class
 --------------------------------------------------------------------------------
 package foo {
   case object Foo() extends Object() with _root_.scala.Product {

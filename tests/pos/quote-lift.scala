@@ -1,7 +1,6 @@
 import scala.quoted._
 
 object Test {
-  '{ ~(1: Expr[Int]) }
 
   '{ ~implicitly[Liftable[Int]].toExpr(1) }
 

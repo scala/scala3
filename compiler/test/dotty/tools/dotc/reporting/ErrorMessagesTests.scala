@@ -2,12 +2,10 @@ package dotty.tools
 package dotc
 package reporting
 
-import core.Contexts.Context
-import diagnostic.messages._
-import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.core.Flags.FlagSet
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types.WildcardType
 import dotty.tools.dotc.parsing.Tokens
+import dotty.tools.dotc.reporting.diagnostic.messages._
 import org.junit.Assert._
 import org.junit.Test
 
@@ -883,7 +881,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(2, messages)
-      messages.foreach(assertEquals(_, ImplicitFunctionTypeNeedsNonEmptyParameterList()))
+      messages.foreach(assertEquals(_, FunctionTypeNeedsNonEmptyParameterList()))
     }
 
   @Test def wrongNumberOfParameters =
@@ -985,19 +983,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     assertEquals(extender.show, "class B")
     assertEquals(parent.show, "class A")
   }
-
-  @Test def enumCaseDefinitionInNonEnumOwner =
-    checkMessagesAfter("frontend") {
-      """object Qux {
-        |  case Foo
-        |}
-      """.stripMargin
-    }.expect { (ictx, messages) =>
-      implicit val ctx: Context = ictx
-      assertMessageCount(1, messages)
-      val EnumCaseDefinitionInNonEnumOwner(owner) :: Nil = messages
-      assertEquals("object Qux", owner.show)
-    }
 
   @Test def tailrecNotApplicableNeitherPrivateNorFinal =
     checkMessagesAfter("tailrec") {
@@ -1294,4 +1279,31 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val JavaSymbolIsNotAValue(symbol) = messages.head
       assertEquals(symbol.show, "package p")
     }
+
+  @Test def i3187 =
+    checkMessagesAfter("genBCode") {
+      """
+        |package scala
+        |object collection
+      """.stripMargin
+    }.expect { (itcx, messages) =>
+      implicit val ctx: Context = itcx
+
+      assert(ctx.reporter.hasErrors)
+    }
+
+  @Test def typeDoubleDeclaration =
+    checkMessagesAfter("frontend") {
+      """
+        |class Foo {
+        |  val a = 1
+        |  val a = 2
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val DoubleDeclaration(symbol, previousSymbol) :: Nil = messages
+      assertEquals(symbol.name.mangledString, "a")
+  }
 }

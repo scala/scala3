@@ -1,5 +1,5 @@
 ================================================================================
-../out/runTestFromTasty/run/puzzle/Test.class
+out/runTestFromTasty/run/puzzle/Test.class
 --------------------------------------------------------------------------------
 package <empty> {
   object Test() extends Object() { this: Test.type =>

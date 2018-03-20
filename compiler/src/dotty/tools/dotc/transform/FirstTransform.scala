@@ -75,7 +75,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     }
   }
 
-  /** Reorder statements so that module classes always come after their companion classes, add missing companion classes */
+  /** Reorder statements so that module classes always come after their companion classes */
   private def reorderAndComplete(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
     val moduleClassDefs, singleClassDefs = mutable.Map[Name, Tree]()
 
@@ -108,49 +108,13 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
       case Nil => revPrefix.reverse
     }
 
-    def registerCompanion(name: TermName, forClass: Symbol): TermSymbol = {
-      val (modul, mcCompanion, classCompanion) = newCompanion(name, forClass)
-      if (ctx.owner.isClass) modul.enteredAfter(thisPhase)
-      mcCompanion.enteredAfter(thisPhase)
-      classCompanion.enteredAfter(thisPhase)
-      modul
-    }
-
-    def addMissingCompanions(stats: List[Tree]): List[Tree] = stats map {
-      case stat: TypeDef if (singleClassDefs contains stat.name) && needsCompanion(stat.symbol.asClass) =>
-        val objName = stat.name.toTermName
-        val nameClash = stats.exists {
-          case other: MemberDef =>
-            other.name == objName && other.symbol.info.isParameterless
-          case _ =>
-            false
-        }
-        val uniqueName = if (nameClash) AvoidClashName(objName) else objName
-        Thicket(stat :: ModuleDef(registerCompanion(uniqueName, stat.symbol), Nil).trees)
-      case stat => stat
-    }
-
-    addMissingCompanions(reorder(stats, Nil))
-  }
-
-  private def newCompanion(name: TermName, forClass: Symbol)(implicit ctx: Context) = {
-    val modul = ctx.newCompleteModuleSymbol(forClass.owner, name, Synthetic, Synthetic,
-      defn.ObjectType :: Nil, Scopes.newScope, assocFile = forClass.asClass.assocFile)
-    val mc = modul.moduleClass
-
-    val mcComp = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, forClass, mc)
-    val classComp = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, mc, forClass)
-    (modul, mcComp, classComp)
+    reorder(stats, Nil)
   }
 
   /** elimiate self in Template */
   override def transformTemplate(impl: Template)(implicit ctx: Context): Tree = {
     cpy.Template(impl)(self = EmptyValDef)
   }
-
-  /** Eliminate empty package definitions that may have been stored in the TASTY trees */
-  override def transformPackageDef(tree: PackageDef)(implicit ctx: Context): Tree =
-    if (tree.stats.isEmpty) EmptyTree else tree
 
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context) = {
     if (ddef.symbol.hasAnnotation(defn.NativeAnnot)) {
@@ -159,14 +123,6 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
         _ => ref(defn.Sys_errorR).withPos(ddef.pos)
           .appliedTo(Literal(Constant("native method stub"))))
     } else ddef
-  }
-
-  override def transformValDef(vdef: tpd.ValDef)(implicit ctx: Context): tpd.Tree = {
-    if (vdef.tpt.tpe.isPhantom) {
-      if (vdef.symbol.is(Mutable)) ctx.error("var fields cannot have Phantom types", vdef.pos)
-      else if (vdef.symbol.hasAnnotation(defn.VolatileAnnot)) ctx.error("Phantom fields cannot be @volatile", vdef.pos)
-    }
-    vdef
   }
 
   override def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] =

@@ -546,7 +546,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     init()
 
     def addArg(arg: Tree, formal: Type): Unit =
-      typedArgBuf += adaptInterpolated(arg, formal.widenExpr)
+      typedArgBuf += adapt(arg, formal.widenExpr)
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
@@ -711,7 +711,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
        *  part. Return an optional value to indicate success.
        */
       def tryWithImplicitOnQualifier(fun1: Tree, proto: FunProto)(implicit ctx: Context): Option[Tree] =
-        tryInsertImplicitOnQualifier(fun1, proto) flatMap { fun2 =>
+        tryInsertImplicitOnQualifier(fun1, proto, ctx.typerState.ownedVars) flatMap { fun2 =>
           tryEither {
             implicit ctx => Some(simpleApply(fun2, proto)): Option[Tree]
           } {
@@ -779,7 +779,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             checkCanEqual(left.tpe.widen, right.tpe.widen, app.pos)
         case _ =>
       }
-      app
+      app match {
+        case Apply(fun, args) if fun.tpe.widen.isErasedMethod =>
+          tpd.cpy.Apply(app)(fun = fun, args = args.map(arg => normalizeErasedExpr(arg, "This argument is given to an erased parameter. ")))
+        case _ => app
+      }
     }
   }
 
@@ -827,7 +831,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           .select(defn.newGenericArrayMethod).withPos(tree.pos)
           .appliedToTypeTrees(targs).appliedToArgs(args)
 
-      if (TypeErasure.isUnboundedGeneric(targ.tpe))
+      if (TypeErasure.isGeneric(targ.tpe))
         newGenericArrayCall
       else tree
     case _ =>
@@ -906,8 +910,10 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
     def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {
       case TypeApply(fn, args) =>
+        var remain = bound.toSet
         def addBinder(arg: Tree) = arg.tpe.stripTypeVar match {
-          case ref: TypeRef if bound.contains(ref.symbol) =>
+          case ref: TypeRef if remain.contains(ref.symbol) =>
+            remain -= ref.symbol
             tpd.Bind(ref.symbol, Ident(ref))
           case _ =>
             arg
@@ -927,7 +933,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *   - If a type proxy P is not a reference to a class, P's supertype is in G
      */
     def isSubTypeOfParent(subtp: Type, tp: Type)(implicit ctx: Context): Boolean =
-      if (subtp <:< tp) true
+      if (constrainPatternType(subtp, tp)) true
       else tp match {
         case tp: TypeRef if tp.symbol.isClass => isSubTypeOfParent(subtp, tp.firstParent)
         case tp: TypeProxy => isSubTypeOfParent(subtp, tp.superType)
@@ -1393,7 +1399,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         val alts1 = alts filter pt.isMatchedBy
         resolveOverloaded(alts1, pt1, targs1)
 
-      case defn.FunctionOf(args, resultType, _) =>
+      case defn.FunctionOf(args, resultType, _, _) =>
         narrowByTypes(alts, args, resultType)
 
       case pt =>
@@ -1440,7 +1446,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           val formalsForArg: List[Type] = altFormals.map(_.head)
           def argTypesOfFormal(formal: Type): List[Type] =
             formal match {
-              case defn.FunctionOf(args, result, isImplicit) => args
+              case defn.FunctionOf(args, result, isImplicit, isErased) => args
               case defn.PartialFunctionOf(arg, result) => arg :: Nil
               case _ => Nil
             }
@@ -1513,11 +1519,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  If the resulting trees all have the same type, return them instead of the original ones.
    */
   def harmonize(trees: List[Tree])(implicit ctx: Context): List[Tree] = {
-    def adapt(tree: Tree, pt: Type): Tree = tree match {
-      case cdef: CaseDef => tpd.cpy.CaseDef(cdef)(body = adapt(cdef.body, pt))
-      case _ => adaptInterpolated(tree, pt)
+    def adaptDeep(tree: Tree, pt: Type): Tree = tree match {
+      case cdef: CaseDef => tpd.cpy.CaseDef(cdef)(body = adaptDeep(cdef.body, pt))
+      case _ => adapt(tree, pt)
     }
-    if (ctx.isAfterTyper) trees else harmonizeWith(trees)(_.tpe, adapt)
+    if (ctx.isAfterTyper) trees else harmonizeWith(trees)(_.tpe, adaptDeep)
   }
 
   /** Apply a transformation `harmonize` on the results of operation `op`.
@@ -1535,6 +1541,23 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val harmonizedElems = harmonize(origElems)
     if (harmonizedElems ne origElems) ctx.typerState.constraint = origConstraint
     harmonizedElems
+  }
+
+  /** Transforms the tree into a its default tree.
+   *  Performed to shrink the tree that is known to be erased later.
+   */
+  protected def normalizeErasedExpr(tree: Tree, msg: String)(implicit ctx: Context): Tree = {
+    if (!isPureExpr(tree))
+      ctx.warning(msg + "This expression will not be evaluated.", tree.pos)
+    defaultValue(tree.tpe)
+  }
+
+  /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
+   *  Performed to shrink the tree that is known to be erased later.
+   */
+  protected def normalizeErasedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) = {
+    if (sym.is(Erased) && rhs.tpe.exists) normalizeErasedExpr(rhs, "Expression is on the RHS of an `erased` " + sym.showKind + ". ")
+    else rhs
   }
 
   /** If all `types` are numeric value types, and they are not all the same type,

@@ -259,14 +259,14 @@ class TreeChecker extends Phase with SymTransformer {
       tpdTree
     }
 
-    override def typedUnadapted(tree: untpd.Tree, pt: Type)(implicit ctx: Context): tpd.Tree = {
+    override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tpd.Tree = {
       val res = tree match {
         case _: untpd.TypedSplice | _: untpd.Thicket | _: EmptyValDef[_] =>
-          super.typedUnadapted(tree)
+          super.typedUnadapted(tree, pt, locked)
         case _ if tree.isType =>
           promote(tree)
         case _ =>
-          val tree1 = super.typedUnadapted(tree, pt)
+          val tree1 = super.typedUnadapted(tree, pt, locked)
           def isSubType(tp1: Type, tp2: Type) =
             (tp1 eq tp2) || // accept NoType / NoType
             (tp1 <:< tp2)
@@ -435,7 +435,7 @@ class TreeChecker extends Phase with SymTransformer {
     override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(implicit ctx: Context): Tree =
       tree
 
-    override def adapt(tree: Tree, pt: Type)(implicit ctx: Context) = {
+    override def adapt(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context) = {
       def isPrimaryConstructorReturn =
         ctx.owner.isPrimaryConstructor && pt.isRef(ctx.owner.owner) && tree.tpe.isRef(defn.UnitClass)
       if (ctx.mode.isExpr &&
@@ -449,6 +449,8 @@ class TreeChecker extends Phase with SymTransformer {
         })
       tree
     }
+
+    override def simplify(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type = tree
   }
 
   /**

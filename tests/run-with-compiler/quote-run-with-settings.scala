@@ -1,7 +1,7 @@
 
 import java.nio.file.{Files, Paths}
 
-import dotty.tools.dotc.quoted.Runners._
+import dotty.tools.dotc.quoted.Toolbox._
 
 import scala.quoted._
 
@@ -16,14 +16,15 @@ object Test {
     println(expr.run)
     println()
 
-    val outDir = Paths.get("../out/out-quoted-1")
+    val outDir = Paths.get("out/out-quoted-1")
     val classFile = outDir.resolve("Quoted.class")
 
     Files.deleteIfExists(classFile)
 
-    val settings = Settings.run(optimise = true, outDir = Some(outDir.toString))
-
-    println(run(expr, settings))
-    assert(Files.exists(classFile))
+    {
+      implicit val settings = Settings.run(optimise = true, outDir = Some(outDir.toString))
+      println(expr.run)
+      assert(Files.exists(classFile))
+    }
   }
 }

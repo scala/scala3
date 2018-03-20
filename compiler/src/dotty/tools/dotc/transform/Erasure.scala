@@ -28,7 +28,6 @@ import ValueClasses._
 import TypeUtils._
 import ExplicitOuter._
 import core.Mode
-import core.PhantomErasure
 import reporting.trace
 
 class Erasure extends Phase with DenotTransformer {
@@ -213,8 +212,6 @@ object Erasure {
           val tree1 =
             if (tree.tpe isRef defn.NullClass)
               adaptToType(tree, underlying)
-            else if (wasPhantom(underlying))
-              PhantomErasure.erasedParameterRef
             else if (!(tree.tpe <:< tycon)) {
               assert(!(tree.tpe.typeSymbol.isPrimitiveValueClass))
               val nullTree = Literal(Constant(null))
@@ -325,9 +322,9 @@ object Erasure {
 
     override def promote(tree: untpd.Tree)(implicit ctx: Context): tree.ThisTree[Type] = {
       assert(tree.hasType)
-      val erased = erasedType(tree)
-      ctx.log(s"promoting ${tree.show}: ${erased.showWithUnderlying()}")
-      tree.withType(erased)
+      val erasedTp = erasedType(tree)
+      ctx.log(s"promoting ${tree.show}: ${erasedTp.showWithUnderlying()}")
+      tree.withType(erasedTp)
     }
 
     /** When erasing most TypeTrees we should not semi-erase value types.
@@ -437,15 +434,8 @@ object Erasure {
         }
       }
 
-      if ((origSym eq defn.Phantom_assume) || (origSym.is(Flags.ParamAccessor) && wasPhantom(pt)))
-        PhantomErasure.erasedAssume
-      else recur(typed(tree.qualifier, AnySelectionProto))
+      recur(typed(tree.qualifier, AnySelectionProto))
     }
-
-    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): tpd.Tree =
-      if (tree.symbol eq defn.Phantom_assume) PhantomErasure.erasedAssume
-      else if (tree.symbol.is(Flags.Param) && wasPhantom(tree.typeOpt)) PhantomErasure.erasedParameterRef
-      else super.typedIdent(tree, pt)
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
       if (tree.symbol == ctx.owner.lexicallyEnclosingClass || tree.symbol.isStaticOwner) promote(tree)
@@ -457,12 +447,15 @@ object Erasure {
     private def runtimeCallWithProtoArgs(name: Name, pt: Type, args: Tree*)(implicit ctx: Context): Tree = {
       val meth = defn.runtimeMethodRef(name)
       val followingParams = meth.symbol.info.firstParamTypes.drop(args.length)
-      val followingArgs = protoArgs(pt).zipWithConserve(followingParams)(typedExpr).asInstanceOf[List[tpd.Tree]]
+      val followingArgs = protoArgs(pt, meth.widen).zipWithConserve(followingParams)(typedExpr).asInstanceOf[List[tpd.Tree]]
       ref(meth).appliedToArgs(args.toList ++ followingArgs)
     }
 
-    private def protoArgs(pt: Type): List[untpd.Tree] = pt match {
-      case pt: FunProto => pt.args ++ protoArgs(pt.resType)
+    private def protoArgs(pt: Type, methTp: Type): List[untpd.Tree] = (pt, methTp) match {
+      case (pt: FunProto, methTp: MethodType) if methTp.isErasedMethod =>
+        protoArgs(pt.resType, methTp.resType)
+      case (pt: FunProto, methTp: MethodType) =>
+        pt.args ++ protoArgs(pt.resType, methTp.resType)
       case _ => Nil
     }
 
@@ -496,14 +489,16 @@ object Erasure {
           fun1.tpe.widen match {
             case mt: MethodType =>
               val outers = outer.args(fun.asInstanceOf[tpd.Tree]) // can't use fun1 here because its type is already erased
-              var args0 = outers ::: args ++ protoArgs(pt)
+              val ownArgs = if (mt.paramNames.nonEmpty && !mt.isErasedMethod) args else Nil
+              var args0 = outers ::: ownArgs ::: protoArgs(pt, tree.typeOpt)
+
               if (args0.length > MaxImplementedFunctionArity && mt.paramInfos.length == 1) {
                 val bunchedArgs = untpd.JavaSeqLiteral(args0, TypeTree(defn.ObjectType))
                   .withType(defn.ArrayOf(defn.ObjectType))
                 args0 = bunchedArgs :: Nil
               }
-              // Arguments are phantom if an only if the parameters are phantom, guaranteed by the separation of type lattices
-              val args1 = args0.filterConserve(arg => !wasPhantom(arg.typeOpt)).zipWithConserve(mt.paramInfos)(typedExpr)
+              assert(args0 hasSameLengthAs mt.paramInfos)
+              val args1 = args0.zipWithConserve(mt.paramInfos)(typedExpr)
               untpd.cpy.Apply(tree)(fun1, args1) withType mt.resultType
             case _ =>
               throw new MatchError(i"tree $tree has unexpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")
@@ -564,11 +559,7 @@ object Erasure {
         vparamss1 = (tpd.ValDef(bunchedParam) :: Nil) :: Nil
         rhs1 = untpd.Block(paramDefs, rhs1)
       }
-      vparamss1 = vparamss1.mapConserve(_.filterConserve(vparam => !wasPhantom(vparam.tpe)))
-      if (sym.is(Flags.ParamAccessor) && wasPhantom(ddef.tpt.tpe)) {
-        sym.resetFlag(Flags.ParamAccessor)
-        rhs1 = PhantomErasure.erasedParameterRef
-      }
+      vparamss1 = vparamss1.mapConserve(_.filterConserve(!_.symbol.is(Flags.Erased)))
       val ddef1 = untpd.cpy.DefDef(ddef)(
         tparams = Nil,
         vparamss = vparamss1,
@@ -674,7 +665,7 @@ object Erasure {
       }
     }
 
-    override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context) =
+    override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): Tree =
       EmptyTree
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
@@ -684,18 +675,17 @@ object Erasure {
       super.typedStats(stats1, exprOwner).filter(!_.isEmpty)
     }
 
-    override def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
+    override def adapt(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree =
       trace(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
-        assert(ctx.phase == ctx.erasurePhase.next, ctx.phase)
+        assert(ctx.phase == ctx.erasurePhase || ctx.phase == ctx.erasurePhase.next, ctx.phase)
         if (tree.isEmpty) tree
         else if (ctx.mode is Mode.Pattern) tree // TODO: replace with assertion once pattern matcher is active
         else adaptToType(tree, pt)
       }
+
+    override def simplify(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type = tree
   }
 
-  def takesBridges(sym: Symbol)(implicit ctx: Context) =
+  private def takesBridges(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.isClass && !sym.is(Flags.Trait | Flags.Package)
-
-  private def wasPhantom(tp: Type)(implicit ctx: Context): Boolean =
-    tp.widenDealias.classSymbol eq defn.ErasedPhantomClass
 }

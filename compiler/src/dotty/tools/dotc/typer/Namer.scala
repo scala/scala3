@@ -134,10 +134,10 @@ trait NamerContextOps { this: Context =>
   def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(implicit ctx: Context): Type = {
     val monotpe =
       (valueParamss :\ resultType) { (params, resultType) =>
-        val make =
-          if (params.nonEmpty && (params.head is Implicit)) ImplicitMethodType
-          else if (isJava) JavaMethodType
-          else MethodType
+        val (isImplicit, isErased) =
+          if (params.isEmpty) (false, false)
+          else (params.head is Implicit, params.head is Erased)
+        val make = MethodType.maker(isJava, isImplicit, isErased)
         if (isJava)
           for (param <- params)
             if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
@@ -526,6 +526,13 @@ class Namer { typer: Typer =>
       mdef.putAttachment(ExpandedTree, Thicket(trees.filter(_ != tree)))
     }
 
+    /** Transfer all references to `from` to `to` */
+    def transferReferences(from: ValDef, to: ValDef): Unit = {
+      val fromRefs = from.removeAttachment(References).getOrElse(Nil)
+      val toRefs = to.removeAttachment(References).getOrElse(Nil)
+      to.putAttachment(References, fromRefs ++ toRefs)
+    }
+
     /** Merge the module class `modCls` in the expanded tree of `mdef` with the given stats */
     def mergeModuleClass(mdef: Tree, modCls: TypeDef, stats: List[Tree]): TypeDef = {
       var res: TypeDef = null
@@ -580,9 +587,12 @@ class Namer { typer: Typer =>
               case vdef @ ValDef(name, _, _) if valid(vdef) =>
                 moduleValDef.get(name) match {
                   case Some((stat1, vdef1)) =>
-                    if (vdef.mods.is(Synthetic) && !vdef1.mods.is(Synthetic))
+                    if (vdef.mods.is(Synthetic) && !vdef1.mods.is(Synthetic)) {
+                      transferReferences(vdef, vdef1)
                       removeInExpanded(stat, vdef)
+                    }
                     else if (!vdef.mods.is(Synthetic) && vdef1.mods.is(Synthetic)) {
+                      transferReferences(vdef1, vdef)
                       removeInExpanded(stat1, vdef1)
                       moduleValDef(name) = (stat, vdef)
                     }
@@ -944,13 +954,7 @@ class Namer { typer: Typer =>
 
       val selfInfo =
         if (self.isEmpty) NoType
-        else if (cls.is(Module)) {
-          val moduleType = cls.owner.thisType select sourceModule
-          if (self.name == nme.WILDCARD) moduleType
-          else recordSym(
-            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.pos),
-            self)
-        }
+        else if (cls.is(Module)) cls.owner.thisType.select(sourceModule)
         else createSymbol(self)
 
       // pre-set info, so that parent types can refer to type params
@@ -1120,7 +1124,7 @@ class Namer { typer: Typer =>
       val deskolemize = new ApproximatingTypeMap {
         def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/ {
           tp match {
-            case tp: SkolemType => range(tp.bottomType, atVariance(1)(apply(tp.info)))
+            case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
             case _ => mapOver(tp)
           }
         }

@@ -462,7 +462,7 @@ object SymDenotations {
     /** Is symbol known to not exist? */
     final def isAbsent(implicit ctx: Context): Boolean = {
       ensureCompleted()
-      myInfo == NoType ||
+      (myInfo `eq` NoType) ||
       (this is (ModuleVal, butNot = Package)) && moduleClass.isAbsent
     }
 
@@ -601,7 +601,7 @@ object SymDenotations {
 
     /** Is this a denotation of a stable term (or an arbitrary type)? */
     final def isStable(implicit ctx: Context) =
-      isType || is(Stable) || !(is(UnstableValue) || info.isInstanceOf[ExprType])
+      isType || !is(Erased) && (is(Stable) || !(is(UnstableValue) || info.isInstanceOf[ExprType]))
 
     /** Is this a "real" method? A real method is a method which is:
      *  - not an accessor
@@ -668,7 +668,7 @@ object SymDenotations {
 
     /** Is this symbol a class references to which that are supertypes of null? */
     final def isNullableClass(implicit ctx: Context): Boolean =
-      isClass && !isValueClass && !(this is ModuleClass) && symbol != defn.NothingClass && !defn.isPhantomTerminalClass(symbol)
+      isClass && !isValueClass && !(this is ModuleClass) && symbol != defn.NothingClass
 
     /** Is this definition accessible as a member of tree with type `pre`?
      *  @param pre          The type of the tree from which the selection is made
@@ -1204,7 +1204,8 @@ object SymDenotations {
       case tp: ExprType => hasSkolems(tp.resType)
       case tp: AppliedType => hasSkolems(tp.tycon) || tp.args.exists(hasSkolems)
       case tp: LambdaType => tp.paramInfos.exists(hasSkolems) || hasSkolems(tp.resType)
-      case tp: AndOrType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
+      case tp: AndType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
+      case tp: OrType  => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
       case tp: AnnotatedType => hasSkolems(tp.tpe)
       case _ => false
     }
@@ -1298,7 +1299,7 @@ object SymDenotations {
     private[this] var myMemberCachePeriod: Period = Nowhere
 
     /** A cache from types T to baseType(T, C) */
-    type BaseTypeMap = java.util.HashMap[CachedType, Type]
+    type BaseTypeMap = java.util.IdentityHashMap[CachedType, Type]
     private[this] var myBaseTypeCache: BaseTypeMap = null
     private[this] var myBaseTypeCachePeriod: Period = Nowhere
 
@@ -1467,8 +1468,7 @@ object SymDenotations {
       val builder = new BaseDataBuilder
       for (p <- classParents) {
         if (p.typeSymbol.isClass) builder.addAll(p.typeSymbol.asClass.baseClasses)
-        else assert(ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
-        builder.addAll(p.typeSymbol.asClass.baseClasses)
+        else assert(isRefinementClass || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
       }
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
@@ -1643,9 +1643,9 @@ object SymDenotations {
           case tp: TypeRef if tp.symbol.isClass => true
           case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
           //case tp: TypeProxy => inCache(tp.underlying) // disabled, can re-enable insyead of last two lines for performance testing
-          //case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
           case tp: TypeProxy => isCachable(tp.underlying, btrCache)
-          case tp: AndOrType => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
+          case tp: AndType => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
+          case tp: OrType  => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
           case _ => true
         }
       }
@@ -1722,7 +1722,7 @@ object SymDenotations {
                   btrCache.put(tp, basetp)
                 }
                 else btrCache.remove(tp)
-              } else if (basetp == NoPrefix)
+              } else if (basetp `eq` NoPrefix)
                 throw CyclicReference(this)
               basetp
             }

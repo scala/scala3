@@ -63,7 +63,7 @@ object NameKinds {
     def infoString: String
   }
 
-  object SimpleNameKind extends NameKind(UTF8) { self =>
+  object SimpleNameKind extends NameKind(UTF8) {
     type ThisInfo = Info
     val info = new Info
     def mkString(underlying: TermName, info: ThisInfo) = unsupported("mkString")
@@ -213,9 +213,13 @@ object NameKinds {
       safePrefix + info.num
     }
 
-    /** Generate fresh unique name of this kind with given prefix name */
+    /** Generate fresh unique term name of this kind with given prefix name */
     def fresh(prefix: TermName = EmptyTermName)(implicit ctx: Context): TermName =
       ctx.freshNames.newName(prefix, this)
+
+    /** Generate fresh unique type name of this kind with given prefix name */
+    def fresh(prefix: TypeName)(implicit ctx: Context): TypeName =
+      fresh(prefix.toTermName).toTypeName
 
     uniqueNameKinds(separator) = this
   }

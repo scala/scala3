@@ -1,4 +1,4 @@
-import dotty.tools.dotc.quoted.Runners.runner
+import dotty.tools.dotc.quoted.Toolbox._
 import scala.quoted._
 import Macros._
 

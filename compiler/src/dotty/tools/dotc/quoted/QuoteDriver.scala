@@ -11,7 +11,7 @@ import scala.quoted.Expr
 
 import java.net.URLClassLoader
 
-import Runners.{Settings, Run, Show}
+import Toolbox.{Settings, Run, Show}
 
 class QuoteDriver extends Driver {
   import tpd._
@@ -44,7 +44,8 @@ class QuoteDriver extends Driver {
     def show(tree: Tree, ctx: Context): String = {
       val printer = new DecompilerPrinter(ctx)
       val pageWidth = ctx.settings.pageWidth.value(ctx)
-      printer.toText(tree).mkString(pageWidth, false)
+      val tree1 = if (settings.rawTree) tree else (new TreeCleaner).transform(tree)(ctx)
+      printer.toText(tree1).mkString(pageWidth, false)
     }
     withTree(expr, show, settings)
   }

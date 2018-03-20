@@ -7,7 +7,12 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
   private[this] var limit: Int = _
   private[this] var table: Array[AnyRef] = _
 
+  assert(Integer.bitCount(powerOfTwoInitialCapacity) == 1)
   protected def isEqual(x: T, y: T): Boolean = x.equals(y)
+
+  // Counters for Stats
+  var accesses = 0
+  var misses = 0
 
   clear()
 
@@ -37,10 +42,12 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
    *  If not, enter `x` in set and return `x`.
    */
   def findEntryOrUpdate(x: T): T = {
+    if (Stats.enabled) accesses += 1
     var h = index(hash(x))
     var entry = entryAt(h)
     while (entry ne null) {
       if (isEqual(x, entry)) return entry
+      if (Stats.enabled) misses += 1
       h = index(h + 1)
       entry = entryAt(h)
     }
@@ -57,9 +64,11 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
 
   /** The entry in the set such that `isEqual(x, entry)`, or else `null`. */
   def findEntry(x: T): T = {
+    if (Stats.enabled) accesses += 1
     var h = index(hash(x))
     var entry = entryAt(h)
     while ((entry ne null) && !isEqual(x, entry)) {
+      if (Stats.enabled) misses += 1
       h = index(h + 1)
       entry = entryAt(h)
     }
@@ -70,10 +79,12 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
 
   /** Add entry `x` to set */
   def addEntry(x: T): Unit = {
+    if (Stats.enabled) accesses += 1
     var h = index(hash(x))
     var entry = entryAt(h)
     while (entry ne null) {
       if (isEqual(x, entry)) return
+      if (Stats.enabled) misses += 1
       h = index(h + 1)
       entry = entryAt(h)
     }
@@ -109,10 +120,12 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
    *  follow a `findEntryByhash` or `nextEntryByHash` operation.
    */
   protected def nextEntryByHash(hashCode: Int): T = {
+    if (Stats.enabled) accesses += 1
     var entry = table(rover)
     while (entry ne null) {
       rover = index(rover + 1)
       if (hash(entry.asInstanceOf[T]) == hashCode) return entry.asInstanceOf[T]
+      if (Stats.enabled) misses += 1
       entry = table(rover)
     }
     null

@@ -374,8 +374,10 @@ class TypeApplications(val self: Type) extends AnyVal {
         tryReduce
       case dealiased: PolyType =>
         dealiased.instantiate(args)
-      case dealiased: AndOrType =>
-        dealiased.derivedAndOrType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
+      case dealiased: AndType =>
+        dealiased.derivedAndType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
+      case dealiased: OrType =>
+        dealiased.derivedOrType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
       case dealiased: TypeAlias =>
         dealiased.derivedTypeAlias(dealiased.alias.appliedTo(args))
       case dealiased: TypeBounds =>

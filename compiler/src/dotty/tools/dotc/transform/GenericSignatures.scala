@@ -212,8 +212,6 @@ object GenericSignatures {
             else
               jsig(unboxedSeen, toplevel, primitiveOK)
           }
-          else if (tp.isPhantom)
-            jsig(defn.ErasedPhantomType)
           else if (sym.isClass)
             classSig
           else
@@ -239,8 +237,13 @@ object GenericSignatures {
           methodResultSig(restpe)
 
         case mtpe: MethodType =>
-          // phantom method parameters do not make it to the bytecode.
-          val params = mtpe.paramInfoss.flatten.filterNot(_.isPhantom)
+          // erased method parameters do not make it to the bytecode.
+          def effectiveParamInfoss(t: Type)(implicit ctx: Context): List[List[Type]] = t match {
+            case t: MethodType if t.isErasedMethod => effectiveParamInfoss(t.resType)
+            case t: MethodType => t.paramInfos :: effectiveParamInfoss(t.resType)
+            case _ => Nil
+          }
+          val params = effectiveParamInfoss(mtpe).flatten
           val restpe = mtpe.finalResultType
           builder.append('(')
           // TODO: Update once we support varargs
@@ -276,7 +279,7 @@ object GenericSignatures {
         case _ =>
           val etp = erasure(tp)
           if (etp eq tp) throw new UnknownSig
-          else jsig(etp)
+          else jsig(etp, toplevel, primitiveOK)
       }
     }
     val throwsArgs = sym0.annotations flatMap ThrownException.unapply

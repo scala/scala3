@@ -42,7 +42,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
           case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
           case _ =>
             if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists)
-              if (variance <= 0 && !isLegalPrefix(pre)) range(pre.bottomType, pre)
+              if (variance <= 0 && !isLegalPrefix(pre)) range(defn.NothingType, pre)
               else pre
             else if ((pre.termSymbol is Package) && !(thiscls is Package))
               toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
@@ -57,11 +57,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         tp match {
           case tp: NamedType =>
             val sym = tp.symbol
-            if (sym.isStatic) tp
+            if (sym.isStatic || (tp.prefix `eq` NoPrefix)) tp
             else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
           case tp: ThisType =>
             toPrefix(pre, cls, tp.cls)
-          case _: BoundType | NoPrefix =>
+          case _: BoundType =>
             tp
           case _ =>
             mapOver(tp)
@@ -80,7 +80,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   /** Implementation of Types#simplified */
   final def simplify(tp: Type, theMap: SimplifyMap): Type = tp match {
     case tp: NamedType =>
-      if (tp.symbol.isStatic) tp
+      if (tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
       else tp.derivedSelect(simplify(tp.prefix, theMap)) match {
         case tp1: NamedType if tp1.denotationIsCurrent =>
           val tp2 = tp1.reduceProjection
@@ -97,7 +97,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         val tvar = typerState.constraint.typeVarOfParam(tp)
         if (tvar.exists) tvar else tp
       }
-    case  _: ThisType | _: BoundType | NoPrefix =>
+    case  _: ThisType | _: BoundType =>
       tp
     case tp: TypeAlias =>
       tp.derivedTypeAlias(simplify(tp.alias, theMap))
@@ -220,7 +220,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    */
   def makePackageObjPrefixExplicit(tpe: NamedType): Type = {
     def tryInsert(pkgClass: SymDenotation): Type = pkgClass match {
-      case pkgCls: PackageClassDenotation if !(tpe.symbol.maybeOwner is Package) =>
+      case pkgCls: PackageClassDenotation
+      if !tpe.symbol.maybeOwner.is(Package) && pkgCls.packageObj.exists =>
         tpe.derivedSelect(pkgCls.packageObj.termRef)
       case _ =>
         tpe

@@ -1713,15 +1713,16 @@ object messages {
     }
   }
 
-  case class ImplicitFunctionTypeNeedsNonEmptyParameterList()(implicit ctx: Context)
-    extends Message(ImplicitFunctionTypeNeedsNonEmptyParameterListID) {
+  case class FunctionTypeNeedsNonEmptyParameterList(isImplicit: Boolean = true, isErased: Boolean = true)(implicit ctx: Context)
+    extends Message(FunctionTypeNeedsNonEmptyParameterListID) {
     val kind = "Syntax"
-    val msg = "implicit function type needs non-empty parameter list"
+    val mods = ((isImplicit, "implicit") :: (isErased, "erased") :: Nil).filter(_._1).mkString(" ")
+    val msg = mods + " function type needs non-empty parameter list"
     val explanation = {
-      val code1 = "type Transactional[T] = implicit Transaction => T"
+      val code1 = s"type Transactional[T] = $mods Transaction => T"
       val code2 = "val cl: implicit A => B"
-      hl"""It is not allowed to leave implicit function parameter list empty.
-         |Possible ways to define implicit function type:
+      hl"""It is not allowed to leave $mods function parameter list empty.
+         |Possible ways to define $mods function type:
          |
          |$code1
          |
@@ -1781,16 +1782,6 @@ object messages {
     val msg = hl"$clazz cannot extend ${"final"} $finalClazz"
     val explanation =
       hl"""A class marked with the ${"final"} keyword cannot be extended"""
-  }
-
-  case class EnumCaseDefinitionInNonEnumOwner(owner: Symbol)(implicit ctx: Context)
-    extends Message(EnumCaseDefinitionInNonEnumOwnerID) {
-      val kind = "Syntax"
-      val msg = em"case not allowed here, since owner ${owner} is not an ${"enum"} object"
-      val explanation =
-        hl"""${"enum"} cases are only allowed within the companion ${"object"} of an ${"enum class"}.
-            |If you want to create an ${"enum"} case, make sure the corresponding ${"enum class"} exists
-            |and has the ${"enum"} keyword."""
   }
 
   case class ExpectedTypeBoundOrEquals(found: Token)(implicit ctx: Context)
@@ -2085,6 +2076,22 @@ object messages {
         else hl"Java defined ${"class " + symbol.name}"
 
       s"$kind is not a value"
+    }
+    val explanation = ""
+  }
+
+  case class DoubleDeclaration(decl: Symbol, previousDecl: Symbol)(implicit ctx: Context) extends Message(DoubleDeclarationID) {
+    val kind = "Duplicate Symbol"
+    val msg = {
+      val details = if (decl.isRealMethod && previousDecl.isRealMethod) {
+        // compare the signatures when both symbols represent methods
+        decl.signature.matchDegree(previousDecl.signature) match {
+          /* case Signature.NoMatch => // can't happen because decl.matches(previousDecl) is checked before reporting this error */
+          case Signature.ParamMatch => "\nOverloads with matching parameter types are not allowed."
+          case _ /* Signature.FullMatch */ => "\nThe definitions have matching type signatures after erasure."
+        }
+      } else ""
+      hl"${decl.showLocated} is already defined as ${previousDecl.showDcl} at line ${previousDecl.pos.line + 1}." + details
     }
     val explanation = ""
   }

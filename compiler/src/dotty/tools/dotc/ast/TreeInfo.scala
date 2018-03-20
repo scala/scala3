@@ -396,7 +396,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *               flags set.
    */
   private def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel =
-    if (!tree.tpe.widen.isParameterless) SimplyPure
+    if (!tree.tpe.widen.isParameterless || tree.symbol.is(Erased)) SimplyPure
     else if (!tree.symbol.isStable) Impure
     else if (tree.symbol.is(Lazy)) Idempotent // TODO add Module flag, sinxce Module vals or not Lazy from the start.
     else SimplyPure
@@ -633,7 +633,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** The tree containing only the top-level classes and objects matching either `cls` or its companion object */
   def sliceTopLevel(tree: Tree, cls: ClassSymbol)(implicit ctx: Context): List[Tree] = tree match {
     case PackageDef(pid, stats) =>
-      cpy.PackageDef(tree)(pid, stats.flatMap(sliceTopLevel(_, cls))) :: Nil
+      val slicedStats = stats.flatMap(sliceTopLevel(_, cls))
+      if (!slicedStats.isEmpty)
+        cpy.PackageDef(tree)(pid, slicedStats) :: Nil
+      else
+        Nil
     case tdef: TypeDef =>
       val sym = tdef.symbol
       assert(sym.isClass)
@@ -679,7 +683,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           rname == tree.name || hasRefinement(parent)
         case tp: TypeProxy =>
           hasRefinement(tp.underlying)
-        case tp: AndOrType =>
+        case tp: AndType =>
+          hasRefinement(tp.tp1) || hasRefinement(tp.tp2)
+        case tp: OrType =>
           hasRefinement(tp.tp1) || hasRefinement(tp.tp2)
         case _ =>
           false

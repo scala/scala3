@@ -367,6 +367,9 @@ object Flags {
   /** Symbol is a Java enum */
   final val Enum = commonFlag(40, "<enum>")
 
+  /** Labeled with `erased` modifier (erased value)  */
+  final val Erased = termFlag(42, "erased")
+
   // Flags following this one are not pickled
 
   /** Symbol is not a member of its owner */
@@ -438,7 +441,7 @@ object Flags {
   /** Flags representing source modifiers */
   final val SourceModifierFlags =
     commonFlags(Private, Protected, Abstract, Final, Inline,
-     Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic)
+     Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic, Erased)
 
   /** Flags representing modifiers that can appear in trees */
   final val ModifierFlags =
@@ -512,7 +515,7 @@ object Flags {
   /** Flags that can apply to a module val */
   final val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
     Override | Final | Method | Implicit | Lazy |
-    Accessor | AbsOverride | Stable | Captured | Synchronized | Inline
+    Accessor | AbsOverride | Stable | Captured | Synchronized | Inline | Erased
 
   /** Flags that can apply to a module class */
   final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | ImplClass | Enum

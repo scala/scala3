@@ -69,7 +69,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
               printName(); printTree(); printTrees()
             case RETURN | HOLE =>
               printNat(); printTrees()
-            case METHODtype | POLYtype | TYPELAMBDAtype =>
+            case METHODtype | IMPLICITMETHODtype | ERASEDMETHODtype | ERASEDIMPLICITMETHODtype | POLYtype | TYPELAMBDAtype =>
               printTree()
               until(end) { printName(); printTree() }
             case PARAMtype =>
@@ -84,7 +84,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
         }
         else if (tag >= firstNatASTTreeTag) {
           tag match {
-            case IDENT | IDENTtpt | SELECT | TERMREF | TYPEREF | SELFDEF => printName()
+            case IDENT | IDENTtpt | SELECT | SELECTtpt | TERMREF | TYPEREF | SELFDEF => printName()
             case _ => printNat()
           }
           printTree()

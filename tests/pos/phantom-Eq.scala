@@ -12,21 +12,21 @@ object PhantomEq {
   (1: Number) === 1.toByte
 }
 
-object EqUtil extends Phantom {
+object EqUtil {
 
-  type PhantomEq[-L, -R] <: this.Any
+  type PhantomEq[-L, -R]
   type PhantomEqEq[T] = PhantomEq[T, T]
 
   implicit class EqualsDeco[T](val x: T) extends AnyVal {
-    def ===[U] (y: U)(implicit ce: PhantomEq[T, U]) = x.equals(y)
+    def ===[U] (y: U)(implicit erased ce: PhantomEq[T, U]) = x.equals(y)
   }
 
-  implicit def eqString: PhantomEqEq[String] = assume
-  implicit def eqInt: PhantomEqEq[Int]       = assume
-  implicit def eqDouble: PhantomEqEq[Double] = assume
+  implicit erased def eqString: PhantomEqEq[String] = ???
+  implicit erased def eqInt: PhantomEqEq[Int]       = ???
+  implicit erased def eqDouble: PhantomEqEq[Double] = ???
 
-  implicit def eqByteNum: PhantomEq[Byte, Number] = assume
-  implicit def eqNumByte: PhantomEq[Number, Byte] = assume
+  implicit erased def eqByteNum: PhantomEq[Byte, Number] = ???
+  implicit erased def eqNumByte: PhantomEq[Number, Byte] = ???
 
-  implicit def eqSeq[T, U](implicit eq: PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] = assume
+  implicit erased def eqSeq[T, U](implicit erased eq: PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] = ???
 }

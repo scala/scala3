@@ -28,6 +28,7 @@ import Decorators._
 import Uniques._
 import ErrorReporting.{err, errorType}
 import config.Printers.typr
+import NameKinds.DefaultGetterName
 
 import collection.mutable
 import SymDenotations.NoCompleter
@@ -337,9 +338,10 @@ object Checking {
     def checkWithDeferred(flag: FlagSet) =
       if (sym.is(flag))
         fail(AbstractMemberMayNotHaveModifier(sym, flag))
-    def checkNoConflict(flag1: FlagSet, flag2: FlagSet) =
-      if (sym.is(allOf(flag1, flag2)))
-        fail(i"illegal combination of modifiers: `$flag1` and `$flag2` for: $sym")
+    def checkNoConflict(flag1: FlagSet, flag2: FlagSet, msg: => String) =
+      if (sym.is(allOf(flag1, flag2))) fail(msg)
+    def checkCombination(flag1: FlagSet, flag2: FlagSet) =
+      checkNoConflict(flag1, flag2, i"illegal combination of modifiers: `$flag1` and `$flag2` for: $sym")
     def checkApplicable(flag: FlagSet, ok: Boolean) =
       if (!ok && !sym.is(Synthetic))
         fail(i"modifier `$flag` is not allowed for this definition")
@@ -372,10 +374,11 @@ object Checking {
     }
     if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
       fail(CannotExtendAnyVal(sym))
-    checkNoConflict(Final, Sealed)
-    checkNoConflict(Private, Protected)
-    checkNoConflict(Abstract, Override)
-    checkNoConflict(Lazy, Inline)
+    checkCombination(Final, Sealed)
+    checkCombination(Private, Protected)
+    checkCombination(Abstract, Override)
+    checkCombination(Lazy, Inline)
+    checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
     if (sym.is(Inline)) checkApplicable(Inline, sym.isTerm && !sym.is(Mutable | Module))
     if (sym.is(Lazy)) checkApplicable(Lazy, !sym.is(Method | Mutable))
     if (sym.isType && !sym.is(Deferred))
@@ -383,6 +386,8 @@ object Checking {
         fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
+    if (sym.is(Erased))
+      checkApplicable(Erased, !sym.is(MutableOrLazy))
   }
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
@@ -500,11 +505,11 @@ object Checking {
           case param :: params =>
             if (param.is(Mutable))
               ctx.error(ValueClassParameterMayNotBeAVar(clazz, param), param.pos)
-            if (param.info.isPhantom)
-              ctx.error("value class first parameter must not be phantom", param.pos)
+            if (param.is(Erased))
+              ctx.error("value class first parameter cannot be `erased`", param.pos)
             else {
-              for (p <- params if !p.info.isPhantom)
-                ctx.error("value class can only have one non phantom parameter", p.pos)
+              for (p <- params if !p.is(Erased))
+                ctx.error("value class can only have one non `erased` parameter", p.pos)
             }
           case Nil =>
             ctx.error(ValueClassNeedsOneValParam(clazz), clazz.pos)
@@ -608,24 +613,20 @@ trait Checking {
       }
     }
 
-  /** Check that class does not define same symbol twice */
-  def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = {
+  /** Check that class does not declare same symbol twice */
+  def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = {
     val seen = new mutable.HashMap[Name, List[Symbol]] {
       override def default(key: Name) = Nil
     }
-    typr.println(i"check no double defs $cls")
+    typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit = {
       for (other <- seen(decl.name)) {
         typr.println(i"conflict? $decl $other")
         if (decl.matches(other)) {
-          def doubleDefError(decl: Symbol, other: Symbol): Unit = {
-            def ofType = if (decl.isType) "" else em": ${other.info}"
-            def explanation =
-              if (!decl.isRealMethod) ""
-              else "\n(the definitions have matching type signatures)"
-            ctx.error(em"$decl is already defined as $other$ofType$explanation", decl.pos)
-          }
+          def doubleDefError(decl: Symbol, other: Symbol): Unit =
+            if (!decl.info.isErroneous && !other.info.isErroneous)
+              ctx.error(DoubleDeclaration(decl, other), decl.pos)
           if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
         }
@@ -741,9 +742,124 @@ trait Checking {
     tp.foreachPart(check, stopAtStatic = true)
     tp
   }
+
+  /** Check that all non-synthetic references of the form `<ident>` or
+   *  `this.<ident>` in `tree` that refer to a member of `badOwner` are
+   *  `allowed`. Also check that there are no other explicit `this` references
+   *  to `badOwner`.
+   */
+  def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(implicit ctx: Context): Unit = {
+    val checker = new TreeTraverser {
+      def traverse(t: Tree)(implicit ctx: Context) = {
+        def check(owner: Symbol, checkedSym: Symbol) =
+          if (t.pos.isSourceDerived && owner == badOwner)
+            t match {
+              case t: RefTree if allowed(t.name, checkedSym) =>
+              case _ => ctx.error(i"illegal reference to $checkedSym from $where", t.pos)
+            }
+        val sym = t.symbol
+        t match {
+          case Ident(_) | Select(This(_), _) => check(sym.maybeOwner, sym)
+          case This(_) => check(sym, sym)
+          case _ => traverseChildren(t)
+        }
+      }
+    }
+    checker.traverse(tree)
+  }
+
+  /** Check that all case classes that extend `scala.Enum` are `enum` cases */
+  def checkEnum(cdef: untpd.TypeDef, cls: Symbol)(implicit ctx: Context): Unit = {
+    import untpd.modsDeco
+    def isEnumAnonCls =
+      cls.isAnonymousClass &&
+      cls.owner.isTerm &&
+      (cls.owner.flagsUNSAFE.is(Case) || cls.owner.name == nme.DOLLAR_NEW)
+    if (!cdef.mods.hasMod[untpd.Mod.EnumCase] && !isEnumAnonCls)
+      ctx.error(em"normal case $cls in ${cls.owner} cannot extend an enum", cdef.pos)
+  }
+
+  /** Check that all references coming from enum cases in an enum companion object
+   *  are legal.
+   *  @param  cdef     the enum companion object class
+   *  @param  enumCtx  the context immediately enclosing the corresponding enum
+   */
+  private def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(implicit ctx: Context): Unit = {
+
+    def checkCaseOrDefault(stat: Tree, caseCtx: Context) = {
+
+      def check(tree: Tree) = {
+        // allow access to `sym` if a typedIdent just outside the enclosing enum
+        // would have produced the same symbol without errors
+        def allowAccess(name: Name, sym: Symbol): Boolean = {
+          val testCtx = caseCtx.fresh.setNewTyperState()
+          val ref = ctx.typer.typedIdent(untpd.Ident(name), WildcardType)(testCtx)
+          ref.symbol == sym && !testCtx.reporter.hasErrors
+        }
+        checkRefsLegal(tree, cdef.symbol, allowAccess, "enum case")
+      }
+
+      if (stat.symbol.is(Case))
+        stat match {
+          case TypeDef(_, Template(DefDef(_, tparams, vparamss, _, _), parents, _, _)) =>
+            tparams.foreach(check)
+            vparamss.foreach(_.foreach(check))
+            parents.foreach(check)
+          case vdef: ValDef =>
+            vdef.rhs match {
+              case Block((clsDef @ TypeDef(_, impl: Template)) :: Nil, _)
+              if clsDef.symbol.isAnonymousClass =>
+                impl.parents.foreach(check)
+              case _ =>
+            }
+          case _ =>
+        }
+      else if (stat.symbol.is(Module) && stat.symbol.linkedClass.is(Case))
+        stat match {
+          case TypeDef(_, impl: Template) =>
+            for ((defaultGetter @
+                  DefDef(DefaultGetterName(nme.CONSTRUCTOR, _), _, _, _, _)) <- impl.body)
+              check(defaultGetter.rhs)
+          case _ =>
+        }
+    }
+
+    cdef.rhs match {
+      case impl: Template =>
+        def isCase(stat: Tree) = stat match {
+          case _: ValDef | _: TypeDef => stat.symbol.is(Case)
+          case _ => false
+        }
+        val cases =
+          for (stat <- impl.body if isCase(stat))
+          yield untpd.Ident(stat.symbol.name.toTermName)
+        val caseImport: Import = Import(ref(cdef.symbol), cases)
+        val caseCtx = enumCtx.importContext(caseImport, caseImport.symbol)
+        for (stat <- impl.body) checkCaseOrDefault(stat, caseCtx)
+      case _ =>
+    }
+  }
+
+  /** Check all enum cases in all enum companions in `stats` for legal accesses.
+   *  @param  enumContexts  a map from`enum` symbols to the contexts enclosing their definitions
+   */
+  def checkEnumCompanions(stats: List[Tree], enumContexts: collection.Map[Symbol, Context])(implicit ctx: Context): List[Tree] = {
+    for (stat @ TypeDef(_, _) <- stats)
+      if (stat.symbol.is(Module))
+        for (enumContext <- enumContexts.get(stat.symbol.linkedClass))
+          checkEnumCaseRefsLegal(stat, enumContext)
+    stats
+  }
 }
 
-trait NoChecking extends Checking {
+trait ReChecking extends Checking {
+  import tpd._
+  override def checkEnum(cdef: untpd.TypeDef, cls: Symbol)(implicit ctx: Context): Unit = ()
+  override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(implicit ctx: Context): Unit = ()
+  override def checkEnumCompanions(stats: List[Tree], enumContexts: collection.Map[Symbol, Context])(implicit ctx: Context): List[Tree] = stats
+}
+
+trait NoChecking extends ReChecking {
   import tpd._
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
@@ -752,7 +868,7 @@ trait NoChecking extends Checking {
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context) = ()
-  override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
+  override def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt
   override def checkNotSingleton(tpt: Tree, where: String)(implicit ctx: Context): Tree = tpt

@@ -326,6 +326,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           "} at " ~ preText
       case mt: MethodType =>
         toTextGlobal(mt)
+      case tp: ExprType =>
+        ": => " ~ toTextGlobal(tp.widenExpr)
       case tp =>
         ": " ~ toTextGlobal(tp)
     }

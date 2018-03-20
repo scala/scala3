@@ -56,7 +56,7 @@ object CollectionStrawMan5 {
 
   /** Base trait for strict collections */
   trait Buildable[+A, +To <: Iterable[A]] extends Iterable[A] {
-    protected[this] def newBuilder: Builder[A, To]
+    protected[this] def newBuilder: Builder[A @uncheckedVariance, To]
     override def partition(p: A => Boolean): (To, To) = {
       val l, r = newBuilder
       iterator.foreach(x => (if (p(x)) l else r) += x)
@@ -95,7 +95,7 @@ object CollectionStrawMan5 {
        with IterableOps[A]
        with IterableMonoTransforms[A, C[A @uncheckedVariance]] // sound bcs of VarianceNote
        with IterablePolyTransforms[A, C] {
-    protected[this] def fromLikeIterable(coll: Iterable[A]): C[A] = fromIterable(coll)
+    protected[this] def fromLikeIterable(coll: Iterable[A @uncheckedVariance]): C[A @uncheckedVariance] = fromIterable(coll)
   }
 
   /** Base trait for Seq operations */
@@ -115,7 +115,7 @@ object CollectionStrawMan5 {
 
   trait IterableMonoTransforms[+A, +Repr] extends Any {
     protected def coll: Iterable[A]
-    protected[this] def fromLikeIterable(coll: Iterable[A]): Repr
+    protected[this] def fromLikeIterable(coll: Iterable[A] @scala.annotation.unchecked.uncheckedVariance): Repr
     def filter(p: A => Boolean): Repr = fromLikeIterable(View.Filter(coll, p))
     def partition(p: A => Boolean): (Repr, Repr) = {
       val pn = View.Partition(coll, p)
@@ -166,7 +166,7 @@ object CollectionStrawMan5 {
     }
     def length: Int =
       if (isEmpty) 0 else 1 + tail.length
-    protected[this] def newBuilder = new ListBuffer[A]
+    protected[this] def newBuilder = new ListBuffer[A @uncheckedVariance]
     def ++:[B >: A](prefix: List[B]): List[B] =
       if (prefix.isEmpty) this
       else Cons(prefix.head, prefix.tail ++: this)

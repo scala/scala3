@@ -44,8 +44,6 @@ import reporting.diagnostic.messages.{NotAMember, SuperCallsNotAllowedInline}
  *  (11) Minimizes `call` fields of `Inline` nodes to just point to the toplevel
  *       class from which code was inlined.
  *
- *  (12) Converts GADT bounds into normal type bounds
- *
  *  The reason for making this a macro transform is that some functions (in particular
  *  super and protected accessors and instantiation checks) are naturally top-down and
  *  don't lend themselves to the bottom-up approach of a mini phase. The other two functions
@@ -180,16 +178,18 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
+          checkNotErased(tree)
           handleMeta(tree.symbol)
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
             case _ => tree
           }
         case tree @ Select(qual, name) =>
+          checkNotErased(tree)
           handleMeta(tree.symbol)
           if (name.isTypeName) {
             Checking.checkRealizable(qual.tpe, qual.pos.focus)
-            super.transform(tree)
+            super.transform(tree)(ctx.addMode(Mode.Type))
           }
           else
             transformSelect(tree, Nil)
@@ -310,5 +310,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           println(i"error while transforming $tree")
           throw ex
       }
+
+    private def checkNotErased(tree: RefTree)(implicit ctx: Context): Unit = {
+      if (tree.symbol.is(Erased) && !ctx.mode.is(Mode.Type)) {
+        val msg =
+          if (tree.symbol.is(CaseAccessor)) "First parameter list of case class may not contain `erased` parameters"
+          else i"${tree.symbol} is declared as erased, but is in fact used"
+        ctx.error(msg, tree.pos)
+      }
+    }
   }
 }

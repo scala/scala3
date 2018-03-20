@@ -93,7 +93,7 @@ public enum ErrorMessageID {
     SuperCallsNotAllowedInlineID,
     ModifiersNotAllowedID,
     WildcardOnTypeArgumentNotAllowedOnNewID,
-    ImplicitFunctionTypeNeedsNonEmptyParameterListID,
+    FunctionTypeNeedsNonEmptyParameterListID,
     WrongNumberOfParametersID,
     DuplicatePrivateProtectedQualifierID,
     ExpectedStartOfTopLevelDefinitionID,
@@ -127,6 +127,7 @@ public enum ErrorMessageID {
     PolymorphicMethodMissingTypeInParentID,
     ParamsNoInlineID,
     JavaSymbolIsNotAValueID,
+    DoubleDeclarationID,
     ;
 
     public int errorNumber() {

@@ -88,7 +88,7 @@ object Settings {
         state.update(idx, x.asInstanceOf[T])
     }
 
-    def isDefaultIn(state: SettingsState) = valueIn(state) == default
+    def isDefaultIn(state: SettingsState): Boolean = valueIn(state) == default
 
     def legalChoices: String =
       if (choices.isEmpty) ""

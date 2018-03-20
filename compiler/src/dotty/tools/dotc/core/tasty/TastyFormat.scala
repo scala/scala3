@@ -163,7 +163,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   BYNAMEtype            underlying_Type
                   PARAMtype      Length binder_ASTref paramNum_Nat
                   POLYtype       Length result_Type NamesTypes
-                  METHODtype     Length result_Type NamesTypes      // needed for refinements
+                  methodType(_, _) Length result_Type NamesTypes    // needed for refinements
                   TYPELAMBDAtype Length result_Type NamesTypes      // variance encoded in front of name: +/-/(nothing)
                   SHAREDtype            type_ASTRef
   NamesTypes    = NameType*
@@ -226,8 +226,8 @@ Standard Section: "Positions" Assoc*
 object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion = 4
-  val MinorVersion = 0
+  val MajorVersion = 5
+  val MinorVersion = 1
 
   /** Tags used to serialize names */
   class NameTags {
@@ -299,6 +299,7 @@ object TastyFormat {
   final val DEFAULTparameterized = 30
   final val STABLE = 31
   final val MACRO = 32
+  final val ERASED = 33
 
   // Cat. 2:    tag Nat
 
@@ -392,14 +393,28 @@ object TastyFormat {
   final val ANDtpt = 165
   final val ORtype = 166
   final val ORtpt = 167
-  final val METHODtype = 168
-  final val POLYtype = 169
-  final val TYPELAMBDAtype = 170
-  final val LAMBDAtpt = 171
-  final val PARAMtype = 172
-  final val ANNOTATION = 173
-  final val TERMREFin = 174
-  final val TYPEREFin = 175
+  final val POLYtype = 168
+  final val TYPELAMBDAtype = 169
+  final val LAMBDAtpt = 170
+  final val PARAMtype = 171
+  final val ANNOTATION = 172
+  final val TERMREFin = 173
+  final val TYPEREFin = 174
+
+  // In binary: 101100EI
+  // I = implicit method type
+  // E = erased method type
+  final val METHODtype = 176
+  final val IMPLICITMETHODtype = 177
+  final val ERASEDMETHODtype = 178
+  final val ERASEDIMPLICITMETHODtype = 179
+
+  def methodType(isImplicit: Boolean = false, isErased: Boolean = false) = {
+    val implicitOffset = if (isImplicit) 1 else 0
+    val erasedOffset = if (isErased) 2 else 0
+    METHODtype + implicitOffset + erasedOffset
+  }
+
   final val HOLE = 255
 
   final val firstSimpleTreeTag = UNITconst
@@ -410,7 +425,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= MACRO ||
+    firstSimpleTreeTag <= tag && tag <= ERASED ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -428,6 +443,7 @@ object TastyFormat {
        | SEALED
        | CASE
        | IMPLICIT
+       | ERASED
        | LAZY
        | OVERRIDE
        | INLINE
@@ -482,6 +498,7 @@ object TastyFormat {
     case SEALED => "SEALED"
     case CASE => "CASE"
     case IMPLICIT => "IMPLICIT"
+    case ERASED => "ERASED"
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
     case INLINE => "INLINE"
@@ -588,6 +605,9 @@ object TastyFormat {
     case BYNAMEtpt => "BYNAMEtpt"
     case POLYtype => "POLYtype"
     case METHODtype => "METHODtype"
+    case IMPLICITMETHODtype => "IMPLICITMETHODtype"
+    case ERASEDMETHODtype => "ERASEDMETHODtype"
+    case ERASEDIMPLICITMETHODtype => "ERASEDIMPLICITMETHODtype"
     case TYPELAMBDAtype => "TYPELAMBDAtype"
     case LAMBDAtpt => "LAMBDAtpt"
     case PARAMtype => "PARAMtype"

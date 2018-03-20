@@ -1,0 +1,7 @@
+{
+  type T = String
+  val x: String = "foo"
+  val z: T = x
+  ()
+  x: String
+}

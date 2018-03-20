@@ -77,7 +77,7 @@ trait Appender[L1 <: HList, L2 <: HList] {
 }
 
 object Appender {
-  implicit def lowLevelAppender[L1 <: HList, L2 <: HList, O <: HList](implicit p: PhantomAppender.Aux[L1, L2, O]): Appender[L1, L2] { type Out = O } =
+  implicit def lowLevelAppender[L1 <: HList, L2 <: HList, O <: HList](implicit erased p: PhantomAppender.Aux[L1, L2, O]): Appender[L1, L2] { type Out = O } =
     new Appender[L1, L2] {
       type Out = O
       def apply(l1: L1, l2: L2): Out = HListN(Array.concat(l1.underlying, l2.underlying)).asInstanceOf[O]
@@ -86,8 +86,8 @@ object Appender {
 
 // Type level "only" computation of type Out ------------------------------------------------------
 
-object PhantomAppender extends Phantom {
-  type Aux[L1 <: HList, L2 <: HList, O <: HList] <: this.Any
-  implicit def caseHNil[L <: HList]: Aux[HNil, L, L] = assume
-  implicit def caseHCons[H, T <: HList, L <: HList, O <: HList](implicit p: Aux[T, L, O]): Aux[H :: T, L, H :: O] = assume
+object PhantomAppender {
+  type Aux[L1 <: HList, L2 <: HList, O <: HList]
+  implicit erased def caseHNil[L <: HList]: Aux[HNil, L, L] = ???
+  implicit erased def caseHCons[H, T <: HList, L <: HList, O <: HList](implicit erased p: Aux[T, L, O]): Aux[H :: T, L, H :: O] = ???
 }

@@ -42,7 +42,7 @@ object ExposedValues extends AutoPlugin {
 
 object Build {
 
-  val baseVersion = "0.7.0"
+  val baseVersion = "0.8.0"
   val scalacVersion = "2.12.4"
 
   val dottyOrganization = "ch.epfl.lamp"
@@ -873,8 +873,8 @@ object Build {
         val coursier = workingDir / "out/coursier"
         val packageJson = workingDir / "package.json"
         if (!coursier.exists || packageJson.lastModified > coursier.lastModified)
-          runProcess(Seq("npm", "run", "update-all"), wait = true, directory = workingDir)
-        val tsc = baseDirectory.value / "node_modules" / ".bin" / "tsc"
+          runProcess(Seq("npm", "install"), wait = true, directory = workingDir)
+        val tsc = workingDir / "node_modules" / ".bin" / "tsc"
         runProcess(Seq(tsc.getAbsolutePath, "--pretty", "--project", workingDir.getAbsolutePath), wait = true)
 
         // Currently, vscode-dotty depends on daltonjorge.scala for syntax highlighting,
