@@ -33,7 +33,7 @@ import tpd._
 import scala.tools.asm
 import StdNames.{nme, str}
 import NameOps._
-import NameKinds.DefaultGetterName
+import NameKinds.{DefaultGetterName, ExpandedName}
 import dotty.tools.dotc.core
 import dotty.tools.dotc.core.Names.TypeName
 
@@ -677,6 +677,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isType: Boolean = sym.isType
     def isAnonymousClass: Boolean = toDenot(sym).isAnonymousClass
     def isConstructor: Boolean = toDenot(sym).isConstructor
+    def isExpanded: Boolean = sym.name.is(ExpandedName)
     def isAnonymousFunction: Boolean = toDenot(sym).isAnonymousFunction
     def isMethod: Boolean = sym is Flags.Method
     def isPublic: Boolean =  sym.flags.is(Flags.EmptyFlags, Flags.Private | Flags.Protected)
