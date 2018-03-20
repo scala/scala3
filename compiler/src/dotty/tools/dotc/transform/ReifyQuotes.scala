@@ -173,15 +173,10 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         // Maps type splices to type references of tags e.g., ~t -> some type T$1
         val map: Map[Type, Type] = tagsExplicitTypeDefsPairs.map(x => (x._1, x._2.symbol.typeRef)).toMap
         val tMap = new TypeMap() {
-          override def apply(tp: Type): Type = {
-            if (map.contains(tp))
-              map.apply(tp)
-            else
-              mapOver(tp)
-          }
+          override def apply(tp: Type): Type = map.getOrElse(tp, mapOver(tp))
         }
 
-        Block(typeDefs ++ tagsExplicitTypeDefsPairs.map(_._2),
+        Block(typeDefs ++ explicitTypeDefs,
           new TreeTypeMap(
             typeMap = tMap,
             substFrom = itags.map(_._1.symbol),
@@ -462,8 +457,6 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           case tree: TypeTree if tree.tpe.typeSymbol.isSplice =>
             val splicedType = tree.tpe.asInstanceOf[TypeRef].prefix.termSymbol
             splice(ref(splicedType).select(tpnme.UNARY_~))
-          case tree: TypeApply =>
-            super.transform(tree)
           case tree: Select if tree.symbol.isSplice =>
             splice(tree)
           case tree: RefTree if needsLifting(tree) =>
