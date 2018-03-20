@@ -118,7 +118,7 @@ package liftable {
 
     object Arrays {
       implicit def ArrayIsLiftable[T: Liftable](implicit t: Type[T], ct: Expr[ClassTag[T]]): Liftable[Array[T]] = (arr: Array[T]) => '{
-        new Array[~t](~(arr.length: Expr[Int]))(~ct)
+        new Array[~t](~arr.length.toExpr)(~ct)
       }
     }
 
