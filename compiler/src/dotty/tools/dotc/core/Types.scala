@@ -4267,7 +4267,7 @@ object Types {
           forwarded.orElse(
             range(super.derivedSelect(tp, preLo), super.derivedSelect(tp, preHi)))
         case _ =>
-          if (pre == defn.AnyType) pre else super.derivedSelect(tp, pre)
+          super.derivedSelect(tp, pre)
       }
 
     override protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type) =

@@ -302,7 +302,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         thirdTry
       case tp1: TypeParamRef =>
         def flagNothingBound = {
-          if (!frozenConstraint && tp2.isRef(defn.NothingClass) && state.isGlobalCommittable) {
+          if (!frozenConstraint && tp2.isRef(NothingClass) && state.isGlobalCommittable) {
             def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
             if (Config.failOnInstantiationToNothing) assert(false, msg)
             else ctx.log(msg)
@@ -384,8 +384,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         if (cls2.isClass) {
           if (cls2.typeParams.isEmpty) {
             if (cls2 eq AnyKindClass) return true
-            if (tp1.isRef(defn.NothingClass)) return true
+            if (tp1.isRef(NothingClass)) return true
             if (tp1.isLambdaSub) return false
+            if (cls2 eq AnyClass) return true
               // Note: We would like to replace this by `if (tp1.hasHigherKind)`
               // but right now we cannot since some parts of the standard library rely on the
               // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
@@ -399,7 +400,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             val base = tp1.baseType(cls2)
             if (base.typeSymbol == cls2) return true
           }
-          else if (tp1.isLambdaSub && !tp1.isRef(defn.AnyKindClass))
+          else if (tp1.isLambdaSub && !tp1.isRef(AnyKindClass))
             return recur(tp1, EtaExpansion(cls2.typeRef))
         }
         fourthTry
@@ -1296,7 +1297,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
                       // at run time. It would not work to replace that with `Nothing`.
                       // However, maybe we can still apply the replacement to
                       // types which are not explicitly written.
-                      defn.NothingType
+                      NothingType
                     case _ => andType(tp1, tp2)
                   }
                 case _ => andType(tp1, tp2)
@@ -1307,8 +1308,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   }
 
   /** The greatest lower bound of a list types */
-  final def glb(tps: List[Type]): Type =
-    ((defn.AnyType: Type) /: tps)(glb)
+  final def glb(tps: List[Type]): Type = ((AnyType: Type) /: tps)(glb)
 
   /** The least upper bound of two types
    *  @param canConstrain  If true, new constraints might be added to simplify the lub.
@@ -1338,7 +1338,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   /** The least upper bound of a list of types */
   final def lub(tps: List[Type]): Type =
-    ((defn.NothingType: Type) /: tps)(lub(_,_, canConstrain = false))
+    ((NothingType: Type) /: tps)(lub(_,_, canConstrain = false))
 
   /** Try to produce joint arguments for a lub `A[T_1, ..., T_n] | A[T_1', ..., T_n']` using
    *  the following strategies:
