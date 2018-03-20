@@ -102,6 +102,7 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/pos", defaultOptions) +
     compileFilesInDir("tests/pos-no-optimise", defaultOptions) +
     compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes) +
+    compileFilesInDir("tests/pos-kind-polymorphism", defaultOptions and "-Ykind-polymorphism") +
     compileDir("tests/pos/i1137-1", defaultOptions and "-Yemit-tasty") +
     compileFile(
       // succeeds despite -Xfatal-warnings because of -nowarn
@@ -175,6 +176,7 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/neg", defaultOptions) +
     compileFilesInDir("tests/neg-tailcall", defaultOptions) +
     compileFilesInDir("tests/neg-no-optimise", defaultOptions) +
+    compileFilesInDir("tests/neg-kind-polymorphism", defaultOptions and "-Ykind-polymorphism") +
     compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")) +
     compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings) +
     compileFile("tests/neg-custom-args/i3246.scala", scala2Mode) +

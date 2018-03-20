@@ -306,7 +306,10 @@ class Definitions {
 
   lazy val AnyKindClass = {
     val cls = ctx.newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil)
-    if (true) cls.entered // TODO: replace with if (ctx.settings.Yanykind.value) ...
+    if (ctx.settings.YkindPolymorphism.value) {
+      // Enable kind-polymorphism by exposing scala.AnyKind
+      cls.entered
+    }
     cls
   }
   def AnyKindType = AnyKindClass.typeRef

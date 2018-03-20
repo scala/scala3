@@ -123,6 +123,9 @@ class ScalaSettings extends Settings.SettingGroup {
   val YprofileRunGcBetweenPhases = PhasesSetting("-Yprofile-run-gc", "Run a GC between phases - this allows heap size to be accurate at the expense of more time. Specify a list of phases, or *", "_")
       //.withPostSetHook( _ => YprofileEnabled.value = true )
 
+  // Extremely experimetnal language feature
+  val YkindPolymorphism = BooleanSetting("-Ykind-polymorphism", "Potentially unsound.")
+
   /** Area-specific debug output */
   val YexplainLowlevel = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
   val YnoDoubleBindings = BooleanSetting("-Yno-double-bindings", "Assert no namedtype is bound twice (should be enabled only if program is error-free).")
