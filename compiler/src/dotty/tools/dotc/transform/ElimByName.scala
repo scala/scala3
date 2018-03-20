@@ -73,9 +73,9 @@ class ElimByName extends TransformByNameApply with InfoTransformer {
     }
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
-    case ExprType(rt) if exprBecomesFunction(sym) => defn.FunctionOf(Nil, rt)
+    case ExprType(rt) => defn.FunctionOf(Nil, rt)
     case _ => tp
   }
 
-  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isTerm
+  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isTerm && exprBecomesFunction(sym)
 }

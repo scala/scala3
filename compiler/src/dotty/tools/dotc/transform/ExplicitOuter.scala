@@ -48,7 +48,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Add outer accessors if a class always needs an outer pointer */
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
-    case tp @ ClassInfo(_, cls, _, decls, _) if needsOuterAlways(cls) && !sym.is(JavaDefined) =>
+    case tp @ ClassInfo(_, cls, _, decls, _) if needsOuterAlways(cls) =>
       val newDecls = decls.cloneScope
       newOuterAccessors(cls).foreach(newDecls.enter)
       tp.derivedClassInfo(decls = newDecls)
@@ -56,7 +56,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
       tp
   }
 
-  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isClass
+  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isClass && !sym.is(JavaDefined)
 
   /** First, add outer accessors if a class does not have them yet and it references an outer this.
    *  If the class has outer accessors, implement them.
