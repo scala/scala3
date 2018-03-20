@@ -5,7 +5,11 @@ import dotty.tools.dotc.quoted.Toolbox._
 object Test {
 
   def main(args: Array[String]): Unit = {
-    println(ackermann(3)(4).run)
+    val ack3 = ackermann(3).run
+    println(ack3(1))
+    println(ack3(2))
+    println(ack3(3))
+    println(ack3(4))
   }
 
   def ackermann(m: Int): Expr[Int => Int] = {
