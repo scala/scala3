@@ -11,9 +11,7 @@ import Phases._
 import Trees._
 import Types._
 import Symbols._
-import Names._
 import NameOps._
-import StdNames._
 import NameKinds.DefaultGetterName
 import typer.Inliner
 import typer.ErrorReporting.cyclicErrorMsg
@@ -22,7 +20,6 @@ import transform.SymUtils._
 import dotty.tools.io.File
 import java.io.PrintWriter
 
-import dotty.tools.dotc.config.JavaPlatform
 import xsbti.api.DefinitionType
 
 import scala.collection.mutable
@@ -358,10 +355,10 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
                 sym.owner.companionModule // default getters for class constructors are found in the companion object
               else
                 sym.owner
-            (0 until pnames.length).map(i =>
+            pnames.indices.map(i =>
               qual.info.member(DefaultGetterName(sym.name, start + i)).exists)
           } else
-            (0 until pnames.length).map(Function.const(false))
+            pnames.indices.map(Function.const(false))
         val params = (pnames, ptypes, defaults).zipped.map((pname, ptype, isDefault) =>
           api.MethodParameter.of(pname.toString, apiType(ptype),
             isDefault, api.ParameterModifier.Plain))

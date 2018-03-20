@@ -135,7 +135,7 @@ object Build {
         val path = Paths.get(submodule)
         Files.exists(path) && {
           val fileStream = Files.list(path)
-          try fileStream.iterator().hasNext()
+          try fileStream.iterator().hasNext
           finally fileStream.close()
         }
       }
@@ -727,7 +727,7 @@ object Build {
     cleanSbtBridge := {
       val home = System.getProperty("user.home")
       val sbtOrg = "org.scala-sbt"
-      val bridgeDirectoryPattern = s"*${dottyVersion}*"
+      val bridgeDirectoryPattern = s"*$dottyVersion*"
 
       val log = streams.value.log
       log.info("Cleaning the dotty-sbt-bridge cache")
@@ -899,7 +899,7 @@ object Build {
         val inputArgs = spaceDelimited("<arg>").parsed
         val codeArgs = if (inputArgs.isEmpty) List((baseDirectory.value / "..").getAbsolutePath) else inputArgs
         val extensionPath = baseDirectory.value.getAbsolutePath
-        val processArgs = List(s"--extensionDevelopmentPath=${extensionPath}") ++ codeArgs
+        val processArgs = List(s"--extensionDevelopmentPath=$extensionPath") ++ codeArgs
 
         runProcess(codeCommand.value ++ processArgs, wait = true)
       }.dependsOn(compile in Compile).evaluated
@@ -1054,7 +1054,7 @@ object Build {
           def doCompile(sourcesArgs: List[String]): Unit = {
             run.run("dotty.tools.dotc.Main", compilerCp,
                 "-classpath" :: cpStr ::
-                "-d" :: classesDirectory.getAbsolutePath() ::
+                "-d" :: classesDirectory.getAbsolutePath ::
                 scalacOptions ++:
                 sourcesArgs,
                 patchedLogger)
@@ -1067,7 +1067,7 @@ object Build {
               (sourcesArgs.map(_.length).sum > 1536)) {
             IO.withTemporaryFile("sourcesargs", ".txt") { sourceListFile =>
               IO.writeLines(sourceListFile, sourcesArgs)
-              doCompile(List("@"+sourceListFile.getAbsolutePath()))
+              doCompile(List("@"+sourceListFile.getAbsolutePath))
             }
           } else {
             doCompile(sourcesArgs)

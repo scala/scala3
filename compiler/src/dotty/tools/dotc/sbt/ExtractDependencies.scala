@@ -1,25 +1,28 @@
 package dotty.tools.dotc
 package sbt
 
-import ast.{Trees, tpd}
-import core._, core.Decorators._
-import util.NoSource.{file => NoSourceFile}
-import Contexts._, Flags._, Phases._, Trees._, Types._, Symbols._
-import Names._, NameOps._, StdNames._
-import transform.SymUtils._
-
-import scala.collection.{Set, mutable}
-
-import dotty.tools.io
-import dotty.tools.io.{AbstractFile, ZipArchive, PlainFile}
-
 import java.io.File
+import java.util.{Arrays, EnumSet}
 
-import java.util.{Arrays, Comparator, EnumSet}
-
+import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.NameOps._
+import dotty.tools.dotc.core.Names._
+import dotty.tools.dotc.core.Phases._
+import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.io
+import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive}
+import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext._
-import xsbti.UseScope
+
+import scala.collection.{Set, mutable}
 
 
 /** This phase sends information on classes' dependencies to sbt via callbacks.
@@ -191,7 +194,6 @@ private final class UsedNamesInClass {
  */
 private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeTraverser =>
   import tpd._
-  import ExtractDependencies._
 
   private[this] val _usedNames = new mutable.HashMap[Symbol, UsedNamesInClass]
   private[this] val _dependencies = new mutable.HashSet[ClassDependency]
@@ -243,20 +245,24 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
    * class from a given `ctx.owner`
    */
   private def resolveDependencySource(implicit ctx: Context): Symbol = {
-    def resolveDepSource: Symbol = {
-      val owners = ctx.owner.ownersIterator
-      while (owners.hasNext) {
-        val source = owners.next()
-        def isLocal = !owners.exists(_.isTerm) // side-effectful: consume iterator elements
-        if (source.isClass && isLocal) return source
+    def nonLocalEnclosingClass = {
+      var clazz = ctx.owner.enclosingClass
+      var owner = clazz
+
+      while (!owner.is(PackageClass)) {
+        if (owner.isTerm) {
+          clazz = owner.enclosingClass
+          owner = clazz
+        } else {
+          owner = owner.owner
+        }
       }
-      assert(false, "unreachable")
-      NoSymbol
+      clazz
     }
 
     if (lastOwner != ctx.owner) {
       lastOwner = ctx.owner
-      val source = resolveDepSource
+      val source = nonLocalEnclosingClass
       lastDepSource = if (source.is(PackageClass)) responsibleForImports else source
     }
 
