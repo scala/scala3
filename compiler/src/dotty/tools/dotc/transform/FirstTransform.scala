@@ -61,6 +61,8 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
       tp
   }
 
+  override protected def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isClass
+
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
       case Select(qual, name) if !name.is(OuterSelectName) && tree.symbol.exists =>
