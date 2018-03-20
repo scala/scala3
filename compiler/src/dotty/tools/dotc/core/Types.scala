@@ -162,7 +162,7 @@ object Types {
     /** Does this type denote a realizable stable reference? Much more expensive to check
      *  than isStable, that's why some of the checks are done later in PostTyper.
      */
-    final def isRealizable(implicit ctx: Context): Boolean =
+    final def isStableRealizable(implicit ctx: Context): Boolean =
       isStable && realizability(this) == Realizable
 
     /** Is this type a (possibly refined or applied or aliased) type reference

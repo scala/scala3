@@ -74,16 +74,18 @@ class CheckRealizable(implicit ctx: Context) {
   def realizability(tp: Type): Realizability = tp.dealias match {
     case tp: TermRef =>
       val sym = tp.symbol
-      if (sym.is(Stable)) realizability(tp.prefix)
-      else {
-        val r =
-          if (!sym.isStable) NotStable
-          else if (!isLateInitialized(sym)) realizability(tp.prefix)
-          else if (!sym.isEffectivelyFinal) new NotFinal(sym)
-          else realizability(tp.info).mapError(r => new ProblemInUnderlying(tp.info, r))
-        if (r == Realizable) sym.setFlag(Stable)
-        r
-      }
+      val r =
+        if (sym.is(Stable)) realizability(tp.prefix)
+        else {
+          val r =
+            if (!sym.isStable) NotStable
+            else if (!isLateInitialized(sym)) realizability(tp.prefix)
+            else if (!sym.isEffectivelyFinal) new NotFinal(sym)
+            else realizability(tp.info).mapError(r => new ProblemInUnderlying(tp.info, r))
+          if (r == Realizable) sym.setFlag(Stable)
+          r
+        }
+      if (r == Realizable || tp.info.isStableRealizable) Realizable else r
     case _: SingletonType | NoPrefix =>
       Realizable
     case tp =>
