@@ -406,6 +406,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
             if (cls2 eq AnyKindClass) return true
             if (tp1.isRef(NothingClass)) return true
             if (tp1.isLambdaSub) return false
+            if (cls2 eq AnyClass) return true
               // Note: We would like to replace this by `if (tp1.hasHigherKind)`
               // but right now we cannot since some parts of the standard library rely on the
               // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
