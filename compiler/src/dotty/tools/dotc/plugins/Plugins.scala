@@ -39,12 +39,8 @@ trait Plugins {
       case e: MissingPluginException => warning(e.getMessage)
       case e: Exception              => inform(e.getMessage)
     })
-    val classes = goods map (_.get)  // flatten
 
-    // Each plugin must only be instantiated once. A common pattern
-    // is to register annotation checkers during object construction, so
-    // creating multiple plugin instances will leave behind stale checkers.
-    classes map (Plugin.instantiate(_))
+    goods map (_.get)
   }
 
   private var _roughPluginsList: List[Plugin] = _

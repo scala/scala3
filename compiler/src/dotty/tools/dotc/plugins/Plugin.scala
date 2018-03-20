@@ -8,6 +8,7 @@ import dotty.tools.io._
 import transform.MegaPhase.MiniPhase
 
 import java.io.InputStream
+import java.util.Scanner
 
 import scala.collection.mutable
 import scala.util.{ Try, Success, Failure }
@@ -58,7 +59,7 @@ trait ResearchPlugin extends Plugin {
 
 object Plugin {
 
-  private val PluginXML = "scalac-plugin.xml"
+  private val PluginFile = "plugin"
 
   /** Create a class loader with the specified locations plus
    *  the loader that loaded the Scala compiler.
@@ -96,27 +97,34 @@ object Plugin {
   def loadAllFrom(
     paths: List[List[Path]],
     dirs: List[Path],
-    ignoring: List[String]): List[Try[AnyClass]] =
+    ignoring: List[String]): List[Try[Plugin]] =
   {
 
-    def loadDescriptionFromDir(f: Path): Try[PluginDescription] =
-      Try(PluginDescription.fromXML(new java.io.FileInputStream((f / PluginXML).jpath.toFile)))
+    def fromFile(inputStream: InputStream): String = {
+      val s = new Scanner(inputStream)
 
-    def loadDescriptionFromJar(jarp: Path): Try[PluginDescription] = {
+      if (s.hasNext) s.nextLine.trim
+      else throw new RuntimeException("Bad plugin descriptor.")
+    }
+
+    def loadDescriptionFromDir(f: Path): Try[String] =
+      Try(fromFile(new java.io.FileInputStream((f / PluginFile).jpath.toFile)))
+
+    def loadDescriptionFromJar(jarp: Path): Try[String] = {
       // XXX Return to this once we have more ARM support
       def read(is: InputStream) =
-        if (is == null) throw new PluginLoadException(jarp.path, s"Missing $PluginXML in $jarp")
-        else PluginDescription.fromXML(is)
+        if (is == null) throw new PluginLoadException(jarp.path, s"Missing $PluginFile in $jarp")
+        else fromFile(is)
 
-      val xmlEntry = new java.util.jar.JarEntry(PluginXML)
-      Try(read(new Jar(jarp.jpath.toFile).getEntryStream(xmlEntry)))
+      val fileEntry = new java.util.jar.JarEntry(PluginFile)
+      Try(read(new Jar(jarp.jpath.toFile).getEntryStream(fileEntry)))
     }
 
     // List[(jar, Try(descriptor))] in dir
     def scan(d: Directory) =
       d.files.toList sortBy (_.name) filter (Jar isJarOrZip _) map (j => (j, loadDescriptionFromJar(j)))
 
-    type PDResults = List[Try[(PluginDescription, ClassLoader)]]
+    type PDResults = List[Try[(String, ClassLoader)]]
 
     // scan plugin dirs for jars containing plugins, ignoring dirs with none and other jars
     val fromDirs: PDResults = dirs filter (_.isDirectory) flatMap { d =>
@@ -128,7 +136,7 @@ object Plugin {
     // scan jar paths for plugins, taking the first plugin you find.
     // a path element can be either a plugin.jar or an exploded dir.
     def findDescriptor(ps: List[Path]) = {
-      def loop(qs: List[Path]): Try[PluginDescription] = qs match {
+      def loop(qs: List[Path]): Try[String] = qs match {
         case Nil       => Failure(new MissingPluginException(ps))
         case p :: rest =>
           if (p.isDirectory) loadDescriptionFromDir(p.toDirectory) orElse loop(rest)
@@ -137,21 +145,27 @@ object Plugin {
       }
       loop(ps)
     }
-    val fromPaths: PDResults = paths map (p => (p, findDescriptor(p))) map {
-      case (p, Success(pd)) => Success((pd, loaderFor(p)))
-      case (_, Failure(e))  => Failure(e)
-    }
+
+    val fromPaths: PDResults = paths map (p => findDescriptor(p) match {
+      case Success(classname) => Success((classname, loaderFor(p)))
+      case Failure(e)  => Failure(e)
+    })
 
     val seen = mutable.HashSet[String]()
     val enabled = (fromPaths ::: fromDirs) map(_.flatMap {
-      case (pd, loader) if seen(pd.classname)        =>
+      case (classname, loader) =>
         // a nod to scala/bug#7494, take the plugin classes distinctly
-        Failure(new PluginLoadException(pd.name, s"Ignoring duplicate plugin ${pd.name} (${pd.classname})"))
-      case (pd, loader) if ignoring contains pd.name =>
-        Failure(new PluginLoadException(pd.name, s"Disabling plugin ${pd.name}"))
-      case (pd, loader) =>
-        seen += pd.classname
-        Plugin.load(pd.classname, loader)
+        Plugin.load(classname, loader).flatMap {  clazz =>
+          val plugin = instantiate(clazz)
+          if (seen(classname))
+            Failure(new PluginLoadException(plugin.name, s"Ignoring duplicate plugin ${plugin.name} (${classname})"))
+          else if (ignoring contains plugin.name)
+            Failure(new PluginLoadException(plugin.name, s"Disabling plugin ${plugin.name}"))
+          else {
+            seen += classname
+            Success(plugin)
+          }
+        }
     })
     enabled   // distinct and not disabled
   }

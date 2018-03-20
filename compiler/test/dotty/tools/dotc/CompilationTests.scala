@@ -314,10 +314,10 @@ class CompilationTests extends ParallelTesting {
   }
 
   @Test def testPlugins: Unit = {
-    val xmlFile = "scalac-plugin.xml"
+    val pluginFile = "plugin"
 
     // 1. hack with absolute path for -Xplugin
-    // 2. copy `xmlFile` to destination
+    // 2. copy `pluginFile` to destination
     def compileFilesInDir(dir: String): CompilationTest = {
       val outDir = defaultOutputDir + "testPlugins/"
       val sourceDir = new JFile(dir)
@@ -329,7 +329,7 @@ class CompilationTests extends ParallelTesting {
       val targets = dirs.map { dir =>
         val compileDir = createOutputDirsForDir(dir, sourceDir, outDir)
         import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-        Files.copy(dir.toPath.resolve(xmlFile), compileDir.toPath.resolve(xmlFile), REPLACE_EXISTING)
+        Files.copy(dir.toPath.resolve(pluginFile), compileDir.toPath.resolve(pluginFile), REPLACE_EXISTING)
         val flags = TestFlags(classPath, noCheckOptions) and ("-Xplugin:" + compileDir.getAbsolutePath)
         SeparateCompilationSource("testPlugins", dir, flags, compileDir)
       }
