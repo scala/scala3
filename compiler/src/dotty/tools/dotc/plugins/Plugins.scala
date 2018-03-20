@@ -149,7 +149,7 @@ object Plugins {
     type OrderingReq = (Set[Class[_]], Set[Class[_]])
 
     val orderRequirements = MMap[Class[_], OrderingReq]()
-    val primitivePhases   = plan.flatMap(ps => ps.map(_.getClass.asInstanceOf[Class[_]])).toSet
+    val primitivePhases   = plan.flatMap(ps => ps.map(_.getClass : Class[_])).toSet
 
     def isPrimitive(phase: Class[_]): Boolean = primitivePhases.contains(phase)
 
@@ -239,19 +239,19 @@ object Plugins {
       var runsAfter  = runsAfter1 & insertedPhase
       val runsBefore = runsBefore1 & insertedPhase
 
-      // beforeReq met after the split
+      // runsBefore met after the split
       val (before, after) = updatedPlan.span { ps =>
         val classes = ps.map(_.getClass)
         val runsAfterSat = runsAfter.isEmpty
         runsAfter = runsAfter -- classes
-        // Prefer the point immediately before the first beforePhases.
-        // If beforePhases not specified, insert at the point immediately
+        // Prefer the point immediately before the first runsBefore.
+        // If runsBefore not specified, insert at the point immediately
         // after the last afterPhases.
         !classes.exists(runsBefore.contains) &&
           !(runsBefore.isEmpty && runsAfterSat)
       }
 
-      // check afterReq
+      // check runsAfter
       // error can occur if: a < b, b < c, c < a
       after.foreach { ps =>
         val classes = ps.map(_.getClass)

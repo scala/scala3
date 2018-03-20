@@ -80,7 +80,7 @@ object Plugin {
       Success[AnyClass](loader loadClass classname)
     } catch {
       case NonFatal(e) =>
-        Failure(new PluginLoadException(classname, s"Error: unable to load class: $classname"))
+        Failure(new PluginLoadException(classname, s"Error: unable to load class $classname: ${e.getMessage}"))
       case e: NoClassDefFoundError =>
         Failure(new PluginLoadException(classname, s"Error: class not found: ${e.getMessage} required by $classname"))
     }
