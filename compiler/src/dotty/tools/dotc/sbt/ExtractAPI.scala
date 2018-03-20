@@ -356,7 +356,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
   private def computeType(tp: Type): api.Type = {
     // TODO: Never dealias. We currently have to dealias because
     // sbt main class discovery relies on the signature of the main
-    // method being fully dealiased. See https://github.com/sbt/zinc/isisLambdaSub/102
+    // method being fully dealiased. See https://github.com/sbt/zinc/issues/102
     val tp2 = if (!tp.isLambdaSub) tp.dealiasKeepAnnots else tp
     tp2 match {
       case NoPrefix | NoType =>
