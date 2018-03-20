@@ -1,0 +1,1 @@
+dotty.runtime.Arrays.newGenericArray[Int](3)(reflect.ClassTag.Int)
