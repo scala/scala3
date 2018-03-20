@@ -143,18 +143,16 @@ object Plugin {
     }
 
     val seen = mutable.HashSet[String]()
-    val enabled = (fromPaths ::: fromDirs) map {
-      case Success((pd, loader)) if seen(pd.classname)        =>
+    val enabled = (fromPaths ::: fromDirs) map(_.flatMap {
+      case (pd, loader) if seen(pd.classname)        =>
         // a nod to scala/bug#7494, take the plugin classes distinctly
         Failure(new PluginLoadException(pd.name, s"Ignoring duplicate plugin ${pd.name} (${pd.classname})"))
-      case Success((pd, loader)) if ignoring contains pd.name =>
+      case (pd, loader) if ignoring contains pd.name =>
         Failure(new PluginLoadException(pd.name, s"Disabling plugin ${pd.name}"))
-      case Success((pd, loader)) =>
+      case (pd, loader) =>
         seen += pd.classname
         Plugin.load(pd.classname, loader)
-      case Failure(e)            =>
-        Failure(e)
-    }
+    })
     enabled   // distinct and not disabled
   }
 
