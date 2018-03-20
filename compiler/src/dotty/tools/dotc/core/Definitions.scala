@@ -304,7 +304,11 @@ class Definitions {
     def ObjectMethods = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
 
-  lazy val AnyKindClass =  completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal, Nil))
+  lazy val AnyKindClass = {
+    val cls = ctx.newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil)
+    if (true) cls.entered // TODO: replace with if (ctx.settings.Yanykind.value) ...
+    cls
+  }
   def AnyKindType = AnyKindClass.typeRef
 
   /** Marker method to indicate an argument to a call-by-name parameter.
