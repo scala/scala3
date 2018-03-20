@@ -278,7 +278,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
 
   /** Mangle a JVM symbol name in a format better suited for internal uses by sbt. */
   private def mangledName(sym: Symbol)(implicit ctx: Context): Name = {
-    def constructorName = sym.enclosingClass.fullName ++ ";init;"
+    def constructorName = sym.owner.fullName ++ ";init;"
 
     if (sym.isConstructor) constructorName
     else sym.name.stripModuleClassSuffix
@@ -297,7 +297,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
       }
     }
 
-  private def addInheritanceDependency(tree: Template)(implicit ctx: Context): Unit =
+  private def addInheritanceDependencies(tree: Template)(implicit ctx: Context): Unit =
     if (tree.parents.nonEmpty) {
       val depContext =
         if (tree.symbol.owner.isLocal) LocalDependencyByInheritance
@@ -310,9 +310,10 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
 
   private def ignoreDependency(sym: Symbol)(implicit ctx: Context) =
     !sym.exists ||
+    sym.is(PackageClass) ||
+    sym.isEffectiveRoot ||
     sym.isAnonymousFunction ||
-    sym.isAnonymousClass ||
-    sym.is(PackageClass)
+    sym.isAnonymousClass
 
   /** Traverse the tree of a source file and record the dependencies and used names which
    *  can be retrieved using `dependencies` and`usedNames`.
@@ -328,7 +329,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
           addMemberRefDependency(lookupImported(name.toTermName))
           addMemberRefDependency(lookupImported(name.toTypeName))
         }
-        selectors foreach {
+        selectors.foreach {
           case Ident(name) =>
             addImported(name)
           case Thicket(Ident(name) :: Ident(rename) :: Nil) =>
@@ -338,20 +339,31 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
             }
           case _ =>
         }
-      case Inlined(call, _, _) =>
-        // The inlined call is normally ignored by TreeTraverser but we need to
-        // record it as a dependency
-        traverse(call)
       case t: TypeTree =>
         addTypeDependency(t.tpe)
       case ref: RefTree =>
         addMemberRefDependency(ref.symbol)
         addTypeDependency(ref.tpe)
       case t: Template =>
-        addInheritanceDependency(t)
+        addInheritanceDependencies(t)
       case _ =>
     }
-    traverseChildren(tree)
+
+    tree match {
+      case Inlined(call, _, _) =>
+        // The inlined call is normally ignored by TreeTraverser but we need to
+        // record it as a dependency
+        traverse(call)
+      case vd: ValDef if vd.symbol.is(ModuleVal) =>
+        // Don't visit module val
+      case t: Template if t.symbol.owner.is(ModuleClass) =>
+        // Don't visit self type of module class
+        traverse(t.constr)
+        t.parents.foreach(traverse)
+        t.body.foreach(traverse)
+      case _ =>
+        traverseChildren(tree)
+    }
   }
 
   /** Traverse a used type and record all the dependencies we need to keep track

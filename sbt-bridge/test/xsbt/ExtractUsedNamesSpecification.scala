@@ -43,7 +43,7 @@ class ExtractUsedNamesSpecification {
                   |}""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcA, srcB)
-    val expectedNames = standardNames ++ Set("a", "c", "A", "B", "C", "D", "b", "X", "BB")
+    val expectedNames = standardNames ++ Set("a", "c", "A", "B", "C", "D", "b", "BB")
     assertEquals(usedNames("b.X"), expectedNames)
   }
 
@@ -58,7 +58,7 @@ class ExtractUsedNamesSpecification {
                   |}""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcA, srcB)
-    val expectedNames = standardNames ++ Set("A", "a", "B", "=", "Int")
+    val expectedNames = standardNames ++ Set("A", "a", "=", "Int")
     assertEquals(usedNames("B"), expectedNames)
   }
 
@@ -78,15 +78,11 @@ class ExtractUsedNamesSpecification {
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcA, srcB, srcC, srcD)
     val scalaVersion = scala.util.Properties.versionNumberString
-    // TODO: Find out what's making these types appear in 2.10
-    // They don't come from type dependency traverser, but from `addSymbol`
-    val versionDependentNames =
-      if (scalaVersion.contains("2.10")) Set("Nothing", "Any") else Set()
-    val namesA = standardNames ++ Set("A") ++ versionDependentNames
-    val namesAX = standardNames ++ Set("X", "x", "T", "A")
-    val namesB = Set("B", "A", "Int", "A;init;", "scala")
-    val namesC = Set("B;init;", "C", "B")
-    val namesD = standardNames ++ Set("D", "C", "X", "foo", "Int", "T")
+    val namesA = standardNames ++ Set("Nothing", "Any")
+    val namesAX = standardNames ++ Set("x", "T", "A", "Nothing", "Any")
+    val namesB = Set("A", "Int", "A;init;", "Unit")
+    val namesC = Set("B;init;", "B", "Unit")
+    val namesD = standardNames ++ Set("C", "X", "foo", "Int", "T")
     assertEquals(usedNames("A"),   namesA)
     assertEquals(usedNames("A.X"), namesAX)
     assertEquals(usedNames("B"),   namesB)
@@ -134,23 +130,18 @@ class ExtractUsedNamesSpecification {
                   |""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(src1, src2)
-    val expectedNames_lista = standardNames ++ Set("Test_lista", "x", "B", "lista", "List", "A")
-    val expectedNames_at = standardNames ++ Set("Test_at", "x", "B", "at", "A", "T", "X0", "X1")
-    val expectedNames_as = standardNames ++ Set("Test_as", "x", "B", "as", "S", "Y")
-    val expectedNames_foo = standardNames ++ Set("Test_foo",
-                                                 "x",
-                                                 "B",
+    val expectedNames_lista = standardNames ++ Set("B", "lista", "List", "A")
+    val expectedNames_at = standardNames ++ Set("B", "at", "A", "T", "X0", "X1")
+    val expectedNames_as = standardNames ++ Set("B", "as", "S", "Y")
+    val expectedNames_foo = standardNames ++ Set("B",
                                                  "foo",
                                                  "M",
                                                  "N",
                                                  "Predef",
                                                  "???",
                                                  "Nothing")
-    val expectedNames_bar = standardNames ++ Set("Test_bar",
-                                                 "x",
-                                                 "B",
+    val expectedNames_bar = standardNames ++ Set("B",
                                                  "bar",
-                                                 "Param",
                                                  "P1",
                                                  "P0",
                                                  "Predef",
@@ -164,36 +155,19 @@ class ExtractUsedNamesSpecification {
   }
 
   @Test
-  def extractUsedNamesFromExistential = {
-    val srcFoo =
-      """import scala.language.existentials
-      |class Foo {
-      |  val foo: T forSome { type T <: Double } = ???
-      |}
-      """.stripMargin
-    val compilerForTesting = new ScalaCompilerForUnitTesting
-    val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcFoo)
-    val expectedNames = standardNames ++ Seq("Double",
-                                             "Foo",
-                                             "T",
-                                             "foo",
-                                             "scala",
-                                             "language",
-                                             "existentials",
-                                             "Nothing",
-                                             "???",
-                                             "Predef")
-    assertEquals(usedNames("Foo"), expectedNames)
-  }
-
-  @Test
   def extractUsedNamesFromRefinement = {
-    val srcFoo =
-      "object Outer {\n  class Inner { type Xyz }\n\n  type TypeInner = Inner { type Xyz = Int }\n}"
-    val srcBar = "object Bar {\n  def bar: Outer.TypeInner = null\n}"
+    val srcFoo = """|object Outer {
+                    |  class Inner { type Xyz }
+                    |  type TypeInner = Inner { type Xyz = Int }
+                    |}
+                    |""".stripMargin
+    val srcBar = """|object Bar {
+                    |  def bar: Outer.TypeInner = null
+                    |}
+                    |""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcFoo, srcBar)
-    val expectedNames = standardNames ++ Set("Bar", "Outer", "TypeInner", "Inner", "Xyz", "Int")
+    val expectedNames = standardNames ++ Set("Outer", "TypeInner", "Inner", "Int")
     assertEquals(usedNames("Bar"), expectedNames)
   }
 
@@ -219,7 +193,7 @@ class ExtractUsedNamesSpecification {
 
   // test for https://github.com/gkossakowski/sbt/issues/4
   // TODO: we should fix it by having special treatment of `selectDynamic` and `applyDynamic` calls
-  @Test
+  @Ignore("Call to Dynamic is desugared in type checker so Select nodes is turned into string literal.")
   def extractNamesFromMethodCallOnDynamic = {
     val srcA = """|import scala.language.dynamics
                   |class A extends Dynamic {
@@ -228,7 +202,7 @@ class ExtractUsedNamesSpecification {
     val srcB = "class B { def foo(a: A): Int = a.bla }"
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcA, srcB)
-    val expectedNames = standardNames ++ Set("B", "A", "a", "Int", "selectDynamic", "bla")
+    val expectedNames = standardNames ++ Set("A", "a", "Int", "selectDynamic", "bla")
     assertEquals(usedNames("B"), expectedNames)
   }
 
@@ -306,11 +280,11 @@ class ExtractUsedNamesSpecification {
    * definition.
    */
   private val standardNames = Set(
-    "scala",
-    // The default parent of a class is "AnyRef" which is an alias for "Object"
-    "AnyRef",
+    // All classes extend Object
     "Object",
-    "java.lang.Object;init;"
+    // All classes have a default constructor called <init>
+    "java.lang.Object;init;",
+    // the return type of the default constructor is Unit
+    "Unit"
   )
-
 }

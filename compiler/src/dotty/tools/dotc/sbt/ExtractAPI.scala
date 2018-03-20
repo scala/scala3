@@ -62,7 +62,7 @@ class ExtractAPI extends Phase {
         ctx.sbtCallback.startSource(sourceFile.file)
 
       val apiTraverser = new ExtractAPICollector
-      val sources = apiTraverser.apiSource(unit.tpdTree)
+      val classes = apiTraverser.apiSource(unit.tpdTree)
       val mainClasses = apiTraverser.mainClasses
 
       if (dumpInc) {
@@ -70,12 +70,12 @@ class ExtractAPI extends Phase {
         val pw = new PrintWriter(File(sourceFile.jpath).changeExtension("inc").toFile
           .bufferedWriter(append = true), true)
         try {
-          sources.foreach(source => pw.println(DefaultShowAPI(source)))
+          classes.foreach(source => pw.println(DefaultShowAPI(source)))
         } finally pw.close()
       }
 
       if (ctx.sbtCallback != null) {
-        sources.foreach(ctx.sbtCallback.api(sourceFile.file, _))
+        classes.foreach(ctx.sbtCallback.api(sourceFile.file, _))
         mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.file, _))
       }
     }
