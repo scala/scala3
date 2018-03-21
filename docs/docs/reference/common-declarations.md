@@ -29,7 +29,7 @@ class FlatText(str: String) extends Text {
 }
 ```
 
-The `common` definition of `fromString` is abstract in trait `Text`. It is defined in the implementing companion object of `FlatText`. By contrast, the `fromStrings` method in trait Text is concrete, with an implementation referring to the abstract `fromString`. It is inherited by the companion object `FlatText`. So the following are legal:
+The `common` method `fromString` is abstract in trait `Text`. It is defined in the implementing companion object of `FlatText`. By contrast, the `fromStrings` method in trait Text is concrete, with an implementation referring to the abstract `fromString`. It is inherited by the companion object `FlatText`. So the following are legal:
 
 ```scala
 val txt1 = FlatText.fromString("hello")
@@ -44,7 +44,7 @@ val erroneous = Text.fromStrings("hello", ", world") // error: not found
 
 ## The `Instance` type
 
-In the previous example, the argument and result type of `concat` is just `Text`. So every implementation of `Text` has to be prepared to concatenate all possible implementatons of `Text`. Furthermore, we hide the concrete implementation type in the result type of `concat` and of the construction methods `fromString` and `fromStrings`. Sometimes we want a different design that specifyfies the actual implementation type instead of the base trait `Text`. We can refer to this type using the predefined type `Instance`:
+In the previous example, the argument and result type of `concat` is just `Text`. So every implementation of `Text` has to be prepared to concatenate all possible implementatons of `Text`. Furthermore, we hide the concrete implementation type in the result type of `concat` and of the construction methods `fromString` and `fromStrings`. Sometimes we want a different design that specifies the actual implementation type instead of the base trait `Text`. We can refer to this type using the predefined type `Instance`:
 
 ```scala
 trait Text {
@@ -114,8 +114,8 @@ the object that implements the `common` definitions.
 ## Translation
 
 The translation of a trait `T` that defines `common` declarations `common D1, ..., common Dn`
-and extends traits with common declarations `P1`, ..., Pn` is as follows:
-All `common` definitions are put in a trait `T.Common` which is defined in `T`'s companion object:
+and extends traits with common declarations `P1, ..., Pn` is as follows:
+All `common` declarations are put in a trait `T.Common` which is defined in `T`'s companion object:
 
     object T {
       trait Common extends P1.Common with ... with Pn.Common { self =>
@@ -130,7 +130,7 @@ The trait inherits all `Common` traits associated with `T`'s parent traits. If n
 given, it declares the `Instance` type as shown above. The trait `T` itself is expanded as follows:
 
     trait T extends ... {
-      val `common`: `T.Common`
+      val `common`: T.Common
       import `common`._
 
       ...
@@ -141,7 +141,7 @@ Any direct reference to `x.common` in the body of `T` is simply translated to
     x.`common`
 
 The translation of a class `C` that defines `common` declarations `common D1, ..., common Dn`
-and extends traits with common declarations `P1`, ..., Pn` is as follows:
+and extends traits with common declarations `P1, ..., Pn` is as follows:
 All `common` definitions of the class itself are placed in `C`'s companion object, which also inherits all
 `Common` traits of `C`'s parents. If `C` already defines a companion object, the synthesized parents
 come after the explicitly declared ones, whereas the common definitions precede all explicitly given statements of the
