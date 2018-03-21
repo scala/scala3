@@ -329,9 +329,14 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         if (isType) ref(defn.typeQuoteMethod).appliedToType(body1.tpe.widen)
         else ref(defn.quoteMethod).appliedToType(body1.tpe.widen).appliedTo(body1)
       }
-      else {
-        val (body1, splices) = nested(isQuote = true).split(body)
-        pickledQuote(body1, splices, isType).withPos(quote.pos)
+      else body match {
+        case body: RefTree if isCaptured(body, level + 1) =>
+          // Optimization: avoid the full conversion when capturing `x`
+          // in '{ x } to '{ x$1.unary_~ } and go directly to `x$1`
+          capturers(body.symbol)(body)
+        case _=>
+          val (body1, splices) = nested(isQuote = true).split(body)
+          pickledQuote(body1, splices, isType).withPos(quote.pos)
       }
     }
 
@@ -433,7 +438,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     }
 
     /** Returns true if this tree will be captured by `makeLambda` */
-    private def isCaptured(tree: RefTree)(implicit ctx: Context): Boolean = {
+    private def isCaptured(tree: RefTree, level: Int)(implicit ctx: Context): Boolean = {
       // Check phase consistency and presence of capturer
       level == 1 && !tree.symbol.is(Inline) && levelOf.get(tree.symbol).contains(1) &&
       capturers.contains(tree.symbol)
@@ -473,7 +478,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             splice(ref(splicedType).select(tpnme.UNARY_~))
           case tree: Select if tree.symbol.isSplice =>
             splice(tree)
-          case tree: RefTree if isCaptured(tree) =>
+          case tree: RefTree if isCaptured(tree, level) =>
             val capturer = capturers(tree.symbol)
             splice(capturer(tree).select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
           case Block(stats, _) =>
