@@ -9,6 +9,8 @@ import util.HashSet
 import typer.ConstFold
 import reporting.trace
 
+import scala.annotation.tailrec
+
 trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   import TreeInfo._
 
@@ -512,17 +514,22 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   }
 
   /** Decompose a call fn[targs](vargs_1)...(vargs_n)
-   *  into its constituents (where targs, vargss may be empty)
+   *  into its constituents (fn, targs, vargss).
+   *
+   *  Note: targ and vargss may be empty
    */
-  def decomposeCall(tree: Tree): (Tree, List[Tree], List[List[Tree]]) = tree match {
-    case Apply(fn, args) =>
-      val (meth, targs, argss) = decomposeCall(fn)
-      (meth, targs, argss :+ args)
-    case TypeApply(fn, targs) =>
-      val (meth, targss, args) = decomposeCall(fn)
-      (meth, targs ++ targss, args)
-    case _ =>
-      (tree, Nil, Nil)
+  def decomposeCall(tree: Tree): (Tree, List[Tree], List[List[Tree]]) = {
+    @tailrec
+    def loop(tree: Tree, targss: List[Tree], argss: List[List[Tree]]): (Tree, List[Tree], List[List[Tree]]) =
+      tree match {
+        case Apply(fn, args) =>
+          loop(fn, targss, args :: argss)
+        case TypeApply(fn, targs) =>
+          loop(fn, targs ::: targss, argss)
+        case _ =>
+          (tree, targss, argss)
+      }
+    loop(tree, Nil, Nil)
   }
 
   /** An extractor for closures, either contained in a block or standalone.

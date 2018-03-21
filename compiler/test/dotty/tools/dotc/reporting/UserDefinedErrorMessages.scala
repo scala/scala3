@@ -22,7 +22,6 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
         |
         |  implicitly[Int =!= Int]
         |}
-
       """.stripMargin
     }.expect { (itcx, messages) =>
       import diagnostic.NoExplanation
@@ -48,7 +47,6 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
         |
         |  implicitly[Int =!= Int]
         |}
-
       """.stripMargin
     }.expect { (itcx, messages) =>
       import diagnostic.NoExplanation
@@ -75,7 +73,6 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
         |
         |  implicitly[Int =!= Int]
         |}
-
       """.stripMargin
     }.expect { (itcx, messages) =>
       import diagnostic.NoExplanation
@@ -98,7 +95,29 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
         |    implicitly[Int => String]
         |  }
         |}
+      """.stripMargin
+    }.expect { (itcx, messages) =>
+      import diagnostic.NoExplanation
+      implicit val ctx: Context = itcx
 
+      assertMessageCount(1, messages)
+      val (m: NoExplanation) :: Nil = messages
+
+      assertEquals(m.msg, "msg A=Any")
+    }
+
+  @Test def userDefinedImplicitAmbiguous5 =
+    checkMessagesAfter("frontend") {
+      """
+        |class C {
+        |  @annotation.implicitAmbiguous("msg A=${A}")
+        |  implicit def f[A](implicit x: String): Int = 1
+        |  implicit def g: Int = 2
+        |  def test: Unit = {
+        |    implicit val s: String = "Hello"
+        |    implicitly[Int]
+        |  }
+        |}
       """.stripMargin
     }.expect { (itcx, messages) =>
       import diagnostic.NoExplanation

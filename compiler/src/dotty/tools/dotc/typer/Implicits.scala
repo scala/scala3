@@ -707,14 +707,21 @@ trait Implicits { self: Typer =>
           }
           def resolveTypes(targs: List[Tree])(implicit ctx: Context) =
             targs.map(a => fullyDefinedType(a.tpe, "type argument", a.pos))
-          val args = alt.tree match {
-            case TypeApply(_, targs) =>
-              resolveTypes(targs)(ctx.fresh.setTyperState(alt.tstate))
-            case Block(List(DefDef(_, _, _, _, Apply(TypeApply(_, targs), _))), _) =>
-              resolveTypes(targs.asInstanceOf[List[Tree]])(ctx.fresh.setTyperState(alt.tstate))
-            case _ =>
-              Nil
-          }
+
+          // We can extract type arguments from:
+          //   - a function call:
+          //     @implicitAmbiguous("msg A=${A}")
+          //     implicit def f[A](): String = ...
+          //     implicitly[String] // found: f[Any]()
+          //
+          //   - an eta-expanded function:
+          //     @implicitAmbiguous("msg A=${A}")
+          //     implicit def f[A](x: Int): String = ...
+          //     implicitly[Int => String] // found: x => f[Any](x)
+
+          val call = closureBody(alt.tree) // the tree itself if not a closure
+          val (_, targs, _) = decomposeCall(call)
+          val args = resolveTypes(targs)(ctx.fresh.setTyperState(alt.tstate))
           err.userDefinedErrorString(raw, params, args)
         }
 
