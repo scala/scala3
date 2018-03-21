@@ -3823,7 +3823,41 @@ object Types {
         if (absMems.size == 1)
           absMems.head.info match {
             case mt: MethodType if !mt.isParamDependent =>
-              Some(mt)
+              val cls = tp.classSymbol
+
+              // Given a SAM type such as:
+              //
+              //     import java.util.function.Function
+              //     Function[_ >: String, _ <: Int]
+              //
+              // the single abstract method will have type:
+              //
+              //     (x: Function[_ >: String, _ <: Int]#T): Function[_ >: String, _ <: Int]#R
+              //
+              // which is not implementable outside of the scope of Function.
+              //
+              // To avoid this kind of issue, we approximate references to
+              // parameters of the SAM type by their bounds, this way in the
+              // above example we get:
+              //
+              //    (x: String): Int
+              val approxParams = new ApproximatingTypeMap {
+                def apply(tp: Type): Type = tp match {
+                  case tp: TypeRef if tp.symbol.is(ClassTypeParam) && tp.symbol.owner == cls =>
+                    tp.info match {
+                      case TypeAlias(alias) =>
+                        mapOver(alias)
+                      case TypeBounds(lo, hi) =>
+                        range(atVariance(-variance)(apply(lo)), apply(hi))
+                       case _ =>
+                        range(defn.NothingType, defn.AnyType) // should happen only in error cases
+                    }
+                  case _ =>
+                    mapOver(tp)
+                }
+              }
+              val approx = approxParams(mt).asInstanceOf[MethodType]
+              Some(approx)
             case _ =>
               None
           }
