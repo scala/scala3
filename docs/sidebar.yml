@@ -43,6 +43,8 @@ sidebar:
               url: docs/reference/multiversal-equality.html
             - title: Trait Parameters
               url: docs/reference/trait-parameters.html
+            - title: Common Declarations
+              url: docs/reference/common-declarations.html
             - title: Inline
               url: docs/reference/inline.html
             - title: Meta Programming
