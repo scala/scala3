@@ -1,6 +1,3 @@
-import java.io.FileInputStream;
-import java.util.Properties
-
 import sbt._
 
 /** A dependency shared between multiple projects should be put here
