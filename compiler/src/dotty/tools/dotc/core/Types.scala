@@ -3811,9 +3811,8 @@ object Types {
     }
     def isInstantiatable(tp: Type)(implicit ctx: Context): Boolean = zeroParamClass(tp) match {
       case cinfo: ClassInfo =>
-        val tref = tp.narrow
-        val selfType = cinfo.selfType.asSeenFrom(tref, cinfo.cls)
-        tref <:< selfType
+        val selfType = cinfo.selfType.asSeenFrom(tp, cinfo.cls)
+        tp <:< selfType
       case _ =>
         false
     }
