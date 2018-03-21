@@ -687,6 +687,9 @@ trait Implicits { self: Typer =>
     }
     def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
 
+    /** Extract a user defined error message from a symbol `sym`
+     *  with an annotation matching the given class symbol `cls`.
+     */
     def userDefinedMsg(sym: Symbol, cls: Symbol) = for {
       ann <- sym.getAnnotation(cls)
       Trees.Literal(Constant(msg: String)) <- ann.argument(0)
@@ -696,10 +699,13 @@ trait Implicits { self: Typer =>
     arg.tpe match {
       case ambi: AmbiguousImplicits =>
         object AmbiguousImplicitMsg {
-          def unapply(search: SearchSuccess) =
+          def unapply(search: SearchSuccess): Option[String] =
             userDefinedMsg(search.ref.symbol, defn.ImplicitAmbiguousAnnot)
         }
 
+        /** Construct a custom error message given an ambiguous implicit
+         *  candidate `alt` and a user defined message `raw`.
+         */
         def userDefinedAmbiguousImplicitMsg(alt: SearchSuccess, raw: String) = {
           val params = alt.ref.underlying match {
             case p: PolyType => p.paramNames.map(_.toString)
@@ -726,10 +732,10 @@ trait Implicits { self: Typer =>
         }
 
         (ambi.alt1, ambi.alt2) match {
-          case (AmbiguousImplicitMsg(msg), _) =>
-            userDefinedAmbiguousImplicitMsg(ambi.alt1, msg)
-          case (_, AmbiguousImplicitMsg(msg)) =>
-            userDefinedAmbiguousImplicitMsg(ambi.alt2, msg)
+          case (alt @ AmbiguousImplicitMsg(msg), _) =>
+            userDefinedAmbiguousImplicitMsg(alt, msg)
+          case (_, alt @ AmbiguousImplicitMsg(msg)) =>
+            userDefinedAmbiguousImplicitMsg(alt, msg)
           case _ =>
             msg(s"ambiguous implicit arguments: ${ambi.explanation}${location("of")}")(
                 s"ambiguous implicit arguments of type ${pt.show} found${location("for")}")
