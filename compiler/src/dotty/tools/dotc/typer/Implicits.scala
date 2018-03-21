@@ -26,6 +26,7 @@ import Constants._
 import Applications._
 import ProtoTypes._
 import ErrorReporting._
+import Annotations.Annotation
 import reporting.diagnostic.{Message, MessageContainer}
 import Inferencing.fullyDefinedType
 import Trees._
@@ -545,7 +546,7 @@ trait Implicits { self: Typer =>
 
     /** If `formal` is of the form ClassTag[T], where `T` is a class type,
      *  synthesize a class tag for `T`.
-   	 */
+     */
     def synthesizedClassTag(formal: Type): Tree = formal.argInfos match {
       case arg :: Nil =>
         fullyDefinedType(arg, "ClassTag argument", pos) match {
@@ -590,7 +591,7 @@ trait Implicits { self: Typer =>
 
     /** If `formal` is of the form Eq[T, U], where no `Eq` instance exists for
      *  either `T` or `U`, synthesize `Eq.eqAny[T, U]` as solution.
-   	 */
+     */
     def synthesizedEq(formal: Type)(implicit ctx: Context): Tree = {
       //println(i"synth eq $formal / ${formal.argTypes}%, %")
       formal.argTypes match {
@@ -685,22 +686,67 @@ trait Implicits { self: Typer =>
         }
     }
     def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
+
+    /** Extract a user defined error message from a symbol `sym`
+     *  with an annotation matching the given class symbol `cls`.
+     */
+    def userDefinedMsg(sym: Symbol, cls: Symbol) = for {
+      ann <- sym.getAnnotation(cls)
+      Trees.Literal(Constant(msg: String)) <- ann.argument(0)
+    } yield msg
+
+
     arg.tpe match {
       case ambi: AmbiguousImplicits =>
-        msg(s"ambiguous implicit arguments: ${ambi.explanation}${location("of")}")(
-            s"ambiguous implicit arguments of type ${pt.show} found${location("for")}")
+        object AmbiguousImplicitMsg {
+          def unapply(search: SearchSuccess): Option[String] =
+            userDefinedMsg(search.ref.symbol, defn.ImplicitAmbiguousAnnot)
+        }
+
+        /** Construct a custom error message given an ambiguous implicit
+         *  candidate `alt` and a user defined message `raw`.
+         */
+        def userDefinedAmbiguousImplicitMsg(alt: SearchSuccess, raw: String) = {
+          val params = alt.ref.underlying match {
+            case p: PolyType => p.paramNames.map(_.toString)
+            case _           => Nil
+          }
+          def resolveTypes(targs: List[Tree])(implicit ctx: Context) =
+            targs.map(a => fullyDefinedType(a.tpe, "type argument", a.pos))
+
+          // We can extract type arguments from:
+          //   - a function call:
+          //     @implicitAmbiguous("msg A=${A}")
+          //     implicit def f[A](): String = ...
+          //     implicitly[String] // found: f[Any]()
+          //
+          //   - an eta-expanded function:
+          //     @implicitAmbiguous("msg A=${A}")
+          //     implicit def f[A](x: Int): String = ...
+          //     implicitly[Int => String] // found: x => f[Any](x)
+
+          val call = closureBody(alt.tree) // the tree itself if not a closure
+          val (_, targs, _) = decomposeCall(call)
+          val args = resolveTypes(targs)(ctx.fresh.setTyperState(alt.tstate))
+          err.userDefinedErrorString(raw, params, args)
+        }
+
+        (ambi.alt1, ambi.alt2) match {
+          case (alt @ AmbiguousImplicitMsg(msg), _) =>
+            userDefinedAmbiguousImplicitMsg(alt, msg)
+          case (_, alt @ AmbiguousImplicitMsg(msg)) =>
+            userDefinedAmbiguousImplicitMsg(alt, msg)
+          case _ =>
+            msg(s"ambiguous implicit arguments: ${ambi.explanation}${location("of")}")(
+                s"ambiguous implicit arguments of type ${pt.show} found${location("for")}")
+        }
+
       case _ =>
-        val userDefined =
-          for {
-            notFound <- pt.typeSymbol.getAnnotation(defn.ImplicitNotFoundAnnot)
-            Trees.Literal(Constant(raw: String)) <- notFound.argument(0)
-          }
-          yield {
-            err.implicitNotFoundString(
-              raw,
-              pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
-              pt.argInfos)
-          }
+        val userDefined = userDefinedMsg(pt.typeSymbol, defn.ImplicitNotFoundAnnot).map(raw =>
+          err.userDefinedErrorString(
+            raw,
+            pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
+            pt.argInfos))
         msg(userDefined.getOrElse(em"no implicit argument of type $pt was found${location("for")}"))()
     }
   }
