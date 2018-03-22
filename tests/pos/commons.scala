@@ -7,10 +7,10 @@ trait Text {
   def apply(idx: Int): Char
   def concat(txt: Text): Text
   def toStr: String
+  def flatten = `common`.fromString(toStr)
 }
 object Text {
   trait Common { self =>
-    type Instance <: Text { val `common`: self.type }
     def fromString(str: String): Text
     def fromStrings(strs: String*): Text =
       ("" :: strs.toList).map(fromString).reduceLeft(_.concat(_))
@@ -19,13 +19,14 @@ object Text {
 
 class FlatText(str: String) extends Text {
   val common: FlatText.type = FlatText
+  import `common`._
+
   def length = str.length
   def apply(n: Int) = str.charAt(n)
   def concat(txt: Text) = new FlatText(str ++ txt.toStr)
   def toStr = str
 }
 object FlatText extends Text.Common {
-  type Instance = FlatText
   def fromString(str: String) = new FlatText(str)
 }
 
@@ -45,7 +46,7 @@ enum ConcText extends Text {
     case Conc(t1, t2) => if (n < t1.length) t1(n) else t2(n - t1.length)
   }
 
-  def concat(txt: Text) = Conc(this, txt)
+  def concat(txt: Text): Text = Conc(this, txt)
 
   def toStr: String = this match {
     case Str(s) => s
@@ -54,7 +55,6 @@ enum ConcText extends Text {
 }
 
 object ConcText extends Text.Common {
-  type Instance = ConcText
   def fromString(str: String) = Str(str)
 }
 
