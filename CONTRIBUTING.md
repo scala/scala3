@@ -10,7 +10,7 @@ Regardless of the nature of your Pull Request, we have to ask you to digitally s
 
 ## General Workflow
 
-This is the process for committing code to the Scala project. There are of course exceptions to these rules, for example minor changes to comments and documentation, fixing a broken build etc.
+This is the process for committing code to the Dotty project. There are of course exceptions to these rules, for example minor changes to comments and documentation, fixing a broken build etc.
 
 Before starting to work on a feature or a fix, it's good practice to ensure that:
 
@@ -21,11 +21,12 @@ You should always perform your work in its own Git branch. The branch should be 
 
 ## Opening a PR
 
-  When the feature or fix is completed you should open a [Pull Request](https://help.github.com/articles/using-pull-requests) on GitHub. Please have a look at and follow the [Pull Request Policy](https://github.com/scala/scala/wiki/Pull-Request-Policy) for guidelines on submitting a pull request to the dotty project. (the pull request policy is the same as for the Scala programming language)
+  When the feature or fix is completed you should open a [Pull Request](https://help.github.com/articles/using-pull-requests) on GitHub. Please have a look at and follow the [Pull Request Policy](https://github.com/scala/scala/wiki/Pull-Request-Policy) for guidelines on submitting a pull request to the dotty project. (The pull request policy is the same as for the Scala programming language.)
 
 ## Identifying the kind of PR
 
 1. Documentation
+
     Whether you finally decided you couldn't stand that annoying typo anymore, you fixed the outdated code sample in some comment, or you wrote a nice, comprehensive, overview for an under-documented package, some docs for a class or the specifics about a method, your documentation improvement is very much appreciated, and we will do our best to fasttrack it.
 
     You can make these changes directly in your browser in GitHub, or follow the same process as for code. Up to you!
@@ -34,10 +35,9 @@ You should always perform your work in its own Git branch. The branch should be 
 
     For bigger changes, we do recommend announcing your intentions on [gitter](https://gitter.im/lampepfl/dotty) first, to avoid duplicated effort, or spending a lot of time reworking something we are not able to change at this time in the release cycle, for example.
 
-
 3. Bug Fix
 
-    At the end of the commit message, include "Fixes dotty/bug#NNNN", where https://github.com/lampepfl/dotty/issues/NNNN tracks the bug you're fixing. We also recommend naming your branch after the ticket number.
+    At the end of the commit message, include "Fixes #NNNN", where https://github.com/lampepfl/dotty/issues/NNNN tracks the bug you're fixing. We also recommend naming your branch after the ticket number.
 
 4. Enhancement or New Feature
 
@@ -117,7 +117,7 @@ You should always perform your work in its own Git branch. The branch should be 
 
 ## Reviews and changes
 
-The Pull Request should be reviewed by other maintainers (as many as feasible/practical). Note that a reviewer can also be an outside contributor-- members of Typesafe and independent contributors are encouraged to participate in the review process. It is not a closed process. Please try to avoid conflict of interest -- the spirit of the review process is to evenly distribute the understanding of our code base across its maintainers as well as to load balance quality assurance. Assigning a review to a "sure win" reviewer is not a good long-term solution.
+The Pull Request should be reviewed by other maintainers (as many as feasible/practical). Note that a reviewer can also be an outside contributor-- members of Lightbend and independent contributors are encouraged to participate in the review process. It is not a closed process. Please try to avoid conflict of interest -- the spirit of the review process is to evenly distribute the understanding of our code base across its maintainers as well as to load balance quality assurance. Assigning a review to a "sure win" reviewer is not a good long-term solution.
 
 After the review, you should resolve issues brought up by the reviewers as needed (pushing a new commit to address reviewers' comments), iterating until the reviewers give their thumbs up, the "LGTM" (acronym for "Looks Good To Me").
 
