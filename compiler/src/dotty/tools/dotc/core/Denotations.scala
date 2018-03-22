@@ -529,6 +529,9 @@ object Denotations {
               try infoMeet(info1, info2)
               catch {
                 case ex: MergeError =>
+                  // TODO: this picks one type over the other whereas it might be better
+                  // to return a MultiDenotation instead. But doing so would affect lots of
+                  // things, starting with the return type of this method.
                   if (preferSym(sym2, sym1)) info2
                   else if (preferSym(sym1, sym2)) info1
                   else if (pre.widen.classSymbol.is(Scala2x) || ctx.scala2Mode)
