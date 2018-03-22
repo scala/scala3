@@ -314,7 +314,7 @@ class CompilationTests extends ParallelTesting {
   }
 
   @Test def testPlugins: Unit = {
-    val pluginFile = "plugin"
+    val pluginFile = "plugin.properties"
 
     // 1. hack with absolute path for -Xplugin
     // 2. copy `pluginFile` to destination

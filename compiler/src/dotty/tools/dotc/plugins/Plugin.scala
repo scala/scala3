@@ -8,7 +8,7 @@ import dotty.tools.io._
 import transform.MegaPhase.MiniPhase
 
 import java.io.InputStream
-import java.util.Scanner
+import java.util.Properties
 
 import scala.collection.mutable
 import scala.util.{ Try, Success, Failure }
@@ -59,7 +59,7 @@ trait ResearchPlugin extends Plugin {
 
 object Plugin {
 
-  private val PluginFile = "plugin"
+  private val PluginFile = "plugin.properties"
 
   /** Create a class loader with the specified locations plus
    *  the loader that loaded the Scala compiler.
@@ -101,10 +101,13 @@ object Plugin {
   {
 
     def fromFile(inputStream: InputStream): String = {
-      val s = new Scanner(inputStream)
+      val props = new Properties
+      props.load(inputStream)
 
-      if (s.hasNext) s.nextLine.trim
-      else throw new RuntimeException("Bad plugin descriptor.")
+      val pluginClass = props.getProperty("pluginClass")
+
+      if (pluginClass == null) throw new RuntimeException("Bad plugin descriptor.")
+      else pluginClass
     }
 
     def loadDescriptionFromDir(f: Path): Try[String] =
