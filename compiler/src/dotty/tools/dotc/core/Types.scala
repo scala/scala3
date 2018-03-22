@@ -508,10 +508,20 @@ object Types {
             case tp1 => tp1
           })
         case tp: TypeRef =>
-          tp.denot.findMember(name, pre, excluded)
+          tp.denot match {
+            case d: ClassDenotation => d.findMember(name, pre, excluded)
+            case d => go(d.info)
+          }
         case tp: AppliedType =>
-          goApplied(tp)
-        case tp: ThisType =>
+          tp.tycon match {
+            case tc: TypeRef if tc.symbol.isClass =>
+              go(tc)
+            case tc: HKTypeLambda =>
+              goApplied(tp, tc)
+            case _ =>
+              go(tp.superType)
+          }
+        case tp: ThisType => // ??? inline
           goThis(tp)
         case tp: RefinedType =>
           if (name eq tp.refinedName) goRefined(tp) else go(tp.parent)
@@ -598,15 +608,9 @@ object Types {
         }
       }
 
-      def goApplied(tp: AppliedType) = tp.tycon match {
-        case tl: HKTypeLambda =>
-          go(tl.resType).mapInfo(info =>
-            tl.derivedLambdaAbstraction(tl.paramNames, tl.paramInfos, info).appliedTo(tp.args))
-        case tc: TypeRef if tc.symbol.isClass =>
-          go(tc)
-        case _ =>
-          go(tp.superType)
-      }
+      def goApplied(tp: AppliedType, tycon: HKTypeLambda) =
+        go(tycon.resType).mapInfo(info =>
+          tycon.derivedLambdaAbstraction(tycon.paramNames, tycon.paramInfos, info).appliedTo(tp.args))
 
       def goThis(tp: ThisType) = {
         val d = go(tp.underlying)
@@ -623,6 +627,7 @@ object Types {
           // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
           go(tp.cls.typeRef) orElse d
       }
+
       def goParam(tp: TypeParamRef) = {
         val next = tp.underlying
         ctx.typerState.constraint.entry(tp) match {
@@ -632,12 +637,14 @@ object Types {
             go(next)
         }
       }
+
       def goSuper(tp: SuperType) = go(tp.underlying) match {
         case d: JointRefDenotation =>
           typr.println(i"redirecting super.$name from $tp to ${d.symbol.showLocated}")
           new UniqueRefDenotation(d.symbol, tp.memberInfo(d.symbol), d.validFor)
         case d => d
       }
+
       def goAnd(l: Type, r: Type) = {
         go(l) & (go(r), pre, safeIntersection = ctx.pendingMemberSearches.contains(name))
       }
