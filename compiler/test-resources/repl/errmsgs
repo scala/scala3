@@ -72,3 +72,11 @@ scala> val a: iDontExist = 1
 1 | val a: iDontExist = 1
   |        ^^^^^^^^^^
   |        not found: type iDontExist
+scala> def foo1(x: => Int) = x _
+1 | def foo1(x: => Int) = x _
+  |                       ^^^
+  |Only function types can be followed by _ but the current expression has type Int
+scala> def foo2(x: => Int): () => Int = x _
+1 | def foo2(x: => Int): () => Int = x _
+  |                                  ^^^
+  |Only function types can be followed by _ but the current expression has type Int

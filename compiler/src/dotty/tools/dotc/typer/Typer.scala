@@ -1661,9 +1661,10 @@ class Typer extends Namer
     val nestedCtx = ctx.fresh.setNewTyperState()
     val res = typed(qual, pt1)(nestedCtx)
     res match {
-      case res @ closure(_, _, _) =>
+      case closure(_, _, _) =>
       case _ =>
-        ctx.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(res.tpe), tree.pos)
+        val recovered = typed(qual)(ctx.fresh.setExploreTyperState())
+        ctx.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen), tree.pos)
         if (ctx.scala2Mode) {
           // Under -rewrite, patch `x _` to `(() => x)`
           patch(Position(tree.pos.start), "(() => ")
