@@ -28,9 +28,8 @@ class IsInstanceOfChecker extends MiniPhase {
     }
 
     tree.fun match {
-      case fn: Select if fn.symbol == defn.Any_typeTest =>
-        ensureCheckable(fn.qualifier, tree.args.head)
-      case fn: Select if fn.symbol == defn.Any_isInstanceOf =>
+      case fn: Select
+      if fn.symbol == defn.Any_typeTest || fn.symbol == defn.Any_isInstanceOf =>
         ensureCheckable(fn.qualifier, tree.args.head)
       case _ => tree
     }
@@ -66,11 +65,12 @@ object Checkable {
    */
   def checkable(X: Type, P: Type, pos: Position)(implicit ctx: Context): Boolean = {
     def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
+    def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
 
     def replaceP(implicit ctx: Context) = new TypeMap {
       def apply(tp: Type) = tp match {
         case tref: TypeRef
-        if !tref.typeSymbol.isClass && tref.symbol.is(Case) => WildcardType
+        if isPatternTypeSymbol(tref.typeSymbol) => WildcardType
         case AnnotatedType(_, annot)
         if annot.symbol == defn.UncheckedAnnot => WildcardType
         case _ => mapOver(tp)
