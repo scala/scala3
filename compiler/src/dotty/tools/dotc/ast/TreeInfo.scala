@@ -317,7 +317,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *            Idempotent  if running the statement a second time has no side effects
    *            Impure      otherwise
    */
-  private def statPurity(tree: Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
+  def statPurity(tree: Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
     case EmptyTree
        | TypeDef(_, _)
        | Import(_, _)
@@ -342,7 +342,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  takes a different code path than all to follow; but they are idempotent
    *  because running the expression a second time gives the cached result.
    */
-  private def exprPurity(tree: Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
+  def exprPurity(tree: Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
     case EmptyTree
        | This(_)
        | Super(_, _)
@@ -397,7 +397,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  @DarkDimius: need to make sure that lazy accessor methods have Lazy and Stable
    *               flags set.
    */
-  private def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel =
+  def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel =
     if (!tree.tpe.widen.isParameterless || tree.symbol.is(Erased)) SimplyPure
     else if (!tree.symbol.isStable) Impure
     else if (tree.symbol.is(Lazy)) Idempotent // TODO add Module flag, sinxce Module vals or not Lazy from the start.
