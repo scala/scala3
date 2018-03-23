@@ -508,10 +508,26 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           case _: Import =>
             tree
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
-            markDef(tree)
-            nested(isQuote = true).transform(tree)
-              // check macro code as it if appeared in a quoted context
-            cpy.DefDef(tree)(rhs = EmptyTree)
+            tree.rhs match {
+              case InlineSplice(_) =>
+                markDef(tree)
+                nested(isQuote = true).transform(tree)
+                  // check macro code as it if appeared in a quoted context
+                cpy.DefDef(tree)(rhs = EmptyTree)
+              case _ =>
+                ctx.error(
+                  """Malformed inline macro.
+                    |
+                    |Expected the ~ to be at the top of the RHS:
+                    |  inline def foo(...): Int = ~impl(...)
+                    |or
+                    |  inline def foo(...): Int = ~{
+                    |    val x = 1
+                    |    impl(... x ...)
+                    |  }
+                  """.stripMargin, tree.rhs.pos)
+                EmptyTree
+            }
           case _ =>
             markDef(tree)
             checkLevel(mapOverTree(enteredSyms))
