@@ -577,9 +577,9 @@ object Erasure {
           val implType = meth.tpe.widen.asInstanceOf[MethodType]
 
           val implParamTypes = implType.paramInfos
-          val List(samParamTypes) = sam.info.paramInfoss
+          val List(samParamTypes) = sam.paramInfoss
           val implResultType = implType.resultType
-          val samResultType = sam.info.resultType
+          val samResultType = sam.resultType
 
           // The following code:
           //
@@ -646,7 +646,7 @@ object Erasure {
             if (paramAdaptationNeeded || resultAdaptationNeeded) {
               val bridgeType =
                 if (paramAdaptationNeeded) {
-                  if (resultAdaptationNeeded) sam.info
+                  if (resultAdaptationNeeded) sam
                   else implType.derivedLambdaType(paramInfos = samParamTypes)
                 } else implType.derivedLambdaType(resType = samResultType)
               val bridge = ctx.newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method, bridgeType)

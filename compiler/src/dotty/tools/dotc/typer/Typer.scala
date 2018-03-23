@@ -740,11 +740,10 @@ class Typer extends Namer
         // this can type the greatest set of admissible closures.
         val funType = pt.dealias
         (funType.argTypesLo.init, typeTree(funType.argTypesHi.last))
-      case SAMType(meth) =>
-        val mt @ MethodTpe(_, formals, restpe) = meth.info
+      case SAMType(sam @ MethodTpe(_, formals, restpe)) =>
         (formals,
-         if (mt.isResultDependent)
-           untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef)))
+         if (sam.isResultDependent)
+           untpd.DependentTypeTree(syms => restpe.substParams(sam, syms.map(_.termRef)))
          else
            typeTree(restpe))
       case tp: TypeParamRef =>
@@ -936,8 +935,8 @@ class Typer extends Namer
         meth1.tpe.widen match {
           case mt: MethodType =>
             pt match {
-              case SAMType(meth)
-              if !defn.isFunctionType(pt) && mt <:< meth.info =>
+              case SAMType(sam)
+              if !defn.isFunctionType(pt) && mt <:< sam =>
                 if (!isFullyDefined(pt, ForceDegree.all))
                   ctx.error(ex"result type of closure is an underspecified SAM type $pt", tree.pos)
                 TypeTree(pt)
@@ -2406,8 +2405,8 @@ class Typer extends Namer
         case closure(Nil, id @ Ident(nme.ANON_FUN), _)
         if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
           pt match {
-            case SAMType(meth)
-            if wtp <:< meth.info.toFunctionType() =>
+            case SAMType(sam)
+            if wtp <:< sam.toFunctionType() =>
               // was ... && isFullyDefined(pt, ForceDegree.noBottom)
               // but this prevents case blocks from implementing polymorphic partial functions,
               // since we do not know the result parameter a priori. Have to wait until the

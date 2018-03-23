@@ -482,7 +482,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         false
       case argtpe =>
         def SAMargOK = formal match {
-          case SAMType(meth) => argtpe <:< meth.info.toFunctionType()
+          case SAMType(sam) => argtpe <:< sam.toFunctionType()
           case _ => false
         }
         isCompatible(argtpe, formal) || ctx.mode.is(Mode.ImplicitsEnabled) && SAMargOK
