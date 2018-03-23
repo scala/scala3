@@ -164,11 +164,11 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
       def wildcardAscription(tp: Type) = Typed(Underscore(tp), TypeTree(tp))
       val pattern = Bind(thatAsClazz, wildcardAscription(clazzType)) // x$0 @ (_: C)
       val comparisons = accessors map { accessor =>
-        This(clazz).select(accessor).select(defn.Any_==).appliedTo(ref(thatAsClazz).select(accessor)) }
+        This(clazz).select(accessor).equal(ref(thatAsClazz).select(accessor)) }
       val rhs = // this.x == this$0.x && this.y == x$0.y
         if (comparisons.isEmpty) Literal(Constant(true)) else comparisons.reduceLeft(_ and _)
       val matchingCase = CaseDef(pattern, EmptyTree, rhs) // case x$0 @ (_: C) => this.x == this$0.x && this.y == x$0.y
-      val defaultCase = CaseDef(wildcardAscription(defn.AnyType), EmptyTree, Literal(Constant(false))) // case _ => false
+      val defaultCase = CaseDef(Underscore(defn.AnyType), EmptyTree, Literal(Constant(false))) // case _ => false
       val matchExpr = Match(that, List(matchingCase, defaultCase))
       if (isDerivedValueClass(clazz)) matchExpr
       else {
