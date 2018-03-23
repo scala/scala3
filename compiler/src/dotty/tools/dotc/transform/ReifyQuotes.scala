@@ -402,16 +402,21 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       def body(arg: Tree)(implicit ctx: Context): Tree = {
         var i = 0
         transformWithCapturer(tree)(
-          (captured: mutable.ListBuffer[Tree]) => (tree: RefTree) => {
-            val argTpe =
-              if (tree.isTerm) defn.QuotedExprType.appliedTo(tree.tpe.widen)
-              else defn.QuotedTypeType.appliedTo(defn.AnyType)
-            val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argTpe)
-            val capturedArg = SyntheticValDef(UniqueName.fresh(tree.name.toTermName).toTermName, selectArg)
-            i += 1
-            embedded += tree
-            captured += capturedArg
-            ref(capturedArg.symbol)
+          (captured: mutable.Map[Symbol, Tree]) => {
+            (tree: RefTree) => {
+              def newCapture = {
+                val argTpe =
+                  if (tree.isTerm) defn.QuotedExprType.appliedTo(tree.tpe.widen)
+                  else defn.QuotedTypeType.appliedTo(defn.AnyType)
+                val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argTpe)
+                val capturedArg = SyntheticValDef(UniqueName.fresh(tree.name.toTermName).toTermName, selectArg)
+                i += 1
+                embedded += tree
+                captured.put(tree.symbol, capturedArg)
+                capturedArg
+              }
+              ref(captured.getOrElseUpdate(tree.symbol, newCapture).symbol)
+            }
           }
         )
       }
@@ -423,13 +428,13 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     }
 
     private def transformWithCapturer(tree: Tree)(
-        capturer: mutable.ListBuffer[Tree] => RefTree => Tree)(implicit ctx: Context): Tree = {
-      val captured = new mutable.ListBuffer[Tree]
+        capturer: mutable.Map[Symbol, Tree] => RefTree => Tree)(implicit ctx: Context): Tree = {
+      val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
       val captured2 = capturer(captured)
       outer.enteredSyms.foreach(s => capturers.put(s, captured2))
       val tree2 = transform(tree)
       capturers --= outer.enteredSyms
-      seq(captured.result(), tree2)
+      seq(captured.result().valuesIterator.toList, tree2)
     }
 
     /** Returns true if this tree will be captured by `makeLambda` */
