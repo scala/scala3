@@ -244,7 +244,7 @@ object ProtoTypes {
       var targ = myTypedArg(arg)
       if (targ == null) {
         if (!force && untpd.functionWithUnknownParamType(arg).isDefined)
-          // If force = true, assume ? rather than reporting an error.
+          // If force = false, assume ? rather than reporting an error.
           // That way we don't cause a "missing parameter" error in `typerFn(arg)`
           targ = arg.withType(WildcardType)
         else {
@@ -261,7 +261,7 @@ object ProtoTypes {
     /** The typed arguments. This takes any arguments already typed using
      *  `typedArg` into account.
      *  @param  force   if true try to typecheck arguments even if they are functions
-     *                  with unknown parameter types - this will then cause a 
+     *                  with unknown parameter types - this will then cause a
      *                  "missing parameter type" error
      */
     private def typedArgs(force: Boolean): List[Tree] = {
