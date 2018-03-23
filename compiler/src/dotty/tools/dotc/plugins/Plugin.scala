@@ -100,24 +100,26 @@ object Plugin {
     ignoring: List[String]): List[Try[Plugin]] =
   {
 
-    def fromFile(inputStream: InputStream): String = {
+    def fromFile(inputStream: InputStream, path: Path): String = {
       val props = new Properties
       props.load(inputStream)
 
       val pluginClass = props.getProperty("pluginClass")
 
-      if (pluginClass == null) throw new RuntimeException("Bad plugin descriptor.")
+      if (pluginClass == null) throw new RuntimeException("Bad plugin descriptor: " + path)
       else pluginClass
     }
 
-    def loadDescriptionFromDir(f: Path): Try[String] =
-      Try(fromFile(new java.io.FileInputStream((f / PluginFile).jpath.toFile)))
+    def loadDescriptionFromDir(f: Path): Try[String] = {
+      val path = f / PluginFile
+      Try(fromFile(new java.io.FileInputStream(path.jpath.toFile), path))
+    }
 
     def loadDescriptionFromJar(jarp: Path): Try[String] = {
       // XXX Return to this once we have more ARM support
       def read(is: InputStream) =
         if (is == null) throw new PluginLoadException(jarp.path, s"Missing $PluginFile in $jarp")
-        else fromFile(is)
+        else fromFile(is, jarp)
 
       val fileEntry = new java.util.jar.JarEntry(PluginFile)
       Try(read(new Jar(jarp.jpath.toFile).getEntryStream(fileEntry)))
@@ -157,10 +159,9 @@ object Plugin {
     val seen = mutable.HashSet[String]()
     val enabled = (fromPaths ::: fromDirs) map(_.flatMap {
       case (classname, loader) =>
-        // a nod to scala/bug#7494, take the plugin classes distinctly
         Plugin.load(classname, loader).flatMap {  clazz =>
           val plugin = instantiate(clazz)
-          if (seen(classname))
+          if (seen(classname))   // a nod to scala/bug#7494, take the plugin classes distinctly
             Failure(new PluginLoadException(plugin.name, s"Ignoring duplicate plugin ${plugin.name} (${classname})"))
           else if (ignoring contains plugin.name)
             Failure(new PluginLoadException(plugin.name, s"Disabling plugin ${plugin.name}"))
