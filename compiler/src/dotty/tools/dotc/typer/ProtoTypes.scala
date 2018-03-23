@@ -212,7 +212,7 @@ object ProtoTypes {
     private[this] var evalState: SimpleIdentityMap[untpd.Tree, (TyperState, Constraint)] = SimpleIdentityMap.Empty
 
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
-      typer.isApplicable(tp, Nil, typedArgs, resultType)
+      typer.isApplicable(tp, Nil, unforcedTypedArgs, resultType)
 
     def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer) =
       if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
@@ -240,13 +240,19 @@ object ProtoTypes {
       myTypedArg.size == args.length
     }
 
-    private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree)(implicit ctx: Context): Tree = {
+    private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(implicit ctx: Context): Tree = {
       var targ = myTypedArg(arg)
       if (targ == null) {
-        targ = typerFn(arg)
-        if (!ctx.reporter.hasPending) {
-          myTypedArg = myTypedArg.updated(arg, targ)
-          evalState = evalState.updated(arg, (ctx.typerState, ctx.typerState.constraint))
+        if (!force && untpd.functionWithUnknownParamType(arg).isDefined)
+          // If force = true, assume ? rather than reporting an error.
+          // That way we don't cause a "missing parameter" error in `typerFn(arg)`
+          targ = arg.withType(WildcardType)
+        else {
+          targ = typerFn(arg)
+          if (!ctx.reporter.hasPending) {
+            myTypedArg = myTypedArg.updated(arg, targ)
+            evalState = evalState.updated(arg, (ctx.typerState, ctx.typerState.constraint))
+          }
         }
       }
       targ
@@ -254,19 +260,25 @@ object ProtoTypes {
 
     /** The typed arguments. This takes any arguments already typed using
      *  `typedArg` into account.
+     *  @param  force   if true try to typecheck arguments even if they are functions
+     *                  with unknown parameter types - this will then cause a 
+     *                  "missing parameter type" error
      */
-    def typedArgs: List[Tree] = {
+    private def typedArgs(force: Boolean): List[Tree] = {
       if (myTypedArgs.size != args.length)
-        myTypedArgs = args.mapconserve(cacheTypedArg(_, typer.typed(_)))
+        myTypedArgs = args.mapconserve(cacheTypedArg(_, typer.typed(_), force))
       myTypedArgs
     }
+
+    def typedArgs: List[Tree] = typedArgs(force = true)
+    def unforcedTypedArgs: List[Tree] = typedArgs(force = false)
 
     /** Type single argument and remember the unadapted result in `myTypedArg`.
      *  used to avoid repeated typings of trees when backtracking.
      */
     def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
       val locked = ctx.typerState.ownedVars
-      val targ = cacheTypedArg(arg, typer.typedUnadapted(_, formal, locked))
+      val targ = cacheTypedArg(arg, typer.typedUnadapted(_, formal, locked), force = true)
       typer.adapt(targ, formal, locked)
     }
 
