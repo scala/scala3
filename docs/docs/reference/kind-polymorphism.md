@@ -3,7 +3,7 @@ layout: doc-page
 title: "Kind Polymorphism"
 ---
 
-Normally type parameters in Scala are partitioned into _kinds_. First-level types are types of values. Higher-kinded types are type constructurs
+Normally type parameters in Scala are partitioned into _kinds_. First-level types are types of values. Higher-kinded types are type constructors
 such as `List` or `Map`. The kind of a type is indicated by the top type of which it is a subtype. Normal types are subtypes of `Any`,
 covariant single argument type constructors such as `List` are subtypes of `[+X] => Any`, and the `Map` type constructor is
 a subtype of `[X, +Y] => Any`.
@@ -32,7 +32,7 @@ We call type parameters and abstract types with an `AnyKind` upper bound _any-ki
 Since the actual kind of an any-kinded type is unknown, its usage must be heavily restricted: An any-kinded type
 can be neither the type of a value, nor can it be instantiated with type parameters. So about the only
 thing one can do with an any-kinded type is to pass it to another any-kinded type argument.
-Nevertheless, this is enough to achieve some interesting generalizations that work across kinds, typicially
+Nevertheless, this is enough to achieve some interesting generalizations that work across kinds, typically
 through advanced uses of implicits.
 
 (todo: insert good concise example)
