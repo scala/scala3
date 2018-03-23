@@ -304,6 +304,16 @@ class Definitions {
     def ObjectMethods = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
 
+  lazy val AnyKindClass = {
+    val cls = ctx.newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil)
+    if (ctx.settings.YkindPolymorphism.value) {
+      // Enable kind-polymorphism by exposing scala.AnyKind
+      cls.entered
+    }
+    cls
+  }
+  def AnyKindType = AnyKindClass.typeRef
+
   /** Marker method to indicate an argument to a call-by-name parameter.
    *  Created by byNameClosures and elimByName, eliminated by Erasure,
    */
@@ -1158,6 +1168,7 @@ class Definitions {
   lazy val syntheticScalaClasses = List(
     AnyClass,
     AnyRefAlias,
+    AnyKindClass,
     RepeatedParamClass,
     ByNameParamClass2x,
     AnyValClass,
