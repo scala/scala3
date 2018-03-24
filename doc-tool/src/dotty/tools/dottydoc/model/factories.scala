@@ -13,6 +13,9 @@ import dotty.tools.dotc.core.SymDenotations._
 import dotty.tools.dotc.config.Printers.dottydoc
 import dotty.tools.dotc.core.Names.TypeName
 import dotc.ast.Trees._
+import dotc.core.StdNames._
+
+import scala.annotation.tailrec
 
 
 object factories {
@@ -29,9 +32,13 @@ object factories {
       .filter(_ != "interface")
       .filter(_ != "case")
 
-  def path(sym: Symbol)(implicit ctx: Context): List[String] = sym match {
-    case sym if sym.name.decode.toString == "<root>" => Nil
-    case sym => path(sym.owner) :+ sym.name.show
+  def path(sym: Symbol)(implicit ctx: Context): List[String] = {
+    @tailrec def go(sym: Symbol, acc: List[String]): List[String] =
+      if (sym.isRoot)
+        acc
+      else
+        go(sym.owner, sym.name.mangledString :: acc)
+    go(sym, Nil)
   }
 
   def annotations(sym: Symbol)(implicit ctx: Context): List[String] =
