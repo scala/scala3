@@ -97,7 +97,10 @@ class TreeChecker extends Phase with SymTransformer {
   def phaseName: String = "Ycheck"
 
   def run(implicit ctx: Context): Unit = {
-    check(ctx.allPhases, ctx)
+    if (ctx.settings.YtestPickler.value && ctx.phase.prev.isInstanceOf[Pickler])
+      ctx.echo("Skipping Ycheck after pickling with -Ytest-pickler, the returned tree contains stale symbols")
+    else
+      check(ctx.allPhases, ctx)
   }
 
   private def previousPhases(phases: List[Phase])(implicit ctx: Context): List[Phase] = phases match {
