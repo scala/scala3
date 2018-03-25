@@ -170,14 +170,15 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => false
   }
 
-  /** Is this argument node of the form <expr> : _* ?
+  /** Is this argument node of the form <expr> : _*, or is it a reference to
+   *  such an argument ? The latter case can happen when an argument is lifted.
    */
   def isWildcardStarArg(tree: Tree)(implicit ctx: Context): Boolean = unbind(tree) match {
     case Typed(Ident(nme.WILDCARD_STAR), _) => true
     case Typed(_, Ident(tpnme.WILDCARD_STAR)) => true
-    case Typed(_, tpt: TypeTree) => tpt.hasType && tpt.tpe.isRepeatedParam
+    case Typed(_, tpt: TypeTree) => tpt.typeOpt.isRepeatedParam
     case NamedArg(_, arg) => isWildcardStarArg(arg)
-    case _ => false
+    case arg => arg.typeOpt.widen.isRepeatedParam
   }
 
   /** If this tree has type parameters, those.  Otherwise Nil.
