@@ -181,6 +181,7 @@ Rules
 
 
 4. Eta expansion
+
    if `def f(erased x: T): U` then `f: (erased T) => U`.
 
 
@@ -192,6 +193,7 @@ Rules
 
 
 6. Overloading
+
    Method with `erased` parameters will follow the normal overloading constraints after erasure.
 
 
