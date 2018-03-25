@@ -9,34 +9,66 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 /**
-  * Created by wojtekswiderski on 2018-01-24.
+  * MiniPhase to transform s and raw string interpolators from using StringContext to string
+  * concatenation. Since string concatenation uses the Java String builder, we get a performance
+  * improvement in terms of these two interpolators.
+  *
+  * More info here:
+  * https://medium.com/@dkomanov/scala-string-interpolation-performance-21dc85e83afd
   */
 class StringInterpolatorOpt extends MiniPhase {
   import tpd._
 
   override def phaseName: String = "stringInterpolatorOpt"
 
+  /** Matches a list of constant literals */
+  private object Literals {
+    def unapply(tree: SeqLiteral)(implicit ctx: Context): Option[List[Literal]] = {
+      tree.elems match {
+        case literals if literals.forall(_.isInstanceOf[Literal]) =>
+          Some(literals.map(_.asInstanceOf[Literal]))
+        case _ => None
+      }
+    }
+  }
+
+  /** Matches an s or raw string interpolator */
+  private object SOrRawInterpolator {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Literal], List[Tree])] = {
+      if (tree.symbol.eq(defn.StringContextRaw) || tree.symbol.eq(defn.StringContextS)) {
+        tree match {
+          case Apply(Select(Apply(strContextApply, List(Literals(strs))), _),
+          List(SeqLiteral(elems, _)))
+            if strContextApply.symbol.eq(defn.StringContextModule_apply) &&
+              elems.length == strs.length - 1 =>
+            Some(strs, elems)
+          case _ => None
+        }
+      } else None
+    }
+  }
+
+  /**
+    * Match trees that resemble s and raw string interpolations. In the case of the s
+    * interpolator, escapes the string constants. Exposes the string constants as well as
+    * the variable references.
+    */
   private object StringContextIntrinsic {
-    def unapply(tree: Apply)(implicit ctx: Context): Option[(List[Tree], List[Tree])] = {
+    def unapply(tree: Apply)(implicit ctx: Context): Option[(List[Literal], List[Tree])] = {
       tree match {
-        case Apply(Select(Apply(Select(ident, nme.apply), List(SeqLiteral(strs, _))), fn),
-            List(SeqLiteral(elems, _))) =>
-          if (ident.symbol.eq(defn.StringContextModule) && strs.forall(_.isInstanceOf[Literal])
-              && elems.length == strs.length - 1) {
-            if (fn == nme.raw_) Some(strs, elems)
-            else if (fn == nme.s) {
-              try {
-                val escapedStrs = strs.mapConserve { str =>
-                  val strValue = str.asInstanceOf[Literal].const.stringValue
-                  val escapedValue = StringContext.processEscapes(strValue)
-                  cpy.Literal(str)(Constant(escapedValue))
-                }
-                Some(escapedStrs, elems)
-              } catch {
-                case _: StringContext.InvalidEscapeException => None
+        case SOrRawInterpolator(strs, elems) =>
+          if (tree.symbol == defn.StringContextRaw) Some(strs, elems)
+          else { // tree.symbol == defn.StringContextS
+            try {
+              val escapedStrs = strs.map { str =>
+                val escapedValue = StringContext.processEscapes(str.const.stringValue)
+                cpy.Literal(str)(Constant(escapedValue))
               }
-            } else None
-          } else None
+              Some(escapedStrs, elems)
+            } catch {
+              case _: StringContext.InvalidEscapeException => None
+            }
+          }
         case _ => None
       }
     }
@@ -44,17 +76,17 @@ class StringInterpolatorOpt extends MiniPhase {
 
   override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
     tree match {
-      case StringContextIntrinsic(strs: List[Tree], elems: List[Tree]) =>
+      case StringContextIntrinsic(strs: List[Literal], elems: List[Tree]) =>
         val stri = strs.iterator
         val elemi = elems.iterator
-        var result = stri.next
+        var result: Tree = stri.next
         def concat(tree: Tree): Unit = {
           result = result.select(defn.String_+).appliedTo(tree)
         }
         while (elemi.hasNext) {
           concat(elemi.next)
           val str = stri.next
-          if (!str.asInstanceOf[Literal].const.stringValue.isEmpty) concat(str)
+          if (!str.const.stringValue.isEmpty) concat(str)
         }
         result
       case _ => tree

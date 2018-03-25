@@ -9,15 +9,15 @@ class StringInterpolatorOptTest extends DottyBytecodeTest {
   @Test def testRawInterpolator = {
     val source =
       """
-                   |class Foo {
-                   |  val one = 1
-                   |  val two = "two"
-                   |  val three = 3.0
-                   |
-                   |  def meth1: String = raw"$one plus $two$three\n"
-                   |  def meth2: String = "" + one + " plus " + two + three + "\\n"
-                   |}
-                 """.stripMargin
+        |class Foo {
+        |  val one = 1
+        |  val two = "two"
+        |  val three = 3.0
+        |
+        |  def meth1: String = raw"$one plus $two$three\n"
+        |  def meth2: String = "" + one + " plus " + two + three + "\\n"
+        |}
+      """.stripMargin
 
     checkBCode(source) { dir =>
       val clsIn   = dir.lookupName("Foo.class", directory = false).input
@@ -37,15 +37,15 @@ class StringInterpolatorOptTest extends DottyBytecodeTest {
   @Test def testSInterpolator = {
     val source =
       """
-                   |class Foo {
-                   |  val one = 1
-                   |  val two = "two"
-                   |  val three = 3.0
-                   |
-                   |  def meth1: String = s"$one plus $two$three\n"
-                   |  def meth2: String = "" + one + " plus " + two + three + "\n"
-                   |}
-                 """.stripMargin
+         |class Foo {
+         |  val one = 1
+         |  val two = "two"
+         |  val three = 3.0
+         |
+         |  def meth1: String = s"$one plus $two$three\n"
+         |  def meth2: String = "" + one + " plus " + two + three + "\n"
+         |}
+      """.stripMargin
 
     checkBCode(source) { dir =>
       val clsIn   = dir.lookupName("Foo.class", directory = false).input
