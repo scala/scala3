@@ -45,7 +45,7 @@ object TestConfiguration {
   }
 
   // Ideally should be Ycheck:all
-  val yCheckOptions = Array("-Ycheck:firstTransform,refchecks,splitter,arrayConstructors,erasure,capturedVars,getClass,elimStaticThis,labelDef")
+  val yCheckOptions = Array("-Ycheck:all")
 
   val basicDefaultOptions = checkOptions ++ noCheckOptions ++ yCheckOptions
   val defaultUnoptimised = TestFlags(classPath, runClassPath, basicDefaultOptions)
