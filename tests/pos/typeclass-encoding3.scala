@@ -8,6 +8,7 @@
 
       Extension traits of different kinds cannot be mixed.
       Extension traits can extend normal traits.
+      Extension traits can extend extension traits, but only with the same type parameters
       Normal traits cannot extend extension traits.
 */
 object runtime {
@@ -71,6 +72,7 @@ object runtime {
     - trait / trait with common / extension trait
     - extending class / extension
     - monomorphic / generic implementation
+    - context-bound / direct use of type
 
     trait HasLength {
       def length: Int
@@ -160,6 +162,9 @@ object runtime {
       impl.longest.length < impl.limit
     }
 
+    def length1(x: HasLength) = x.length
+    def lengthOK1(x: HasBoundedLength) = x.length < x.common.limit
+
     val xs = Array(1, 2, 3)
     val c1 = new C1(xs)
     val cg1 = new CG1(xs)
@@ -209,6 +214,18 @@ object runtime {
     longestLengthOK(cg3)
     longestLengthOK(d3)
     longestLengthOK(cg3)
+
+    length1(c1)
+    length1(cg1)
+    length1(c2)
+    length1(cg2)
+    length1(c3)
+    length1(cg3)
+
+    lengthOK1(c2)
+    lengthOK1(cg2)
+    lengthOK1(c3)
+    lengthOK1(cg3)
 */
 object hasLength {
   import runtime._
@@ -386,6 +403,9 @@ object hasLength {
     impl.longest.length < impl.limit
   }
 
+  def length1(x: HasLength) = x.length
+  def lengthOK1(x: HasBoundedLength) = x.length < x.common.limit
+
   val xs = Array(1, 2, 3)
   val c1 = new C1(xs)
   val cg1 = new CG1(xs)
@@ -435,6 +455,18 @@ object hasLength {
   longestLengthOK[CG3[Int]]
   longestLengthOK[D3]
   longestLengthOK[DG3[Int]]
+
+  length1(c1)
+  length1(cg1)
+  length1(c2)
+  length1(cg2)
+  length1(c3)
+  length1(cg3)
+
+  lengthOK1(c2)
+  lengthOK1(cg2)
+  lengthOK1(c3)
+  lengthOK1(cg3)
 }
 /** 1. Simple type classes with monomorphic implementations and direct extensions.
 
@@ -630,8 +662,7 @@ object ord {
       }
     }
   }
-
-  implicit def listOrd[T](implicit $ev: Ord.Impl[T]): ListOrd[T] =
+  implicit def ListOrd[T](implicit $ev: Ord.Impl[T]): ListOrd[T] =
     new ListOrd[T]
 
   def min[T](x: T, y: T)(implicit $ev: Ord.Impl[T]): T =
@@ -649,7 +680,7 @@ object ord {
 
 /** 3. Higher-kinded type classes
 
-    extension trait Functor[A] extends TypeClass1 {
+    extension trait Functor[A] {
       def map[B](f: A => B): This[B]
 
       common def pure[A](x: A): This[A]
