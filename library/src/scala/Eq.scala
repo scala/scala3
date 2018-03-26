@@ -55,4 +55,7 @@ object Eq extends Eq[Any, Any] {
   implicit def eqNumFloat : Eq[Number, Float]  = Eq
   implicit def eqDoubleNum: Eq[Double, Number] = Eq
   implicit def eqNumDouble: Eq[Number, Double] = Eq
+
+  implicit def eqSBoolJBool: Eq[Boolean, java.lang.Boolean] = Eq
+  implicit def eqJBoolSBool: Eq[java.lang.Boolean, Boolean] = Eq
 }
