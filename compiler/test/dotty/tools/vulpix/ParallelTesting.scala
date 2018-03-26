@@ -284,30 +284,28 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     /** A single `Runnable` that prints a progress bar for the curent `Test` */
-    private def createProgressMonitor: Runnable = new Runnable {
-      def run(): Unit = {
-        val start = System.currentTimeMillis
-        var tCompiled = testSourcesCompleted
-        while (tCompiled < sourceCount) {
-          val timestamp = (System.currentTimeMillis - start) / 1000
-          val progress = (tCompiled.toDouble / sourceCount * 40).toInt
+    private def createProgressMonitor: Runnable = () => {
+      val start = System.currentTimeMillis
+      var tCompiled = testSourcesCompleted
+      while (tCompiled < sourceCount) {
+        val timestamp = (System.currentTimeMillis - start) / 1000
+        val progress = (tCompiled.toDouble / sourceCount * 40).toInt
 
-          realStdout.print(
-            "[" + ("=" * (math.max(progress - 1, 0))) +
+        realStdout.print(
+          "[" + ("=" * (math.max(progress - 1, 0))) +
             (if (progress > 0) ">" else "") +
             (" " * (39 - progress)) +
             s"] completed ($tCompiled/$sourceCount, ${timestamp}s)\r"
-          )
-
-          Thread.sleep(100)
-          tCompiled = testSourcesCompleted
-        }
-        // println, otherwise no newline and cursor at start of line
-        realStdout.println(
-          s"[=======================================] completed ($sourceCount/$sourceCount, " +
-          s"${(System.currentTimeMillis - start) / 1000}s)  "
         )
+
+        Thread.sleep(100)
+        tCompiled = testSourcesCompleted
       }
+      // println, otherwise no newline and cursor at start of line
+      realStdout.println(
+        s"[=======================================] completed ($sourceCount/$sourceCount, " +
+          s"${(System.currentTimeMillis - start) / 1000}s)  "
+      )
     }
 
     /** Wrapper function to make sure that the compiler itself did not crash -
