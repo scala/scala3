@@ -207,8 +207,11 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           }
         }
         checkName(claszSymbol)
-        if (int.symHelper(claszSymbol).isModuleClass)
-          checkName(claszSymbol.companionModule)
+        if (int.symHelper(claszSymbol).isModuleClass) {
+          val companionModule = claszSymbol.companionModule
+          if (int.symHelper(companionModule.owner).isPackageClass)
+            checkName(companionModule)
+        }
 
         // -------------- mirror class, if needed --------------
         val mirrorC =
