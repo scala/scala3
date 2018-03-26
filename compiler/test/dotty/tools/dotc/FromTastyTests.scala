@@ -79,7 +79,6 @@ class FromTastyTests extends ParallelTesting {
 
          "t7223.scala",
          "t5428.scala",
-         "viewtest.scala",
 
          // Missing position
          "Course-2002-13.scala",

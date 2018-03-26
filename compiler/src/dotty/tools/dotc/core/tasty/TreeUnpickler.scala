@@ -251,9 +251,9 @@ class TreeUnpickler(reader: TastyReader,
               val space = readType()
               sname match {
                 case SignedName(name, sig) =>
-                  TermRef(prefix, name, space.decl(name).atSignature(sig))
+                  TermRef(prefix, name, space.decl(name).asSeenFrom(prefix).atSignature(sig))
                 case name =>
-                  TermRef(prefix, name, space.decl(name))
+                  TermRef(prefix, name, space.decl(name).asSeenFrom(prefix))
               }
             case TYPEREFin =>
               val name = readName().toTypeName
@@ -261,7 +261,7 @@ class TreeUnpickler(reader: TastyReader,
               val space = readType()
               space.decl(name) match {
                 case symd: SymDenotation if prefix.isArgPrefixOf(symd.symbol) => TypeRef(prefix, symd.symbol)
-                case _ => TypeRef(prefix, name, space.decl(name))
+                case _ => TypeRef(prefix, name, space.decl(name).asSeenFrom(prefix))
               }
             case REFINEDtype =>
               var name: Name = readName()
