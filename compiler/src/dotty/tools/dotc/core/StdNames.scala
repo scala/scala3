@@ -440,6 +440,7 @@ object StdNames {
     val in: N                   = "in"
     val info: N                 = "info"
     val inlinedEquals: N        = "inlinedEquals"
+    val internal: N             = "internal"
     val isArray: N              = "isArray"
     val isDefinedAt: N          = "isDefinedAt"
     val isDefinedAtImpl: N      = "$isDefinedAt"
