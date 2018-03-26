@@ -2,7 +2,7 @@ import dotty.tools.dotc.quoted.Toolbox._
 import scala.quoted._
 import Macros._
 
-class Test {
+object Test {
 
   inline def assert(expr: => Boolean): Unit =
     ~ assertImpl('(expr))

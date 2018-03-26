@@ -510,6 +510,8 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
             tree.rhs match {
               case InlineSplice(_) =>
+                if (!tree.symbol.isStatic)
+                  ctx.error("Inline macro method must be a static method.", tree.pos)
                 markDef(tree)
                 nested(isQuote = true).transform(tree)
                   // check macro code as it if appeared in a quoted context
