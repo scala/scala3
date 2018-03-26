@@ -48,6 +48,6 @@ translates to
     }
 
 where the result type parameter `R'` is an upper approximation of the
-true result type `R` that does not mention any of the parameters `e1, ..., eN`.
+true result type `R` that does not mention any of the parameters `x1, ..., xN`.
 
 
