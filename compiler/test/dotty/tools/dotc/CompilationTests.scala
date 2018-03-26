@@ -316,6 +316,33 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/neg", defaultOptimised).checkExpectedErrors()
   }
 
+  @Test def testPlugins: Unit = {
+    val pluginFile = "plugin.properties"
+
+    // 1. hack with absolute path for -Xplugin
+    // 2. copy `pluginFile` to destination
+    def compileFilesInDir(dir: String): CompilationTest = {
+      val outDir = defaultOutputDir + "testPlugins/"
+      val sourceDir = new JFile(dir)
+
+      val dirs = sourceDir.listFiles.foldLeft(List.empty[JFile]) { case (dirs, f) =>
+        if (f.isDirectory) f :: dirs else dirs
+      }
+
+      val targets = dirs.map { dir =>
+        val compileDir = createOutputDirsForDir(dir, sourceDir, outDir)
+        import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+        Files.copy(dir.toPath.resolve(pluginFile), compileDir.toPath.resolve(pluginFile), REPLACE_EXISTING)
+        val flags = TestFlags(classPath, noCheckOptions) and ("-Xplugin:" + compileDir.getAbsolutePath)
+        SeparateCompilationSource("testPlugins", dir, flags, compileDir)
+      }
+
+      new CompilationTest(targets)
+    }
+
+    compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
+  }
+
   private val (compilerSources, backendSources, backendJvmSources) = {
     val compilerDir = Paths.get("compiler/src")
     val compilerSources0 = sources(Files.walk(compilerDir))

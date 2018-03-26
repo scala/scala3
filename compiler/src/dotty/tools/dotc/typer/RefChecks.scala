@@ -913,7 +913,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def phaseName: String = "refchecks"
 
   // Needs to run after ElimRepeated for override checks involving varargs methods
-  override def runsAfter = Set(classOf[ElimRepeated])
+  override def runsAfter = Set(ElimRepeated.name)
 
   private var LevelInfo: Store.Location[OptLevelInfo] = _
   private def currentLevel(implicit ctx: Context): OptLevelInfo = ctx.store(LevelInfo)

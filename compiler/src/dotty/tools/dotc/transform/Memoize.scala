@@ -17,6 +17,10 @@ import NameOps._
 import Flags._
 import Decorators._
 
+object Memoize {
+  val name = "memoize"
+}
+
 /** Provides the implementations of all getters and setters, introducing
  *  fields to hold the value accessed by them.
  *  TODO: Make LazyVals a part of this phase?
@@ -32,10 +36,10 @@ import Decorators._
  *    <accessor> <mods> def x_=(y: T): Unit = ()
  *      --> <accessor> <mods> def x_=(y: T): Unit = x = y
  */
- class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
+class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
-  override def phaseName = "memoize"
+  override def phaseName = Memoize.name
 
   /* Makes sure that, after getters and constructors gen, there doesn't
    * exist non-deferred definitions that are not implemented. */
@@ -64,7 +68,7 @@ import Decorators._
    *  class that contains the concrete getter rather than the trait
    *  that defines it.
    */
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Mixin])
+  override def runsAfter = Set(Mixin.name)
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
     val sym = tree.symbol

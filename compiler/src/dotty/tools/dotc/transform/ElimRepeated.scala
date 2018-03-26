@@ -22,13 +22,17 @@ import Names.Name
 import NameOps._
 import TypeUtils._
 
+object ElimRepeated {
+  val name = "elimRepeated"
+}
+
 /** A transformer that removes repeated parameters (T*) from all types, replacing
  *  them with Seq types.
  */
 class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   import ast.tpd._
 
-  override def phaseName = "elimRepeated"
+  override def phaseName = ElimRepeated.name
 
   override def changesMembers = true // the phase adds vararg bridges
 

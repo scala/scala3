@@ -42,7 +42,7 @@ object MegaPhase {
     /** List of names of phases that should have finished their processing of all compilation units
      *  before this phase starts
      */
-    def runsAfterGroupsOf: Set[Class[_ <: Phase]] = Set.empty
+    def runsAfterGroupsOf: Set[String] = Set.empty
 
     final override def relaxedTyping = superPhase.relaxedTyping
 

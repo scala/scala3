@@ -48,10 +48,10 @@ import ResolveSuper._
 class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
-  override def phaseName: String = "resolveSuper"
+  override def phaseName: String = ResolveSuper.name
 
-  override def runsAfter = Set(classOf[ElimByName], // verified empirically, need to figure out what the reason is.
-                               classOf[AugmentScala2Traits])
+  override def runsAfter = Set(ElimByName.name, // verified empirically, need to figure out what the reason is.
+                               AugmentScala2Traits.name)
 
   override def changesMembers = true // the phase adds super accessors and method forwarders
 
@@ -95,6 +95,8 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
 }
 
 object ResolveSuper {
+  val name = "resolveSuper"
+
   /** Returns the symbol that is accessed by a super-accessor in a mixin composition.
    *
    *  @param base       The class in which everything is mixed together

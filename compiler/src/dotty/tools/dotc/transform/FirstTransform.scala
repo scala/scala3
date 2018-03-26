@@ -24,6 +24,10 @@ import NameOps._
 import NameKinds.{AvoidClashName, OuterSelectName}
 import StdNames._
 
+object FirstTransform {
+  val name = "firstTransform"
+}
+
 
 /** The first tree transform
  *   - ensures there are companion objects for all classes except module classes
@@ -39,7 +43,7 @@ import StdNames._
 class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   import ast.tpd._
 
-  override def phaseName = "firstTransform"
+  override def phaseName = FirstTransform.name
 
   private[this] var addCompanionPhases: List[NeedsCompanions] = _
 

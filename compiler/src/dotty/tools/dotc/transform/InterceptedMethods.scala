@@ -27,6 +27,10 @@ import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import StdNames._
 import Phases.Phase
 
+object InterceptedMethods {
+  val name = "intercepted"
+}
+
 /** Replace member references as follows:
   *
   * - `x != y` for != in class Any becomes `!(x == y)` with == in class Any.
@@ -38,7 +42,7 @@ import Phases.Phase
 class InterceptedMethods extends MiniPhase {
   import tpd._
 
-  override def phaseName: String = "intercepted"
+  override def phaseName: String = InterceptedMethods.name
 
   private[this] var primitiveGetClassMethods: Set[Symbol] = _
 

@@ -16,6 +16,10 @@ import config.Printers.typr
 import Symbols._, TypeUtils._, SymUtils._
 import reporting.diagnostic.messages.{NotAMember, SuperCallsNotAllowedInline}
 
+object PostTyper {
+  val name = "posttyper"
+}
+
 /** A macro transform that runs immediately after typer and that performs the following functions:
  *
  *  (1) Add super accessors and protected accessors (@see SuperAccessors)
@@ -55,7 +59,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
   import tpd._
 
   /** the following two members override abstract members in Transform */
-  override def phaseName: String = "posttyper"
+  override def phaseName: String = PostTyper.name
 
   override def changesMembers = true // the phase adds super accessors and synthetic methods
 

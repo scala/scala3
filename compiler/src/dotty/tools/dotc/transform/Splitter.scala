@@ -6,12 +6,16 @@ import ast.Trees._
 import core._
 import Contexts._, Types._, Decorators._, Denotations._, Symbols._, SymDenotations._, Names._
 
+object Splitter {
+  val name = "splitter"
+}
+
 /** Distribute applications into Block and If nodes
  */
 class Splitter extends MiniPhase {
   import ast.tpd._
 
-  override def phaseName: String = "splitter"
+  override def phaseName: String = Splitter.name
 
   /** Distribute arguments among splitted branches */
   def distribute(tree: GenericApply[Type], rebuild: (Tree, List[Tree]) => Context => Tree)(implicit ctx: Context) = {
