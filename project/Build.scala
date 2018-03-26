@@ -345,6 +345,13 @@ object Build {
       javacOptions in (Compile, doc) --= Seq("-Xlint:unchecked", "-Xlint:deprecation")
     )
 
+  private lazy val dottydocClasspath = Def.task {
+    val dottyLib = (packageAll in `dotty-compiler`).value("dotty-library")
+    val dottyInterfaces = (packageAll in `dotty-compiler`).value("dotty-interfaces")
+    val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(File.pathSeparator)
+    dottyLib + File.pathSeparator + dottyInterfaces + File.pathSeparator + otherDeps
+  }
+    
   // Settings shared between dotty-doc and dotty-doc-bootstrapped
   lazy val dottyDocSettings = Seq(
     baseDirectory in (Compile, run) := baseDirectory.value / "..",
@@ -363,10 +370,7 @@ object Build {
       // Used by sbt-dotty to resolve the latest nightly
       val majorVersion = baseVersion.take(baseVersion.lastIndexOf('.'))
       IO.write(file("./docs/_site/versions/latest-nightly-base"), majorVersion)
-
-      val dottyLib = (packageAll in `dotty-compiler`).value("dotty-library")
-      val dottyInterfaces = (packageAll in `dotty-compiler`).value("dotty-interfaces")
-      val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
+      
       val sources =
         (unmanagedSources in (Compile, compile)).value ++
           (unmanagedSources in (`dotty-compiler`, Compile)).value
@@ -375,7 +379,7 @@ object Build {
         "-project", "Dotty",
         "-project-version", dottyVersion,
         "-project-url", dottyGithubUrl,
-        "-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps"
+        "-classpath", dottydocClasspath.value
       )
       (runMain in Compile).toTask(
         s""" dotty.tools.dottydoc.Main ${args.mkString(" ")} ${sources.mkString(" ")}"""
@@ -384,10 +388,7 @@ object Build {
 
     dottydoc := Def.inputTaskDyn {
       val args: Seq[String] = spaceDelimited("<arg>").parsed
-      val dottyLib = (packageAll in `dotty-compiler`).value("dotty-library")
-      val dottyInterfaces = (packageAll in `dotty-compiler`).value("dotty-interfaces")
-      val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
-      val cp: Seq[String] = Seq("-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps")
+      val cp: Seq[String] = Seq("-classpath", dottydocClasspath.value)
         (runMain in Compile).toTask(s""" dotty.tools.dottydoc.Main ${cp.mkString(" ")} """ + args.mkString(" "))
     }.evaluated,
 
