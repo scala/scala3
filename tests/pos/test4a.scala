@@ -7,10 +7,10 @@ class O[X]() {
     val j:I[X] = null;
 }
 
-object o extends O[C]() {
+object p extends O[C]() {
   def c: C = c;
   def main = {
-    o.j.foo(c);
+    p.j.foo(c);
   }
 }
 
