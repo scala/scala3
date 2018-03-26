@@ -55,7 +55,4 @@ object Test {
     println(f3(Array(1L)))
     println(f3(null))
   }
-
-  def foo(x: Any): Boolean =
-    x.isInstanceOf[List[String]]  // error
 }

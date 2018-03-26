@@ -5,6 +5,4 @@ object Test {
     case _: T with Marker      => // scalac emits a warning
     case _ =>
   }
-
-  def bar(x: Any) = x.isInstanceOf[List[String]]  // error
 }

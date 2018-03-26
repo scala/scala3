@@ -7,7 +7,4 @@ object IsInstanceOfClassTag {
       case _ => None
     }
   }
-
-  def foo(x: Any): Boolean =
-    x.isInstanceOf[List[String]]  // error
 }

@@ -34,7 +34,4 @@ object Test {
   }
 
   eval(exp)(Env.empty)
-
-  def foo(x: Any): Boolean =
-    x.isInstanceOf[List[String]]  // error
 }

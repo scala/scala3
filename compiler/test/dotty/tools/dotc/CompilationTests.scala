@@ -78,6 +78,7 @@ class CompilationTests extends ParallelTesting {
     ) +
     compileFilesInDir("tests/pos-special/spec-t5545", defaultOptions) +
     compileFilesInDir("tests/pos-special/strawman-collections", defaultOptions) +
+    compileFilesInDir("tests/pos-special/isInstanceOf", defaultOptions.and("-Xfatal-warnings")) +
     compileFile("scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
     compileFile("scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
     compileList(

@@ -5,7 +5,4 @@ class Test {
     case _: List[Int @unchecked] => 5
     case _: List[Int] @unchecked => 5
   }
-
-  def foo(x: Any): Boolean =
-    x.isInstanceOf[List[String]]  // error
 }

@@ -14,7 +14,4 @@ class C[T] {
   z match {
     case x: F[T] =>
   }
-
-  def foo(x: Any): Boolean =
-    x.isInstanceOf[List[String]]  // error
 }

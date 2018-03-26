@@ -5,7 +5,4 @@ object p {
     case OK [T](x: T) extends Result[T, Nothing]
     case Err[E](e: E) extends Result[Nothing, E]
   }
-
-  def foo(x: Any): Boolean =
-    x.isInstanceOf[List[String]]  // error
 }
