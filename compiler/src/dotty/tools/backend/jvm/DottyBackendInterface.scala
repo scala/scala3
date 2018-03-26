@@ -972,7 +972,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         case tp =>
           ctx.warning(
             s"an unexpected type representation reached the compiler backend while compiling $currentUnit: $tp. " +
-              "If possible, please file a bug on issues.scala-lang.org.")
+              "If possible, please file a bug on https://github.com/lampepfl/dotty/issues")
 
           tp match {
             case tp: ThisType if tp.cls == ArrayClass => ObjectReference.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
