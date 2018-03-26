@@ -549,7 +549,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         if (inst.exists) sigName(inst) else tpnme.Uninstantiated
       case tp: TypeProxy =>
         sigName(tp.underlying)
-      case _: ErrorType | WildcardType =>
+      case _: ErrorType | WildcardType | NoType =>
         tpnme.WILDCARD
       case tp: WildcardType =>
         sigName(tp.optBounds)
