@@ -1,56 +1,59 @@
 /*
   [T : M]  =  [T] ... (implicit ev: Injectable[T, M])       if M is a normal trait
-           =  [T] ... (implicit ev: M.Impl[T])              if M is an extension trait
+           =  [T] ... (implicit ev: M.Impl[T])              if M is a trait with common members
 
       M.Impl[T] = Common { type This = T }
       M.Impl[T[_]] = Common { type This = T }
       ...
 
-      Extension traits of different kinds cannot be mixed.
-      Extension traits can extend normal traits.
-      Extension traits can extend extension traits, but only with the same type parameters
-      Normal traits cannot extend extension traits.
+      - An extension trait is a trait that uses This or a trait inheriting an extension trait.
+      - The kind of `This` is the kind of the extension trait.
+      - Extension traits of different kinds cannot inherit each other and cannot be mixed using `with`.
+      - A class implementing extension traits fixes the maning of `This`.
+      - Such a class cannot be extended by classes that implement other extension traits.
 */
 object runtime {
+
+  trait Injector {
+    /** The implementating type */
+    type This
+
+    /** The implemented trait */
+    type Instance
+
+    /** The implementation via type `T` for this trait */
+    implicit def inject(x: This): Instance
+  }
+
+  trait IdentityInjector extends Injector {
+    def inject(x: This): Instance = x.asInstanceOf
+  }
+
+  trait SubtypeInjector[T] extends Injector {
+    type This = T
+    type Instance = T
+    def inject(x: T): T = x
+  }
+
+  type Injectable[T, +U] = Injector { type This = T; type Instance <: U }
+
+  def selfInject[U, T <: U]: Injectable[T, U] = new SubtypeInjector[T] {}
 
   trait TypeClass {
     /** The companion object of the implementing type */
     val `common`: TypeClass.Common
   }
 
-  trait Injector {
-    type This
-    type Instance
-    implicit def inject(x: This): Instance
-  }
-
-  type Injectable[T, +U] = Injector { type This = T; type Instance <: U }
-
-  implicit def selfInject[U, T <: U]: Injectable[T, U] =
-    new Injector{
-      type This = T
-      type Instance = U
-      implicit def inject(x: This): Instance = x
-    }
-
   object TypeClass {
 
     /** Base trait for companion objects of all implementations of this typeclass */
     trait Common extends Injector { self =>
-
-      /** The implementating type */
-      type This
-
       /** The implemented typeclass */
-      type Instance <: TypeClass { val `common`: self.type }
-
-      /** Create instances of typeclass from instances of the implementing type */
-      implicit def inject(x: This): Instance
+      type Instance <: TypeClass
     }
 
     /** Base trait for the companion objects of type classes themselves  */
     trait Companion {
-
       /** The `Common` base trait defining common (static) operations of this typeclass */
       type Common <: TypeClass.Common
 
@@ -62,9 +65,8 @@ object runtime {
     }
   }
 
-  implicit def injectTypeClass[From, U](x: From)
-    (implicit ev: Injector { type This = From }): ev.Instance =
-      ev.inject(x)
+  implicit def applyInjector[From, U](x: From)(implicit ev: Injector { type This = From }): ev.Instance =
+    ev.inject(x)
 }
 
 /** 0. All combinations of
@@ -235,13 +237,14 @@ object hasLength {
     def length: Int
   }
 
-  trait HasBoundedLength extends HasLength {
+  trait HasBoundedLength extends HasLength with TypeClass {
     val `common`: HasBoundedLength.Common
     import `common`._
   }
 
-  object HasBoundedLength {
-    trait Common {
+  object HasBoundedLength extends TypeClass.Companion {
+    trait Common extends TypeClass.Common {
+      type Instance <: HasBoundedLength
       def limit: Int
     }
   }
@@ -252,7 +255,7 @@ object hasLength {
   }
 
   object HasBoundedLengthX extends TypeClass.Companion {
-    trait  Common extends HasBoundedLength.Common with TypeClass.Common { self =>
+    trait Common extends HasBoundedLength.Common with TypeClass.Common { self =>
       type Instance <: HasBoundedLengthX { val `common`: self.type }
       def limit: Int
       def longest: This
@@ -271,50 +274,46 @@ object hasLength {
     val `common`: C2Common = C2
     import `common`._
   }
-  class C2Common extends HasBoundedLength.Common {
+  abstract class C2Common extends HasBoundedLength.Common {
     def limit = 100
   }
-  object C2 extends C2Common
+  object C2 extends C2Common with SubtypeInjector[C2]
 
   class CG2[T](xs: Array[T]) extends CG1(xs) with HasBoundedLength {
     val `common`: CG2Common[T] = CG2[T]
     import `common`._
   }
-  class CG2Common[T] extends HasBoundedLength.Common {
+  abstract class CG2Common[T] extends HasBoundedLength.Common {
     def limit = 100
   }
   object CG2 {
-    def apply[T] = new CG2Common[T]
+    def apply[T] = new CG2Common[T] with SubtypeInjector[CG2[T]]
   }
 
   class C3(xs: Array[Int]) extends C2(xs) with HasBoundedLengthX {
     override val `common`: C3Common = C3
     import `common`._
   }
-  class C3Common extends C2Common with HasBoundedLengthX.Common { self =>
+  abstract class C3Common extends C2Common with HasBoundedLengthX.Common { self =>
     type This = C3
     type Instance = C3 { val `common`: self.type }
-    def inject(x: This): Instance = x.asInstanceOf
 
     def longest = new C3(new Array[Int](limit))
   }
-  implicit object C3 extends C3Common
+  object C3 extends C3Common with IdentityInjector
 
   class CG3[T](xs: Array[T])(implicit tag: ClassTag[T]) extends CG2(xs) with HasBoundedLengthX {
     override val `common`: CG3Common[T] = CG3[T]
     import `common`._
   }
-  class CG3Common[T](implicit tag: ClassTag[T]) extends CG2Common[T] with HasBoundedLengthX.Common { self =>
+  abstract class CG3Common[T](implicit tag: ClassTag[T])  extends CG2Common[T] with HasBoundedLengthX.Common { self =>
     type This = CG3[T]
     type Instance = CG3[T] { val `common`: self.type }
-    def inject(x: This): Instance = x.asInstanceOf
-
     def longest = new CG3(new Array[T](limit))
   }
   object CG3 {
-    def apply[T](implicit tag: ClassTag[T]) = new CG3Common[T]
+    def apply[T](implicit tag: ClassTag[T]) = new CG3Common[T] with IdentityInjector
   }
-  implicit def CG3Common[T](implicit tag: ClassTag[T]): CG3Common[T] = CG3[T]
 
   class D1(val xs: Array[Int])
   class DG1[T](val xs: Array[T])
@@ -342,7 +341,7 @@ object hasLength {
   }
   implicit def DGHasLength[T]: DGHasLength[T] = new DGHasLength
 
-  implicit object DHasBoundedLength extends Injector with HasBoundedLength.Common { self =>
+  object DHasBoundedLength extends HasBoundedLength.Common { self =>
     type This = D2
     type Instance = HasBoundedLength
     def inject(x: D2) = new HasBoundedLength {
@@ -353,7 +352,7 @@ object hasLength {
     def limit = 100
   }
 
-  class DGHasBoundedLength[T] extends Injector with HasBoundedLength.Common { self =>
+  class DGHasBoundedLength[T] extends HasBoundedLength.Common { self =>
     type This = DG2[T]
     type Instance = HasBoundedLength
     def inject(x: DG2[T]) = new HasBoundedLength {
@@ -395,8 +394,8 @@ object hasLength {
   def lengthOK[T](x: T)(implicit ev: Injectable[T, HasBoundedLength]) =
     x.length < x.common.limit
 
-  def lengthOKX[T](x: T)(implicit ev: HasBoundedLengthX.Impl[T]) =
-    x.length < HasBoundedLengthX.impl[T].limit
+  def lengthOKX[T](x: T)(implicit ev: HasBoundedLength.Impl[T]) =
+    x.length < HasBoundedLength.impl[T].limit
 
   def longestLengthOK[T](implicit ev: HasBoundedLengthX.Impl[T], tag: ClassTag[T]) = {
     val impl = HasBoundedLengthX.impl[T]
@@ -406,7 +405,11 @@ object hasLength {
   def length1(x: HasLength) = x.length
   def lengthOK1(x: HasBoundedLength) = x.length < x.common.limit
 
+  def ctag[T](implicit tag: ClassTag[T]) = tag
+
   val xs = Array(1, 2, 3)
+  val intTag = implicitly[ClassTag[Int]]
+
   val c1 = new C1(xs)
   val cg1 = new CG1(xs)
   val c2 = new C2(xs)
@@ -421,38 +424,38 @@ object hasLength {
   val d3 = new D3(xs)
   val dg3 = new DG3(xs)
 
-  length(c1)
-  length(cg1)
-  length(c2)
-  length(cg2)
-  length(c3)(selfInject)
-  length(cg3)(selfInject)
+  length(c1)(selfInject)
+  length(cg1)(selfInject)
+  length(c2)(C2)
+  length(cg2)(CG2[Int])
+  length(c3)(C3)
+  length(cg3)(CG3[Int])
 
-  length(d1)
-  length(dg1)
-  length(d2)
-  length(dg2)
-  length(d3)
-  length(dg3)
+  length(d1)(DHasLength)
+  length(dg1)(DGHasLength[Int])
+  length(d2)(DHasBoundedLength)
+  length(dg2)(DGHasBoundedLength[Int])
+  length(d3)(DHasBoundedLengthX)
+  length(dg3)(DGHasBoundedLengthX[Int])
 
-  lengthOK(c2)
-  lengthOK(cg2)
-  lengthOK(c3)(selfInject)
-  lengthOK(cg3)(selfInject)
+  lengthOK(c2)(C2)
+  lengthOK(cg2)(CG2[Int])
+  lengthOK(c3)(C3)
+  lengthOK(cg3)(CG3[Int])
 
-  lengthOK(d2)
-  lengthOK(dg2)
-  lengthOK(d3)
-  lengthOK(dg3)
+  lengthOK(d2)(DHasBoundedLength)
+  lengthOK(dg2)(DGHasBoundedLength[Int])
+  lengthOK(d3)(DHasBoundedLengthX)
+  lengthOK(dg3)(DGHasBoundedLengthX[Int])
 
-  lengthOKX(c3)
-  lengthOKX(cg3)
+  lengthOKX(c3)(C3)
+  lengthOKX(cg3)(CG3[Int])
 
-  lengthOKX(d3)
-  lengthOKX(dg3)
+  lengthOKX(d3)(DHasBoundedLengthX)
+  lengthOKX(dg3)(DGHasBoundedLengthX[Int])
 
-  longestLengthOK[C3]
-  longestLengthOK[CG3[Int]]
+  longestLengthOK[C3](C3, ctag[C3])
+  longestLengthOK[CG3[Int]](CG3[Int], ctag[CG3[Int]])
   longestLengthOK[D3]
   longestLengthOK[DG3[Int]]
 
@@ -716,7 +719,7 @@ object runtime1 {
   object TypeClass1 {
     trait Common { self =>
       type This[X]
-      type Instance[X] <: TypeClass1[X] { val `common`: self.type }
+      type Instance[X] <: TypeClass1[X]
       def inject[A](x: This[A]): Instance[A]
     }
 
@@ -727,7 +730,7 @@ object runtime1 {
     }
   }
 
-  implicit def decorateTypeClass1[A, From[_]](x: From[A])
+  implicit def applyInjector1[A, From[_]](x: From[A])
       (implicit ev: TypeClass1.Common { type This = From }): ev.Instance[A] =
     ev.inject(x)
 }
