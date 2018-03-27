@@ -249,6 +249,9 @@ object Build {
     // Compile using the non-bootstrapped and non-published dotty
     managedScalaInstance := false,
     scalaInstance := {
+      import sbt.internal.inc.ScalaInstance
+      import sbt.internal.inc.classpath.ClasspathUtilities
+
       val updateReport = update.value
       var libraryJar = packageBin.in(`dotty-library`, Compile).value
       var compilerJar = packageBin.in(`dotty-compiler`, Compile).value
@@ -270,8 +273,18 @@ object Build {
 
       val allJars = libraryJar :: compilerJar :: otherDependencies.toList
       val classLoader = state.value.classLoaderCache(allJars)
-      new sbt.internal.inc.ScalaInstance(scalaVersion.value,
-        classLoader, libraryJar, compilerJar, allJars.toArray, None)
+      new ScalaInstance(
+        scalaVersion.value,
+        classLoader,
+        ClasspathUtilities.rootLoader, // FIXME: Should be a class loader which only includes the dotty-lib
+                                       // See: https://github.com/sbt/zinc/commit/9397b6aaf94ac3cfab386e3abd11c0ef9c2ceaff#diff-ea135f2f26f43e40ff045089da221e1e
+                                       // Should not matter, as it addresses an issue with `sbt run` that
+                                       // only occur when `(fork in run) := false`
+        libraryJar,
+        compilerJar,
+        allJars.toArray,
+        None
+      )
     }
   )
 
