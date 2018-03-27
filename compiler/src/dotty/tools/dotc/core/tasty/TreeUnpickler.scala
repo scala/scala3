@@ -424,7 +424,11 @@ class TreeUnpickler(reader: TastyReader,
         flags = flags | (if (tag == VALDEF) ModuleValCreationFlags else ModuleClassCreationFlags)
       if (ctx.owner.isClass) {
         if (tag == TYPEPARAM) flags |= Param
-        else if (tag == PARAM) flags |= ParamAccessor
+        else if (tag == PARAM) {
+          flags |= ParamAccessor
+          if (!rhsIsEmpty) // param alias
+            flags |= Method
+        }
       }
       else if (isParamTag(tag)) flags |= Param
       flags
@@ -775,7 +779,6 @@ class TreeUnpickler(reader: TastyReader,
             ValDef(tpt)
           }
           else {
-            sym.setFlag(Method)
             sym.info = ExprType(tpt.tpe)
             pickling.println(i"reading param alias $name -> $currentAddr")
             DefDef(Nil, Nil, tpt)
