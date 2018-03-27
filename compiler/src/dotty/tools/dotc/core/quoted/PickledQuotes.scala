@@ -32,12 +32,13 @@ object PickledQuotes {
   }
 
   /** Transform the expression into its fully spliced Tree */
-  def quotedExprToTree(expr: quoted.Expr[_])(implicit ctx: Context): Tree = expr match {
+  def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree = expr match {
     case expr: TastyExpr[_] => unpickleExpr(expr)
-    case expr: LiftedExpr[_] =>
-      if (expr.value.isInstanceOf[Class[_]]) // Should be a pattern match after #4198 is fixed
-        ref(defn.Predef_classOf).appliedToType(classToType(expr.value.asInstanceOf[Class[_]]))
-      else Literal(Constant(expr.value))
+    case expr: LiftedExpr[T] =>
+      expr.value match {
+        case value: Class[_] => ref(defn.Predef_classOf).appliedToType(classToType(value))
+        case value=> Literal(Constant(value))
+      }
     case expr: TreeExpr[Tree] @unchecked => expr.tree
     case expr: FunctionAppliedTo[_, _] =>
       functionAppliedTo(quotedExprToTree(expr.f), quotedExprToTree(expr.x))
