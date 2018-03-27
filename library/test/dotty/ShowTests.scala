@@ -73,4 +73,10 @@ class ShowTests {
     case object Foo
     assertEquals("Map(Foo -> \"Hello\")", Map(Foo -> "Hello").show)
   }
+
+  @Test def showArrays = {
+    assertEquals("Array()", Array[Int]().show)
+    assertEquals("Array(1)", Array(1).show)
+    assertEquals("Array(1, 2, 3)", Array(1, 2, 3).show)
+  }
 }
