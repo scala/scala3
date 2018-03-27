@@ -171,6 +171,8 @@ object PickledQuotes {
       else if (clazz == classOf[Float]) defn.FloatType
       else if (clazz == classOf[Double]) defn.DoubleType
       else defn.UnitType
+    } else if (clazz.isArray) {
+      defn.ArrayType.appliedTo(classToType(clazz.getComponentType))
     } else if (clazz.isMemberClass) {
       val name = clazz.getSimpleName.toTypeName
       val enclosing = classToType(clazz.getEnclosingClass)
