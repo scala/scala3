@@ -198,6 +198,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SCALA2X                             // Imported from Scala2.x
                   DEFAULTparameterized                // Method with default parameters
                   STABLE                              // Method that is assumed to be stable
+                  PARAMsetter                         // A setter without a body named `x_=` where `x` is pickled as a PARAM
                   Annotation
 
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term
@@ -226,8 +227,8 @@ Standard Section: "Positions" Assoc*
 object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion = 5
-  val MinorVersion = 1
+  val MajorVersion = 6
+  val MinorVersion = 0
 
   /** Tags used to serialize names */
   class NameTags {
@@ -268,6 +269,7 @@ object TastyFormat {
   // AST tags
   // Cat. 1:    tag
 
+  final val firstSimpleTreeTag = UNITconst
   final val UNITconst = 2
   final val FALSEconst = 3
   final val TRUEconst = 4
@@ -300,6 +302,7 @@ object TastyFormat {
   final val STABLE = 31
   final val MACRO = 32
   final val ERASED = 33
+  final val PARAMsetter = 34
 
   // Cat. 2:    tag Nat
 
@@ -417,7 +420,6 @@ object TastyFormat {
 
   final val HOLE = 255
 
-  final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHAREDterm
   final val firstASTTreeTag = THIS
   final val firstNatASTTreeTag = IDENT
@@ -425,7 +427,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= ERASED ||
+    firstSimpleTreeTag <= tag && tag <= PARAMsetter ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -463,6 +465,7 @@ object TastyFormat {
        | SCALA2X
        | DEFAULTparameterized
        | STABLE
+       | PARAMsetter
        | ANNOTATION
        | PRIVATEqualified
        | PROTECTEDqualified => true
@@ -518,6 +521,7 @@ object TastyFormat {
     case SCALA2X => "SCALA2X"
     case DEFAULTparameterized => "DEFAULTparameterized"
     case STABLE => "STABLE"
+    case PARAMsetter => "PARAMsetter"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"
