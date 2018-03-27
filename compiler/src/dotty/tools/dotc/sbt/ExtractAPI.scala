@@ -135,10 +135,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
    *  see the comment in the `RefinedType` case in `computeType`
    *  The cache key is (api of RefinedType#parent, api of RefinedType#refinedInfo).
     */
-  // FIXME: This should be a HashMap but cannot be until the fix for
-  // https://github.com/sbt/contraband/issues/119 is part of a released version
-  // of sbt, until then we cannot rely on the hashCode method of the api.* classes.
-  private[this] val refinedTypeCache = new mutable.ListMap[(api.Type, api.Definition), api.Structure]
+  private[this] val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition), api.Structure]
 
   private[this] val allNonLocalClassesInSrc = new mutable.HashSet[xsbti.api.ClassLike]
   private[this] val _mainClasses = new mutable.HashSet[String]
