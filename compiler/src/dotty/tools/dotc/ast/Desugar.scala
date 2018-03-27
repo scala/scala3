@@ -645,7 +645,7 @@ object desugar {
         .withPos(mdef.pos.startPos)
       val ValDef(selfName, selfTpt, _) = impl.self
       val selfMods = impl.self.mods
-      if (!selfTpt.isEmpty || selfName != nme.WILDCARD) ctx.error(ObjectMayNotHaveSelfType(mdef), impl.self.pos)
+      if (!selfTpt.isEmpty) ctx.error(ObjectMayNotHaveSelfType(mdef), impl.self.pos)
       val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(moduleName)), impl.self.rhs)
         .withMods(selfMods)
         .withPos(impl.self.pos orElse impl.pos.startPos)

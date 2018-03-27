@@ -8,6 +8,10 @@ import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTrans
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import TypeErasure.ErasedValueType, ValueClasses._
 
+object ElimErasedValueType {
+  val name = "elimErasedValueType"
+}
+
 /** This phase erases ErasedValueType to their underlying type.
  *  It also removes the synthetic cast methods u2evt$ and evt2u$ which are
  *  no longer needed afterwards.
@@ -19,9 +23,9 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer {
 
   import tpd._
 
-  override def phaseName: String = "elimErasedValueType"
+  override def phaseName: String = ElimErasedValueType.name
 
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
+  override def runsAfter = Set(Erasure.name)
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = sym match {
     case sym: ClassSymbol if sym is ModuleClass =>

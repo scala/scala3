@@ -33,7 +33,7 @@ object PickledQuotes {
   /** Transform the expression into its fully spliced Tree */
   def quotedExprToTree(expr: quoted.Expr[_])(implicit ctx: Context): Tree = expr match {
     case expr: TastyExpr[_] => unpickleExpr(expr)
-    case expr: ValueExpr[_] => Literal(Constant(expr.value))
+    case expr: LiftedExpr[_] => Literal(Constant(expr.value))
     case expr: TreeExpr[Tree] @unchecked => expr.tree
     case expr: FunctionAppliedTo[_, _] =>
       functionAppliedTo(quotedExprToTree(expr.f), quotedExprToTree(expr.x))

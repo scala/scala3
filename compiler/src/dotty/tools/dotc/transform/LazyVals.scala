@@ -40,7 +40,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   /** List of names of phases that should have finished processing of tree
     * before this phase starts processing same tree */
-  override def runsAfter = Set(classOf[Mixin])
+  override def runsAfter = Set(Mixin.name)
 
   override def changesMembers = true  // the phase adds lazy val accessors
 

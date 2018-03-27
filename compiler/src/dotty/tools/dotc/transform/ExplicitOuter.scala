@@ -37,18 +37,18 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
   import ExplicitOuter._
   import ast.tpd._
 
-  override def phaseName: String = "explicitOuter"
+  override def phaseName: String = ExplicitOuter.name
 
   /** List of names of phases that should have finished their processing of all compilation units
     * before this phase starts
     */
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[PatternMatcher], classOf[HoistSuperArgs])
+  override def runsAfter = Set(PatternMatcher.name, HoistSuperArgs.name)
 
   override def changesMembers = true // the phase adds outer accessors
 
   /** Add outer accessors if a class always needs an outer pointer */
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
-    case tp @ ClassInfo(_, cls, _, decls, _) if needsOuterAlways(cls) && !sym.is(JavaDefined) =>
+    case tp @ ClassInfo(_, cls, _, decls, _) if needsOuterAlways(cls) =>
       val newDecls = decls.cloneScope
       newOuterAccessors(cls).foreach(newDecls.enter)
       tp.derivedClassInfo(decls = newDecls)
@@ -56,7 +56,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
       tp
   }
 
-  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isClass
+  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isClass && !sym.is(JavaDefined)
 
   /** First, add outer accessors if a class does not have them yet and it references an outer this.
    *  If the class has outer accessors, implement them.
@@ -127,6 +127,8 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
 
 object ExplicitOuter {
   import ast.tpd._
+
+  val name = "explicitOuter"
 
   /** Ensure that class `cls` has outer accessors */
   def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit =

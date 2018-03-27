@@ -740,11 +740,10 @@ class Typer extends Namer
         // this can type the greatest set of admissible closures.
         val funType = pt.dealias
         (funType.argTypesLo.init, typeTree(funType.argTypesHi.last))
-      case SAMType(meth) =>
-        val mt @ MethodTpe(_, formals, restpe) = meth.info
+      case SAMType(sam @ MethodTpe(_, formals, restpe)) =>
         (formals,
-         if (mt.isResultDependent)
-           untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef)))
+         if (sam.isResultDependent)
+           untpd.DependentTypeTree(syms => restpe.substParams(sam, syms.map(_.termRef)))
          else
            typeTree(restpe))
       case tp: TypeParamRef =>
@@ -936,8 +935,8 @@ class Typer extends Namer
         meth1.tpe.widen match {
           case mt: MethodType =>
             pt match {
-              case SAMType(meth)
-              if !defn.isFunctionType(pt) && mt <:< meth.info =>
+              case SAMType(sam)
+              if !defn.isFunctionType(pt) && mt <:< sam =>
                 if (!isFullyDefined(pt, ForceDegree.all))
                   ctx.error(ex"result type of closure is an underspecified SAM type $pt", tree.pos)
                 TypeTree(pt)
@@ -1233,7 +1232,24 @@ class Typer extends Namer
                 tparam.ensureCompleted() // This is needed to get the test `compileParSetSubset` to work
               case _ =>
             }
-          if (desugaredArg.isType) typed(desugaredArg, argPt)
+          if (desugaredArg.isType) {
+            var res = typed(desugaredArg, argPt)
+            arg match {
+              case TypeBoundsTree(EmptyTree, EmptyTree)
+              if tparam.paramInfo.isLambdaSub &&
+                 tpt1.tpe.typeParamSymbols.nonEmpty &&
+                 !ctx.mode.is(Mode.Pattern) =>
+                // An unbounded `_` automatically adapts to type parameter bounds. This means:
+                // If we have wildcard application C[_], where `C` is a class replace
+                // with C[_ >: L <: H] where `L` and `H` are the bounds of the corresponding
+                // type parameter in `C`, avoiding any referemces to parameters of `C`.
+                // The transform does not apply for patters, where empty bounds translate to
+                // wildcard identifiers `_` instead.
+                res = res.withType(avoid(tparam.paramInfo, tpt1.tpe.typeParamSymbols))
+              case _ =>
+            }
+            res
+          }
           else desugaredArg.withType(UnspecifiedErrorType)
         }
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
@@ -1645,9 +1661,10 @@ class Typer extends Namer
     val nestedCtx = ctx.fresh.setNewTyperState()
     val res = typed(qual, pt1)(nestedCtx)
     res match {
-      case res @ closure(_, _, _) =>
+      case closure(_, _, _) =>
       case _ =>
-        ctx.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(res.tpe), tree.pos)
+        val recovered = typed(qual)(ctx.fresh.setExploreTyperState())
+        ctx.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen), tree.pos)
         if (ctx.scala2Mode) {
           // Under -rewrite, patch `x _` to `(() => x)`
           patch(Position(tree.pos.start), "(() => ")
@@ -2147,7 +2164,7 @@ class Typer extends Namer
 
     def adaptNoArgsImplicitMethod(wtp: MethodType): Tree = {
       assert(wtp.isImplicitMethod)
-      val tvarsToInstantiate = tvarsInParams(tree, locked)
+      val tvarsToInstantiate = tvarsInParams(tree, locked).distinct
       wtp.paramInfos.foreach(instantiateSelected(_, tvarsToInstantiate))
       val constr = ctx.typerState.constraint
 
@@ -2406,8 +2423,8 @@ class Typer extends Namer
         case closure(Nil, id @ Ident(nme.ANON_FUN), _)
         if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
           pt match {
-            case SAMType(meth)
-            if wtp <:< meth.info.toFunctionType() =>
+            case SAMType(sam)
+            if wtp <:< sam.toFunctionType() =>
               // was ... && isFullyDefined(pt, ForceDegree.noBottom)
               // but this prevents case blocks from implementing polymorphic partial functions,
               // since we do not know the result parameter a priori. Have to wait until the

@@ -47,7 +47,7 @@ class ExtractAPI extends Phase {
   // after `PostTyper` (unlike `ExtractDependencies`, the simplication to trees
   // done by `PostTyper` do not affect this phase because it only cares about
   // definitions, and `PostTyper` does not change definitions).
-  override def runsAfter = Set(classOf[transform.PostTyper])
+  override def runsAfter = Set(transform.PostTyper.name)
 
   override def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
@@ -408,7 +408,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     // TODO: Never dealias. We currently have to dealias because
     // sbt main class discovery relies on the signature of the main
     // method being fully dealiased. See https://github.com/sbt/zinc/issues/102
-    val tp2 = if (!tp.isHK) tp.dealiasKeepAnnots else tp
+    val tp2 = if (!tp.isLambdaSub) tp.dealiasKeepAnnots else tp
     tp2 match {
       case NoPrefix | NoType =>
         Constants.emptyType

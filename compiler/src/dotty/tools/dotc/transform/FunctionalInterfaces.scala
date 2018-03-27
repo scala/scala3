@@ -18,13 +18,18 @@ import dotty.tools.dotc.ast.tpd
 import collection.{ mutable, immutable }
 import collection.mutable.{ LinkedHashMap, LinkedHashSet, TreeSet }
 
+
+object FunctionalInterfaces {
+  val name = "functionalInterfaces"
+}
+
 /**
  *  Rewires closures to implement more specific types of Functions.
  */
 class FunctionalInterfaces extends MiniPhase {
   import tpd._
 
-  def phaseName: String = "functionalInterfaces"
+  def phaseName: String = FunctionalInterfaces.name
 
   val functionName = "JFunction".toTermName
   val functionPackage = "scala.compat.java8.".toTermName

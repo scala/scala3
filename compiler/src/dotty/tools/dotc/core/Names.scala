@@ -190,7 +190,7 @@ object Names {
     private[this] var derivedNames: AnyRef /* immutable.Map[NameInfo, DerivedName] | j.u.HashMap */ =
       immutable.Map.empty[NameInfo, DerivedName]
 
-    private def getDerived(info: NameInfo): DerivedName /* | Null */= derivedNames match {
+    private def getDerived(info: NameInfo): DerivedName /* | Null */ = derivedNames match {
       case derivedNames: immutable.AbstractMap[NameInfo, DerivedName] @unchecked =>
         if (derivedNames.contains(info)) derivedNames(info) else null
       case derivedNames: HashMap[NameInfo, DerivedName] @unchecked =>

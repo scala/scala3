@@ -18,8 +18,8 @@ class ErasedDecls extends MiniPhase with InfoTransformer {
 
   override def phaseName: String = "erasedDecls"
 
-  override def runsAfterGroupsOf: Set[Class[_ <: Phase]] = Set(
-    classOf[PatternMatcher] // Make sure pattern match errors are emitted
+  override def runsAfterGroupsOf = Set(
+    PatternMatcher.name // Make sure pattern match errors are emitted
   )
 
   /** Check what the phase achieves, to be called at any point after it is finished. */
@@ -41,9 +41,10 @@ class ErasedDecls extends MiniPhase with InfoTransformer {
   /* Info transform */
 
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
-    case tp: ClassInfo =>
-      if (tp.classSymbol.is(JavaDefined) || !tp.decls.iterator.exists(_.is(Erased))) tp
-      else tp.derivedClassInfo(decls = tp.decls.filteredScope(!_.is(Erased)))
+    case tp: ClassInfo => tp.derivedClassInfo(decls = tp.decls.filteredScope(!_.is(Erased)))
     case _ => tp
   }
+
+  override protected def mayChange(sym: Symbol)(implicit ctx: Context): Boolean =
+    sym.isClass && !sym.is(JavaDefined) && !sym.is(Scala2x)
 }

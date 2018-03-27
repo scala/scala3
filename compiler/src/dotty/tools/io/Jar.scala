@@ -68,7 +68,7 @@ class Jar(file: File) extends Iterable[JarEntry] {
   }
   override def iterator: Iterator[JarEntry] = this.toList.iterator
 
-  private def getEntryStream(entry: JarEntry) = jarFile getInputStream entry match {
+  def getEntryStream(entry: JarEntry) = jarFile getInputStream entry match {
     case null   => errorFn("No such entry: " + entry) ; null
     case x      => x
   }

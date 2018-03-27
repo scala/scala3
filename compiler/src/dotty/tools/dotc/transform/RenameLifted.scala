@@ -17,7 +17,7 @@ class RenameLifted extends MiniPhase with SymTransformer {
   override def phaseName = "renameLifted"
 
   // Not clear why this should run after restoreScopes
-  // override def runsAfterGroupsOf: Set[Class[_ <: Phases.Phase]] = Set(classOf[RestoreScopes])
+  // override def runsAfterGroupsOf = Set(RestoreScopes.name)
 
   def transformSym(ref: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (needsRefresh(ref.symbol)) ref.copySymDenotation(name = refreshedName(ref.symbol))

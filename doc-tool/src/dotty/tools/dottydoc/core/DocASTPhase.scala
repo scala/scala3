@@ -11,6 +11,7 @@ import dotc.core.Comments.ContextDocstrings
 import dotc.core.Types.{PolyType, NoType}
 import dotc.core.Phases.Phase
 import dotc.core.Symbols.{ Symbol, NoSymbol }
+import dotc.core.NameOps._
 
 class DocASTPhase extends Phase {
   import model._
@@ -108,9 +109,8 @@ class DocASTPhase extends Phase {
 
       /** objects, on the format "Object$" so drop the last letter */
       case o @ TypeDef(n, rhs) if o.symbol.is(Flags.Module) =>
-        val name = o.name.show
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        ObjectImpl(o.symbol, annotations(o.symbol), name.dropRight(1), collectMembers(rhs),  flags(o), path(o.symbol).init :+ name, superTypes(o))
+        ObjectImpl(o.symbol, annotations(o.symbol), o.name.stripModuleClassSuffix.show, collectMembers(rhs),  flags(o), path(o.symbol), superTypes(o))
 
       /** class / case class */
       case c @ TypeDef(n, rhs) if c.symbol.isClass =>

@@ -123,6 +123,7 @@ object JavaParsers {
       // A dummy first constructor is needed for Java classes so that the real constructors see the
       // import of the companion object. The constructor has parameter of type Unit so no Java code
       // can call it.
+      // This also avoids clashes between the constructor parameter names and member names.
       if (needsDummyConstr) {
         stats1 = constr1 :: stats1
         constr1 = makeConstructor(List(scalaDot(tpnme.Unit)), tparams, Flags.JavaDefined | Flags.PrivateLocal)
@@ -132,8 +133,8 @@ object JavaParsers {
 
     def makeSyntheticParam(count: Int, tpt: Tree): ValDef =
       makeParam(nme.syntheticParamName(count), tpt)
-    def makeParam(name: TermName, tpt: Tree): ValDef =
-      ValDef(name, tpt, EmptyTree).withMods(Modifiers(Flags.JavaDefined | Flags.ParamAccessor))
+    def makeParam(name: TermName, tpt: Tree, defaultValue: Tree = EmptyTree): ValDef =
+      ValDef(name, tpt, defaultValue).withMods(Modifiers(Flags.JavaDefined | Flags.Param))
 
     def makeConstructor(formals: List[Tree], tparams: List[TypeDef], flags: FlagSet = Flags.JavaDefined) = {
       val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticParam(i + 1, p) }
@@ -515,7 +516,7 @@ object JavaParsers {
               if (parentToken == AT && in.token == DEFAULT) {
                 val annot =
                   atPos(nameOffset) {
-                    New(Select(scalaDot(nme.runtime), tpnme.AnnotationDefaultATTR), Nil)
+                    New(Select(Select(scalaDot(nme.annotation), nme.internal), tpnme.AnnotationDefaultATTR), Nil)
                   }
                 mods1 = mods1 withAddedAnnotation annot
                 val unimplemented = unimplementedExpr
@@ -772,12 +773,22 @@ object JavaParsers {
       val name = identForType()
       val (statics, body) = typeBody(AT, name, List())
       val constructorParams = body.collect {
-        case dd: DefDef => makeParam(dd.name, dd.tpt)
+        case dd: DefDef =>
+          val hasDefault =
+            dd.mods.annotations.exists {
+              case Apply(Select(New(Select(_, tpnme.AnnotationDefaultATTR)), nme.CONSTRUCTOR), Nil) =>
+                true
+              case _ =>
+                false
+            }
+          // If the annotation has a default value we don't need to parse it, providing
+          // any value at all is enough to typecheck usages of annotations correctly.
+          val defaultParam = if (hasDefault) unimplementedExpr else EmptyTree
+          makeParam(dd.name, dd.tpt, defaultParam)
       }
       val constr = DefDef(nme.CONSTRUCTOR,
         List(), List(constructorParams), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined))
-      val body1 = body.filterNot(_.isInstanceOf[DefDef])
-      val templ = makeTemplate(annotationParents, constr :: body1, List(), false)
+      val templ = makeTemplate(annotationParents, constr :: body, List(), true)
       val annot = atPos(start, nameOffset) {
         TypeDef(name, templ).withMods(mods | Flags.Abstract)
       }

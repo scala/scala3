@@ -7,10 +7,11 @@ class ShowTests {
   import Show._
 
   @Test def showString = {
+    assertEquals(""""\\"""", "\\".show)
     assertEquals("\"\\thello world!\"", "\thello world!".show)
     assertEquals("\"\\nhello world!\"", "\nhello world!".show)
     assertEquals("\"\\rhello world!\"", "\rhello world!".show)
-    assertEquals("\"\\b\\t\\n\\f\\r\\\'\\\"\"", "\b\t\n\f\r\'\"".show)
+    assertEquals(""""\b\t\n\f\r\'\"\\"""", "\b\t\n\f\r\'\"\\".show)
   }
 
   @Test def showFloat = {
@@ -31,6 +32,7 @@ class ShowTests {
     assertEquals("'\\r'", '\r'.show)
     assertEquals("'\\''", '\''.show)
     assertEquals("'\\\"'", '\"'.show)
+    assertEquals("'\\\\'", '\\'.show)
   }
 
   @Test def showCar = {

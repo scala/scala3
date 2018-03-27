@@ -508,10 +508,20 @@ object Types {
             case tp1 => tp1
           })
         case tp: TypeRef =>
-          tp.denot.findMember(name, pre, excluded)
+          tp.denot match {
+            case d: ClassDenotation => d.findMember(name, pre, excluded)
+            case d => go(d.info)
+          }
         case tp: AppliedType =>
-          goApplied(tp)
-        case tp: ThisType =>
+          tp.tycon match {
+            case tc: TypeRef if tc.symbol.isClass =>
+              go(tc)
+            case tc: HKTypeLambda =>
+              goApplied(tp, tc)
+            case _ =>
+              go(tp.superType)
+          }
+        case tp: ThisType => // ??? inline
           goThis(tp)
         case tp: RefinedType =>
           if (name eq tp.refinedName) goRefined(tp) else go(tp.parent)
@@ -598,15 +608,9 @@ object Types {
         }
       }
 
-      def goApplied(tp: AppliedType) = tp.tycon match {
-        case tl: HKTypeLambda =>
-          go(tl.resType).mapInfo(info =>
-            tl.derivedLambdaAbstraction(tl.paramNames, tl.paramInfos, info).appliedTo(tp.args))
-        case tc: TypeRef if tc.symbol.isClass =>
-          go(tc)
-        case _ =>
-          go(tp.superType)
-      }
+      def goApplied(tp: AppliedType, tycon: HKTypeLambda) =
+        go(tycon.resType).mapInfo(info =>
+          tycon.derivedLambdaAbstraction(tycon.paramNames, tycon.paramInfos, info).appliedTo(tp.args))
 
       def goThis(tp: ThisType) = {
         val d = go(tp.underlying)
@@ -623,6 +627,7 @@ object Types {
           // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
           go(tp.cls.typeRef) orElse d
       }
+
       def goParam(tp: TypeParamRef) = {
         val next = tp.underlying
         ctx.typerState.constraint.entry(tp) match {
@@ -632,12 +637,14 @@ object Types {
             go(next)
         }
       }
+
       def goSuper(tp: SuperType) = go(tp.underlying) match {
         case d: JointRefDenotation =>
           typr.println(i"redirecting super.$name from $tp to ${d.symbol.showLocated}")
           new UniqueRefDenotation(d.symbol, tp.memberInfo(d.symbol), d.validFor)
         case d => d
       }
+
       def goAnd(l: Type, r: Type) = {
         go(l) & (go(r), pre, safeIntersection = ctx.pendingMemberSearches.contains(name))
       }
@@ -3783,8 +3790,8 @@ object Types {
    *     and PolyType not allowed!)
    *   - can be instantiated without arguments or with just () as argument.
    *
-   *  The pattern `SAMType(denot)` matches a SAM type, where `denot` is the
-   *  denotation of the single abstract method as a member of the type.
+   *  The pattern `SAMType(sam)` matches a SAM type, where `sam` is the
+   *  type of the single abstract method.
    */
   object SAMType {
     def zeroParamClass(tp: Type)(implicit ctx: Context): Type = tp match {
@@ -3811,20 +3818,55 @@ object Types {
     }
     def isInstantiatable(tp: Type)(implicit ctx: Context): Boolean = zeroParamClass(tp) match {
       case cinfo: ClassInfo =>
-        val tref = tp.narrow
-        val selfType = cinfo.selfType.asSeenFrom(tref, cinfo.cls)
-        tref <:< selfType
+        val selfType = cinfo.selfType.asSeenFrom(tp, cinfo.cls)
+        tp <:< selfType
       case _ =>
         false
     }
-    def unapply(tp: Type)(implicit ctx: Context): Option[SingleDenotation] =
+    def unapply(tp: Type)(implicit ctx: Context): Option[MethodType] =
       if (isInstantiatable(tp)) {
         val absMems = tp.abstractTermMembers
         // println(s"absMems: ${absMems map (_.show) mkString ", "}")
         if (absMems.size == 1)
           absMems.head.info match {
-            case mt: MethodType if !mt.isParamDependent => Some(absMems.head)
-            case _ => None
+            case mt: MethodType if !mt.isParamDependent =>
+              val cls = tp.classSymbol
+
+              // Given a SAM type such as:
+              //
+              //     import java.util.function.Function
+              //     Function[_ >: String, _ <: Int]
+              //
+              // the single abstract method will have type:
+              //
+              //     (x: Function[_ >: String, _ <: Int]#T): Function[_ >: String, _ <: Int]#R
+              //
+              // which is not implementable outside of the scope of Function.
+              //
+              // To avoid this kind of issue, we approximate references to
+              // parameters of the SAM type by their bounds, this way in the
+              // above example we get:
+              //
+              //    (x: String): Int
+              val approxParams = new ApproximatingTypeMap {
+                def apply(tp: Type): Type = tp match {
+                  case tp: TypeRef if tp.symbol.is(ClassTypeParam) && tp.symbol.owner == cls =>
+                    tp.info match {
+                      case TypeAlias(alias) =>
+                        mapOver(alias)
+                      case TypeBounds(lo, hi) =>
+                        range(atVariance(-variance)(apply(lo)), apply(hi))
+                       case _ =>
+                        range(defn.NothingType, defn.AnyType) // should happen only in error cases
+                    }
+                  case _ =>
+                    mapOver(tp)
+                }
+              }
+              val approx = approxParams(mt).asInstanceOf[MethodType]
+              Some(approx)
+            case _ =>
+              None
           }
         else if (tp isRef defn.PartialFunctionClass)
           // To maintain compatibility with 2.x, we treat PartialFunction specially,
@@ -3833,7 +3875,7 @@ object Types {
           //     def isDefinedAt(x: T) = true
           // and overwrite that method whenever the function body is a sequence of
           // case clauses.
-          absMems.find(_.symbol.name == nme.apply)
+          absMems.find(_.symbol.name == nme.apply).map(_.info.asInstanceOf[MethodType])
         else None
       }
       else None

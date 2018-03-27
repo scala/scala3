@@ -33,7 +33,7 @@ import tpd._
 import scala.tools.asm
 import StdNames.{nme, str}
 import NameOps._
-import NameKinds.DefaultGetterName
+import NameKinds.{DefaultGetterName, ExpandedName}
 import dotty.tools.dotc.core
 import dotty.tools.dotc.core.Names.TypeName
 
@@ -677,6 +677,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isType: Boolean = sym.isType
     def isAnonymousClass: Boolean = toDenot(sym).isAnonymousClass
     def isConstructor: Boolean = toDenot(sym).isConstructor
+    def isExpanded: Boolean = sym.name.is(ExpandedName)
     def isAnonymousFunction: Boolean = toDenot(sym).isAnonymousFunction
     def isMethod: Boolean = sym is Flags.Method
     def isPublic: Boolean =  sym.flags.is(Flags.EmptyFlags, Flags.Private | Flags.Protected)
@@ -971,7 +972,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         case tp =>
           ctx.warning(
             s"an unexpected type representation reached the compiler backend while compiling $currentUnit: $tp. " +
-              "If possible, please file a bug on issues.scala-lang.org.")
+              "If possible, please file a bug on https://github.com/lampepfl/dotty/issues")
 
           tp match {
             case tp: ThisType if tp.cls == ArrayClass => ObjectReference.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test

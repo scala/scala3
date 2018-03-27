@@ -1050,8 +1050,8 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val OnlyFunctionsCanBeFollowedByUnderscore(pt) :: Nil = messages
-      assertEquals("String(n)", pt.show)
+      val OnlyFunctionsCanBeFollowedByUnderscore(tp) :: Nil = messages
+      assertEquals("String", tp.show)
     }
 
   @Test def missingEmptyArgumentList =

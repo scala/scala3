@@ -304,6 +304,16 @@ class Definitions {
     def ObjectMethods = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
 
+  lazy val AnyKindClass = {
+    val cls = ctx.newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil)
+    if (ctx.settings.YkindPolymorphism.value) {
+      // Enable kind-polymorphism by exposing scala.AnyKind
+      cls.entered
+    }
+    cls
+  }
+  def AnyKindType = AnyKindClass.typeRef
+
   /** Marker method to indicate an argument to a call-by-name parameter.
    *  Created by byNameClosures and elimByName, eliminated by Erasure,
    */
@@ -625,6 +635,9 @@ class Definitions {
     lazy val QuotedExpr_runR = QuotedExprClass.requiredMethodRef(nme.run)
     def QuotedExpr_run(implicit ctx: Context) = QuotedExpr_runR.symbol
 
+  lazy val QuotedExprsModule = ctx.requiredModule("scala.quoted.Exprs")
+  def QuotedExprsClass(implicit ctx: Context) = QuotedExprsModule.symbol.asClass
+
   lazy val QuotedTypeType = ctx.requiredClassRef("scala.quoted.Type")
   def QuotedTypeClass(implicit ctx: Context) = QuotedTypeType.symbol.asClass
 
@@ -636,6 +649,7 @@ class Definitions {
     def QuotedType_apply(implicit ctx: Context) = QuotedType_applyR.symbol
 
   def Unpickler_unpickleExpr = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
+  def Unpickler_liftedExpr = ctx.requiredMethod("scala.runtime.quoted.Unpickler.liftedExpr")
   def Unpickler_unpickleType = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
@@ -675,6 +689,8 @@ class Definitions {
   def ContravariantBetweenAnnot(implicit ctx: Context) = ContravariantBetweenAnnotType.symbol.asClass
   lazy val DeprecatedAnnotType = ctx.requiredClassRef("scala.deprecated")
   def DeprecatedAnnot(implicit ctx: Context) = DeprecatedAnnotType.symbol.asClass
+  lazy val ImplicitAmbiguousAnnotType = ctx.requiredClassRef("scala.annotation.implicitAmbiguous")
+  def ImplicitAmbiguousAnnot(implicit ctx: Context) = ImplicitAmbiguousAnnotType.symbol.asClass
   lazy val ImplicitNotFoundAnnotType = ctx.requiredClassRef("scala.annotation.implicitNotFound")
   def ImplicitNotFoundAnnot(implicit ctx: Context) = ImplicitNotFoundAnnotType.symbol.asClass
   lazy val InlineAnnotType = ctx.requiredClassRef("scala.inline")
@@ -1152,6 +1168,7 @@ class Definitions {
   lazy val syntheticScalaClasses = List(
     AnyClass,
     AnyRefAlias,
+    AnyKindClass,
     RepeatedParamClass,
     ByNameParamClass2x,
     AnyValClass,

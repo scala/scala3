@@ -10,7 +10,7 @@ object test {
 
 import test._;
 
-trait S extends o.I {
+trait S extends p.I {
     type Y = D;
     def bar: E = foo(c,d);
 }
@@ -25,15 +25,15 @@ abstract class O() {
     val j:I { type Y = X } = null;
 }
 
-object o extends O() {
+object p extends O() {
   type X = C;
 
   def main = {
     val s: S = null;
     import s._;
     foo(c,d);
-    o.i.foo(c,e);
-    o.j.foo(c,c);
+    p.i.foo(c,e);
+    p.j.foo(c,c);
     bar
   }
 }
@@ -42,8 +42,8 @@ class Main() {
   val s: S = null;
   import s._;
   foo(c,d);
-  o.i.foo(c,e);
-  o.j.foo(c,c);
+  p.i.foo(c,e);
+  p.j.foo(c,c);
   bar;
 }
 

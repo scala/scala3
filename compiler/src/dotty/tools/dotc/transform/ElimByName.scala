@@ -40,9 +40,9 @@ import ast.Trees._
 class ElimByName extends TransformByNameApply with InfoTransformer {
   import ast.tpd._
 
-  override def phaseName: String = "elimByName"
+  override def phaseName: String = ElimByName.name
 
-  override def runsAfterGroupsOf = Set(classOf[Splitter])
+  override def runsAfterGroupsOf = Set(Splitter.name)
     // I got errors running this phase in an earlier group, but I did not track them down.
 
   /** Map `tree` to `tree.apply()` is `ftree` was of ExprType and becomes now a function */
@@ -73,9 +73,13 @@ class ElimByName extends TransformByNameApply with InfoTransformer {
     }
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
-    case ExprType(rt) if exprBecomesFunction(sym) => defn.FunctionOf(Nil, rt)
+    case ExprType(rt) => defn.FunctionOf(Nil, rt)
     case _ => tp
   }
 
-  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isTerm
+  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isTerm && exprBecomesFunction(sym)
+}
+
+object ElimByName {
+  val name = "elimByName"
 }

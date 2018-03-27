@@ -19,7 +19,7 @@ class LinkAll extends Phase {
   import tpd._
   import LinkAll._
 
-  def phaseName: String = "linkAll"
+  def phaseName: String = LinkAll.name
 
   def run(implicit ctx: Context): Unit = ()
 
@@ -66,6 +66,8 @@ class LinkAll extends Phase {
 }
 
 object LinkAll {
+
+  val name = "linkAll"
 
   private[LinkAll] def loadCompilationUnit(clsd: ClassDenotation)(implicit ctx: Context): Option[CompilationUnit] = {
     assert(ctx.settings.Xlink.value)

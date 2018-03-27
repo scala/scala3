@@ -92,7 +92,7 @@ that will not be found.
 As the implicit evidences of `turnedOn` and `turnedOff` are not used in the bodies of those functions 
 we can mark them as `erased`. This will remove the evidence parameters at runtime, but we would still
 evaluate the `isOn` and `isOff` implicits that where found as arguments.
-As `isOn` and `isOff` are not used except as as `erased` arguments, we can mark them as `erased`, hence
+As `isOn` and `isOff` are not used except as `erased` arguments, we can mark them as `erased`, hence
 removing the evaluation of the `isOn` and `isOff` evidences.
 
 ```scala
@@ -147,50 +147,57 @@ object Test {
 Rules
 -----
 
-1) The `erased` modifier can appear:
-* At the start of a parameter block of a method, function or class
-* In a method definition
-* In a `val` definition (but not `lazy val` or `var`)
+1. The `erased` modifier can appear:
+   * At the start of a parameter block of a method, function or class
+   * In a method definition
+   * In a `val` definition (but not `lazy val` or `var`)
 
-```scala
-erased val x = ...
-erased def f = ...
+    ```scala
+    erased val x = ...
+    erased def f = ...
 
-def g(erased x: Int) = ...
+    def g(erased x: Int) = ...
 
-(erased x: Int) => ...
-def h(x: erased Int => Int) = ...
+    (erased x: Int) => ...
+    def h(x: erased Int => Int) = ...
 
-class K(erased x: Int) { ... }
-```
-
-2) A reference to an `erased` definition can only be used
-* Inside the expression of argument to an `erased` parameter
-* Inside the body of an `erased` `val` or `def`
-
-3) Functions
-* `(erased x1: T1, x2: T2, ..., xN: TN) => y : (erased T1, T2, ..., TN) => R`
-* `(implicit erased x1: T1, x2: T2, ..., xN: TN) => y : (implicit erased T1, T2, ..., TN) => R`
-* `implicit erased T1 => R  <:<  erased T1 => R`
-* `(implicit erased T1, T2) => R  <:<  (erased T1, T2) => R`
-*  ...
-
-Note that there is no subtype relation between `erased T => R` and `T => R` (or `implicit erased T => R` and `implicit T => R`)
-
-4) Eta expansion
-if `def f(erased x: T): U` then `f: (erased T) => U`.
+    class K(erased x: Int) { ... }
+    ```
 
 
-5) Erasure Semantics
-* All `erased` paramters are removed from the function
-* All argument to `erased` paramters are not passed to the function
-* All `erased` definitions are removed
-* All `(erased T1, T2, ..., TN) => R` and `(implicit erased T1, T2, ..., TN) => R` become `() => R`
+2. A reference to an `erased` definition can only be used
+   * Inside the expression of argument to an `erased` parameter
+   * Inside the body of an `erased` `val` or `def`
 
-6) Overloading
-Method with `erased` parameters will follow the normal overloading constraints after erasure.
 
-7) Overriding
-* Member definitions overidding each other must both be `erased` or not be `erased`
-* `def foo(x: T): U` cannot be overriden by `def foo(erased x: T): U` an viceversa
+3. Functions
+   * `(erased x1: T1, x2: T2, ..., xN: TN) => y : (erased T1, T2, ..., TN) => R`
+   * `(implicit erased x1: T1, x2: T2, ..., xN: TN) => y : (implicit erased T1, T2, ..., TN) => R`
+   * `implicit erased T1 => R  <:<  erased T1 => R`
+   * `(implicit erased T1, T2) => R  <:<  (erased T1, T2) => R`
+   *  ...
+
+   Note that there is no subtype relation between `erased T => R` and `T => R` (or `implicit erased T => R` and `implicit T => R`)
+
+
+4. Eta expansion
+
+   if `def f(erased x: T): U` then `f: (erased T) => U`.
+
+
+5. Erasure Semantics
+   * All `erased` paramters are removed from the function
+   * All argument to `erased` paramters are not passed to the function
+   * All `erased` definitions are removed
+   * All `(erased T1, T2, ..., TN) => R` and `(implicit erased T1, T2, ..., TN) => R` become `() => R`
+
+
+6. Overloading
+
+   Method with `erased` parameters will follow the normal overloading constraints after erasure.
+
+
+7. Overriding
+   * Member definitions overidding each other must both be `erased` or not be `erased`
+   * `def foo(x: T): U` cannot be overriden by `def foo(erased x: T): U` an viceversa
 

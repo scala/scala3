@@ -117,11 +117,9 @@ package liftable {
     }
 
     object Arrays {
-      // FIXME missing hole for ~t
-//      implicit def ArrayIsLiftable[T: Liftable](implicit t: Type[T], ct: Expr[ClassTag[T]]): Liftable[Array[T]] = (arr: Array[T]) => '{
-//        new Array[~t](~(arr.length: Expr[Int]))(~ct)
-//      }
-
+      implicit def ArrayIsLiftable[T: Liftable](implicit t: Type[T], ct: Expr[ClassTag[T]]): Liftable[Array[T]] = (arr: Array[T]) => '{
+        new Array[~t](~arr.length.toExpr)(~ct)
+      }
     }
 
   }

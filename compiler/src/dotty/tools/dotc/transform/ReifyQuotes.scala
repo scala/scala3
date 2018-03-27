@@ -12,6 +12,7 @@ import tasty.TreePickler.Hole
 import MegaPhase.MiniPhase
 import SymUtils._
 import NameKinds._
+import dotty.tools.dotc.ast.tpd.Tree
 import typer.Implicits.SearchFailureType
 
 import scala.collection.mutable
@@ -72,19 +73,19 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     val levelOf = new mutable.HashMap[Symbol, Int]
 
     /** Register a reference defined in a quote but used in another quote nested in a splice.
-     *  Returns a lifted version of the reference that needs to be used in its place.
+     *  Returns a version of the reference that needs to be used in its place.
      *     '{
      *        val x = ???
      *        { ... '{ ... x ... } ... }.unary_~
      *      }
-     *  Lifting the `x` in `{ ... '{ ... x ... } ... }.unary_~` will return a `x$1.unary_~` for which the `x$1`
+     *  Eta expanding the `x` in `{ ... '{ ... x ... } ... }.unary_~` will return a `x$1.unary_~` for which the `x$1`
      *  be created by some outer reifier.
      *
      *  This transformation is only applied to definitions at staging level 1.
      *
-     *  See `needsLifting`
+     *  See `isCaptured`
      */
-    val lifters = new mutable.HashMap[Symbol, RefTree => Tree]
+    val capturers = new mutable.HashMap[Symbol, RefTree => Tree]
   }
 
   /** The main transformer class
@@ -109,9 +110,16 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     def inSplice = outer != null && !inQuote
 
     /** A map from type ref T to expressions of type `quoted.Type[T]`".
-     *  These will be turned into splices using `addTags`
+     *  These will be turned into splices using `addTags` and represent type variables
+     *  that can be possibly healed.
      */
     val importedTags = new mutable.LinkedHashMap[TypeRef, Tree]()
+
+    /** A map from type ref T to expressions of type `quoted.Type[T]`" like `importedTags`
+      * These will be turned into splices using `addTags` and represent types spliced
+      * explicitly.
+      */
+    val explicitTags = new mutable.LinkedHashSet[TypeRef]()
 
     /** A stack of entered symbols, to be unwound after scope exit */
     var enteredSyms: List[Symbol] = Nil
@@ -128,25 +136,55 @@ class ReifyQuotes extends MacroTransformWithImplicits {
      *  defined versions. As a side effect, prepend the expressions `tag1, ..., `tagN`
      *  as splices to `embedded`.
      */
-    private def addTags(expr: Tree)(implicit ctx: Context): Tree =
-      if (importedTags.isEmpty) expr
+    private def addTags(expr: Tree)(implicit ctx: Context): Tree = {
+
+      def mkTagSymbolAndAssignType(typeRef: TypeRef, tag: Tree): Tree = {
+        val rhs = transform(tag.select(tpnme.UNARY_~))
+        val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
+
+        val original = typeRef.symbol.asType
+
+        val local = ctx.newSymbol(
+          owner = ctx.owner,
+          name = UniqueName.fresh("T".toTermName).toTypeName,
+          flags = Synthetic,
+          info = TypeAlias(tag.tpe.select(tpnme.UNARY_~)),
+          coord = typeRef.prefix.termSymbol.coord).asType
+
+        ctx.typeAssigner.assignType(untpd.TypeDef(local.name, alias), local)
+      }
+
+      if (importedTags.isEmpty && explicitTags.isEmpty) expr
       else {
         val itags = importedTags.toList
+        // The tree of the tag for each tag comes from implicit search in `tryHeal`
         val typeDefs = for ((tref, tag) <- itags) yield {
-          val rhs = transform(tag.select(tpnme.UNARY_~))
-          val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs)
-          val original = tref.symbol.asType
-          val local = original.copy(
-            owner = ctx.owner,
-            flags = Synthetic,
-            info = TypeAlias(tag.tpe.select(tpnme.UNARY_~)))
-          ctx.typeAssigner.assignType(untpd.TypeDef(original.name, alias), local)
+          mkTagSymbolAndAssignType(tref, tag)
         }
         importedTags.clear()
-        Block(typeDefs,
-          new TreeTypeMap(substFrom = itags.map(_._1.symbol), substTo = typeDefs.map(_.symbol))
-            .apply(expr))
+
+        // The tree of the tag for each tag comes from a type ref e.g., ~t
+        val explicitTypeDefs = for (tref <- explicitTags) yield {
+          val tag = ref(tref.prefix.termSymbol)
+          mkTagSymbolAndAssignType(tref, tag)
+        }
+        val tagsExplicitTypeDefsPairs = explicitTags.zip(explicitTypeDefs)
+        explicitTags.clear()
+
+        // Maps type splices to type references of tags e.g., ~t -> some type T$1
+        val map: Map[Type, Type] = tagsExplicitTypeDefsPairs.map(x => (x._1, x._2.symbol.typeRef)).toMap
+        val tMap = new TypeMap() {
+          override def apply(tp: Type): Type = map.getOrElse(tp, mapOver(tp))
+        }
+
+        Block(typeDefs ++ explicitTypeDefs,
+          new TreeTypeMap(
+            typeMap = tMap,
+            substFrom = itags.map(_._1.symbol),
+            substTo = typeDefs.map(_.symbol)
+          ).apply(expr))
       }
+    }
 
     /** Enter staging level of symbol defined by `tree`, if applicable. */
     def markDef(tree: Tree)(implicit ctx: Context) = tree match {
@@ -226,8 +264,11 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     def checkType(pos: Position)(implicit ctx: Context): TypeAccumulator[Unit] = new TypeAccumulator[Unit] {
       def apply(acc: Unit, tp: Type): Unit = reporting.trace(i"check type level $tp at $level") {
         tp match {
-          case tp: NamedType if tp.symbol.isSplice =>
-            if (inQuote) outer.checkType(pos).foldOver(acc, tp)
+          case tp: TypeRef if tp.symbol.isSplice =>
+            if (inQuote) {
+              explicitTags += tp
+              outer.checkType(pos).foldOver(acc, tp)
+            }
             else {
               if (tp.isTerm) spliceOutsideQuotes(pos)
               tp
@@ -288,14 +329,32 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         if (isType) ref(defn.typeQuoteMethod).appliedToType(body1.tpe.widen)
         else ref(defn.quoteMethod).appliedToType(body1.tpe.widen).appliedTo(body1)
       }
-      else {
-        val (body1, splices) = nested(isQuote = true).split(body)
+      else body match {
+        case body: RefTree if isCaptured(body, level + 1) =>
+          // Optimization: avoid the full conversion when capturing `x`
+          // in '{ x } to '{ x$1.unary_~ } and go directly to `x$1`
+          capturers(body.symbol)(body)
+        case _=>
+          val (body1, splices) = nested(isQuote = true).split(body)
+          pickledQuote(body1, splices, isType).withPos(quote.pos)
+      }
+    }
+
+    private def pickledQuote(body: Tree, splices: List[Tree], isType: Boolean)(implicit ctx: Context) = {
+      def pickleAsValue[T](value: T) =
+        ref(defn.Unpickler_liftedExpr).appliedToType(body.tpe.widen).appliedTo(Literal(Constant(value)))
+      def pickleAsTasty() = {
         val meth =
-          if (isType) ref(defn.Unpickler_unpickleType).appliedToType(body1.tpe)
-          else ref(defn.Unpickler_unpickleExpr).appliedToType(body1.tpe.widen)
+          if (isType) ref(defn.Unpickler_unpickleType).appliedToType(body.tpe)
+          else ref(defn.Unpickler_unpickleExpr).appliedToType(body.tpe.widen)
         meth.appliedTo(
-            liftList(PickledQuotes.pickleQuote(body1).map(x => Literal(Constant(x))), defn.StringType),
-            liftList(splices, defn.AnyType)).withPos(quote.pos)
+          liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType),
+          liftList(splices, defn.AnyType))
+      }
+      if (splices.nonEmpty) pickleAsTasty()
+      else ReifyQuotes.toValue(body) match {
+        case Some(value) => pickleAsValue(value)
+        case _ => pickleAsTasty()
       }
     }
 
@@ -334,7 +393,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
      *       { ... '{ ... x$1.unary_~ ... y$1.unary_~ ... } ... }
      *     }
      *
-     *  See: `lift`
+     *  See: `capture`
      *
      *  At the same time register `embedded` trees `x` and `y` to place as arguments of the hole
      *  placed in the original code.
@@ -347,17 +406,22 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     private def makeLambda(tree: Tree)(implicit ctx: Context): Tree = {
       def body(arg: Tree)(implicit ctx: Context): Tree = {
         var i = 0
-        transformWithLifter(tree)(
-          (lifted: mutable.ListBuffer[Tree]) => (tree: RefTree) => {
-            val argTpe =
-              if (tree.isTerm) defn.QuotedExprType.appliedTo(tree.tpe.widen)
-              else defn.QuotedTypeType.appliedTo(defn.AnyType)
-            val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argTpe)
-            val liftedArg = SyntheticValDef(UniqueName.fresh(tree.name.toTermName).toTermName, selectArg)
-            i += 1
-            embedded += tree
-            lifted += liftedArg
-            ref(liftedArg.symbol)
+        transformWithCapturer(tree)(
+          (captured: mutable.Map[Symbol, Tree]) => {
+            (tree: RefTree) => {
+              def newCapture = {
+                val argTpe =
+                  if (tree.isTerm) defn.QuotedExprType.appliedTo(tree.tpe.widen)
+                  else defn.QuotedTypeType.appliedTo(defn.AnyType)
+                val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argTpe)
+                val capturedArg = SyntheticValDef(UniqueName.fresh(tree.name.toTermName).toTermName, selectArg)
+                i += 1
+                embedded += tree
+                captured.put(tree.symbol, capturedArg)
+                capturedArg
+              }
+              ref(captured.getOrElseUpdate(tree.symbol, newCapture).symbol)
+            }
           }
         )
       }
@@ -368,21 +432,21 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth))
     }
 
-    private def transformWithLifter(tree: Tree)(
-        lifter: mutable.ListBuffer[Tree] => RefTree => Tree)(implicit ctx: Context): Tree = {
-      val lifted = new mutable.ListBuffer[Tree]
-      val lifter2 = lifter(lifted)
-      outer.enteredSyms.foreach(s => lifters.put(s, lifter2))
+    private def transformWithCapturer(tree: Tree)(
+        capturer: mutable.Map[Symbol, Tree] => RefTree => Tree)(implicit ctx: Context): Tree = {
+      val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
+      val captured2 = capturer(captured)
+      outer.enteredSyms.foreach(s => capturers.put(s, captured2))
       val tree2 = transform(tree)
-      lifters --= outer.enteredSyms
-      seq(lifted.result(), tree2)
+      capturers --= outer.enteredSyms
+      seq(captured.result().valuesIterator.toList, tree2)
     }
 
-    /** Returns true if this tree will be lifted by `makeLambda` */
-    private def needsLifting(tree: RefTree)(implicit ctx: Context): Boolean = {
-      // Check phase consistency and presence of lifter
+    /** Returns true if this tree will be captured by `makeLambda` */
+    private def isCaptured(tree: RefTree, level: Int)(implicit ctx: Context): Boolean = {
+      // Check phase consistency and presence of capturer
       level == 1 && !tree.symbol.is(Inline) && levelOf.get(tree.symbol).contains(1) &&
-      lifters.contains(tree.symbol)
+      capturers.contains(tree.symbol)
     }
 
     /** Transform `tree` and return the resulting tree and all `embedded` quotes
@@ -414,16 +478,18 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         tree match {
           case Quoted(quotedTree) =>
             quotation(quotedTree, tree)
+          case tree: TypeTree if tree.tpe.typeSymbol.isSplice =>
+            val splicedType = tree.tpe.asInstanceOf[TypeRef].prefix.termSymbol
+            splice(ref(splicedType).select(tpnme.UNARY_~))
           case tree: Select if tree.symbol.isSplice =>
             splice(tree)
-          case tree: RefTree if needsLifting(tree) =>
-            val lift = lifters(tree.symbol)
-            splice(lift(tree).select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
+          case tree: RefTree if isCaptured(tree, level) =>
+            val capturer = capturers(tree.symbol)
+            splice(capturer(tree).select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
           case Block(stats, _) =>
             val last = enteredSyms
             stats.foreach(markDef)
             mapOverTree(last)
-
           case Inlined(call, bindings, InlineSplice(expansion @ Select(body, name))) =>
             // To maintain phase consistency, we move the binding of the this parameter into the spliced code
             val (splicedBindings, stagedBindings) = bindings.partition {
@@ -471,5 +537,14 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         }
       }
     }
+  }
+}
+
+object ReifyQuotes {
+  def toValue(tree: Tree): Option[Any] = tree match {
+    case Literal(Constant(c)) => Some(c)
+    case Block(Nil, e) => toValue(e)
+    case Inlined(_, Nil, e) => toValue(e)
+    case _ => None
   }
 }

@@ -196,6 +196,7 @@ object StdNames {
     final val REIFY_TYPECREATOR_PREFIX: N       = "$typecreator"
 
     final val Any: N                 = "Any"
+    final val AnyKind: N             = "AnyKind"
     final val AnyVal: N              = "AnyVal"
     final val ExprApi: N             = "ExprApi"
     final val Mirror: N              = "Mirror"
@@ -439,6 +440,7 @@ object StdNames {
     val in: N                   = "in"
     val info: N                 = "info"
     val inlinedEquals: N        = "inlinedEquals"
+    val internal: N             = "internal"
     val isArray: N              = "isArray"
     val isDefinedAt: N          = "isDefinedAt"
     val isDefinedAtImpl: N      = "$isDefinedAt"

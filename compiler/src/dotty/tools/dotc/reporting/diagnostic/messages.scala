@@ -1462,7 +1462,9 @@ object messages {
 
   case class MissingTypeParameterFor(tpe: Type)(implicit ctx: Context)
     extends Message(MissingTypeParameterForID) {
-    val msg = hl"missing type parameter for ${tpe}"
+    val msg =
+      if (tpe.derivesFrom(defn.AnyKindClass)) hl"${tpe} cannot be used as a value type"
+      else hl"missing type parameter for ${tpe}"
     val kind = "Syntax"
     val explanation = ""
   }
@@ -1835,10 +1837,10 @@ object messages {
     }
   }
 
-  case class OnlyFunctionsCanBeFollowedByUnderscore(pt: Type)(implicit ctx: Context)
+  case class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type)(implicit ctx: Context)
     extends Message(OnlyFunctionsCanBeFollowedByUnderscoreID) {
     val kind = "Syntax"
-    val msg = hl"Not a function: $pt: cannot be followed by ${"_"}"
+    val msg = hl"Only function types can be followed by ${"_"} but the current expression has type $tp"
     val explanation =
       hl"""The syntax ${"x _"} is no longer supported if ${"x"} is not a function.
           |To convert to a function value, you need to explicitly write ${"() => x"}"""

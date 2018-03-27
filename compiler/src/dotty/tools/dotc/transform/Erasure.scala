@@ -30,12 +30,13 @@ import ExplicitOuter._
 import core.Mode
 import reporting.trace
 
+
 class Erasure extends Phase with DenotTransformer {
 
-  override def phaseName: String = "erasure"
+  override def phaseName: String = Erasure.name
 
   /** List of names of phases that should precede this phase */
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[InterceptedMethods], classOf[Splitter], classOf[ElimRepeated])
+  override def runsAfter = Set(InterceptedMethods.name, Splitter.name, ElimRepeated.name)
 
   override def changesMembers: Boolean = true   // the phase adds bridges
   override def changesParents: Boolean = true // the phase drops Any
@@ -145,6 +146,8 @@ class Erasure extends Phase with DenotTransformer {
 object Erasure {
   import tpd._
   import TypeTestsCasts._
+
+  val name = "erasure"
 
   object Boxing {
 
@@ -577,9 +580,9 @@ object Erasure {
           val implType = meth.tpe.widen.asInstanceOf[MethodType]
 
           val implParamTypes = implType.paramInfos
-          val List(samParamTypes) = sam.info.paramInfoss
+          val List(samParamTypes) = sam.paramInfoss
           val implResultType = implType.resultType
-          val samResultType = sam.info.resultType
+          val samResultType = sam.resultType
 
           // The following code:
           //
@@ -646,7 +649,7 @@ object Erasure {
             if (paramAdaptationNeeded || resultAdaptationNeeded) {
               val bridgeType =
                 if (paramAdaptationNeeded) {
-                  if (resultAdaptationNeeded) sam.info
+                  if (resultAdaptationNeeded) sam
                   else implType.derivedLambdaType(paramInfos = samParamTypes)
                 } else implType.derivedLambdaType(resType = samResultType)
               val bridge = ctx.newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method, bridgeType)

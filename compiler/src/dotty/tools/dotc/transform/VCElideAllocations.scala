@@ -20,7 +20,7 @@ class VCElideAllocations extends MiniPhase with IdentityDenotTransformer {
 
   override def phaseName: String = "vcElideAllocations"
 
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[ElimErasedValueType])
+  override def runsAfter = Set(ElimErasedValueType.name)
 
   override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
     tree match {
@@ -29,7 +29,7 @@ class VCElideAllocations extends MiniPhase with IdentityDenotTransformer {
       case BinaryOp(NewWithArgs(tp1, List(u1)), op, NewWithArgs(tp2, List(u2)))
       if (tp1 eq tp2) && (op eq defn.Any_==) && isDerivedValueClass(tp1.typeSymbol) =>
         // == is overloaded in primitive classes
-        applyOverloaded(u1, nme.EQ, List(u2), Nil, defn.BooleanType)
+        u1.equal(u2)
 
       // (new V(u)).underlying() => u
       case ValueClassUnbox(NewWithArgs(_, List(u))) =>

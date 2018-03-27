@@ -59,6 +59,9 @@ class FromTastyTests extends ParallelTesting {
         "spec-super.scala",
         "spec-sparsearray-old.scala",
         "collections_1.scala",
+
+        // Infinite compilation
+        "t3612.scala",
       )
     )
     step1.checkCompile() // Compile all files to generate the class files with tasty

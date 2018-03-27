@@ -71,3 +71,7 @@ The majority of the dotty codebase is new code, with the exception of the compon
 > the [compiler bridge in sbt 0.13](https://github.com/sbt/sbt/tree/0.13/compile/interface/src/main/scala/xsbt),
 > but has been heavily adapted and refactored.
 > Original authors were Mark Harrah, Grzegorz Kossakowski, Martin Duhemm, Adriaan Moors and others.
+
+`dotty.tools.dotc.plugins`
+
+> Adapted from  [scala/scala](https://github.com/scala/scala) with some modifications. They were originally authored by Lex Spoon, Som Snytt, Adriaan Moors, Paul Phillips and others.

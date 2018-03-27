@@ -58,6 +58,8 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/pos-special/i3323.scala", defaultOptions.and("-Xfatal-warnings")) +
     compileFile("tests/pos-special/i3323b.scala", defaultOptions.and("-Xfatal-warnings")) +
     compileFile("tests/pos-special/i3589-b.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("tests/pos-special/i4166.scala", defaultOptions.and("-Xfatal-warnings")) +
+    compileFile("tests/pos-special/i4185.scala", defaultOptions.and("-Xfatal-warnings")) +
     compileFile("tests/pos-special/completeFromSource/Test.scala", defaultOptions.and("-sourcepath", "tests/pos-special")) +
     compileFile("tests/pos-special/completeFromSource/Test2.scala", defaultOptions.and("-sourcepath", "tests/pos-special")) +
     compileFile("tests/pos-special/completeFromSource/Test3.scala", defaultOptions.and("-sourcepath", "tests/pos-special", "-scansource")) +
@@ -102,6 +104,7 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/pos", defaultOptions) +
     compileFilesInDir("tests/pos-no-optimise", defaultOptions) +
     compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes) +
+    compileFilesInDir("tests/pos-kind-polymorphism", defaultOptions and "-Ykind-polymorphism") +
     compileDir("tests/pos/i1137-1", defaultOptions and "-Yemit-tasty") +
     compileFile(
       // succeeds despite -Xfatal-warnings because of -nowarn
@@ -175,6 +178,7 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/neg", defaultOptions) +
     compileFilesInDir("tests/neg-tailcall", defaultOptions) +
     compileFilesInDir("tests/neg-no-optimise", defaultOptions) +
+    compileFilesInDir("tests/neg-kind-polymorphism", defaultOptions and "-Ykind-polymorphism") +
     compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")) +
     compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings) +
     compileFile("tests/neg-custom-args/i3246.scala", scala2Mode) +
@@ -311,6 +315,33 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/pos", defaultOptimised).checkCompile()
     compileFilesInDir("tests/run", defaultOptimised).checkRuns()
     compileFilesInDir("tests/neg", defaultOptimised).checkExpectedErrors()
+  }
+
+  @Test def testPlugins: Unit = {
+    val pluginFile = "plugin.properties"
+
+    // 1. hack with absolute path for -Xplugin
+    // 2. copy `pluginFile` to destination
+    def compileFilesInDir(dir: String): CompilationTest = {
+      val outDir = defaultOutputDir + "testPlugins/"
+      val sourceDir = new JFile(dir)
+
+      val dirs = sourceDir.listFiles.foldLeft(List.empty[JFile]) { case (dirs, f) =>
+        if (f.isDirectory) f :: dirs else dirs
+      }
+
+      val targets = dirs.map { dir =>
+        val compileDir = createOutputDirsForDir(dir, sourceDir, outDir)
+        import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+        Files.copy(dir.toPath.resolve(pluginFile), compileDir.toPath.resolve(pluginFile), REPLACE_EXISTING)
+        val flags = TestFlags(classPath, noCheckOptions) and ("-Xplugin:" + compileDir.getAbsolutePath)
+        SeparateCompilationSource("testPlugins", dir, flags, compileDir)
+      }
+
+      new CompilationTest(targets)
+    }
+
+    compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
   }
 
   private val (compilerSources, backendSources, backendJvmSources) = {

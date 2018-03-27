@@ -35,7 +35,7 @@ class PrimitiveForwarders extends MiniPhase with IdentityDenotTransformer { this
 
   override def phaseName: String = "primitiveForwarders"
 
-  override def runsAfter = Set(classOf[ResolveSuper])
+  override def runsAfter = Set(ResolveSuper.name)
 
   override def changesMembers = true   // the phase adds primitive forwarders
 

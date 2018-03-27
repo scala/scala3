@@ -24,9 +24,9 @@ class PatternMatcher extends MiniPhase {
   import ast.tpd._
   import PatternMatcher._
 
-  override def phaseName = "patternMatcher"
-  override def runsAfter = Set(classOf[ElimRepeated])
-  override def runsAfterGroupsOf = Set(classOf[TailRec]) // tailrec is not capable of reversing the patmat tranformation made for tree
+  override def phaseName = PatternMatcher.name
+  override def runsAfter = Set(ElimRepeated.name)
+  override def runsAfterGroupsOf = Set(TailRec.name) // tailrec is not capable of reversing the patmat tranformation made for tree
 
   override def transformMatch(tree: Match)(implicit ctx: Context): Tree = {
     val translated = new Translator(tree.tpe, this).translateMatch(tree)
@@ -45,6 +45,8 @@ class PatternMatcher extends MiniPhase {
 
 object PatternMatcher {
   import ast.tpd._
+
+  val name = "patternMatcher"
 
   final val selfCheck = false // debug option, if on we check that no case gets generated twice
 

@@ -338,6 +338,14 @@ object Build {
       javacOptions in (Compile, doc) --= Seq("-Xlint:unchecked", "-Xlint:deprecation")
     )
 
+  private lazy val dottydocClasspath = Def.task {
+    val jars = (packageAll in `dotty-compiler`).value
+    val dottyLib = jars("dotty-library")
+    val dottyInterfaces = jars("dotty-interfaces")
+    val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(File.pathSeparator)
+    dottyLib + File.pathSeparator + dottyInterfaces + File.pathSeparator + otherDeps
+  }
+
   // Settings shared between dotty-doc and dotty-doc-bootstrapped
   lazy val dottyDocSettings = Seq(
     baseDirectory in (Compile, run) := baseDirectory.value / "..",
@@ -357,10 +365,6 @@ object Build {
       val majorVersion = baseVersion.take(baseVersion.lastIndexOf('.'))
       IO.write(file("./docs/_site/versions/latest-nightly-base"), majorVersion)
 
-      val jars = (packageAll in `dotty-compiler`).value
-      val dottyLib = jars("dotty-library")
-      val dottyInterfaces =jars("dotty-interfaces")
-      val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
       val sources =
         unmanagedSources.in(Compile, compile).value ++
         unmanagedSources.in(`dotty-compiler`, Compile).value
@@ -369,7 +373,7 @@ object Build {
         "-project", "Dotty",
         "-project-version", dottyVersion,
         "-project-url", dottyGithubUrl,
-        "-classpath", s"$dottyLib:$dottyInterfaces:$otherDeps"
+        "-classpath", dottydocClasspath.value
       )
       (runMain in Compile).toTask(
         s""" dotty.tools.dottydoc.Main ${args.mkString(" ")} ${sources.mkString(" ")}"""
@@ -377,12 +381,8 @@ object Build {
     }.value,
 
     dottydoc := Def.inputTaskDyn {
-      val args: Seq[String] = spaceDelimited("<arg>").parsed
-      val jars = (packageAll in `dotty-compiler`).value
-      val dottyLib = jars("dotty-library")
-      val dottyInterfaces =jars("dotty-interfaces")
-      val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(":")
-      val cp = s"$dottyLib:$dottyInterfaces:$otherDeps"
+      val args = spaceDelimited("<arg>").parsed
+      val cp = Seq("-classpath", dottydocClasspath.value)
 
       (runMain in Compile).toTask(s" dotty.tools.dottydoc.Main -classpath $cp " + args.mkString(" "))
     }.evaluated,

@@ -163,7 +163,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
      */
     class Worker1(needsOutFolder: Boolean) {
 
-      val caseInsensitively = scala.collection.mutable.Map.empty[String, Symbol]
+      val caseInsensitively = scala.collection.mutable.HashMap.empty[String, Symbol]
 
       def run(): Unit = {
         while (true) {
@@ -194,18 +194,27 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         val claszSymbol = cd.symbol
 
         // GenASM checks this before classfiles are emitted, https://github.com/scala/scala/commit/e4d1d930693ac75d8eb64c2c3c69f2fc22bec739
-        val lowercaseJavaClassName = claszSymbol.name.toString.toLowerCase
-        caseInsensitively.get(lowercaseJavaClassName) match {
-          case None =>
-            caseInsensitively.put(lowercaseJavaClassName, claszSymbol)
-          case Some(dupClassSym) =>
-            // Order is not deterministic so we enforce lexicographic order between the duplicates for error-reporting
-            if (claszSymbol.name.toString < dupClassSym.name.toString)
-              ctx.warning(s"Class ${claszSymbol.name} differs only in case from ${dupClassSym.name}. " +
-                          "Such classes will overwrite one another on case-insensitive filesystems.", claszSymbol.pos)
-            else
-              ctx.warning(s"Class ${dupClassSym.name} differs only in case from ${claszSymbol.name}. " +
-                          "Such classes will overwrite one another on case-insensitive filesystems.", dupClassSym.pos)
+        def checkName(claszSymbol: Symbol): Unit = {
+          val lowercaseJavaClassName = claszSymbol.effectiveName.toString.toLowerCase
+          caseInsensitively.get(lowercaseJavaClassName) match {
+            case None =>
+              caseInsensitively.put(lowercaseJavaClassName, claszSymbol)
+            case Some(dupClassSym) =>
+              if (claszSymbol.effectiveName.toString != dupClassSym.effectiveName.toString) {
+                // Order is not deterministic so we enforce lexicographic order between the duplicates for error-reporting
+                val (cl1, cl2) =
+                  if (claszSymbol.effectiveName.toString < dupClassSym.effectiveName.toString) (claszSymbol, dupClassSym)
+                  else (dupClassSym, claszSymbol)
+                ctx.warning(s"Class ${cl1.effectiveName} differs only in case from ${cl2.effectiveName}. " +
+                  "Such classes will overwrite one another on case-insensitive filesystems.", cl1.pos)
+              }
+          }
+        }
+        checkName(claszSymbol)
+        if (int.symHelper(claszSymbol).isModuleClass) {
+          val companionModule = claszSymbol.companionModule
+          if (int.symHelper(companionModule.owner).isPackageClass)
+            checkName(companionModule)
         }
 
         // -------------- mirror class, if needed --------------

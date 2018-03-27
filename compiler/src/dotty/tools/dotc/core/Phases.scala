@@ -82,7 +82,7 @@ object Phases {
     final def squashPhases(phasess: List[List[Phase]],
                              phasesToSkip: List[String], stopBeforePhases: List[String], stopAfterPhases: List[String], YCheckAfter: List[String]): List[Phase] = {
       val squashedPhases = ListBuffer[Phase]()
-      var prevPhases: Set[Class[_ <: Phase]] = Set.empty
+      var prevPhases: Set[String] = Set.empty
       val YCheckAll = YCheckAfter.contains("all")
 
       var stop = false
@@ -99,7 +99,6 @@ object Phases {
           val filteredPhaseBlock = filteredPhases(i)
           val phaseToAdd =
             if (filteredPhaseBlock.length > 1) {
-              val phasesInBlock: Set[String] = filteredPhaseBlock.map(_.phaseName).toSet
               for (phase <- filteredPhaseBlock) {
                 phase match {
                   case p: MiniPhase =>
@@ -112,11 +111,11 @@ object Phases {
                 }
               }
               val superPhase = new MegaPhase(filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray)
-              prevPhases ++= filteredPhaseBlock.map(_.getClazz)
+              prevPhases ++= filteredPhaseBlock.map(_.phaseName)
               superPhase
             } else { // block of a single phase, no squashing
               val phase = filteredPhaseBlock.head
-              prevPhases += phase.getClazz
+              prevPhases += phase.phaseName
               phase
             }
           squashedPhases += phaseToAdd
@@ -147,7 +146,7 @@ object Phases {
 
       phases = (NoPhase :: flatPhases.toList ::: new TerminalPhase :: Nil).toArray
       setSpecificPhases()
-      var phasesAfter:Set[Class[_ <: Phase]] = Set.empty
+      var phasesAfter: Set[String] = Set.empty
       nextDenotTransformerId = new Array[Int](phases.length)
       denotTransformers = new Array[DenotTransformer](phases.length)
 
@@ -161,7 +160,7 @@ object Phases {
         val unmetPrecedeRequirements = p.runsAfter -- phasesAfter
         assert(unmetPrecedeRequirements.isEmpty,
           s"phase ${p} has unmet requirement: ${unmetPrecedeRequirements.mkString(", ")} should precede this phase")
-        phasesAfter += p.getClazz
+        phasesAfter += p.phaseName
 
       }
       var i = 0
@@ -284,7 +283,7 @@ object Phases {
     def allowsImplicitSearch: Boolean = false
 
      /** List of names of phases that should precede this phase */
-    def runsAfter: Set[Class[_ <: Phase]] = Set.empty
+    def runsAfter: Set[String] = Set.empty
 
     /** @pre `isRunnable` returns true */
     def run(implicit ctx: Context): Unit
@@ -396,12 +395,4 @@ object Phases {
   def replace(oldPhaseClass: Class[_ <: Phase], newPhases: Phase => List[Phase], current: List[List[Phase]]): List[List[Phase]] =
     current.map(_.flatMap(phase =>
       if (oldPhaseClass.isInstance(phase)) newPhases(phase) else phase :: Nil))
-
-  /** Dotty deviation: getClass yields Class[_], instead of [Class <: <type of receiver>].
-   *  We can get back the old behavior using this decorator. We should also use the same
-   *  trick for standard getClass.
-   */
-  private implicit class getClassDeco[T](val x: T) extends AnyVal {
-    def getClazz: Class[_ <: T] = x.getClass.asInstanceOf[Class[_ <: T]]
-  }
 }
