@@ -12,6 +12,7 @@ import core.TypeErasure.erasure
 import core.Types._
 import core.classfile.ClassfileConstants
 import ast.Trees._
+import SymUtils._
 import TypeUtils._
 import java.lang.StringBuilder
 
@@ -500,7 +501,8 @@ object GenericSignatures {
           case PolyType(_, _) =>
             true
           case ClassInfo(_, _, parents, _, _) =>
-            foldOver(tp.typeParams.nonEmpty, parents)
+            // Local classes don't need a signature
+            !tp.classSymbol.isLocal && foldOver(tp.typeParams.nonEmpty, parents)
           case AnnotatedType(tpe, _) =>
             foldOver(x, tpe)
           case proxy: TypeProxy =>
