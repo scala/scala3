@@ -12,18 +12,16 @@ import scala.collection.JavaConverters._
 
 class TestServer(testFolder: Path) {
 
-  // TODO initialise config file from DottyIDEPlugin
-  private val baseDir = java.nio.file.Paths.get("..").toAbsolutePath
-  private val ivyDir = java.nio.file.Paths.get("~/.ivy2").toAbsolutePath
-  private val javaHome = System.getProperty("java.home")
+  // Fill the configuration with values populated by sbt
+  private def showSeq[T](lst: Seq[T]): String = lst.map(elem => '"' + elem.toString + '"').mkString("[ ", ", ", " ]")
   private val dottyIdeJson: String =
     s"""[ {
        |  "id" : "dotty-ide-test",
-       |  "compilerVersion" : "0.6.0-bin-SNAPSHOT-nonbootstrapped",
-       |  "compilerArguments" : [ "-feature", "-deprecation", "-unchecked", "-Xfatal-warnings", "-encoding", "UTF8", "-language:existentials,higherKinds,implicitConversions" ],
-       |  "sourceDirectories" : [ "$baseDir/out/ide-tests/src" ],
-       |  "dependencyClasspath" : [ "$baseDir/library/../out/bootstrap/dotty-library-bootstrapped/scala-0.7/classes", "$ivyDir/cache/org.scala-lang/scala-library/jars/scala-library-2.12.4.jar" ],
-       |  "classDirectory" : "$baseDir/out/ide-tests/out"
+       |  "compilerVersion" : "${BuildInfo.ideTestsCompilerVersion}",
+       |  "compilerArguments" : ${showSeq(BuildInfo.ideTestsCompilerArguments)},
+       |  "sourceDirectories" : ${showSeq(BuildInfo.ideTestsSourceDirectories)},
+       |  "dependencyClasspath" : ${showSeq(BuildInfo.ideTestsDependencyClasspath)},
+       |  "classDirectory" : "${BuildInfo.ideTestsClassDirectory}"
        |}
        |]
     """.stripMargin
