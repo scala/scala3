@@ -6,6 +6,9 @@
       M.Impl[T[_]] = Common { type This = T }
       ...
 
+      - Common definitions in traits may not see trait parameters, but common definitions
+        in classes may see class parameters.
+
       - An extension trait is a trait that uses This or a trait inheriting an extension trait.
       - The kind of `This` is the kind of the extension trait.
       - Extension traits of different kinds cannot inherit each other and cannot be mixed using `with`.
@@ -80,11 +83,16 @@ object runtime {
       def length: Int
     }
 
+    trait Cmp[A] {
+      def isSimilar(x: A): Boolean
+      common def exact: Boolean
+    }
+
     trait HasBoundedLength extends HasLength {
       common def limit: Int
     }
 
-    extension trait HasBoundedLengthX extends HasBoundedLength {
+    trait HasBoundedLengthX extends HasBoundedLength {
       common def longest: This
     }
 
@@ -96,12 +104,16 @@ object runtime {
       def length = xs.length
     }
 
-    class C2(xs: Array[Int]) extends C1(xs) with HasBoundedLength {
+    class C2(xs: Array[Int]) extends C1(xs) with HasBoundedLength with Cmp[Seq[Int]] {
+      def isSimilar(x: Seq[Int]) = xs.deep == x
       common def limit = 100
+      common def exact = true
     }
 
-    class CG2[T](xs: Array[Int]) extends CG1[T](xs) with HasBoundedLength {
+    class CG2[T](xs: Array[Int]) extends CG1[T](xs) with HasBoundedLength with Cmp[Seq[T]] {
+      def isSimilar(x: Seq[T]) = xs.deep == x
       common def limit = 100
+      common def exact = true
     }
 
     final class C3(xs: Array[Int]) extends C2(xs) with HasBoundedLengthX {
@@ -237,6 +249,20 @@ object hasLength {
     def length: Int
   }
 
+  trait Cmp[A] extends TypeClass {
+    val `common`: HasBoundedLength.Common
+    import `common`._
+    def isSimilar(x: A): Boolean
+  }
+
+  object Cmp extends TypeClass.Companion {
+    trait Common extends TypeClass.Common {
+      type Instance <: HasBoundedLength
+      def exact: Boolean
+    }
+  }
+
+
   trait HasBoundedLength extends HasLength with TypeClass {
     val `common`: HasBoundedLength.Common
     import `common`._
@@ -264,27 +290,31 @@ object hasLength {
 
   class C1(xs: Array[Int]) extends HasLength {
     def length = xs.length
+    def isSimilar(x: Seq[Int]) = xs.deep == x
   }
 
   class CG1[T](xs: Array[T]) extends HasLength {
     def length = xs.length
+    def isSimilar(x: Seq[T]) = xs.deep == x
   }
 
-  class C2(xs: Array[Int]) extends C1(xs) with HasBoundedLength {
+  class C2(xs: Array[Int]) extends C1(xs) with HasBoundedLength with Cmp[Seq[Int]] {
     val `common`: C2Common = C2
     import `common`._
   }
-  abstract class C2Common extends HasBoundedLength.Common {
+  abstract class C2Common extends HasBoundedLength.Common with Cmp.Common{
     def limit = 100
+    def exact = true
   }
   object C2 extends C2Common with SubtypeInjector[C2]
 
-  class CG2[T](xs: Array[T]) extends CG1(xs) with HasBoundedLength {
+  class CG2[T](xs: Array[T]) extends CG1(xs) with HasBoundedLength with Cmp[Seq[T]] {
     val `common`: CG2Common[T] = CG2[T]
     import `common`._
   }
-  abstract class CG2Common[T] extends HasBoundedLength.Common {
+  abstract class CG2Common[T] extends HasBoundedLength.Common with Cmp.Common {
     def limit = 100
+    def exact = true
   }
   object CG2 {
     def apply[T] = new CG2Common[T] with SubtypeInjector[CG2[T]]
