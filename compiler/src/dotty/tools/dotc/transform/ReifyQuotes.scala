@@ -521,20 +521,16 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
             stats.foreach(markDef)
             mapOverTree(last)
           case Inlined(call, bindings, InlineSplice(expansion @ Select(body, name))) =>
-            // To maintain phase consistency, we move the binding of the this parameter into the spliced code
-            val (splicedBindings, stagedBindings) = bindings.partition {
-              case vdef: ValDef => vdef.symbol.is(Synthetic) // Assume that only _this bindings are tagged with Synthetic
-              case _ => false
-            }
-            // Simplification of the call done in PostTyper for non-macros can also be performed now
-            // see PostTyper `case Inlined(...) =>` for description of the simplification
-            val call2 =
-              if (level == 0) Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
-              else call
-            val tree1 =
-              if (level == 0) cpy.Inlined(tree)(call2, stagedBindings, Splicer.splice(body, call, splicedBindings, tree.pos).withPos(tree.pos))
-              else seq(stagedBindings, cpy.Select(expansion)(cpy.Inlined(tree)(call, splicedBindings, body), name))
-            val tree2 = transform(tree1)
+            assert(call.symbol.is(Macro))
+            val tree2 =
+              if (level == 0) {
+                // Simplification of the call done in PostTyper for non-macros can also be performed now
+                // see PostTyper `case Inlined(...) =>` for description of the simplification
+                val call2 = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
+                val spliced = Splicer.splice(body, call, bindings, tree.pos).withPos(tree.pos)
+                transform(cpy.Inlined(tree)(call2, bindings, spliced))
+              }
+              else super.transform(tree)
 
             // due to value-discarding which converts an { e } into { e; () })
             if (tree.tpe =:= defn.UnitType) Block(tree2 :: Nil, Literal(Constant(())))
