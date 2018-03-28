@@ -18,7 +18,7 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
   def hover(range: CodeRange, expected: String): CodeTester =
     doAction(new CodeHover(range, expected))
 
-  def definition(range: CodeRange, refOpt: Option[CodeRange]): CodeTester =
+  def definition(range: CodeRange, refOpt: Seq[CodeRange]): CodeTester =
     doAction(new CodeDefinition(range, refOpt))
 
   def highlight(range: CodeRange, highs: (CodeRange, String)*): CodeTester =
