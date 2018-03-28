@@ -4,6 +4,8 @@ import dotty.tools.languageserver.util.PositionContext
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.TestFile
 
+import org.eclipse.lsp4j.CompletionItemKind
+
 import scala.collection.JavaConverters._
 
 /**
@@ -14,7 +16,7 @@ import scala.collection.JavaConverters._
  * @param completions The expected results from the language server.
  */
 class CodeCompletion(override val marker: CodeMarker,
-                     completions: List[(String, String, String)]) extends ActionOnMarker {
+                     completions: List[(String, CompletionItemKind, String)]) extends ActionOnMarker {
 
   override def execute(): Exec[Unit] = {
     val result = server.completion(marker.toTextDocumentPositionParams).get()
@@ -24,7 +26,7 @@ class CodeCompletion(override val marker: CodeMarker,
     completions.foreach { completion =>
       assert(
         cList.getItems.asScala.exists(item =>
-          completion == (item.getLabel, item.getKind.toString, item.getDetail)
+          completion == (item.getLabel, item.getKind, item.getDetail)
         ),
         "Did not return completion for " + completion + "\n" + cList.getItems.asScala.toList
       )

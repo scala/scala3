@@ -4,7 +4,7 @@ import dotty.tools.languageserver.util.Code.SourceWithPositions
 import dotty.tools.languageserver.util.actions._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.{TestFile, TestServer}
-import org.eclipse.lsp4j.SymbolInformation
+import org.eclipse.lsp4j.CompletionItemKind
 
 /**
  * Simulates an LSP client for test in a workspace defined by `sources`.
@@ -81,7 +81,7 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    *
    * @see dotty.tools.languageserver.util.actions.CodeCompletion
    */
-  def completion(marker: CodeMarker, expected: List[(String, String, String)]): CodeTester =
+  def completion(marker: CodeMarker, expected: List[(String, CompletionItemKind, String)]): CodeTester =
     doAction(new CodeCompletion(marker, expected))
 
   /**
