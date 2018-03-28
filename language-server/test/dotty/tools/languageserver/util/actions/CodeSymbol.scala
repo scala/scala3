@@ -5,13 +5,20 @@ import org.eclipse.lsp4j._
 
 import scala.collection.JavaConverters._
 
+/**
+ * An action requesting for all the symbols in the workspace matching `query`.
+ * This action corresponds to the `workspace/symbol` method of the Language Server Protocol.
+ *
+ * @param query    The string to query for.
+ * @param expected The expected results.
+ */
 class CodeSymbol(query: String, symbols: Seq[SymInfo]) extends Action {
 
   override def execute(): Exec[Unit] = {
-    val res = server.symbol(new WorkspaceSymbolParams(query)).get()
-    assert(res.size() == symbols.size, res)
-    for ((symInfo, expected) <- res.asScala.zip(symbols)) {
-      assert(symInfo == expected.toSymInformation, res)
+    val results = server.symbol(new WorkspaceSymbolParams(query)).get()
+    assert(results.size() == symbols.size, results)
+    for ((symInfo, expected) <- results.asScala.zip(symbols)) {
+      assert(symInfo == expected.toSymInformation, results)
     }
   }
 

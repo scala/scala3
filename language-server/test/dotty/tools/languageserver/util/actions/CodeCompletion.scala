@@ -6,13 +6,21 @@ import dotty.tools.languageserver.util.server.TestFile
 
 import scala.collection.JavaConverters._
 
-class CodeCompletion(val marker: CodeMarker, completions: List[(String, String, String)]) extends ActionOnMarker {
+/**
+ * An action requesting for code completion at `marker`, expecting `completions`.
+ * This action corresponds to the `textDocument/completion` method of the Language Server Protocol.
+ *
+ * @param marker      The marker indicating the position where completion should be requested.
+ * @param completions The expected results from the language server.
+ */
+class CodeCompletion(override val marker: CodeMarker,
+                     completions: List[(String, String, String)]) extends ActionOnMarker {
 
   override def execute(): Exec[Unit] = {
-    val res = server.completion(marker.toTextDocumentPositionParams).get()
-    assert(res.isRight, res)
-    val cList = res.getRight
-    assert(!cList.isIncomplete, res)
+    val result = server.completion(marker.toTextDocumentPositionParams).get()
+    assert(result.isRight, result)
+    val cList = result.getRight
+    assert(!cList.isIncomplete, result)
     completions.foreach { completion =>
       assert(
         cList.getItems.asScala.exists(item =>

@@ -6,21 +6,31 @@ import org.eclipse.lsp4j._
 
 import scala.collection.JavaConverters._
 
-class CodeDocumentHighlight(val range: CodeRange, highs: Seq[(CodeRange, String)]) extends ActionOnRange {
+/**
+ * An action requesting for the ranges that should be highlighted, when a position within `range`
+ * is selected.
+ * This action corresponds to the `textDocument/documentHighlight` method of the Language Server
+ * Protocol.
+ *
+ * @param range    The range to of positions to test.
+ * @param expected The expected results.
+ */
+class CodeDocumentHighlight(override val range: CodeRange,
+                            expected: Seq[(CodeRange, String)]) extends ActionOnRange {
 
   override def onMarker(marker: CodeMarker): Exec[Unit] = {
-    val (refs, kinds) = highs.unzip
-    val res = server.documentHighlight(fix(marker.toTextDocumentPositionParams)).get()
-    assert(res.size() == refs.size, res)
-    assert(refs.size == kinds.length, res)
-    res.asScala.zip(refs).zip(kinds).foreach { case ((dhl, ref), kind) =>
-      assert(dhl.getKind == DocumentHighlightKind.valueOf(kind), res)
-      assert(dhl.getRange == ref.toRange, res)
+    val (references, kinds) = expected.unzip
+    val results = server.documentHighlight(fix(marker.toTextDocumentPositionParams)).get()
+    assert(results.size() == references.size, results)
+    assert(references.size == kinds.length, results)
+    results.asScala.zip(references).zip(kinds).foreach { case ((dhl, ref), kind) =>
+      assert(dhl.getKind == DocumentHighlightKind.valueOf(kind), results)
+      assert(dhl.getRange == ref.toRange, results)
     }
   }
 
   override def show: PositionContext.PosCtx[String] = {
-    val (refs, kinds) = highs.unzip
-    s"CodeDocumentHighlight(${range.show}, ${refs.map(_.show)}, $kinds)"
+    val (references, kinds) = expected.unzip
+    s"CodeDocumentHighlight(${range.show}, ${references.map(_.show)}, $kinds)"
   }
 }

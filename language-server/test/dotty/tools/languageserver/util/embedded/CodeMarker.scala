@@ -10,14 +10,19 @@ import PositionContext._
 /** Used to mark positions in the code */
 class CodeMarker(val name: String) extends Embedded {
 
+  /** A range of positions between this marker and `other`. */
   def to(other: CodeMarker): CodeRange = CodeRange(this, other)
 
+  /** The file containing this marker. */
   def file: PosCtx[TestFile] = implicitly[PositionContext].positionOf(this)._1
 
+  /** The line containing this marker. */
   def line: PosCtx[Int] = implicitly[PositionContext].positionOf(this)._2
 
+  /** The columng number of this marker. */
   def character: PosCtx[Int] = implicitly[PositionContext].positionOf(this)._3
 
+  /** Converts this marker to a position. */
   def toPosition: PosCtx[Position] = new Position(line, character)
 
   def toTextDocumentPositionParams: PosCtx[TextDocumentPositionParams] =

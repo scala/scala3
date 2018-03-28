@@ -3,12 +3,16 @@ package dotty.tools.languageserver.util.actions
 import dotty.tools.languageserver.util.{CodeRange, PositionContext}
 import dotty.tools.languageserver.util.embedded.CodeMarker
 
+/** An action that executes on a range. */
 trait ActionOnRange extends Action {
 
+  /** The range on which the action is performed. */
   def range: CodeRange
+
+  /** The action to perform for every point of the range. */
   def onMarker(marker: CodeMarker): Exec[Unit]
 
-  def execute(): Exec[Unit] = {
+  override def execute(): Exec[Unit] = {
     val posCtx = implicitly[PositionContext]
     range.check()
     val file = range.file

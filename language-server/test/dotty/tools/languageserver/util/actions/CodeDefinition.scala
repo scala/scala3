@@ -3,7 +3,14 @@ package dotty.tools.languageserver.util.actions
 import dotty.tools.languageserver.util._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 
-class CodeDefinition(val range: CodeRange, expected: Seq[CodeRange]) extends ActionOnRange {
+/**
+ * An action requesting for the definition of the symbol inside `range`.
+ * This action corresponds to the `textDocument/definition` method of the Language Server Protocol.
+ *
+ * @param range    The range of positions for which to request the definition.
+ * @param expected The expected results.
+ */
+class CodeDefinition(override val range: CodeRange, expected: Seq[CodeRange]) extends ActionOnRange {
 
   override def onMarker(marker: CodeMarker): Exec[Unit] = {
     val results = server.definition(fix(marker.toTextDocumentPositionParams)).get()

@@ -7,6 +7,12 @@ import org.eclipse.lsp4j._
 
 import PositionContext._
 
+/**
+ * A range of positions between two markers.
+ *
+ * @param start The start marker.
+ * @param end   The end marker.
+ */
 case class CodeRange(start: CodeMarker, end: CodeMarker) {
   private var checked = false
   def check(): PosCtx[Unit] = {
