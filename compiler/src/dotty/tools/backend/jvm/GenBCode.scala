@@ -163,7 +163,23 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
      */
     class Worker1(needsOutFolder: Boolean) {
 
-      val caseInsensitively = scala.collection.mutable.HashMap.empty[String, Symbol]
+      private val lowerCaseNames = mutable.HashMap.empty[String, Symbol]
+      private def checkForCaseConflict(javaClassName: String, classSymbol: Symbol) = {
+        val lowerCaseName = javaClassName.toLowerCase
+        lowerCaseNames.get(lowerCaseName) match {
+          case None =>
+            lowerCaseNames.put(lowerCaseName, classSymbol)
+          case Some(dupClassSym) =>
+            // Order is not deterministic so we enforce lexicographic order between the duplicates for error-reporting
+            val (cl1, cl2) =
+              if (classSymbol.effectiveName.toString < dupClassSym.effectiveName.toString) (classSymbol, dupClassSym)
+              else (dupClassSym, classSymbol)
+            ctx.atPhase(ctx.typerPhase) { implicit ctx =>
+              ctx.warning(s"${cl1.show} differs only in case from ${cl2.showLocated}. " +
+                "Such classes will overwrite one another on case-insensitive filesystems.", cl1.pos)
+            }
+        }
+      }
 
       def run(): Unit = {
         while (true) {
@@ -192,30 +208,6 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
       def visit(item: Item1) = {
         val Item1(arrivalPos, cd, cunit) = item
         val claszSymbol = cd.symbol
-
-        // GenASM checks this before classfiles are emitted, https://github.com/scala/scala/commit/e4d1d930693ac75d8eb64c2c3c69f2fc22bec739
-        def checkName(claszSymbol: Symbol): Unit = {
-          val lowercaseJavaClassName = claszSymbol.effectiveName.toString.toLowerCase
-          caseInsensitively.get(lowercaseJavaClassName) match {
-            case None =>
-              caseInsensitively.put(lowercaseJavaClassName, claszSymbol)
-            case Some(dupClassSym) =>
-              if (claszSymbol.effectiveName.toString != dupClassSym.effectiveName.toString) {
-                // Order is not deterministic so we enforce lexicographic order between the duplicates for error-reporting
-                val (cl1, cl2) =
-                  if (claszSymbol.effectiveName.toString < dupClassSym.effectiveName.toString) (claszSymbol, dupClassSym)
-                  else (dupClassSym, claszSymbol)
-                ctx.warning(s"Class ${cl1.effectiveName} differs only in case from ${cl2.effectiveName}. " +
-                  "Such classes will overwrite one another on case-insensitive filesystems.", cl1.pos)
-              }
-          }
-        }
-        checkName(claszSymbol)
-        if (int.symHelper(claszSymbol).isModuleClass) {
-          val companionModule = claszSymbol.companionModule
-          if (int.symHelper(companionModule.owner).isPackageClass)
-            checkName(companionModule)
-        }
 
         // -------------- mirror class, if needed --------------
         val mirrorC =
@@ -263,6 +255,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         val classFiles = classNodes.map(cls =>
           if (outF != null && cls != null) {
             try {
+              checkForCaseConflict(cls.name, claszSymbol)
               getFileForClassfile(outF, cls.name, ".class")
             } catch {
               case e: FileConflictException =>
@@ -272,7 +265,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           } else null
         )
 
-        // ----------- sbt's callbacks
+        // ----------- compiler and sbt's callbacks
 
         val (fullClassName, isLocal) = ctx.atPhase(ctx.sbtExtractDependenciesPhase) { implicit ctx =>
           (ExtractDependencies.classNameAsString(claszSymbol), claszSymbol.isLocal)
