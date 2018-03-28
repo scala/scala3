@@ -526,9 +526,13 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
               case vdef: ValDef => vdef.symbol.is(Synthetic) // Assume that only _this bindings are tagged with Synthetic
               case _ => false
             }
-
+            // Simplification of the call done in PostTyper for non-macros can also be performed now
+            // see PostTyper `case Inlined(...) =>` for description of the simplification
+            val call2 =
+              if (level == 0) Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
+              else call
             val tree1 =
-              if (level == 0) cpy.Inlined(tree)(call, stagedBindings, Splicer.splice(body, call, splicedBindings, tree.pos).withPos(tree.pos))
+              if (level == 0) cpy.Inlined(tree)(call2, stagedBindings, Splicer.splice(body, call, splicedBindings, tree.pos).withPos(tree.pos))
               else seq(stagedBindings, cpy.Select(expansion)(cpy.Inlined(tree)(call, splicedBindings, body), name))
             val tree2 = transform(tree1)
 
