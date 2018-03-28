@@ -121,13 +121,14 @@ object PickledQuotes {
   private def classTagToTypeTree(ct: ClassTag[_])(implicit ctx: Context): TypeTree = {
     val tpe = ct match {
       case ClassTag.Unit => defn.UnitType
+      case ClassTag.Boolean => defn.BooleanType
       case ClassTag.Byte => defn.ByteType
       case ClassTag.Char => defn.CharType
       case ClassTag.Short => defn.ShortType
       case ClassTag.Int => defn.IntType
       case ClassTag.Long => defn.LongType
       case ClassTag.Float => defn.FloatType
-      case ClassTag.Double => defn.FloatType
+      case ClassTag.Double => defn.DoubleType
     }
     TypeTree(tpe)
   }

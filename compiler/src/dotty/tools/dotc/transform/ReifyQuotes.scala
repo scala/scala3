@@ -352,6 +352,19 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           liftList(splices, defn.AnyType))
       }
       if (splices.nonEmpty) pickleAsTasty()
+      else if (isType) {
+        def tag(tagName: String) = ref(defn.QuotedTypeModule).select(tagName.toTermName)
+        if (body.symbol == defn.UnitClass) tag("UnitTag")
+        else if (body.symbol == defn.BooleanClass) tag("BooleanTag")
+        else if (body.symbol == defn.ByteClass) tag("ByteTag")
+        else if (body.symbol == defn.CharClass) tag("CharTag")
+        else if (body.symbol == defn.ShortClass) tag("ShortTag")
+        else if (body.symbol == defn.IntClass) tag("IntTag")
+        else if (body.symbol == defn.LongClass) tag("LongTag")
+        else if (body.symbol == defn.FloatClass) tag("FloatTag")
+        else if (body.symbol == defn.DoubleClass) tag("DoubleTag")
+        else pickleAsTasty()
+      }
       else ReifyQuotes.toValue(body) match {
         case Some(value) => pickleAsValue(value)
         case _ => pickleAsTasty()
