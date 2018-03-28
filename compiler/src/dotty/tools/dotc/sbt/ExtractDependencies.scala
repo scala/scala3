@@ -173,10 +173,7 @@ private final class UsedNamesInClass {
     names.foreach { case (name, scopes) =>
       builder.append(name.mangledString)
       builder.append(" in [")
-      scopes.forEach(new java.util.function.Consumer[UseScope]() { // TODO: Adapt to SAM type when #2732 is fixed
-        override def accept(scope: UseScope): Unit =
-          builder.append(scope.toString)
-      })
+      scopes.forEach(scope => builder.append(scope.toString))
       builder.append("]")
       builder.append(", ")
     }
