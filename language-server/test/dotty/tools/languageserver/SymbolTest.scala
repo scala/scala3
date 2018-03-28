@@ -1,6 +1,7 @@
 package dotty.tools.languageserver
 
 import org.junit.Test
+import org.eclipse.lsp4j.SymbolKind
 
 import dotty.tools.languageserver.util.Code._
 
@@ -21,7 +22,7 @@ class SymbolTest {
             |  class Bar
             |}
           """
-    ) .symbol("Foo", Foo.range.symInfo("Foo", "Class"), fooFoo.range.symInfo("Foo", "Class", "foo"))
-      .symbol("Bar", Bar.range.symInfo("Bar", "Class"))
+    ) .symbol("Foo", Foo.range.symInfo("Foo", SymbolKind.Class), fooFoo.range.symInfo("Foo", SymbolKind.Class, "foo"))
+      .symbol("Bar", Bar.range.symInfo("Bar", SymbolKind.Class))
   }
 }

@@ -30,7 +30,7 @@ case class CodeRange(start: CodeMarker, end: CodeMarker) {
 
   def withCode(text: String): CodeInRange = CodeInRange(text, this)
 
-  def symInfo(name: String, kind: String, container: String = null): SymInfo =
+  def symInfo(name: String, kind: SymbolKind, container: String = null): SymInfo =
     new SymInfo(name, kind, this, container)
 
   def toRange: PosCtx[Range] = {
