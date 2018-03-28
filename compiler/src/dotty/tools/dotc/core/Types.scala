@@ -1648,6 +1648,8 @@ object Types {
       }
 
     final def symbol(implicit ctx: Context): Symbol =
+      // We can rely on checkedPeriod (unlike in the definition of `denot` below)
+      // because SymDenotation#installAfter never changes the symbol
       if (checkedPeriod == ctx.period) lastSymbol else computeSymbol
 
     private def computeSymbol(implicit ctx: Context): Symbol =
@@ -1692,17 +1694,11 @@ object Types {
     /** The denotation currently denoted by this type */
     final def denot(implicit ctx: Context): Denotation = {
       val now = ctx.period
-      val lastd = lastDenotation
-      if (checkedPeriod == now) lastd else denotAt(lastd, now)
-    }
-
-    /** A first fall back to do a somewhat more expensive calculation in case the first
-     *  attempt in `denot` does not yield a denotation.
-     */
-    private def denotAt(lastd: Denotation, now: Period)(implicit ctx: Context): Denotation = {
-      if (checkedPeriod != Nowhere && lastd.validFor.contains(now)) {
+      // Even if checkedPeriod == now we still need to recheck lastDenotation.validFor
+      // as it may have been mutated by SymDenotation#installAfter
+      if (checkedPeriod != Nowhere && lastDenotation.validFor.contains(now)) {
         checkedPeriod = now
-        lastd
+        lastDenotation
       }
       else computeDenot
     }
