@@ -766,13 +766,12 @@ object Build {
       // fork so that the shutdown hook in Main is run when we ctrl+c a run
       // (you need to have `cancelable in Global := true` in your global sbt config to ctrl+c a run)
       fork in run := true,
+      fork in Test := true,
       libraryDependencies ++= Seq(
         "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.3.0",
         Dependencies.`jackson-databind`
       ),
       javaOptions := (javaOptions in `dotty-compiler-bootstrapped`).value,
-
-      test := {}, // Tests should be run with dotty-language-server/test:run
 
       run := Def.inputTaskDyn {
         val inputArgs = spaceDelimited("<arg>").parsed

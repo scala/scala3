@@ -48,7 +48,7 @@ pipeline:
     image: lampepfl/dotty:2018-04-10
     commands:
       - cp -R . /tmp/4/ && cd /tmp/4/
-      - ./project/scripts/sbt dotty-language-server/test:run
+      - ./project/scripts/sbt dotty-language-server/test
 
   test_sbt:
     group: test
