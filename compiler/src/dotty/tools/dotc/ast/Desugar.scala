@@ -50,7 +50,7 @@ object desugar {
    */
   class DerivedFromParamTree(suffix: String) extends DerivedTypeTree {
 
-    /** Make sure that for all enclosing module classes their companion lasses
+    /** Make sure that for all enclosing module classes their companion classes
      *  are completed. Reason: We need the constructor of such companion classes to
      *  be completed so that OriginalSymbol attachments are pushed to DerivedTypeTrees
      *  in apply/unapply methods.
