@@ -512,8 +512,11 @@ object hasLength {
       common def unit: This
     }
 
-    extension IntOps for Int : Monoid {
+    extension IntSemiGroup for Int : SemiGroup {
       def add(that: Int) = this + that
+    }
+
+    extension IntMonoid for Int : Monoid {
       common def unit = 0
     }
 
@@ -567,13 +570,22 @@ object semiGroups {
     }
   }
 
-  implicit object IntOps extends Monoid.Common {
+  implicit object IntSemiGroup extends SemiGroup.Common { self =>
     type This = Int
-    type Instance = Monoid { val `common`: IntOps.type }
+    type Instance = SemiGroup { val `common`: self.type }
+    def inject($this: Int) = new SemiGroup {
+      val `common`: self.type = self
+      def add(that: Int): Int = $this + that
+    }
+  }
+
+  implicit object IntMonoid extends Monoid.Common { self =>
+    type This = Int
+    type Instance = Monoid { val `common`: self.type }
     def unit: Int = 0
     def inject($this: Int) = new Monoid {
-      val `common`: IntOps.this.type = IntOps.this
-      def add(that: This): This = $this + that
+      val `common`: self.type = self
+      def add(that: This): This = IntSemiGroup.inject($this).add(that)
     }
   }
 
