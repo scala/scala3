@@ -28,8 +28,11 @@ object GenericSignatures {
    *  @param info The type of the symbol
    *  @return The signature if it could be generated, `None` otherwise.
    */
-  def javaSig(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] =
-    javaSig0(sym0, info)(ctx.withPhase(ctx.erasurePhase))
+  def javaSig(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] = {
+    // Avoid generating a signature for local symbols.
+    if (sym0.isLocal) None
+    else javaSig0(sym0, info)(ctx.withPhase(ctx.erasurePhase))
+  }
 
   @noinline
   private final def javaSig0(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] = {
@@ -501,8 +504,7 @@ object GenericSignatures {
           case PolyType(_, _) =>
             true
           case ClassInfo(_, _, parents, _, _) =>
-            // Local classes don't need a signature
-            !tp.classSymbol.isLocal && foldOver(tp.typeParams.nonEmpty, parents)
+            foldOver(tp.typeParams.nonEmpty, parents)
           case AnnotatedType(tpe, _) =>
             foldOver(x, tpe)
           case proxy: TypeProxy =>
