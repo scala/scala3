@@ -70,6 +70,8 @@ class TailRec extends MiniPhase with FullParameterization {
 
   override def phaseName: String = TailRec.name
 
+  override def runsAfter = Set(ShortcutImplicits.name) // Replaces non-tail calls by tail calls
+
   final val labelFlags = Flags.Synthetic | Flags.Label
 
   /** Symbols of methods that have @tailrec annotatios inside */
