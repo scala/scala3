@@ -1715,10 +1715,11 @@ object messages {
     }
   }
 
-  case class FunctionTypeNeedsNonEmptyParameterList(isImplicit: Boolean = true, isErased: Boolean = true)(implicit ctx: Context)
+  case class FunctionTypeNeedsNonEmptyParameterList(isImplicit: Boolean, isErased: Boolean)(implicit ctx: Context)
     extends Message(FunctionTypeNeedsNonEmptyParameterListID) {
+    assert(isImplicit || isErased)
     val kind = "Syntax"
-    val mods = ((isImplicit, "implicit") :: (isErased, "erased") :: Nil).filter(_._1).mkString(" ")
+    val mods = ((isErased, "erased") :: (isImplicit, "implicit") :: Nil).collect { case (true, mod) => mod }.mkString(" ")
     val msg = mods + " function type needs non-empty parameter list"
     val explanation = {
       val code1 = s"type Transactional[T] = $mods Transaction => T"
