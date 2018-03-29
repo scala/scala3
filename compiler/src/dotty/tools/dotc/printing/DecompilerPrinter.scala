@@ -1,6 +1,6 @@
 package dotty.tools.dotc.printing
 
-import dotty.tools.dotc.ast.Trees.{Closure, DefDef, Untyped, ValDef}
+import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.untpd.{PackageDef, Template, TypeDef}
 import dotty.tools.dotc.ast.{Trees, untpd}
 import dotty.tools.dotc.printing.Texts._
@@ -49,6 +49,18 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
         addVparamssText(prefix ~ tparamsText(tree.tparams), tree.vparamss) ~ optAscription(tree.tpt).provided(!printLambda) ~
           optText(tree.rhs)((if (printLambda) " => " else " = ") ~ _)
       }
+    }
+  }
+
+  override protected def toTextCore[T >: Untyped](tree: Tree[T]): Text = {
+    import untpd.{modsDeco => _, _}
+    tree match {
+      case TypeApply(fun, args) =>
+        if (tree.symbol eq defn.quoteMethod) "'"
+        else if (tree.symbol eq defn.typeQuoteMethod) "'[" ~ toTextGlobal(args, ", ") ~ "]"
+        else super.toTextCore(tree)
+      case _ =>
+        super.toTextCore(tree)
     }
   }
 }

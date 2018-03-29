@@ -229,7 +229,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
     ("{" ~ toText(trees, "\n") ~ "}").close
 
-  override def toText[T >: Untyped](tree: Tree[T]): Text = controlled {
+  protected def toTextCore[T >: Untyped](tree: Tree[T]): Text = {
     import untpd.{modsDeco => _, _}
 
     def isLocalThis(tree: Tree) = tree.typeOpt match {
@@ -274,7 +274,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => toTextGlobal(arg)
     }
 
-    def toTextCore(tree: Tree): Text = tree match {
+    tree match {
       case id: Trees.BackquotedIdent[_] if !homogenizedView =>
         "`" ~ toText(id.name) ~ "`"
       case id: Trees.SearchFailureIdent[_] =>
@@ -511,6 +511,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ =>
         tree.fallbackToText(this)
     }
+  }
+
+  override def toText[T >: Untyped](tree: Tree[T]): Text = controlled {
+    import untpd.{modsDeco => _, _}
 
     var txt = toTextCore(tree)
 
@@ -550,7 +554,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if (ctx.settings.YprintPosSyms.value && tree.isDef)
         txt = (txt ~
           s"@@(${tree.symbol.name}=" ~ tree.symbol.pos.toString ~ ")").close
-   }
+    }
     if (ctx.settings.YshowTreeIds.value)
       txt = (txt ~ "#" ~ tree.uniqueId.toString).close
     tree match {
