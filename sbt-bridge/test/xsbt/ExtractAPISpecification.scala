@@ -36,7 +36,7 @@ class ExtractAPISpecification {
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val apis = compilerForTesting.extractApiFromSrc(src)
     val Seq(fooClassApi) = apis.toSeq
-    assertEquals(fooClassApi.definitionType, DefinitionType.PackageModule)
+    assertEquals(DefinitionType.PackageModule, fooClassApi.definitionType)
   }
 
   @Test
@@ -47,7 +47,7 @@ class ExtractAPISpecification {
         |}""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val apis = compilerForTesting.extractApiFromSrc(src).map(c => c.name -> c).toMap
-    assertEquals(apis.keys, Set("A", "A.B"))
+    assertEquals(Set("A", "A.B"), apis.keys)
   }
 
   @Test
@@ -59,7 +59,7 @@ class ExtractAPISpecification {
         |class D { def foo: Unit = { new B {} } }""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val apis = compilerForTesting.extractApiFromSrc(src).map(c => c.name -> c).toMap
-    assertEquals(apis.keys, Set("A", "B", "C", "D"))
+    assertEquals(Set("A", "B", "C", "D"), apis.keys)
   }
 
   @Ignore
@@ -93,7 +93,7 @@ class ExtractAPISpecification {
         |""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val apis = compilerForTesting.extractApiFromSrc(src).map(c => c.name -> c).toMap
-    assertEquals(apis.keys, Set("A", "B", "B.Inner1"))
+    assertEquals(Set("A", "B", "B.Inner1"), apis.keys)
   }
 
   @Test
@@ -165,7 +165,7 @@ class ExtractAPISpecification {
       """.stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val apis = compilerForTesting.extractApiFromSrc(src).map(a => a.name -> a).toMap
-    assertEquals(apis.keySet, Set("A", "A.AA", "B", "B.AA"))
+    assertEquals(Set("A", "A.AA", "B", "B.AA"), apis.keySet)
     assertNotEquals(apis("A.AA"), apis("B.AA"))
   }
 
@@ -181,7 +181,7 @@ class ExtractAPISpecification {
       """.stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val apis = compilerForTesting.extractApiFromSrc(src).map(a => a.name -> a).toMap
-    assertEquals(apis.keySet, Set("abc.package", "abc.package$.BuildInfoKey", "abc.package$.BuildInfoKey$.Entry"))
+    assertEquals(Set("abc.package", "abc.package$.BuildInfoKey", "abc.package$.BuildInfoKey$.Entry"), apis.keySet)
   }
 
   /**
@@ -210,7 +210,7 @@ class ExtractAPISpecification {
     def hasSelfType(c: ClassLike): Boolean =
       c.selfType != emptyType
     val (withSelfType, withoutSelfType) = apis.partition(hasSelfType)
-    assertEquals(withSelfType.map(_.name).toSet, Set("C3", "C4", "C5", "C6"))
-    assertEquals(withoutSelfType.map(_.name).toSet, Set("X", "Y", "C1", "C2", "C8"))
+    assertEquals(Set("C3", "C4", "C5", "C6"), withSelfType.map(_.name).toSet)
+    assertEquals(Set("X", "Y", "C1", "C2", "C8"), withoutSelfType.map(_.name).toSet)
   }
 }

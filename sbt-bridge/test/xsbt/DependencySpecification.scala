@@ -12,21 +12,21 @@ class DependencySpecification {
     val classDependencies = extractClassDependenciesPublic
     val memberRef = classDependencies.memberRef
     val inheritance = classDependencies.inheritance
-    assertEquals(memberRef("A"),   Set.empty)
-    assertEquals(inheritance("A"), Set.empty)
-    assertEquals(memberRef("B"),   Set("A", "D"))
-    assertEquals(inheritance("B"), Set("D"))
-    assertEquals(memberRef("C"),   Set("A"))
-    assertEquals(inheritance("C"), Set.empty)
-    assertEquals(memberRef("D"),   Set.empty)
-    assertEquals(inheritance("D"), Set.empty)
-    assertEquals(memberRef("E"),   Set.empty)
-    assertEquals(inheritance("E"), Set.empty)
-    assertEquals(memberRef("F"),   Set("A", "B", "D", "E", "G", "C")) // C is the underlying type of MyC
-    assertEquals(inheritance("F"), Set("A", "E"))
-    assertEquals(memberRef("H"),   Set("B", "E", "G"))
+    assertEquals(Set.empty, memberRef("A"))
+    assertEquals(Set.empty, inheritance("A"))
+    assertEquals(Set("A", "D"), memberRef("B"))
+    assertEquals(Set("D"), inheritance("B"))
+    assertEquals(Set("A"), memberRef("C"))
+    assertEquals(Set.empty, inheritance("C"))
+    assertEquals(Set.empty, memberRef("D"))
+    assertEquals(Set.empty, inheritance("D"))
+    assertEquals(Set.empty, memberRef("E"))
+    assertEquals(Set.empty, inheritance("E"))
+    assertEquals(Set("A", "B", "D", "E", "G", "C"), memberRef("F")) // C is the underlying type of MyC
+    assertEquals(Set("A", "E"), inheritance("F"))
+    assertEquals(Set("B", "E", "G"), memberRef("H"))
     // aliases and applied type constructors are expanded so we have inheritance dependency on B
-    assertEquals(inheritance("H"), Set("B", "E"))
+    assertEquals(Set("B", "E"), inheritance("H"))
   }
 
   @Test
@@ -35,18 +35,18 @@ class DependencySpecification {
     val memberRef = classDependencies.memberRef
     val inheritance = classDependencies.inheritance
     val localInheritance = classDependencies.localInheritance
-    assertEquals(memberRef("A"),          Set.empty)
-    assertEquals(inheritance("A"),        Set.empty)
-    assertEquals(memberRef("B"),          Set.empty)
-    assertEquals(inheritance("B"),        Set.empty)
-    assertEquals(memberRef("C.Inner1"),   Set("A"))
-    assertEquals(inheritance("C.Inner1"), Set("A"))
-    assertEquals(memberRef("D"),          Set("B"))
-    assertEquals(inheritance("D"),        Set.empty)
-    assertEquals(localInheritance("D"),   Set("B"))
-    assertEquals(memberRef("E"),          Set("B"))
-    assertEquals(inheritance("E"),        Set.empty)
-    assertEquals(localInheritance("E"),   Set("B"))
+    assertEquals(Set.empty, memberRef("A"))
+    assertEquals(Set.empty, inheritance("A"))
+    assertEquals(Set.empty, memberRef("B"))
+    assertEquals(Set.empty, inheritance("B"))
+    assertEquals(Set("A"), memberRef("C.Inner1"))
+    assertEquals(Set("A"), inheritance("C.Inner1"))
+    assertEquals(Set("B"), memberRef("D"))
+    assertEquals(Set.empty, inheritance("D"))
+    assertEquals(Set("B"), localInheritance("D"))
+    assertEquals(Set("B"), memberRef("E"))
+    assertEquals(Set.empty, inheritance("E"))
+    assertEquals(Set("B"), localInheritance("E"))
   }
 
   @Test
@@ -54,18 +54,18 @@ class DependencySpecification {
     val classDependencies = extractClassDependenciesTraitAsFirstPatent
     val memberRef = classDependencies.memberRef
     val inheritance = classDependencies.inheritance
-    assertEquals(memberRef("A"),    Set.empty)
-    assertEquals(inheritance("A"),  Set.empty)
-    assertEquals(memberRef("B"),    Set("A"))
-    assertEquals(inheritance("B"),  Set("A"))
+    assertEquals(Set.empty, memberRef("A"))
+    assertEquals(Set.empty, inheritance("A"))
+    assertEquals(Set("A"), memberRef("B"))
+    assertEquals(Set("A"), inheritance("B"))
     // verify that memberRef captures the oddity described in documentation of `Relations.inheritance`
     // we are mainly interested whether dependency on A is captured in `memberRef` relation so
     // the invariant that says that memberRef is superset of inheritance relation is preserved
-    assertEquals(memberRef("C"),   Set("A", "B"))
-    assertEquals(inheritance("C"), Set("A", "B"))
+    assertEquals(Set("A", "B"), memberRef("C"))
+    assertEquals(Set("A", "B"), inheritance("C"))
     // same as above but indirect (C -> B -> A), note that only A is visible here
-    assertEquals(memberRef("D"),   Set("A", "C"))
-    assertEquals(inheritance("D"), Set("A", "C"))
+    assertEquals(Set("A", "C"), memberRef("D"))
+    assertEquals(Set("A", "C"), inheritance("D"))
   }
 
   @Test
@@ -80,10 +80,10 @@ class DependencySpecification {
 
     val memberRef = classDependencies.memberRef
     val inheritance = classDependencies.inheritance
-    assertEquals(memberRef("Outer"),   Set.empty)
-    assertEquals(inheritance("Outer"), Set.empty)
-    assertEquals(memberRef("Bar"),     Set("Outer", "Outer$.Inner"))
-    assertEquals(inheritance("Bar"),   Set.empty)
+    assertEquals(Set.empty, memberRef("Outer"))
+    assertEquals(Set.empty, inheritance("Outer"))
+    assertEquals(Set("Outer", "Outer$.Inner"), memberRef("Bar"))
+    assertEquals(Set.empty, inheritance("Bar"))
   }
 
   @Test
@@ -100,10 +100,10 @@ class DependencySpecification {
 
     val memberRef = classDependencies.memberRef
     val inheritance = classDependencies.inheritance
-    assertEquals(memberRef("A"),   Set("B"))
-    assertEquals(inheritance("A"), Set.empty)
-    assertEquals(memberRef("B"),   Set.empty)
-    assertEquals(inheritance("B"), Set.empty)
+    assertEquals(Set("B"), memberRef("A"))
+    assertEquals(Set.empty, inheritance("A"))
+    assertEquals(Set.empty, memberRef("B"))
+    assertEquals(Set.empty, inheritance("B"))
   }
 
   @Test
@@ -135,14 +135,14 @@ class DependencySpecification {
       .extractDependenciesFromSrcs(srcA, srcB, srcC, srcD, srcE, srcF, srcG, srcH)
       .memberRef
 
-    assertEquals(deps("A"),         Set.empty)
-    assertEquals(deps("B"),         Set("abc.A", "abc.A$.Inner"))
-    assertEquals(deps("C"),         Set("abc.A", "abc.A2"))
-    assertEquals(deps("D"),         Set("abc.A2"))
-    assertEquals(deps("E"),         Set("abc.A"))
-    assertEquals(deps("F"),         Set.empty)
-    assertEquals(deps("foo.bar.G"), Set("abc.A"))
-    assertEquals(deps("H"),         Set("abc.A"))
+    assertEquals(Set.empty, deps("A"))
+    assertEquals(Set("abc.A", "abc.A$.Inner"), deps("B"))
+    assertEquals(Set("abc.A", "abc.A2"), deps("C"))
+    assertEquals(Set("abc.A2"), deps("D"))
+    assertEquals(Set("abc.A"), deps("E"))
+    assertEquals(Set.empty, deps("F"))
+    assertEquals(Set("abc.A"), deps("foo.bar.G"))
+    assertEquals(Set("abc.A"), deps("H"))
   }
 
   private def extractClassDependenciesPublic: ExtractedClassDependencies = {

@@ -18,7 +18,7 @@ class ExtractUsedNamesSpecification {
     val expectedNames = standardNames ++ Set("a", "A", "A2", "b")
     // names used at top level are attributed to the first class defined in a compilation unit
 
-    assertEquals(usedNames("a.A"), expectedNames)
+    assertEquals(expectedNames, usedNames("a.A"))
   }
 
   // test covers https://github.com/gkossakowski/sbt/issues/6
@@ -44,7 +44,7 @@ class ExtractUsedNamesSpecification {
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcA, srcB)
     val expectedNames = standardNames ++ Set("a", "c", "A", "B", "C", "D", "b", "BB")
-    assertEquals(usedNames("b.X"), expectedNames)
+    assertEquals(expectedNames, usedNames("b.X"))
   }
 
   // test for https://github.com/gkossakowski/sbt/issues/5
@@ -59,7 +59,7 @@ class ExtractUsedNamesSpecification {
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcA, srcB)
     val expectedNames = standardNames ++ Set("A", "a", "=", "Int")
-    assertEquals(usedNames("B"), expectedNames)
+    assertEquals(expectedNames, usedNames("B"))
   }
 
   @Test
@@ -83,11 +83,11 @@ class ExtractUsedNamesSpecification {
     val namesB = Set("A", "Int", "A;init;", "Unit")
     val namesC = Set("B;init;", "B", "Unit")
     val namesD = standardNames ++ Set("C", "X", "foo", "Int", "T")
-    assertEquals(usedNames("A"),   namesA)
-    assertEquals(usedNames("A.X"), namesAX)
-    assertEquals(usedNames("B"),   namesB)
-    assertEquals(usedNames("C"),   namesC)
-    assertEquals(usedNames("D"),   namesD)
+    assertEquals(namesA, usedNames("A"))
+    assertEquals(namesAX, usedNames("A.X"))
+    assertEquals(namesB, usedNames("B"))
+    assertEquals(namesC, usedNames("C"))
+    assertEquals(namesD, usedNames("D"))
   }
 
   // See source-dependencies/types-in-used-names-a for an example where
@@ -147,11 +147,11 @@ class ExtractUsedNamesSpecification {
                                                  "Predef",
                                                  "???",
                                                  "Nothing")
-    assertEquals(usedNames("Test_lista"), expectedNames_lista)
-    assertEquals(usedNames("Test_at"),    expectedNames_at)
-    assertEquals(usedNames("Test_as"),    expectedNames_as)
-    assertEquals(usedNames("Test_foo"),   expectedNames_foo)
-    assertEquals(usedNames("Test_bar"),   expectedNames_bar)
+    assertEquals(expectedNames_lista, usedNames("Test_lista"))
+    assertEquals(expectedNames_at, usedNames("Test_at"))
+    assertEquals(expectedNames_as, usedNames("Test_as"))
+    assertEquals(expectedNames_foo, usedNames("Test_foo"))
+    assertEquals(expectedNames_bar, usedNames("Test_bar"))
   }
 
   @Test
@@ -168,7 +168,7 @@ class ExtractUsedNamesSpecification {
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcFoo, srcBar)
     val expectedNames = standardNames ++ Set("Outer", "TypeInner", "Inner", "Int")
-    assertEquals(usedNames("Bar"), expectedNames)
+    assertEquals(expectedNames, usedNames("Bar"))
   }
 
   // test for https://github.com/gkossakowski/sbt/issues/3
@@ -178,7 +178,7 @@ class ExtractUsedNamesSpecification {
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(src)
     val expectedNames = standardNames ++ Set("A", "foo", "Int")
-    assertEquals(usedNames("A"), expectedNames)
+    assertEquals(expectedNames, usedNames("A"))
   }
 
   // pending test for https://issues.scala-lang.org/browse/SI-7173
@@ -188,7 +188,7 @@ class ExtractUsedNamesSpecification {
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(src)
     val expectedNames = standardNames ++ Set("A", "foo", "Int")
-    assertEquals(usedNames("A"), expectedNames)
+    assertEquals(expectedNames, usedNames("A"))
   }
 
   // test for https://github.com/gkossakowski/sbt/issues/4
@@ -203,7 +203,7 @@ class ExtractUsedNamesSpecification {
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcA, srcB)
     val expectedNames = standardNames ++ Set("A", "a", "Int", "selectDynamic", "bla")
-    assertEquals(usedNames("B"), expectedNames)
+    assertEquals(expectedNames, usedNames("B"))
   }
 
   @Test
@@ -242,12 +242,12 @@ class ExtractUsedNamesSpecification {
         |}
       """.stripMargin
 
-    assertEquals(findPatMatUsages(classWithPatMatOfType()), Set(sealedClassName))
+    assertEquals(Set(sealedClassName), findPatMatUsages(classWithPatMatOfType()))
     // Option is sealed
-    assertEquals(findPatMatUsages(classWithPatMatOfType(s"Option[$sealedClassName]")),
-      Set(sealedClassName, "Option"))
+    assertEquals(Set(sealedClassName, "Option"),
+      findPatMatUsages(classWithPatMatOfType(s"Option[$sealedClassName]")))
     // Seq and Set is not
-    assertEquals(findPatMatUsages(classWithPatMatOfType(s"Seq[Set[$sealedClassName]]")), Set(sealedClassName))
+    assertEquals(Set(sealedClassName), findPatMatUsages(classWithPatMatOfType(s"Seq[Set[$sealedClassName]]")))
 
     def inNestedCase(tpe: String) =
       s"""package client
@@ -259,7 +259,7 @@ class ExtractUsedNamesSpecification {
           |  }
           |}""".stripMargin
 
-    assertEquals(findPatMatUsages(inNestedCase(sealedClassName)), Set())
+    assertEquals(Set(), findPatMatUsages(inNestedCase(sealedClassName)))
 
     val notUsedInPatternMatch =
       s"""package client
@@ -272,7 +272,7 @@ class ExtractUsedNamesSpecification {
           |  val aa: $sealedClassName = ???
           |}""".stripMargin
 
-    assertEquals(findPatMatUsages(notUsedInPatternMatch), Set())
+    assertEquals(Set(), findPatMatUsages(notUsedInPatternMatch))
   }
 
   /**
