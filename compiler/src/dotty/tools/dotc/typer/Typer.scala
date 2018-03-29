@@ -764,7 +764,7 @@ class Typer extends Namer
       case tree: untpd.NonEmptyFunction =>
         if (args.nonEmpty) (tree.mods.is(Implicit), tree.mods.is(Erased))
         else {
-          ctx.error(FunctionTypeNeedsNonEmptyParameterList(), tree.pos)
+          ctx.error(FunctionTypeNeedsNonEmptyParameterList(tree.mods.is(Implicit), tree.mods.is(Erased)), tree.pos)
           (false, false)
         }
       case _ => (false, false)
