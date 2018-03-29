@@ -14,18 +14,13 @@ object Test {
       println(name.run)
     }
 
-    // primitive arrays
-    test(classOf[Array[Boolean]])
-    test(classOf[Array[Byte]])
-    test(classOf[Array[Char]])
-    test(classOf[Array[Short]])
-    test(classOf[Array[Int]])
-    test(classOf[Array[Long]])
-    test(classOf[Array[Float]])
-    test(classOf[Array[Double]])
-
-    test(classOf[Array[Array[Int]]])
-    test(classOf[Array[Array[Array[Int]]]])
+    // class Array[Object]
+    test(classOf[Array[Any]])
+    test(classOf[Array[AnyVal]])
+    test(classOf[Array[AnyRef]])
+    test(classOf[Array[Object]])
   }
 
 }
+
+class Foo

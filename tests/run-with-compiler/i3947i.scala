@@ -14,16 +14,11 @@ object Test {
       println(name.run)
     }
 
-    // class Object
-    test(classOf[Array[_]])
-
-    // class Array[Foo]
-    test(classOf[Array[Foo]])
-
-    // class Array[Array[Foo]]
-    test(classOf[Array[Array[Foo]]])
+    // primitive arrays
+    test(classOf[Array[Int]])
+    test(classOf[Array[Long]])
+    test(classOf[Array[Float]])
+    test(classOf[Array[Double]])
   }
 
 }
-
-class Foo

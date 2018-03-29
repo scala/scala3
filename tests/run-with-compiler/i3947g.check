@@ -1,0 +1,12 @@
+
+classOf[Array[Boolean]].getCanonicalName()
+boolean[]
+
+classOf[Array[Byte]].getCanonicalName()
+byte[]
+
+classOf[Array[Char]].getCanonicalName()
+char[]
+
+classOf[Array[Short]].getCanonicalName()
+short[]

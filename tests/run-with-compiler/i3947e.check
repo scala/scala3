@@ -2,18 +2,6 @@
 classOf[Object].getCanonicalName()
 java.lang.Object
 
-classOf[Array[Object]].getCanonicalName()
-java.lang.Object[]
-
-classOf[Array[Object]].getCanonicalName()
-java.lang.Object[]
-
-classOf[Array[Object]].getCanonicalName()
-java.lang.Object[]
-
-classOf[Array[Object]].getCanonicalName()
-java.lang.Object[]
-
 classOf[Array[Foo]].getCanonicalName()
 Foo[]
 
