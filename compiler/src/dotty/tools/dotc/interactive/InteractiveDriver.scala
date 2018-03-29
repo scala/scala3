@@ -134,8 +134,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       for {
         entry <- zipFile.stream.toArray((size: Int) => new Array[ZipEntry](size))
         name = entry.getName
-        tastySuffix <- tastySuffixes
-        if name.endsWith(tastySuffix)
+        tastySuffix <- tastySuffixes.find(name.endsWith)
       } yield name.replace("/", ".").stripSuffix(tastySuffix)
     }
     finally zipFile.close()
