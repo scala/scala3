@@ -3,6 +3,8 @@ package dotty.tools.sbtplugin
 import sbt._
 import sbt.Keys._
 import sbt.inc.{ ClassfileManager, IncOptions }
+import sbt.Configurations.CompilerPlugin
+import sbt.Def.Initialize
 
 object DottyPlugin extends AutoPlugin {
   object autoImport {
@@ -141,6 +143,38 @@ object DottyPlugin extends AutoPlugin {
   }
 
   override def projectSettings: Seq[Setting[_]] = {
+    // get plugins
+    def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File]): Seq[String] ={
+      val pluginClasspath = report.matching(configurationFilter(CompilerPlugin.name)) ++ internalPluginClasspath
+      val plugins = compilerPlugins(pluginClasspath)
+      plugins.map("-Xplugin:" + _.getAbsolutePath).toSeq
+    }
+
+    // overwrite `sbt.Classpaths.autoPlugins` to check for `plugin.properties` instead of `scalac-plugin.xml`
+    def compilerPlugins(classpath: Seq[File]): Iterable[File] = {
+      import collection.JavaConversions._
+      val loader = new java.net.URLClassLoader(Path.toURLs(classpath))
+      loader.getResources("plugin.properties").toList.flatMap(asFile)
+    }
+
+    // Converts the given URL to a File.
+    def asFile(url: URL): List[File] = try {
+        url.getProtocol match {
+          case "jar" =>
+            val path = url.getPath
+            val end = path.indexOf('!')
+            new File(new URI(if (end == -1) path else path.substring(0, end))) :: Nil
+          case _ => Nil
+        }
+      } catch { case e: Exception => Nil }
+
+    // use reflection to access private lazy field `sbt.Classpaths.internalPluginClasspath`
+    def internalPluginClasspath = {
+      val meth = sbt.Classpaths.getClass.getDeclaredMethod("internalCompilerPluginClasspath")
+      meth.setAccessible(true)
+      meth.invoke(sbt.Classpaths).asInstanceOf[Initialize[Task[Classpath]]]
+    }
+
     Seq(
       isDotty := {
         val log = sLog.value
@@ -165,6 +199,15 @@ object DottyPlugin extends AutoPlugin {
           dottyPatchIncOptions((incOptions in Compile).value)
         else
           (incOptions in Compile).value
+      },
+
+      scalacOptions := {
+        val options = scalacOptions.value
+        if (autoCompilerPlugins.value) {
+          val newPlugins = autoPlugins(update.value, internalPluginClasspath.value.files)
+          val existing = options.toSet
+          options ++ newPlugins.filterNot(existing)
+        } else options
       },
 
       scalaBinaryVersion := {
