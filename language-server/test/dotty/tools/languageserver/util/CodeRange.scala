@@ -14,7 +14,7 @@ import PositionContext._
  * @param end   The end marker.
  */
 case class CodeRange(start: CodeMarker, end: CodeMarker) {
-  private var checked = false
+  private[this] var checked = false
   def check(): PosCtx[Unit] = {
     if (!checked) {
       assert(start.file == end.file, s"$start and $end where not in the same file")
@@ -27,11 +27,6 @@ case class CodeRange(start: CodeMarker, end: CodeMarker) {
   def file: PosCtx[TestFile] = {
     check()
     start.file
-  }
-
-  def toTuple: PosCtx[(Int, Int, Int, Int)] = {
-    check()
-    (start.line, start.character, end.line, end.character)
   }
 
   def withCode(text: String): CodeInRange = CodeInRange(text, this)

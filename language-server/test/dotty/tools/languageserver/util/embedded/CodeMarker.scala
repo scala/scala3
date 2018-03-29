@@ -14,13 +14,13 @@ class CodeMarker(val name: String) extends Embedded {
   def to(other: CodeMarker): CodeRange = CodeRange(this, other)
 
   /** The file containing this marker. */
-  def file: PosCtx[TestFile] = implicitly[PositionContext].positionOf(this)._1
+  def file: PosCtx[TestFile] = posCtx.positionOf(this)._1
 
   /** The line containing this marker. */
-  def line: PosCtx[Int] = implicitly[PositionContext].positionOf(this)._2
+  def line: PosCtx[Int] = posCtx.positionOf(this)._2
 
   /** The columng number of this marker. */
-  def character: PosCtx[Int] = implicitly[PositionContext].positionOf(this)._3
+  def character: PosCtx[Int] = posCtx.positionOf(this)._3
 
   /** Converts this marker to a position. */
   def toPosition: PosCtx[Position] = new Position(line, character)
@@ -46,4 +46,6 @@ class CodeMarker(val name: String) extends Embedded {
 
   def show: PosCtx[String] = s"($name,line=$line,char=$character)"
   override def toString: String = s"CodePosition($name)"
+
+  private implicit def posCtx(implicit ctx: PositionContext): PositionContext = ctx
 }

@@ -81,7 +81,7 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    *
    * @see dotty.tools.languageserver.util.actions.CodeCompletion
    */
-  def completion(marker: CodeMarker, expected: List[(String, CompletionItemKind, String)]): CodeTester =
+  def completion(marker: CodeMarker, expected: Set[(String, CompletionItemKind, String)]): CodeTester =
     doAction(new CodeCompletion(marker, expected))
 
   /**

@@ -56,13 +56,13 @@ object Code {
 
         ai.next() match {
           case emb: CodeMarker =>
-            positions += Tuple3(emb, line, char)
+            positions += ((emb, line, char))
 
           case emb: CodeInRange =>
-            positions += Tuple3(emb.range.start, line, char)
+            positions += ((emb.range.start, line, char))
             scan(emb.text)
             stringBuilder.append(emb.text)
-            positions += Tuple3(emb.range.end, line, char)
+            positions += ((emb.range.end, line, char))
         }
 
       }
