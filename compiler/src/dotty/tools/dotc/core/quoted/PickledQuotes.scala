@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.Type
+import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.tasty.{TastyPickler, TastyPrinter, TastyString}
 
 import scala.quoted.Types._
@@ -25,6 +26,7 @@ object PickledQuotes {
   def pickleQuote(tree: Tree)(implicit ctx: Context): scala.runtime.quoted.Unpickler.Pickled = {
     if (ctx.reporter.hasErrors) Nil
     else {
+      assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'(~x)` which should be optimized to `x`
       val encapsulated = encapsulateQuote(tree)
       val pickled = pickle(encapsulated)
       TastyString.pickle(pickled)

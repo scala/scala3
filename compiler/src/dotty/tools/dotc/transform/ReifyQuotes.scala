@@ -348,7 +348,12 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
      */
     private def quotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
       val isType = quote.symbol eq defn.typeQuoteMethod
-      if (level > 0) {
+      if (body.symbol.isSplice) {
+        // simplify `'(~x)` to `x` and then transform it
+        val Select(splice, _) = body
+        transform(splice)
+      }
+      else if (level > 0) {
         val body1 = nested(isQuote = true).transform(body)
         // Keep quotes as trees to reduce pickled size and have a Expr.show without pickled quotes
         if (isType) ref(defn.typeQuoteMethod).appliedToType(body1.tpe.widen)
