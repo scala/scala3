@@ -1821,6 +1821,7 @@ class Typer extends Namer
             xtree.isTerm &&
             !untpd.isImplicitClosure(xtree) &&
             !ctx.mode.is(Mode.ImplicitShadowing) &&
+            !ctx.mode.is(Mode.Pattern) &&
             !ctx.isAfterTyper)
           makeImplicitFunction(xtree, ifpt)
         else xtree match {
@@ -2317,6 +2318,7 @@ class Typer extends Namer
       if (defn.isImplicitFunctionClass(wtp.underlyingClassRef(refinementOK = false).classSymbol) &&
           !untpd.isImplicitClosure(tree) &&
           !isApplyProto(pt) &&
+          !ctx.mode.is(Mode.Pattern) &&
           !ctx.isAfterTyper) {
         typr.println(i"insert apply on implicit $tree")
         typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt, locked)
