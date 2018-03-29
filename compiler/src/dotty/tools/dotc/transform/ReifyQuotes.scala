@@ -32,6 +32,7 @@ import dotty.tools.dotc.core.quoted._
  *      val x2 = ???
  *      ...
  *      ~{ ... '{ ... x1 ... x2 ...} ... }
+ *      ~{ ... /* no references to xi */ ... }
  *      ...
  *    }
  *    ```
@@ -44,6 +45,7 @@ import dotty.tools.dotc.core.quoted._
  *         val x2 = ???
  *         ...
  *         Hole(0 | x1, x2)
+ *         Hole(1 | )
  *         ...
  *       ]],
  *       List(
@@ -52,7 +54,8 @@ import dotty.tools.dotc.core.quoted._
  *           val x2$1 = args(1).asInstanceOf[Expr[T]] // can be asInstanceOf[Type[T]]
  *           ...
  *           { ... '{ ... x1$1.unary_~ ... x2$1.unary_~ ...} ... }
- *         }
+ *         },
+ *         { ... /* no references to xi */ ... } // optimized to not create lambda
  *       )
  *     )
  *    ```
@@ -66,12 +69,12 @@ import dotty.tools.dotc.core.quoted._
  *    ```
  *  to
  *    ```
- *    inline def foo[T1, ...](inline x1: X, ..., y1: Y, ....): Seq[Any] => Object = { (args: Seq[Any]) => {
+ *    inline def foo[T1, ...](inline x1: X, ..., y1: Y, ....): Object = { (args: Seq[Any]) => {
  *      val T1$1 = args(0).asInstanceOf[Type[T1]]
  *      ...
- *      val x1$1 = args(0).asInstanceOf[X]
+ *      val x1$1 = args(..).asInstanceOf[X]
  *      ...
- *      val y1$1 = args(1).asInstanceOf[Expr[Y]]
+ *      val y1$1 = args(..).asInstanceOf[Expr[Y]]
  *      ...
  *      { ... T1$1.unary_~ ... x ... '(y1$1.unary_~) ... }
  *    }
@@ -417,6 +420,8 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
      *       val y$1 = args(1).asInstanceOf[Expr[Any]] // or .asInstanceOf[Type[Any]]
      *       { ... '{ ... x$1.unary_~ ... y$1.unary_~ ... } ... }
      *     }
+     *  or if the spliced subexpression has no captures it will be transformed to
+     *    { ... '{ ... x$1.unary_~ ... y$1.unary_~ ... } ... }
      *
      *  See: `capture`
      *
@@ -429,6 +434,19 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
      *      }
      */
     private def makeLambda(tree: Tree)(implicit ctx: Context): Tree = {
+      var treeWithoutCaptures: Tree = null
+      def transformWithCapturer(tree: Tree)(capturer: mutable.Map[Symbol, Tree] => Tree => Tree)(implicit ctx: Context): Tree = {
+        val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
+        val captured2 = capturer(captured)
+        outer.enteredSyms.foreach(s => capturers.put(s, captured2))
+        if (ctx.owner.owner.is(Macro))
+          outer.enteredSyms.reverse.foreach(s => captured2(ref(s)))
+        val tree2 = transform(tree)
+        capturers --= outer.enteredSyms
+        if (captured.isEmpty)
+          treeWithoutCaptures = tree2
+        seq(captured.result().valuesIterator.toList, tree2)
+      }
       def body(arg: Tree)(implicit ctx: Context): Tree = {
         var i = 0
         transformWithCapturer(tree)(
@@ -456,18 +474,10 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
       val lambdaOwner = ctx.owner.ownersIterator.find(o => levelOf.getOrElse(o, level) == level).get
       val tpe = MethodType(defn.SeqType.appliedTo(defn.AnyType) :: Nil, tree.tpe.widen)
       val meth = ctx.newSymbol(lambdaOwner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
-      Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth))
-    }
+      val closure = Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth))
 
-    private def transformWithCapturer(tree: Tree)(capturer: mutable.Map[Symbol, Tree] => Tree => Tree)(implicit ctx: Context): Tree = {
-      val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
-      val captured2 = capturer(captured)
-      outer.enteredSyms.foreach(s => capturers.put(s, captured2))
-      if (ctx.owner.owner.is(Macro))
-        outer.enteredSyms.reverse.foreach(s => captured2(ref(s)))
-      val tree2 = transform(tree)
-      capturers --= outer.enteredSyms
-      seq(captured.result().valuesIterator.toList, tree2)
+      if (treeWithoutCaptures == null || ctx.owner.is(Macro)) closure
+      else treeWithoutCaptures
     }
 
     /** Returns true if this tree will be captured by `makeLambda` */
