@@ -18,7 +18,7 @@ object Unpickler {
   def unpickleExpr[T](repr: Pickled, args: Seq[Any]): Expr[T] = new TastyExpr[T](repr, args)
 
   /** Lift the `value` to an `Expr` tree.
-   *  Values can only be of type Boolean, Byte, Short, Char, Int, Long, Float, Double, Unit, String or Null.
+   *  Values can only be of type Boolean, Byte, Short, Char, Int, Long, Float, Double, Unit, String, Null or Class.
    */
   def liftedExpr[T](value: T): LiftedExpr[T] = new LiftedExpr[T](value)
 

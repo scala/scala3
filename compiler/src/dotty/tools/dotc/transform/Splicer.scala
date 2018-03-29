@@ -75,8 +75,8 @@ object Splicer {
     liftArgs(call.symbol.info, allArgs(call, Nil))
   }
 
-  private def evaluateLambda(lambda: Seq[Any] => Object, args: Seq[Any], pos: Position)(implicit ctx: Context): Option[scala.quoted.Expr[_]] = {
-    try Some(lambda(args).asInstanceOf[scala.quoted.Expr[_]])
+  private def evaluateLambda(lambda: Seq[Any] => Object, args: Seq[Any], pos: Position)(implicit ctx: Context): Option[scala.quoted.Expr[Nothing]] = {
+    try Some(lambda(args).asInstanceOf[scala.quoted.Expr[Nothing]])
     catch {
       case ex: scala.quoted.QuoteError =>
         ctx.error(ex.getMessage, pos)

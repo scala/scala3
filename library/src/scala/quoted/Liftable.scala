@@ -25,4 +25,6 @@ object Liftable {
   implicit def DoubleIsLiftable: Liftable[Double] = (x: Double) => liftedExpr(x)
 
   implicit def StringIsLiftable: Liftable[String] = (x: String) => liftedExpr(x)
+
+  implicit def ClassIsLiftable[T]: Liftable[Class[T]] = (x: Class[T]) => liftedExpr(x)
 }
