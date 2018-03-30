@@ -15,9 +15,9 @@ object Test {
     }
 
     // primitives
-    test(classOf[Boolean])
-    test(classOf[Byte])
-    test(classOf[Char])
+    test(classOf[Float])
+    test(classOf[Double])
+    test(classOf[Unit])
   }
 
 }

@@ -7,12 +7,3 @@ Foo.Bar
 
 classOf[Foo.Baz].getCanonicalName()
 Foo.Baz
-
-classOf[foo.Foo].getCanonicalName()
-foo.Foo
-
-classOf[foo.Foo#Bar].getCanonicalName()
-foo.Foo.Bar
-
-classOf[foo.Foo.Baz].getCanonicalName()
-foo.Foo.Baz
