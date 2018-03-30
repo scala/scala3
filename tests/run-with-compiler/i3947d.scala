@@ -17,10 +17,6 @@ object Test {
     test(classOf[Foo])
     test(classOf[Foo#Bar])
     test(classOf[Foo.Baz])
-
-    test(classOf[foo.Foo])
-    test(classOf[foo.Foo#Bar])
-    test(classOf[foo.Foo.Baz])
   }
 
 }
@@ -31,13 +27,4 @@ class Foo {
 
 object Foo {
   class Baz
-}
-
-package foo {
-  class Foo {
-    class Bar
-  }
-  object Foo {
-    class Baz
-  }
 }

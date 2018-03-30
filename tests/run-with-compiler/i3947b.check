@@ -7,21 +7,3 @@ byte
 
 classOf[Char].getCanonicalName()
 char
-
-classOf[Short].getCanonicalName()
-short
-
-classOf[Int].getCanonicalName()
-int
-
-classOf[Long].getCanonicalName()
-long
-
-classOf[Float].getCanonicalName()
-float
-
-classOf[Double].getCanonicalName()
-double
-
-classOf[Unit].getCanonicalName()
-void

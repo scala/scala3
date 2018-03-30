@@ -14,10 +14,18 @@ object Test {
       println(name.run)
     }
 
-    // primitives
-    test(classOf[Boolean])
-    test(classOf[Byte])
-    test(classOf[Char])
+    test(classOf[foo.Foo])
+    test(classOf[foo.Foo#Bar])
+    test(classOf[foo.Foo.Baz])
   }
 
+}
+
+package foo {
+  class Foo {
+    class Bar
+  }
+  object Foo {
+    class Baz
+  }
 }
