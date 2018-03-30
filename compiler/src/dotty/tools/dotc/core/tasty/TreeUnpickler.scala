@@ -424,7 +424,11 @@ class TreeUnpickler(reader: TastyReader,
         flags = flags | (if (tag == VALDEF) ModuleValCreationFlags else ModuleClassCreationFlags)
       if (ctx.owner.isClass) {
         if (tag == TYPEPARAM) flags |= Param
-        else if (tag == PARAM) flags |= ParamAccessor
+        else if (tag == PARAM) {
+          flags |= ParamAccessor
+          if (!rhsIsEmpty) // param alias
+            flags |= Method
+        }
       }
       else if (isParamTag(tag)) flags |= Param
       flags
@@ -585,6 +589,8 @@ class TreeUnpickler(reader: TastyReader,
           case SCALA2X => addFlag(Scala2x)
           case DEFAULTparameterized => addFlag(DefaultParameterized)
           case STABLE => addFlag(Stable)
+          case PARAMsetter =>
+            addFlag(ParamAccessor)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readType().typeSymbol
@@ -728,11 +734,6 @@ class TreeUnpickler(reader: TastyReader,
               vparamss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
           val resType = ctx.effectiveResultType(sym, typeParams, tpt.tpe)
           sym.info = ctx.methodType(typeParams, valueParamss, resType)
-          if (sym.isSetter && sym.accessedFieldOrGetter.is(ParamAccessor)) {
-            // reconstitute ParamAccessor flag of setters for var parameters, which is not pickled
-            sym.setFlag(ParamAccessor)
-            sym.resetFlag(Deferred)
-          }
           DefDef(tparams, vparamss, tpt)
         case VALDEF =>
           val tpt = readTpt()(localCtx)
@@ -775,7 +776,6 @@ class TreeUnpickler(reader: TastyReader,
             ValDef(tpt)
           }
           else {
-            sym.setFlag(Method)
             sym.info = ExprType(tpt.tpe)
             pickling.println(i"reading param alias $name -> $currentAddr")
             DefDef(Nil, Nil, tpt)
