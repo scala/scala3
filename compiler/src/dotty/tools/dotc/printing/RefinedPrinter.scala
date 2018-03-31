@@ -450,7 +450,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case tree @ Extension(name, constr, tpt, impl) =>
         withEnclosingDef(tree) {
-          modText(tree.mods, keywordStr("extension")) ~~
+          modText(tree.mods, keywordStr("extension"), isType = false) ~~
           nameIdText(tree) ~
           { withEnclosingDef(constr) {
               addVparamssText(tparamsText(constr.tparams), constr.vparamss.drop(1))
