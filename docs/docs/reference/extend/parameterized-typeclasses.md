@@ -56,7 +56,7 @@ extension ListMonad[A] for List : Monad {
 }
 ```
 
-Implementations of higher-kinded typeclass traits have to have the same type parameters as the traits they implement, but can also can introduce new type parameters. New type parameters have to follow the type parameters passed along to the typeclass traits. Examples:
+Implementations of higher-kinded typeclass traits have to have the same type parameters as the traits they implement, but they can also introduce new type parameters. New type parameters have to follow the type parameters passed along to the typeclass traits. Examples:
 
 ```scala
 trait T[X, +Y] {

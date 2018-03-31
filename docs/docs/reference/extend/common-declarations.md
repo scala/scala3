@@ -48,7 +48,7 @@ val erroneous = Text.fromStrings("hello", ", world") // error: not found
 The `common` definition of `fromString` in `FlatText` implicitly defines a member of
 `object FlatText`. Alternatively, one could have defined it as a regular method in the
 companion object. This is done in the following second implementation of `Text`, which
-represents a text as a tree of strings. Both old and new implementations share the definition of the `common` method `fromStrings` in `Text`.
+represents a text as a tree of strings. The two implementations share the definition of the `common` method `fromStrings` in `Text`.
 
 ```scala
 enum ConcText {
@@ -87,7 +87,7 @@ trait Text {
   def flatten: Instance = fromString(toStr)
 }
 ```
-Why does this work? The `fromString` method is abstract in `Text` so how to we find the correct implementation in `flatten`?
+Why does this work? The `fromString` method is abstract in `Text` so how do we find the correct implementation in `flatten`?
 Comparing with the `toStr` reference, that one is an instance method and therefore is expanded to `this.toStr`. But the same does not work for `fromString` because it is a `common` method, not an instance method.
 In fact, the application above is syntactic sugar for
 

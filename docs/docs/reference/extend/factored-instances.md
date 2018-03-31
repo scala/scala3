@@ -32,13 +32,13 @@ trait Traverse[A] extends Applicative[A] {
 }
 ```
 
-The `List` type can be made an instance of both `Monad` and `Traverse` by writing an instance declaration for `List[T] : Monad[T]` and another one for `List[T] : Traverse[T]`.
+The `List` type can be made an instance of both `Monad` and `Traverse` by writing an instance declaration for `List : Monad` and another one for `List : Traverse`.
 However, these two declarations would then need to duplicate the definitions of the `Applicative` methods `map2` and `pure`.
 
 Factored instance declarations provide a way to avoid the duplication. The idea is to write three instance declarations, for `Applicative`, `Monad`, and `Traverse`:
 
 ```scala
-extension ListApplicative[A] for List[A]: Applicative[A] {
+extension ListApplicative[A] for List : Applicative {
 
   def map[B](f: A => B): List[B] = this.map(f)
 
@@ -48,12 +48,12 @@ extension ListApplicative[A] for List[A]: Applicative[A] {
   def pure[B]: List[B] = Nil
 }
 
-extension ListMonad[A] for List[A] : Monad[A] {
+extension ListMonad[A] for List : Monad {
 
   def flatMap[B](f: A => List[B]): List[B] = this.flatMap(f)
 }
 
-extension ListTraverse[A] for List[A] : Traverse[A] {
+extension ListTraverse[A] for List : Traverse {
 
   def traverse[B, C[_]: Applicative](f: A => C[B]): C[List[B]] = this match {
     case Nil => Applicative.impl[C].pure[List[B]]
@@ -64,7 +64,7 @@ extension ListTraverse[A] for List[A] : Traverse[A] {
 In the definitions above, `ListMonad` and `ListTraverse` lack definitions for `map2` and `pure`. These definitions are provided implicitly by forwarding to corresponding definitions in the `ListApplicative` instance declaration. If we had written the forwarders for `ListMonad` explicitly, this would look like the following, alternative definition:
 
 ```scala
-extension ListMonad[A] for List[A] : Monad[A] {
+extension ListMonad[A] for List : Monad {
   def flatMap[B](f: A => List[B]): List[B] = this.flatMap(f)
 
   // The following can be implicitly inserted:

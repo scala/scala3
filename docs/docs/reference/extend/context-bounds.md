@@ -34,7 +34,7 @@ assert( sum(List(Set(1, 2), Set(3))) == Set(1, 2, 3)     )
 assert(     sum(List(S(Z), S(S(Z)))) == List(S(S(S(Z)))) )
 ```
 
-Here is an alternative formulation of `sum` which makes the implicit evidence parameter explicit:
+Here is an equivalent formulation of `sum` which makes the implicit evidence parameter explicit:
 
 ```scala
 def sum[T](xs: Iterable[T])(implicit ev: Monoid.Impl[T]): T =
@@ -69,7 +69,7 @@ method `impl`, specified as follows:
 ```scala
   def impl[T](implicit ev: Impl[T]): Impl[T] = ev
 ```
-This method is used in the the first implementation of `sum` above to retrieve
+This method is used in the first implementation of `sum` above to retrieve
 the monoid's `unit` value:
 ```scala
 def sum[T: Monoid](xs: Iterable[T]): T =
@@ -89,19 +89,19 @@ The details of the conversion are as follows:
  1. The `scala` package defines an `Injector` trait as follows:
 
     ```scala
-      trait Injector {
-        /** The implementing type */
-        type This
+    trait Injector {
+      /** The implementing type */
+      type This
 
-        /** The implemented trait */
-        type $Instance
+      /** The implemented trait */
+      type $Instance
 
-        /** The implementation via type `T` for this trait */
-        implicit def inject(x: This): $Instance
-      }
+      /** The implementation via type `T` for this trait */
+      implicit def inject(x: This): $Instance
+    }
     ```
 
- The `This` type of this injector is the same as the `This` type of an implementing typeclass trait; it representing the implementing type. The `$Instance` type is name-mangled and therefore should not be referred to in user programs. It refers to the implemented typeclass instance. An `inject` method converts from the first to the second.
+   The `This` type of this injector is the same as the `This` type of an implementing typeclass trait; it represents the implementing type. The `$Instance` type is name-mangled, so user programs should not refer to it. It represents the implemented typeclass instance. The `inject` method converts from the first to the second.
 
  2. Every implementation object `TC.Impl[T]` inherits an `Injector` instance where `This = T` and `$Instance <: TC`. Hence, it defines an `inject` conversion from `T` to `TC`.
 
@@ -134,7 +134,7 @@ If class `C` extends `B` directly, the context bound `[C : B]` is resolved to `s
     def inject(x: T) = x
   }
 ```
-In other words, context bounds [T: B] for non-typeclass traits `B` work similar to the previous (now deprecated) view bounds [T <% B] in that they specify an implicit conversion between `T` and `B`.
+In other words, context bounds [T: B] for non-typeclass traits `B` work similar to the previous (now deprecated) view bounds `[T <% B]` in that they specify an implicit conversion from `T` to `B`.
 
 ### Conditional Instance Declarations
 

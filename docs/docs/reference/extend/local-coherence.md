@@ -4,7 +4,7 @@ title: "Local Coherence"
 ---
 
 In the context of instance declarations, global coherence means that for every type `I` and typeclass trait `TC` there is never more than one way in which `I` implements `TC`.
-Scala does not have a global coherence requirement for its implicits. Instead it reports an ambiguity error if an implicit search yields several different results. The advantage of Scala's approach is its flexibility, in particular its support scoped implicits. But sometimes the ambiguity rules get in the way. Consider for instance the typeclass trait hierarchy presented in the last section, which involves `Functor`, `Applicative`, `Monad`, and `Traverse`. Now add a function like `transform` below that requires its parameter type
+Scala does not have a global coherence requirement for its implicits. Instead it reports an ambiguity error if an implicit search yields several different results. The advantage of Scala's approach lies in its flexibility, in particular its support for scoped implicits. But sometimes the ambiguity rules get in the way. Consider for instance the typeclass trait hierarchy presented in the last section, which involves `Functor`, `Applicative`, `Monad`, and `Traverse`. Now add a function like `transform` below that requires its parameter type
 to be both a `Monad` and a `Traverse`.
 ```scala
 def transform[F[_] : Monad : Traverse](x: F[A], f: A => A) = { ... x.map(f) ... }

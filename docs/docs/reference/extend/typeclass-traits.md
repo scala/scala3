@@ -63,4 +63,8 @@ But we could not have re-implemented `add` in `B` with
 ```
 since `This` is already fixed to be `A`.
 
-`This` can be thought of as an abstract type member of a typeclass trait. While it is possible to constrain or bind `This` explicitly, this is not encouraged because it might conflict with the compiler-generated bindings of `This`.
+`This` can be thought of as am`common` abstract type member of a typeclass trait. It is as if `This` was defined explicitly as
+```scala
+common type This
+```
+While it is possible to constrain or bind `This` explicitly, this is not encouraged because it might conflict with the compiler-generated bindings for `This`.
