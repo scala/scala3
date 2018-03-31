@@ -100,7 +100,7 @@ There can be only one parameter clause following a type pattern and it must be i
 
 ### Toplevel Type Variables
 
-A type pattern consisting of a top-level typevariable introduces a fully generic extension. For instance, the following extension introduces `x ~ y` as an alias
+A type pattern consisting of a top-level type variable introduces a fully generic extension. For instance, the following extension introduces `x ~ y` as an alias
 for `(x, y)`:
 
 ```scala

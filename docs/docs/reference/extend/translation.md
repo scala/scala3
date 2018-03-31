@@ -3,7 +3,14 @@ layout: doc-page
 title: "Translation of Extensions"
 ---
 
-Extensons are closely related to implicit classes and can be translated into them. In short,
+**Note:** This section gives an explanation how extension methods and instance declarations could be mapped to value classes and implicit classes. It does not consider typeclass traits. Given that value classes and implicit classes are supposed to be replaced by
+extension methods and instance declarations, it would be good to present a translation that bypasses value classes and that also extends to typeclass traits. There are several
+possibilities for such a translation. We should to experiment further to clarify which
+scheme to prefer and flesh it out in detail.
+
+---
+
+Extensions are closely related to implicit classes and can be translated into them. In short,
 an extension that just adds extension methods translates into an implicit value class whereas an instance declaration translates into a regular implicit class. The following sections sketch this translation.
 
 Conversely, it is conceivable (and desirable) to replace most usages of implicit classes and value classes by extensions and [opaque types](../opaques.html). We plan to [drop](../dropped/implicit-value-classes.html)
@@ -20,7 +27,7 @@ Assume an extension
 
 where both `<type-params>` and `<implicit-params>` can be absent.
 For simplicity assume that there are no context bounds on any of the type parameters
-in `<type-params>`. This is not an essential restriction as any such context bounds can be rewritten in a prior step to be evidence paramseters in `<implicit-params>`.
+in `<type-params>`. This is not an essential restriction as any such context bounds can be rewritten in a prior step to be evidence parameters in `<implicit-params>`.
 
 The extension is translated to the following implicit value class:
 

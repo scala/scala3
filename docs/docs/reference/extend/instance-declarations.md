@@ -50,6 +50,16 @@ extension HasEqlImpl[T : Eql] for T : HasEql[T] {
 }
 ```
 
+### Rules for Instance Declarations
+
+An instance declaration can only implement a single trait, not a combination of traits, nor a class. Furthermore,
+the implemented trait must be an interface trait according to the following definition:
+
+**Definition** An _interface trait_ is a trait that
+ - has only types and methods as members,
+ - does not have initialization statements, and
+ - has only interface traits as parents.
+
 ### Syntax of Extensions
 
 The syntax of extensions is specified below as a delta with respect to the Scala syntax given [here](http://dotty.epfl.ch/docs/internals/syntax.html)

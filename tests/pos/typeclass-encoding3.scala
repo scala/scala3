@@ -9,11 +9,10 @@
       - Common definitions in traits may not see trait parameters, but common definitions
         in classes may see class parameters.
 
-      - An extension trait is a trait that uses This or a trait inheriting an extension trait.
-      - The kind of `This` is the kind of the extension trait.
-      - Extension traits of different kinds cannot inherit each other and cannot be mixed using `with`.
-      - A class implementing extension traits fixes the maning of `This`.
-      - Such a class cannot be extended by classes that implement other extension traits.
+      - A typeclass trait is a trait inheriting directly or indirectly from `scala.TypeClass`.
+      - A typeclass trait `T` can be only extended by traits and classes that have the same number of type
+        parameters as `T`, with the same variances.
+      - The first class implementing a typeclass trait fixes the maning of `This`.
 */
 object runtime {
 
@@ -22,23 +21,23 @@ object runtime {
     type This
 
     /** The implemented trait */
-    type Instance
+    type $Instance
 
     /** The implementation via type `T` for this trait */
-    implicit def inject(x: This): Instance
+    implicit def inject(x: This): $Instance
   }
 
   trait IdentityInjector extends Injector {
-    def inject(x: This): Instance = x.asInstanceOf
+    def inject(x: This): $Instance = x.asInstanceOf
   }
 
   trait SubtypeInjector[T] extends Injector {
     type This = T
-    type Instance = T
+    type $Instance = T
     def inject(x: T): T = x
   }
 
-  type Injectable[T, +U] = Injector { type This = T; type Instance <: U }
+  type Injectable[T, +U] = Injector { type This = T; type $Instance <: U }
 
   def selfInject[U, T <: U]: Injectable[T, U] = new SubtypeInjector[T] {}
 
@@ -52,7 +51,7 @@ object runtime {
     /** Base trait for companion objects of all implementations of this typeclass */
     trait Common extends Injector { self =>
       /** The implemented typeclass */
-      type Instance <: TypeClass
+      type $Instance <: TypeClass
     }
 
     /** Base trait for the companion objects of type classes themselves  */
@@ -68,7 +67,7 @@ object runtime {
     }
   }
 
-  implicit def applyInjector[From, U](x: From)(implicit ev: Injector { type This = From }): ev.Instance =
+  implicit def applyInjector[From, U](x: From)(implicit ev: Injector { type This = From }): ev.$Instance =
     ev.inject(x)
 }
 
@@ -257,7 +256,7 @@ object hasLength {
 
   object Cmp extends TypeClass.Companion {
     trait Common extends TypeClass.Common {
-      type Instance <: HasBoundedLength
+      type $Instance <: HasBoundedLength
       def exact: Boolean
     }
   }
@@ -270,7 +269,7 @@ object hasLength {
 
   object HasBoundedLength extends TypeClass.Companion {
     trait Common extends TypeClass.Common {
-      type Instance <: HasBoundedLength
+      type $Instance <: HasBoundedLength
       def limit: Int
     }
   }
@@ -282,7 +281,7 @@ object hasLength {
 
   object HasBoundedLengthX extends TypeClass.Companion {
     trait Common extends HasBoundedLength.Common with TypeClass.Common { self =>
-      type Instance <: HasBoundedLengthX { val `common`: self.type }
+      type $Instance <: HasBoundedLengthX { val `common`: self.type }
       def limit: Int
       def longest: This
     }
@@ -326,7 +325,7 @@ object hasLength {
   }
   abstract class C3Common extends C2Common with HasBoundedLengthX.Common { self =>
     type This = C3
-    type Instance = C3 { val `common`: self.type }
+    type $Instance <: C3 { val `common`: self.type }
 
     def longest = new C3(new Array[Int](limit))
   }
@@ -338,7 +337,7 @@ object hasLength {
   }
   abstract class CG3Common[T](implicit tag: ClassTag[T])  extends CG2Common[T] with HasBoundedLengthX.Common { self =>
     type This = CG3[T]
-    type Instance = CG3[T] { val `common`: self.type }
+    type $Instance <: CG3[T] { val `common`: self.type }
     def longest = new CG3(new Array[T](limit))
   }
   object CG3 {
@@ -356,7 +355,7 @@ object hasLength {
 
   implicit object DHasLength extends Injector {
     type This = D1
-    type Instance = HasLength
+    type $Instance = HasLength
     def inject(x: D1) = new HasLength {
       def length = xs.length
     }
@@ -364,7 +363,7 @@ object hasLength {
 
   class DGHasLength[T] extends Injector {
     type This = DG1[T]
-    type Instance = HasLength
+    type $Instance = HasLength
     def inject(x: DG1[T]) = new HasLength {
       def length = xs.length
     }
@@ -373,7 +372,7 @@ object hasLength {
 
   object DHasBoundedLength extends HasBoundedLength.Common { self =>
     type This = D2
-    type Instance = HasBoundedLength
+    type $Instance = HasBoundedLength
     def inject(x: D2) = new HasBoundedLength {
       val `common`: self.type = self
       import `common`._
@@ -384,7 +383,7 @@ object hasLength {
 
   class DGHasBoundedLength[T] extends HasBoundedLength.Common { self =>
     type This = DG2[T]
-    type Instance = HasBoundedLength
+    type $Instance = HasBoundedLength
     def inject(x: DG2[T]) = new HasBoundedLength {
       val `common`: self.type = self
       import `common`._
@@ -396,7 +395,7 @@ object hasLength {
 
   implicit object DHasBoundedLengthX extends HasBoundedLengthX.Common { self =>
     type This = D3
-    type Instance = HasBoundedLengthX { val `common`: self.type }
+    type $Instance = HasBoundedLengthX { val `common`: self.type }
     def inject(x: D3) = new HasBoundedLengthX {
       val `common`: self.type = self
       import `common`._
@@ -408,7 +407,7 @@ object hasLength {
 
   class DGHasBoundedLengthX[T](implicit tag: ClassTag[T]) extends HasBoundedLengthX.Common { self =>
     type This = DG3[T]
-    type Instance = HasBoundedLengthX { val `common`: self.type }
+    type $Instance = HasBoundedLengthX { val `common`: self.type }
     def inject(x: DG3[T]) = new HasBoundedLengthX {
       val `common`: self.type = self
       import `common`._
@@ -503,12 +502,12 @@ object hasLength {
 }
 /** 1. Simple type classes with monomorphic implementations and direct extensions.
 
-    extension trait SemiGroup {
+    trait SemiGroup extends TypeClass {
       def add(that: This): This
       def add2(that: This): This = add(that).add(that)
     }
 
-    extension trait Monoid extends SemiGroup {
+    trait Monoid extends SemiGroup {
       common def unit: This
     }
 
@@ -530,7 +529,7 @@ object hasLength {
       case S(n: Nat)
 
       def add(that: Nat): Nat = this match {
-        case S => that
+        case Z => that
         case S(n) => S(n.add(that))
       }
     }
@@ -539,7 +538,7 @@ object hasLength {
     }
 
     def sum[T: Monoid](xs: List[T]): T =
-      (Monod.impl[T].unit /: xs)(_ `add` _)
+      (Monoid.impl[T].unit /: xs)(_ `add` _)
 */
 
 import runtime._
@@ -555,7 +554,7 @@ object semiGroups {
 
   object SemiGroup extends TypeClass.Companion {
     trait Common extends TypeClass.Common { self =>
-      type Instance <: SemiGroup { val `common`: self.type }
+      type $Instance <: SemiGroup { val `common`: self.type }
     }
   }
 
@@ -565,14 +564,14 @@ object semiGroups {
   }
   object Monoid extends TypeClass.Companion {
     trait Common extends SemiGroup.Common { self =>
-      type Instance <: Monoid { val `common`: self.type }
+      type $Instance <: Monoid { val `common`: self.type }
       def unit: This
     }
   }
 
   implicit object IntSemiGroup extends SemiGroup.Common { self =>
     type This = Int
-    type Instance = SemiGroup { val `common`: self.type }
+    type $Instance = SemiGroup { val `common`: self.type }
     def inject($this: Int) = new SemiGroup {
       val `common`: self.type = self
       def add(that: Int): Int = $this + that
@@ -581,7 +580,7 @@ object semiGroups {
 
   implicit object IntMonoid extends Monoid.Common { self =>
     type This = Int
-    type Instance = Monoid { val `common`: self.type }
+    type $Instance = Monoid { val `common`: self.type }
     def unit: Int = 0
     def inject($this: Int) = new Monoid {
       val `common`: self.type = self
@@ -591,7 +590,7 @@ object semiGroups {
 
   implicit object StringOps extends Monoid.Common {
     type This = String
-    type Instance = Monoid { val `common`: StringOps.type }
+    type $Instance = Monoid { val `common`: StringOps.type }
     def unit = ""
     def inject($this: String) = new Monoid {
       val `common`: StringOps.this.type = StringOps.this
@@ -612,7 +611,7 @@ object semiGroups {
   }
   object Nat extends Monoid.Common {
     type This = Nat
-    type Instance = Nat
+    type $Instance = Nat
     def unit = Nat.Z
     def inject($this: Nat) = $this
   }
@@ -630,7 +629,7 @@ object semiGroups {
 
 /** 2. Generic implementations of simple type classes.
 
-    extension trait Ord {
+    trait Ord extends TypeClass {
       def compareTo(that: This): Int
       def < (that: This) = compareTo(that) < 0
       def > (that: This) = compareTo(that) > 0
@@ -673,14 +672,14 @@ object ord {
   }
   object Ord extends TypeClass.Companion {
     trait Common extends TypeClass.Common { self =>
-      type Instance <: Ord { val `common`: self.type }
+      type $Instance <: Ord { val `common`: self.type }
       def minimum: This
     }
   }
 
   implicit object IntOrd extends Ord.Common {
     type This = Int
-    type Instance = Ord { val `common`: IntOrd.type }
+    type $Instance = Ord { val `common`: IntOrd.type }
     val minimum: Int = Int.MinValue
     def inject($this: Int) = new Ord {
       val `common`: IntOrd.this.type = IntOrd.this
@@ -692,7 +691,7 @@ object ord {
 
   class ListOrd[T](implicit $ev: Ord.Impl[T]) extends Ord.Common { self =>
     type This = List[T]
-    type Instance = Ord { val `common`: self.type }
+    type $Instance = Ord { val `common`: self.type }
     def minimum: List[T] = Nil
     def inject($this: List[T]) = new Ord {
       val `common`: self.type = self
@@ -725,7 +724,7 @@ object ord {
 
 /** 3. Higher-kinded type classes
 
-    extension trait Functor[A] {
+    trait Functor[A] extends TypeClass {
       def map[B](f: A => B): This[B]
 
       common def pure[A](x: A): This[A]
@@ -736,7 +735,7 @@ object ord {
       if (n == 0) Functor.impl[F].pure[A]
       else develop[A, F](n - 1, f).map(f)
 
-    extension trait Monad[A] extends Functor[A] {
+    trait Monad[A] extends Functor[A] {
       def flatMap[B](f: A => This[B]): This[B]
       def map[B](f: A => B) = this.flatMap(f.andThen(pure))
     }
@@ -761,8 +760,8 @@ object runtime1 {
   object TypeClass1 {
     trait Common { self =>
       type This[X]
-      type Instance[X] <: TypeClass1[X]
-      def inject[A](x: This[A]): Instance[A]
+      type $Instance[X] <: TypeClass1[X]
+      def inject[A](x: This[A]): $Instance[A]
     }
 
     trait Companion {
@@ -773,7 +772,7 @@ object runtime1 {
   }
 
   implicit def applyInjector1[A, From[_]](x: From[A])
-      (implicit ev: TypeClass1.Common { type This = From }): ev.Instance[A] =
+      (implicit ev: TypeClass1.Common { type This = From }): ev.$Instance[A] =
     ev.inject(x)
 }
 import runtime1._
@@ -787,7 +786,7 @@ object functors {
   }
   object Functor extends TypeClass1.Companion {
     trait Common extends TypeClass1.Common { self =>
-      type Instance[X] <: Functor[X] { val `common`: self.type }
+      type $Instance[X] <: Functor[X] { val `common`: self.type }
       def pure[A](x: A): This[A]
     }
   }
@@ -800,7 +799,7 @@ object functors {
   }
   object Monad extends TypeClass1.Companion {
     trait Common extends Functor.Common { self =>
-      type Instance[X] <: Monad[X] { val `common`: self.type }
+      type $Instance[X] <: Monad[X] { val `common`: self.type }
     }
   }
 
@@ -810,7 +809,7 @@ object functors {
 
   implicit object ListMonad extends Monad.Common {
     type This = List
-    type Instance[X] = Monad[X] { val `common`: ListMonad.type }
+    type $Instance[X] = Monad[X] { val `common`: ListMonad.type }
     def pure[A](x: A) = x :: Nil
     def inject[A]($this: List[A]) = new Monad[A] {
       val `common`: ListMonad.this.type = ListMonad
