@@ -459,17 +459,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           " for " ~ atPrec(DotPrec) { toText(tpt) } ~~
           toTextTemplateBody(impl, Str(" :") `provided` impl.parents.nonEmpty)
         }
-      case tree @ Extension(name, constr, tpt, impl) =>
-        withEnclosingDef(tree) {
-          modText(tree.mods, keywordStr("extension")) ~~
-          nameIdText(tree) ~
-          { withEnclosingDef(constr) {
-              addVparamssText(tparamsText(constr.tparams), constr.vparamss.drop(1))
-            }
-          } ~
-          " for " ~ atPrec(DotPrec) { toText(tpt) } ~~
-          toTextTemplateBody(impl, Str(" :") `provided` impl.parents.nonEmpty)
-        }
       case SymbolLit(str) =>
         "'" + str
       case InterpolatedString(id, segments) =>
