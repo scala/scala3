@@ -131,7 +131,9 @@ object ProtoTypes {
             // Note: can't use `m.info` here because if `m` is a method, `m.info`
             //       loses knowledge about `m`'s default arguments. ||
         mbr match { // hasAltWith inlined for performance
-          case NoDenotation => tp1.exists && isMatchedBy(tp1.followGADT)
+          case NoDenotation =>
+            val tp2 = tp1.followGADT
+            tp2.exists && isMatchedBy(tp2)
           case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
           case _ => mbr hasAltWith qualifies
         }

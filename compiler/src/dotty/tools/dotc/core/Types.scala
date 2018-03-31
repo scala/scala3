@@ -509,12 +509,8 @@ object Types {
           })
         case tp: TypeRef =>
           tp.denot match {
-            case d: ClassDenotation =>
-              d.findMember(name, pre, excluded)
-            case d =>
-              val mbr = go(d.info)
-              if (mbr.exists) mbr
-              else followGADT.findMember(name, pre, excluded)
+            case d: ClassDenotation => d.findMember(name, pre, excluded)
+            case d => goTypeRef(d)
           }
         case tp: AppliedType =>
           tp.tycon match {
@@ -553,6 +549,11 @@ object Types {
           ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name, err.msg)
         case _ =>
           NoDenotation
+      }
+      def goTypeRef(d: Denotation) = {
+        val mbr = go(d.info)
+        if (mbr.exists) mbr
+        else followGADT.findMember(name, pre, excluded)
       }
       def goRec(tp: RecType) =
         if (tp.parent == null) NoDenotation
