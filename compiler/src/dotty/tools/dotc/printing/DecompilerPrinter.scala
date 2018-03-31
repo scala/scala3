@@ -35,8 +35,8 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
   override protected def templateText(tree: TypeDef, impl: Template): Text = {
     val decl =
-      if (!tree.mods.is(Module)) modText(tree.mods, keywordStr(if ((tree).mods is Trait) "trait" else "class"))
-      else modText(tree.mods &~ (Final | Module), keywordStr("object"))
+      if (!tree.mods.is(Module)) modText(tree.mods, keywordStr(if ((tree).mods is Trait) "trait" else "class"), isType = true)
+      else modText(tree.mods &~ (Final | Module), keywordStr("object"), isType = false)
     decl ~~ typeText(nameIdText(tree)) ~ withEnclosingDef(tree) { toTextTemplate(impl) } ~ ""
   }
 
@@ -44,7 +44,7 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
     import untpd.{modsDeco => _, _}
     dclTextOr(tree) {
       val printLambda = tree.symbol.isAnonymousFunction
-      val prefix = modText(tree.mods, keywordStr("def")) ~~ valDefText(nameIdText(tree)) provided (!printLambda)
+      val prefix = modText(tree.mods, keywordStr("def"), isType = false) ~~ valDefText(nameIdText(tree)) provided (!printLambda)
       withEnclosingDef(tree) {
         addVparamssText(prefix ~ tparamsText(tree.tparams), tree.vparamss) ~ optAscription(tree.tpt).provided(!printLambda) ~
           optText(tree.rhs)((if (printLambda) " => " else " = ") ~ _)
