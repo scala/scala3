@@ -29,4 +29,4 @@ of `Int`.
 
 When reading classfiles compiled with _scalac_, Dotty will do a best
 effort to approximate existential types with its own types. It will
-issue a warning that a precise emulation is not possible.
+issue a warning when a precise emulation is not possible.

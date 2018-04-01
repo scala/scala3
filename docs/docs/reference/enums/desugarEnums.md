@@ -13,7 +13,7 @@ some terminology and notational conventions:
 
  - We use `E` as a name of an enum, and `C` as a name of a case that appears in `E`.
  - We use `<...>` for syntactic constructs that in some circumstances might be empty. For instance,
-   `<value-params>` represents one or more a parameter lists `(...)` or nothing at all.
+   `<value-params>` represents one or more parameter lists `(...)` or nothing at all.
 
  - Enum cases fall into three categories:
 
@@ -64,7 +64,7 @@ map into case classes or vals.
 
        val C = $new(n, "C")
 
-   Here, `$new` is a private method that creates an instance of of `E` (see
+   Here, `$new` is a private method that creates an instance of `E` (see
    below).
 
 4. If `E` is an enum with type parameters

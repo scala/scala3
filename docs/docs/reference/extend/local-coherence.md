@@ -10,7 +10,7 @@ to be both a `Monad` and a `Traverse`.
 def transform[F[_] : Monad : Traverse](x: F[A], f: A => A) = { ... x.map(f) ... }
 ```
 The call to `map` in the body of that function would be in error, because it is ambiguous - we don't know whether we should call the `map` method defined in `Monad` or
-the one defined in `Traverse`. To see this in more detail, expand the context bounds in `transform` and add a type ascription `x`:
+the one defined in `Traverse`. To see this in more detail, expand the context bounds in `transform` and add a type ascription for `x`:
 
 ```scala
 def transform[F[_], A](x: F[A], f: A => A)(
@@ -25,10 +25,10 @@ This problem was brought up in issue #2029 and was presented
 in a [paper at the Scala Symposium 2017](https://adelbertc.github.io/publications/typeclasses-scala17.pdf).
 
 Note that if we assume `List` as the actual implementation, this ambiguity is a false negative, since `List`'s implementation of `map` is the same for `Monad` and `Traverse`,
-being defined in the common extension `Applicative`. But in general, a type might well have two different implementations for `map` (or `Functor` methods in general) when seen as
+being defined in the common extension `ListApplicative`. But in general, a type might well have two different implementations for `map` (or `Functor` methods in general) when seen as
 a `Monad` or as a `Traverse`.
 
-The (as yes tentative) idea to solve the problem is to allow a way to constrain implicit values to have common implementations for some of their super-traits.
+The (as yet tentative) idea to solve the problem is to provide a way to constrain implicit values to have common implementations for some of their super-traits.
 
 This can be done by introducing a predefined type constructor `Super[_]` as a member of all implementation objects of typeclass traits. If `impl` is an implementation object for type `I` and typeclass trait `T`, and `U` is a typeclass trait extended by `T`, then `impl.Super[U]` would give the type of the implementation object from which `impl` obtains all
 implementations of `U`. For instance, assuming the factored instance declarations in the last section,
@@ -41,7 +41,7 @@ On the other hand, if we had not used factorization for `ListMonad`,
 `ListMonad.Super[Functor]` would be `ListMonad.type`, since it would be `ListMonad` that
 defines some of the methods in `Functor`.
 
-Once we have the `Super` type defined like this, we can add typeclass constraints to enforce equalities. For instance:
+Once we have the `Super` type defined like this, we can add type constraints to enforce equalities. For instance:
 
 ```scala
 def transform[F[_], A](x: F[A], f: A => A)(
