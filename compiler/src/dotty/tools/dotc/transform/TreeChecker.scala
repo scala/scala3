@@ -65,7 +65,7 @@ class TreeChecker extends Phase with SymTransformer {
   def testDuplicate(sym: Symbol, registry: mutable.Map[String, Symbol], typ: String)(implicit ctx: Context) = {
     val name = sym.fullName.mangledString
     if (this.flatClasses && registry.contains(name))
-        printError(s"$typ defined twice $sym ${sym.id} ${registry(name).id}")
+        assert(false, s"$typ defined twice $sym ${sym.id} ${registry(name).id}")
     registry(name) = sym
   }
 
