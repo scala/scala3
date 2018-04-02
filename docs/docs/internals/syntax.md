@@ -109,6 +109,7 @@ ids               ::=  id {‘,’ id}
 
 Path              ::=  StableId
                     |  [id ‘.’] ‘this’
+                    |  Path ‘.’ ‘common’
 StableId          ::=  id
                     |  Path ‘.’ id
                     |  [id ‘.’] ‘super’ [ClassQualifier] ‘.’ id
@@ -281,6 +282,7 @@ Binding           ::=  (id | ‘_’) [‘:’ Type]                            
 Modifier          ::=  LocalModifier
                     |  AccessModifier
                     |  ‘override’
+                    |  ‘common’
 LocalModifier     ::=  ‘abstract’
                     |  ‘final’
                     |  ‘sealed’

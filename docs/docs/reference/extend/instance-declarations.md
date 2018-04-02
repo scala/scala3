@@ -60,13 +60,3 @@ the implemented trait must be an interface trait according to the following defi
  - does not have initialization statements, and
  - has only interface traits as parents.
 
-### Syntax of Extensions
-
-The syntax of extensions is specified below as a delta with respect to the Scala syntax given [here](http://dotty.epfl.ch/docs/internals/syntax.html)
-
-    TmplDef           ::=  ...
-                        |  ‘extension’ ExtensionDef
-    ExtensionDef      ::=  id [ExtensionParams] 'for' Type ExtensionClause
-    ExtensionParams   ::=  [ClsTypeParamClause] [[nl] ImplicitParamClause]
-    ExtensionClause   ::=  [`:` Template]
-                        |  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’

@@ -8,6 +8,11 @@ extension methods and instance declarations, it would be good to present a trans
 possibilities for such a translation. We should to experiment further to clarify which
 scheme to prefer and flesh it out in detail.
 
+Here are links to two possible encodings:
+
+ - A test in this PR: https://github.com/dotty-staging/dotty/blob/add-common/tests/pos/typeclass-encoding3.scala
+ - An alternative encoding:  https://gist.github.com/OlivierBlanvillain/d314ddbcb640e2ce5604d860b5073008.
+
 ---
 
 Extensions are closely related to implicit classes and can be translated into them. In short,

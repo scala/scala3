@@ -8,7 +8,7 @@ Typeclass traits offer two new ways to express the type structure of implementin
 A typeclass trait is a trait that extends directly or indirectly the marker trait `scala.TypeClass`. Here are two typeclass traits:
 ```scala
 trait SemiGroup extends TypeClass {
-  def add(that: This)
+  def add(that: This): This
 }
 trait Monoid extends SemiGroup {
   common def unit: This
