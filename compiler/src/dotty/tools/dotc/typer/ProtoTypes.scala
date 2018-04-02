@@ -250,6 +250,12 @@ object ProtoTypes {
         else {
           targ = typerFn(arg)
           if (!ctx.reporter.hasPending) {
+            // There is something fishy going on. Run pos/t1756.scala with -feature.
+            // You will get an orphan type parameter for CI when pickling.
+            // The difference is that with -feature an `implicitConversions` warning
+            // is issued, which means the next two statements are not executed.
+            // It seems we are missing then some constraint instantiations because `evalState`
+            // is not updated.
             myTypedArg = myTypedArg.updated(arg, targ)
             evalState = evalState.updated(arg, (ctx.typerState, ctx.typerState.constraint))
           }

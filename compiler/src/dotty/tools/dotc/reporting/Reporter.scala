@@ -8,7 +8,7 @@ import core.Decorators.PhaseListDecorator
 import collection.mutable
 import java.lang.System.currentTimeMillis
 import core.Mode
-import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.Symbols.{Symbol, NoSymbol}
 import diagnostic.messages._
 import diagnostic._
 import Message._
@@ -39,7 +39,7 @@ trait Reporting { this: Context =>
   def reportWarning(warning: Warning): Unit =
     if (!this.settings.silentWarnings.value) {
       if (this.settings.XfatalWarnings.value) reporter.report(warning.toError)
-      else  reporter.report(warning)
+      else reporter.report(warning)
     }
 
   def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
@@ -170,7 +170,10 @@ abstract class Reporter extends interfaces.ReporterResult {
   def errorsReported = hasErrors
 
   private[this] var reportedFeaturesUseSites = Set[Symbol]()
-  def isReportedFeatureUseSite(featureTrait: Symbol): Boolean = reportedFeaturesUseSites.contains(featureTrait)
+
+  def isReportedFeatureUseSite(featureTrait: Symbol): Boolean =
+    featureTrait.ne(NoSymbol) && reportedFeaturesUseSites.contains(featureTrait)
+
   def reportNewFeatureUseSite(featureTrait: Symbol): Unit = reportedFeaturesUseSites += featureTrait
 
   val unreportedWarnings = new mutable.HashMap[String, Int] {
@@ -227,7 +230,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     ctx.mode.is(Mode.Printing)
 
   /** Does this reporter contain not yet reported errors or warnings? */
-  def hasPending: Boolean = false
+  def hasPending(implicit ctx: Context): Boolean = false
 
   /** If this reporter buffers messages, remove and return all buffered messages. */
   def removeBufferedMessages(implicit ctx: Context): List[MessageContainer] = Nil

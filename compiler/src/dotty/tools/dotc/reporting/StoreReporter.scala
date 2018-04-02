@@ -30,9 +30,10 @@ class StoreReporter(outer: Reporter) extends Reporter {
     infos += m
   }
 
-  override def hasPending: Boolean = infos != null && {
+  override def hasPending(implicit ctx: Context): Boolean = infos != null && {
     infos exists {
       case _: Error => true
+      case m: ConditionalWarning => m.enablingOption.value
       case _: Warning => true
       case _ => false
     }

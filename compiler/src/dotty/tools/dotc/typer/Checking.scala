@@ -576,6 +576,49 @@ trait Checking {
     case _ =>
   }
 
+  /** If `sym` is an implicit conversion, check that implicit conversions are enabled.
+   *  @pre  sym.is(Implicit)
+   */
+  def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = sym.info.stripPoly match {
+    case mt @ MethodType(_ :: Nil)
+    if !mt.isImplicitMethod && !sym.is(Synthetic) => // it's a conversion
+      checkFeature(
+        defn.LanguageModuleClass, nme.implicitConversions,
+        i"Definition of implicit conversion $sym",
+        ctx.owner.topLevelClass,
+        sym.pos)
+    case _ =>
+  }
+
+  /** If `sym` is an implicit conversion, check that that implicit conversions are enabled, unless
+   *    - it is synthetic
+   *    - it is has the same owner as one of the classes it converts to (modulo companions)
+   *    - it is defined in Predef
+   *    - it is the scala.reflect.Selectable.reflectiveSelectable conversion
+   */
+  def checkImplicitConversionUseOK(sym: Symbol, pos: Position)(implicit ctx: Context): Unit = {
+    val conversionOK =
+      !sym.exists ||
+      sym.is(Synthetic) ||
+      sym.info.finalResultType.classSymbols.exists(_.owner.isLinkedWith(sym.owner)) ||
+      defn.isPredefClass(sym.owner) ||
+      sym.name == nme.reflectiveSelectable && sym.maybeOwner.maybeOwner.maybeOwner == defn.ScalaPackageClass
+    if (!conversionOK)
+      checkFeature(defn.LanguageModuleClass, nme.implicitConversions,
+        i"Use of implicit conversion ${sym.showLocated}", NoSymbol, pos)
+  }
+
+  /** Issue a feature warning if feature is not enabled */
+  def checkFeature(base: ClassSymbol,
+                   name: TermName,
+                   description: => String,
+                   featureUseSite: Symbol,
+                   pos: Position)(implicit ctx: Context): Unit =
+    if (!ctx.featureEnabled(base, name))
+      ctx.featureWarning(name.toString, description,
+        isScala2Feature = base.isContainedIn(defn.LanguageModuleClass),
+        featureUseSite, required = false, pos)
+
   /** Check that `tp` is a class type and that any top-level type arguments in this type
    *  are feasible, i.e. that their lower bound conforms to their upper bound. If a type
    *  argument is infeasible, issue and error and continue with upper bound.
@@ -866,6 +909,8 @@ trait NoChecking extends ReChecking {
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassType(tp: Type, pos: Position, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
+  override def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = ()
+  override def checkImplicitConversionUseOK(sym: Symbol, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context) = ()
   override def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = ()
@@ -877,4 +922,5 @@ trait NoChecking extends ReChecking {
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: Position)(implicit ctx: Context): Type = tp
+  override def checkFeature(base: ClassSymbol, name: TermName, description: => String, featureUseSite: Symbol, pos: Position)(implicit ctx: Context): Unit = ()
 }
