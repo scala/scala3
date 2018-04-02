@@ -11,7 +11,7 @@ import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.{ mutable, immutable }
 import mutable.ListBuffer
 import core._
-import dotty.tools.dotc.core.Phases.{NeedsCompanions, Phase}
+import dotty.tools.dotc.core.Phases.Phase
 import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import TypeErasure.{ valueErasure, ErasedValueType }
