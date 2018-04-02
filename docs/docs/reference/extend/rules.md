@@ -32,14 +32,14 @@ New Productions:
 ## Type Checking Outline
 
 Here's an outline of the type checking rules and the auxiliary definitions implicitly added to programs. To keep things simple, this section only talks about the first-order case.
-The section on "Parameterized Typeclass Traits" talks a bit how to extend this to higher-kinds, and the[https://github.com/dotty-staging/dotty/blob/add-common/tests/pos/typeclass-encoding3.scala](typeclass encoding test case) provides further examples.
+The section on "Parameterized Typeclass Traits" talks a bit how to extend this to higher-kinds, and the[typeclass encoding test case](https://github.com/dotty-staging/dotty/blob/add-common/tests/pos/typeclass-encoding3.scala) provides further examples.
 
 ### TypeClass Traits
 
 There is a new marker trait `scala.TypeClass`. Traits and classes inheriting directly or indirectly from `TypeClass` are called _typeclass traits_. They differ as follows from normal traits:
 
  - They can have `common` definitions
- - They can refer to the `This`
+ - They can refer to the type `This`
 
 The companion object of a typeclass trait `TC` contains two compiler-generated members
 
@@ -51,7 +51,7 @@ The companion object of a typeclass trait `TC` contains two compiler-generated m
 ### The `This` Type
 
 The `This` type is modeled as an abstract type. It is as if each typeclass trait
-was augmented by the following definition:
+was augmented with the following definition:
 
     common type This
 
