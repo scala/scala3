@@ -400,21 +400,21 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     val sig =
       if (isSyntheticScala2Unapply(unappSym) && caseAccessors.length == argLen)
-        caseAccessors.map(_.info.asSeenFrom(mt.paramInfos.head, caseClass).widen)
+        caseAccessors.map(_.info.asSeenFrom(mt.paramInfos.head, caseClass).widenExpr)
       else if (mt.finalResultType.isRef(defn.BooleanClass))
         List()
       else {
         val isUnapplySeq = unappSym.name == nme.unapplySeq
         if (isProductMatch(mt.finalResultType, argLen) && !isUnapplySeq) {
           productSelectors(mt.finalResultType).take(argLen)
-            .map(_.info.asSeenFrom(mt.finalResultType, mt.resultType.classSymbol).widen)
+            .map(_.info.asSeenFrom(mt.finalResultType, mt.resultType.classSymbol).widenExpr)
         }
         else {
           val resTp = mt.finalResultType.select(nme.get).finalResultType.widen
           if (isUnapplySeq) scalaListType.appliedTo(resTp.argTypes.head) :: Nil
           else if (argLen == 0) Nil
           else if (isProductMatch(resTp, argLen))
-            productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widen)
+            productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widenExpr)
           else resTp :: Nil
         }
       }
