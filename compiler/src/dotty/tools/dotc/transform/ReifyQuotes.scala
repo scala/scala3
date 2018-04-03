@@ -88,6 +88,8 @@ import dotty.tools.dotc.core.quoted._
 class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
   import ast.tpd._
 
+  private lazy val splicer: Splicer = new Splicer
+
   override def phaseName: String = "reifyQuotes"
 
   override def run(implicit ctx: Context): Unit =
@@ -542,7 +544,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
                 // Simplification of the call done in PostTyper for non-macros can also be performed now
                 // see PostTyper `case Inlined(...) =>` for description of the simplification
                 val call2 = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
-                val spliced = Splicer.splice(body, call, bindings, tree.pos).withPos(tree.pos)
+                val spliced = splicer.splice(body, call, bindings, tree.pos).withPos(tree.pos)
                 transform(cpy.Inlined(tree)(call2, bindings, spliced))
               }
               else super.transform(tree)

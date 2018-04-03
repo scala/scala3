@@ -21,8 +21,10 @@ import dotty.tools.dotc.util.Positions.Position
 import scala.reflect.ClassTag
 
 /** Utility class to splice quoted expressions */
-object Splicer {
+class Splicer {
   import tpd._
+
+  private var classLoader: URLClassLoader = _
 
   /** Splice the Tree for a Quoted expression. `~'(xyz)` becomes `xyz`
    *  and for `~xyz` the tree of `xyz` is interpreted for which the
@@ -93,8 +95,6 @@ object Splicer {
     }
   }
 
-  private val classLoaders = scala.collection.mutable.HashMap.empty[String, URLClassLoader]
-
   /** Tree interpreter that can interpret calls to static methods with it's default arguments
    *
    *  The interpreter assumes that all calls in the trees are to code that was
@@ -102,13 +102,9 @@ object Splicer {
    */
   private class Interpreter(pos: Position)(implicit ctx: Context) {
 
-    private[this] val classLoader = {
-      val cp = ctx.settings.classpath.value
-      def newClassLoader = {
-        val urls = cp.split(':').map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
-        new URLClassLoader(urls, getClass.getClassLoader)
-      }
-      classLoaders.getOrElseUpdate(cp, newClassLoader)
+    if (classLoader == null) {
+      val urls = ctx.settings.classpath.value.split(':').map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
+      classLoader = new URLClassLoader(urls, getClass.getClassLoader)
     }
 
     /** Returns the interpreted result of interpreting the code a call to the symbol with default arguments.
