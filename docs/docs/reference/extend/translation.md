@@ -66,7 +66,7 @@ implicit class SeqOps[T](private val $this: List[T]) extends AnyVal {
 
 Now, assume an extension
 
-    extension if <type-params> <implicit-params> for <type> : <parents> { <body> }
+    extension <id> <type-params> <implicit-params> for <type> : <parents> { <body> }
 
 where `<type-params>`, `<implicit-params>` and `<type>` are as before.
 This extension is translated to
