@@ -177,12 +177,19 @@ class TreeChecker extends Phase with SymTransformer {
       res
     }
 
+    def withPatSyms[T](syms: List[Symbol])(op: => T)(implicit ctx: Context) = {
+      nowDefinedSyms ++= syms
+      val res = op
+      nowDefinedSyms --= syms
+      res
+    }
+
     def assertDefined(tree: untpd.Tree)(implicit ctx: Context) =
       if (
         tree.symbol.maybeOwner.isTerm &&
         !(tree.symbol.is(Label) && !tree.symbol.owner.isClass && ctx.phase.labelsReordered) // labeldefs breaks scoping
       )
-        assert(nowDefinedSyms contains tree.symbol, i"undefined symbol ${tree.symbol}")
+        assert(nowDefinedSyms contains tree.symbol, i"undefined symbol ${tree.symbol} at line " + tree.pos.line)
 
     /** assert Java classes are not used as objects */
     def assertIdentNotJavaClass(tree: Tree)(implicit ctx: Context): Unit = tree match {
@@ -400,7 +407,7 @@ class TreeChecker extends Phase with SymTransformer {
       }
 
     override def typedCase(tree: untpd.CaseDef, pt: Type, selType: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = {
-      withDefinedSyms(tree.pat.asInstanceOf[tpd.Tree].filterSubTrees(_.isInstanceOf[ast.Trees.Bind[_]])) {
+      withPatSyms(tpd.patVars(tree.pat.asInstanceOf[tpd.Tree])) {
         super.typedCase(tree, pt, selType, gadtSyms)
       }
     }
