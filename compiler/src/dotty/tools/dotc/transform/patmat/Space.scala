@@ -443,6 +443,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           Typ(ConstantType(Constant(true)), true),
           Typ(ConstantType(Constant(false)), true)
         )
+      case tp if tp.isRef(defn.UnitClass) =>
+        Typ(ConstantType(Constant(())), true) :: Nil
       case tp if tp.classSymbol.is(Enum) =>
         children.map(sym => Typ(sym.termRef, true))
       case tp =>
@@ -708,6 +710,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         canDecompose(and.tp1) || canDecompose(and.tp2)
       }) ||
       tp.isRef(defn.BooleanClass) ||
+      tp.isRef(defn.UnitClass) ||
       tp.classSymbol.is(allOf(Enum, Sealed))  // Enum value doesn't have Sealed flag
 
     debug.println(s"decomposable: ${tp.show} = $res")
