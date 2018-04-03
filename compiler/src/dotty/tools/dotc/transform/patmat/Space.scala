@@ -400,21 +400,21 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     val sig =
       if (isSyntheticScala2Unapply(unappSym) && caseAccessors.length == argLen)
-        caseAccessors.map(_.info.asSeenFrom(mt.paramInfos.head, caseClass).widen)
+        caseAccessors.map(_.info.asSeenFrom(mt.paramInfos.head, caseClass).widenExpr)
       else if (mt.finalResultType.isRef(defn.BooleanClass))
         List()
       else {
         val isUnapplySeq = unappSym.name == nme.unapplySeq
         if (isProductMatch(mt.finalResultType, argLen) && !isUnapplySeq) {
           productSelectors(mt.finalResultType).take(argLen)
-            .map(_.info.asSeenFrom(mt.finalResultType, mt.resultType.classSymbol).widen)
+            .map(_.info.asSeenFrom(mt.finalResultType, mt.resultType.classSymbol).widenExpr)
         }
         else {
           val resTp = mt.finalResultType.select(nme.get).finalResultType.widen
           if (isUnapplySeq) scalaListType.appliedTo(resTp.argTypes.head) :: Nil
           else if (argLen == 0) Nil
           else if (isProductMatch(resTp, argLen))
-            productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widen)
+            productSelectors(resTp).map(_.info.asSeenFrom(resTp, resTp.classSymbol).widenExpr)
           else resTp :: Nil
         }
       }
@@ -443,6 +443,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           Typ(ConstantType(Constant(true)), true),
           Typ(ConstantType(Constant(false)), true)
         )
+      case tp if tp.isRef(defn.UnitClass) =>
+        Typ(ConstantType(Constant(())), true) :: Nil
       case tp if tp.classSymbol.is(Enum) =>
         children.map(sym => Typ(sym.termRef, true))
       case tp =>
@@ -708,6 +710,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         canDecompose(and.tp1) || canDecompose(and.tp2)
       }) ||
       tp.isRef(defn.BooleanClass) ||
+      tp.isRef(defn.UnitClass) ||
       tp.classSymbol.is(allOf(Enum, Sealed))  // Enum value doesn't have Sealed flag
 
     debug.println(s"decomposable: ${tp.show} = $res")

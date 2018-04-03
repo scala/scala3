@@ -884,7 +884,7 @@ object messages {
     val msg =
       hl"""|match may not be exhaustive.
            |
-           |It would fail on: $uncovered"""
+           |It would fail on pattern case: $uncovered"""
 
 
     val explanation =
