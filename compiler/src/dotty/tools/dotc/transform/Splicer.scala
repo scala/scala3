@@ -93,6 +93,8 @@ object Splicer {
     }
   }
 
+  private val classLoaders = scala.collection.mutable.HashMap.empty[String, URLClassLoader]
+
   /** Tree interpreter that can interpret calls to static methods with it's default arguments
    *
    *  The interpreter assumes that all calls in the trees are to code that was
@@ -101,8 +103,12 @@ object Splicer {
   private class Interpreter(pos: Position)(implicit ctx: Context) {
 
     private[this] val classLoader = {
-      val urls = ctx.settings.classpath.value.split(':').map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
-      new URLClassLoader(urls, getClass.getClassLoader)
+      val cp = ctx.settings.classpath.value
+      def newClassLoader = {
+        val urls = cp.split(':').map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
+        new URLClassLoader(urls, getClass.getClassLoader)
+      }
+      classLoaders.getOrElseUpdate(cp, newClassLoader)
     }
 
     /** Returns the interpreted result of interpreting the code a call to the symbol with default arguments.
