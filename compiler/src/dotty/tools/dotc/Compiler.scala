@@ -67,6 +67,7 @@ class Compiler {
          new NormalizeFlags,         // Rewrite some definition flags
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
+         new ShortcutImplicits,      // Allow implicit functions without creating closures
          new TailRec,                // Rewrite tail recursion to loops
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
          new LiftTry,                // Put try expressions that might execute on non-empty stacks into their own methods
@@ -77,7 +78,6 @@ class Compiler {
          new PatternMatcher,         // Compile pattern matches
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
-         new ShortcutImplicits,      // Allow implicit functions without creating closures
          new CrossCastAnd,           // Normalize selections involving intersection types.
          new Splitter) ::            // Expand selections involving union types into conditionals
     List(new ErasedDecls,            // Removes all erased defs and vals decls (except for parameters)

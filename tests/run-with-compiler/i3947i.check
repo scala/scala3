@@ -1,0 +1,12 @@
+
+classOf[Array[Int]].getCanonicalName()
+int[]
+
+classOf[Array[Long]].getCanonicalName()
+long[]
+
+classOf[Array[Float]].getCanonicalName()
+float[]
+
+classOf[Array[Double]].getCanonicalName()
+double[]

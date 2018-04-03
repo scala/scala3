@@ -48,7 +48,7 @@ import collection.mutable
 class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import tpd._
 
-  override def phaseName: String = "shortcutImplicits"
+  override def phaseName: String = ShortcutImplicits.name
 
   override def changesMembers = true  // the phase adds "direct" methods
 
@@ -138,6 +138,14 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
     if (shouldBeSpecialized(original)) {
       val direct = directMethod(original)
 
+      // Move @tailrec to the direct method
+      original.getAnnotation(defn.TailrecAnnot) match {
+        case Some(annot) =>
+          direct.addAnnotation(annot)
+          original.removeAnnotation(defn.TailrecAnnot)
+        case _ =>
+      }
+
       def splitClosure(tree: Tree): (List[Type] => List[List[Tree]] => Tree, Tree) = tree match {
         case Block(Nil, expr) => splitClosure(expr)
         case Block((meth @ DefDef(nme.ANON_FUN, Nil, clparams :: Nil, _, _)) :: Nil, cl: Closure) =>
@@ -166,4 +174,8 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
     }
     else mdef
   }
+}
+
+object ShortcutImplicits {
+  val name = "shortcutImplicits"
 }

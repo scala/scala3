@@ -108,7 +108,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
           moduleClassSym
       }
     case ref: SymDenotation =>
-      if (isMethodWithExtension(ref) && ref.hasAnnotation(defn.TailrecAnnot)) {
+      if (isMethodWithExtension(ref.symbol) && ref.hasAnnotation(defn.TailrecAnnot)) {
         val ref1 = ref.copySymDenotation()
         ref1.removeAnnotation(defn.TailrecAnnot)
         ref1

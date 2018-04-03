@@ -1,0 +1,6 @@
+
+classOf[Array[Array[Int]]].getCanonicalName()
+int[][]
+
+classOf[Array[Array[Array[Int]]]].getCanonicalName()
+int[][][]

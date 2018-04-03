@@ -21,12 +21,16 @@ object ValueClasses {
     !d.isPrimitiveValueClass
   }
 
-  def isMethodWithExtension(d: SymDenotation)(implicit ctx: Context) =
-    d.isRealMethod &&
+  def isMethodWithExtension(sym: Symbol)(implicit ctx: Context) =
+    ctx.atPhaseNotLaterThan(ctx.extensionMethodsPhase) { implicit ctx =>
+      val d = sym.denot
+      d.validFor.containsPhaseId(ctx.phaseId) &&
+      d.isRealMethod &&
       isDerivedValueClass(d.owner) &&
       !d.isConstructor &&
       !d.isSuperAccessor &&
       !d.is(Macro)
+    }
 
   /** The member of a derived value class that unboxes it. */
   def valueClassUnbox(d: ClassDenotation)(implicit ctx: Context): Symbol =

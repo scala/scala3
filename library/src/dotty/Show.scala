@@ -58,6 +58,12 @@ object Show extends LowPrioShow {
       else "List(" + xs.map(_.show).mkString(", ") + ")"
   }
 
+  implicit def arrayShow[T](implicit st: Show[T]): Show[Array[T]] = new Show[Array[T]] {
+    def show(xs: Array[T]): String =
+      if (xs.isEmpty) "Array()"
+      else "Array(" + xs.map(_.show).mkString(", ") + ")"
+  }
+
   implicit def showOption[T](implicit st: Show[T]): Show[Option[T]] = new Show[Option[T]] {
     def show(ot: Option[T]): String = ot match {
       case Some(t) => "Some("+ st.show(t) + ")"
