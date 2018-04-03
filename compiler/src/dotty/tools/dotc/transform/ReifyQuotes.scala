@@ -88,7 +88,8 @@ import dotty.tools.dotc.core.quoted._
 class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
   import ast.tpd._
 
-  private lazy val splicer: Splicer = new Splicer
+  /** Classloader used for loading macros */
+  private var macroClassLoader: java.lang.ClassLoader = _
 
   override def phaseName: String = "reifyQuotes"
 
@@ -544,7 +545,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
                 // Simplification of the call done in PostTyper for non-macros can also be performed now
                 // see PostTyper `case Inlined(...) =>` for description of the simplification
                 val call2 = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
-                val spliced = splicer.splice(body, call, bindings, tree.pos).withPos(tree.pos)
+                val spliced = Splicer.splice(body, call, bindings, tree.pos, getMacroClassLoader).withPos(tree.pos)
                 transform(cpy.Inlined(tree)(call2, bindings, spliced))
               }
               else super.transform(tree)
@@ -620,6 +621,14 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
       case _ => macroReturnType
     }
     transform(tp)
+  }
+
+  private def getMacroClassLoader(implicit ctx: Context): ClassLoader = {
+    if (macroClassLoader == null) {
+      val urls = ctx.settings.classpath.value.split(':').map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
+      macroClassLoader = new java.net.URLClassLoader(urls, getClass.getClassLoader)
+    }
+    macroClassLoader
   }
 
   override protected def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.is(Macro)
