@@ -86,7 +86,6 @@ object Splicer {
          """.stripMargin
         ctx.error(msg, pos)
         None
-      case ex: Throwable => throw ex
     }
   }
 

@@ -490,8 +490,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
             Text()
 
         nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(node.pos.toString) provided ctx.settings.YprintPos.value)
-      case _ =>
-        tree.fallbackToText(this)
     }
   }.close // todo: override in refined printer
 

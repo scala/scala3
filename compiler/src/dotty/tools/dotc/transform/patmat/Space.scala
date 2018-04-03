@@ -331,6 +331,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
     case Typed(expr, tpt) =>
       Typ(erase(expr.tpe.stripAnnots), true)
+    case This(_) =>
+      Typ(pat.tpe.stripAnnots, false)
+    case EmptyTree =>         // default rethrow clause of try/catch, check tests/patmat/try2.scala
+      Typ(WildcardType, false)
     case _ =>
       debug.println(s"unknown pattern: $pat")
       Empty
@@ -917,13 +921,15 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
             else Empty
           }.reduce((a, b) => Or(List(a, b)))
 
-      val curr = project(cases(i).pat)
+      if (cases(i).pat != EmptyTree) { // rethrow case of catch
+        val curr = project(cases(i).pat)
 
-      debug.println(s"---------------reachable? ${show(curr)}")
-      debug.println(s"prev: ${show(prevs)}")
+        debug.println(s"---------------reachable? ${show(curr)}")
+        debug.println(s"prev: ${show(prevs)}")
 
-      if (isSubspace(intersect(curr, Typ(selTyp, false)), prevs)) {
-        ctx.warning(MatchCaseUnreachable(), cases(i).body.pos)
+        if (isSubspace(intersect(curr, Typ(selTyp, false)), prevs)) {
+          ctx.warning(MatchCaseUnreachable(), cases(i).body.pos)
+        }
       }
     }
   }
