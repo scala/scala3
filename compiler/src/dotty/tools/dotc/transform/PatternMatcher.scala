@@ -289,7 +289,7 @@ object PatternMatcher {
 
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
           matchArgsPlan(caseAccessors.map(ref(scrutinee).select(_)), args, onSuccess)
-        else if (unapp.tpe.isRef(defn.BooleanClass))
+        else if (unapp.tpe.widenSingleton.isRef(defn.BooleanClass))
           TestPlan(GuardTest, unapp, unapp.pos, onSuccess, onFailure)
         else {
           letAbstract(unapp) { unappResult =>
