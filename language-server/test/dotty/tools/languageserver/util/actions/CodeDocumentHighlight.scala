@@ -16,7 +16,7 @@ import scala.collection.JavaConverters._
  * @param expected The expected results.
  */
 class CodeDocumentHighlight(override val range: CodeRange,
-                            expected: Seq[(CodeRange, String)]) extends ActionOnRange {
+                            expected: Seq[(CodeRange, DocumentHighlightKind)]) extends ActionOnRange {
 
   override def onMarker(marker: CodeMarker): Exec[Unit] = {
     val (references, kinds) = expected.unzip
@@ -24,7 +24,7 @@ class CodeDocumentHighlight(override val range: CodeRange,
     assert(results.size() == references.size, results)
     assert(references.size == kinds.length, results)
     results.asScala.zip(references).zip(kinds).foreach { case ((dhl, ref), kind) =>
-      assert(dhl.getKind == DocumentHighlightKind.valueOf(kind), results)
+      assert(dhl.getKind == kind, results)
       assert(dhl.getRange == ref.toRange, results)
     }
   }

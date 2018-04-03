@@ -4,7 +4,7 @@ import dotty.tools.languageserver.util.Code.SourceWithPositions
 import dotty.tools.languageserver.util.actions._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.{TestFile, TestServer}
-import org.eclipse.lsp4j.CompletionItemKind
+import org.eclipse.lsp4j.{CompletionItemKind, DocumentHighlightKind}
 
 /**
  * Simulates an LSP client for test in a workspace defined by `sources`.
@@ -55,7 +55,7 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    *
    * @see dotty.tools.languageserver.util.actions.CodeDefinition
    */
-  def highlight(range: CodeRange, expected: (CodeRange, String)*): CodeTester =
+  def highlight(range: CodeRange, expected: (CodeRange, DocumentHighlightKind)*): CodeTester =
     doAction(new CodeDocumentHighlight(range, expected))
 
   /**
