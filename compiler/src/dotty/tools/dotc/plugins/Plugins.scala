@@ -3,7 +3,7 @@ package plugins
 
 import core._
 import Contexts._
-import config.PathResolver
+import config.{ PathResolver, Properties }
 import dotty.tools.io._
 import Phases._
 import config.Printers.plugins.{ println => debug }
@@ -128,7 +128,12 @@ trait Plugins {
     val updatedPlan = Plugins.schedule(plan, pluginPhases)
 
     // add research plugins
-    plugins.collect { case p: ResearchPlugin => p }.foldRight(updatedPlan) { (plug, plan) => plug.init(options(plug), plan) }
+    if (Properties.experimental)
+      plugins.collect { case p: ResearchPlugin => p }.foldRight(updatedPlan) {
+        (plug, plan) => plug.init(options(plug), plan)
+      }
+    else
+      updatedPlan
   }
 }
 
