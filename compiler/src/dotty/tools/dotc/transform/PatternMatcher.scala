@@ -33,11 +33,8 @@ class PatternMatcher extends MiniPhase {
 
     // check exhaustivity and unreachability
     val engine = new patmat.SpaceEngine
-
-    if (engine.checkable(tree)) {
-      engine.checkExhaustivity(tree)
-      engine.checkRedundancy(tree)
-    }
+    engine.checkExhaustivity(tree)
+    engine.checkRedundancy(tree)
 
     translated.ensureConforms(tree.tpe)
   }

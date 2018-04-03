@@ -345,8 +345,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       OrType(erase(tp1), erase(tp2))
     case AndType(tp1, tp2) =>
       AndType(erase(tp1), erase(tp2))
-    case tp: RefinedType =>
-      tp.derivedRefinedType(erase(tp.parent), tp.refinedName, WildcardType)
+    case tp @ RefinedType(parent, refinedName, _) if refinedName.isTermName =>   // see pos/dependent-extractors.scala
+      tp.derivedRefinedType(erase(parent), refinedName, WildcardType)
     case _ => tp
   }
 
@@ -842,7 +842,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     flatten(s).map(doShow(_, false)).distinct.mkString(", ")
   }
 
-  def checkable(tree: Match): Boolean = {
+  private def exhaustivityCheckable(sel: Tree): Boolean = {
     // Possible to check everything, but be compatible with scalac by default
     def isCheckable(tp: Type): Boolean =
       !tp.hasAnnotation(defn.UncheckedAnnot) && {
@@ -860,9 +860,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         (defn.isTupleType(tpw) && tpw.argInfos.exists(isCheckable(_)))
       }
 
-    val Match(sel, cases) = tree
     val res = isCheckable(sel.tpe)
-    debug.println(s"checkable: ${sel.show} = $res")
+    debug.println(s"exhaustivity checkable: ${sel.show} = $res")
     res
   }
 
@@ -880,6 +879,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val Match(sel, cases) = _match
     val selTyp = sel.tpe.widen.dealias
 
+    if (!exhaustivityCheckable(sel)) return
 
     val patternSpace = cases.map({ x =>
       val space = project(x.pat)
@@ -897,10 +897,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       ctx.warning(PatternMatchExhaustivity(show(Or(uncovered))), sel.pos)
   }
 
+  private def redundancyCheckable(sel: Tree): Boolean =
+    !sel.tpe.hasAnnotation(defn.UncheckedAnnot)
+
   def checkRedundancy(_match: Match): Unit = {
     val Match(sel, cases) = _match
-    // ignore selector type for now
     val selTyp = sel.tpe.widen.dealias
+
+    if (!redundancyCheckable(sel)) return
 
     (0 until cases.length).foreach { i =>
       // in redundancy check, take guard as false in order to soundly approximate
