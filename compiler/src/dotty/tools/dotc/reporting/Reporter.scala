@@ -230,7 +230,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     ctx.mode.is(Mode.Printing)
 
   /** Does this reporter contain not yet reported errors or warnings? */
-  def hasPending(implicit ctx: Context): Boolean = false
+  def hasPendingErrors: Boolean = false
 
   /** If this reporter buffers messages, remove and return all buffered messages. */
   def removeBufferedMessages(implicit ctx: Context): List[MessageContainer] = Nil
