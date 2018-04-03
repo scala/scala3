@@ -29,7 +29,7 @@ sealed trait Plugin {
    *  Research plugin receives a phase plan and return a new phase plan, while
    *  non-research plugin returns a list of phases to be inserted.
    */
-  def research: Boolean = isInstanceOf[ResearchPlugin]
+  def isResearch: Boolean = isInstanceOf[ResearchPlugin]
 
   /** A description of this plugin's options, suitable as a response
    *  to the -help command-line option.  Conventionally, the options
