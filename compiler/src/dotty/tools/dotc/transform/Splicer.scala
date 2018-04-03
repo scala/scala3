@@ -36,7 +36,7 @@ object Splicer {
       val liftedArgs = getLiftedArgs(call, bindings)
       val interpreter = new Interpreter(pos, classLoader)
       val interpreted = interpreter.interpretCallToSymbol[Seq[Any] => Object](call.symbol)
-      interpreted.flatMap(lambda => evaluateLambda(lambda, liftedArgs, pos)).fold(tree)(PickledQuotes.quotedExprToTree)
+      interpreted.flatMap(lambda => evaluateLambda(lambda, liftedArgs, pos)).fold(tree)(PickledQuotes.quotedExprToTree(_, nested = false))
   }
 
   /** Given the inline code and bindings, compute the lifted arguments that will be used to execute the macro
