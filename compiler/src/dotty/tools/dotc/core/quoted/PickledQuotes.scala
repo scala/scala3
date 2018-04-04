@@ -59,7 +59,10 @@ object PickledQuotes {
     val unpickled = unpickle(tastyBytes, expr.args)
     unpickled match {
       case PackageDef(_, (vdef: ValDef) :: Nil) =>
-        vdef.rhs.changeOwner(vdef.symbol, ctx.owner)
+        // vdef.rhs was unpickled with the current context. Symbols in vdef.rhs with
+        // owner vdef.symbol are unpickled as if their owner was ctx.owner. This optimization
+        // is done to avoid exponential transformation of nested pickled trees.
+        vdef.rhs
     }
   }
 
@@ -69,8 +72,10 @@ object PickledQuotes {
     val unpickled = unpickle(tastyBytes, ttpe.args)
     unpickled match {
       case PackageDef(_, (vdef: ValDef) :: Nil) =>
+        // vdef.rhs was unpickled with the current context. Symbols in vdef.rhs with
+        // owner vdef.symbol are unpickled as if their owner was ctx.owner. This optimization
+        // is done to avoid exponential transformation of nested pickled trees.
         vdef.rhs.asInstanceOf[TypeApply].args.head
-          .changeOwner(vdef.symbol, ctx.owner)
     }
   }
 
@@ -80,7 +85,7 @@ object PickledQuotes {
    *    `<type tree>` ==> `package _root_ { val $typeQuote: Any = null.asInstanceOf[<tree>] }`
    */
   private def encapsulateQuote(tree: Tree)(implicit ctx: Context): Tree = {
-    val name = (if (tree.isTerm) "$quote" else "$typeQuote").toTermName
+    val name = if (tree.isTerm) nme.PICKLED_QUOTE else nme.PICKLED_TYPE_QUOTE
     val sym = ctx.newSymbol(ctx.owner, name, Synthetic, defn.AnyType, coord = tree.pos)
     val encoded =
       if (tree.isTerm) tree

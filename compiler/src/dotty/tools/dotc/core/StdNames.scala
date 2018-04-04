@@ -147,7 +147,9 @@ object StdNames {
     val COMPANION_CLASS_METHOD: N     = "companion$class"
     val BOUNDTYPE_ANNOT: N            = "$boundType$"
     val QUOTE: N                      = "'"
-    val TYPE_QUOTE: N                = "type_'"
+    val TYPE_QUOTE: N                 = "type_'"
+    val PICKLED_QUOTE: N              = "$quote"
+    val PICKLED_TYPE_QUOTE: N         = "$typeQuote"
     val TRAIT_SETTER_SEPARATOR: N     = str.TRAIT_SETTER_SEPARATOR
 
     // value types (and AnyRef) are all used as terms as well
