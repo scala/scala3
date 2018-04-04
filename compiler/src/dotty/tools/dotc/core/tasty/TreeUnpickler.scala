@@ -1145,12 +1145,12 @@ class TreeUnpickler(reader: TastyReader,
         val quotedType =
           if (reifiedArgs.isEmpty) splice.asInstanceOf[quoted.Type[_]]
           else splice.asInstanceOf[Seq[Any] => quoted.Type[_]](reifiedArgs)
-        PickledQuotes.quotedTypeToTree(quotedType)
+        PickledQuotes.quotedTypeToTree(quotedType, nested = true)
       } else {
         val quotedExpr =
           if (reifiedArgs.isEmpty) splice.asInstanceOf[quoted.Expr[_]]
           else splice.asInstanceOf[Seq[Any] => quoted.Expr[_]](reifiedArgs)
-        PickledQuotes.quotedExprToTree(quotedExpr)
+        PickledQuotes.quotedExprToTree(quotedExpr, nested = true)
       }
     }
 
