@@ -1,0 +1,9 @@
+9
+{
+  def ff: Int = 
+    {
+      val a: Int = 9
+      a.+(0)
+    }
+  ff: Int
+}

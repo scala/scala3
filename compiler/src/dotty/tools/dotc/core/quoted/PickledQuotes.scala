@@ -61,7 +61,7 @@ object PickledQuotes {
     val unpickled = unpickle(tastyBytes, expr.args)
     unpickled match {
       case PackageDef(_, (vdef: ValDef) :: Nil) =>
-        changeQuoteOwners(vdef.rhs, nested)
+        changeQuoteOwners(vdef.rhs, vdef.symbol, nested)
     }
   }
 
@@ -71,23 +71,18 @@ object PickledQuotes {
     val unpickled = unpickle(tastyBytes, ttpe.args)
     unpickled match {
       case PackageDef(_, (vdef: ValDef) :: Nil) =>
-        changeQuoteOwners(vdef.rhs.asInstanceOf[TypeApply].args.head, nested)
+        changeQuoteOwners(vdef.rhs.asInstanceOf[TypeApply].args.head, vdef.symbol, nested)
     }
   }
 
-  private def changeQuoteOwners(tree: Tree, nested: Boolean)(implicit ctx: Context): Tree = {
+  private[this] val ownerMapping = scala.collection.mutable.LinkedHashMap.empty[Symbol, Symbol]
+  private def changeQuoteOwners(tree: Tree, owner: Symbol, nested: Boolean)(implicit ctx: Context): Tree = {
+    ownerMapping.put(owner, ctx.owner)
     if (nested) tree
     else {
-      val set = mutable.HashSet.empty[Symbol]
-      new TreeTraverser {
-        override def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = {
-          if (tree.symbol.exists && tree.symbol.owner.name == "$quote".toTermName)
-            set += tree.symbol.owner
-          traverseChildren(tree)
-        }
-      }.traverse(tree)
-      val owners = set.toList
-      new TreeTypeMap(oldOwners = owners, newOwners = owners.map(_ => ctx.owner)).apply(tree)
+      val (oldOwners, newOwners) = ownerMapping.iterator.toList.unzip
+      ownerMapping.clear()
+      new TreeTypeMap(oldOwners = oldOwners, newOwners = newOwners).apply(tree)
     }
   }
 
