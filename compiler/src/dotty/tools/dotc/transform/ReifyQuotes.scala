@@ -90,6 +90,13 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
 
   /** Classloader used for loading macros */
   private[this] var myMacroClassLoader: java.lang.ClassLoader = _
+  private def macroClassLoader(implicit ctx: Context): ClassLoader = {
+    if (myMacroClassLoader == null) {
+      val urls = ctx.settings.classpath.value.split(':').map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
+      myMacroClassLoader = new java.net.URLClassLoader(urls, getClass.getClassLoader)
+    }
+    myMacroClassLoader
+  }
 
   override def phaseName: String = "reifyQuotes"
 
@@ -621,14 +628,6 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
       case _ => macroReturnType
     }
     transform(tp)
-  }
-
-  private def macroClassLoader(implicit ctx: Context): ClassLoader = {
-    if (myMacroClassLoader == null) {
-      val urls = ctx.settings.classpath.value.split(':').map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
-      myMacroClassLoader = new java.net.URLClassLoader(urls, getClass.getClassLoader)
-    }
-    myMacroClassLoader
   }
 
   override protected def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.is(Macro)
