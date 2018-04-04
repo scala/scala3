@@ -1307,17 +1307,6 @@ object Types {
         }
       }
 
-    /** Same as `subst` but follows aliases as a fallback. When faced with a reference
-     *  to an alias type, where normal substitution does not yield a new type, the
-     *  substitution is instead applied to the alias. If that yields a new type,
-     *  this type is returned, otherwise the original type (not the alias) is returned.
-     *  A use case for this method is if one wants to substitute the type parameters
-     *  of a class and also wants to substitute any parameter accessors that alias
-     *  the type parameters.
-     */
-    final def substDealias(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type =
-      ctx.substDealias(this, from, to, null)
-
     /** Substitute all types of the form `TypeParamRef(from, N)` by
      *  `TypeParamRef(to, N)`.
      */
