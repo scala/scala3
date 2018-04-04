@@ -18,26 +18,26 @@ object runtime {
 
   trait Injector {
     /** The implementating type */
-    type This
+    type $This
 
     /** The implemented trait */
     type $Instance
 
     /** The implementation via type `T` for this trait */
-    implicit def inject(x: This): $Instance
+    implicit def inject(x: $This): $Instance
   }
 
   trait IdentityInjector extends Injector {
-    def inject(x: This): $Instance = x.asInstanceOf
+    def inject(x: $This): $Instance = x.asInstanceOf
   }
 
   trait SubtypeInjector[T] extends Injector {
-    type This = T
+    type $This = T
     type $Instance = T
     def inject(x: T): T = x
   }
 
-  type Injectable[T, +U] = Injector { type This = T; type $Instance <: U }
+  type Injectable[T, +U] = Injector { type $This = T; type $Instance <: U }
 
   def selfInject[U, T <: U]: Injectable[T, U] = new SubtypeInjector[T] {}
 
@@ -50,6 +50,7 @@ object runtime {
 
     /** Base trait for companion objects of all implementations of this typeclass */
     trait Common extends Injector { self =>
+      type This = $This
       /** The implemented typeclass */
       type $Instance <: TypeClass
     }
@@ -60,14 +61,14 @@ object runtime {
       type Common <: TypeClass.Common
 
       /** Helper type to characterize implementations via type `T` for this typeclass */
-      type Impl[T] = Common { type This = T }
+      type Impl[T] = Common { type $This = T }
 
       /** The implementation via type `T` for this typeclass, as found by implicit search */
       def impl[T](implicit ev: Impl[T]): Impl[T] = ev
     }
   }
 
-  implicit def applyInjector[From, U](x: From)(implicit ev: Injector { type This = From }): ev.$Instance =
+  implicit def applyInjector[From, U](x: From)(implicit ev: Injector { type $This = From }): ev.$Instance =
     ev.inject(x)
 }
 
@@ -91,7 +92,7 @@ object runtime {
       common def limit: Int
     }
 
-    trait HasBoundedLengthX extends HasBoundedLength {
+    trait HasBoundedLengthX extends HasBoundedLength with TypeClass {
       common def longest: This
     }
 
@@ -324,7 +325,7 @@ object hasLength {
     import `common`._
   }
   abstract class C3Common extends C2Common with HasBoundedLengthX.Common { self =>
-    type This = C3
+    type $This = C3
     type $Instance <: C3 { val `common`: self.type }
 
     def longest = new C3(new Array[Int](limit))
@@ -336,7 +337,7 @@ object hasLength {
     import `common`._
   }
   abstract class CG3Common[T](implicit tag: ClassTag[T])  extends CG2Common[T] with HasBoundedLengthX.Common { self =>
-    type This = CG3[T]
+    type $This = CG3[T]
     type $Instance <: CG3[T] { val `common`: self.type }
     def longest = new CG3(new Array[T](limit))
   }
@@ -354,7 +355,7 @@ object hasLength {
   class DG3[T](val xs: Array[T])
 
   implicit object DHasLength extends Injector {
-    type This = D1
+    type $This = D1
     type $Instance = HasLength
     def inject(x: D1) = new HasLength {
       def length = xs.length
@@ -362,7 +363,7 @@ object hasLength {
   }
 
   class DGHasLength[T] extends Injector {
-    type This = DG1[T]
+    type $This = DG1[T]
     type $Instance = HasLength
     def inject(x: DG1[T]) = new HasLength {
       def length = xs.length
@@ -371,7 +372,7 @@ object hasLength {
   implicit def DGHasLength[T]: DGHasLength[T] = new DGHasLength
 
   object DHasBoundedLength extends HasBoundedLength.Common { self =>
-    type This = D2
+    type $This = D2
     type $Instance = HasBoundedLength
     def inject(x: D2) = new HasBoundedLength {
       val `common`: self.type = self
@@ -382,7 +383,7 @@ object hasLength {
   }
 
   class DGHasBoundedLength[T] extends HasBoundedLength.Common { self =>
-    type This = DG2[T]
+    type $This = DG2[T]
     type $Instance = HasBoundedLength
     def inject(x: DG2[T]) = new HasBoundedLength {
       val `common`: self.type = self
@@ -394,7 +395,7 @@ object hasLength {
   implicit def DGHasBoundedLength[T]: DGHasBoundedLength[T] = new DGHasBoundedLength
 
   implicit object DHasBoundedLengthX extends HasBoundedLengthX.Common { self =>
-    type This = D3
+    type $This = D3
     type $Instance = HasBoundedLengthX { val `common`: self.type }
     def inject(x: D3) = new HasBoundedLengthX {
       val `common`: self.type = self
@@ -406,7 +407,7 @@ object hasLength {
   }
 
   class DGHasBoundedLengthX[T](implicit tag: ClassTag[T]) extends HasBoundedLengthX.Common { self =>
-    type This = DG3[T]
+    type $This = DG3[T]
     type $Instance = HasBoundedLengthX { val `common`: self.type }
     def inject(x: DG3[T]) = new HasBoundedLengthX {
       val `common`: self.type = self
@@ -570,7 +571,7 @@ object semiGroups {
   }
 
   implicit object IntSemiGroup extends SemiGroup.Common { self =>
-    type This = Int
+    type $This = Int
     type $Instance = SemiGroup { val `common`: self.type }
     def inject($this: Int) = new SemiGroup {
       val `common`: self.type = self
@@ -579,7 +580,7 @@ object semiGroups {
   }
 
   implicit object IntMonoid extends Monoid.Common { self =>
-    type This = Int
+    type $This = Int
     type $Instance = Monoid { val `common`: self.type }
     def unit: Int = 0
     def inject($this: Int) = new Monoid {
@@ -589,7 +590,7 @@ object semiGroups {
   }
 
   implicit object StringOps extends Monoid.Common {
-    type This = String
+    type $This = String
     type $Instance = Monoid { val `common`: StringOps.type }
     def unit = ""
     def inject($this: String) = new Monoid {
@@ -610,7 +611,7 @@ object semiGroups {
     val `common`: Nat.type = Nat
   }
   object Nat extends Monoid.Common {
-    type This = Nat
+    type $This = Nat
     type $Instance = Nat
     def unit = Nat.Z
     def inject($this: Nat) = $this
@@ -678,7 +679,7 @@ object ord {
   }
 
   implicit object IntOrd extends Ord.Common {
-    type This = Int
+    type $This = Int
     type $Instance = Ord { val `common`: IntOrd.type }
     val minimum: Int = Int.MinValue
     def inject($this: Int) = new Ord {
@@ -690,7 +691,7 @@ object ord {
   }
 
   class ListOrd[T](implicit $ev: Ord.Impl[T]) extends Ord.Common { self =>
-    type This = List[T]
+    type $This = List[T]
     type $Instance = Ord { val `common`: self.type }
     def minimum: List[T] = Nil
     def inject($this: List[T]) = new Ord {
