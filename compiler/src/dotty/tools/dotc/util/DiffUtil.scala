@@ -69,7 +69,7 @@ object DiffUtil {
    *         differences are highlighted.
    */
   def mkColoredLineDiff(expected: Seq[String], actual: Seq[String]): String = {
-    val expectedSize = EOF.length max expected.map(_.length).max
+    val expectedSize = EOF.length max expected.maxBy(_.length).length
     actual.padTo(expected.length, "").zip(expected.padTo(actual.length, "")).map { case (act, exp) =>
       mkColoredLineDiff(exp, act, expectedSize)
     }.mkString(System.lineSeparator)
