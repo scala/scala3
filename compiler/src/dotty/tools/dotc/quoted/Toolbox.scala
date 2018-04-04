@@ -13,6 +13,8 @@ import scala.runtime.quoted._
 object Toolbox {
   import tpd._
 
+  @volatile private[this] lazy val driver = new QuoteDriver()
+
   type Run
   type Show
 
@@ -42,7 +44,7 @@ object Toolbox {
             val printer = new RefinedPrinter(ctx)
             printer.toText(Literal(Constant(value))).mkString(Int.MaxValue, false)
         }
-      case _ => new QuoteDriver().show(expr, showSettings)
+      case _ => driver.show(expr, showSettings)
     }
 
   }
