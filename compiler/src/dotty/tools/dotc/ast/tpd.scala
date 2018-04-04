@@ -286,8 +286,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         coord = fns.map(_.pos).reduceLeft(_ union _))
     val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil).entered
     def forwarder(fn: TermSymbol, name: TermName) = {
-      val fwdMeth = fn.copy(cls, name, Synthetic | Method).entered.asTerm
-      DefDef(fwdMeth, prefss => ref(fn).appliedToArgss(prefss))
+      var flags = Synthetic | Method
+      def isOverriden(denot: SingleDenotation) = fn.info.overrides(denot.info, matchLoosely = true)
+      val isOverride = parents.exists(_.member(name).hasAltWith(isOverriden))
+      if (isOverride) flags = flags | Override
+      val fwdMeth = fn.copy(cls, name, flags).entered.asTerm
+      polyDefDef(fwdMeth, tprefs => prefss => ref(fn).appliedToTypes(tprefs).appliedToArgss(prefss))
     }
     val forwarders = (fns, methNames).zipped.map(forwarder)
     val cdef = ClassDef(cls, DefDef(constr), forwarders)
