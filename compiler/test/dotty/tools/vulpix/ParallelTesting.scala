@@ -600,7 +600,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       else runMain(testSource.runClassPath) match {
         case Success(_) if !checkFile.isDefined || !checkFile.get.exists => // success!
         case Success(output) => {
-          val outputLines = output.lines.filterNot(_.startsWith("Picked up _JAVA_OPTIONS")).toArray :+ DiffUtil.EOF
+          val outputLines = output.lines.toArray :+ DiffUtil.EOF
           val checkLines: Array[String] = Source.fromFile(checkFile.get).getLines().toArray :+ DiffUtil.EOF
           val sourceTitle = testSource.title
 
