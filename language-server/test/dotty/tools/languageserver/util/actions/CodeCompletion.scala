@@ -5,6 +5,7 @@ import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.TestFile
 
 import org.eclipse.lsp4j.CompletionItemKind
+import org.junit.Assert.assertEquals
 
 import scala.collection.JavaConverters._
 
@@ -25,6 +26,7 @@ class CodeCompletion(override val marker: CodeMarker,
     val completionResults = result.getRight.getItems.asScala.toSet.map { item =>
       (item.getLabel, item.getKind, item.getDetail)
     }
+    assertEquals(expected, completionResults)
   }
 
   override def show: PositionContext.PosCtx[String] =

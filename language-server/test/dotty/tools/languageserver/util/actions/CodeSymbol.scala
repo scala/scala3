@@ -1,7 +1,8 @@
 package dotty.tools.languageserver.util.actions
 
-import dotty.tools.languageserver.util.{CodeRange, PositionContext, SymInfo}
-import org.eclipse.lsp4j._
+import dotty.tools.languageserver.util.{PositionContext, SymInfo}
+import org.eclipse.lsp4j.WorkspaceSymbolParams
+import org.junit.Assert.assertEquals
 
 import scala.collection.JavaConverters._
 
@@ -12,16 +13,15 @@ import scala.collection.JavaConverters._
  * @param query    The string to query for.
  * @param expected The expected results.
  */
-class CodeSymbol(query: String, symbols: Seq[SymInfo]) extends Action {
+class CodeSymbol(query: String, expected: Seq[SymInfo]) extends Action {
 
   override def execute(): Exec[Unit] = {
-    val results = server.symbol(new WorkspaceSymbolParams(query)).get()
-    assert(results.size() == symbols.size, results)
-    for ((symInfo, expected) <- results.asScala.zip(symbols)) {
-      assert(symInfo == expected.toSymInformation, results)
-    }
+    val results = server.symbol(new WorkspaceSymbolParams(query)).get().asScala
+    val expectedSymInfo = expected.map(_.toSymInformation)
+
+    assertEquals(expectedSymInfo, results)
   }
 
   override def show: PositionContext.PosCtx[String] =
-    s"CodeDocumentSymbol($query, ${symbols.map(_.show)})"
+    s"CodeDocumentSymbol($query, ${expected.map(_.show)})"
 }

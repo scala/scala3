@@ -3,6 +3,8 @@ package dotty.tools.languageserver.util.actions
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.{CodeRange, PositionContext}
 
+import org.junit.Assert.{assertEquals, assertNull}
+
 import scala.collection.JavaConverters._
 
 /**
@@ -15,18 +17,15 @@ import scala.collection.JavaConverters._
  */
 class CodeRename(override val marker: CodeMarker,
                  newName: String,
-                 expected: List[CodeRange]) extends ActionOnMarker {
+                 expected: Set[CodeRange]) extends ActionOnMarker {
 
   override def execute(): Exec[Unit] = {
     val results = server.rename(marker.toRenameParams(newName)).get()
-    assert(results.getDocumentChanges == null, results)
-    val editItems = results.getChanges.values().asScala.flatMap(_.asScala) // TODO use a Map
-    assert(expected.forall { exp =>
-      editItems.exists { editItem =>
-        editItem.getNewText == newName &&
-        editItem.getRange == exp.toRange
-      }
-    }, results)
+    val changes = results.getChanges.asScala.mapValues(_.asScala.toSet.map(ch => (ch.getNewText, ch.getRange)))
+    val expectedChanges = expected.groupBy(_.file.uri).mapValues(_.map(range => (newName, range.toRange)))
+
+    assertNull(results.getDocumentChanges)
+    assertEquals(expectedChanges, changes)
   }
 
   override def show: PositionContext.PosCtx[String] =

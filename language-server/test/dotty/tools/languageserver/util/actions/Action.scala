@@ -22,8 +22,4 @@ trait Action {
   /** The server that this action targets. */
   def server: Exec[DottyLanguageServer] = implicitly[TestServer].server
 
-  // FIXME
-  // Workaroud an issue with implicit functions and phantomArgLift.
-  // That phase will dispear which should fix this issue. Just remove calls to param when that hapens
-  protected def fix[T](f: PositionContext => T): PosCtx[T] = f(implicitly[PositionContext])
 }

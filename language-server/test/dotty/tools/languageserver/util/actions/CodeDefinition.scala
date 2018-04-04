@@ -5,6 +5,8 @@ import dotty.tools.languageserver.util.embedded.CodeMarker
 
 import scala.collection.JavaConverters._
 
+import org.junit.Assert.assertEquals
+
 /**
  * An action requesting for the definition of the symbol inside `range`.
  * This action corresponds to the `textDocument/definition` method of the Language Server Protocol.
@@ -15,12 +17,10 @@ import scala.collection.JavaConverters._
 class CodeDefinition(override val range: CodeRange, expected: Seq[CodeRange]) extends ActionOnRange {
 
   override def onMarker(marker: CodeMarker): Exec[Unit] = {
-    val results = server.definition(fix(marker.toTextDocumentPositionParams)).get()
-    assert(results.size == expected.size, s"Expected ${expected.size} matches, found ${results.size}")
-    results.asScala.zip(expected).foreach {
-      case (result, expected) =>
-        assert(result == expected.toLocation, s"Expected ${expected.toLocation}, found $result.")
-    }
+    val results = server.definition(marker.toTextDocumentPositionParams).get().asScala.toSeq
+    val expectedLocations = expected.map(_.toLocation)
+
+    assertEquals(expectedLocations, results)
   }
 
   override def show: PositionContext.PosCtx[String] =

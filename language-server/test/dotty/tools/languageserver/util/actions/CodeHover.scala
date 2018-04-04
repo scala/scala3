@@ -4,6 +4,7 @@ import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.{CodeRange, PositionContext}
 
 import org.eclipse.lsp4j._
+import org.junit.Assert.{assertEquals, assertNull, assertTrue}
 
 import PositionContext._
 
@@ -17,14 +18,14 @@ import PositionContext._
 class CodeHover(override val range: CodeRange, expected: String) extends ActionOnRange {
 
   override def onMarker(marker: CodeMarker): Exec[Unit] = {
-    val result = server.hover(fix(marker.toTextDocumentPositionParams)).get()
-    assert(result.getRange == null)
-    if (expected == "") assert(result.getContents == null, "Expected null contents in " + result)
+    val result = server.hover(marker.toTextDocumentPositionParams).get()
+    assertNull(result.getRange)
+    if (expected.isEmpty) assertNull(result.getContents)
     else {
-      assert(result.getContents.size() == 1, result)
+      assertEquals(1, result.getContents.size)
       val content = result.getContents.get(0)
-      assert(content.isLeft, "Expected left but was " + content)
-      assert(content.getLeft == expected, s"Expected $expected but was ${content.getLeft}")
+      assertTrue(content.isLeft)
+      assertEquals(expected, content.getLeft)
     }
   }
 

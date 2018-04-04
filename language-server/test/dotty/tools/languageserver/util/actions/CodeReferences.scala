@@ -3,6 +3,8 @@ package dotty.tools.languageserver.util.actions
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.{CodeRange, PositionContext}
 
+import org.junit.Assert.assertEquals
+
 import scala.collection.JavaConverters._
 
 /**
@@ -18,9 +20,10 @@ class CodeReferences(override val range: CodeRange,
                      withDecl: Boolean) extends ActionOnRange {
 
   override def onMarker(marker: CodeMarker): Exec[Unit] = {
-    val results = server.references(fix(marker.toReferenceParams(withDecl))).get()
-    assert(results.size() == expected.size)
-    results.asScala.zip(expected).foreach { case (loc, ref) => assert(loc == ref.toLocation, results) }
+    val expectedLocations = expected.map(_.toLocation)
+    val results = server.references(marker.toReferenceParams(withDecl)).get().asScala
+
+    assertEquals(expectedLocations, results)
   }
 
   override def show: PositionContext.PosCtx[String] =

@@ -3,6 +3,7 @@ package dotty.tools.languageserver.util.actions
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.{CodeRange, PositionContext}
 import org.eclipse.lsp4j._
+import org.junit.Assert.assertEquals
 
 import scala.collection.JavaConverters._
 
@@ -19,14 +20,11 @@ class CodeDocumentHighlight(override val range: CodeRange,
                             expected: Seq[(CodeRange, DocumentHighlightKind)]) extends ActionOnRange {
 
   override def onMarker(marker: CodeMarker): Exec[Unit] = {
-    val (references, kinds) = expected.unzip
-    val results = server.documentHighlight(fix(marker.toTextDocumentPositionParams)).get()
-    assert(results.size() == references.size, results)
-    assert(references.size == kinds.length, results)
-    results.asScala.zip(references).zip(kinds).foreach { case ((dhl, ref), kind) =>
-      assert(dhl.getKind == kind, results)
-      assert(dhl.getRange == ref.toRange, results)
-    }
+    val expectedPairs = expected.map { case (codeRange, kind) => (codeRange.toRange, kind) }
+    val results = server.documentHighlight(marker.toTextDocumentPositionParams).get()
+    val resultPairs = results.asScala.map { result => (result.getRange, result.getKind) }
+
+    assertEquals(expectedPairs, resultPairs)
   }
 
   override def show: PositionContext.PosCtx[String] = {

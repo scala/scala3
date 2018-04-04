@@ -90,12 +90,12 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    *
    * @param marker   The position from which to ask for renaming.
    * @param newName  The new name to give to the symbol.
-   * @param expected The expected list of positions to change.
+   * @param expected The expected positions to change.
    * @return This `CodeTester` after performing the action.
    *
    * @see dotty.tools.languageserver.util.actions.CodeRename
    */
-  def rename(marker: CodeMarker, newName: String, expected: List[CodeRange]): CodeTester =
+  def rename(marker: CodeMarker, newName: String, expected: Set[CodeRange]): CodeTester =
     doAction(new CodeRename(marker, newName, expected)) // TODO apply changes to the sources and positions
 
   /**

@@ -2,6 +2,7 @@ package dotty.tools.languageserver.util.actions
 
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.{PositionContext, SymInfo}
+import org.junit.Assert.assertEquals
 
 import scala.collection.JavaConverters._
 
@@ -16,11 +17,10 @@ import scala.collection.JavaConverters._
 class CodeDocumentSymbol(override val marker: CodeMarker, expected: Seq[SymInfo]) extends ActionOnMarker {
 
   override def execute(): Exec[Unit] = {
-    val results = server.documentSymbol(marker.toDocumentSymbolParams).get()
-    assert(results.size == expected.size, results)
-    for ((symInfo, expected) <- results.asScala.zip(expected)) {
-      assert(symInfo == expected.toSymInformation, results)
-    }
+    val results = server.documentSymbol(marker.toDocumentSymbolParams).get().asScala
+    val expectedSymInfos = expected.map(_.toSymInformation)
+
+    assertEquals(expectedSymInfos, results)
   }
 
   override def show: PositionContext.PosCtx[String] =
