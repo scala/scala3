@@ -1,9 +1,9 @@
 /*
-  [T : M]  =  [T] ... (implicit ev: Injectable[T, M])       if M is a normal trait
-           =  [T] ... (implicit ev: M.Impl[T])              if M is a trait with common members
+  [T : M]  =  [T] ... (implicit ev: Injectable[T, M])                   if M is a normal trait
+           =  [T] ... (implicit ev: M.common[T] & Injectable[T, M])     if M is a trait with common members
+           =  [T] ... (implicit ev: M.common[T])                        if M is a typeclass (because they subsume Injectable)
 
-      M.Impl[T] = Common { type This = T }
-      M.Impl[T[_]] = Common { type This = T }
+      M.common[T] = Common { type $This = T }
       ...
 
       - Common definitions in traits may not see trait parameters, but common definitions
@@ -24,7 +24,7 @@ object runtime {
     type $Instance
 
     /** The implementation via type `T` for this trait */
-    implicit def inject(x: $This): $Instance
+    def inject(x: $This): $Instance
   }
 
   trait IdentityInjector extends Injector {
@@ -41,6 +41,21 @@ object runtime {
 
   def selfInject[U, T <: U]: Injectable[T, U] = new SubtypeInjector[T] {}
 
+  trait Common {
+    type $This <: AnyKind
+  }
+
+  trait Companion {
+    /** The `Common` base trait defining common (static) operations of this typeclass */
+    type Common <: runtime.Common
+
+    /** Helper type to characterize implementations via type `T` for this typeclass */
+    type common[T <: AnyKind] = Common { type $This = T }
+
+    /** The implementation via type `T` for this typeclass, as found by implicit search */
+    def common[T <: AnyKind](implicit ev: common[T]): common[T] = ev
+  }
+
   trait TypeClass {
     /** The companion object of the implementing type */
     val `common`: TypeClass.Common
@@ -49,22 +64,20 @@ object runtime {
   object TypeClass {
 
     /** Base trait for companion objects of all implementations of this typeclass */
-    trait Common extends Injector { self =>
+    trait Common extends runtime.Common with Injector { self =>
+      /** A user-accessible self type */
       type This = $This
+
       /** The implemented typeclass */
       type $Instance <: TypeClass
+
+      implicit def inject(x: $This): $Instance
     }
 
     /** Base trait for the companion objects of type classes themselves  */
-    trait Companion {
+    trait Companion extends runtime.Companion {
       /** The `Common` base trait defining common (static) operations of this typeclass */
       type Common <: TypeClass.Common
-
-      /** Helper type to characterize implementations via type `T` for this typeclass */
-      type Impl[T] = Common { type $This = T }
-
-      /** The implementation via type `T` for this typeclass, as found by implicit search */
-      def impl[T](implicit ev: Impl[T]): Impl[T] = ev
     }
   }
 
@@ -169,10 +182,10 @@ object runtime {
       x.length < x.common.limit
 
     def lengthOKX[T : HasBoundedLengthX](x: T) =
-      x.length < HasBoundedLengthX.impl[T].limit
+      x.length < HasBoundedLengthX.common[T].limit
 
     def longestLengthOK[T : HasBoundedLengthX](implicit tag: ClassTag[T]) = {
-      val impl = HasBoundedLengthX.impl[T]
+      val impl = HasBoundedLengthX.common[T]
       impl.longest.length < impl.limit
     }
 
@@ -249,28 +262,25 @@ object hasLength {
     def length: Int
   }
 
-  trait Cmp[A] extends TypeClass {
-    val `common`: HasBoundedLength.Common
+  trait Cmp[A] {
+    val `common`: Cmp.Common
     import `common`._
     def isSimilar(x: A): Boolean
   }
 
-  object Cmp extends TypeClass.Companion {
-    trait Common extends TypeClass.Common {
-      type $Instance <: HasBoundedLength
+  object Cmp extends Companion {
+    trait Common extends runtime.Common {
       def exact: Boolean
     }
   }
 
-
-  trait HasBoundedLength extends HasLength with TypeClass {
+  trait HasBoundedLength extends HasLength {
     val `common`: HasBoundedLength.Common
     import `common`._
   }
 
-  object HasBoundedLength extends TypeClass.Companion {
-    trait Common extends TypeClass.Common {
-      type $Instance <: HasBoundedLength
+  object HasBoundedLength extends Companion {
+    trait Common extends runtime.Common {
       def limit: Int
     }
   }
@@ -371,7 +381,7 @@ object hasLength {
   }
   implicit def DGHasLength[T]: DGHasLength[T] = new DGHasLength
 
-  object DHasBoundedLength extends HasBoundedLength.Common { self =>
+  object DHasBoundedLength extends HasBoundedLength.Common with Injector { self =>
     type $This = D2
     type $Instance = HasBoundedLength
     def inject(x: D2) = new HasBoundedLength {
@@ -382,7 +392,7 @@ object hasLength {
     def limit = 100
   }
 
-  class DGHasBoundedLength[T] extends HasBoundedLength.Common { self =>
+  class DGHasBoundedLength[T] extends HasBoundedLength.Common with Injector { self =>
     type $This = DG2[T]
     type $Instance = HasBoundedLength
     def inject(x: DG2[T]) = new HasBoundedLength {
@@ -424,11 +434,11 @@ object hasLength {
   def lengthOK[T](x: T)(implicit ev: Injectable[T, HasBoundedLength]) =
     x.length < x.common.limit
 
-  def lengthOKX[T](x: T)(implicit ev: HasBoundedLength.Impl[T]) =
-    x.length < HasBoundedLength.impl[T].limit
+  def lengthOKX[T](x: T)(implicit ev: HasBoundedLength.common[T] & Injectable[T, HasBoundedLength]) =
+    x.length < HasBoundedLength.common[T].limit
 
-  def longestLengthOK[T](implicit ev: HasBoundedLengthX.Impl[T], tag: ClassTag[T]) = {
-    val impl = HasBoundedLengthX.impl[T]
+  def longestLengthOK[T](implicit ev: HasBoundedLengthX.common[T], tag: ClassTag[T]) = {
+    val impl = HasBoundedLengthX.common[T]
     impl.longest.length < impl.limit
   }
 
@@ -539,7 +549,7 @@ object hasLength {
     }
 
     def sum[T: Monoid](xs: List[T]): T =
-      (Monoid.impl[T].unit /: xs)(_ `add` _)
+      (Monoid.common[T].unit /: xs)(_ `add` _)
 */
 
 import runtime._
@@ -620,8 +630,8 @@ object semiGroups {
 
   implicit def NatOps: Nat.type = Nat
 
-  def sum[T](xs: List[T])(implicit $ev: Monoid.Impl[T]) =
-    (Monoid.impl[T].unit /: xs)((x, y) => x `add` y)
+  def sum[T](xs: List[T])(implicit $ev: Monoid.common[T]) =
+    (Monoid.common[T].unit /: xs)((x, y) => x `add` y)
 
   sum(List(1, 2, 3))
   sum(List("hello ", "world!"))
@@ -660,7 +670,7 @@ object semiGroups {
 
     def min[T: Ord](x: T, y: T) = if (x < y) x else y
 
-    def inf[T: Ord](xs: List[T]): T = (Ord.impl[T].minimum /: xs)(min)
+    def inf[T: Ord](xs: List[T]): T = (Ord.common[T].minimum /: xs)(min)
 */
 object ord {
 
@@ -690,7 +700,7 @@ object ord {
     }
   }
 
-  class ListOrd[T](implicit $ev: Ord.Impl[T]) extends Ord.Common { self =>
+  class ListOrd[T](implicit $ev: Ord.common[T]) extends Ord.Common { self =>
     type $This = List[T]
     type $Instance = Ord { val `common`: self.type }
     def minimum: List[T] = Nil
@@ -707,14 +717,14 @@ object ord {
       }
     }
   }
-  implicit def ListOrd[T](implicit $ev: Ord.Impl[T]): ListOrd[T] =
+  implicit def ListOrd[T](implicit $ev: Ord.common[T]): ListOrd[T] =
     new ListOrd[T]
 
-  def min[T](x: T, y: T)(implicit $ev: Ord.Impl[T]): T =
+  def min[T](x: T, y: T)(implicit $ev: Ord.common[T]): T =
     if (x < y) x else y
 
-  def inf[T](xs: List[T])(implicit $ev: Ord.Impl[T]): T = {
-    val smallest = Ord.impl[T].minimum
+  def inf[T](xs: List[T])(implicit $ev: Ord.common[T]): T = {
+    val smallest = Ord.common[T].minimum
     (smallest /: xs)(min)
   }
 
@@ -733,7 +743,7 @@ object ord {
 
     // Generically, `pure[A]{.map(f)}^n`
     def develop[A, F[_] : Functor](n: Int, f: A => A): F[A] =
-      if (n == 0) Functor.impl[F].pure[A]
+      if (n == 0) Functor.common[F].pure[A]
       else develop[A, F](n - 1, f).map(f)
 
     trait Monad[A] extends Functor[A] {
@@ -759,16 +769,15 @@ object runtime1 {
     val `common`: TypeClass1.Common
   }
   object TypeClass1 {
-    trait Common { self =>
-      type This[X]
+    trait Common extends runtime.Common {
+      type $This[X]
+      type This = $This
       type $Instance[X] <: TypeClass1[X]
-      def inject[A](x: This[A]): $Instance[A]
+      implicit def inject[A](x: This[A]): $Instance[A]
     }
 
-    trait Companion {
+    trait Companion extends runtime.Companion {
       type Common <: TypeClass1.Common
-      type Impl[T[_]] = Common { type This = T }
-      def impl[T[_]](implicit ev: Impl[T]): Impl[T] = ev
     }
   }
 
@@ -804,12 +813,12 @@ object functors {
     }
   }
 
-  def develop[A, F[X]](n: Int, x: A, f: A => A)(implicit $ev: Functor.Impl[F]): F[A] =
-    if (n == 0) Functor.impl[F].pure(x)
+  def develop[A, F[X]](n: Int, x: A, f: A => A)(implicit $ev: Functor.common[F]): F[A] =
+    if (n == 0) Functor.common[F].pure(x)
     else develop(n - 1, x, f).map(f)
 
   implicit object ListMonad extends Monad.Common {
-    type This = List
+    type $This = List
     type $Instance[X] = Monad[X] { val `common`: ListMonad.type }
     def pure[A](x: A) = x :: Nil
     def inject[A]($this: List[A]) = new Monad[A] {
@@ -820,7 +829,7 @@ object functors {
   }
 
   object MonadFlatten {
-    def flattened[T[_], A]($this: T[T[A]])(implicit $ev: Monad.Impl[T]): T[A] =
+    def flattened[T[_], A]($this: T[T[A]])(implicit $ev: Monad.common[T]): T[A] =
       $this.flatMap(identity  )
   }
 
