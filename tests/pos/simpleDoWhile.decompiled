@@ -1,9 +1,15 @@
 ================================================================================
-out/posTestFromTasty/pos/methodTypes/Foo.class
+out/posTestFromTasty/pos/simpleDoWhile/Foo.class
 --------------------------------------------------------------------------------
 class Foo() {
-  val x: Int = 1
-  def y: Int = 2
-  def z(): Int = 3
+  def foo: Unit =
+    {
+      var i: Int = 1
+      do
+        {
+          i = 0
+        }
+      while (i.!=(0))
+    }
 }
 --------------------------------------------------------------------------------

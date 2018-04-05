@@ -2,7 +2,7 @@
 out/posTestFromTasty/pos/lambda/foo/Foo.class
 --------------------------------------------------------------------------------
 package foo {
-  class Foo() extends Object() {
+  class Foo() {
     val a: Int => Int =
       {
         (x: Int) => x.*(x)

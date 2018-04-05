@@ -654,7 +654,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     val bodyText = "{" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
 
-    prefix ~ (keywordText(" extends") provided !ofNew) ~~ parentsText ~~ bodyText
+    prefix ~ (keywordText(" extends") provided (!ofNew && parents.nonEmpty)) ~~ parentsText ~~ bodyText
   }
 
   protected def templateText(tree: TypeDef, impl: Template): Text = {
