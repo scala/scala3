@@ -36,8 +36,10 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
       case _ => toTextGlobal(stats, "\n")
     }
     val bodyText =
-      if (currentPrecedence == TopLevelPrec) "\n" ~ statsText else " {" ~ statsText ~ "}"
-    keywordStr("package ") ~ toTextPackageId(tree.pid) ~ bodyText
+      if (tree.pid.symbol.isEmptyPackage) statsText
+      else if (currentPrecedence == TopLevelPrec) "\n" ~ statsText
+      else " {" ~ statsText ~ "}"
+    (keywordStr("package ") ~ toTextPackageId(tree.pid)).provided(!tree.pid.symbol.isEmptyPackage) ~ bodyText
   }
 
   override protected def templateText(tree: TypeDef, impl: Template): Text = {
