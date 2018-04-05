@@ -951,7 +951,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         // if last case is `_` and only matches `null`, produce a warning
         if (i == cases.length - 1 && !isNull(pat) ) {
           simplify(minus(covered, prevs)) match {
-            case Typ(ConstantType(Constant(null)), _) =>
+            case Typ(`nullType`, _) =>
               ctx.warning(MatchCaseOnlyNullWarning(), pat.pos)
             case _ =>
           }
