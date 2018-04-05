@@ -100,7 +100,7 @@ class TyperState(previous: TyperState /* | Null */) {
   def uncommittedAncestor: TyperState =
     if (isCommitted) previous.uncommittedAncestor else this
 
-  private[this] var testReporter: StoreReporter = null
+  private[this] var testReporter: TestReporter = null
 
   /** Test using `op`. If current typerstate is shared, run `op` in a fresh exploration
    *  typerstate. If it is unshared, run `op` in current typerState, restoring typerState
@@ -116,15 +116,17 @@ class TyperState(previous: TyperState /* | Null */) {
       val savedCommitted = isCommitted
       myIsCommittable = false
       myReporter = {
-        if (testReporter == null) {
-          testReporter = new StoreReporter(reporter)
+        if (testReporter == null || testReporter.inUse) {
+          testReporter = new TestReporter(reporter)
         } else {
           testReporter.reset()
         }
+        testReporter.inUse = true
         testReporter
       }
       try op(ctx)
       finally {
+        testReporter.inUse = false
         resetConstraintTo(savedConstraint)
         myReporter = savedReporter
         myIsCommittable = savedCommittable
@@ -188,4 +190,15 @@ class TyperState(previous: TyperState /* | Null */) {
   override def toString: String = s"TS[$id]"
 
   def stateChainStr: String = s"$this${if (previous == null) "" else previous.stateChainStr}"
+}
+
+/** Temporary, reusable reporter used in TyperState#test */
+private class TestReporter(outer: Reporter) extends StoreReporter(outer) {
+  /** Is this reporter currently used in a test? */
+  var inUse = false
+
+  def reset() = {
+    assert(!inUse, s"Cannot reset reporter currently in use: $this")
+    infos = null
+  }
 }
