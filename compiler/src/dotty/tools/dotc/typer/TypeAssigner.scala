@@ -282,7 +282,7 @@ trait TypeAssigner {
     val tp = tree.name match {
       case p.arrayApply => MethodType(defn.IntType :: Nil, arrayElemType)
       case p.arrayUpdate => MethodType(defn.IntType :: arrayElemType :: Nil, defn.UnitType)
-      case p.arrayLength => MethodType(Nil, defn.IntType)
+      case p.arrayLength => arrayElemType; MethodType(Nil, defn.IntType)
 
       // Note that we do not need to handle calls to Array[T]#clone() specially:
       // The JLS section 10.7 says "The return type of the clone method of an array type
