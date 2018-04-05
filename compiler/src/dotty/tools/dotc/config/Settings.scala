@@ -144,7 +144,7 @@ object Settings {
           Path(arg) match {
             case _: Directory =>
               update(arg, args)
-            case p if p.extension == "jar" =>
+            case p if p.`extension` == "jar" =>
               update(arg, args)
             case _ =>
               fail(s"'$arg' does not exist or is not a directory", args)

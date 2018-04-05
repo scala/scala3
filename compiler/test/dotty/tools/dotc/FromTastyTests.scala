@@ -28,6 +28,7 @@ class FromTastyTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
     val (step1, step2, step3) = compileTastyInDir("tests/pos", defaultOptions,
       blacklist = Set(
+
         "macro-deprecate-dont-touch-backquotedidents.scala",
         "t247.scala",
 

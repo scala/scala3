@@ -1017,8 +1017,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = new Property.Key[List[Tree]]
 
-  override def inlineContext(call: Tree)(implicit ctx: Context): Context =
-    ctx.fresh.setProperty(InlinedCalls, call :: enclosingInlineds)
+  override def inlineContext(call: Tree)(implicit ctx: Context): Context = {
+    val ictx = ctx.fresh.setProperty(InlinedCalls, call :: enclosingInlineds)
+    def stopAt(owner: Symbol) = owner.is(Package) || ctx.owner.isContainedIn(owner)
+    (ictx /: call.symbol.ownersIterator.takeWhile(!stopAt(_)))(ctx.handleOpaqueCompanion)
+  }
 
   /** All enclosing calls that are currently inlined, from innermost to outermost */
   def enclosingInlineds(implicit ctx: Context): List[Tree] =

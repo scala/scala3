@@ -183,6 +183,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   OVERRIDE
                   INLINE                              // inline method
                   MACRO                               // inline method containing toplevel splices
+                  OPAQUE                              // opaque type
                   STATIC                              // mapped to static Java member
                   OBJECT                              // an object or its class
                   TRAIT                               // a trait
@@ -302,7 +303,8 @@ object TastyFormat {
   final val STABLE = 31
   final val MACRO = 32
   final val ERASED = 33
-  final val PARAMsetter = 34
+  final val OPAQUE = 34
+  final val PARAMsetter = 35
 
   // Cat. 2:    tag Nat
 
@@ -450,6 +452,7 @@ object TastyFormat {
        | OVERRIDE
        | INLINE
        | MACRO
+       | OPAQUE
        | STATIC
        | OBJECT
        | TRAIT
@@ -506,6 +509,7 @@ object TastyFormat {
     case OVERRIDE => "OVERRIDE"
     case INLINE => "INLINE"
     case MACRO => "MACRO"
+    case OPAQUE => "OPAQUE"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
     case TRAIT => "TRAIT"

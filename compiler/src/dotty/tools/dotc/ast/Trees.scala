@@ -1244,6 +1244,8 @@ object Trees {
         Stats.record("TreeAccumulator.foldOver total")
         def localCtx =
           if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
+        def templateCtx =
+          ctx.handleOpaqueCompanion(ctx.fresh, ctx.owner)
         tree match {
           case Ident(name) =>
             x
@@ -1320,6 +1322,7 @@ object Trees {
             implicit val ctx = localCtx
             this(x, rhs)
           case tree @ Template(constr, parents, self, _) =>
+            implicit val ctx = templateCtx
             this(this(this(this(x, constr), parents), self), tree.body)
           case Import(expr, selectors) =>
             this(x, expr)

@@ -11,6 +11,7 @@ import language.higherKinds
 import typer.FrontEnd
 import collection.mutable.ListBuffer
 import util.Property
+import config.Printers.desugr
 import reporting.diagnostic.messages._
 import reporting.trace
 
@@ -154,6 +155,25 @@ object desugar {
        ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | Implicit)
     }
 
+  private def desugarTypeBindings(
+        bindings: List[TypeDef],
+        forPrimaryConstructor: Boolean = false)(implicit ctx: Context): (List[TypeDef], List[ValDef]) = {
+    val epbuf = new ListBuffer[ValDef]
+    def desugarContextBounds(rhs: Tree): Tree = rhs match {
+      case ContextBounds(tbounds, cxbounds) =>
+        epbuf ++= makeImplicitParameters(cxbounds, forPrimaryConstructor)
+        tbounds
+      case LambdaTypeTree(tparams, body) =>
+        cpy.LambdaTypeTree(rhs)(tparams, desugarContextBounds(body))
+      case _ =>
+        rhs
+    }
+    val bindings1 = bindings mapConserve { tparam =>
+      cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
+    }
+    (bindings1, epbuf.toList)
+  }
+
   /** Expand context bounds to evidence params. E.g.,
    *
    *      def f[T >: L <: H : B](params)
@@ -171,21 +191,8 @@ object desugar {
   private def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val DefDef(name, tparams, vparamss, tpt, rhs) = meth
     val mods = meth.mods
-    val epbuf = new ListBuffer[ValDef]
-    def desugarContextBounds(rhs: Tree): Tree = rhs match {
-      case ContextBounds(tbounds, cxbounds) =>
-        epbuf ++= makeImplicitParameters(cxbounds, isPrimaryConstructor)
-        tbounds
-      case LambdaTypeTree(tparams, body) =>
-        cpy.LambdaTypeTree(rhs)(tparams, desugarContextBounds(body))
-      case _ =>
-        rhs
-    }
-    val tparams1 = tparams mapConserve { tparam =>
-      cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
-    }
-
-    val meth1 = addEvidenceParams(cpy.DefDef(meth)(tparams = tparams1), epbuf.toList)
+    val (tparams1, evidenceParams) = desugarTypeBindings(tparams, isPrimaryConstructor)
+    val meth1 = addEvidenceParams(cpy.DefDef(meth)(tparams = tparams1), evidenceParams)
 
     /** The longest prefix of parameter lists in vparamss whose total length does not exceed `n` */
     def takeUpTo(vparamss: List[List[ValDef]], n: Int): List[List[ValDef]] = vparamss match {
@@ -293,6 +300,7 @@ object desugar {
     def isAnyVal(tree: Tree): Boolean = tree match {
       case Ident(tpnme.AnyVal) => true
       case Select(qual, tpnme.AnyVal) => isScala(qual)
+      case TypedSplice(tree) => tree.tpe.isRef(defn.AnyValClass)
       case _ => false
     }
     def isScala(tree: Tree): Boolean = tree match {
@@ -749,6 +757,77 @@ object desugar {
     Bind(name, Ident(nme.WILDCARD)).withPos(tree.pos)
   }
 
+  /**     extension id <type-params> <implicit-params> for <extended> : <parents> { <body> }
+   *   ->
+   *      implicit class <id> <type-params> ($this: <extended>) <combined-params>
+   *      extends <parents> {
+   *        import $this._
+   *        <body1>
+   *      }
+   *
+   *  where
+   *
+   *    (<type-params>, <evidence-params>) = desugarTypeBindings(<type-params0>)
+   *    <combined-params> = <implicit-params> concatenated with <evidence-params> in one clause
+   *    <body1>     = <body> with each occurrence of unqualified `this` substituted by `$this`.
+   *
+   *   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   *
+   *     extension <id> <type-params> <implicit-params> for <extended> { <defs> }
+   *  ->
+   *     implicit class <id> <type-params> (private val $this: <extended>)
+   *     extends AnyVal {
+   *       import $this._
+   *       <body2>
+   *      }
+   *
+   *  where
+   *
+   *    <body2> = <body1> where each method definition gets <combined-params> as last parameter section.
+   */
+  def extensionDef(tree: Extension)(implicit ctx: Context): Tree = {
+    val Extension(name, constr, extended, impl) = tree
+    val isSimpleExtension = impl.parents.isEmpty
+
+    val firstParams = ValDef(nme.SELF, extended, EmptyTree).withFlags(Private | Local | ParamAccessor) :: Nil
+    val importSelf = Import(Ident(nme.SELF), Ident(nme.WILDCARD) :: Nil)
+    val body1 = importSelf :: substThis.transform(impl.body)
+    val impl1 =
+      if (isSimpleExtension) {
+        val (typeParams, evidenceParams) =
+          desugarTypeBindings(constr.tparams, forPrimaryConstructor = false)
+        cpy.Template(impl)(
+          constr = cpy.DefDef(constr)(tparams = typeParams, vparamss = firstParams :: Nil),
+          parents = ref(defn.AnyValType) :: Nil,
+          body = body1.map {
+            case ddef: DefDef =>
+              def resetFlags(vdef: ValDef) =
+                vdef.withMods(vdef.mods &~ PrivateLocalParamAccessor | Param)
+              val originalParams = constr.vparamss.headOption.getOrElse(Nil).map(resetFlags)
+              addEvidenceParams(addEvidenceParams(ddef, originalParams), evidenceParams)
+            case other =>
+              other
+          })
+      }
+      else
+        cpy.Template(impl)(
+          constr = cpy.DefDef(constr)(vparamss = firstParams :: constr.vparamss),
+          body = body1)
+    val mods1 =
+      if (isSimpleExtension) tree.mods
+      else tree.mods.withAddedMod(Mod.InstanceDcl())
+    val icls = TypeDef(name, impl1).withMods(mods1 | Implicit)
+    desugr.println(i"desugar $tree --> $icls")
+    classDef(icls)
+  }
+
+  private val substThis = new UntypedTreeMap {
+    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      case This(Ident(tpnme.EMPTY)) => Ident(nme.SELF).withPos(tree.pos)
+      case _ => super.transform(tree)
+    }
+  }
+
   def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case tree: ValDef => valDef(tree)
     case tree: TypeDef => if (tree.isClassDef) classDef(tree) else tree
@@ -757,6 +836,7 @@ object desugar {
       else defDef(tree)
     case tree: ModuleDef => moduleDef(tree)
     case tree: PatDef => patDef(tree)
+    case tree: Extension => extensionDef(tree)
   }
 
   /**     { stats; <empty > }
