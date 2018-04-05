@@ -226,6 +226,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def exprToText(tp: ExprType): Text =
     "=> " ~ toText(tp.resType)
 
+  protected def blockToText[T >: Untyped](block: Block[T]): Text =
+    blockText(block.stats :+ block.expr)
+
   protected def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
     ("{" ~ toText(trees, "\n") ~ "}").close
 
@@ -332,8 +335,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(name) ~ " = " ~ toText(arg)
       case Assign(lhs, rhs) =>
         changePrec(GlobalPrec) { toTextLocal(lhs) ~ " = " ~ toText(rhs) }
-      case Block(stats, expr) =>
-        blockText(stats :+ expr)
+      case block: Block =>
+        blockToText(block)
       case If(cond, thenp, elsep) =>
         changePrec(GlobalPrec) {
           keywordStr("if ") ~ toText(cond) ~ (keywordText(" then") provided !cond.isInstanceOf[Parens]) ~~ toText(thenp) ~ optText(elsep)(keywordStr(" else ") ~ _)
