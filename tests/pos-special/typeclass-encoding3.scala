@@ -3,6 +3,12 @@
            =  [T] ... (implicit ev: M.common[T] & Injectable[T, M])     if M is a trait with common members
            =  [T] ... (implicit ev: M.common[T])                        if M is a typeclass (because they subsume Injectable)
 
+  The context bound [C, M] resolves to:
+
+    - selfInject        if C is a class extending a normal trait M
+    - C.common, C[Ts]   if C is a class extending a trait M with common members
+    - EX                if EX is an implicit extension object for C and M
+
       M.common[T] = Common { type $This = T }
       ...
 
@@ -309,50 +315,63 @@ object hasLength {
   }
 
   class C2(xs: Array[Int]) extends C1(xs) with HasBoundedLength with Cmp[Seq[Int]] {
-    val `common`: C2Common = C2
+    val `common`: C2.Common = C2.common
     import `common`._
   }
-  abstract class C2Common extends HasBoundedLength.Common with Cmp.Common{
-    def limit = 100
-    def exact = true
+
+  object C2 {
+    abstract class Common extends HasBoundedLength.Common with Cmp.Common {
+      def limit = 100
+      def exact = true
+    }
+    val common = new Common with SubtypeInjector[C2]
+    def limit = common.limit
+    def exact = common.exact
   }
-  object C2 extends C2Common with SubtypeInjector[C2]
 
   class CG2[T](xs: Array[T]) extends CG1(xs) with HasBoundedLength with Cmp[Seq[T]] {
-    val `common`: CG2Common[T] = CG2[T]
+    val `common`: CG2.Common[T] = CG2[T]
     import `common`._
   }
-  abstract class CG2Common[T] extends HasBoundedLength.Common with Cmp.Common {
-    def limit = 100
-    def exact = true
-  }
+
   object CG2 {
-    def apply[T] = new CG2Common[T] with SubtypeInjector[CG2[T]]
+    abstract class Common[T] extends HasBoundedLength.Common with Cmp.Common {
+      def limit = 100
+      def exact = true
+    }
+    def apply[T] = new Common[T] with SubtypeInjector[CG2[T]]
   }
 
   class C3(xs: Array[Int]) extends C2(xs) with HasBoundedLengthX {
-    override val `common`: C3Common = C3
+    override val `common`: C3.Common = C3.common
     import `common`._
   }
-  abstract class C3Common extends C2Common with HasBoundedLengthX.Common { self =>
-    type $This = C3
-    type $Instance <: C3 { val `common`: self.type }
 
-    def longest = new C3(new Array[Int](limit))
+  object C3 {
+    class Common extends C2.Common with HasBoundedLengthX.Common with IdentityInjector { self =>
+      type $This = C3
+      type $Instance <: C3 { val `common`: self.type }
+      def longest = new C3(new Array[Int](limit))
+    }
+    val common = new Common
+    def limit = common.limit
+    def exact = common.exact
+    def longest = common.longest
   }
-  object C3 extends C3Common with IdentityInjector
 
   class CG3[T](xs: Array[T])(implicit tag: ClassTag[T]) extends CG2(xs) with HasBoundedLengthX {
-    override val `common`: CG3Common[T] = CG3[T]
+    override val `common`: CG3.Common[T] = CG3[T]
     import `common`._
   }
-  abstract class CG3Common[T](implicit tag: ClassTag[T])  extends CG2Common[T] with HasBoundedLengthX.Common { self =>
-    type $This = CG3[T]
-    type $Instance <: CG3[T] { val `common`: self.type }
-    def longest = new CG3(new Array[T](limit))
-  }
+
   object CG3 {
-    def apply[T](implicit tag: ClassTag[T]) = new CG3Common[T] with IdentityInjector
+    class Common[T](implicit tag: ClassTag[T])
+    extends CG2.Common[T] with HasBoundedLengthX.Common with IdentityInjector { self =>
+      type $This = CG3[T]
+      type $Instance <: CG3[T] { val `common`: self.type }
+      def longest = new CG3(new Array[T](limit))
+    }
+    def apply[T](implicit tag: ClassTag[T]) = new Common[T]
   }
 
   class D1(val xs: Array[Int])
@@ -381,7 +400,7 @@ object hasLength {
   }
   implicit def DGHasLength[T]: DGHasLength[T] = new DGHasLength
 
-  object DHasBoundedLength extends HasBoundedLength.Common with Injector { self =>
+  implicit object DHasBoundedLength extends HasBoundedLength.Common with Injector { self =>
     type $This = D2
     type $Instance = HasBoundedLength
     def inject(x: D2) = new HasBoundedLength {
@@ -410,7 +429,7 @@ object hasLength {
     def inject(x: D3) = new HasBoundedLengthX {
       val `common`: self.type = self
       import `common`._
-      def length = xs.length
+      def length = x.length
     }
     def limit = 100
     def longest = new D3(new Array[Int](limit))
@@ -466,9 +485,9 @@ object hasLength {
 
   length(c1)(selfInject)
   length(cg1)(selfInject)
-  length(c2)(C2)
+  length(c2)(C2.common)
   length(cg2)(CG2[Int])
-  length(c3)(C3)
+  length(c3)(C3.common)
   length(cg3)(CG3[Int])
 
   length(d1)(DHasLength)
@@ -478,9 +497,16 @@ object hasLength {
   length(d3)(DHasBoundedLengthX)
   length(dg3)(DGHasBoundedLengthX[Int])
 
-  lengthOK(c2)(C2)
+  length(d1)
+  length(dg1)
+  length(d2)
+  length(dg2)
+  length(d3)
+  length(dg3)
+
+  lengthOK(c2)(C2.common)
   lengthOK(cg2)(CG2[Int])
-  lengthOK(c3)(C3)
+  lengthOK(c3)(C3.common)
   lengthOK(cg3)(CG3[Int])
 
   lengthOK(d2)(DHasBoundedLength)
@@ -488,13 +514,21 @@ object hasLength {
   lengthOK(d3)(DHasBoundedLengthX)
   lengthOK(dg3)(DGHasBoundedLengthX[Int])
 
-  lengthOKX(c3)(C3)
+  lengthOK(d2)
+  lengthOK(dg2)
+  lengthOK(d3)
+  lengthOK(dg3)
+
+  lengthOKX(c3)(C3.common)
   lengthOKX(cg3)(CG3[Int])
 
   lengthOKX(d3)(DHasBoundedLengthX)
   lengthOKX(dg3)(DGHasBoundedLengthX[Int])
 
-  longestLengthOK[C3](C3, ctag[C3])
+  lengthOKX(d3)
+  lengthOKX(dg3)
+
+  longestLengthOK[C3](C3.common, ctag[C3])
   longestLengthOK[CG3[Int]](CG3[Int], ctag[CG3[Int]])
   longestLengthOK[D3]
   longestLengthOK[DG3[Int]]
@@ -583,7 +617,7 @@ object semiGroups {
   implicit object IntSemiGroup extends SemiGroup.Common { self =>
     type $This = Int
     type $Instance = SemiGroup { val `common`: self.type }
-    def inject($this: Int) = new SemiGroup {
+    implicit def inject($this: Int) = new SemiGroup {
       val `common`: self.type = self
       def add(that: Int): Int = $this + that
     }
@@ -593,18 +627,18 @@ object semiGroups {
     type $This = Int
     type $Instance = Monoid { val `common`: self.type }
     def unit: Int = 0
-    def inject($this: Int) = new Monoid {
+    implicit def inject($this: Int) = new Monoid {
       val `common`: self.type = self
-      def add(that: This): This = IntSemiGroup.inject($this).add(that)
+      def add(that: This): This = $this.add(that)
     }
   }
 
-  implicit object StringOps extends Monoid.Common {
+  implicit object StringMonoid extends Monoid.Common { self =>
     type $This = String
-    type $Instance = Monoid { val `common`: StringOps.type }
+    type $Instance = Monoid { val `common`: self.type }
     def unit = ""
     def inject($this: String) = new Monoid {
-      val `common`: StringOps.this.type = StringOps.this
+      val `common`: self.type = self
       def add(that: This): This = $this.concat(that)
     }
   }
@@ -613,29 +647,31 @@ object semiGroups {
     case Z
     case S(n: Nat)
 
+    val `common`: Nat.Common = Nat.common
+    import `common`._
+
     def add(that: Nat): Nat = this match {
       case Z => that
       case S(n) => S(n.add(that))
     }
-
-    val `common`: Nat.type = Nat
   }
-  object Nat extends Monoid.Common {
-    type $This = Nat
-    type $Instance = Nat
-    def unit = Nat.Z
-    def inject($this: Nat) = $this
+  object Nat {
+    class Common extends Monoid.Common with IdentityInjector { self =>
+      type $This = Nat
+      type $Instance <: Nat { val `common`: self.type }
+      def unit = Nat.Z
+    }
+    val common = new Common
+    def unit = common.unit
   }
   import Nat.{Z, S}
-
-  implicit def NatOps: Nat.type = Nat
 
   def sum[T](xs: List[T])(implicit $ev: Monoid.common[T]) =
     (Monoid.common[T].unit /: xs)((x, y) => x `add` y)
 
   sum(List(1, 2, 3))
   sum(List("hello ", "world!"))
-  sum(List(Z, S(Z), S(S(Z))))
+  sum(List(Z, S(Z), S(S(Z))))(Nat.common)
 }
 
 /** 2. Generic implementations of simple type classes.
