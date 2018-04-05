@@ -63,7 +63,7 @@ case object Empty extends Space
  * @param decomposed: does the space result from decomposition? Used for pretty print
  *
  */
-case class Typ(tp: Type, decomposed: Boolean) extends Space
+case class Typ(tp: Type, decomposed: Boolean = true) extends Space
 
 /** Space representing an extractor pattern */
 case class Prod(tp: Type, unappTp: Type, unappSym: Symbol, params: List[Space], full: Boolean) extends Space
@@ -315,6 +315,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       else
         Typ(ConstantType(c), false)
     case _: BackquotedIdent => Typ(pat.tpe, false)
+    case Ident(nme.WILDCARD) =>
+      Or(Typ(pat.tpe.stripAnnots, false) :: Typ(ConstantType(Constant(null))) :: Nil)
     case Ident(_) | Select(_, _) =>
       Typ(pat.tpe.stripAnnots, false)
     case Alternative(trees) => Or(trees.map(project(_)))
@@ -374,7 +376,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type): Boolean = {
-    val res = tp1 <:< tp2
+    val res = tp1 <:< tp2 && (tp1 != ConstantType(Constant(null)) || tp2 == ConstantType(Constant(null)))
     debug.println(s"${tp1.show} <:< ${tp2.show} = $res")
     res
   }
@@ -547,13 +549,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       case tp             => tp.isSingleton
     }
 
-    def superType(tp: Type): Type = tp match {
-      case tp: TypeProxy     => tp.superType
-      case OrType(tp1, tp2)  => OrType(superType(tp1), superType(tp2))
-      case AndType(tp1, tp2) => AndType(superType(tp1), superType(tp2))
-      case _                 => tp
-    }
-
     def recur(tp: Type): Boolean = tp.dealias match {
       case AndType(tp1, tp2) =>
         recur(tp1) && recur(tp2) && {
@@ -574,8 +569,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           noClassConflict &&
             (!isSingleton(tp1) || tp1 <:< tp2) &&
             (!isSingleton(tp2) || tp2 <:< tp1) &&
-            (!bases1.exists(_ is Final) || tp1 <:< superType(tp2)) &&
-            (!bases2.exists(_ is Final) || tp2 <:< superType(tp1))
+            (!bases1.exists(_ is Final) || tp1 <:< tp2) &&
+            (!bases2.exists(_ is Final) || tp2 <:< tp1)
         }
       case OrType(tp1, tp2) =>
         recur(tp1) || recur(tp2)
@@ -894,8 +889,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val checkGADTSAT = shouldCheckExamples(selTyp)
 
     val uncovered =
-      flatten(simplify(minus(Typ(selTyp, true), patternSpace), aggressive = true))
-        .filter(s => s != Empty && (!checkGADTSAT || satisfiable(s)))
+      flatten(simplify(minus(Typ(selTyp, true), patternSpace), aggressive = true)).filter { s =>
+        s != Empty && (!checkGADTSAT || satisfiable(s))
+      }
 
     if (uncovered.nonEmpty)
       ctx.warning(PatternMatchExhaustivity(show(Or(uncovered))), sel.pos)
@@ -907,6 +903,12 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def checkRedundancy(_match: Match): Unit = {
     val Match(sel, cases) = _match
     val selTyp = sel.tpe.widen.dealias
+
+    def targetSpace: Space =
+      if (selTyp.classSymbol.isPrimitiveValueClass)
+        Typ(selTyp, true)
+      else
+        Or(Typ(selTyp, true) :: Typ(ConstantType(Constant(null))) :: Nil)
 
     if (!redundancyCheckable(sel)) return
 
@@ -921,13 +923,20 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
             else Empty
           }.reduce((a, b) => Or(List(a, b)))
 
-      if (cases(i).pat != EmptyTree) { // rethrow case of catch
+      if (cases(i).pat != EmptyTree) { // rethrow case of catch uses EmptyTree
         val curr = project(cases(i).pat)
 
         debug.println(s"---------------reachable? ${show(curr)}")
         debug.println(s"prev: ${show(prevs)}")
 
-        if (isSubspace(intersect(curr, Typ(selTyp, false)), prevs)) {
+        var covered = simplify(intersect(curr, targetSpace))
+        debug.println(s"covered: $covered")
+
+        // `covered == Empty` may happen for primitive types with auto-conversion
+        // see tests/patmat/reader.scala  tests/patmat/byte.scala
+        if (covered == Empty) covered = curr
+
+        if (isSubspace(covered, prevs)) {
           ctx.warning(MatchCaseUnreachable(), cases(i).body.pos)
         }
       }

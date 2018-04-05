@@ -5,6 +5,7 @@ class Test {
     case 'a' | 'A' =>
     case 's' | 'S' =>
     case 'r' | 'R' =>
+    case 'r' =>
     case _ =>
   }
 }
