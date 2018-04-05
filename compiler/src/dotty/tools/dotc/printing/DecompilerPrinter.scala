@@ -1,6 +1,6 @@
 package dotty.tools.dotc.printing
 
-import dotty.tools.dotc.ast.Trees.{Closure, DefDef, Untyped, ValDef}
+import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.untpd.{PackageDef, Template, TypeDef}
 import dotty.tools.dotc.ast.{Trees, untpd}
 import dotty.tools.dotc.printing.Texts._
@@ -47,6 +47,12 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
       if (!tree.mods.is(Module)) modText(tree.mods, keywordStr(if ((tree).mods is Trait) "trait" else "class"))
       else modText(tree.mods &~ (Final | Module), keywordStr("object"))
     decl ~~ typeText(nameIdText(tree)) ~ withEnclosingDef(tree) { toTextTemplate(impl) } ~ ""
+  }
+
+  override protected def toTextTemplate(impl: Template, ofNew: Boolean = false): Text = {
+    val Template(constr, parents, self, preBody) = impl
+    val impl1 = Template(constr, parents.filterNot(_.symbol.maybeOwner == defn.ObjectClass), self, preBody)
+    super.toTextTemplate(impl1, ofNew)
   }
 
   override protected def defDefToText[T >: Untyped](tree: DefDef[T]): Text = {

@@ -1,7 +1,7 @@
 ================================================================================
 out/posTestFromTasty/pos/methodTypes/Foo.class
 --------------------------------------------------------------------------------
-class Foo() extends Object() {
+class Foo() {
   val x: Int = 1
   def y: Int = 2
   def z(): Int = 3

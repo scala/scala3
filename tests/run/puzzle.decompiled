@@ -1,7 +1,7 @@
 ================================================================================
 out/runTestFromTasty/run/puzzle/Test.class
 --------------------------------------------------------------------------------
-object Test() extends Object() { this: Test.type =>
+object Test() { this: Test.type =>
   def main(args: Array[String]): Unit =
     {
       println(if false then 5.0 else 53.0)

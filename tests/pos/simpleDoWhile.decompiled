@@ -1,7 +1,7 @@
 ================================================================================
 out/posTestFromTasty/pos/simpleDoWhile/Foo.class
 --------------------------------------------------------------------------------
-class Foo() extends Object() {
+class Foo() {
   def foo: Unit =
     {
       var i: Int = 1
