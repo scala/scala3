@@ -378,9 +378,6 @@ object Flags {
   /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
   final val Touched = commonFlag(48, "<touched>")
 
-  /** An error symbol */
-  final val Erroneous = commonFlag(50, "<is-error>")
-
   /** Class has been lifted out to package level, local value has been lifted out to class level */
   final val Lifted = commonFlag(51, "<lifted>")
 
@@ -459,7 +456,7 @@ object Flags {
     Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor.toCommonFlags |
     Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
-    NonMember | Erroneous | ImplicitCommon | Permanent | Synthetic |
+    NonMember | ImplicitCommon | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
 
   /** Flags guaranteed to be set upon symbol creation, or, if symbol is a top-level
@@ -510,7 +507,7 @@ object Flags {
   final val RetainedModuleValAndClassFlags: FlagSet =
     AccessFlags | Package | Case |
     Synthetic | JavaDefined | JavaStatic | Artifact |
-    Erroneous | Lifted | MixedIn | Specialized
+    Lifted | MixedIn | Specialized
 
   /** Flags that can apply to a module val */
   final val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
