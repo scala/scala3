@@ -299,7 +299,10 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     debug.println(s"atomic intersection: ${and.show} = ${res}")
 
-    if (res) Typ(and, true) else Empty
+    if (!res) Empty
+    else if (tp1.isSingleton) Typ(tp1, true)
+    else if (tp2.isSingleton) Typ(tp2, true)
+    else Typ(and, true)
   }
 
   /** Whether the extractor is irrefutable */
