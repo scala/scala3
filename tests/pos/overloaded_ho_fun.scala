@@ -1,7 +1,7 @@
 import scala.math.Ordering
 import scala.reflect.ClassTag
 
-trait Sam { def apply(x: Int): String }
+trait MonoSam { def apply(x: Int): String }
 trait SamP[U] { def apply(x: Int): U }
 
 class OverloadedFun[T](x: T) {
@@ -12,7 +12,7 @@ class OverloadedFun[T](x: T) {
   def poly[U](f: Int => String): String = f(1)
   def poly[U](f: Int => U): U = f(1)
 
-//  def polySam[U](f: Sam): String = f(1)      Only function types supported for pretype-args
+//  def polySam[U](f: MonoSam): String = f(1)      Only function types supported for pretype-args
 //  def polySam[U](f: SamP[U]): U = f(1)
 
   // check that we properly instantiate java.util.function.Function's type param to String
