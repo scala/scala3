@@ -805,7 +805,7 @@ object Trees {
     def unforced: AnyRef
     protected def force(x: AnyRef): Unit
     def forceIfLazy(implicit ctx: Context): T = unforced match {
-      case lzy: Lazy[T] =>
+      case lzy: Lazy[T @unchecked] =>
         val x = lzy.complete
         force(x)
         x

@@ -78,6 +78,7 @@ class CompilationTests extends ParallelTesting {
     ) +
     compileFilesInDir("tests/pos-special/spec-t5545", defaultOptions) +
     compileFilesInDir("tests/pos-special/strawman-collections", defaultOptions) +
+    compileFilesInDir("tests/pos-special/isInstanceOf", allowDeepSubtypes.and("-Xfatal-warnings")) +
     compileFile("scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
     compileFile("scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
     compileList(
@@ -190,6 +191,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/neg-custom-args/noimports2.scala", defaultOptions.and("-Yno-imports")) +
     compileFile("tests/neg-custom-args/i3882.scala", allowDeepSubtypes) +
     compileFile("tests/neg-custom-args/i1754.scala", allowDeepSubtypes) +
+    compileFilesInDir("tests/neg-custom-args/isInstanceOf", allowDeepSubtypes and "-Xfatal-warnings") +
     compileFile("tests/neg-custom-args/i3627.scala", allowDeepSubtypes)
   }.checkExpectedErrors()
 
