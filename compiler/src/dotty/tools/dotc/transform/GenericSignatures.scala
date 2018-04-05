@@ -317,7 +317,7 @@ object GenericSignatures {
       val psyms = parents map (_.typeSymbol)
       if (psyms contains defn.ArrayClass) {
         // treat arrays specially
-        defn.ArrayType.appliedTo(intersectionDominator(parents.filter(_.typeSymbol == defn.ArrayClass).map(t => t.typeParams.head.paramInfo)))
+        defn.ArrayType.appliedTo(intersectionDominator(parents.filter(_.typeSymbol == defn.ArrayClass).map(t => t.argInfos.head)))
       } else {
         // implement new spec for erasure of refined types.
         def isUnshadowed(psym: Symbol) =
