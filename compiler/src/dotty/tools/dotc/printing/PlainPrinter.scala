@@ -473,24 +473,21 @@ class PlainPrinter(_ctx: Context) extends Printer {
     ("Scope{" ~ dclsText(sc.toList) ~ "}").close
 
   def toText[T >: Untyped](tree: Tree[T]): Text = {
-    tree match {
-      case node: Positioned =>
-        def toTextElem(elem: Any): Text = elem match {
-          case elem: Showable => elem.toText(this)
-          case elem: List[_] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"
-          case elem => elem.toString
-        }
-        val nodeName = node.productPrefix
-        val elems =
-          Text(node.productIterator.map(toTextElem).toList, ", ")
-        val tpSuffix =
-          if (ctx.settings.XprintTypes.value && tree.hasType)
-            " | " ~ toText(tree.typeOpt)
-          else
-            Text()
-
-        nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(node.pos.toString) provided ctx.settings.YprintPos.value)
+    def toTextElem(elem: Any): Text = elem match {
+      case elem: Showable => elem.toText(this)
+      case elem: List[_] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"
+      case elem => elem.toString
     }
+    val nodeName = tree.productPrefix
+    val elems =
+      Text(tree.productIterator.map(toTextElem).toList, ", ")
+    val tpSuffix =
+      if (ctx.settings.XprintTypes.value && tree.hasType)
+        " | " ~ toText(tree.typeOpt)
+      else
+        Text()
+
+    nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.pos.toString) provided ctx.settings.YprintPos.value)
   }.close // todo: override in refined printer
 
   def toText(result: SearchResult): Text = result match {

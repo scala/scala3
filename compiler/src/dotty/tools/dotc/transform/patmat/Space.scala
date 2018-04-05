@@ -288,6 +288,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   private val scalaNilType         = ctx.requiredModuleRef("scala.collection.immutable.Nil")
   private val scalaConsType        = ctx.requiredClassRef("scala.collection.immutable.::")
 
+  private val nullType             = ConstantType(Constant(null))
+  private val nullSpace            = Typ(nullType)
+
   override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type) = {
     val and = AndType(tp1, tp2)
     // Precondition: !(tp1 <:< tp2) && !(tp2 <:< tp1)
@@ -316,7 +319,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         Typ(ConstantType(c), false)
     case _: BackquotedIdent => Typ(pat.tpe, false)
     case Ident(nme.WILDCARD) =>
-      Or(Typ(pat.tpe.stripAnnots, false) :: Typ(ConstantType(Constant(null))) :: Nil)
+      Or(Typ(pat.tpe.stripAnnots, false) :: nullSpace :: Nil)
     case Ident(_) | Select(_, _) =>
       Typ(pat.tpe.stripAnnots, false)
     case Alternative(trees) => Or(trees.map(project(_)))
@@ -376,7 +379,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type): Boolean = {
-    val res = tp1 <:< tp2 && (tp1 != ConstantType(Constant(null)) || tp2 == ConstantType(Constant(null)))
+    val res = tp1 <:< tp2 && (tp1 != nullType || tp2 == nullType)
     debug.println(s"${tp1.show} <:< ${tp2.show} = $res")
     res
   }
@@ -909,21 +912,22 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       if (selTyp.classSymbol.isPrimitiveValueClass)
         Typ(selTyp, true)
       else
-        Or(Typ(selTyp, true) :: Typ(ConstantType(Constant(null))) :: Nil)
+        Or(Typ(selTyp, true) :: nullSpace :: Nil)
 
-    (0 until cases.length).foreach { i =>
-      // in redundancy check, take guard as false in order to soundly approximate
-      val prevs =
-        if (i == 0)
-          Empty
-        else
-          cases.take(i).map { x =>
-            if (x.guard.isEmpty) project(x.pat)
-            else Empty
-          }.reduce((a, b) => Or(List(a, b)))
+    // in redundancy check, take guard as false in order to soundly approximate
+    def projectPrevCases(cases: List[CaseDef]): Space =
+      cases.map { x =>
+        if (x.guard.isEmpty) project(x.pat)
+        else Empty
+      }.reduce((a, b) => Or(List(a, b)))
 
-      if (cases(i).pat != EmptyTree) { // rethrow case of catch uses EmptyTree
-        val curr = project(cases(i).pat)
+    (1 until cases.length).foreach { i =>
+      val prevs = projectPrevCases(cases.take(i))
+
+      val pat = cases(i).pat
+
+      if (pat != EmptyTree) { // rethrow case of catch uses EmptyTree
+        val curr = project(pat)
 
         debug.println(s"---------------reachable? ${show(curr)}")
         debug.println(s"prev: ${show(prevs)}")
@@ -936,7 +940,17 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         if (covered == Empty) covered = curr
 
         if (isSubspace(covered, prevs)) {
-          ctx.warning(MatchCaseUnreachable(), cases(i).body.pos)
+          ctx.warning(MatchCaseUnreachable(), pat.pos)
+        }
+
+        // if last case is `_` and only matches `null`, produce a warning
+        if (i == cases.length - 1) {
+          simplify(minus(covered, prevs)) match {
+            case Typ(ConstantType(Constant(null)), _) =>
+              ctx.warning(MatchCaseOnlyNullWarning(), pat.pos)
+            case _ =>
+          }
+
         }
       }
     }
