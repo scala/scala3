@@ -921,6 +921,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         else Empty
       }.reduce((a, b) => Or(List(a, b)))
 
+    def isNull(tree: Tree): Boolean = tree match {
+      case Literal(Constant(null)) => true
+      case _ => false
+    }
+
     (1 until cases.length).foreach { i =>
       val prevs = projectPrevCases(cases.take(i))
 
@@ -944,7 +949,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         }
 
         // if last case is `_` and only matches `null`, produce a warning
-        if (i == cases.length - 1) {
+        if (i == cases.length - 1 && !isNull(pat) ) {
           simplify(minus(covered, prevs)) match {
             case Typ(ConstantType(Constant(null)), _) =>
               ctx.warning(MatchCaseOnlyNullWarning(), pat.pos)
