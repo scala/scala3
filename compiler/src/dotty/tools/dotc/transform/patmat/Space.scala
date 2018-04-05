@@ -865,14 +865,13 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   /** Whehter counter-examples should be further checked? True for GADTs. */
-  def shouldCheckExamples(tp: Type): Boolean = {
+  private def shouldCheckExamples(tp: Type): Boolean =
     new TypeAccumulator[Boolean] {
       override def apply(b: Boolean, tp: Type): Boolean = tp match {
         case tref: TypeRef if tref.symbol.is(TypeParam) && variance != 1 => true
         case tp => b || foldOver(b, tp)
       }
     }.apply(false, tp)
-  }
 
   def checkExhaustivity(_match: Match): Unit = {
     val Match(sel, cases) = _match
@@ -904,13 +903,13 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     val Match(sel, cases) = _match
     val selTyp = sel.tpe.widen.dealias
 
-    def targetSpace: Space =
+    if (!redundancyCheckable(sel)) return
+
+    val targetSpace =
       if (selTyp.classSymbol.isPrimitiveValueClass)
         Typ(selTyp, true)
       else
         Or(Typ(selTyp, true) :: Typ(ConstantType(Constant(null))) :: Nil)
-
-    if (!redundancyCheckable(sel)) return
 
     (0 until cases.length).foreach { i =>
       // in redundancy check, take guard as false in order to soundly approximate
