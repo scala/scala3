@@ -7,6 +7,7 @@ import dotty.tools.dotc.printing.Texts._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.StdNames._
 
 import scala.language.implicitConversions
 
@@ -16,7 +17,13 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
     annots.filter(_.tpe != defn.SourceFileAnnotType)
 
   override protected def blockText[T >: Untyped](trees: List[Trees.Tree[T]]): Text = {
-    super.blockText(trees.filterNot(_.isInstanceOf[Closure[_]]))
+    trees match {
+      case DefDef(_, _, _, _, Trees.If(cond, Trees.Block(body :: Nil, _), _)) :: y :: Nil if y.symbol.name == nme.WHILE_PREFIX =>
+        keywordText("while") ~ " (" ~ toText(cond) ~ ")" ~ toText(body)
+      case DefDef(_, _, _, _, Trees.Block(body :: Nil, Trees.If(cond, _, _))) :: y :: Nil if y.symbol.name == nme.DO_WHILE_PREFIX =>
+        keywordText("do") ~ toText(body) ~ keywordText("while") ~ " (" ~ toText(cond) ~ ")"
+      case _ => super.blockText(trees.filterNot(_.isInstanceOf[Closure[_]]))
+    }
   }
 
   override protected def packageDefText(tree: PackageDef): Text = {
