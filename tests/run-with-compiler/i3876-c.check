@@ -6,9 +6,6 @@
       {
         def apply(x: Int): Int
       }
-   = 
-    {
-      (x: Int) => x.+(x)
-    }
+   = (x: Int) => x.+(x)
   (f: (x: Int) => Int).apply(x$1)
 }
