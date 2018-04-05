@@ -271,8 +271,12 @@ trait TypeAssigner {
   def assignType(tree: untpd.Select, qual: Tree)(implicit ctx: Context): Select = {
     def qualType = qual.tpe.widen
     def arrayElemType = {
-      val JavaArrayType(elemtp) = qualType
-      elemtp
+      qualType match {
+        case JavaArrayType(elemtp) => elemtp
+        case _ =>
+          ctx.error("Array type conflict with " + qual.symbol.name, tree.pos)
+          defn.NothingType
+      }
     }
     val p = nme.primitive
     val tp = tree.name match {
