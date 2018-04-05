@@ -1,7 +1,7 @@
 /*
   [T : M]  =  [T] ... (implicit ev: Injectable[T, M])                   if M is a normal trait
-           =  [T] ... (implicit ev: M.common[T] & Injectable[T, M])     if M is a trait with common members
-           =  [T] ... (implicit ev: M.common[T])                        if M is a typeclass (because they subsume Injectable)
+           =  [T] ... (implicit ev: M.at[T] & Injectable[T, M])     if M is a trait with common members
+           =  [T] ... (implicit ev: M.at[T])                        if M is a typeclass (because they subsume Injectable)
 
   The context bound [C, M] resolves to:
 
@@ -9,7 +9,7 @@
     - C.common, C[Ts]   if C is a class extending a trait M with common members
     - EX                if EX is an implicit extension object for C and M
 
-      M.common[T] = Common { type $This = T }
+      M.at[T] = Common { type $This = T }
       ...
 
       - Common definitions in traits may not see trait parameters, but common definitions
@@ -56,10 +56,10 @@ object runtime {
     type Common <: runtime.Common
 
     /** Helper type to characterize implementations via type `T` for this typeclass */
-    type common[T <: AnyKind] = Common { type $This = T }
+    type at[T <: AnyKind] = Common { type $This = T }
 
     /** The implementation via type `T` for this typeclass, as found by implicit search */
-    def common[T <: AnyKind](implicit ev: common[T]): common[T] = ev
+    def at[T <: AnyKind](implicit ev: at[T]): at[T] = ev
   }
 
   trait TypeClass {
@@ -188,10 +188,10 @@ object runtime {
       x.length < x.common.limit
 
     def lengthOKX[T : HasBoundedLengthX](x: T) =
-      x.length < HasBoundedLengthX.common[T].limit
+      x.length < HasBoundedLengthX.at[T].limit
 
     def longestLengthOK[T : HasBoundedLengthX](implicit tag: ClassTag[T]) = {
-      val impl = HasBoundedLengthX.common[T]
+      val impl = HasBoundedLengthX.at[T]
       impl.longest.length < impl.limit
     }
 
@@ -453,11 +453,11 @@ object hasLength {
   def lengthOK[T](x: T)(implicit ev: Injectable[T, HasBoundedLength]) =
     x.length < x.common.limit
 
-  def lengthOKX[T](x: T)(implicit ev: HasBoundedLength.common[T] & Injectable[T, HasBoundedLength]) =
-    x.length < HasBoundedLength.common[T].limit
+  def lengthOKX[T](x: T)(implicit ev: HasBoundedLength.at[T] & Injectable[T, HasBoundedLength]) =
+    x.length < HasBoundedLength.at[T].limit
 
-  def longestLengthOK[T](implicit ev: HasBoundedLengthX.common[T], tag: ClassTag[T]) = {
-    val impl = HasBoundedLengthX.common[T]
+  def longestLengthOK[T](implicit ev: HasBoundedLengthX.at[T], tag: ClassTag[T]) = {
+    val impl = HasBoundedLengthX.at[T]
     impl.longest.length < impl.limit
   }
 
@@ -583,7 +583,7 @@ object hasLength {
     }
 
     def sum[T: Monoid](xs: List[T]): T =
-      (Monoid.common[T].unit /: xs)(_ `add` _)
+      (Monoid.at[T].unit /: xs)(_ `add` _)
 */
 
 import runtime._
@@ -666,8 +666,8 @@ object semiGroups {
   }
   import Nat.{Z, S}
 
-  def sum[T](xs: List[T])(implicit $ev: Monoid.common[T]) =
-    (Monoid.common[T].unit /: xs)((x, y) => x `add` y)
+  def sum[T](xs: List[T])(implicit $ev: Monoid.at[T]) =
+    (Monoid.at[T].unit /: xs)((x, y) => x `add` y)
 
   sum(List(1, 2, 3))
   sum(List("hello ", "world!"))
@@ -706,7 +706,7 @@ object semiGroups {
 
     def min[T: Ord](x: T, y: T) = if (x < y) x else y
 
-    def inf[T: Ord](xs: List[T]): T = (Ord.common[T].minimum /: xs)(min)
+    def inf[T: Ord](xs: List[T]): T = (Ord.at[T].minimum /: xs)(min)
 */
 object ord {
 
@@ -736,7 +736,7 @@ object ord {
     }
   }
 
-  class ListOrd[T](implicit $ev: Ord.common[T]) extends Ord.Common { self =>
+  class ListOrd[T](implicit $ev: Ord.at[T]) extends Ord.Common { self =>
     type $This = List[T]
     type $Instance = Ord { val `common`: self.type }
     def minimum: List[T] = Nil
@@ -753,14 +753,14 @@ object ord {
       }
     }
   }
-  implicit def ListOrd[T](implicit $ev: Ord.common[T]): ListOrd[T] =
+  implicit def ListOrd[T](implicit $ev: Ord.at[T]): ListOrd[T] =
     new ListOrd[T]
 
-  def min[T](x: T, y: T)(implicit $ev: Ord.common[T]): T =
+  def min[T](x: T, y: T)(implicit $ev: Ord.at[T]): T =
     if (x < y) x else y
 
-  def inf[T](xs: List[T])(implicit $ev: Ord.common[T]): T = {
-    val smallest = Ord.common[T].minimum
+  def inf[T](xs: List[T])(implicit $ev: Ord.at[T]): T = {
+    val smallest = Ord.at[T].minimum
     (smallest /: xs)(min)
   }
 
@@ -779,7 +779,7 @@ object ord {
 
     // Generically, `pure[A]{.map(f)}^n`
     def develop[A, F[_] : Functor](n: Int, f: A => A): F[A] =
-      if (n == 0) Functor.common[F].pure[A]
+      if (n == 0) Functor.at[F].pure[A]
       else develop[A, F](n - 1, f).map(f)
 
     trait Monad[A] extends Functor[A] {
@@ -849,8 +849,8 @@ object functors {
     }
   }
 
-  def develop[A, F[X]](n: Int, x: A, f: A => A)(implicit $ev: Functor.common[F]): F[A] =
-    if (n == 0) Functor.common[F].pure(x)
+  def develop[A, F[X]](n: Int, x: A, f: A => A)(implicit $ev: Functor.at[F]): F[A] =
+    if (n == 0) Functor.at[F].pure(x)
     else develop(n - 1, x, f).map(f)
 
   implicit object ListMonad extends Monad.Common {
@@ -865,7 +865,7 @@ object functors {
   }
 
   object MonadFlatten {
-    def flattened[T[_], A]($this: T[T[A]])(implicit $ev: Monad.common[T]): T[A] =
+    def flattened[T[_], A]($this: T[T[A]])(implicit $ev: Monad.at[T]): T[A] =
       $this.flatMap(identity  )
   }
 
