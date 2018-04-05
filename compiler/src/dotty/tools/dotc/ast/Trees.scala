@@ -1184,6 +1184,7 @@ object Trees {
           case AppliedTypeTree(tpt, args) =>
             cpy.AppliedTypeTree(tree)(transform(tpt), transform(args))
           case LambdaTypeTree(tparams, body) =>
+            implicit val ctx = localCtx
             cpy.LambdaTypeTree(tree)(transformSub(tparams), transform(body))
           case ByNameTypeTree(result) =>
             cpy.ByNameTypeTree(tree)(transform(result))
@@ -1213,7 +1214,7 @@ object Trees {
           case Import(expr, selectors) =>
             cpy.Import(tree)(transform(expr), selectors)
           case PackageDef(pid, stats) =>
-            cpy.PackageDef(tree)(transformSub(pid), transformStats(stats))
+            cpy.PackageDef(tree)(transformSub(pid), transformStats(stats)(localCtx))
           case Annotated(arg, annot) =>
             cpy.Annotated(tree)(transform(arg), transform(annot))
           case Thicket(trees) =>
