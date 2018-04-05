@@ -57,7 +57,7 @@ class GenBCode extends Phase {
     if (myOutput eq null) {
       val path = Directory(ctx.settings.outputDir.value)
       myOutput =
-        if (path.extension == "jar") JarArchive.create(path)
+        if (path.`extension` == "jar") JarArchive.create(path)
         else new PlainDirectory(path)
     }
     myOutput

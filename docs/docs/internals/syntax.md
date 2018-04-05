@@ -109,6 +109,7 @@ ids               ::=  id {‘,’ id}
 
 Path              ::=  StableId
                     |  [id ‘.’] ‘this’
+                    |  Path ‘.’ ‘common’
 StableId          ::=  id
                     |  Path ‘.’ id
                     |  [id ‘.’] ‘super’ [ClassQualifier] ‘.’ id
@@ -281,11 +282,13 @@ Binding           ::=  (id | ‘_’) [‘:’ Type]                            
 Modifier          ::=  LocalModifier
                     |  AccessModifier
                     |  ‘override’
+                    |  ‘common’
 LocalModifier     ::=  ‘abstract’
                     |  ‘final’
                     |  ‘sealed’
                     |  ‘implicit’
                     |  ‘lazy’
+                    |  ‘opaque’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
 
@@ -329,12 +332,18 @@ DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                       
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef
                     |  ‘enum’ EnumDef
-ClassDef          ::=  id ClassConstr TemplateOpt                               ClassDef(mods, name, tparams, templ)
+                    |  ‘extension’ ExtensionDef
+ClassDef          ::=  id ClassConstr [TemplateClause]                          ClassDef(mods, name, tparams, templ)
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses         with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
-ObjectDef         ::=  id TemplateOpt                                           ModuleDef(mods, name, template)  // no constructor
-EnumDef           ::=  id ClassConstr [‘extends’ [ConstrApps]] EnumBody         EnumDef(mods, name, tparams, template)
-TemplateOpt       ::=  [‘extends’ Template | [nl] TemplateBody]
+ObjectDef         ::=  id [TemplateClause]                                      ModuleDef(mods, name, template)  // no constructor
+EnumDef           ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody         TypeDef(mods, name, template)
+ExtensionDef      ::=  id [ExtensionParams] 'for' AnnotType ExtensionClause     Extension(name, type, templ)
+ExtensionParams   ::=  [ClsTypeParamClause] [[nl] ImplicitParamClause]
+ExtensionClause   ::=  [`:` Template]
+                    |  [nl] ‘{’ ‘def’ DefDef {semi ‘def’ DefDef} ‘}’
+
+TemplateClause    ::=  [‘extends’ Template | [nl] TemplateBody]
 Template          ::=  ConstrApps [TemplateBody] | TemplateBody                 Template(constr, parents, self, stats)
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
 ConstrApp         ::=  AnnotType {ArgumentExprs}                                Apply(tp, args)

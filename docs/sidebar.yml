@@ -29,6 +29,26 @@ sidebar:
               url: docs/reference/dependent-function-types.html
             - title: Literal Singleton Types
               url: docs/reference/singleton-types.html
+        - title: Extension Clauses
+          subsection:
+            - title: Extension Methods
+              url: docs/reference/extend/extension-methods.html
+            - title: Instance Declarations
+              url: docs/reference/extend/instance-declarations.html
+            - title: Typeclass Traits
+              url: docs/reference/extend/typeclass-traits.html
+            - title: Common Declarations
+              url: docs/reference/extend/common-declarations.html
+            - title: Context Bounds
+              uril: docs/reference/extend/context-bounds.html
+            - title: Parameterized Typeclasses
+              url: docs/reference/extend/parameterized-typeclasses.html
+            - title: Factored Instances
+              url: docs/reference/extend/factored-instances.html
+            - title: Local Coherence
+              url: docs/reference/extend/local-coherence.html
+            - title: Translation
+              url: docs/reference/extend/translation.html
         - title: Enums
           subsection:
             - title: Enumerations
@@ -47,6 +67,8 @@ sidebar:
               url: docs/reference/inline.html
             - title: Meta Programming
               url: docs/reference/principled-meta-programming.html
+            - title: Opaque Type Aliases
+              url: docs/reference/opaques.html
             - title: By-Name Implicits
               url: docs/reference/implicit-by-name-parameters.html
             - title: Auto Parameter Tupling

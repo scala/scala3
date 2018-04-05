@@ -93,8 +93,8 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   def canonicalPath: String = if (jpath == null) path else jpath.normalize.toString
 
   /** Checks extension case insensitively. */
-  def hasExtension(other: String) = extension == other.toLowerCase
-  private val extension: String = Path.extension(name)
+  def hasExtension(other: String) = `extension` == other.toLowerCase
+  private val `extension`: String = Path.`extension`(name)
 
   /** The absolute file, if this is a relative file. */
   def absolute: AbstractFile
@@ -122,7 +122,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   }
 
   /** Does this abstract file represent something which can contain classfiles? */
-  def isClassContainer = isDirectory || (jpath != null && (extension == "jar" || extension == "zip"))
+  def isClassContainer = isDirectory || (jpath != null && (`extension` == "jar" || `extension` == "zip"))
 
   /** Create a file on disk, if one does not exist already. */
   def create(): Unit
