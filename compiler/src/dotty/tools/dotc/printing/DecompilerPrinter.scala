@@ -39,7 +39,7 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
       if (tree.pid.symbol.isEmptyPackage) statsText
       else if (currentPrecedence == TopLevelPrec) "\n" ~ statsText
       else " {" ~ statsText ~ "}"
-    (keywordStr("package ") ~ toTextPackageId(tree.pid)).provided(!tree.pid.symbol.isEmptyPackage) ~ bodyText
+    (keywordStr("package ") ~ toTextPackageId(tree.pid)).provided(!tree.symbol.isEmptyPackage) ~ bodyText
   }
 
   override protected def templateText(tree: TypeDef, impl: Template): Text = {
@@ -50,8 +50,7 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
   }
 
   override protected def toTextTemplate(impl: Template, ofNew: Boolean = false): Text = {
-    val Template(constr, parents, self, preBody) = impl
-    val impl1 = Template(constr, parents.filterNot(_.symbol.maybeOwner == defn.ObjectClass), self, preBody)
+    val impl1 = impl.copy(parents = impl.parents.filterNot(_.symbol.maybeOwner == defn.ObjectClass))
     super.toTextTemplate(impl1, ofNew)
   }
 
