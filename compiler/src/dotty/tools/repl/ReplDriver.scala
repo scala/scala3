@@ -235,6 +235,9 @@ class ReplDriver(settings: Array[String],
             val newImports = newState.imports ++ extractImports(parsed.trees)
             val newStateWithImports = newState.copy(imports = newImports)
 
+            implicit val ctx: Context = newState.run.runContext
+            displayErrors(newState.run.runContext.flushBufferedMessages())
+
             displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
           }
         }
