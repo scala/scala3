@@ -143,6 +143,11 @@ object DottyPlugin extends AutoPlugin {
   }
 
   override def projectSettings: Seq[Setting[_]] = {
+
+    // Note: the plugin support below is a temporary fix to walkaround the issue:
+    //       https://github.com/sbt/sbt/issues/4073
+    // TODO: remove the following hack once the above issue is fixed in SBT.
+
     // get plugins
     def autoPlugins(report: UpdateReport, internalPluginClasspath: Seq[File]): Seq[String] ={
       val pluginClasspath = report.matching(configurationFilter(CompilerPlugin.name)) ++ internalPluginClasspath
