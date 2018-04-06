@@ -2,24 +2,27 @@ object tasty {
 
 // ------ Names --------------------------------
 
+  trait Name
   trait PossiblySignedName
 
-  enum Name extends PossiblySignedName {
+  enum TermName extends Name with PossiblySignedName {
     case Simple(str: String)
-    case Qualified(prefix: Name, selector: String)              // s"$prefix.$name"
-    case Unique(underlying: Name, separator: String, idx: Int)  // s"$underlying$separator$idx"
-    case DefaultGetter(methodName: Name, idx: String)           // s"$methodName${"$default$"}${idx+1}"
-    case Variant(underlying: Name, covariant: Boolean)          // s"${if (covariant) "+" else "-"}$underlying"
-    case SuperAccessor(underlying: Name)                        // s"${"super$"}$underlying"
-    case ProtectedAccessor(underlying: Name)                    // s"${"protectded$"}$underlying"
-    case ProtectedSetter(underlying: Name)                      // s"${"protectded$set"}$underlying"
-    case ObjectClass(underlying: Name)                          // s"$underlying${"$"}"
+    case Qualified(prefix: TermName, selector: String)              // s"$prefix.$name"
+    case Unique(underlying: TermName, separator: String, idx: Int)  // s"$underlying$separator$idx"
+    case DefaultGetter(methodName: TermName, idx: String)           // s"$methodName${"$default$"}${idx+1}"
+    case Variant(underlying: TermName, covariant: Boolean)          // s"${if (covariant) "+" else "-"}$underlying"
+    case SuperAccessor(underlying: TermName)                        // s"${"super$"}$underlying"
+    case ProtectedAccessor(underlying: TermName)                    // s"${"protectded$"}$underlying"
+    case ProtectedSetter(underlying: TermName)                      // s"${"protectded$set"}$underlying"
+    case ObjectClass(underlying: TermName)                          // s"$underlying${"$"}"
 
-    case Expanded(prefix: Name, selector: String)               // s"$prefix${"$$"}$name"  , used only for symbols coming from Scala 2
-    case ExpandedPrefix(prefix: Name, selector: String)         // s"$prefix${"$"}$name"   , used only for symbols coming from Scala 2
+    case Expanded(prefix: TermName, selector: String)               // s"$prefix${"$$"}$name"  , used only for symbols coming from Scala 2
+    case ExpandedPrefix(prefix: TermName, selector: String)         // s"$prefix${"$"}$name"   , used only for symbols coming from Scala 2
   }
 
-  case class SignedName(name: Name, resultSig: Name, paramSigs: List[Name]) extends PossiblySignedName
+  case class SignedName(name: TermName, resultSig: TypeName, paramSigs: List[TypeName]) extends PossiblySignedName
+
+  case class TypeName(name: TermName) extends Name
 
 // ------ Positions ---------------------------
 
@@ -45,7 +48,7 @@ object tasty {
   }
 
   class ValDef(
-    val name: Name,
+    val name: TermName,
     val tpt: Term,
     rhsExp: ValDef => Term | Empty,
     val mods: List[Modifier])
@@ -53,13 +56,13 @@ object tasty {
     lazy val rhs = rhsExp(this)
   }
   object ValDef {
-    def apply(name: Name, tpt: Term, rhs: Term | Empty, mods: List[Modifier] = Nil) =
+    def apply(name: TermName, tpt: Term, rhs: Term | Empty, mods: List[Modifier] = Nil) =
       new ValDef(name, tpt, _ => rhs, mods)
     def unapply(vdef: ValDef) = Some((vdef.name, vdef.tpt, vdef.rhs, vdef.mods))
   }
 
   class DefDef(
-    val name: Name,
+    val name: TermName,
     typeParamsExp: DefDef => List[TypeDef],
     paramssExp: DefDef => List[List[ValDef]],
     returnTptExp: DefDef => Term,
@@ -72,32 +75,32 @@ object tasty {
     lazy val rhs = rhsExp(this)
   }
   object DefDef {
-    def apply(name: Name, typeParams: List[TypeDef], paramss: List[List[ValDef]], returnTpt: Term, rhs: Term | Empty, mods: List[Modifier] = Nil) =
+    def apply(name: TermName, typeParams: List[TypeDef], paramss: List[List[ValDef]], returnTpt: Term, rhs: Term | Empty, mods: List[Modifier] = Nil) =
       new DefDef(name, _ => typeParams, _ => paramss, _ => returnTpt, _ => rhs, mods)
     def unapply(ddef: DefDef) = Some((ddef.name, ddef.typeParams, ddef.paramss, ddef.returnTpt, ddef.rhs, ddef.mods))
   }
 
   class TypeDef(
-    val name: Name,
+    val name: TypeName,
     rhsExp: TypeDef => Term,
     val mods: List[Modifier])
   extends Definition {
     val rhs = rhsExp(this),
   }
   object TypeDef {
-    def apply(name: Name, rhs: Term, mods: List[Modifier] = Nil) = new TypeDef(name, _ => rhs, mods)
+    def apply(name: TypeName, rhs: Term, mods: List[Modifier] = Nil) = new TypeDef(name, _ => rhs, mods)
     def unapply(tdef: TypeDef) = Some((tdef.name, tdef.rhs, tdef.mods))
   }
 
   class ClassDef(
-    val name: Name,
+    val name: TypeName,
     rhsExp: ClassDef => Template,
     val mods: List[Modifier])
   extends Definition {
     val rhs = rhsExp(this)
   }
   object ClassDef {
-    def apply(name: Name, rhs: Template, mods: List[Modifier] = Nil) = new ClassDef(name, _ => rhs, mods)
+    def apply(name: TypeName, rhs: Template, mods: List[Modifier] = Nil) = new ClassDef(name, _ => rhs, mods)
     def unapply(tdef: ClassDef) = Some((tdef.name, tdef.rhs, tdef.mods))
   }
 
@@ -116,19 +119,19 @@ object tasty {
     case Omit(id1: Id)
   }
 
-  case class Id(name: Name) extends Positioned     // untyped ident
+  case class Id(name: String) extends Positioned     // untyped ident
 
 // ------ Terms ---------------------------------
 
   /** Trees denoting terms */
   enum Term extends Statement {
     def tpe: Type = ???
-    case Ident(name: Name, override val tpe: Type)
+    case Ident(name: TermName, override val tpe: Type)
     case Select(prefix: Term, name: PossiblySignedName)
     case Literal(value: Constant)
     case This(id: Id | Empty)
     case New(tpt: Term)
-    case NamedArg(name: Name, arg: Term)
+    case NamedArg(name: TermName, arg: Term)
     case Apply(fn: Term, args: List[Term])
     case TypeApply(fn: Term, args: List[Term])
     case Super(thiz: Term, mixin: Id | Empty)
@@ -149,8 +152,8 @@ object tasty {
   /** Trees denoting types */
   enum TypeTerm extends Positioned {
     def tpe: Type = ???
-    case Ident(name: Name, override val tpe: Type)
-    case Select(prefix: Term, name: Name)
+    case Ident(name: TypeName, override val tpe: Type)
+    case Select(prefix: Term, name: TypeName)
     case Singleton(ref: Term)
     case Refined(underlying: TypeTerm, refinements: List[Definition])
     case Applied(tycon: TypeTerm, args: List[TypeTerm])
@@ -165,7 +168,7 @@ object tasty {
   enum Pattern extends Positioned {
     def tpe: Type = ???
     case Value(v: Term)
-    case Bind(name: Name, pat: Pattern)
+    case Bind(name: TermName, pat: Pattern)
     case Unapply(unapply: Term, implicits: List[Term], pats: List[Pattern])
     case Alternative(pats: List[Pattern])
     case TypeTest(tpt: Term)
@@ -181,11 +184,9 @@ object tasty {
   object Type {
     case class ConstantType(value: Constant) extends Type
     case class SymRef(sym: Definition, qualifier: Type | Empty = Empty) extends Type
-    case class TypeNameRef(name: Name, qualifier: Type | Empty = Empty) extends Type // Empty means: select from _root_
-    case class TermNameRef(name: Name, qualifier: Type | Empty = Empty) extends Type  // Empty means: select from _root_
+    case class NameRef(name: Name, qualifier: Type | Empty = Empty) extends Type // Empty means: select from _root_
     case class SuperType(thistp: Type, underlying: Type) extends Type
-    case class TermRefinement(underlying: Type, name: Name, tpe: Type) extends Type
-    case class TypeRefinement(underlying: Type, name: Name, info: TypeBounds) extends Type
+    case class Refinement(underlying: Type, name: Name, tpe: Type) extends Type
     case class AppliedType(tycon: Type, args: Type | TypeBounds) extends Type
     case class AnnotatedType(underlying: Type, annotation: Term) extends Type
     case class AndType(left: Type, right: Type) extends Type
@@ -205,49 +206,51 @@ object tasty {
     }
 
     trait LambdaType extends Type {
+      type ParamName
       type ParamInfo
-      def paramNames: List[Name]
+      def paramNames: List[ParamName]
       def paramInfos: List[ParamInfo]
       def resultType: Type
     }
 
-    class MethodType(val paramNames: List[Name], paramTypesExp: MethodType => List[Type],
+    class MethodType(val paramNames: List[TermName], paramTypesExp: MethodType => List[Type],
                      resultTypeExp: MethodType => Type, val mods: List[Modifier]) extends LambdaType {
+      type ParamName = TermName
       type ParamInfo = Type
       val paramTypes = paramTypesExp(this)
       val resultType = resultTypeExp(this)
       def paramInfos = paramTypes
     }
     object MethodType {
-      def apply(paramNames: List[Name], paramTypes: List[Type], resultType: Type, mods: List[Modifier] = Nil) =
+      def apply(paramNames: List[TermName], paramTypes: List[Type], resultType: Type, mods: List[Modifier] = Nil) =
         new MethodType(paramNames, _ => paramTypes, _ => resultType, mods)
       def unapply(tp: MethodType) = Some((tp.paramNames, tp.paramTypes, tp.resultType, tp.mods))
     }
 
-    class PolyType(val paramNames: List[Name], paramBoundsExp: PolyType => List[TypeBounds],
+    class PolyType(val paramNames: List[TypeName], paramBoundsExp: PolyType => List[TypeBounds],
                    resultTypeExp: PolyType => Type) extends LambdaType {
-      type This = PolyType
+      type ParamName = TypeName
       type ParamInfo = TypeBounds
       val paramBounds = paramBoundsExp(this)
       val resultType = resultTypeExp(this)
       def paramInfos = paramBounds
     }
     object PolyType {
-      def apply(paramNames: List[Name], paramBounds: List[TypeBounds], resultType: Type) =
+      def apply(paramNames: List[TypeName], paramBounds: List[TypeBounds], resultType: Type) =
         new PolyType(paramNames, _ => paramBounds, _ => resultType)
       def unapply(tp: PolyType) = Some((tp.paramNames, tp.paramBounds, tp.resultType))
     }
 
-    class TypeLambda(val paramNames: List[Name], paramBoundsExp: TypeLambda => List[TypeBounds],
+    class TypeLambda(val paramNames: List[TypeName], paramBoundsExp: TypeLambda => List[TypeBounds],
                      resultTypeExp: TypeLambda => Type) extends LambdaType {
-      type This = TypeLambda
+      type ParamName = TypeName
       type ParamInfo = TypeBounds
       val paramBounds = paramBoundsExp(this)
       val resultType = resultTypeExp(this)
       def paramInfos = paramBounds
     }
     object TypeLambda {
-      def apply(paramNames: List[Name], paramBounds: List[TypeBounds], resultType: Type) =
+      def apply(paramNames: List[TypeName], paramBounds: List[TypeBounds], resultType: Type) =
         new TypeLambda(paramNames, _ => paramBounds, _ => resultType)
       def unapply(tp: TypeLambda) = Some((tp.paramNames, tp.paramBounds, tp.resultType))
     }
