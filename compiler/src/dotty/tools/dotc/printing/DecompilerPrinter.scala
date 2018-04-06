@@ -55,7 +55,11 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
   }
 
   override protected def toTextTemplate(impl: Template, ofNew: Boolean = false): Text = {
-    val impl1 = impl.copy(parents = impl.parents.filterNot(_.symbol.maybeOwner == defn.ObjectClass))
+    def filter(sym: Symbol): Boolean = {
+      sym.maybeOwner == defn.ObjectClass ||
+      (sym == defn.ProductClass && impl.symbol.owner.is(Case))
+    }
+    val impl1 = impl.copy(parents = impl.parents.filterNot(p => filter(p.symbol)))
     super.toTextTemplate(impl1, ofNew)
   }
 

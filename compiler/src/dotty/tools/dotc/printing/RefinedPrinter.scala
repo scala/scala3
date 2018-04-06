@@ -640,7 +640,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val tparamsTxt = withEnclosingDef(constr) { tparamsText(tparams) }
     val primaryConstrs = if (constr.rhs.isEmpty) Nil else constr :: Nil
     val prefix: Text =
-      if (vparamss.isEmpty || primaryConstrs.nonEmpty) tparamsTxt
+      if (constr.symbol.owner.is(Module)) " "
+      else if (vparamss.isEmpty || primaryConstrs.nonEmpty) tparamsTxt
       else {
         var modsText = modText(constr.mods, "")
         if (!modsText.isEmpty) modsText = " " ~ modsText

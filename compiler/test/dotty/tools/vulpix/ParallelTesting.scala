@@ -425,16 +425,17 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       reporter
     }
 
-    protected def decompile(flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
-      val decompilationOutput = new JFile(targetDir.getPath)
-      decompilationOutput.mkdir()
+    protected def decompile(flags0: TestFlags, suppressErrors: Boolean, targetDir0: JFile): TestReporter = {
+      val targetDir = new JFile(targetDir0.getParent + "_decompiled")
+      val decompilationOutput = new JFile(targetDir + "/" + targetDir0.getName)
+      decompilationOutput.mkdirs()
       val flags =
         flags0 and ("-d", decompilationOutput.getAbsolutePath) and
         "-decompile" and "-pagewidth" and "80"
 
       def hasTastyFileToClassName(f: JFile): String =
-        targetDir.toPath.relativize(f.toPath).toString.dropRight(".hasTasty".length).replace('/', '.')
-      val classes = flattenFiles(targetDir).filter(isHasTastyFile).map(hasTastyFileToClassName).sorted
+        targetDir0.toPath.relativize(f.toPath).toString.dropRight(".hasTasty".length).replace('/', '.')
+      val classes = flattenFiles(targetDir0).filter(isHasTastyFile).map(hasTastyFileToClassName).sorted
 
       val reporter =
         TestReporter.reporter(realStdout, logLevel =
@@ -522,7 +523,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
                 checkFileOpt match {
                   case Some(checkFile) =>
                     val stripTrailingWhitespaces = "(.*\\S|)\\s+".r
-                    val output = Source.fromFile(outDir + ".decompiled").getLines().map {line =>
+                    val output = Source.fromFile(outDir.getParent + "_decompiled/" + outDir.getName + "/decompiled.scala").getLines().map {line =>
                       stripTrailingWhitespaces.unapplySeq(line).map(_.head).getOrElse(line)
                     }.mkString("\n")
 
@@ -1257,8 +1258,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  Tests in the first part of the tuple must be executed before the second.
    *  Both testsRequires explicit delete().
    */
-  def compileTastyInDir(f: String, flags0: TestFlags, blacklist: Set[String] = Set.empty)(
-      implicit testGroup: TestGroup): (CompilationTest, CompilationTest, CompilationTest) = {
+  def compileTastyInDir(f: String, flags0: TestFlags, blacklist: Set[String], recompileBlacklist: Set[String])(
+      implicit testGroup: TestGroup): (CompilationTest, CompilationTest, CompilationTest, CompilationTest) = {
     val outDir = defaultOutputDir + testGroup + "/"
     val flags = flags0 and "-Yretain-trees"
     val sourceDir = new JFile(f)
@@ -1284,10 +1285,15 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     val generateClassFiles = compileFilesInDir(f, flags0, blacklist)
 
+    val decompilationDir = outDir + sourceDir.getName + "_decompiled"
+    new JFile(decompilationDir).mkdirs()
+    val recompileDecompiled = compileFilesInDir(decompilationDir, flags0, recompileBlacklist)
+
     (
       generateClassFiles.keepOutput,
       new CompilationTest(targets).keepOutput,
-      new CompilationTest(targets2).keepOutput
+      new CompilationTest(targets2).keepOutput,
+      recompileDecompiled.keepOutput
     )
   }
 

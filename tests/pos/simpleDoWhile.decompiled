@@ -1,6 +1,4 @@
-================================================================================
-out/posTestFromTasty/pos/simpleDoWhile/Foo.class
---------------------------------------------------------------------------------
+/** Decompiled from out/posTestFromTasty/pos/simpleDoWhile/Foo.class */
 class Foo() {
   def foo: Unit =
     {
@@ -12,4 +10,3 @@ class Foo() {
       while (i.!=(0))
     }
 }
---------------------------------------------------------------------------------

@@ -26,7 +26,7 @@ class FromTastyTests extends ParallelTesting {
     // > dotc -Ythrough-tasty -Ycheck:all <source>
 
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
-    val (step1, step2, step3) = compileTastyInDir("tests/pos", defaultOptions,
+    val (step1, step2, step3, step4) = compileTastyInDir("tests/pos", defaultOptions,
       blacklist = Set(
         // Wrong number of arguments (only on bootstrapped)
         "i3130b.scala",
@@ -36,12 +36,16 @@ class FromTastyTests extends ParallelTesting {
 
         // MatchError in SymDenotation.sourceModule on a ThisType
         "t3612.scala",
+      ),
+      recompileBlacklist = Set(
+        "simpleCaseObject"
       )
     )
     step1.checkCompile() // Compile all files to generate the class files with tasty
     step2.checkCompile() // Compile from tasty
     step3.checkCompile() // Decompile from tasty
-    (step1 + step2 + step3).delete()
+    step4.checkCompile() // Recompile decompiled code
+    (step1 + step2 + step3 + step4).delete()
   }
 
   @Test def runTestFromTasty: Unit = {
@@ -51,16 +55,20 @@ class FromTastyTests extends ParallelTesting {
     // > dotr Test
 
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
-    val (step1, step2, step3) = compileTastyInDir("tests/run", defaultOptions,
-       blacklist = Set(
-         // Closure type miss match
-         "eff-dependent.scala",
-       )
+    val (step1, step2, step3, step4) = compileTastyInDir("tests/run", defaultOptions,
+      blacklist = Set(
+        // Closure type miss match
+        "eff-dependent.scala",
+      ),
+      recompileBlacklist = Set(
+        "puzzle"
+      )
     )
     step1.checkCompile() // Compile all files to generate the class files with tasty
     step2.checkRuns() // Compile from tasty and run the result
     step3.checkCompile() // Decompile from tasty
-    (step1 + step2 + step3).delete()
+    step4.checkCompile() // Recompile decompiled code
+    (step1 + step2 + step3 + step4).delete()
   }
 
   private implicit class tastyCompilationTuples(tup: (CompilationTest, CompilationTest)) {

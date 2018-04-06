@@ -1,6 +1,4 @@
-================================================================================
-out/posTestFromTasty/pos/lambda/foo/Foo.class
---------------------------------------------------------------------------------
+/** Decompiled from out/posTestFromTasty/pos/lambda/foo/Foo.class */
 package foo {
   class Foo() {
     {
@@ -12,4 +10,3 @@ package foo {
     val a: Int => Int = (x: Int) => x.*(x)
   }
 }
---------------------------------------------------------------------------------
