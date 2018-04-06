@@ -1,7 +1,9 @@
+package streams
+
 import dotty.tools.dotc.quoted.Toolbox._
 import scala.quoted._
 
-trait StagedStreams {
+object StagedStreams {
 
   // TODO: remove as it exists in Quoted Lib
   sealed trait Var[T] {
@@ -108,4 +110,6 @@ trait StagedStreams {
     }
   }
 }
+
+
 
