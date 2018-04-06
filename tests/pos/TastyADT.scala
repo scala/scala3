@@ -19,7 +19,13 @@ object tasty {
 
   case class SignedName(name: Name, resultSig: Name, paramSigs: List[Name]) extends PossiblySignedName
 
-  trait TopLevelStatement
+  case class Position(firstOffset: Int, lastOffset: Int)
+
+  trait Positioned {
+    def pos: Position = ???
+  }
+
+  trait TopLevelStatement extends Positioned
 
   trait Statement extends TopLevelStatement
 
@@ -59,7 +65,7 @@ object tasty {
   object DefDef {
     def apply(name: Name, typeParams: List[TypeDef], paramss: List[List[ValDef]], returnTpt: Term, rhs: Term | Empty, mods: List[Modifier] = Nil) =
       new DefDef(name, _ => typeParams, _ => paramss, _ => returnTpt, _ => rhs, mods)
-    def unapply(ddef: DefDef) = Some((ddef.name, ddef.typeParams, ddef.paramss, ddef.returnTpt, ddef.rhs))
+    def unapply(ddef: DefDef) = Some((ddef.name, ddef.typeParams, ddef.paramss, ddef.returnTpt, ddef.rhs, ddef.mods))
   }
 
   class TypeDef(
@@ -71,7 +77,7 @@ object tasty {
   }
   object TypeDef {
     def apply(name: Name, rhs: Term, mods: List[Modifier] = Nil) = new TypeDef(name, _ => rhs, mods)
-    def unapply(tdef: TypeDef) = Some((tdef.name, tdef.rhs))
+    def unapply(tdef: TypeDef) = Some((tdef.name, tdef.rhs, tdef.mods))
   }
 
   class ClassDef(
@@ -83,7 +89,7 @@ object tasty {
   }
   object ClassDef {
     def apply(name: Name, rhs: Template, mods: List[Modifier] = Nil) = new ClassDef(name, _ => rhs, mods)
-    def unapply(tdef: ClassDef) = Some((tdef.name, tdef.rhs))
+    def unapply(tdef: ClassDef) = Some((tdef.name, tdef.rhs, tdef.mods))
   }
 
   case class Template(
@@ -93,7 +99,7 @@ object tasty {
     self: ValDef | Empty,
     body: List[Statement])
 
-  case class Import(expr: Term, selector: List[ImportSelector])
+  case class Import(expr: Term, selector: List[ImportSelector]) extends Statement
 
   enum ImportSelector {
     case Simple(id: Id)
@@ -101,9 +107,9 @@ object tasty {
     case Omit(id1: Id)
   }
 
-  case class Id(name: Name)     // untyped ident
+  case class Id(name: Name) extends Positioned     // untyped ident
 
-  enum Term {
+  enum Term extends Statement {
     def tpe: Type = ???
     case Ident(name: Name, override val tpe: Type)
     case Select(prefix: Term, name: PossiblySignedName)
@@ -128,7 +134,7 @@ object tasty {
     case Tpt(underlying: TypeTerm | Empty)
   }
 
-  enum TypeTerm {
+  enum TypeTerm extends Positioned {
     def tpe: Type = ???
     case Ident(name: Name, override val tpe: Type)
     case Select(prefix: Term, name: Name)
@@ -142,7 +148,7 @@ object tasty {
     case ByName(tpt: TypeTerm)
   }
 
-  enum Pattern {
+  enum Pattern extends Positioned {
     def tpe: Type = ???
     case Value(v: Term)
     case Bind(name: Name, pat: Pattern)
@@ -152,7 +158,7 @@ object tasty {
     case Wildcard()
   }
 
-  case class CaseDef(pat: Pattern, guard: Term | Empty, rhs: Term)
+  case class CaseDef(pat: Pattern, guard: Term | Empty, rhs: Term) extends Positioned
 
   sealed trait Type
 
@@ -230,7 +236,7 @@ object tasty {
     case class TypeBounds(loBound: Type, hiBound: Type)
   }
 
-  enum Modifier {
+  enum Modifier extends Positioned {
     case Private, Protected, Abstract, Final, Sealed, Case, Implicit, Erased, Lazy, Override, Inline,
          Macro,                 // inline method containing toplevel splices
          Static,                // mapped to static Java member
