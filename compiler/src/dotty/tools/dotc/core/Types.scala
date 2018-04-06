@@ -2862,15 +2862,16 @@ object Types {
 
     type This = MethodType
 
+    val paramInfos = paramInfosExp(this)
+    val resType = resultTypeExp(this)
+    assert(resType.exists)
+
     def companion: MethodTypeCompanion
 
     final override def isJavaMethod: Boolean = companion eq JavaMethodType
     final override def isImplicitMethod: Boolean = companion.eq(ImplicitMethodType) || companion.eq(ErasedImplicitMethodType)
     final override def isErasedMethod: Boolean = companion.eq(ErasedMethodType) || companion.eq(ErasedImplicitMethodType)
 
-    val paramInfos = paramInfosExp(this)
-    val resType = resultTypeExp(this)
-    assert(resType.exists)
 
     def computeSignature(implicit ctx: Context): Signature = {
       val params = if (isErasedMethod) Nil else paramInfos
