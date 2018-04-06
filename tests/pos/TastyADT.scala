@@ -1,5 +1,7 @@
 object tasty {
 
+// ------ Names --------------------------------
+
   trait PossiblySignedName
 
   enum Name extends PossiblySignedName {
@@ -19,11 +21,18 @@ object tasty {
 
   case class SignedName(name: Name, resultSig: Name, paramSigs: List[Name]) extends PossiblySignedName
 
+// ------ Positions ---------------------------
+
   case class Position(firstOffset: Int, lastOffset: Int)
 
   trait Positioned {
     def pos: Position = ???
   }
+
+// ------ Statements ---------------------------------
+
+// Note: Definitions are written as extractors, because they may be referred to
+//       recursively from some of their arguments (since we equate symbols with definitions)
 
   trait TopLevelStatement extends Positioned
 
@@ -109,6 +118,9 @@ object tasty {
 
   case class Id(name: Name) extends Positioned     // untyped ident
 
+// ------ Terms ---------------------------------
+
+  /** Trees denoting terms */
   enum Term extends Statement {
     def tpe: Type = ???
     case Ident(name: Name, override val tpe: Type)
@@ -134,6 +146,7 @@ object tasty {
     case Tpt(underlying: TypeTerm | Empty)
   }
 
+  /** Trees denoting types */
   enum TypeTerm extends Positioned {
     def tpe: Type = ???
     case Ident(name: Name, override val tpe: Type)
@@ -148,6 +161,7 @@ object tasty {
     case ByName(tpt: TypeTerm)
   }
 
+  /** Trees denoting patterns */
   enum Pattern extends Positioned {
     def tpe: Type = ???
     case Value(v: Term)
@@ -161,6 +175,8 @@ object tasty {
   case class CaseDef(pat: Pattern, guard: Term | Empty, rhs: Term) extends Positioned
 
   sealed trait Type
+
+// ------ Types ---------------------------------
 
   object Type {
     case class ConstantType(value: Constant) extends Type
@@ -177,6 +193,9 @@ object tasty {
     case class ByNameType(underlying: Type) extends Type
     case class ParamRef(binder: LambdaType, idx: Int) extends Type
     case class RecThis(binder: RecursiveType) extends Type
+
+    // The following types are all expressed by extractors because they may be referred
+    // to from some of their arguments
 
     class RecursiveType(underlyingExp: RecursiveType => Type) extends Type {
       val underlying = underlyingExp(this)
@@ -236,6 +255,8 @@ object tasty {
     case class TypeBounds(loBound: Type, hiBound: Type)
   }
 
+// ------ Modifiers ---------------------------------
+
   enum Modifier extends Positioned {
     case Private, Protected, Abstract, Final, Sealed, Case, Implicit, Erased, Lazy, Override, Inline,
          Macro,                 // inline method containing toplevel splices
@@ -259,6 +280,8 @@ object tasty {
     case QualifiedProtected(boundary: Type)
     case Annotation(tree: Term)
   }
+
+// ------ Constants ---------------------------------
 
   enum Constant(value: Any) {
     case Unit                            extends Constant(())
