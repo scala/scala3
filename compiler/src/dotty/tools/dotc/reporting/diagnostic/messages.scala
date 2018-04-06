@@ -910,7 +910,7 @@ object messages {
   case class MatchCaseUnreachable()(implicit ctx: Context)
   extends Message(MatchCaseUnreachableID) {
     val kind = "Match case Unreachable"
-    val msg = "unreachable code"
+    val msg = "unreachable case"
     val explanation = ""
   }
 

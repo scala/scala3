@@ -3,6 +3,6 @@ class Test {
 
   x match {
     case _: List[Int @unchecked] => 5
-    case _: List[Int] @unchecked => 5
+    case _: Option[Int] @unchecked => 5
   }
 }
