@@ -2,7 +2,6 @@ package dotty.tools.dotc
 package transform
 
 import dotty.tools.dotc.core.Annotations.Annotation
-import dotty.tools.dotc.core.Phases.NeedsCompanions
 
 import scala.collection.mutable
 import core._
