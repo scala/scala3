@@ -13,8 +13,9 @@ lazy val pluginSetting = Seq(
 
 lazy val plugin = (project in file("plugin")).settings(pluginSetting: _*)
 
-scalaVersion := dottyVersion
 
-autoCompilerPlugins := true
-
-addCompilerPlugin("ch.epfl.lamp" %% "dividezero" % "0.0.1")
+lazy val root = (project in file(".")).settings(
+  scalaVersion := dottyVersion,
+  autoCompilerPlugins := true,
+  addCompilerPlugin("ch.epfl.lamp" %% "dividezero" % "0.0.1")
+)
