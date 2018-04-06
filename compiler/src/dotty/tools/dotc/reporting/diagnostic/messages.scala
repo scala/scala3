@@ -909,8 +909,15 @@ object messages {
 
   case class MatchCaseUnreachable()(implicit ctx: Context)
   extends Message(MatchCaseUnreachableID) {
-    val kind = s"""Match ${hl"case"} Unreachable"""
-    val msg = "unreachable code"
+    val kind = "Match case Unreachable"
+    val msg = "unreachable case"
+    val explanation = ""
+  }
+
+  case class MatchCaseOnlyNullWarning()(implicit ctx: Context)
+  extends Message(MatchCaseOnlyNullWarningID) {
+    val kind = "Only null matched"
+    val msg = s"Only ${hl"null"} is matched. Consider using `case null =>` instead."
     val explanation = ""
   }
 

@@ -429,7 +429,6 @@ object desugar {
         }
         val hasRepeatedParam = constrVparamss.exists(_.exists {
           case ValDef(_, tpt, _) => isRepeated(tpt)
-          case _ => false
         })
         if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
         else {

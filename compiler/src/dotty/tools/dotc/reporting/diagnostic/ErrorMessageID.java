@@ -128,6 +128,7 @@ public enum ErrorMessageID {
     ParamsNoInlineID,
     JavaSymbolIsNotAValueID,
     DoubleDeclarationID,
+    MatchCaseOnlyNullWarningID,
     ;
 
     public int errorNumber() {
