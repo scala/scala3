@@ -1137,12 +1137,17 @@ class Namer { typer: Typer =>
       }
 
       def cookedRhsType = deskolemize(dealiasIfUnit(widenRhs(rhsType)))
-      lazy val lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.pos)
+      def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.pos)
       //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
-      if (inherited.exists)
-        if (sym.is(Final, butNot = Method) && lhsType.isInstanceOf[ConstantType])
-          lhsType // keep constant types that fill in for a non-constant (to be revised when inline has landed).
+      if (inherited.exists) {
+        if (sym.is(Final, butNot = Method)) {
+          val tp = lhsType
+          if (tp.isInstanceOf[ConstantType])
+            tp // keep constant types that fill in for a non-constant (to be revised when inline has landed).
+          else inherited
+        }
         else inherited
+      }
       else {
         if (sym is Implicit)
           mdef match {
