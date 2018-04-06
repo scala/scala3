@@ -44,11 +44,11 @@ class InterceptedMethods extends MiniPhase {
 
   override def phaseName: String = InterceptedMethods.name
 
-  private[this] var primitiveGetClassMethods: Set[Symbol] = _
+  private[this] var scalaValueClasses: scala.collection.Set[Symbol] = _
 
   /** perform context-dependant initialization */
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
-    primitiveGetClassMethods = Set[Symbol]() ++ defn.ScalaValueClasses().map(x => x.requiredMethod(nme.getClass_))
+    scalaValueClasses = defn.ScalaValueClasses()
     ctx
   }
 
@@ -105,7 +105,7 @@ class InterceptedMethods extends MiniPhase {
               List(qual, typer.resolveClassTag(tree.pos, qual.tpe.widen))))
           }*/
          */
-      case t if primitiveGetClassMethods.contains(t) =>
+      case t if t.name == nme.getClass_ && scalaValueClasses.contains(t.owner) =>
           // if we got here then we're trying to send a primitive getClass method to either
           // a) an Any, in which cage Object_getClass works because Any erases to object. Or
           //
