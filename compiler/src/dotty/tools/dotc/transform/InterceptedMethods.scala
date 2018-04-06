@@ -44,14 +44,6 @@ class InterceptedMethods extends MiniPhase {
 
   override def phaseName: String = InterceptedMethods.name
 
-  private[this] var primitiveGetClassMethods: Set[Symbol] = _
-
-  /** perform context-dependant initialization */
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
-    primitiveGetClassMethods = Set[Symbol]() ++ defn.ScalaValueClasses().map(x => x.requiredMethod(nme.getClass_))
-    ctx
-  }
-
   // this should be removed if we have guarantee that ## will get Apply node
   override def transformSelect(tree: tpd.Select)(implicit ctx: Context): Tree = {
     if (tree.symbol.isTerm && (defn.Any_## eq tree.symbol.asTerm)) {
@@ -105,7 +97,7 @@ class InterceptedMethods extends MiniPhase {
               List(qual, typer.resolveClassTag(tree.pos, qual.tpe.widen))))
           }*/
          */
-      case t if primitiveGetClassMethods.contains(t) =>
+      case t if t.name == nme.getClass_ && defn.ScalaValueClasses().contains(t.owner) =>
           // if we got here then we're trying to send a primitive getClass method to either
           // a) an Any, in which cage Object_getClass works because Any erases to object. Or
           //
