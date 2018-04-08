@@ -66,7 +66,7 @@ class FromTastyTests extends ParallelTesting {
     step1.checkCompile() // Compile all files to generate the class files with tasty
     step2.checkRuns() // Compile from tasty and run the result
     step3.checkCompile() // Decompile from tasty
-    step4.checkCompile() // Recompile decompiled code
+    step4.checkRuns() // Recompile decompiled code
     (step1 + step2 + step3 + step4).delete()
   }
 
