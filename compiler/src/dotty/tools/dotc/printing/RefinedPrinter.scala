@@ -652,7 +652,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val selfText = {
       val selfName = if (self.name == nme.WILDCARD) keywordStr("this") else self.name.toString
       (selfName ~ optText(self.tpt)(": " ~ _) ~ " =>").close
-    } provided !self.isEmpty
+    } provided (!self.isEmpty && !constr.symbol.owner.is(Module))
 
     val body = if (ctx.settings.YtestPickler.value) {
       // Pickling/unpickling reorders the body members, so we need to homogenize

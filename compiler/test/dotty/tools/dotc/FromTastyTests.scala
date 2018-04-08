@@ -61,7 +61,6 @@ class FromTastyTests extends ParallelTesting {
         "eff-dependent.scala",
       ),
       recompileBlacklist = Set(
-        "puzzle"
       )
     )
     step1.checkCompile() // Compile all files to generate the class files with tasty

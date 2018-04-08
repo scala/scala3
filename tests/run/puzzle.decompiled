@@ -1,5 +1,5 @@
 /** Decompiled from out/runTestFromTasty/run/puzzle/Test.class */
-object Test  { this: Test.type =>
+object Test  {
   def main(args: Array[String]): Unit =
     {
       println(if false then 5.0 else 53.0)
