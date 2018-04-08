@@ -20,4 +20,7 @@ object Test extends App {
   val foo = "Hello"
   val bar = "World"
   println(StringContext(foo, bar).s(" "))
+
+  def myStringContext= { println("Side effect!"); StringContext }
+  println(myStringContext(foo, bar).s(" ")) // this shouldn't be optimised away
 }
