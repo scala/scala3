@@ -22,5 +22,8 @@ object Test extends App {
   println(StringContext(foo, bar).s(" "))
 
   def myStringContext= { println("Side effect!"); StringContext }
-  println(myStringContext(foo, bar).s(" ")) // this shouldn't be optimised away
+  println(myStringContext("Foo", "Bar").s(" ")) // this shouldn't be optimised away
+
+  // this shouldn't be optimised away
+  println({ println("Side effect n2!"); StringContext }.apply("Titi", "Toto").s(" "))
 }
