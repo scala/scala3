@@ -1020,12 +1020,6 @@ object Denotations {
       interval
     }
 
-    /** For ClassDenotations only:
-     *  If caches influenced by parent classes are still valid, the denotation
-     *  itself, otherwise a freshly initialized copy.
-     */
-    def syncWithParents(implicit ctx: Context): SingleDenotation = this
-
     /** Show declaration string; useful for showing declarations
      *  as seen from subclasses.
      */

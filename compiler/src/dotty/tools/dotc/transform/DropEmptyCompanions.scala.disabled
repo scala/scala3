@@ -31,7 +31,7 @@ import dotty.tools.dotc.transform.MegaPhase.TransformerInfo
 class DropEmptyCompanions extends MiniPhase { thisTransform =>
   import ast.tpd._
   override def phaseName = "dropEmptyCompanions"
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Flatten])
+  override def runsAfter = Set(Flatten.name)
 
   override def transformPackageDef(pdef: PackageDef)(implicit ctx: Context) = {
 

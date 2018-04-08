@@ -1,0 +1,9 @@
+
+classOf[Foo].getCanonicalName()
+Foo
+
+classOf[Foo#Bar].getCanonicalName()
+Foo.Bar
+
+classOf[Foo.Baz].getCanonicalName()
+Foo.Baz

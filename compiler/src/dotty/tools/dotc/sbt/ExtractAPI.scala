@@ -38,7 +38,7 @@ class ExtractAPI extends Phase {
   // after `PostTyper` (unlike `ExtractDependencies`, the simplication to trees
   // done by `PostTyper` do not affect this phase because it only cares about
   // definitions, and `PostTyper` does not change definitions).
-  override def runsAfter = Set(classOf[transform.PostTyper])
+  override def runsAfter = Set(transform.PostTyper.name)
 
   override def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit

@@ -45,7 +45,7 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
   final def consistentParams(that: Signature): Boolean = {
     @tailrec def loop(names1: List[TypeName], names2: List[TypeName]): Boolean =
       if (names1.isEmpty) names2.isEmpty
-      else names2.nonEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
+      else !names2.isEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
     loop(this.paramsSig, that.paramsSig)
   }
 

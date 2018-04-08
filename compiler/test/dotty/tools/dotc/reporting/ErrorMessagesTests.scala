@@ -881,7 +881,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(2, messages)
-      messages.foreach(assertEquals(_, FunctionTypeNeedsNonEmptyParameterList()))
+      messages.foreach(assertEquals(_, FunctionTypeNeedsNonEmptyParameterList(isImplicit = true, isErased = false)))
     }
 
   @Test def wrongNumberOfParameters =
@@ -1306,4 +1306,46 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val DoubleDeclaration(symbol, previousSymbol) :: Nil = messages
       assertEquals(symbol.name.mangledString, "a")
   }
+
+  @Test def i4127a =
+    checkMessagesAfter("frontend") {
+      """
+        |class Foo {
+        |  val x: implicit () => Int = () => 1
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val (msg @ FunctionTypeNeedsNonEmptyParameterList(_, _)) :: Nil = messages
+      assertEquals(msg.mods, "implicit")
+    }
+
+  @Test def i4127b =
+    checkMessagesAfter("frontend") {
+      """
+        |class Foo {
+        |  val x: erased () => Int = () => 1
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val (msg @ FunctionTypeNeedsNonEmptyParameterList(_, _)) :: Nil = messages
+      assertEquals(msg.mods, "erased")
+    }
+
+  @Test def i4127c =
+    checkMessagesAfter("frontend") {
+      """
+        |class Foo {
+        |  val x: erased implicit () => Int = () => 1
+        |}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val (msg @ FunctionTypeNeedsNonEmptyParameterList(_, _)) :: Nil = messages
+      assertEquals(msg.mods, "erased implicit")
+    }
 }

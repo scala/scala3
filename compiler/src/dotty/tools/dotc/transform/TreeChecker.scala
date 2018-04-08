@@ -56,16 +56,12 @@ class TreeChecker extends Phase with SymTransformer {
 
   def isValidJVMMethodName(name: Name) = name.toString.forall(isValidJVMMethodChar)
 
-  def printError(str: String)(implicit ctx: Context) = {
-    ctx.echo(Console.RED + "[error] " + Console.WHITE  + str)
-  }
-
   val NoSuperClass = Trait | Package
 
   def testDuplicate(sym: Symbol, registry: mutable.Map[String, Symbol], typ: String)(implicit ctx: Context) = {
     val name = sym.fullName.mangledString
-    if (this.flatClasses && registry.contains(name))
-        printError(s"$typ defined twice $sym ${sym.id} ${registry(name).id}")
+    val isDuplicate = this.flatClasses && registry.contains(name)
+    assert(!isDuplicate, s"$typ defined twice $sym ${sym.id} ${registry(name).id}")
     registry(name) = sym
   }
 
@@ -85,14 +81,13 @@ class TreeChecker extends Phase with SymTransformer {
     if (sym.isClass && !sym.isAbsent) {
       val validSuperclass = sym.isPrimitiveValueClass || defn.syntheticCoreClasses.contains(sym) ||
         (sym eq defn.ObjectClass) || (sym is NoSuperClass) || (sym.asClass.superClass.exists)
-      if (!validSuperclass)
-        printError(s"$sym has no superclass set")
 
+      assert(validSuperclass, i"$sym has no superclass set")
       testDuplicate(sym, seenClasses, "class")
     }
 
-    if (sym.is(Method) && sym.is(Deferred) && sym.is(Private))
-      assert(false, s"$sym is both Deferred and Private")
+    val isDeferredAndPrivate = sym.is(Method) && sym.is(Deferred) && sym.is(Private)
+    assert(!isDeferredAndPrivate, i"$sym is both Deferred and Private")
 
     checkCompanion(symd)
 
@@ -182,12 +177,19 @@ class TreeChecker extends Phase with SymTransformer {
       res
     }
 
+    def withPatSyms[T](syms: List[Symbol])(op: => T)(implicit ctx: Context) = {
+      nowDefinedSyms ++= syms
+      val res = op
+      nowDefinedSyms --= syms
+      res
+    }
+
     def assertDefined(tree: untpd.Tree)(implicit ctx: Context) =
       if (
         tree.symbol.maybeOwner.isTerm &&
         !(tree.symbol.is(Label) && !tree.symbol.owner.isClass && ctx.phase.labelsReordered) // labeldefs breaks scoping
       )
-        assert(nowDefinedSyms contains tree.symbol, i"undefined symbol ${tree.symbol}")
+        assert(nowDefinedSyms contains tree.symbol, i"undefined symbol ${tree.symbol} at line " + tree.pos.line)
 
     /** assert Java classes are not used as objects */
     def assertIdentNotJavaClass(tree: Tree)(implicit ctx: Context): Unit = tree match {
@@ -405,7 +407,7 @@ class TreeChecker extends Phase with SymTransformer {
       }
 
     override def typedCase(tree: untpd.CaseDef, pt: Type, selType: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = {
-      withDefinedSyms(tree.pat.asInstanceOf[tpd.Tree].filterSubTrees(_.isInstanceOf[ast.Trees.Bind[_]])) {
+      withPatSyms(tpd.patVars(tree.pat.asInstanceOf[tpd.Tree])) {
         super.typedCase(tree, pt, selType, gadtSyms)
       }
     }
@@ -475,7 +477,9 @@ class TreeChecker extends Phase with SymTransformer {
 }
 
 object TreeChecker {
-  /** Check that TypeParamRefs and MethodParams refer to an enclosing type */
+  /** - Check that TypeParamRefs and MethodParams refer to an enclosing type.
+   *  - Check that all type variables are instantiated.
+   */
   def checkNoOrphans(tp0: Type, tree: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = new TypeMap() {
     val definedBinders = new java.util.IdentityHashMap[Type, Any]
     def apply(tp: Type): Type = {
@@ -487,6 +491,7 @@ object TreeChecker {
         case tp: ParamRef =>
           assert(definedBinders.get(tp.binder) != null, s"orphan param: ${tp.show}, hash of binder = ${System.identityHashCode(tp.binder)}, tree = ${tree.show}, type = $tp0")
         case tp: TypeVar =>
+          assert(tp.isInstantiated, s"Uninstantiated type variable: ${tp.show}, tree = ${tree.show}")
           apply(tp.underlying)
         case _ =>
           mapOver(tp)

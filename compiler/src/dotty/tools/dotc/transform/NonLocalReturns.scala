@@ -22,7 +22,7 @@ class NonLocalReturns extends MiniPhase {
   import NonLocalReturns._
   import ast.tpd._
 
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[ElimByName])
+  override def runsAfter = Set(ElimByName.name)
 
   private def ensureConforms(tree: Tree, pt: Type)(implicit ctx: Context) =
     if (tree.tpe <:< pt) tree

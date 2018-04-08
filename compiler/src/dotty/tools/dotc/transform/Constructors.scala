@@ -20,6 +20,10 @@ import util.Positions._
 import Constants.Constant
 import collection.mutable
 
+object Constructors {
+  val name = "constructors"
+}
+
 /** This transform
  *   - moves initializers from body to constructor.
  *   - makes all supercalls explicit
@@ -29,9 +33,9 @@ import collection.mutable
 class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import tpd._
 
-  override def phaseName: String = "constructors"
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[HoistSuperArgs])
-  override def runsAfterGroupsOf: Set[Class[_ <: Phase]] = Set(classOf[Memoize])
+  override def phaseName: String = Constructors.name
+  override def runsAfter = Set(HoistSuperArgs.name)
+  override def runsAfterGroupsOf = Set(Memoize.name)
     // Memoized needs to be finished because we depend on the ownerchain after Memoize
     // when checking whether an ident is an access in a constructor or outside it.
     // This test is done in the right-hand side of a value definition. If Memoize

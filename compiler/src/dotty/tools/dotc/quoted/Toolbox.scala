@@ -29,12 +29,16 @@ object Toolbox {
 
     def show(expr: Expr[T]): String = expr match {
       case expr: LiftedExpr[T] =>
-        implicit val ctx = new QuoteDriver().initCtx
-        if (showSettings.compilerArgs.contains("-color:never"))
-          ctx.settings.color.update("never")
-        val printer = new RefinedPrinter(ctx)
-        if (expr.value == BoxedUnit.UNIT) "()"
-        else printer.toText(Literal(Constant(expr.value))).mkString(Int.MaxValue, false)
+        expr.value match {
+          case value: Class[_] => s"classOf[${value.getCanonicalName}]"
+          case value if value == BoxedUnit.UNIT => "()"
+          case value =>
+            implicit val ctx = new QuoteDriver().initCtx
+            if (showSettings.compilerArgs.contains("-color:never"))
+              ctx.settings.color.update("never")
+            val printer = new RefinedPrinter(ctx)
+            printer.toText(Literal(Constant(value))).mkString(Int.MaxValue, false)
+        }
       case _ => new QuoteDriver().show(expr, showSettings)
     }
 

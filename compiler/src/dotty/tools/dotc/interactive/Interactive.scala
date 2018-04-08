@@ -305,7 +305,7 @@ object Interactive {
     val buf = new mutable.ListBuffer[SourceTree]
 
     trees foreach { case SourceTree(topTree, source) =>
-      (new untpd.TreeTraverser {
+      new untpd.TreeTraverser {
         override def traverse(tree: untpd.Tree)(implicit ctx: Context) = {
           tree match {
             case utree: untpd.NameTree if tree.hasType =>
@@ -324,7 +324,7 @@ object Interactive {
               traverseChildren(tree)
           }
         }
-      }).traverse(topTree)
+      }.traverse(topTree)
     }
 
     buf.toList

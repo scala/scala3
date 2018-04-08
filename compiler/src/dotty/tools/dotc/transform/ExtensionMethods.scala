@@ -11,7 +11,7 @@ import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.{ mutable, immutable }
 import mutable.ListBuffer
 import core._
-import dotty.tools.dotc.core.Phases.{NeedsCompanions, Phase}
+import dotty.tools.dotc.core.Phases.Phase
 import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import TypeErasure.{ valueErasure, ErasedValueType }
@@ -43,11 +43,11 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
   import ExtensionMethods._
 
   /** the following two members override abstract members in Transform */
-  override def phaseName: String = "extmethods"
+  override def phaseName: String = ExtensionMethods.name
 
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[ElimRepeated])
+  override def runsAfter = Set(ElimRepeated.name)
 
-  override def runsAfterGroupsOf = Set(classOf[FirstTransform]) // need companion objects to exist
+  override def runsAfterGroupsOf = Set(FirstTransform.name) // need companion objects to exist
 
   override def changesMembers = true // the phase adds extension methods
 
@@ -108,7 +108,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
           moduleClassSym
       }
     case ref: SymDenotation =>
-      if (isMethodWithExtension(ref) && ref.hasAnnotation(defn.TailrecAnnot)) {
+      if (isMethodWithExtension(ref.symbol) && ref.hasAnnotation(defn.TailrecAnnot)) {
         val ref1 = ref.copySymDenotation()
         ref1.removeAnnotation(defn.TailrecAnnot)
         ref1
@@ -182,6 +182,8 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
 }
 
 object ExtensionMethods {
+  val name = "extmethods"
+
   /** Generate stream of possible names for the extension version of given instance method `imeth`.
    *  If the method is not overloaded, this stream consists of just "imeth$extension".
    *  If the method is overloaded, the stream has as first element "imeth$extenionX", where X is the

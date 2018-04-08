@@ -152,17 +152,17 @@ Rules
    * In a method definition
    * In a `val` definition (but not `lazy val` or `var`)
 
-```scala
-erased val x = ...
-erased def f = ...
+    ```scala
+    erased val x = ...
+    erased def f = ...
 
-def g(erased x: Int) = ...
+    def g(erased x: Int) = ...
 
-(erased x: Int) => ...
-def h(x: erased Int => Int) = ...
+    (erased x: Int) => ...
+    def h(x: erased Int => Int) = ...
 
-class K(erased x: Int) { ... }
-```
+    class K(erased x: Int) { ... }
+    ```
 
 
 2. A reference to an `erased` definition can only be used
@@ -177,12 +177,12 @@ class K(erased x: Int) { ... }
    * `(implicit erased T1, T2) => R  <:<  (erased T1, T2) => R`
    *  ...
 
-Note that there is no subtype relation between `erased T => R` and `T => R` (or `implicit erased T => R` and `implicit T => R`)
+   Note that there is no subtype relation between `erased T => R` and `T => R` (or `implicit erased T => R` and `implicit T => R`)
 
 
 4. Eta expansion
 
-if `def f(erased x: T): U` then `f: (erased T) => U`.
+   if `def f(erased x: T): U` then `f: (erased T) => U`.
 
 
 5. Erasure Semantics
@@ -194,7 +194,7 @@ if `def f(erased x: T): U` then `f: (erased T) => U`.
 
 6. Overloading
 
-Method with `erased` parameters will follow the normal overloading constraints after erasure.
+   Method with `erased` parameters will follow the normal overloading constraints after erasure.
 
 
 7. Overriding

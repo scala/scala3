@@ -2,12 +2,11 @@
 out/posTestFromTasty/pos/simpleCaseObject/foo/Foo.class
 --------------------------------------------------------------------------------
 package foo {
-  case object Foo() extends Object() with _root_.scala.Product {
-    this: foo.Foo.type =>
-
+  case object Foo() extends _root_.scala.Product { this: foo.Foo.type =>
     override def hashCode(): Int = 1045991777
     override def toString(): String = "Foo"
-    override def canEqual(that: Any): Boolean = that.isInstanceOf[foo.Foo]
+    override def canEqual(that: Any): Boolean =
+      that.isInstanceOf[foo.Foo @unchecked]
     override def productArity: Int = 0
     override def productPrefix: String = "Foo"
     override def productElement(n: Int): Any =

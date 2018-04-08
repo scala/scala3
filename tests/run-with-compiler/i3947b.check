@@ -1,0 +1,9 @@
+
+classOf[Boolean].getCanonicalName()
+boolean
+
+classOf[Byte].getCanonicalName()
+byte
+
+classOf[Char].getCanonicalName()
+char

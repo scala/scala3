@@ -56,10 +56,10 @@ Standard-Section: "ASTs" TopLevelStat*
                   Stat
 
   Stat          = Term
-                  VALDEF         Length NameRef Type rhs_Term? Modifier*
-                  DEFDEF         Length NameRef TypeParam* Params* return_Type rhs_Term?
+                  VALDEF         Length NameRef type_Term rhs_Term? Modifier*
+                  DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
                                         Modifier*
-                  TYPEDEF        Length NameRef (Type | Template) Modifier*
+                  TYPEDEF        Length NameRef (type_Term | Template) Modifier*
                   IMPORT         Length qual_Term Selector*
   Selector      = IMPORTED              name_NameRef
                   RENAMED               to_NameRef
@@ -69,20 +69,19 @@ Standard-Section: "ASTs" TopLevelStat*
   TypeParam     = TYPEPARAM      Length NameRef Type Modifier*
   Params        = PARAMS         Length Param*
   Param         = PARAM          Length NameRef Type rhs_Term? Modifier*  // rhs_Term is present in the case of an aliased class parameter
-  Template      = TEMPLATE       Length TypeParam* Param* Parent* Self? Stat* // Stat* always starts with the primary constructor.
-  Parent        = Application
-                  Type
+  Template      = TEMPLATE       Length TypeParam* Param* parent_Term* Self? Stat* // Stat* always starts with the primary constructor.
   Self          = SELFDEF               selfName_NameRef selfType_Type
 
   Term          = Path
-                  Application
                   IDENT                 NameRef Type     // used when term ident’s type is not a TermRef
                   SELECT                possiblySigned_NameRef qual_Term
                   QUALTHIS              typeIdent_Tree
-                  NEW                   cls_Type
+                  NEW                   clsType_Term
                   NAMEDARG              paramName_NameRef arg_Term
+                  APPLY          Length fn_Term arg_Term*
+                  TYPEAPPLY      Length fn_Term arg_Type*
                   SUPER          Length this_Term mixinTypeIdent_Tree?
-                  TYPED          Length expr_Term ascription_Type
+                  TYPED          Length expr_Term ascriptionType_Tern
                   ASSIGN         Length lhs_Term rhs_Term
                   BLOCK          Length expr_Term Stat*
                   INLINED        Length call_Term expr_Term Stat*
@@ -98,7 +97,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   UNAPPLY        Length fun_Term ImplicitArg* pat_Type pat_Term*
                   IDENTtpt              NameRef Type      // used for all type idents
                   SELECTtpt             NameRef qual_Term
-                  SINGLETONtpt          Path
+                  SINGLETONtpt          ref_Term
                   REFINEDtpt     Length underlying_Term refinement_Stat*
                   APPLIEDtpt     Length tycon_Term arg_Term*
                   POLYtpt        Length TypeParam* body_Term
@@ -110,9 +109,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   EMPTYTREE
                   SHAREDterm            term_ASTRef
                   HOLE           Length idx_Nat arg_Tree*
-  Application   = APPLY          Length fn_Term arg_Term*
 
-                  TYPEAPPLY      Length fn_Term arg_Type*
   CaseDef       = CASEDEF        Length pat_Term rhs_Tree guard_Tree?
   ImplicitArg   = IMPLICITARG           arg_Term
   ASTRef        = Nat                               // byte position in AST payload
@@ -179,6 +176,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SEALED
                   CASE
                   IMPLICIT
+                  ERASED
                   LAZY
                   OVERRIDE
                   INLINE                              // inline method
@@ -198,6 +196,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SCALA2X                             // Imported from Scala2.x
                   DEFAULTparameterized                // Method with default parameters
                   STABLE                              // Method that is assumed to be stable
+                  PARAMsetter                         // A setter without a body named `x_=` where `x` is pickled as a PARAM
                   Annotation
 
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term
@@ -226,8 +225,8 @@ Standard Section: "Positions" Assoc*
 object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion = 5
-  val MinorVersion = 1
+  val MajorVersion = 6
+  val MinorVersion = 0
 
   /** Tags used to serialize names */
   class NameTags {
@@ -268,6 +267,7 @@ object TastyFormat {
   // AST tags
   // Cat. 1:    tag
 
+  final val firstSimpleTreeTag = UNITconst
   final val UNITconst = 2
   final val FALSEconst = 3
   final val TRUEconst = 4
@@ -300,6 +300,7 @@ object TastyFormat {
   final val STABLE = 31
   final val MACRO = 32
   final val ERASED = 33
+  final val PARAMsetter = 34
 
   // Cat. 2:    tag Nat
 
@@ -417,7 +418,6 @@ object TastyFormat {
 
   final val HOLE = 255
 
-  final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHAREDterm
   final val firstASTTreeTag = THIS
   final val firstNatASTTreeTag = IDENT
@@ -425,7 +425,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= ERASED ||
+    firstSimpleTreeTag <= tag && tag <= PARAMsetter ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -463,6 +463,7 @@ object TastyFormat {
        | SCALA2X
        | DEFAULTparameterized
        | STABLE
+       | PARAMsetter
        | ANNOTATION
        | PRIVATEqualified
        | PROTECTEDqualified => true
@@ -518,6 +519,7 @@ object TastyFormat {
     case SCALA2X => "SCALA2X"
     case DEFAULTparameterized => "DEFAULTparameterized"
     case STABLE => "STABLE"
+    case PARAMsetter => "PARAMsetter"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"

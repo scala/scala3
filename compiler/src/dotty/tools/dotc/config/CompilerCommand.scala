@@ -114,7 +114,7 @@ object CompilerCommand extends DotClass {
 
     def shouldStopWithInfo = {
       import settings._
-      Set(help, Xhelp, Yhelp) exists (_.value)
+      Set(help, Xhelp, Yhelp, showPlugins) exists (_.value)
     }
 
     def infoMessage: String = {
@@ -122,6 +122,7 @@ object CompilerCommand extends DotClass {
       if (help.value) usageMessage
       else if (Xhelp.value) xusageMessage
       else if (Yhelp.value) yusageMessage
+      else if (showPlugins.value) ctx.pluginDescriptions
       else ""
     }
 

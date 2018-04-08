@@ -884,7 +884,7 @@ object messages {
     val msg =
       hl"""|match may not be exhaustive.
            |
-           |It would fail on: $uncovered"""
+           |It would fail on pattern case: $uncovered"""
 
 
     val explanation =
@@ -909,8 +909,15 @@ object messages {
 
   case class MatchCaseUnreachable()(implicit ctx: Context)
   extends Message(MatchCaseUnreachableID) {
-    val kind = s"""Match ${hl"case"} Unreachable"""
-    val msg = "unreachable code"
+    val kind = "Match case Unreachable"
+    val msg = "unreachable case"
+    val explanation = ""
+  }
+
+  case class MatchCaseOnlyNullWarning()(implicit ctx: Context)
+  extends Message(MatchCaseOnlyNullWarningID) {
+    val kind = "Only null matched"
+    val msg = s"Only ${hl"null"} is matched. Consider using `case null =>` instead."
     val explanation = ""
   }
 
@@ -1715,10 +1722,11 @@ object messages {
     }
   }
 
-  case class FunctionTypeNeedsNonEmptyParameterList(isImplicit: Boolean = true, isErased: Boolean = true)(implicit ctx: Context)
+  case class FunctionTypeNeedsNonEmptyParameterList(isImplicit: Boolean, isErased: Boolean)(implicit ctx: Context)
     extends Message(FunctionTypeNeedsNonEmptyParameterListID) {
+    assert(isImplicit || isErased)
     val kind = "Syntax"
-    val mods = ((isImplicit, "implicit") :: (isErased, "erased") :: Nil).filter(_._1).mkString(" ")
+    val mods = ((isErased, "erased") :: (isImplicit, "implicit") :: Nil).collect { case (true, mod) => mod }.mkString(" ")
     val msg = mods + " function type needs non-empty parameter list"
     val explanation = {
       val code1 = s"type Transactional[T] = $mods Transaction => T"

@@ -40,7 +40,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
   override def phaseName: String = "linkScala2Impls"
   override def changesMembers = true
 
-  override def runsAfterGroupsOf: Set[Class[_ <: Phase]] = Set(classOf[Mixin])
+  override def runsAfterGroupsOf = Set(Mixin.name)
     // Adds as a side effect static members to traits which can confuse Mixin,
     // that's why it is runsAfterGroupOf
 

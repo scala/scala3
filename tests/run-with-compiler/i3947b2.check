@@ -1,0 +1,9 @@
+
+classOf[Short].getCanonicalName()
+short
+
+classOf[Int].getCanonicalName()
+int
+
+classOf[Long].getCanonicalName()
+long

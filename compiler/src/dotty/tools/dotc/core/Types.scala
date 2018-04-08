@@ -508,10 +508,20 @@ object Types {
             case tp1 => tp1
           })
         case tp: TypeRef =>
-          tp.denot.findMember(name, pre, excluded)
+          tp.denot match {
+            case d: ClassDenotation => d.findMember(name, pre, excluded)
+            case d => go(d.info)
+          }
         case tp: AppliedType =>
-          goApplied(tp)
-        case tp: ThisType =>
+          tp.tycon match {
+            case tc: TypeRef if tc.symbol.isClass =>
+              go(tc)
+            case tc: HKTypeLambda =>
+              goApplied(tp, tc)
+            case _ =>
+              go(tp.superType)
+          }
+        case tp: ThisType => // ??? inline
           goThis(tp)
         case tp: RefinedType =>
           if (name eq tp.refinedName) goRefined(tp) else go(tp.parent)
@@ -598,15 +608,9 @@ object Types {
         }
       }
 
-      def goApplied(tp: AppliedType) = tp.tycon match {
-        case tl: HKTypeLambda =>
-          go(tl.resType).mapInfo(info =>
-            tl.derivedLambdaAbstraction(tl.paramNames, tl.paramInfos, info).appliedTo(tp.args))
-        case tc: TypeRef if tc.symbol.isClass =>
-          go(tc)
-        case _ =>
-          go(tp.superType)
-      }
+      def goApplied(tp: AppliedType, tycon: HKTypeLambda) =
+        go(tycon.resType).mapInfo(info =>
+          tycon.derivedLambdaAbstraction(tycon.paramNames, tycon.paramInfos, info).appliedTo(tp.args))
 
       def goThis(tp: ThisType) = {
         val d = go(tp.underlying)
@@ -623,6 +627,7 @@ object Types {
           // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
           go(tp.cls.typeRef) orElse d
       }
+
       def goParam(tp: TypeParamRef) = {
         val next = tp.underlying
         ctx.typerState.constraint.entry(tp) match {
@@ -632,12 +637,14 @@ object Types {
             go(next)
         }
       }
+
       def goSuper(tp: SuperType) = go(tp.underlying) match {
         case d: JointRefDenotation =>
           typr.println(i"redirecting super.$name from $tp to ${d.symbol.showLocated}")
           new UniqueRefDenotation(d.symbol, tp.memberInfo(d.symbol), d.validFor)
         case d => d
       }
+
       def goAnd(l: Type, r: Type) = {
         go(l) & (go(r), pre, safeIntersection = ctx.pendingMemberSearches.contains(name))
       }
@@ -1641,6 +1648,8 @@ object Types {
       }
 
     final def symbol(implicit ctx: Context): Symbol =
+      // We can rely on checkedPeriod (unlike in the definition of `denot` below)
+      // because SymDenotation#installAfter never changes the symbol
       if (checkedPeriod == ctx.period) lastSymbol else computeSymbol
 
     private def computeSymbol(implicit ctx: Context): Symbol =
@@ -1685,17 +1694,11 @@ object Types {
     /** The denotation currently denoted by this type */
     final def denot(implicit ctx: Context): Denotation = {
       val now = ctx.period
-      val lastd = lastDenotation
-      if (checkedPeriod == now) lastd else denotAt(lastd, now)
-    }
-
-    /** A first fall back to do a somewhat more expensive calculation in case the first
-     *  attempt in `denot` does not yield a denotation.
-     */
-    private def denotAt(lastd: Denotation, now: Period)(implicit ctx: Context): Denotation = {
-      if (checkedPeriod != Nowhere && lastd.validFor.contains(now)) {
+      // Even if checkedPeriod == now we still need to recheck lastDenotation.validFor
+      // as it may have been mutated by SymDenotation#installAfter
+      if (checkedPeriod != Nowhere && lastDenotation.validFor.contains(now)) {
         checkedPeriod = now
-        lastd
+        lastDenotation
       }
       else computeDenot
     }
@@ -2859,15 +2862,16 @@ object Types {
 
     type This = MethodType
 
+    val paramInfos = paramInfosExp(this)
+    val resType = resultTypeExp(this)
+    assert(resType.exists)
+
     def companion: MethodTypeCompanion
 
     final override def isJavaMethod: Boolean = companion eq JavaMethodType
     final override def isImplicitMethod: Boolean = companion.eq(ImplicitMethodType) || companion.eq(ErasedImplicitMethodType)
     final override def isErasedMethod: Boolean = companion.eq(ErasedMethodType) || companion.eq(ErasedImplicitMethodType)
 
-    val paramInfos = paramInfosExp(this)
-    val resType = resultTypeExp(this)
-    assert(resType.exists)
 
     def computeSignature(implicit ctx: Context): Signature = {
       val params = if (isErasedMethod) Nil else paramInfos
@@ -3478,10 +3482,9 @@ object Types {
     }
 
     def appliedRef(implicit ctx: Context): Type = {
-      def clsDenot = if (prefix eq cls.owner.thisType) cls.denot else cls.denot.copySymDenotation(info = this)
       if (appliedRefCache == null)
         appliedRefCache =
-          TypeRef(prefix, cls.name, clsDenot).appliedTo(cls.typeParams.map(_.typeRef))
+          TypeRef(prefix, cls).appliedTo(cls.typeParams.map(_.typeRef))
       appliedRefCache
     }
 

@@ -15,6 +15,10 @@ import core.Names.TermName
 import core.NameKinds.SuperArgName
 import SymUtils._
 
+object HoistSuperArgs {
+  val name = "hoistSuperArgs"
+}
+
 /** This phase hoists complex arguments of supercalls and this-calls out of the enclosing class.
  *  Example:
  *
@@ -40,9 +44,9 @@ import SymUtils._
 class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
-  def phaseName = "hoistSuperArgs"
+  def phaseName = HoistSuperArgs.name
 
-  override def runsAfter = Set(classOf[ByNameClosures])
+  override def runsAfter = Set(ByNameClosures.name)
     // By name closures need to be introduced first in order to be hoisted out here.
     // There's an interaction with by name closures in that the <cbn-arg> marker
     // application should not be hoisted, but be left at the point of call.

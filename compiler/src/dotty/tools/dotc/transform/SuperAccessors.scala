@@ -299,7 +299,6 @@ class SuperAccessors(thisPhase: DenotTransformer) {
      */
     private def needsProtectedAccessor(sym: Symbol, pos: Position)(implicit ctx: Context): Boolean = {
       val clazz = currentClass
-      val host = hostForAccessorOf(sym, clazz)
       def accessibleThroughSubclassing =
         validCurrentClass && clazz.classInfo.selfType.derivesFrom(sym.owner) && !clazz.is(Trait)
 
@@ -311,7 +310,13 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         && (sym.enclosingPackageClass != currentClass.enclosingPackageClass)
         && (sym.enclosingPackageClass == sym.accessBoundary(sym.enclosingPackageClass))
       )
+
+      if (!isCandidate)
+        return false
+
+      val host = hostForAccessorOf(sym, clazz)
       val hostSelfType = host.classInfo.selfType
+
       def isSelfType = !(host.appliedRef <:< hostSelfType) && {
         if (hostSelfType.typeSymbol.is(JavaDefined))
           ctx.restrictionError(
@@ -326,7 +331,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         )
         true
       }
-      isCandidate && !host.is(Package) && !isSelfType && !isJavaProtected
+      !host.is(Package) && !isSelfType && !isJavaProtected
     }
 
     /** Return the innermost enclosing class C of referencingClass for which either

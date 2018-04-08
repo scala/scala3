@@ -14,11 +14,15 @@ import Flags.Module
 import reporting.ThrowingReporter
 import collection.mutable
 
+object Pickler {
+  val name = "pickler"
+}
+
 /** This phase pickles trees */
 class Pickler extends Phase {
   import ast.tpd._
 
-  override def phaseName: String = "pickler"
+  override def phaseName: String = Pickler.name
 
   private def output(name: String, msg: String) = {
     val s = new PrintStream(name)

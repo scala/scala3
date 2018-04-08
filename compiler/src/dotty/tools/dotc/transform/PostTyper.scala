@@ -16,6 +16,10 @@ import config.Printers.typr
 import Symbols._, TypeUtils._, SymUtils._
 import reporting.diagnostic.messages.{NotAMember, SuperCallsNotAllowedInline}
 
+object PostTyper {
+  val name = "posttyper"
+}
+
 /** A macro transform that runs immediately after typer and that performs the following functions:
  *
  *  (1) Add super accessors and protected accessors (@see SuperAccessors)
@@ -55,7 +59,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
   import tpd._
 
   /** the following two members override abstract members in Transform */
-  override def phaseName: String = "posttyper"
+  override def phaseName: String = PostTyper.name
 
   override def changesMembers = true // the phase adds super accessors and synthetic methods
 
@@ -231,7 +235,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           //     be duplicated
           //  2. To enable correct pickling (calls can share symbols with the inlined code, which
           //     would trigger an assertion when pickling).
-          val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
+          // In the case of macros we keep the call to be able to reconstruct the parameters that
+          // are passed to the macro. This same simplification is applied in ReifiedQuotes when the
+          // macro splices are evaluated.
+          val callTrace =
+            if (call.symbol.is(Macro)) call
+            else Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion))
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {

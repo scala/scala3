@@ -1,0 +1,9 @@
+
+classOf[Float].getCanonicalName()
+float
+
+classOf[Double].getCanonicalName()
+double
+
+classOf[Unit].getCanonicalName()
+void

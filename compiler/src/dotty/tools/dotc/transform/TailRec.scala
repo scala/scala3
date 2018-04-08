@@ -68,7 +68,9 @@ class TailRec extends MiniPhase with FullParameterization {
 
   import dotty.tools.dotc.ast.tpd._
 
-  override def phaseName: String = "tailrec"
+  override def phaseName: String = TailRec.name
+
+  override def runsAfter = Set(ShortcutImplicits.name) // Replaces non-tail calls by tail calls
 
   final val labelFlags = Flags.Synthetic | Flags.Label
 
@@ -380,6 +382,7 @@ class TailRec extends MiniPhase with FullParameterization {
 }
 
 object TailRec {
+  val name = "tailrec"
 
   final class TailContext(val tailPos: Boolean) extends AnyVal
 
