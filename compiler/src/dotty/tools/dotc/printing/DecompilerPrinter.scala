@@ -58,4 +58,10 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
     val impl1 = impl.copy(parents = impl.parents.filterNot(_.symbol.maybeOwner == defn.ObjectClass))
     super.toTextTemplate(impl1, ofNew)
   }
+
+  override protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
+    if (tree.symbol eq defn.quoteMethod) "'"
+    else if (tree.symbol eq defn.typeQuoteMethod) "'[" ~ toTextGlobal(tree.args, ", ") ~ "]"
+    else super.typeApplyText(tree)
+  }
 }
