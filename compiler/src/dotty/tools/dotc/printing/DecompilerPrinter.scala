@@ -52,15 +52,9 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
     }
   }
 
-  override protected def toTextCore[T >: Untyped](tree: Tree[T]): Text = {
-    import untpd.{modsDeco => _, _}
-    tree match {
-      case TypeApply(fun, args) =>
-        if (tree.symbol eq defn.quoteMethod) "'"
-        else if (tree.symbol eq defn.typeQuoteMethod) "'[" ~ toTextGlobal(args, ", ") ~ "]"
-        else super.toTextCore(tree)
-      case _ =>
-        super.toTextCore(tree)
-    }
+  override protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
+    if (tree.symbol eq defn.quoteMethod) "'"
+    else if (tree.symbol eq defn.typeQuoteMethod) "'[" ~ toTextGlobal(tree.args, ", ") ~ "]"
+    else super.typeApplyText(tree)
   }
 }

@@ -229,6 +229,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
     ("{" ~ toText(trees, "\n") ~ "}").close
 
+  protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text =
+    toTextLocal(tree.fun) ~ "[" ~ toTextGlobal(tree.args, ", ") ~ "]"
+
   protected def toTextCore[T >: Untyped](tree: Tree[T]): Text = {
     import untpd.{modsDeco => _, _}
 
@@ -308,8 +311,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           }
         else
           toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
-      case TypeApply(fun, args) =>
-        toTextLocal(fun) ~ "[" ~ toTextGlobal(args, ", ") ~ "]"
+      case tree: TypeApply =>
+        typeApplyText(tree)
       case Literal(c) =>
         tree.typeOpt match {
           case ConstantType(tc) => withPos(toText(tc), tree.pos)
