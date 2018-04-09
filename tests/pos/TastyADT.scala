@@ -12,8 +12,8 @@ object tasty {
     case DefaultGetter(methodName: TermName, idx: String)           // s"$methodName${"$default$"}${idx+1}"
     case Variant(underlying: TermName, covariant: Boolean)          // s"${if (covariant) "+" else "-"}$underlying"
     case SuperAccessor(underlying: TermName)                        // s"${"super$"}$underlying"
-    case ProtectedAccessor(underlying: TermName)                    // s"${"protectded$"}$underlying"
-    case ProtectedSetter(underlying: TermName)                      // s"${"protectded$set"}$underlying"
+    case protectedAccessor(underlying: TermName)                    // s"${"protectded$"}$underlying"
+    case protectecSetter(underlying: TermName)                      // s"${"protectded$set"}$underlying"
     case ObjectClass(underlying: TermName)                          // s"$underlying${"$"}"
 
     case Expanded(prefix: TermName, selector: String)               // s"$prefix${"$$"}$name"  , used only for symbols coming from Scala 2
@@ -34,82 +34,10 @@ object tasty {
 
 // ------ Statements ---------------------------------
 
-// Note: Definitions are written as extractors, because they may be referred to
-//       recursively from some of their arguments (since we equate symbols with definitions)
-
   trait TopLevelStatement extends Positioned
-
   trait Statement extends TopLevelStatement
 
   case class Package(pkg: Term, body: List[TopLevelStatement]) extends TopLevelStatement
-
-  trait Definition extends Statement {
-    def tpe: Type = Type.SymRef(this, ???)
-  }
-
-  class ValDef(
-    val name: TermName,
-    val tpt: Term,
-    rhsExp: ValDef => Term | Empty,
-    val mods: List[Modifier])
-  extends Definition {
-    lazy val rhs = rhsExp(this)
-  }
-  object ValDef {
-    def apply(name: TermName, tpt: Term, rhs: Term | Empty, mods: List[Modifier] = Nil) =
-      new ValDef(name, tpt, _ => rhs, mods)
-    def unapply(vdef: ValDef) = Some((vdef.name, vdef.tpt, vdef.rhs, vdef.mods))
-  }
-
-  class DefDef(
-    val name: TermName,
-    typeParamsExp: DefDef => List[TypeDef],
-    paramssExp: DefDef => List[List[ValDef]],
-    returnTptExp: DefDef => Term,
-    rhsExp: DefDef => Term | Empty,
-    val mods: List[Modifier])
-  extends Definition {
-    val typeParams = typeParamsExp(this)
-    val paramss = paramssExp(this)
-    val returnTpt = returnTptExp(this)
-    lazy val rhs = rhsExp(this)
-  }
-  object DefDef {
-    def apply(name: TermName, typeParams: List[TypeDef], paramss: List[List[ValDef]], returnTpt: Term, rhs: Term | Empty, mods: List[Modifier] = Nil) =
-      new DefDef(name, _ => typeParams, _ => paramss, _ => returnTpt, _ => rhs, mods)
-    def unapply(ddef: DefDef) = Some((ddef.name, ddef.typeParams, ddef.paramss, ddef.returnTpt, ddef.rhs, ddef.mods))
-  }
-
-  class TypeDef(
-    val name: TypeName,
-    rhsExp: TypeDef => Term,
-    val mods: List[Modifier])
-  extends Definition {
-    val rhs = rhsExp(this),
-  }
-  object TypeDef {
-    def apply(name: TypeName, rhs: Term, mods: List[Modifier] = Nil) = new TypeDef(name, _ => rhs, mods)
-    def unapply(tdef: TypeDef) = Some((tdef.name, tdef.rhs, tdef.mods))
-  }
-
-  class ClassDef(
-    val name: TypeName,
-    rhsExp: ClassDef => Template,
-    val mods: List[Modifier])
-  extends Definition {
-    val rhs = rhsExp(this)
-  }
-  object ClassDef {
-    def apply(name: TypeName, rhs: Template, mods: List[Modifier] = Nil) = new ClassDef(name, _ => rhs, mods)
-    def unapply(tdef: ClassDef) = Some((tdef.name, tdef.rhs, tdef.mods))
-  }
-
-  case class Template(
-    typeParams: List[TypeDef],
-    paramss: List[List[ValDef]],
-    parents: List[Term],
-    self: ValDef | Empty,
-    body: List[Statement])
 
   case class Import(expr: Term, selector: List[ImportSelector]) extends Statement
 
@@ -120,6 +48,25 @@ object tasty {
   }
 
   case class Id(name: String) extends Positioned     // untyped ident
+
+// ------ Definitions ---------------------------------
+
+  class Symbol {
+    def owner: Symbol = ???
+    def definition: Definition = ???
+  }
+  object NoSymbol extends Symbol
+
+  trait Definition {
+    def sym: Symbol = ???
+  }
+
+  case class ValDef(name: TermName, tpt: Term, rhs: Term | Empty, mods: List[Modifier]) extends Definition
+  case class DefDef(name: TermName, typeParams: List[TypeDef], paramss: List[List[ValDef]],
+                    returnTpt: Term, rhs: Term | Empty, mods: List[Modifier]) extends Definition
+  case class TypeDef(name: TypeName, rhs: Term, mods: List[Modifier]) extends Definition
+  case class ClassDef(name: TypeName, constructor: DefDef, parents: List[Term],
+                      self: ValDef | Empty, body: List[Statement], mods: List[Modifier]) extends Definition
 
 // ------ Terms ---------------------------------
 
@@ -177,83 +124,82 @@ object tasty {
 
   case class CaseDef(pat: Pattern, guard: Term | Empty, rhs: Term) extends Positioned
 
-  sealed trait Type
-
 // ------ Types ---------------------------------
 
+  sealed trait Type
+
   object Type {
+    private val PlaceHolder = SymRef(NoSymbol, Empty)
+
     case class ConstantType(value: Constant) extends Type
-    case class SymRef(sym: Definition, qualifier: Type | Empty = Empty) extends Type
+    case class SymRef(sym: Symbol, qualifier: Type | Empty = Empty) extends Type
     case class NameRef(name: Name, qualifier: Type | Empty = Empty) extends Type // Empty means: select from _root_
     case class SuperType(thistp: Type, underlying: Type) extends Type
     case class Refinement(underlying: Type, name: Name, tpe: Type) extends Type
-    case class AppliedType(tycon: Type, args: Type | TypeBounds) extends Type
+    case class AppliedType(tycon: Type, args: List[Type | TypeBounds]) extends Type
     case class AnnotatedType(underlying: Type, annotation: Term) extends Type
     case class AndType(left: Type, right: Type) extends Type
     case class OrType(left: Type, right: Type) extends Type
     case class ByNameType(underlying: Type) extends Type
-    case class ParamRef(binder: LambdaType, idx: Int) extends Type
-    case class RecThis(binder: RecursiveType) extends Type
+    case class ParamRef(binder: LambdaType[_, _, _], idx: Int) extends Type
+    case class RecursiveThis(binder: RecursiveType) extends Type
 
-    // The following types are all expressed by extractors because they may be referred
-    // to from some of their arguments
-
-    class RecursiveType(underlyingExp: RecursiveType => Type) extends Type {
-      val underlying = underlyingExp(this)
+    abstract case class RecursiveType(private var _underlying: Type) extends Type {
+      def underlying = _underlying
     }
     object RecursiveType {
-      def unapply(tp: RecursiveType): Option[Type] = Some(tp.underlying)
+      def apply(underlyingExp: RecursiveType => Type) = {
+        val rt = new RecursiveType(PlaceHolder) {}
+        rt._underlying = underlyingExp(rt)
+        rt
+      }
     }
 
-    trait LambdaType extends Type {
-      type ParamName
-      type ParamInfo
+    abstract class LambdaType[ParamName, ParamInfo, This <: LambdaType[ParamName, ParamInfo, This]](
+      val companion: LambdaTypeCompanion[ParamName, ParamInfo, This]
+    ) {
+      private[Type] var _pinfos: List[ParamInfo]
+      private[Type] var _restpe: Type
+
       def paramNames: List[ParamName]
-      def paramInfos: List[ParamInfo]
-      def resultType: Type
+      def paramInfos: List[ParamInfo] = _pinfos
+      def resultType: Type = _restpe
     }
 
-    class MethodType(val paramNames: List[TermName], paramTypesExp: MethodType => List[Type],
-                     resultTypeExp: MethodType => Type, val mods: List[Modifier]) extends LambdaType {
-      type ParamName = TermName
-      type ParamInfo = Type
-      val paramTypes = paramTypesExp(this)
-      val resultType = resultTypeExp(this)
-      def paramInfos = paramTypes
-    }
-    object MethodType {
-      def apply(paramNames: List[TermName], paramTypes: List[Type], resultType: Type, mods: List[Modifier] = Nil) =
-        new MethodType(paramNames, _ => paramTypes, _ => resultType, mods)
-      def unapply(tp: MethodType) = Some((tp.paramNames, tp.paramTypes, tp.resultType, tp.mods))
+    abstract class LambdaTypeCompanion[ParamName, ParamInfo, This <: LambdaType[ParamName, ParamInfo, This]] {
+      def apply(pnames: List[ParamName], ptypes: List[ParamInfo], restpe: Type): This
+
+      def apply(pnames: List[ParamName], ptypesExp: This => List[ParamInfo], restpeExp: This => Type): This = {
+        val lambda = apply(pnames, Nil, PlaceHolder)
+        lambda._pinfos = ptypesExp(lambda)
+        lambda._restpe = restpeExp(lambda)
+        lambda
+      }
     }
 
-    class PolyType(val paramNames: List[TypeName], paramBoundsExp: PolyType => List[TypeBounds],
-                   resultTypeExp: PolyType => Type) extends LambdaType {
-      type ParamName = TypeName
-      type ParamInfo = TypeBounds
-      val paramBounds = paramBoundsExp(this)
-      val resultType = resultTypeExp(this)
-      def paramInfos = paramBounds
-    }
-    object PolyType {
-      def apply(paramNames: List[TypeName], paramBounds: List[TypeBounds], resultType: Type) =
-        new PolyType(paramNames, _ => paramBounds, _ => resultType)
-      def unapply(tp: PolyType) = Some((tp.paramNames, tp.paramBounds, tp.resultType))
+    case class MethodType(paramNames: List[TermName], private[Type] var _pinfos: List[Type], private[Type] var _restpe: Type)
+    extends LambdaType[TermName, Type, MethodType](MethodType) {
+      def isImplicit = (companion `eq` ImplicitMethodType) || (companion `eq` ErasedImplicitMethodType)
+      def isErased = (companion `eq` ErasedMethodType) || (companion `eq` ErasedImplicitMethodType)
     }
 
-    class TypeLambda(val paramNames: List[TypeName], paramBoundsExp: TypeLambda => List[TypeBounds],
-                     resultTypeExp: TypeLambda => Type) extends LambdaType {
-      type ParamName = TypeName
-      type ParamInfo = TypeBounds
-      val paramBounds = paramBoundsExp(this)
-      val resultType = resultTypeExp(this)
-      def paramInfos = paramBounds
+    case class PolyType(paramNames: List[TypeName], private[Type] var _pinfos: List[TypeBounds], private[Type] var _restpe: Type)
+    extends LambdaType[TypeName, TypeBounds, PolyType](PolyType)
+
+    case class TypeLambda(paramNames: List[TypeName], private[Type] var _pinfos: List[TypeBounds], private[Type] var _restpe: Type)
+    extends LambdaType[TypeName, TypeBounds, TypeLambda](TypeLambda)
+
+    object TypeLambda extends LambdaTypeCompanion[TypeName, TypeBounds, TypeLambda]
+    object PolyType   extends LambdaTypeCompanion[TypeName, TypeBounds, PolyType]
+    object MethodType extends LambdaTypeCompanion[TermName, Type, MethodType]
+
+    class SpecializedMethodTypeCompanion extends LambdaTypeCompanion[TermName, Type, MethodType] { self =>
+      def apply(pnames: List[TermName], ptypes: List[Type], restpe: Type): MethodType =
+        new MethodType(pnames, ptypes, restpe) { override val companion = self }
     }
-    object TypeLambda {
-      def apply(paramNames: List[TypeName], paramBounds: List[TypeBounds], resultType: Type) =
-        new TypeLambda(paramNames, _ => paramBounds, _ => resultType)
-      def unapply(tp: TypeLambda) = Some((tp.paramNames, tp.paramBounds, tp.resultType))
-    }
+    object ImplicitMethodType extends SpecializedMethodTypeCompanion
+    object ErasedMethodType extends SpecializedMethodTypeCompanion
+    object ErasedImplicitMethodType extends SpecializedMethodTypeCompanion
 
     case class TypeBounds(loBound: Type, hiBound: Type)
   }
@@ -266,7 +212,7 @@ object tasty {
          Static,                // mapped to static Java member
          Object,                // an object or its class (used for a ValDef or a ClassDef, respectively)
          Trait,                 // a trait (used for a ClassDef)
-         Local,                 // used in conjunction with Private/Protected to mean private[this], proctected[this]
+         Local,                 // used in conjunction with Private/private[Type] to mean private[this], proctected[this]
          Synthetic,             // generated by Scala compiler
          Artifact,              // to be tagged Java Synthetic
          Mutable,               // when used on a ValDef: a var
@@ -305,4 +251,29 @@ object tasty {
 
   sealed class Empty()
   object Empty extends Empty
+}
+
+object Test {
+  import tasty._
+  import Type._
+
+  def show(tp: Type) = tp match {
+    case ConstantType(value) => ???
+    case SymRef(sym, Empty) => ???
+    case SymRef(sym, qual) => ???
+    case NameRef(name: Name, qualifier) => ???
+    case SuperType(thistp: Type, underlying: Type) => ???
+    case Refinement(underlying: Type, name: Name, tpe: Type) => ???
+    case AppliedType(tycon, args) => ???
+    case AnnotatedType(underlying: Type, annotation: Term) => ???
+    case AndType(left: Type, right: Type) => ???
+    case OrType(left: Type, right: Type) => ???
+    case ByNameType(underlying: Type) => ???
+    case ParamRef(binder, idx) => ???
+    case RecursiveThis(binder: RecursiveType) => ???
+    case RecursiveType(tp) => ???
+    case MethodType(pnames, ptypes, resType) => ???
+    case PolyType(pnames, ptypes, resType) => ???
+    case TypeLambda(pnames, ptypes, resType) => ???
+  }
 }
