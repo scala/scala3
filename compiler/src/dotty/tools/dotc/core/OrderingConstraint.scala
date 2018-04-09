@@ -519,23 +519,17 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     def mergeParams(ps1: List[TypeParamRef], ps2: List[TypeParamRef]) =
       (ps1 /: ps2)((ps1, p2) => if (ps1.contains(p2)) ps1 else p2 :: ps1)
 
-    def mergeEntries(e1: Type, e2: Type): Type = e1 match {
-        case e1: TypeBounds =>
-          e2 match {
-            case e2: TypeBounds => e1 & e2
-            case _ if e1 contains e2 => e2
-            case _ => mergeError
-          }
-        case tv1: TypeVar =>
-          e2 match {
-            case tv2: TypeVar if tv1.instanceOpt eq tv2.instanceOpt => e1
-            case _ => mergeError
-          }
+    // Must be symmetric
+    def mergeEntries(e1: Type, e2: Type): Type =
+      (e1, e2) match {
         case _ if e1 eq e2 => e1
-        case _ => mergeError
-    }
-
-    def mergeError = throw new AssertionError(i"cannot merge $this with $other")
+        case (e1: TypeBounds, e2: TypeBounds) => e1 & e2
+        case (e1: TypeBounds, _) if e1 contains e2 => e2
+        case (_, e2: TypeBounds) if e2 contains e1 => e1
+        case (tv1: TypeVar, tv2: TypeVar) if tv1.instanceOpt eq tv2.instanceOpt => e1
+        case _ =>
+          throw new AssertionError(i"cannot merge $this with $other, mergeEntries($e1, $e2) failed")
+      }
 
     val that = other.asInstanceOf[OrderingConstraint]
     new OrderingConstraint(
