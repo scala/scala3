@@ -1,0 +1,27 @@
+Simple(foo)
+DefDef(Simple(main), Nil, List(List(ValDef(Simple(args), Synthetic(), None))), Synthetic(), None)
+
+Simple(bar)
+DefDef(Simple(foo), Nil, Nil, Synthetic(), None)
+
+Simple(bar2)
+DefDef(Simple(foo), Nil, Nil, Synthetic(), None)
+
+Simple(foo2)
+DefDef(Simple(main), Nil, List(List(ValDef(Simple(args), Synthetic(), None))), Synthetic(), None)
+
+Simple(baz)
+ValDef(Simple(foo2), Synthetic(), None)
+
+Simple(baz2)
+ValDef(Simple(foo2), Synthetic(), None)
+
+Simple(<init>)
+ClassDef(TypeName(Simple(A)), DefDef(Simple(<init>), Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), Simple(<init>)), Nil)), None, List(TypeDef(TypeName(Simple(B)), Synthetic()), DefDef(Simple(b), Nil, Nil, Synthetic(), None), ValDef(Simple(b2), Synthetic(), None)))
+
+Simple(b)
+ClassDef(TypeName(Simple(A)), DefDef(Simple(<init>), Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), Simple(<init>)), Nil)), None, List(TypeDef(TypeName(Simple(B)), Synthetic()), DefDef(Simple(b), Nil, Nil, Synthetic(), None), ValDef(Simple(b2), Synthetic(), None)))
+
+Simple(b2)
+ClassDef(TypeName(Simple(A)), DefDef(Simple(<init>), Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), Simple(<init>)), Nil)), None, List(TypeDef(TypeName(Simple(B)), Synthetic()), DefDef(Simple(b), Nil, Nil, Synthetic(), None), ValDef(Simple(b2), Synthetic(), None)))
+

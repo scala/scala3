@@ -1,0 +1,7 @@
+Condition was false
+Error left did not equal right:
+  left  = Literal(String("acb"))
+  right = Literal(String("cde"))
+Error left was equal to right:
+  left  = Literal(String("acb"))
+  right = Literal(String("acb"))

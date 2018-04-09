@@ -1,0 +1,12 @@
+Ident(TypeName(Simple(Int)))
+SymRef(<TypeName(Simple(Int))>, SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+
+Applied(Ident(TypeName(Simple(List))), List(Ident(TypeName(Simple(String)))))
+AppliedType(SymRef(<TypeName(Simple(List))>, ThisType(SymRef(<TypeName(Simple(immutable))>, NoPrefix))), List(SymRef(<TypeName(Simple(String))>, SymRef(<Simple(Predef)>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix))))))
+
+Applied(Ident(TypeName(Simple(Map))), List(Ident(TypeName(Simple(String))), Ident(TypeName(Simple(Int)))))
+AppliedType(SymRef(<TypeName(Simple(Map))>, ThisType(SymRef(<TypeName(Simple(immutable))>, NoPrefix))), List(SymRef(<TypeName(Simple(String))>, SymRef(<Simple(Predef)>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))), SymRef(<TypeName(Simple(Int))>, SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))))
+
+Applied(Ident(TypeName(Simple(Map))), List(Ident(TypeName(Simple(String))), Ident(TypeName(Simple(I)))))
+AppliedType(SymRef(<TypeName(Simple(Map))>, ThisType(SymRef(<TypeName(Simple(immutable))>, NoPrefix))), List(SymRef(<TypeName(Simple(String))>, SymRef(<Simple(Predef)>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))), SymRef(<TypeName(Simple(I))>, NoPrefix)))
+

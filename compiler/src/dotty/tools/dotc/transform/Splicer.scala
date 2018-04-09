@@ -36,9 +36,10 @@ object Splicer {
       val liftedArgs = getLiftedArgs(call, bindings)
       val interpreter = new Interpreter(pos, classLoader)
       val interpreted = interpreter.interpretCallToSymbol[Seq[Any] => Object](call.symbol)
+      val tctx = new tasty.internal.TastyContext(ctx)
       evaluateMacro(pos) {
         // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
-        val evaluated = interpreted.map(lambda => lambda(liftedArgs).asInstanceOf[scala.quoted.Expr[Nothing]])
+        val evaluated = interpreted.map(lambda => lambda(tctx :: liftedArgs).asInstanceOf[scala.quoted.Expr[Nothing]])
         evaluated.fold(tree)(PickledQuotes.quotedExprToTree)
       }
   }
@@ -50,7 +51,7 @@ object Splicer {
    */
   private def getLiftedArgs(call: Tree, bindings: List[Tree])(implicit ctx: Context): List[Any] = {
     val bindMap = bindings.collect {
-      case vdef: ValDef => (vdef.rhs, ref(vdef.symbol))
+      case vdef: ValDef => (vdef.rhs, ref(vdef.symbol).withPos(vdef.rhs.pos))
     }.toMap
     def allArgs(call: Tree, acc: List[List[Tree]]): List[List[Tree]] = call match {
       case call: Apply => allArgs(call.fun, call.args :: acc)
@@ -154,8 +155,8 @@ object Splicer {
       }
     }
 
-    private def extraMsg = ". The most common reason for that is that you cannot use inline macro implementations in the same compilation run that defines them" 
-    
+    private def extraMsg = ". The most common reason for that is that you cannot use inline macro implementations in the same compilation run that defines them"
+
     private def stopIfRuntimeException[T](thunk: => T): T = {
       try thunk
       catch {
