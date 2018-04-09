@@ -54,6 +54,7 @@ object PickleFormat {
  *                  | 34 LITERALnull len_Nat
  *                  | 35 LITERALclass len_Nat tpe_Ref
  *                  | 36 LITERALenum len_Nat sym_Ref
+ *                  | 37 LITERALsymbol len_Nat sym_Ref
  *                  | 40 SYMANNOT len_Nat sym_Ref AnnotInfoBody
  *                  | 41 CHILDREN len_Nat sym_Ref {sym_Ref}
  *                  | 42 ANNOTATEDtpe len_Nat [sym_Ref /* no longer needed */] tpe_Ref {annotinfo_Ref}
@@ -117,7 +118,7 @@ object PickleFormat {
  *   len is remaining length after `len`.
  */
   val MajorVersion = 5
-  val MinorVersion = 0
+  val MinorVersion = 1
 
   final val TERMname = 1
   final val TYPEname = 2
@@ -156,6 +157,7 @@ object PickleFormat {
   final val LITERALnull = 34
   final val LITERALclass = 35
   final val LITERALenum = 36
+  final val LITERALsymbol = 37
   final val SYMANNOT = 40
   final val CHILDREN = 41
   final val ANNOTATEDtpe = 42
