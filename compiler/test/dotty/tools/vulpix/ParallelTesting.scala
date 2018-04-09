@@ -1258,8 +1258,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  Tests in the first part of the tuple must be executed before the second.
    *  Both testsRequires explicit delete().
    */
-  def compileTastyInDir(f: String, flags0: TestFlags, blacklist: Set[String], recompileBlacklist: Set[String])(
-      implicit testGroup: TestGroup): (CompilationTest, CompilationTest, CompilationTest, CompilationTest) = {
+  def compileTastyInDir(f: String, flags0: TestFlags, blacklist: Set[String])(
+      implicit testGroup: TestGroup): (CompilationTest, CompilationTest, CompilationTest, String) = {
     val outDir = defaultOutputDir + testGroup + "/"
     val flags = flags0 and "-Yretain-trees"
     val sourceDir = new JFile(f)
@@ -1286,14 +1286,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     val generateClassFiles = compileFilesInDir(f, flags0, blacklist)
 
     val decompilationDir = outDir + sourceDir.getName + "_decompiled"
-    new JFile(decompilationDir).mkdirs()
-    val recompileDecompiled = compileFilesInDir(decompilationDir, flags0, recompileBlacklist)
 
     (
       generateClassFiles.keepOutput,
       new CompilationTest(targets).keepOutput,
       new CompilationTest(targets2).keepOutput,
-      recompileDecompiled.keepOutput
+      decompilationDir
     )
   }
 
