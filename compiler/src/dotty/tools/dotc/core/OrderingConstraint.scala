@@ -526,7 +526,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         case (e1: TypeBounds, _) if e1 contains e2 => e2
         case (tv1: TypeVar, tv2: TypeVar) if tv1.instanceOpt eq tv2.instanceOpt => e1
         case _ =>
-          throw new AssertionError(i"cannot merge $this with $other")
+          throw new AssertionError(i"cannot merge $this with $other, mergeEntries($e1, $e2) failed")
       }
 
     val that = other.asInstanceOf[OrderingConstraint]
