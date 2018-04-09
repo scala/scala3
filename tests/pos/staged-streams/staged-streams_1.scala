@@ -43,35 +43,40 @@ object StagedStreams {
   case class Nested[A, B](producer: Producer[A], nestedf: A => StagedStream[B]) extends StagedStream[B]
 
   case class Stream[A](stream: StagedStream[Expr[A]]) {
-    // def fold[W](z: Expr[W], f: (Expr[W] => Expr[A] => Expr[W])): Expr[W] = ???
+     def fold[W](z: Expr[W], f: ((Expr[W], Expr[A]) => Expr[W])): Expr[W] = {
+       Var('{z}) { s =>
+         ~fold_raw((a: Expr[A]) => '{
+            s.update(f(~s.get, a))
+            s.get
+         }, stream)
+         acc
+       }
+     }
 
-    // def fold_raw[W](z: Expr[W], update_acc: Expr[W] => Expr[Unit], f: (Expr[W] => Expr[A] => Expr[W])): Expr[Unit] = {
-    //   def consume[A](consumer: A => Expr[Unit], stream: StagedStream[A]): Expr[Unit] = {
-    //     stream match {
-    //       case Linear(producer) => {
-    //         producer.card match {
-    //           case Many =>
-    //             producer.init(sp => '{
-    //               while(~producer.hasNext(sp)) {
-    //                 ~producer.step(sp, consumer)
-    //               }
-    //             })
-    //           case AtMost1 =>
-    //             producer.init(sp => '{
-    //               if (~producer.hasNext(sp)) {
-    //                 ~producer.step(sp, consumer)
-    //               }
-    //             })
-    //         }
-    //       }
-    //       case Nested(producer, nestedf) => {
-    //          ??? //consume(((a) => consume(consumer, nestedf(a))), Linear[A](producer))
-    //       }
-    //     }
-    //   }
-
-    //   ??? // consume((a: Expr[A]) => '{ ~update_acc(f(z)(a)) }, stream)
-    // }
+     def fold_raw[W](consumer: A => Expr[Unit], stream: StagedStream[A]): Expr[Unit] = {
+       stream match {
+         case Linear(producer) => {
+           producer.card match {
+             case Many =>
+               producer.init(sp => '{
+                 while(~producer.hasNext(sp)) {
+                   ~producer.step(sp, consumer)
+                 }
+               })
+             case AtMost1 =>
+               producer.init(sp => '{
+                 if (~producer.hasNext(sp)) {
+                   ~producer.step(sp, consumer)
+                 }
+               })
+           }
+         }
+         case _ => ???
+//             Nested(producer, nestedf) => {
+//              ??? //consume(((a) => consume(consumer, nestedf(a))), Linear[A](producer))
+//           }
+       }
+     }
   }
 
   object Stream {
