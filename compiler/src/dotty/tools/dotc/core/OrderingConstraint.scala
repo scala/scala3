@@ -521,10 +521,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
     def mergeEntries(e1: Type, e2: Type): Type =
       (e1, e2) match {
+        case _ if e1 eq e2 => e1
         case (e1: TypeBounds, e2: TypeBounds) => e1 & e2
         case (e1: TypeBounds, _) if e1 contains e2 => e2
         case (tv1: TypeVar, tv2: TypeVar) if tv1.instanceOpt eq tv2.instanceOpt => e1
-        case _ if e1 eq e2 => e1
         case _ =>
           throw new AssertionError(i"cannot merge $this with $other")
       }
