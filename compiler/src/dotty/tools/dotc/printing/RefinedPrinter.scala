@@ -649,11 +649,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         withEnclosingDef(constr) { addVparamssText(tparamsTxt ~~ modsText, vparamss) }
       }
     val parentsText = Text(parents map constrText, keywordStr(" with "))
-    val selfText = {
-      val selfName = if (self.name == nme.WILDCARD) keywordStr("this") else self.name.toString
-      (selfName ~ optText(self.tpt)(": " ~ _) ~ " =>").close
-    } provided (!self.isEmpty && !constr.symbol.owner.is(Module))
-
+    val selfText = selfToText(impl)
     val body = if (ctx.settings.YtestPickler.value) {
       // Pickling/unpickling reorders the body members, so we need to homogenize
       val (params, rest) = impl.body partition {
@@ -668,6 +664,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val bodyText = "{" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
 
     prefix ~ (keywordText(" extends") provided (!ofNew && parents.nonEmpty)) ~~ parentsText ~~ bodyText
+  }
+
+  protected def selfToText(impl: Template): Text = {
+    val self = impl.self
+    val selfName = if (self.name == nme.WILDCARD) keywordStr("this") else self.name.toString
+    (selfName ~ optText(self.tpt)(": " ~ _) ~ " =>").close provided (!self.isEmpty)
   }
 
   protected def templateText(tree: TypeDef, impl: Template): Text = {

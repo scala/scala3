@@ -54,6 +54,9 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
     decl ~~ typeText(nameIdText(tree)) ~ withEnclosingDef(tree) { toTextTemplate(impl) } ~ ""
   }
 
+  override protected def selfToText(impl: Template): Text =
+    super.selfToText(impl).provided(!impl.constr.symbol.owner.is(Module))
+
   override protected def toTextTemplate(impl: Template, ofNew: Boolean = false): Text = {
     def isSyntheticParent(sym: Symbol): Boolean = {
       sym.maybeOwner == defn.ObjectClass ||
