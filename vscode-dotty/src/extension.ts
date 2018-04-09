@@ -17,12 +17,9 @@ export function activate(context: ExtensionContext) {
   outputChannel = vscode.window.createOutputChannel('Dotty Language Client');
 
   const artifactFile = `${vscode.workspace.rootPath}/.dotty-ide-artifact`
+  const defaultArtifact = "ch.epfl.lamp:dotty-language-server_0.8:0.8.0-bin-SNAPSHOT"
   fs.readFile(artifactFile, (err, data) => {
-    if (err) {
-      outputChannel.append(`Unable to parse ${artifactFile}`)
-      throw err
-    }
-    const artifact = data.toString().trim()
+    const artifact = err ? defaultArtifact : data.toString().trim()
 
     if (process.env['DLS_DEV_MODE']) {
       const portFile = `${vscode.workspace.rootPath}/.dotty-ide-dev-port`
@@ -77,12 +74,48 @@ function fetchAndRun(artifact: string) {
         throw new Error(msg)
       }
 
-      run({
-        command: "java",
-        args: ["-classpath", classPath, "dotty.tools.languageserver.Main", "-stdio"]
+      configureIDE().then((res) => {
+        run({
+          command: "java",
+          args: ["-classpath", classPath, "dotty.tools.languageserver.Main", "-stdio"]
+        })
       })
     })
     return coursierPromise
+  })
+}
+
+function configureIDE() {
+  const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
+  const loadPluginPath = path.join(extensionContext.extensionPath, './out/load-plugin.jar');
+
+  return vscode.window.withProgress({
+    location: vscode.ProgressLocation.Window,
+    title: 'Configuring IDE...'
+  }, (progress) => {
+
+    const sbtPromise =
+      cpp.spawn("java", [
+          "-jar", coursierPath,
+          "launch",
+          "org.scala-sbt:sbt-launch:1.1.2", "--",
+          "apply -cp " + loadPluginPath + " ch.epfl.scala.loadplugin.LoadPlugin",
+          "set every scalaVersion := \"0.8.0-bin-SNAPSHOT\"",
+          "load-plugin ch.epfl.lamp:sbt-dotty:0.2.0-SNAPSHOT dotty.tools.sbtplugin.DottyPlugin",
+          "load-plugin ch.epfl.lamp:sbt-dotty:0.2.0-SNAPSHOT dotty.tools.sbtplugin.DottyIDEPlugin",
+          "configureIDE"
+      ])
+    const sbtProc = sbtPromise.childProcess
+
+    sbtProc.on('close', (code: number) => {
+      if (code != 0) {
+        let msg = "Configuring the IDE failed."
+        outputChannel.append(msg)
+        throw new Error(msg)
+      }
+    })
+
+    return sbtPromise;
   })
 }
 
