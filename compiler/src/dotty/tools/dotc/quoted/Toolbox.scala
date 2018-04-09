@@ -1,5 +1,6 @@
 package dotty.tools.dotc.quoted
 
+import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants._
@@ -55,6 +56,10 @@ object Toolbox {
       }
     }
 
+  }
+
+  def toTasty[T](expr: Expr[T]): scala.tasty.Term = {
+    new QuoteDriver().withTree(expr, (tree, ctx) => dotty.tools.dotc.tasty.Term(tree)(ctx), Settings.run())
   }
 
   class Settings[T] private (val outDir: Option[String], val rawTree: Boolean, val compilerArgs: List[String])

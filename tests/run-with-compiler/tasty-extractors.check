@@ -1,0 +1,120 @@
+Literal(Boolean(true))
+ConstantType(Boolean(true))
+
+Literal(Int(1))
+ConstantType(Int(1))
+
+Literal(Long(2))
+ConstantType(Long(2))
+
+Literal(Double(2.0))
+ConstantType(Double(2.0))
+
+Literal(String("abc"))
+ConstantType(String("abc"))
+
+Apply(Ident(println), List(Literal(String("abc"))))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Typed(Literal(Int(8)), Ident(Int))
+Type{## TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int) ##}
+
+Block(List(Literal(Int(1)), Literal(Int(2))), Literal(Int(3)))
+ConstantType(Int(3))
+
+If(Typed(Literal(Boolean(true)), Ident(Boolean)), Literal(Int(1)), Literal(Int(2)))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Int) ##}
+
+Match(Literal(String("a")), List(CaseDef(Pattern {## Literal(Constant(a)) ##}, None, Block(Nil, Literal(Unit())))))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Match(Literal(String("b")), List(CaseDef(Bind(n, Wildcard()), None, Block(Nil, Literal(Unit())))))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Match(Literal(String("c")), List(CaseDef(Bind(n, TypeTest(Ident(String))), None, Block(Nil, Literal(Unit())))))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Match(Literal(String("e")), List(CaseDef(Wildcard(), None, Block(Nil, Literal(Unit())))))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Match(Literal(String("f")), List(CaseDef(TypeTest(Ident(String)), None, Block(Nil, Literal(Unit())))))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Match(Literal(String("g")), List(CaseDef(Alternative(List(TypeTest(Ident(String)), TypeTest(Ident(Int)))), None, Block(Nil, Literal(Unit())))))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Match(Literal(String("h")), List(CaseDef(Wildcard(), Some(Literal(Boolean(false))), Block(Nil, Literal(Unit())))))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Block(List(Term{## ValDef(a,TypeTree[TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class java)),module lang),String)],Literal(Constant(o))) ##}), Match(Literal(String("i")), List(CaseDef(Bind(a, Wildcard()), None, Block(Nil, Literal(Unit()))))))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Try(Literal(Int(1)), List(CaseDef(Wildcard(), None, Block(Nil, Literal(Unit())))), None)
+OrType(Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Int) ##}, Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##})
+
+Try(Literal(Int(2)), Nil, Some(Literal(Unit())))
+ConstantType(Int(2))
+
+Try(Literal(Int(3)), List(CaseDef(Wildcard(), None, Block(Nil, Literal(Unit())))), Some(Literal(Unit())))
+OrType(Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Int) ##}, Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##})
+
+Apply(Select(Literal(String("a")), ==), List(Literal(String("b"))))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Boolean) ##}
+
+Apply(Select(New(Ident(Object)), <init>), Nil)
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class lang)),class Object) ##}
+
+Apply(Select(Ident(Int), box), List(NamedArg(x, Literal(Int(9)))))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class lang)),class Integer) ##}
+
+Apply(TypeApply(Select(Ident(Ordering), apply), List(Term{## Ident(Int) ##})), List(Ident(Int)))
+AppliedType(Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class math)),class Ordering) ##}, List(Type{## TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int) ##}))
+
+Block(List(Term{## ValDef(a,Ident(Int),Literal(Constant(3))) ##}), Literal(Unit()))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Block(List(Term{## ValDef(b,Ident(Int),Literal(Constant(3))) ##}), Literal(Unit()))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Block(List(Term{## DefDef(c,List(),List(),Ident(Int),Literal(Constant(3))) ##}), Literal(Unit()))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Block(List(Term{## DefDef(d,List(),List(),Ident(Int),Return(Literal(Constant(4)),Ident(d))) ##}), Literal(Unit()))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Block(List(Term{## ValDef(x,TypeTree[TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int)],Literal(Constant(1))) ##}), Assign(Ident(x), Literal(Int(2))))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Block(List(Term{## DefDef($anonfun,List(),List(List(ValDef(x,Ident(Int),EmptyTree))),TypeTree[TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int)],Ident(x)) ##}), Lambda(Ident($anonfun), None))
+AppliedType(Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Function1) ##}, List(Type{## TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int) ##}, Type{## TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int) ##}))
+
+Ident(???)
+Type{## TermRef(TermRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Predef),method ???) ##}
+
+Typed(Literal(Int(1)), Singleton(Literal(Int(1))))
+ConstantType(Int(1))
+
+Typed(Literal(Int(1)), Ident(Int))
+Type{## TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int) ##}
+
+Typed(Ident(Nil), Applied(Ident(List), List(Ident(Int))))
+AppliedType(Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class immutable)),class List) ##}, List(Type{## TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int) ##}))
+
+Typed(Literal(Int(1)), And(Ident(Int), Ident(Int)))
+AndType(Type{## TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int) ##}, Type{## TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int) ##})
+
+Typed(Literal(Int(1)), Or(Ident(Int), Ident(String)))
+OrType(Type{## TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int) ##}, Type{## TypeRef(TermRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Predef),String) ##})
+
+Block(List(Import(Select(Ident(scala), collection), List(Simple(Id(mutable))))), Literal(Int(1)))
+ConstantType(Int(1))
+
+Block(List(Import(Select(Ident(scala), collection), List(Simple(Id(mutable)), Simple(Id(immutable))))), Literal(Int(2)))
+ConstantType(Int(2))
+
+Block(List(Import(Select(Ident(scala), collection), List(Rename(Id(mutable),Id(mut))))), Literal(Int(3)))
+ConstantType(Int(3))
+
+Block(List(Import(Select(Ident(scala), collection), List(Omit(Id(mutable))))), Literal(Int(4)))
+ConstantType(Int(4))
+
