@@ -1211,7 +1211,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  `f` in a specific way.
    *
    *  - Each file is compiled separately as a single compilation run
-   *  - Each directory is compiled as a `SeparateCompilationTaret`, in this
+   *  - Each directory is compiled as a `SeparateCompilationTarget`, in this
    *    target all files are grouped according to the file suffix `_X` where `X`
    *    is a number. These groups are then ordered in ascending order based on
    *    the value of `X` and each group is compiled one after the other.
@@ -1243,7 +1243,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  `f` in a specific way. Once compiled, they are recompiled/run from tasty as sources.
    *
    *  - Each file is compiled separately as a single compilation run
-   *  - Each directory is compiled as a `SeparateCompilationTaret`, in this
+   *  - Each directory is compiled as a `SeparateCompilationTarget`, in this
    *    target all files are grouped according to the file suffix `_X` where `X`
    *    is a number. These groups are then ordered in ascending order based on
    *    the value of `X` and each group is compiled one after the other.
