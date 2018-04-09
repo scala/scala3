@@ -12,8 +12,8 @@ object tasty {
     case DefaultGetter(methodName: TermName, idx: String)           // s"$methodName${"$default$"}${idx+1}"
     case Variant(underlying: TermName, covariant: Boolean)          // s"${if (covariant) "+" else "-"}$underlying"
     case SuperAccessor(underlying: TermName)                        // s"${"super$"}$underlying"
-    case protectedAccessor(underlying: TermName)                    // s"${"protectded$"}$underlying"
-    case protectecSetter(underlying: TermName)                      // s"${"protectded$set"}$underlying"
+    case ProtectedAccessor(underlying: TermName)                    // s"${"protectded$"}$underlying"
+    case ProtectecSetter(underlying: TermName)                      // s"${"protectded$set"}$underlying"
     case ObjectClass(underlying: TermName)                          // s"$underlying${"$"}"
 
     case Expanded(prefix: TermName, selector: String)               // s"$prefix${"$$"}$name"  , used only for symbols coming from Scala 2
@@ -144,7 +144,7 @@ object tasty {
     case class ParamRef(binder: LambdaType[_, _, _], idx: Int) extends Type
     case class RecursiveThis(binder: RecursiveType) extends Type
 
-    abstract case class RecursiveType(private var _underlying: Type) extends Type {
+    case class RecursiveType private (private var _underlying: Type) extends Type {
       def underlying = _underlying
     }
     object RecursiveType {
@@ -197,8 +197,8 @@ object tasty {
       def apply(pnames: List[TermName], ptypes: List[Type], restpe: Type): MethodType =
         new MethodType(pnames, ptypes, restpe) { override val companion = self }
     }
-    object ImplicitMethodType extends SpecializedMethodTypeCompanion
-    object ErasedMethodType extends SpecializedMethodTypeCompanion
+    object ImplicitMethodType       extends SpecializedMethodTypeCompanion
+    object ErasedMethodType         extends SpecializedMethodTypeCompanion
     object ErasedImplicitMethodType extends SpecializedMethodTypeCompanion
 
     case class TypeBounds(loBound: Type, hiBound: Type)
