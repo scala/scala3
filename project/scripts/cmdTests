@@ -8,7 +8,7 @@ SBT="./project/scripts/sbt" # if run on CI
 SOURCE="tests/pos/HelloWorld.scala"
 MAIN="HelloWorld"
 EXPECTED_OUTPUT="hello world"
-COMPILER_CP="compiler/target/scala-2.12/classes" # FIXME: This is not very reliable
+COMPILER_CP="compiler/target/scala-2.13.0-M3/classes" # FIXME: This is not very reliable
 
 # check that benchmarks can run
 "$SBT" "dotty-bench/jmh:run 1 1 tests/pos/alias.scala"
