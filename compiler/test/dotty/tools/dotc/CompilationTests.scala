@@ -110,7 +110,6 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/pos/erasure.scala", defaultOptions),
       compileFile("tests/pos/Coder.scala", defaultOptions),
       compileFile("tests/pos/blockescapes.scala", defaultOptions),
-      compileFile("tests/pos/collections.scala", defaultOptions),
       compileFile("tests/pos/functions1.scala", defaultOptions),
       compileFile("tests/pos/implicits1.scala", defaultOptions),
       compileFile("tests/pos/inferred.scala", defaultOptions),

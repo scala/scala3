@@ -16,21 +16,21 @@ object DoesWork {
 
 // Testing the not giving of explicit Booper[M] arguments.
 object ShouldWorkHK {
-  class Booper[M[_]](xs: Seq[M[_]]) extends collection.generic.SeqForwarder[M[_]] {
+  class Booper[M[_]](xs: Seq[M[_]]) {
     def underlying = xs
     def BOOP(ys: Seq[M[_]]) = new Booper(xs ++ ys)
   }
-  implicit def mkBoop[M[_]](xs: Seq[M[_]]): ShouldWorkHK.Booper[M] = new Booper(xs)
+  implicit def mkBoop[M[_]](xs: Seq[M[_]]) = new Booper(xs)
 
   def f1 = x BOOP y BOOP x1 BOOP x2
 }
 
 object DoesWorkHK {
-  class Booper[M[_]](xs: Seq[M[_]]) extends collection.generic.SeqForwarder[M[_]] {
+  class Booper[M[_]](xs: Seq[M[_]]) {
     def underlying = xs
     def BOOP(ys: Seq[M[_]]) = new Booper[M](xs ++ ys)
   }
-  implicit def mkBoop[M[_]](xs: Seq[M[_]]): DoesWorkHK.Booper[M] = new Booper[M](xs)
+  implicit def mkBoop[M[_]](xs: Seq[M[_]]) = new Booper[M](xs)
 
   def f1 = x BOOP y BOOP x1 BOOP x2
 }

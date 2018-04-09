@@ -6,7 +6,7 @@ x.hashCode: 1072693248
 x == y: true
 a == b: true
 testing native arrays
-Array(Meter(1.0), Meter(2.0))
+List(Meter(1.0), Meter(2.0))
 Meter(1.0)
 >>>Meter(1.0)<<< Meter(1.0)
 >>>Meter(2.0)<<< Meter(2.0)

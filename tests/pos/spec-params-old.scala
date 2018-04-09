@@ -1,4 +1,4 @@
-class Foo[@specialized A: ClassManifest] {
+class Foo[@specialized A: scala.reflect.ClassManifest] {
 
   // conflicting in bounds, expect a normalized member calling m
   // and bridge + implementation in specialized subclasses

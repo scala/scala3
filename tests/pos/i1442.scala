@@ -2,7 +2,7 @@ object Test1442 {
   final def sumMinimized[B](num: Numeric[B]): Int = {
        var cse: scala.math.Numeric.type = null.asInstanceOf[scala.math.Numeric.type]
        ({cse = scala.math.Numeric; num eq cse.IntIsIntegral} ||
-               (num eq cse.DoubleAsIfIntegral))
+               (num eq cse.BigDecimalAsIfIntegral))
       2
   } 
 
@@ -15,9 +15,7 @@ object Test1442 {
                (num eq cse.ByteIsIntegral)||
                (num eq cse.CharIsIntegral)||
                (num eq cse.LongIsIntegral)||
-               (num eq cse.FloatAsIfIntegral)||
-               (num eq cse.BigDecimalIsFractional)||
-               (num eq cse.DoubleAsIfIntegral)) {     
+               (num eq cse.BigDecimalIsFractional)) {     
         null.asInstanceOf[B]
       } else null.asInstanceOf[B]
   } 

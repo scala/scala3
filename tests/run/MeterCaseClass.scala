@@ -18,7 +18,7 @@ package a {
 
     private[a] trait MeterArg
 
-    implicit val boxings: a.BoxingConversions[a.Meter,Double] = new BoxingConversions[Meter, Double] {
+    implicit val boxings: BoxingConversions[Meter, Double] = new BoxingConversions[Meter, Double] {
       def box(x: Double) = new Meter(x)
       def unbox(m: Meter) = m.underlying
     }
@@ -30,7 +30,7 @@ package a {
     override def toString = unbox.toString+"ft"
   }
   object Foot {
-    implicit val boxings: a.BoxingConversions[a.Foot,Double] = new BoxingConversions[Foot, Double] {
+    implicit val boxings: BoxingConversions[Foot, Double] = new BoxingConversions[Foot, Double] {
       def box(x: Double) = new Foot(x)
       def unbox(m: Foot) = m.unbox
     }
@@ -66,6 +66,7 @@ object Test extends App {
 
 
   println("x.hashCode: "+x.hashCode)
+  // println("x == 1: "+(x == 1)) // error: Values of types a.Meter and Int cannot be compared with == or !=
   println("x == y: "+(x == y))
   assert(x.hashCode == (1.0).hashCode)
 
@@ -75,7 +76,7 @@ object Test extends App {
 
   { println("testing native arrays")
     val arr = Array(x, y + x)
-    println(arr.deep)
+    println(arr.toList)
     def foo[T <: Printable](x: Array[T]): Unit = {
       for (i <- 0 until x.length) { x(i).print; println(" "+x(i)) }
     }

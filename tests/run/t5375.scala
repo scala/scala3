@@ -1,6 +1,7 @@
+
 /** Hello fellow compiler developer.
     if you are wondering why does test suite hang on this test
-    then it's likely that the lambda inside map has been compiled into static method
+    then it's likely that the lambda has been compiled into static method
     unfotrunatelly, as it is executed inside static object initializer,
     it is executed inside class-loader, in a synchronized block that is not source defined.
     
@@ -10,10 +11,20 @@
     @DarkDimius  
 */  
 object Test extends App {
-  val foos = (1 to 1000).toSeq
-  try
-    foos.par.map(i => if (i % 37 == 0) sys.error("i div 37") else i)
-  catch {
-    case ex: RuntimeException => println("Runtime exception")
-  }
+  // val foos = (1 to 1000).toSeq
+  //   val fun = (i: Int) => if (i % 37 == 0) sys.error("i div 37") else i
+  //   val threads = foos.map { i =>
+  //     new Thread {
+  //       override def run(): Unit = {
+  //         try {
+  //           fun(i)
+  //         }
+  //         catch {
+  //           case ex: RuntimeException => println("Runtime exception")
+  //         }
+  //       }
+  //     }
+  //   }
+  //   threads.foreach(_.start())
+  //   threads.foreach(_.join())
 }
