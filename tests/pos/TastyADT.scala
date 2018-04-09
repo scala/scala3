@@ -53,7 +53,7 @@ object tasty {
 
   trait Definition  extends Statement {
     def name: Name
-    def owner: Definition
+    def owner: Definition = ???
   }
 
   case class ValDef(name: TermName, tpt: Term, rhs: Option[Term], mods: List[Modifier]) extends Definition
@@ -62,6 +62,7 @@ object tasty {
   case class TypeDef(name: TypeName, rhs: Term, mods: List[Modifier]) extends Definition
   case class ClassDef(name: TypeName, constructor: DefDef, parents: List[Term],
                       self: Option[ValDef], body: List[Statement], mods: List[Modifier]) extends Definition
+
 
 // ------ Terms ---------------------------------
 
@@ -254,7 +255,7 @@ object Test {
   def show(tp: Type): String = tp match {
     case ConstantType(c) => c.value.toString
     case SymRef(sym, NoPrefix) => ???
-    case SymRef(sym, NoPrefix) => ???
+    case SymRef(sym, t: Type) => ???
     case NameRef(name: Name, qualifier) => ???
     case SuperType(thistp: Type, underlying: Type) => ???
     case Refinement(underlying: Type, name: Name, tpe: Type) => ???
