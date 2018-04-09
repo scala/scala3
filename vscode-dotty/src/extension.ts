@@ -94,15 +94,21 @@ function configureIDE() {
     title: 'Configuring IDE...'
   }, (progress) => {
 
+      const applyLoadPlugin = "apply -cp " + loadPluginPath + " ch.epfl.scala.loadplugin.LoadPlugin"
+      const ifAbsentCommands = [
+        "if-absent dotty.tools.sbtplugin.DottyPlugin",
+        "\"set every scalaVersion := \\\"0.8.0-bin-SNAPSHOT\\\"\"",
+        "\"load-plugin ch.epfl.lamp:sbt-dotty:0.2.0-SNAPSHOT dotty.tools.sbtplugin.DottyPlugin\"",
+        "\"load-plugin ch.epfl.lamp:sbt-dotty:0.2.0-SNAPSHOT dotty.tools.sbtplugin.DottyIDEPlugin\""
+      ].join(" ")
+
     const sbtPromise =
       cpp.spawn("java", [
           "-jar", coursierPath,
           "launch",
           "org.scala-sbt:sbt-launch:1.1.2", "--",
-          "apply -cp " + loadPluginPath + " ch.epfl.scala.loadplugin.LoadPlugin",
-          "set every scalaVersion := \"0.8.0-bin-SNAPSHOT\"",
-          "load-plugin ch.epfl.lamp:sbt-dotty:0.2.0-SNAPSHOT dotty.tools.sbtplugin.DottyPlugin",
-          "load-plugin ch.epfl.lamp:sbt-dotty:0.2.0-SNAPSHOT dotty.tools.sbtplugin.DottyIDEPlugin",
+          applyLoadPlugin,
+          ifAbsentCommands,
           "configureIDE"
       ])
     const sbtProc = sbtPromise.childProcess
