@@ -747,8 +747,8 @@ object Build {
     libraryDependencies ++= Seq(
       "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
       "org.scala-sbt" % "api" % sbtVersion.value % "test",
-      ("org.specs2" %% "specs2-core" % "3.9.1" % "test").withDottyCompat(),
-      ("org.specs2" %% "specs2-junit" % "3.9.1" % "test").withDottyCompat()
+      ("org.specs2" %% "specs2-core" % "4.0.2" % "test").withDottyCompat(),
+      ("org.specs2" %% "specs2-junit" % "4.0.2" % "test").withDottyCompat()
     ),
     // The sources should be published with crossPaths := false since they
     // need to be compiled by the project using the bridge.
