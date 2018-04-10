@@ -91,12 +91,12 @@ class CheckRealizable(implicit ctx: Context) {
           if (!sym.isStable)
             patchRealizability(NotStable)
             // 3. If the symbol isn't "lazy" and its prefix is realizable
-          else if (!isLateInitialized(sym))
-            // XXX: This is a bit fishy: we only cache that the symbol is
-            // stable if it appears under a realizable prefix.
-            // XXX: Add object DependsOnPrefix extends Realizability(""), but filter it out here.
+          else if (!isLateInitialized(sym)) {
+            // The symbol itself is stable, cache this information:
+            sym.setFlag(Stable)
+            // Realizability now depends on the prefix:
             patchRealizability(realizability(tp.prefix))
-          else if (!sym.isEffectivelyFinal)
+          } else if (!sym.isEffectivelyFinal)
             patchRealizability(new NotFinal(sym))
           else
             // 4. If the symbol is effectively final, and a lazy or erased val
