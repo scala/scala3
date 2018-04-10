@@ -1,4 +1,6 @@
-object tasty {
+package tasty
+
+object definitions {
 
 // ------ Names --------------------------------
 
@@ -8,16 +10,13 @@ object tasty {
   enum TermName extends Name with PossiblySignedName {
     case Simple(str: String)
     case Qualified(prefix: TermName, selector: String)              // s"$prefix.$name"
-    case Unique(underlying: TermName, separator: String, idx: Int)  // s"$underlying$separator$idx"
+
     case DefaultGetter(methodName: TermName, idx: String)           // s"$methodName${"$default$"}${idx+1}"
     case Variant(underlying: TermName, covariant: Boolean)          // s"${if (covariant) "+" else "-"}$underlying"
     case SuperAccessor(underlying: TermName)                        // s"${"super$"}$underlying"
     case ProtectedAccessor(underlying: TermName)                    // s"${"protected$"}$underlying"
     case ProtectedSetter(underlying: TermName)                      // s"${"protected$set"}$underlying"
     case ObjectClass(underlying: TermName)                          // s"$underlying${"$"}"
-
-    case Expanded(prefix: TermName, selector: String)               // s"$prefix${"$$"}$name"  , used only for symbols coming from Scala 2
-    case ExpandedPrefix(prefix: TermName, selector: String)         // s"$prefix${"$"}$name"   , used only for symbols coming from Scala 2
   }
 
   case class SignedName(name: TermName, resultSig: TypeName, paramSigs: List[TypeName]) extends PossiblySignedName
@@ -131,7 +130,7 @@ object tasty {
     case class SymRef(sym: Definition, qualifier: Type | NoPrefix = NoPrefix) extends Type
     case class NameRef(name: Name, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
     case class SuperType(thistp: Type, underlying: Type) extends Type
-    case class Refinement(underlying: Type, name: Name, tpe: Type) extends Type
+    case class Refinement(underlying: Type, name: Name, tpe: Type | TypeBounds) extends Type
     case class AppliedType(tycon: Type, args: List[Type | TypeBounds]) extends Type
     case class AnnotatedType(underlying: Type, annotation: Term) extends Type
     case class AndType(left: Type, right: Type) extends Type
@@ -153,7 +152,7 @@ object tasty {
 
     abstract class LambdaType[ParamName, ParamInfo, This <: LambdaType[ParamName, ParamInfo, This]](
       val companion: LambdaTypeCompanion[ParamName, ParamInfo, This]
-    ) {
+    ) extends Type {
       private[Type] var _pinfos: List[ParamInfo]
       private[Type] var _restpe: Type
 
@@ -245,30 +244,5 @@ object tasty {
     case String(v: java.lang.String) extends Constant(v)
     case Class(v: Type)              extends Constant(v)
     case Enum(v: Type)               extends Constant(v)
-  }
-}
-
-object Test {
-  import tasty._
-  import Type._
-
-  def show(tp: Type): String = tp match {
-    case ConstantType(c) => c.value.toString
-    case SymRef(sym, NoPrefix) => ???
-    case SymRef(sym, t: Type) => ???
-    case NameRef(name: Name, qualifier) => ???
-    case SuperType(thistp: Type, underlying: Type) => ???
-    case Refinement(underlying: Type, name: Name, tpe: Type) => ???
-    case AppliedType(tycon, args) => ???
-    case AnnotatedType(underlying: Type, annotation: Term) => ???
-    case AndType(left: Type, right: Type) => ???
-    case OrType(left: Type, right: Type) => ???
-    case ByNameType(underlying: Type) => ???
-    case ParamRef(binder, idx) => ???
-    case RecursiveThis(binder: RecursiveType) => ???
-    case RecursiveType(tp) => ???
-    case MethodType(pnames, ptypes, resType) => ???
-    case PolyType(pnames, ptypes, resType) => ???
-    case TypeLambda(pnames, ptypes, resType) => ???
   }
 }
