@@ -17,12 +17,7 @@ object Package {
     }
   }
 
-  private case class Impl(tree: Tree, ctx: Context) extends scala.tasty.Package {
-
-    implicit def ctx_ : Context = ctx
-
-    def pos: scala.tasty.Position = new dotty.tools.dotc.tasty.Position(tree.pos)
-
+  private case class Impl(tree: Tree, ctx: Context) extends scala.tasty.Package with Positioned {
     override def toString: String = this match {
       case Package(pkg, body) => s"Package($pkg, $body)"
       case _ => s"CaseDef"

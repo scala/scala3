@@ -25,12 +25,7 @@ object Import {
     case Trees.Thicket((id1@Trees.Ident(_)) :: (id2@Trees.Ident(_)) :: Nil) => scala.tasty.ImportSelector.Rename(Id(id1), Id(id2))
   }
 
-  private case class Impl(tree: Tree, ctx: Context) extends scala.tasty.Import {
-
-    implicit def ctx_ : Context = ctx
-
-    def pos: scala.tasty.Position = new dotty.tools.dotc.tasty.Position(tree.pos)
-
+  private case class Impl(tree: Tree, ctx: Context) extends scala.tasty.Import with Positioned {
     override def toString: String = this match {
       case Import(pkg, body) => s"Import($pkg, $body)"
       case _ => s"Import"

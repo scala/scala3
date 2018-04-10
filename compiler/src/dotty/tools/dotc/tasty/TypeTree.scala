@@ -87,10 +87,7 @@ object TypeTree {
     }
   }
 
-  private case class Impl(tree: Tree, ctx: Context) extends scala.tasty.TypeTree {
-    implicit def ctx_ : Context = ctx
-
-    def pos: scala.tasty.Position = new Position(tree.pos)
+  private case class Impl(tree: Tree, ctx: Context) extends scala.tasty.TypeTree with Positioned {
 
     def tpe: scala.tasty.Type = Type(tree.tpe)(ctx)
 

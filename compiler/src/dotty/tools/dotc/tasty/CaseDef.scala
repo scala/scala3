@@ -19,12 +19,7 @@ object CaseDef {
     }
   }
 
-  private case class Impl(tree: Tree, ctx: Context) extends scala.tasty.CaseDef {
-
-    implicit def ctx_ : Context = ctx
-
-    def pos: scala.tasty.Position = new dotty.tools.dotc.tasty.Position(tree.pos)
-
+  private case class Impl(tree: Tree, ctx: Context) extends scala.tasty.CaseDef with Positioned {
     override def toString: String = this match {
       case CaseDef(pat, guard, body) => s"CaseDef($pat, $guard, $body)"
       case _ => s"CaseDef"

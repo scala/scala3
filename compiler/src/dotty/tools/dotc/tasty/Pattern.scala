@@ -54,11 +54,7 @@ object Pattern {
     }
   }
 
-  private case class Impl(tree: Tree, ctx: Context) extends scala.tasty.Pattern {
-
-    implicit def ctx_ : Context = ctx
-
-    def pos: scala.tasty.Position = new dotty.tools.dotc.tasty.Position(tree.pos)
+  private case class Impl(tree: Tree, ctx: Context) extends scala.tasty.Pattern with Positioned {
 
     def tpe: scala.tasty.Type = Type(tree.tpe)(ctx)
 
