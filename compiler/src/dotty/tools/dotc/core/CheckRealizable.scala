@@ -10,7 +10,7 @@ import collection.mutable
 /** Realizability status */
 object CheckRealizable {
 
-  abstract class Realizability(val msg: String) {
+  sealed abstract class Realizability(val msg: String) {
     def andAlso(other: => Realizability): Realizability =
       if (this == Realizable) other else this
     def mapError(f: Realizability => Realizability): Realizability =
