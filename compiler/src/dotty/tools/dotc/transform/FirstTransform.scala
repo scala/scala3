@@ -69,7 +69,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Reorder statements so that module classes always come after their companion classes */
   private def reorderAndComplete(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
-    val moduleClassDefs, singleClassDefs = mutable.Map[Name, Tree]()
+    val moduleClassDefs = mutable.Map[Name, Tree]()
 
     /* Returns the result of reordering stats and prepending revPrefix in reverse order to it.
      * The result of reorder is equivalent to reorder(stats, revPrefix) = revPrefix.reverse ::: reorder(stats, Nil).
@@ -79,9 +79,8 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
       case (stat: TypeDef) :: stats1 if stat.symbol.isClass =>
         if (stat.symbol is Flags.Module) {
           def pushOnTop(xs: List[Tree], ys: List[Tree]): List[Tree] =
-            (ys /: xs)((ys, x) => x :: ys)
+            (ys /: xs)((zs, x) => x :: zs)
           moduleClassDefs += (stat.name -> stat)
-          singleClassDefs -= stat.name.stripModuleClassSuffix
           val stats1r = reorder(stats1, Nil)
           pushOnTop(revPrefix, if (moduleClassDefs contains stat.name) stat :: stats1r else stats1r)
         } else {
@@ -91,7 +90,6 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
               case Some(mcdef) =>
                 mcdef :: stat :: revPrefix
               case None =>
-                singleClassDefs += (stat.name -> stat)
                 stat :: revPrefix
             }
           )
