@@ -986,22 +986,28 @@ object SymDenotations {
      *  3. If context has an enclosing scope which defines this symbol,
      *     lookup its companion in the same scope.
      */
-    private def companionNamed(name: TypeName)(implicit ctx: Context): Symbol =
-      if (owner.isClass)
-        owner.info.decl(name).suchThat(_.isCoDefinedWith(symbol)).symbol
-      else if (!owner.exists || ctx.compilationUnit == null)
-        NoSymbol
-      else if (!ctx.compilationUnit.tpdTree.isEmpty)
-        tpd.definingStats(symbol).iterator
-          .map(tpd.definedSym)
-          .find(_.name == name)
-          .getOrElse(NoSymbol)
-      else if (ctx.scope == null)
-        NoSymbol
-      else if (ctx.scope.lookup(this.name) == symbol)
-        ctx.scope.lookup(name)
+    private def companionNamed(name: TypeName)(implicit ctx: Context): Symbol = {
+      val sym =
+        if (owner.isClass)
+          owner.info.decl(name).suchThat(_.isCoDefinedWith(symbol)).symbol
+        else if (!owner.exists || ctx.compilationUnit == null)
+          NoSymbol
+        else if (!ctx.compilationUnit.tpdTree.isEmpty)
+          tpd.definingStats(symbol).iterator
+            .map(tpd.definedSym)
+            .find(_.name == name)
+            .getOrElse(NoSymbol)
+        else if (ctx.scope == null)
+          NoSymbol
+        else if (ctx.scope.lookup(this.name) == symbol)
+          ctx.scope.lookup(name)
+        else
+          companionNamed(name)(ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next())
+      if (sym.exists && !sym.unforcedIsAbsent)
+        sym
       else
-        companionNamed(name)(ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next())
+        NoSymbol
+    }
 
     /** Is this symbol the same or a linked class of `sym`? */
     final def isLinkedWith(sym: Symbol)(implicit ctx: Context): Boolean =
