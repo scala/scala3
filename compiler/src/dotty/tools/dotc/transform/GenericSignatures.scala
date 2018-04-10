@@ -212,6 +212,8 @@ object GenericSignatures {
             else
               jsig(unboxedSeen, toplevel, primitiveOK)
           }
+          else if (defn.isXXLFunctionClass(sym))
+            jsig(defn.FunctionXXLType, toplevel, primitiveOK)
           else if (sym.isClass)
             classSig
           else
