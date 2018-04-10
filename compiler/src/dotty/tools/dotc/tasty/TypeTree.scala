@@ -12,7 +12,7 @@ object TypeTree {
 
   object Synthetic {
     def unapply(term: scala.tasty.TypeTree): Boolean = term match {
-      case Impl(tree, _) if tree.isEmpty => true
+      case Impl(Trees.TypeTree(), _) => true
       case _ => false
     }
   }

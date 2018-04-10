@@ -50,17 +50,17 @@ object definitions {
 
 // ------ Definitions ---------------------------------
 
-  trait Definition  extends Statement {
+  enum Definition extends Statement {
     def name: Name
     def owner: Definition = ???
-  }
 
-  case class ValDef(name: TermName, tpt: Term, rhs: Option[Term], mods: List[Modifier]) extends Definition
-  case class DefDef(name: TermName, typeParams: List[TypeDef], paramss: List[List[ValDef]],
-                    returnTpt: Term, rhs: Option[Term], mods: List[Modifier]) extends Definition
-  case class TypeDef(name: TypeName, rhs: Term, mods: List[Modifier]) extends Definition
-  case class ClassDef(name: TypeName, constructor: DefDef, parents: List[Term],
-                      self: Option[ValDef], body: List[Statement], mods: List[Modifier]) extends Definition
+    case ValDef(name: TermName, tpt: TypeTree, rhs: Option[Term], mods: List[Modifier])
+    case DefDef(name: TermName, typeParams: List[TypeDef], paramss: List[List[ValDef]],
+                returnTpt: TypeTree, rhs: Option[Term], mods: List[Modifier])
+    case TypeDef(name: TypeName, rhs: Term, mods: List[Modifier])
+    case ClassDef(name: TypeName, constructor: DefDef, parents: List[Term],
+                  self: Option[ValDef], body: List[Statement], mods: List[Modifier])
+  }
 
 
 // ------ Terms ---------------------------------
@@ -231,9 +231,8 @@ object definitions {
 
   enum Constant(val value: Any) {
     case Unit                        extends Constant(())
-    case False                       extends Constant(false)
-    case True                        extends Constant(true)
     case Null                        extends Constant(null)
+    case Boolean(v: scala.Boolean)   extends Constant(v)
     case Byte(v: scala.Byte)         extends Constant(v)
     case Short(v: scala.Short)       extends Constant(v)
     case Char(v: scala.Char)         extends Constant(v)
