@@ -47,8 +47,6 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
 
   override def runsAfter = Set(ElimRepeated.name)
 
-  override def runsAfterGroupsOf = Set(FirstTransform.name) // need companion objects to exist
-
   override def changesMembers = true // the phase adds extension methods
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {

@@ -5,12 +5,12 @@ object App {
       def subst[F[_]](fa: F[Int]): F[T]
     }
 
-    type Age = Age.T
-
     val Age: AgeT = new AgeT {
       type T = Int
       def subst[F[_]](fa: F[Int]): F[T] = fa
     }
+
+    type Age = Age.T
 
     sealed abstract class K[A]
     final case object KAge extends K[Age]

@@ -689,6 +689,22 @@ class TreeUnpickler(reader: TastyReader,
         tree
     }
 
+    /** The companion of `sym` defined in the same TASTY file, if it exists. */
+    def codefinedCompanion(sym: Symbol)(implicit ctx: Context): Symbol = {
+      val companion = sym.scalacLinkedClass
+
+      // Is the companion defined in the same Tasty file as `sym`?
+      // The only case to check here is if `sym` is a root. In this case
+      // `companion` might have been entered by the environment but it might
+      // be missing from the Tasty file. So we check explicitly for that.
+      def isCodefined =
+        roots.contains(companion.denot) == seenRoots.contains(companion)
+      if (companion.exists && isCodefined)
+        companion
+      else
+        NoSymbol
+    }
+
     private def readNewDef()(implicit ctx: Context): Tree = {
       val start = currentAddr
       val sym = symAtAddr(start)
@@ -741,15 +757,8 @@ class TreeUnpickler(reader: TastyReader,
           ValDef(tpt)
         case TYPEDEF | TYPEPARAM =>
           if (sym.isClass) {
-            val companion = sym.scalacLinkedClass
-
-            // Is the companion defined in the same Tasty file as `sym`?
-            // The only case to check here is if `sym` is a root. In this case
-            // `companion` might have been entered by the environment but it might
-            // be missing from the Tasty file. So we check explicitly for that.
-            def isCodefined =
-              roots.contains(companion.denot) == seenRoots.contains(companion)
-            if (companion.exists && isCodefined) {
+            val companion = codefinedCompanion(sym)
+            if (companion.exists) {
               if (sym is Flags.ModuleClass) sym.registerCompanionMethod(nme.COMPANION_CLASS_METHOD, companion)
               else sym.registerCompanionMethod(nme.COMPANION_MODULE_METHOD, companion)
             }
@@ -901,8 +910,28 @@ class TreeUnpickler(reader: TastyReader,
       setPos(start, Import(expr, readSelectors()))
     }
 
-    def readIndexedStats(exprOwner: Symbol, end: Addr)(implicit ctx: Context): List[Tree] =
-      until(end)(readIndexedStat(exprOwner))
+    def readIndexedStats(exprOwner: Symbol, end: Addr)(implicit ctx: Context): List[Tree] = {
+      val seenClasses = mutable.Set[Symbol]()
+
+      until(end) {
+        val stat = readIndexedStat(exprOwner)
+
+        val sym = stat.symbol
+        if (sym.isClass) {
+          if (!sym.is(Module))
+            seenClasses += sym
+          else {
+            val companion = codefinedCompanion(sym)
+            if (companion.exists)
+              assert(seenClasses.contains(companion),
+                i"""Unpickled TASTY is illegal: a module class should always come after its companion class,
+                 |but $sym was pickled before $companion""")
+          }
+        }
+
+        stat
+      }
+    }
 
     def readStats(exprOwner: Symbol, end: Addr)(implicit ctx: Context): List[Tree] = {
       fork.indexStats(end)

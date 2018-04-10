@@ -67,40 +67,6 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     }
   }
 
-  /** Reorder statements so that module classes always come after their companion classes */
-  private def reorderAndComplete(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
-    val moduleClassDefs = mutable.Map[Name, Tree]()
-
-    /* Returns the result of reordering stats and prepending revPrefix in reverse order to it.
-     * The result of reorder is equivalent to reorder(stats, revPrefix) = revPrefix.reverse ::: reorder(stats, Nil).
-     * This implementation is tail recursive as long as the element is not a module TypeDef.
-     */
-    def reorder(stats: List[Tree], revPrefix: List[Tree]): List[Tree] = stats match {
-      case (stat: TypeDef) :: stats1 if stat.symbol.isClass =>
-        if (stat.symbol is Flags.Module) {
-          def pushOnTop(xs: List[Tree], ys: List[Tree]): List[Tree] =
-            (ys /: xs)((zs, x) => x :: zs)
-          moduleClassDefs += (stat.name -> stat)
-          val stats1r = reorder(stats1, Nil)
-          pushOnTop(revPrefix, if (moduleClassDefs contains stat.name) stat :: stats1r else stats1r)
-        } else {
-          reorder(
-            stats1,
-            moduleClassDefs remove stat.name.moduleClassName match {
-              case Some(mcdef) =>
-                mcdef :: stat :: revPrefix
-              case None =>
-                stat :: revPrefix
-            }
-          )
-        }
-      case stat :: stats1 => reorder(stats1, stat :: revPrefix)
-      case Nil => revPrefix.reverse
-    }
-
-    reorder(stats, Nil)
-  }
-
   /** elimiate self in Template */
   override def transformTemplate(impl: Template)(implicit ctx: Context): Tree = {
     cpy.Template(impl)(self = EmptyValDef)
@@ -114,9 +80,6 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
           .appliedTo(Literal(Constant("native method stub"))))
     } else ddef
   }
-
-  override def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] =
-    ast.Trees.flatten(reorderAndComplete(trees)(ctx.withPhase(thisPhase.next)))
 
   private object collectBinders extends TreeAccumulator[List[Ident]] {
     def apply(annots: List[Ident], t: Tree)(implicit ctx: Context): List[Ident] = t match {
