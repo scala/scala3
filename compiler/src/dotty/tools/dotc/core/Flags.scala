@@ -475,9 +475,7 @@ object Flags {
 
   /** A value that's unstable unless complemented with a Stable flag */
   final val UnstableValue =
-    Mutable | Method | Erased
-      // TODO: Erased should be treated as stable just like final lazy is.
-      // Otherwise the usefulness of Erased is very much reduced.
+    Mutable | Method
 
   /** Flags that express the variance of a type parameter. */
   final val VarianceFlags = Covariant | Contravariant

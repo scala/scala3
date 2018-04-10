@@ -88,8 +88,8 @@ class CheckRealizable(implicit ctx: Context) {
           // Reject fields that are mutable, by-name, and similar.
           if (!sym.isStableMember)
             patchRealizability(NotStable)
-            // 3. If the symbol isn't "lazy" and its prefix is realizable
-          else if (!isLateInitialized(sym)) {
+            // 3. If the symbol isn't "lazy" or erased, and its prefix is realizable
+          else if (!isLateInitialized(sym) && !sym.is(Erased)) {
             // The symbol itself is stable, cache this information:
             sym.setFlag(Stable)
             // Realizability now depends on the prefix:
