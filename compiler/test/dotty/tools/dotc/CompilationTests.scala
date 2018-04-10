@@ -63,33 +63,33 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/pos-special/completeFromSource/Test.scala", defaultOptions.and("-sourcepath", "tests/pos-special")) +
     compileFile("tests/pos-special/completeFromSource/Test2.scala", defaultOptions.and("-sourcepath", "tests/pos-special")) +
     compileFile("tests/pos-special/completeFromSource/Test3.scala", defaultOptions.and("-sourcepath", "tests/pos-special", "-scansource")) +
-    compileList(
-      "compileMixed",
-      List(
-        "tests/pos/B.scala",
-        "scala2-library/src/library/scala/collection/immutable/Seq.scala",
-        "scala2-library/src/library/scala/collection/parallel/ParSeq.scala",
-        "scala2-library/src/library/scala/package.scala",
-        "scala2-library/src/library/scala/collection/GenSeqLike.scala",
-        "scala2-library/src/library/scala/collection/SeqLike.scala",
-        "scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala"
-      ),
-      scala2Mode
-    ) +
+    // compileList(
+    //   "compileMixed",
+    //   List(
+    //     "tests/pos/B.scala",
+    //     "scala2-library/src/library/scala/collection/immutable/Seq.scala",
+    //     "scala2-library/src/library/scala/collection/parallel/ParSeq.scala",
+    //     "scala2-library/src/library/scala/package.scala",
+    //     "scala2-library/src/library/scala/collection/GenSeqLike.scala",
+    //     "scala2-library/src/library/scala/collection/SeqLike.scala",
+    //     "scala2-library/src/library/scala/collection/generic/GenSeqFactory.scala"
+    //   ),
+    //   scala2Mode
+    // ) +
     compileFilesInDir("tests/pos-special/spec-t5545", defaultOptions) +
     compileFilesInDir("tests/pos-special/strawman-collections", defaultOptions) +
     compileFilesInDir("tests/pos-special/isInstanceOf", allowDeepSubtypes.and("-Xfatal-warnings")) +
-    compileFile("scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
-    compileFile("scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
-    compileList(
-      "parSetSubset",
-      List(
-       "scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala",
-       "scala2-library/src/library/scala/collection/parallel/mutable/ParSet.scala",
-       "scala2-library/src/library/scala/collection/mutable/SetLike.scala"
-      ),
-      scala2Mode
-    ) +
+    // compileFile("scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
+    // compileFile("scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
+    // compileList(
+    //   "parSetSubset",
+    //   List(
+    //    "scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala",
+    //    "scala2-library/src/library/scala/collection/parallel/mutable/ParSet.scala",
+    //    "scala2-library/src/library/scala/collection/mutable/SetLike.scala"
+    //   ),
+    //   scala2Mode
+    // ) +
     // FIXME: This fails with .times(2), see #2799
     compileList(
       "testPredefDeprecatedNonCyclic",

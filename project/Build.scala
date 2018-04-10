@@ -41,7 +41,7 @@ object ExposedValues extends AutoPlugin {
 object Build {
 
   val baseVersion = "0.8.0"
-  val scalacVersion = "2.12.4"
+  val scalacVersion = "2.13.0-M3"
 
   val dottyOrganization = "ch.epfl.lamp"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
@@ -110,7 +110,8 @@ object Build {
       "-feature",
       "-deprecation",
       "-unchecked",
-      "-Xfatal-warnings",
+      // FIXME: Disabled because ClassfileAnnotation is deprecated but currently used in various places
+      // "-Xfatal-warnings",
       "-encoding", "UTF8",
       "-language:existentials,higherKinds,implicitConversions"
     ),
@@ -264,8 +265,8 @@ object Build {
             configuration = configurationFilter(Configurations.ScalaTool.name),
             artifact = artifactFilter(extension = "jar")
           )
-          (jars.find(_.getName.startsWith("dotty-library_2.12")).get,
-           jars.find(_.getName.startsWith("dotty-compiler_2.12")).get)
+          (jars.find(_.getName.startsWith("dotty-library_2.13")).get,
+           jars.find(_.getName.startsWith("dotty-compiler_2.13")).get)
         } else
           ((packageBin in (`dotty-library`, Compile)).value,
            (packageBin in (`dotty-compiler`, Compile)).value)
@@ -492,7 +493,7 @@ object Build {
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "6.0.0-scala-1", // used by the backend
         "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
-        ("org.scala-lang.modules" %% "scala-xml" % "1.0.6").withDottyCompat(),
+        ("org.scala-lang.modules" %% "scala-xml" % "1.1.0").withDottyCompat(),
         "org.scala-lang" % "scala-library" % scalacVersion % "test"
       ),
 
@@ -747,8 +748,8 @@ object Build {
     libraryDependencies ++= Seq(
       "com.typesafe.sbt" % "sbt-interface" % sbtVersion.value,
       "org.scala-sbt" % "api" % sbtVersion.value % "test",
-      ("org.specs2" %% "specs2-core" % "3.9.1" % "test").withDottyCompat(),
-      ("org.specs2" %% "specs2-junit" % "3.9.1" % "test").withDottyCompat()
+      ("org.specs2" %% "specs2-core" % "4.0.2" % "test").withDottyCompat(),
+      ("org.specs2" %% "specs2-junit" % "4.0.2" % "test").withDottyCompat()
     ),
     // The sources should be published with crossPaths := false since they
     // need to be compiled by the project using the bridge.

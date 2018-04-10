@@ -82,6 +82,7 @@ object ShowPickled {
     case LITERALnull    => "LITERALnull"
     case LITERALclass   => "LITERALclass"
     case LITERALenum    => "LITERALenum"
+    case LITERALsymbol  => "LITERALsymbol"
     case SYMANNOT       => "SYMANNOT"
     case CHILDREN       => "CHILDREN"
     case ANNOTATEDtpe   => "ANNOTATEDtpe"
