@@ -278,7 +278,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     } else if (sym.is(Mutable, butNot = Accessor)) {
       new api.Var(apiType(sym.info), sym.name.toString,
         apiAccess(sym), apiModifiers(sym), apiAnnotations(sym).toArray)
-    } else if (sym.isStable) {
+    } else if (sym.isStableMember) {
       new api.Val(apiType(sym.info), sym.name.toString,
         apiAccess(sym), apiModifiers(sym), apiAnnotations(sym).toArray)
     } else {

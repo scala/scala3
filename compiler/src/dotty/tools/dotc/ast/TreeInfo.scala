@@ -399,7 +399,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   private def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel =
     if (!tree.tpe.widen.isParameterless || tree.symbol.is(Erased)) SimplyPure
-    else if (!tree.symbol.isStable) Impure
+    else if (!tree.symbol.isStableMember) Impure
     else if (tree.symbol.is(Lazy)) Idempotent // TODO add Module flag, sinxce Module vals or not Lazy from the start.
     else SimplyPure
 
@@ -462,7 +462,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case tpe: PolyType => maybeGetterType(tpe.resultType)
       case _ => false
     }
-    sym.owner.isClass && !sym.isStable && maybeGetterType(sym.info)
+    sym.owner.isClass && !sym.isStableMember && maybeGetterType(sym.info)
   }
 
   /** Is tree a reference to a mutable variable, or to a potential getter
