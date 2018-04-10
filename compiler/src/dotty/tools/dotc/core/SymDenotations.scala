@@ -589,7 +589,7 @@ object SymDenotations {
       )
 
     /** Is this a denotation of a stable term (or an arbitrary type)? */
-    final def isStable(implicit ctx: Context) = {
+    final def isStableMember(implicit ctx: Context) = {
       def isUnstableValue = is(UnstableValue) || info.isInstanceOf[ExprType]
       isType || is(StableOrErased) || !isUnstableValue
     }

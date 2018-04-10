@@ -402,7 +402,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         sym.owner.isPrimitiveValueClass || sym.owner == defn.StringClass
       if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol)
              // A constant expression with pure arguments is pure.
-          || fn.symbol.isStable)
+          || fn.symbol.isStableMember)
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Pure
       else
         Impure
@@ -438,7 +438,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     val sym = tree.symbol
     if (!tree.hasType) Impure
     else if (!tree.tpe.widen.isParameterless || sym.is(Erased)) SimplyPure
-    else if (!sym.isStable) Impure
+    else if (!sym.isStableMember) Impure
     else if (sym.is(Module))
       if (sym.moduleClass.isNoInitsClass) Pure else Idempotent
     else if (sym.is(Lazy)) Idempotent
@@ -504,7 +504,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case tpe: PolyType => maybeGetterType(tpe.resultType)
       case _ => false
     }
-    sym.owner.isClass && !sym.isStable && maybeGetterType(sym.info)
+    sym.owner.isClass && !sym.isStableMember && maybeGetterType(sym.info)
   }
 
   /** Is tree a reference to a mutable variable, or to a potential getter

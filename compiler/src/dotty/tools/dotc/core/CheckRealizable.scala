@@ -88,7 +88,7 @@ class CheckRealizable(implicit ctx: Context) {
           r.mapError(if (tp.info.isStableRealizable) Realizable else _)
         val r =
           // Reject fields that are mutable, by-name, and similar.
-          if (!sym.isStable)
+          if (!sym.isStableMember)
             patchRealizability(NotStable)
             // 3. If the symbol isn't "lazy" and its prefix is realizable
           else if (!isLateInitialized(sym)) {

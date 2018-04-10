@@ -64,7 +64,7 @@ class Getters extends MiniPhase with SymTransformer {
 
     var d1 =
       if (d.isTerm && (d.is(Lazy) || d.owner.isClass) && d.info.isValueType && !noGetterNeeded) {
-        val maybeStable = if (d.isStable) Stable else EmptyFlags
+        val maybeStable = if (d.isStableMember) Stable else EmptyFlags
         d.copySymDenotation(
           initFlags = d.flags | maybeStable | AccessorCreationFlags,
           info = ExprType(d.info))
