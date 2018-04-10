@@ -127,9 +127,6 @@ object GenericSignatures {
         case ref @ TypeParamRef(_: PolyType, _) =>
           typeParamSig(ref.paramName.lastPart)
 
-        case RefOrAppliedType(sym, _, _) if defn.isXXLFunctionClass(sym) =>
-          jsig(defn.FunctionXXLType, toplevel, primitiveOK)
-
         case RefOrAppliedType(sym, pre, args) =>
           def argSig(tp: Type): Unit =
             tp match {
@@ -215,6 +212,8 @@ object GenericSignatures {
             else
               jsig(unboxedSeen, toplevel, primitiveOK)
           }
+          else if (defn.isXXLFunctionClass(sym))
+            jsig(defn.FunctionXXLType, toplevel, primitiveOK)
           else if (sym.isClass)
             classSig
           else
