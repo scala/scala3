@@ -39,7 +39,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   /** List of names of phases that should have finished processing of tree
     * before this phase starts processing same tree */
-  override def runsAfter = Set(Mixin.name)
+  override def runsAfter = Set(Mixin.name, CollectNullableFields.name)
 
   override def changesMembers = true  // the phase adds lazy val accessors
 
@@ -49,6 +49,18 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   val initFlags      = Flags.Synthetic | Flags.Method
 
   val containerFlagsMask = Flags.Method | Flags.Lazy | Flags.Accessor | Flags.Module
+
+  /** A map of lazy values to the fields they should null after initialization. */
+  private[this] var lazyValNullables: Map[Symbol, List[Symbol]] = _
+  private def nullableFor(sym: Symbol)(implicit ctx: Context) =
+    if (sym.is(Flags.Module)) Nil
+    else lazyValNullables.getOrElse(sym, Nil)
+
+
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
+    lazyValNullables = ctx.collectNullableFieldsPhase.asInstanceOf[CollectNullableFields].lazyValNullables
+    ctx
+  }
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context): tpd.Tree =
    transformLazyVal(tree)
@@ -150,7 +162,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         val initBody =
           adaptToType(
             ref(holderSymbol).select(defn.Object_synchronized).appliedTo(
-              adaptToType(mkNonThreadSafeDef(result, flag, initer), defn.ObjectType)),
+              adaptToType(mkNonThreadSafeDef(result, flag, initer, nullables = Nil), defn.ObjectType)),
             tpe)
         val initTree = DefDef(initSymbol, initBody)
         val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, List()))
@@ -176,21 +188,33 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     holders:::stats
   }
 
+  private def nullOut(nullables: List[Symbol])(implicit ctx: Context): List[Tree] = {
+    val nullConst = Literal(Constants.Constant(null))
+    nullables.map { sym =>
+      val field = if (sym.isGetter) sym.field else sym
+      assert(field.isField)
+      field.setFlag(Flags.Mutable)
+      ref(field).becomes(nullConst)
+    }
+  }
+
   /** Create non-threadsafe lazy accessor equivalent to such code
       * def methodSymbol() = {
       *   if (flag) target
       *   else {
       *     target = rhs
       *     flag = true
+      *     nullable = null
       *     target
       *     }
       *   }
       */
 
-    def mkNonThreadSafeDef(target: Tree, flag: Tree, rhs: Tree)(implicit ctx: Context) = {
+    def mkNonThreadSafeDef(target: Tree, flag: Tree, rhs: Tree, nullables: List[Symbol])(implicit ctx: Context) = {
       val setFlag = flag.becomes(Literal(Constants.Constant(true)))
-      val setTargets = if (isWildcardArg(rhs)) Nil else target.becomes(rhs) :: Nil
-      val init = Block(setFlag :: setTargets, target.ensureApplied)
+      val setNullables = nullOut(nullables)
+      val setTargetAndNullable = if (isWildcardArg(rhs)) setNullables else target.becomes(rhs) :: setNullables
+      val init = Block(setFlag :: setTargetAndNullable, target.ensureApplied)
       If(flag.ensureApplied, target.ensureApplied, init)
     }
 
@@ -198,15 +222,17 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       * def methodSymbol() = {
       *   if (target eq null) {
       *     target = rhs
+      *     nullable = null
       *     target
       *   } else target
       * }
       */
-    def mkDefNonThreadSafeNonNullable(target: Symbol, rhs: Tree)(implicit ctx: Context) = {
+    def mkDefNonThreadSafeNonNullable(target: Symbol, rhs: Tree, nullables: List[Symbol])(implicit ctx: Context) = {
       val cond = ref(target).select(nme.eq).appliedTo(Literal(Constant(null)))
       val exp = ref(target)
       val setTarget = exp.becomes(rhs)
-      val init = Block(List(setTarget), exp)
+      val setNullables = nullOut(nullables)
+      val init = Block(setTarget :: setNullables, exp)
       If(cond, init, exp)
     }
 
@@ -222,14 +248,14 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
         val containerTree = ValDef(containerSymbol, defaultValue(tpe))
         if (x.tpe.isNotNull && tpe <:< defn.ObjectType) { // can use 'null' value instead of flag
-          val slowPath = DefDef(x.symbol.asTerm, mkDefNonThreadSafeNonNullable(containerSymbol, x.rhs))
+          val slowPath = DefDef(x.symbol.asTerm, mkDefNonThreadSafeNonNullable(containerSymbol, x.rhs, nullableFor(x.symbol)))
           Thicket(containerTree, slowPath)
         }
         else {
           val flagName = LazyBitMapName.fresh(x.name.asTermName)
           val flagSymbol = ctx.newSymbol(x.symbol.owner, flagName,  containerFlags | Flags.Private, defn.BooleanType).enteredAfter(this)
           val flag = ValDef(flagSymbol, Literal(Constants.Constant(false)))
-          val slowPath = DefDef(x.symbol.asTerm, mkNonThreadSafeDef(ref(containerSymbol), ref(flagSymbol), x.rhs))
+          val slowPath = DefDef(x.symbol.asTerm, mkNonThreadSafeDef(ref(containerSymbol), ref(flagSymbol), x.rhs, nullableFor(x.symbol)))
           Thicket(containerTree, flag, slowPath)
         }
     }
@@ -263,10 +289,23 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       *         result = $target
       *       }
       *     }
+      *   nullable = null
       *   result
       * }
       */
-    def mkThreadSafeDef(methodSymbol: TermSymbol, claz: ClassSymbol, ord: Int, target: Symbol, rhs: Tree, tp: Types.Type, offset: Tree, getFlag: Tree, stateMask: Tree, casFlag: Tree, setFlagState: Tree, waitOnLock: Tree)(implicit ctx: Context) = {
+    def mkThreadSafeDef(methodSymbol: TermSymbol,
+                        claz: ClassSymbol,
+                        ord: Int,
+                        target: Symbol,
+                        rhs: Tree,
+                        tp: Types.Type,
+                        offset: Tree,
+                        getFlag: Tree,
+                        stateMask: Tree,
+                        casFlag: Tree,
+                        setFlagState: Tree,
+                        waitOnLock: Tree,
+                        nullables: List[Symbol])(implicit ctx: Context) = {
       val initState = Literal(Constants.Constant(0))
       val computeState = Literal(Constants.Constant(1))
       val notifyState = Literal(Constants.Constant(2))
@@ -330,7 +369,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
       val whileBody = List(ref(flagSymbol).becomes(getFlag.appliedTo(thiz, offset)), cases)
       val cycle = WhileDo(methodSymbol, whileCond, whileBody)
-      DefDef(methodSymbol, Block(resultDef :: retryDef :: flagDef :: cycle :: Nil, ref(resultSymbol)))
+      val setNullables = nullOut(nullables)
+      DefDef(methodSymbol, Block(resultDef :: retryDef :: flagDef :: cycle :: setNullables, ref(resultSymbol)))
     }
 
     def transformMemberDefVolatile(x: ValOrDefDef)(implicit ctx: Context) = {
@@ -390,8 +430,9 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         val wait =    Select(ref(helperModule), lazyNme.RLazyVals.wait4Notification)
         val state =   Select(ref(helperModule), lazyNme.RLazyVals.state)
         val cas =     Select(ref(helperModule), lazyNme.RLazyVals.cas)
+        val nullables = nullableFor(x.symbol)
 
-        val accessor = mkThreadSafeDef(x.symbol.asTerm, claz, ord, containerSymbol, x.rhs, tpe, offset, getFlag, state, cas, setFlag, wait)
+        val accessor = mkThreadSafeDef(x.symbol.asTerm, claz, ord, containerSymbol, x.rhs, tpe, offset, getFlag, state, cas, setFlag, wait, nullables)
         if (flag eq EmptyTree)
           Thicket(containerTree, accessor)
         else Thicket(containerTree, flag, accessor)

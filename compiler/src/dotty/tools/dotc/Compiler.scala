@@ -72,6 +72,7 @@ class Compiler {
          new LiftTry,                // Put try expressions that might execute on non-empty stacks into their own methods
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
          new ClassOf,                // Expand `Predef.classOf` calls.
+         new CollectNullableFields,  // Collect fields that can be null out after use in lazy initialization
          new RefChecks) ::           // Various checks mostly related to abstract members and overriding
     List(new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches
@@ -97,7 +98,7 @@ class Compiler {
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
     List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
          new VCElideAllocations,     // Peep-hole optimization to eliminate unnecessary value class allocations
-         new Mixin,                   // Expand trait fields and trait initializers
+         new Mixin,                  // Expand trait fields and trait initializers
          new LazyVals,               // Expand lazy vals
          new Memoize,                // Add private fields to getters and setters
          new NonLocalReturns,        // Expand non-local returns
