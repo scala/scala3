@@ -1,9 +1,7 @@
-package streams
-
 import dotty.tools.dotc.quoted.Toolbox._
 import scala.quoted._
 
-object StagedStreams {
+object Test {
 
   // TODO: remove as it exists in Quoted Lib
   sealed trait Var[T] {
@@ -40,21 +38,24 @@ object StagedStreams {
 
   trait StagedStream[A]
   case class Linear[A](producer: Producer[A]) extends StagedStream[A]
-  case class Nested[A, B](producer: Producer[A], nestedf: A => StagedStream[B]) extends StagedStream[B]
+  case class Nested[A, B](producer: Producer[B], nestedf: B => StagedStream[A]) extends StagedStream[A]
 
   case class Stream[A](stream: StagedStream[Expr[A]]) {
-     def fold[W](z: Expr[W], f: ((Expr[W], Expr[A]) => Expr[W])): Expr[W] = {
-       Var('{z}) { s =>
-         ~fold_raw((a: Expr[A]) => '{
-            s.update(f(~s.get, a))
-            s.get
-         }, stream)
-         acc
+
+     def fold[W: Type](z: Expr[W], f: ((Expr[W], Expr[A]) => Expr[W])): Expr[W] = {
+       Var(z) { s: Var[W] => '{
+
+           ~fold_raw[Expr[A]]((a: Expr[A]) => '{
+               ~s.update(f(s.get, a))
+           }, stream)
+
+           ~s.get
+         }
        }
      }
 
-     def fold_raw[W](consumer: A => Expr[Unit], stream: StagedStream[A]): Expr[Unit] = {
-       stream match {
+     def fold_raw[A](consumer: A => Expr[Unit], s: StagedStream[A]): Expr[Unit] = {
+       s match {
          case Linear(producer) => {
            producer.card match {
              case Many =>
@@ -71,10 +72,10 @@ object StagedStreams {
                })
            }
          }
-         case _ => ???
-//             Nested(producer, nestedf) => {
-//              ??? //consume(((a) => consume(consumer, nestedf(a))), Linear[A](producer))
-//           }
+         case nested: Nested[a, bt] => ???
+//         {
+//            fold_raw[bt](((e: bt) => fold_raw(consumer, nested.nestedf(e))), Linear(nested.producer))
+//         }
        }
      }
   }
@@ -88,7 +89,7 @@ object StagedStreams {
 
         def init(k: St => Expr[Unit]): Expr[Unit] = {
           Var('{(~arr).length}) { n =>
-            Var(0.toExpr){i =>
+            Var(0.toExpr){ i =>
               k((i, n, arr))
             }
           }
@@ -113,6 +114,15 @@ object StagedStreams {
 
       Stream(Linear(prod))
     }
+  }
+
+  def test1() = Stream
+    .of('{Array(1, 2, 3)})
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+
+
+  def main(args: Array[String]): Unit = {
+    println(test1().run)
   }
 }
 
