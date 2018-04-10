@@ -85,7 +85,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   ASSIGN         Length lhs_Term rhs_Term
                   BLOCK          Length expr_Term Stat*
                   INLINED        Length call_Term expr_Term Stat*
-                  LAMBDA         Length meth_Term target_Type
+                  LAMBDA         Length meth_Term target_Type?
                   IF             Length cond_Term then_Term else_Term
                   MATCH          Length sel_Term CaseDef*
                   TRY            Length expr_Term CaseDef* finalizer_Term?
