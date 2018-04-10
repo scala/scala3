@@ -1003,7 +1003,7 @@ object SymDenotations {
           ctx.scope.lookup(name)
         else
           companionNamed(name)(ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next())
-      if (sym.exists && !sym.unforcedIsAbsent)
+      if (sym.exists && sym.isClass && !sym.unforcedIsAbsent)
         sym
       else
         NoSymbol
