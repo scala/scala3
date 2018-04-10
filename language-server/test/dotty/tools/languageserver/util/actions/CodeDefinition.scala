@@ -1,6 +1,6 @@
 package dotty.tools.languageserver.util.actions
 
-import dotty.tools.languageserver.util._
+import dotty.tools.languageserver.util.{CodeRange, PositionContext}
 import dotty.tools.languageserver.util.embedded.CodeMarker
 
 import scala.collection.JavaConverters._

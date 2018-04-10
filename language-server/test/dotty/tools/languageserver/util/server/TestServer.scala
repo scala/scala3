@@ -6,9 +6,7 @@ import java.nio.file.Path
 import java.util
 
 import dotty.tools.languageserver.DottyLanguageServer
-import org.eclipse.lsp4j._
-
-import scala.collection.JavaConverters._
+import org.eclipse.lsp4j.{ DidOpenTextDocumentParams, InitializeParams, InitializeResult, TextDocumentItem}
 
 class TestServer(testFolder: Path) {
 

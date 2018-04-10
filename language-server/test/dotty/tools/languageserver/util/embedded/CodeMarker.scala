@@ -5,7 +5,7 @@ import dotty.tools.languageserver.util.{CodeRange, PositionContext}
 
 import org.eclipse.lsp4j._
 
-import PositionContext._
+import PositionContext.PosCtx
 
 /** Used to mark positions in the code */
 class CodeMarker(val name: String) extends Embedded {

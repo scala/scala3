@@ -5,7 +5,7 @@ import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.TestFile
 
 import org.eclipse.lsp4j.CompletionItemKind
-import org.junit.Assert.assertEquals
+import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
 
 import scala.collection.JavaConverters._
 
@@ -21,8 +21,8 @@ class CodeCompletion(override val marker: CodeMarker,
 
   override def execute(): Exec[Unit] = {
     val result = server.completion(marker.toTextDocumentPositionParams).get()
-    assert(result.isRight, result)
-    assert(!result.getRight.isIncomplete, s"Completion results were 'incomplete': $result")
+    assertTrue(s"Completion results where not 'right': $result", result.isRight)
+    assertFalse(s"Completion results were 'incomplete': $result", result.getRight.isIncomplete)
     val completionResults = result.getRight.getItems.asScala.toSet.map { item =>
       (item.getLabel, item.getKind, item.getDetail)
     }

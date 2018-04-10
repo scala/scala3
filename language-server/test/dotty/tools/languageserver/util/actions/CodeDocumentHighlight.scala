@@ -2,7 +2,7 @@ package dotty.tools.languageserver.util.actions
 
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.{CodeRange, PositionContext}
-import org.eclipse.lsp4j._
+import org.eclipse.lsp4j.DocumentHighlightKind
 import org.junit.Assert.assertEquals
 
 import scala.collection.JavaConverters._
