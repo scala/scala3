@@ -126,7 +126,7 @@ object ProtoTypes {
         val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
         def qualifies(m: SingleDenotation) =
           memberProto.isRef(defn.UnitClass) ||
-          compat.normalizedCompatible(NamedType(tp1, name, m), memberProto)
+          tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto)
             // Note: can't use `m.info` here because if `m` is a method, `m.info`
             //       loses knowledge about `m`'s default arguments.
         mbr match { // hasAltWith inlined for performance
