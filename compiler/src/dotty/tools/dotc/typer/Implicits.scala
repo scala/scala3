@@ -554,11 +554,15 @@ trait Implicits { self: Typer =>
             val etag = inferImplicitArg(defn.ClassTagType.appliedTo(elemTp), pos)
             if (etag.tpe.isError) EmptyTree else etag.select(nme.wrap)
           case tp if hasStableErasure(tp) && !defn.isBottomClass(tp.typeSymbol) =>
-            ref(defn.ClassTagModule)
-              .select(nme.apply)
-              .appliedToType(tp)
-              .appliedTo(clsOf(erasure(tp)))
-              .withPos(pos)
+            val sym = tp.typeSymbol
+            if (sym == defn.UnitClass || sym == defn.AnyClass || sym == defn.AnyValClass)
+              ref(defn.ClassTagModule).select(sym.name.toTermName).withPos(pos)
+            else
+              ref(defn.ClassTagModule)
+                .select(nme.apply)
+                .appliedToType(tp)
+                .appliedTo(clsOf(erasure(tp)))
+                .withPos(pos)
           case tp =>
             EmptyTree
         }
