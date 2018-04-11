@@ -309,6 +309,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def irrefutable(unapp: Tree): Boolean = {
     // TODO: optionless patmat
     unapp.tpe.widen.finalResultType.isRef(scalaSomeClass) ||
+      unapp.tpe.widen.finalResultType =:= ConstantType(Constant(true)) ||
       (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||
       productArity(unapp.tpe.widen.finalResultType) > 0
   }
