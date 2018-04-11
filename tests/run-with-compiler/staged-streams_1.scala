@@ -78,7 +78,6 @@ object Test {
        }
      }
 
-
     def map[B : Type](f: (Expr[A] => Expr[B])): Stream[B] = {
       Stream(mapRaw[Expr[A], Expr[B]](a => k => '{ ~k(f(a)) }, stream))
     }
@@ -123,6 +122,25 @@ object Test {
         case nested: Nested[a, bt] =>
           Nested(nested.producer, (a: bt) => flatMapRaw[A, B](f, nested.nestedf(a)))
       }
+    }
+
+    def filter(f: (Expr[A] => Expr[Boolean])): Stream[A] = {
+      val filterStream = (a: Expr[A]) =>
+        new Producer[Expr[A]] {
+          type St = Expr[A]
+          val card = AtMost1
+
+          def init(k: St => Expr[Unit]): Expr[Unit] =
+            k(a)
+
+          def step(st: St, k: (Expr[A] => Expr[Unit])): Expr[Unit] =
+            k(st)
+
+          def hasNext(st: St): Expr[Boolean] =
+            f(st)
+        }
+
+      Stream(flatMapRaw[Expr[A], Expr[A]]((a => { Linear(filterStream(a)) }), stream))
     }
   }
 
@@ -176,12 +194,19 @@ object Test {
     .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ ~d * ~dp }))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
 
+  def test4() = Stream
+    .of('{Array(1, 2, 3)})
+    .filter((d: Expr[Int]) => '{ ~d % 2 == 0 })
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+
   def main(args: Array[String]): Unit = {
     println(test1().run)
     println
     println(test2().run)
     println
     println(test3().run)
+    println
+    println(test4().run)
   }
 }
 
