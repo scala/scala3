@@ -1,6 +1,5 @@
 package dotty.tools.dotc.tasty
 
-import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.Context
 

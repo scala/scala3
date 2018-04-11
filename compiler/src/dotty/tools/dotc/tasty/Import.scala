@@ -1,16 +1,15 @@
 package dotty.tools.dotc.tasty
 
 import dotty.tools.dotc.ast.Trees
-import dotty.tools.dotc.ast.tpd.Tree
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Decorators.sourcePos
 import dotty.tools.dotc.core.StdNames.nme
 
 
 object Import {
 
-  def apply(tree: Tree)(implicit ctx: Context): scala.tasty.Import = Impl(tree, ctx)
+  def apply(tree: tpd.Tree)(implicit ctx: Context): scala.tasty.Import = Impl(tree, ctx)
 
   object Import {
     def unapply(term: scala.tasty.TopLevelStatement): Option[(scala.tasty.Term, List[scala.tasty.ImportSelector])] = term match {
@@ -25,7 +24,7 @@ object Import {
     case Trees.Thicket((id1@Trees.Ident(_)) :: (id2@Trees.Ident(_)) :: Nil) => scala.tasty.ImportSelector.Rename(Id(id1), Id(id2))
   }
 
-  private case class Impl(tree: Tree, ctx: Context) extends scala.tasty.Import with Positioned {
+  private case class Impl(tree: tpd.Tree, ctx: Context) extends scala.tasty.Import with Positioned {
     override def toString: String = this match {
       case Import(pkg, body) => s"Import($pkg, $body)"
       case _ => s"Import"

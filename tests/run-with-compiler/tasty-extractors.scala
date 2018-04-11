@@ -43,7 +43,7 @@ object Test {
     '{ val a: Int = 3 },
     '{ lazy val b: Int = 3 },
     '{ def c: Int = 3 },
-    '{ def d: Int = return 4},
+    '{ def d: Int = return 4 },
     '{ var x = 1; x = 2 },
     '((x: Int) => x),
     '(???),
@@ -55,6 +55,11 @@ object Test {
     '{ import scala.collection.mutable; 1 },
     '{ import scala.collection.{mutable, immutable}; 2 },
     '{ import scala.collection.{mutable => mut}; 3 },
-    '{ import scala.collection.{mutable => _}; 4 }
+    '{ import scala.collection.{mutable => _}; 4 },
+    '{ class Foo },
+    '{ object Foo },
+    '{ type Foo },
+    '{ type Foo = Int },
+    '{ type Foo >: Null <: Object },
   )
 }

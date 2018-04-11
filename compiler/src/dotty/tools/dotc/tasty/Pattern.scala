@@ -1,7 +1,7 @@
 package dotty.tools.dotc.tasty
 
 import dotty.tools.dotc.ast.Trees
-import dotty.tools.dotc.ast.tpd.Tree
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.core.StdNames._
@@ -9,11 +9,11 @@ import dotty.tools.dotc.core.StdNames._
 
 object Pattern {
 
-  def apply(tree: Tree)(implicit ctx: Context): scala.tasty.Pattern = Impl(tree, ctx)
+  def apply(tree: tpd.Tree)(implicit ctx: Context): scala.tasty.Pattern = Impl(tree, ctx)
 
   object Value {
     def unapply(pattern: scala.tasty.Pattern): Option[scala.tasty.Term] = pattern match {
-      case Impl(lit@Trees.Literal(_), ctx) => Some(Term(lit)(ctx))
+      case Impl(lit: tpd.Literal, ctx) => Some(Term(lit)(ctx))
       case _ => None
     }
   }
@@ -53,7 +53,7 @@ object Pattern {
     }
   }
 
-  private case class Impl(tree: Tree, ctx: Context) extends scala.tasty.Pattern with Positioned {
+  private case class Impl(tree: tpd.Tree, ctx: Context) extends scala.tasty.Pattern with Positioned {
 
     def tpe: scala.tasty.Type = Type(tree.tpe)(ctx)
 

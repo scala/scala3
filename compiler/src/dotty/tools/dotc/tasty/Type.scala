@@ -3,7 +3,6 @@ package dotty.tools.dotc.tasty
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types
 
-
 object Type {
 
   def apply(tpe: Types.Type)(implicit ctx: Context): scala.tasty.Type = Impl(tpe, ctx)

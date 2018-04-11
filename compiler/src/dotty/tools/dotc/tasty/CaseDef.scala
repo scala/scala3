@@ -3,8 +3,6 @@ package dotty.tools.dotc.tasty
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.ast.tpd.Tree
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Decorators.sourcePos
-import dotty.tools.dotc.core.Names
 
 
 object CaseDef {

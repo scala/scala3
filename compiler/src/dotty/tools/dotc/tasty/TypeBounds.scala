@@ -3,7 +3,6 @@ package dotty.tools.dotc.tasty
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types
 
-
 object TypeBounds {
 
   def apply(bounds: Types.TypeBounds)(implicit ctx: Context): scala.tasty.Type = Impl(bounds, ctx)

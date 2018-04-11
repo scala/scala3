@@ -76,16 +76,16 @@ Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 Block(List(ValDef(b, Ident(Int), Some(Literal(Int(3))), List())), Literal(Unit()))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
-Block(List(Definition{## DefDef(c,List(),List(),Ident(Int),Literal(Constant(3))) ##}), Literal(Unit()))
+Block(List(DefDef(c, List(), List(), Ident(Int), Some(Literal(Int(3))), List())), Literal(Unit()))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
-Block(List(Definition{## DefDef(d,List(),List(),Ident(Int),Return(Literal(Constant(4)),Ident(d))) ##}), Literal(Unit()))
+Block(List(DefDef(d, List(), List(), Ident(Int), Some(Return(Literal(Int(4)))), List())), Literal(Unit()))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
 Block(List(ValDef(x, Synthetic(), Some(Literal(Int(1))), List())), Assign(Ident(x), Literal(Int(2))))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
-Block(List(Definition{## DefDef($anonfun,List(),List(List(ValDef(x,Ident(Int),EmptyTree))),TypeTree[TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int)],Ident(x)) ##}), Lambda(Ident($anonfun), None))
+Block(List(DefDef($anonfun, List(), List(List(ValDef(x, Ident(Int), None, List()))), Synthetic(), Some(Ident(x)), List())), Lambda(Ident($anonfun), None))
 AppliedType(Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Function1) ##}, List(Type{## TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int) ##}, Type{## TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int) ##}))
 
 Ident(???)
@@ -117,4 +117,19 @@ ConstantType(Int(3))
 
 Block(List(Import(Select(Ident(scala), collection), List(Omit(Id(mutable))))), Literal(Int(4)))
 ConstantType(Int(4))
+
+Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List()), Synthetic(), Some(Term{## EmptyTree ##}), List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(), List())), Literal(Unit()))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Block(List(ValDef(Foo, Ident(Foo$), Some(Apply(Select(New(Ident(Foo$)), <init>), Nil)), List()), ClassDef(Foo$, DefDef(<init>, List(), List(List()), Synthetic(), Some(Term{## EmptyTree ##}), List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), Some(ValDef(_, Singleton(Ident(Foo)), None, List())), List(), List())), Literal(Unit()))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Block(List(TypeDef(Foo, TypeBounds(Synthetic(), Synthetic()), List())), Literal(Unit()))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Block(List(TypeDef(Foo, Ident(Int), List())), Literal(Unit()))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
+
+Block(List(TypeDef(Foo, TypeBounds(Ident(Null), Ident(Object)), List())), Literal(Unit()))
+Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 

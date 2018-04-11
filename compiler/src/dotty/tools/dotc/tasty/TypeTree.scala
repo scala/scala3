@@ -98,7 +98,7 @@ object TypeTree {
       case Singleton(ref) => s"Singleton($ref)"
 //      case Refined(tpt, refinements) => s"Refined($ref, ${list(refinements)})"
       case Applied(tycon, args) => s"Applied($tycon, $args)"
-      case TypeBounds(lo, hi) => s"Applied($lo, $hi)"
+      case TypeBounds(lo, hi) => s"TypeBounds($lo, $hi)"
       case Annotated(arg, annot) => s"Annotated($arg, $annot)"
       case And(left, right) => s"And($left, $right)"
       case Or(left, right) => s"Or($left, $right)"
