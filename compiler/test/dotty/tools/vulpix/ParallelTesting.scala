@@ -295,7 +295,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           "[" + ("=" * (math.max(progress - 1, 0))) +
             (if (progress > 0) ">" else "") +
             (" " * (39 - progress)) +
-            s"] completed ($tCompiled/$sourceCount, ${timestamp}s)\r"
+            s"] completed ($tCompiled/$sourceCount, $errorCount failed, ${timestamp}s))\r"
         )
 
         Thread.sleep(100)
@@ -451,7 +451,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     private[ParallelTesting] def executeTestSuite(): this.type = {
-      assert(_testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
+      assert(testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
 
       if (filteredSources.nonEmpty) {
         val pool = threadLimit match {
