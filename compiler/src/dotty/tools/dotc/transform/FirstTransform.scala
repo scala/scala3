@@ -97,8 +97,15 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
    */
   private def toTypeTree(tree: Tree)(implicit ctx: Context) = {
     val binders = collectBinders.apply(Nil, tree)
-    val result: Tree = TypeTree(tree.tpe).withPos(tree.pos)
-    (result /: binders)(Annotated(_, _))
+    val result: Tree =
+      if (tree.isInstanceOf[TypeTree])
+        tree
+      else
+        TypeTree(tree.tpe).withPos(tree.pos)
+    if (!binders.isEmpty)
+      (result /: binders)(Annotated(_, _))
+    else
+      result
   }
 
   override def transformOther(tree: Tree)(implicit ctx: Context) = tree match {
