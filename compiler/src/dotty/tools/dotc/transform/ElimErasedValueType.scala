@@ -138,6 +138,6 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer {
     transformTypeOfTree(tree)
   override def transformIf(tree: If)(implicit ctx: Context): Tree =
     transformTypeOfTree(tree)
-  override def transformTypeTree(tree: TypeTree)(implicit ctx: Context): Tree =
+  override def transformTpt(tree: Tree)(implicit ctx: Context): Tree =
     transformTypeOfTree(tree)
 }

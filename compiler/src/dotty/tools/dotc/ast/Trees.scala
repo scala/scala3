@@ -1341,7 +1341,7 @@ object Trees {
 
     abstract class TreeTraverser extends TreeAccumulator[Unit] {
       def traverse(tree: Tree)(implicit ctx: Context): Unit
-      def apply(x: Unit, tree: Tree)(implicit ctx: Context) = traverse(tree)
+      final def apply(x: Unit, tree: Tree)(implicit ctx: Context) = traverse(tree)
       protected def traverseChildren(tree: Tree)(implicit ctx: Context) = foldOver((), tree)
     }
 

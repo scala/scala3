@@ -70,7 +70,6 @@ object MegaPhase {
     def prepareForTry(tree: Try)(implicit ctx: Context) = ctx
     def prepareForSeqLiteral(tree: SeqLiteral)(implicit ctx: Context) = ctx
     def prepareForInlined(tree: Inlined)(implicit ctx: Context) = ctx
-    def prepareForTypeTree(tree: TypeTree)(implicit ctx: Context) = ctx
     def prepareForBind(tree: Bind)(implicit ctx: Context) = ctx
     def prepareForAlternative(tree: Alternative)(implicit ctx: Context) = ctx
     def prepareForUnApply(tree: UnApply)(implicit ctx: Context) = ctx
@@ -102,7 +101,6 @@ object MegaPhase {
     def transformTry(tree: Try)(implicit ctx: Context): Tree = tree
     def transformSeqLiteral(tree: SeqLiteral)(implicit ctx: Context): Tree = tree
     def transformInlined(tree: Inlined)(implicit ctx: Context): Tree = tree
-    def transformTypeTree(tree: TypeTree)(implicit ctx: Context): Tree = tree
     def transformBind(tree: Bind)(implicit ctx: Context): Tree = tree
     def transformAlternative(tree: Alternative)(implicit ctx: Context): Tree = tree
     def transformUnApply(tree: UnApply)(implicit ctx: Context): Tree = tree
@@ -114,6 +112,18 @@ object MegaPhase {
     def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] = trees
     def transformUnit(tree: Tree)(implicit ctx: Context): Tree = tree
     def transformOther(tree: Tree)(implicit ctx: Context): Tree = tree
+
+    /** Transform trees which represent types.
+     *
+     *  Unlike in all other transform* methods, the children of the tree are not
+     *  transformed before calling this method. This only matters in the
+     *  `FirstTransform` group, since afterwards all trees representing types are
+     *  instances of `TypeTree` which has no children (see `FirstTransform#transformTpt`).
+     *
+     *  @pre tree.isType == true
+     *  @return a tree where isType == true
+     */
+    def transformTpt(tree: Tree)(implicit ctx: Context): Tree = tree
 
     /** Transform tree using all transforms of current group (including this one) */
     def transformAllDeep(tree: Tree)(implicit ctx: Context): Tree =
@@ -168,7 +178,6 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     }
     def goUnnamed(tree: Tree, start: Int) = tree match {
       case tree: Apply => goApply(tree, start)
-      case tree: TypeTree => goTypeTree(tree, start)
       case tree: Thicket =>
         cpy.Thicket(tree)(tree.trees.mapConserve(transformNode(_, start)))
       case tree: This => goThis(tree, start)
@@ -193,7 +202,13 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       case tree: Alternative => goAlternative(tree, start)
       case tree => goOther(tree, start)
     }
-    if (tree.isInstanceOf[NameTree]) goNamed(tree, start) else goUnnamed(tree, start)
+
+    if (tree.isType)
+      goTpt(tree, start)
+    else if (tree.isInstanceOf[NameTree])
+      goNamed(tree, start)
+    else
+      goUnnamed(tree, start)
   }
 
   /** Transform full tree using all phases in this group that have idxInGroup >= start */
@@ -233,7 +248,11 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         goDefDef(mapDefDef(localContext), start)
       case tree: TypeDef =>
         implicit val ctx = prepTypeDef(tree, start)(outerCtx)
-        val rhs = transformTree(tree.rhs, start)(localContext)
+        val rhs =
+          if (tree.rhs.isType)
+            transformTree(tree.rhs, start)(localContext)
+          else
+            transformTree(tree.rhs, start)(localContext)
         goTypeDef(cpy.TypeDef(tree)(tree.name, rhs), start)
       case tree: Bind =>
         implicit val ctx = prepBind(tree, start)(outerCtx)
@@ -250,9 +269,6 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         val fun = transformTree(tree.fun, start)
         val args = transformTrees(tree.args, start)
         goApply(cpy.Apply(tree)(fun, args), start)
-      case tree: TypeTree =>
-        implicit val ctx = prepTypeTree(tree, start)(outerCtx)
-        goTypeTree(tree, start)
       case tree: Thicket =>
         cpy.Thicket(tree)(transformTrees(tree.trees, start))
       case tree: This =>
@@ -363,9 +379,14 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         goOther(tree, start)
     }
 
-    if (tree.isInstanceOf[NameTree]) transformNamed(tree, start, ctx)
-    else transformUnnamed(tree, start, ctx)
+    if (tree.isType)
+      goTpt(tree, start)
+    else if (tree.isInstanceOf[NameTree])
+      transformNamed(tree, start, ctx)
+    else
+      transformUnnamed(tree, start, ctx)
   }
+
 
   def transformSpecificTree[T <: Tree](tree: T, start: Int)(implicit ctx: Context): T =
     transformTree(tree, start).asInstanceOf[T]
@@ -479,8 +500,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   private val nxSeqLiteralTransPhase = init("transformSeqLiteral")
   private val nxInlinedPrepPhase = init("prepareForInlined")
   private val nxInlinedTransPhase = init("transformInlined")
-  private val nxTypeTreePrepPhase = init("prepareForTypeTree")
-  private val nxTypeTreeTransPhase = init("transformTypeTree")
+  private val nxTptTransPhase = init("transformTpt")
   private val nxBindPrepPhase = init("prepareForBind")
   private val nxBindTransPhase = init("transformBind")
   private val nxAlternativePrepPhase = init("prepareForAlternative")
@@ -791,18 +811,12 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     }
   }
 
-  def prepTypeTree(tree: TypeTree, start: Int)(implicit ctx: Context): Context = {
-    val phase = nxTypeTreePrepPhase(start)
-    if (phase == null) ctx
-    else prepTypeTree(tree, phase.idxInGroup + 1)(phase.prepareForTypeTree(tree))
-  }
-
-  def goTypeTree(tree: TypeTree, start: Int)(implicit ctx: Context): Tree = {
-    val phase = nxTypeTreeTransPhase(start)
+  def goTpt(tree: Tree, start: Int)(implicit ctx: Context): Tree = {
+    val phase = nxTptTransPhase(start)
     if (phase == null) tree
-    else phase.transformTypeTree(tree)(ctx) match {
-      case tree1: TypeTree => goTypeTree(tree1, phase.idxInGroup + 1)
-      case tree1 => transformNode(tree1, phase.idxInGroup + 1)
+    else {
+      val tree1 = phase.transformTpt(tree)(ctx)
+      goTpt(tree1, phase.idxInGroup + 1)
     }
   }
 
