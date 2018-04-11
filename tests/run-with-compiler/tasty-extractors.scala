@@ -2,7 +2,6 @@
 import scala.quoted._
 
 import dotty.tools.dotc.quoted.Toolbox._
-import dotty.tools.dotc.tasty.Term._
 
 object Test {
   def main(args: Array[String]): Unit = {

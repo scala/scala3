@@ -5,6 +5,7 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.printing.RefinedPrinter
+import dotty.tools.dotc.tasty.internal.Term
 
 import scala.quoted.Expr
 import scala.runtime.BoxedUnit
@@ -58,8 +59,8 @@ object Toolbox {
 
   }
 
-  def toTasty[T](expr: Expr[T]): scala.tasty.Term = {
-    new QuoteDriver().withTree(expr, (tree, ctx) => dotty.tools.dotc.tasty.Term(tree)(ctx), Settings.run())
+  def toTasty[T](expr: Expr[T]): scala.tasty.term.Term = {
+    new QuoteDriver().withTree(expr, (tree, ctx) => Term(tree)(ctx), Settings.run())
   }
 
   class Settings[T] private (val outDir: Option[String], val rawTree: Boolean, val compilerArgs: List[String])
