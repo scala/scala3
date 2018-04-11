@@ -78,6 +78,43 @@ object Test {
 //         }
        }
      }
+
+
+    def map[B : Type](f: (Expr[A] => Expr[B])): Stream[B] = {
+      Stream(mapRaw[Expr[A], Expr[B]](a => k => '{ ~k(f(a)) }, stream))
+    }
+
+    def mapRaw[A, B](f: (A => (B => Expr[Unit]) => Expr[Unit]), s: StagedStream[A]): StagedStream[B] = {
+      s match {
+        case Linear(producer) => {
+          val prod = new Producer[B] {
+
+            type St = producer.St
+
+            val card = producer.card
+
+            def init(k: St => Expr[Unit]): Expr[Unit] = {
+              producer.init(k)
+            }
+
+            def step(st: St, k: (B => Expr[Unit])): Expr[Unit] = {
+              producer.step(st, el => f(el)(k))
+            }
+
+            def hasNext(st: St): Expr[Boolean] = {
+              producer.hasNext(st)
+            }
+          }
+
+          Linear(prod)
+        }
+        case nested: Nested[a, bt] => ???
+//        {
+//          Nested(nested.producer, (a: bt) => mapRaw[A, B](f, nested.nestedf(a)))
+//        }
+      }
+    }
+
   }
 
   object Stream {
@@ -120,9 +157,15 @@ object Test {
     .of('{Array(1, 2, 3)})
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
 
+  def test2() = Stream
+    .of('{Array(1, 2, 3)})
+    .map((a: Expr[Int]) => '{ ~a * 2 })
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
 
   def main(args: Array[String]): Unit = {
     println(test1().run)
+    println
+    println(test2().run)
   }
 }
 
