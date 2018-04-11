@@ -88,19 +88,33 @@ object Checkable {
       }
     }
 
+    def stripTypeParam(implicit ctx: Context) = new ApproximatingTypeMap {
+      def apply(tp: Type): Type = tp match {
+        case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
+          val lo = this(tp.info.loBound)
+          val hi = this(tp.info.hiBound)
+          range(lo, hi)
+        case _ =>
+          mapOver(tp)
+      }
+    }
+
     def isClassDetermined(X: Type, P: AppliedType)(implicit ctx: Context) = {
       val AppliedType(tycon, _) = P
       val typeLambda = tycon.ensureLambdaSub.asInstanceOf[TypeLambda]
       val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
       val P1 = tycon.appliedTo(tvars)
 
-      debug.println("P : " + P.show)
-      debug.println("P1 : " + P1.show)
-      debug.println("X : " + X.show)
+      debug.println("P : " + P)
+      debug.println("P1 : " + P1)
+      debug.println("X : " + X)
 
-      P1 <:< X  // may fail, ignore
+      P1 <:< X       // constraint P1
 
-      val res = isFullyDefined(P1, ForceDegree.noBottom) &&  P1 <:< P
+      // use fromScala2x to avoid generating pattern bound symbols
+      maximizeType(P1, pos, fromScala2x = true)
+
+      val res = P1 <:< P
       debug.println("P1 : " + P1)
       debug.println("P1 <:< P = " + res)
 
@@ -116,7 +130,9 @@ object Checkable {
           case defn.ArrayOf(tpE)   => recur(tpE, tpT)
           case _                   => recur(defn.AnyType, tpT)
         }
-      case tpe: AppliedType     => isClassDetermined(X, tpe)(ctx.fresh.setNewTyperState())
+      case tpe: AppliedType     =>
+        isClassDetermined(X, tpe)(ctx.fresh.setNewTyperState()) ||
+        isClassDetermined(stripTypeParam.apply(X), tpe)(ctx.fresh.setNewTyperState())
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
       case AnnotatedType(t, _)  => recur(X, t)
