@@ -474,7 +474,8 @@ object Flags {
   assert(AfterLoadFlags.isTermFlags && AfterLoadFlags.isTypeFlags)
 
   /** A value that's unstable unless complemented with a Stable flag */
-  final val UnstableValue = Mutable | Method
+  final val UnstableValue =
+    Mutable | Method
 
   /** Flags that express the variance of a type parameter. */
   final val VarianceFlags = Covariant | Contravariant

@@ -19,6 +19,7 @@ import Periods._
 import util.Positions.{Position, NoPosition}
 import util.Stats._
 import util.{DotClass, SimpleIdentitySet}
+import CheckRealizable._
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages.CyclicReferenceInvolving
 import ast.tpd._
@@ -147,13 +148,19 @@ object Types {
 
     /** Does this type denote a stable reference (i.e. singleton type)? */
     final def isStable(implicit ctx: Context): Boolean = stripTypeVar match {
-      case tp: TermRef => tp.termSymbol.isStable && tp.prefix.isStable || tp.info.isStable
+      case tp: TermRef => tp.termSymbol.isStableMember && tp.prefix.isStable || tp.info.isStable
       case _: SingletonType | NoPrefix => true
       case tp: RefinedOrRecType => tp.parent.isStable
       case tp: ExprType => tp.resultType.isStable
       case tp: AnnotatedType => tp.tpe.isStable
       case _ => false
     }
+
+    /** Does this type denote a realizable stable reference? Much more expensive to check
+     *  than isStable, that's why some of the checks are done later in PostTyper.
+     */
+    final def isStableRealizable(implicit ctx: Context): Boolean =
+      isStable && realizability(this) == Realizable
 
     /** Is this type a (possibly refined or applied or aliased) type reference
      *  to the given type symbol?
@@ -953,7 +960,7 @@ object Types {
     /** Widen type if it is unstable (i.e. an ExprType, or TermRef to unstable symbol */
     final def widenIfUnstable(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ExprType => tp.resultType.widenIfUnstable
-      case tp: TermRef if !tp.symbol.isStable => tp.underlying.widenIfUnstable
+      case tp: TermRef if !tp.symbol.isStableMember => tp.underlying.widenIfUnstable
       case _ => this
     }
 
@@ -4105,6 +4112,8 @@ object Types {
       else if (variance < 0) lo
       else Range(lower(lo), upper(hi))
 
+    protected def emptyRange = range(defn.NothingType, defn.AnyType)
+
     protected def isRange(tp: Type) = tp.isInstanceOf[Range]
 
     protected def lower(tp: Type) = tp match {
@@ -4220,7 +4229,7 @@ object Types {
       else tp.derivedTypeBounds(lo, hi)
 
     override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type) =
-      if (isRange(thistp) || isRange(supertp)) range(defn.NothingType, defn.AnyType)
+      if (isRange(thistp) || isRange(supertp)) emptyRange
       else tp.derivedSuperType(thistp, supertp)
 
     override protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =

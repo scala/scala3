@@ -14,7 +14,7 @@ import ast.tpd._
 /** Realizability status */
 object CheckRealizable {
 
-  abstract class Realizability(val msg: String) {
+  sealed abstract class Realizability(val msg: String) {
     def andAlso(other: => Realizability) =
       if (this == Realizable) other else this
     def mapError(f: Realizability => Realizability) =
@@ -68,17 +68,44 @@ class CheckRealizable(implicit ctx: Context) {
    */
   private def isLateInitialized(sym: Symbol) = sym.is(Lazy, butNot = Module)
 
-  /** The realizability status of given type `tp`*/
+  /** The realizability status of given type `tp`. We can only select members from realizable types.
+    * A type is realizable if it has non-null values. However, realizable types can
+    * have non-realizable subtypes, so we must restrict overriding. */
   def realizability(tp: Type): Realizability = tp.dealias match {
     case tp: TermRef =>
+      // Suppose tp is a.b.c.type, where c is declared with type T, then sym is c, tp.info is T and
+      // and tp.prefix is a.b.
       val sym = tp.symbol
+      // We know tp is realizable if either:
+      // 1. the symbol is stable and the prefix is realizable (so that, say, it contains no vars):
       if (sym.is(Stable)) realizability(tp.prefix)
       else {
+        // 2. if tp.info is a realizable singleton type. We check this last
+        // for performance, in all cases where some unrelated check might have failed.
+        def patchRealizability(r: Realizability) =
+          r.mapError(if (tp.info.isStableRealizable) Realizable else _)
         val r =
-          if (!sym.isStable) NotStable
-          else if (!isLateInitialized(sym)) realizability(tp.prefix)
-          else if (!sym.isEffectivelyFinal) new NotFinal(sym)
-          else realizability(tp.info).mapError(r => new ProblemInUnderlying(tp.info, r))
+          // Reject fields that are mutable, by-name, and similar.
+          if (!sym.isStableMember)
+            patchRealizability(NotStable)
+            // 3. If the symbol isn't "lazy" or erased, and its prefix is realizable
+          else if (!isLateInitialized(sym) && !sym.is(Erased)) {
+            // The symbol itself is stable, cache this information:
+            sym.setFlag(Stable)
+            // Realizability now depends on the prefix:
+            patchRealizability(realizability(tp.prefix))
+          } else if (!sym.isEffectivelyFinal)
+            patchRealizability(new NotFinal(sym))
+          else
+            // 4. If the symbol is effectively final, and a lazy or erased val
+            // and has a realizable type. We require finality because overrides
+            // of realizable fields might not be realizable.
+
+            // Since patchRealizability checks realizability(tp.info) through
+            // isStableRealizable, using patchRealizability wouldn't make
+            // a difference, and calling it here again might introduce
+            // a slowdown exponential in the prefix length.
+            realizability(tp.info).mapError(r => new ProblemInUnderlying(tp.info, r))
         if (r == Realizable) sym.setFlag(Stable)
         r
       }
