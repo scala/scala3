@@ -921,6 +921,7 @@ object Types {
      *  def o: Outer
      *  <o.x.type>.widen = o.C
      */
+    @tailrec
     final def widen(implicit ctx: Context): Type = widenSingleton match {
       case tp: ExprType => tp.resultType.widen
       case tp => tp
@@ -929,6 +930,7 @@ object Types {
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences.
      */
+    @tailrec
     final def widenSingleton(implicit ctx: Context): Type = stripTypeVar.stripAnnots match {
       case tp: SingletonType if !tp.isOverloaded => tp.underlying.widenSingleton
       case _ => this
@@ -937,6 +939,7 @@ object Types {
     /** Widen from TermRef to its underlying non-termref
      *  base type, while also skipping Expr types.
      */
+    @tailrec
     final def widenTermRefExpr(implicit ctx: Context): Type = stripTypeVar match {
       case tp: TermRef if !tp.isOverloaded => tp.underlying.widenExpr.widenTermRefExpr
       case _ => this
