@@ -54,7 +54,7 @@ object Test {
        }
      }
 
-     def fold_raw[A](consumer: A => Expr[Unit], s: StagedStream[A]): Expr[Unit] = {
+     private def fold_raw[A](consumer: A => Expr[Unit], s: StagedStream[A]): Expr[Unit] = {
        s match {
          case Linear(producer) => {
            producer.card match {
@@ -82,7 +82,7 @@ object Test {
       Stream(mapRaw[Expr[A], Expr[B]](a => k => '{ ~k(f(a)) }, stream))
     }
 
-    def mapRaw[A, B](f: (A => (B => Expr[Unit]) => Expr[Unit]), s: StagedStream[A]): StagedStream[B] = {
+    private def mapRaw[A, B](f: (A => (B => Expr[Unit]) => Expr[Unit]), s: StagedStream[A]): StagedStream[B] = {
       s match {
         case Linear(producer) => {
           val prod = new Producer[B] {
@@ -116,7 +116,7 @@ object Test {
       Stream(flatMapRaw[Expr[A], Expr[B]]((a => { val Stream (nested) = f(a); nested }), stream))
     }
 
-    def flatMapRaw[A, B](f: (A => StagedStream[B]), stream: StagedStream[A]): StagedStream[B] = {
+    private def flatMapRaw[A, B](f: (A => StagedStream[B]), stream: StagedStream[A]): StagedStream[B] = {
       stream match {
         case Linear(producer) => Nested(producer, f)
         case nested: Nested[a, bt] =>
@@ -142,6 +142,79 @@ object Test {
 
       Stream(flatMapRaw[Expr[A], Expr[A]]((a => { Linear(filterStream(a)) }), stream))
     }
+
+    // def moreTermination[A](f: Rep[Boolean] => Rep[Boolean], stream: StagedStream[A]): StagedStream[A] = {
+    //   def addToProducer[A](f: Rep[Boolean] => Rep[Boolean], producer: Producer[A]): Producer[A] = {
+    //     producer.card match {
+    //         case Many =>
+    //           new Producer[A] {
+    //             type St = producer.St
+
+    //             val card = producer.card
+    //             def init(k: St => Rep[Unit]): Rep[Unit] =
+    //               producer.init(k)
+    //             def step(st: St, k: (A => Rep[Unit])): Rep[Unit] =
+    //               producer.step(st, el => k(el))
+    //             def hasNext(st: St): Rep[Boolean] =
+    //               f(producer.hasNext(st))
+    //           }
+    //         case AtMost1 => producer
+    //     }
+    //   }
+    //   stream match {
+    //     case Linear(producer) => Linear(addToProducer(f, producer))
+    //     case Nested(producer, nestedf) =>
+    //       Nested(addToProducer(f, producer), (a: Id[_]) => moreTermination(f, nestedf(a)))
+    //   }
+    // }
+
+    // private def addCounter[A](n: Expr[Int], producer: Producer[A]): Producer[(Expr[Int], A)] =
+    //   new Producer[(Var[Int], A)] {
+    //     type St = (Var[Int], producer.St)
+
+    //     val card = producer.card
+    //     def init(k: St => Rep[Unit]): Rep[Unit] = {
+    //       producer.init(st => {
+    //         var counter: Var[Int] = n
+    //         k(counter, st)
+    //       })
+    //     }
+    //     def step(st: St, k: (((Var[Int], A)) => Rep[Unit])): Rep[Unit] = {
+    //         val (counter, nst) = st
+    //         producer.step(nst, el => {
+    //           k((counter, el))
+    //         })
+    //     }
+    //     def hasNext(st: St): Rep[Boolean] = {
+    //         val (counter, nst) = st
+    //         producer.card match {
+    //           case Many => counter > 0 && producer.hasNext(nst)
+    //           case AtMost1 => producer.hasNext(nst)
+    //         }
+    //     }
+    //   }
+
+    // def takeRaw[A](n: Rep[Int], stream: StagedStream[A]): StagedStream[A] = {
+    //   stream match {
+    //     case Linear(producer) => {
+    //       mapRaw[(Var[Int], A), A]((t => k => {
+    //         t._1 = t._1 - 1
+    //         k(t._2)
+    //       }), Linear(addCounter(n, producer)))
+    //     }
+    //     case Nested(producer, nestedf) => {
+    //       Nested(addCounter(n, producer), (t: (Var[Int], Id[_])) => {
+    //         mapRaw[A, A]((el => k => {
+    //           t._1 = t._1 - 1
+    //           k(el)
+    //         }), moreTermination(b => t._1 > 0 && b, nestedf(t._2)))
+    //       })
+    //     }
+    //   }
+    // }
+
+    // def take(n: Rep[Int]): Stream[A] = Stream(takeRaw(n, stream))
+
   }
 
   object Stream {
