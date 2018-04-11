@@ -33,12 +33,12 @@ object CollectNullableFields {
  *  initialised.
  *
  *  A field is nullable if all the conditions below hold:
+ *    - belongs to a non trait-class
  *    - is private
  *    - is not lazy
  *    - its type is nullable, or is an expression type (e.g. => Int)
  *    - is on used in a lazy val initializer
  *    - defined in the same class as the lazy val
- *    - TODO from Scalac? from a non-trait class
  */
 class CollectNullableFields extends MiniPhase {
   import tpd._
@@ -63,7 +63,11 @@ class CollectNullableFields extends MiniPhase {
     def isNullableType(tpe: Type) =
       tpe.isInstanceOf[ExprType] ||
       tpe.widenDealias.typeSymbol.isNullableClass
-    val isNullablePrivateField = sym.isField && sym.is(Private, butNot = Lazy) && isNullableType(sym.info)
+    val isNullablePrivateField =
+      sym.isField &&
+      sym.is(Private, butNot = Lazy) &&
+      !sym.owner.is(Trait) &&
+      isNullableType(sym.info)
 
     if (isNullablePrivateField)
       nullability.get(sym) match {

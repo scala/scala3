@@ -49,6 +49,11 @@ class LazyNotNullable {
   }
 }
 
+trait LazyTrait {
+  private val a = "A"
+  lazy val l0 = a
+}
+
 object Test {
   def main(args: Array[String]): Unit = {
     nullableTests()
@@ -111,6 +116,10 @@ object Test {
     val inner = new lz.Inner
     assert(inner.l8 == "H")
     assertNotNull("h")
+
+    val fromTrait = new LazyTrait {}
+    assert(fromTrait.l0 == "A")
+    assert(readField("LazyTrait$$a", fromTrait) != null) // fragile: test will break if compiler generated name change
   }
 
   def readField(fieldName: String, target: Any): Any = {
