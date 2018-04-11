@@ -295,16 +295,17 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           "[" + ("=" * (math.max(progress - 1, 0))) +
             (if (progress > 0) ">" else "") +
             (" " * (39 - progress)) +
-            s"] completed ($tCompiled/$sourceCount, $errorCount failed, ${timestamp}s))\r"
+            s"] completed ($tCompiled/$sourceCount, $errorCount failed, ${timestamp}s)\r"
         )
 
         Thread.sleep(100)
         tCompiled = testSourcesCompleted
       }
+
+      val timestamp = (System.currentTimeMillis - start) / 1000
       // println, otherwise no newline and cursor at start of line
       realStdout.println(
-        s"[=======================================] completed ($sourceCount/$sourceCount, " +
-          s"${(System.currentTimeMillis - start) / 1000}s)  "
+        s"[=======================================] completed ($sourceCount/$sourceCount, $errorCount failed, ${timestamp}s)"
       )
     }
 
