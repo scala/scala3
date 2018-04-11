@@ -1,6 +1,6 @@
 package scala.tasty
 
-import scala.tasty.pattern.CaseDef
+import scala.tasty.pattern.{CaseDef, Pattern}
 import scala.tasty.statement.TopLevelStatement
 import scala.tasty.typetree.TypeTree
 
@@ -43,6 +43,15 @@ trait Extractor {
 
   def unapplyCaseDef(arg: CaseDef): Option[CaseDef.Data]
 
+  // Patterns
+
+  def unapplyValue(arg: Pattern): Option[pattern.Value.Data]
+  def unapplyBind(arg: Pattern): Option[pattern.Bind.Data]
+  def unapplyUnapply(arg: Pattern): Option[pattern.Unapply.Data]
+  def unapplyAlternative(arg: Pattern): Option[pattern.Alternative.Data]
+  def unapplyTypeTest(arg: Pattern): Option[pattern.TypeTest.Data]
+  def unapplyWildcard(arg: Pattern): Boolean
+
   // Type trees
 
   def unapplySynthetic(arg: TypeTree): Boolean
@@ -56,5 +65,23 @@ trait Extractor {
   def unapplyAnd(arg: TypeTree): Option[typetree.And.Data]
   def unapplyOr(arg: TypeTree): Option[typetree.Or.Data]
   def unapplyByName(arg: TypeTree): Option[typetree.ByName.Data]
+
+  // Names
+
+  def unapplySimple(arg: Name): Option[String]
+
+  // Constants
+
+  def unapplyUnit(arg: Constant): Boolean
+  def unapplyNull(arg: Constant): Boolean
+  def unapplyBoolean(arg: Constant): Option[Boolean]
+  def unapplyByte(arg: Constant): Option[Byte]
+  def unapplyChar(arg: Constant): Option[Char]
+  def unapplyShort(arg: Constant): Option[Short]
+  def unapplyInt(arg: Constant): Option[Int]
+  def unapplyLong(arg: Constant): Option[Long]
+  def unapplyFloat(arg: Constant): Option[Float]
+  def unapplyDouble(arg: Constant): Option[Double]
+  def unapplyString(arg: Constant): Option[String]
 
 }

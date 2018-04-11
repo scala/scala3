@@ -1,8 +1,12 @@
 package dotty.tools.dotc.tasty
 
+import scala.tasty.pattern.Pattern
 import scala.tasty.statement.TopLevelStatement
 import scala.tasty.pattern.CaseDef
 import scala.tasty.typetree.TypeTree
+import scala.tasty.{Constant, Name, TermName}
+import scala.tasty.pattern.Alternative.Data
+import scala.tasty.term.Term
 
 object Extractors {
 
@@ -38,9 +42,18 @@ object Extractors {
     override def unapplyReturn(arg: TopLevelStatement) = internal.Term.Return.unapply(arg)
     override def unapplyRepeated(arg: TopLevelStatement) = internal.Term.Repeated.unapply(arg)
 
-    // Patterns
+    // Case
 
     override def unapplyCaseDef(arg: CaseDef) = internal.CaseDef.CaseDef.unapply(arg)
+
+    // Pattern
+
+    override def unapplyValue(arg: Pattern) = internal.Pattern.Value.unapply(arg)
+    override def unapplyBind(arg: Pattern) = internal.Pattern.Bind.unapply(arg)
+    override def unapplyUnapply(arg: Pattern) = internal.Pattern.Unapply.unapply(arg)
+    override def unapplyAlternative(arg: Pattern) = internal.Pattern.Alternative.unapply(arg)
+    override def unapplyTypeTest(arg: Pattern) = internal.Pattern.TypeTest.unapply(arg)
+    override def unapplyWildcard(arg: Pattern)= internal.Pattern.Wildcard.unapply(arg)
 
     // Types
 
@@ -55,7 +68,23 @@ object Extractors {
     override def unapplyOr(arg: TypeTree) = internal.TypeTree.Or.unapply(arg)
     override def unapplyByName(arg: TypeTree) = internal.TypeTree.ByName.unapply(arg)
 
+    // Names
 
+    override def unapplySimple(arg: Name) = internal.TermName.Simple.unapply(arg)
+
+    // Constants
+
+    override def unapplyUnit(arg: Constant) = internal.Constant.Unit.unapply(arg)
+    override def unapplyNull(arg: Constant) = internal.Constant.Null.unapply(arg)
+    override def unapplyBoolean(arg: Constant) = internal.Constant.Boolean.unapply(arg)
+    override def unapplyByte(arg: Constant) = internal.Constant.Byte.unapply(arg)
+    override def unapplyChar(arg: Constant) = internal.Constant.Char.unapply(arg)
+    override def unapplyShort(arg: Constant) = internal.Constant.Short.unapply(arg)
+    override def unapplyInt(arg: Constant) = internal.Constant.Int.unapply(arg)
+    override def unapplyLong(arg: Constant) = internal.Constant.Long.unapply(arg)
+    override def unapplyFloat(arg: Constant) = internal.Constant.Float.unapply(arg)
+    override def unapplyDouble(arg: Constant) = internal.Constant.Double.unapply(arg)
+    override def unapplyString(arg: Constant) = internal.Constant.String.unapply(arg)
   }
 
 }

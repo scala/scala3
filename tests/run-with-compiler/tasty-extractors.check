@@ -25,49 +25,49 @@ ConstantType(Int(3))
 If(Typed(Literal(Boolean(true)), Ident(Boolean)), Literal(Int(1)), Literal(Int(2)))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Int) ##}
 
-Match(Literal(String("a")), List(CaseDef(Value(Literal(String("a"))), None, Block(Nil, Literal(Unit())))))
+Match(Literal(String("a")), List(CaseDef(Value(Literal(String("a"))), None, Block(List(), Literal(Unit())))))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
-Match(Literal(String("b")), List(CaseDef(Bind(n, Wildcard()), None, Block(Nil, Literal(Unit())))))
+Match(Literal(String("b")), List(CaseDef(Bind(n, Wildcard()), None, Block(List(), Literal(Unit())))))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
-Match(Literal(String("c")), List(CaseDef(Bind(n, TypeTest(Ident(String))), None, Block(Nil, Literal(Unit())))))
+Match(Literal(String("c")), List(CaseDef(Bind(n, TypeTest(Ident(String))), None, Block(List(), Literal(Unit())))))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
-Match(Literal(String("e")), List(CaseDef(Wildcard(), None, Block(Nil, Literal(Unit())))))
+Match(Literal(String("e")), List(CaseDef(Wildcard(), None, Block(List(), Literal(Unit())))))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
-Match(Literal(String("f")), List(CaseDef(TypeTest(Ident(String)), None, Block(Nil, Literal(Unit())))))
+Match(Literal(String("f")), List(CaseDef(TypeTest(Ident(String)), None, Block(List(), Literal(Unit())))))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
-Match(Literal(String("g")), List(CaseDef(Alternative(List(TypeTest(Ident(String)), TypeTest(Ident(Int)))), None, Block(Nil, Literal(Unit())))))
+Match(Literal(String("g")), List(CaseDef(Alternative(List(TypeTest(Ident(String)), TypeTest(Ident(Int)))), None, Block(List(), Literal(Unit())))))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
-Match(Literal(String("h")), List(CaseDef(Wildcard(), Some(Literal(Boolean(false))), Block(Nil, Literal(Unit())))))
+Match(Literal(String("h")), List(CaseDef(Wildcard(), Some(Literal(Boolean(false))), Block(List(), Literal(Unit())))))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
-Block(List(ValDef(a, Synthetic(), Some(Literal(String("o"))), List())), Match(Literal(String("i")), List(CaseDef(Bind(a, Wildcard()), None, Block(Nil, Literal(Unit()))))))
+Block(List(ValDef(a, Synthetic(), Some(Literal(String("o"))), List())), Match(Literal(String("i")), List(CaseDef(Bind(a, Wildcard()), None, Block(List(), Literal(Unit()))))))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
-Try(Literal(Int(1)), List(CaseDef(Wildcard(), None, Block(Nil, Literal(Unit())))), None)
+Try(Literal(Int(1)), List(CaseDef(Wildcard(), None, Block(List(), Literal(Unit())))), None)
 OrType(Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Int) ##}, Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##})
 
-Try(Literal(Int(2)), Nil, Some(Literal(Unit())))
+Try(Literal(Int(2)), List(), Some(Literal(Unit())))
 ConstantType(Int(2))
 
-Try(Literal(Int(3)), List(CaseDef(Wildcard(), None, Block(Nil, Literal(Unit())))), Some(Literal(Unit())))
+Try(Literal(Int(3)), List(CaseDef(Wildcard(), None, Block(List(), Literal(Unit())))), Some(Literal(Unit())))
 OrType(Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Int) ##}, Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##})
 
 Apply(Select(Literal(String("a")), ==), List(Literal(String("b"))))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Boolean) ##}
 
-Apply(Select(New(Ident(Object)), <init>), Nil)
+Apply(Select(New(Ident(Object)), <init>), List())
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class lang)),class Object) ##}
 
 Apply(Select(Ident(Int), box), List(NamedArg(x, Literal(Int(9)))))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class lang)),class Integer) ##}
 
-Apply(TypeApply(Select(Ident(Ordering), apply), List(Term{## Ident(Int) ##})), List(Ident(Int)))
+Apply(TypeApply(Select(Ident(Ordering), apply), List(###)), List(Ident(Int)))
 AppliedType(Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class math)),class Ordering) ##}, List(Type{## TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scala),Int) ##}))
 
 Block(List(ValDef(a, Ident(Int), Some(Literal(Int(3))), List())), Literal(Unit()))
@@ -112,16 +112,16 @@ ConstantType(Int(1))
 Block(List(Import(Select(Ident(scala), collection), List(Simple(Id(mutable)), Simple(Id(immutable))))), Literal(Int(2)))
 ConstantType(Int(2))
 
-Block(List(Import(Select(Ident(scala), collection), List(Rename(Id(mutable),Id(mut))))), Literal(Int(3)))
+Block(List(Import(Select(Ident(scala), collection), List(Rename(Id(mutable), Id(mut))))), Literal(Int(3)))
 ConstantType(Int(3))
 
 Block(List(Import(Select(Ident(scala), collection), List(Omit(Id(mutable))))), Literal(Int(4)))
 ConstantType(Int(4))
 
-Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List()), Synthetic(), Some(Term{## EmptyTree ##}), List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(), List())), Literal(Unit()))
+Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List()), Synthetic(), Some(###), List()), List(Apply(Select(New(Synthetic()), <init>), List())), None, List(), List())), Literal(Unit()))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
-Block(List(ValDef(Foo, Ident(Foo$), Some(Apply(Select(New(Ident(Foo$)), <init>), Nil)), List()), ClassDef(Foo$, DefDef(<init>, List(), List(List()), Synthetic(), Some(Term{## EmptyTree ##}), List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), Some(ValDef(_, Singleton(Ident(Foo)), None, List())), List(), List())), Literal(Unit()))
+Block(List(ValDef(Foo, Ident(Foo$), Some(Apply(Select(New(Ident(Foo$)), <init>), List())), List()), ClassDef(Foo$, DefDef(<init>, List(), List(List()), Synthetic(), Some(###), List()), List(Apply(Select(New(Synthetic()), <init>), List())), Some(ValDef(_, Singleton(Ident(Foo)), None, List())), List(), List())), Literal(Unit()))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
 Block(List(TypeDef(Foo, TypeBounds(Synthetic(), Synthetic()), List())), Literal(Unit()))

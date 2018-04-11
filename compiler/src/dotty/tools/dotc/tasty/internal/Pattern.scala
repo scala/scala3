@@ -12,35 +12,35 @@ object Pattern {
   def apply(tree: tpd.Tree)(implicit ctx: Context): pattern.Pattern = Impl(tree, ctx)
 
   object Value {
-    def unapply(arg: pattern.Pattern): Option[scala.tasty.term.Term] = arg match {
+    def unapply(arg: pattern.Pattern): Option[pattern.Value.Data] = arg match {
       case Impl(lit: tpd.Literal, ctx) => Some(Term(lit)(ctx))
       case _ => None
     }
   }
 
   object Bind {
-    def unapply(arg: pattern.Pattern): Option[(scala.tasty.TermName, pattern.Pattern)] = arg match {
+    def unapply(arg: pattern.Pattern): Option[pattern.Bind.Data] = arg match {
       case Impl(Trees.Bind(name: Names.TermName, body), ctx) => Some(TermName(name), Pattern(body)(ctx))
       case _ => None
     }
   }
 
   object Unapply {
-    def unapply(arg: pattern.Pattern): Option[(scala.tasty.term.Term, List[scala.tasty.term.Term], List[pattern.Pattern])] = arg match {
+    def unapply(arg: pattern.Pattern): Option[pattern.Unapply.Data] = arg match {
       case Impl(Trees.UnApply(fun, implicits, patterns), ctx) => Some((Term(fun)(ctx), implicits.map(Term(_)(ctx)), patterns.map(Pattern(_)(ctx))))
       case _ => None
     }
   }
 
   object Alternative {
-    def unapply(arg: pattern.Pattern): Option[List[pattern.Pattern]] = arg match {
+    def unapply(arg: pattern.Pattern): Option[pattern.Alternative.Data] = arg match {
       case Impl(Trees.Alternative(patterns), ctx) => Some(patterns.map(Pattern(_)(ctx)))
       case _ => None
     }
   }
 
   object TypeTest {
-    def unapply(arg: pattern.Pattern): Option[scala.tasty.typetree.TypeTree] = arg match {
+    def unapply(arg: pattern.Pattern): Option[pattern.TypeTest.Data] = arg match {
       case Impl(Trees.Typed(_, tpt), ctx) => Some(TypeTree(tpt)(ctx))
       case _ => None
     }
