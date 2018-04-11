@@ -72,10 +72,9 @@ object Test {
                })
            }
          }
-         case nested: Nested[a, bt] => ???
-//         {
-//            fold_raw[bt](((e: bt) => fold_raw(consumer, nested.nestedf(e))), Linear(nested.producer))
-//         }
+         case nested: Nested[a, bt] => {
+            fold_raw[bt](((e: bt) => fold_raw(consumer, nested.nestedf(e))), Linear(nested.producer))
+         }
        }
      }
 
@@ -108,13 +107,23 @@ object Test {
 
           Linear(prod)
         }
-        case nested: Nested[a, bt] => ???
-//        {
-//          Nested(nested.producer, (a: bt) => mapRaw[A, B](f, nested.nestedf(a)))
-//        }
+        case nested: Nested[a, bt] => {
+          Nested(nested.producer, (a: bt) => mapRaw[A, B](f, nested.nestedf(a)))
+        }
       }
     }
 
+    def flatMap[B : Type](f: (Expr[A] => Stream[B])): Stream[B] = {
+      Stream(flatMapRaw[Expr[A], Expr[B]]((a => { val Stream (nested) = f(a); nested }), stream))
+    }
+
+    def flatMapRaw[A, B](f: (A => StagedStream[B]), stream: StagedStream[A]): StagedStream[B] = {
+      stream match {
+        case Linear(producer) => Nested(producer, f)
+        case nested: Nested[a, bt] =>
+          Nested(nested.producer, (a: bt) => flatMapRaw[A, B](f, nested.nestedf(a)))
+      }
+    }
   }
 
   object Stream {
@@ -162,10 +171,17 @@ object Test {
     .map((a: Expr[Int]) => '{ ~a * 2 })
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
 
+  def test3() = Stream
+    .of('{Array(1, 2, 3)})
+    .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ ~d * ~dp }))
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+
   def main(args: Array[String]): Unit = {
     println(test1().run)
     println
     println(test2().run)
+    println
+    println(test3().run)
   }
 }
 
