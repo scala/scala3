@@ -78,6 +78,10 @@ echo "testing ./bin/dotd"
 clear_out "$OUT"
 ./bin/dotd -project Hello -siteroot "$OUT" "$SOURCE"
 
+
+# test compiler plugin
+"$SBT" "sbt-dotty/scripted sbt-dotty/compiler-plugin"
+
 ## Disabled because of flakeyness, should be changed to not depend on sbt
 # echo "running Vulpix meta test"
 # tmp=$(mktemp)

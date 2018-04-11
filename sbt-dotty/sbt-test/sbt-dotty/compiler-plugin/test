@@ -1,0 +1,4 @@
+> plugin/publishLocal
+> clean
+> compile
+> run
