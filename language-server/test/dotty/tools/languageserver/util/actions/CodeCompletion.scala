@@ -21,7 +21,7 @@ class CodeCompletion(override val marker: CodeMarker,
 
   override def execute(): Exec[Unit] = {
     val result = server.completion(marker.toTextDocumentPositionParams).get()
-    assertTrue(s"Completion results where not 'right': $result", result.isRight)
+    assertTrue(s"Completion results were not 'right': $result", result.isRight)
     assertFalse(s"Completion results were 'incomplete': $result", result.getRight.isIncomplete)
     val completionResults = result.getRight.getItems.asScala.toSet.map { item =>
       (item.getLabel, item.getKind, item.getDetail)

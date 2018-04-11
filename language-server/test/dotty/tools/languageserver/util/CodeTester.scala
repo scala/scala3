@@ -26,11 +26,10 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    *
    * @param range    The range over which to hover.
    * @param expected The expected result.
-   * @return This `CodeTester` after performing the action.
    *
    * @see dotty.tools.languageserver.util.actions.CodeHover
    */
-  def hover(range: CodeRange, expected: String): CodeTester =
+  def hover(range: CodeRange, expected: String): this.type =
     doAction(new CodeHover(range, expected))
 
   /**
@@ -38,11 +37,10 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    *
    * @param range    The range of positions from which run `jump to definition`.
    * @param expected The expected positions to jump to.
-   * @return This `CodeTester` after performing the action.
    *
    * @see dotty.tools.languageserver.util.actions.CodeDefinition
    */
-  def definition(range: CodeRange, expected: Seq[CodeRange]): CodeTester =
+  def definition(range: CodeRange, expected: Seq[CodeRange]): this.type =
     doAction(new CodeDefinition(range, expected))
 
   /**
@@ -51,11 +49,10 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    *
    * @param range    The range of positions to highlight.
    * @param expected The expected ranges and the kind of symbols that should be highlighted.
-   * @return This `CodeTester` after performing the action.
    *
    * @see dotty.tools.languageserver.util.actions.CodeDefinition
    */
-  def highlight(range: CodeRange, expected: (CodeRange, DocumentHighlightKind)*): CodeTester =
+  def highlight(range: CodeRange, expected: (CodeRange, DocumentHighlightKind)*): this.type =
     doAction(new CodeDocumentHighlight(range, expected))
 
   /**
@@ -64,11 +61,10 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    * @param range    The range of positions from which search for references.
    * @param expected The expected positions of the references
    * @param withDecl When set, include the declaration of the symbol under `range` in the results.
-   * @return This `CodeTester` after performing the action.
    *
    * @see dotty.tools.languageserver.util.actions.CodeReferences
    */
-  def references(range: CodeRange, expected: List[CodeRange], withDecl: Boolean = false): CodeTester =
+  def references(range: CodeRange, expected: List[CodeRange], withDecl: Boolean = false): this.type =
     doAction(new CodeReferences(range, expected, withDecl))
 
   /**
@@ -77,11 +73,10 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    *
    * @param marker   The position from which to ask for completions.
    * @param expected The expected completion results.
-   * @return This `CodeTester` after performing the action.
    *
    * @see dotty.tools.languageserver.util.actions.CodeCompletion
    */
-  def completion(marker: CodeMarker, expected: Set[(String, CompletionItemKind, String)]): CodeTester =
+  def completion(marker: CodeMarker, expected: Set[(String, CompletionItemKind, String)]): this.type =
     doAction(new CodeCompletion(marker, expected))
 
   /**
@@ -91,11 +86,10 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    * @param marker   The position from which to ask for renaming.
    * @param newName  The new name to give to the symbol.
    * @param expected The expected positions to change.
-   * @return This `CodeTester` after performing the action.
    *
    * @see dotty.tools.languageserver.util.actions.CodeRename
    */
-  def rename(marker: CodeMarker, newName: String, expected: Set[CodeRange]): CodeTester =
+  def rename(marker: CodeMarker, newName: String, expected: Set[CodeRange]): this.type =
     doAction(new CodeRename(marker, newName, expected)) // TODO apply changes to the sources and positions
 
   /**
@@ -104,11 +98,10 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    *
    * @param marker   The marker defining the source file from which to query.
    * @param expected The expected symbols to be found.
-   * @return This `CodeTester` after performing the action.
    *
    * @see dotty.tools.languageserver.util.actions.CodeDocumentSymbol
    */
-  def documentSymbol(marker: CodeMarker, expected: SymInfo*): CodeTester =
+  def documentSymbol(marker: CodeMarker, expected: SymInfo*): this.type =
     doAction(new CodeDocumentSymbol(marker, expected))
 
   /**
@@ -117,11 +110,10 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    *
    * @param query    The query used to find symbols.
    * @param expected The expected symbols to be found.
-   * @return This `CodeTester` after performing the action.
    *
    * @see dotty.tools.languageserver.util.actions.CodeSymbol
    */
-  def symbol(query: String, symbols: SymInfo*): CodeTester =
+  def symbol(query: String, symbols: SymInfo*): this.type =
     doAction(new CodeSymbol(query, symbols))
 
   private def doAction(action: Action): this.type = {
