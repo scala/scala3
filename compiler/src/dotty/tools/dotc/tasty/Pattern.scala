@@ -58,6 +58,7 @@ object Pattern {
     def tpe: scala.tasty.Type = Type(tree.tpe)(ctx)
 
     override def toString: String = this match {
+      case Value(v) => s"Value($v)"
       case Bind(name, body) => s"Bind($name, $body)"
       case Unapply(fun, implicits, patterns) => s"Unapply($fun, $implicits, $patterns)"
       case Alternative(patterns) => s"Alternative($patterns)"

@@ -25,7 +25,7 @@ ConstantType(Int(3))
 If(Typed(Literal(Boolean(true)), Ident(Boolean)), Literal(Int(1)), Literal(Int(2)))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Int) ##}
 
-Match(Literal(String("a")), List(CaseDef(Pattern {## Literal(Constant(a)) ##}, None, Block(Nil, Literal(Unit())))))
+Match(Literal(String("a")), List(CaseDef(Value(Literal(String("a"))), None, Block(Nil, Literal(Unit())))))
 Type{## TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Unit) ##}
 
 Match(Literal(String("b")), List(CaseDef(Bind(n, Wildcard()), None, Block(Nil, Literal(Unit())))))
