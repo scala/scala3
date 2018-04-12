@@ -1,24 +1,25 @@
-package scala.tasty.pattern
+package scala.tasty
+package patterns
 
-import scala.tasty.term.Term
-import scala.tasty._
+import scala.tasty.Extractor
+import scala.tasty.types.Type
 
 trait Pattern extends Positioned {
   def tpe: Type
 }
 
 object Value {
-  type Data = Term
+  type Data = terms.Term
   def unapply(arg: Pattern)(implicit ext: Extractor): Option[Data] = ext.unapplyValue(arg)
 }
 
 object Bind {
-  type Data = (scala.tasty.TermName, Pattern)
+  type Data = (names.TermName, Pattern)
   def unapply(arg: Pattern)(implicit ext: Extractor): Option[Data] = ext.unapplyBind(arg)
 }
 
 object Unapply {
-  type Data = (scala.tasty.term.Term, List[scala.tasty.term.Term], List[Pattern])
+  type Data = (terms.Term, List[terms.Term], List[Pattern])
   def unapply(arg: Pattern)(implicit ext: Extractor): Option[Data] = ext.unapplyUnapply(arg)
 }
 
@@ -28,7 +29,7 @@ object Alternative {
 }
 
 object TypeTest {
-  type Data = scala.tasty.typetree.TypeTree
+  type Data = typetrees.TypeTree
   def unapply(arg: Pattern)(implicit ext: Extractor): Option[Data] = ext.unapplyTypeTest(arg)
 }
 

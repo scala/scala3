@@ -1,4 +1,4 @@
-package scala.tasty.statement
+package scala.tasty.statements
 
 import scala.tasty.Positioned
 

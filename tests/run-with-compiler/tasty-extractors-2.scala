@@ -1,13 +1,13 @@
 
 import scala.quoted._
 
-import scala.tasty.statement._
-import scala.tasty.term._
-import scala.tasty.Constant
+import scala.tasty.statements._
+import scala.tasty.terms._
+import scala.tasty.constants._
 
 import dotty.tools.dotc.quoted.Toolbox._
-
 import dotty.tools.dotc.tasty.Extractors._
+
 
 object Test {
   def main(args: Array[String]): Unit = {

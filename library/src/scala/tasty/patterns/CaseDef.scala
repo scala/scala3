@@ -1,6 +1,6 @@
-package scala.tasty.pattern
+package scala.tasty.patterns
 
-import scala.tasty.term.Term
+import scala.tasty.terms.Term
 import scala.tasty.{Extractor, Positioned}
 
 trait CaseDef extends Positioned

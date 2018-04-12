@@ -1,12 +1,11 @@
 package dotty.tools.dotc.tasty
 
-import scala.tasty.pattern.Pattern
-import scala.tasty.statement.TopLevelStatement
-import scala.tasty.pattern.CaseDef
-import scala.tasty.typetree.TypeTree
-import scala.tasty.{Constant, Name, TermName}
-import scala.tasty.pattern.Alternative.Data
-import scala.tasty.term.Term
+import scala.tasty.patterns.Pattern
+import scala.tasty.statements.TopLevelStatement
+import scala.tasty.patterns.CaseDef
+import scala.tasty.typetrees.TypeTree
+import scala.tasty.constants.Constant
+import scala.tasty.names.Name
 
 object Extractors {
 

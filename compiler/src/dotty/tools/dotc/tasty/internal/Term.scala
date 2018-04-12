@@ -4,91 +4,92 @@ import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Names
 
-import scala.tasty.statement
-import scala.tasty.term
+import scala.tasty.statements
+import scala.tasty.terms
+import scala.tasty.types
 
 object Term {
 
-  def apply(arg: tpd.Tree)(implicit ctx: Context): term.Term = Impl(arg, ctx)
+  def apply(arg: tpd.Tree)(implicit ctx: Context): terms.Term = Impl(arg, ctx)
 
   object Ident {
-    def unapply(arg: statement.TopLevelStatement): Option[term.Ident.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.Ident.Data] = arg match {
       case Impl(id@Trees.Ident(name: Names.TermName), _) if id.isTerm => Some(TermName(name))
       case _ => None
     }
   }
 
   object Select {
-    def unapply(arg: statement.TopLevelStatement): Option[term.Select.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.Select.Data] = arg match {
       case Impl(id@Trees.Select(qual, name: Names.TermName), ctx) if id.isTerm => Some(Term(qual)(ctx), TermName(name))
       case _ => None
     }
   }
 
   object Literal {
-    def unapply(arg: statement.TopLevelStatement): Option[term.Literal.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.Literal.Data] = arg match {
       case Impl(Trees.Literal(const), _) => Some(Constant(const))
       case _ => None
     }
   }
 
   object This {
-    def unapply(arg: statement.TopLevelStatement): Option[term.This.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.This.Data] = arg match {
       case Impl(Trees.This(qual), ctx) => Some(if (qual.isEmpty) None else Some(Id(qual)(ctx)))
       case _ => None
     }
   }
 
   object New {
-    def unapply(arg: statement.TopLevelStatement): Option[term.New.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.New.Data] = arg match {
       case Impl(Trees.New(tpt), ctx) => Some(TypeTree(tpt)(ctx))
       case _ => None
     }
   }
 
   object NamedArg {
-    def unapply(arg: statement.TopLevelStatement): Option[term.NamedArg.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.NamedArg.Data] = arg match {
       case Impl(Trees.NamedArg(name: Names.TermName, arg), ctx) => Some(TermName(name), Term(arg)(ctx))
       case _ => None
     }
   }
 
   object Apply {
-    def unapply(arg: statement.TopLevelStatement): Option[term.Apply.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.Apply.Data] = arg match {
       case Impl(Trees.Apply(fn, args), ctx) => Some((Term(fn)(ctx), args.map(arg => Term(arg)(ctx))))
       case _ => None
     }
   }
 
   object TypeApply {
-    def unapply(arg: statement.TopLevelStatement): Option[term.TypeApply.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.TypeApply.Data] = arg match {
       case Impl(Trees.TypeApply(fn, args), ctx) => Some((Term(fn)(ctx), args.map(arg => Term(arg)(ctx))))
       case _ => None
     }
   }
   object Super {
-    def unapply(arg: statement.TopLevelStatement): Option[term.Super.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.Super.Data] = arg match {
       case Impl(Trees.Super(qual, mixin), ctx) => Some((Term(qual)(ctx), if (mixin.isEmpty) None else Some(Id(mixin)(ctx))))
       case _ => None
     }
   }
 
   object Typed {
-    def unapply(arg: statement.TopLevelStatement): Option[term.Typed.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.Typed.Data] = arg match {
       case Impl(Trees.Typed(expr, tpt), ctx) => Some((Term(expr)(ctx), TypeTree(tpt)(ctx)))
       case _ => None
     }
   }
 
   object Assign {
-    def unapply(arg: statement.TopLevelStatement): Option[term.Assign.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.Assign.Data] = arg match {
       case Impl(Trees.Assign(lhs, rhs), ctx) => Some((Term(lhs)(ctx), Term(rhs)(ctx)))
       case _ => None
     }
   }
 
   object Block {
-    def unapply(arg: statement.TopLevelStatement): Option[term.Block.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.Block.Data] = arg match {
       case Impl(Trees.Block(stats, expr), ctx) => Some((stats.map(stat => Statement(stat)(ctx)), Term(expr)(ctx)))
       case _ => None
     }
@@ -97,42 +98,42 @@ object Term {
 //  case Inlined(call: Term, bindings: List[Definition], expr: Term)
 
   object Lambda {
-    def unapply(arg: statement.TopLevelStatement): Option[term.Lambda.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.Lambda.Data] = arg match {
       case Impl(Trees.Closure(_, meth, tpt), ctx) => Some((Term(meth)(ctx), if (tpt.isEmpty) None else Some(TypeTree(tpt)(ctx))))
       case _ => None
     }
   }
 
   object If {
-    def unapply(arg: statement.TopLevelStatement): Option[term.If.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.If.Data] = arg match {
       case Impl(Trees.If(cond, thenp, elsep), ctx) => Some((Term(cond)(ctx), Term(thenp)(ctx), Term(elsep)(ctx)))
       case _ => None
     }
   }
 
   object Match {
-    def unapply(arg: statement.TopLevelStatement): Option[term.Match.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.Match.Data] = arg match {
       case Impl(Trees.Match(selector, cases), ctx) => Some((Term(selector)(ctx), cases.map(c => CaseDef(c)(ctx))))
       case _ => None
     }
   }
 
   object Try {
-    def unapply(arg: statement.TopLevelStatement): Option[term.Try.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.Try.Data] = arg match {
       case Impl(Trees.Try(body, catches, finalizer), ctx) => Some((Term(body)(ctx), catches.map(c => CaseDef(c)(ctx)), if (finalizer.isEmpty) None else Some(Term(finalizer)(ctx))))
       case _ => None
     }
   }
 
   object Return {
-    def unapply(arg: statement.TopLevelStatement): Option[term.Return.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.Return.Data] = arg match {
       case Impl(Trees.Return(expr, from), ctx) => Some(Term(expr)(ctx)) // TODO use `from` or remove it
       case _ => None
     }
   }
 
   object Repeated {
-    def unapply(arg: statement.TopLevelStatement): Option[term.Repeated.Data] = arg match {
+    def unapply(arg: statements.TopLevelStatement): Option[terms.Repeated.Data] = arg match {
       case Impl(Trees.SeqLiteral(args, elemtpt), ctx) => Some(args.map(arg => Term(arg)(ctx))) // TODO use `elemtpt`?
       case _ => None
     }
@@ -140,9 +141,9 @@ object Term {
 
 //  case SelectOuter(from: Term, levels: Int, target: Type) // can be generated by inlining
 
-  private case class Impl(tree: tpd.Tree, ctx: Context) extends term.Term with Positioned {
+  private case class Impl(tree: tpd.Tree, ctx: Context) extends terms.Term with Positioned {
 
-    def tpe: scala.tasty.Type = Type(tree.tpe)(ctx)
+    def tpe: types.Type = Type(tree.tpe)(ctx)
 
     override def toString: String = this match {
       case Ident(name) => s"Ident($name)"

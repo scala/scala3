@@ -59,7 +59,7 @@ object Toolbox {
 
   }
 
-  def toTasty[T](expr: Expr[T]): scala.tasty.term.Term = {
+  def toTasty[T](expr: Expr[T]): scala.tasty.terms.Term = {
     new QuoteDriver().withTree(expr, (tree, ctx) => Term(tree)(ctx), Settings.run())
   }
 

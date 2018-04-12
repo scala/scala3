@@ -3,12 +3,17 @@ package dotty.tools.dotc.tasty.internal
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types
 
+import scala.tasty.constants
+import scala.tasty.names
+import scala.tasty.terms
+import scala.tasty.types
+
 object Type {
 
-  def apply(tpe: Types.Type)(implicit ctx: Context): scala.tasty.Type = Impl(tpe, ctx)
+  def apply(tpe: Types.Type)(implicit ctx: Context): types.Type = Impl(tpe, ctx)
 
   object ConstantType {
-    def unapply(tpe: scala.tasty.Type): Option[scala.tasty.Constant] = tpe match {
+    def unapply(tpe: types.Type): Option[constants.Constant] = tpe match {
       case Impl(Types.ConstantType(value), _) => Some(Constant(value))
       case _ => None
     }
@@ -18,14 +23,14 @@ object Type {
 //  case class NameRef(name: Name, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
 
   object SuperType {
-    def unapply(tpe: scala.tasty.Type): Option[(scala.tasty.Type, scala.tasty.Type)] = tpe match {
+    def unapply(tpe: types.Type): Option[(types.Type, types.Type)] = tpe match {
       case Impl(Types.SuperType(thistpe, supertpe), ctx) => Some(Type(thistpe)(ctx), Type(supertpe)(ctx))
       case _ => None
     }
   }
 
   object Refinement {
-    def unapply(tpe: scala.tasty.Type): Option[(scala.tasty.Type, scala.tasty.Name, scala.tasty.Type)] = tpe match {
+    def unapply(tpe: types.Type): Option[(types.Type, names.Name, types.Type)] = tpe match {
       case Impl(Types.RefinedType(parent, name, info), ctx) =>
         Some((Type(parent)(ctx), if (name.isTermName) TermName(name.asTermName) else TypeName(name.asTypeName), Type(info)(ctx)))
       case _ => None
@@ -33,7 +38,7 @@ object Type {
   }
 
   object AppliedType {
-    def unapply(tpe: scala.tasty.Type): Option[(scala.tasty.Type, List[scala.tasty.MaybeType /* Type | TypeBounds */])] = tpe match {
+    def unapply(tpe: types.Type): Option[(types.Type, List[types.MaybeType /* Type | TypeBounds */])] = tpe match {
       case Impl(Types.AppliedType(tycon, args), ctx) =>
         Some((Type(tycon)(ctx), args.map { case arg: Types.TypeBounds => TypeBounds(arg)(ctx); case arg => Type(arg)(ctx) }))
       case _ => None
@@ -41,21 +46,21 @@ object Type {
   }
 
   object AnnotatedType {
-    def unapply(tpe: scala.tasty.Type): Option[(scala.tasty.Type, scala.tasty.term.Term)] = tpe match {
+    def unapply(tpe: types.Type): Option[(types.Type, terms.Term)] = tpe match {
       case Impl(Types.AnnotatedType(underlying, annot), ctx) => Some((Type(underlying)(ctx), Term(annot.tree(ctx))(ctx)))
       case _ => None
     }
   }
 
   object AndType {
-    def unapply(tpe: scala.tasty.Type): Option[(scala.tasty.Type, scala.tasty.Type)] = tpe match {
+    def unapply(tpe: types.Type): Option[(types.Type, types.Type)] = tpe match {
       case Impl(Types.AndType(left, right), ctx) => Some(Type(left)(ctx), Type(right)(ctx))
       case _ => None
     }
   }
 
   object OrType {
-    def unapply(tpe: scala.tasty.Type): Option[(scala.tasty.Type, scala.tasty.Type)] = tpe match {
+    def unapply(tpe: types.Type): Option[(types.Type, types.Type)] = tpe match {
       case Impl(Types.OrType(left, right), ctx) => Some(Type(left)(ctx), Type(right)(ctx))
       case _ => None
     }
@@ -66,7 +71,7 @@ object Type {
 //  case class ParamRef(binder: LambdaType[_, _, _], idx: Int) extends Type
   /*
   object ParamRef {
-    def unapply(tpe: scala.tasty.Type): Option[(scala.tasty.Type, scala.tasty.Type)] = tpe match {
+    def unapply(tpe: types.Type): Option[(types.Type, types.Type)] = tpe match {
       case Impl(Types.TypeParamRef(binder, idx), ctx) => Some(TypeLambda(binder)(ctx), idx)
       case _ => None
     }
@@ -135,7 +140,7 @@ object Type {
 //  case class NoPrefix()
 //  object NoPrefix extends NoPrefix
 
-  private case class Impl(tpe: Types.Type, ctx: Context) extends scala.tasty.Type {
+  private case class Impl(tpe: Types.Type, ctx: Context) extends types.Type {
     override def toString: String = this match {
       case ConstantType(value) => s"ConstantType($value)"
       case SuperType(thisp, superp) => s"SuperType($thisp, $superp)"

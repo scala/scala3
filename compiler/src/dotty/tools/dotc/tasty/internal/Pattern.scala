@@ -5,57 +5,59 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.core.StdNames._
 
-import scala.tasty.pattern
+import scala.tasty.patterns
+import scala.tasty.terms
+import scala.tasty.types
 
 object Pattern {
 
-  def apply(tree: tpd.Tree)(implicit ctx: Context): pattern.Pattern = Impl(tree, ctx)
+  def apply(tree: tpd.Tree)(implicit ctx: Context): patterns.Pattern = Impl(tree, ctx)
 
   object Value {
-    def unapply(arg: pattern.Pattern): Option[pattern.Value.Data] = arg match {
+    def unapply(arg: patterns.Pattern): Option[patterns.Value.Data] = arg match {
       case Impl(lit: tpd.Literal, ctx) => Some(Term(lit)(ctx))
       case _ => None
     }
   }
 
   object Bind {
-    def unapply(arg: pattern.Pattern): Option[pattern.Bind.Data] = arg match {
+    def unapply(arg: patterns.Pattern): Option[patterns.Bind.Data] = arg match {
       case Impl(Trees.Bind(name: Names.TermName, body), ctx) => Some(TermName(name), Pattern(body)(ctx))
       case _ => None
     }
   }
 
   object Unapply {
-    def unapply(arg: pattern.Pattern): Option[pattern.Unapply.Data] = arg match {
+    def unapply(arg: patterns.Pattern): Option[patterns.Unapply.Data] = arg match {
       case Impl(Trees.UnApply(fun, implicits, patterns), ctx) => Some((Term(fun)(ctx), implicits.map(Term(_)(ctx)), patterns.map(Pattern(_)(ctx))))
       case _ => None
     }
   }
 
   object Alternative {
-    def unapply(arg: pattern.Pattern): Option[pattern.Alternative.Data] = arg match {
+    def unapply(arg: patterns.Pattern): Option[patterns.Alternative.Data] = arg match {
       case Impl(Trees.Alternative(patterns), ctx) => Some(patterns.map(Pattern(_)(ctx)))
       case _ => None
     }
   }
 
   object TypeTest {
-    def unapply(arg: pattern.Pattern): Option[pattern.TypeTest.Data] = arg match {
+    def unapply(arg: patterns.Pattern): Option[patterns.TypeTest.Data] = arg match {
       case Impl(Trees.Typed(_, tpt), ctx) => Some(TypeTree(tpt)(ctx))
       case _ => None
     }
   }
 
   object Wildcard {
-    def unapply(arg: pattern.Pattern): Boolean = arg match {
+    def unapply(arg: patterns.Pattern): Boolean = arg match {
       case Impl(Trees.Ident(name), _) => name == nme.WILDCARD
       case _ => false
     }
   }
 
-  private case class Impl(tree: tpd.Tree, ctx: Context) extends pattern.Pattern with Positioned {
+  private case class Impl(tree: tpd.Tree, ctx: Context) extends patterns.Pattern with Positioned {
 
-    def tpe: scala.tasty.Type = Type(tree.tpe)(ctx)
+    def tpe: types.Type = Type(tree.tpe)(ctx)
 
     override def toString: String = this match {
       case Value(v) => s"Value($v)"
@@ -67,7 +69,7 @@ object Pattern {
       case _ => s"Pattern {## $tree ##}"
     }
 
-    private def list(xs: List[scala.tasty.term.Term]): String =
+    private def list(xs: List[terms.Term]): String =
       if (xs.isEmpty) "Nil" else xs.mkString("List(", ", ", ")")
   }
 }

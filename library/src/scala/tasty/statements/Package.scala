@@ -1,7 +1,7 @@
-package scala.tasty.statement
+package scala.tasty.statements
 
 import scala.tasty.Extractor
-import scala.tasty.term.Term
+import scala.tasty.terms.Term
 
 trait Package extends TopLevelStatement
 

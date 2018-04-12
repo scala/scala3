@@ -1,12 +1,12 @@
-package scala.tasty.statement
+package scala.tasty
+package statements
 
-import scala.tasty.term.Term
-import scala.tasty.{Extractor, Id}
+import scala.tasty.Extractor
 
 trait Import extends Statement
 
 object Import {
-  type Data = (Term, List[ImportSelector])
+  type Data = (terms.Term, List[ImportSelector])
   def unapply(arg: TopLevelStatement)(implicit ext: Extractor): Option[Data] = ext.unapplyImport(arg)
 
   sealed trait ImportSelector

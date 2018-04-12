@@ -1,25 +1,23 @@
 package scala.tasty
 
-import scala.tasty.term.Term
-
-package object typetree {
+package object typetrees {
 
   object Synthetic {
     def unapply(arg: TypeTree)(implicit ext: Extractor): Boolean = ext.unapplySynthetic(arg)
   }
 
   object Ident {
-    type Data = TypeName
+    type Data = names.TypeName
     def unapply(arg: TypeTree)(implicit ext: Extractor): Option[Data] = ext.unapplyIdent(arg)
   }
 
   object Select {
-    type Data = (Term, TypeName)
+    type Data = (terms.Term, names.TypeName)
     def unapply(arg: TypeTree)(implicit ext: Extractor): Option[Data] = ext.unapplySelect(arg)
   }
 
   object Singleton {
-    type Data = Term
+    type Data = terms.Term
     def unapply(arg: TypeTree)(implicit ext: Extractor): Option[Data] = ext.unapplySingleton(arg)
   }
 
@@ -39,7 +37,7 @@ package object typetree {
   }
 
   object Annotated {
-    type Data = (TypeTree, Term)
+    type Data = (TypeTree, terms.Term)
     def unapply(arg: TypeTree)(implicit ext: Extractor): Option[Data] = ext.unapplyAnnotated(arg)
   }
 

@@ -1,6 +1,7 @@
-package scala.tasty.statement
+package scala.tasty
+package statements
 
-import scala.tasty._
+import scala.tasty.names.Name
 
 trait Definition extends Statement {
   def name: Name

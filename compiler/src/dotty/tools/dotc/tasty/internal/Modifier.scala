@@ -2,13 +2,13 @@ package dotty.tools.dotc.tasty.internal
 
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Decorators.sourcePos
 
-import scala.tasty
-
+import scala.tasty.modifiers
 
 object Modifier {
 
-  def apply(tree: untpd.Mod)(implicit ctx: Context): scala.tasty.Modifier = Impl(tree, ctx)
+  def apply(tree: untpd.Mod)(implicit ctx: Context): modifiers.Modifier = Impl(tree, ctx)
 
 //  object Private {
 //    def unapply(term: scala.tasty.Modifier): Boolean = term match {
@@ -39,9 +39,9 @@ object Modifier {
 //  case QualifiedProtected(boundary: Type)
 //  case Annotation(tree: Term)
 
-  private case class Impl(tree: untpd.Mod, ctx: Context) extends scala.tasty.Modifier {
+  private case class Impl(tree: untpd.Mod, ctx: Context) extends modifiers.Modifier {
 
-    override def pos: tasty.Position = ???
+    override def pos: scala.tasty.Position =  new Position(sourcePos(tree.pos)(ctx))
 
     override def toString: String = this match {
 //      case Private() => s"Private()"

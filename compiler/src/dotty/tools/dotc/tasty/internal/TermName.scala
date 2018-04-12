@@ -2,14 +2,15 @@ package dotty.tools.dotc.tasty.internal
 
 import dotty.tools.dotc.core.Names
 
+import scala.tasty.names
 
 object TermName {
 
-  def apply(name: Names.TermName): scala.tasty.TermName = Impl(name)
+  def apply(name: Names.TermName): names.TermName = Impl(name)
 
 
   object Simple {
-    def unapply(name: scala.tasty.Name): Option[String] = name match {
+    def unapply(name: names.Name): Option[String] = name match {
       case Impl(name: Names.SimpleName) => Some(name.toString)
       case _ => None
     }
@@ -24,7 +25,7 @@ object TermName {
 //  case ProtectedSetter(underlying: TermName)                      // s"${"protected$set"}$underlying"
 //  case ObjectClass(underlying: TermName)                          // s"$underlying${"$"}"
 
-  private[tasty] case class Impl(name: Names.TermName) extends scala.tasty.TermName {
+  private[tasty] case class Impl(name: Names.TermName) extends names.TermName {
     override def toString: String = name.toString
   }
 
