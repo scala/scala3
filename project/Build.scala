@@ -174,6 +174,11 @@ object Build {
     resourceDirectory in Compile    := baseDirectory.value / "resources",
     resourceDirectory in Test       := baseDirectory.value / "test-resources",
 
+    // Disable scaladoc generation, it's way too slow and we'll replace it
+    // by dottydoc anyway. We still publish an empty -javadoc.jar to make
+    // sonatype happy.
+    sources in (Compile, doc) := Seq(),
+
     // Prevent sbt from rewriting our dependencies
     scalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(false))),
 
@@ -680,11 +685,6 @@ object Build {
   }
 
   lazy val nonBootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
-    // Disable scaladoc generation, it's way too slow and we'll replace it
-    // by dottydoc anyway. We still publish an empty -javadoc.jar to make
-    // sonatype happy.
-    sources in (Compile, doc) := Seq(),
-
     // packageAll packages all and then returns a map with the abs location
     packageAll := {
       Map(
