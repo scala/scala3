@@ -89,12 +89,23 @@ object Toolbox {
     // Types
 
     override def unapplyConstantType(arg: MaybeType) = internal.Type.unapplyConstantType(arg)
+    override def unapplySymRef(arg: MaybeType) = internal.Type.unapplySymRef(arg)
+    override def unapplyNameRef(arg: MaybeType) = internal.Type.unapplyNameRef(arg)
     override def unapplySuperType(arg: MaybeType) = internal.Type.unapplySuperType(arg)
     override def unapplyRefinement(arg: MaybeType) = internal.Type.unapplyRefinement(arg)
     override def unapplyAppliedType(arg: MaybeType) = internal.Type.unapplyAppliedType(arg)
     override def unapplyAnnotatedType(arg: MaybeType) = internal.Type.unapplyAnnotatedType(arg)
     override def unapplyAndType(arg: MaybeType) = internal.Type.unapplyAndType(arg)
     override def unapplyOrType(arg: MaybeType) = internal.Type.unapplyOrType(arg)
+    override def unapplyByNameType(arg: MaybeType) = internal.Type.unapplyByNameType(arg)
+    override def unapplyParamRef(arg: MaybeType) = internal.Type.unapplyParamRef(arg)
+    override def unapplyRecursiveThis(arg: MaybeType) = internal.Type.unapplyRecursiveThis(arg)
+
+    override def unapplyRecursiveType(arg: MaybeType) = internal.RecursiveType.unapplyRecursiveType(arg)
+
+    override def unapplyMethodType(arg: MaybeType) = internal.MethodType.unapplyMethodType(arg)
+    override def unapplyPolyType(arg: MaybeType) = internal.PolyType.unapplyPolyType(arg)
+    override def unapplyTypeLambda(arg: MaybeType) = internal.TypeLambda.unapplyTypeLambda(arg)
 
     override def unapplyTypeBounds(arg: MaybeType)= internal.TypeBounds.unapplyTypeBounds(arg)
 

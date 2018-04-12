@@ -1,3 +1,5 @@
 package scala.tasty.types
 
-trait NoPrefix extends MaybeType
+sealed trait NoPrefix extends MaybeType
+
+case object NoPrefix extends NoPrefix

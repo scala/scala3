@@ -127,19 +127,15 @@ object definitions {
     private val PlaceHolder = ConstantType(Constant.Unit)
 
     case class ConstantType(value: Constant) extends Type
-
-    // NamedType.designator -> sym | name
     case class SymRef(sym: Definition, qualifier: Type | NoPrefix = NoPrefix) extends Type
     case class NameRef(name: Name, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
-
-
     case class SuperType(thistp: Type, underlying: Type) extends Type
     case class Refinement(underlying: Type, name: Name, tpe: Type | TypeBounds) extends Type
     case class AppliedType(tycon: Type, args: List[Type | TypeBounds]) extends Type
     case class AnnotatedType(underlying: Type, annotation: Term) extends Type
     case class AndType(left: Type, right: Type) extends Type
     case class OrType(left: Type, right: Type) extends Type
-    case class ByNameType(underlying: Type) extends Type // ExprTypr
+    case class ByNameType(underlying: Type) extends Type
     case class ParamRef(binder: LambdaType[_, _, _], idx: Int) extends Type
     case class RecursiveThis(binder: RecursiveType) extends Type
 
@@ -201,6 +197,7 @@ object definitions {
     object ErasedImplicitMethodType extends SpecializedMethodTypeCompanion
 
     case class TypeBounds(loBound: Type, hiBound: Type)
+
     case class NoPrefix()
     object NoPrefix extends NoPrefix
   }

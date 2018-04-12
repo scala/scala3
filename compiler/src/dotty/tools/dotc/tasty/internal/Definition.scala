@@ -2,6 +2,7 @@ package dotty.tools.dotc.tasty.internal
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Symbols.Symbol
 
 import scala.tasty.statements
 
@@ -14,5 +15,7 @@ object Definition {
       if (tree.symbol.isClass) ClassDef(tree)
       else TypeDef(tree)
   }
+
+  def apply(tree: Symbol)(implicit ctx: Context): statements.Definition = ???
 
 }

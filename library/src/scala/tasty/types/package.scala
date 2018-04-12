@@ -8,8 +8,15 @@ package object types {
 
   }
 
-  //  case class SymRef(sym: Definition, qualifier: Type | NoPrefix = NoPrefix) extends Type
-  //  case class NameRef(name: Name, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
+  object SymRef {
+    type Data = (statements.Definition, MaybeType /* Type | NoPrefix */)
+    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplySymRef(arg)
+  }
+
+  object NameRef {
+    type Data = (names.Name, MaybeType /* Type | NoPrefix */)
+    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyNameRef(arg)
+  }
 
   object SuperType {
     type Data = (Type, Type)
@@ -39,6 +46,21 @@ package object types {
   object OrType {
     type Data = (Type, Type)
     def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyOrType(arg)
+  }
+
+  object ByNameType {
+    type Data = Type
+    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyByNameType(arg)
+  }
+
+  object ParamRef {
+    type Data = (LambdaType[_, _], Int)
+    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyParamRef(arg)
+  }
+
+  object RecursiveThis {
+    type Data = RecursiveType
+    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyRecursiveThis(arg)
   }
 
 }
