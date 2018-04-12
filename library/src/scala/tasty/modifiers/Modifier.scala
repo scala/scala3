@@ -1,6 +1,8 @@
 package scala.tasty
 package modifiers
 
+import scala.runtime.tasty.Toolbox
+
 trait Modifier extends Positioned {
 
   def isProtected: Boolean = false
@@ -34,15 +36,15 @@ trait Modifier extends Positioned {
 
 object QualifiedPrivate {
   type Data = types.Type
-  def unapply(arg: Modifier)(implicit ext: Extractor): Option[Data] = ext.unapplyQualifiedPrivate(arg)
+  def unapply(arg: Modifier)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyQualifiedPrivate(arg)
 }
 
 object QualifiedProtected {
   type Data = types.Type
-  def unapply(arg: Modifier)(implicit ext: Extractor): Option[Data] = ext.unapplyQualifiedProtected(arg)
+  def unapply(arg: Modifier)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyQualifiedProtected(arg)
 }
 
 object Annotation {
   type Data = terms.Term
-  def unapply(arg: Modifier)(implicit ext: Extractor): Option[Data] = ext.unapplyAnnotation(arg)
+  def unapply(arg: Modifier)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyAnnotation(arg)
 }

@@ -12,7 +12,7 @@ import scala.tasty.types.MaybeType
 
 object Toolbox {
 
-  implicit def extractor: scala.tasty.Extractor = new scala.tasty.Extractor {
+  implicit def extractor: scala.runtime.tasty.Toolbox = new scala.runtime.tasty.Toolbox {
 
     // Statements
 

@@ -1,6 +1,8 @@
 package scala.tasty
 package types
 
+import scala.runtime.tasty.Toolbox
+
 trait LambdaType[ParamName <: names.Name, ParamInfo <: MaybeType] extends Type
 
 trait MethodType extends LambdaType[names.TermName, Type] {
@@ -9,17 +11,17 @@ trait MethodType extends LambdaType[names.TermName, Type] {
 }
 object MethodType {
   type Data = (List[names.TermName], List[Type], Type)
-  def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyMethodType(arg)
+  def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyMethodType(arg)
 }
 
 trait PolyType extends LambdaType[names.TypeName, TypeBounds]
 object PolyType {
   type Data = (List[names.TypeName], List[TypeBounds], Type)
-  def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyPolyType(arg)
+  def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyPolyType(arg)
 }
 
 trait TypeLambda extends LambdaType[names.TypeName, TypeBounds]
 object TypeLambda {
   type Data = (List[names.TypeName], List[TypeBounds], Type)
-  def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyTypeLambda(arg)
+  def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeLambda(arg)
 }

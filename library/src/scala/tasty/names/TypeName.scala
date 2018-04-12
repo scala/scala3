@@ -1,10 +1,10 @@
 package scala.tasty.names
 
-import scala.tasty.Extractor
+import scala.runtime.tasty.Toolbox
 
 trait TypeName extends Name
 
 object TypeName {
   type Data = TermName
-  def unapply(arg: Name)(implicit ext: Extractor): Option[Data] = ext.unapplyTypeName(arg)
+  def unapply(arg: Name)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeName(arg)
 }

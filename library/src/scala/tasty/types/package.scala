@@ -1,66 +1,68 @@
 package scala.tasty
 
+import scala.runtime.tasty.Toolbox
+
 package object types {
 
   object ConstantType {
     type Data = constants.Constant
-    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyConstantType(arg)
+    def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyConstantType(arg)
 
   }
 
   object SymRef {
     type Data = (statements.Definition, MaybeType /* Type | NoPrefix */)
-    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplySymRef(arg)
+    def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplySymRef(arg)
   }
 
   object NameRef {
     type Data = (names.Name, MaybeType /* Type | NoPrefix */)
-    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyNameRef(arg)
+    def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyNameRef(arg)
   }
 
   object SuperType {
     type Data = (Type, Type)
-    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplySuperType(arg)
+    def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplySuperType(arg)
   }
 
   object Refinement {
     type Data = (Type, names.Name, Type)
-    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyRefinement(arg)
+    def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyRefinement(arg)
   }
 
   object AppliedType {
     type Data = (Type, List[types.MaybeType /* Type | TypeBounds */])
-    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyAppliedType(arg)
+    def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyAppliedType(arg)
   }
 
   object AnnotatedType {
     type Data = (Type, terms.Term)
-    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyAnnotatedType(arg)
+    def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyAnnotatedType(arg)
   }
 
   object AndType {
     type Data = (Type, Type)
-    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyAndType(arg)
+    def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyAndType(arg)
   }
 
   object OrType {
     type Data = (Type, Type)
-    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyOrType(arg)
+    def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyOrType(arg)
   }
 
   object ByNameType {
     type Data = Type
-    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyByNameType(arg)
+    def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyByNameType(arg)
   }
 
   object ParamRef {
     type Data = (LambdaType[_, _], Int)
-    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyParamRef(arg)
+    def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyParamRef(arg)
   }
 
   object RecursiveThis {
     type Data = RecursiveType
-    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyRecursiveThis(arg)
+    def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyRecursiveThis(arg)
   }
 
 }

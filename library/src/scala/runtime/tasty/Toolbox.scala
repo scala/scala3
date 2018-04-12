@@ -1,13 +1,16 @@
-package scala.tasty
+package scala.runtime.tasty
 
+import scala.annotation.implicitNotFound
+import scala.tasty._
 import scala.tasty.constants.Constant
 import scala.tasty.modifiers.Modifier
 import scala.tasty.patterns.{CaseDef, Pattern}
 import scala.tasty.statements.TopLevelStatement
-import scala.tasty.typetrees.TypeTree
 import scala.tasty.types.MaybeType
+import scala.tasty.typetrees.TypeTree
 
-trait Extractor {
+@implicitNotFound("Could not find implicit tasty.Toolbox. Default toolbox can be imported with `import dotty.tools.dotc.tasty.Toolbox._`")
+trait Toolbox {
 
   // Statements
 
