@@ -15,7 +15,7 @@ object TypeDef {
     case Impl(tdef, ctx) if !tdef.symbol(ctx).isClass =>
       implicit val ctx_ = ctx
       if (tdef.symbol.isClass) None
-      else Some((TypeName(tdef.name), TypeTree(tdef.rhs), tdef.rawMods.mods.map(mod => Modifier(mod))))
+      else Some((TypeName(tdef.name), TypeTree(tdef.rhs), Modifiers(tdef)))
     case _ => None
   }
 

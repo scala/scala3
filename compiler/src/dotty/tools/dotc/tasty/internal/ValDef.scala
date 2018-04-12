@@ -14,7 +14,7 @@ object ValDef {
   def unapplyValDef(arg: statements.TopLevelStatement): Option[statements.ValDef.Data] = arg match {
     case Impl(vdef, ctx) =>
       implicit val ctx_ = ctx
-      Some((TermName(vdef.name), TypeTree(vdef.tpt), if (vdef.rhs.isEmpty) None else Some(Term(vdef.rhs)), vdef.rawMods.mods.map(mod => Modifier(mod))))
+      Some((TermName(vdef.name), TypeTree(vdef.tpt), if (vdef.rhs.isEmpty) None else Some(Term(vdef.rhs)), Modifiers(vdef)))
     case _ => None
   }
 

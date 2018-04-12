@@ -5,6 +5,7 @@ import scala.tasty.statements.TopLevelStatement
 import scala.tasty.patterns.CaseDef
 import scala.tasty.typetrees.TypeTree
 import scala.tasty.constants.Constant
+import scala.tasty.modifiers.Modifier
 import scala.tasty.names.Name
 import scala.tasty.names.PossiblySignedName
 import scala.tasty.types.MaybeType
@@ -123,6 +124,12 @@ object Toolbox {
     override def unapplyTypeLambda(arg: MaybeType) = internal.TypeLambda.unapplyTypeLambda(arg)
 
     override def unapplyTypeBounds(arg: MaybeType)= internal.TypeBounds.unapplyTypeBounds(arg)
+
+    // Modifiers
+
+    override def unapplyQualifiedPrivate(arg: Modifier) = internal.QualifiedModifier.unapplyQualifiedPrivate(arg)
+    override def unapplyQualifiedProtected(arg: Modifier) = internal.QualifiedModifier.unapplyQualifiedProtected(arg)
+    override def unapplyAnnotation(arg: Modifier) = internal.AnnotationModifier.unapplyAnnotation(arg)
 
   }
 

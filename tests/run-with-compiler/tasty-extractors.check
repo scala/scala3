@@ -133,3 +133,6 @@ Block(List(TypeDef(Foo, Ident(Int), List())), Literal(Unit()))
 Block(List(TypeDef(Foo, TypeBounds(Ident(Null), Ident(Object)), List())), Literal(Unit()))
 ###
 
+Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(), List())), Literal(Unit()))
+###
+

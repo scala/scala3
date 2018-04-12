@@ -71,6 +71,8 @@ object Test {
     '{ type Foo },
     '{ type Foo = Int },
     '{ type Foo >: Null <: Object },
+    '{ final class Foo }, // FIXME modifier not printed
+    // '{ case class Foo() },
   )
 
   class TreeTraverser {

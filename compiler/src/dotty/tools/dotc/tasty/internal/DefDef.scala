@@ -14,7 +14,7 @@ object DefDef {
   def unapplyDefDef(term: statements.TopLevelStatement): Option[statements.DefDef.Data] = term match {
     case Impl(ddef, ctx) =>
       implicit val ctx_ = ctx
-      Some((TermName(ddef.name), ddef.tparams.map(TypeDef(_)), ddef.vparamss.map(_.map(ValDef(_))), TypeTree(ddef.tpt), if (ddef.rhs.isEmpty) None else Some(Term(ddef.rhs)), ddef.rawMods.mods.map(Modifier(_))))
+      Some((TermName(ddef.name), ddef.tparams.map(TypeDef(_)), ddef.vparamss.map(_.map(ValDef(_))), TypeTree(ddef.tpt), if (ddef.rhs.isEmpty) None else Some(Term(ddef.rhs)), Modifiers(ddef)))
     case _ => None
   }
 

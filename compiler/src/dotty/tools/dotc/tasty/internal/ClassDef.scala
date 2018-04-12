@@ -14,7 +14,9 @@ object ClassDef {
   def unapplyClassDef(term: statements.TopLevelStatement): Option[statements.ClassDef.Data] = term match {
     case Impl(cdef @ Trees.TypeDef(name, impl@Trees.Template(constr, parents, self, _)), ctx) =>
       implicit val ctx_ = ctx
-      if (cdef.symbol.isClass) Some((TypeName(name), DefDef(constr), parents.map(Term(_)), if (self.isEmpty) None else Some(ValDef(self)), impl.body.map(Statement(_)), cdef.rawMods.mods.map(Modifier(_))))
+      if (cdef.symbol.isClass) Some((TypeName(name), DefDef(constr),
+        parents.map(Term(_)), // FIXME can also be Type(_)
+        if (self.isEmpty) None else Some(ValDef(self)), impl.body.map(Statement(_)), Modifiers(cdef)))
       else None
     case _ => None
   }

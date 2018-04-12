@@ -1,6 +1,7 @@
 package scala.tasty
 
 import scala.tasty.constants.Constant
+import scala.tasty.modifiers.Modifier
 import scala.tasty.patterns.{CaseDef, Pattern}
 import scala.tasty.statements.TopLevelStatement
 import scala.tasty.typetrees.TypeTree
@@ -120,5 +121,11 @@ trait Extractor {
   def unapplyTypeLambda(arg: MaybeType): Option[types.TypeLambda.Data]
 
   def unapplyTypeBounds(arg: MaybeType): Option[types.TypeBounds.Data]
+
+  // Modifiers
+
+  def unapplyQualifiedPrivate(arg: Modifier): Option[modifiers.QualifiedPrivate.Data]
+  def unapplyQualifiedProtected(arg: Modifier): Option[modifiers.QualifiedProtected.Data]
+  def unapplyAnnotation(arg: Modifier): Option[modifiers.Annotation.Data]
 
 }
