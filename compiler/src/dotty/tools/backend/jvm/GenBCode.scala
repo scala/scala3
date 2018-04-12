@@ -11,7 +11,6 @@ import scala.collection.JavaConverters._
 import scala.tools.asm.{ClassVisitor, CustomAttr, FieldVisitor, MethodVisitor}
 import scala.tools.nsc.backend.jvm._
 import dotty.tools.dotc
-import dotty.tools.dotc.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.transform.Erasure
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.interfaces
