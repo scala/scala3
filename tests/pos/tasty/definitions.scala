@@ -232,9 +232,8 @@ object definitions {
 
   enum Constant(val value: Any) {
     case Unit                        extends Constant(())
-    case False                       extends Constant(false)
-    case True                        extends Constant(true)
     case Null                        extends Constant(null)
+    case Boolean(v: scala.Boolean)   extends Constant(v)
     case Byte(v: scala.Byte)         extends Constant(v)
     case Short(v: scala.Short)       extends Constant(v)
     case Char(v: scala.Char)         extends Constant(v)
