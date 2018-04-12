@@ -899,12 +899,12 @@ object Denotations {
           } else {
             //println(s"might need new denot for $cur, valid for ${cur.validFor} at $currentPeriod")
             // not found, cur points to highest existing variant
-            val nextTransformerId = ctx.nextDenotTransformerId(cur.validFor.lastPhaseId)
+            val nextTransformerId = ctx.base.nextDenotTransformerId(cur.validFor.lastPhaseId)
             if (currentPeriod.lastPhaseId <= nextTransformerId)
               cur.validFor = Period(currentPeriod.runId, cur.validFor.firstPhaseId, nextTransformerId)
             else {
               var startPid = nextTransformerId + 1
-              val transformer = ctx.denotTransformers(nextTransformerId)
+              val transformer = ctx.base.denotTransformers(nextTransformerId)
               //println(s"transforming $this with $transformer")
               try {
                 next = transformer.transform(cur)(ctx.withPhase(transformer))
