@@ -67,7 +67,7 @@ object Checkable {
     def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
     def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
 
-    def replaceP(implicit ctx: Context) = new TypeMap {
+    def replaceP(tp: Type)(implicit ctx: Context) = new TypeMap {
       def apply(tp: Type) = tp match {
         case tref: TypeRef
         if isPatternTypeSymbol(tref.typeSymbol) => WildcardType
@@ -75,9 +75,9 @@ object Checkable {
         if annot.symbol == defn.UncheckedAnnot => WildcardType
         case _ => mapOver(tp)
       }
-    }
+    }.apply(tp)
 
-    def replaceX(implicit ctx: Context) = new TypeMap {
+    def replaceX(tp: Type)(implicit ctx: Context) = new TypeMap {
       def apply(tp: Type) = tp match {
         case tref: TypeRef
         if isPatternTypeSymbol(tref.typeSymbol) =>
@@ -86,7 +86,19 @@ object Checkable {
           else OrType(defn.AnyType, defn.NothingType)
         case _ => mapOver(tp)
       }
-    }
+    }.apply(tp)
+
+    /** Approximate type parameters depending on variance */
+    def stripTypeParam(tp: Type)(implicit ctx: Context) = new ApproximatingTypeMap {
+      def apply(tp: Type): Type = tp match {
+        case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
+          val lo = apply(tp.info.loBound)
+          val hi = apply(tp.info.hiBound)
+          range(lo, hi)
+        case _ =>
+          mapOver(tp)
+      }
+    }.apply(tp)
 
     def isClassDetermined(X: Type, P: AppliedType)(implicit ctx: Context) = {
       val AppliedType(tycon, _) = P
@@ -94,13 +106,16 @@ object Checkable {
       val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
       val P1 = tycon.appliedTo(tvars)
 
-      debug.println("P : " + P.show)
-      debug.println("P1 : " + P1.show)
-      debug.println("X : " + X.show)
+      debug.println("P : " + P)
+      debug.println("P1 : " + P1)
+      debug.println("X : " + X)
 
-      P1 <:< X  // may fail, ignore
+      P1 <:< X       // constraint P1
 
-      val res = isFullyDefined(P1, ForceDegree.noBottom) &&  P1 <:< P
+      // use fromScala2x to avoid generating pattern bound symbols
+      maximizeType(P1, pos, fromScala2x = true)
+
+      val res = P1 <:< P
       debug.println("P1 : " + P1)
       debug.println("P1 <:< P = " + res)
 
@@ -116,7 +131,10 @@ object Checkable {
           case defn.ArrayOf(tpE)   => recur(tpE, tpT)
           case _                   => recur(defn.AnyType, tpT)
         }
-      case tpe: AppliedType     => isClassDetermined(X, tpe)(ctx.fresh.setNewTyperState())
+      case tpe: AppliedType     =>
+        // first try withou striping type parameters for performance
+        isClassDetermined(X, tpe)(ctx.fresh.setNewTyperState()) ||
+        isClassDetermined(stripTypeParam(X), tpe)(ctx.fresh.setNewTyperState())
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
       case AnnotatedType(t, _)  => recur(X, t)
@@ -124,7 +142,7 @@ object Checkable {
       case _                    => true
     })
 
-    val res = recur(replaceX.apply(X.widen), replaceP.apply(P))
+    val res = recur(replaceX(X.widen), replaceP(P))
 
     debug.println(i"checking  ${X.show} isInstanceOf ${P} = $res")
 
