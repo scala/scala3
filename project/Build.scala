@@ -1,35 +1,22 @@
+import java.io.File
+import java.nio.file._
+
+import Modes._
+import com.typesafe.sbt.pgp.PgpKeys
+import com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseKeys
 import sbt.Keys._
 import sbt._
 import complete.DefaultParsers._
-import java.io.File
-import java.nio.channels.FileLock
-import java.nio.file._
-import java.util.Calendar
-
-import scala.reflect.io.Path
-
+import pl.project13.scala.sbt.JmhPlugin
+import pl.project13.scala.sbt.JmhPlugin.JmhKeys.Jmh
+import sbt.Package.ManifestAttributes
+import sbt.ScriptedPlugin.autoImport._
 import xerial.sbt.pack.PackPlugin
 import xerial.sbt.pack.PackPlugin.autoImport._
-
-import sbt.Package.ManifestAttributes
 
 import dotty.tools.sbtplugin.DottyPlugin.autoImport._
 import dotty.tools.sbtplugin.DottyIDEPlugin.{ prepareCommand, runProcess }
 import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
-
-import com.typesafe.sbt.pgp.PgpKeys
-
-import pl.project13.scala.sbt.JmhPlugin
-import JmhPlugin.JmhKeys.Jmh
-
-import sbt.ScriptedPlugin.autoImport._
-
-import xerial.sbt.pack.PackPlugin.packSettings
-import xerial.sbt.pack.PackPlugin.autoImport._
-
-import com.typesafe.sbteclipse.plugin.EclipsePlugin.EclipseKeys
-
-import Modes._
 
 /* In sbt 0.13 the Build trait would expose all vals to the shell, where you
  * can use them in "set a := b" like expressions. This re-exposes them.
