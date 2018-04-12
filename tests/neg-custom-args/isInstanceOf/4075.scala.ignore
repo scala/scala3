@@ -1,0 +1,22 @@
+object Test {
+  trait Foo
+  case class One[+T](fst: T)
+
+  def bad[T <: Foo](e: One[T])(x: T) = e match {
+    case foo: One[a] =>
+      x.isInstanceOf[a]  // error
+      val y: Any = ???
+      y.isInstanceOf[a]  // error
+  }
+}
+
+object Test2 {
+  case class One[T](fst: T)
+
+  def bad[T](e: One[T])(x: T) = e match {
+    case foo: One[a] =>
+      x.isInstanceOf[a] // error
+      val y: Any = ???
+      y.isInstanceOf[a] // error
+  }
+}

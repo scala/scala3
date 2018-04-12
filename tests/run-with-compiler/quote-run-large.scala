@@ -1,6 +1,6 @@
 import dotty.tools.dotc.quoted.Toolbox._
 
-import scala.quoted.TastyExpr
+import scala.quoted.Exprs.TastyExpr
 
 object Test {
   def main(args: Array[String]): Unit = {

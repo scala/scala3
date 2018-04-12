@@ -771,7 +771,7 @@ object Trees {
   def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
     var buf: ListBuffer[Tree[T]] = null
     var xs = trees
-    while (xs.nonEmpty) {
+    while (!xs.isEmpty) {
       xs.head match {
         case Thicket(elems) =>
           if (buf == null) {
@@ -805,7 +805,7 @@ object Trees {
     def unforced: AnyRef
     protected def force(x: AnyRef): Unit
     def forceIfLazy(implicit ctx: Context): T = unforced match {
-      case lzy: Lazy[T] =>
+      case lzy: Lazy[T @unchecked] =>
         val x = lzy.complete
         force(x)
         x

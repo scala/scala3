@@ -295,16 +295,17 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           "[" + ("=" * (math.max(progress - 1, 0))) +
             (if (progress > 0) ">" else "") +
             (" " * (39 - progress)) +
-            s"] completed ($tCompiled/$sourceCount, ${timestamp}s)\r"
+            s"] completed ($tCompiled/$sourceCount, $errorCount failed, ${timestamp}s)\r"
         )
 
         Thread.sleep(100)
         tCompiled = testSourcesCompleted
       }
+
+      val timestamp = (System.currentTimeMillis - start) / 1000
       // println, otherwise no newline and cursor at start of line
       realStdout.println(
-        s"[=======================================] completed ($sourceCount/$sourceCount, " +
-          s"${(System.currentTimeMillis - start) / 1000}s)  "
+        s"[=======================================] completed ($sourceCount/$sourceCount, $errorCount failed, ${timestamp}s)"
       )
     }
 
@@ -451,7 +452,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     private[ParallelTesting] def executeTestSuite(): this.type = {
-      assert(_testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
+      assert(testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
 
       if (filteredSources.nonEmpty) {
         val pool = threadLimit match {
@@ -1211,7 +1212,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  `f` in a specific way.
    *
    *  - Each file is compiled separately as a single compilation run
-   *  - Each directory is compiled as a `SeparateCompilationTaret`, in this
+   *  - Each directory is compiled as a `SeparateCompilationTarget`, in this
    *    target all files are grouped according to the file suffix `_X` where `X`
    *    is a number. These groups are then ordered in ascending order based on
    *    the value of `X` and each group is compiled one after the other.
@@ -1243,7 +1244,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  `f` in a specific way. Once compiled, they are recompiled/run from tasty as sources.
    *
    *  - Each file is compiled separately as a single compilation run
-   *  - Each directory is compiled as a `SeparateCompilationTaret`, in this
+   *  - Each directory is compiled as a `SeparateCompilationTarget`, in this
    *    target all files are grouped according to the file suffix `_X` where `X`
    *    is a number. These groups are then ordered in ascending order based on
    *    the value of `X` and each group is compiled one after the other.

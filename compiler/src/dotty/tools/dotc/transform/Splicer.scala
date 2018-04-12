@@ -30,16 +30,13 @@ object Splicer {
    *
    *  See: `ReifyQuotes`
    */
-  def splice(tree: Tree, call: Tree, bindings: List[Tree], pos: Position)(implicit ctx: Context): Tree = tree match {
+  def splice(tree: Tree, call: Tree, bindings: List[Tree], pos: Position, classLoader: ClassLoader)(implicit ctx: Context): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
-    case _ => reflectiveSplice(tree, call, bindings, pos)
-  }
-
-  private def reflectiveSplice(tree: Tree, call: Tree, bindings: List[Tree], pos: Position)(implicit ctx: Context): Tree = {
-    val liftedArgs = getLiftedArgs(call, bindings)
-    val interpreter = new Interpreter(pos)
-    val interpreted = interpreter.interpretCallToSymbol[Seq[Any] => Object](call.symbol)
-    interpreted.flatMap(lambda => evaluateLambda(lambda, liftedArgs, pos)).fold(tree)(PickledQuotes.quotedExprToTree)
+    case _ =>
+      val liftedArgs = getLiftedArgs(call, bindings)
+      val interpreter = new Interpreter(pos, classLoader)
+      val interpreted = interpreter.interpretCallToSymbol[Seq[Any] => Object](call.symbol)
+      interpreted.flatMap(lambda => evaluateLambda(lambda, liftedArgs, pos)).fold(tree)(PickledQuotes.quotedExprToTree)
   }
 
   /** Given the inline code and bindings, compute the lifted arguments that will be used to execute the macro
@@ -89,7 +86,6 @@ object Splicer {
          """.stripMargin
         ctx.error(msg, pos)
         None
-      case ex: Throwable => throw ex
     }
   }
 
@@ -98,12 +94,7 @@ object Splicer {
    *  The interpreter assumes that all calls in the trees are to code that was
    *  previously compiled and is present in the classpath of the current context.
    */
-  private class Interpreter(pos: Position)(implicit ctx: Context) {
-
-    private[this] val classLoader = {
-      val urls = ctx.settings.classpath.value.split(':').map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
-      new URLClassLoader(urls, getClass.getClassLoader)
-    }
+  private class Interpreter(pos: Position, classLoader: ClassLoader)(implicit ctx: Context) {
 
     /** Returns the interpreted result of interpreting the code a call to the symbol with default arguments.
      *  Return Some of the result or None if some error happen during the interpretation.

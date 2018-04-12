@@ -2,11 +2,14 @@
 out/posTestFromTasty/pos/lambda/foo/Foo.class
 --------------------------------------------------------------------------------
 package foo {
-  class Foo() extends Object() {
-    val a: Int => Int =
-      {
-        (x: Int) => x.*(x)
-      }
+  class Foo() {
+    {
+      (x: Int) =>
+        {
+          2
+        }
+    }
+    val a: Int => Int = (x: Int) => x.*(x)
   }
 }
 --------------------------------------------------------------------------------

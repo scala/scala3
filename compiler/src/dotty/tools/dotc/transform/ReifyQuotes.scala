@@ -88,6 +88,16 @@ import dotty.tools.dotc.core.quoted._
 class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
   import ast.tpd._
 
+  /** Classloader used for loading macros */
+  private[this] var myMacroClassLoader: java.lang.ClassLoader = _
+  private def macroClassLoader(implicit ctx: Context): ClassLoader = {
+    if (myMacroClassLoader == null) {
+      val urls = ctx.settings.classpath.value.split(':').map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
+      myMacroClassLoader = new java.net.URLClassLoader(urls, getClass.getClassLoader)
+    }
+    myMacroClassLoader
+  }
+
   override def phaseName: String = "reifyQuotes"
 
   override def run(implicit ctx: Context): Unit =
@@ -385,6 +395,19 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
           liftList(splices, defn.AnyType))
       }
       if (splices.nonEmpty) pickleAsTasty()
+      else if (isType) {
+        def tag(tagName: String) = ref(defn.QuotedTypeModule).select(tagName.toTermName)
+        if (body.symbol == defn.UnitClass) tag("UnitTag")
+        else if (body.symbol == defn.BooleanClass) tag("BooleanTag")
+        else if (body.symbol == defn.ByteClass) tag("ByteTag")
+        else if (body.symbol == defn.CharClass) tag("CharTag")
+        else if (body.symbol == defn.ShortClass) tag("ShortTag")
+        else if (body.symbol == defn.IntClass) tag("IntTag")
+        else if (body.symbol == defn.LongClass) tag("LongTag")
+        else if (body.symbol == defn.FloatClass) tag("FloatTag")
+        else if (body.symbol == defn.DoubleClass) tag("DoubleTag")
+        else pickleAsTasty()
+      }
       else ReifyQuotes.toValue(body) match {
         case Some(value) => pickleAsValue(value)
         case _ => pickleAsTasty()
@@ -542,7 +565,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
                 // Simplification of the call done in PostTyper for non-macros can also be performed now
                 // see PostTyper `case Inlined(...) =>` for description of the simplification
                 val call2 = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
-                val spliced = Splicer.splice(body, call, bindings, tree.pos).withPos(tree.pos)
+                val spliced = Splicer.splice(body, call, bindings, tree.pos, macroClassLoader).withPos(tree.pos)
                 transform(cpy.Inlined(tree)(call2, bindings, spliced))
               }
               else super.transform(tree)
@@ -620,7 +643,8 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
     transform(tp)
   }
 
-  override protected def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.is(Macro)
+  override protected def mayChange(sym: Symbol)(implicit ctx: Context): Boolean =
+    ctx.compilationUnit.containsQuotesOrSplices && sym.isTerm && sym.is(Macro)
 
   /** Returns the type of the compiled macro as a lambda: Seq[Any] => Object */
   private def macroReturnType(implicit ctx: Context): Type =

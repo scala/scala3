@@ -2,6 +2,5 @@
 27: Pattern Match Exhaustivity: _: SealedAbstractClass & OpenTrait & OpenTrait2, _: SealedClass & OpenTrait & OpenTrait2, _: SealedTrait & OpenTrait & OpenTrait2, _: AbstractClass & OpenTrait & OpenTrait2, _: Clazz & OpenTrait & OpenTrait2, _: Trait & OpenTrait & OpenTrait2
 31: Pattern Match Exhaustivity: _: SealedTrait & OpenClass, _: Trait & OpenClass
 35: Pattern Match Exhaustivity: _: SealedTrait & OpenTrait & OpenClass, _: Trait & OpenTrait & OpenClass
-40: Match case Unreachable
 43: Pattern Match Exhaustivity: _: SealedTrait & OpenAbstractClass, _: Trait & OpenAbstractClass
 47: Pattern Match Exhaustivity: _: SealedTrait & OpenClass & OpenTrait & OpenClassSubclass, _: Trait & OpenClass & OpenTrait & OpenClassSubclass

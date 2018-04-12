@@ -64,7 +64,7 @@ trait Hashable {
     var h = seed
     var xs = tps
     var len = arity
-    while (xs.nonEmpty) {
+    while (!xs.isEmpty) {
       val elemHash = typeHash(bs, xs.head)
       if (elemHash == NotCached) return NotCached
       h = hashing.mix(h, elemHash)

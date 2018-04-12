@@ -81,6 +81,7 @@ class Compiler {
          new CrossCastAnd,           // Normalize selections involving intersection types.
          new Splitter) ::            // Expand selections involving union types into conditionals
     List(new ErasedDecls,            // Removes all erased defs and vals decls (except for parameters)
+         new IsInstanceOfChecker,    // check runtime realisability for `isInstanceOf`
          new VCInlineMethods,        // Inlines calls to value class methods
          new SeqLiterals,            // Express vararg arguments as arrays
          new InterceptedMethods,     // Special handling of `==`, `|=`, `getClass` methods

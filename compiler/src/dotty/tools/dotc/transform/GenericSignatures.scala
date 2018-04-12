@@ -12,6 +12,7 @@ import core.TypeErasure.erasure
 import core.Types._
 import core.classfile.ClassfileConstants
 import ast.Trees._
+import SymUtils._
 import TypeUtils._
 import java.lang.StringBuilder
 
@@ -27,8 +28,11 @@ object GenericSignatures {
    *  @param info The type of the symbol
    *  @return The signature if it could be generated, `None` otherwise.
    */
-  def javaSig(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] =
-    javaSig0(sym0, info)(ctx.withPhase(ctx.erasurePhase))
+  def javaSig(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] = {
+    // Avoid generating a signature for local symbols.
+    if (sym0.isLocal) None
+    else javaSig0(sym0, info)(ctx.withPhase(ctx.erasurePhase))
+  }
 
   @noinline
   private final def javaSig0(sym0: Symbol, info: Type)(implicit ctx: Context): Option[String] = {
@@ -212,6 +216,8 @@ object GenericSignatures {
             else
               jsig(unboxedSeen, toplevel, primitiveOK)
           }
+          else if (defn.isXXLFunctionClass(sym))
+            jsig(defn.FunctionXXLType, toplevel, primitiveOK)
           else if (sym.isClass)
             classSig
           else
@@ -317,7 +323,7 @@ object GenericSignatures {
       val psyms = parents map (_.typeSymbol)
       if (psyms contains defn.ArrayClass) {
         // treat arrays specially
-        defn.ArrayType.appliedTo(intersectionDominator(parents.filter(_.typeSymbol == defn.ArrayClass).map(t => t.typeParams.head.paramInfo)))
+        defn.ArrayType.appliedTo(intersectionDominator(parents.filter(_.typeSymbol == defn.ArrayClass).map(t => t.argInfos.head)))
       } else {
         // implement new spec for erasure of refined types.
         def isUnshadowed(psym: Symbol) =

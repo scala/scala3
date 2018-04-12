@@ -9,6 +9,6 @@ package foo {
 out/posTestFromTasty/pos/simpleClass-2/foo/B.class
 --------------------------------------------------------------------------------
 package foo {
-  class B() extends Object() {}
+  class B() {}
 }
 --------------------------------------------------------------------------------

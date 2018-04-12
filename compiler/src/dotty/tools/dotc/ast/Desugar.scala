@@ -429,7 +429,6 @@ object desugar {
         }
         val hasRepeatedParam = constrVparamss.exists(_.exists {
           case ValDef(_, tpt, _) => isRepeated(tpt)
-          case _ => false
         })
         if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
         else {
@@ -805,7 +804,7 @@ object desugar {
    *  If `inlineable` is true, tag $anonfun with an @inline annotation.
    */
   def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), inlineable: Boolean)(implicit ctx: Context) = {
-    var mods = synthetic
+    var mods = synthetic | Artifact
     if (inlineable) mods |= Inline
     Block(
       DefDef(nme.ANON_FUN, Nil, params :: Nil, tpt, body).withMods(mods),

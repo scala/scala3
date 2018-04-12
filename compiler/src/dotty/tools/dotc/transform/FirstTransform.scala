@@ -4,7 +4,6 @@ package transform
 import core._
 import Names._
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Phases.NeedsCompanions
 import dotty.tools.dotc.transform.MegaPhase._
 import ast.Trees._
 import ast.untpd
@@ -30,7 +29,6 @@ object FirstTransform {
 
 
 /** The first tree transform
- *   - ensures there are companion objects for all classes except module classes
  *   - eliminates some kinds of trees: Imports, NamedArgs
  *   - stubs out native methods
  *   - eliminates self tree in Template and self symbol in ClassInfo
@@ -44,18 +42,6 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName = FirstTransform.name
-
-  private[this] var addCompanionPhases: List[NeedsCompanions] = _
-
-  override def changesMembers = true // the phase adds companion objects
-
-  def needsCompanion(cls: ClassSymbol)(implicit ctx: Context) =
-    addCompanionPhases.exists(_.isCompanionNeeded(cls))
-
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
-    addCompanionPhases = ctx.phasePlan.flatMap(_ collect { case p: NeedsCompanions => p })
-    ctx
-  }
 
   /** eliminate self symbol in ClassInfo */
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {

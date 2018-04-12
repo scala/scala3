@@ -385,10 +385,6 @@ object Phases {
     override def toString = phaseName
   }
 
-  trait NeedsCompanions {
-    def isCompanionNeeded(cls: ClassSymbol)(implicit ctx: Context): Boolean
-  }
-
   /** Replace all instances of `oldPhaseClass` in `current` phases
    *  by the result of `newPhases` applied to the old phase.
    */

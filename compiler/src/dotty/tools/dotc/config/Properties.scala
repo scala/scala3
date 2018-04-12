@@ -56,7 +56,7 @@ trait PropertiesTrait {
   def scalaPropOrElse(name: String, alt: String): String = scalaProps.getProperty(name, alt)
   def scalaPropOrEmpty(name: String): String             = scalaPropOrElse(name, "")
   def scalaPropOrNone(name: String): Option[String]      = Option(scalaProps.getProperty(name))
-  
+
   /** Either the development or release version if known, otherwise
    *  the empty string.
    */
@@ -73,7 +73,15 @@ trait PropertiesTrait {
       } else ""
     }
   }
-  
+
+  /** Whether the current version of compiler is experimental
+   *
+   *  1. Snapshot and nightly releases are experimental.
+   *  2. Features supported by experimental versions of the compiler:
+   *     - research plugins
+   */
+  val experimental = versionString.contains("SNAPSHOT") || versionString.contains("NIGHTLY")
+
   val copyrightString       = scalaPropOrElse("copyright.string", "(c) 2002-2017 LAMP/EPFL")
 
   /** This is the encoding to use reading in source files, overridden with -encoding

@@ -114,7 +114,7 @@ object Applications {
         productSelectorTypes(unapplyResult)
       else if (isGetMatch(unapplyResult, pos))
         getUnapplySelectors(getTp, args, pos)
-      else if (unapplyResult isRef defn.BooleanClass)
+      else if (unapplyResult.widenSingleton isRef defn.BooleanClass)
         Nil
       else if (defn.isProductSubType(unapplyResult))
         productSelectorTypes(unapplyResult)

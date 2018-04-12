@@ -28,39 +28,13 @@ class FromTastyTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
     val (step1, step2, step3) = compileTastyInDir("tests/pos", defaultOptions,
       blacklist = Set(
-        "macro-deprecate-dont-touch-backquotedidents.scala",
-        "t247.scala",
-
-        // Wrong number of arguments
+        // Wrong number of arguments (only on bootstrapped)
         "i3130b.scala",
 
-        // Class not found
-        "i3130a.scala",
-
-        // Owner discrepancy for refinements
-        "lambdalift-1.scala",
-
-        // Cannot merge members
-        "depfuntype.scala",
-
-        // Type miss match after unpickling
-        "hklub0.scala",
-
-         // Closure type miss match
-        "i4125.scala",
-
         // Missing position
-        "t1203a.scala",
-        "t2260.scala",
-        "t4579.scala",
-        "tcpoly_ticket2096.scala",
-        "i2345.scala",
-        "t4731.scala",
-        "spec-super.scala",
-        "spec-sparsearray-old.scala",
         "collections_1.scala",
 
-        // Infinite compilation
+        // MatchError in SymDenotation.sourceModule on a ThisType
         "t3612.scala",
       )
     )
@@ -79,34 +53,8 @@ class FromTastyTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
     val (step1, step2, step3) = compileTastyInDir("tests/run", defaultOptions,
        blacklist = Set(
-
-         "t7223.scala",
-         "t5428.scala",
-
-         // Missing position
-         "Course-2002-13.scala",
-         "bridges.scala",
-         "i2337.scala",
-         "i2337b.scala",
-         "scala2trait-lazyval.scala",
-         "t3452f.scala",
-
          // Closure type miss match
          "eff-dependent.scala",
-
-         // Issue unpickling universes
-         "phantom-decls-1.scala",
-         "phantom-decls-3.scala",
-         "phantom-decls-5.scala",
-         "phantom-hk-1.scala",
-         "phantom-hk-2.scala",
-         "phantom-in-value-class.scala",
-         "phantom-methods-3.scala",
-         "phantom-methods-4.scala",
-         "phantom-poly-1.scala",
-         "phantom-poly-2.scala",
-         "phantom-poly-3.scala",
-         "phantom-poly-4.scala",
        )
     )
     step1.checkCompile() // Compile all files to generate the class files with tasty
