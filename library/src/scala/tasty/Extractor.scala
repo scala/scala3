@@ -86,6 +86,14 @@ trait Extractor {
 
   // Types
 
+  def unapplyConstantType(arg: MaybeType): Option[types.ConstantType.Data]
+  def unapplySuperType(arg: MaybeType): Option[types.SuperType.Data]
+  def unapplyRefinement(arg: MaybeType): Option[types.Refinement.Data]
+  def unapplyAppliedType(arg: MaybeType): Option[types.AppliedType.Data]
+  def unapplyAnnotatedType(arg: MaybeType): Option[types.AnnotatedType.Data]
+  def unapplyAndType(arg: MaybeType): Option[types.AndType.Data]
+  def unapplyOrType(arg: MaybeType): Option[types.OrType.Data]
+
   def unapplyTypeBounds(arg: MaybeType): Option[types.TypeBounds.Data]
 
 }

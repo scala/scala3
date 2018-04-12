@@ -1,69 +1,53 @@
-package dotty.tools.dotc.tasty.internal
+package dotty.tools.dotc.tasty
+package internal
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types
 
-import scala.tasty.constants
-import scala.tasty.names
-import scala.tasty.terms
 import scala.tasty.types
 
 object Type {
 
   def apply(tpe: Types.Type)(implicit ctx: Context): types.Type = Impl(tpe, ctx)
 
-  object ConstantType {
-    def unapply(tpe: types.Type): Option[constants.Constant] = tpe match {
-      case Impl(Types.ConstantType(value), _) => Some(Constant(value))
-      case _ => None
-    }
+  def unapplyConstantType(tpe: types.MaybeType): Option[types.ConstantType.Data] = tpe match {
+    case Impl(Types.ConstantType(value), _) => Some(Constant(value))
+    case _ => None
   }
 
 //  case class SymRef(sym: Definition, qualifier: Type | NoPrefix = NoPrefix) extends Type
 //  case class NameRef(name: Name, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
 
-  object SuperType {
-    def unapply(tpe: types.Type): Option[(types.Type, types.Type)] = tpe match {
-      case Impl(Types.SuperType(thistpe, supertpe), ctx) => Some(Type(thistpe)(ctx), Type(supertpe)(ctx))
-      case _ => None
-    }
+  def unapplySuperType(tpe: types.MaybeType): Option[types.SuperType.Data] = tpe match {
+    case Impl(Types.SuperType(thistpe, supertpe), ctx) => Some(Type(thistpe)(ctx), Type(supertpe)(ctx))
+    case _ => None
   }
 
-  object Refinement {
-    def unapply(tpe: types.Type): Option[(types.Type, names.Name, types.Type)] = tpe match {
-      case Impl(Types.RefinedType(parent, name, info), ctx) =>
-        Some((Type(parent)(ctx), if (name.isTermName) TermName(name.asTermName) else TypeName(name.asTypeName), Type(info)(ctx)))
-      case _ => None
-    }
+  def unapplyRefinement(tpe: types.MaybeType): Option[types.Refinement.Data] = tpe match {
+    case Impl(Types.RefinedType(parent, name, info), ctx) =>
+      Some((Type(parent)(ctx), if (name.isTermName) TermName(name.asTermName) else TypeName(name.asTypeName), Type(info)(ctx)))
+    case _ => None
   }
 
-  object AppliedType {
-    def unapply(tpe: types.Type): Option[(types.Type, List[types.MaybeType /* Type | TypeBounds */])] = tpe match {
-      case Impl(Types.AppliedType(tycon, args), ctx) =>
-        Some((Type(tycon)(ctx), args.map { case arg: Types.TypeBounds => TypeBounds(arg)(ctx); case arg => Type(arg)(ctx) }))
-      case _ => None
-    }
+  def unapplyAppliedType(tpe: types.MaybeType): Option[types.AppliedType.Data] = tpe match {
+    case Impl(Types.AppliedType(tycon, args), ctx) =>
+      Some((Type(tycon)(ctx), args.map { case arg: Types.TypeBounds => TypeBounds(arg)(ctx); case arg => Type(arg)(ctx) }))
+    case _ => None
   }
 
-  object AnnotatedType {
-    def unapply(tpe: types.Type): Option[(types.Type, terms.Term)] = tpe match {
-      case Impl(Types.AnnotatedType(underlying, annot), ctx) => Some((Type(underlying)(ctx), Term(annot.tree(ctx))(ctx)))
-      case _ => None
-    }
+  def unapplyAnnotatedType(tpe: types.MaybeType): Option[types.AnnotatedType.Data] = tpe match {
+    case Impl(Types.AnnotatedType(underlying, annot), ctx) => Some((Type(underlying)(ctx), Term(annot.tree(ctx))(ctx)))
+    case _ => None
   }
 
-  object AndType {
-    def unapply(tpe: types.Type): Option[(types.Type, types.Type)] = tpe match {
-      case Impl(Types.AndType(left, right), ctx) => Some(Type(left)(ctx), Type(right)(ctx))
-      case _ => None
-    }
+  def unapplyAndType(tpe: types.MaybeType): Option[types.AndType.Data] = tpe match {
+    case Impl(Types.AndType(left, right), ctx) => Some(Type(left)(ctx), Type(right)(ctx))
+    case _ => None
   }
 
-  object OrType {
-    def unapply(tpe: types.Type): Option[(types.Type, types.Type)] = tpe match {
-      case Impl(Types.OrType(left, right), ctx) => Some(Type(left)(ctx), Type(right)(ctx))
-      case _ => None
-    }
+  def unapplyOrType(tpe: types.MaybeType): Option[types.OrType.Data] = tpe match {
+    case Impl(Types.OrType(left, right), ctx) => Some(Type(left)(ctx), Type(right)(ctx))
+    case _ => None
   }
 
 //  case class ByNameType(underlying: Type) extends Type
@@ -141,15 +125,18 @@ object Type {
 //  object NoPrefix extends NoPrefix
 
   private case class Impl(tpe: Types.Type, ctx: Context) extends types.Type {
-    override def toString: String = this match {
-      case ConstantType(value) => s"ConstantType($value)"
-      case SuperType(thisp, superp) => s"SuperType($thisp, $superp)"
-      case Refinement(parent, name, info) => s"Refinement($parent, $name, $info)"
-      case AppliedType(tycon, args) => s"AppliedType($tycon, $args)"
-      case AnnotatedType(underlying, annot) => s"AnnotatedType($underlying, $annot)"
-      case AndType(left, right) => s"AndType($left, $right)"
-      case OrType(left, right) => s"OrType($left, $right)"
-      case _ => s"Type{## $tpe ##}"
+    override def toString: String = {
+      import Toolbox.extractor
+      this match {
+        case types.ConstantType(value) => s"ConstantType($value)"
+        case types.SuperType(thisp, superp) => s"SuperType($thisp, $superp)"
+        case types.Refinement(parent, name, info) => s"Refinement($parent, $name, $info)"
+        case types.AppliedType(tycon, args) => s"AppliedType($tycon, $args)"
+        case types.AnnotatedType(underlying, annot) => s"AnnotatedType($underlying, $annot)"
+        case types.AndType(left, right) => s"AndType($left, $right)"
+        case types.OrType(left, right) => s"OrType($left, $right)"
+        case _ => s"Type{## $tpe ##}"
+      }
     }
   }
 

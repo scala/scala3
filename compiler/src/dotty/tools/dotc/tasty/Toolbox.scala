@@ -6,7 +6,9 @@ import scala.tasty.patterns.CaseDef
 import scala.tasty.typetrees.TypeTree
 import scala.tasty.constants.Constant
 import scala.tasty.names.Name
-import scala.tasty.types.MaybeType
+import scala.tasty.terms.Term
+import scala.tasty.types.ConstantType.Data
+import scala.tasty.types.{MaybeType, Type}
 
 object Toolbox {
 
@@ -85,6 +87,14 @@ object Toolbox {
     override def unapplyString(arg: Constant) = internal.Constant.String.unapply(arg)
 
     // Types
+
+    override def unapplyConstantType(arg: MaybeType) = internal.Type.unapplyConstantType(arg)
+    override def unapplySuperType(arg: MaybeType) = internal.Type.unapplySuperType(arg)
+    override def unapplyRefinement(arg: MaybeType) = internal.Type.unapplyRefinement(arg)
+    override def unapplyAppliedType(arg: MaybeType) = internal.Type.unapplyAppliedType(arg)
+    override def unapplyAnnotatedType(arg: MaybeType) = internal.Type.unapplyAnnotatedType(arg)
+    override def unapplyAndType(arg: MaybeType) = internal.Type.unapplyAndType(arg)
+    override def unapplyOrType(arg: MaybeType) = internal.Type.unapplyOrType(arg)
 
     override def unapplyTypeBounds(arg: MaybeType)= internal.TypeBounds.unapplyTypeBounds(arg)
 
