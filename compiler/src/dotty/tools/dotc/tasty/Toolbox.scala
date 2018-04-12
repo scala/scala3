@@ -6,9 +6,8 @@ import scala.tasty.patterns.CaseDef
 import scala.tasty.typetrees.TypeTree
 import scala.tasty.constants.Constant
 import scala.tasty.names.Name
-import scala.tasty.terms.Term
-import scala.tasty.types.ConstantType.Data
-import scala.tasty.types.{MaybeType, Type}
+import scala.tasty.names.PossiblySignedName
+import scala.tasty.types.MaybeType
 
 object Toolbox {
 
@@ -74,8 +73,21 @@ object Toolbox {
     // Names
 
     override def unapplySimple(arg: Name) = internal.TermName.unapplySimple(arg)
+    override def unapplyQualified(arg: Name) = internal.TermName.unapplyQualified(arg)
+
+    override def unapplyDefaultGetter(arg: Name) = internal.TermName.unapplyDefaultGetter(arg)
+    override def unapplyVariant(arg: Name) = internal.TermName.unapplyVariant(arg)
+    override def unapplySuperAccessor(arg: Name) = internal.TermName.unapplySuperAccessor(arg)
+    override def unapplyProtectedAccessor(arg: Name) = internal.TermName.unapplyProtectedAccessor(arg)
+    override def unapplyProtectedSetter(arg: Name) = internal.TermName.unapplyProtectedSetter(arg)
+    override def unapplyObjectClass(arg: Name) = internal.TermName.unapplyObjectClass(arg)
+
+    override def unapplySignedName(arg: PossiblySignedName) = internal.SignedName.unapplySignedName(arg)
+
+    override def unapplyTypeName(arg: Name) = internal.TypeName.unapplyTypeName(arg)
 
     // Constants
+
 
     override def unapplyUnit(arg: Constant) = internal.Constant.Unit.unapply(arg)
     override def unapplyNull(arg: Constant) = internal.Constant.Null.unapply(arg)

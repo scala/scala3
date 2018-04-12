@@ -70,7 +70,19 @@ trait Extractor {
 
   // Names
 
-  def unapplySimple(arg: names.Name): Option[String]
+  def unapplySimple(arg: names.Name): Option[names.Simple.Data]
+  def unapplyQualified(arg: names.Name): Option[names.Qualified.Data]
+
+  def unapplyDefaultGetter(arg: names.Name): Option[names.DefaultGetter.Data]
+  def unapplyVariant(arg: names.Name): Option[names.Variant.Data]
+  def unapplySuperAccessor(arg: names.Name): Option[names.SuperAccessor.Data]
+  def unapplyProtectedAccessor(arg: names.Name): Option[names.ProtectedAccessor.Data]
+  def unapplyProtectedSetter(arg: names.Name): Option[names.ProtectedSetter.Data]
+  def unapplyObjectClass(arg: names.Name): Option[names.ObjectClass.Data]
+
+  def unapplySignedName(arg: names.PossiblySignedName): Option[names.SignedName.Data]
+
+  def unapplyTypeName(arg: names.Name): Option[names.TypeName.Data]
 
   // Constants
 
