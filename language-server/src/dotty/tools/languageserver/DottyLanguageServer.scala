@@ -303,8 +303,9 @@ class DottyLanguageServer extends LanguageServer
       val newName = params.getNewName
 
       val refs = Interactive.namedTrees(trees, includeReferences = true, tree =>
-        (Interactive.matchSymbol(tree, sym, Include.overriding)
-          || (linkedSym != NoSymbol && Interactive.matchSymbol(tree, linkedSym, Include.overriding))))
+        tree.pos.isSourceDerived
+          && (Interactive.matchSymbol(tree, sym, Include.overriding)
+            || (linkedSym != NoSymbol && Interactive.matchSymbol(tree, linkedSym, Include.overriding))))
 
       val changes = refs.groupBy(ref => toUri(ref.source).toString).mapValues(_.map(ref => new TextEdit(range(ref.namePos), newName)).asJava)
 

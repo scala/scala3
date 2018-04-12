@@ -59,6 +59,22 @@ object DiffUtil {
     (fnd, exp, totalChange.toDouble / (expected.length + found.length))
   }
 
+  /**
+   * Return a colored diff between the tokens of every line in `expected` and `actual`. Each line of
+   * output contains the expected value on the left and the actual value on the right.
+   *
+   * @param expected The expected lines
+   * @param actual   The actual lines
+   * @return A string with one element of `expected` and `actual` on each lines, where
+   *         differences are highlighted.
+   */
+  def mkColoredLineDiff(expected: Seq[String], actual: Seq[String]): String = {
+    val expectedSize = EOF.length max expected.maxBy(_.length).length
+    actual.padTo(expected.length, "").zip(expected.padTo(actual.length, "")).map { case (act, exp) =>
+      mkColoredLineDiff(exp, act, expectedSize)
+    }.mkString(System.lineSeparator)
+  }
+
   def mkColoredLineDiff(expected: String, actual: String, expectedSize: Int): String = {
     lazy val diff = {
       val tokens = splitTokens(expected, Nil).toArray

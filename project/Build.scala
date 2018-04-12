@@ -18,6 +18,9 @@ import dotty.tools.sbtplugin.DottyPlugin.autoImport._
 import dotty.tools.sbtplugin.DottyIDEPlugin.{ prepareCommand, runProcess }
 import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
 
+import sbtbuildinfo.BuildInfoPlugin
+import sbtbuildinfo.BuildInfoPlugin.autoImport._
+
 /* In sbt 0.13 the Build trait would expose all vals to the shell, where you
  * can use them in "set a := b" like expressions. This re-exposes them.
  */
@@ -84,6 +87,13 @@ object Build {
 
   // Only available in vscode-dotty
   lazy val unpublish = taskKey[Unit]("Unpublish a package")
+
+  // Settings used to configure the test language server
+  lazy val ideTestsCompilerVersion = taskKey[String]("Compiler version to use in IDE tests")
+  lazy val ideTestsCompilerArguments = taskKey[Seq[String]]("Compiler arguments to use in IDE tests")
+  lazy val ideTestsSourceDirectories = taskKey[Seq[File]]("Source directories to use in IDE tests")
+  lazy val ideTestsDependencyClasspath = taskKey[Seq[File]]("Dependency classpath to use in IDE tests")
+  lazy val ideTestsClassDirectory = taskKey[File]("Class directory to use in IDE tests")
 
   // Settings shared by the build (scoped in ThisBuild). Used in build.sbt
   lazy val thisBuildSettings = Def.settings(
@@ -766,6 +776,7 @@ object Build {
       // fork so that the shutdown hook in Main is run when we ctrl+c a run
       // (you need to have `cancelable in Global := true` in your global sbt config to ctrl+c a run)
       fork in run := true,
+      fork in Test := true,
       libraryDependencies ++= Seq(
         "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "0.3.0",
         Dependencies.`jackson-databind`
@@ -788,6 +799,32 @@ object Build {
 
         runTask(Runtime, mainClass, allArgs: _*)
       }.dependsOn(compile in (`vscode-dotty`, Compile)).evaluated
+    ).
+    settings(
+      ideTestsCompilerVersion := (version in `dotty-compiler`).value,
+      ideTestsCompilerArguments := (scalacOptions in `dotty-compiler`).value,
+      ideTestsSourceDirectories := Seq((baseDirectory in ThisBuild).value / "out" / "ide-tests" / "src"),
+      ideTestsDependencyClasspath := {
+        val dottyLib = (classDirectory in `dotty-library-bootstrapped` in Compile).value
+        val scalaLib =
+          (dependencyClasspath in `dotty-library-bootstrapped` in Compile)
+            .value
+            .map(_.data)
+            .filter(_.getName.matches("scala-library.*\\.jar"))
+            .toList
+        dottyLib :: scalaLib
+      },
+      ideTestsClassDirectory := (baseDirectory in ThisBuild).value / "out" / "ide-tests" / "out",
+      buildInfoKeys in Test := Seq[BuildInfoKey](
+        ideTestsCompilerVersion,
+        ideTestsCompilerArguments,
+        ideTestsSourceDirectories,
+        ideTestsDependencyClasspath,
+        ideTestsClassDirectory
+      ),
+      buildInfoPackage in Test := "dotty.tools.languageserver.util.server",
+      BuildInfoPlugin.buildInfoScopedSettings(Test),
+      BuildInfoPlugin.buildInfoDefaultSettings
     ).disablePlugins(ScriptedPlugin)
 
   lazy val `dotty-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
