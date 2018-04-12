@@ -41,10 +41,4 @@ package object types {
     def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyOrType(arg)
   }
 
-
-  object TypeBounds {
-    type Data = (Type, Type)
-    def unapply(arg: MaybeType)(implicit ext: Extractor): Option[Data] = ext.unapplyTypeBounds(arg)
-  }
-
 }
