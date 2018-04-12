@@ -422,7 +422,8 @@ object Names {
               "dotty$tools$dotc$core$NameOps$NameDecorator$$functionArityFor$extension",
               "dotty$tools$dotc$typer$Checking$CheckNonCyclicMap$$apply",
               "$plus$plus",
-              "readConstant")
+              "readConstant",
+              "extractedName")
             .contains(elem.getMethodName))
     }
 

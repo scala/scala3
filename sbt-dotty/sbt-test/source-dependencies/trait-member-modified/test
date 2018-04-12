@@ -6,4 +6,4 @@ $ copy-file changes/A1.scala src/main/scala/A.scala
 # only A.scala should be recompiled
 > compile
 # check if there are only two compile iterations performed
-> check-compilations
+> checkCompilations

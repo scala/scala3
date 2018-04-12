@@ -55,14 +55,10 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/pos-scala2/rewrites.scala", scala2Mode.and("-rewrite")).copyToTarget() +
     compileFile("tests/pos-special/utf8encoded.scala", explicitUTF8) +
     compileFile("tests/pos-special/utf16encoded.scala", explicitUTF16) +
-    compileFile("tests/pos-special/i3323.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("tests/pos-special/i3323b.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("tests/pos-special/i3589-b.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("tests/pos-special/i4166.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("tests/pos-special/i4185.scala", defaultOptions.and("-Xfatal-warnings")) +
     compileFile("tests/pos-special/completeFromSource/Test.scala", defaultOptions.and("-sourcepath", "tests/pos-special")) +
     compileFile("tests/pos-special/completeFromSource/Test2.scala", defaultOptions.and("-sourcepath", "tests/pos-special")) +
     compileFile("tests/pos-special/completeFromSource/Test3.scala", defaultOptions.and("-sourcepath", "tests/pos-special", "-scansource")) +
+    compileFilesInDir("tests/pos-special/fatal-warnings", defaultOptions.and("-Xfatal-warnings")) +
     compileList(
       "compileMixed",
       List(

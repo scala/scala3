@@ -18,6 +18,7 @@ project/local-plugins.sbt
 .history
 .ensime
 .ensime_cache/
+.sbt-scripted/
 
 # npm
 node_modules

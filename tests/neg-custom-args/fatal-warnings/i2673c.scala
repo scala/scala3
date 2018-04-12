@@ -1,6 +1,6 @@
 package Foos
 
 object Outer {
-  class X // error
+  case class X() // error
   object x
 }

@@ -568,13 +568,13 @@ object Symbols {
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(implicit ctx: Context): AbstractFile = {
       val file = associatedFile
-      if (file != null && file.path.endsWith("class")) file else null
+      if (file != null && file.extension == "class") file else null
     }
 
     /** The source file from which this class was generated, null if not applicable. */
     final def sourceFile(implicit ctx: Context): AbstractFile = {
       val file = associatedFile
-      if (file != null && !file.path.endsWith("class")) file
+      if (file != null && file.extension != "class") file
       else {
         val topLevelCls = denot.topLevelClass(ctx.withPhaseNoLater(ctx.flattenPhase))
         topLevelCls.getAnnotation(defn.SourceFileAnnot) match {

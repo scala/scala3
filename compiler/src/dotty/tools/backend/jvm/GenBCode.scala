@@ -13,11 +13,13 @@ import scala.tools.nsc.backend.jvm._
 import dotty.tools.dotc
 import dotty.tools.dotc.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.transform.Erasure
+import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.interfaces
 import java.util.Optional
 
 import scala.reflect.ClassTag
 import dotty.tools.dotc.core._
+import dotty.tools.dotc.sbt.ExtractDependencies
 import Periods._
 import SymDenotations._
 import Contexts._
@@ -113,14 +115,16 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
 
     /* ---------------- q2 ---------------- */
 
-    case class Item2(arrivalPos:   Int,
-                     mirror:       asm.tree.ClassNode,
-                     plain:        asm.tree.ClassNode,
-                     outFolder:    scala.tools.nsc.io.AbstractFile) {
+    case class SubItem2(classNode: asm.tree.ClassNode,
+                        file:      scala.tools.nsc.io.AbstractFile)
+
+    case class Item2(arrivalPos: Int,
+                     mirror:     SubItem2,
+                     plain:      SubItem2) {
       def isPoison = { arrivalPos == Int.MaxValue }
     }
 
-    private val poison2 = Item2(Int.MaxValue, null, null, null)
+    private val poison2 = Item2(Int.MaxValue, null, null)
     private val q2 = new _root_.java.util.LinkedList[Item2]
 
     /* ---------------- q3 ---------------- */
@@ -134,13 +138,13 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
      */
     case class SubItem3(
                          jclassName:  String,
-                         jclassBytes: Array[Byte]
+                         jclassBytes: Array[Byte],
+                         jclassFile:  scala.tools.nsc.io.AbstractFile
                          )
 
     case class Item3(arrivalPos: Int,
                      mirror:     SubItem3,
-                     plain:      SubItem3,
-                     outFolder:  scala.tools.nsc.io.AbstractFile) {
+                     plain:      SubItem3) {
 
       def isPoison  = { arrivalPos == Int.MaxValue }
     }
@@ -151,7 +155,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         else 1
       }
     }
-    private val poison3 = Item3(Int.MaxValue, null, null, null)
+    private val poison3 = Item3(Int.MaxValue, null, null)
     private val q3 = new java.util.PriorityQueue[Item3](1000, i3comparator)
 
     /*
@@ -159,7 +163,23 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
      */
     class Worker1(needsOutFolder: Boolean) {
 
-      val caseInsensitively = scala.collection.mutable.HashMap.empty[String, Symbol]
+      private val lowerCaseNames = mutable.HashMap.empty[String, Symbol]
+      private def checkForCaseConflict(javaClassName: String, classSymbol: Symbol) = {
+        val lowerCaseName = javaClassName.toLowerCase
+        lowerCaseNames.get(lowerCaseName) match {
+          case None =>
+            lowerCaseNames.put(lowerCaseName, classSymbol)
+          case Some(dupClassSym) =>
+            // Order is not deterministic so we enforce lexicographic order between the duplicates for error-reporting
+            val (cl1, cl2) =
+              if (classSymbol.effectiveName.toString < dupClassSym.effectiveName.toString) (classSymbol, dupClassSym)
+              else (dupClassSym, classSymbol)
+            ctx.atPhase(ctx.typerPhase) { implicit ctx =>
+              ctx.warning(s"${cl1.show} differs only in case from ${cl2.showLocated}. " +
+                "Such classes will overwrite one another on case-insensitive filesystems.", cl1.pos)
+            }
+        }
+      }
 
       def run(): Unit = {
         while (true) {
@@ -188,30 +208,6 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
       def visit(item: Item1) = {
         val Item1(arrivalPos, cd, cunit) = item
         val claszSymbol = cd.symbol
-
-        // GenASM checks this before classfiles are emitted, https://github.com/scala/scala/commit/e4d1d930693ac75d8eb64c2c3c69f2fc22bec739
-        def checkName(claszSymbol: Symbol): Unit = {
-          val lowercaseJavaClassName = claszSymbol.effectiveName.toString.toLowerCase
-          caseInsensitively.get(lowercaseJavaClassName) match {
-            case None =>
-              caseInsensitively.put(lowercaseJavaClassName, claszSymbol)
-            case Some(dupClassSym) =>
-              if (claszSymbol.effectiveName.toString != dupClassSym.effectiveName.toString) {
-                // Order is not deterministic so we enforce lexicographic order between the duplicates for error-reporting
-                val (cl1, cl2) =
-                  if (claszSymbol.effectiveName.toString < dupClassSym.effectiveName.toString) (claszSymbol, dupClassSym)
-                  else (dupClassSym, claszSymbol)
-                ctx.warning(s"Class ${cl1.effectiveName} differs only in case from ${cl2.effectiveName}. " +
-                  "Such classes will overwrite one another on case-insensitive filesystems.", cl1.pos)
-              }
-          }
-        }
-        checkName(claszSymbol)
-        if (int.symHelper(claszSymbol).isModuleClass) {
-          val companionModule = claszSymbol.companionModule
-          if (int.symHelper(companionModule.owner).isPackageClass)
-            checkName(companionModule)
-        }
 
         // -------------- mirror class, if needed --------------
         val mirrorC =
@@ -253,12 +249,50 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           }
 
 
+        // ----------- create files
+
+        val classNodes = List(mirrorC, plainC)
+        val classFiles = classNodes.map(cls =>
+          if (outF != null && cls != null) {
+            try {
+              checkForCaseConflict(cls.name, claszSymbol)
+              getFileForClassfile(outF, cls.name, ".class")
+            } catch {
+              case e: FileConflictException =>
+                ctx.error(s"error writing ${cls.name}: ${e.getMessage}")
+                null
+            }
+          } else null
+        )
+
+        // ----------- compiler and sbt's callbacks
+
+        val (fullClassName, isLocal) = ctx.atPhase(ctx.sbtExtractDependenciesPhase) { implicit ctx =>
+          (ExtractDependencies.classNameAsString(claszSymbol), claszSymbol.isLocal)
+        }
+
+        for ((cls, clsFile) <- classNodes.zip(classFiles)) {
+          if (cls != null) {
+            val className = cls.name.replace('/', '.')
+            if (ctx.compilerCallback != null)
+              ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(clsFile), className)
+            if (ctx.sbtCallback != null) {
+              if (isLocal)
+                ctx.sbtCallback.generatedLocalClass(sourceFile.jfile.orElse(null), clsFile.file)
+              else {
+                ctx.sbtCallback.generatedNonLocalClass(sourceFile.jfile.orElse(null), clsFile.file,
+                  className, fullClassName)
+              }
+            }
+          }
+        }
+
         // ----------- hand over to pipeline-2
 
         val item2 =
           Item2(arrivalPos,
-            mirrorC, plainC,
-            outF)
+            SubItem2(mirrorC, classFiles(0)),
+            SubItem2(plainC, classFiles(1)))
 
         q2 add item2 // at the very end of this method so that no Worker2 thread starts mutating before we're done.
 
@@ -288,12 +322,12 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           }
           else {
             try {
-              localOptimizations(item.plain)
+              localOptimizations(item.plain.classNode)
               addToQ3(item)
             } catch {
               case ex: Throwable =>
                 ex.printStackTrace()
-                ctx.error(s"Error while emitting ${item.plain.name}\n${ex.getMessage}")
+                ctx.error(s"Error while emitting ${item.plain.classNode.name}\n${ex.getMessage}")
             }
           }
         }
@@ -307,18 +341,17 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           cw.toByteArray
         }
 
-        val Item2(arrivalPos, mirror, plain, outFolder) = item
+        val Item2(arrivalPos, SubItem2(mirror, mirrorFile), SubItem2(plain, plainFile)) = item
 
-        val mirrorC = if (mirror == null) null else SubItem3(mirror.name, getByteArray(mirror))
-        val plainC  = SubItem3(plain.name, getByteArray(plain))
+        val mirrorC = if (mirror == null) null else SubItem3(mirror.name, getByteArray(mirror), mirrorFile)
+        val plainC  = SubItem3(plain.name, getByteArray(plain), plainFile)
 
         if (AsmUtils.traceSerializedClassEnabled && plain.name.contains(AsmUtils.traceSerializedClassPattern)) {
           if (mirrorC != null) AsmUtils.traceClass(mirrorC.jclassBytes)
           AsmUtils.traceClass(plainC.jclassBytes)
         }
 
-        q3 add Item3(arrivalPos, mirrorC, plainC, outFolder)
-
+        q3 add Item3(arrivalPos, mirrorC, plainC)
       }
 
     } // end of class BCodePhase.Worker2
@@ -416,25 +449,10 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
     /* Pipeline that writes classfile representations to disk. */
     private def drainQ3() = {
 
-      def sendToDisk(cfr: SubItem3, outFolder: scala.tools.nsc.io.AbstractFile): Unit = {
+      def sendToDisk(cfr: SubItem3): Unit = {
         if (cfr != null){
-          val SubItem3(jclassName, jclassBytes) = cfr
-          try {
-            val outFile =
-              if (outFolder == null) null
-              else getFileForClassfile(outFolder, jclassName, ".class")
-            bytecodeWriter.writeClass(jclassName, jclassName, jclassBytes, outFile)
-
-            val className = jclassName.replace('/', '.')
-            if (ctx.compilerCallback != null)
-              ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(outFile), className)
-            if (ctx.sbtCallback != null)
-              ctx.sbtCallback.generatedClass(sourceFile.jfile.orElse(null), outFile.file, className)
-          }
-          catch {
-            case e: FileConflictException =>
-              ctx.error(s"error writing $jclassName: ${e.getMessage}")
-          }
+          val SubItem3(jclassName, jclassBytes, jclassFile) = cfr
+          bytecodeWriter.writeClass(jclassName, jclassName, jclassBytes, jclassFile)
         }
       }
 
@@ -447,9 +465,8 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         moreComing   = !incoming.isPoison
         if (moreComing) {
           val item = incoming
-          val outFolder = item.outFolder
-          sendToDisk(item.mirror, outFolder)
-          sendToDisk(item.plain,  outFolder)
+          sendToDisk(item.mirror)
+          sendToDisk(item.plain)
           expected += 1
         }
       }

@@ -1,0 +1,4 @@
+# TODO: implement check-products
+
+> compile
+> checkProducts A.scala: A.class A$.class

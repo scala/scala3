@@ -2,7 +2,9 @@ package dotty.tools.sbtplugin
 
 import sbt._
 import sbt.Keys._
-import sbt.inc.{ ClassfileManager, IncOptions }
+// import sbt.inc.{ ClassfileManager, IncOptions }
+import xsbti.compile._
+import java.util.Optional
 
 object DottyPlugin extends AutoPlugin {
   object autoImport {
@@ -61,7 +63,7 @@ object DottyPlugin extends AutoPlugin {
        *  }}}
        *  you can replace it by:
        *  {{{
-       *  libraryDependencies += ("a" %% "b" % "c").withDottyCompat()
+       *  libraryDependencies += ("a" %% "b" % "c").withDottyCompat(scalaVersion.value)
        *  }}}
        *  This will have no effect when compiling with Scala 2.x, but when compiling
        *  with Dotty this will change the cross-version to a Scala 2.x one. This
@@ -70,19 +72,10 @@ object DottyPlugin extends AutoPlugin {
        *  NOTE: Dotty's retro-compatibility with Scala 2.x will be dropped before
        *  Dotty is released, you should not rely on it.
        */
-      def withDottyCompat(): ModuleID =
-        moduleID.crossVersion match {
-          case _: CrossVersion.Binary =>
-            moduleID.cross(CrossVersion.binaryMapped { version =>
-              CrossVersion.partialVersion(version) match {
-                case Some((0, minor)) =>
-                  // Dotty v0.4 or greater is compatible with 2.12.x
-                  if (minor >= 4) "2.12"
-                  else "2.11"
-                case _ =>
-                  version
-              }
-            })
+      def withDottyCompat(scalaVersion: String): ModuleID =
+      moduleID.crossVersion match {
+          case _: librarymanagement.Binary if scalaVersion.startsWith("0.") =>
+            moduleID.cross(CrossVersion.constant("2.12"))
           case _ =>
             moduleID
         }
@@ -119,40 +112,39 @@ object DottyPlugin extends AutoPlugin {
    *  corresponding .tasty or .hasTasty file is also deleted.
    */
   def dottyPatchIncOptions(incOptions: IncOptions): IncOptions = {
-    val inheritedNewClassfileManager = incOptions.newClassfileManager
-    val newClassfileManager = () => new ClassfileManager {
-      private[this] val inherited = inheritedNewClassfileManager()
+    val inheritedNewClassFileManager = ClassFileManagerUtil.getDefaultClassFileManager(incOptions)
+    val tastyFileManager = new ClassFileManager {
+      private[this] val inherited = inheritedNewClassFileManager
 
-      def delete(classes: Iterable[File]): Unit = {
+      def delete(classes: Array[File]): Unit = {
         val tastySuffixes = List(".tasty", ".hasTasty")
         inherited.delete(classes flatMap { classFile =>
-          val dottyFiles = if (classFile.getPath endsWith ".class") {
+          if (classFile.getPath endsWith ".class") {
             val prefix = classFile.getAbsolutePath.stripSuffix(".class")
             tastySuffixes.map(suffix => new File(prefix + suffix)).filter(_.exists)
           } else Nil
-          classFile :: dottyFiles
         })
       }
 
-      def generated(classes: Iterable[File]): Unit = inherited.generated(classes)
-      def complete(success: Boolean): Unit = inherited.complete(success)
+      def generated(classes: Array[File]): Unit = {}
+      def complete(success: Boolean): Unit = {}
     }
-    incOptions.withNewClassfileManager(newClassfileManager)
+    val inheritedHooks = incOptions.externalHooks
+    val externalClassFileManager: Optional[ClassFileManager] = Option(inheritedHooks.getExternalClassFileManager.orElse(null)) match {
+        case Some(prevManager) =>
+          Optional.of(WrappedClassFileManager.of(prevManager, Optional.of(tastyFileManager)))
+        case None =>
+          Optional.of(tastyFileManager)
+      }
+
+    val hooks = new DefaultExternalHooks(inheritedHooks.getExternalLookup, externalClassFileManager)
+    incOptions.withExternalHooks(hooks)
   }
 
   override def projectSettings: Seq[Setting[_]] = {
     Seq(
-      isDotty := {
-        val log = sLog.value
+      isDotty := scalaVersion.value.startsWith("0."),
 
-        sbtFullVersion(sbtVersion.value) match {
-          case Some((sbtMajor, sbtMinor, sbtPatch)) if sbtMajor == 0 && sbtMinor == 13 && sbtPatch < 15 =>
-            log.error(s"The sbt-dotty plugin cannot work with this version of sbt (${sbtVersion.value}), sbt >= 0.13.15 is required.")
-            false
-          case _ =>
-            scalaVersion.value.startsWith("0.")
-        }
-      },
       scalaOrganization := {
         if (isDotty.value)
           "ch.epfl.lamp"
@@ -161,17 +153,20 @@ object DottyPlugin extends AutoPlugin {
       },
 
       incOptions in Compile := {
+        val inc = (incOptions in Compile).value
         if (isDotty.value)
-          dottyPatchIncOptions((incOptions in Compile).value)
+          dottyPatchIncOptions(inc)
         else
-          (incOptions in Compile).value
+          inc
       },
 
-      scalaBinaryVersion := {
+      scalaCompilerBridgeSource := {
+        val scalaBridge = scalaCompilerBridgeSource.value
+        val dottyBridge = (scalaOrganization.value % "dotty-sbt-bridge" % scalaVersion.value).withConfigurations(Some(Configurations.Compile.name)).sources()
         if (isDotty.value)
-          scalaVersion.value.split("\\.").take(2).mkString(".") // Not needed with sbt >= 0.13.16
+          dottyBridge
         else
-          scalaBinaryVersion.value
+          scalaBridge
       }
     )
   }

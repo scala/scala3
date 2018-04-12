@@ -209,6 +209,7 @@ object Phases {
     }
 
     private[this] var myTyperPhase: Phase = _
+    private[this] var mySbtExtractDependenciesPhase: Phase = _
     private[this] var myPicklerPhase: Phase = _
     private[this] var myRefChecksPhase: Phase = _
     private[this] var myPatmatPhase: Phase = _
@@ -223,6 +224,7 @@ object Phases {
     private[this] var myGenBCodePhase: Phase = _
 
     final def typerPhase = myTyperPhase
+    final def sbtExtractDependenciesPhase = mySbtExtractDependenciesPhase
     final def picklerPhase = myPicklerPhase
     final def refchecksPhase = myRefChecksPhase
     final def patmatPhase = myPatmatPhase
@@ -240,6 +242,7 @@ object Phases {
       def phaseOfClass(pclass: Class[_]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
 
       myTyperPhase = phaseOfClass(classOf[FrontEnd])
+      mySbtExtractDependenciesPhase = phaseOfClass(classOf[sbt.ExtractDependencies])
       myPicklerPhase = phaseOfClass(classOf[Pickler])
       myRefChecksPhase = phaseOfClass(classOf[RefChecks])
       myElimRepeatedPhase = phaseOfClass(classOf[ElimRepeated])

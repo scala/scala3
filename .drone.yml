@@ -23,7 +23,7 @@ pipeline:
   # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
   test:
     group: test
-    image: lampepfl/dotty:2018-01-17
+    image: lampepfl/dotty:2018-04-10
     commands:
       - cp -R . /tmp/1/ && cd /tmp/1/
       - ./project/scripts/sbt ";compile ;test"
@@ -31,31 +31,31 @@ pipeline:
 
   test_bootstrapped:
     group: test
-    image: lampepfl/dotty:2018-01-17
+    image: lampepfl/dotty:2018-04-10
     commands:
       - cp -R . /tmp/2/ && cd /tmp/2/
       - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
 
   test_optimised:
     group: test
-    image: lampepfl/dotty:2018-01-17
+    image: lampepfl/dotty:2018-04-10
     commands:
       - cp -R . /tmp/3/ && cd /tmp/3/
       - ./project/scripts/sbt dotty-optimised/test
 
   test_sbt:
     group: test
-    image: lampepfl/dotty:2018-01-17
+    image: lampepfl/dotty:2018-04-10
     commands:
       - cp -R . /tmp/4/ && cd /tmp/4/
       - ./project/scripts/sbt sbt-dotty/scripted
     when:
-      # sbt scripted tests are slow and don't run on PRs
+      # sbt scripted tests are slow and only run on nightly or deployment
       event: [ tag, deployment ]
 
   # DOCUMENTATION:
   documentation:
-    image: lampepfl/dotty:2018-01-17
+    image: lampepfl/dotty:2018-04-10
     commands:
       - ./project/scripts/genDocs
     secrets: [ bot_pass ]
@@ -67,7 +67,7 @@ pipeline:
   # PUBLISHING:
   # Publishing expect NIGHTLYBUILD or RELEASEBUILD to be set. See dottyVersion in Build.scala
   publish_nightly:
-    image: lampepfl/dotty:2018-01-17
+    image: lampepfl/dotty:2018-04-10
     environment:
       - NIGHTLYBUILD=yes
     commands:
@@ -78,7 +78,7 @@ pipeline:
       environment: nightly
 
   publish_release:
-    image: lampepfl/dotty:2018-01-17
+    image: lampepfl/dotty:2018-04-10
     environment:
       - RELEASEBUILD=yes
     commands:
@@ -102,7 +102,7 @@ pipeline:
       event: tag
 
   publish_sbt_release:
-    image: lampepfl/dotty:2018-01-17
+    image: lampepfl/dotty:2018-04-10
     environment:
       - RELEASEBUILD=yes
     commands:

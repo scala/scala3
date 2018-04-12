@@ -1,0 +1,13 @@
+# Compile code with a type (Foo with BarA) @cpsParam...
+# The spec says only simple types can be annotated, but scalac allows any type.
+$ copy-file changes/Def1.scala Def.scala
+> compile
+
+# To ensure it was properly processed, change it to (Foo with BarB) @cpsParam...
+# This should invalidate Use.scala, which expects it to be BarA and so compilation should fail.
+$ delete Def.scala
+$ copy-file changes/Def2.scala Def.scala
+-> compile
+
+# The following command is added to fail this test intentionally since this scripted doesn't handle compiler plugins
+> x

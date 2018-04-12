@@ -14,7 +14,6 @@ val `dotty-library-optimised` = Build.`dotty-library-optimised`
 val `dotty-sbt-bridge` = Build.`dotty-sbt-bridge`
 val `dotty-sbt-bridge-bootstrapped` = Build.`dotty-sbt-bridge-bootstrapped`
 val `dotty-language-server` = Build.`dotty-language-server`
-val sjsSandbox = Build.sjsSandbox
 val `dotty-bench` = Build.`dotty-bench`
 val `dotty-bench-bootstrapped` = Build.`dotty-bench-bootstrapped`
 val `dotty-bench-optimised` = Build.`dotty-bench-optimised`

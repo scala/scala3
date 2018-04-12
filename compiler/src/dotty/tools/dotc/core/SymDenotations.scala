@@ -12,6 +12,7 @@ import collection.BitSet
 import dotty.tools.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
+import ast.Trees._
 import annotation.tailrec
 import CheckRealizable._
 import util.SimpleIdentityMap
@@ -929,16 +930,17 @@ object SymDenotations {
      *  except for a toplevel module, where its module class is returned.
      */
     final def topLevelClass(implicit ctx: Context): Symbol = {
-
-      def topLevel(d: SymDenotation): Symbol =
-        if (!exists || d.isEffectiveRoot || (d is PackageClass) || (d.owner is PackageClass))
-          d.symbol
-        else
-          topLevel(d.owner)
+      @tailrec def topLevel(d: SymDenotation): Symbol = {
+        if (d.isTopLevelClass) d.symbol
+        else topLevel(d.owner)
+      }
 
       val sym = topLevel(this)
       if (sym.isClass) sym else sym.moduleClass
     }
+
+    final def isTopLevelClass(implicit ctx: Context): Boolean =
+      !this.exists || this.isEffectiveRoot || (this is PackageClass) || (this.owner is PackageClass)
 
     /** The package class containing this denotation */
     final def enclosingPackageClass(implicit ctx: Context): Symbol =

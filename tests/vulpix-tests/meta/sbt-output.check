@@ -38,5 +38,5 @@ Testing tests/vulpix-tests/meta/pos/does-not-compile.scala
 [error] Failed: Total 3, Failed 3, Errors 0, Passed 0
 [error] Failed tests:
 [error] 	dotty.tools.vulpix.VulpixMetaTests
-[error] (dotty-compiler/test:testOnly) sbt.TestsFailedException: Tests unsuccessful
+[error] (dotty-compiler / Test / testOnly) sbt.TestsFailedException: Tests unsuccessful
 [error] Total time: 3 s, completed Feb 5, 2018 5:10:12 PM SKIP
