@@ -3,21 +3,19 @@
  * @author  Martin Odersky
  */
 
-package dotty.tools.dotc
+package dotty.tools
 package backend.jvm
 
-import dotty.tools.backend.jvm.GenBCodePipeline
-import dotty.tools.dotc.ast.Trees.Select
-import dotty.tools.dotc.ast.tpd._
-import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.core.StdNames
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Types.{JavaArrayType, UnspecifiedErrorType, Type}
+import dotc.ast.Trees.Select
+import dotc.ast.tpd._
+import dotc.core._
+import Contexts.Context
+import Names.TermName, StdNames._
+import Types.{JavaArrayType, UnspecifiedErrorType, Type}
+import Symbols.{Symbol, NoSymbol}
 
 import scala.collection.{ mutable, immutable }
 
-import core.Contexts.Context
-import core.Symbols.{Symbol, NoSymbol}
 
 /** Scala primitive operations are represented as methods in `Any` and
  *  `AnyVal` subclasses. Here we demultiplex them by providing a mapping
@@ -127,8 +125,8 @@ class DottyPrimitives(ctx: Context) {
 
     implicit val ctx = this.ctx
 
-    import core.Symbols.defn
-    val primitives = core.Symbols.newMutableSymbolMap[Int]
+    import Symbols.defn
+    val primitives = Symbols.newMutableSymbolMap[Int]
 
     /** Add a primitive operation to the map */
     def addPrimitive(s: Symbol, code: Int): Unit = {
@@ -168,8 +166,6 @@ class DottyPrimitives(ctx: Context) {
 
     // java.lang.String
     addPrimitive(defn.String_+, CONCAT)
-
-    import core.StdNames.nme
 
     // scala.Array
     lazy val ArrayClass = defn.ArrayClass
