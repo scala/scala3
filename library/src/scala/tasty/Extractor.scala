@@ -34,12 +34,14 @@ trait Extractor {
   def unapplyTyped(arg: TopLevelStatement): Option[terms.Typed.Data]
   def unapplyAssign(arg: TopLevelStatement): Option[terms.Assign.Data]
   def unapplyBlock(arg: TopLevelStatement): Option[terms.Block.Data]
+  def unapplyInlined(arg: TopLevelStatement): Option[terms.Inlined.Data]
   def unapplyLambda(arg: TopLevelStatement): Option[terms.Lambda.Data]
   def unapplyIf(arg: TopLevelStatement): Option[terms.If.Data]
   def unapplyMatch(arg: TopLevelStatement): Option[terms.Match.Data]
   def unapplyTry(arg: TopLevelStatement): Option[terms.Try.Data]
   def unapplyReturn(arg: TopLevelStatement): Option[terms.Return.Data]
   def unapplyRepeated(arg: TopLevelStatement): Option[terms.Repeated.Data]
+  def unapplySelectOuter(arg: TopLevelStatement): Option[terms.SelectOuter.Data]
 
   // Patterns
 
@@ -58,7 +60,7 @@ trait Extractor {
   def unapplyIdent(arg: TypeTree): Option[typetrees.Ident.Data]
   def unapplySelect(arg: TypeTree): Option[typetrees.Select.Data]
   def unapplySingleton(arg: TypeTree): Option[typetrees.Singleton.Data]
-//  def unapplyRefined(arg: TypeTree): Option[typetrees.Refined.Data]
+  def unapplyRefined(arg: TypeTree): Option[typetrees.Refined.Data]
   def unapplyApplied(arg: TypeTree): Option[typetrees.Applied.Data]
   def unapplyTypeBounds(arg: TypeTree): Option[typetrees.TypeBounds.Data]
   def unapplyAnnotated(arg: TypeTree): Option[typetrees.Annotated.Data]

@@ -21,10 +21,10 @@ package object typetrees {
     def unapply(arg: TypeTree)(implicit ext: Extractor): Option[Data] = ext.unapplySingleton(arg)
   }
 
-  //  object Refined {
-  //    type Data = (TypeTree, List[Definition])
-  //    def unapply(arg: TypeTree)(implicit ext: Extractor): Option[Data] = ext.unapplyRefined(arg)
-  //  }
+  object Refined {
+    type Data = (TypeTree, List[statements.Definition])
+    def unapply(arg: TypeTree)(implicit ext: Extractor): Option[Data] = ext.unapplyRefined(arg)
+  }
 
   object Applied {
     type Data = (TypeTree, List[TypeTree])

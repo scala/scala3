@@ -37,12 +37,14 @@ object Toolbox {
     override def unapplyTyped(arg: TopLevelStatement) = internal.Term.unapplyTyped(arg)
     override def unapplyAssign(arg: TopLevelStatement) = internal.Term.unapplyAssign(arg)
     override def unapplyBlock(arg: TopLevelStatement) = internal.Term.unapplyBlock(arg)
+    override def unapplyInlined(arg: TopLevelStatement) = internal.Term.unapplyInlined(arg)
     override def unapplyLambda(arg: TopLevelStatement) = internal.Term.unapplyLambda(arg)
     override def unapplyIf(arg: TopLevelStatement) = internal.Term.unapplyIf(arg)
     override def unapplyMatch(arg: TopLevelStatement) = internal.Term.unapplyMatch(arg)
     override def unapplyTry(arg: TopLevelStatement) = internal.Term.unapplyTry(arg)
     override def unapplyReturn(arg: TopLevelStatement) = internal.Term.unapplyReturn(arg)
     override def unapplyRepeated(arg: TopLevelStatement) = internal.Term.unapplyRepeated(arg)
+    override def unapplySelectOuter(arg: TopLevelStatement) = internal.Term.unapplySelectOuter(arg)
 
     // Pattern
 
@@ -55,18 +57,19 @@ object Toolbox {
     override def unapplyTypeTest(arg: Pattern) = internal.Pattern.unapplyTypeTest(arg)
     override def unapplyWildcard(arg: Pattern)= internal.Pattern.unapplyWildcard(arg)
 
-    // Types
+    // Type trees
 
-    override def unapplySynthetic(arg: TypeTree) = internal.TypeTree.Synthetic.unapply(arg)
-    override def unapplyIdent(arg: TypeTree) = internal.TypeTree.Ident.unapply(arg)
-    override def unapplySelect(arg: TypeTree) = internal.TypeTree.Select.unapply(arg)
-    override def unapplySingleton(arg: TypeTree) = internal.TypeTree.Singleton.unapply(arg)
-    override def unapplyApplied(arg: TypeTree) = internal.TypeTree.Applied.unapply(arg)
-    override def unapplyTypeBounds(arg: TypeTree) = internal.TypeTree.TypeBounds.unapply(arg)
-    override def unapplyAnnotated(arg: TypeTree) = internal.TypeTree.Annotated.unapply(arg)
-    override def unapplyAnd(arg: TypeTree) = internal.TypeTree.And.unapply(arg)
-    override def unapplyOr(arg: TypeTree) = internal.TypeTree.Or.unapply(arg)
-    override def unapplyByName(arg: TypeTree) = internal.TypeTree.ByName.unapply(arg)
+    override def unapplySynthetic(arg: TypeTree) = internal.TypeTree.unapplySynthetic(arg)
+    override def unapplyIdent(arg: TypeTree) = internal.TypeTree.unapplyIdent(arg)
+    override def unapplySelect(arg: TypeTree) = internal.TypeTree.unapplySelect(arg)
+    override def unapplySingleton(arg: TypeTree) = internal.TypeTree.unapplySingleton(arg)
+    override def unapplyRefined(arg: TypeTree) = internal.TypeTree.unapplyRefined(arg)
+    override def unapplyApplied(arg: TypeTree) = internal.TypeTree.unapplyApplied(arg)
+    override def unapplyTypeBounds(arg: TypeTree) = internal.TypeTree.unapplyTypeBounds(arg)
+    override def unapplyAnnotated(arg: TypeTree) = internal.TypeTree.unapplyAnnotated(arg)
+    override def unapplyAnd(arg: TypeTree) = internal.TypeTree.unapplyAnd(arg)
+    override def unapplyOr(arg: TypeTree) = internal.TypeTree.unapplyOr(arg)
+    override def unapplyByName(arg: TypeTree) = internal.TypeTree.unapplyByName(arg)
 
     // Names
 

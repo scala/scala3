@@ -90,15 +90,20 @@ object Type {
   private case class Impl(arg: Types.Type, ctx: Context) extends types.Type {
     override def toString: String = {
       import Toolbox.extractor
+      // FIXME
       this match {
         case types.ConstantType(value) => s"ConstantType($value)"
-        case types.SuperType(thisp, superp) => s"SuperType($thisp, $superp)"
+//        case types.SymRef(sym, qual) => s"SymRef($sym, $qual)"
+        case types.NameRef(name, qual) => s"NameRef($name, $qual)"
         case types.Refinement(parent, name, info) => s"Refinement($parent, $name, $info)"
         case types.AppliedType(tycon, args) => s"AppliedType($tycon, $args)"
         case types.AnnotatedType(underlying, annot) => s"AnnotatedType($underlying, $annot)"
         case types.AndType(left, right) => s"AndType($left, $right)"
         case types.OrType(left, right) => s"OrType($left, $right)"
-        case _ => s"Type{## $arg ##}"
+        case types.ByNameType(underlying) => s"ByNameType($underlying)"
+        case types.ParamRef(binder, idx) => s"ParamRef($binder, $idx)"
+//        case types.RecursiveThis(binder) => s"RecursiveThis($binder)"
+        case _ => "###"  // FIXME: remove this line
       }
     }
   }

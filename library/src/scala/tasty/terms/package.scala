@@ -38,7 +38,7 @@ package object terms {
   }
 
   object TypeApply {
-    type Data = (Term, List[Term])
+    type Data = (Term, List[typetrees.TypeTree])
     def unapply(arg: statements.TopLevelStatement)(implicit ext: Extractor): Option[Data] = ext.unapplyTypeApply(arg)
   }
 
@@ -62,7 +62,10 @@ package object terms {
     def unapply(arg: statements.TopLevelStatement)(implicit ext: Extractor): Option[Data] = ext.unapplyBlock(arg)
   }
 
-  //  case Inlined(call: Term, bindings: List[Definition], expr: Term)
+  object Inlined {
+    type Data = (Term, List[statements.Definition], Term)
+    def unapply(arg: statements.TopLevelStatement)(implicit ext: Extractor): Option[Data] = ext.unapplyInlined(arg)
+  }
 
   object Lambda {
     type Data = (Term, Option[typetrees.TypeTree])
@@ -92,6 +95,11 @@ package object terms {
   object Repeated {
     type Data = List[Term]
     def unapply(arg: statements.TopLevelStatement)(implicit ext: Extractor): Option[Data] = ext.unapplyRepeated(arg)
+  }
+
+  object SelectOuter {
+    type Data = (Term, Int, types.Type)
+    def unapply(arg: statements.TopLevelStatement)(implicit ext: Extractor): Option[Data] = ext.unapplySelectOuter(arg)
   }
 
 }
