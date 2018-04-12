@@ -8,12 +8,9 @@ object TermName {
 
   def apply(name: Names.TermName): names.TermName = Impl(name)
 
-
-  object Simple {
-    def unapply(name: names.Name): Option[String] = name match {
-      case Impl(name: Names.SimpleName) => Some(name.toString)
-      case _ => None
-    }
+  def unapplySimple(name: names.Name): Option[String] = name match {
+    case Impl(name: Names.SimpleName) => Some(name.toString)
+    case _ => None
   }
 
 //  case Qualified(prefix: TermName, selector: String)              // s"$prefix.$name"

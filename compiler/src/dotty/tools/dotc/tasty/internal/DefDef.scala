@@ -1,4 +1,5 @@
-package dotty.tools.dotc.tasty.internal
+package dotty.tools.dotc.tasty
+package internal
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
@@ -10,13 +11,11 @@ object DefDef {
 
   def apply(tree: tpd.DefDef)(implicit ctx: Context): statements.DefDef = Impl(tree, ctx)
 
-  object DefDef {
-    def unapply(term: statements.TopLevelStatement): Option[statements.DefDef.Data] = term match {
-      case Impl(ddef, ctx) =>
-        implicit val ctx_ = ctx
-        Some((TermName(ddef.name), ddef.tparams.map(TypeDef(_)), ddef.vparamss.map(_.map(ValDef(_))), TypeTree(ddef.tpt), if (ddef.rhs.isEmpty) None else Some(Term(ddef.rhs)), ddef.rawMods.mods.map(Modifier(_))))
-      case _ => None
-    }
+  def unapplyDefDef(term: statements.TopLevelStatement): Option[statements.DefDef.Data] = term match {
+    case Impl(ddef, ctx) =>
+      implicit val ctx_ = ctx
+      Some((TermName(ddef.name), ddef.tparams.map(TypeDef(_)), ddef.vparamss.map(_.map(ValDef(_))), TypeTree(ddef.tpt), if (ddef.rhs.isEmpty) None else Some(Term(ddef.rhs)), ddef.rawMods.mods.map(Modifier(_))))
+    case _ => None
   }
 
   private case class Impl(tree: tpd.DefDef, ctx: Context) extends statements.DefDef with Positioned {
@@ -27,10 +26,10 @@ object DefDef {
 
     override def owner: scala.tasty.statements.Definition = ???
 
-    override def toString: String = this match {
-      case DefDef(name, typeParams, paramss, returnTpt, rhs, mods) =>
-        s"DefDef($name, $typeParams, $paramss, $returnTpt, $rhs, $mods)"
-      case _ => s"DefDef{## $tree ##}"
+    override def toString: String = {
+      import Toolbox.extractor
+      val statements.DefDef(name, typeParams, paramss, returnTpt, rhs, mods) = this
+      s"DefDef($name, $typeParams, $paramss, $returnTpt, $rhs, $mods)"
     }
   }
 

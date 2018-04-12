@@ -1,4 +1,5 @@
-package dotty.tools.dotc.tasty.internal
+package dotty.tools.dotc.tasty
+package internal
 
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Contexts.Context
@@ -10,7 +11,7 @@ object ClassDef {
 
   def apply(tree: tpd.TypeDef)(implicit ctx: Context): statements.ClassDef = Impl(tree, ctx)
 
-  def unapply(term: statements.TopLevelStatement): Option[statements.ClassDef.Data] = term match {
+  def unapplyClassDef(term: statements.TopLevelStatement): Option[statements.ClassDef.Data] = term match {
     case Impl(cdef @ Trees.TypeDef(name, impl@Trees.Template(constr, parents, self, _)), ctx) =>
       implicit val ctx_ = ctx
       if (cdef.symbol.isClass) Some((TypeName(name), DefDef(constr), parents.map(Term(_)), if (self.isEmpty) None else Some(ValDef(self)), impl.body.map(Statement(_)), cdef.rawMods.mods.map(Modifier(_))))
@@ -26,10 +27,10 @@ object ClassDef {
 
     override def owner: statements.Definition = ???
 
-    override def toString: String = this match {
-      case ClassDef(name, constructor, parents, self, body, mods) =>
-        s"ClassDef($name, $constructor, $parents, $self, $body, $mods)"
-      case _ => s"ClassDef{## $tree ##}"
+    override def toString: String = {
+      import Toolbox.extractor
+      val statements.ClassDef(name, constructor, parents, self, body, mods) = this
+      s"ClassDef($name, $constructor, $parents, $self, $body, $mods)"
     }
   }
 

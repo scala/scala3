@@ -6,8 +6,7 @@ import scala.tasty.terms._
 import scala.tasty.constants._
 
 import dotty.tools.dotc.quoted.Toolbox._
-import dotty.tools.dotc.tasty.Extractors._
-
+import dotty.tools.dotc.tasty.Toolbox._
 
 object Test {
   def main(args: Array[String]): Unit = {

@@ -1,4 +1,5 @@
-package dotty.tools.dotc.tasty.internal
+package dotty.tools.dotc.tasty
+package internal
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
@@ -10,7 +11,7 @@ object TypeDef {
 
   def apply(tree: tpd.TypeDef)(implicit ctx: Context): statements.TypeDef = Impl(tree, ctx)
 
-  def unapply(term: statements.TopLevelStatement): Option[statements.TypeDef.Data] = term match {
+  def unapplyTypeDef(term: statements.TopLevelStatement): Option[statements.TypeDef.Data] = term match {
     case Impl(tdef, ctx) if !tdef.symbol(ctx).isClass =>
       implicit val ctx_ = ctx
       if (tdef.symbol.isClass) None
@@ -26,9 +27,10 @@ object TypeDef {
 
     override def owner: statements.Definition = ???
 
-    override def toString: String = this match {
-      case TypeDef(name, rhs, mods) => s"TypeDef($name, $rhs, $mods)"
-      case _ => s"TypeDef{## $tree ##}"
+    override def toString: String = {
+      import Toolbox.extractor
+      val statements.TypeDef(name, rhs, mods) = this
+      s"TypeDef($name, $rhs, $mods)"
     }
   }
 

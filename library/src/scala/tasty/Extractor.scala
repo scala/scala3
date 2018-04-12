@@ -4,6 +4,7 @@ import scala.tasty.constants.Constant
 import scala.tasty.patterns.{CaseDef, Pattern}
 import scala.tasty.statements.TopLevelStatement
 import scala.tasty.typetrees.TypeTree
+import scala.tasty.types.MaybeType
 
 trait Extractor {
 
@@ -82,5 +83,9 @@ trait Extractor {
   def unapplyFloat(arg: Constant): Option[Float]
   def unapplyDouble(arg: Constant): Option[Double]
   def unapplyString(arg: Constant): Option[String]
+
+  // Types
+
+  def unapplyTypeBounds(arg: MaybeType): Option[types.TypeBounds.Data]
 
 }

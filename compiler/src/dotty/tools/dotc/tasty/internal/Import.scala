@@ -1,4 +1,5 @@
-package dotty.tools.dotc.tasty.internal
+package dotty.tools.dotc.tasty
+package internal
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import dotty.tools.dotc.core.Contexts.Context
@@ -11,11 +12,9 @@ object Import {
 
   def apply(tree: tpd.Tree)(implicit ctx: Context): statements.Import = Impl(tree, ctx)
 
-  object Import {
-    def unapply(term: statements.TopLevelStatement): Option[statements.Import.Data] = term match {
-      case Impl(Trees.Import(expr, selectors), ctx) => Some(Term(expr)(ctx), selectors.map(importSelector(_)(ctx)))
-      case _ => None
-    }
+  def unapplyImport(term: statements.TopLevelStatement): Option[statements.Import.Data] = term match {
+    case Impl(Trees.Import(expr, selectors), ctx) => Some(Term(expr)(ctx), selectors.map(importSelector(_)(ctx)))
+    case _ => None
   }
 
   private def importSelector(tree: untpd.Tree)(implicit ctx: Context): ImportSelector = tree match {
@@ -25,9 +24,10 @@ object Import {
   }
 
   private case class Impl(tree: tpd.Tree, ctx: Context) extends statements.Import with Positioned {
-    override def toString: String = this match {
-      case Import(pkg, body) => s"Import($pkg, $body)"
-      case _ => s"Import"
+    override def toString: String = {
+      import Toolbox.extractor
+      val statements.Import(pkg, body) = this
+      s"Import($pkg, $body)"
     }
   }
 

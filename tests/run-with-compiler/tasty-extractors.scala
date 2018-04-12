@@ -4,7 +4,7 @@ import scala.tasty.constants.Constant
 import scala.tasty.statements._
 import scala.tasty.terms._
 import dotty.tools.dotc.quoted.Toolbox._
-import dotty.tools.dotc.tasty.Extractors._
+import dotty.tools.dotc.tasty.Toolbox._
 
 import scala.tasty.modifiers.Modifier
 

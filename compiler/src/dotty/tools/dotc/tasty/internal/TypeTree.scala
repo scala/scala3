@@ -1,4 +1,5 @@
-package dotty.tools.dotc.tasty.internal
+package dotty.tools.dotc.tasty
+package internal
 
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.ast.tpd.Tree
@@ -11,6 +12,8 @@ import scala.tasty.types
 object TypeTree {
 
   def apply(tree: Tree)(implicit ctx: Context): typetrees.TypeTree = Impl(tree, ctx)
+
+  // TODO remove objects
 
   object Synthetic {
     def unapply(arg: typetrees.TypeTree): Boolean = arg match {
@@ -93,19 +96,22 @@ object TypeTree {
 
     def tpe: types.Type = Type(tree.tpe)(ctx)
 
-    override def toString: String = this match {
-      case Synthetic() => "Synthetic()"
-      case Ident(name) => s"Ident($name)"
-      case Select(qual, name) => s"Select($qual, $name)"
-      case Singleton(ref) => s"Singleton($ref)"
-//      case Refined(tpt, refinements) => s"Refined($ref, ${list(refinements)})"
-      case Applied(tycon, args) => s"Applied($tycon, $args)"
-      case TypeBounds(lo, hi) => s"TypeBounds($lo, $hi)"
-      case Annotated(arg, annot) => s"Annotated($arg, $annot)"
-      case And(left, right) => s"And($left, $right)"
-      case Or(left, right) => s"Or($left, $right)"
-      case ByName(tpt) => s"ByName($tpt)"
-      case _ => s"TypeTree{## $tree ##}"
+    override def toString: String = {
+      import Toolbox.extractor
+      this match {
+        case Synthetic() => "Synthetic()"
+        case Ident(name) => s"Ident($name)"
+        case Select(qual, name) => s"Select($qual, $name)"
+        case Singleton(ref) => s"Singleton($ref)"
+        //      case Refined(tpt, refinements) => s"Refined($ref, ${list(refinements)})"
+        case Applied(tycon, args) => s"Applied($tycon, $args)"
+        case TypeBounds(lo, hi) => s"TypeBounds($lo, $hi)"
+        case Annotated(arg, annot) => s"Annotated($arg, $annot)"
+        case And(left, right) => s"And($left, $right)"
+        case Or(left, right) => s"Or($left, $right)"
+        case ByName(tpt) => s"ByName($tpt)"
+        case _ => s"TypeTree{## $tree ##}"
+      }
     }
 
     private def list(xs: List[_]): String =
