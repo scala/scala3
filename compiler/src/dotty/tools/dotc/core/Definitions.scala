@@ -200,7 +200,7 @@ class Definitions {
   lazy val OpsPackageVal = ctx.newCompletePackageSymbol(RootClass, nme.OPS_PACKAGE).entered
   lazy val OpsPackageClass = OpsPackageVal.moduleClass.asClass
 
-  lazy val ScalaPackageVal = ctx.requiredPackage("scala")
+  lazy val ScalaPackageVal = ctx.requiredPackage(nme.scala_)
   lazy val ScalaMathPackageVal = ctx.requiredPackage("scala.math")
   lazy val ScalaPackageClass = {
     val cls = ScalaPackageVal.moduleClass.asClass
@@ -211,8 +211,8 @@ class Definitions {
     cls
   }
   lazy val ScalaPackageObjectRef = ctx.requiredModuleRef("scala.package")
-  lazy val JavaPackageVal = ctx.requiredPackage("java")
-  lazy val JavaLangPackageVal = ctx.requiredPackage("java.lang")
+  lazy val JavaPackageVal = ctx.requiredPackage(nme.java)
+  lazy val JavaLangPackageVal = ctx.requiredPackage(jnme.JavaLang)
   // fundamental modules
   lazy val SysPackage = ctx.requiredModule("scala.sys.package")
     lazy val Sys_errorR = SysPackage.moduleClass.requiredMethodRef(nme.error)
@@ -342,11 +342,11 @@ class Definitions {
 
     lazy val Predef_ConformsR = ScalaPredefModule.requiredClass("<:<").typeRef
     def Predef_Conforms(implicit ctx: Context) = Predef_ConformsR.symbol
-    lazy val Predef_conformsR = ScalaPredefModule.requiredMethodRef("$conforms")
+    lazy val Predef_conformsR = ScalaPredefModule.requiredMethodRef(nme.conforms_)
     def Predef_conforms(implicit ctx: Context) = Predef_conformsR.symbol
-    lazy val Predef_classOfR = ScalaPredefModule.requiredMethodRef("classOf")
+    lazy val Predef_classOfR = ScalaPredefModule.requiredMethodRef(nme.classOf)
     def Predef_classOf(implicit ctx: Context) = Predef_classOfR.symbol
-    lazy val Predef_undefinedR = ScalaPredefModule.requiredMethodRef("???")
+    lazy val Predef_undefinedR = ScalaPredefModule.requiredMethodRef(nme.???)
     def Predef_undefined(implicit ctx: Context) = Predef_undefinedR.symbol
 
   lazy val ScalaRuntimeModuleRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
