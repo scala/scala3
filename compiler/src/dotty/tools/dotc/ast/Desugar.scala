@@ -1216,7 +1216,7 @@ object desugar {
    */
   private object IdPattern {
     def unapply(tree: Tree)(implicit ctx: Context): Option[VarInfo] = tree match {
-      case id: Ident => Some(id, TypeTree())
+      case id: Ident => Some((id, TypeTree()))
       case Typed(id: Ident, tpt) => Some((id, tpt))
       case _ => None
     }

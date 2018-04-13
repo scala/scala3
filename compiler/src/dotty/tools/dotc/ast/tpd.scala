@@ -1009,8 +1009,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** An extractor that pulls out type arguments */
   object MaybePoly {
     def unapply(tree: Tree): Option[(Tree, List[Tree])] = tree match {
-      case TypeApply(tree, targs) => Some(tree, targs)
-      case _ => Some(tree, Nil)
+      case TypeApply(tree, targs) => Some((tree, targs))
+      case _ => Some((tree, Nil))
     }
   }
 

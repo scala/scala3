@@ -3,7 +3,7 @@ object Foo {
   case class T(i: Int) extends S(i)
 
   object T {
-    def unapply(s: S): Option[(Int, Int)] = Some(5, 6)
+    def unapply(s: S): Option[(Int, Int)] = Some((5, 6))
     // def unapply(o: Object): Option[(Int, Int, Int)] = Some(5, 6, 7)
   }
 
@@ -22,7 +22,7 @@ object Bar {
   class S(i: Int) extends T(i)
 
   object T {
-    def unapply(s: S): Option[(Int, Int)] = Some(5, 6)
+    def unapply(s: S): Option[(Int, Int)] = Some((5, 6))
     // def unapply(o: Object): Option[(Int, Int, Int)] = Some(5, 6, 7)
   }
 

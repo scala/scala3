@@ -651,7 +651,7 @@ object CollectionStrawMan6 extends LowPriority {
     }
 
     def fromIterator[B](it: Iterator[B]): LazyList[B] =
-      new LazyList(if (it.hasNext) Some(it.next(), fromIterator(it)) else None)
+      new LazyList(if (it.hasNext) Some((it.next(), fromIterator(it))) else None)
   }
 
   // ------------------ Decorators to add collection ops to existing types -----------------------

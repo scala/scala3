@@ -180,7 +180,6 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings) +
     compileFile("tests/neg-custom-args/i3246.scala", scala2Mode) +
     compileFile("tests/neg-custom-args/overrideClass.scala", scala2Mode) +
-    compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")) +
     compileFile("tests/neg-custom-args/i1050.scala", defaultOptions.and("-strict")) +
     compileFile("tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")) +
     compileFile("tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")) +

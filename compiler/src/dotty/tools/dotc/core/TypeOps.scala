@@ -17,7 +17,7 @@ import util.Property
 import collection.mutable
 import ast.tpd._
 import reporting.trace
-import reporting.diagnostic.Message
+import reporting.diagnostic.{Message, NoExplanation}
 
 trait TypeOps { this: Context => // TODO: Make standalone object.
 
@@ -313,10 +313,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     hasImport(ctx.withPhase(ctx.typerPhase)) || hasOption
   }
 
-  /** Is auto-tupling enabled? */
-  def canAutoTuple =
-    !featureEnabled(defn.LanguageModuleClass, nme.noAutoTupling)
-
   def scala2Mode =
     featureEnabled(defn.LanguageModuleClass, nme.Scala2)
 
@@ -325,7 +321,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
   def testScala2Mode(msg: => Message, pos: Position, rewrite: => Unit = ()) = {
     if (scala2Mode) {
-      migrationWarning(msg, pos)
+      migrationWarning(
+        new NoExplanation(msg.msg ++ "\nThis can be fixed automatically using -rewrite"), pos)
       rewrite
     }
     scala2Mode

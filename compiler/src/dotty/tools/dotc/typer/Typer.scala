@@ -2032,6 +2032,45 @@ class Typer extends Namer
     }
   }
 
+  def supportsAutoTupling(tp: Type, args: List[untpd.Tree])(implicit ctx: Context): Boolean = {
+    def test(tp: Type): Boolean = tp match {
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        defn.isTupleClass(sym) && defn.arity(sym, str.Tuple) == args.length ||
+        defn.isProductClass(sym) && defn.arity(sym, str.Product) == args.length ||
+        !sym.isClass && test(tp.underlying)
+      case tp: TypeParamRef =>
+        val bounds = ctx.typeComparer.bounds(tp)
+        test(bounds.lo) || test(bounds.hi)
+      case tp: TypeProxy =>
+        test(tp.underlying)
+      case _ =>
+        false
+    }
+    test(tp) || {
+      val pos = Position(args.map(_.pos.start).min, args.map(_.pos.end).max)
+      ctx.testScala2Mode(
+          i"""auto-tupling is no longer supported in this case,
+              |arguments now need to be enclosed in parentheses (...).""",
+          pos, { patch(pos.startPos, "("); patch(pos.endPos, ")") })
+    }
+  }
+
+  def takesAutoTupledArgs(tp: Type, sym: Symbol, args: List[untpd.Tree])(implicit ctx: Context): Boolean = tp match {
+    case tp: MethodicType =>
+      tp.firstParamTypes match {
+        case ptype :: Nil =>
+          !ptype.isRepeatedParam && {
+            sym.name.isOpName || supportsAutoTupling(ptype, args)
+          }
+        case _ => false
+      }
+    case tp: TermRef =>
+      tp.denot.alternatives.forall(alt => takesAutoTupledArgs(alt.info, alt.symbol, args))
+    case _ =>
+      false
+  }
+
   /** Perform the following adaptations of expression, pattern or type `tree` wrt to
    *  given prototype `pt`:
    *  (1) Resolve overloading
@@ -2119,21 +2158,9 @@ class Typer extends Namer
         }
       }
 
-      def isUnary(tp: Type): Boolean = tp match {
-        case tp: MethodicType =>
-          tp.firstParamTypes match {
-            case ptype :: Nil => !ptype.isRepeatedParam
-            case _ => false
-          }
-        case tp: TermRef =>
-          tp.denot.alternatives.forall(alt => isUnary(alt.info))
-        case _ =>
-          false
-      }
-
       def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
         case _: MethodOrPoly =>
-          if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && ctx.canAutoTuple)
+          if (pt.args.lengthCompare(1) > 0 && takesAutoTupledArgs(wtp, tree.symbol, pt.args))
             adapt(tree, pt.tupled, locked)
           else
             tree
@@ -2499,10 +2526,10 @@ class Typer extends Namer
         case tp: FlexType =>
           ensureReported(tp)
           tree
-        case ref: TermRef =>
+        case ref: TermRef => // this case can happen in case tree.tpe is overloaded
           pt match {
             case pt: FunProto
-            if pt.args.lengthCompare(1) > 0 && isUnary(ref) && ctx.canAutoTuple =>
+            if pt.args.lengthCompare(1) > 0 && takesAutoTupledArgs(ref, ref.symbol, pt.args) =>
               adapt(tree, pt.tupled, locked)
             case _ =>
               adaptOverloaded(ref)

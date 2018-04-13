@@ -436,7 +436,6 @@ class Definitions {
   lazy val ArrayModuleType = ctx.requiredModuleRef("scala.Array")
   def ArrayModule(implicit ctx: Context) = ArrayModuleType.symbol.moduleClass.asClass
 
-
   lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", BoxedUnitType, java.lang.Void.TYPE, UnitEnc, nme.specializedTypeNames.Void)
   def UnitClass(implicit ctx: Context) = UnitType.symbol.asClass
   def UnitModuleClass(implicit ctx: Context) = UnitType.symbol.asClass.linkedClass
@@ -776,7 +775,7 @@ class Definitions {
       if (isFunctionClass(tsym)) {
         val targs = ft.dealias.argInfos
         if (targs.isEmpty) None
-        else Some(targs.init, targs.last, tsym.name.isImplicitFunction, tsym.name.isErasedFunction)
+        else Some((targs.init, targs.last, tsym.name.isImplicitFunction, tsym.name.isErasedFunction))
       }
       else None
     }
@@ -821,8 +820,8 @@ class Definitions {
       case ArrayOf(elemtp) =>
         def recur(elemtp: Type): Option[(Type, Int)] = elemtp.dealias match {
           case TypeBounds(lo, hi) => recur(hi)
-          case MultiArrayOf(finalElemTp, n) => Some(finalElemTp, n + 1)
-          case _ => Some(elemtp, 1)
+          case MultiArrayOf(finalElemTp, n) => Some((finalElemTp, n + 1))
+          case _ => Some((elemtp, 1))
         }
         recur(elemtp)
       case _ =>
@@ -878,6 +877,18 @@ class Definitions {
       name.startsWith(prefix) &&
       name.length > prefix.length &&
       name.drop(prefix.length).forall(_.isDigit))
+
+  def arity(cls: Symbol, prefix: String): Int =
+    scalaClassName(cls).applySimple(-1) { name =>
+      if (name.startsWith(prefix)) {
+        val digits = name.drop(prefix.length)
+        if (!digits.isEmpty && digits.forall(_.isDigit))
+          try digits.toString.toInt
+          catch { case ex: NumberFormatException => -1 }
+        else -1
+      }
+      else -1
+    }
 
   def isBottomClass(cls: Symbol) =
     cls == NothingClass || cls == NullClass

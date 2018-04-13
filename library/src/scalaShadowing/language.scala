@@ -29,7 +29,6 @@ package scalaShadowing
  *  and, for dotty:
  *
  *   - [[Scala2              `Scala2`]               backwards compatibility mode for Scala2
- *   - [[noAtoTupling        `noAutoTupling`]]       disable auto-tupling
  *
  *  @groupname production   Language Features
  *  @groupname experimental Experimental Language Features
@@ -192,9 +191,6 @@ object language {
 
   /** Where imported, a backwards compatibility mode for Scala2 is enabled */
   object Scala2
-
-  /** Where imported, auto-tupling is disabled */
-  object noAutoTupling
 
   /* Where imported loose equality using eqAny is disabled */
   object strictEquality

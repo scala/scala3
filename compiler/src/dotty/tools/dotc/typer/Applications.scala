@@ -980,10 +980,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 val (regularArgs, varArgs) = args.splitAt(argTypes.length - 1)
                 regularArgs :+ untpd.SeqLiteral(varArgs, untpd.TypeTree()).withPos(tree.pos)
             }
-          else if (argTypes.lengthCompare(1) == 0 && args.lengthCompare(1) > 0 && ctx.canAutoTuple)
-            untpd.Tuple(args) :: Nil
-          else
-            args
+          else argTypes match {
+            case argType :: Nil if args.lengthCompare(1) > 0 && supportsAutoTupling(argType, args) =>
+              untpd.Tuple(args) :: Nil
+            case _ =>
+              args
+          }
         if (argTypes.length != bunchedArgs.length) {
           ctx.error(UnapplyInvalidNumberOfArguments(qual, argTypes), tree.pos)
           argTypes = argTypes.take(args.length) ++

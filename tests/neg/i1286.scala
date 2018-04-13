@@ -10,7 +10,6 @@ import scala.io.{ Idontexist4 => Foo } // error
 import scala.io.{ Idontexist5 => _ } // error
 
 import scala.language.dynamics
-import scala.language.noAutoTupling
 import scala.language.idontexist // error
 
 object Test

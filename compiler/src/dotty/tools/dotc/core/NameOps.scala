@@ -58,6 +58,12 @@ object NameOps {
       case _ => false
     }
 
+    def applySimple[T](default: T)(f: SimpleName => T): T = name match {
+      case name: SimpleName => f(name)
+      case name: TypeName => name.toTermName.applySimple(default)(f)
+      case _ => default
+    }
+
     def likeSpaced(n: PreName): N =
       (if (name.isTermName) n.toTermName else n.toTypeName).asInstanceOf[N]
 
@@ -79,6 +85,11 @@ object NameOps {
           && (n != true_)
           && (n != null_))
       }
+    }
+
+    def isOpName = name match {
+      case name: SimpleName => NameTransformer.encode(name) != name
+      case _ => false
     }
 
     def isOpAssignmentName: Boolean = name match {

@@ -537,7 +537,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   object closure {
     def unapply(tree: Tree): Option[(List[Tree], Tree, Tree)] = tree match {
       case Block(_, expr) => unapply(expr)
-      case Closure(env, meth, tpt) => Some(env, meth, tpt)
+      case Closure(env, meth, tpt) => Some((env, meth, tpt))
       case Typed(expr, _)  => unapply(expr)
       case _ => None
     }
