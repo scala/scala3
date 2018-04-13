@@ -73,7 +73,7 @@ object Test {
            }
          }
          case nested: Nested[a, bt] => {
-            fold_raw[bt](((e: bt) => fold_raw(consumer, nested.nestedf(e))), Linear(nested.producer))
+            fold_raw[bt](((e: bt) => fold_raw[a](consumer, nested.nestedf(e))), Linear(nested.producer))
          }
        }
      }
