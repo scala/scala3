@@ -88,7 +88,6 @@ object Test {
           val prod = new Producer[B] {
 
             type St = producer.St
-
             val card = producer.card
 
             def init(k: St => Expr[Unit]): Expr[Unit] = {
@@ -143,78 +142,84 @@ object Test {
       Stream(flatMapRaw[Expr[A], Expr[A]]((a => { Linear(filterStream(a)) }), stream))
     }
 
-    // def moreTermination[A](f: Rep[Boolean] => Rep[Boolean], stream: StagedStream[A]): StagedStream[A] = {
-    //   def addToProducer[A](f: Rep[Boolean] => Rep[Boolean], producer: Producer[A]): Producer[A] = {
-    //     producer.card match {
-    //         case Many =>
-    //           new Producer[A] {
-    //             type St = producer.St
+    private def moreTermination[A](f: Expr[Boolean] => Expr[Boolean], stream: StagedStream[A]): StagedStream[A] = {
+      def addToProducer[A](f: Expr[Boolean] => Expr[Boolean], producer: Producer[A]): Producer[A] = {
+        producer.card match {
+            case Many =>
+              new Producer[A] {
+                type St = producer.St
+                val card = producer.card
 
-    //             val card = producer.card
-    //             def init(k: St => Rep[Unit]): Rep[Unit] =
-    //               producer.init(k)
-    //             def step(st: St, k: (A => Rep[Unit])): Rep[Unit] =
-    //               producer.step(st, el => k(el))
-    //             def hasNext(st: St): Rep[Boolean] =
-    //               f(producer.hasNext(st))
-    //           }
-    //         case AtMost1 => producer
-    //     }
-    //   }
-    //   stream match {
-    //     case Linear(producer) => Linear(addToProducer(f, producer))
-    //     case Nested(producer, nestedf) =>
-    //       Nested(addToProducer(f, producer), (a: Id[_]) => moreTermination(f, nestedf(a)))
-    //   }
-    // }
+                def init(k: St => Expr[Unit]): Expr[Unit] =
+                  producer.init(k)
 
-    // private def addCounter[A](n: Expr[Int], producer: Producer[A]): Producer[(Expr[Int], A)] =
-    //   new Producer[(Var[Int], A)] {
-    //     type St = (Var[Int], producer.St)
+                def step(st: St, k: (A => Expr[Unit])): Expr[Unit] =
+                  producer.step(st, el => k(el))
 
-    //     val card = producer.card
-    //     def init(k: St => Rep[Unit]): Rep[Unit] = {
-    //       producer.init(st => {
-    //         var counter: Var[Int] = n
-    //         k(counter, st)
-    //       })
-    //     }
-    //     def step(st: St, k: (((Var[Int], A)) => Rep[Unit])): Rep[Unit] = {
-    //         val (counter, nst) = st
-    //         producer.step(nst, el => {
-    //           k((counter, el))
-    //         })
-    //     }
-    //     def hasNext(st: St): Rep[Boolean] = {
-    //         val (counter, nst) = st
-    //         producer.card match {
-    //           case Many => counter > 0 && producer.hasNext(nst)
-    //           case AtMost1 => producer.hasNext(nst)
-    //         }
-    //     }
-    //   }
+                def hasNext(st: St): Expr[Boolean] =
+                  f(producer.hasNext(st))
+              }
+            case AtMost1 => producer
+        }
+      }
 
-    // def takeRaw[A](n: Rep[Int], stream: StagedStream[A]): StagedStream[A] = {
-    //   stream match {
-    //     case Linear(producer) => {
-    //       mapRaw[(Var[Int], A), A]((t => k => {
-    //         t._1 = t._1 - 1
-    //         k(t._2)
-    //       }), Linear(addCounter(n, producer)))
-    //     }
-    //     case Nested(producer, nestedf) => {
-    //       Nested(addCounter(n, producer), (t: (Var[Int], Id[_])) => {
-    //         mapRaw[A, A]((el => k => {
-    //           t._1 = t._1 - 1
-    //           k(el)
-    //         }), moreTermination(b => t._1 > 0 && b, nestedf(t._2)))
-    //       })
-    //     }
-    //   }
-    // }
+      stream match {
+        case Linear(producer) => Linear(addToProducer(f, producer))
+        case nested: Nested[a, bt] =>
+          Nested(addToProducer(f, nested.producer), (a: bt) => moreTermination(f, nested.nestedf(a)))
+      }
+    }
 
-    // def take(n: Rep[Int]): Stream[A] = Stream(takeRaw(n, stream))
+    private def addCounter[A](n: Expr[Int], producer: Producer[A]): Producer[(Var[Int], A)] = {
+      new Producer[(Var[Int], A)] {
+        type St = (Var[Int], producer.St)
+        val card = producer.card
 
+        def init(k: St => Expr[Unit]): Expr[Unit] = {
+          producer.init(st => {
+            Var(n) { counter =>
+              k(counter, st)
+            }
+          })
+        }
+
+        def step(st: St, k: (((Var[Int], A)) => Expr[Unit])): Expr[Unit] = {
+          val (counter, nst) = st
+          producer.step(nst, el => '{
+            ~k((counter, el))
+          })
+        }
+
+        def hasNext(st: St): Expr[Boolean] = {
+          val (counter, nst) = st
+          producer.card match {
+            case Many => '{ ~counter.get > 0 && ~producer.hasNext(nst) }
+            case AtMost1 => '{ ~producer.hasNext(nst) }
+          }
+        }
+      }
+    }
+
+    def takeRaw[A](n: Expr[Int], stream: StagedStream[A]): StagedStream[A] = {
+      stream match {
+        case Linear(producer) => {
+          mapRaw[(Var[Int], A), A]((t: (Var[Int], A)) => k => '{
+            ~t._1.update('{~t._1.get - 1})
+            ~k(t._2)
+          }, Linear(addCounter(n, producer)))
+        }
+        case nested: Nested[a, bt] => {
+          Nested(addCounter(n, nested.producer), (t: (Var[Int], bt)) => {
+            mapRaw[A, A]((el => k => '{
+              ~t._1.update('{~t._1.get - 1})
+              ~k(el)
+            }), moreTermination(b => '{ ~t._1.get > 0 && ~b}, nested.nestedf(t._2)))
+          })
+        }
+      }
+     }
+
+     def take(n: Expr[Int]): Stream[A] = Stream(takeRaw[Expr[A]](n, stream))
   }
 
   object Stream {
@@ -272,6 +277,17 @@ object Test {
     .filter((d: Expr[Int]) => '{ ~d % 2 == 0 })
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
 
+  def test5() = Stream
+    .of('{Array(1, 2, 3)})
+    .take('{2})
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+
+  def test6() = Stream
+    .of('{Array(1, 1, 1)})
+    .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).take('{2}))
+    .take('{5})
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+
   def main(args: Array[String]): Unit = {
     println(test1().run)
     println
@@ -280,6 +296,10 @@ object Test {
     println(test3().run)
     println
     println(test4().run)
+    println
+    println(test5().run)
+    println
+    println(test6().run)
   }
 }
 
