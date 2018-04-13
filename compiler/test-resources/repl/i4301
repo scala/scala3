@@ -1,0 +1,4 @@
+scala> List(null)
+val res0: List[Null] = List(null)
+scala> List[String](null)
+val res1: List[String] = List(null)

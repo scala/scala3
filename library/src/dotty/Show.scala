@@ -16,8 +16,7 @@ object Show extends LowPrioShow {
     * any `T`, we default to `T#toString`.
     */
   implicit class ShowValue[V](val v: V) extends AnyVal {
-    def show(implicit ev: Show[V]): String =
-      ev.show(v)
+    def show(implicit ev: Show[V]): String = if (v == null) "null" else ev.show(v)
   }
 
   /** Adds escaping backslashes in a string so that it could be put in source code.
