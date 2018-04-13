@@ -24,7 +24,7 @@ object FreshNameCreator {
     def newName(prefix: TermName, unique: UniqueNameKind): TermName = {
       val key = str.sanitize(prefix.toString) + unique.separator
       counters(key) += 1
-      prefix.derived(unique.NumberedInfo(counters(key)))
+      prefix.derivedUnique(unique.NumberedInfo(counters(key)))
     }
   }
 }

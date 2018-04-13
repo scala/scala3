@@ -165,10 +165,33 @@ object Trees {
      *  Defined for `DenotingTree`s and `ProxyTree`s, NoDenotation for other
      *  kinds of trees
      */
-    def denot(implicit ctx: Context): Denotation = NoDenotation
+    final def denot(implicit ctx: Context): Denotation =
+      this match {
+        case tree: ProxyTree[T] =>
+          tree.forwardTo.denot
+        case tree: DenotingTree[T] =>
+          typeOpt match {
+            case tpe: NamedType =>
+              // Denotation of a This tree is always the underlying class; needs correction for modules.
+              if (this.isInstanceOf[This[_]] && tpe.symbol.is(Module))
+                tpe.symbol.moduleClass.denot.asSeenFrom(tpe.prefix)
+              else
+                tpe.denot
+            case tpe: ThisType => tpe.cls.denot
+            case tpe: AnnotatedType => tpe.stripAnnots match {
+              case tpe: NamedType => tpe.denot
+              case tpe: ThisType => tpe.cls.denot
+              case _ => NoDenotation
+            }
+            case _ => NoDenotation
+          }
+        case _ =>
+          NoDenotation
+      }
+
 
     /** Shorthand for `denot.symbol`. */
-    final def symbol(implicit ctx: Context): Symbol = denot.symbol
+    @inline final def symbol(implicit ctx: Context): Symbol = denot.symbol
 
     /** Does this tree represent a type? */
     def isType: Boolean = false
@@ -256,16 +279,6 @@ object Trees {
   /** Tree's denotation can be derived from its type */
   abstract class DenotingTree[-T >: Untyped] extends Tree[T] {
     type ThisTree[-T >: Untyped] <: DenotingTree[T]
-    override def denot(implicit ctx: Context) = typeOpt match {
-      case tpe: NamedType => tpe.denot
-      case tpe: ThisType => tpe.cls.denot
-      case tpe: AnnotatedType => tpe.stripAnnots match {
-        case tpe: NamedType => tpe.denot
-        case tpe: ThisType => tpe.cls.denot
-        case _ => NoDenotation
-      }
-      case _ => NoDenotation
-    }
   }
 
   /** Tree's denot/isType/isTerm properties come from a subtree
@@ -274,7 +287,6 @@ object Trees {
   abstract class ProxyTree[-T >: Untyped] extends Tree[T] {
     type ThisTree[-T >: Untyped] <: ProxyTree[T]
     def forwardTo: Tree[T]
-    override def denot(implicit ctx: Context): Denotation = forwardTo.denot
     override def isTerm = forwardTo.isTerm
     override def isType = forwardTo.isType
   }
@@ -389,15 +401,6 @@ object Trees {
   case class This[-T >: Untyped] private[ast] (qual: untpd.Ident)
     extends DenotingTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = This[T]
-    // Denotation of a This tree is always the underlying class; needs correction for modules.
-    override def denot(implicit ctx: Context): Denotation = {
-      typeOpt match {
-        case tpe @ TermRef(pre, _) if tpe.symbol is Module =>
-          tpe.symbol.moduleClass.denot.asSeenFrom(pre)
-        case _ =>
-          super.denot
-      }
-    }
   }
 
   /** C.super[mix], where qual = C.this */

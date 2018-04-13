@@ -800,12 +800,14 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
      */
     def memberClasses: List[Symbol] = definedClasses(ctx.lambdaLiftPhase)
 
-    private def definedClasses(phase: Phase) =
-      if (sym.isDefinedInCurrentRun)
-        ctx.atPhase(phase) { implicit ctx =>
-          toDenot(sym).info.decls.filter(_.isClass)
-        }
+    private def definedClasses(phase: Phase) = {
+      val outerCtx = ctx
+      if (sym.isDefinedInCurrentRun) {
+        implicit val ctx = outerCtx.withPhase(phase)
+        toDenot(sym).info.decls.filter(_.isClass)
+      }
       else Nil
+    }
 
     def annotations: List[Annotation] = toDenot(sym).annotations
     def companionModuleMembers: List[Symbol] =  {
