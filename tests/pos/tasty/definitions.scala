@@ -107,7 +107,7 @@ object definitions {
   }
 
   case class TypeBoundsTree(loBound: TypeTree, hiBound: TypeTree) {
-    def tpe: TypeBounds = ???
+    def tpe: Type.TypeBounds = ???
   }
 
   /** Trees denoting patterns */

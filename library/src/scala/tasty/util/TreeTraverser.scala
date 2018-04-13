@@ -70,7 +70,7 @@ class TreeTraverser(implicit toolbox: Toolbox) {
         traverse(lhs)
         traverse(rhs)
       case Block(stats, expr) =>
-        stats.foreach(traverse)
+        stats.foreach(x => traverse(x))
         traverse(expr)
       case Lambda(meth, tpt) =>
         traverse(meth)
