@@ -8,6 +8,8 @@ import scala.tasty.statements
 
 object Package {
 
+  // TODO make sure all extractors are tested
+
   def apply(tree: tpd.Tree)(implicit ctx: Context): statements.Package = Impl(tree, ctx)
 
   def unapplyPackage(term: scala.tasty.statements.TopLevelStatement): Option[statements.Package.Data] = term match {

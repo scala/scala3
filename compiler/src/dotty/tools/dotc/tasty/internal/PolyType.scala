@@ -8,6 +8,8 @@ import scala.tasty.types
 
 object PolyType {
 
+  // TODO make sure all extractors are tested
+
   def apply(tpe: Types.PolyType)(implicit ctx: Context): types.PolyType = Impl(tpe, ctx)
 
   def unapplyPolyType(tpe: types.MaybeType): Option[types.PolyType.Data] = tpe match {

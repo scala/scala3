@@ -13,6 +13,8 @@ import scala.tasty.types
 
 object Term {
 
+  // TODO make sure all extractors are tested
+
   def apply(arg: tpd.Tree)(implicit ctx: Context): terms.Term = Impl(arg, ctx)
 
   def unapplyIdent(arg: statements.TopLevelStatement): Option[terms.Ident.Data] = arg match {

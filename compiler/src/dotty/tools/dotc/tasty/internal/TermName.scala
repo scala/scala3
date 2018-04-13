@@ -8,6 +8,8 @@ import scala.tasty.names
 
 object TermName {
 
+  // TODO make sure all extractors are tested
+
   def apply(name: Names.TermName): names.TermName = Impl(name)
 
   def unapplySimple(arg: names.Name): Option[names.Simple.Data] = arg match {

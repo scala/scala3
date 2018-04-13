@@ -8,6 +8,8 @@ import scala.tasty.types
 
 object TypeLambda {
 
+  // TODO make sure all extractors are tested
+
   def apply(tpe: Types.TypeLambda)(implicit ctx: Context): types.TypeLambda = Impl(tpe, ctx)
 
   def unapplyTypeLambda(tpe: types.MaybeType): Option[types.TypeLambda.Data] = tpe match {

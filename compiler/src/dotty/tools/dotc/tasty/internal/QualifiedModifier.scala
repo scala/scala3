@@ -9,6 +9,8 @@ import scala.tasty.modifiers
 
 object QualifiedModifier {
 
+  // TODO make sure all extractors are tested
+
   def apply(tree: tpd.DefTree)(implicit ctx: Context): modifiers.Modifier = Impl(tree, ctx)
 
   def unapplyQualifiedPrivate(mod: modifiers.Modifier): Option[modifiers.QualifiedPrivate.Data] = mod match {

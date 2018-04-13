@@ -6,6 +6,8 @@ import scala.tasty.names
 
 object TypeName {
 
+  // TODO make sure all extractors are tested
+
   def apply(name: Names.TypeName): names.TypeName = Impl(name)
 
   def unapplyTypeName(arg: names.Name): Option[names.TypeName.Data] = arg match {

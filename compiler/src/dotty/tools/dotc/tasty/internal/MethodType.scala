@@ -8,6 +8,8 @@ import scala.tasty.types
 
 object MethodType {
 
+  // TODO make sure all extractors are tested
+
   def apply(tpe: Types.MethodType)(implicit ctx: Context): types.MethodType = Impl(tpe, ctx)
 
   def unapplyMethodType(tpe: types.MaybeType): Option[types.MethodType.Data] = tpe match {

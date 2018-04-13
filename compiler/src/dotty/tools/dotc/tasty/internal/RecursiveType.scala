@@ -8,6 +8,8 @@ import scala.tasty.types
 
 object RecursiveType {
 
+  // TODO make sure all extractors are tested
+
   def apply(bounds: Types.RecType)(implicit ctx: Context): types.RecursiveType = Impl(bounds, ctx)
 
   def unapplyRecursiveType(tpe: types.MaybeType): Option[types.RecursiveType.Data] = tpe match {

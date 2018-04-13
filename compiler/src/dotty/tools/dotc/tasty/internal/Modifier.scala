@@ -9,6 +9,8 @@ import scala.tasty.modifiers
 
 object Modifier {
 
+  // TODO make sure all flags are tested
+
   def apply(mod: untpd.Mod)(implicit ctx: Context): modifiers.Modifier = Impl(mod, ctx)
 
   private case class Impl(mod: untpd.Mod, ctx: Context) extends modifiers.Modifier {

@@ -8,6 +8,8 @@ import scala.tasty.types
 
 object TypeBounds {
 
+  // TODO make sure all extractors are tested
+
   def apply(bounds: Types.TypeBounds)(implicit ctx: Context): types.TypeBounds = Impl(bounds, ctx)
 
   def unapplyTypeBounds(tpe: types.MaybeType): Option[types.TypeBounds.Data] = tpe match {

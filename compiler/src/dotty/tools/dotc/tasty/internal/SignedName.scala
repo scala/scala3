@@ -7,6 +7,8 @@ import scala.tasty.names
 
 object SignedName {
 
+  // TODO make sure all extractors are tested
+
   def apply(name: Names.TermName): names.SignedName = Impl(name)
 
   def unapplySignedName(arg: names.PossiblySignedName): Option[names.SignedName.Data] = arg match {
