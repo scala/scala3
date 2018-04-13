@@ -118,10 +118,10 @@ object Test {
           traverse(arg)
         case Package(pkg, body) =>
           traverse(pkg)
-          body.map(traverse)
+          body.foreach(traverse)
         case Import(expr, selectors) =>
           traverse(expr)
-          selectors.map(traverse)
+          selectors.foreach(traverse)
         case _ =>
       }
     }
@@ -136,15 +136,15 @@ object Test {
           mods.foreach(traverse)
         case DefDef(name, typeParams, paramss, returnTpt, rhs, mods) =>
           traverse(name)
-          typeParams.map(traverse)
-          paramss.map(_.map(traverse))
+          typeParams.foreach(traverse)
+          paramss.foreach(_.foreach(traverse))
           traverse(returnTpt)
-          rhs.map(traverse)
-          mods.map(traverse)
+          rhs.foreach(traverse)
+          mods.foreach(traverse)
         case TypeDef(name, rhs, mods) =>
           traverse(name)
           traverse(rhs)
-          mods.map(traverse)
+          mods.foreach(traverse)
         case ClassDef(name, contraverseuctor, parents, self, body, mods) =>
           traverse(name)
           traverse(contraverseuctor)
@@ -176,13 +176,13 @@ object Test {
           traverse(arg)
         case Apply(fn, args) =>
           traverse(fn)
-          args.map(traverse)
+          args.foreach(traverse)
         case TypeApply(fn, args) =>
           traverse(fn)
-          args.map(traverse)
+          args.foreach(traverse)
         case Super(qual, mixin) =>
           traverse(qual)
-          mixin.map(traverse)
+          mixin.foreach(traverse)
         case Typed(expr, tpt) =>
           traverse(expr)
           traverse(tpt)
@@ -190,26 +190,26 @@ object Test {
           traverse(lhs)
           traverse(rhs)
         case Block(stats, expr) =>
-          stats.map(traverse)
+          stats.foreach(traverse)
           traverse(expr)
         case Lambda(meth, tpt) =>
           traverse(meth)
-          tpt.map(traverse)
+          tpt.foreach(traverse)
         case If(cond, thenp, elsep) =>
           traverse(cond)
           traverse(thenp)
           traverse(elsep)
         case Match(selector, cases) =>
           traverse(selector)
-          cases.map(traverse)
+          cases.foreach(traverse)
         case Try(body, catches, finalizer) =>
           traverse(body)
-          catches.map(traverse)
-          finalizer.map(traverse)
+          catches.foreach(traverse)
+          finalizer.foreach(traverse)
         case Return(expr) =>
           traverse(expr)
         case Repeated(args) =>
-          args.map(traverse)
+          args.foreach(traverse)
         case _ =>
       }
     }
@@ -235,10 +235,10 @@ object Test {
           traverse(body)
         case Unapply(fun, implicits, patterns) =>
           traverse(fun)
-          implicits.map(traverse)
-          patterns.map(traverse)
+          implicits.foreach(traverse)
+          patterns.foreach(traverse)
         case Alternative(patterns) =>
-          patterns.map(traverse)
+          patterns.foreach(traverse)
         case TypeTest(tpt) =>
           traverse(tpt)
         case _ =>
@@ -273,7 +273,7 @@ object Test {
         //        refinements.foreach(traverse)
         case Applied(tycon, args) =>
           traverse(tycon)
-          args.map(traverse)
+          args.foreach(traverse)
         case TypeBounds(lo, hi) =>
           traverse(lo)
           traverse(hi)
