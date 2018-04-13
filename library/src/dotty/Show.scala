@@ -6,7 +6,7 @@ trait Show[T] {
 
 trait LowPrioShow {
   implicit def defaultShow[T]: Show[T] = new Show[T] {
-    def show(x: T) = String.valueOf(x)
+    def show(x: T) = if (x == null) "null" else x.toString
   }
 }
 
