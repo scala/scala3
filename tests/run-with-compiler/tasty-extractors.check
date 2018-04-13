@@ -7,8 +7,11 @@ ConstantType(Int(1))
 Literal(Long(2))
 ConstantType(Long(2))
 
-Literal(Double(2.0))
-ConstantType(Double(2.0))
+Literal(Float(2.1))
+ConstantType(Float(2.1))
+
+Literal(Double(2.2))
+ConstantType(Double(2.2))
 
 Literal(String("abc"))
 ConstantType(String("abc"))
@@ -18,6 +21,15 @@ Apply(Ident(println), List(Literal(String("abc"))))
 
 Typed(Literal(Int(8)), Ident(Int))
 NameRef(Int, ###)
+
+Typed(Literal(Byte(8)), Ident(Byte))
+NameRef(Byte, ###)
+
+Typed(Literal(Short(8)), Ident(Short))
+NameRef(Short, ###)
+
+Literal(Char('a'))
+ConstantType(Char('a'))
 
 Block(List(Literal(Int(1)), Literal(Int(2))), Literal(Int(3)))
 ConstantType(Int(3))
