@@ -1,29 +1,68 @@
 
 import scala.quoted._
 
-import scala.tasty.statements._
-import scala.tasty.terms._
-import scala.tasty.constants._
+import scala.tasty.constants.Constant
+import scala.tasty.names
+import scala.tasty.patterns
+import scala.tasty.statements
+import scala.tasty.terms
+import scala.tasty.typetrees
+import scala.tasty.types
 
 import dotty.tools.dotc.quoted.Toolbox._
 import dotty.tools.dotc.tasty.Toolbox._
 
+import scala.tasty.modifiers.Modifier
+
 object Test {
   def main(args: Array[String]): Unit = {
-    val q = '{ var x = 1; x = 2 }
-    println(show(toTasty(q)))
-
+    for (q <- quotes) {
+      val tasty = toTasty(q)
+      println(tasty)
+      println(tasty.tpe)
+      println()
+    }
   }
 
-  def show(tree: TopLevelStatement): String = tree match {
-    case Block(stats, expr) => (stats ::: expr :: Nil).map(show).mkString("{ ", "; ", " }")
-    case ValDef(name, tpt, rhs, mods) => s"val $name: $tpt${rhs.fold("")(rhs => " = " + show(rhs))}"
-    case Assign(lhs, rhs) => s"${show(lhs)} = ${show(rhs)}"
-    case Ident(name) => name.toString
-    case Literal(const) => show(const)
-//    case _ => "_"
-  }
+  def quotes: List[Expr[_]] = List(
+    '{ var x = 1; x = 2 },
+    '((x: Int) => x),
+    '(???),
+    '(1: 1),
+    '(1: Int),
+    '(Nil: List[Int]),
+    '(1: Int & Int),
+    '(1: Int | String),
+    '{ import scala.collection.mutable; 1 },
+    '{ import scala.collection.{mutable, immutable}; 2 },
+    '{ import scala.collection.{mutable => mut}; 3 },
+    '{ import scala.collection.{mutable => _}; 4 },
+    '{ class Foo },
+    '{ object Foo },
+    '{ type Foo },
+    '{ type Foo = Int },
+    '{ type Foo >: Null <: Object },
+    '{ class Foo { @volatile var a = 0 } },
+    '{ class Foo { final def a = 0 } }, // FIXME modifier not printed
+    '{ class Foo { private[Foo] def a = 0 } },
+    '{ class Foo { protected[Foo] def a = 0 } },
+    '{ case class Foo() },
+    '{ class Foo1(a: Int) },
+    '{ class Foo2(val b: Int) },
+    '{ class Foo3(a: Int = 5) },
+    '{ class Foo4(a: Int)(b: Int) },
+    '{ class Foo5(a: Int)(b: Int = a) },
+    '{ class Foo6(a: Int)(b: a.type) },
+//    '{ class Foo7(a: Int) { def this() = this(6) } },
+    '{ class Foo8 { println(0) } },
+    '{ class Foo10 { val a = 9 } },
+    '{ class Foo11 { var a = 10 } },
+    '{ class Foo12 { lazy val a = 11 } },
+    '{ class Foo; class Bar extends Foo },
+    '{ trait Foo2; class Bar extends Foo2 },
+    '{ class Foo(i: Int); class Bar extends Foo(1) },
+    '{ class Foo { type X = Int }; def f(a: Foo): a.X = ??? },
+    '{ class Foo { type X }; def f(a: Foo { type X = Int }): a.X = ??? },
 
-  def show(tree: Constant): String = tree.toString // TODO
-
+  )
 }
