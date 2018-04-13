@@ -45,7 +45,7 @@ pipeline:
 
   test_sbt:
     group: test
-    image: lampepfl/dotty:2017-11-17
+    image: lampepfl/dotty:2018-04-10
     commands:
       - cp -R . /tmp/4/ && cd /tmp/4/
       - ./project/scripts/sbt sbt-dotty/scripted
