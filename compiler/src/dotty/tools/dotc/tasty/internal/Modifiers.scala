@@ -8,7 +8,7 @@ import scala.tasty.modifiers
 object Modifiers {
 
   def apply(tree: tpd.MemberDef)(implicit ctx: Context): List[modifiers.Modifier] = {
-    // TODO QualifiedModifier
+    QualifiedModifier(tree).toList :::
     tree.symbol.annotations.map(AnnotationModifier(_)) :::
     tree.rawMods.mods.map(Modifier(_))
   }

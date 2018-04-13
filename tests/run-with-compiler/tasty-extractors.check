@@ -178,6 +178,12 @@ Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List()), Synthetic(), None,
 Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(DefDef(a, List(), List(), Synthetic(), Some(Literal(Int(0))), List())), List())), Literal(Unit()))
 ###
 
+Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(DefDef(a, List(), List(), Synthetic(), Some(Literal(Int(0))), List(QualifiedPrivate(###)))), List())), Literal(Unit()))
+###
+
+Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(DefDef(a, List(), List(), Synthetic(), Some(Literal(Int(0))), List(QualifiedProtected(###)))), List())), Literal(Unit()))
+###
+
 Block(List(ClassDef(Foo1, DefDef(<init>, List(), List(List(ValDef(a, Ident(Int), None, List()))), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(ValDef(a, Synthetic(), None, List())), List())), Literal(Unit()))
 ###
 
