@@ -92,7 +92,7 @@ object definitions {
 
   /** Trees denoting types */
   enum TypeTree extends Positioned {
-    def tpe: Type = ???
+    def tpe: Type | TypeBounds = ??? // TODO should we extract TypeBounds like in types?
     case Synthetic()
     case Ident(name: TypeName, override val tpe: Type)
     case Select(prefix: Term, name: TypeName)

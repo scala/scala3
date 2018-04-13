@@ -70,7 +70,7 @@ object TypeTree {
 
   private case class Impl(tree: Tree, ctx: Context) extends typetrees.TypeTree with Positioned {
 
-    def tpe: types.Type = Type(tree.tpe)(ctx)
+    def tpe: types.MaybeType = MaybeType(tree.tpe)(ctx)
 
     override def toString: String = {
       import Toolbox.extractor

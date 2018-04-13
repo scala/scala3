@@ -1,0 +1,42 @@
+NameRef(Int, ###)
+
+###
+
+TypeBounds(NameRef(Nothing, ###), NameRef(Any, ###))
+
+NameRef(Nothing, ###)
+
+NameRef(Any, ###)
+
+###
+
+TypeBounds(NameRef(Int, ###), NameRef(Int, ###))
+
+NameRef(Int, ###)
+
+NameRef(Int, ###)
+
+###
+
+NameRef(Unit, ###)
+
+NameRef(Object, ###)
+
+TypeBounds(NameRef(Nothing, ###), NameRef(Any, ###))
+
+NameRef(Nothing, ###)
+
+NameRef(Any, ###)
+
+Refinement(###, X, TypeBounds(NameRef(String, NameRef(Predef, ###)), NameRef(String, NameRef(Predef, ###))))
+
+NameRef(Unit, ###)
+
+###
+
+NameRef(String, NameRef(Predef, ###))
+
+###
+
+Refinement(###, X, TypeBounds(NameRef(String, NameRef(Predef, ###)), NameRef(String, NameRef(Predef, ###))))
+

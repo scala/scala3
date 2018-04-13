@@ -26,7 +26,7 @@ package object types {
   }
 
   object Refinement {
-    type Data = (Type, names.Name, Type)
+    type Data = (Type, names.Name, MaybeType /* Type | TypeBounds */)
     def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyRefinement(arg)
   }
 

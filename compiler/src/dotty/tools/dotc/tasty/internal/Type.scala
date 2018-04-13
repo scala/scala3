@@ -47,7 +47,7 @@ object Type {
 
   def unapplyRefinement(arg: types.MaybeType): Option[types.Refinement.Data] = arg match {
     case Impl(Types.RefinedType(parent, name, info), ctx) =>
-      Some((Type(parent)(ctx), if (name.isTermName) TermName(name.asTermName) else TypeName(name.asTypeName), Type(info)(ctx)))
+      Some((Type(parent)(ctx), if (name.isTermName) TermName(name.asTermName) else TypeName(name.asTypeName), MaybeType(info)(ctx)))
     case _ => None
   }
 
@@ -88,6 +88,9 @@ object Type {
   }
 
   private case class Impl(arg: Types.Type, ctx: Context) extends types.Type {
+
+    assert(!arg.isInstanceOf[Types.TypeBounds])
+
     override def toString: String = {
       import Toolbox.extractor
       // FIXME
