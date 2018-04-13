@@ -28,7 +28,7 @@ object Test {
       }
     }
 
-    traverser.traverse(toTasty(q))
+    traverser.traverse(q.toTasty)
 
   }
 

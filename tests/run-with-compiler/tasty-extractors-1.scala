@@ -17,7 +17,7 @@ import scala.tasty.modifiers.Modifier
 object Test {
   def main(args: Array[String]): Unit = {
     for (q <- quotes) {
-      val tasty = toTasty(q)
+      val tasty = q.toTasty
       println(tasty)
       println(tasty.tpe)
       println()

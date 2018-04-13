@@ -11,6 +11,7 @@ import scala.quoted.Expr
 import scala.runtime.BoxedUnit
 import scala.quoted.Exprs.LiftedExpr
 import scala.runtime.quoted._
+import scala.tasty.terms.Term
 
 /** Default runners for quoted expressions */
 object Toolbox {
@@ -44,6 +45,9 @@ object Toolbox {
       case _ => new QuoteDriver().show(expr, showSettings)
     }
 
+    def toTasty(expr: Expr[T]): Term =
+      new QuoteDriver().withTree(expr, (tree, ctx) => Term(tree)(ctx), Settings.run())
+
     def toConstantOpt(expr: Expr[T]): Option[T] = {
       def toConstantOpt(tree: Tree): Option[T] = tree match {
         case Literal(Constant(c)) => Some(c.asInstanceOf[T])
@@ -57,10 +61,6 @@ object Toolbox {
       }
     }
 
-  }
-
-  def toTasty[T](expr: Expr[T]): scala.tasty.terms.Term = {
-    new QuoteDriver().withTree(expr, (tree, ctx) => Term(tree)(ctx), Settings.run())
   }
 
   class Settings[T] private (val outDir: Option[String], val rawTree: Boolean, val compilerArgs: List[String])
