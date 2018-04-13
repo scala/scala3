@@ -42,7 +42,8 @@ object Test {
     '("g" match { case _: String | _: Int => () }),
     '("h" match { case _ if false => () }),
     '{ val a = "o"; "i" match { case a => () } },
-      // TODO add unapply case
+    '(Option(4) match { case Some(a) => a; case None => 1 }),
+    '(Nil match { case List(a, b, c) => }),
     '(try 1 catch { case _ => }),
     '(try 2 finally ()),
     '(try 3 catch { case _ => } finally ()),
@@ -77,6 +78,7 @@ object Test {
     '{ type Foo },
     '{ type Foo = Int },
     '{ type Foo >: Null <: Object },
+    '{ class Foo { @volatile var a = 0 } },
     '{ class Foo { final def a = 0 } }, // FIXME modifier not printed
 //    '{ case class Foo() },
     '{ class Foo1(a: Int) },

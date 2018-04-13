@@ -15,6 +15,7 @@ object Pattern {
 
   def unapplyValue(arg: patterns.Pattern): Option[patterns.Value.Data] = arg match {
     case Impl(lit: tpd.Literal, ctx) => Some(Term(lit)(ctx))
+    case Impl(ident: tpd.Ident, ctx) if ident.name != nme.WILDCARD => Some(Term(ident)(ctx))
     case _ => None
   }
 

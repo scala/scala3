@@ -49,6 +49,12 @@ Match(Literal(String("h")), List(CaseDef(Wildcard(), Some(Literal(Boolean(false)
 Block(List(ValDef(a, Synthetic(), Some(Literal(String("o"))), List())), Match(Literal(String("i")), List(CaseDef(Bind(a, Wildcard()), None, Block(Nil, Literal(Unit()))))))
 ###
 
+Match(Apply(TypeApply(Select(Ident(Option), apply), List(Synthetic())), List(Literal(Int(4)))), List(CaseDef(TypeTest(Synthetic()), None, Block(Nil, Typed(Ident(a), Synthetic()))), CaseDef(Value(Ident(None)), None, Block(Nil, Literal(Int(1))))))
+NameRef(Int, ###)
+
+Match(Ident(Nil), List(CaseDef(Unapply(TypeApply(Select(Ident(List), unapplySeq), List(Synthetic())), Nil, List(Bind(a, Wildcard()), Bind(b, Wildcard()), Bind(c, Wildcard()))), None, Block(Nil, Literal(Unit())))))
+###
+
 Try(Literal(Int(1)), List(CaseDef(Wildcard(), None, Block(Nil, Literal(Unit())))), None)
 OrType(###, ###)
 
@@ -149,6 +155,9 @@ Block(List(TypeDef(Foo, Ident(Int), List())), Literal(Unit()))
 ###
 
 Block(List(TypeDef(Foo, TypeBounds(Ident(Null), Ident(Object)), List())), Literal(Unit()))
+###
+
+Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(ValDef(a, Synthetic(), Some(Literal(Int(0))), List(Annotation(Apply(Select(New(Ident(volatile)), <init>), Nil)))), DefDef(a_=, List(), List(List(ValDef(x$1, Synthetic(), None, List()))), Synthetic(), Some(Literal(Unit())), List(Annotation(Apply(Select(New(Ident(volatile)), <init>), Nil))))), List())), Literal(Unit()))
 ###
 
 Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(DefDef(a, List(), List(), Synthetic(), Some(Literal(Int(0))), List())), List())), Literal(Unit()))
