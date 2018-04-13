@@ -4,6 +4,7 @@ package internal
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 
+import scala.tasty
 import scala.tasty.statements
 import scala.tasty.types
 
@@ -23,9 +24,7 @@ object TypeDef {
 
     def tpe: types.Type = Type(tree.tpe)(ctx)
 
-    override def name: scala.tasty.names.Name = ???
-
-    override def owner: statements.Definition = ???
+    def sym: scala.tasty.Symbol = TastySymbol(tree.symbol(ctx))(ctx)
 
     override def toString: String = {
       import Toolbox.extractor

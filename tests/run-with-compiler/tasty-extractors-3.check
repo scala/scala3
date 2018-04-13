@@ -1,42 +1,42 @@
-NameRef(Int, ###)
+NameRef(Int, SymRef(Symbol(<root>.scala), ###))
 
-###
+SymRef(Symbol(<root>.x), ###)
 
-TypeBounds(NameRef(Nothing, ###), NameRef(Any, ###))
+TypeBounds(NameRef(Nothing, SymRef(Symbol(<root>.scala), ###)), NameRef(Any, SymRef(Symbol(<root>.scala), ###)))
 
-NameRef(Nothing, ###)
+NameRef(Nothing, SymRef(Symbol(<root>.scala), ###))
 
-NameRef(Any, ###)
+NameRef(Any, SymRef(Symbol(<root>.scala), ###))
 
-###
+SymRef(Symbol(<root>.f1.T), ###)
 
-TypeBounds(NameRef(Int, ###), NameRef(Int, ###))
+TypeBounds(NameRef(Int, SymRef(Symbol(<root>.scala), ###)), NameRef(Int, SymRef(Symbol(<root>.scala), ###)))
 
-NameRef(Int, ###)
+NameRef(Int, SymRef(Symbol(<root>.scala), ###))
 
-NameRef(Int, ###)
+NameRef(Int, SymRef(Symbol(<root>.scala), ###))
 
-###
+SymRef(Symbol(<root>.f2.T), ###)
 
-NameRef(Unit, ###)
+NameRef(Unit, SymRef(Symbol(<root>.scala), ###))
 
-NameRef(Object, ###)
+NameRef(Object, SymRef(Symbol(<root>.java.lang), ###))
 
-TypeBounds(NameRef(Nothing, ###), NameRef(Any, ###))
+TypeBounds(NameRef(Nothing, SymRef(Symbol(<root>.scala), ###)), NameRef(Any, SymRef(Symbol(<root>.scala), ###)))
 
-NameRef(Nothing, ###)
+NameRef(Nothing, SymRef(Symbol(<root>.scala), ###))
 
-NameRef(Any, ###)
+NameRef(Any, SymRef(Symbol(<root>.scala), ###))
 
-Refinement(###, X, TypeBounds(NameRef(String, NameRef(Predef, ###)), NameRef(String, NameRef(Predef, ###))))
+Refinement(SymRef(Symbol(<root>.Foo), ###), X, TypeBounds(NameRef(String, NameRef(Predef, SymRef(Symbol(<root>.scala), ###))), NameRef(String, NameRef(Predef, SymRef(Symbol(<root>.scala), ###)))))
 
-NameRef(Unit, ###)
+NameRef(Unit, SymRef(Symbol(<root>.scala), ###))
 
-###
+SymRef(Symbol(<root>.Foo), ###)
 
-NameRef(String, NameRef(Predef, ###))
+NameRef(String, NameRef(Predef, SymRef(Symbol(<root>.scala), ###)))
 
-###
+SymRef(Symbol(<root>.foo.$anon), ###)
 
-Refinement(###, X, TypeBounds(NameRef(String, NameRef(Predef, ###)), NameRef(String, NameRef(Predef, ###))))
+Refinement(SymRef(Symbol(<root>.Foo), ###), X, TypeBounds(NameRef(String, NameRef(Predef, SymRef(Symbol(<root>.scala), ###))), NameRef(String, NameRef(Predef, SymRef(Symbol(<root>.scala), ###)))))
 

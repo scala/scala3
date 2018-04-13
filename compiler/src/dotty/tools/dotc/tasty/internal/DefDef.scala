@@ -22,9 +22,7 @@ object DefDef {
 
     def tpe: types.Type = Type(tree.tpe)(ctx)
 
-    override def name: scala.tasty.names.Name = ???
-
-    override def owner: scala.tasty.statements.Definition = ???
+    def sym: scala.tasty.Symbol = TastySymbol(tree.symbol(ctx))(ctx)
 
     override def toString: String = {
       import Toolbox.extractor

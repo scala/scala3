@@ -50,9 +50,14 @@ object definitions {
 
 // ------ Definitions ---------------------------------
 
-  trait Definition extends Statement {
-    def name: Name
-    def owner: Definition = ???
+  trait Symbol {
+    def owner: Symbol = ???
+    def definition: Option[Definition] = ???
+  }
+  object NoSymbol extends Symbol
+
+  trait Definition {
+    def sym: Symbol = ???
   }
 
   // Does DefDef need a `def tpe: MethodType | PolyType`?
@@ -130,7 +135,7 @@ object definitions {
     private val PlaceHolder = ConstantType(Constant.Unit)
 
     case class ConstantType(value: Constant) extends Type
-    case class SymRef(sym: Definition, qualifier: Type | NoPrefix = NoPrefix) extends Type
+    case class SymRef(sym: Symbol, qualifier: Type | NoPrefix = NoPrefix) extends Type
     case class NameRef(name: Name, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
     case class SuperType(thistp: Type, underlying: Type) extends Type
     case class Refinement(underlying: Type, name: Name, tpe: Type | TypeBounds) extends Type

@@ -16,6 +16,4 @@ object Definition {
       else TypeDef(tree)
   }
 
-  def apply(tree: Symbol)(implicit ctx: Context): statements.Definition = ??? // TODO
-
 }

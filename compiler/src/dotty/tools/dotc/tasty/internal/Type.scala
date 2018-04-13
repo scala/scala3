@@ -24,7 +24,7 @@ object Type {
     case Impl(tp: Types.NamedType, ctx) =>
       implicit val ctx_ = ctx
       tp.designator match {
-        case sym: Symbol => Some(Definition(sym), Type(tp.prefix))
+        case sym: Symbol => Some(TastySymbol(sym), Type(tp.prefix))
         case _ => None
       }
     case _ => None
@@ -93,10 +93,9 @@ object Type {
 
     override def toString: String = {
       import Toolbox.extractor
-      // FIXME
       this match {
         case types.ConstantType(value) => s"ConstantType($value)"
-//        case types.SymRef(sym, qual) => s"SymRef($sym, $qual)"
+        case types.SymRef(sym, qual) => s"SymRef($sym, $qual)"
         case types.NameRef(name, qual) => s"NameRef($name, $qual)"
         case types.Refinement(parent, name, info) => s"Refinement($parent, $name, $info)"
         case types.AppliedType(tycon, args) => s"AppliedType($tycon, $args)"
@@ -105,7 +104,7 @@ object Type {
         case types.OrType(left, right) => s"OrType($left, $right)"
         case types.ByNameType(underlying) => s"ByNameType($underlying)"
         case types.ParamRef(binder, idx) => s"ParamRef($binder, $idx)"
-//        case types.RecursiveThis(binder) => s"RecursiveThis($binder)"
+        case types.RecursiveThis(binder) => s"RecursiveThis($binder)"
         case _ => "###"  // FIXME: remove this line
       }
     }
