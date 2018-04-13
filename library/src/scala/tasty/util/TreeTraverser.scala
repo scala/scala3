@@ -70,7 +70,9 @@ class TreeTraverser(implicit toolbox: Toolbox) {
         traverse(lhs)
         traverse(rhs)
       case Block(stats, expr) =>
-        stats.foreach(x => traverse(x))
+        val it = stats.iterator
+        while (it.hasNext)
+          traverse(it.next())
         traverse(expr)
       case Lambda(meth, tpt) =>
         traverse(meth)
