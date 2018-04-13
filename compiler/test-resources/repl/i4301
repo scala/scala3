@@ -1,0 +1,2 @@
+scala> List(null)
+val res0: List[Null] = List(null)
