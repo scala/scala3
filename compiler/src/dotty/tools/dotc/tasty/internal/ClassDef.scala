@@ -14,9 +14,15 @@ object ClassDef {
   def unapplyClassDef(term: statements.TopLevelStatement): Option[statements.ClassDef.Data] = term match {
     case Impl(cdef @ Trees.TypeDef(name, impl@Trees.Template(constr, parents, self, _)), ctx) =>
       implicit val ctx_ = ctx
-      if (cdef.symbol.isClass) Some((TypeName(name), DefDef(constr),
-        parents.map(Term(_)), // FIXME can also be Type(_)
-        if (self.isEmpty) None else Some(ValDef(self)), impl.body.map(Statement(_)), Modifiers(cdef)))
+      if (cdef.symbol.isClass) {
+        val className = TypeName(name)
+        val constructor = DefDef(constr)
+        val classParents = parents.map(TermOrTypeTree(_))
+        val selfVal = if (self.isEmpty) None else Some(ValDef(self))
+        val body = impl.body.map(Statement(_))
+        val mods = Modifiers(cdef)
+        Some((className, constructor, classParents, selfVal, body, mods))
+      }
       else None
     case _ => None
   }
@@ -32,7 +38,7 @@ object ClassDef {
     override def toString: String = {
       import Toolbox.extractor
       val statements.ClassDef(name, constructor, parents, self, body, mods) = this
-      s"ClassDef($name, $constructor, $parents, $self, $body, $mods)"
+      s"ClassDef($name, $constructor, ${parents.map { case Left(p) => p; case Right(p) => p} }, $self, $body, $mods)"
     }
   }
 

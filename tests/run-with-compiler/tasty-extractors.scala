@@ -87,7 +87,7 @@ object Test {
     '{ class Foo { final def a = 0 } }, // FIXME modifier not printed
     '{ class Foo { private[Foo] def a = 0 } },
     '{ class Foo { protected[Foo] def a = 0 } },
-//    '{ case class Foo() },
+    '{ case class Foo() },
     '{ class Foo1(a: Int) },
     '{ class Foo2(val b: Int) },
     '{ class Foo3(a: Int = 5) },
@@ -100,7 +100,7 @@ object Test {
     '{ class Foo11 { var a = 10 } },
     '{ class Foo12 { lazy val a = 11 } },
     '{ class Foo; class Bar extends Foo },
-//    '{ trait Foo; class Bar extends Foo },
+    '{ trait Foo2; class Bar extends Foo2 },
     '{ class Foo(i: Int); class Bar extends Foo(1) },
     '{ class Foo { type X = Int }; def f(a: Foo): a.X = ??? },
     '{ class Foo { type X }; def f(a: Foo { type X = Int }): a.X = ??? },
@@ -148,10 +148,13 @@ object Test {
         case ClassDef(name, contraverseuctor, parents, self, body, mods) =>
           traverse(name)
           traverse(contraverseuctor)
-          parents.map(traverse)
-          self.map(traverse)
-          body.map(traverse)
-          mods.map(traverse)
+          parents.foreach {
+            case Left(term) => traverse(term)
+            case Right(typetree) => traverse(typetree)
+          }
+          self.foreach(traverse)
+          body.foreach(traverse)
+          mods.foreach(traverse)
         case _ =>
       }
     }

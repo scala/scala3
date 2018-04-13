@@ -1,7 +1,6 @@
 package dotty.tools.dotc.tasty
 package internal
 
-import dotty.tools.dotc.ast.Trees.NamedArg
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.NameKinds._
