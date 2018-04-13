@@ -33,11 +33,6 @@ package object typetrees {
     def unapply(arg: TypeTree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyApplied(arg)
   }
 
-  object TypeBounds {
-    type Data = (TypeTree, TypeTree)
-    def unapply(arg: TypeTree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeBounds(arg)
-  }
-
   object Annotated {
     type Data = (TypeTree, terms.Term)
     def unapply(arg: TypeTree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyAnnotated(arg)

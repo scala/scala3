@@ -55,10 +55,11 @@ object definitions {
     def owner: Definition = ???
   }
 
+  // Does DefDef need a `def tpe: MethodType | PolyType`?
   case class ValDef(name: TermName, tpt: TypeTree, rhs: Option[Term], mods: List[Modifier]) extends Definition
   case class DefDef(name: TermName, typeParams: List[TypeDef], paramss: List[List[ValDef]],
                     returnTpt: TypeTree, rhs: Option[Term], mods: List[Modifier]) extends Definition
-  case class TypeDef(name: TypeName, rhs: TypeTree, mods: List[Modifier]) extends Definition
+  case class TypeDef(name: TypeName, rhs: TypeTree | TypeBoundsTree, mods: List[Modifier]) extends Definition
   case class ClassDef(name: TypeName, constructor: DefDef, parents: List[Term | TypeTree],
                       self: Option[ValDef], body: List[Statement], mods: List[Modifier]) extends Definition
 
@@ -92,18 +93,21 @@ object definitions {
 
   /** Trees denoting types */
   enum TypeTree extends Positioned {
-    def tpe: Type | TypeBounds = ??? // TODO should we extract TypeBounds like in types?
+    def tpe: Type = ???
     case Synthetic()
     case Ident(name: TypeName, override val tpe: Type)
     case Select(prefix: Term, name: TypeName)
     case Singleton(ref: Term)
     case Refined(underlying: TypeTree, refinements: List[Definition])
     case Applied(tycon: TypeTree, args: List[TypeTree])
-    case TypeBounds(loBound: TypeTree, hiBound: TypeTree)
     case Annotated(tpt: TypeTree, annotation: Term)
     case And(left: TypeTree, right: TypeTree)
     case Or(left: TypeTree, right: TypeTree)
     case ByName(tpt: TypeTree)
+  }
+
+  case class TypeBoundsTree(loBound: TypeTree, hiBound: TypeTree) {
+    def tpe: TypeBounds = ???
   }
 
   /** Trees denoting patterns */

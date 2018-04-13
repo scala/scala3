@@ -21,7 +21,7 @@ object Test {
     }
 
     val traverser = new TreeTraverser {
-      override def traverse(arg: TypeTree): Unit = {
+      override def traverse(arg: MaybeTypeTree): Unit = {
         println(arg.tpe)
         println()
         super.traverse(arg)

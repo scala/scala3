@@ -1,9 +1,8 @@
 package scala.tasty.typetrees
 
-import scala.tasty.Positioned
-import scala.tasty.types.MaybeType
+import scala.tasty.types.Type
 
 /** Trees denoting types */
-trait TypeTree extends Positioned {
-  def tpe: MaybeType
+trait TypeTree extends MaybeTypeTree {
+  def tpe: Type
 }

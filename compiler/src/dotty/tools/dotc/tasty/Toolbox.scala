@@ -3,7 +3,7 @@ package dotty.tools.dotc.tasty
 import scala.tasty.patterns.Pattern
 import scala.tasty.statements.TopLevelStatement
 import scala.tasty.patterns.CaseDef
-import scala.tasty.typetrees.TypeTree
+import scala.tasty.typetrees.MaybeTypeTree
 import scala.tasty.constants.Constant
 import scala.tasty.modifiers.Modifier
 import scala.tasty.names.Name
@@ -58,17 +58,18 @@ object Toolbox {
 
     // Type trees
 
-    override def unapplySynthetic(arg: TypeTree) = internal.TypeTree.unapplySynthetic(arg)
-    override def unapplyIdent(arg: TypeTree) = internal.TypeTree.unapplyIdent(arg)
-    override def unapplySelect(arg: TypeTree) = internal.TypeTree.unapplySelect(arg)
-    override def unapplySingleton(arg: TypeTree) = internal.TypeTree.unapplySingleton(arg)
-    override def unapplyRefined(arg: TypeTree) = internal.TypeTree.unapplyRefined(arg)
-    override def unapplyApplied(arg: TypeTree) = internal.TypeTree.unapplyApplied(arg)
-    override def unapplyTypeBounds(arg: TypeTree) = internal.TypeTree.unapplyTypeBounds(arg)
-    override def unapplyAnnotated(arg: TypeTree) = internal.TypeTree.unapplyAnnotated(arg)
-    override def unapplyAnd(arg: TypeTree) = internal.TypeTree.unapplyAnd(arg)
-    override def unapplyOr(arg: TypeTree) = internal.TypeTree.unapplyOr(arg)
-    override def unapplyByName(arg: TypeTree) = internal.TypeTree.unapplyByName(arg)
+    override def unapplySynthetic(arg: MaybeTypeTree) = internal.TypeTree.unapplySynthetic(arg)
+    override def unapplyIdent(arg: MaybeTypeTree) = internal.TypeTree.unapplyIdent(arg)
+    override def unapplySelect(arg: MaybeTypeTree) = internal.TypeTree.unapplySelect(arg)
+    override def unapplySingleton(arg: MaybeTypeTree) = internal.TypeTree.unapplySingleton(arg)
+    override def unapplyRefined(arg: MaybeTypeTree) = internal.TypeTree.unapplyRefined(arg)
+    override def unapplyApplied(arg: MaybeTypeTree) = internal.TypeTree.unapplyApplied(arg)
+    override def unapplyAnnotated(arg: MaybeTypeTree) = internal.TypeTree.unapplyAnnotated(arg)
+    override def unapplyAnd(arg: MaybeTypeTree) = internal.TypeTree.unapplyAnd(arg)
+    override def unapplyOr(arg: MaybeTypeTree) = internal.TypeTree.unapplyOr(arg)
+    override def unapplyByName(arg: MaybeTypeTree) = internal.TypeTree.unapplyByName(arg)
+
+    override def unapplyTypeBoundsTree(arg: MaybeTypeTree) = internal.TypeBoundsTree.unapplyTypeBounds(arg)
 
     // Names
 

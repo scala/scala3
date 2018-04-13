@@ -127,7 +127,7 @@ class TreeTraverser(implicit toolbox: Toolbox) {
     }
   }
 
-  def traverse(arg: typetrees.TypeTree): Unit = {
+  def traverse(arg: typetrees.MaybeTypeTree): Unit = {
     import typetrees._
     arg match {
       case Select(qual, _) =>
@@ -140,7 +140,7 @@ class TreeTraverser(implicit toolbox: Toolbox) {
       case Applied(tycon, args) =>
         traverse(tycon)
         args.foreach(traverse)
-      case TypeBounds(lo, hi) =>
+      case TypeBoundsTree(lo, hi) =>
         traverse(lo)
         traverse(hi)
       case Annotated(arg, annot) =>

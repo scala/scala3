@@ -7,7 +7,7 @@ import scala.tasty.modifiers.Modifier
 import scala.tasty.patterns.{CaseDef, Pattern}
 import scala.tasty.statements.TopLevelStatement
 import scala.tasty.types.MaybeType
-import scala.tasty.typetrees.TypeTree
+import scala.tasty.typetrees.MaybeTypeTree
 
 @implicitNotFound("Could not find implicit tasty.Toolbox. Default toolbox can be imported with `import dotty.tools.dotc.tasty.Toolbox._`")
 trait Toolbox {
@@ -59,17 +59,17 @@ trait Toolbox {
 
   // Type trees
 
-  def unapplySynthetic(arg: TypeTree): Boolean
-  def unapplyIdent(arg: TypeTree): Option[typetrees.Ident.Data]
-  def unapplySelect(arg: TypeTree): Option[typetrees.Select.Data]
-  def unapplySingleton(arg: TypeTree): Option[typetrees.Singleton.Data]
-  def unapplyRefined(arg: TypeTree): Option[typetrees.Refined.Data]
-  def unapplyApplied(arg: TypeTree): Option[typetrees.Applied.Data]
-  def unapplyTypeBounds(arg: TypeTree): Option[typetrees.TypeBounds.Data]
-  def unapplyAnnotated(arg: TypeTree): Option[typetrees.Annotated.Data]
-  def unapplyAnd(arg: TypeTree): Option[typetrees.And.Data]
-  def unapplyOr(arg: TypeTree): Option[typetrees.Or.Data]
-  def unapplyByName(arg: TypeTree): Option[typetrees.ByName.Data]
+  def unapplySynthetic(arg: MaybeTypeTree): Boolean
+  def unapplyIdent(arg: MaybeTypeTree): Option[typetrees.Ident.Data]
+  def unapplySelect(arg: MaybeTypeTree): Option[typetrees.Select.Data]
+  def unapplySingleton(arg: MaybeTypeTree): Option[typetrees.Singleton.Data]
+  def unapplyRefined(arg: MaybeTypeTree): Option[typetrees.Refined.Data]
+  def unapplyApplied(arg: MaybeTypeTree): Option[typetrees.Applied.Data]
+  def unapplyTypeBoundsTree(arg: MaybeTypeTree): Option[typetrees.TypeBoundsTree.Data]
+  def unapplyAnnotated(arg: MaybeTypeTree): Option[typetrees.Annotated.Data]
+  def unapplyAnd(arg: MaybeTypeTree): Option[typetrees.And.Data]
+  def unapplyOr(arg: MaybeTypeTree): Option[typetrees.Or.Data]
+  def unapplyByName(arg: MaybeTypeTree): Option[typetrees.ByName.Data]
 
   // Names
 
