@@ -56,7 +56,6 @@ trait Toolbox {
   def unapplyUnapply(arg: Pattern): Option[patterns.Unapply.Data]
   def unapplyAlternative(arg: Pattern): Option[patterns.Alternative.Data]
   def unapplyTypeTest(arg: Pattern): Option[patterns.TypeTest.Data]
-  def unapplyWildcard(arg: Pattern): Boolean
 
   // Type trees
 

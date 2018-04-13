@@ -55,7 +55,6 @@ object Toolbox {
     override def unapplyUnapply(arg: Pattern) = internal.Pattern.unapplyUnapply(arg)
     override def unapplyAlternative(arg: Pattern) = internal.Pattern.unapplyAlternative(arg)
     override def unapplyTypeTest(arg: Pattern) = internal.Pattern.unapplyTypeTest(arg)
-    override def unapplyWildcard(arg: Pattern)= internal.Pattern.unapplyWildcard(arg)
 
     // Type trees
 

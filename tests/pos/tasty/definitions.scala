@@ -114,7 +114,6 @@ object definitions {
     case Unapply(unapply: Term, implicits: List[Term], pats: List[Pattern])
     case Alternative(pats: List[Pattern])
     case TypeTest(tpt: TypeTree)
-    case Wildcard()
   }
 
   case class CaseDef(pat: Pattern, guard: Option[Term], rhs: Term) extends Positioned

@@ -32,7 +32,3 @@ object TypeTest {
   type Data = typetrees.TypeTree
   def unapply(arg: Pattern)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeTest(arg)
 }
-
-object Wildcard {
-  def unapply(arg: Pattern)(implicit toolbox: Toolbox): Boolean = toolbox.unapplyWildcard(arg)
-}

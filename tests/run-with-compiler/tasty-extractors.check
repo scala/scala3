@@ -28,13 +28,13 @@ If(Typed(Literal(Boolean(true)), Ident(Boolean)), Literal(Int(1)), Literal(Int(2
 Match(Literal(String("a")), List(CaseDef(Value(Literal(String("a"))), None, Block(Nil, Literal(Unit())))))
 ###
 
-Match(Literal(String("b")), List(CaseDef(Bind(n, Wildcard()), None, Block(Nil, Literal(Unit())))))
+Match(Literal(String("b")), List(CaseDef(Bind(n, Value(Ident(_))), None, Block(Nil, Literal(Unit())))))
 ###
 
 Match(Literal(String("c")), List(CaseDef(Bind(n, TypeTest(Ident(String))), None, Block(Nil, Literal(Unit())))))
 ###
 
-Match(Literal(String("e")), List(CaseDef(Wildcard(), None, Block(Nil, Literal(Unit())))))
+Match(Literal(String("e")), List(CaseDef(Value(Ident(_)), None, Block(Nil, Literal(Unit())))))
 ###
 
 Match(Literal(String("f")), List(CaseDef(TypeTest(Ident(String)), None, Block(Nil, Literal(Unit())))))
@@ -43,25 +43,25 @@ Match(Literal(String("f")), List(CaseDef(TypeTest(Ident(String)), None, Block(Ni
 Match(Literal(String("g")), List(CaseDef(Alternative(List(TypeTest(Ident(String)), TypeTest(Ident(Int)))), None, Block(Nil, Literal(Unit())))))
 ###
 
-Match(Literal(String("h")), List(CaseDef(Wildcard(), Some(Literal(Boolean(false))), Block(Nil, Literal(Unit())))))
+Match(Literal(String("h")), List(CaseDef(Value(Ident(_)), Some(Literal(Boolean(false))), Block(Nil, Literal(Unit())))))
 ###
 
-Block(List(ValDef(a, Synthetic(), Some(Literal(String("o"))), List())), Match(Literal(String("i")), List(CaseDef(Bind(a, Wildcard()), None, Block(Nil, Literal(Unit()))))))
+Block(List(ValDef(a, Synthetic(), Some(Literal(String("o"))), List())), Match(Literal(String("i")), List(CaseDef(Bind(a, Value(Ident(_))), None, Block(Nil, Literal(Unit()))))))
 ###
 
 Match(Apply(TypeApply(Select(Ident(Option), apply), List(Synthetic())), List(Literal(Int(4)))), List(CaseDef(TypeTest(Synthetic()), None, Block(Nil, Typed(Ident(a), Synthetic()))), CaseDef(Value(Ident(None)), None, Block(Nil, Literal(Int(1))))))
 NameRef(Int, ###)
 
-Match(Ident(Nil), List(CaseDef(Unapply(TypeApply(Select(Ident(List), unapplySeq), List(Synthetic())), Nil, List(Bind(a, Wildcard()), Bind(b, Wildcard()), Bind(c, Wildcard()))), None, Block(Nil, Literal(Unit())))))
+Match(Ident(Nil), List(CaseDef(Unapply(TypeApply(Select(Ident(List), unapplySeq), List(Synthetic())), Nil, List(Bind(a, Value(Ident(_))), Bind(b, Value(Ident(_))), Bind(c, Value(Ident(_))))), None, Block(Nil, Literal(Unit())))))
 ###
 
-Try(Literal(Int(1)), List(CaseDef(Wildcard(), None, Block(Nil, Literal(Unit())))), None)
+Try(Literal(Int(1)), List(CaseDef(Value(Ident(_)), None, Block(Nil, Literal(Unit())))), None)
 OrType(###, ###)
 
 Try(Literal(Int(2)), Nil, Some(Literal(Unit())))
 ConstantType(Int(2))
 
-Try(Literal(Int(3)), List(CaseDef(Wildcard(), None, Block(Nil, Literal(Unit())))), Some(Literal(Unit())))
+Try(Literal(Int(3)), List(CaseDef(Value(Ident(_)), None, Block(Nil, Literal(Unit())))), Some(Literal(Unit())))
 OrType(###, ###)
 
 Apply(Select(Literal(String("a")), ==), List(Literal(String("b"))))

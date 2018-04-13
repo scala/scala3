@@ -232,7 +232,6 @@ object Test {
           patterns.map(traverse)
         case TypeTest(tpt) =>
           traverse(tpt)
-        case Wildcard() =>
         case _ =>
       }
     }

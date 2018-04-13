@@ -15,7 +15,7 @@ object Pattern {
 
   def unapplyValue(arg: patterns.Pattern): Option[patterns.Value.Data] = arg match {
     case Impl(lit: tpd.Literal, ctx) => Some(Term(lit)(ctx))
-    case Impl(ident: tpd.Ident, ctx) if ident.name != nme.WILDCARD => Some(Term(ident)(ctx))
+    case Impl(ident: tpd.Ident, ctx) => Some(Term(ident)(ctx))
     case _ => None
   }
 
@@ -39,11 +39,6 @@ object Pattern {
     case _ => None
   }
 
-  def unapplyWildcard(arg: patterns.Pattern): Boolean = arg match {
-    case Impl(Trees.Ident(name), _) => name == nme.WILDCARD
-    case _ => false
-  }
-
   private case class Impl(tree: tpd.Tree, ctx: Context) extends patterns.Pattern with Positioned {
 
     def tpe: types.Type = Type(tree.tpe)(ctx)
@@ -56,8 +51,6 @@ object Pattern {
         case patterns.Unapply(fun, implicits, patterns) => s"Unapply($fun, ${list(implicits)}, ${list(patterns)})"
         case patterns.Alternative(patterns) => s"Alternative(${list(patterns)})"
         case patterns.TypeTest(tpt) => s"TypeTest($tpt)"
-        case patterns.Wildcard() => s"Wildcard()"
-        case _ => s"Pattern {## $tree ##}"
       }
     }
 
