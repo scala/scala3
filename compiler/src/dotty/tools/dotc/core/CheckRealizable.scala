@@ -153,7 +153,7 @@ class CheckRealizable(implicit ctx: Context) {
   /** `Realizable` if all of `tp`'s non-strict fields have realizable types,
    *  a `HasProblemField` instance pointing to a bad field otherwise.
    */
-  private def memberRealizability(tp: Type) = {
+  private def memberRealizability(tp: Type): Realizability = {
     def checkField(sofar: Realizability, fld: SingleDenotation): Realizability =
       sofar andAlso {
         if (checkedFields.contains(fld.symbol) || fld.symbol.is(Private | Mutable | Lazy))
@@ -167,13 +167,13 @@ class CheckRealizable(implicit ctx: Context) {
           realizability(fld.info).mapError(r => new HasProblemField(fld, r))
         }
       }
-    if (ctx.settings.strict.value)
+    //if (ctx.settings.strict.value)
       // check fields only under strict mode for now.
       // Reason: An embedded field could well be nullable, which means it
       // should not be part of a path and need not be checked; but we cannot recognize
       // this situation until we have a typesystem that tracks nullability.
-      ((Realizable: Realizability) /: tp.fields)(checkField)
-    else
-      Realizable
+    ((Realizable: Realizability) /: tp.fields)(checkField)
+//    else
+//      Realizable
   }
 }
