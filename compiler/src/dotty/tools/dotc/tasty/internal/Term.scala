@@ -117,7 +117,7 @@ object Term {
 
   private case class Impl(tree: tpd.Tree, ctx: Context) extends terms.Term with Positioned {
 
-    assert(tree.isTerm || tree.isInstanceOf[Trees.NamedArg[_]], tree)
+    assert(tree.isTerm || tree.isInstanceOf[Trees.NamedArg[_]] || tree.isInstanceOf[Trees.SeqLiteral[_]])
 
     def tpe: types.Type = Type(tree.tpe)(ctx)
 

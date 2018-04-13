@@ -76,11 +76,29 @@ Block(List(ValDef(a, Ident(Int), Some(Literal(Int(3))), List())), Literal(Unit()
 Block(List(ValDef(b, Ident(Int), Some(Literal(Int(3))), List())), Literal(Unit()))
 ###
 
-Block(List(DefDef(c, List(), List(), Ident(Int), Some(Literal(Int(3))), List())), Literal(Unit()))
+Block(List(DefDef(f1, List(), List(), Ident(Int), Some(Literal(Int(3))), List())), Literal(Unit()))
 ###
 
-Block(List(DefDef(d, List(), List(), Ident(Int), Some(Return(Literal(Int(4)))), List())), Literal(Unit()))
+Block(List(DefDef(f2, List(), List(), Ident(Int), Some(Return(Literal(Int(4)))), List())), Literal(Unit()))
 ###
+
+Block(List(DefDef(f3, List(), List(List(ValDef(i, Ident(Int), None, List()))), Ident(Int), Some(Ident(i)), List())), Literal(Unit()))
+###
+
+Block(List(DefDef(f4, List(), List(List(ValDef(i, Ident(Int), None, List())), List(ValDef(j, Ident(Int), None, List()))), Ident(Int), Some(Apply(Select(Ident(i), +), List(Ident(j)))), List())), Literal(Unit()))
+###
+
+Block(List(DefDef(f5, List(), List(List(ValDef(i, Ident(Int), None, List()))), Ident(Int), Some(Ident(i)), List()), DefDef(f5$default$1, List(), List(), Synthetic(), Some(Literal(Int(9))), List())), Literal(Unit()))
+###
+
+Block(List(DefDef(f6, List(TypeDef(T, TypeBounds(Synthetic(), Synthetic()), List())), List(List(ValDef(x, Ident(T), None, List()))), Ident(T), Some(Ident(x)), List())), Literal(Unit()))
+###
+
+Block(List(DefDef(f7, List(TypeDef(T, TypeBounds(Synthetic(), Synthetic()), List())), List(List(ValDef(x, Ident(T), None, List()))), Singleton(Ident(x)), Some(Ident(x)), List())), Literal(Unit()))
+###
+
+Block(List(DefDef(f8, List(), List(List(ValDef(i, Annotated(Applied(Synthetic(), List(Ident(Int))), Apply(Select(New(Synthetic()), <init>), Nil)), None, List()))), Ident(Int), Some(Literal(Int(9))), List())), Apply(Ident(f8), List(Typed(Repeated(List(Literal(Int(1)), Literal(Int(2)), Literal(Int(3)))), Synthetic()))))
+NameRef(Int, ###)
 
 Block(List(ValDef(x, Synthetic(), Some(Literal(Int(1))), List())), Assign(Ident(x), Literal(Int(2))))
 ###
@@ -133,6 +151,42 @@ Block(List(TypeDef(Foo, Ident(Int), List())), Literal(Unit()))
 Block(List(TypeDef(Foo, TypeBounds(Ident(Null), Ident(Object)), List())), Literal(Unit()))
 ###
 
-Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(), List())), Literal(Unit()))
+Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(DefDef(a, List(), List(), Synthetic(), Some(Literal(Int(0))), List())), List())), Literal(Unit()))
+###
+
+Block(List(ClassDef(Foo1, DefDef(<init>, List(), List(List(ValDef(a, Ident(Int), None, List()))), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(ValDef(a, Synthetic(), None, List())), List())), Literal(Unit()))
+###
+
+Block(List(ClassDef(Foo2, DefDef(<init>, List(), List(List(ValDef(b, Ident(Int), None, List()))), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(ValDef(b, Synthetic(), None, List())), List())), Literal(Unit()))
+###
+
+Block(List(ClassDef(Foo3, DefDef(<init>, List(), List(List(ValDef(a, Ident(Int), None, List()))), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(ValDef(a, Synthetic(), None, List())), List()), ValDef(Foo3, Ident(Foo3$), Some(Apply(Select(New(Ident(Foo3$)), <init>), Nil)), List()), ClassDef(Foo3$, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), Some(ValDef(_, Singleton(Ident(Foo3)), None, List())), List(DefDef($lessinit$greater$default$1, List(), List(), Synthetic(), Some(Literal(Int(5))), List())), List())), Literal(Unit()))
+###
+
+Block(List(ClassDef(Foo4, DefDef(<init>, List(), List(List(ValDef(a, Ident(Int), None, List())), List(ValDef(b, Ident(Int), None, List()))), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(ValDef(a, Synthetic(), None, List()), ValDef(b, Synthetic(), None, List())), List())), Literal(Unit()))
+###
+
+Block(List(ClassDef(Foo5, DefDef(<init>, List(), List(List(ValDef(a, Ident(Int), None, List())), List(ValDef(b, Ident(Int), None, List()))), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(ValDef(a, Synthetic(), None, List()), ValDef(b, Synthetic(), None, List())), List()), ValDef(Foo5, Ident(Foo5$), Some(Apply(Select(New(Ident(Foo5$)), <init>), Nil)), List()), ClassDef(Foo5$, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), Some(ValDef(_, Singleton(Ident(Foo5)), None, List())), List(DefDef($lessinit$greater$default$2, List(), List(List(ValDef(a, Ident(Int), None, List()))), Synthetic(), Some(Ident(a)), List())), List())), Literal(Unit()))
+###
+
+Block(List(ClassDef(Foo6, DefDef(<init>, List(), List(List(ValDef(a, Ident(Int), None, List())), List(ValDef(b, Singleton(Ident(a)), None, List()))), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(ValDef(a, Synthetic(), None, List()), ValDef(b, Synthetic(), None, List())), List())), Literal(Unit()))
+###
+
+Block(List(ClassDef(Foo8, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(Apply(Ident(println), List(Literal(Int(0))))), List())), Literal(Unit()))
+###
+
+Block(List(ClassDef(Foo10, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(ValDef(a, Synthetic(), Some(Literal(Int(9))), List())), List())), Literal(Unit()))
+###
+
+Block(List(ClassDef(Foo11, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(ValDef(a, Synthetic(), Some(Literal(Int(10))), List()), DefDef(a_=, List(), List(List(ValDef(x$1, Synthetic(), None, List()))), Synthetic(), Some(Literal(Unit())), List())), List())), Literal(Unit()))
+###
+
+Block(List(ClassDef(Foo12, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(ValDef(a, Synthetic(), Some(Literal(Int(11))), List())), List())), Literal(Unit()))
+###
+
+Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(), List()), ClassDef(Bar, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(), List())), Literal(Unit()))
+###
+
+Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List(ValDef(i, Ident(Int), None, List()))), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(ValDef(i, Synthetic(), None, List())), List()), ClassDef(Bar, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Ident(Foo)), <init>), List(Literal(Int(1))))), None, List(), List())), Literal(Unit()))
 ###
 
