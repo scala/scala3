@@ -525,7 +525,7 @@ object SymDenotations {
     /** Is this symbol a package object or its module class? */
     def isPackageObject(implicit ctx: Context): Boolean = {
       val nameMatches =
-        if (isType) name == tpnme.PACKAGE.moduleClassName
+        if (isType) name.exclude(ModuleClassName) == tpnme.PACKAGE
         else name == nme.PACKAGE
       nameMatches && (owner is Package) && (this is Module)
     }

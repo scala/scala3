@@ -106,6 +106,8 @@ object Names {
      */
     def derived(info: NameInfo): ThisName
 
+    def derivedUnique(info: NameInfo): ThisName
+
     /** A derived name consisting of this name and the info of `kind` */
     def derived(kind: ClassifiedNameKind): ThisName = derived(kind.info)
 
@@ -229,6 +231,17 @@ object Names {
       val thatKind = info.kind
       if (thisKind.tag < thatKind.tag || thatKind.definesNewName) add(info)
       else if (thisKind.tag > thatKind.tag) rewrap(underlying.derived(info))
+      else {
+        assert(info == this.info)
+        this
+      }
+    }
+
+    override def derivedUnique(info: NameInfo): TermName = {
+      val thisKind = this.info.kind
+      val thatKind = info.kind
+      if (thisKind.tag < thatKind.tag || thatKind.definesNewName) new DerivedName(this, info)
+      else if (thisKind.tag > thatKind.tag) rewrap(underlying.derivedUnique(info))
       else {
         assert(info == this.info)
         this
@@ -453,6 +466,7 @@ object Names {
     override def likeSpaced(name: Name): TypeName = name.toTypeName
 
     override def derived(info: NameInfo): TypeName = toTermName.derived(info).toTypeName
+    override def derivedUnique(info: NameInfo): TypeName = toTermName.derivedUnique(info).toTypeName
     override def exclude(kind: NameKind): TypeName = toTermName.exclude(kind).toTypeName
     override def is(kind: NameKind) = toTermName.is(kind)
 
