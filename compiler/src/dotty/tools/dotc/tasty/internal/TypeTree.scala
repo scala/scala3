@@ -86,7 +86,6 @@ object TypeTree {
         case typetrees.And(left, right) => s"And($left, $right)"
         case typetrees.Or(left, right) => s"Or($left, $right)"
         case typetrees.ByName(tpt) => s"ByName($tpt)"
-        case _ => s"TypeTree{## $tree ##}"
       }
     }
 

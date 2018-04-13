@@ -61,6 +61,7 @@ object Test {
     '{ def f6[T](x: T): T = x },
     '{ def f7[T](x: T): x.type = x },
     '{ def f8(i: Int*): Int = 9; f8(1, 2, 3) },
+    '{ def f9(i: => Int): Int = i },
     '{ var x = 1; x = 2 },
     '((x: Int) => x),
     '(???),
@@ -95,6 +96,9 @@ object Test {
     '{ class Foo; class Bar extends Foo },
 //    '{ trait Foo; class Bar extends Foo },
     '{ class Foo(i: Int); class Bar extends Foo(1) },
+    '{ class Foo { type X = Int }; def f(a: Foo): a.X = ??? },
+    '{ class Foo { type X }; def f(a: Foo { type X = Int }): a.X = ??? },
+
   )
 
   class TreeTraverser {
