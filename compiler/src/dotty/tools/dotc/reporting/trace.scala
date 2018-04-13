@@ -9,40 +9,40 @@ import core.Mode
 
 object trace {
 
-  @inline
+  @`inline`
   def onDebug[TD](question: => String)(op: => TD)(implicit ctx: Context): TD =
     conditionally(ctx.settings.YdebugTrace.value, question, false)(op)
 
-  @inline
+  @`inline`
   def conditionally[TC](cond: Boolean, question: => String, show: Boolean)(op: => TC)(implicit ctx: Context): TC = {
     def op1 = op
     if (Config.tracingEnabled && cond) apply[TC](question, Printers.default, show)(op1)
     else op1
   }
 
-  @inline
+  @`inline`
   def apply[T](question: => String, printer: Printers.Printer, showOp: Any => String)(op: => T)(implicit ctx: Context): T = {
     def op1 = op
     if (!Config.tracingEnabled || printer.eq(config.Printers.noPrinter)) op1
     else doTrace[T](question, printer, showOp)(op1)
   }
 
-  @inline
+  @`inline`
   def apply[T](question: => String, printer: Printers.Printer, show: Boolean)(op: => T)(implicit ctx: Context): T = {
     def op1 = op
     if (!Config.tracingEnabled || printer.eq(config.Printers.noPrinter)) op1
     else doTrace[T](question, printer, if (show) showShowable(_) else alwaysToString)(op1)
   }
 
-  @inline
+  @`inline`
   def apply[T](question: => String, printer: Printers.Printer)(op: => T)(implicit ctx: Context): T =
     apply[T](question, printer, false)(op)
 
-  @inline
+  @`inline`
   def apply[T](question: => String, show: Boolean)(op: => T)(implicit ctx: Context): T =
     apply[T](question, Printers.default, show)(op)
 
-  @inline
+  @`inline`
   def apply[T](question: => String)(op: => T)(implicit ctx: Context): T =
     apply[T](question, Printers.default, false)(op)
 
@@ -59,7 +59,7 @@ object trace {
                         (op: => T)(implicit ctx: Context): T = {
     // Avoid evaluating question multiple time, since each evaluation
     // may cause some extra logging output.
-    lazy val q: String = question
+    @volatile lazy val q: String = question
     apply[T](s"==> $q?", (res: Any) => s"<== $q = ${showOp(res)}")(op)
   }
 

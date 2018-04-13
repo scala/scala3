@@ -981,7 +981,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 regularArgs :+ untpd.SeqLiteral(varArgs, untpd.TypeTree()).withPos(tree.pos)
             }
           else argTypes match {
-            case argType :: Nil if args.lengthCompare(1) > 0 && supportsAutoTupling(argType, args) =>
+            case argType :: Nil if args.lengthCompare(1) > 0 && canAutoTuple(args) =>
               untpd.Tuple(args) :: Nil
             case _ =>
               args

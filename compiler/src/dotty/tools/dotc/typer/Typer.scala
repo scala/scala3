@@ -2032,37 +2032,18 @@ class Typer extends Namer
     }
   }
 
-  def supportsAutoTupling(tp: Type, args: List[untpd.Tree])(implicit ctx: Context): Boolean = {
-    def test(tp: Type): Boolean = tp match {
-      case tp: TypeRef =>
-        val sym = tp.symbol
-        defn.isTupleClass(sym) && defn.arity(sym, str.Tuple) == args.length ||
-        defn.isProductClass(sym) && defn.arity(sym, str.Product) == args.length ||
-        !sym.isClass && test(tp.underlying)
-      case tp: TypeParamRef =>
-        val bounds = ctx.typeComparer.bounds(tp)
-        test(bounds.lo) || test(bounds.hi)
-      case tp: TypeProxy =>
-        test(tp.underlying)
-      case _ =>
-        false
-    }
-    test(tp) || {
-      val pos = Position(args.map(_.pos.start).min, args.map(_.pos.end).max)
-      ctx.testScala2Mode(
-          i"""auto-tupling is no longer supported in this case,
-              |arguments now need to be enclosed in parentheses (...).""",
-          pos, { patch(pos.startPos, "("); patch(pos.endPos, ")") })
-    }
+  def canAutoTuple(args: List[untpd.Tree])(implicit ctx: Context): Boolean = {
+    val pos = Position(args.map(_.pos.start).min, args.map(_.pos.end).max)
+    ctx.testScala2Mode(
+        i"""auto-tupling is no longer supported in this case,
+            |arguments now need to be enclosed in parentheses (...).""",
+        pos, { patch(pos.startPos, "("); patch(pos.endPos, ")") })
   }
 
   def takesAutoTupledArgs(tp: Type, sym: Symbol, args: List[untpd.Tree])(implicit ctx: Context): Boolean = tp match {
     case tp: MethodicType =>
       tp.firstParamTypes match {
-        case ptype :: Nil =>
-          !ptype.isRepeatedParam && {
-            sym.name.isOpName || supportsAutoTupling(ptype, args)
-          }
+        case ptype :: Nil => !ptype.isRepeatedParam && (sym.name.isOpName || canAutoTuple(args))
         case _ => false
       }
     case tp: TermRef =>

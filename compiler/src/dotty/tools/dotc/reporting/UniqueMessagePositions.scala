@@ -21,7 +21,7 @@ trait UniqueMessagePositions extends Reporter {
       m.pos.exists && {
         var shouldHide = false
         for (pos <- m.pos.start to m.pos.end) {
-          positions get (ctx.source, pos) match {
+          positions.get((ctx.source, pos)) match {
             case Some(level) if level >= m.level => shouldHide = true
             case _ => positions((ctx.source, pos)) = m.level
           }
