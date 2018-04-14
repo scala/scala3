@@ -1,10 +1,9 @@
 package dotty.tools.dotc.tasty
 package internal
 
-import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Contexts.Context
 
-import scala.tasty
 import scala.tasty.statements
 import scala.tasty.types
 
@@ -16,7 +15,13 @@ object TypeDef {
     case Impl(tdef, ctx) if !tdef.symbol(ctx).isClass =>
       implicit val ctx_ = ctx
       if (tdef.symbol.isClass) None
-      else Some((TypeName(tdef.name), MaybeTypeTree(tdef.rhs), Modifiers(tdef)))
+      else {
+        val rhs = tdef.rhs match {
+          case rhs: Trees.TypeBoundsTree[_] => TypeBoundsTree(rhs)
+          case rhs => TypeTree(rhs)
+        }
+        Some((TypeName(tdef.name), rhs, Modifiers(tdef)))
+      }
     case _ => None
   }
 

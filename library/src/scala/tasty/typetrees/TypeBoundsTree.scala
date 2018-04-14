@@ -1,14 +1,15 @@
-package scala.tasty.typetrees
+package scala.tasty
+package typetrees
 
 import scala.runtime.tasty.Toolbox
 
 import scala.tasty.types.TypeBounds
 
-trait TypeBoundsTree extends MaybeTypeTree {
+trait TypeBoundsTree extends Tree {
   def tpe: TypeBounds
 }
 
 object TypeBoundsTree {
   type Data = (TypeTree, TypeTree)
-  def unapply(arg: MaybeTypeTree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeBoundsTree(arg)
+  def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeBoundsTree(arg)
 }

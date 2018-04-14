@@ -1,8 +1,7 @@
-package scala.tasty.typetrees
-
-import scala.tasty.types.Type
+package scala.tasty
+package typetrees
 
 /** Trees denoting types */
-trait TypeTree extends MaybeTypeTree {
-  def tpe: Type
+trait TypeTree extends Tree {
+  def tpe: types.Type
 }

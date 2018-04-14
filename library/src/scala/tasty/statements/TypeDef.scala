@@ -7,6 +7,6 @@ import scala.tasty.modifiers.Modifier
 trait TypeDef extends Definition
 
 object TypeDef {
-  type Data = (names.TypeName, typetrees.MaybeTypeTree, List[Modifier])
+  type Data = (names.TypeName, Tree /* Type | TypeBounds */, List[Modifier])
   def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeDef(arg)
 }
