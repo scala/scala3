@@ -7,46 +7,6 @@ class TreeTraverser(implicit toolbox: Toolbox) {
 
   def traverse(arg: statements.TopLevelStatement): Unit = {
     import statements._
-    arg match {
-      case arg: terms.Term =>
-        traverse(arg)
-      case arg: Definition =>
-        traverse(arg)
-      case Package(pkg, body) =>
-        traverse(pkg)
-        body.foreach(traverse)
-      case Import(expr, _) =>
-        traverse(expr)
-      case _ =>
-    }
-  }
-
-  def traverse(arg: statements.Definition): Unit = {
-    import statements._
-    arg match {
-      case ValDef(_, tpt, rhs, _) =>
-        traverse(tpt)
-        rhs.foreach(traverse)
-      case DefDef(_, typeParams, paramss, returnTpt, rhs, _) =>
-        typeParams.foreach(traverse)
-        paramss.foreach(_.foreach(traverse))
-        traverse(returnTpt)
-        rhs.foreach(traverse)
-      case TypeDef(_, rhs, _) =>
-        traverse(rhs)
-      case ClassDef(_, constructor, parents, self, body, _) =>
-        traverse(constructor)
-        parents.foreach {
-          case Left(term) => traverse(term)
-          case Right(typetree) => traverse(typetree)
-        }
-        self.foreach(traverse)
-        body.foreach(traverse)
-      case _ =>
-    }
-  }
-
-  def traverse(arg: terms.Term): Unit = {
     import terms._
     arg match {
       case Select(qual, _) =>
@@ -70,9 +30,7 @@ class TreeTraverser(implicit toolbox: Toolbox) {
         traverse(lhs)
         traverse(rhs)
       case Block(stats, expr) =>
-        val it = stats.iterator
-        while (it.hasNext)
-          traverse(it.next())
+        stats.foreach(traverse)
         traverse(expr)
       case Lambda(meth, tpt) =>
         traverse(meth)
@@ -83,23 +41,46 @@ class TreeTraverser(implicit toolbox: Toolbox) {
         traverse(elsep)
       case Match(selector, cases) =>
         traverse(selector)
-        cases.foreach(traverse)
+        cases.foreach(traverseCaseDef)
       case Try(body, catches, finalizer) =>
         traverse(body)
-        catches.foreach(traverse)
+        catches.foreach(traverseCaseDef)
         finalizer.foreach(traverse)
       case Return(expr) =>
         traverse(expr)
       case Repeated(args) =>
         args.foreach(traverse)
+      case ValDef(_, tpt, rhs, _) =>
+        traverse(tpt)
+        rhs.foreach(traverse)
+      case DefDef(_, typeParams, paramss, returnTpt, rhs, _) =>
+        typeParams.foreach(traverse)
+        paramss.foreach(_.foreach(traverse))
+        traverse(returnTpt)
+        rhs.foreach(traverse)
+      case TypeDef(_, rhs, _) =>
+        traverse(rhs)
+      case ClassDef(_, constructor, parents, self, body, _) =>
+        traverse(constructor)
+        parents.foreach {
+          case Left(term) => traverse(term)
+          case Right(typetree) => traverse(typetree)
+        }
+        self.foreach(traverse)
+        body.foreach(traverse)
+      case Package(pkg, body) =>
+        traverse(pkg)
+        body.foreach(traverse)
+      case Import(expr, _) =>
+        traverse(expr)
       case _ =>
       // Literal(const)
       // Ident(name)
-
     }
   }
 
-  def traverse(arg: patterns.CaseDef): Unit = {
+
+  protected def traverseCaseDef(arg: patterns.CaseDef): Unit = {
     import patterns.CaseDef
     arg match {
       case CaseDef(pat, guard, body) =>
@@ -110,7 +91,7 @@ class TreeTraverser(implicit toolbox: Toolbox) {
     }
   }
 
-  def traverse(arg: patterns.Pattern): Unit = {
+  protected def traverse(arg: patterns.Pattern): Unit = {
     import patterns._
     arg match {
       case Value(v) =>
