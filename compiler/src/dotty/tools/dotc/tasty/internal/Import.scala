@@ -5,14 +5,14 @@ import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames.nme
 
-import scala.tasty.statements
-import scala.tasty.statements.Import.ImportSelector
+import scala.tasty.trees
+import scala.tasty.trees.Import.ImportSelector
 
 object Import {
 
-  def apply(tree: tpd.Tree)(implicit ctx: Context): statements.Import = Impl(tree, ctx)
+  def apply(tree: tpd.Tree)(implicit ctx: Context): trees.Import = Impl(tree, ctx)
 
-  def unapplyImport(tree: scala.tasty.Tree): Option[statements.Import.Data] = tree match {
+  def unapplyImport(tree: scala.tasty.Tree): Option[trees.Import.Data] = tree match {
     case Impl(Trees.Import(expr, selectors), ctx) => Some(Term(expr)(ctx), selectors.map(importSelector(_)(ctx)))
     case _ => None
   }
@@ -23,10 +23,10 @@ object Import {
     case Trees.Thicket((id1@Trees.Ident(_)) :: (id2@Trees.Ident(_)) :: Nil) => ImportSelector.Rename(Id(id1), Id(id2))
   }
 
-  private case class Impl(tree: tpd.Tree, ctx: Context) extends statements.Import with Positioned {
+  private case class Impl(tree: tpd.Tree, ctx: Context) extends trees.Import with Positioned {
     override def toString: String = {
       import Toolbox.extractor
-      val statements.Import(pkg, body) = this
+      val trees.Import(pkg, body) = this
       s"Import($pkg, $body)"
     }
   }

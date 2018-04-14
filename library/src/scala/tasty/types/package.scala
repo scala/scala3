@@ -1,6 +1,7 @@
 package scala.tasty
 
 import scala.runtime.tasty.Toolbox
+import scala.tasty.trees.Term
 
 package object types {
 
@@ -36,7 +37,7 @@ package object types {
   }
 
   object AnnotatedType {
-    type Data = (Type, terms.Term)
+    type Data = (Type, Term)
     def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyAnnotatedType(arg)
   }
 

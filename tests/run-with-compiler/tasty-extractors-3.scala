@@ -6,6 +6,7 @@ import scala.quoted._
 
 import scala.tasty.util.TreeTraverser
 import scala.tasty._
+import scala.tasty.trees._
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -21,10 +22,10 @@ object Test {
     val traverser = new TreeTraverser {
       override def traverse(tree: Tree): Unit = {
         tree match {
-          case tree: typetrees.TypeTree =>
+          case tree: TypeTree =>
             println(tree.tpe)
             println()
-          case tree: typetrees.TypeBoundsTree =>
+          case tree: TypeBoundsTree =>
             println(tree.tpe)
             println()
           case _ =>

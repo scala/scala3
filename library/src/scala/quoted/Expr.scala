@@ -2,7 +2,7 @@ package scala.quoted
 
 import scala.runtime.quoted.Toolbox
 import scala.runtime.quoted.Unpickler.Pickled
-import scala.tasty.terms.Term
+import scala.tasty.trees.Term
 
 sealed abstract class Expr[T] {
   final def unary_~ : T = throw new Error("~ should have been compiled away")

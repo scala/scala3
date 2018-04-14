@@ -4,23 +4,23 @@ package internal
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Contexts.Context
 
-import scala.tasty.statements
+import scala.tasty.trees
 
-object Package {
+object PackageDef {
 
   // TODO make sure all extractors are tested
 
-  def apply(tree: tpd.Tree)(implicit ctx: Context): statements.Package = Impl(tree, ctx)
+  def apply(tree: tpd.Tree)(implicit ctx: Context): trees.PackageDef = Impl(tree, ctx)
 
-  def unapplyPackage(tree: scala.tasty.Tree): Option[statements.Package.Data] = tree match {
+  def unapplyPackageDef(tree: scala.tasty.Tree): Option[trees.PackageDef.Data] = tree match {
     case Impl(Trees.PackageDef(pkg, body), ctx) => Some(Term(pkg)(ctx), body.map(TopLevelStatement(_)(ctx)))
     case _ => None
   }
 
-  private case class Impl(tree: tpd.Tree, ctx: Context) extends statements.Package with Positioned {
+  private case class Impl(tree: tpd.Tree, ctx: Context) extends trees.PackageDef with Positioned {
     override def toString: String = {
       import Toolbox.extractor
-      val statements.Package(pkg, body) = this
+      val trees.PackageDef(pkg, body) = this
       s"Package($pkg, $body)"
     }
   }

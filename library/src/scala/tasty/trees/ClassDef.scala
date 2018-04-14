@@ -1,8 +1,8 @@
-package scala.tasty
-package statements
+package scala.tasty.trees
 
 import scala.runtime.tasty.Toolbox
 import scala.tasty.modifiers.Modifier
+import scala.tasty.{Tree, names}
 
 trait ClassDef extends Definition
 

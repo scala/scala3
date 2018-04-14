@@ -2,6 +2,7 @@ package scala.tasty
 package modifiers
 
 import scala.runtime.tasty.Toolbox
+import scala.tasty.trees.Term
 
 trait Modifier extends Positioned {
 
@@ -45,6 +46,6 @@ object QualifiedProtected {
 }
 
 object Annotation {
-  type Data = terms.Term
+  type Data = Term
   def unapply(arg: Modifier)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyAnnotation(arg)
 }

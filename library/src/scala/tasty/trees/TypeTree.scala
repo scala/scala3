@@ -1,5 +1,6 @@
-package scala.tasty
-package typetrees
+package scala.tasty.trees
+
+import scala.tasty.{Tree, types}
 
 /** Trees denoting types */
 trait TypeTree extends Tree {

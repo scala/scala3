@@ -3,7 +3,7 @@ package dotty.tools.dotc.tasty.internal
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols._
 
-import scala.tasty.statements
+import scala.tasty.trees
 
 object TastySymbol {
 
@@ -16,7 +16,7 @@ object TastySymbol {
 
     override def owner: scala.tasty.Symbol = TastySymbol(sym.denot(ctx).owner)(ctx)
 
-    override def definition: Option[statements.Definition] = None // TODO return definition if it is known
+    override def definition: Option[trees.Definition] = None // TODO return definition if it is known
 
     def ownersIterator: Iterator[scala.tasty.Symbol] = new Iterator[scala.tasty.Symbol] {
       private[this] var current: scala.tasty.Symbol = self.owner

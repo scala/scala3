@@ -1,18 +1,8 @@
 
 import scala.quoted._
 
-import scala.tasty.constants.Constant
-import scala.tasty.names
-import scala.tasty.patterns
-import scala.tasty.statements
-import scala.tasty.terms
-import scala.tasty.typetrees
-import scala.tasty.types
-
 import dotty.tools.dotc.quoted.Toolbox._
 import dotty.tools.dotc.tasty.Toolbox._
-
-import scala.tasty.modifiers.Modifier
 
 object Test {
   def main(args: Array[String]): Unit = {

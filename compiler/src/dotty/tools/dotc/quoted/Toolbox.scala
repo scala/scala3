@@ -11,7 +11,7 @@ import scala.quoted.Expr
 import scala.runtime.BoxedUnit
 import scala.quoted.Exprs.LiftedExpr
 import scala.runtime.quoted._
-import scala.tasty.terms.Term
+import scala.tasty.trees.Term
 
 /** Default runners for quoted expressions */
 object Toolbox {

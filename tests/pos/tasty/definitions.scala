@@ -40,7 +40,7 @@ object definitions {
   sealed trait TopLevelStatement extends Tree
   sealed trait Statement extends TopLevelStatement
 
-  case class Package(pkg: Term, body: List[TopLevelStatement]) extends TopLevelStatement
+  case class PackageDef(pkg: Term, body: List[TopLevelStatement]) extends TopLevelStatement
 
   case class Import(expr: Term, selector: List[ImportSelector]) extends Statement
 

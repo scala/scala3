@@ -1,5 +1,5 @@
 package scala.tasty
-package patterns
+package trees
 
 import scala.runtime.tasty.Toolbox
 import scala.tasty.types.Type
@@ -9,7 +9,7 @@ trait Pattern extends Tree {
 }
 
 object Value {
-  type Data = terms.Term
+  type Data = Term
   def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyValue(arg)
 }
 
@@ -19,7 +19,7 @@ object Bind {
 }
 
 object Unapply {
-  type Data = (terms.Term, List[terms.Term], List[Pattern])
+  type Data = (Term, List[Term], List[Pattern])
   def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyUnapply(arg)
 }
 
@@ -29,6 +29,6 @@ object Alternative {
 }
 
 object TypeTest {
-  type Data = typetrees.TypeTree
+  type Data = TypeTree
   def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeTest(arg)
 }

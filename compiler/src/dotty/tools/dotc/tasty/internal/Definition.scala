@@ -2,13 +2,12 @@ package dotty.tools.dotc.tasty.internal
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Symbols.Symbol
 
-import scala.tasty.statements
+import scala.tasty.trees
 
 object Definition {
 
-  def apply(tree: tpd.Tree)(implicit ctx: Context): statements.Definition = tree match {
+  def apply(tree: tpd.Tree)(implicit ctx: Context): trees.Definition = tree match {
     case tree: tpd.ValDef => ValDef(tree)
     case tree: tpd.DefDef => DefDef(tree)
     case tree: tpd.TypeDef =>

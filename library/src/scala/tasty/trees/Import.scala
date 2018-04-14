@@ -1,12 +1,12 @@
 package scala.tasty
-package statements
+package trees
 
 import scala.runtime.tasty.Toolbox
 
 trait Import extends Statement
 
 object Import {
-  type Data = (terms.Term, List[ImportSelector])
+  type Data = (Term, List[ImportSelector])
   def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyImport(arg)
 
   sealed trait ImportSelector

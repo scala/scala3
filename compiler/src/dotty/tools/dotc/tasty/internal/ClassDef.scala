@@ -4,14 +4,14 @@ package internal
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Contexts.Context
 
-import scala.tasty.statements
+import scala.tasty.trees
 import scala.tasty.types
 
 object ClassDef {
 
-  def apply(tree: tpd.TypeDef)(implicit ctx: Context): statements.ClassDef = Impl(tree, ctx)
+  def apply(tree: tpd.TypeDef)(implicit ctx: Context): trees.ClassDef = Impl(tree, ctx)
 
-  def unapplyClassDef(tree: scala.tasty.Tree): Option[statements.ClassDef.Data] = tree match {
+  def unapplyClassDef(tree: scala.tasty.Tree): Option[trees.ClassDef.Data] = tree match {
     case Impl(cdef @ Trees.TypeDef(name, impl@Trees.Template(constr, parents, self, _)), ctx) =>
       implicit val ctx_ = ctx
       if (cdef.symbol.isClass) {
@@ -27,7 +27,7 @@ object ClassDef {
     case _ => None
   }
 
-  private case class Impl(tree: tpd.TypeDef, ctx: Context) extends statements.ClassDef with Positioned {
+  private case class Impl(tree: tpd.TypeDef, ctx: Context) extends trees.ClassDef with Positioned {
 
     def tpe: types.Type = Type(tree.tpe)(ctx)
 
@@ -35,7 +35,7 @@ object ClassDef {
 
     override def toString: String = {
       import Toolbox.extractor
-      val statements.ClassDef(name, constructor, parents, self, body, mods) = this
+      val trees.ClassDef(name, constructor, parents, self, body, mods) = this
       s"ClassDef($name, $constructor, $parents, $self, $body, $mods)"
     }
   }

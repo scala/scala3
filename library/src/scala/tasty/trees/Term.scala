@@ -1,6 +1,5 @@
-package scala.tasty.terms
+package scala.tasty.trees
 
-import scala.tasty.statements.Statement
 import scala.tasty.types.Type
 
 trait Term extends Statement {

@@ -1,8 +1,7 @@
-package scala.tasty
-package patterns
+package scala.tasty.trees
 
 import scala.runtime.tasty.Toolbox
-import scala.tasty.terms.Term
+import scala.tasty.Tree
 
 trait CaseDef extends Tree
 
