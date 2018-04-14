@@ -111,7 +111,7 @@ object definitions {
     case ByName(tpt: TypeTree)
   }
 
-  case class TypeBoundsTree(loBound: TypeTree, hiBound: TypeTree) {
+  case class TypeBoundsTree(loBound: TypeTree, hiBound: TypeTree) extends Positioned {
     def tpe: Type.TypeBounds = ???
   }
 
