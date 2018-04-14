@@ -2,7 +2,7 @@ package tasty
 
 object definitions {
 
-// ------ Names --------------------------------
+// ====== Names ======================================
 
   trait Name
   trait PossiblySignedName
@@ -23,7 +23,7 @@ object definitions {
 
   case class TypeName(name: TermName) extends Name
 
-// ------ Positions ---------------------------
+// ====== Positions ==================================
 
   case class Position(firstOffset: Int, lastOffset: Int)
 
@@ -31,9 +31,13 @@ object definitions {
     def pos: Position = ???
   }
 
+// ====== Trees ======================================
+
+  trait Tree extends Positioned
+
 // ------ Statements ---------------------------------
 
-  sealed trait TopLevelStatement extends Positioned
+  sealed trait TopLevelStatement extends Tree
   sealed trait Statement extends TopLevelStatement
 
   case class Package(pkg: Term, body: List[TopLevelStatement]) extends TopLevelStatement
@@ -97,7 +101,7 @@ object definitions {
   }
 
   /** Trees denoting types */
-  enum TypeTree extends Positioned {
+  enum TypeTree extends Tree {
     def tpe: Type = ???
     case Synthetic()
     case Ident(name: TypeName, override val tpe: Type)
@@ -111,12 +115,13 @@ object definitions {
     case ByName(tpt: TypeTree)
   }
 
-  case class TypeBoundsTree(loBound: TypeTree, hiBound: TypeTree) extends Positioned {
+  /** Trees denoting type bounds*/
+  case class TypeBoundsTree(loBound: TypeTree, hiBound: TypeTree) extends Tree {
     def tpe: Type.TypeBounds = ???
   }
 
   /** Trees denoting patterns */
-  enum Pattern extends Positioned {
+  enum Pattern extends Tree {
     def tpe: Type = ???
     case Value(v: Term)
     case Bind(name: TermName, pat: Pattern)
@@ -125,9 +130,10 @@ object definitions {
     case TypeTest(tpt: TypeTree)
   }
 
-  case class CaseDef(pat: Pattern, guard: Option[Term], rhs: Term) extends Positioned
+  /** Tree denoting pattern match case */
+  case class CaseDef(pat: Pattern, guard: Option[Term], rhs: Term) extends Tree
 
-// ------ Types ---------------------------------
+// ====== Types ======================================
 
   sealed trait Type
 
@@ -210,7 +216,7 @@ object definitions {
     object NoPrefix extends NoPrefix
   }
 
-// ------ Modifiers ---------------------------------
+// ====== Modifiers ==================================
 
   enum Modifier extends Positioned {
     case Private, Protected, Abstract, Final, Sealed, Case, Implicit, Erased, Lazy, Override, Inline,
@@ -236,7 +242,7 @@ object definitions {
     case Annotation(tree: Term)
   }
 
-// ------ Constants ---------------------------------
+// ====== Constants ==================================
 
   enum Constant(val value: Any) {
     case Unit                        extends Constant(())

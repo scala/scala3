@@ -4,7 +4,6 @@ package internal
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Names
-import dotty.tools.dotc.core.StdNames._
 
 import scala.tasty.patterns
 import scala.tasty.types
@@ -13,28 +12,28 @@ object Pattern {
 
   def apply(tree: tpd.Tree)(implicit ctx: Context): patterns.Pattern = Impl(tree, ctx)
 
-  def unapplyValue(arg: patterns.Pattern): Option[patterns.Value.Data] = arg match {
+  def unapplyValue(tree: scala.tasty.Tree): Option[patterns.Value.Data] = tree match {
     case Impl(lit: tpd.Literal, ctx) => Some(Term(lit)(ctx))
     case Impl(ident: tpd.Ident, ctx) => Some(Term(ident)(ctx))
     case _ => None
   }
 
-  def unapplyBind(arg: patterns.Pattern): Option[patterns.Bind.Data] = arg match {
+  def unapplyBind(tree: scala.tasty.Tree): Option[patterns.Bind.Data] = tree match {
     case Impl(Trees.Bind(name: Names.TermName, body), ctx) => Some(TermName(name), Pattern(body)(ctx))
     case _ => None
   }
 
-  def unapplyUnapply(arg: patterns.Pattern): Option[patterns.Unapply.Data] = arg match {
+  def unapplyUnapply(tree: scala.tasty.Tree): Option[patterns.Unapply.Data] = tree match {
     case Impl(Trees.UnApply(fun, implicits, patterns), ctx) => Some((Term(fun)(ctx), implicits.map(Term(_)(ctx)), patterns.map(Pattern(_)(ctx))))
     case _ => None
   }
 
-  def unapplyAlternative(arg: patterns.Pattern): Option[patterns.Alternative.Data] = arg match {
+  def unapplyAlternative(tree: scala.tasty.Tree): Option[patterns.Alternative.Data] = tree match {
     case Impl(Trees.Alternative(patterns), ctx) => Some(patterns.map(Pattern(_)(ctx)))
     case _ => None
   }
 
-  def unapplyTypeTest(arg: patterns.Pattern): Option[patterns.TypeTest.Data] = arg match {
+  def unapplyTypeTest(tree: scala.tasty.Tree): Option[patterns.TypeTest.Data] = tree match {
     case Impl(Trees.Typed(_, tpt), ctx) => Some(TypeTree(tpt)(ctx))
     case _ => None
   }

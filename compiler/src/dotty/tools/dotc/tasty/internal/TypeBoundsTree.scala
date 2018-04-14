@@ -13,7 +13,7 @@ object TypeBoundsTree {
 
   def apply(bounds: tpd.TypeBoundsTree)(implicit ctx: Context): typetrees.TypeBoundsTree = Impl(bounds, ctx)
 
-  def unapplyTypeBounds(tpe: typetrees.MaybeTypeTree): Option[typetrees.TypeBoundsTree.Data] = tpe match {
+  def unapplyTypeBounds(tree: scala.tasty.Tree): Option[typetrees.TypeBoundsTree.Data] = tree match {
     case Impl(Trees.TypeBoundsTree(lo, hi), ctx) => Some(TypeTree(lo)(ctx), TypeTree(hi)(ctx))
     case _ => None
   }

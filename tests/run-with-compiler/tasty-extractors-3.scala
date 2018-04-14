@@ -1,13 +1,11 @@
 
-import scala.quoted._
-import scala.tasty.typetrees._
 import dotty.tools.dotc.quoted.Toolbox._
 import dotty.tools.dotc.tasty.Toolbox._
 
-import scala.tasty.patterns.{CaseDef, Pattern}
-import scala.tasty.statements.TopLevelStatement
-import scala.tasty.typetrees.TypeTree
+import scala.quoted._
+
 import scala.tasty.util.TreeTraverser
+import scala.tasty._
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -21,14 +19,18 @@ object Test {
     }
 
     val traverser = new TreeTraverser {
-      override def traverse(arg: MaybeTypeTree): Unit = {
-        println(arg.tpe)
-        println()
-        traverseChildren(arg)
+      override def traverse(tree: Tree): Unit = {
+        tree match {
+          case tree: typetrees.TypeTree =>
+            println(tree.tpe)
+            println()
+          case tree: typetrees.TypeBoundsTree =>
+            println(tree.tpe)
+            println()
+          case _ =>
+        }
+        traverseChildren(tree)
       }
-      override def traverse(tree: TopLevelStatement): Unit = traverseChildren(tree)
-      override def traverse(tree: CaseDef): Unit = traverseChildren(tree)
-      override def traverse(tree: Pattern): Unit = traverseChildren(tree)
     }
 
     traverser.traverse(q.toTasty)

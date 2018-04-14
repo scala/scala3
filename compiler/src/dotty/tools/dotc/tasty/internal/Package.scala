@@ -12,7 +12,7 @@ object Package {
 
   def apply(tree: tpd.Tree)(implicit ctx: Context): statements.Package = Impl(tree, ctx)
 
-  def unapplyPackage(term: scala.tasty.statements.TopLevelStatement): Option[statements.Package.Data] = term match {
+  def unapplyPackage(tree: scala.tasty.Tree): Option[statements.Package.Data] = tree match {
     case Impl(Trees.PackageDef(pkg, body), ctx) => Some(Term(pkg)(ctx), body.map(TopLevelStatement(_)(ctx)))
     case _ => None
   }

@@ -11,7 +11,7 @@ object ValDef {
 
   def apply(tree: tpd.ValDef)(implicit ctx: Context): statements.ValDef = Impl(tree, ctx)
 
-  def unapplyValDef(arg: statements.TopLevelStatement): Option[statements.ValDef.Data] = arg match {
+  def unapplyValDef(tree: scala.tasty.Tree): Option[statements.ValDef.Data] = tree match {
     case Impl(vdef, ctx) =>
       implicit val ctx_ = ctx
       Some((TermName(vdef.name), TypeTree(vdef.tpt), if (vdef.rhs.isEmpty) None else Some(Term(vdef.rhs)), Modifiers(vdef)))

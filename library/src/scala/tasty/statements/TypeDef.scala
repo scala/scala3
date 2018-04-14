@@ -8,5 +8,5 @@ trait TypeDef extends Definition
 
 object TypeDef {
   type Data = (names.TypeName, typetrees.MaybeTypeTree, List[Modifier])
-  def unapply(arg: TopLevelStatement)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeDef(arg)
+  def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeDef(arg)
 }

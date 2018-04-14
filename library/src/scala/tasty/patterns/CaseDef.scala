@@ -1,12 +1,12 @@
-package scala.tasty.patterns
+package scala.tasty
+package patterns
 
 import scala.runtime.tasty.Toolbox
 import scala.tasty.terms.Term
-import scala.tasty.Positioned
 
-trait CaseDef extends Positioned
+trait CaseDef extends Tree
 
 object CaseDef {
   type Data = (Pattern, Option[Term], Term)
-  def unapply(arg: CaseDef)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyCaseDef(arg)
+  def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyCaseDef(arg)
 }

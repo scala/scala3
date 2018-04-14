@@ -12,7 +12,7 @@ object Import {
 
   def apply(tree: tpd.Tree)(implicit ctx: Context): statements.Import = Impl(tree, ctx)
 
-  def unapplyImport(term: statements.TopLevelStatement): Option[statements.Import.Data] = term match {
+  def unapplyImport(tree: scala.tasty.Tree): Option[statements.Import.Data] = tree match {
     case Impl(Trees.Import(expr, selectors), ctx) => Some(Term(expr)(ctx), selectors.map(importSelector(_)(ctx)))
     case _ => None
   }

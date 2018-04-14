@@ -13,52 +13,52 @@ object TypeTree {
 
   def apply(tree: Tree)(implicit ctx: Context): typetrees.TypeTree = Impl(tree, ctx)
 
-  def unapplySynthetic(arg: typetrees.MaybeTypeTree): Boolean = arg match {
+  def unapplySynthetic(tree: scala.tasty.Tree): Boolean = tree match {
     case Impl(Trees.TypeTree(), _) => true
     case _ => false
   }
 
-  def unapplyIdent(arg: typetrees.MaybeTypeTree): Option[typetrees.Ident.Data] = arg match {
+  def unapplyTypeIdent(tree: scala.tasty.Tree): Option[typetrees.TypeIdent.Data] = tree match {
     case Impl(id@Trees.Ident(name: Names.TypeName), _) if id.isType => Some(TypeName(name))
     case _ => None
   }
 
-  def unapplySelect(arg: typetrees.MaybeTypeTree): Option[typetrees.Select.Data] = arg match {
+  def unapplyTypeSelect(tree: scala.tasty.Tree): Option[typetrees.TypeSelect.Data] = tree match {
     case Impl(id@Trees.Select(qual, name: Names.TypeName), ctx) if id.isType => Some(Term(qual)(ctx), TypeName(name))
     case _ => None
   }
 
-  def unapplySingleton(arg: typetrees.MaybeTypeTree): Option[typetrees.Singleton.Data] = arg match {
+  def unapplySingleton(tree: scala.tasty.Tree): Option[typetrees.Singleton.Data] = tree match {
     case Impl(Trees.SingletonTypeTree(ref), ctx) => Some(Term(ref)(ctx))
     case _ => None
   }
 
-  def unapplyRefined(arg: typetrees.MaybeTypeTree): Option[typetrees.Refined.Data] = arg match {
+  def unapplyRefined(tree: scala.tasty.Tree): Option[typetrees.Refined.Data] = tree match {
     case Impl(Trees.RefinedTypeTree(tpt, refinements), ctx) => Some(TypeTree(tpt)(ctx), refinements.map(Definition(_)(ctx)))
     case _ => None
   }
 
-  def unapplyApplied(arg: typetrees.MaybeTypeTree): Option[typetrees.Applied.Data] = arg match {
+  def unapplyApplied(tree: scala.tasty.Tree): Option[typetrees.Applied.Data] = tree match {
     case Impl(Trees.AppliedTypeTree(tycon, args), ctx) => Some(TypeTree(tycon)(ctx), args.map(TypeTree(_)(ctx)))
     case _ => None
   }
 
-  def unapplyAnnotated(arg: typetrees.MaybeTypeTree): Option[typetrees.Annotated.Data] = arg match {
+  def unapplyAnnotated(tree: scala.tasty.Tree): Option[typetrees.Annotated.Data] = tree match {
     case Impl(Trees.Annotated(arg, annot), ctx) => Some(TypeTree(arg)(ctx), Term(annot)(ctx))
     case _ => None
   }
 
-  def unapplyAnd(arg: typetrees.MaybeTypeTree): Option[typetrees.And.Data] = arg match {
+  def unapplyAnd(tree: scala.tasty.Tree): Option[typetrees.And.Data] = tree match {
     case Impl(Trees.AndTypeTree(left, right), ctx) => Some(TypeTree(left)(ctx), TypeTree(right)(ctx))
     case _ => None
   }
 
-  def unapplyOr(arg: typetrees.MaybeTypeTree): Option[typetrees.Or.Data] = arg match {
+  def unapplyOr(tree: scala.tasty.Tree): Option[typetrees.Or.Data] = tree match {
     case Impl(Trees.OrTypeTree(left, right), ctx) => Some(TypeTree(left)(ctx), TypeTree(right)(ctx))
     case _ => None
   }
 
-  def unapplyByName(arg: typetrees.MaybeTypeTree): Option[typetrees.ByName.Data] = arg match {
+  def unapplyByName(tree: scala.tasty.Tree): Option[typetrees.ByName.Data] = tree match {
     case Impl(Trees.ByNameTypeTree(tpt), ctx) => Some(TypeTree(tpt)(ctx))
     case _ => None
   }
@@ -73,8 +73,8 @@ object TypeTree {
       import Toolbox.extractor
       this match {
         case typetrees.Synthetic() => "Synthetic()"
-        case typetrees.Ident(name) => s"Ident($name)"
-        case typetrees.Select(qual, name) => s"Select($qual, $name)"
+        case typetrees.TypeIdent(name) => s"Ident($name)"
+        case typetrees.TypeSelect(qual, name) => s"Select($qual, $name)"
         case typetrees.Singleton(ref) => s"Singleton($ref)"
         case typetrees.Refined(underlying, refinements) => s"Refined($underlying, ${list(refinements)})"
         case typetrees.Applied(tycon, args) => s"Applied($tycon, $args)"

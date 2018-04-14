@@ -4,72 +4,69 @@ import scala.annotation.implicitNotFound
 import scala.tasty._
 import scala.tasty.constants.Constant
 import scala.tasty.modifiers.Modifier
-import scala.tasty.patterns.{CaseDef, Pattern}
-import scala.tasty.statements.TopLevelStatement
 import scala.tasty.types.MaybeType
-import scala.tasty.typetrees.MaybeTypeTree
 
 @implicitNotFound("Could not find implicit tasty.Toolbox. Default toolbox can be imported with `import dotty.tools.dotc.tasty.Toolbox._`")
 trait Toolbox {
 
   // Statements
 
-  def unapplyPackage(arg: TopLevelStatement): Option[statements.Package.Data]
-  def unapplyImport(arg: TopLevelStatement): Option[statements.Import.Data]
+  def unapplyPackage(arg: Tree): Option[statements.Package.Data]
+  def unapplyImport(arg: Tree): Option[statements.Import.Data]
 
   // Definitions
 
-  def unapplyValDef(arg: TopLevelStatement): Option[statements.ValDef.Data]
-  def unapplyDefDef(arg: TopLevelStatement): Option[statements.DefDef.Data]
-  def unapplyTypeDef(arg: TopLevelStatement): Option[statements.TypeDef.Data]
-  def unapplyClassDef(arg: TopLevelStatement): Option[statements.ClassDef.Data]
+  def unapplyValDef(arg: Tree): Option[statements.ValDef.Data]
+  def unapplyDefDef(arg: Tree): Option[statements.DefDef.Data]
+  def unapplyTypeDef(arg: Tree): Option[statements.TypeDef.Data]
+  def unapplyClassDef(arg: Tree): Option[statements.ClassDef.Data]
 
   // Terms
 
-  def unapplyIdent(arg: TopLevelStatement): Option[terms.Ident.Data]
-  def unapplySelect(arg: TopLevelStatement): Option[terms.Select.Data]
-  def unapplyLiteral(arg: TopLevelStatement): Option[terms.Literal.Data]
-  def unapplyThis(arg: TopLevelStatement): Option[terms.This.Data]
-  def unapplyNew(arg: TopLevelStatement): Option[terms.New.Data]
-  def unapplyNamedArg(arg: TopLevelStatement): Option[terms.NamedArg.Data]
-  def unapplyApply(arg: TopLevelStatement): Option[terms.Apply.Data]
-  def unapplyTypeApply(arg: TopLevelStatement): Option[terms.TypeApply.Data]
-  def unapplySuper(arg: TopLevelStatement): Option[terms.Super.Data]
-  def unapplyTyped(arg: TopLevelStatement): Option[terms.Typed.Data]
-  def unapplyAssign(arg: TopLevelStatement): Option[terms.Assign.Data]
-  def unapplyBlock(arg: TopLevelStatement): Option[terms.Block.Data]
-  def unapplyInlined(arg: TopLevelStatement): Option[terms.Inlined.Data]
-  def unapplyLambda(arg: TopLevelStatement): Option[terms.Lambda.Data]
-  def unapplyIf(arg: TopLevelStatement): Option[terms.If.Data]
-  def unapplyMatch(arg: TopLevelStatement): Option[terms.Match.Data]
-  def unapplyTry(arg: TopLevelStatement): Option[terms.Try.Data]
-  def unapplyReturn(arg: TopLevelStatement): Option[terms.Return.Data]
-  def unapplyRepeated(arg: TopLevelStatement): Option[terms.Repeated.Data]
-  def unapplySelectOuter(arg: TopLevelStatement): Option[terms.SelectOuter.Data]
+  def unapplyIdent(arg: Tree): Option[terms.Ident.Data]
+  def unapplySelect(arg: Tree): Option[terms.Select.Data]
+  def unapplyLiteral(arg: Tree): Option[terms.Literal.Data]
+  def unapplyThis(arg: Tree): Option[terms.This.Data]
+  def unapplyNew(arg: Tree): Option[terms.New.Data]
+  def unapplyNamedArg(arg: Tree): Option[terms.NamedArg.Data]
+  def unapplyApply(arg: Tree): Option[terms.Apply.Data]
+  def unapplyTypeApply(arg: Tree): Option[terms.TypeApply.Data]
+  def unapplySuper(arg: Tree): Option[terms.Super.Data]
+  def unapplyTyped(arg: Tree): Option[terms.Typed.Data]
+  def unapplyAssign(arg: Tree): Option[terms.Assign.Data]
+  def unapplyBlock(arg: Tree): Option[terms.Block.Data]
+  def unapplyInlined(arg: Tree): Option[terms.Inlined.Data]
+  def unapplyLambda(arg: Tree): Option[terms.Lambda.Data]
+  def unapplyIf(arg: Tree): Option[terms.If.Data]
+  def unapplyMatch(arg: Tree): Option[terms.Match.Data]
+  def unapplyTry(arg: Tree): Option[terms.Try.Data]
+  def unapplyReturn(arg: Tree): Option[terms.Return.Data]
+  def unapplyRepeated(arg: Tree): Option[terms.Repeated.Data]
+  def unapplySelectOuter(arg: Tree): Option[terms.SelectOuter.Data]
 
   // Patterns
 
-  def unapplyCaseDef(arg: CaseDef): Option[patterns.CaseDef.Data]
+  def unapplyCaseDef(arg: Tree): Option[patterns.CaseDef.Data]
 
-  def unapplyValue(arg: Pattern): Option[patterns.Value.Data]
-  def unapplyBind(arg: Pattern): Option[patterns.Bind.Data]
-  def unapplyUnapply(arg: Pattern): Option[patterns.Unapply.Data]
-  def unapplyAlternative(arg: Pattern): Option[patterns.Alternative.Data]
-  def unapplyTypeTest(arg: Pattern): Option[patterns.TypeTest.Data]
+  def unapplyValue(arg: Tree): Option[patterns.Value.Data]
+  def unapplyBind(arg: Tree): Option[patterns.Bind.Data]
+  def unapplyUnapply(arg: Tree): Option[patterns.Unapply.Data]
+  def unapplyAlternative(arg: Tree): Option[patterns.Alternative.Data]
+  def unapplyTypeTest(arg: Tree): Option[patterns.TypeTest.Data]
 
   // Type trees
 
-  def unapplySynthetic(arg: MaybeTypeTree): Boolean
-  def unapplyIdent(arg: MaybeTypeTree): Option[typetrees.Ident.Data]
-  def unapplySelect(arg: MaybeTypeTree): Option[typetrees.Select.Data]
-  def unapplySingleton(arg: MaybeTypeTree): Option[typetrees.Singleton.Data]
-  def unapplyRefined(arg: MaybeTypeTree): Option[typetrees.Refined.Data]
-  def unapplyApplied(arg: MaybeTypeTree): Option[typetrees.Applied.Data]
-  def unapplyTypeBoundsTree(arg: MaybeTypeTree): Option[typetrees.TypeBoundsTree.Data]
-  def unapplyAnnotated(arg: MaybeTypeTree): Option[typetrees.Annotated.Data]
-  def unapplyAnd(arg: MaybeTypeTree): Option[typetrees.And.Data]
-  def unapplyOr(arg: MaybeTypeTree): Option[typetrees.Or.Data]
-  def unapplyByName(arg: MaybeTypeTree): Option[typetrees.ByName.Data]
+  def unapplySynthetic(arg: Tree): Boolean
+  def unapplyTypeIdent(arg: Tree): Option[typetrees.TypeIdent.Data]
+  def unapplyTypeSelect(arg: Tree): Option[typetrees.TypeSelect.Data]
+  def unapplySingleton(arg: Tree): Option[typetrees.Singleton.Data]
+  def unapplyRefined(arg: Tree): Option[typetrees.Refined.Data]
+  def unapplyApplied(arg: Tree): Option[typetrees.Applied.Data]
+  def unapplyTypeBoundsTree(arg: Tree): Option[typetrees.TypeBoundsTree.Data]
+  def unapplyAnnotated(arg: Tree): Option[typetrees.Annotated.Data]
+  def unapplyAnd(arg: Tree): Option[typetrees.And.Data]
+  def unapplyOr(arg: Tree): Option[typetrees.Or.Data]
+  def unapplyByName(arg: Tree): Option[typetrees.ByName.Data]
 
   // Names
 

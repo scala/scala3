@@ -1,5 +1,4 @@
-package scala.tasty.statements
+package scala.tasty
+package statements
 
-import scala.tasty.Positioned
-
-trait TopLevelStatement extends Positioned
+trait TopLevelStatement extends Tree

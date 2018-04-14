@@ -8,5 +8,5 @@ trait ValDef extends Definition
 
 object ValDef {
   type Data = (names.TermName, typetrees.TypeTree, Option[terms.Term], List[Modifier])
-  def unapply(arg: TopLevelStatement)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyValDef(arg)
+  def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyValDef(arg)
 }

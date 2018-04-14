@@ -7,7 +7,7 @@ trait Import extends Statement
 
 object Import {
   type Data = (terms.Term, List[ImportSelector])
-  def unapply(arg: TopLevelStatement)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyImport(arg)
+  def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyImport(arg)
 
   sealed trait ImportSelector
   object ImportSelector {
