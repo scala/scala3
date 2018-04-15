@@ -151,6 +151,7 @@ object definitions {
     case class OrType(left: Type, right: Type) extends Type
     case class ByNameType(underlying: Type) extends Type
     case class ParamRef(binder: LambdaType[_, _, _], idx: Int) extends Type
+    case class ThisType(tp: Type) extends Type
     case class RecursiveThis(binder: RecursiveType) extends Type
 
     case class RecursiveType private (private var _underlying: Type) extends Type {

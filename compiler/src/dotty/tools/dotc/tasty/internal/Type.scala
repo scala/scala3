@@ -24,7 +24,7 @@ object Type {
     case Impl(tp: Types.NamedType, ctx) =>
       implicit val ctx_ = ctx
       tp.designator match {
-        case sym: Symbol => Some(TastySymbol(sym), Type(tp.prefix))
+        case sym: Symbol => Some(TastySymbol(sym), TypeOrNoPrefix(tp.prefix))
         case _ => None
       }
     case _ => None
@@ -34,7 +34,7 @@ object Type {
     case Impl(tp: Types.NamedType, ctx) =>
       implicit val ctx_ = ctx
       tp.designator match {
-        case name: Names.Name => Some(Name(name), Type(tp.prefix))
+        case name: Names.Name => Some(Name(name), TypeOrNoPrefix(tp.prefix))
         case _ => None
       }
     case _ => None
@@ -82,6 +82,11 @@ object Type {
     case _ => None
   }
 
+  def unapplyThisType(arg: types.MaybeType): Option[types.ThisType.Data] = arg match {
+    case Impl(Types.ThisType(tp), ctx) => Some(Type(tp)(ctx))
+    case _ => None
+  }
+
   def unapplyRecursiveThis(arg: types.MaybeType): Option[types.RecursiveThis.Data] = arg match {
     case Impl(Types.RecThis(binder), ctx) => Some(RecursiveType(binder)(ctx))
     case _ => None
@@ -104,8 +109,8 @@ object Type {
         case types.OrType(left, right) => s"OrType($left, $right)"
         case types.ByNameType(underlying) => s"ByNameType($underlying)"
         case types.ParamRef(binder, idx) => s"ParamRef($binder, $idx)"
+        case types.ThisType(tp) => s"ThisType($tp)"
         case types.RecursiveThis(binder) => s"RecursiveThis($binder)"
-        case _ => "###"  // FIXME: remove this line
       }
     }
   }

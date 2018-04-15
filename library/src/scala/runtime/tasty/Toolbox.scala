@@ -113,6 +113,7 @@ trait Toolbox {
   def unapplyOrType(arg: MaybeType): Option[types.OrType.Data]
   def unapplyByNameType(arg: MaybeType): Option[types.ByNameType.Data]
   def unapplyParamRef(arg: MaybeType): Option[types.ParamRef.Data]
+  def unapplyThisType(arg: MaybeType): Option[types.ThisType.Data]
   def unapplyRecursiveThis(arg: MaybeType): Option[types.RecursiveThis.Data]
 
   def unapplyRecursiveType(arg: MaybeType): Option[types.RecursiveType.Data]

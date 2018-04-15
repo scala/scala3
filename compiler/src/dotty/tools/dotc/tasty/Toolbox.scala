@@ -112,6 +112,7 @@ object Toolbox {
     override def unapplyOrType(arg: MaybeType) = internal.Type.unapplyOrType(arg)
     override def unapplyByNameType(arg: MaybeType) = internal.Type.unapplyByNameType(arg)
     override def unapplyParamRef(arg: MaybeType) = internal.Type.unapplyParamRef(arg)
+    override def unapplyThisType(arg: MaybeType) = internal.Type.unapplyThisType(arg)
     override def unapplyRecursiveThis(arg: MaybeType) = internal.Type.unapplyRecursiveThis(arg)
 
     override def unapplyRecursiveType(arg: MaybeType) = internal.RecursiveType.unapplyRecursiveType(arg)

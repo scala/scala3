@@ -61,6 +61,11 @@ package object types {
     def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyParamRef(arg)
   }
 
+  object ThisType {
+    type Data = Type
+    def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyThisType(arg)
+  }
+
   object RecursiveThis {
     type Data = RecursiveType
     def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyRecursiveThis(arg)
