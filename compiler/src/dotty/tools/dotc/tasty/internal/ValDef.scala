@@ -13,10 +13,13 @@ object ValDef {
 
   def unapplyValDef(tree: trees.Tree): Option[trees.ValDef.Data] = tree match {
     case Impl(vdef, ctx) =>
-      implicit val ctx_ = ctx
+      implicit val ctx_ = localContext(vdef)(ctx)
       Some((TermName(vdef.name), TypeTree(vdef.tpt), if (vdef.rhs.isEmpty) None else Some(Term(vdef.rhs)), Modifiers(vdef)))
     case _ => None
   }
+
+  private def localContext(tree: tpd.Tree)(implicit ctx: Context): Context =
+    if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
 
   private case class Impl(tree: tpd.ValDef, ctx: Context) extends trees.ValDef with Positioned {
 

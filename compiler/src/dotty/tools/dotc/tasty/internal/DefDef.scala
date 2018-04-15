@@ -13,7 +13,7 @@ object DefDef {
 
   def unapplyDefDef(tree: trees.Tree): Option[trees.DefDef.Data] = tree match {
     case Impl(ddef, ctx) =>
-      implicit val ctx_ = ctx
+      implicit val localContext = ctx.withOwner(ddef.symbol(ctx))
       Some((TermName(ddef.name), ddef.tparams.map(TypeDef(_)), ddef.vparamss.map(_.map(ValDef(_))), TypeTree(ddef.tpt), if (ddef.rhs.isEmpty) None else Some(Term(ddef.rhs)), Modifiers(ddef)))
     case _ => None
   }

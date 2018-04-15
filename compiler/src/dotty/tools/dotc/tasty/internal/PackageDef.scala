@@ -13,7 +13,9 @@ object PackageDef {
   def apply(tree: tpd.Tree)(implicit ctx: Context): trees.PackageDef = Impl(tree, ctx)
 
   def unapplyPackageDef(tree: trees.Tree): Option[trees.PackageDef.Data] = tree match {
-    case Impl(Trees.PackageDef(pkg, body), ctx) => Some(Term(pkg)(ctx), body.map(TopLevelStatement(_)(ctx)))
+    case Impl(pkgDef@Trees.PackageDef(pkg, body), ctx) =>
+      val localContext = ctx.withOwner(pkgDef.symbol(ctx))
+      Some(Term(pkg)(ctx), body.map(TopLevelStatement(_)(localContext)))
     case _ => None
   }
 

@@ -13,7 +13,7 @@ object TypeDef {
 
   def unapplyTypeDef(tree: trees.Tree): Option[trees.TypeDef.Data] = tree match {
     case Impl(tdef, ctx) if !tdef.symbol(ctx).isClass =>
-      implicit val ctx_ = ctx
+      implicit val localContext = ctx.withOwner(tdef.symbol(ctx))
       if (tdef.symbol.isClass) None
       else {
         val rhs = tdef.rhs match {
