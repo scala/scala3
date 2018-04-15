@@ -257,10 +257,7 @@ object Types {
     }
 
     /** Is this type produced as a repair for an error? */
-    final def isError(implicit ctx: Context): Boolean = stripTypeVar match {
-      case _: ErrorType => true
-      case tp => (tp.typeSymbol is Erroneous) || (tp.termSymbol is Erroneous)
-    }
+    final def isError(implicit ctx: Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]
 
     /** Is some part of this type produced as a repair for an error? */
     final def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError, forceLazy = false)

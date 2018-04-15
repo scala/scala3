@@ -1478,8 +1478,6 @@ object SymDenotations {
       base.isClass &&
       (  (symbol eq base)
       || (baseClassSet contains base)
-      || (this is Erroneous)
-      || (base is Erroneous)
       )
 
     final override def isSubClass(base: Symbol)(implicit ctx: Context) =
