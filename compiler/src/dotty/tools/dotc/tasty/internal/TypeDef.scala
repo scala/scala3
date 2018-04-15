@@ -11,7 +11,7 @@ object TypeDef {
 
   def apply(tree: tpd.TypeDef)(implicit ctx: Context): trees.TypeDef = Impl(tree, ctx)
 
-  def unapplyTypeDef(tree: scala.tasty.Tree): Option[trees.TypeDef.Data] = tree match {
+  def unapplyTypeDef(tree: trees.Tree): Option[trees.TypeDef.Data] = tree match {
     case Impl(tdef, ctx) if !tdef.symbol(ctx).isClass =>
       implicit val ctx_ = ctx
       if (tdef.symbol.isClass) None

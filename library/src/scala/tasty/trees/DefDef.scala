@@ -2,7 +2,7 @@ package scala.tasty.trees
 
 import scala.runtime.tasty.Toolbox
 import scala.tasty.modifiers.Modifier
-import scala.tasty.{Tree, names}
+import scala.tasty.names
 
 trait DefDef extends Definition
 

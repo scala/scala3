@@ -4,8 +4,8 @@ import scala.tasty.constants.Constant
 import scala.tasty.modifiers.Modifier
 import scala.tasty.names.Name
 import scala.tasty.names.PossiblySignedName
+import scala.tasty.trees.Tree
 import scala.tasty.types.MaybeType
-import scala.tasty.Tree
 
 object Toolbox {
 

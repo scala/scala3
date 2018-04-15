@@ -11,7 +11,7 @@ object CaseDef {
 
   def apply(tree: tpd.Tree)(implicit ctx: Context): trees.CaseDef = Impl(tree, ctx)
 
-  def unapplyCaseDef(tree: scala.tasty.Tree): Option[trees.CaseDef.Data] = tree match {
+  def unapplyCaseDef(tree: trees.Tree): Option[trees.CaseDef.Data] = tree match {
     case Impl(Trees.CaseDef(pat, guard, body), ctx) =>
       Some(Pattern(pat)(ctx), if (guard.isEmpty) None else Some(Term(guard)(ctx)), Term(body)(ctx))
     case _ => None

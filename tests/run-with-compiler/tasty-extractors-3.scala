@@ -5,7 +5,6 @@ import dotty.tools.dotc.tasty.Toolbox._
 import scala.quoted._
 
 import scala.tasty.util.TreeTraverser
-import scala.tasty._
 import scala.tasty.trees._
 
 object Test {

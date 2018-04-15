@@ -6,13 +6,14 @@ import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types
 
-import scala.tasty.{trees, types}
+import scala.tasty.trees
+import scala.tasty.types
 
 object TypeBoundsTree {
 
   def apply(bounds: tpd.TypeBoundsTree)(implicit ctx: Context): trees.TypeBoundsTree = Impl(bounds, ctx)
 
-  def unapplyTypeBounds(tree: scala.tasty.Tree): Option[trees.TypeBoundsTree.Data] = tree match {
+  def unapplyTypeBounds(tree: trees.Tree): Option[trees.TypeBoundsTree.Data] = tree match {
     case Impl(Trees.TypeBoundsTree(lo, hi), ctx) => Some(TypeTree(lo)(ctx), TypeTree(hi)(ctx))
     case _ => None
   }

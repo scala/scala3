@@ -5,6 +5,7 @@ import scala.tasty._
 import scala.tasty.constants.Constant
 import scala.tasty.modifiers.Modifier
 import scala.tasty.trees
+import scala.tasty.trees.Tree
 import scala.tasty.types.MaybeType
 
 @implicitNotFound("Could not find implicit tasty.Toolbox. Default toolbox can be imported with `import dotty.tools.dotc.tasty.Toolbox._`")

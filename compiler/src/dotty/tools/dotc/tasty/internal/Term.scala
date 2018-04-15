@@ -15,102 +15,102 @@ object Term {
 
   def apply(arg: tpd.Tree)(implicit ctx: Context): trees.Term = Impl(arg, ctx)
 
-  def unapplyIdent(tree: scala.tasty.Tree): Option[trees.Ident.Data] = tree match {
+  def unapplyIdent(tree: trees.Tree): Option[trees.Ident.Data] = tree match {
     case Impl(id@Trees.Ident(name: Names.TermName), _) if id.isTerm => Some(TermName(name))
     case _ => None
   }
 
-  def unapplySelect(tree: scala.tasty.Tree): Option[trees.Select.Data] = tree match {
+  def unapplySelect(tree: trees.Tree): Option[trees.Select.Data] = tree match {
     case Impl(id@Trees.Select(qual, name: Names.TermName), ctx) if id.isTerm => Some(Term(qual)(ctx), TermName(name))
     case _ => None
   }
 
-  def unapplyLiteral(tree: scala.tasty.Tree): Option[trees.Literal.Data] = tree match {
+  def unapplyLiteral(tree: trees.Tree): Option[trees.Literal.Data] = tree match {
     case Impl(Trees.Literal(const), _) => Some(Constant(const))
     case _ => None
   }
 
-  def unapplyThis(tree: scala.tasty.Tree): Option[trees.This.Data] = tree match {
+  def unapplyThis(tree: trees.Tree): Option[trees.This.Data] = tree match {
     case Impl(Trees.This(qual), ctx) => Some(if (qual.isEmpty) None else Some(Id(qual)(ctx)))
     case _ => None
   }
 
-  def unapplyNew(tree: scala.tasty.Tree): Option[trees.New.Data] = tree match {
+  def unapplyNew(tree: trees.Tree): Option[trees.New.Data] = tree match {
     case Impl(Trees.New(tpt), ctx) => Some(TypeTree(tpt)(ctx))
     case _ => None
   }
 
-  def unapplyNamedArg(tree: scala.tasty.Tree): Option[trees.NamedArg.Data] = tree match {
+  def unapplyNamedArg(tree: trees.Tree): Option[trees.NamedArg.Data] = tree match {
     case Impl(Trees.NamedArg(name: Names.TermName, arg), ctx) => Some(TermName(name), Term(arg)(ctx))
     case _ => None
   }
 
-  def unapplyApply(tree: scala.tasty.Tree): Option[trees.Apply.Data] = tree match {
+  def unapplyApply(tree: trees.Tree): Option[trees.Apply.Data] = tree match {
     case Impl(Trees.Apply(fn, args), ctx) => Some((Term(fn)(ctx), args.map(arg => Term(arg)(ctx))))
     case _ => None
   }
 
-  def unapplyTypeApply(tree: scala.tasty.Tree): Option[trees.TypeApply.Data] = tree match {
+  def unapplyTypeApply(tree: trees.Tree): Option[trees.TypeApply.Data] = tree match {
     case Impl(Trees.TypeApply(fn, args), ctx) => Some((Term(fn)(ctx), args.map(arg => TypeTree(arg)(ctx))))
     case _ => None
   }
 
-  def unapplySuper(tree: scala.tasty.Tree): Option[trees.Super.Data] = tree match {
+  def unapplySuper(tree: trees.Tree): Option[trees.Super.Data] = tree match {
     case Impl(Trees.Super(qual, mixin), ctx) => Some((Term(qual)(ctx), if (mixin.isEmpty) None else Some(Id(mixin)(ctx))))
     case _ => None
   }
 
-  def unapplyTyped(tree: scala.tasty.Tree): Option[trees.Typed.Data] = tree match {
+  def unapplyTyped(tree: trees.Tree): Option[trees.Typed.Data] = tree match {
     case Impl(Trees.Typed(expr, tpt), ctx) => Some((Term(expr)(ctx), TypeTree(tpt)(ctx)))
     case _ => None
   }
 
-  def unapplyAssign(tree: scala.tasty.Tree): Option[trees.Assign.Data] = tree match {
+  def unapplyAssign(tree: trees.Tree): Option[trees.Assign.Data] = tree match {
     case Impl(Trees.Assign(lhs, rhs), ctx) => Some((Term(lhs)(ctx), Term(rhs)(ctx)))
     case _ => None
   }
 
-  def unapplyBlock(tree: scala.tasty.Tree): Option[trees.Block.Data] = tree match {
+  def unapplyBlock(tree: trees.Tree): Option[trees.Block.Data] = tree match {
     case Impl(Trees.Block(stats, expr), ctx) => Some((stats.map(stat => Statement(stat)(ctx)), Term(expr)(ctx)))
     case _ => None
   }
 
-  def unapplyInlined(tree: scala.tasty.Tree): Option[trees.Inlined.Data] = tree match {
+  def unapplyInlined(tree: trees.Tree): Option[trees.Inlined.Data] = tree match {
     case Impl(Trees.Inlined(call, bindings, expansion), ctx) => Some((Term(call)(ctx), bindings.map(Definition(_)(ctx)), Term(expansion)(ctx)))
     case _ => None
   }
 
-  def unapplyLambda(tree: scala.tasty.Tree): Option[trees.Lambda.Data] = tree match {
+  def unapplyLambda(tree: trees.Tree): Option[trees.Lambda.Data] = tree match {
     case Impl(Trees.Closure(_, meth, tpt), ctx) => Some((Term(meth)(ctx), if (tpt.isEmpty) None else Some(TypeTree(tpt)(ctx))))
     case _ => None
   }
 
-  def unapplyIf(tree: scala.tasty.Tree): Option[trees.If.Data] = tree match {
+  def unapplyIf(tree: trees.Tree): Option[trees.If.Data] = tree match {
     case Impl(Trees.If(cond, thenp, elsep), ctx) => Some((Term(cond)(ctx), Term(thenp)(ctx), Term(elsep)(ctx)))
     case _ => None
   }
 
-  def unapplyMatch(tree: scala.tasty.Tree): Option[trees.Match.Data] = tree match {
+  def unapplyMatch(tree: trees.Tree): Option[trees.Match.Data] = tree match {
     case Impl(Trees.Match(selector, cases), ctx) => Some((Term(selector)(ctx), cases.map(c => CaseDef(c)(ctx))))
     case _ => None
   }
 
-  def unapplyTry(tree: scala.tasty.Tree): Option[trees.Try.Data] = tree match {
+  def unapplyTry(tree: trees.Tree): Option[trees.Try.Data] = tree match {
     case Impl(Trees.Try(body, catches, finalizer), ctx) => Some((Term(body)(ctx), catches.map(c => CaseDef(c)(ctx)), if (finalizer.isEmpty) None else Some(Term(finalizer)(ctx))))
     case _ => None
   }
 
-  def unapplyReturn(tree: scala.tasty.Tree): Option[trees.Return.Data] = tree match {
+  def unapplyReturn(tree: trees.Tree): Option[trees.Return.Data] = tree match {
     case Impl(Trees.Return(expr, from), ctx) => Some(Term(expr)(ctx)) // TODO use `from` or remove it
     case _ => None
   }
 
-  def unapplyRepeated(tree: scala.tasty.Tree): Option[trees.Repeated.Data] = tree match {
+  def unapplyRepeated(tree: trees.Tree): Option[trees.Repeated.Data] = tree match {
     case Impl(Trees.SeqLiteral(args, elemtpt), ctx) => Some(args.map(arg => Term(arg)(ctx))) // TODO use `elemtpt`?
     case _ => None
   }
 
-  def unapplySelectOuter(tree: scala.tasty.Tree): Option[trees.SelectOuter.Data] = tree match {
+  def unapplySelectOuter(tree: trees.Tree): Option[trees.SelectOuter.Data] = tree match {
     case Impl(sel@Trees.Select(qual, OuterSelectName(_, levels)), ctx) => Some((Term(qual)(ctx), levels, Type(sel.tpe)(ctx)))
     case _ => None
   }

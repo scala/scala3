@@ -4,13 +4,14 @@ package internal
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 
-import scala.tasty.{trees, types}
+import scala.tasty.trees
+import scala.tasty.types
 
 object ValDef {
 
   def apply(tree: tpd.ValDef)(implicit ctx: Context): trees.ValDef = Impl(tree, ctx)
 
-  def unapplyValDef(tree: scala.tasty.Tree): Option[trees.ValDef.Data] = tree match {
+  def unapplyValDef(tree: trees.Tree): Option[trees.ValDef.Data] = tree match {
     case Impl(vdef, ctx) =>
       implicit val ctx_ = ctx
       Some((TermName(vdef.name), TypeTree(vdef.tpt), if (vdef.rhs.isEmpty) None else Some(Term(vdef.rhs)), Modifiers(vdef)))

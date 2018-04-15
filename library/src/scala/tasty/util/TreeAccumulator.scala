@@ -1,11 +1,11 @@
-package scala.tasty
-package util
+package scala.tasty.util
 
 import scala.runtime.tasty.Toolbox
 
 import scala.tasty.trees._
 
 abstract class TreeAccumulator[X](implicit toolbox: Toolbox) {
+
   // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
   def apply(x: X, tree: Tree): X
 
