@@ -176,7 +176,7 @@ object Map extends ImmutableMapFactory[Map] {
       else if (key == key2) new Map4(key1, value1, key2, value, key3, value3, key4, value4)
       else if (key == key3) new Map4(key1, value1, key2, value2, key3, value, key4, value4)
       else if (key == key4) new Map4(key1, value1, key2, value2, key3, value3, key4, value)
-      else new HashMap + ((key1, value1), (key2, value2), (key3, value3), (key4, value4), (key, value))
+      else HashMap((key1, value1), (key2, value2), (key3, value3), (key4, value4), (key, value))
     def + [B1 >: B](kv: (A, B1)): Map[A, B1] = updated(kv._1, kv._2)
     def - (key: A): Map[A, B] =
       if (key == key1)      new Map3(key2, value2, key3, value3, key4, value4)

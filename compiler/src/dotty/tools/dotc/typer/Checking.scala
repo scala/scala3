@@ -850,6 +850,29 @@ trait Checking {
           checkEnumCaseRefsLegal(stat, enumContext)
     stats
   }
+
+  /** `tp` refers to a method with exactly one parameter in its first parameter list.
+   *  If `tp` is overloaded, all alternatives are unary in that sense.
+   */
+  def isUnary(tp: Type)(implicit ctx: Context): Boolean = tp match {
+    case tp: MethodicType =>
+      tp.firstParamTypes match {
+        case ptype :: Nil => !ptype.isRepeatedParam
+        case _ => false
+      }
+    case tp: TermRef =>
+      tp.denot.alternatives.forall(alt => isUnary(alt.info))
+    case _ =>
+      false
+  }
+
+  /** Under Scala-2 mode, issue a migration warning for a symbolic method that is
+   *  not unary.
+   */
+  def checkSymbolicUnary(sym: Symbol)(implicit ctx: Context): Unit =
+    if (sym.name.isSymbolic && !isUnary(sym.info) && ctx.scala2Mode)
+      ctx.migrationWarning(i"""symbolic operator `${sym.name}` should take exactly one parameter,
+                              |otherwise it cannot be used in infix position.""", sym.pos)
 }
 
 trait ReChecking extends Checking {
@@ -877,4 +900,5 @@ trait NoChecking extends ReChecking {
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: Position)(implicit ctx: Context): Type = tp
+  override def checkSymbolicUnary(sym: Symbol)(implicit ctx: Context): Unit = ()
 }

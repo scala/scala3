@@ -87,8 +87,10 @@ object NameOps {
       }
     }
 
-    def isOpName = name match {
-      case name: SimpleName => NameTransformer.encode(name) != name
+    /** Is name an operator name that does not start with a letter or `_` or `$`? */
+    def isSymbolic = name match {
+      case name: SimpleName =>
+        !Chars.isIdentifierStart(name.head) && NameTransformer.encode(name) != name
       case _ => false
     }
 

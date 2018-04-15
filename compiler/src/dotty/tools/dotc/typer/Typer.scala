@@ -1434,6 +1434,8 @@ class Typer extends Namer
       for (param <- tparams1 ::: vparamss1.flatten)
         checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
 
+    checkSymbolicUnary(sym)
+
     assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
       //todo: make sure dependent method types do not depend on implicits or by-name params
   }
