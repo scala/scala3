@@ -481,7 +481,7 @@ object Erasure {
 	/** Besides normal typing, this method collects all arguments
 	 *  to a compacted function into a single argument of array type.
 	 */
-    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
+    override def typedApply(tree: untpd.Apply, pt: Type, scala2InfixOp: Boolean)(implicit ctx: Context): Tree = {
       val Apply(fun, args) = tree
       if (fun.symbol == defn.cbnArg)
         typedUnadapted(args.head, pt)

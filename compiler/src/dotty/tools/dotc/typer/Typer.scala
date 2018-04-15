@@ -1709,7 +1709,7 @@ class Typer extends Namer
    */
   def typedInfixOp(tree: untpd.InfixOp, pt: Type)(implicit ctx: Context): Tree = {
     val untpd.InfixOp(l, op, r) = tree
-    val app = typedApply(desugar.binop(l, op, r), pt)
+    val app = typedApply(desugar.binop(l, op, r), pt, scala2InfixOp = ctx.scala2Mode)
     if (untpd.isLeftAssoc(op.name)) app
     else {
       val defs = new mutable.ListBuffer[Tree]
@@ -2037,22 +2037,13 @@ class Typer extends Namer
   def canAutoTuple(args: List[untpd.Tree])(implicit ctx: Context): Boolean = {
     val pos = Position(args.map(_.pos.start).min, args.map(_.pos.end).max)
     ctx.testScala2Mode(
-        i"""auto-tupling is no longer supported in this case,
-            |arguments now need to be enclosed in parentheses (...).""",
+        i"""auto-tupling is no longer supported,
+           |arguments now need to be enclosed in parentheses (...).""",
         pos, { patch(pos.startPos, "("); patch(pos.endPos, ")") })
   }
 
-  def takesAutoTupledArgs(tp: Type, sym: Symbol, args: List[untpd.Tree])(implicit ctx: Context): Boolean = tp match {
-    case tp: MethodicType =>
-      tp.firstParamTypes match {
-        case ptype :: Nil => !ptype.isRepeatedParam && (sym.name.isOpName || canAutoTuple(args))
-        case _ => false
-      }
-    case tp: TermRef =>
-      tp.denot.alternatives.forall(alt => takesAutoTupledArgs(alt.info, alt.symbol, args))
-    case _ =>
-      false
-  }
+  def takesAutoTupledArgs(tp: Type, pt: FunProto)(implicit ctx: Context): Boolean =
+    pt.args.lengthCompare(1) > 0 && isUnary(tp) && (pt.scala2InfixOp || canAutoTuple(pt.args))
 
   /** Perform the following adaptations of expression, pattern or type `tree` wrt to
    *  given prototype `pt`:
@@ -2143,10 +2134,8 @@ class Typer extends Namer
 
       def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
         case _: MethodOrPoly =>
-          if (pt.args.lengthCompare(1) > 0 && takesAutoTupledArgs(wtp, tree.symbol, pt.args))
-            adapt(tree, pt.tupled, locked)
-          else
-            tree
+          if (takesAutoTupledArgs(wtp, pt)) adapt(tree, pt.tupled, locked)
+          else tree
         case _ => tryInsertApplyOrImplicit(tree, pt, locked) {
           errorTree(tree, MethodDoesNotTakeParameters(tree, methPart(tree).tpe)(err))
         }
@@ -2511,8 +2500,7 @@ class Typer extends Namer
           tree
         case ref: TermRef => // this case can happen in case tree.tpe is overloaded
           pt match {
-            case pt: FunProto
-            if pt.args.lengthCompare(1) > 0 && takesAutoTupledArgs(ref, ref.symbol, pt.args) =>
+            case pt: FunProto if takesAutoTupledArgs(ref, pt) =>
               adapt(tree, pt.tupled, locked)
             case _ =>
               adaptOverloaded(ref)

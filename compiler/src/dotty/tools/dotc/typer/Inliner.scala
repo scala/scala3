@@ -564,13 +564,13 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       }
     }
 
-    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) =
+    override def typedApply(tree: untpd.Apply, pt: Type, scala2InfixOp: Boolean)(implicit ctx: Context) =
       tree.asInstanceOf[tpd.Tree] match {
         case Apply(Select(InlineableArg(closure(_, fn, _)), nme.apply), args) =>
           inlining.println(i"reducing $tree with closure $fn")
           typed(fn.appliedToArgs(args), pt)
         case _ =>
-          super.typedApply(tree, pt)
+          super.typedApply(tree, pt, scala2InfixOp)
       }
   }
 }

@@ -23,6 +23,7 @@ import StdNames._
 import NameKinds.DefaultGetterName
 import ProtoTypes._
 import Inferencing._
+import rewrite.Rewrites.patch
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
@@ -242,7 +243,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     def success = ok
 
     protected def methodType = methType.asInstanceOf[MethodType]
-    private def methString: String = i"${methRef.symbol}: ${methType.show}"
+    private def methString: String = i"${methRef.symbol.showLocated}: ${methType.show}"
 
     /** Re-order arguments to correctly align named arguments */
     def reorder[T >: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
@@ -669,10 +670,19 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  or, if application is an operator assignment, also an `Assign` or
    *  Block node.
    */
-  def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
-
+  def typedApply(tree: untpd.Apply, pt: Type, scala2InfixOp: Boolean = false)(implicit ctx: Context): Tree = {
     def realApply(implicit ctx: Context): Tree = track("realApply") {
-      val originalProto = new FunProto(tree.args, IgnoredProto(pt), this)(argCtx(tree))
+      var originalProto = new FunProto(tree.args, IgnoredProto(pt), this)(argCtx(tree))
+
+      // In an infix operation `x op (y, z)` under Scala-2 mode, rewrite tuple on the
+      // right hand side to multi-parameters, i.e `x.op(y, z)`, relying on auto-tupling
+      // to revert this if `op` takes a single argument.
+      tree.args match {
+        case untpd.Tuple(elems) :: Nil if scala2InfixOp =>
+          originalProto = new FunProto(elems, IgnoredProto(pt), this)(argCtx(tree))
+          originalProto.scala2InfixOp = true
+        case _ =>
+      }
       val fun1 = typedExpr(tree.fun, originalProto)
 
       // Warning: The following lines are dirty and fragile. We record that auto-tupling was demanded as
@@ -682,7 +692,41 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       // otherwise we would get possible cross-talk between different `adapt` calls using the same
       // prototype. A cleaner alternative would be to return a modified prototype from `adapt` together with
       // a modified tree but this would be more convoluted and less efficient.
-      val proto = if (originalProto.isTupled) originalProto.tupled else originalProto
+      // All of this is provisional in the long run, since it is only needed under Scala-2 mode.
+      val proto =
+        if (originalProto.isTupled) originalProto.tupled
+        else {
+          // If we see a multi-parameter infix operation `x op (y, z)` under Scala-2 mode,
+          // issue a migration warning and propose a rewrite to `x .op (y, z)` (or
+          // `(x) .op (y, z)` is `x` is itself an infix operation) where this is possible.
+          // Not possible are rewrites of operator assignments and right-associative operators.
+          tree.fun match {
+            case sel @ Select(qual, opName)
+            if originalProto.scala2InfixOp && !fun1.tpe.widen.isErroneous =>
+              val opEndOffset = sel.pos.point + opName.toString.length
+              val isOpAssign = ctx.source(opEndOffset) == '='
+              val isRightAssoc = !isLeftAssoc(opName)
+              val addendum =
+                if (isOpAssign) "\nThis requires a manual rewrite since it is part of an operator assignment."
+                else if (isRightAssoc) "\nThis requires a manual rewrite since the operator is right-associative."
+                else "\nThis can be fixed automatically using -rewrite."
+              ctx.migrationWarning(
+                em"""infix operator takes exactly one argument,
+                    |use method call syntax with `.` instead.$addendum""", fun1.pos)
+              val Select(qual, _) = tree.fun
+              if (!isOpAssign && !isRightAssoc) {
+                patch(Position(sel.pos.point), ".")
+                qual match {
+                  case qual: untpd.InfixOp =>
+                    patch(qual.pos.startPos, "(")
+                    patch(qual.pos.endPos, ")")
+                  case _ =>
+                }
+              }
+            case _ =>
+          }
+          originalProto
+        }
 
       // If some of the application's arguments are function literals without explicitly declared
       // parameter types, relate the normalized result type of the application with the
@@ -750,12 +794,25 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *     { val xs = es; e' = e' + args }
      */
     def typedOpAssign(implicit ctx: Context): Tree = track("typedOpAssign") {
-      val Apply(Select(lhs, name), rhss) = tree
+      val Apply(sel @ Select(lhs, name), rhss) = tree
       val lhs1 = typedExpr(lhs)
       val liftedDefs = new mutable.ListBuffer[Tree]
       val lhs2 = untpd.TypedSplice(LiftComplex.liftAssigned(liftedDefs, lhs1))
-      val assign = untpd.Assign(lhs2,
-          untpd.Apply(untpd.Select(lhs2, name.asSimpleName.dropRight(1)), rhss))
+      val opName = name.asSimpleName.dropRight(1)
+
+      // If original operation was an infix operation under Scala-2 mode, generate
+      // again an infix operation insteadof an application, so that the logic does
+      // the right thing for migrating from auto-tupling and multi-parameter infix ops.
+      val app = rhss match {
+        case (rhs: untpd.Tuple) :: Nil if scala2InfixOp =>
+          val opEndOffset = sel.pos.point + opName.length
+          assert(ctx.source(opEndOffset) == '=')
+          val op = untpd.Ident(opName).withPos(Position(sel.pos.point, opEndOffset))
+          untpd.InfixOp(lhs2, op, rhs)
+        case _ =>
+          untpd.Apply(untpd.Select(lhs2, opName), rhss)
+      }
+      val assign = untpd.Assign(lhs2, app)
       wrapDefs(liftedDefs, typed(assign))
     }
 

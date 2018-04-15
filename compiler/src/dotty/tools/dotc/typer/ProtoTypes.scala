@@ -288,6 +288,11 @@ object ProtoTypes {
     def typeOfArg(arg: untpd.Tree)(implicit ctx: Context): Type =
       myTypedArg(arg).tpe
 
+    // `scala2InfixOp` and `tupled` only needed for Scala-2 compatibility and migration
+
+    /** FunProto applies to an infix operation under -language:Scala2 */
+    var scala2InfixOp = false
+
     private[this] var myTupled: Type = NoType
 
     /** The same proto-type but with all arguments combined in a single tuple */
