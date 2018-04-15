@@ -45,6 +45,8 @@ class ElimByName extends TransformByNameApply with InfoTransformer {
   override def runsAfterGroupsOf = Set(Splitter.name)
     // I got errors running this phase in an earlier group, but I did not track them down.
 
+  override def changesParents: Boolean = true // Only true for by-names
+
   /** Map `tree` to `tree.apply()` is `ftree` was of ExprType and becomes now a function */
   private def applyIfFunction(tree: Tree, ftree: Tree)(implicit ctx: Context) =
     if (isByNameRef(ftree))

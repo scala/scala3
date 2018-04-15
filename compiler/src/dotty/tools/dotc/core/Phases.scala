@@ -363,7 +363,7 @@ object Phases {
       myRefChecked   = prev.getClass == classOf[RefChecks]    || prev.refChecked
       myLabelsReordered = prev.getClass == classOf[LabelDefs] || prev.labelsReordered
       mySameMembersStartId = if (changesMembers) id else prev.sameMembersStartId
-      mySameParentsStartId = if (changesParents) id else prev.sameMembersStartId
+      mySameParentsStartId = if (changesParents) id else prev.sameParentsStartId
     }
 
     protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
