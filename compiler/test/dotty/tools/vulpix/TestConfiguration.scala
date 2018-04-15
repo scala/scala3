@@ -49,18 +49,18 @@ object TestConfiguration {
 
   val basicDefaultOptions = checkOptions ++ noCheckOptions ++ yCheckOptions
   val defaultUnoptimised = TestFlags(classPath, runClassPath, basicDefaultOptions)
-  val defaultOptimised = defaultUnoptimised and "-optimise"
+  val defaultOptimised = defaultUnoptimised.and("-optimise")
   val defaultOptions = defaultUnoptimised
   val defaultRunWithCompilerOptions = defaultOptions.withRunClasspath(Jars.dottyRunWithCompiler.mkString(":"))
   val allowDeepSubtypes = defaultOptions without "-Yno-deep-subtypes"
   val allowDoubleBindings = defaultOptions without "-Yno-double-bindings"
-  val picklingOptions = defaultUnoptimised and (
+  val picklingOptions = defaultUnoptimised.and(
     "-Xprint-types",
     "-Ytest-pickler",
     "-Yprint-pos",
     "-Yprint-pos-syms"
   )
-  val scala2Mode = defaultOptions and "-language:Scala2"
-  val explicitUTF8 = defaultOptions and ("-encoding", "UTF8")
-  val explicitUTF16 = defaultOptions and ("-encoding", "UTF16")
+  val scala2Mode = defaultOptions.and("-language:Scala2")
+  val explicitUTF8 = defaultOptions.and("-encoding", "UTF8")
+  val explicitUTF16 = defaultOptions.and("-encoding", "UTF16")
 }

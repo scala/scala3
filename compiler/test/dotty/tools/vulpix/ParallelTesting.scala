@@ -331,7 +331,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     protected def compile(files0: Array[JFile], flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
 
-      val flags = flags0 and ("-d", targetDir.getAbsolutePath)
+      val flags = flags0.and("-d", targetDir.getAbsolutePath)
 
       def flattenFiles(f: JFile): Array[JFile] =
         if (f.isDirectory) f.listFiles.flatMap(flattenFiles)
@@ -400,7 +400,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     protected def compileFromTasty(flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
       val tastyOutput = new JFile(targetDir.getPath + "_from-tasty")
       tastyOutput.mkdir()
-      val flags = flags0 and ("-d", tastyOutput.getAbsolutePath) and "-from-tasty"
+      val flags = flags0.and("-d", tastyOutput.getAbsolutePath).and("-from-tasty")
 
       def hasTastyFileToClassName(f: JFile): String =
         targetDir.toPath.relativize(f.toPath).toString.dropRight(".hasTasty".length).replace('/', '.')
@@ -427,8 +427,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val decompilationOutput = new JFile(targetDir.getPath)
       decompilationOutput.mkdir()
       val flags =
-        flags0 and ("-d", decompilationOutput.getAbsolutePath) and
-        "-decompile" and "-pagewidth" and "80"
+        flags0
+          .and("-d", decompilationOutput.getAbsolutePath)
+          .and("-decompile")
+          .and("-pagewidth", "80")
 
       def hasTastyFileToClassName(f: JFile): String =
         targetDir.toPath.relativize(f.toPath).toString.dropRight(".hasTasty".length).replace('/', '.')
