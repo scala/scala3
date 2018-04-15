@@ -454,7 +454,7 @@ object Flags {
   /** Flags representing access rights */
   final val AccessFlags = Private | Protected | Local
 
-  /** Flags guaranteed to be set upon symbol creation */
+  /** Flags that are not (re)set when completing the denotation */
   final val FromStartFlags =
     Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor.toCommonFlags |
     Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
@@ -462,9 +462,10 @@ object Flags {
     NonMember | Erroneous | ImplicitCommon | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
 
-  /** Flags guaranteed to be set upon symbol creation, or, if symbol is a top-level
-   *  class or object, when the class file defining the symbol is loaded (which
-   *  is generally before the symbol is completed
+  /** Flags that are not (re)set when completing the denotation, or, if symbol is
+   *  a top-level class or object, when completing the denotation once the class
+   *  file defining the symbol is loaded (which is generally before the denotation
+   *  is completed)
    */
   final val AfterLoadFlags =
     FromStartFlags | AccessFlags | Final | AccessorOrSealed | LazyOrTrait | SelfNameOrImplClass
