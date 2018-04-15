@@ -878,6 +878,10 @@ class Definitions {
       name.length > prefix.length &&
       name.drop(prefix.length).forall(_.isDigit))
 
+  // Currently unused:
+  /** If `cls` has name s"$prefix$digits" where $digits is a valid integer, that
+   *  that integer, otherwise -1.
+   */
   def arity(cls: Symbol, prefix: String): Int =
     scalaClassName(cls).applySimple(-1) { name =>
       if (name.startsWith(prefix)) {
