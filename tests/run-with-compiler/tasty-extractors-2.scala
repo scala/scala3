@@ -53,6 +53,7 @@ object Test {
     '{ class Foo(i: Int); class Bar extends Foo(1) },
     '{ class Foo { type X = Int }; def f(a: Foo): a.X = ??? },
     '{ class Foo { type X }; def f(a: Foo { type X = Int }): a.X = ??? },
+    '{ val lambda: Int => Int = x => x },
 
   )
 }

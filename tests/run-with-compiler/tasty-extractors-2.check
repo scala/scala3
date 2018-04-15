@@ -109,3 +109,6 @@ SymRef(Symbol(<root>.scala.Unit), ###)
 Block(List(ClassDef(Foo, DefDef(<init>, List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), <init>), Nil)), None, List(TypeDef(X, TypeBoundsTree(Synthetic(), Synthetic()), List())), List()), DefDef(f, List(), List(List(ValDef(a, Refined(Ident(Foo), List(TypeDef(X, Ident(Int), List()))), None, List()))), Select(Ident(a), X), Some(Ident(???)), List())), Literal(Unit()))
 SymRef(Symbol(<root>.scala.Unit), ###)
 
+Block(List(ValDef(lambda, Applied(Synthetic(), List(Ident(Int), Ident(Int))), Some(Block(List(DefDef($anonfun, List(), List(List(ValDef(x, Synthetic(), None, List()))), Synthetic(), Some(Ident(x)), List())), Lambda(Ident($anonfun), None))), List())), Literal(Unit()))
+SymRef(Symbol(<root>.scala.Unit), ###)
+
