@@ -4,10 +4,10 @@ object Test {
   def check(obj: AnyRef): Unit = {
     val bos = new ByteArrayOutputStream()
     val out = new ObjectOutputStream(println) // error
-    val arr = bos toByteArray ()
+    val arr = bos.toByteArray ()
     val in = (())
     val deser = ()
-    val lhs = mutable LinkedHashSet ()
+    val lhs = mutable.LinkedHashSet ()
     check(lhs)
   }
 }

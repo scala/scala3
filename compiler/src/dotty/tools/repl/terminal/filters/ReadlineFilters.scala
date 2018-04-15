@@ -121,7 +121,7 @@ object ReadlineFilters {
     }
     def cutCharLeft(b: Vector[Char], c: Int) = {
       /* Do not edit current cut. Zsh(zle) & Bash(readline) do not edit the yank ring for Ctrl-h */
-      (b patch(from = c - 1, patch = Nil, replaced = 1), c - 1)
+      (b .patch(from = c - 1, patch = Nil, replaced = 1), c - 1)
     }
 
     def cutLineLeft(b: Vector[Char], c: Int) = {

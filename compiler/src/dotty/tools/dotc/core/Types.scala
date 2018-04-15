@@ -598,7 +598,7 @@ object Types {
             else pdenot.info recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         } else {
-          pdenot & (
+          pdenot .& (
             new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)),
             pre,
             safeIntersection = ctx.pendingMemberSearches.contains(name))
@@ -643,7 +643,7 @@ object Types {
       }
 
       def goAnd(l: Type, r: Type) = {
-        go(l) & (go(r), pre, safeIntersection = ctx.pendingMemberSearches.contains(name))
+        go(l) .& (go(r), pre, safeIntersection = ctx.pendingMemberSearches.contains(name))
       }
 
       val recCount = ctx.findMemberCount
@@ -980,7 +980,7 @@ object Types {
           case res => res
         }
       case tp @ AndType(tp1, tp2) =>
-        tp derived_& (tp1.widenUnion, tp2.widenUnion)
+        tp.derived_&(tp1.widenUnion, tp2.widenUnion)
       case tp: RefinedType =>
         tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
       case tp: RecType =>

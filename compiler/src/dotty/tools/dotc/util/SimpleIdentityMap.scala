@@ -22,7 +22,7 @@ abstract class SimpleIdentityMap[K <: AnyRef, +V >: Null <: AnyRef] extends (K =
   def toList: List[(K, V)] = map2((k, v) => (k, v))
   override def toString = {
     def assocToString(key: K, value: V) = s"$key -> $value"
-    map2(assocToString) mkString ("(", ", ", ")")
+    map2(assocToString).mkString("(", ", ", ")")
   }
 }
 

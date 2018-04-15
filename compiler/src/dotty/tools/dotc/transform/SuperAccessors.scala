@@ -123,7 +123,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         // SI-4989 Check if an intermediate class between `clazz` and `sym.owner` redeclares the method as abstract.
         for (intermediateClass <- clazz.info.baseClasses.tail.takeWhile(_ != sym.owner)) {
           val overriding = sym.overridingSymbol(intermediateClass)
-          if ((overriding is (Deferred, butNot = AbsOverride)) && !(overriding.owner is Trait))
+          if (overriding.is(Deferred, butNot = AbsOverride) && !overriding.owner.is(Trait))
             ctx.error(
                 s"${sym.showLocated} cannot be directly accessed from ${clazz} because ${overriding.owner} redeclares it as abstract",
                 sel.pos)

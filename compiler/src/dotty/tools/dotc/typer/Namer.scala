@@ -1029,7 +1029,7 @@ class Namer { typer: Typer =>
   def moduleValSig(sym: Symbol)(implicit ctx: Context): Type = {
     val clsName = sym.name.moduleClassName
     val cls = ctx.denotNamed(clsName) suchThat (_ is ModuleClass)
-    ctx.owner.thisType select (clsName, cls)
+    ctx.owner.thisType.select(clsName, cls)
   }
 
   /** The type signature of a ValDef or DefDef

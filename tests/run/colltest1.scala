@@ -47,8 +47,8 @@ object Test extends dotty.runtime.LegacyApp {
     assert(vs1 == ten)
     assert((ten take 5) == firstFive)
     assert((ten drop 5) == secondFive)
-    assert(ten slice (3, 3) isEmpty)
-    assert((ten slice (3, 6)) == List(4, 5, 6), ten slice (3, 6))
+    assert(ten.slice(3, 3) isEmpty)
+    assert((ten.slice(3, 6)) == List(4, 5, 6), ten .slice (3, 6))
     assert((ten takeWhile (_ <= 5)) == firstFive)
     assert((ten dropWhile (_ <= 5)) == secondFive)
     assert((ten span (_ <= 5)) == (firstFive, secondFive))
@@ -139,7 +139,7 @@ object Test extends dotty.runtime.LegacyApp {
 
   def setTest(empty: => Set[String]): Unit = {
     var s = empty + "A" + "B" + "C"
-    s += ("D", "E", "F")
+    s = s.+("D", "E", "F")
     s ++= List("G", "H", "I")
     s ++= ('J' to 'Z') map (_.toString)
     assert(s forall (s contains))
@@ -156,8 +156,8 @@ object Test extends dotty.runtime.LegacyApp {
     assert(!s.isEmpty)
     val s1 = s intersect empty
     assert(s1 == empty, s1)
-    def abc = empty + ("a", "b", "c")
-    def bc = empty + ("b", "c")
+    def abc = empty.+("a", "b", "c")
+    def bc = empty.+("b", "c")
     assert(bc subsetOf abc)
   }
 
@@ -173,7 +173,7 @@ object Test extends dotty.runtime.LegacyApp {
 
   def mapTest(empty: => Map[String, String]) = {
     var m = empty + ("A" -> "A") + ("B" -> "B") + ("C" -> "C")
-    m += (("D" -> "D"), ("E" -> "E"), ("F" -> "F"))
+    m = m.+(("D" -> "D"), ("E" -> "E"), ("F" -> "F"))
     m ++= List(("G" -> "G"), ("H" -> "H"), ("I" -> "I"))
     m ++= ('J' to 'Z') map (x => (x.toString -> x.toString))
     println(m.toList.sorted)

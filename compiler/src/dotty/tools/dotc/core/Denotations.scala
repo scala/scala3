@@ -553,7 +553,7 @@ object Denotations {
           val r = mergeDenot(this, that)
           if (r.exists) r else MultiDenotation(this, that)
         case that @ MultiDenotation(denot1, denot2) =>
-          this & (denot1, pre) & (denot2, pre)
+          this .& (denot1, pre) .& (denot2, pre)
       }
     }
 
@@ -634,11 +634,11 @@ object Denotations {
       else if (!that.exists) that
       else this match {
         case denot1 @ MultiDenotation(denot11, denot12) =>
-          denot1.derivedUnionDenotation(denot11 | (that, pre), denot12 | (that, pre))
+          denot1.derivedUnionDenotation(denot11 .| (that, pre), denot12 .| (that, pre))
         case denot1: SingleDenotation =>
           that match {
             case denot2 @ MultiDenotation(denot21, denot22) =>
-              denot2.derivedUnionDenotation(this | (denot21, pre), this | (denot22, pre))
+              denot2.derivedUnionDenotation(this .| (denot21, pre), this .| (denot22, pre))
             case denot2: SingleDenotation =>
               unionDenot(denot1, denot2)
           }
@@ -1180,7 +1180,7 @@ object Denotations {
   final case class DenotUnion(denot1: PreDenotation, denot2: PreDenotation) extends MultiPreDenotation {
     def exists = true
     def toDenot(pre: Type)(implicit ctx: Context) =
-      (denot1 toDenot pre) & (denot2 toDenot pre, pre)
+      (denot1 toDenot pre) .& (denot2 toDenot pre, pre)
     def containsSym(sym: Symbol) =
       (denot1 containsSym sym) || (denot2 containsSym sym)
     type AsSeenFromResult = PreDenotation
@@ -1218,8 +1218,8 @@ object Denotations {
     def hasAltWith(p: SingleDenotation => Boolean): Boolean =
       denot1.hasAltWith(p) || denot2.hasAltWith(p)
     def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation = {
-      val d1 = denot1 accessibleFrom (pre, superAccess)
-      val d2 = denot2 accessibleFrom (pre, superAccess)
+      val d1 = denot1.accessibleFrom(pre, superAccess)
+      val d2 = denot2.accessibleFrom(pre, superAccess)
       if (!d1.exists) d2
       else if (!d2.exists) d1
       else derivedUnionDenotation(d1, d2)

@@ -21,7 +21,7 @@ object Test extends dotty.runtime.LegacyApp {
   }
   def slicedIssue = {
     val viewed : Iterable[Iterable[Int]] = List(List(0).view).view
-    val filtered = viewed flatMap { x => List( x slice (2,3) ) }
+    val filtered = viewed flatMap { x => List( x.slice(2,3) ) }
     filtered.iterator.toIterable.flatten
   }
   filterIssue

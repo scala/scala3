@@ -190,7 +190,7 @@ object SymDenotations {
      *  in `butNot` are set?
      */
     final def is(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context) =
-      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags) is (fs, butNot)
+      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags).is(fs, butNot)
 
     /** Has this denotation all of the flags in `fs` set? */
     final def is(fs: FlagConjunction)(implicit ctx: Context) =
@@ -200,7 +200,7 @@ object SymDenotations {
      *  in `butNot` are set?
      */
     final def is(fs: FlagConjunction, butNot: FlagSet)(implicit ctx: Context) =
-      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags) is (fs, butNot)
+      (if (isCurrent(fs) && isCurrent(butNot)) myFlags else flags).is(fs, butNot)
 
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
@@ -457,13 +457,13 @@ object SymDenotations {
     /** Is symbol known to not exist, or potentially not completed yet? */
     final def unforcedIsAbsent(implicit ctx: Context): Boolean =
       myInfo == NoType ||
-      (this is (ModuleVal, butNot = Package)) && moduleClass.unforcedIsAbsent
+      (this.is(ModuleVal, butNot = Package)) && moduleClass.unforcedIsAbsent
 
     /** Is symbol known to not exist? */
     final def isAbsent(implicit ctx: Context): Boolean = {
       ensureCompleted()
       (myInfo `eq` NoType) ||
-      (this is (ModuleVal, butNot = Package)) && moduleClass.isAbsent
+      (this.is(ModuleVal, butNot = Package)) && moduleClass.isAbsent
     }
 
     /** Is this symbol the root class or its companion object? */
@@ -921,7 +921,7 @@ object SymDenotations {
      *  A local dummy owner is mapped to the primary constructor of the class.
      */
     final def enclosingMethod(implicit ctx: Context): Symbol =
-      if (this is (Method, butNot = Label)) symbol
+      if (this.is(Method, butNot = Label)) symbol
       else if (this.isClass) primaryConstructor
       else if (this.exists) owner.enclosingMethod
       else NoSymbol
@@ -1352,7 +1352,7 @@ object SymDenotations {
 
     // ----- denotation fields and accessors ------------------------------
 
-    if (initFlags is (Module, butNot = Package))
+    if (initFlags.is(Module, butNot = Package))
       assert(name.is(ModuleClassName), s"module naming inconsistency: ${name.debugString}")
 
     /** The symbol asserted to have type ClassSymbol */

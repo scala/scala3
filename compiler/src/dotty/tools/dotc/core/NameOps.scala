@@ -121,7 +121,7 @@ object NameOps {
 
     /** If flags is a ModuleClass but not a Package, add module class suffix */
     def adjustIfModuleClass(flags: Flags.FlagSet): N = likeSpaced {
-      if (flags is (ModuleClass, butNot = Package)) name.asTypeName.moduleClassName
+      if (flags.is(ModuleClass, butNot = Package)) name.asTypeName.moduleClassName
       else name.toTermName.exclude(AvoidClashName)
     }
 
