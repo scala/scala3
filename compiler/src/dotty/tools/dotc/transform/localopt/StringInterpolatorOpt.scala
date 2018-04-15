@@ -32,18 +32,11 @@ class StringInterpolatorOpt extends MiniPhase {
     }
   }
 
-  private object StringContextIdent {
-    def unapply(tree: Ident)(implicit ctx: Context): Option[Ident] = {
-      if (tree.symbol.eq(defn.StringContextModule)) Some(tree) else None
-    }
-  }
-
   private object StringContextApply {
-    def unapply(tree: Select)(implicit ctx: Context): Option[Select] = {
-      tree match {
-        case Select(StringContextIdent(_), _)
-          if tree.symbol.eq(defn.StringContextModule_apply) => Some(tree)
-        case _ => None
+    def unapply(tree: Select)(implicit ctx: Context): Boolean = {
+      tree.symbol.eq(defn.StringContextModule_apply) && {
+        val qualifier = tree.qualifier
+        qualifier.isInstanceOf[Ident] && qualifier.symbol.eq(defn.StringContextModule)
       }
     }
   }
@@ -53,7 +46,7 @@ class StringInterpolatorOpt extends MiniPhase {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Literal], List[Tree])] = {
       if (tree.symbol.eq(defn.StringContextRaw) || tree.symbol.eq(defn.StringContextS)) {
         tree match {
-          case Apply(Select(Apply(StringContextApply(_), List(Literals(strs))), _),
+          case Apply(Select(Apply(StringContextApply(), List(Literals(strs))), _),
           List(SeqLiteral(elems, _))) if elems.length == strs.length - 1 =>
             Some(strs, elems)
           case _ => None
