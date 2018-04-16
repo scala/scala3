@@ -141,6 +141,18 @@ object DottyPlugin extends AutoPlugin {
     incOptions.withExternalHooks(hooks)
   }
 
+  override val globalSettings: Seq[Def.Setting[_]] = Seq(
+    onLoad in Global := onLoad.in(Global).value.andThen { state =>
+      val sbtV = sbtVersion.value
+      sbtFullVersion(sbtV) match {
+        case Some((1, sbtMinor, sbtPatch)) if sbtMinor > 1 || (sbtMinor == 1  && sbtPatch >= 4) =>
+        case _ =>
+          sys.error(s"The sbt-dotty plugin cannot work with this version of sbt ($sbtV), sbt >= 1.1.4 is required.")
+      }
+      state
+    }
+  )
+
   override def projectSettings: Seq[Setting[_]] = {
     Seq(
       isDotty := scalaVersion.value.startsWith("0."),

@@ -864,7 +864,7 @@ object Build {
     settings(commonSettings).
     settings(
       version := {
-        val base = "0.2.0"
+        val base = "0.2.1"
         if (isRelease) base else base + "-SNAPSHOT"
       },
 
