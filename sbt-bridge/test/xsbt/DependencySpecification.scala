@@ -145,6 +145,25 @@ class DependencySpecification {
     assertEquals(Set("abc.A"), deps("H"))
   }
 
+  @Test
+  def extractedClassDependenciesOnPackageObject = {
+    val srcA = "package object foo { def bar = 1 }"
+    val srcB =
+      """|package foo
+         |
+         |class Test {
+         |  bar
+         |}
+      """.stripMargin
+
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val classDependencies =
+      compilerForTesting.extractDependenciesFromSrcs(srcA, srcB)
+
+    val memberRef = classDependencies.memberRef
+    assertEquals(Set("foo.package"), memberRef("foo.Test"))
+  }
+
   private def extractClassDependenciesPublic: ExtractedClassDependencies = {
     val srcA = "class A"
     val srcB = "class B extends D[A]"
