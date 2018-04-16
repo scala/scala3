@@ -38,6 +38,40 @@ object desugar {
     def derivedTree(sym: Symbol)(implicit ctx: Context) = tpd.ref(sym)
   }
 
+  /** A parent tree `FunctionX[Ts, Data]` of a synthesized companion object that depends on the
+   *  constructor of the corresponding case class.
+   *
+   *    case class Data(xs: Ts)
+   *    object Data extends FunctionX[Ts, Data]
+   *
+   *  Syntactic desugaring cannot handle dependent parameters, thus we introduce a semantic
+   *  dependence of `FunctionX[Ts, Data]` on the primary constructor of `Data`.
+   *
+   *  See tests/pos/i4273.scala
+   *
+   */
+  class DerivedParentFunctionTree(isEnumCase: Boolean) extends DerivedTypeTree {
+    override def ensureCompletions(implicit ctx: Context) =
+      // ensure the case class is completed
+      ctx.owner.enclosingClass.linkedClass.ensureCompleted()
+
+    def derivedTree(sym: Symbol)(implicit ctx: Context) = sym.info match {
+      case mt : MethodType =>
+        if (mt.isResultDependent || mt.isParamDependent)
+          tpd.TypeTree(defn.AnyRefAlias.typeRef)
+        else {
+          val funTp @ AppliedType(tycon, tparams) = mt.toFunctionType(dropLast = 0)
+          val tp =
+            if (isEnumCase) {
+              val res = sym.enclosingClass.info.asInstanceOf[ClassInfo].classParents.head
+              AppliedType(tycon, tparams.init :+ res)
+            }
+            else funTp
+          tpd.TypeTree(tp)
+        }
+    }
+  }
+
   /** A type tree that computes its type from an existing parameter.
    *  @param suffix  String difference between existing parameter (call it `P`) and parameter owning the
    *                 DerivedTypeTree (call it `O`). We have: `O.name == P.name + suffix`.
@@ -534,9 +568,7 @@ object desugar {
               mods.is(Abstract) ||
               constr.mods.is(Private)) anyRef
           else
-            // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
-            (constrVparamss :\ (if (isEnumCase) applyResultTpt else classTypeRef)) (
-              (vparams, restpe) => Function(vparams map (_.tpt), restpe))
+            (new DerivedParentFunctionTree(isEnumCase)).watching(constr)
         def widenedCreatorExpr =
           (creatorExpr /: widenDefs)((rhs, meth) => Apply(Ident(meth.name), rhs :: Nil))
         val applyMeths =
