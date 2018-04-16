@@ -315,7 +315,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     !sym.exists ||
     sym.unforcedIsAbsent || // ignore dependencies that have a symbol but do not exist.
                             // e.g. java.lang.Object companion object
-    sym.is(PackageClass) ||
+    sym.is(Package) ||
     sym.isEffectiveRoot ||
     sym.isAnonymousFunction ||
     sym.isAnonymousClass
