@@ -15,7 +15,7 @@ class ExtractUsedNamesSpecification {
                 |}""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(src)
-    val expectedNames = standardNames ++ Set("A", "A2")
+    val expectedNames = standardNames ++ Set("a", "A", "A2", "b")
     // names used at top level are attributed to the first class defined in a compilation unit
 
     assertEquals(expectedNames, usedNames("a.A"))
@@ -43,7 +43,7 @@ class ExtractUsedNamesSpecification {
                   |}""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcA, srcB)
-    val expectedNames = standardNames ++ Set("A", "B", "C", "D", "BB")
+    val expectedNames = standardNames ++ Set("a", "c", "A", "B", "C", "D", "b", "BB")
     assertEquals(expectedNames, usedNames("b.X"))
   }
 
@@ -286,7 +286,8 @@ class ExtractUsedNamesSpecification {
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(src)
 
-    assertEquals(standardNames + "List", usedNames("Test"))
+    val expectedNames = standardNames ++ Set("java", "util", "List")
+    assertEquals(expectedNames, usedNames("Test"))
   }
 
   /**
