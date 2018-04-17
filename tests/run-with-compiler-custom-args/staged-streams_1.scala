@@ -82,8 +82,8 @@ object Test {
       Stream(mapRaw[Expr[A], Expr[B]](a => k => '{ ~k(f(a)) }, stream))
     }
 
-    private def mapRaw[A, B](f: (A => (B => Expr[Unit]) => Expr[Unit]), s: StagedStream[A]): StagedStream[B] = {
-      s match {
+    private def mapRaw[A, B](f: (A => (B => Expr[Unit]) => Expr[Unit]), stream: StagedStream[A]): StagedStream[B] = {
+      stream match {
         case Linear(producer) => {
           val prod = new Producer[B] {
 
@@ -200,7 +200,7 @@ object Test {
       }
     }
 
-    def takeRaw[A](n: Expr[Int], stream: StagedStream[A]): StagedStream[A] = {
+    private def takeRaw[A](n: Expr[Int], stream: StagedStream[A]): StagedStream[A] = {
       stream match {
         case Linear(producer) => {
           mapRaw[(Var[Int], A), A]((t: (Var[Int], A)) => k => '{
@@ -219,7 +219,50 @@ object Test {
       }
      }
 
-     def take(n: Expr[Int]): Stream[A] = Stream(takeRaw[Expr[A]](n, stream))
+    def take(n: Expr[Int]): Stream[A] = Stream(takeRaw[Expr[A]](n, stream))
+
+    private def zipRaw[A, B](stream1: StagedStream[A], stream2: StagedStream[B]): StagedStream[(A, B)] = {
+      (stream1, stream2) match {
+
+        case (Linear(producer1), Linear(producer2)) =>
+          Linear(zip_producer(producer1, producer2))
+
+        case (Linear(producer1), Nested(producer2, nestf2)) => ???
+
+        case (Nested(producer1, nestf1), Linear(producer2)) => ???
+
+        case (Nested(producer1, nestf1), Nested(producer2, nestf2)) => ???
+      }
+    }
+
+    private def zip_producer[A, B](producer1: Producer[A], producer2: Producer[B]) = {
+      new Producer[(A, B)] {
+        type St = (producer1.St, producer2.St)
+
+        val card: Cardinality = Many
+
+        def init(k: St => Expr[Unit]): Expr[Unit] = {
+          producer1.init(s1 => '{ ~producer2.init(s2 => '{ ~k((s1, s2)) })})
+        }
+
+        def step(st: St, k: ((A, B)) => Expr[Unit]): Expr[Unit] = {
+          val (s1, s2) = st
+          producer1.step(s1, el1 => '{ ~producer2.step(s2, el2 => '{ ~k((el1, el2)) })})
+        }
+
+        def hasNext(st: St): Expr[Boolean] = {
+          val (s1, s2) = st
+          '{ ~producer1.hasNext(s1) && ~producer2.hasNext(s2) }
+        }
+      }
+    }
+
+    def zip[B : Type, C : Type](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B]): Stream[C] = {
+
+      val Stream(stream_b) = stream2
+
+      Stream(mapRaw[(Expr[A], Expr[B]), Expr[C]]((t => k => '{ ~k(f(t._1)(t._2)) }), zipRaw[Expr[A], Expr[B]](stream, stream_b)))
+    }
   }
 
   object Stream {
@@ -288,6 +331,11 @@ object Test {
     .take('{5})
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
 
+  def test7() = Stream
+    .of('{Array(1, 2, 3)})
+    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ ~a + ~b }), Stream.of('{Array(1, 2, 3)}))
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+
   def main(args: Array[String]): Unit = {
     println(test1().run)
     println
@@ -300,6 +348,8 @@ object Test {
     println(test5().run)
     println
     println(test6().run)
+    println
+    println(test7().run)
   }
 }
 
