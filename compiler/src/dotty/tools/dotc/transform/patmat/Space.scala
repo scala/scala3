@@ -497,6 +497,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def refine(parent: Type, child: Symbol): Type = {
     if (child.isTerm && child.is(Case, butNot = Module)) return child.termRef // enum vals always match
 
+    if (child.name == tpnme.LOCAL_CHILD) return child.typeRef
+
     val childTp = if (child.isTerm) child.termRef else child.typeRef
 
     val resTp = instantiate(childTp, parent)(ctx.fresh.setNewTyperState())
