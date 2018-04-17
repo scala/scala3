@@ -14,6 +14,8 @@ sidebar:
         - title: Dottydoc
           url: docs/usage/dottydoc.html
     - title: Reference
+      - title: Overview
+      - url: docs/reference/overview.html
       subsection:
         - title: New Types
           subsection:
@@ -93,8 +95,6 @@ sidebar:
               url: docs/reference/dropped/procedure-syntax.html
             - title: Early Initializers
               url: docs/reference/dropped/early-initializers.html
-            - title: Class Shadowing
-              url: docs/reference/dropped/class-shadowing.html
             - title: Limit 22
               url: docs/reference/dropped/limit22.html
             - title: XML literals
