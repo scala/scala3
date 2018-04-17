@@ -227,7 +227,8 @@ object Test {
         case (Linear(producer1), Linear(producer2)) =>
           Linear(zip_producer(producer1, producer2))
 
-        case (Linear(producer1), Nested(producer2, nestf2)) => ???
+        case (Linear(producer1), Nested(producer2, nestf2)) =>
+          pushLinear(producer1, producer2, nestf2)
 
         case (Nested(producer1, nestf1), Linear(producer2)) => ???
 
@@ -235,10 +236,44 @@ object Test {
       }
     }
 
+    private def pushLinear[A, B, C](producer: Producer[A], nestedProducer: Producer[B], nestedf: (B => StagedStream[C])): StagedStream[(A, C)] = {
+      val newProducer = new Producer[(Var[Boolean], producer.St, B)] {
+
+        type St = (Var[Boolean], producer.St, nestedProducer.St)
+        val card: Cardinality = Many
+
+        def init(k: St => Expr[Unit]): Expr[Unit] = {
+          producer.init(s1 => '{ ~nestedProducer.init(s2 =>
+            Var('{ ~producer.hasNext(s1) }) { term1r =>
+              k((term1r, s1, s2))
+            })})
+        }
+
+        def step(st: St, k: ((Var[Boolean], producer.St, B)) => Expr[Unit]): Expr[Unit] = {
+          val (flag, s1, s2) = st
+          nestedProducer.step(s2, b => '{ ~k((flag, s1, b)) })
+        }
+
+        def hasNext(st: St): Expr[Boolean] = {
+          val (flag, s1, s2) = st
+          '{ ~flag.get && ~nestedProducer.hasNext(s2) }
+        }
+      }
+
+      Nested(newProducer, (t: (Var[Boolean], producer.St, B)) => {
+        val (flag, s1, b) = t
+
+        mapRaw[C, (A, C)]((c => k => '{
+          ~producer.step(s1, a => '{ ~k((a, c)) })
+          ~flag.update(producer.hasNext(s1))
+        }), moreTermination((b_flag: Expr[Boolean]) => '{ ~flag.get && ~b_flag }, nestedf(b)))
+      })
+    }
+
     private def zip_producer[A, B](producer1: Producer[A], producer2: Producer[B]) = {
       new Producer[(A, B)] {
-        type St = (producer1.St, producer2.St)
 
+        type St = (producer1.St, producer2.St)
         val card: Cardinality = Many
 
         def init(k: St => Expr[Unit]): Expr[Unit] = {
@@ -336,6 +371,11 @@ object Test {
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ ~a + ~b }), Stream.of('{Array(1, 2, 3)}))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
 
+  def test8() = Stream
+    .of('{Array(1, 2, 3)})
+    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ ~a + ~b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ ~d + ~dp })))
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+
   def main(args: Array[String]): Unit = {
     println(test1().run)
     println
@@ -350,6 +390,8 @@ object Test {
     println(test6().run)
     println
     println(test7().run)
+    println
+    println(test8().run)
   }
 }
 
