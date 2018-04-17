@@ -1,0 +1,7 @@
+> run
+
+$ copy-file changes/package.scala package.scala
+
+# New implicit in scope from package object that makes run throws
+# clean run fails correctly
+-> run
