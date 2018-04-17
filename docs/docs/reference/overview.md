@@ -14,12 +14,12 @@ The new features all address one or more of four major concerns:
 Scala 3 also drops a number of features that were used rarely, or where experience showed
 that they tended to cause problems in codebases. These are listed separately in the [Dropped Features](http://dotty.epfl.ch/docs) section.
 
-Not included in this overview are changes to meta programming and generic programming. So far these have relied on a macro system that had experimental status (`scala.reflect` macros). This macro system will be replaced with a different solution. The current state of the design will be described elsewhere.
+Not included in this overview are changes to meta programming and generic programming. So far these have relied on a [macro system](https://docs.scala-lang.org/overviews/macros/overview.html) that had experimental status. This macro system will be replaced with a different solution. The current state of the design will be described elsewhere.
 
 <a name="consistency"></a>
 ## Consistency
 
-Constructs that make the language more consistent internally, and consistent with its foundations. Constructs that admit useful laws of reasoning.
+The primary goal of the language constructs in this section is to make the language more consistent, both internally, and in relationship to its [foundations](http://www.scala-lang.org/blog/2016/02/03/essence-of-scala.html).
 
  - [Intersection types](http://dotty.epfl.ch/docs/reference/intersection-types.html) `A & B`
 
@@ -55,8 +55,7 @@ Constructs that make the language more consistent internally, and consistent wit
 <a name="safety"></a>
 ## Safety
 
-Constructs that help precise, typechecked domain modeling and that improve the
-reliability of refactorings.
+Listed in this section are new language constructs that help precise, typechecked domain modeling and that improve the reliability of refactorings.
 
  - [Union types](http://dotty.epfl.ch/docs/reference/union-types.html)  `A | B`
 
@@ -99,7 +98,7 @@ reliability of refactorings.
 <a name="ergonomics"></a>
 ## Ergonomics
 
-Constructs that make common programming patterns more concise and readable.
+The primary goal of the language constructs in this section is to make common programming patterns more concise and readable.
 
  - [Enums](http://dotty.epfl.ch/docs/reference/enums/enums.html) `enum Color { case Red, Green, Blue }`
 
@@ -122,6 +121,8 @@ Constructs that make common programming patterns more concise and readable.
 
 <a name="performance"></a>
 ## Performance
+
+The primary goal of the language constructs in this section is to enable high-level, safe code without having to pay a performance penalty.
 
  - Opaque Type Aliases `opaque type A = T`
 
