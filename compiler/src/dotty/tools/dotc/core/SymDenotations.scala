@@ -1678,7 +1678,7 @@ object SymDenotations {
           case tp @ AppliedType(tycon, args) =>
             val subsym = tycon.typeSymbol
             if (subsym eq symbol) tp
-            else tycon.typeParams match {
+            else (tycon.typeParams: @unchecked) match {
               case LambdaParam(_, _) :: _ =>
                 baseTypeOf(tp.superType)
               case tparams: List[Symbol @unchecked] =>
