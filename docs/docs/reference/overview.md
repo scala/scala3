@@ -4,15 +4,15 @@ title: "Overview"
 ---
 
 This section gives an overview of the most important language additions in Scala 3.
-The new features all address one or more of four major concerns:
+The new features address four major concerns:
 
- - [Consistency](consistency)
- - [Safety](safety)
- - [Ergonomics](ergonomics)
- - [Performance](performance)
+ - [Consistency](consistency) - improve orthogonality and eliminate restrictions.
+ - [Safety](safety) - enable precise domain modeling and safe refactoring.
+ - [Ergonomics](ergonomics) - support readable and concise code.
+ - [Performance](performance) - remove performance penalties for high-level code.
 
 Scala 3 also drops a number of features that were used rarely, or where experience showed
-that they tended to cause problems in codebases. These are listed separately in the [Dropped Features](http://dotty.epfl.ch/docs) section.
+that they tended to cause problems. These are listed separately in the [Dropped Features](http://dotty.epfl.ch/docs) section.
 
 Not included in this overview are changes to meta programming and generic programming. So far these have relied on a [macro system](https://docs.scala-lang.org/overviews/macros/overview.html) that had experimental status. This macro system will be replaced with a different solution. The current state of the design will be described elsewhere.
 
@@ -41,14 +41,6 @@ The primary goal of the language constructs in this section is to make the langu
  - [Trait parameters](http://dotty.epfl.ch/docs/reference/trait-parameters.html) `trait T(x: S)`
 
    Traits can now have value parameters, just like classes do. This replaces the more complex [early initializer](http://dotty.epfl.ch/docs/reference/dropped/early-initializers.html) syntax.
-
- - [Type lambdas](http://dotty.epfl.ch/docs/reference/type-lambdas.html) `[X] => C[X]`
-
-   Type lambdas were encoded previously in a roundabout way, exploiting
-   loopholes in Scala's type system which made it Turing complete. With
-   the removal of [unrestricted type projection](dropped/type-projection.html), the loopholes are eliminated, so the
-   previous encodings are no longer expressible. Type lambdas in the language provide
-   a safe and more ergonomic alternative.
 
 <a name="safety"></a>
 ## Safety
@@ -106,6 +98,14 @@ The primary goal of the language constructs in this section is to make common pr
    which would otherwise be expressed by a sealed base trait with case classes as alternatives.
    Scala enums will interoperate with  the host platform. They support multiversal equality
    out of the box, i.e. an enum can only be compared to values of the same enum type.
+
+ - [Type lambdas](http://dotty.epfl.ch/docs/reference/type-lambdas.html) `[X] => C[X]`
+
+   Type lambdas were encoded previously in a roundabout way, exploiting
+   loopholes in Scala's type system which made it Turing complete. With
+   the removal of [unrestricted type projection](dropped/type-projection.html), the loopholes are eliminated, so the
+   previous encodings are no longer expressible. Type lambdas in the language provide
+   a safe and more ergonomic alternative.
 
  - Extension clauses `extension StringOps for String { ... }`
 
