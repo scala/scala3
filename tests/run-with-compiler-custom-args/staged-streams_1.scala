@@ -228,9 +228,10 @@ object Test {
           Linear(zip_producer(producer1, producer2))
 
         case (Linear(producer1), Nested(producer2, nestf2)) =>
-          pushLinear(producer1, producer2, nestf2)
+          pushLinear[A, _, B](producer1, producer2, nestf2)
 
-        case (Nested(producer1, nestf1), Linear(producer2)) => ???
+        case (Nested(producer1, nestf1), Linear(producer2)) =>
+          mapRaw[(B, A), (A, B)]((t => k => '{ ~k((t._2, t._1)) }), pushLinear[B, _, A](producer2, producer1, nestf1))
 
         case (Nested(producer1, nestf1), Nested(producer2, nestf2)) => ???
       }
@@ -376,6 +377,11 @@ object Test {
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ ~a + ~b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ ~d + ~dp })))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
 
+  def test9() = Stream
+    .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ ~d + ~dp }))
+    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ ~a + ~b }), Stream.of('{Array(1, 2, 3)}) )
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+
   def main(args: Array[String]): Unit = {
     println(test1().run)
     println
@@ -392,6 +398,8 @@ object Test {
     println(test7().run)
     println
     println(test8().run)
+    println
+    println(test9().run)
   }
 }
 
