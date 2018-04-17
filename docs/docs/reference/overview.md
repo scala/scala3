@@ -14,7 +14,7 @@ The new features address four major concerns:
 Scala 3 also drops a number of features that were used rarely, or where experience showed
 that they tended to cause problems. These are listed separately in the [Dropped Features](http://dotty.epfl.ch/docs) section.
 
-Not included in this overview are changes to meta programming and generic programming. So far these have relied on a [macro system](https://docs.scala-lang.org/overviews/macros/overview.html) that had experimental status. This macro system will be replaced with a different solution. The current state of the design will be described elsewhere.
+Another important set of changes is about meta programming and generative programming. So far these have relied on a [macro system](https://docs.scala-lang.org/overviews/macros/overview.html) that had experimental status. This macro system will be replaced with a different solution that extends [principled meta programming](http://dotty.epfl.ch/docs/reference/principled-meta-programming.html) and [inline](http://dotty.epfl.ch/docs/reference/inline.html) definitions with some reflective capabilities. The current state of the full design and its ramifications for generative programming will be described elsewhere.
 
 <a name="consistency"></a>
 ## Consistency
@@ -69,10 +69,8 @@ Listed in this section are new language constructs that help precise, typechecke
 
    (Planned) Adding a `null` value to every type has been called a "Billion Dollar Mistake"
    by its creator, Tony Hoare. With the introduction of union types, we can now do better.
-   A type like `String` would not carry the `null` value. To express that a value could
-   be `null`, one would use the union type `String | Null`. For backwards compatibility
-   and Java interoperability, selecting on a value that's possibly `null` would still be permitted
-   but would have a declared effect that a `NullPointerException` can be thrown (see next section).
+   A type like `String` will not carry the `null` value. To express that a value can
+   be `null`, one will use the union type `String | Null` instead. For backwards compatibility and Java interoperability, selecting on a value that's possibly `null` will still be permitted but will have a declared effect that a `NullPointerException` can be thrown (see next section).
 
  - Effect Capabilities
 
@@ -94,8 +92,7 @@ The primary goal of the language constructs in this section is to make common pr
 
    Enums give a simple way to express a type with a finite set of named values. They
    are found in most languages. The previous encodings of enums as library-defined types
-   were not fully satisfactory and consequently were used widely. The new native `enum` construct in Scala is quite flexible; among others it gives a more concise way to write [algebraic data types](http://dotty.epfl.ch/docs/reference/enums/adts.html),
-   which would otherwise be expressed by a sealed base trait with case classes as alternatives.
+   were not fully satisfactory and consequently were not adopted widely. The new native `enum` construct in Scala is quite flexible; among others it gives a more concise way to express [algebraic data types](http://dotty.epfl.ch/docs/reference/enums/adts.html).
    Scala enums will interoperate with  the host platform. They support multiversal equality
    out of the box, i.e. an enum can only be compared to values of the same enum type.
 
