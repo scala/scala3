@@ -12,7 +12,7 @@ The new features all address one or more of four major concerns:
  - [Performance](performance)
 
 Scala 3 also drops a number of features that were used rarely, or where experience showed
-that they tended to cause problems in codebases. These are [listed in a separate section](./dropped).
+that they tended to cause problems in codebases. These are listed separately in the [Dropped Features](http://dotty.epfl.ch/docs) section.
 
 Not included in this overview are changes to meta programming and generic programming. So far these have relied on a macro system that had experimental status (`scala.reflect` macros. This macro system will be replaced with a different solution. The current state of the design will be described elsewhere.
 
@@ -21,39 +21,44 @@ Not included in this overview are changes to meta programming and generic progra
 
 Constructs that make the language more consistent internally, and consistent with its foundations. Constructs that admit useful laws of reasoning.
 
- - Intersection type `A & B`
+ - [Intersection types](http://dotty.epfl.ch/docs/reference/intersection-types.html) `A & B`
 
    Replaces compound type `A with B` (the old syntax is kept for the moment but will
    be deprecated in the future). Intersection types are one of the core features of DOT. They
    are commutative: `A & B` and `B & A` represent the same type.
 
- - Implicit function type `implicit A => B`.
+ - [Implicit function types(http://dotty.epfl.ch/docs/reference/implicit-function-types.html) `implicit A => B`.
 
    Methods and lambdas can have implicit parameters, so it's natural to extend the
-   same property to function types. Implicit function types help ergonomics nnd performance
+   same property to function types. Implicit function types help ergonomics and performance
    as well. They can replace many uses of monads at an order of magnitude improvement
    in runtime speed, and with far better composability.
 
- - Dependent function type `(x: T) => x.S`.
+ - [Dependent function types](http://dotty.epfl.ch/docs/reference/dependent-function-types.html) `(x: T) => x.S`.
 
-   The result type of a method can refer to its parmeters. We now extend the same capability
+   The result type of a method can refer to its parameters. We now extend the same capability
    to the result type of a function.
 
- - Type lambda `[X] => C[X]`
+ - [Trait parameters](http://dotty.epfl.ch/docs/reference/trait-parameters.html) `trait T(x: S)`
+
+   Trait can now have value parameters, just like classes do. This replaces the cumbersome
+   [early initializer](http://dotty.epfl.ch/docs/reference/dropped/early-initializers.html) syntax.
+
+ - [Type lambdas](http://dotty.epfl.ch/docs/reference/type-lambdas.html) `[X] => C[X]`
 
    Type lambdas were encoded previously in an extremely roundabout way, exploiting
    loopholes in Scala's type system which made it Turing complete and unsound. With
    the removal of unrestricted type projection the loopholes are eliminated, so the
    previous encodings are no longer expressible. Type lambdas in the language provide
-   a safe andmore ergonimic alternative.
+   a safe and more ergonomic alternative.
 
 <a name="safety"></a>
 ## Safety
 
-Constructs that help precise, typecheched domain modeling and that improve the
+Constructs that help precise, typechecked domain modeling and that improve the
 reliability of refactorings.
 
- - Union types  `A | B`
+ - [Union types](http://dotty.epfl.ch/docs/reference/union-types.html)  `A | B`
 
    Union types gives fine-grained control over the possible values of a type.
    A union type `A | B` states that a value can be an `A` or a `B` without having
@@ -61,12 +66,12 @@ reliability of refactorings.
    precise domain modeling. They are also very useful for interoperating with
    Javascript libraries and JSON protocols.
 
- - Multiversal Equality
+ - [Multiversal Equality](http://dotty.epfl.ch/docs/reference/multiversal-equality.html)
 
    Multiversal equality is an opt in way to check that comparisons using `==` and
    `!=` only apply to compatible types. It thus closes the biggest remaining hurdle
    to type-based refactoring. Normally, one would wish that one could change the type
-   of some value or operation in a large codebase, fix all type errors, and obtain
+   of some value or operation in a large code base, fix all type errors, and obtain
    at the end a working program. But universal equality `==` works for all types.
    So what should conceptually be a type error would not be reported and
    runtime behavior would change instead. Multiversal equality closes that loophole.
@@ -88,7 +93,7 @@ reliability of refactorings.
    will be defined by the language, others can be added by libraries. Initially, the language
    will likely only cover exceptions as effect capabilities, but it can be extended later
    to mutations and possibly other effects. To ensure backwards compatibility, all effect
-   capabilities are initially available in `Predef`. Unimporting effect capabilities from
+   capabilities are initially available in `Predef`. Un-importing effect capabilities from
    `Predef` will enable stricter effect checking, and provide stronger guarantees of purity.
 
 <a name="ergonomics"></a>
@@ -96,33 +101,33 @@ reliability of refactorings.
 
 Constructs that make common programming patterns more concise and readable.
 
- - Enums `enum Color { case Red, Green, Blue }`
+ - [Enums](http://dotty.epfl.ch/docs/reference/enums/enums.html) `enum Color { case Red, Green, Blue }`
 
    Enums give a simple way to express a type with a finite set of named values. They
    are found in most languages. The previous encodings of enums in Scala were all had
    problems that prevented universal adoption. The new native `enum` construct in Scala
-   is quite flexile; among others it gives a more concise way to write algebraic data types,
+   is quite flexible; among others it gives a more concise way to write [algebraic data types](http://dotty.epfl.ch/docs/reference/enums/adts.html),
    which would otherwise be expressed by a sealed base trait with case classes as alternatives.
-   Scala enums will interop with en the host platform. They support multiversal equality
+   Scala enums will interoperate with  the host platform. They support multiversal equality
    out of the box, i.e. an enum can only be compared to values of the same enum type.
 
  - Extension clauses `extension StringOps for String { ... }`
 
-   (Pending) Extension clauses allow to define extension methods and late implementations
+   ([Pending](https://github.com/lampepfl/dotty/pull/4114)) Extension clauses allow to define extension methods and late implementations
    of traits via instance declarations. They are more readable and convey intent better
    than the previous encodings of these features through implicit classes and value classes.
    Extensions will replace implicit classes. Extensions and opaque types together can
-   replace almost all usages of value classes.
+   replace almost all usages of value classes. Value classes are kept around for the
+   time being since there might be a new good use case for them in the future if the host platform supports "structs" or some other way to express multi-field value classes.
 
 <a name="performance"></a>
 ## Performance
 
  - Opaque Type Aliases `opaque type A = T`
 
-   (Pending) An opaque alias allows to define a new type `A` in terms of an existing type `T`.  Unlike the previous modeling using value classes, opqaue types guarantee no boxing.
-   Opaque types are described in detail in [SIP 35](https://docs.scala-lang.org/sips/opaque-types.html).
+   ([Pending](https://github.com/lampepfl/dotty/pull/4028)) An opaque alias defines a new type `A` in terms of an existing type `T`.  Unlike the previous modeling using value classes, opaque types never box. Opaque types are described in detail in [SIP 35](https://docs.scala-lang.org/sips/opaque-types.html).
 
- - Erased parameters
+ - [Erased parameters](http://dotty.epfl.ch/docs/reference/erased-terms.html)
 
    Parameters of methods and functions can be declared `erased`. This means that
    the corresponding arguments are only used for type checking purposes and no code
@@ -130,5 +135,3 @@ Constructs that make common programming patterns more concise and readable.
    constraints impressed through implicits such as `=:=` and `<:<`. Erased parameters
    help both runtime (since no argument has to be constructed) and compile time
    (since potentially large arguments can be eliminated early).
-
-

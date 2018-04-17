@@ -29,8 +29,6 @@ sidebar:
               url: docs/reference/implicit-function-types.html
             - title: Dependent Function Types
               url: docs/reference/dependent-function-types.html
-            - title: Literal Singleton Types
-              url: docs/reference/singleton-types.html
         - title: Enums
           subsection:
             - title: Enumerations
@@ -95,6 +93,8 @@ sidebar:
               url: docs/reference/dropped/procedure-syntax.html
             - title: Early Initializers
               url: docs/reference/dropped/early-initializers.html
+            - title: Class Shadowing
+              url: docs/reference/dropped/class-shadowing.html
             - title: Limit 22
               url: docs/reference/dropped/limit22.html
             - title: XML literals
