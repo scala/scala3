@@ -356,7 +356,11 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     val map = new TypeMap {
       def apply(tp: Type) = tp match {
-        case tref: TypeRef if isPatternTypeSymbol(tref.typeSymbol) => WildcardType(tref.underlying.bounds)
+        case tp @ AppliedType(tycon, args) if tycon.isRef(defn.ArrayClass) =>
+          // walkaround `Array[_] <:< Array[Array[_]]`, see tests/patmat/t2425.scala
+          tp.derivedAppliedType(tycon, args.map(mapOver))
+        case tref: TypeRef if isPatternTypeSymbol(tref.typeSymbol) =>
+          WildcardType(tref.underlying.bounds)
         case _ => mapOver(tp)
       }
     }
