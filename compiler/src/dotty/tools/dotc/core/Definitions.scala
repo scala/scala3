@@ -585,12 +585,14 @@ class Definitions {
 
   lazy val PartialFunctionType: TypeRef         = ctx.requiredClassRef("scala.PartialFunction")
   def PartialFunctionClass(implicit ctx: Context) = PartialFunctionType.symbol.asClass
-
+    lazy val PartialFunction_isDefinedAtR = PartialFunctionClass.requiredMethodRef(nme.isDefinedAt)
+    def PartialFunction_isDefinedAt(implicit ctx: Context) = PartialFunction_isDefinedAtR.symbol
     lazy val PartialFunction_applyOrElseR = PartialFunctionClass.requiredMethodRef(nme.applyOrElse)
     def PartialFunction_applyOrElse(implicit ctx: Context) = PartialFunction_applyOrElseR.symbol
 
   lazy val AbstractPartialFunctionType: TypeRef = ctx.requiredClassRef("scala.runtime.AbstractPartialFunction")
   def AbstractPartialFunctionClass(implicit ctx: Context) = AbstractPartialFunctionType.symbol.asClass
+
   lazy val FunctionXXLType: TypeRef         = ctx.requiredClassRef("scala.FunctionXXL")
   def FunctionXXLClass(implicit ctx: Context) = FunctionXXLType.symbol.asClass
 

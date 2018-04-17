@@ -282,11 +282,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val parents1 =
       if (parents.head.classSymbol.is(Trait)) parents.head.parents.head :: parents
       else parents
-    val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic, parents1,
+    val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic | Final, parents1,
         coord = fns.map(_.pos).reduceLeft(_ union _))
     val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil).entered
     def forwarder(fn: TermSymbol, name: TermName) = {
-      var flags = Synthetic | Method
+      var flags = Synthetic | Method | Final
       def isOverriden(denot: SingleDenotation) = fn.info.overrides(denot.info, matchLoosely = true)
       val isOverride = parents.exists(_.member(name).hasAltWith(isOverriden))
       if (isOverride) flags = flags | Override

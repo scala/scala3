@@ -73,24 +73,21 @@ class ExpandSAMs extends MiniPhase {
     }
 
     val applyRhs = applyDef.rhs
-    val applyFn = applyDef.symbol.asTerm
+    val applyFn = applyDef.symbol
 
-    val MethodTpe(paramNames, paramTypes, _) = applyFn.info
-    val isDefinedAtFn = applyFn.copy(
-        name  = nme.isDefinedAt,
-        flags = Synthetic | Method,
-        info = MethodType(paramNames, paramTypes, defn.BooleanType)).asTerm
-
-    val applyOrElseFn = applyFn.copy(
-        name  = nme.applyOrElse,
-        flags = Synthetic | Method,
-        info = tpt.tpe.memberInfo(defn.PartialFunction_applyOrElse)).asTerm
+    def overrideSym(sym: Symbol) = sym.copy(
+      owner = applyFn.owner,
+      flags = Synthetic | Method | Final,
+      info = tpt.tpe.memberInfo(sym),
+      coord = tree.pos).asTerm
+    val isDefinedAtFn = overrideSym(defn.PartialFunction_isDefinedAt)
+    val applyOrElseFn = overrideSym(defn.PartialFunction_applyOrElse)
 
     def isDefinedAtRhs(paramRefss: List[List[Tree]]) = {
       val tru = Literal(Constant(true))
       applyRhs match {
         case tree @ Match(_, cases) =>
-          def translateCase(cdef: CaseDef)=
+          def translateCase(cdef: CaseDef) =
             cpy.CaseDef(cdef)(body = tru).changeOwner(applyFn, isDefinedAtFn)
           val paramRef = paramRefss.head.head
           val defaultValue = Literal(Constant(false))
@@ -109,15 +106,19 @@ class ExpandSAMs extends MiniPhase {
           val defaultValue = defaultRef.select(nme.apply).appliedTo(paramRef)
           translateMatch(tree, paramRef, cases.map(translateCase), defaultValue)
         case _ =>
-          ref(applyFn).appliedTo(paramRef)
+          applyRhs
+            .changeOwner(applyFn, applyOrElseFn)
+            .subst(param.symbol :: Nil, paramRef.symbol :: Nil)
         }
     }
 
     val isDefinedAtDef = transformFollowingDeep(DefDef(isDefinedAtFn, isDefinedAtRhs(_)))
     val applyOrElseDef = transformFollowingDeep(DefDef(applyOrElseFn, applyOrElseRhs(_)))
 
-    val anonCls = AnonClass(tpt.tpe :: Nil, List(applyFn, isDefinedAtFn, applyOrElseFn), List(nme.apply, nme.isDefinedAt, nme.applyOrElse))
-    cpy.Block(tree)(List(applyDef, isDefinedAtDef, applyOrElseDef), anonCls)
+    val tpArgs = tpt.tpe.baseType(defn.PartialFunctionClass).argInfos
+    val parent = defn.AbstractPartialFunctionType.appliedTo(tpArgs)
+    val anonCls = AnonClass(parent :: Nil, List(isDefinedAtFn, applyOrElseFn), List(nme.isDefinedAt, nme.applyOrElse))
+    cpy.Block(tree)(List(isDefinedAtDef, applyOrElseDef), anonCls)
   }
 
   private def checkRefinements(tpe: Type, pos: Position)(implicit ctx: Context): Type = tpe.dealias match {
