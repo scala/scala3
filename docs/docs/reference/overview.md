@@ -14,7 +14,7 @@ The new features all address one or more of four major concerns:
 Scala 3 also drops a number of features that were used rarely, or where experience showed
 that they tended to cause problems in codebases. These are listed separately in the [Dropped Features](http://dotty.epfl.ch/docs) section.
 
-Not included in this overview are changes to meta programming and generic programming. So far these have relied on a macro system that had experimental status (`scala.reflect` macros. This macro system will be replaced with a different solution. The current state of the design will be described elsewhere.
+Not included in this overview are changes to meta programming and generic programming. So far these have relied on a macro system that had experimental status (`scala.reflect` macros). This macro system will be replaced with a different solution. The current state of the design will be described elsewhere.
 
 <a name="consistency"></a>
 ## Consistency
