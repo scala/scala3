@@ -13,6 +13,7 @@ import StdNames._
 import NameOps._
 import Symbols._
 import Trees._
+import TreeInfo._
 import ProtoTypes._
 import Constants._
 import Scopes._
@@ -601,17 +602,20 @@ trait Checking {
     }
   }
 
-  /** Check that `tree` is a pure expression of constant type */
-  def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context): Unit =
+  /** Check that `tree` can be marked `inline` */
+  def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context): Unit = {
+    // final vals can be marked inline even if they're not pure, see Typer#patchFinalVals
+    val purityLevel = if (isFinal) Idempotent else Pure
     tree.tpe match {
       case tp: TermRef if tp.symbol.is(InlineParam) => // ok
       case tp => tp.widenTermRefExpr match {
-        case tp: ConstantType if isPureExpr(tree) => // ok
-        case tp if defn.isFunctionType(tp) && isPureExpr(tree) => // ok
+        case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
+        case tp if defn.isFunctionType(tp) && exprPurity(tree) >= purityLevel => // ok
         case _ =>
           if (!ctx.erasedTypes) ctx.error(em"$what must be a constant expression or a function", tree.pos)
       }
     }
+  }
 
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = {
@@ -867,7 +871,7 @@ trait NoChecking extends ReChecking {
   override def checkClassType(tp: Type, pos: Position, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
-  override def checkInlineConformant(tree: Tree, what: => String)(implicit ctx: Context) = ()
+  override def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context) = ()
   override def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt

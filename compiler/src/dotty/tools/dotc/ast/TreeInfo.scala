@@ -170,14 +170,15 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => false
   }
 
-  /** Is this argument node of the form <expr> : _* ?
+  /** Is this argument node of the form <expr> : _*, or is it a reference to
+   *  such an argument ? The latter case can happen when an argument is lifted.
    */
   def isWildcardStarArg(tree: Tree)(implicit ctx: Context): Boolean = unbind(tree) match {
     case Typed(Ident(nme.WILDCARD_STAR), _) => true
     case Typed(_, Ident(tpnme.WILDCARD_STAR)) => true
-    case Typed(_, tpt: TypeTree) => tpt.hasType && tpt.tpe.isRepeatedParam
+    case Typed(_, tpt: TypeTree) => tpt.typeOpt.isRepeatedParam
     case NamedArg(_, arg) => isWildcardStarArg(arg)
-    case _ => false
+    case arg => arg.typeOpt.widen.isRepeatedParam
   }
 
   /** If this tree has type parameters, those.  Otherwise Nil.
@@ -317,7 +318,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *            Idempotent  if running the statement a second time has no side effects
    *            Impure      otherwise
    */
-  private def statPurity(tree: Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
+  def statPurity(tree: Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
     case EmptyTree
        | TypeDef(_, _)
        | Import(_, _)
@@ -342,7 +343,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  takes a different code path than all to follow; but they are idempotent
    *  because running the expression a second time gives the cached result.
    */
-  private def exprPurity(tree: Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
+  def exprPurity(tree: Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
     case EmptyTree
        | This(_)
        | Super(_, _)
@@ -397,7 +398,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  @DarkDimius: need to make sure that lazy accessor methods have Lazy and Stable
    *               flags set.
    */
-  private def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel =
+  def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel =
     if (!tree.tpe.widen.isParameterless || tree.symbol.is(Erased)) SimplyPure
     else if (!tree.symbol.isStable) Impure
     else if (tree.symbol.is(Lazy)) Idempotent // TODO add Module flag, sinxce Module vals or not Lazy from the start.

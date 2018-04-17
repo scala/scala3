@@ -1371,7 +1371,7 @@ class Typer extends Namer
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     if (sym.is(Inline, butNot = DeferredOrTermParamOrAccessor))
-      checkInlineConformant(rhs1, em"right-hand side of inline $sym")
+      checkInlineConformant(rhs1, isFinal = sym.is(Final), em"right-hand side of inline $sym")
     patchIfLazy(vdef1)
     patchFinalVals(vdef1)
     vdef1
@@ -1392,7 +1392,7 @@ class Typer extends Namer
    *  and instead return the value. This seemingly minor optimization has huge effect on initialization
    *  order and the values that can be observed during superconstructor call
    *
-   *  see remark about idempotency in PostTyper#normalizeTree
+   *  see remark about idempotency in TreeInfo#constToLiteral
    */
   private def patchFinalVals(vdef: ValDef)(implicit ctx: Context): Unit = {
     def isFinalInlinableVal(sym: Symbol): Boolean = {
@@ -2329,7 +2329,7 @@ class Typer extends Namer
       }
       else if (tree.tpe <:< pt) {
         if (pt.hasAnnotation(defn.InlineParamAnnot))
-          checkInlineConformant(tree, "argument to inline parameter")
+          checkInlineConformant(tree, isFinal = false, "argument to inline parameter")
         if (Inliner.hasBodyToInline(tree.symbol) &&
             !ctx.owner.ownersIterator.exists(_.isInlineMethod) &&
             !ctx.settings.YnoInline.value &&
