@@ -42,6 +42,10 @@ The primary goal of the language constructs in this section is to make the langu
 
    Traits can now have value parameters, just like classes do. This replaces the more complex [early initializer](http://dotty.epfl.ch/docs/reference/dropped/early-initializers.html) syntax.
 
+ - Generic tuples
+
+   ([Pending](https://github.com/lampepfl/dotty/pull/2199)) Generic tuples treat a tuple with arbitrary elements as a nested sequence of pairs. E.g. `(a, b, c)` is shorthand `(a, (b, (c, ())))`. This lets us drop the current limit of 22 for maximal tuple length and allows generic programs over tuples analogous to what is done for `HList`s.
+
 <a name="safety"></a>
 ## Safety
 
