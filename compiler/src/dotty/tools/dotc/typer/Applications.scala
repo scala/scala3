@@ -1142,15 +1142,15 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *
      *    flip(T) <: flip(U)
      *
-     *  where `flip` changes top-level contravariant type aliases to covariant ones.
-     *  Intuitively `<:s` means subtyping `<:`, except that all top-level arguments
+     *  where `flip` changes covariant occurrences of contravariant type parameters to
+     *  covariant ones. Intuitively `<:s` means subtyping `<:`, except that all arguments
      *  to contravariant parameters are compared as if they were covariant. E.g. given class
      *
      *     class Cmp[-X]
      *
-     *  `Cmp[T] <:s Cmp[U]` if `T <: U`. On the other hand, nested occurrences
-     *  of parameters are not affected.
-     *  So `T <: U` would imply `List[Cmp[U]] <:s List[Cmp[T]]`, as usual.
+     *  `Cmp[T] <:s Cmp[U]` if `T <: U`. On the other hand, non-variant occurrences
+     *  of parameters are not affected. So `T <: U` would imply `Set[Cmp[U]] <:s Set[Cmp[T]]`,
+     *  as usual, because `Set` is non-variant.
      *
      *  This relation might seem strange, but it models closely what happens for methods.
      *  Indeed, if we integrate the existing rules for methods into `<:s` we have now that
@@ -1167,7 +1167,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       else {
         val flip = new TypeMap {
           def apply(t: Type) = t match {
-            case t: TypeBounds => t
             case t @ AppliedType(tycon, args) =>
               def mapArg(arg: Type, tparam: TypeParamInfo) =
                 if (variance > 0 && tparam.paramVariance < 0) defn.FunctionOf(arg :: Nil, defn.UnitType)
