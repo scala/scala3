@@ -14,9 +14,9 @@ sidebar:
         - title: Dottydoc
           url: docs/usage/dottydoc.html
     - title: Reference
-      - title: Overview
-      - url: docs/reference/overview.html
       subsection:
+        - title: Overview
+          url: docs/reference/overview.html
         - title: New Types
           subsection:
             - title: Intersection types
