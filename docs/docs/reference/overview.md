@@ -23,7 +23,7 @@ The primary goal of the language constructs in this section is to make the langu
 
  - [Intersection types](http://dotty.epfl.ch/docs/reference/intersection-types.html) `A & B`
 
-   They replace compounds type `A with B` (the old syntax is kept for the moment but will
+   They replace compound types `A with B` (the old syntax is kept for the moment but will
    be deprecated in the future). Intersection types are one of the core features of DOT. They
    are commutative: `A & B` and `B & A` represent the same type.
 
@@ -44,7 +44,7 @@ The primary goal of the language constructs in this section is to make the langu
 
  - Generic tuples
 
-   ([Pending](https://github.com/lampepfl/dotty/pull/2199)) Generic tuples treat a tuple with arbitrary elements as a nested sequence of pairs. E.g. `(a, b, c)` is shorthand `(a, (b, (c, ())))`. This lets us drop the current limit of 22 for maximal tuple length and allows generic programs over tuples analogous to what is done for `HList`s.
+   ([Pending](https://github.com/lampepfl/dotty/pull/2199)) Tuples with arbitrary numbers of elements are treated as sequences of nested pairs. E.g. `(a, b, c)` is shorthand for `(a, (b, (c, ())))`. This lets us drop the current limit of 22 for maximal tuple length and it allows generic programs over tuples analogous to what is currently done for `HList`.
 
 <a name="safety"></a>
 ## Safety
@@ -67,12 +67,12 @@ Listed in this section are new language constructs that help precise, typechecke
    of some value or operation in a large code base, fix all type errors, and obtain
    at the end a working program. But universal equality `==` works for all types.
    So what should conceptually be a type error would not be reported and
-   runtime behavior would change instead. Multiversal equality closes that loophole.
+   runtime behavior might change instead. Multiversal equality closes that loophole.
 
  - Null safety
 
    (Planned) Adding a `null` value to every type has been called a "Billion Dollar Mistake"
-   by its creator, Tony Hoare. With the introduction of union types, we can now do better.
+   by its inventor, Tony Hoare. With the introduction of union types, we can now do better.
    A type like `String` will not carry the `null` value. To express that a value can
    be `null`, one will use the union type `String | Null` instead. For backwards compatibility and Java interoperability, selecting on a value that's possibly `null` will still be permitted but will have a declared effect that a `NullPointerException` can be thrown (see next section).
 
