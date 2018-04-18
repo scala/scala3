@@ -79,7 +79,7 @@ object Implicits {
         def discardForView(tpw: Type, argType: Type): Boolean = tpw match {
           case mt: MethodType =>
             mt.isImplicitMethod ||
-            mt.paramInfos.length != 1 ||
+            mt.paramInfos.lengthCompare(1) != 0 ||
             !ctx.test(implicit ctx => argType relaxed_<:< mt.paramInfos.head)
           case poly: PolyType =>
             // We do not need to call ProtoTypes#constrained on `poly` because
