@@ -497,6 +497,15 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   def refine(parent: Type, child: Symbol): Type = {
     if (child.isTerm && child.is(Case, butNot = Module)) return child.termRef // enum vals always match
 
+    // <local child> is a place holder from Scalac, it is hopeless to instantiate it.
+    //
+    // Quote from scalac (from nsc/symtab/classfile/Pickler.scala):
+    //
+    //     ...When a sealed class/trait has local subclasses, a single
+    //     <local child> class symbol is added as pickled child
+    //     (instead of a reference to the anonymous class; that was done
+    //     initially, but seems not to work, ...).
+    //
     if (child.name == tpnme.LOCAL_CHILD) return child.typeRef
 
     val childTp = if (child.isTerm) child.termRef else child.typeRef
