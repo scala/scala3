@@ -44,9 +44,8 @@ object Test {
 
      def fold[W: Type](z: Expr[W], f: ((Expr[W], Expr[A]) => Expr[W])): Expr[W] = {
        Var(z) { s: Var[W] => '{
-
            ~fold_raw[Expr[A]]((a: Expr[A]) => '{
-               ~s.update(f(s.get, a))
+             ~s.update(f(s.get, a))
            }, stream)
 
            ~s.get
@@ -54,8 +53,8 @@ object Test {
        }
      }
 
-     private def fold_raw[A](consumer: A => Expr[Unit], s: StagedStream[A]): Expr[Unit] = {
-       s match {
+     private def fold_raw[A](consumer: A => Expr[Unit], stream: StagedStream[A]): Expr[Unit] = {
+       stream match {
          case Linear(producer) => {
            producer.card match {
              case Many =>
@@ -72,16 +71,36 @@ object Test {
                })
            }
          }
-         case nested: Nested[a, bt] => {
-            fold_raw[bt](((e: bt) => fold_raw[a](consumer, nested.nestedf(e))), Linear(nested.producer))
+         case nested: Nested[A, bt] => {
+            fold_raw[bt](((e: bt) => fold_raw[A](consumer, nested.nestedf(e))), Linear(nested.producer))
          }
        }
      }
 
+    /** Builds a new stream by applying a function to all elements of this stream.
+      *
+      * @param  f the function to apply to each quoted element.
+      * @tparam B the element type of the returned stream
+      * @return   a new stream resulting from applying `mapRaw` and threading the element of the first stream downstream.
+      */
     def map[B : Type](f: (Expr[A] => Expr[B])): Stream[B] = {
       Stream(mapRaw[Expr[A], Expr[B]](a => k => '{ ~k(f(a)) }, stream))
     }
 
+    /** Handles generically the mapping of elements from one producer to another.
+      * `mapRaw` can be potentially used threading quoted values from one stream to another. However
+      * is can be also used by handling any kind of quoted value.
+      *
+      * e.g., `mapRaw[(Var[Int], A), A]` transforms a stream that declares a variable and holds a value in each
+      * iteration step to a stream that is not aware of the aforementioned variable.
+      *
+      * @param  f      the function to apply at each step. f is of type `(A => (B => Expr[Unit])` where A is the type of
+      *                the incoming stream. When applied to an element, `f` returns the continuation for elements of `B`
+      * @param  stream that contains the stream we want to map.
+      * @tparam A      the type of the input stream
+      * @tparam B      the element type of the resulting stream
+      * @return        a new stream resulting from applying `f` in the `step` function of the input stream's producer.
+      */
     private def mapRaw[A, B](f: (A => (B => Expr[Unit]) => Expr[Unit]), stream: StagedStream[A]): StagedStream[B] = {
       stream match {
         case Linear(producer) => {
@@ -105,16 +124,30 @@ object Test {
 
           Linear(prod)
         }
-        case nested: Nested[a, bt] => {
+        case nested: Nested[A, bt] => {
           Nested(nested.producer, (a: bt) => mapRaw[A, B](f, nested.nestedf(a)))
         }
       }
     }
 
+    /** Flatmap */
     def flatMap[B : Type](f: (Expr[A] => Stream[B])): Stream[B] = {
       Stream(flatMapRaw[Expr[A], Expr[B]]((a => { val Stream (nested) = f(a); nested }), stream))
     }
 
+    /** Returns a new stream that applies a function `f` to each element of the input stream.
+      * If the input stream is simply linear then its packed with the function `f`.
+      * If the input stream is nested then a new one is created by using its producer and then passing the `f`
+      * recursively to build the `nestedf` of the returned stream.
+      *
+      *    Note: always returns a nested stream.
+      *
+      * @param  f      the function of `flatMap``
+      * @param  stream the input stream
+      * @tparam A      the type of the input stream
+      * @tparam B      the element type of the resulting stream
+      * @return        a new stream resulting from registering `f`
+      */
     private def flatMapRaw[A, B](f: (A => StagedStream[B]), stream: StagedStream[A]): StagedStream[B] = {
       stream match {
         case Linear(producer) => Nested(producer, f)
@@ -123,9 +156,19 @@ object Test {
       }
     }
 
-    def filter(f: (Expr[A] => Expr[Boolean])): Stream[A] = {
+    /** Selects all elements of this stream which satisfy a predicate.
+      *
+      *    Note: this is merely a special case of `flatMap` as the resulting stream in each step may return 0 or 1
+      *    element.
+      *
+      * @param f    the predicate used to test elements.
+      * @return     a new stream consisting of all elements of the input stream that do satisfy the given
+      *             predicate `pred`.
+      */
+    def filter(pred: (Expr[A] => Expr[Boolean])): Stream[A] = {
       val filterStream = (a: Expr[A]) =>
         new Producer[Expr[A]] {
+
           type St = Expr[A]
           val card = AtMost1
 
@@ -136,13 +179,22 @@ object Test {
             k(st)
 
           def hasNext(st: St): Expr[Boolean] =
-            f(st)
+            pred(st)
         }
 
       Stream(flatMapRaw[Expr[A], Expr[A]]((a => { Linear(filterStream(a)) }), stream))
     }
 
-    private def moreTermination[A](f: Expr[Boolean] => Expr[Boolean], stream: StagedStream[A]): StagedStream[A] = {
+    /** Adds a new termination condition to a producer of cardinality `Many`.
+      *
+      * @param  condition      the termination condition as a function accepting the existing condition (the result
+      *                of the `hasNext` from the passed `stream`'s producer.
+      * @param  stream that contains the producer we want to enhance.
+      * @tparam A      the type of the stream's elements.
+      * @return        the stream with the new producer. If the passed stream was linear, the new termination is added
+      *                otherwise the new termination is propagated to all nested ones, recursively.
+      */
+    private def addTerminationCondition[A](condition: Expr[Boolean] => Expr[Boolean], stream: StagedStream[A]): StagedStream[A] = {
       def addToProducer[A](f: Expr[Boolean] => Expr[Boolean], producer: Producer[A]): Producer[A] = {
         producer.card match {
             case Many =>
@@ -164,12 +216,20 @@ object Test {
       }
 
       stream match {
-        case Linear(producer) => Linear(addToProducer(f, producer))
+        case Linear(producer) => Linear(addToProducer(condition, producer))
         case nested: Nested[a, bt] =>
-          Nested(addToProducer(f, nested.producer), (a: bt) => moreTermination(f, nested.nestedf(a)))
+          Nested(addToProducer(condition, nested.producer), (a: bt) => addTerminationCondition(condition, nested.nestedf(a)))
       }
     }
 
+    /** Adds a new counter variable by enhancing a producer's state with a variable of type `Int`.
+      * The counter is initialized in `init`, propageted in `step` and checked in the `hasNext` of the *current* stream.
+      *
+      * @param  n        is the initial value of the counter
+      * @param  producer the producer that we want to enhance
+      * @tparam A        the type of the producer's elements.
+      * @return          the enhanced producer
+      */
     private def addCounter[A](n: Expr[Int], producer: Producer[A]): Producer[(Var[Int], A)] = {
       new Producer[(Var[Int], A)] {
         type St = (Var[Int], producer.St)
@@ -184,41 +244,58 @@ object Test {
         }
 
         def step(st: St, k: (((Var[Int], A)) => Expr[Unit])): Expr[Unit] = {
-          val (counter, nst) = st
-          producer.step(nst, el => '{
+          val (counter, currentState) = st
+          producer.step(currentState, el => '{
             ~k((counter, el))
           })
         }
 
         def hasNext(st: St): Expr[Boolean] = {
-          val (counter, nst) = st
+          val (counter, currentState) = st
           producer.card match {
-            case Many => '{ ~counter.get > 0 && ~producer.hasNext(nst) }
-            case AtMost1 => '{ ~producer.hasNext(nst) }
+            case Many => '{ ~counter.get > 0 && ~producer.hasNext(currentState) }
+            case AtMost1 => '{ ~producer.hasNext(currentState) }
           }
         }
       }
     }
 
+    /** The nested stream receives the same variable reference; thus all streams decrement the same global count.
+      *
+      * @param  n      code of the variable to be threaded to the downstream.
+      * @param  stream the upstream to enhance.
+      * @tparam A      the type of the producer's elements.
+      * @return        a linear or nested stream aware of the variable reference to decrement.
+      */
     private def takeRaw[A](n: Expr[Int], stream: StagedStream[A]): StagedStream[A] = {
       stream match {
-        case Linear(producer) => {
+        case linear: Linear[A] => {
+          val enhancedProducer: Producer[(Var[Int], A)] = addCounter[A](n, linear.producer)
+          val enhancedStream: Linear[(Var[Int], A)] = Linear(enhancedProducer)
+
+          // Map an enhanced stream to a stream that produces the elements. Before
+          // invoking the continuation for the element, "use" the variable accordingly.
           mapRaw[(Var[Int], A), A]((t: (Var[Int], A)) => k => '{
             ~t._1.update('{~t._1.get - 1})
             ~k(t._2)
-          }, Linear(addCounter(n, producer)))
+          }, enhancedStream)
         }
-        case nested: Nested[a, bt] => {
-          Nested(addCounter(n, nested.producer), (t: (Var[Int], bt)) => {
+        case nested: Nested[A, bt] => {
+          val enhancedProducer: Producer[(Var[Int], bt)] = addCounter[bt](n, nested.producer)
+
+          Nested(enhancedProducer, (t: (Var[Int], bt)) => {
+            // Before invoking the continuation for the element, "use" the variable accordingly.
+            // In contrast to the linear case, the variable is initialized in the originating stream.
             mapRaw[A, A]((el => k => '{
               ~t._1.update('{~t._1.get - 1})
               ~k(el)
-            }), moreTermination(b => '{ ~t._1.get > 0 && ~b}, nested.nestedf(t._2)))
+            }), addTerminationCondition(b => '{ ~t._1.get > 0 && ~b}, nested.nestedf(t._2)))
           })
         }
       }
      }
 
+    /** A stream containing the first `n` elements of this stream. */
     def take(n: Expr[Int]): Stream[A] = Stream(takeRaw[Expr[A]](n, stream))
 
     private def zipRaw[A, B](stream1: StagedStream[A], stream2: StagedStream[B]): StagedStream[(A, B)] = {
@@ -233,8 +310,13 @@ object Test {
         case (Nested(producer1, nestf1), Linear(producer2)) =>
           mapRaw[(B, A), (A, B)]((t => k => '{ ~k((t._2, t._1)) }), pushLinear[B, _, A](producer2, producer1, nestf1))
 
-        case (Nested(producer1, nestf1), Nested(producer2, nestf2)) => ???
+        case (Nested(producer1, nestf1), Nested(producer2, nestf2)) =>
+          zipRaw(makeLinear(stream1), stream2)
       }
+    }
+
+    private def makeLinear[A](stream: StagedStream[A]): StagedStream[A] = {
+      ???
     }
 
     private def pushLinear[A, B, C](producer: Producer[A], nestedProducer: Producer[B], nestedf: (B => StagedStream[C])): StagedStream[(A, C)] = {
@@ -267,7 +349,7 @@ object Test {
         mapRaw[C, (A, C)]((c => k => '{
           ~producer.step(s1, a => '{ ~k((a, c)) })
           ~flag.update(producer.hasNext(s1))
-        }), moreTermination((b_flag: Expr[Boolean]) => '{ ~flag.get && ~b_flag }, nestedf(b)))
+        }), addTerminationCondition((b_flag: Expr[Boolean]) => '{ ~flag.get && ~b_flag }, nestedf(b)))
       })
     }
 
