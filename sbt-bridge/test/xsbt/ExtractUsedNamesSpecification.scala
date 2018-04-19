@@ -275,6 +275,21 @@ class ExtractUsedNamesSpecification {
     assertEquals(Set(), findPatMatUsages(notUsedInPatternMatch))
   }
 
+  @Test
+  def extractedNamesInImport = {
+    val src =
+      """|import java.util.List
+         |
+         |class Test
+      """.stripMargin
+
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val usedNames = compilerForTesting.extractUsedNamesFromSrc(src)
+
+    val expectedNames = standardNames ++ Set("java", "util", "List")
+    assertEquals(expectedNames, usedNames("Test"))
+  }
+
   /**
    * Standard names that appear in every compilation unit that has any class
    * definition.
