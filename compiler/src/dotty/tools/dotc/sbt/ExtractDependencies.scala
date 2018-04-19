@@ -297,7 +297,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
         assert(fromClass.isClass)
 
         addUsedName(fromClass, mangledName(sym), UseScope.Default)
-        // packages have class symbol. Only record them as used names but bot dependency
+        // packages have class symbol. Only record them as used names but not dependency
         if (!sym.is(Package)) {
           _dependencies += ClassDependency(fromClass, enclOrModuleClass, DependencyByMemberRef)
         }
