@@ -7,4 +7,8 @@ class Test {
   @tailrec
   final def loop(c: Context)(trees: List[c.Tree]): Boolean =
     loop(c)(trees)
+
+  @tailrec
+  final def loop2(c: Context, trees: List[c.Tree]): Boolean =
+    loop2(c, trees)
 }
