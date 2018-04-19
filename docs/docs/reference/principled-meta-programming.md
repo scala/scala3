@@ -3,8 +3,6 @@ layout: doc-page
 title: "Principled Meta Programming"
 ---
 
-# Principled Meta Programming
-
 Principled meta programming is a new framework for staging and for some
 forms of macros. It is expressed as strongly and statically typed
 code using two fundamental operations: quotations and splicing. A
