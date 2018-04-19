@@ -315,8 +315,95 @@ object Test {
       }
     }
 
+    /**
+      *
+      * @param  stream
+      * @tparam A
+      * @return
+      */
     private def makeLinear[A](stream: StagedStream[A]): StagedStream[A] = {
-      ???
+      stream match {
+        case Linear(producer) => stream
+        case Nested(producer, nestedf) => {
+
+          /** Helper function that orchestrates the handling of the function that represents an `advance: Unit => Unit`.
+            * It reifies a nested stream as calls to `advance`. Advance encodes the step function of each nested stream.
+            * It is used in the init of a producer of a nested stream. When an inner stream finishes, the
+            * `currentAdvance` holds the function to the `advance` function of the earlier stream.
+            * `makeAdvanceFunction`, for each nested stream, installs a new `advance` function that after
+            * the stream finishes it will restore the earlier one.
+            *
+            * When `advance` is called the result is consumed in the continuation. Within this continuation
+            * the resulting value should be saved in a variable.
+            *
+            * @param  currentAdvance variable that holds a function that represents the stream at each level.
+            * @param  k              the continuation that consumes a variable.
+            * @return the quote of the orchestrated code that will be executed as
+            */
+          def makeAdvanceFunction[A](currentAdvance: Var[Unit => Unit], k: A => Expr[Unit], stream: StagedStream[A]): Expr[Unit] = {
+            stream match {
+              case Linear(producer) =>
+                producer.card match {
+                  case AtMost1 => producer.init(st => '{
+                    if(~producer.hasNext(st)) {
+                      ~producer.step(st, k)
+                    }
+                  })
+                  case Many => producer.init(st => '{
+                    val oldAdvance : Unit => Unit = ~currentAdvance.get
+                    val newAdvance : Unit => Unit = { _: Unit => {
+                      if(~producer.hasNext(st)) {
+                        ~producer.step(st, k)
+                      }
+                      else {
+                        ~currentAdvance.update('{oldAdvance})
+                      }
+                      ~currentAdvance.update('{newAdvance})
+                      newAdvance(_)
+                    }}
+                  })
+                }
+              case nested: Nested[A, bt] =>
+                makeAdvanceFunction(currentAdvance, (a: bt) => makeAdvanceFunction(currentAdvance, k, nested.nestedf(a)), Linear(nested.producer))
+            }
+          }
+
+          val newProducer = new Producer[A] {
+            // _1: if the stream has ended,
+            // _2: the current element,
+            // _3: the step of the inner most steam
+            type St = (Var[Boolean], Var[A], Var[Unit => Unit])
+            val card: Cardinality = Many
+
+            def init(k: St => Expr[Unit]): Expr[Unit] = {
+              producer.init(st => '{
+                Var('{ (_: Unit) => ()}){ advf => {
+                  Var('{ true }) { hasNext => {
+                    // Var('{ null.asInstanceOf[A] }) { curr => {
+                    //   def adv() = {
+                    //     ~hasNext.update(producer.hasNext(st))
+                    //     if(~hasNext.get) {
+                    //       ~producer.step(st, el => '{
+                    //         ~makeAdvanceFunction(advf, ((a: A) => curr.update('{a})), nestedf(el))
+                    //       })
+                    //     }
+                    //   }
+                    // ~k((flag, current, advf))
+                    ???
+                    // }}
+                  }}
+                }}
+              })
+            }
+
+            def step(st: St, k: A => Expr[Unit]): Expr[Unit] = ???
+
+            def hasNext(st: St): Expr[Boolean] = ???
+          }
+
+          Linear(newProducer)
+        }
+      }
     }
 
     private def pushLinear[A, B, C](producer: Producer[A], nestedProducer: Producer[B], nestedf: (B => StagedStream[C])): StagedStream[(A, C)] = {
