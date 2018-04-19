@@ -6,10 +6,10 @@ title: "Overview"
 This section gives an overview of the most important language additions in Scala 3.
 The new features address four major concerns:
 
- - [Consistency](consistency) - improve orthogonality and eliminate restrictions.
- - [Safety](safety) - enable precise domain modeling and safe refactoring.
- - [Ergonomics](ergonomics) - support readable and concise code.
- - [Performance](performance) - remove performance penalties for high-level code.
+ - [Consistency](http://dotty.epfl.ch/docs/reference/overview.html#consistency) - improve orthogonality and eliminate restrictions.
+ - [Safety](http://dotty.epfl.ch/docs/reference/overview.html#safety) - enable precise domain modeling and safe refactoring.
+ - [Ergonomics](http://dotty.epfl.ch/docs/reference/overview.html#ergonomics) - support readable and concise code.
+ - [Performance](http://dotty.epfl.ch/docs/reference/overview.html#performance) - remove performance penalties for high-level code.
 
 Scala 3 also drops a number of features that were used rarely, or where experience showed
 that they tended to cause problems. These are listed separately in the [Dropped Features](http://dotty.epfl.ch/docs) section.
