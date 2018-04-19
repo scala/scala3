@@ -1120,7 +1120,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           val tp1Params = tp1.newLikeThis(tp1.paramNames, tp1.paramInfos, defn.AnyType)
           fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.pos)
 
-          val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateBounds)
+          val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateParamInfos(_))
           isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
         }
       case _ => // (3)

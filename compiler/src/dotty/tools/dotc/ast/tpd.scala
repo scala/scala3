@@ -193,7 +193,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def polyDefDef(sym: TermSymbol, rhsFn: List[Type] => List[List[Tree]] => Tree)(implicit ctx: Context): DefDef = {
     val (tparams, mtp) = sym.info match {
       case tp: PolyType =>
-        val tparams = ctx.newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateBounds)
+        val tparams = ctx.newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_))
         (tparams, tp.instantiate(tparams map (_.typeRef)))
       case tp => (Nil, tp)
     }
