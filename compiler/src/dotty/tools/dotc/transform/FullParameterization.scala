@@ -233,14 +233,15 @@ trait FullParameterization {
       fun.appliedToArgss(originalDef.vparamss.nestedMap(vparam => ref(vparam.symbol)))
     else {
       // this type could have changed on forwarding. Need to insert a cast.
-      val args = (originalDef.vparamss, fun.tpe.paramInfoss).zipped.map((vparams, paramTypes) =>
-        (vparams, paramTypes).zipped.map((vparam, paramType) => {
-          assert(vparam.tpe <:< paramType.widen) // type should still conform to widened type
-          ref(vparam.symbol).ensureConforms(paramType)
-        })
-      )
-      fun.appliedToArgss(args)
-
+      originalDef.vparamss.foldLeft(fun)((acc, vparams) => {
+        val meth = acc.tpe.asInstanceOf[MethodType]
+        val paramTypes = meth.instantiateParamInfos(vparams.map(_.tpe))
+        acc.appliedToArgs(
+          (vparams, paramTypes).zipped.map((vparam, paramType) => {
+            assert(vparam.tpe <:< paramType.widen) // type should still conform to widened type
+            ref(vparam.symbol).ensureConforms(paramType)
+          }))
+      })
     }).withPos(originalDef.rhs.pos)
   }
 }
