@@ -87,6 +87,9 @@ object Constant {
   }
 
   private[tasty] case class Impl(const: Constants.Constant) extends constants.Constant {
+
+    def value: Any = const.value
+
     override def toString: String = {
       import Toolbox.extractor
       this match {

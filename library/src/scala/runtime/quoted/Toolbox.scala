@@ -9,5 +9,4 @@ trait Toolbox[T] {
   def run(expr: Expr[T]): T
   def show(expr: Expr[T]): String
   def toTasty(expr: Expr[T]): Term
-  def toConstantOpt(expr: Expr[T]): Option[T] // TODO remove and implement with toTasty
 }

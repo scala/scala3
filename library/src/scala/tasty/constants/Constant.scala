@@ -1,3 +1,5 @@
 package scala.tasty.constants
 
-trait Constant
+trait Constant {
+  def value: Any
+}
