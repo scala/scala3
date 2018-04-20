@@ -2664,6 +2664,12 @@ object Types {
       myParamRefs
     }
 
+    /** Like `paramInfos` but substitute parameter references with the given arguments */
+    final def instantiateParamInfos(argTypes: => List[Type])(implicit ctx: Context): List[Type] =
+      if (isParamDependent) paramInfos.mapConserve(_.substParams(this, argTypes))
+      else paramInfos
+
+    /** Like `resultType` but substitute parameter references with the given arguments */
     final def instantiate(argTypes: => List[Type])(implicit ctx: Context): Type =
       if (isResultDependent) resultType.substParams(this, argTypes)
       else resultType
@@ -2997,10 +3003,6 @@ object Types {
 
     lazy val typeParams: List[LambdaParam] =
       paramNames.indices.toList.map(new LambdaParam(this, _))
-
-    /** Instantiate parameter bounds by substituting parameters with given arguments */
-    final def instantiateBounds(argTypes: List[Type])(implicit ctx: Context): List[Type] =
-      paramInfos.mapConserve(_.substParams(this, argTypes))
 
     def derivedLambdaAbstraction(paramNames: List[TypeName], paramInfos: List[TypeBounds], resType: Type)(implicit ctx: Context): Type =
       resType match {
