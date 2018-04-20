@@ -113,6 +113,7 @@ trait SpaceLogic {
     case Prod(tp, fun, sym, spaces, full) =>
       val sp = Prod(tp, fun, sym, spaces.map(simplify(_)), full)
       if (sp.params.contains(Empty)) Empty
+      else if (canDecompose(tp) && decompose(tp).isEmpty) Empty
       else sp
     case Or(spaces) =>
       val set = spaces.map(simplify(_)).flatMap {
@@ -349,18 +350,19 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       Empty
   }
 
-  /* Erase a type binding according to erasure semantics in pattern matching */
-  def erase(tp: Type): Type = tp match {
-    case tp @ AppliedType(tycon, args) =>
-      if (tycon.isRef(defn.ArrayClass)) tp.derivedAppliedType(tycon, args.map(erase))
-      else tp.derivedAppliedType(tycon, args.map(t => WildcardType))
-    case OrType(tp1, tp2) =>
-      OrType(erase(tp1), erase(tp2))
-    case AndType(tp1, tp2) =>
-      AndType(erase(tp1), erase(tp2))
-    case tp @ RefinedType(parent, refinedName, _) if refinedName.isTermName =>   // see pos/dependent-extractors.scala
-      tp.derivedRefinedType(erase(parent), refinedName, WildcardType)
-    case _ => tp
+  /* Erase pattern bound types with WildcardType */
+  def erase(tp: Type) = {
+    def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
+
+    val map = new TypeMap {
+      def apply(tp: Type) = tp match {
+        case tref: TypeRef if isPatternTypeSymbol(tref.typeSymbol) =>
+          tref.underlying.bounds
+        case _ => mapOver(tp)
+      }
+    }
+
+    map(tp)
   }
 
   /** Space of the pattern: unapplySeq(a, b, c: _*)
@@ -384,7 +386,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type): Boolean = {
     val res = (tp1 != nullType || tp2 == nullType) && tp1 <:< tp2
-    debug.println(s"${tp1.show} <:< ${tp2.show} = $res")
+    debug.println(s"${tp1} <:< ${tp2} = $res")
     res
   }
 
@@ -587,8 +589,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           noClassConflict &&
             (!isSingleton(tp1) || tp1 <:< tp2) &&
             (!isSingleton(tp2) || tp2 <:< tp1) &&
-            (!bases1.exists(_ is Final) || tp1 <:< tp2) &&
-            (!bases2.exists(_ is Final) || tp2 <:< tp1)
+            (!bases1.exists(_ is Final) || tp1 <:< maxTypeMap.apply(tp2)) &&
+            (!bases2.exists(_ is Final) || tp2 <:< maxTypeMap.apply(tp1))
         }
       case OrType(tp1, tp2) =>
         recur(tp1) || recur(tp2)
@@ -607,6 +609,41 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     res
   }
 
+  /** expose abstract type references to their bounds or tvars according to variance */
+  private class AbstractTypeMap(maximize: Boolean)(implicit ctx: Context) extends TypeMap {
+    def expose(lo: Type, hi: Type): Type =
+      if (variance == 0)
+        newTypeVar(TypeBounds(lo, hi))
+      else if (variance == 1)
+        if (maximize) hi else lo
+      else
+        if (maximize) lo else hi
+
+    def apply(tp: Type): Type = tp match {
+      case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
+        val lo = this(tp.info.loBound)
+        val hi = this(tp.info.hiBound)
+        // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
+        val exposed = expose(lo, hi)
+        debug.println(s"$tp exposed to =====> $exposed")
+        exposed
+
+      case AppliedType(tycon: TypeRef, args) if tycon.underlying.isInstanceOf[TypeBounds] =>
+        val args2 = args.map(this)
+        val lo = this(tycon.info.loBound).applyIfParameterized(args2)
+        val hi = this(tycon.info.hiBound).applyIfParameterized(args2)
+        val exposed = expose(lo, hi)
+        debug.println(s"$tp exposed to =====> $exposed")
+        exposed
+
+      case _ =>
+        mapOver(tp)
+    }
+  }
+
+  private def minTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = false)
+  private def maxTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = true)
+
   /** Instantiate type `tp1` to be a subtype of `tp2`
    *
    *  Return the instantiated type if type parameters and this type
@@ -616,25 +653,6 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
    *
    */
   def instantiate(tp1: NamedType, tp2: Type)(implicit ctx: Context): Type = {
-    // expose type param references to their bounds according to variance
-    class AbstractTypeMap(maximize: Boolean)(implicit ctx: Context) extends ApproximatingTypeMap {
-      variance = if (maximize) 1 else -1
-
-      def apply(tp: Type): Type = tp match {
-        case tp: TypeRef if tp.underlying.isInstanceOf[TypeBounds] =>
-          val lo = this(tp.info.loBound)
-          val hi = this(tp.info.hiBound)
-          // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
-          range(lo, hi)
-
-        case _ =>
-          mapOver(tp)
-      }
-    }
-
-    def minTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = false)
-    def maxTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = true)
-
     // Fix subtype checking for child instantiation,
     // such that `Foo(Test.this.foo) <:< Foo(Foo.this)`
     // See tests/patmat/i3938.scala

@@ -2674,7 +2674,7 @@ object Types {
      *  either a list of type parameter symbols or a list of lambda parameters
      */
     def integrate(tparams: List[ParamInfo], tp: Type)(implicit ctx: Context): Type =
-      tparams match {
+      (tparams: @unchecked) match {
         case LambdaParam(lam, _) :: _ => tp.subst(lam, this)
         case params: List[Symbol @unchecked] => tp.subst(params, paramRefs)
       }
