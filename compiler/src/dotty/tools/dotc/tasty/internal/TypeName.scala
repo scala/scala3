@@ -1,12 +1,11 @@
-package dotty.tools.dotc.tasty.internal
+package dotty.tools.dotc.tasty
+package internal
 
 import dotty.tools.dotc.core.Names
 
 import scala.tasty.names
 
 object TypeName {
-
-  // TODO make sure all extractors are tested
 
   def apply(name: Names.TypeName): names.TypeName = Impl(name)
 
@@ -16,7 +15,11 @@ object TypeName {
   }
 
   private[tasty] case class Impl(name: Names.TypeName) extends names.TypeName {
-    override def toString: String = name.toString
+    override def toString: String = {
+      import Toolbox.extractor
+      val names.TypeName(underlying) = this
+      s"TypeName($underlying)"
+    }
   }
 
 }

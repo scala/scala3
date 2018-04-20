@@ -1,4 +1,5 @@
-package dotty.tools.dotc.tasty.internal
+package dotty.tools.dotc.tasty
+package internal
 
 import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Names
@@ -19,7 +20,11 @@ object SignedName {
   }
 
   private[tasty] case class Impl(name: Names.TermName) extends names.SignedName {
-    override def toString: String = name.toString
+    override def toString: String = {
+      import Toolbox.extractor
+      val names.SignedName(underlying, resSig, paramsSigs) = this
+      s"SignedName($underlying, $resSig, $paramsSigs)"
+    }
   }
 
 }

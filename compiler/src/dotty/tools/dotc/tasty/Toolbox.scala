@@ -86,7 +86,6 @@ object Toolbox {
 
     // Constants
 
-
     override def unapplyUnit(arg: Constant) = internal.Constant.Unit.unapply(arg)
     override def unapplyNull(arg: Constant) = internal.Constant.Null.unapply(arg)
     override def unapplyBoolean(arg: Constant) = internal.Constant.Boolean.unapply(arg)
