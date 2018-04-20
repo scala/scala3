@@ -25,7 +25,7 @@ object Term {
   def unapplySelect(arg: Impl): Option[trees.Select.Data] = arg.tree match {
     case id@Trees.Select(qual, name: Names.TermName) if id.isTerm =>
       implicit val ctx: Context = arg.ctx
-      Some(Term(qual), TermName(name)) // FIXME PossiblySignedName
+      Some(Term(qual), PossiblySignedName(name))
     case _ => None
   }
 

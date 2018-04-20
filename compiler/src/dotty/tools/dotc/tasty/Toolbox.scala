@@ -1,7 +1,5 @@
 package dotty.tools.dotc.tasty
 
-import dotty.tools.dotc.core.Contexts.Context
-
 import scala.reflect.ClassTag
 import scala.tasty.constants.Constant
 import scala.tasty.modifiers.Modifier
