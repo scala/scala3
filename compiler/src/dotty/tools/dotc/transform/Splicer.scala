@@ -74,7 +74,8 @@ object Splicer {
 
   private def evaluateLambda(lambda: Seq[Any] => Object, args: Seq[Any], pos: Position)(implicit ctx: Context): Option[scala.quoted.Expr[Nothing]] = {
     try {
-      val res = Sandbox.runInSecuredThread(lambda(args))
+      val timeout = ctx.settings.macroTimeout.value
+      val res = Sandbox.runInSecuredThread(timeout)(lambda(args))
       Some(res.asInstanceOf[scala.quoted.Expr[Nothing]])
     } catch {
       case ex: scala.quoted.QuoteError =>

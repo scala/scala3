@@ -8,10 +8,7 @@ import scala.quoted.QuoteError
 
 object Sandbox {
 
-  /** Timeout in milliseconds */
-  final val timeout = 3000 // TODO add a flag to allow custom timeouts
-
-  def runInSecuredThread[T](thunk: => T): T = {
+  def runInSecuredThread[T](timeout: Int)(thunk: => T): T = {
     runWithSandboxSecurityManager { securityManager =>
       class SandboxThread extends Thread {
         var result: scala.util.Try[T] =
