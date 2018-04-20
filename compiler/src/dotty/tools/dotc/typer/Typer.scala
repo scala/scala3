@@ -984,7 +984,7 @@ class Typer extends Namer
       val accu = new TypeAccumulator[Set[Symbol]] {
         def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
           val tsyms1 = t match {
-            case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm && variance == 0 =>
+            case tr: TypeRef if (tr.symbol is TypeParam) && variance == 0 =>
               tsyms + tr.symbol
             case _ =>
               tsyms

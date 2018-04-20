@@ -137,7 +137,7 @@ object Settings {
           else update((argRest split ",").toList, args)
         case (StringTag, _) if choices.nonEmpty =>
           if (argRest.isEmpty) missingArg
-          else if (!choices.contains(argRest))
+          else if (!choices.contains(argRest.asInstanceOf[T]))
             fail(s"$arg is not a valid choice for $name", args)
           else update(argRest, args)
         case (StringTag, arg :: args) if name == "-d" =>
