@@ -4,6 +4,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols._
 
 import scala.tasty.trees
+import scala.tasty.names
 
 object TastySymbol {
 
@@ -12,23 +13,13 @@ object TastySymbol {
 
   private class Impl(sym: Symbol, ctx: Context) extends scala.tasty.Symbol { self =>
 
-    override def name: String = sym.name(ctx).toString
+    override def name: names.Name = Name(sym.name(ctx))
 
     override def owner: scala.tasty.Symbol = TastySymbol(sym.denot(ctx).owner)(ctx)
 
     override def definition: Option[trees.Definition] = None // TODO return definition if it is known
 
-    def ownersIterator: Iterator[scala.tasty.Symbol] = new Iterator[scala.tasty.Symbol] {
-      private[this] var current: scala.tasty.Symbol = self.owner
-      override def hasNext = current != scala.tasty.NoSymbol
-      override def next() = {
-        val c = current
-        current = current.owner
-        c
-      }
-    }
-
     override def toString: String =
-      s"Symbol(${ownersIterator.foldLeft(name)((acc, s) => s"${s.name}.$acc")})"
+      s"Symbol(${sym.showFullName(ctx)})"
   }
 }

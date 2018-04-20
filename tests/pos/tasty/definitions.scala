@@ -55,6 +55,7 @@ object definitions {
 // ------ Definitions ---------------------------------
 
   trait Symbol {
+    def name: Name = ???
     def owner: Symbol = ???
     def definition: Option[Definition] = ???
   }
