@@ -1,5 +1,8 @@
 package dotty.tools.dotc.tasty
 
+import dotty.tools.dotc.core.Contexts.Context
+
+import scala.reflect.ClassTag
 import scala.tasty.constants.Constant
 import scala.tasty.modifiers.Modifier
 import scala.tasty.names.Name
@@ -13,127 +16,137 @@ object Toolbox {
 
     // Statements
 
-    override def unapplyPackageDef(arg: Tree) = internal.PackageDef.unapplyPackageDef(arg)
-    override def unapplyImport(arg: Tree) = internal.Import.unapplyImport(arg)
-    override def unapplyValDef(arg: Tree) = internal.ValDef.unapplyValDef(arg)
-    override def unapplyDefDef(arg: Tree) = internal.DefDef.unapplyDefDef(arg)
-    override def unapplyTypeDef(arg: Tree) = internal.TypeDef.unapplyTypeDef(arg)
-    override def unapplyClassDef(arg: Tree) = internal.ClassDef.unapplyClassDef(arg)
+    override def unapplyPackageDef(arg: Tree) = unapplied(arg, internal.PackageDef.unapplyPackageDef)
+    override def unapplyImport(arg: Tree) = unapplied(arg, internal.Import.unapplyImport)
+    override def unapplyValDef(arg: Tree) = unapplied(arg, internal.ValDef.unapplyValDef)
+    override def unapplyDefDef(arg: Tree) = unapplied(arg, internal.DefDef.unapplyDefDef)
+    override def unapplyTypeDef(arg: Tree) = unapplied(arg, internal.TypeDef.unapplyTypeDef)
+    override def unapplyClassDef(arg: Tree) = unapplied(arg, internal.ClassDef.unapplyClassDef)
 
     // Terms
 
-    override def unapplyIdent(arg: Tree) = internal.Term.unapplyIdent(arg)
-    override def unapplySelect(arg: Tree) = internal.Term.unapplySelect(arg)
-    override def unapplyLiteral(arg: Tree) = internal.Term.unapplyLiteral(arg)
-    override def unapplyThis(arg: Tree) = internal.Term.unapplyThis(arg)
-    override def unapplyNew(arg: Tree) = internal.Term.unapplyNew(arg)
-    override def unapplyNamedArg(arg: Tree) = internal.Term.unapplyNamedArg(arg)
-    override def unapplyApply(arg: Tree) = internal.Term.unapplyApply(arg)
-    override def unapplyTypeApply(arg: Tree) = internal.Term.unapplyTypeApply(arg)
-    override def unapplySuper(arg: Tree) = internal.Term.unapplySuper(arg)
-    override def unapplyTyped(arg: Tree) = internal.Term.unapplyTyped(arg)
-    override def unapplyAssign(arg: Tree) = internal.Term.unapplyAssign(arg)
-    override def unapplyBlock(arg: Tree) = internal.Term.unapplyBlock(arg)
-    override def unapplyInlined(arg: Tree) = internal.Term.unapplyInlined(arg)
-    override def unapplyLambda(arg: Tree) = internal.Term.unapplyLambda(arg)
-    override def unapplyIf(arg: Tree) = internal.Term.unapplyIf(arg)
-    override def unapplyMatch(arg: Tree) = internal.Term.unapplyMatch(arg)
-    override def unapplyTry(arg: Tree) = internal.Term.unapplyTry(arg)
-    override def unapplyReturn(arg: Tree) = internal.Term.unapplyReturn(arg)
-    override def unapplyRepeated(arg: Tree) = internal.Term.unapplyRepeated(arg)
-    override def unapplySelectOuter(arg: Tree) = internal.Term.unapplySelectOuter(arg)
+    override def unapplyIdent(arg: Tree) = unapplied(arg, internal.Term.unapplyIdent)
+    override def unapplySelect(arg: Tree) = unapplied(arg, internal.Term.unapplySelect)
+    override def unapplyLiteral(arg: Tree) = unapplied(arg, internal.Term.unapplyLiteral)
+    override def unapplyThis(arg: Tree) = unapplied(arg, internal.Term.unapplyThis)
+    override def unapplyNew(arg: Tree) = unapplied(arg, internal.Term.unapplyNew)
+    override def unapplyNamedArg(arg: Tree) = unapplied(arg, internal.Term.unapplyNamedArg)
+    override def unapplyApply(arg: Tree) = unapplied(arg, internal.Term.unapplyApply)
+    override def unapplyTypeApply(arg: Tree) = unapplied(arg, internal.Term.unapplyTypeApply)
+    override def unapplySuper(arg: Tree) = unapplied(arg, internal.Term.unapplySuper)
+    override def unapplyTyped(arg: Tree) = unapplied(arg, internal.Term.unapplyTyped)
+    override def unapplyAssign(arg: Tree) = unapplied(arg, internal.Term.unapplyAssign)
+    override def unapplyBlock(arg: Tree) = unapplied(arg, internal.Term.unapplyBlock)
+    override def unapplyInlined(arg: Tree) = unapplied(arg, internal.Term.unapplyInlined)
+    override def unapplyLambda(arg: Tree) = unapplied(arg, internal.Term.unapplyLambda)
+    override def unapplyIf(arg: Tree) = unapplied(arg, internal.Term.unapplyIf)
+    override def unapplyMatch(arg: Tree) = unapplied(arg, internal.Term.unapplyMatch)
+    override def unapplyTry(arg: Tree) = unapplied(arg, internal.Term.unapplyTry)
+    override def unapplyReturn(arg: Tree) = unapplied(arg, internal.Term.unapplyReturn)
+    override def unapplyRepeated(arg: Tree) = unapplied(arg, internal.Term.unapplyRepeated)
+    override def unapplySelectOuter(arg: Tree) = unapplied(arg, internal.Term.unapplySelectOuter)
+
 
     // Pattern
 
-    override def unapplyCaseDef(arg: Tree) = internal.CaseDef.unapplyCaseDef(arg)
+    override def unapplyCaseDef(arg: Tree) = unapplied(arg, internal.CaseDef.unapplyCaseDef)
 
-    override def unapplyValue(arg: Tree) = internal.Pattern.unapplyValue(arg)
-    override def unapplyBind(arg: Tree) = internal.Pattern.unapplyBind(arg)
-    override def unapplyUnapply(arg: Tree) = internal.Pattern.unapplyUnapply(arg)
-    override def unapplyAlternative(arg: Tree) = internal.Pattern.unapplyAlternative(arg)
-    override def unapplyTypeTest(arg: Tree) = internal.Pattern.unapplyTypeTest(arg)
+    override def unapplyValue(arg: Tree) = unapplied(arg, internal.Pattern.unapplyValue)
+    override def unapplyBind(arg: Tree) = unapplied(arg, internal.Pattern.unapplyBind)
+    override def unapplyUnapply(arg: Tree) = unapplied(arg, internal.Pattern.unapplyUnapply)
+    override def unapplyAlternative(arg: Tree) = unapplied(arg, internal.Pattern.unapplyAlternative)
+    override def unapplyTypeTest(arg: Tree) = unapplied(arg, internal.Pattern.unapplyTypeTest)
 
     // Type trees
 
-    override def unapplySynthetic(arg: Tree) = internal.TypeTree.unapplySynthetic(arg)
-    override def unapplyTypeIdent(arg: Tree) = internal.TypeTree.unapplyTypeIdent(arg)
-    override def unapplyTypeSelect(arg: Tree) = internal.TypeTree.unapplyTypeSelect(arg)
-    override def unapplySingleton(arg: Tree) = internal.TypeTree.unapplySingleton(arg)
-    override def unapplyRefined(arg: Tree) = internal.TypeTree.unapplyRefined(arg)
-    override def unapplyApplied(arg: Tree) = internal.TypeTree.unapplyApplied(arg)
-    override def unapplyAnnotated(arg: Tree) = internal.TypeTree.unapplyAnnotated(arg)
-    override def unapplyAnd(arg: Tree) = internal.TypeTree.unapplyAnd(arg)
-    override def unapplyOr(arg: Tree) = internal.TypeTree.unapplyOr(arg)
-    override def unapplyByName(arg: Tree) = internal.TypeTree.unapplyByName(arg)
+    override def unapplySynthetic(arg: Tree) = unapplied(arg, internal.TypeTree.unapplySynthetic)
+    override def unapplyTypeIdent(arg: Tree) = unapplied(arg, internal.TypeTree.unapplyTypeIdent)
+    override def unapplyTypeSelect(arg: Tree) = unapplied(arg, internal.TypeTree.unapplyTypeSelect)
+    override def unapplySingleton(arg: Tree) = unapplied(arg, internal.TypeTree.unapplySingleton)
+    override def unapplyRefined(arg: Tree) = unapplied(arg, internal.TypeTree.unapplyRefined)
+    override def unapplyApplied(arg: Tree) = unapplied(arg, internal.TypeTree.unapplyApplied)
+    override def unapplyAnnotated(arg: Tree) = unapplied(arg, internal.TypeTree.unapplyAnnotated)
+    override def unapplyAnd(arg: Tree) = unapplied(arg, internal.TypeTree.unapplyAnd)
+    override def unapplyOr(arg: Tree) = unapplied(arg, internal.TypeTree.unapplyOr)
+    override def unapplyByName(arg: Tree) = unapplied(arg, internal.TypeTree.unapplyByName)
 
-    override def unapplyTypeBoundsTree(arg: Tree) = internal.TypeBoundsTree.unapplyTypeBounds(arg)
+    override def unapplyTypeBoundsTree(arg: Tree) = unapplied(arg, internal.TypeBoundsTree.unapplyTypeBounds)
 
     // Names
 
-    override def unapplySimple(arg: Name) = internal.TermName.unapplySimple(arg)
-    override def unapplyQualified(arg: Name) = internal.TermName.unapplyQualified(arg)
+    override def unapplySimple(arg: Name) = unapplied(arg, internal.TermName.unapplySimple)
+    override def unapplyQualified(arg: Name) = unapplied(arg, internal.TermName.unapplyQualified)
 
-    override def unapplyDefaultGetter(arg: Name) = internal.TermName.unapplyDefaultGetter(arg)
-    override def unapplyVariant(arg: Name) = internal.TermName.unapplyVariant(arg)
-    override def unapplySuperAccessor(arg: Name) = internal.TermName.unapplySuperAccessor(arg)
-    override def unapplyProtectedAccessor(arg: Name) = internal.TermName.unapplyProtectedAccessor(arg)
-    override def unapplyProtectedSetter(arg: Name) = internal.TermName.unapplyProtectedSetter(arg)
-    override def unapplyObjectClass(arg: Name) = internal.TermName.unapplyObjectClass(arg)
+    override def unapplyDefaultGetter(arg: Name) = unapplied(arg, internal.TermName.unapplyDefaultGetter)
+    override def unapplyVariant(arg: Name) = unapplied(arg, internal.TermName.unapplyVariant)
+    override def unapplySuperAccessor(arg: Name) = unapplied(arg, internal.TermName.unapplySuperAccessor)
+    override def unapplyProtectedAccessor(arg: Name) = unapplied(arg, internal.TermName.unapplyProtectedAccessor)
+    override def unapplyProtectedSetter(arg: Name) = unapplied(arg, internal.TermName.unapplyProtectedSetter)
+    override def unapplyObjectClass(arg: Name) = unapplied(arg, internal.TermName.unapplyObjectClass)
 
-    override def unapplySignedName(arg: PossiblySignedName) = internal.SignedName.unapplySignedName(arg)
+    override def unapplySignedName(arg: PossiblySignedName) = unapplied(arg, internal.SignedName.unapplySignedName)
 
-    override def unapplyTypeName(arg: Name) = internal.TypeName.unapplyTypeName(arg)
+    override def unapplyTypeName(arg: Name) = unapplied(arg, internal.TypeName.unapplyTypeName)
 
     // Constants
 
-    override def unapplyUnit(arg: Constant) = internal.Constant.unapplyUnit(arg)
-    override def unapplyNull(arg: Constant) = internal.Constant.unapplyNull(arg)
-    override def unapplyBoolean(arg: Constant) = internal.Constant.unapplyBoolean(arg)
-    override def unapplyByte(arg: Constant) = internal.Constant.unapplyByte(arg)
-    override def unapplyChar(arg: Constant) = internal.Constant.unapplyChar(arg)
-    override def unapplyShort(arg: Constant) = internal.Constant.unapplyShort(arg)
-    override def unapplyInt(arg: Constant) = internal.Constant.unapplyInt(arg)
-    override def unapplyLong(arg: Constant) = internal.Constant.unapplyLong(arg)
-    override def unapplyFloat(arg: Constant) = internal.Constant.unapplyFloat(arg)
-    override def unapplyDouble(arg: Constant) = internal.Constant.unapplyDouble(arg)
-    override def unapplyString(arg: Constant) = internal.Constant.unapplyString(arg)
+    override def unapplyUnit(arg: Constant) = unapplied(arg, internal.Constant.unapplyUnit)
+    override def unapplyNull(arg: Constant) = unapplied(arg, internal.Constant.unapplyNull)
+    override def unapplyBoolean(arg: Constant) = unapplied(arg, internal.Constant.unapplyBoolean)
+    override def unapplyByte(arg: Constant) = unapplied(arg, internal.Constant.unapplyByte)
+    override def unapplyChar(arg: Constant) = unapplied(arg, internal.Constant.unapplyChar)
+    override def unapplyShort(arg: Constant) = unapplied(arg, internal.Constant.unapplyShort)
+    override def unapplyInt(arg: Constant) = unapplied(arg, internal.Constant.unapplyInt)
+    override def unapplyLong(arg: Constant) = unapplied(arg, internal.Constant.unapplyLong)
+    override def unapplyFloat(arg: Constant) = unapplied(arg, internal.Constant.unapplyFloat)
+    override def unapplyDouble(arg: Constant) = unapplied(arg, internal.Constant.unapplyDouble)
+    override def unapplyString(arg: Constant) = unapplied(arg, internal.Constant.unapplyString)
 
     // Types
 
-    override def unapplyConstantType(arg: MaybeType) = internal.Type.unapplyConstantType(arg)
-    override def unapplySymRef(arg: MaybeType) = internal.Type.unapplySymRef(arg)
-    override def unapplyNameRef(arg: MaybeType) = internal.Type.unapplyNameRef(arg)
-    override def unapplySuperType(arg: MaybeType) = internal.Type.unapplySuperType(arg)
-    override def unapplyRefinement(arg: MaybeType) = internal.Type.unapplyRefinement(arg)
-    override def unapplyAppliedType(arg: MaybeType) = internal.Type.unapplyAppliedType(arg)
-    override def unapplyAnnotatedType(arg: MaybeType) = internal.Type.unapplyAnnotatedType(arg)
-    override def unapplyAndType(arg: MaybeType) = internal.Type.unapplyAndType(arg)
-    override def unapplyOrType(arg: MaybeType) = internal.Type.unapplyOrType(arg)
-    override def unapplyByNameType(arg: MaybeType) = internal.Type.unapplyByNameType(arg)
-    override def unapplyParamRef(arg: MaybeType) = internal.Type.unapplyParamRef(arg)
-    override def unapplyThisType(arg: MaybeType) = internal.Type.unapplyThisType(arg)
-    override def unapplyRecursiveThis(arg: MaybeType) = internal.Type.unapplyRecursiveThis(arg)
+    override def unapplyConstantType(arg: MaybeType) = unapplied(arg, internal.Type.unapplyConstantType)
+    override def unapplySymRef(arg: MaybeType) = unapplied(arg, internal.Type.unapplySymRef)
+    override def unapplyNameRef(arg: MaybeType) = unapplied(arg, internal.Type.unapplyNameRef)
+    override def unapplySuperType(arg: MaybeType) = unapplied(arg, internal.Type.unapplySuperType)
+    override def unapplyRefinement(arg: MaybeType) = unapplied(arg, internal.Type.unapplyRefinement)
+    override def unapplyAppliedType(arg: MaybeType) = unapplied(arg, internal.Type.unapplyAppliedType)
+    override def unapplyAnnotatedType(arg: MaybeType) = unapplied(arg, internal.Type.unapplyAnnotatedType)
+    override def unapplyAndType(arg: MaybeType) = unapplied(arg, internal.Type.unapplyAndType)
+    override def unapplyOrType(arg: MaybeType) = unapplied(arg, internal.Type.unapplyOrType)
+    override def unapplyByNameType(arg: MaybeType) = unapplied(arg, internal.Type.unapplyByNameType)
+    override def unapplyParamRef(arg: MaybeType) = unapplied(arg, internal.Type.unapplyParamRef)
+    override def unapplyThisType(arg: MaybeType) = unapplied(arg, internal.Type.unapplyThisType)
+    override def unapplyRecursiveThis(arg: MaybeType) = unapplied(arg, internal.Type.unapplyRecursiveThis)
 
-    override def unapplyRecursiveType(arg: MaybeType) = internal.RecursiveType.unapplyRecursiveType(arg)
+    override def unapplyRecursiveType(arg: MaybeType) = unapplied(arg, internal.RecursiveType.unapplyRecursiveType)
 
-    override def unapplyMethodType(arg: MaybeType) = internal.MethodType.unapplyMethodType(arg)
-    override def unapplyPolyType(arg: MaybeType) = internal.PolyType.unapplyPolyType(arg)
-    override def unapplyTypeLambda(arg: MaybeType) = internal.TypeLambda.unapplyTypeLambda(arg)
+    override def unapplyMethodType(arg: MaybeType) = unapplied(arg, internal.MethodType.unapplyMethodType)
+    override def unapplyPolyType(arg: MaybeType) = unapplied(arg, internal.PolyType.unapplyPolyType)
+    override def unapplyTypeLambda(arg: MaybeType) = unapplied(arg, internal.TypeLambda.unapplyTypeLambda)
 
-    override def unapplyTypeBounds(arg: MaybeType)= internal.TypeBounds.unapplyTypeBounds(arg)
+    override def unapplyTypeBounds(arg: MaybeType) = unapplied(arg, internal.TypeBounds.unapplyTypeBounds)
 
     // Modifiers
 
-    override def unapplyQualifiedPrivate(arg: Modifier) = internal.QualifiedModifier.unapplyQualifiedPrivate(arg)
-    override def unapplyQualifiedProtected(arg: Modifier) = internal.QualifiedModifier.unapplyQualifiedProtected(arg)
-    override def unapplyAnnotation(arg: Modifier) = internal.AnnotationModifier.unapplyAnnotation(arg)
+    override def unapplyQualifiedPrivate(arg: Modifier) = unapplied(arg, internal.QualifiedModifier.unapplyQualifiedPrivate)
+    override def unapplyQualifiedProtected(arg: Modifier) = unapplied(arg, internal.QualifiedModifier.unapplyQualifiedProtected)
+    override def unapplyAnnotation(arg: Modifier) = unapplied(arg, internal.AnnotationModifier.unapplyAnnotation)
 
     // Import Selectors
 
-    override def unapplySimpleSelector(arg: ImportSelector) = internal.ImportSelector.unapplySimpleSelector(arg)
-    override def unapplyRenameSelector(arg: ImportSelector) = internal.ImportSelector.unapplyRenameSelector(arg)
-    override def unapplyOmitSelector(arg: ImportSelector) = internal.ImportSelector.unapplyOmitSelector(arg)
+    override def unapplySimpleSelector(arg: ImportSelector) = unapplied(arg, internal.ImportSelector.unapplySimpleSelector)
+    override def unapplyRenameSelector(arg: ImportSelector) = unapplied(arg, internal.ImportSelector.unapplyRenameSelector)
+    override def unapplyOmitSelector(arg: ImportSelector) = unapplied(arg, internal.ImportSelector.unapplyOmitSelector)
 
+    private def unapplied[T: ClassTag, U](arg: Any, fn: T => Option[U]): Option[U] = arg match {
+      case arg: T => fn(arg)
+      case _ => None
+    }
+
+    private def unapplied[T: ClassTag](arg: Any, fn: T => Boolean): Boolean = arg match {
+      case arg: T => fn(arg)
+      case _ => false
+    }
   }
 
 }

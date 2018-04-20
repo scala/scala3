@@ -7,64 +7,49 @@ import scala.tasty.constants
 
 object Constant {
 
-  def apply(constant: Constants.Constant): constants.Constant = Impl(constant)
+  def apply(constant: Constants.Constant): constants.Constant = new Impl(constant)
 
-  def unapplyUnit(const: constants.Constant): Boolean = const match {
-    case Impl(const) => const.tag == Constants.UnitTag
-    case _ => false
-  }
+  def unapplyUnit(arg: Impl): Boolean = arg.const.tag == Constants.UnitTag
 
-  def unapplyNull(const: constants.Constant): Boolean = const match {
-    case Impl(const) => const.tag == Constants.NullTag
-    case _ => false
-  }
+  def unapplyNull(arg: Impl): Boolean = arg.const.tag == Constants.NullTag
 
-  def unapplyBoolean(const: constants.Constant): Option[Boolean] = const match {
-    case Impl(const) if const.tag == Constants.BooleanTag => Some(const.booleanValue)
-    case _ => None
-  }
+  def unapplyBoolean(arg: Impl): Option[Boolean] =
+    if (arg.const.tag == Constants.BooleanTag) Some(arg.const.booleanValue)
+    else None
 
-  def unapplyByte(const: constants.Constant): Option[Byte] = const match {
-    case Impl(const) if const.tag == Constants.ByteTag => Some(const.byteValue)
-    case _ => None
-  }
+  def unapplyByte(arg: Impl): Option[Byte] =
+    if (arg.const.tag == Constants.ByteTag) Some(arg.const.byteValue)
+    else None
 
-  def unapplyChar(const: constants.Constant): Option[Char] = const match {
-    case Impl(const) if const.tag == Constants.CharTag => Some(const.charValue)
-    case _ => None
-  }
+  def unapplyChar(arg: Impl): Option[Char] =
+    if (arg.const.tag == Constants.CharTag) Some(arg.const.charValue)
+    else None
 
-  def unapplyShort(const: constants.Constant): Option[Short] = const match {
-    case Impl(const) if const.tag == Constants.ShortTag => Some(const.shortValue)
-    case _ => None
-  }
+  def unapplyShort(arg: Impl): Option[Short] =
+    if (arg.const.tag == Constants.ShortTag) Some(arg.const.shortValue)
+    else None
 
-  def unapplyInt(const: constants.Constant): Option[Int] = const match {
-    case Impl(const) if const.tag == Constants.IntTag => Some(const.intValue)
-    case _ => None
-  }
+  def unapplyInt(arg: Impl): Option[Int] =
+    if (arg.const.tag == Constants.IntTag) Some(arg.const.intValue)
+    else None
 
-  def unapplyLong(const: constants.Constant): Option[Long] = const match {
-    case Impl(const) if const.tag == Constants.LongTag => Some(const.longValue)
-    case _ => None
-  }
+  def unapplyLong(arg: Impl): Option[Long] =
+    if (arg.const.tag == Constants.LongTag) Some(arg.const.longValue)
+    else None
 
-  def unapplyFloat(const: constants.Constant): Option[Float] = const match {
-    case Impl(const) if const.tag == Constants.FloatTag => Some(const.floatValue)
-    case _ => None
-  }
+  def unapplyFloat(arg: Impl): Option[Float] =
+    if (arg.const.tag == Constants.FloatTag) Some(arg.const.floatValue)
+    else None
 
-  def unapplyDouble(const: constants.Constant): Option[Double] = const match {
-    case Impl(const) if const.tag == Constants.DoubleTag => Some(const.doubleValue)
-    case _ => None
-  }
+  def unapplyDouble(arg: Impl): Option[Double] =
+    if (arg.const.tag == Constants.DoubleTag) Some(arg.const.doubleValue)
+    else None
 
-  def unapplyString(const: constants.Constant): Option[String] = const match {
-    case Impl(const) if const.tag == Constants.StringTag => Some(const.stringValue)
-    case _ => None
-  }
+  def unapplyString(arg: Impl): Option[String] =
+    if (arg.const.tag == Constants.StringTag) Some(arg.const.stringValue)
+    else None
 
-  private[tasty] case class Impl(const: Constants.Constant) extends constants.Constant {
+  private[tasty] class Impl(val const: Constants.Constant) extends constants.Constant {
 
     def value: Any = const.value
 

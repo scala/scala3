@@ -10,37 +10,48 @@ import scala.tasty.types
 
 object Pattern {
 
-  def apply(tree: tpd.Tree)(implicit ctx: Context): trees.Pattern = Impl(tree, ctx)
+  def apply(tree: tpd.Tree)(implicit ctx: Context): trees.Pattern = new Impl(tree)
 
-  def unapplyValue(tree: trees.Tree): Option[trees.Value.Data] = tree match {
-    case Impl(lit: tpd.Literal, ctx) => Some(Term(lit)(ctx))
-    case Impl(ident: tpd.Ident, ctx) => Some(Term(ident)(ctx))
+  def unapplyValue(arg: Impl): Option[trees.Value.Data] = {
+    implicit val ctx: Context = arg.ctx
+    arg.tree match {
+      case lit: tpd.Literal => Some(Term(lit))
+      case ident: tpd.Ident => Some(Term(ident))
+      case _ => None
+    }
+  }
+
+  def unapplyBind(arg: Impl): Option[trees.Bind.Data] = arg.tree match {
+    case Trees.Bind(name: Names.TermName, body) =>
+      implicit val ctx: Context = arg.ctx
+      Some(TermName(name), Pattern(body))
     case _ => None
   }
 
-  def unapplyBind(tree: trees.Tree): Option[trees.Bind.Data] = tree match {
-    case Impl(Trees.Bind(name: Names.TermName, body), ctx) => Some(TermName(name), Pattern(body)(ctx))
+  def unapplyUnapply(arg: Impl): Option[trees.Unapply.Data] = arg.tree match {
+    case Trees.UnApply(fun, implicits, patterns) =>
+      implicit val ctx: Context = arg.ctx
+      Some((Term(fun), implicits.map(Term(_)), patterns.map(Pattern(_))))
     case _ => None
   }
 
-  def unapplyUnapply(tree: trees.Tree): Option[trees.Unapply.Data] = tree match {
-    case Impl(Trees.UnApply(fun, implicits, patterns), ctx) => Some((Term(fun)(ctx), implicits.map(Term(_)(ctx)), patterns.map(Pattern(_)(ctx))))
+  def unapplyAlternative(arg: Impl): Option[trees.Alternative.Data] = arg.tree match {
+    case Trees.Alternative(patterns) =>
+      implicit val ctx: Context = arg.ctx
+      Some(patterns.map(Pattern(_)))
     case _ => None
   }
 
-  def unapplyAlternative(tree: trees.Tree): Option[trees.Alternative.Data] = tree match {
-    case Impl(Trees.Alternative(patterns), ctx) => Some(patterns.map(Pattern(_)(ctx)))
+  def unapplyTypeTest(arg: Impl): Option[trees.TypeTest.Data] = arg.tree match {
+    case Trees.Typed(_, tpt) =>
+      implicit val ctx: Context = arg.ctx
+      Some(TypeTree(tpt))
     case _ => None
   }
 
-  def unapplyTypeTest(tree: trees.Tree): Option[trees.TypeTest.Data] = tree match {
-    case Impl(Trees.Typed(_, tpt), ctx) => Some(TypeTree(tpt)(ctx))
-    case _ => None
-  }
+  private[tasty] class Impl(val tree: tpd.Tree)(implicit val ctx: Context) extends trees.Pattern with Positioned {
 
-  private case class Impl(tree: tpd.Tree, ctx: Context) extends trees.Pattern with Positioned {
-
-    def tpe: types.Type = Type(tree.tpe)(ctx)
+    def tpe: types.Type = Type(tree.tpe)
 
     override def toString: String = {
       import Toolbox.extractor

@@ -10,16 +10,15 @@ object SignedName {
 
   // TODO make sure all extractors are tested
 
-  def apply(name: Names.TermName): names.SignedName = Impl(name)
+  def apply(name: Names.TermName): names.SignedName = new Impl(name)
 
-  def unapplySignedName(arg: names.PossiblySignedName): Option[names.SignedName.Data] = arg match {
-    case Impl(name: Names.DerivedName) if name.is(NameKinds.SignedName) =>
-      val NameKinds.SignedName.SignedInfo(sig) = name.info
-      Some(TermName(name.underlying), TypeName(sig.resSig), sig.paramsSig.map(TypeName(_)))
-    case _ => None
+  def unapplySignedName(arg: Impl): Option[names.SignedName.Data] = {
+    val name = arg.name
+    val NameKinds.SignedName.SignedInfo(sig) = name.info
+    Some(TermName(name.underlying), TypeName(sig.resSig), sig.paramsSig.map(TypeName(_)))
   }
 
-  private[tasty] case class Impl(name: Names.TermName) extends names.SignedName {
+  private[tasty] class Impl(val name: Names.TermName) extends names.SignedName {
     override def toString: String = {
       import Toolbox.extractor
       val names.SignedName(underlying, resSig, paramsSigs) = this

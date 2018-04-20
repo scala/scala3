@@ -9,25 +9,21 @@ import scala.tasty.types
 
 object ClassDef {
 
-  def apply(tree: tpd.TypeDef)(implicit ctx: Context): trees.ClassDef = Impl(tree, ctx)
+  def apply(tree: tpd.TypeDef)(implicit ctx: Context): trees.ClassDef = new Impl(tree)
 
-  def unapplyClassDef(tree: trees.Tree): Option[trees.ClassDef.Data] = tree match {
-    case Impl(cdef @ Trees.TypeDef(name, impl@Trees.Template(constr, parents, self, _)), ctx) =>
-      implicit val ctx_ = ctx
-      if (cdef.symbol.isClass) {
-        val className = TypeName(name)
-        val constructor = DefDef(constr)
-        val classParents = parents.map(p => if (!p.isType) Term(p) else TypeTree(p))
-        val selfVal = if (self.isEmpty) None else Some(ValDef(self))
-        val body = impl.body.map(Statement(_))
-        val mods = Modifiers(cdef)
-        Some((className, constructor, classParents, selfVal, body, mods))
-      }
-      else None
-    case _ => None
+  def unapplyClassDef(arg: Impl): Option[trees.ClassDef.Data] = {
+    implicit val ctx: Context = arg.ctx
+    val Trees.TypeDef(name, impl@Trees.Template(constr, parents, self, _)) = arg.tree
+    val className = TypeName(name)
+    val constructor = DefDef(constr)
+    val classParents = parents.map(p => if (!p.isType) Term(p) else TypeTree(p))
+    val selfVal = if (self.isEmpty) None else Some(ValDef(self))
+    val body = impl.body.map(Statement(_))
+    val mods = Modifiers(arg.tree)
+    Some((className, constructor, classParents, selfVal, body, mods))
   }
 
-  private case class Impl(tree: tpd.TypeDef, ctx: Context) extends trees.ClassDef with Positioned {
+  private[tasty] class Impl(val tree: tpd.TypeDef)(implicit val ctx: Context) extends trees.ClassDef with Positioned {
 
     def tpe: types.Type = Type(tree.tpe)(ctx)
 

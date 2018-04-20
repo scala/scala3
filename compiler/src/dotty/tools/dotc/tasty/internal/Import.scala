@@ -8,14 +8,15 @@ import scala.tasty.trees
 
 object Import {
 
-  def apply(tree: tpd.Tree)(implicit ctx: Context): trees.Import = Impl(tree, ctx)
+  def apply(tree: tpd.Tree)(implicit ctx: Context): trees.Import = new Impl(tree)
 
-  def unapplyImport(tree: trees.Tree): Option[trees.Import.Data] = tree match {
-    case Impl(Trees.Import(expr, selectors), ctx) => Some(Term(expr)(ctx), selectors.map(ImportSelector(_)(ctx)))
-    case _ => None
+  def unapplyImport(arg: Impl): Option[trees.Import.Data] = {
+    implicit val ctx: Context = arg.ctx
+    val Trees.Import(expr, selectors) = arg.tree
+    Some(Term(expr), selectors.map(ImportSelector(_)))
   }
 
-  private case class Impl(tree: tpd.Tree, ctx: Context) extends trees.Import with Positioned {
+  private[tasty] class Impl(val tree: tpd.Tree)(implicit val ctx: Context) extends trees.Import with Positioned {
     override def toString: String = {
       import Toolbox.extractor
       val trees.Import(pkg, body) = this

@@ -10,26 +10,19 @@ object TypeLambda {
 
   // TODO make sure all extractors are tested
 
-  def apply(tpe: Types.TypeLambda)(implicit ctx: Context): types.TypeLambda = Impl(tpe, ctx)
+  def apply(tpe: Types.TypeLambda)(implicit ctx: Context): types.TypeLambda = new Impl(tpe)
 
-  def unapplyTypeLambda(tpe: types.MaybeType): Option[types.TypeLambda.Data] = tpe match {
-    case Impl(meth: Types.TypeLambda, ctx) =>
-      implicit val ctx_ = ctx
-      Some((meth.paramNames.map(TypeName(_)), meth.paramInfos.map(TypeBounds(_)), Type(meth.resType)))
-    case _ => None
+  def unapplyTypeLambda(arg: Impl): Option[types.TypeLambda.Data] = {
+    implicit val ctx: Context = arg.ctx
+    val meth = arg.meth
+    Some((meth.paramNames.map(TypeName(_)), meth.paramInfos.map(TypeBounds(_)), Type(meth.resType)))
   }
 
-  private case class Impl(meth: Types.TypeLambda, ctx: Context) extends types.TypeLambda {
+  private[tasty] class Impl(val meth: Types.TypeLambda)(implicit val ctx: Context) extends types.TypeLambda {
     override def toString: String = {
       import Toolbox.extractor
-      this match {
-        case types.MethodType(paramNames, paramTypes, resType) =>
-          s"MethodType($paramNames, $paramTypes, $resType)"
-        case types.PolyType(paramNames, paramBounds, resType) =>
-          s"PolyType($paramNames, $paramBounds, $resType)"
-        case types.TypeLambda(paramNames, paramBounds, resType) =>
-          s"TypeLambda($paramNames, $paramBounds, $resType)"
-      }
+      val types.MethodType(paramNames, paramTypes, resType) = this
+      s"TypeLambda($paramNames, $paramTypes, $resType)"
     }
   }
 }

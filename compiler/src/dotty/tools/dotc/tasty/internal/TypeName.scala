@@ -7,14 +7,13 @@ import scala.tasty.names
 
 object TypeName {
 
-  def apply(name: Names.TypeName): names.TypeName = Impl(name)
+  def apply(name: Names.TypeName): names.TypeName = new Impl(name)
 
-  def unapplyTypeName(arg: names.Name): Option[names.TypeName.Data] = arg match {
-    case Impl(name) => Some(TermName(name.toTermName))
-    case _ => None
+  def unapplyTypeName(arg: Impl): Option[names.TypeName.Data] = {
+    Some(TermName(arg.name.toTermName))
   }
 
-  private[tasty] case class Impl(name: Names.TypeName) extends names.TypeName {
+  private[tasty] class Impl(val name: Names.TypeName) extends names.TypeName {
     override def toString: String = {
       import Toolbox.extractor
       val names.TypeName(underlying) = this

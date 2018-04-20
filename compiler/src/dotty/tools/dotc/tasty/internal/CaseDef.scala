@@ -9,15 +9,15 @@ import scala.tasty.trees
 
 object CaseDef {
 
-  def apply(tree: tpd.Tree)(implicit ctx: Context): trees.CaseDef = Impl(tree, ctx)
+  def apply(tree: tpd.CaseDef)(implicit ctx: Context): trees.CaseDef = new Impl(tree)
 
-  def unapplyCaseDef(tree: trees.Tree): Option[trees.CaseDef.Data] = tree match {
-    case Impl(Trees.CaseDef(pat, guard, body), ctx) =>
-      Some(Pattern(pat)(ctx), if (guard.isEmpty) None else Some(Term(guard)(ctx)), Term(body)(ctx))
-    case _ => None
+  def unapplyCaseDef(arg: Impl): Option[trees.CaseDef.Data] = {
+    implicit val ctx: Context = arg.ctx
+    val Trees.CaseDef(pat, guard, body) = arg.tree
+    Some(Pattern(pat), if (guard.isEmpty) None else Some(Term(guard)), Term(body))
   }
 
-  private case class Impl(tree: tpd.Tree, ctx: Context) extends trees.CaseDef with Positioned {
+  private[tasty] class Impl(val tree: tpd.CaseDef)(implicit val ctx: Context) extends trees.CaseDef with Positioned {
     override def toString: String = {
       import Toolbox.extractor
       val trees.CaseDef(pat, guard, body) = this

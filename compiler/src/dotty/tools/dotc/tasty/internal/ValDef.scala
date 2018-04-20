@@ -9,19 +9,19 @@ import scala.tasty.types
 
 object ValDef {
 
-  def apply(tree: tpd.ValDef)(implicit ctx: Context): trees.ValDef = Impl(tree, ctx)
+  def apply(tree: tpd.ValDef)(implicit ctx: Context): trees.ValDef = new Impl(tree)
 
-  def unapplyValDef(tree: trees.Tree): Option[trees.ValDef.Data] = tree match {
-    case Impl(vdef, ctx) =>
-      implicit val ctx_ = localContext(vdef)(ctx)
-      Some((TermName(vdef.name), TypeTree(vdef.tpt), if (vdef.rhs.isEmpty) None else Some(Term(vdef.rhs)), Modifiers(vdef)))
-    case _ => None
+  def unapplyValDef(arg: Impl): Option[trees.ValDef.Data] = {
+    val vdef = arg.tree
+    implicit val ctx = localContext(vdef)(arg.ctx)
+    val rhs = if (vdef.rhs.isEmpty) None else Some(Term(vdef.rhs))
+    Some((TermName(vdef.name), TypeTree(vdef.tpt), rhs, Modifiers(vdef)))
   }
 
   private def localContext(tree: tpd.Tree)(implicit ctx: Context): Context =
     if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
 
-  private case class Impl(tree: tpd.ValDef, ctx: Context) extends trees.ValDef with Positioned {
+  private[tasty] class Impl(val tree: tpd.ValDef)(implicit val ctx: Context) extends trees.ValDef with Positioned {
 
     def tpe: types.Type = Type(tree.tpe)(ctx)
 

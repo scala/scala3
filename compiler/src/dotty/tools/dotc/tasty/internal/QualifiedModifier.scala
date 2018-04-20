@@ -10,25 +10,21 @@ import scala.tasty.modifiers
 object QualifiedModifier {
 
   def apply(tree: tpd.DefTree)(implicit ctx: Context): Option[modifiers.Modifier] =
-    if (tree.symbol.privateWithin.exists) Some(Impl(tree, ctx)) else None
+    if (tree.symbol.privateWithin.exists) Some(new Impl(tree)) else None
 
-  def unapplyQualifiedPrivate(mod: modifiers.Modifier): Option[modifiers.QualifiedPrivate.Data] = mod match {
-    case Impl(tree, ctx) =>
-      implicit val ctx_ = ctx
-      if (tree.symbol.is(Flags.Protected)) None
-      else Some(Type(tree.symbol.privateWithin.typeRef))
-    case _ => None
+  def unapplyQualifiedPrivate(arg: Impl): Option[modifiers.QualifiedPrivate.Data] = {
+    implicit val ctx: Context = arg.ctx
+    if (arg.tree.symbol.is(Flags.Protected)) None
+    else Some(Type(arg.tree.symbol.privateWithin.typeRef))
   }
 
-  def unapplyQualifiedProtected(mod: modifiers.Modifier): Option[modifiers.QualifiedProtected.Data] = mod match {
-    case Impl(tree, ctx) =>
-      implicit val ctx_ = ctx
-      if (tree.symbol.is(Flags.Protected)) Some(Type(tree.symbol.privateWithin.typeRef))
-      else None
-    case _ => None
+  def unapplyQualifiedProtected(arg: Impl): Option[modifiers.QualifiedProtected.Data] = {
+    implicit val ctx: Context = arg.ctx
+    if (arg.tree.symbol.is(Flags.Protected)) Some(Type(arg.tree.symbol.privateWithin.typeRef))
+    else None
   }
 
-  private case class Impl(tree: tpd.DefTree, ctx: Context) extends modifiers.Modifier with Positioned {
+  private[tasty] class Impl(val tree: tpd.DefTree)(implicit val ctx: Context) extends modifiers.Modifier with Positioned {
 
     override def toString: String = {
       import Toolbox.extractor

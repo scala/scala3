@@ -9,14 +9,14 @@ import scala.tasty.modifiers
 
 object AnnotationModifier {
 
-  def apply(tree: Annotation)(implicit ctx: Context): modifiers.Modifier = Impl(tree, ctx)
+  def apply(tree: Annotation)(implicit ctx: Context): modifiers.Modifier = new Impl(tree)
 
-  def unapplyAnnotation(mod: modifiers.Modifier): Option[modifiers.Annotation.Data] = mod match {
-    case Impl(annot, ctx) => Some(Term(annot.tree(ctx))(ctx))
-    case _ => None
+  def unapplyAnnotation(arg: Impl): Option[modifiers.Annotation.Data] = {
+    implicit val ctx: Context = arg.ctx
+    Some(Term(arg.annot.tree))
   }
 
-  private case class Impl(annot: Annotation, ctx: Context) extends modifiers.Modifier {
+  private[tasty] class Impl(val annot: Annotation)(implicit val ctx: Context) extends modifiers.Modifier {
 
     def pos: scala.tasty.Position = new Position(sourcePos(annot.tree(ctx).pos)(ctx))
 

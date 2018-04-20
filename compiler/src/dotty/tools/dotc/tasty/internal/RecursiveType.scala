@@ -10,16 +10,14 @@ object RecursiveType {
 
   // TODO make sure all extractors are tested
 
-  def apply(bounds: Types.RecType)(implicit ctx: Context): types.RecursiveType = Impl(bounds, ctx)
+  def apply(binder: Types.RecType)(implicit ctx: Context): types.RecursiveType = new Impl(binder)
 
-  def unapplyRecursiveType(tpe: types.MaybeType): Option[types.RecursiveType.Data] = tpe match {
-    case Impl(tpe: Types.RecType, ctx) =>
-      implicit val ctx_ = ctx
-      Some(Type(tpe.underlying))
-    case _ => None
+  def unapplyRecursiveType(arg: Impl): Option[types.RecursiveType.Data] = {
+    implicit val ctx: Context = arg.ctx
+    Some(Type(arg.binder.underlying))
   }
 
-  private case class Impl(bounds: Types.RecType, ctx: Context) extends types.RecursiveType {
+  private[tasty] class Impl(val binder: Types.RecType)(implicit val ctx: Context) extends types.RecursiveType {
     override def toString: String = {
       import Toolbox.extractor
       val types.RecursiveType(binder) = this

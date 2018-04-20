@@ -10,16 +10,15 @@ object PackageDef {
 
   // TODO make sure all extractors are tested
 
-  def apply(tree: tpd.Tree)(implicit ctx: Context): trees.PackageDef = Impl(tree, ctx)
+  def apply(tree: tpd.PackageDef)(implicit ctx: Context): trees.PackageDef = new Impl(tree)
 
-  def unapplyPackageDef(tree: trees.Tree): Option[trees.PackageDef.Data] = tree match {
-    case Impl(pkgDef@Trees.PackageDef(pkg, body), ctx) =>
-      val localContext = ctx.withOwner(pkgDef.symbol(ctx))
-      Some(Term(pkg)(ctx), body.map(TopLevelStatement(_)(localContext)))
-    case _ => None
+  def unapplyPackageDef(arg: Impl): Option[trees.PackageDef.Data] = {
+    implicit val ctx: Context = arg.ctx
+    val localContext = ctx.withOwner(arg.tree.symbol)
+    Some(Term(arg.tree.pid), arg.tree.stats.map(TopLevelStatement(_)(localContext)))
   }
 
-  private case class Impl(tree: tpd.Tree, ctx: Context) extends trees.PackageDef with Positioned {
+  private[tasty] class Impl(val tree: tpd.PackageDef)(implicit val ctx: Context) extends trees.PackageDef with Positioned {
     override def toString: String = {
       import Toolbox.extractor
       val trees.PackageDef(pkg, body) = this

@@ -8,14 +8,14 @@ import scala.tasty.types
 
 object TypeBounds {
 
-  def apply(bounds: Types.TypeBounds)(implicit ctx: Context): types.TypeBounds = Impl(bounds, ctx)
+  def apply(bounds: Types.TypeBounds)(implicit ctx: Context): types.TypeBounds = new Impl(bounds)
 
-  def unapplyTypeBounds(tpe: types.MaybeType): Option[types.TypeBounds.Data] = tpe match {
-    case Impl(Types.TypeBounds(lo, hi), ctx) => Some(Type(lo)(ctx), Type(hi)(ctx))
-    case _ => None
+  def unapplyTypeBounds(arg: Impl): Option[types.TypeBounds.Data] =  {
+    implicit val ctx = arg.ctx
+    Some(Type(arg.bounds.lo), Type(arg.bounds.hi))
   }
 
-  private case class Impl(bounds: Types.TypeBounds, ctx: Context) extends types.TypeBounds {
+  private[tasty] class Impl(val bounds: Types.TypeBounds)(implicit val ctx: Context) extends types.TypeBounds {
     override def toString: String = {
       import Toolbox.extractor
       val types.TypeBounds(lo, hi) = this

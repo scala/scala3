@@ -9,23 +9,19 @@ import scala.tasty.types
 
 object TypeDef {
 
-  def apply(tree: tpd.TypeDef)(implicit ctx: Context): trees.TypeDef = Impl(tree, ctx)
+  def apply(tree: tpd.TypeDef)(implicit ctx: Context): trees.TypeDef = new Impl(tree)
 
-  def unapplyTypeDef(tree: trees.Tree): Option[trees.TypeDef.Data] = tree match {
-    case Impl(tdef, ctx) if !tdef.symbol(ctx).isClass =>
-      implicit val localContext = ctx.withOwner(tdef.symbol(ctx))
-      if (tdef.symbol.isClass) None
-      else {
-        val rhs = tdef.rhs match {
-          case rhs: Trees.TypeBoundsTree[_] => TypeBoundsTree(rhs)
-          case rhs => TypeTree(rhs)
-        }
-        Some((TypeName(tdef.name), rhs, Modifiers(tdef)))
-      }
-    case _ => None
+  def unapplyTypeDef(arg: Impl): Option[trees.TypeDef.Data] = {
+    val tdef = arg.tree
+    implicit val localContext: Context = arg.ctx.withOwner(tdef.symbol(arg.ctx))
+    val rhs = tdef.rhs match {
+      case rhs: Trees.TypeBoundsTree[_] => TypeBoundsTree(rhs)
+      case rhs => TypeTree(rhs)
+    }
+    Some((TypeName(tdef.name), rhs, Modifiers(tdef)))
   }
 
-  private case class Impl(tree: tpd.TypeDef, ctx: Context) extends trees.TypeDef with Positioned {
+  private[tasty] class Impl(val tree: tpd.TypeDef)(implicit val ctx: Context) extends trees.TypeDef with Positioned {
 
     def tpe: types.Type = Type(tree.tpe)(ctx)
 

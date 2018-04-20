@@ -11,14 +11,14 @@ import scala.tasty.types
 
 object TypeBoundsTree {
 
-  def apply(bounds: tpd.TypeBoundsTree)(implicit ctx: Context): trees.TypeBoundsTree = Impl(bounds, ctx)
+  def apply(bounds: tpd.TypeBoundsTree)(implicit ctx: Context): trees.TypeBoundsTree = new Impl(bounds)
 
-  def unapplyTypeBounds(tree: trees.Tree): Option[trees.TypeBoundsTree.Data] = tree match {
-    case Impl(Trees.TypeBoundsTree(lo, hi), ctx) => Some(TypeTree(lo)(ctx), TypeTree(hi)(ctx))
-    case _ => None
+  def unapplyTypeBounds(arg: Impl): Option[trees.TypeBoundsTree.Data] = {
+    implicit val ctx: Context = arg.ctx
+    Some(TypeTree(arg.tree.lo), TypeTree(arg.tree.hi))
   }
 
-  private case class Impl(tree: tpd.TypeBoundsTree, ctx: Context) extends trees.TypeBoundsTree with Positioned {
+  private[tasty] class Impl(val tree: tpd.TypeBoundsTree)(implicit val ctx: Context) extends trees.TypeBoundsTree with Positioned {
 
     override def tpe: types.TypeBounds = TypeBounds(tree.tpe.asInstanceOf[Types.TypeBounds])(ctx)
 
