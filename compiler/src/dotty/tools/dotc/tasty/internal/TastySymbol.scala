@@ -9,9 +9,9 @@ import scala.tasty.names
 object TastySymbol {
 
   def apply(sym: Symbol)(implicit ctx: Context): scala.tasty.Symbol =
-    if (sym.exists) new Impl(sym, ctx) else scala.tasty.NoSymbol
+    if (sym.exists) Impl(sym)(ctx) else scala.tasty.NoSymbol
 
-  private class Impl(sym: Symbol, ctx: Context) extends scala.tasty.Symbol { self =>
+  private case class Impl(sym: Symbol)(ctx: Context) extends scala.tasty.Symbol { self =>
 
     override def name: names.Name = Name(sym.name(ctx))
 
