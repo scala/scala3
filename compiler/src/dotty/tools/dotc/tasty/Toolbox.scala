@@ -4,7 +4,7 @@ import scala.tasty.constants.Constant
 import scala.tasty.modifiers.Modifier
 import scala.tasty.names.Name
 import scala.tasty.names.PossiblySignedName
-import scala.tasty.trees.Tree
+import scala.tasty.trees.{ImportSelector, Tree}
 import scala.tasty.types.MaybeType
 
 object Toolbox {
@@ -127,6 +127,12 @@ object Toolbox {
     override def unapplyQualifiedPrivate(arg: Modifier) = internal.QualifiedModifier.unapplyQualifiedPrivate(arg)
     override def unapplyQualifiedProtected(arg: Modifier) = internal.QualifiedModifier.unapplyQualifiedProtected(arg)
     override def unapplyAnnotation(arg: Modifier) = internal.AnnotationModifier.unapplyAnnotation(arg)
+
+    // Import Selectors
+
+    override def unapplySimpleSelector(arg: ImportSelector) = internal.ImportSelector.unapplySimpleSelector(arg)
+    override def unapplyRenameSelector(arg: ImportSelector) = internal.ImportSelector.unapplyRenameSelector(arg)
+    override def unapplyOmitSelector(arg: ImportSelector) = internal.ImportSelector.unapplyOmitSelector(arg)
 
   }
 

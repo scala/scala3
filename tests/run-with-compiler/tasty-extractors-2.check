@@ -22,16 +22,16 @@ AndType(NameRef(TypeName(Simple(Int)), SymRef(Symbol(<root>.scala), ThisType(Sym
 Typed(Literal(Int(1)), Or(Ident(TypeName(Simple(Int))), Ident(TypeName(Simple(String)))))
 OrType(NameRef(TypeName(Simple(Int)), SymRef(Symbol(<root>.scala), ThisType(SymRef(Symbol(<root>), NoPrefix)))), NameRef(TypeName(Simple(String)), NameRef(Simple(Predef), SymRef(Symbol(<root>.scala), ThisType(SymRef(Symbol(<root>), NoPrefix))))))
 
-Block(List(Import(Select(Ident(Simple(scala)), Simple(collection)), List(Simple(Id(mutable))))), Literal(Int(1)))
+Block(List(Import(Select(Ident(Simple(scala)), Simple(collection)), List(SimpleSelector(Id(mutable))))), Literal(Int(1)))
 ConstantType(Int(1))
 
-Block(List(Import(Select(Ident(Simple(scala)), Simple(collection)), List(Simple(Id(mutable)), Simple(Id(immutable))))), Literal(Int(2)))
+Block(List(Import(Select(Ident(Simple(scala)), Simple(collection)), List(SimpleSelector(Id(mutable)), SimpleSelector(Id(immutable))))), Literal(Int(2)))
 ConstantType(Int(2))
 
-Block(List(Import(Select(Ident(Simple(scala)), Simple(collection)), List(Rename(Id(mutable),Id(mut))))), Literal(Int(3)))
+Block(List(Import(Select(Ident(Simple(scala)), Simple(collection)), List(RenameSelector(Id(mutable), Id(mut))))), Literal(Int(3)))
 ConstantType(Int(3))
 
-Block(List(Import(Select(Ident(Simple(scala)), Simple(collection)), List(Omit(Id(mutable))))), Literal(Int(4)))
+Block(List(Import(Select(Ident(Simple(scala)), Simple(collection)), List(OmitSelector(Id(mutable))))), Literal(Int(4)))
 ConstantType(Int(4))
 
 Block(List(ClassDef(TypeName(Simple(Foo)), DefDef(Simple(<init>), List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), Simple(<init>)), Nil)), None, List(), List())), Literal(Unit()))

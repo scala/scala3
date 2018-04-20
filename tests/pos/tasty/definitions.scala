@@ -45,9 +45,9 @@ object definitions {
   case class Import(expr: Term, selector: List[ImportSelector]) extends Statement
 
   enum ImportSelector {
-    case Simple(id: Id)
-    case Rename(id1: Id, id2: Id)
-    case Omit(id1: Id)
+    case SimpleSelector(id: Id)
+    case RenameSelector(id1: Id, id2: Id)
+    case OmitSelector(id1: Id)
   }
 
   case class Id(name: String) extends Positioned     // untyped ident

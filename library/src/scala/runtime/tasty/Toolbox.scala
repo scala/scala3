@@ -5,7 +5,7 @@ import scala.tasty._
 import scala.tasty.constants.Constant
 import scala.tasty.modifiers.Modifier
 import scala.tasty.trees
-import scala.tasty.trees.Tree
+import scala.tasty.trees.{ImportSelector, Tree}
 import scala.tasty.types.MaybeType
 
 @implicitNotFound("Could not find implicit tasty.Toolbox. Default toolbox can be imported with `import dotty.tools.dotc.tasty.Toolbox._`")
@@ -129,5 +129,12 @@ trait Toolbox {
   def unapplyQualifiedPrivate(arg: Modifier): Option[modifiers.QualifiedPrivate.Data]
   def unapplyQualifiedProtected(arg: Modifier): Option[modifiers.QualifiedProtected.Data]
   def unapplyAnnotation(arg: Modifier): Option[modifiers.Annotation.Data]
+
+  // Import selectors
+
+  def unapplySimpleSelector(arg: ImportSelector): Option[trees.SimpleSelector.Data]
+  def unapplyRenameSelector(arg: ImportSelector): Option[trees.RenameSelector.Data]
+  def unapplyOmitSelector(arg: ImportSelector): Option[trees.OmitSelector.Data]
+
 
 }
