@@ -86,17 +86,17 @@ object Toolbox {
 
     // Constants
 
-    override def unapplyUnit(arg: Constant) = internal.Constant.Unit.unapply(arg)
-    override def unapplyNull(arg: Constant) = internal.Constant.Null.unapply(arg)
-    override def unapplyBoolean(arg: Constant) = internal.Constant.Boolean.unapply(arg)
-    override def unapplyByte(arg: Constant) = internal.Constant.Byte.unapply(arg)
-    override def unapplyChar(arg: Constant) = internal.Constant.Char.unapply(arg)
-    override def unapplyShort(arg: Constant) = internal.Constant.Short.unapply(arg)
-    override def unapplyInt(arg: Constant) = internal.Constant.Int.unapply(arg)
-    override def unapplyLong(arg: Constant) = internal.Constant.Long.unapply(arg)
-    override def unapplyFloat(arg: Constant) = internal.Constant.Float.unapply(arg)
-    override def unapplyDouble(arg: Constant) = internal.Constant.Double.unapply(arg)
-    override def unapplyString(arg: Constant) = internal.Constant.String.unapply(arg)
+    override def unapplyUnit(arg: Constant) = internal.Constant.unapplyUnit(arg)
+    override def unapplyNull(arg: Constant) = internal.Constant.unapplyNull(arg)
+    override def unapplyBoolean(arg: Constant) = internal.Constant.unapplyBoolean(arg)
+    override def unapplyByte(arg: Constant) = internal.Constant.unapplyByte(arg)
+    override def unapplyChar(arg: Constant) = internal.Constant.unapplyChar(arg)
+    override def unapplyShort(arg: Constant) = internal.Constant.unapplyShort(arg)
+    override def unapplyInt(arg: Constant) = internal.Constant.unapplyInt(arg)
+    override def unapplyLong(arg: Constant) = internal.Constant.unapplyLong(arg)
+    override def unapplyFloat(arg: Constant) = internal.Constant.unapplyFloat(arg)
+    override def unapplyDouble(arg: Constant) = internal.Constant.unapplyDouble(arg)
+    override def unapplyString(arg: Constant) = internal.Constant.unapplyString(arg)
 
     // Types
 
