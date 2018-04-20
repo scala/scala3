@@ -75,16 +75,8 @@ object Sandbox {
     }
 
     override def checkPermission(permission: Permission): Unit = {
-      if (enabledFlag.get()) {
-        permission match {
-          case _: ReflectPermission =>
-            // allow reflection, needed for interpreter
-            // TODO restrict more?
-          case _ if isClassLoading =>
-            // allow any permission in the class loader
-          case _ => super.checkPermission(permission)
-        }
-      }
+      if (enabledFlag.get() && !isClassLoading)
+        super.checkPermission(permission)
     }
 
     override def checkPermission(permission: Permission, context: Object): Unit = {
