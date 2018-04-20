@@ -69,6 +69,14 @@ Listed in this section are new language constructs that help precise, typechecke
    So what should conceptually be a type error would not be reported and
    runtime behavior might change instead. Multiversal equality closes that loophole.
 
+ - Restrict Implicit Conversions
+
+   ([Pending](https://github.com/lampepfl/dotty/pull/4229))
+   Implicit conversions are very easily mis-used, which makes them the cause of much suprising behavior.
+   We now require a language feature import not only when an implicit conversion is defined
+   but also when it is applied. This protects users of libraries that define implicit conversions
+   from being bitten by unanticipated feature interactions.
+
  - Null safety
 
    (Planned) Adding a `null` value to every type has been called a "Billion Dollar Mistake"
