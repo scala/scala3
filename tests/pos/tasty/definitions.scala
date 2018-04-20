@@ -25,7 +25,12 @@ object definitions {
 
 // ====== Positions ==================================
 
-  case class Position(firstOffset: Int, lastOffset: Int)
+  case class Position(firstOffset: Int, lastOffset: Int, sourceFile: String) {
+    def startLine: Int = ???
+    def startColumn: Int = ???
+    def endLine: Int = ???
+    def endColumn: Int = ???
+  }
 
   trait Positioned {
     def pos: Position = ???
