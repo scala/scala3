@@ -79,7 +79,7 @@ object LambdaLift {
 
     def proxyOf(sym: Symbol, fv: Symbol) = proxyMap.getOrElse(sym, Map.empty)(fv)
 
-    def proxies(sym: Symbol): List[Symbol] =  freeVars(sym).map(proxyOf(sym, _))
+    def proxies(sym: Symbol): List[Symbol] = freeVars(sym).map(proxyOf(sym, _))
 
     /** A symbol is local if it is owned by a term or a local trait,
      *  or if it is a constructor of a local symbol.
@@ -350,6 +350,10 @@ object LambdaLift {
           local.copySymDenotation(info = liftedInfo(local)).installAfter(thisPhase)
     }
 
+    def checkNoEffectsCaptured(sym: Symbol, pos: Position)(implicit ctx: Context) =
+      for (fv <- freeVars(sym) if fv.info.isEffect)
+        ctx.error(em"illegal capture of effect $fv in $sym", pos)
+
     // initialization
     ctx.atPhase(thisPhase) { implicit ctx =>
       (new CollectDependencies).traverse(ctx.compilationUnit.tpdTree)
@@ -531,8 +535,10 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   override def transformApply(tree: Apply)(implicit ctx: Context) =
     cpy.Apply(tree)(tree.fun, lifter.addFreeArgs(tree.symbol, tree.args)).withPos(tree.pos)
 
-  override def transformClosure(tree: Closure)(implicit ctx: Context) =
+  override def transformClosure(tree: Closure)(implicit ctx: Context) = {
+    lifter.checkNoEffectsCaptured(tree.meth.symbol, tree.pos)
     cpy.Closure(tree)(env = lifter.addFreeArgs(tree.meth.symbol, tree.env))
+  }
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context) = {
     val sym = tree.symbol
@@ -554,6 +560,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   override def transformTemplate(tree: Template)(implicit ctx: Context) = {
     val cls = ctx.owner
     val lft = lifter
+    lft.checkNoEffectsCaptured(cls, tree.pos)
     val impl = lft.addFreeParams(tree, lft.proxies(cls)).asInstanceOf[Template]
     cpy.Template(impl)(body = impl.body ++ lft.liftedDefs.remove(cls).get)
   }
