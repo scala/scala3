@@ -773,6 +773,31 @@ trait Checking {
     checker.traverse(tree)
   }
 
+  /** Check that the type or result type of this definition is not an effect */
+  def checkResultNotEffect(tree: Tree)(implicit ctx: Context) = {
+    val sym = tree.symbol
+    if (!sym.is(Param)) {
+      val resultType = sym.info.finalResultType
+      if (resultType.isEffect) {
+        val resStr = if (tree.isInstanceOf[DefDef]) "'s result" else ""
+        ctx.error(em"$sym$resStr may not have effect type ${resultType}", tree.pos)
+      }
+    }
+  }
+
+  /** Check that `tree1` and `tree2` do not mix regular and effect types */
+  def checkTypeEffectDisjoint(tree1: Tree, tree2: Tree, where: String)(implicit ctx: Context): Unit =
+    if (tree1.tpe.isEffect != tree2.tpe.isEffect) {
+      val (tpe, eff) = if (tree1.tpe.isEffect) (tree2.tpe, tree1.tpe) else (tree1.tpe, tree2.tpe)
+      ctx.error(em"cannot mix type $tpe and effect $eff in $where", tree2.pos)
+    }
+
+  /** Check that `trees` do not mix regular and effect types */
+  def checkTypeEffectDisjoint(trees: List[Tree], where: String)(implicit ctx: Context): Unit = trees match {
+    case first :: rest => rest.foreach(checkTypeEffectDisjoint(first, _, where))
+    case _ =>
+  }
+
   /** Check that all case classes that extend `scala.Enum` are `enum` cases */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol)(implicit ctx: Context): Unit = {
     import untpd.modsDeco
@@ -880,6 +905,8 @@ trait NoChecking extends ReChecking {
   override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = ()
   override def checkTraitInheritance(parentSym: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
+  override def checkResultNotEffect(tree: Tree)(implicit ctx: Context) = ()
+  override def checkTypeEffectDisjoint(tree1: Tree, tree2: Tree, where: String)(implicit ctx: Context) = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: Position)(implicit ctx: Context): Type = tp
 }

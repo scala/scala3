@@ -716,6 +716,7 @@ class Typer extends Namer
       val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
       thenp1 :: elsep1 :: Nil
     }
+    checkTypeEffectDisjoint(thenp2, elsep2, "conditional")
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
   }
 
@@ -966,9 +967,9 @@ class Typer extends Namer
       case _ =>
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
-
         val cases1 = harmonic(harmonize)(typedCases(tree.cases, selType, pt.notApplied))
           .asInstanceOf[List[CaseDef]]
+        checkTypeEffectDisjoint(cases1, "match")
         assignType(cpy.Match(tree)(sel1, cases1), cases1)
     }
   }
@@ -1094,7 +1095,9 @@ class Typer extends Namer
     val expr2 :: cases2x = harmonic(harmonize) {
       val expr1 = typed(tree.expr, pt.notApplied)
       val cases1 = typedCases(tree.cases, defn.ThrowableType, pt.notApplied)
-      expr1 :: cases1
+      val allResults = expr1 :: cases1
+      checkTypeEffectDisjoint(allResults, "try")
+      allResults
     }
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
     val cases2 = cases2x.asInstanceOf[List[CaseDef]]
@@ -1178,6 +1181,7 @@ class Typer extends Namer
   def typedAndTypeTree(tree: untpd.AndTypeTree)(implicit ctx: Context): AndTypeTree = track("typedAndTypeTree") {
     val left1 = checkSimpleKinded(typed(tree.left))
     val right1 = checkSimpleKinded(typed(tree.right))
+    checkTypeEffectDisjoint(left1, right1, "intersection type")
     assignType(cpy.AndTypeTree(tree)(left1, right1), left1, right1)
   }
 
@@ -1185,6 +1189,7 @@ class Typer extends Namer
     val where = "in a union type"
     val left1 = checkNotSingleton(checkSimpleKinded(typed(tree.left)), where)
     val right1 = checkNotSingleton(checkSimpleKinded(typed(tree.right)), where)
+    checkTypeEffectDisjoint(left1, right1, "union type")
     assignType(cpy.OrTypeTree(tree)(left1, right1), left1, right1)
   }
 
@@ -1286,8 +1291,20 @@ class Typer extends Namer
     val lo1 = typed(lo)
     val hi1 = typed(hi)
 
-    val lo2 = if (lo1.isEmpty) typed(untpd.TypeTree(defn.NothingType)) else lo1
-    val hi2 = if (hi1.isEmpty) typed(untpd.TypeTree(defn.AnyType)) else hi1
+    val lo2 =
+      if (lo1.isEmpty) {
+        val hiType = if (!hi1.isEmpty && hi1.tpe.isEffect) defn.ImpureType else defn.NothingType
+        typed(untpd.TypeTree(hiType))
+      }
+      else lo1
+
+    val hi2 = if (hi1.isEmpty) {
+      val loType = if (lo2.tpe.isEffect) defn.PureType else defn.AnyType
+      typed(untpd.TypeTree(loType))
+    }
+    else hi1
+
+    checkTypeEffectDisjoint(lo2, hi2, "type bounds")
 
     val tree1 = assignType(cpy.TypeBoundsTree(tree)(lo2, hi2), lo2, hi2)
     if (ctx.mode.is(Mode.Pattern)) {
@@ -1370,6 +1387,7 @@ class Typer extends Namer
       case rhs => normalizeErasedRhs(typedExpr(rhs, tpt1.tpe), sym)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
+    checkResultNotEffect(vdef1)
     if (sym.is(Inline, butNot = DeferredOrTermParamOrAccessor))
       checkInlineConformant(rhs1, isFinal = sym.is(Final), em"right-hand side of inline $sym")
     patchIfLazy(vdef1)
@@ -1433,9 +1451,10 @@ class Typer extends Namer
     if (sym.isConstructor && !sym.isPrimaryConstructor)
       for (param <- tparams1 ::: vparamss1.flatten)
         checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
-
-    assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
+    val ddef1 = assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
       //todo: make sure dependent method types do not depend on implicits or by-name params
+    checkResultNotEffect(ddef1)
+    ddef1
   }
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedTypeDef") {
