@@ -112,6 +112,7 @@ class Compiler {
                                         // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
          new ElimStaticThis) ::      // Replace `this` references to static objects by global identifiers
     List(new Flatten,                // Lift all inner classes to package scope
+         new ElimEffects,            // Eliminate effect parameters and arguments
          new RenameLifted,           // Renames lifted classes to local numbering scheme
          new TransformWildcards,     // Replace wildcards with default values
          new MoveStatics,            // Move static methods to companion classes
