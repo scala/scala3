@@ -593,6 +593,8 @@ object Flags {
   /** Has defined or inherited default parameters */
   final val HasDefaultParams = DefaultParameterized | InheritedDefaultParams
 
+  final val ModuleClassOrEffect = ModuleClass | Effect
+
   /** Is valid forever */
   final val ValidForever = Package | Permanent | Scala2ExistentialCommon
 

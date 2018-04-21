@@ -1260,6 +1260,7 @@ class Namer { typer: Typer =>
     else {
       sym.info = NoCompleter
       sym.info = checkNonCyclic(sym, unsafeInfo, reportErrors = true)
+      if (rhsType.isEffect) sym.setFlag(Effect)
     }
     sym.resetFlag(Provisional)
 

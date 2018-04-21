@@ -1225,8 +1225,11 @@ class Definitions {
     EqualsPatternClass)
 
   lazy val syntheticCoreClasses = syntheticScalaClasses ++ List(
-    EmptyPackageVal,
-    OpsPackageClass)
+    OpsPackageClass,
+    EmptyPackageVal.moduleClass,
+    PureClass,
+    ImpureClass,
+    EffectModule.moduleClass)
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticCoreMethods =
@@ -1245,7 +1248,7 @@ class Definitions {
         ScalaPackageClass.enter(m)
 
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ EffectModule
+      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
 
       _isInitialized = true
     }

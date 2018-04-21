@@ -292,7 +292,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             if (recur(info1.alias, tp2)) return true
             if (tp1.prefix.isStable) return false
           case _ =>
-            if (tp1 eq NothingType) return true
+            if (tp1 eq NothingType) return !tp2.isEffect
         }
         thirdTry
       case tp1: TypeParamRef =>
@@ -379,7 +379,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         if (cls2.isClass) {
           if (cls2.typeParams.isEmpty) {
             if (cls2 eq AnyKindClass) return true
-            if (tp1.isRef(defn.NothingClass)) return true
+            if (tp1.isRef(defn.NothingClass)) return !tp2.isEffect
             if (tp1.isLambdaSub) return false
               // Note: We would like to replace this by `if (tp1.hasHigherKind)`
               // but right now we cannot since some parts of the standard library rely on the
@@ -553,7 +553,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case tp2 @ TypeBounds(lo2, hi2) =>
         def compareTypeBounds = tp1 match {
           case tp1 @ TypeBounds(lo1, hi1) =>
-            ((lo2 eq NothingType) || isSubType(lo2, lo1)) &&
+            ((lo2 eq NothingType) && !lo1.isEffect || isSubType(lo2, lo1)) &&
             ((hi2 eq AnyType) && !hi1.isLambdaSub || (hi2 eq AnyKindType) || isSubType(hi1, hi2))
           case tp1: ClassInfo =>
             tp2 contains tp1
@@ -595,7 +595,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
               case _ => false
             }
             val sym1 = tp1.symbol
-            (sym1 eq NothingClass) && tp2.isValueTypeOrLambda ||
+            (sym1 eq NothingClass) && tp2.isValueTypeOrLambda && !tp2.isEffect ||
             (sym1 eq NullClass) && isNullable(tp2)
         }
       case tp1 @ AppliedType(tycon1, args1) =>
