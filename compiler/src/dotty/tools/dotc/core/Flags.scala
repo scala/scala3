@@ -363,6 +363,9 @@ object Flags {
   /** Symbol is a Java default method */
   final val DefaultMethod = termFlag(38, "<defaultmethod>")
 
+  /** An effect type */
+  final val Effect = typeFlag(38, "<effect>")
+
   /** Symbol is a Java enum */
   final val Enum = commonFlag(40, "<enum>")
 

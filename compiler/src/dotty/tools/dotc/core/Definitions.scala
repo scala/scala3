@@ -6,6 +6,7 @@ import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames
 import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._, Periods._
 import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.{ mutable, immutable }
+import NameKinds.VariantName
 import PartialFunction._
 import collection.mutable
 import util.common.alwaysZero
@@ -830,6 +831,51 @@ class Definitions {
     }
   }
 
+  //------ Effects -------------------------------------------------------
+
+  lazy val PureClass = enterCompleteClassSymbol(ScalaPackageClass, tpnme.Pure, Effect, Nil, EmptyScope)
+  def PureType = PureClass.typeRef
+
+  lazy val ImpureClass = enterCompleteClassSymbol(ScalaPackageClass, tpnme.Impure, Effect, PureType :: Nil, EmptyScope)
+  def ImpureType = ImpureClass.typeRef
+
+  /** The type
+   *
+   *   type CanThrow[-Exc <: Throwable] >: Impure <: Pure
+   *
+   *  If we could, this should simply be written out in the scala package,
+   *  but we cannot do this because that package is in the Scala2 stdlib.
+   */
+  lazy val CanThrowType = {
+    def abstracted(tp: Type) =
+      HKTypeLambda.apply(
+        VariantName(nme.Exc, 0).toTypeName :: Nil,
+        TypeBounds.upper(ThrowableType) :: Nil,
+        tp)
+    newSymbol(ScalaPackageClass, tpnme.CanThrow, Effect,
+      TypeBounds(abstracted(ImpureType), abstracted(PureType))).entered.typeRef
+  }
+
+  /** The module defined as follows
+   *
+   *  package scala
+   *  object Effect {
+   *    val canBeImpure: Impure = _
+   *    val canThrowNPE: CanThrow[NullPointerException] = _
+   *    val canThrow: CanThrow[Throwable] = _
+   *  }
+   *
+   *  It can't be defined as source, however, since fields cannot have effect type.
+   */
+  lazy val EffectModule = {
+    val module = ctx.newCompleteModuleSymbol(ScalaPackageClass, nme.Effect, Permanent, Permanent, Nil, newScope).entered
+    val mcls = module.moduleClass
+    newSymbol(mcls, "canBeImpure".toTermName, Implicit | Permanent, ImpureType).entered
+    newSymbol(mcls, "canThrow".toTermName, Implicit | Permanent, CanThrowType.appliedTo(ThrowableType)).entered
+    newSymbol(mcls, "canThrowNPE".toTermName, Implicit | Permanent, CanThrowType.appliedTo(NullPointerExceptionClass.typeRef)).entered
+    module
+  }
+
   // ----- Symbol sets ---------------------------------------------------
 
   lazy val AbstractFunctionType = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0)
@@ -966,7 +1012,8 @@ class Definitions {
 
   val StaticRootImportFns = List[() => TermRef](
     () => JavaLangPackageVal.termRef,
-    () => ScalaPackageVal.termRef
+    () => ScalaPackageVal.termRef,
+    () => EffectModule.termRef
   )
 
   val PredefImportFns = List[() => TermRef](
@@ -979,7 +1026,7 @@ class Definitions {
     else if (ctx.settings.YnoPredef.value) StaticRootImportFns
     else StaticRootImportFns ++ PredefImportFns
 
-  lazy val ShadowableImportNames = Set("Predef", "DottyPredef").map(_.toTermName)
+  lazy val ShadowableImportNames = Set("Predef", "DottyPredef", "Effect").map(_.toTermName)
   lazy val RootImportTypes = RootImportFns.map(_())
 
   /** Modules whose members are in the default namespace and their module classes */
@@ -1198,7 +1245,7 @@ class Definitions {
         ScalaPackageClass.enter(m)
 
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
+      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ EffectModule
 
       _isInitialized = true
     }
