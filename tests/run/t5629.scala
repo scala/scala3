@@ -1,9 +1,4 @@
-
-
-
 import scala.{specialized => spec}
-
-
 
 trait GrandParent[@spec(Int) -A] {
   def foo(a: A): Unit
