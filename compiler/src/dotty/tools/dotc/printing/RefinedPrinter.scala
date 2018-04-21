@@ -735,6 +735,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       }
     if (sym.is(ModuleClass))
       kindString(sym) ~~ (nameString(sym.name.stripModuleClassSuffix) + idString(sym))
+    else if (sym.isAnonymousFunction)
+      "closure"
     else
       super.toText(sym)
   }
