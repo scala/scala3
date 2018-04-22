@@ -776,12 +776,9 @@ trait Checking {
   /** Check that the type or result type of this definition is not an effect */
   def checkResultNotEffect(tree: Tree)(implicit ctx: Context) = {
     val sym = tree.symbol
-    if (!sym.is(Param)) {
-      val resultType = sym.info.finalResultType
-      if (resultType.isEffect) {
-        val resStr = if (tree.isInstanceOf[DefDef]) "'s result" else ""
-        ctx.error(em"$sym$resStr may not have effect type ${resultType}", tree.pos)
-      }
+    if (sym.info.isEffect) {
+      val resStr = if (tree.isInstanceOf[DefDef]) "'s result" else ""
+      ctx.error(em"$sym$resStr may not have effect type ${sym.info.finalResultType}", tree.pos)
     }
   }
 

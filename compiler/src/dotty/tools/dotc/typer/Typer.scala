@@ -1387,7 +1387,7 @@ class Typer extends Namer
       case rhs => normalizeErasedRhs(typedExpr(rhs, tpt1.tpe), sym)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
-    checkResultNotEffect(vdef1)
+    if (sym.maybeOwner.isClass) checkResultNotEffect(vdef1)
     if (sym.is(Inline, butNot = DeferredOrTermParamOrAccessor))
       checkInlineConformant(rhs1, isFinal = sym.is(Final), em"right-hand side of inline $sym")
     patchIfLazy(vdef1)

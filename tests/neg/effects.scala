@@ -49,4 +49,11 @@ object Test {
 
   def f2(x: Int): C[AssertionError] = Effect.canBeImpure // error
   def f3(x: Int) = Effect.canBeImpure // error
+
+  def foo() = {
+    val effVal: C[AssertionError] = Effect.canBeImpure // ok
+    def effMeth(): C[AssertionError] = Effect.canBeImpure // error
+  }
+
+  val effVal: C[AssertionError] = Effect.canBeImpure // error
 }

@@ -274,6 +274,8 @@ object Types {
     def isEffect(implicit ctx: Context): Boolean = this match {
       case tp: TypeRef => tp.stableInRunSymbol.is(Effect)
       case tp: TypeProxy => tp.superType.isEffect
+      case tp: MethodType => tp.resType.isEffect
+      case tp: PolyType => tp.resType.isEffect
       case AndType(tp1, tp2) => tp1.isEffect && tp2.isEffect
       case OrType(tp1, tp2) => tp1.isEffect && tp2.isEffect
       case _ => false

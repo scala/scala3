@@ -45,6 +45,9 @@ class ElimEffects extends MiniPhase with InfoTransformer { thisPhase =>
   private def transformTypeOfTree(tree: Tree)(implicit ctx: Context): Tree =
     tree.withType(elimEffects(tree.tpe))
 
+  private def elimIfEffect(tree: Tree)(implicit ctx: Context): Tree =
+    if (tree.tpe.isEffect && !tree.symbol.is(Param)) EmptyTree else tree
+
   override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
     transformTypeOfTree(tree)
 
@@ -54,6 +57,9 @@ class ElimEffects extends MiniPhase with InfoTransformer { thisPhase =>
   override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
     cpy.Apply(tree)(tree.fun, tree.args.filterNot(_.tpe.isEffect))
 
+  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
+    elimIfEffect(tree)
+
   override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree =
-    cpy.DefDef(tree)(vparamss = tree.vparamss.map(_.filterNot(_.symbol.info.isEffect)))
+    elimIfEffect(cpy.DefDef(tree)(vparamss = tree.vparamss.map(_.filterNot(_.symbol.info.isEffect))))
 }
