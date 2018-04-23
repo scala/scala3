@@ -4,7 +4,7 @@ package modifiers
 import scala.runtime.tasty.Toolbox
 import scala.tasty.trees.Term
 
-trait Modifier extends Positioned {
+trait Modifier {
 
   def isProtected: Boolean = false
   def isAbstract: Boolean = false

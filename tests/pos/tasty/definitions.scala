@@ -218,7 +218,7 @@ object definitions {
 
 // ====== Modifiers ==================================
 
-  enum Modifier extends Positioned {
+  enum Modifier {
     case Private, Protected, Abstract, Final, Sealed, Case, Implicit, Erased, Lazy, Override, Inline,
          Macro,                 // inline method containing toplevel splices
          Static,                // mapped to static Java member

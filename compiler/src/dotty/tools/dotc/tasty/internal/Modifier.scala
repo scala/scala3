@@ -15,8 +15,6 @@ object Modifier {
 
   private case class Impl(mod: untpd.Mod, ctx: Context) extends modifiers.Modifier {
 
-    override def pos: scala.tasty.Position =  new Position(sourcePos(mod.pos)(ctx))
-
     override def isProtected: Boolean = mod.flags.is(Protected)
     override def isAbstract: Boolean = mod.flags.is(Abstract)
     override def isFinal: Boolean = mod.flags.is(Final)

@@ -24,7 +24,7 @@ object QualifiedModifier {
     else None
   }
 
-  private[tasty] class Impl(val tree: tpd.DefTree)(implicit val ctx: Context) extends modifiers.Modifier with Positioned {
+  private[tasty] class Impl(val tree: tpd.DefTree)(implicit val ctx: Context) extends modifiers.Modifier {
 
     override def toString: String = {
       import Toolbox.extractor
