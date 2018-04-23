@@ -3625,6 +3625,8 @@ object Types {
       case _ => super.| (that)
     }
 
+    def map(f: Type => Type)(implicit ctx: Context): TypeBounds = derivedTypeBounds(f(lo), f(hi))
+
     override def computeHash(bs: Binders) = doHash(bs, lo, hi)
     override def stableHash = lo.stableHash && hi.stableHash
 
@@ -3651,6 +3653,8 @@ object Types {
     def derivedTypeAlias(alias: Type)(implicit ctx: Context) =
       if (alias eq this.alias) this else TypeAlias(alias)
 
+    override def map(f: Type => Type)(implicit ctx: Context): TypeAlias = derivedTypeAlias(f(alias))
+
     override def computeHash(bs: Binders) = doHash(bs, alias)
     override def stableHash = alias.stableHash
 
@@ -3674,6 +3678,7 @@ object Types {
     def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
     def upper(hi: Type)(implicit ctx: Context) = apply(defn.NothingType, hi)
     def lower(lo: Type)(implicit ctx: Context) = apply(lo, defn.AnyType)
+    def anyEffect(implicit ctx: Context) = apply(defn.ImpureType, defn.PureType)
   }
 
   object TypeAlias {
