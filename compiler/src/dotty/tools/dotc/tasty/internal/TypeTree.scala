@@ -79,6 +79,8 @@ object TypeTree {
     case _ => None
   }
 
+  def tree(tpe: trees.TypeTree): tpd.Tree = tpe.asInstanceOf[Impl].tree
+
   private[tasty] class Impl(val tree: tpd.Tree)(implicit val ctx: Context) extends trees.TypeTree with Positioned {
 
     assert(!tree.isInstanceOf[Trees.TypeBoundsTree[_]])

@@ -1,17 +1,16 @@
 package dotty.tools.dotc.quoted
 
-import dotty.tools.dotc.ast.Trees
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.printing.RefinedPrinter
-import dotty.tools.dotc.tasty.internal.Term
+import dotty.tools.dotc.tasty.internal
 
-import scala.quoted.Expr
-import scala.runtime.BoxedUnit
+import scala.quoted.{Expr, Type}
 import scala.quoted.Exprs.{LiftedExpr, TreeExpr}
+import scala.quoted.Types.TreeType
+import scala.runtime.BoxedUnit
 import scala.runtime.quoted._
-import scala.tasty.trees.Term
+import scala.tasty.trees
 
 /** Default runners for quoted expressions */
 object Toolbox {
@@ -45,11 +44,15 @@ object Toolbox {
       case _ => new QuoteDriver().show(expr, showSettings)
     }
 
-    def toTasty(expr: Expr[T]): Term = expr match {
+    def toTasty(expr: Expr[T]): trees.Term = expr match {
       case expr: TreeExpr => expr.term
-      case _ => new QuoteDriver().withTree(expr, (tree, ctx) => Term(tree)(ctx), Settings.run())
+      case _ => new QuoteDriver().withTree(expr, (tree, ctx) => internal.Term(tree)(ctx), Settings.run())
     }
 
+    def toTasty(tpe: Type[T]): trees.TypeTree = tpe match {
+      case expr: TreeType => expr.tpe
+      case _ => new QuoteDriver().withTypeTree(tpe, (tpt, ctx) => internal.TypeTree(tpt)(ctx), Settings.run())
+    }
   }
 
   class Settings[T] private (val outDir: Option[String], val rawTree: Boolean, val compilerArgs: List[String])

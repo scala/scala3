@@ -20,12 +20,12 @@ import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.{AbstractFile, Path, PlainFile}
 
-import scala.quoted.Expr
+import scala.quoted.{Expr, Type}
 
 /** Compiler that takes the contents of a quoted expression `expr` and produces
  *  a class file with `class ' { def apply: Object = expr }`.
  */
-class ExprCompiler(directory: AbstractFile) extends Compiler {
+class QuoteCompiler(directory: AbstractFile) extends Compiler {
   import tpd._
 
   /** A GenBCode phase that outputs to a virtual directory */
@@ -35,7 +35,7 @@ class ExprCompiler(directory: AbstractFile) extends Compiler {
   }
 
   override protected def frontendPhases: List[List[Phase]] =
-    List(List(new ExprFrontend(putInClass = true)))
+    List(List(new QuotedFrontend(putInClass = true)))
 
   override protected def picklerPhases: List[List[Phase]] =
     List(List(new ReifyQuotes))
@@ -50,8 +50,8 @@ class ExprCompiler(directory: AbstractFile) extends Compiler {
 
   def outputClassName: TypeName = "Quoted".toTypeName
 
-  /** Frontend that receives scala.quoted.Expr as input */
-  class ExprFrontend(putInClass: Boolean) extends FrontEnd {
+  /** Frontend that receives a scala.quoted.Expr or scala.quoted.Type as input */
+  class QuotedFrontend(putInClass: Boolean) extends FrontEnd {
     import tpd._
 
     override def isTyper = false
@@ -62,6 +62,11 @@ class ExprCompiler(directory: AbstractFile) extends Compiler {
           val tree =
             if (putInClass) inClass(exprUnit.expr)
             else PickledQuotes.quotedExprToTree(exprUnit.expr)
+          val source = new SourceFile("", Seq())
+          CompilationUnit.mkCompilationUnit(source, tree, forceTrees = true)
+        case typeUnit: TypeCompilationUnit =>
+          assert(!putInClass)
+          val tree = PickledQuotes.quotedTypeToTree(typeUnit.tpe)
           val source = new SourceFile("", Seq())
           CompilationUnit.mkCompilationUnit(source, tree, forceTrees = true)
       }
@@ -91,6 +96,10 @@ class ExprCompiler(directory: AbstractFile) extends Compiler {
   class ExprRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
     def compileExpr(expr: Expr[_]): Unit = {
       val units = new ExprCompilationUnit(expr) :: Nil
+      compileUnits(units)
+    }
+    def compileType(tpe: Type[_]): Unit = {
+      val units = new TypeCompilationUnit(tpe) :: Nil
       compileUnits(units)
     }
   }

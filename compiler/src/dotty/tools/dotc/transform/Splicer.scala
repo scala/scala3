@@ -65,7 +65,7 @@ object Splicer {
         }
         args1 ::: liftArgs(tp.resType, args.tail)
       case tp: PolyType =>
-        val args1 = args.head.map(tp => new scala.quoted.Types.TreeType(tp))
+        val args1 = args.head.map(tp => new scala.quoted.Types.TreeType(dotty.tools.dotc.tasty.internal.TypeTree(tp)))
         args1 ::: liftArgs(tp.resType, args.tail)
       case _ => Nil
     }

@@ -41,7 +41,7 @@ object PickledQuotes {
         case value: Class[_] => ref(defn.Predef_classOf).appliedToType(classToType(value))
         case value=> Literal(Constant(value))
       }
-    case expr: TreeExpr @unchecked =>
+    case expr: TreeExpr =>
       dotty.tools.dotc.tasty.internal.Term.tree(expr.term)
     case expr: FunctionAppliedTo[_, _] =>
       functionAppliedTo(quotedExprToTree(expr.f), quotedExprToTree(expr.x))
@@ -51,7 +51,7 @@ object PickledQuotes {
   def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: Context): Tree = expr match {
     case expr: TastyType[_] => unpickleType(expr)
     case expr: TaggedType[_] => classTagToTypeTree(expr.ct)
-    case expr: TreeType[Tree] @unchecked => expr.tree
+    case expr: TreeType => dotty.tools.dotc.tasty.internal.TypeTree.tree(expr.tpe)
   }
 
   /** Unpickle the tree contained in the TastyExpr */

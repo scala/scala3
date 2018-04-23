@@ -2,10 +2,12 @@ package scala.quoted
 
 import scala.quoted.Types.TaggedType
 import scala.reflect.ClassTag
+import scala.runtime.quoted.Toolbox
 import scala.runtime.quoted.Unpickler.Pickled
 
 sealed abstract class Type[T] {
   type unary_~ = T
+  final def toTasty(implicit toolbox: Toolbox[T]): scala.tasty.trees.TypeTree = toolbox.toTasty(this)
 }
 
 /** Some basic type tags, currently incomplete */
@@ -36,7 +38,7 @@ object Types {
   }
 
   /** An Type backed by a tree */
-  final class TreeType[Tree](val tree: Tree) extends quoted.Type[Any] {
+  final class TreeType(val tpe: scala.tasty.trees.TypeTree) extends quoted.Type[Any] {
     override def toString: String = s"Type(<raw>)"
   }
 }
