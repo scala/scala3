@@ -127,6 +127,7 @@ object Toolbox {
 
     // Modifiers
 
+    override def unapplyFlags(arg: Modifier) = unapplied(arg, internal.FlagsModifier.unapplyFlags)
     override def unapplyQualifiedPrivate(arg: Modifier) = unapplied(arg, internal.QualifiedModifier.unapplyQualifiedPrivate)
     override def unapplyQualifiedProtected(arg: Modifier) = unapplied(arg, internal.QualifiedModifier.unapplyQualifiedProtected)
     override def unapplyAnnotation(arg: Modifier) = unapplied(arg, internal.AnnotationModifier.unapplyAnnotation)

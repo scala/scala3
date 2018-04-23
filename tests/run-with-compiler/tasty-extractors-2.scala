@@ -33,7 +33,7 @@ object Test {
     '{ type Foo = Int },
     '{ type Foo >: Null <: Object },
     '{ class Foo { @volatile var a = 0 } },
-    '{ class Foo { final def a = 0 } }, // FIXME modifier not printed
+    '{ class Foo { final def a = 0 } },
     '{ class Foo { private[Foo] def a = 0 } },
     '{ class Foo { protected[Foo] def a = 0 } },
     '{ case class Foo() },

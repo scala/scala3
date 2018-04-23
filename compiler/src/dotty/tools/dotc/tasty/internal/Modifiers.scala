@@ -8,9 +8,9 @@ import scala.tasty.modifiers
 object Modifiers {
 
   def apply(tree: tpd.MemberDef)(implicit ctx: Context): List[modifiers.Modifier] = {
+    FlagsModifier(tree.symbol) ::
     QualifiedModifier(tree).toList :::
-    tree.symbol.annotations.map(AnnotationModifier(_)) :::
-    tree.rawMods.mods.map(Modifier(_))
+    tree.symbol.annotations.map(AnnotationModifier(_))
   }
 
 }

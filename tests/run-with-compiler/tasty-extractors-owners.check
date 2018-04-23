@@ -2,26 +2,26 @@ Simple(foo)
 PackageDef(TypeName(Simple(<root>)), List())
 
 Simple(bar)
-DefDef(Simple(foo), List(), List(), Synthetic(), None, List())
+DefDef(Simple(foo), List(), List(), Synthetic(), None, List(Flags(<>)))
 
 Simple(bar2)
-DefDef(Simple(foo), List(), List(), Synthetic(), None, List())
+DefDef(Simple(foo), List(), List(), Synthetic(), None, List(Flags(<>)))
 
 Simple(foo2)
 PackageDef(TypeName(Simple(<root>)), List())
 
 Simple(baz)
-ValDef(Simple(foo2), Synthetic(), None, List())
+ValDef(Simple(foo2), Synthetic(), None, List(Flags(<>)))
 
 Simple(baz2)
-ValDef(Simple(foo2), Synthetic(), None, List())
+ValDef(Simple(foo2), Synthetic(), None, List(Flags(<>)))
 
 Simple(<init>)
-ClassDef(TypeName(Simple(A)), DefDef(Simple(<init>), List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), Simple(<init>)), Nil)), None, List(TypeDef(TypeName(Simple(B)), Synthetic(), List()), DefDef(Simple(b), List(), List(), Synthetic(), None, List()), ValDef(Simple(b2), Synthetic(), None, List())), List())
+ClassDef(TypeName(Simple(A)), DefDef(Simple(<init>), List(), List(List()), Synthetic(), None, List(Flags(<>))), List(Apply(Select(New(Synthetic()), Simple(<init>)), Nil)), None, List(TypeDef(TypeName(Simple(B)), Synthetic(), List(Flags(<>))), DefDef(Simple(b), List(), List(), Synthetic(), None, List(Flags(<>))), ValDef(Simple(b2), Synthetic(), None, List(Flags(<>)))), List(Flags(<>)))
 
 Simple(b)
-ClassDef(TypeName(Simple(A)), DefDef(Simple(<init>), List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), Simple(<init>)), Nil)), None, List(TypeDef(TypeName(Simple(B)), Synthetic(), List()), DefDef(Simple(b), List(), List(), Synthetic(), None, List()), ValDef(Simple(b2), Synthetic(), None, List())), List())
+ClassDef(TypeName(Simple(A)), DefDef(Simple(<init>), List(), List(List()), Synthetic(), None, List(Flags(<>))), List(Apply(Select(New(Synthetic()), Simple(<init>)), Nil)), None, List(TypeDef(TypeName(Simple(B)), Synthetic(), List(Flags(<>))), DefDef(Simple(b), List(), List(), Synthetic(), None, List(Flags(<>))), ValDef(Simple(b2), Synthetic(), None, List(Flags(<>)))), List(Flags(<>)))
 
 Simple(b2)
-ClassDef(TypeName(Simple(A)), DefDef(Simple(<init>), List(), List(List()), Synthetic(), None, List()), List(Apply(Select(New(Synthetic()), Simple(<init>)), Nil)), None, List(TypeDef(TypeName(Simple(B)), Synthetic(), List()), DefDef(Simple(b), List(), List(), Synthetic(), None, List()), ValDef(Simple(b2), Synthetic(), None, List())), List())
+ClassDef(TypeName(Simple(A)), DefDef(Simple(<init>), List(), List(List()), Synthetic(), None, List(Flags(<>))), List(Apply(Select(New(Synthetic()), Simple(<init>)), Nil)), None, List(TypeDef(TypeName(Simple(B)), Synthetic(), List(Flags(<>))), DefDef(Simple(b), List(), List(), Synthetic(), None, List(Flags(<>))), ValDef(Simple(b2), Synthetic(), None, List(Flags(<>)))), List(Flags(<>)))
 

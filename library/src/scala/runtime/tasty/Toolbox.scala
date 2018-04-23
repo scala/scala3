@@ -127,6 +127,7 @@ trait Toolbox {
 
   // Modifiers
 
+  def unapplyFlags(arg: Modifier): Option[modifiers.Flags.Data]
   def unapplyQualifiedPrivate(arg: Modifier): Option[modifiers.QualifiedPrivate.Data]
   def unapplyQualifiedProtected(arg: Modifier): Option[modifiers.QualifiedProtected.Data]
   def unapplyAnnotation(arg: Modifier): Option[modifiers.Annotation.Data]
