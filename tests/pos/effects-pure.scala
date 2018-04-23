@@ -1,4 +1,4 @@
-import Effect.{canBeImpure => _}
+import Effect.isPure
 object effects extends App {
 
   def f1(implicit x: CanThrow[NullPointerException]) = 3
@@ -55,4 +55,15 @@ object effects extends App {
     } {
       (ex: NSE) => default
     }
+
+  def summon[E <: Pure](implicit eff: E): Unit = ()
+
+  type EFF <: Pure
+
+  { import Effect.{canThrow, canBoth}
+    implicit val eff: EFF = Effect.isImpure
+    summon[CanThrow[AssertionError] eff_& CanThrow[NullPointerException]]
+    summon[EFF]
+    summon[CanThrow[AssertionError] eff_& EFF]
+  }
 }

@@ -1,5 +1,5 @@
 
-import Effect.{canThrowNPE => _}
+import Effect.isPure
 object Test {
 
   def f(implicit x: CanThrow[NullPointerException]) = ()
@@ -25,4 +25,9 @@ object Test {
       }
     }
   }
+}
+
+trait PureFunction[-A, +B] extends Function[A, B] {
+  type Eff = Pure
+  def apply(x: A)(implicit eff: Eff): B
 }

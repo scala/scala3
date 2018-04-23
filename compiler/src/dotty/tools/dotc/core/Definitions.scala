@@ -846,23 +846,37 @@ class Definitions {
    *  If we could, this should simply be written out in the scala package,
    *  but we cannot do this because that package is in the Scala2 stdlib.
    */
-  lazy val CanThrowType = {
-    def abstracted(tp: Type) =
-      HKTypeLambda.apply(
-        VariantName(nme.Exc, 0).toTypeName :: Nil,
-        TypeBounds.upper(ThrowableType) :: Nil,
-        tp)
+  lazy val CanThrowType =
     newSymbol(ScalaPackageClass, tpnme.CanThrow, Effect,
-      TypeBounds(abstracted(ImpureType), abstracted(PureType))).entered.typeRef
-  }
+      TypeBounds.anyEffect.map(tp =>
+        HKTypeLambda(
+          tpnme.Exc.withVariance(-1) :: Nil,
+          TypeBounds.upper(ThrowableType) :: Nil,
+          tp))).entered.typeRef
+
+  /** The type
+   *
+   *   type eff_&[+Eff1 >: Impure <: Pure, +Eff2 >: Impure <: Pure] >: Impure <: Pure
+   *
+   *  As for CanThrow, it would be easier have a source definition in the scala package.
+   */
+  lazy val EffAndType =
+    newSymbol(ScalaPackageClass, tpnme.eff_&, Effect,
+      TypeBounds.anyEffect.map(tp =>
+        HKTypeLambda(
+          List("Eff1".toTypeName.withVariance(1), "Eff2".toTypeName.withVariance(1)))(
+            tl => List(TypeBounds.anyEffect, TypeBounds.anyEffect),
+            tl => tp))).entered.typeRef
 
   /** The module defined as follows
    *
    *  package scala
    *  object Effect {
-   *    val canBeImpure: Impure = _
+   *    val isPure: Pure = _
+   *    val isImpure: Impure = _
    *    val canThrowNPE: CanThrow[NullPointerException] = _
    *    val canThrow: CanThrow[Throwable] = _
+   *    def canBoth[A <: Pure, B <: Pure](implicit a: A, b: B): eff_&[A, B] = _
    *  }
    *
    *  It can't be defined as source, however, since fields cannot have effect type.
@@ -870,9 +884,13 @@ class Definitions {
   lazy val EffectModule = {
     val module = ctx.newCompleteModuleSymbol(ScalaPackageClass, nme.Effect, Permanent, Permanent, Nil, newScope).entered
     val mcls = module.moduleClass
-    newSymbol(mcls, "canBeImpure".toTermName, Implicit | Permanent, ImpureType).entered
+    newSymbol(mcls, "isPure".toTermName, Implicit | Permanent, PureType).entered
+    newSymbol(mcls, "isImpure".toTermName, Implicit | Permanent, ImpureType).entered
     newSymbol(mcls, "canThrow".toTermName, Implicit | Permanent, CanThrowType.appliedTo(ThrowableType)).entered
     newSymbol(mcls, "canThrowNPE".toTermName, Implicit | Permanent, CanThrowType.appliedTo(NullPointerExceptionClass.typeRef)).entered
+    newSymbol(mcls, "canBoth".toTermName, Implicit | Permanent,
+      PolyType(List(TypeBounds.anyEffect, TypeBounds.anyEffect))(
+        pt => ImplicitMethodType(pt.paramRefs, defn.EffAndType.appliedTo(pt.paramRefs)))).entered
     module
   }
 

@@ -1,5 +1,5 @@
 
-import Effect.{canThrowNPE => _}
+import Effect.isPure
 object Test {
 
   def f(implicit x: CanThrow[NullPointerException]) = ()
@@ -7,7 +7,7 @@ object Test {
   f // error
 
   val x1: Any = Effect.canThrowNPE // error
-  val x2: Any = Effect.canBeImpure: Impure // error
+  val x2: Any = Effect.isImpure: Impure // error
 
   val y: Pure = ??? // error
 
@@ -30,10 +30,10 @@ object Test {
   def z4: CanThrow[AssertionError] = ??? // error
   def z5: C[AssertionError] = ??? // error
 
-  if (true) 1 else Effect.canBeImpure // error
+  if (true) 1 else Effect.isImpure // error
 
   1 match {
-    case 1 => Effect.canBeImpure
+    case 1 => Effect.isImpure
     case _ => 0 // error
   }
 
@@ -41,19 +41,19 @@ object Test {
     1
   }
   catch {
-    case ex: Error => Effect.canBeImpure // error
+    case ex: Error => Effect.isImpure // error
   }
 
-  val x: Pure = Effect.canBeImpure // error
-  var x = Effect.canBeImpure // error
+  val x: Pure = Effect.isImpure // error
+  var x = Effect.isImpure // error
 
-  def f2(x: Int): C[AssertionError] = Effect.canBeImpure // error
-  def f3(x: Int) = Effect.canBeImpure // error
+  def f2(x: Int): C[AssertionError] = Effect.isImpure // error
+  def f3(x: Int) = Effect.isImpure // error
 
   def foo() = {
-    val effVal: C[AssertionError] = Effect.canBeImpure // ok
-    def effMeth(): C[AssertionError] = Effect.canBeImpure // error
+    val effVal: C[AssertionError] = Effect.isImpure // ok
+    def effMeth(): C[AssertionError] = Effect.isImpure // error
   }
 
-  val effVal: C[AssertionError] = Effect.canBeImpure // error
+  val effVal: C[AssertionError] = Effect.isImpure // error
 }
