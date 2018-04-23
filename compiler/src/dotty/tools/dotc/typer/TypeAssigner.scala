@@ -255,7 +255,7 @@ trait TypeAssigner {
    */
   def accessibleSelectionType(tree: untpd.RefTree, qual1: Tree)(implicit ctx: Context): Type = {
     var qualType = qual1.tpe.widenIfUnstable
-    if (qualType.hasHigherKind && tree.name != nme.CONSTRUCTOR)
+    if (!qualType.hasSimpleKind && tree.name != nme.CONSTRUCTOR)
       // constructors are selected on typeconstructor, type arguments are passed afterwards
       qualType = errorType(em"$qualType takes type parameters", qual1.pos)
     else if (!qualType.isInstanceOf[TermType]) qualType = errorType(em"$qualType is illegal as a selection prefix", qual1.pos)
