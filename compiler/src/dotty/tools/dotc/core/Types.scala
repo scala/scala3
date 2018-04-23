@@ -245,6 +245,20 @@ object Types {
     /** Is this type a (possibly aliased) singleton type? */
     def isSingleton(implicit ctx: Context) = dealias.isInstanceOf[SingletonType]
 
+    /** Is this type of kind `AnyKind`? */
+    def hasAnyKind(implicit ctx: Context): Boolean = {
+      @tailrec def loop(tp: Type): Boolean = tp match {
+        case tp: TypeRef =>
+          val sym = tp.symbol
+          if (sym.isClass) sym == defn.AnyKindClass else loop(tp.superType)
+        case tp: TypeProxy =>
+          loop(tp.underlying)
+        case _ =>
+          false
+      }
+      loop(this)
+    }
+
     /** Is this type guaranteed not to have `null` as a value? */
     final def isNotNull(implicit ctx: Context): Boolean = this match {
       case tp: ConstantType => tp.value.value != null
