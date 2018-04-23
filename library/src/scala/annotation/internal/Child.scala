@@ -12,5 +12,6 @@ import scala.annotation.Annotation
  *  Then the class symbol `A` would carry the annotations
  *  `@Child[Bref] @Child[Cref]` where `Bref`, `Cref` are TypeRefs
  *  referring to the class symbols of `B` and `C`
+ *  TODO: This should be `Child[T <: AnyKind]`
  */
 class Child[T] extends Annotation

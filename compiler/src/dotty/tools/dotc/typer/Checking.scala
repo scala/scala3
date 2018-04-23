@@ -46,9 +46,14 @@ object Checking {
    */
   def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context): Unit = {
     (args, boundss).zipped.foreach { (arg, bound) =>
-      if (!bound.isLambdaSub && arg.tpe.isLambdaSub)
+      if (!bound.isLambdaSub && arg.tpe.hasHigherKind) {
         // see MissingTypeParameterFor
+        if (!arg.tpe.isLambdaSub) { // FIXME: Provisional, remove
+          println(i"different for checkBounds $arg vs $bound at ${ctx.phase} in ${ctx.owner.ownersIterator.toList}")
+          throw new AssertionError("")
+        }
         ctx.error(ex"missing type parameter(s) for $arg", arg.pos)
+      }
     }
     for ((arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate))
       ctx.error(
