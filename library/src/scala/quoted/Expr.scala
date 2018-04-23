@@ -2,13 +2,12 @@ package scala.quoted
 
 import scala.runtime.quoted.Toolbox
 import scala.runtime.quoted.Unpickler.Pickled
-import scala.tasty.trees.Term
 
 sealed abstract class Expr[T] {
   final def unary_~ : T = throw new Error("~ should have been compiled away")
   final def run(implicit toolbox: Toolbox[T]): T = toolbox.run(this)
   final def show(implicit toolbox: Toolbox[T]): String = toolbox.show(this)
-  final def toTasty(implicit toolbox: Toolbox[T]): Term = toolbox.toTasty(this)
+  final def toTasty(implicit toolbox: Toolbox[T]): scala.tasty.trees.Term = toolbox.toTasty(this)
 }
 
 object Expr {
@@ -36,7 +35,7 @@ object Exprs {
   }
 
   /** An Expr backed by a tree. Only the current compiler trees are allowed. */
-  final class TreeExpr[Tree](val tree: Tree) extends quoted.Expr[Any] {
+  final class TreeExpr(val term: scala.tasty.trees.Term) extends quoted.Expr[Any] {
     override def toString: String = s"Expr(<raw>)"
   }
 

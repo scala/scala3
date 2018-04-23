@@ -155,6 +155,8 @@ object Term {
     case _ => None
   }
 
+  def tree(term: trees.Term): tpd.Tree = term.asInstanceOf[Impl].tree
+
   private[tasty] class Impl(val tree: tpd.Tree)(implicit val ctx: Context) extends trees.Term with Positioned {
 
     assert(tree.isTerm || tree.isInstanceOf[Trees.NamedArg[_]] || tree.isInstanceOf[Trees.SeqLiteral[_]])

@@ -41,7 +41,8 @@ object PickledQuotes {
         case value: Class[_] => ref(defn.Predef_classOf).appliedToType(classToType(value))
         case value=> Literal(Constant(value))
       }
-    case expr: TreeExpr[Tree] @unchecked => expr.tree
+    case expr: TreeExpr @unchecked =>
+      dotty.tools.dotc.tasty.internal.Term.tree(expr.term)
     case expr: FunctionAppliedTo[_, _] =>
       functionAppliedTo(quotedExprToTree(expr.f), quotedExprToTree(expr.x))
   }

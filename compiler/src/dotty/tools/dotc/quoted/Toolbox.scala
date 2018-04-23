@@ -9,7 +9,7 @@ import dotty.tools.dotc.tasty.internal.Term
 
 import scala.quoted.Expr
 import scala.runtime.BoxedUnit
-import scala.quoted.Exprs.LiftedExpr
+import scala.quoted.Exprs.{LiftedExpr, TreeExpr}
 import scala.runtime.quoted._
 import scala.tasty.trees.Term
 
@@ -45,8 +45,10 @@ object Toolbox {
       case _ => new QuoteDriver().show(expr, showSettings)
     }
 
-    def toTasty(expr: Expr[T]): Term =
-      new QuoteDriver().withTree(expr, (tree, ctx) => Term(tree)(ctx), Settings.run())
+    def toTasty(expr: Expr[T]): Term = expr match {
+      case expr: TreeExpr => expr.term
+      case _ => new QuoteDriver().withTree(expr, (tree, ctx) => Term(tree)(ctx), Settings.run())
+    }
 
   }
 
