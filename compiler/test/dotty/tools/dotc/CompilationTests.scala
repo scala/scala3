@@ -39,7 +39,7 @@ class CompilationTests extends ParallelTesting {
 
   @Test def compilePos: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePos")
-    compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
+    compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline").without("-Yno-deep-subtypes")) +
     compileDir("compiler/src/dotty/tools/dotc/ast", defaultOptions) +
     compileDir("compiler/src/dotty/tools/dotc/config", defaultOptions) +
     compileDir("compiler/src/dotty/tools/dotc/core", defaultOptions) +
