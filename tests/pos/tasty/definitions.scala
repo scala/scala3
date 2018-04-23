@@ -45,7 +45,7 @@ object definitions {
   sealed trait TopLevelStatement extends Tree
   sealed trait Statement extends TopLevelStatement
 
-  case class PackageDef(pkg: Term, body: List[TopLevelStatement]) extends TopLevelStatement
+  case class PackageClause(pkg: Term, body: List[TopLevelStatement]) extends TopLevelStatement
 
   case class Import(expr: Term, selector: List[ImportSelector]) extends Statement
 
@@ -59,15 +59,8 @@ object definitions {
 
 // ------ Definitions ---------------------------------
 
-  trait Symbol {
-    def name: Name = ???
-    def owner: Symbol = ???
-    def definition: Option[Definition] = ???
-  }
-  object NoSymbol extends Symbol
-
   trait Definition {
-    def sym: Symbol = ???
+    def owner: Definition = ???
   }
 
   // Does DefDef need a `def tpe: MethodType | PolyType`?
@@ -77,7 +70,7 @@ object definitions {
   case class TypeDef(name: TypeName, rhs: TypeTree | TypeBoundsTree, mods: List[Modifier]) extends Definition
   case class ClassDef(name: TypeName, constructor: DefDef, parents: List[Term | TypeTree],
                       self: Option[ValDef], body: List[Statement], mods: List[Modifier]) extends Definition
-
+  case class PackageDef(name: TermName, members: List[Statement]) extends Definition
 
 // ------ Terms ---------------------------------
 
@@ -147,7 +140,7 @@ object definitions {
     private val PlaceHolder = ConstantType(Constant.Unit)
 
     case class ConstantType(value: Constant) extends Type
-    case class SymRef(sym: Symbol, qualifier: Type | NoPrefix = NoPrefix) extends Type
+    case class SymRef(sym: Definition, qualifier: Type | NoPrefix = NoPrefix) extends Type
     case class NameRef(name: Name, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
     case class SuperType(thistp: Type, underlying: Type) extends Type
     case class Refinement(underlying: Type, name: Name, tpe: Type | TypeBounds) extends Type

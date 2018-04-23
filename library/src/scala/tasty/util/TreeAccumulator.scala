@@ -94,7 +94,7 @@ abstract class TreeAccumulator[X](implicit toolbox: Toolbox) {
         this(this(this(this(x, constr), parents), self), body)
       case Import(expr, selectors) =>
         this(x, expr)
-      case PackageDef(pid, stats) =>
+      case PackageClause(pid, stats) =>
         this(this(x, pid), stats)
       case _ =>
         x

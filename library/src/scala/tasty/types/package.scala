@@ -12,7 +12,7 @@ package object types {
   }
 
   object SymRef {
-    type Data = (scala.tasty.Symbol, MaybeType /* Type | NoPrefix */)
+    type Data = (trees.Definition, MaybeType /* Type | NoPrefix */)
     def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplySymRef(arg)
   }
 

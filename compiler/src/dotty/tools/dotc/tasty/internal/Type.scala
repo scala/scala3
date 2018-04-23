@@ -6,6 +6,7 @@ import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.core.Names
 
+import scala.tasty.trees
 import scala.tasty.types
 
 object Type {
@@ -24,7 +25,7 @@ object Type {
     case tp: Types.NamedType =>
       implicit val ctx: Context = arg.ctx
       tp.designator match {
-        case sym: Symbol => Some(TastySymbol(sym), TypeOrNoPrefix(tp.prefix))
+        case sym: Symbol => Some(Definition(sym), TypeOrNoPrefix(tp.prefix))
         case _ => None
       }
     case _ => None
@@ -114,11 +115,20 @@ object Type {
 
     assert(!tpe.isInstanceOf[Types.TypeBounds])
 
+
     override def toString: String = {
       import Toolbox.extractor
+      def name(sym: trees.Definition): String = sym match {
+        case trees.ValDef(name, _, _, _) => name.toString
+        case trees.DefDef(name, _, _, _, _, _) => name.toString
+        case trees.TypeDef(name, _, _) => name.toString
+        case trees.ClassDef(name, _, _, _, _, _) => name.toString
+        case trees.PackageDef(name, _) => name.toString
+        case _ => "NoDefinition"
+      }
       this match {
         case types.ConstantType(value) => s"ConstantType($value)"
-        case types.SymRef(sym, qual) => s"SymRef($sym, $qual)"
+        case types.SymRef(sym, qual) => s"SymRef(<${name(sym)}>, $qual)" // Do not print the full definition to avoid cycles
         case types.NameRef(name, qual) => s"NameRef($name, $qual)"
         case types.Refinement(parent, name, info) => s"Refinement($parent, $name, $info)"
         case types.AppliedType(tycon, args) => s"AppliedType($tycon, $args)"

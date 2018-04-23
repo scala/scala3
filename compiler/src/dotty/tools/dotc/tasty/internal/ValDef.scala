@@ -3,6 +3,7 @@ package internal
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Symbols.TermSymbol
 
 import scala.tasty.trees
 import scala.tasty.types
@@ -10,6 +11,8 @@ import scala.tasty.types
 object ValDef {
 
   def apply(tree: tpd.ValDef)(implicit ctx: Context): trees.ValDef = new Impl(tree)
+
+  def apply(sym: TermSymbol)(implicit ctx: Context): trees.ValDef = new Impl(tpd.ValDef(sym))
 
   def unapplyValDef(arg: Impl): Option[trees.ValDef.Data] = {
     val vdef = arg.tree
@@ -25,7 +28,7 @@ object ValDef {
 
     def tpe: types.Type = Type(tree.tpe)(ctx)
 
-    def sym: scala.tasty.Symbol = TastySymbol(tree.symbol(ctx))(ctx)
+    def owner: trees.Definition = Definition(tree.symbol.owner)
 
     override def toString: String = {
       import Toolbox.extractor

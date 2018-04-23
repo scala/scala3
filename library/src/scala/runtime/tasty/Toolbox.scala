@@ -13,7 +13,7 @@ trait Toolbox {
 
   // Statements
 
-  def unapplyPackageDef(arg: Tree): Option[trees.PackageDef.Data]
+  def unapplyPackageClause(arg: Tree): Option[trees.PackageClause.Data]
   def unapplyImport(arg: Tree): Option[trees.Import.Data]
 
   // Definitions
@@ -22,6 +22,7 @@ trait Toolbox {
   def unapplyDefDef(arg: Tree): Option[trees.DefDef.Data]
   def unapplyTypeDef(arg: Tree): Option[trees.TypeDef.Data]
   def unapplyClassDef(arg: Tree): Option[trees.ClassDef.Data]
+  def unapplyPackageDef(arg: Tree): Option[trees.PackageDef.Data]
 
   // Terms
 

@@ -14,12 +14,13 @@ object Toolbox {
 
     // Statements
 
-    override def unapplyPackageDef(arg: Tree) = unapplied(arg, internal.PackageDef.unapplyPackageDef)
+    override def unapplyPackageClause(arg: Tree) = unapplied(arg, internal.PackageClause.unapplyPackageClause)
     override def unapplyImport(arg: Tree) = unapplied(arg, internal.Import.unapplyImport)
     override def unapplyValDef(arg: Tree) = unapplied(arg, internal.ValDef.unapplyValDef)
     override def unapplyDefDef(arg: Tree) = unapplied(arg, internal.DefDef.unapplyDefDef)
     override def unapplyTypeDef(arg: Tree) = unapplied(arg, internal.TypeDef.unapplyTypeDef)
     override def unapplyClassDef(arg: Tree) = unapplied(arg, internal.ClassDef.unapplyClassDef)
+    override def unapplyPackageDef(arg: Tree) = unapplied(arg, internal.PackageDef.unapplyPackageDef)
 
     // Terms
 

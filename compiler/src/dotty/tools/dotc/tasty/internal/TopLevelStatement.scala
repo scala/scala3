@@ -7,7 +7,7 @@ import scala.tasty.trees
 
 object TopLevelStatement {
   def apply(tree: tpd.Tree)(implicit ctx: Context): trees.TopLevelStatement = tree match {
-    case tree: tpd.PackageDef => PackageDef(tree)
+    case tree: tpd.PackageDef => PackageClause(tree)
     case _ => Statement(tree)
   }
 }
