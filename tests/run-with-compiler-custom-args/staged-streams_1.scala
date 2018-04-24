@@ -311,7 +311,7 @@ object Test {
           mapRaw[(B, A), (A, B)]((t => k => '{ ~k((t._2, t._1)) }), pushLinear[B, _, A](producer2, producer1, nestf1))
 
         case (Nested(producer1, nestf1), Nested(producer2, nestf2)) =>
-          zipRaw(makeLinear(stream1), stream2)
+          zipRaw(Linear(makeLinear(stream1)), stream2)
       }
     }
 
@@ -321,10 +321,12 @@ object Test {
       * @tparam A
       * @return
       */
-    private def makeLinear[A: Type](stream: StagedStream[A]): StagedStream[A] = {
+    private def makeLinear[A: Type](stream: StagedStream[A]): Producer[A] = {
       stream match {
-        case Linear(producer) => stream
-        case Nested(producer, nestedf) => {
+        case Linear(producer) => producer
+        case nested: Nested[A, bt] => {
+          val producer: Producer[bt]          = nested.producer
+          val nestedf:  bt => StagedStream[A] = nested.nestedf
 
           /** Helper function that orchestrates the handling of the function that represents an `advance: Unit => Unit`.
             * It reifies a nested stream as calls to `advance`. Advance encodes the step function of each nested stream.
@@ -368,7 +370,7 @@ object Test {
             }
           }
 
-          val newProducer = new Producer[A] {
+          new Producer[A] {
             // _1: if the stream has ended,
             // _2: the current element,
             // _3: the step of the inner most steam
@@ -376,32 +378,31 @@ object Test {
             val card: Cardinality = Many
 
             def init(k: St => Expr[Unit]): Expr[Unit] = {
-              producer.init(st => '{
+              producer.init(st =>
                 Var('{ (_: Unit) => ()}){ advf => {
                   Var('{ true }) { hasNext => {
-                    // Var('{ null.asInstanceOf[A] }) { curr => {
-                    //   def adv() = {
-                    //     ~hasNext.update(producer.hasNext(st))
-                    //     if(~hasNext.get) {
-                    //       ~producer.step(st, el => '{
-                    //         ~makeAdvanceFunction(advf, ((a: A) => curr.update('{a})), nestedf(el))
-                    //       })
-                    //     }
-                    //   }
-                    // ~k((flag, current, advf))
-                    ???
-                    // }}
+                     Var('{ null.asInstanceOf[A] }) { curr => '{
+
+                        // val adv: Unit => Unit = {
+                        //   ~hasNext.update(producer.hasNext(st))
+                        //   if(~hasNext.get) {
+                        //     ~producer.step(st, (el: bt) => makeAdvanceFunction[Expr[A]](advf, (a => curr.update(a)), nestedf(el)))
+                        //   }
+                        // }
+
+                        // ~advf.update('{adv})
+                        // adv(_)
+
+                        ~k((hasNext, curr, advf))
+                     }}
                   }}
-                }}
-              })
+                }})
             }
 
             def step(st: St, k: A => Expr[Unit]): Expr[Unit] = ???
 
             def hasNext(st: St): Expr[Boolean] = ???
           }
-
-          Linear(newProducer)
         }
       }
     }
