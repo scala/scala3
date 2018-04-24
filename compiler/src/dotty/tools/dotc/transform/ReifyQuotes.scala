@@ -316,7 +316,8 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
             }
           case tp: NamedType =>
             check(tp.symbol, tp, pos)
-            foldOver(acc, tp)
+            if (!tp.symbol.is(Param))
+              foldOver(acc, tp)
           case tp: ThisType =>
             check(tp.cls, tp, pos)
             foldOver(acc, tp)
