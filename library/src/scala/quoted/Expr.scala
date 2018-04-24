@@ -10,6 +10,9 @@ sealed abstract class Expr[T] {
 }
 
 object Expr {
+  /** A term quote is desugared by the compiler into a call to this method */
+  def apply[T](x: T): Expr[T] =
+    throw new Error("Internal error: this method call should have been replaced by the compiler")
 
   implicit class AsFunction[T, U](private val f: Expr[T => U]) extends AnyVal {
     def apply(x: Expr[T]): Expr[U] = new Exprs.FunctionAppliedTo[T, U](f, x)

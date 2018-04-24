@@ -60,8 +60,8 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
   }
 
   override protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
-    if (tree.symbol eq defn.quoteMethod) "'"
-    else if (tree.symbol eq defn.typeQuoteMethod) "'[" ~ toTextGlobal(tree.args, ", ") ~ "]"
+    if (tree.symbol eq defn.QuotedExpr_apply) "'"
+    else if (tree.symbol eq defn.QuotedType_apply) "'[" ~ toTextGlobal(tree.args, ", ") ~ "]"
     else super.typeApplyText(tree)
   }
 }

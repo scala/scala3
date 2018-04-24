@@ -175,7 +175,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   /** Is symbol a quote operation? */
   def isQuote(implicit ctx: Context): Boolean =
-    self == defn.quoteMethod || self == defn.typeQuoteMethod
+    self == defn.QuotedExpr_apply || self == defn.QuotedType_apply
 
   /** Is symbol a splice operation? */
   def isSplice(implicit ctx: Context): Boolean =

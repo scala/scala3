@@ -587,7 +587,7 @@ trait Implicits { self: Typer =>
           }
         }
         val tag = bindFreeVars(arg)
-        if (bindFreeVars.ok) ref(defn.typeQuoteMethod).appliedToType(tag)
+        if (bindFreeVars.ok) ref(defn.QuotedType_apply).appliedToType(tag)
         else EmptyTree
       case _ =>
         EmptyTree
