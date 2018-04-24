@@ -210,7 +210,10 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
         explicitTags.clear()
 
         // Maps type splices to type references of tags e.g., ~t -> some type T$1
-        val map: Map[Type, Type] = tagsExplicitTypeDefsPairs.map(x => (x._1, x._2.symbol.typeRef)).toMap
+        val map: Map[Type, Type] = {
+          tagsExplicitTypeDefsPairs.map(x => (x._1, x._2.symbol.typeRef)) ++
+          (itags.map(_._1) zip typeDefs.map(_.symbol.typeRef))
+        }.toMap
         val tMap = new TypeMap() {
           override def apply(tp: Type): Type = map.getOrElse(tp, mapOver(tp))
         }
