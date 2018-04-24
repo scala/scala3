@@ -17,7 +17,8 @@ object Test {
     }
   }
   def capture2() = {
-    implicit erased val hidden: CanThrow[NullPointerException] = Effect.canThrowNPE
+    implicit erased val hidden: CanThrow[NullPointerException] = Effect.canThrowNPE // error: Type argument CanThrow[NullPointerException](canThrowNPE) does not conform to upper bound Any
+
     if (cond)
       { (y: Int) => f }  // error:
     else {

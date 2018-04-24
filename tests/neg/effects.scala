@@ -22,10 +22,10 @@ object Test {
 
   type C[-E <: Throwable] = CanThrow[E]
 
-  def z1: P & Nothing = ???  // error // error
+  def z1: P & Nothing = ???  // error
   def z2: Any | I  = ???   // error
 
-  def z3: C[AssertionError] & Nothing = ???  // error // error
+  def z3: C[AssertionError] & Nothing = ???  // error
 
   def z4: CanThrow[AssertionError] = ??? // error
   def z5: C[AssertionError] = ??? // error
@@ -33,8 +33,8 @@ object Test {
   if (true) 1 else Effect.isImpure // error
 
   1 match {
-    case 1 => Effect.isImpure
-    case _ => 0 // error
+    case 1 => Effect.isImpure // error
+    case _ => 0
   }
 
   try {

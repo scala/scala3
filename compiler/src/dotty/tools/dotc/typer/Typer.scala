@@ -712,11 +712,10 @@ class Typer extends Namer
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp2 :: elsep2 :: Nil = harmonic(harmonize) {
-      val thenp1 = typed(tree.thenp, pt.notApplied)
-      val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
+      val thenp1 = checkSimpleKinded(typed(tree.thenp, pt.notApplied))
+      val elsep1 = checkSimpleKinded(typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied))
       thenp1 :: elsep1 :: Nil
     }
-    checkTypeEffectDisjoint(thenp2, elsep2, "conditional")
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
   }
 
@@ -969,7 +968,6 @@ class Typer extends Namer
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
         val cases1 = harmonic(harmonize)(typedCases(tree.cases, selType, pt.notApplied))
           .asInstanceOf[List[CaseDef]]
-        checkTypeEffectDisjoint(cases1, "match")
         assignType(cpy.Match(tree)(sel1, cases1), cases1)
     }
   }
@@ -1093,11 +1091,9 @@ class Typer extends Namer
 
   def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = track("typedTry") {
     val expr2 :: cases2x = harmonic(harmonize) {
-      val expr1 = typed(tree.expr, pt.notApplied)
+      val expr1 = checkSimpleKinded(typed(tree.expr, pt.notApplied))
       val cases1 = typedCases(tree.cases, defn.ThrowableType, pt.notApplied)
-      val allResults = expr1 :: cases1
-      checkTypeEffectDisjoint(allResults, "try")
-      allResults
+      expr1 :: cases1
     }
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
     val cases2 = cases2x.asInstanceOf[List[CaseDef]]
@@ -1181,7 +1177,6 @@ class Typer extends Namer
   def typedAndTypeTree(tree: untpd.AndTypeTree)(implicit ctx: Context): AndTypeTree = track("typedAndTypeTree") {
     val left1 = checkSimpleKinded(typed(tree.left))
     val right1 = checkSimpleKinded(typed(tree.right))
-    checkTypeEffectDisjoint(left1, right1, "intersection type")
     assignType(cpy.AndTypeTree(tree)(left1, right1), left1, right1)
   }
 
@@ -1189,7 +1184,6 @@ class Typer extends Namer
     val where = "in a union type"
     val left1 = checkNotSingleton(checkSimpleKinded(typed(tree.left)), where)
     val right1 = checkNotSingleton(checkSimpleKinded(typed(tree.right)), where)
-    checkTypeEffectDisjoint(left1, right1, "union type")
     assignType(cpy.OrTypeTree(tree)(left1, right1), left1, right1)
   }
 
@@ -1381,7 +1375,8 @@ class Typer extends Namer
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = track("typedValDef") {
     val ValDef(name, tpt, _) = vdef
     completeAnnotations(vdef, sym)
-    val tpt1 = checkSimpleKinded(typedType(tpt))
+    var tpt1 = typedType(tpt)
+    if (!tpt1.tpe.isEffect) tpt1 = checkSimpleKinded(tpt1)
     val rhs1 = vdef.rhs match {
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
       case rhs => normalizeErasedRhs(typedExpr(rhs, tpt1.tpe), sym)

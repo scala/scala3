@@ -46,7 +46,7 @@ object Checking {
    */
   def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context): Unit = {
     (args, boundss).zipped.foreach { (arg, bound) =>
-      if (!bound.isLambdaSub && !arg.tpe.hasSimpleKind) {
+      if (!bound.isLambdaSub && !arg.tpe.hasSimpleKind && !arg.tpe.isEffect) {
         // see MissingTypeParameterFor
         ctx.error(ex"missing type parameter(s) for $arg", arg.pos)
       }
@@ -665,7 +665,9 @@ trait Checking {
     if (!tpt.tpe.hasSimpleKind && !ctx.compilationUnit.isJava) {
         // be more lenient with missing type params in Java,
         // needed to make pos/java-interop/t1196 work.
-      errorTree(tpt, MissingTypeParameterFor(tpt.tpe))
+      if (tpt.tpe.hasAnyKind) errorTree(tpt, em"${tpt.tpe} is kind-polymorphic; cannot be used here")
+      else if (tpt.tpe.isEffect) errorTree(tpt, em"effect ${tpt.tpe} cannot be used as a regular type")
+      else errorTree(tpt, MissingTypeParameterFor(tpt.tpe))
     }
     else tpt
 
@@ -788,12 +790,6 @@ trait Checking {
       val (tpe, eff) = if (tree1.tpe.isEffect) (tree2.tpe, tree1.tpe) else (tree1.tpe, tree2.tpe)
       ctx.error(em"cannot mix type $tpe and effect $eff in $where", tree2.pos)
     }
-
-  /** Check that `trees` do not mix regular and effect types */
-  def checkTypeEffectDisjoint(trees: List[Tree], where: String)(implicit ctx: Context): Unit = trees match {
-    case first :: rest => rest.foreach(checkTypeEffectDisjoint(first, _, where))
-    case _ =>
-  }
 
   /** Check that all case classes that extend `scala.Enum` are `enum` cases */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol)(implicit ctx: Context): Unit = {

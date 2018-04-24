@@ -2,8 +2,8 @@ class Foo {
 
   val b = true
 
-  if (b) Effect.canThrowNPE
-  else "abc" // error
+  if (b) Effect.canThrowNPE // error
+  else "abc"
 
   if (b) "abc"
   else Effect.canThrowNPE // error

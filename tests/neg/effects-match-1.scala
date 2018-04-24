@@ -1,5 +1,5 @@
 class Foo {
-  Effect.canThrowNPE match { // error
-    case _: Pure => ()
+  Effect.canThrowNPE match {
+    case _: Pure => () // error
   }
 }

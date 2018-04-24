@@ -2902,7 +2902,7 @@ object Types {
 
 
     def computeSignature(implicit ctx: Context): Signature = {
-      val params = if (isErasedMethod) Nil else paramInfos
+      val params = if (isErasedMethod) Nil else paramInfos.filterNot(_.isEffect)
       resultSignature.prepend(params, isJavaMethod)
     }
 

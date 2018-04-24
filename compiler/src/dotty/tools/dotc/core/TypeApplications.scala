@@ -212,7 +212,7 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** Is self type of kind "*"? */
   def hasSimpleKind(implicit ctx: Context): Boolean =
-    typeParams.isEmpty && !self.hasAnyKind
+    typeParams.isEmpty && !self.hasAnyKind && !self.isEffect
 
   /** If self type is higher-kinded, its result type, otherwise NoType.
    *  Note: The hkResult of an any-kinded type is again AnyKind.
