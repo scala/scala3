@@ -77,6 +77,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SELECT                possiblySigned_NameRef qual_Term
                   QUALTHIS              typeIdent_Tree
                   NEW                   clsType_Term
+                  THROW                 throwableExpr_Term
                   NAMEDARG              paramName_NameRef arg_Term
                   APPLY          Length fn_Term arg_Term*
                   TYPEAPPLY      Length fn_Term arg_Type*
@@ -225,7 +226,7 @@ Standard Section: "Positions" Assoc*
 object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion = 6
+  val MajorVersion = 7
   val MinorVersion = 0
 
   /** Tags used to serialize names */
@@ -332,12 +333,13 @@ object TastyFormat {
   final val BYNAMEtype = 84
   final val BYNAMEtpt = 85
   final val NEW = 86
-  final val IMPLICITarg = 87
-  final val PRIVATEqualified = 88
-  final val PROTECTEDqualified = 89
-  final val RECtype = 90
-  final val TYPEALIAS = 91
-  final val SINGLETONtpt = 92
+  final val THROW = 87
+  final val IMPLICITarg = 88
+  final val PRIVATEqualified = 89
+  final val PROTECTEDqualified = 90
+  final val RECtype = 91
+  final val TYPEALIAS = 92
+  final val SINGLETONtpt = 93
 
   // Cat. 4:    tag Nat AST
 
@@ -560,6 +562,7 @@ object TastyFormat {
     case APPLY => "APPLY"
     case TYPEAPPLY => "TYPEAPPLY"
     case NEW => "NEW"
+    case THROW => "THROW"
     case TYPED => "TYPED"
     case NAMEDARG => "NAMEDARG"
     case ASSIGN => "ASSIGN"

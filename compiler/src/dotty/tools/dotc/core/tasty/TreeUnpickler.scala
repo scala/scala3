@@ -974,6 +974,8 @@ class TreeUnpickler(reader: TastyReader,
           untpd.This(qual).withType(ThisType.raw(tref))
         case NEW =>
           New(readTpt())
+        case THROW =>
+          Throw(readTerm())
         case SINGLETONtpt =>
           SingletonTypeTree(readTerm())
         case BYNAMEtpt =>
