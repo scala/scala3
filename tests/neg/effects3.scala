@@ -26,8 +26,3 @@ object Test {
     }
   }
 }
-
-trait PureFunction[-A, +B] extends Function[A, B] {
-  type Eff = Pure
-  def apply(x: A)(implicit eff: Eff): B
-}
