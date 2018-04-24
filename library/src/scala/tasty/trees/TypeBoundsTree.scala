@@ -9,5 +9,5 @@ trait TypeBoundsTree extends Tree {
 
 object TypeBoundsTree {
   type Data = (TypeTree, TypeTree)
-  def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeBoundsTree(arg)
+  def unapply(arg: TypeBoundsTree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeBoundsTree(arg)
 }

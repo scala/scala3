@@ -9,5 +9,5 @@ trait ClassDef extends Definition
 object ClassDef {
 
   type Data = (names.TypeName, DefDef, List[Tree] /* List[Term | TypeTree] */,  Option[ValDef], List[Statement], List[Modifier])
-  def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyClassDef(arg)
+  def unapply(arg: ClassDef)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyClassDef(arg)
 }

@@ -21,7 +21,7 @@ object PolyType {
   private[tasty] class Impl(val meth: Types.PolyType)(implicit val ctx: Context) extends types.PolyType {
     override def toString: String = {
       import Toolbox.extractor
-      val types.MethodType(paramNames, paramTypes, resType) = this
+      val types.PolyType(paramNames, paramTypes, resType) = this
       s"PolyType($paramNames, $paramTypes, $resType)"
     }
   }

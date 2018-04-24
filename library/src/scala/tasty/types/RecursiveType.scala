@@ -6,5 +6,5 @@ trait RecursiveType extends Type
 
 object RecursiveType {
   type Data = Type
-  def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyRecursiveType(arg)
+  def unapply(arg: RecursiveType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyRecursiveType(arg)
 }

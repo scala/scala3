@@ -6,5 +6,5 @@ trait PackageClause extends TopLevelStatement
 
 object PackageClause {
   type Data = (Term, List[TopLevelStatement])
-  def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyPackageClause(arg)
+  def unapply(arg: PackageClause)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyPackageClause(arg)
 }

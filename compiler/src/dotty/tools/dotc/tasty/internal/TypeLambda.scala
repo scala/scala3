@@ -21,7 +21,7 @@ object TypeLambda {
   private[tasty] class Impl(val meth: Types.TypeLambda)(implicit val ctx: Context) extends types.TypeLambda {
     override def toString: String = {
       import Toolbox.extractor
-      val types.MethodType(paramNames, paramTypes, resType) = this
+      val types.TypeLambda(paramNames, paramTypes, resType) = this
       s"TypeLambda($paramNames, $paramTypes, $resType)"
     }
   }

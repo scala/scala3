@@ -6,5 +6,5 @@ trait TypeName extends Name
 
 object TypeName {
   type Data = TermName
-  def unapply(arg: Name)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeName(arg)
+  def unapply(arg: TypeName)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeName(arg)
 }

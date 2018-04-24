@@ -6,5 +6,5 @@ trait CaseDef extends Tree
 
 object CaseDef {
   type Data = (Pattern, Option[Term], Term)
-  def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyCaseDef(arg)
+  def unapply(arg: CaseDef)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyCaseDef(arg)
 }

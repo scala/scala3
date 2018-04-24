@@ -7,5 +7,5 @@ trait PackageDef extends Definition
 
 object PackageDef {
   type Data = (names.Name, List[Statement])
-  def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyPackageDef(arg)
+  def unapply(arg: PackageDef)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyPackageDef(arg)
 }

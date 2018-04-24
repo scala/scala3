@@ -6,5 +6,5 @@ trait TypeBounds extends MaybeType
 
 object TypeBounds {
   type Data = (Type, Type)
-  def unapply(arg: MaybeType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeBounds(arg)
+  def unapply(arg: TypeBounds)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyTypeBounds(arg)
 }
