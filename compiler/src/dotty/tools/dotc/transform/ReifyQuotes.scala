@@ -245,7 +245,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
         l == level ||
         sym.is(Inline) && sym.owner.is(Macro) && sym.info.isValueType && l - 1 == level
       case None =>
-        true
+        level == 0
     }
 
     /** Issue a "splice outside quote" error unless we ar in the body of an inline method */
@@ -289,7 +289,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
         if (!isThis) sym.show
         else if (sym.is(ModuleClass)) sym.sourceModule.show
         else i"${sym.name}.this"
-      if (!isThis && sym.maybeOwner.isType)
+      if (!isThis && sym.maybeOwner.isType && !sym.is(Param))
         check(sym.owner, sym.owner.thisType, pos)
       else if (sym.exists && !sym.isStaticOwner && !levelOK(sym))
         for (errMsg <- tryHeal(tp, pos))
