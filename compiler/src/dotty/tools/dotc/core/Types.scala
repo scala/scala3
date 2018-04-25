@@ -666,17 +666,15 @@ object Types {
 
       val recCount = ctx.findMemberCount
       if (recCount >= Config.LogPendingFindMemberThreshold) {
-        if (ctx.property(TypeOps.findMemberLimit).isDefined &&
-            ctx.findMemberCount > Config.PendingFindMemberLimit)
-          return NoDenotation
+        if (ctx.findMemberCount > ctx.settings.XmaxMemberRecursions.value)
+          throw new CyclicFindMember(pre, name)
         ctx.pendingMemberSearches = name :: ctx.pendingMemberSearches
       }
       ctx.findMemberCount = recCount + 1
-      //assert(ctx.findMemberCount < 20)
       try go(this)
       catch {
         case ex: Throwable =>
-          core.println(i"findMember exception for $this member $name, pre = $pre")
+          core.println(s"findMember exception for $this member $name, pre = $pre, recCount = $recCount")
           throw ex // DEBUG
       }
       finally {
@@ -4580,6 +4578,10 @@ object Types {
        |the classfile defining the type might be missing from the classpath${otherReason(pre)}""") {
     if (ctx.debug) printStackTrace()
   }
+
+  class CyclicFindMember(pre: Type, name: Name)(implicit ctx: Context) extends TypeError(
+    i"""member search with prefix $pre too deep.
+       |searches, from inner to outer: .${ctx.pendingMemberSearches}% .%""")
 
   private def otherReason(pre: Type)(implicit ctx: Context): String = pre match {
     case pre: ThisType if pre.cls.givenSelfType.exists =>

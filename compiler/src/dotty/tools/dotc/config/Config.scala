@@ -184,11 +184,6 @@ object Config {
    */
   final val LogPendingFindMemberThreshold = 9
 
-  /** Maximal number of outstanding recursive calls to findMember before backing out
-   *  when findMemberLimit is set.
-   */
-  final val PendingFindMemberLimit = LogPendingFindMemberThreshold * 4
-
   /** When in IDE, turn StaleSymbol errors into warnings instead of crashing */
   final val ignoreStaleInIDE = true
 }
