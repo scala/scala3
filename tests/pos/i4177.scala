@@ -5,8 +5,6 @@ class Test {
   def test: Unit = {
     val a: PartialFunction[Int, String] = { case Foo(x) => x }
     val b: PartialFunction[Int, String] = { case x => x.toString }
-    val c: PartialFunction[Int, String] = { x => x.toString }
-    val d: PartialFunction[Int, String] = x => x.toString
 
     val e: PartialFunction[String, String] = { case x @ "abc" => x }
     val f: PartialFunction[String, String] = x => x match { case "abc" => x }
