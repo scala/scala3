@@ -227,7 +227,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     val sourceCount = filteredSources.length
 
     private[this] var _errorCount =  0
-    def errorCount: Int = _errorCount
+    /** Number of (expected or unexpected) compiler errors. Unlikely to be what you want, use `failureCount` instead. */
+    private[this] def errorCount: Int = _errorCount
 
     private[this] var _testSourcesCompleted = 0
     private def testSourcesCompleted: Int = _testSourcesCompleted
@@ -1012,11 +1013,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     /** Extract `Failure` set and render from `Test` */
     private[this] def reasonsForFailure(test: Test): String = {
-      val errors =
-        if (test.errorCount == 0) ""
-        else s"\n  - encountered ${test.errorCount} error(s)"
+      val failureReport =
+        if (test.failureCount == 0) ""
+        else s"\n  - encountered ${test.failureCount} test failures(s)"
 
-      errors + test.failureReasons.collect {
+      failureReport + test.failureReasons.collect {
         case test.TimeoutFailure(title) =>
           s"  - test '$title' timed out"
         case test.JavaCompilationFailure(msg) =>

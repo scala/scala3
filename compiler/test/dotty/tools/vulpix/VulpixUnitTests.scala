@@ -91,7 +91,7 @@ class VulpixUnitTests extends ParallelTesting {
       fail()
     } catch {
       case ae: AssertionError =>
-        assertEquals(ae.getMessage, "Run test failed, but should not, reasons:\n  - test 'tests/vulpix-tests/unit/timeout.scala' timed out")
+        assertEquals(ae.getMessage, "Run test failed, but should not, reasons:\n\n  - encountered 1 test failures(s)  - test 'tests/vulpix-tests/unit/timeout.scala' timed out")
     }
   }
 }
