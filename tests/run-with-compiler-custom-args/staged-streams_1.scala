@@ -298,20 +298,20 @@ object Test {
     /** A stream containing the first `n` elements of this stream. */
     def take(n: Expr[Int]): Stream[A] = Stream(takeRaw[Expr[A]](n, stream))
 
-    private def zipRaw[A: Type, B: Type](stream1: StagedStream[A], stream2: StagedStream[B]): StagedStream[(A, B)] = {
+    private def zipRaw[A: Type, B: Type](stream1: StagedStream[Expr[A]], stream2: StagedStream[B]): StagedStream[(Expr[A], B)] = {
       (stream1, stream2) match {
 
         case (Linear(producer1), Linear(producer2)) =>
           Linear(zip_producer(producer1, producer2))
 
         case (Linear(producer1), Nested(producer2, nestf2)) =>
-          pushLinear[A, _, B](producer1, producer2, nestf2)
+          pushLinear[Expr[A], _, B](producer1, producer2, nestf2)
 
         case (Nested(producer1, nestf1), Linear(producer2)) =>
-          mapRaw[(B, A), (A, B)]((t => k => '{ ~k((t._2, t._1)) }), pushLinear[B, _, A](producer2, producer1, nestf1))
+          mapRaw[(B, Expr[A]), (Expr[A], B)]((t => k => '{ ~k((t._2, t._1)) }), pushLinear[B, _, Expr[A]](producer2, producer1, nestf1))
 
         case (Nested(producer1, nestf1), Nested(producer2, nestf2)) =>
-          zipRaw(Linear(makeLinear(stream1)), stream2)
+          zipRaw(Linear(makeLinear[A](stream1)), stream2)
       }
     }
 
@@ -321,7 +321,7 @@ object Test {
       * @tparam A
       * @return
       */
-    private def makeLinear[A: Type](stream: StagedStream[A]): Producer[A] = {
+    private def makeLinear[A: Type](stream: StagedStream[Expr[A]]): Producer[Expr[A]] = {
       stream match {
         case Linear(producer) => producer
         case nested: Nested[A, bt] => {
@@ -370,7 +370,7 @@ object Test {
             }
           }
 
-          new Producer[A] {
+          new Producer[Expr[A]] {
             // _1: if the stream has ended,
             // _2: the current element,
             // _3: the step of the inner most steam
@@ -382,16 +382,15 @@ object Test {
                 Var('{ (_: Unit) => ()}){ advf => {
                   Var('{ true }) { hasNext => {
                      Var('{ null.asInstanceOf[A] }) { curr => '{
+                        val adv: Unit => Unit = { _ =>
+                          ~hasNext.update(producer.hasNext(st))
+                          if(~hasNext.get) {
+                            // ~producer.step(st, (el: bt) => makeAdvanceFunction[Expr[A]](advf, (a => curr.update(a)), nestedf(el)))
+                          }
+                        }
 
-                        // val adv: Unit => Unit = {
-                        //   ~hasNext.update(producer.hasNext(st))
-                        //   if(~hasNext.get) {
-                        //     ~producer.step(st, (el: bt) => makeAdvanceFunction[Expr[A]](advf, (a => curr.update(a)), nestedf(el)))
-                        //   }
-                        // }
-
-                        // ~advf.update('{adv})
-                        // adv(_)
+                        ~advf.update('{adv})
+                        adv(())
 
                         ~k((hasNext, curr, advf))
                      }}
@@ -399,7 +398,7 @@ object Test {
                 }})
             }
 
-            def step(st: St, k: A => Expr[Unit]): Expr[Unit] = ???
+            def step(st: St, k: Expr[A] => Expr[Unit]): Expr[Unit] = ???
 
             def hasNext(st: St): Expr[Boolean] = ???
           }
@@ -467,7 +466,7 @@ object Test {
 
       val Stream(stream_b) = stream2
 
-      Stream(mapRaw[(Expr[A], Expr[B]), Expr[C]]((t => k => '{ ~k(f(t._1)(t._2)) }), zipRaw[Expr[A], Expr[B]](stream, stream_b)))
+      Stream(mapRaw[(Expr[A], Expr[B]), Expr[C]]((t => k => '{ ~k(f(t._1)(t._2)) }), zipRaw[A, Expr[B]](stream, stream_b)))
     }
   }
 
