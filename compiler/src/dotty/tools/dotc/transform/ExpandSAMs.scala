@@ -35,8 +35,8 @@ class ExpandSAMs extends MiniPhase {
       tpt.tpe match {
         case NoType => tree // it's a plain function
         case tpe @ SAMType(_) if tpe.isRef(defn.PartialFunctionClass) =>
-          checkRefinements(tpe, fn.pos)
-          toPartialFunction(tree)
+          val tpe1 = checkRefinements(tpe, fn.pos)
+          toPartialFunction(tree, tpe1)
         case tpe @ SAMType(_) if isPlatformSam(tpe.classSymbol.asClass) =>
           checkRefinements(tpe, fn.pos)
           tree
@@ -50,10 +50,9 @@ class ExpandSAMs extends MiniPhase {
       tree
   }
 
-  private def toPartialFunction(tree: Block)(implicit ctx: Context): Tree = {
+  private def toPartialFunction(tree: Block, tpe: Type)(implicit ctx: Context): Tree = {
     val Block(
-          (applyDef @ DefDef(nme.ANON_FUN, Nil, List(List(param)), _, _)) :: Nil,
-          Closure(_, _, tpt)) = tree
+          (applyDef @ DefDef(nme.ANON_FUN, Nil, List(List(param)), _, _)) :: Nil, _) = tree
 
     def translateMatch(tree: Match, selector: Tree, cases: List[CaseDef], defaultValue: Tree) = {
       assert(tree.selector.symbol == param.symbol)
@@ -78,7 +77,7 @@ class ExpandSAMs extends MiniPhase {
     def overrideSym(sym: Symbol) = sym.copy(
       owner = applyFn.owner,
       flags = Synthetic | Method | Final,
-      info = tpt.tpe.memberInfo(sym),
+      info = tpe.memberInfo(sym),
       coord = tree.pos).asTerm
     val isDefinedAtFn = overrideSym(defn.PartialFunction_isDefinedAt)
     val applyOrElseFn = overrideSym(defn.PartialFunction_applyOrElse)
@@ -115,8 +114,7 @@ class ExpandSAMs extends MiniPhase {
     val isDefinedAtDef = transformFollowingDeep(DefDef(isDefinedAtFn, isDefinedAtRhs(_)))
     val applyOrElseDef = transformFollowingDeep(DefDef(applyOrElseFn, applyOrElseRhs(_)))
 
-    val tpArgs = tpt.tpe.baseType(defn.PartialFunctionClass).argInfos
-    val parent = defn.AbstractPartialFunctionType.appliedTo(tpArgs)
+    val parent = defn.AbstractPartialFunctionType.appliedTo(tpe.argInfos)
     val anonCls = AnonClass(parent :: Nil, List(isDefinedAtFn, applyOrElseFn), List(nme.isDefinedAt, nme.applyOrElse))
     cpy.Block(tree)(List(isDefinedAtDef, applyOrElseDef), anonCls)
   }
@@ -126,7 +124,7 @@ class ExpandSAMs extends MiniPhase {
       if (name.isTermName && tpe.member(name).symbol.ownersIterator.isEmpty) // if member defined in the refinement
         ctx.error("Lambda does not define " + name, pos)
       checkRefinements(parent, pos)
-    case _ =>
+    case tpe =>
       tpe
   }
 
