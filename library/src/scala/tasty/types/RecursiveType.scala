@@ -1,10 +1,9 @@
-package scala.tasty.types
-
-import scala.runtime.tasty.Toolbox
+package scala.tasty
+package types
 
 trait RecursiveType extends Type
 
 object RecursiveType {
   type Data = Type
-  def unapply(arg: RecursiveType)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyRecursiveType(arg)
+  def unapply(arg: RecursiveType)(implicit ctx: Context): Option[Data] = ctx.toolbox.unapplyRecursiveType(arg)
 }

@@ -1,11 +1,11 @@
 
 import dotty.tools.dotc.quoted.Toolbox._
-import dotty.tools.dotc.tasty.Toolbox._
 
 import scala.quoted._
-
-import scala.tasty.util.TreeTraverser
+import scala.tasty.util.{TastyPrinter, TreeTraverser}
+import scala.tasty.names.Name
 import scala.tasty.trees._
+import scala.tasty.Context
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -28,15 +28,15 @@ object Test {
     }
 
     val traverser = new TreeTraverser {
-      override def traverse(tree: Tree): Unit = {
+      override def traverse(tree: Tree)(implicit ctx: Context): Unit = {
         tree match {
-          case tree @ DefDef(name, _, _, _, _, _) =>
-            println(name)
-            println(tree.owner)
+          case tree @ DefDef(name: Name, _, _, _, _, _) =>
+            println(TastyPrinter.stringOf(name))
+            println(TastyPrinter.stringOf(tree.owner))
             println()
-          case tree @ ValDef(name, _, _, _) =>
-            println(name)
-            println(tree.owner)
+          case tree @ ValDef(name: Name, _, _, _) =>
+            println(TastyPrinter.stringOf(name))
+            println(TastyPrinter.stringOf(tree.owner))
             println()
           case _ =>
         }
@@ -44,7 +44,8 @@ object Test {
       }
     }
 
-    traverser.traverse(q.toTasty)
+    val (tree, ctx) = q.toTasty
+    traverser.traverse(tree)(ctx)
 
   }
 }

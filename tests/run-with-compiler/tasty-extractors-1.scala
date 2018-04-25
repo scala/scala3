@@ -1,15 +1,15 @@
 
 import scala.quoted._
-
 import dotty.tools.dotc.quoted.Toolbox._
-import dotty.tools.dotc.tasty.Toolbox._
+
+import scala.tasty.util.TastyPrinter
 
 object Test {
   def main(args: Array[String]): Unit = {
     for (q <- quotes) {
-      val tasty = q.toTasty
-      println(tasty)
-      println(tasty.tpe)
+      val (tasty, ctx) = q.toTasty
+      println(TastyPrinter.stringOf(tasty)(ctx))
+      println(TastyPrinter.stringOf(tasty.tpe)(ctx))
       println()
     }
   }

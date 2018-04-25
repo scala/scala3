@@ -1,17 +1,17 @@
 package scala.tasty.util
 
-import scala.runtime.tasty.Toolbox
-
 import scala.tasty.trees._
+import scala.tasty.Context
 
-abstract class TreeAccumulator[X](implicit toolbox: Toolbox) {
+abstract class TreeAccumulator[X] {
 
   // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
-  def apply(x: X, tree: Tree): X
+  def apply(x: X, tree: Tree)(implicit ctx: Context): X
 
-  def apply(x: X, trees: Traversable[Tree]): X = (x /: trees)(apply)
+  def apply(x: X, trees: Traversable[Tree])(implicit ctx: Context): X = (x /: trees)(apply)
 
-  def foldOver(x: X, tree: Tree): X = {
+  def foldOver(x: X, tree: Tree)(implicit ctx: Context): X = {
+    def localCtx(definition: Definition): Context = definition.localContext
     tree match {
       case Ident(name) =>
         x
@@ -84,18 +84,22 @@ abstract class TreeAccumulator[X](implicit toolbox: Toolbox) {
         this(x, patterns)
       case TypeTest(tpt) =>
         this(x, tpt)
-      case ValDef(_, tpt, rhs, _) =>
+      case vdef @ ValDef(_, tpt, rhs, _) =>
+        implicit val ctx = localCtx(vdef)
         this(this(x, tpt), rhs)
-      case DefDef(_, tparams, vparamss, tpt, rhs, _) =>
+      case ddef @ DefDef(_, tparams, vparamss, tpt, rhs, _) =>
+        implicit val ctx = localCtx(ddef)
         this(this((this(x, tparams) /: vparamss)(apply), tpt), rhs)
-      case TypeDef(name, rhs, _) =>
+      case tdef @ TypeDef(name, rhs, _) =>
+        implicit val ctx = localCtx(tdef)
         this(x, rhs)
-      case ClassDef(_, constr, parents, self, body, _) =>
+      case cdef @ ClassDef(_, constr, parents, self, body, _) =>
+        implicit val ctx = localCtx(cdef)
         this(this(this(this(x, constr), parents), self), body)
       case Import(expr, selectors) =>
         this(x, expr)
-      case PackageClause(pid, stats) =>
-        this(this(x, pid), stats)
+      case clause @ PackageClause(pid, stats) =>
+        this(this(x, pid), stats)(localCtx(clause.definition))
       case _ =>
         x
     }

@@ -10,19 +10,14 @@ object TypeLambda {
 
   // TODO make sure all extractors are tested
 
-  def apply(tpe: Types.TypeLambda)(implicit ctx: Context): types.TypeLambda = new Impl(tpe)
+  def apply(tpe: Types.TypeLambda): types.TypeLambda = new Impl(tpe)
 
-  def unapplyTypeLambda(arg: Impl): Option[types.TypeLambda.Data] = {
-    implicit val ctx: Context = arg.ctx
+  def unapplyTypeLambda(arg: Impl)(implicit ctx: Context): Option[types.TypeLambda.Data] = {
     val meth = arg.meth
     Some((meth.paramNames.map(TypeName(_)), meth.paramInfos.map(TypeBounds(_)), Type(meth.resType)))
   }
 
-  private[tasty] class Impl(val meth: Types.TypeLambda)(implicit val ctx: Context) extends types.TypeLambda {
-    override def toString: String = {
-      import Toolbox.extractor
-      val types.TypeLambda(paramNames, paramTypes, resType) = this
-      s"TypeLambda($paramNames, $paramTypes, $resType)"
-    }
+  private[tasty] class Impl(val meth: Types.TypeLambda) extends types.TypeLambda {
+    override def toString: String = "TypeLambda"
   }
 }

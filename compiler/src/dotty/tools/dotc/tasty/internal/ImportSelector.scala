@@ -9,38 +9,27 @@ import scala.tasty.trees
 
 object ImportSelector {
 
-  def apply(tree: untpd.Tree)(implicit ctx: Context): trees.ImportSelector = new Impl(tree)
+  def apply(tree: untpd.Tree): trees.ImportSelector = new Impl(tree)
 
-  def unapplySimpleSelector(arg: Impl): Option[trees.SimpleSelector.Data] = arg.tree match {
-    case id@Trees.Ident(_) =>
-      implicit val ctx: Context = arg.ctx
-      Some(Id(id))
+  def unapplySimpleSelector(arg: Impl)(implicit ctx: Context): Option[trees.SimpleSelector.Data] = arg.tree match {
+    case id@Trees.Ident(_) => Some(Id(id))
     case _ => None
   }
 
-  def unapplyRenameSelector(arg: Impl): Option[trees.RenameSelector.Data] = arg.tree match {
+  def unapplyRenameSelector(arg: Impl)(implicit ctx: Context): Option[trees.RenameSelector.Data] = arg.tree match {
     case Trees.Thicket((id1@Trees.Ident(_)) :: (id2@Trees.Ident(_)) :: Nil) if id2.name != nme.WILDCARD =>
-      implicit val ctx: Context = arg.ctx
       Some(Id(id1), Id(id2))
     case _ => None
   }
 
-  def unapplyOmitSelector(arg: Impl): Option[trees.OmitSelector.Data] = arg.tree match {
+  def unapplyOmitSelector(arg: Impl)(implicit ctx: Context): Option[trees.OmitSelector.Data] = arg.tree match {
     case Trees.Thicket((id@Trees.Ident(_)) :: Trees.Ident(nme.WILDCARD) :: Nil) =>
-      implicit val ctx: Context = arg.ctx
       Some(Id(id))
     case _ => None
   }
 
-  private[tasty] class Impl(val tree: untpd.Tree)(implicit val ctx: Context) extends trees.ImportSelector {
-    override def toString: String = {
-      import Toolbox.extractor
-      this match {
-        case trees.SimpleSelector(id) => s"SimpleSelector($id)"
-        case trees.RenameSelector(id1, id2) => s"RenameSelector($id1, $id2)"
-        case trees.OmitSelector(id) => s"OmitSelector($id)"
-      }
-    }
+  private[tasty] class Impl(val tree: untpd.Tree) extends trees.ImportSelector {
+    override def toString: String = "ImportSelector"
   }
 
 }

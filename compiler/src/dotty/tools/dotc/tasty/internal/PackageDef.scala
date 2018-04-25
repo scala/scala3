@@ -11,24 +11,26 @@ object PackageDef {
 
   // TODO make sure all extractors are tested
 
-  def apply(sym: Symbol)(implicit ctx: Context): trees.PackageDef = new Impl(sym)
+  def apply(sym: Symbol): trees.PackageDef = new Impl(sym)
 
-  def unapplyPackageDef(arg: Impl): Option[trees.PackageDef.Data] = {
-    implicit val ctx: Context = arg.ctx
-    val localContext = ctx.withOwner(arg.sym)
+  def unapplyPackageDef(arg: Impl)(implicit ctx: Context): Option[trees.PackageDef.Data] = {
     Some(Name(arg.sym.name), Nil) // FIXME
   }
 
-  private[tasty] class Impl(val sym: Symbol)(implicit val ctx: Context) extends trees.PackageDef {
+  private[tasty] class Impl(val sym: Symbol) extends trees.PackageDef {
 
-    override def pos: tasty.Position = ??? // FIXME: A packageDef should not have a position, maybe Definition should not have positions
+    override def pos(implicit ctx: tasty.Context): tasty.Position = ??? // FIXME: A packageDef should not have a position, maybe Definition should not have positions
 
-    override def owner: trees.Definition = Definition(sym.owner)
-
-    override def toString: String = {
-      import Toolbox.extractor
-      val trees.PackageDef(name, members) = this
-      s"PackageDef($name, $members)"
+    def owner(implicit tctx: tasty.Context): trees.Definition = {
+      implicit val ctx = tctx.asInstanceOf[TastyContext].ctx
+      Definition(sym.owner)
     }
+
+    def localContext(implicit tctx: tasty.Context): tasty.Context = {
+      implicit val ctx = tctx.asInstanceOf[TastyContext].ctx
+      new TastyContext(ctx.withOwner(sym))
+    }
+
+    override def toString: String = "PackageDef"
   }
 }

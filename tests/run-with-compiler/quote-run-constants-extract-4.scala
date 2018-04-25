@@ -1,7 +1,6 @@
 import scala.quoted._
 
 import dotty.tools.dotc.quoted.Toolbox._
-import dotty.tools.dotc.tasty.Toolbox._
 
 object Test {
 

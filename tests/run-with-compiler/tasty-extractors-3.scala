@@ -1,11 +1,10 @@
 
 import dotty.tools.dotc.quoted.Toolbox._
-import dotty.tools.dotc.tasty.Toolbox._
 
 import scala.quoted._
-
-import scala.tasty.util.TreeTraverser
+import scala.tasty.util.{TastyPrinter, TreeTraverser}
 import scala.tasty.trees._
+import scala.tasty.Context
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -19,13 +18,13 @@ object Test {
     }
 
     val traverser = new TreeTraverser {
-      override def traverse(tree: Tree): Unit = {
+      override def traverse(tree: Tree)(implicit ctx: Context): Unit = {
         tree match {
           case tree: TypeTree =>
-            println(tree.tpe)
+            println(TastyPrinter.stringOf(tree.tpe))
             println()
           case tree: TypeBoundsTree =>
-            println(tree.tpe)
+            println(TastyPrinter.stringOf(tree.tpe))
             println()
           case _ =>
         }
@@ -33,7 +32,8 @@ object Test {
       }
     }
 
-    traverser.traverse(q.toTasty)
+    val (tree, ctx) = q.toTasty
+    traverser.traverse(tree)(ctx)
 
   }
 }

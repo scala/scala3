@@ -53,21 +53,6 @@ object Constant {
 
     def value: Any = const.value
 
-    override def toString: String = {
-      import Toolbox.extractor
-      this match {
-        case constants.Unit() => "Unit()"
-        case constants.Null() => "Null()"
-        case constants.Boolean(value) => s"Boolean($value)"
-        case constants.Byte(value) => s"Byte($value)"
-        case constants.Short(value) => s"Short($value)"
-        case constants.Char(value) => s"Char('$value')"
-        case constants.Int(value) => s"Int($value)"
-        case constants.Long(value) => s"Long($value)"
-        case constants.Float(value) => s"Float($value)"
-        case constants.Double(value) => s"Double($value)"
-        case constants.String(value) => s"""String("$value")"""
-      }
-    }
+    override def toString: String = "Constant"
   }
 }

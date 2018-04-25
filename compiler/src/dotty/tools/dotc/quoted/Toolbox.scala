@@ -2,8 +2,10 @@ package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.printing.RefinedPrinter
 import dotty.tools.dotc.tasty.internal
+import dotty.tools.dotc.tasty.internal.TastyContext
 
 import scala.quoted.{Expr, Type}
 import scala.quoted.Exprs.{LiftedExpr, TreeExpr}
@@ -44,14 +46,20 @@ object Toolbox {
       case _ => new QuoteDriver().show(expr, showSettings)
     }
 
-    def toTasty(expr: Expr[T]): trees.Term = expr match {
-      case expr: TreeExpr => expr.term
-      case _ => new QuoteDriver().withTree(expr, (tree, ctx) => internal.Term(tree)(ctx), Settings.run())
+    def toTasty(expr: Expr[T]): (trees.Term, scala.tasty.Context) = {
+      def box(tree: Tree, ctx: Context) = (internal.Term(tree),  new internal.TastyContext(ctx))
+      expr match {
+        case expr: TreeExpr[Tree, Context] @unchecked => box(expr.tree, expr.ctx)
+        case _ => new QuoteDriver().withTree(expr, (tree, ctx) => box(tree, ctx), Settings.run())
+      }
     }
 
-    def toTasty(tpe: Type[T]): trees.TypeTree = tpe match {
-      case expr: TreeType => expr.tpe
-      case _ => new QuoteDriver().withTypeTree(tpe, (tpt, ctx) => internal.TypeTree(tpt)(ctx), Settings.run())
+    def toTasty(tpe: Type[T]): (trees.TypeTree, scala.tasty.Context) = {
+      def box(tree: TypTree, ctx: Context) = (internal.TypeTree(tree), new internal.TastyContext(ctx))
+      tpe match {
+        case typeTree: TreeType[TypeTree, Context] @unchecked => box(typeTree.typeTree, typeTree.ctx)
+        case _ => new QuoteDriver().withTypeTree(tpe, (tpt, ctx) => box(tpt, ctx), Settings.run())
+      }
     }
   }
 

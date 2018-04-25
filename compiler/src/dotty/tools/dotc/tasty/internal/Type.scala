@@ -6,24 +6,22 @@ import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.core.Names
 
-import scala.tasty.trees
 import scala.tasty.types
 
 object Type {
 
-  def apply(arg: Types.Type)(implicit ctx: Context): types.Type = arg match {
+  def apply(arg: Types.Type): types.Type = arg match {
     case arg: Types.LambdaType => LambdaType(arg)
     case _ => new Impl(arg)
   }
 
-  def unapplyConstantType(arg: Impl): Option[types.ConstantType.Data] = arg.tpe match {
+  def unapplyConstantType(arg: Impl)(implicit ctx: Context): Option[types.ConstantType.Data] = arg.tpe match {
     case Types.ConstantType(value) => Some(Constant(value))
     case _ => None
   }
 
-  def unapplySymRef(arg: Impl): Option[types.SymRef.Data] = arg.tpe match {
+  def unapplySymRef(arg: Impl)(implicit ctx: Context): Option[types.SymRef.Data] = arg.tpe match {
     case tp: Types.NamedType =>
-      implicit val ctx: Context = arg.ctx
       tp.designator match {
         case sym: Symbol => Some(Definition(sym), TypeOrNoPrefix(tp.prefix))
         case _ => None
@@ -31,9 +29,8 @@ object Type {
     case _ => None
   }
 
-  def unapplyNameRef(arg: Impl): Option[types.NameRef.Data] = arg.tpe match {
+  def unapplyNameRef(arg: Impl)(implicit ctx: Context): Option[types.NameRef.Data] = arg.tpe match {
     case tp: Types.NamedType =>
-      implicit val ctx: Context = arg.ctx
       tp.designator match {
         case name: Names.Name => Some(Name(name), TypeOrNoPrefix(tp.prefix))
         case _ => None
@@ -41,106 +38,63 @@ object Type {
     case _ => None
   }
 
-  def unapplySuperType(arg: Impl): Option[types.SuperType.Data] = arg.tpe match {
-    case Types.SuperType(thistpe, supertpe) =>
-      implicit val ctx: Context = arg.ctx
-      Some(Type(thistpe), Type(supertpe))
+  def unapplySuperType(arg: Impl)(implicit ctx: Context): Option[types.SuperType.Data] = arg.tpe match {
+    case Types.SuperType(thistpe, supertpe) => Some(Type(thistpe), Type(supertpe))
     case _ => None
   }
 
-  def unapplyRefinement(arg: Impl): Option[types.Refinement.Data] = arg.tpe match {
+  def unapplyRefinement(arg: Impl)(implicit ctx: Context): Option[types.Refinement.Data] = arg.tpe match {
     case Types.RefinedType(parent, name, info) =>
-      implicit val ctx: Context = arg.ctx
       Some((Type(parent), if (name.isTermName) TermName(name.asTermName) else TypeName(name.asTypeName), MaybeType(info)))
     case _ => None
   }
 
-  def unapplyAppliedType(arg: Impl): Option[types.AppliedType.Data] = arg.tpe match {
+  def unapplyAppliedType(arg: Impl)(implicit ctx: Context): Option[types.AppliedType.Data] = arg.tpe match {
     case Types.AppliedType(tycon, args) =>
-      implicit val ctx: Context = arg.ctx
       Some((Type(tycon), args.map { case arg: Types.TypeBounds => TypeBounds(arg); case arg => Type(arg) }))
     case _ => None
   }
 
-  def unapplyAnnotatedType(arg: Impl): Option[types.AnnotatedType.Data] = arg.tpe match {
-    case Types.AnnotatedType(underlying, annot) =>
-      implicit val ctx: Context = arg.ctx
-      Some((Type(underlying), Term(annot.tree)))
+  def unapplyAnnotatedType(arg: Impl)(implicit ctx: Context): Option[types.AnnotatedType.Data] = arg.tpe match {
+    case Types.AnnotatedType(underlying, annot) => Some((Type(underlying), Term(annot.tree)))
     case _ => None
   }
 
-  def unapplyAndType(arg: Impl): Option[types.AndType.Data] = arg.tpe match {
-    case Types.AndType(left, right) =>
-      implicit val ctx: Context = arg.ctx
-      Some(Type(left), Type(right))
+  def unapplyAndType(arg: Impl)(implicit ctx: Context): Option[types.AndType.Data] = arg.tpe match {
+    case Types.AndType(left, right) => Some(Type(left), Type(right))
     case _ => None
   }
 
-  def unapplyOrType(arg: Impl): Option[types.OrType.Data] = arg.tpe match {
-    case Types.OrType(left, right) =>
-      implicit val ctx: Context = arg.ctx
-      Some(Type(left), Type(right))
+  def unapplyOrType(arg: Impl)(implicit ctx: Context): Option[types.OrType.Data] = arg.tpe match {
+    case Types.OrType(left, right) => Some(Type(left), Type(right))
     case _ => None
   }
 
-  def unapplyByNameType(arg: Impl): Option[types.ByNameType.Data] = arg.tpe match {
-    case Types.ExprType(resType) =>
-      implicit val ctx: Context = arg.ctx
-      Some(Type(resType))
+  def unapplyByNameType(arg: Impl)(implicit ctx: Context): Option[types.ByNameType.Data] = arg.tpe match {
+    case Types.ExprType(resType) => Some(Type(resType))
     case _ => None
   }
 
-  def unapplyParamRef(arg: Impl): Option[types.ParamRef.Data] = arg.tpe match {
-    case Types.TypeParamRef(binder, idx) =>
-      implicit val ctx: Context = arg.ctx
-      Some(TypeLambda(binder), idx)
+  def unapplyParamRef(arg: Impl)(implicit ctx: Context): Option[types.ParamRef.Data] = arg.tpe match {
+    case Types.TypeParamRef(binder, idx) => Some(TypeLambda(binder), idx)
     case _ => None
   }
 
-  def unapplyThisType(arg: Impl): Option[types.ThisType.Data] = arg.tpe match {
-    case Types.ThisType(tp) =>
-      implicit val ctx: Context = arg.ctx
-      Some(Type(tp))
+  def unapplyThisType(arg: Impl)(implicit ctx: Context): Option[types.ThisType.Data] = arg.tpe match {
+    case Types.ThisType(tp) => Some(Type(tp))
     case _ => None
   }
 
-  def unapplyRecursiveThis(arg: Impl): Option[types.RecursiveThis.Data] = arg.tpe match {
-    case Types.RecThis(binder) =>
-      implicit val ctx: Context = arg.ctx
-      Some(RecursiveType(binder))
+  def unapplyRecursiveThis(arg: Impl)(implicit ctx: Context): Option[types.RecursiveThis.Data] = arg.tpe match {
+    case Types.RecThis(binder) => Some(RecursiveType(binder))
     case _ => None
   }
 
-  private[tasty] class Impl(val tpe: Types.Type)(implicit val ctx: Context) extends types.Type {
+  private[tasty] class Impl(val tpe: Types.Type) extends types.Type {
 
     assert(!tpe.isInstanceOf[Types.TypeBounds])
 
-
-    override def toString: String = {
-      import Toolbox.extractor
-      def name(sym: trees.Definition): String = sym match {
-        case trees.ValDef(name, _, _, _) => name.toString
-        case trees.DefDef(name, _, _, _, _, _) => name.toString
-        case trees.TypeDef(name, _, _) => name.toString
-        case trees.ClassDef(name, _, _, _, _, _) => name.toString
-        case trees.PackageDef(name, _) => name.toString
-        case _ => "NoDefinition"
-      }
-      this match {
-        case types.ConstantType(value) => s"ConstantType($value)"
-        case types.SymRef(sym, qual) => s"SymRef(<${name(sym)}>, $qual)" // Do not print the full definition to avoid cycles
-        case types.NameRef(name, qual) => s"NameRef($name, $qual)"
-        case types.Refinement(parent, name, info) => s"Refinement($parent, $name, $info)"
-        case types.AppliedType(tycon, args) => s"AppliedType($tycon, $args)"
-        case types.AnnotatedType(underlying, annot) => s"AnnotatedType($underlying, $annot)"
-        case types.AndType(left, right) => s"AndType($left, $right)"
-        case types.OrType(left, right) => s"OrType($left, $right)"
-        case types.ByNameType(underlying) => s"ByNameType($underlying)"
-        case types.ParamRef(binder, idx) => s"ParamRef($binder, $idx)"
-        case types.ThisType(tp) => s"ThisType($tp)"
-        case types.RecursiveThis(binder) => s"RecursiveThis($binder)"
-      }
-    }
+    override def toString: String = "Type"
   }
 
 }

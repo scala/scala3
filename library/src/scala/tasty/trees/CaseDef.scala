@@ -1,10 +1,9 @@
-package scala.tasty.trees
-
-import scala.runtime.tasty.Toolbox
+package scala.tasty
+package trees
 
 trait CaseDef extends Tree
 
 object CaseDef {
   type Data = (Pattern, Option[Term], Term)
-  def unapply(arg: CaseDef)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyCaseDef(arg)
+  def unapply(arg: CaseDef)(implicit ctx: Context): Option[Data] = ctx.toolbox.unapplyCaseDef(arg)
 }

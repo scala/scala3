@@ -1,21 +1,19 @@
 package scala.tasty
 package trees
 
-import scala.runtime.tasty.Toolbox
-
 trait ImportSelector
 
 object SimpleSelector {
   type Data = Id
-  def unapply(arg: ImportSelector)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplySimpleSelector(arg)
+  def unapply(arg: ImportSelector)(implicit ctx: Context): Option[Data] = ctx.toolbox.unapplySimpleSelector(arg)
 }
 
 object RenameSelector {
   type Data = (Id, Id)
-  def unapply(arg: ImportSelector)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyRenameSelector(arg)
+  def unapply(arg: ImportSelector)(implicit ctx: Context): Option[Data] = ctx.toolbox.unapplyRenameSelector(arg)
 }
 
 object OmitSelector {
   type Data = Id
-  def unapply(arg: ImportSelector)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyOmitSelector(arg)
+  def unapply(arg: ImportSelector)(implicit ctx: Context): Option[Data] = ctx.toolbox.unapplyOmitSelector(arg)
 }

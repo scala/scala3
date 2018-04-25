@@ -19,11 +19,7 @@ object SignedName {
   }
 
   private[tasty] class Impl(val name: Names.TermName) extends names.SignedName {
-    override def toString: String = {
-      import Toolbox.extractor
-      val names.SignedName(underlying, resSig, paramsSigs) = this
-      s"SignedName($underlying, $resSig, $paramsSigs)"
-    }
+    override def toString: String = "SignedName"
   }
 
 }

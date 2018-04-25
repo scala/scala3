@@ -1,5 +1,5 @@
 package scala.tasty
 
 trait Positioned {
-  def pos: Position
+  def pos(implicit ctx: Context): Position
 }

@@ -11,7 +11,7 @@ import scala.tasty.types
 
 object ClassDef {
 
-  def apply(tree: tpd.TypeDef)(implicit ctx: Context): trees.ClassDef = new Impl(tree)
+  def apply(tree: tpd.TypeDef): trees.ClassDef = new Impl(tree)
 
   def apply(sym: ClassSymbol)(implicit ctx: Context): trees.ClassDef = {
     def toTree(sym: ClassSymbol): tpd.TypeDef = {
@@ -28,8 +28,7 @@ object ClassDef {
     new Impl(toTree(sym))
   }
 
-  def unapplyClassDef(arg: Impl): Option[trees.ClassDef.Data] = {
-    implicit val ctx: Context = arg.ctx
+  def unapplyClassDef(arg: Impl)(implicit ctx: Context): Option[trees.ClassDef.Data] = {
     val Trees.TypeDef(name, impl@Trees.Template(constr, parents, self, _)) = arg.tree
     val className = TypeName(name)
     val constructor = DefDef(constr)
@@ -40,17 +39,11 @@ object ClassDef {
     Some((className, constructor, classParents, selfVal, body, mods))
   }
 
-  private[tasty] class Impl(val tree: tpd.TypeDef)(implicit val ctx: Context) extends trees.ClassDef with Positioned {
+  private[tasty] class Impl(val tree: tpd.TypeDef) extends trees.ClassDef with Definition with Positioned {
 
-    def tpe: types.Type = Type(tree.tpe)(ctx)
+    def tpe: types.Type = Type(tree.tpe)
 
-    def owner: trees.Definition = Definition(tree.symbol.owner)
-
-    override def toString: String = {
-      import Toolbox.extractor
-      val trees.ClassDef(name, constructor, parents, self, body, mods) = this
-      s"ClassDef($name, $constructor, $parents, $self, $body, $mods)"
-    }
+    override def toString: String = "ClassDef"
   }
 
 }

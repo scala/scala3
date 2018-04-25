@@ -10,19 +10,14 @@ object PolyType {
 
   // TODO make sure all extractors are tested
 
-  def apply(tpe: Types.PolyType)(implicit ctx: Context): types.PolyType = new Impl(tpe)
+  def apply(tpe: Types.PolyType): types.PolyType = new Impl(tpe)
 
-  def unapplyPolyType(arg: Impl): Option[types.PolyType.Data] = {
-    implicit val ctx: Context = arg.ctx
+  def unapplyPolyType(arg: Impl)(implicit ctx: Context): Option[types.PolyType.Data] = {
     val meth = arg.meth
     Some((meth.paramNames.map(TypeName(_)), meth.paramInfos.map(TypeBounds(_)), Type(meth.resType)))
   }
 
-  private[tasty] class Impl(val meth: Types.PolyType)(implicit val ctx: Context) extends types.PolyType {
-    override def toString: String = {
-      import Toolbox.extractor
-      val types.PolyType(paramNames, paramTypes, resType) = this
-      s"PolyType($paramNames, $paramTypes, $resType)"
-    }
+  private[tasty] class Impl(val meth: Types.PolyType) extends types.PolyType {
+    override def toString: String = "PolyType"
   }
 }

@@ -14,11 +14,7 @@ object TypeName {
   }
 
   private[tasty] class Impl(val name: Names.TypeName) extends names.TypeName {
-    override def toString: String = {
-      import Toolbox.extractor
-      val names.TypeName(underlying) = this
-      s"TypeName($underlying)"
-    }
+    override def toString: String = "TypeName"
   }
 
 }

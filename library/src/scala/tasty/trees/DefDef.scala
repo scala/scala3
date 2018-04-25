@@ -1,12 +1,11 @@
-package scala.tasty.trees
+package scala.tasty
+package trees
 
-import scala.runtime.tasty.Toolbox
 import scala.tasty.modifiers.Modifier
-import scala.tasty.names
 
 trait DefDef extends Definition
 
 object DefDef {
   type Data = (names.TermName, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term], List[Modifier])
-  def unapply(arg: DefDef)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyDefDef(arg)
+  def unapply(arg: DefDef)(implicit ctx: Context): Option[Data] = ctx.toolbox.unapplyDefDef(arg)
 }

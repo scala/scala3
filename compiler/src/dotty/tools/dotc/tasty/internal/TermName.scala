@@ -57,19 +57,7 @@ object TermName {
   }
 
   private[tasty] class Impl(val name: Names.TermName) extends names.TermName {
-    override def toString: String = {
-      import Toolbox.extractor
-      this match {
-        case names.Simple(name) => s"Simple($name)"
-        case names.Qualified(qual, name) => s"Qualified($qual, $name)"
-        case names.DefaultGetter(underlying, name) => s"DefaultGetter($underlying, $name)"
-        case names.Variant(underlying, variance) => s"Variant($underlying, $variance)"
-        case names.SuperAccessor(underlying) => s"SuperAccessor($underlying)"
-        case names.ProtectedAccessor(underlying) => s"ProtectedAccessor($underlying)"
-        case names.ProtectedSetter(underlying) => s"ProtectedSetter($underlying)"
-        case names.ObjectClass(underlying) => s"ObjectClass($underlying)"
-      }
-    }
+    override def toString: String = "TermName"
   }
 
 }

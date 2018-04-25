@@ -10,13 +10,12 @@ import scala.tasty.types
 
 object ValDef {
 
-  def apply(tree: tpd.ValDef)(implicit ctx: Context): trees.ValDef = new Impl(tree)
+  def apply(tree: tpd.ValDef): trees.ValDef = new Impl(tree)
 
   def apply(sym: TermSymbol)(implicit ctx: Context): trees.ValDef = new Impl(tpd.ValDef(sym))
 
-  def unapplyValDef(arg: Impl): Option[trees.ValDef.Data] = {
+  def unapplyValDef(arg: Impl)(implicit ctx: Context): Option[trees.ValDef.Data] = {
     val vdef = arg.tree
-    implicit val ctx = localContext(vdef)(arg.ctx)
     val rhs = if (vdef.rhs.isEmpty) None else Some(Term(vdef.rhs))
     Some((TermName(vdef.name), TypeTree(vdef.tpt), rhs, Modifiers(vdef)))
   }
@@ -24,18 +23,11 @@ object ValDef {
   private def localContext(tree: tpd.Tree)(implicit ctx: Context): Context =
     if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
 
-  private[tasty] class Impl(val tree: tpd.ValDef)(implicit val ctx: Context) extends trees.ValDef with Positioned {
+  private[tasty] class Impl(val tree: tpd.ValDef) extends trees.ValDef with Definition with Positioned {
 
-    def tpe: types.Type = Type(tree.tpe)(ctx)
+    def tpe: types.Type = Type(tree.tpe)
 
-    def owner: trees.Definition = Definition(tree.symbol.owner)
-
-    override def toString: String = {
-      import Toolbox.extractor
-      val trees.ValDef(name, tpt, rhs, mods) = this
-      s"ValDef($name, $tpt, $rhs, $mods)"
-    }
-
+    override def toString: String = "ValDef"
   }
 
 }

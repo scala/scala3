@@ -1,18 +1,16 @@
 
 import dotty.tools.dotc.quoted.Toolbox._
-import dotty.tools.dotc.tasty.Toolbox._
 
 import scala.quoted._
-
-import scala.tasty.util.TreeTraverser
+import scala.tasty.util.{TastyPrinter, TreeTraverser}
 import scala.tasty.trees._
 
 object Test {
   def main(args: Array[String]): Unit = {
     def test(tpe: Type[_]) = {
-      val tasty = tpe.toTasty
-      println(tasty)
-      println(tasty.tpe)
+      val (tasty, ctx) = tpe.toTasty
+      println(TastyPrinter.stringOf(tasty)(ctx))
+      println(TastyPrinter.stringOf(tasty.tpe)(ctx))
       println()
 
     }

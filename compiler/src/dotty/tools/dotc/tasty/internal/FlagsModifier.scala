@@ -2,7 +2,6 @@ package dotty.tools.dotc.tasty
 package internal
 
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Flags._
 
@@ -12,10 +11,9 @@ object FlagsModifier {
 
   // TODO make sure all flags are tested
 
-  def apply(sym: Symbol)(implicit ctx: Context): modifiers.Modifier = new Impl(sym)
+  def apply(sym: Symbol): modifiers.Flags = new Impl(sym)
 
-  def unapplyFlags(arg: Impl): Option[modifiers.Flags.Data] = {
-    implicit val ctx: Context = arg.ctx
+  def unapplyFlags(arg: Impl)(implicit ctx: Context): Option[modifiers.Flags.Data] = {
     val sym = arg.sym
     Some(new modifiers.FlagSet {
       override def isProtected: Boolean = sym.is(Protected)
@@ -78,13 +76,7 @@ object FlagsModifier {
     })
   }
 
-  private[tasty] class Impl(val sym: Symbol)(implicit val ctx: Context) extends modifiers.Modifier {
-
-    override def toString: String = {
-      import Toolbox.extractor
-      this match {
-        case modifiers.Flags(flags) => s"Flags($flags)"
-      }
-    }
+  private[tasty] class Impl(val sym: Symbol) extends modifiers.Flags {
+    override def toString: String = "Flags"
   }
 }

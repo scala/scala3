@@ -5,7 +5,26 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Flags._
 
+import scala.tasty
 import scala.tasty.trees
+
+trait Definition extends trees.Definition {
+
+  protected def tree: tpd.Tree
+
+  def owner(implicit tctx: scala.tasty.Context): trees.Definition = {
+    implicit val ctx = tctx.asInstanceOf[TastyContext].ctx
+    Definition(tree.symbol.owner)
+  }
+
+  def localContext(implicit tctx: tasty.Context): tasty.Context = {
+    implicit val ctx = tctx.asInstanceOf[TastyContext].ctx
+    new TastyContext(
+      if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol)
+      else ctx
+    )
+  }
+}
 
 object Definition {
 
@@ -26,9 +45,11 @@ object Definition {
   }
 
   private[tasty] object NoDefinition extends trees.Definition {
-    override def owner: trees.Definition = NoDefinition
+    def owner(implicit tctx: scala.tasty.Context): trees.Definition = NoDefinition
 
-    override def pos: scala.tasty.Position = ???
+    def localContext(implicit ctx: tasty.Context): tasty.Context = ctx
+
+    def pos(implicit ctx: scala.tasty.Context): scala.tasty.Position = ???
 
     override def toString: String = "NoDefinition"
   }

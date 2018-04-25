@@ -60,12 +60,11 @@ object Splicer {
           case (arg, tp) =>
             assert(!tp.hasAnnotation(defn.InlineParamAnnot))
             // Replace argument by its binding
-            val term = dotty.tools.dotc.tasty.internal.Term(bindMap.getOrElse(arg, arg))
-            new scala.quoted.Exprs.TreeExpr(term)
+            new scala.quoted.Exprs.TreeExpr(bindMap.getOrElse(arg, arg), ctx)
         }
         args1 ::: liftArgs(tp.resType, args.tail)
       case tp: PolyType =>
-        val args1 = args.head.map(tp => new scala.quoted.Types.TreeType(dotty.tools.dotc.tasty.internal.TypeTree(tp)))
+        val args1 = args.head.map(tp => new scala.quoted.Types.TreeType(tp, ctx))
         args1 ::: liftArgs(tp.resType, args.tail)
       case _ => Nil
     }

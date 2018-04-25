@@ -1141,8 +1141,8 @@ class TreeUnpickler(reader: TastyReader,
       val args = until(end)(readTerm())
       val splice = splices(idx)
       def wrap(arg: Tree) =
-        if (arg.isTerm) new TreeExpr(dotty.tools.dotc.tasty.internal.Term(arg))
-        else new TreeType(dotty.tools.dotc.tasty.internal.TypeTree(arg))
+        if (arg.isTerm) new TreeExpr(arg, ctx)
+        else new TreeType(arg, ctx)
       val reifiedArgs = args.map(wrap)
       if (isType) {
         val quotedType =

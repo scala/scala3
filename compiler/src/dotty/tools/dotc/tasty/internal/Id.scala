@@ -9,7 +9,7 @@ object Id {
   def apply(tree: untpd.Ident)(implicit ctx: Context): scala.tasty.Id =
     Impl(tree, new Position(tree.pos))
 
-  private case class Impl(tree: untpd.Ident, pos: scala.tasty.Position) extends scala.tasty.Id {
+  private case class Impl(tree: untpd.Ident, pos: scala.tasty.Position) extends scala.tasty.Id with Positioned {
 
     def name: String = tree.name.toString
 

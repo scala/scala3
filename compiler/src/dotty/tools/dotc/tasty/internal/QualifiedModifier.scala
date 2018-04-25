@@ -9,29 +9,20 @@ import scala.tasty.modifiers
 
 object QualifiedModifier {
 
-  def apply(tree: tpd.DefTree)(implicit ctx: Context): Option[modifiers.Modifier] =
+  def apply(tree: tpd.DefTree)(implicit ctx: Context): Option[modifiers.Qualified] =
     if (tree.symbol.privateWithin.exists) Some(new Impl(tree)) else None
 
-  def unapplyQualifiedPrivate(arg: Impl): Option[modifiers.QualifiedPrivate.Data] = {
-    implicit val ctx: Context = arg.ctx
+  def unapplyQualifiedPrivate(arg: Impl)(implicit ctx: Context): Option[modifiers.QualifiedPrivate.Data] = {
     if (arg.tree.symbol.is(Flags.Protected)) None
     else Some(Type(arg.tree.symbol.privateWithin.typeRef))
   }
 
-  def unapplyQualifiedProtected(arg: Impl): Option[modifiers.QualifiedProtected.Data] = {
-    implicit val ctx: Context = arg.ctx
+  def unapplyQualifiedProtected(arg: Impl)(implicit ctx: Context): Option[modifiers.QualifiedProtected.Data] = {
     if (arg.tree.symbol.is(Flags.Protected)) Some(Type(arg.tree.symbol.privateWithin.typeRef))
     else None
   }
 
-  private[tasty] class Impl(val tree: tpd.DefTree)(implicit val ctx: Context) extends modifiers.Modifier {
-
-    override def toString: String = {
-      import Toolbox.extractor
-      this match {
-        case modifiers.QualifiedPrivate(tpe) => s"QualifiedPrivate($tpe)"
-        case modifiers.QualifiedProtected(tpe) => s"QualifiedProtected($tpe)"
-      }
-    }
+  private[tasty] class Impl(val tree: tpd.DefTree) extends modifiers.Qualified {
+    override def toString: String = "Qualified"
   }
 }

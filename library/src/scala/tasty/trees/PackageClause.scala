@@ -1,10 +1,11 @@
-package scala.tasty.trees
+package scala.tasty
+package trees
 
-import scala.runtime.tasty.Toolbox
-
-trait PackageClause extends TopLevelStatement
+trait PackageClause extends TopLevelStatement {
+  def definition(implicit ctx: Context): Definition
+}
 
 object PackageClause {
   type Data = (Term, List[TopLevelStatement])
-  def unapply(arg: PackageClause)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyPackageClause(arg)
+  def unapply(arg: PackageClause)(implicit ctx: Context): Option[Data] = ctx.toolbox.unapplyPackageClause(arg)
 }
