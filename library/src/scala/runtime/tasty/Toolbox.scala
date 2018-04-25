@@ -1,91 +1,92 @@
 package scala.runtime.tasty
 
 import scala.annotation.implicitNotFound
-import scala.tasty._
+
 import scala.tasty.constants.Constant
-import scala.tasty.modifiers.Modifier
-import scala.tasty.trees
-import scala.tasty.trees.{ImportSelector, Tree}
-import scala.tasty.types.MaybeType
+import scala.tasty.modifiers._
+import scala.tasty.names._
+import scala.tasty.trees._
+import scala.tasty.types._
 
 @implicitNotFound("Could not find implicit tasty.Toolbox. Default toolbox can be imported with `import dotty.tools.dotc.tasty.Toolbox._`")
 trait Toolbox {
 
   // Statements
 
-  def unapplyPackageClause(arg: Tree): Option[trees.PackageClause.Data]
-  def unapplyImport(arg: Tree): Option[trees.Import.Data]
+  def unapplyPackageClause(arg: PackageClause): Option[PackageClause.Data]
+  def unapplyImport(arg: Import): Option[Import.Data]
 
   // Definitions
 
-  def unapplyValDef(arg: Tree): Option[trees.ValDef.Data]
-  def unapplyDefDef(arg: Tree): Option[trees.DefDef.Data]
-  def unapplyTypeDef(arg: Tree): Option[trees.TypeDef.Data]
-  def unapplyClassDef(arg: Tree): Option[trees.ClassDef.Data]
-  def unapplyPackageDef(arg: Tree): Option[trees.PackageDef.Data]
+  def unapplyValDef(arg: ValDef): Option[ValDef.Data]
+  def unapplyDefDef(arg: DefDef): Option[DefDef.Data]
+  def unapplyTypeDef(arg: TypeDef): Option[TypeDef.Data]
+  def unapplyClassDef(arg: ClassDef): Option[ClassDef.Data]
+  def unapplyPackageDef(arg: PackageDef): Option[PackageDef.Data]
 
   // Terms
 
-  def unapplyIdent(arg: Tree): Option[trees.Ident.Data]
-  def unapplySelect(arg: Tree): Option[trees.Select.Data]
-  def unapplyLiteral(arg: Tree): Option[trees.Literal.Data]
-  def unapplyThis(arg: Tree): Option[trees.This.Data]
-  def unapplyNew(arg: Tree): Option[trees.New.Data]
-  def unapplyNamedArg(arg: Tree): Option[trees.NamedArg.Data]
-  def unapplyApply(arg: Tree): Option[trees.Apply.Data]
-  def unapplyTypeApply(arg: Tree): Option[trees.TypeApply.Data]
-  def unapplySuper(arg: Tree): Option[trees.Super.Data]
-  def unapplyTyped(arg: Tree): Option[trees.Typed.Data]
-  def unapplyAssign(arg: Tree): Option[trees.Assign.Data]
-  def unapplyBlock(arg: Tree): Option[trees.Block.Data]
-  def unapplyInlined(arg: Tree): Option[trees.Inlined.Data]
-  def unapplyLambda(arg: Tree): Option[trees.Lambda.Data]
-  def unapplyIf(arg: Tree): Option[trees.If.Data]
-  def unapplyMatch(arg: Tree): Option[trees.Match.Data]
-  def unapplyTry(arg: Tree): Option[trees.Try.Data]
-  def unapplyReturn(arg: Tree): Option[trees.Return.Data]
-  def unapplyRepeated(arg: Tree): Option[trees.Repeated.Data]
-  def unapplySelectOuter(arg: Tree): Option[trees.SelectOuter.Data]
+  def unapplyIdent(arg: Term): Option[Ident.Data]
+  def unapplySelect(arg: Term): Option[Select.Data]
+  def unapplyLiteral(arg: Term): Option[Literal.Data]
+  def unapplyThis(arg: Term): Option[This.Data]
+  def unapplyNew(arg: Term): Option[New.Data]
+  def unapplyNamedArg(arg: Term): Option[NamedArg.Data]
+  def unapplyApply(arg: Term): Option[Apply.Data]
+  def unapplyTypeApply(arg: Term): Option[TypeApply.Data]
+  def unapplySuper(arg: Term): Option[Super.Data]
+  def unapplyTyped(arg: Term): Option[Typed.Data]
+  def unapplyAssign(arg: Term): Option[Assign.Data]
+  def unapplyBlock(arg: Term): Option[Block.Data]
+  def unapplyInlined(arg: Term): Option[Inlined.Data]
+  def unapplyLambda(arg: Term): Option[Lambda.Data]
+  def unapplyIf(arg: Term): Option[If.Data]
+  def unapplyMatch(arg: Term): Option[Match.Data]
+  def unapplyTry(arg: Term): Option[Try.Data]
+  def unapplyReturn(arg: Term): Option[Return.Data]
+  def unapplyRepeated(arg: Term): Option[Repeated.Data]
+  def unapplySelectOuter(arg: Term): Option[SelectOuter.Data]
 
   // Patterns
 
-  def unapplyCaseDef(arg: Tree): Option[trees.CaseDef.Data]
+  def unapplyCaseDef(arg: CaseDef): Option[CaseDef.Data]
 
-  def unapplyValue(arg: Tree): Option[trees.Value.Data]
-  def unapplyBind(arg: Tree): Option[trees.Bind.Data]
-  def unapplyUnapply(arg: Tree): Option[trees.Unapply.Data]
-  def unapplyAlternative(arg: Tree): Option[trees.Alternative.Data]
-  def unapplyTypeTest(arg: Tree): Option[trees.TypeTest.Data]
+  def unapplyValue(arg: Pattern): Option[Value.Data]
+  def unapplyBind(arg: Pattern): Option[Bind.Data]
+  def unapplyUnapply(arg: Pattern): Option[Unapply.Data]
+  def unapplyAlternative(arg: Pattern): Option[Alternative.Data]
+  def unapplyTypeTest(arg: Pattern): Option[TypeTest.Data]
 
   // Type trees
 
-  def unapplySynthetic(arg: Tree): Boolean
-  def unapplyTypeIdent(arg: Tree): Option[trees.TypeIdent.Data]
-  def unapplyTypeSelect(arg: Tree): Option[trees.TypeSelect.Data]
-  def unapplySingleton(arg: Tree): Option[trees.Singleton.Data]
-  def unapplyRefined(arg: Tree): Option[trees.Refined.Data]
-  def unapplyApplied(arg: Tree): Option[trees.Applied.Data]
-  def unapplyTypeBoundsTree(arg: Tree): Option[trees.TypeBoundsTree.Data]
-  def unapplyAnnotated(arg: Tree): Option[trees.Annotated.Data]
-  def unapplyAnd(arg: Tree): Option[trees.And.Data]
-  def unapplyOr(arg: Tree): Option[trees.Or.Data]
-  def unapplyByName(arg: Tree): Option[trees.ByName.Data]
+  def unapplySynthetic(arg: TypeTree): Boolean
+  def unapplyTypeIdent(arg: TypeTree): Option[TypeIdent.Data]
+  def unapplyTypeSelect(arg: TypeTree): Option[TypeSelect.Data]
+  def unapplySingleton(arg: TypeTree): Option[Singleton.Data]
+  def unapplyRefined(arg: TypeTree): Option[Refined.Data]
+  def unapplyApplied(arg: TypeTree): Option[Applied.Data]
+  def unapplyAnnotated(arg: TypeTree): Option[Annotated.Data]
+  def unapplyAnd(arg: TypeTree): Option[And.Data]
+  def unapplyOr(arg: TypeTree): Option[Or.Data]
+  def unapplyByName(arg: TypeTree): Option[ByName.Data]
+
+  def unapplyTypeBoundsTree(arg: TypeBoundsTree): Option[TypeBoundsTree.Data]
 
   // Names
 
-  def unapplySimple(arg: names.Name): Option[names.Simple.Data]
-  def unapplyQualified(arg: names.Name): Option[names.Qualified.Data]
+  def unapplySimple(arg: TermName): Option[Simple.Data]
+  def unapplyQualified(arg: TermName): Option[Qualified.Data]
 
-  def unapplyDefaultGetter(arg: names.Name): Option[names.DefaultGetter.Data]
-  def unapplyVariant(arg: names.Name): Option[names.Variant.Data]
-  def unapplySuperAccessor(arg: names.Name): Option[names.SuperAccessor.Data]
-  def unapplyProtectedAccessor(arg: names.Name): Option[names.ProtectedAccessor.Data]
-  def unapplyProtectedSetter(arg: names.Name): Option[names.ProtectedSetter.Data]
-  def unapplyObjectClass(arg: names.Name): Option[names.ObjectClass.Data]
+  def unapplyDefaultGetter(arg: TermName): Option[DefaultGetter.Data]
+  def unapplyVariant(arg: TermName): Option[Variant.Data]
+  def unapplySuperAccessor(arg: TermName): Option[SuperAccessor.Data]
+  def unapplyProtectedAccessor(arg: TermName): Option[ProtectedAccessor.Data]
+  def unapplyProtectedSetter(arg: TermName): Option[ProtectedSetter.Data]
+  def unapplyObjectClass(arg: TermName): Option[ObjectClass.Data]
 
-  def unapplySignedName(arg: names.PossiblySignedName): Option[names.SignedName.Data]
+  def unapplySignedName(arg: SignedName): Option[SignedName.Data]
 
-  def unapplyTypeName(arg: names.Name): Option[names.TypeName.Data]
+  def unapplyTypeName(arg: TypeName): Option[TypeName.Data]
 
   // Constants
 
@@ -103,40 +104,39 @@ trait Toolbox {
 
   // Types
 
-  def unapplyConstantType(arg: MaybeType): Option[types.ConstantType.Data]
-  def unapplySymRef(arg: MaybeType): Option[types.SymRef.Data]
-  def unapplyNameRef(arg: MaybeType): Option[types.NameRef.Data]
-  def unapplySuperType(arg: MaybeType): Option[types.SuperType.Data]
-  def unapplyRefinement(arg: MaybeType): Option[types.Refinement.Data]
-  def unapplyAppliedType(arg: MaybeType): Option[types.AppliedType.Data]
-  def unapplyAnnotatedType(arg: MaybeType): Option[types.AnnotatedType.Data]
-  def unapplyAndType(arg: MaybeType): Option[types.AndType.Data]
-  def unapplyOrType(arg: MaybeType): Option[types.OrType.Data]
-  def unapplyByNameType(arg: MaybeType): Option[types.ByNameType.Data]
-  def unapplyParamRef(arg: MaybeType): Option[types.ParamRef.Data]
-  def unapplyThisType(arg: MaybeType): Option[types.ThisType.Data]
-  def unapplyRecursiveThis(arg: MaybeType): Option[types.RecursiveThis.Data]
+  def unapplyConstantType(arg: Type): Option[ConstantType.Data]
+  def unapplySymRef(arg: Type): Option[SymRef.Data]
+  def unapplyNameRef(arg: Type): Option[NameRef.Data]
+  def unapplySuperType(arg: Type): Option[SuperType.Data]
+  def unapplyRefinement(arg: Type): Option[Refinement.Data]
+  def unapplyAppliedType(arg: Type): Option[AppliedType.Data]
+  def unapplyAnnotatedType(arg: Type): Option[AnnotatedType.Data]
+  def unapplyAndType(arg: Type): Option[AndType.Data]
+  def unapplyOrType(arg: Type): Option[OrType.Data]
+  def unapplyByNameType(arg: Type): Option[ByNameType.Data]
+  def unapplyParamRef(arg: Type): Option[ParamRef.Data]
+  def unapplyThisType(arg: Type): Option[ThisType.Data]
+  def unapplyRecursiveThis(arg: Type): Option[RecursiveThis.Data]
 
-  def unapplyRecursiveType(arg: MaybeType): Option[types.RecursiveType.Data]
+  def unapplyRecursiveType(arg: RecursiveType): Option[RecursiveType.Data]
 
-  def unapplyMethodType(arg: MaybeType): Option[types.MethodType.Data]
-  def unapplyPolyType(arg: MaybeType): Option[types.PolyType.Data]
-  def unapplyTypeLambda(arg: MaybeType): Option[types.TypeLambda.Data]
+  def unapplyMethodType(arg: MethodType): Option[MethodType.Data]
+  def unapplyPolyType(arg: PolyType): Option[PolyType.Data]
+  def unapplyTypeLambda(arg: TypeLambda): Option[TypeLambda.Data]
 
-  def unapplyTypeBounds(arg: MaybeType): Option[types.TypeBounds.Data]
+  def unapplyTypeBounds(arg: TypeBounds): Option[TypeBounds.Data]
 
   // Modifiers
 
-  def unapplyFlags(arg: Modifier): Option[modifiers.Flags.Data]
-  def unapplyQualifiedPrivate(arg: Modifier): Option[modifiers.QualifiedPrivate.Data]
-  def unapplyQualifiedProtected(arg: Modifier): Option[modifiers.QualifiedProtected.Data]
-  def unapplyAnnotation(arg: Modifier): Option[modifiers.Annotation.Data]
+  def unapplyFlags(arg: Modifier): Option[Flags.Data]
+  def unapplyQualifiedPrivate(arg: Modifier): Option[QualifiedPrivate.Data]
+  def unapplyQualifiedProtected(arg: Modifier): Option[QualifiedProtected.Data]
+  def unapplyAnnotation(arg: Modifier): Option[Annotation.Data]
 
   // Import selectors
 
-  def unapplySimpleSelector(arg: ImportSelector): Option[trees.SimpleSelector.Data]
-  def unapplyRenameSelector(arg: ImportSelector): Option[trees.RenameSelector.Data]
-  def unapplyOmitSelector(arg: ImportSelector): Option[trees.OmitSelector.Data]
-
+  def unapplySimpleSelector(arg: ImportSelector): Option[SimpleSelector.Data]
+  def unapplyRenameSelector(arg: ImportSelector): Option[RenameSelector.Data]
+  def unapplyOmitSelector(arg: ImportSelector): Option[OmitSelector.Data]
 
 }

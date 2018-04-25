@@ -33,7 +33,7 @@ package object trees {
 
   object NamedArg {
     type Data = (names.TermName, Term)
-    def unapply(arg: Tree)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyNamedArg(arg)
+    def unapply(arg: Term)(implicit toolbox: Toolbox): Option[Data] = toolbox.unapplyNamedArg(arg)
   }
 
   object Apply {
