@@ -1126,20 +1126,31 @@ class Typer extends Namer
   }
 
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral = track("typedSeqLiteral") {
-    val proto1 = pt.elemType match {
+    val elemProto = pt.elemType match {
       case NoType => WildcardType
       case bounds: TypeBounds => WildcardType(bounds)
       case elemtp => elemtp
     }
-    val elems1 = tree.elems mapconserve (typed(_, proto1))
-    val proto2 = // the computed type of the `elemtpt` field
-      if (!tree.elemtpt.isEmpty) WildcardType
-      else if (isFullyDefined(proto1, ForceDegree.none)) proto1
-      else if (tree.elems.isEmpty && tree.isInstanceOf[Trees.JavaSeqLiteral[_]])
-        defn.ObjectType // generic empty Java varargs are of type Object[]
-      else ctx.typeComparer.lub(elems1.tpes)
-    val elemtpt1 = typed(tree.elemtpt, proto2)
-    assignType(cpy.SeqLiteral(tree)(elems1, elemtpt1), elems1, elemtpt1)
+
+    def assign(elems1: List[Tree], elemtpt1: Tree) =
+      assignType(cpy.SeqLiteral(tree)(elems1, elemtpt1), elems1, elemtpt1)
+
+    if (!tree.elemtpt.isEmpty) {
+      val elemtpt1 = typed(tree.elemtpt, elemProto)
+      val elems1 = tree.elems.mapconserve(typed(_, elemtpt1.tpe))
+      assign(elems1, elemtpt1)
+    } else {
+      val elems1 = tree.elems.mapconserve(typed(_, elemProto))
+      val elemtptType =
+        if (isFullyDefined(elemProto, ForceDegree.none))
+          elemProto
+        else if (tree.elems.isEmpty && tree.isInstanceOf[Trees.JavaSeqLiteral[_]])
+          defn.ObjectType // generic empty Java varargs are of type Object[]
+        else
+          ctx.typeComparer.lub(elems1.tpes)
+      val elemtpt1 = typed(tree.elemtpt, elemtptType)
+      assign(elems1, elemtpt1)
+    }
   }
 
   def typedInlined(tree: untpd.Inlined, pt: Type)(implicit ctx: Context): Inlined = {
