@@ -230,7 +230,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     private def testSourcesCompleted: Int = _testSourcesCompleted
 
     /** Complete the current compilation with the amount of errors encountered */
-    protected final def registerCompletion(errors: Int) = synchronized {
+    protected final def registerCompletion() = synchronized {
       _testSourcesCompleted += 1
     }
 
@@ -323,7 +323,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           // run should fail
           failTestSource(testSource)
           e.printStackTrace()
-          registerCompletion(1)
+          registerCompletion()
           throw e
         }
       }
@@ -551,7 +551,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
               }
               else if (fromTasty) compileFromTasty(flags, false, outDir)
               else compile(testSource.sourceFiles, flags, false, outDir)
-            registerCompletion(reporter.errorCount)
+            registerCompletion()
 
             if (reporter.compilerCrashed || reporter.errorCount > 0) {
               logReporterContents(reporter)
@@ -570,7 +570,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
             def warningCount = reporters.foldLeft(0)(_ + _.warningCount)
 
-            registerCompletion(errorCount)
+            registerCompletion()
 
             if (compilerCrashed || errorCount > 0) {
               reporters.foreach(logReporterContents)
@@ -691,7 +691,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           addFailureInstruction(buildInstr)
           failTestSource(testSource)
         }
-        registerCompletion(errorCount)
+        registerCompletion()
       }
     }
   }
@@ -794,7 +794,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         else if (!errorMap.isEmpty)
           fail(s"\nExpected error(s) have {<error position>=<unreported error>}: $errorMap")
 
-        registerCompletion(actualErrors)
+        registerCompletion()
       }
     }
   }
