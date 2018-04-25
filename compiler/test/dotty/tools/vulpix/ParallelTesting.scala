@@ -226,17 +226,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     /** Total amount of test sources being compiled by this test */
     val sourceCount = filteredSources.length
 
-    private[this] var _errorCount =  0
-    /** Number of (expected or unexpected) compiler errors. Unlikely to be what you want, use `failureCount` instead. */
-    private[this] def errorCount: Int = _errorCount
-
     private[this] var _testSourcesCompleted = 0
     private def testSourcesCompleted: Int = _testSourcesCompleted
 
     /** Complete the current compilation with the amount of errors encountered */
     protected final def registerCompletion(errors: Int) = synchronized {
       _testSourcesCompleted += 1
-      _errorCount += errors
     }
 
     sealed trait Failure
