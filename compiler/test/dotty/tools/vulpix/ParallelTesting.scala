@@ -253,6 +253,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     /** A set of the different failures */
     def failureReasons: Set[Failure] = _failures
 
+    /** Number of failed tests */
+    def failureCount: Int = _failures.size
+
     protected def logBuildInstructions(reporter: TestReporter, testSource: TestSource, err: Int, war: Int) = {
       val errorMsg = testSource.buildInstructions(reporter.errorCount, reporter.warningCount)
       addFailureInstruction(errorMsg)
@@ -295,7 +298,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           "[" + ("=" * (math.max(progress - 1, 0))) +
             (if (progress > 0) ">" else "") +
             (" " * (39 - progress)) +
-            s"] completed ($tCompiled/$sourceCount, $errorCount failed, ${timestamp}s)\r"
+            s"] completed ($tCompiled/$sourceCount, $failureCount failed, ${timestamp}s)\r"
         )
 
         Thread.sleep(100)
@@ -305,7 +308,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val timestamp = (System.currentTimeMillis - start) / 1000
       // println, otherwise no newline and cursor at start of line
       realStdout.println(
-        s"[=======================================] completed ($sourceCount/$sourceCount, $errorCount failed, ${timestamp}s)"
+        s"[=======================================] completed ($sourceCount/$sourceCount, $failureCount failed, ${timestamp}s)"
       )
     }
 
