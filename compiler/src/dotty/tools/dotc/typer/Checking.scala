@@ -341,18 +341,15 @@ object Checking {
         val mbr = joint.member(name)
         mbr.info match {
           case bounds: TypeBounds =>
-            val res = checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
-            if (res)
-              println(i"cyclic ${mbr.symbol}, $bounds -> $res")
-            res
+            !checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
           case _ =>
-            false
+            true
         }
       }
       catch {
-        case ex: CyclicFindMember =>
+        case ex: RecursionOverflow =>
           ctx.error(em"cyclic reference involving type $name", pos)
-          true
+          false
       }
   }
 

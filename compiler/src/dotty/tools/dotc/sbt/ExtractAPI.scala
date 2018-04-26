@@ -14,7 +14,6 @@ import Symbols._
 import NameOps._
 import NameKinds.DefaultGetterName
 import typer.Inliner
-import typer.ErrorReporting.cyclicErrorMsg
 import transform.ValueClasses
 import transform.SymUtils._
 import dotty.tools.io.File
@@ -243,10 +242,10 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       val ancestorTypes0 =
         try linearizedAncestorTypes(cinfo)
         catch {
-          case ex: CyclicReference =>
+          case ex: TypeError =>
             // See neg/i1750a for an example where a cyclic error can arise.
             // The root cause in this example is an illegal "override" of an inner trait
-            ctx.error(cyclicErrorMsg(ex), csym.pos)
+            ctx.error(ex.toMessage, csym.pos)
             defn.ObjectType :: Nil
         }
       if (ValueClasses.isDerivedValueClass(csym)) {
