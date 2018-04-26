@@ -6,7 +6,7 @@ import scala.collection.mutable
 import core._
 import typer.Checking
 import Types._, Contexts._, Names._, Flags._, DenotTransformers._
-import SymDenotations._, StdNames._, Annotations._, Trees._
+import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
 import Decorators._
 import Symbols._, SymUtils._
 import reporting.diagnostic.messages.{ImportRenamedTwice, NotAMember, SuperCallsNotAllowedInline}
@@ -283,6 +283,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               case tpe => tpe
             }
           )
+        case tree: AndTypeTree =>
+          // Ideally, this should be done by Typer, but we run into cyclic references
+          // when trying to typecheck self types which are intersections.
+          Checking.checkNonCyclicInherited(tree.tpe, tree.left.tpe :: tree.right.tpe :: Nil, EmptyScope, tree.pos)
+          super.transform(tree)
         case Import(expr, selectors) =>
           val exprTpe = expr.tpe
           val seen = mutable.Set.empty[Name]

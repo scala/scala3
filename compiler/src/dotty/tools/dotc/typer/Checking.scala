@@ -13,6 +13,7 @@ import Symbols._
 import Trees._
 import TreeInfo._
 import ProtoTypes._
+import Scopes._
 import CheckRealizable._
 import ErrorReporting.errorTree
 
@@ -321,6 +322,36 @@ object Checking {
     checkTree((), refinement)
   }
 
+  /** Check type members inherited from different `parents` of `joint` type for cycles,
+   *  unless a type with the same name aleadry appears in `decls`.
+   *  @return    true iff no cycles were detected
+   */
+  def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: Position)(implicit ctx: Context): Unit = {
+    def qualifies(sym: Symbol) = sym.name.isTypeName && !sym.is(Private)
+    val abstractTypeNames =
+      for (parent <- parents; mbr <- parent.abstractTypeMembers if qualifies(mbr.symbol))
+      yield mbr.name.asTypeName
+
+   for (name <- abstractTypeNames)
+      try {
+        val mbr = joint.member(name)
+        mbr.info match {
+          case bounds: TypeBounds =>
+            val res = checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
+            if (res)
+              println(i"cyclic ${mbr.symbol}, $bounds -> $res")
+            res
+          case _ =>
+            false
+        }
+      }
+      catch {
+        case ex: CyclicFindMember =>
+          ctx.error(em"cyclic reference involving type $name", pos)
+          true
+      }
+  }
+
   /** Check that symbol's definition is well-formed. */
   def checkWellFormed(sym: Symbol)(implicit ctx: Context): Unit = {
     def fail(msg: Message) = ctx.error(msg, sym.pos)
@@ -519,6 +550,9 @@ trait Checking {
 
   def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type =
     Checking.checkNonCyclic(sym, info, reportErrors)
+
+  def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: Position)(implicit ctx: Context): Unit =
+    Checking.checkNonCyclicInherited(joint, parents, decls, pos)
 
   /** Check that Java statics and packages can only be used in selections.
    */
@@ -906,6 +940,7 @@ trait ReChecking extends Checking {
 trait NoChecking extends ReChecking {
   import tpd._
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
+  override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassType(tp: Type, pos: Position, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp

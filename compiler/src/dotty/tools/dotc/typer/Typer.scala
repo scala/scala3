@@ -1546,6 +1546,8 @@ class Typer extends Namer
           cls, isRequired, cdef.pos)
       }
 
+      checkNonCyclicInherited(cls.thisType, cls.classParents, cls.info.decls, cdef.pos)
+
       // check value class constraints
       checkDerivedValueClass(cls, body1)
 
