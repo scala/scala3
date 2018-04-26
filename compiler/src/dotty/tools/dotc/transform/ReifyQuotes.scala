@@ -297,7 +297,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
       else if (sym.exists && !sym.isStaticOwner && !levelOK(sym))
         for (errMsg <- tryHeal(tp, pos))
           ctx.error(em"""access to $symStr from wrong staging level:
-                        | - the definition is at level ${levelOf(sym)},
+                        | - the definition is at level ${levelOf.getOrElse(sym, 0)},
                         | - but the access is at level $level.$errMsg""", pos)
     }
 

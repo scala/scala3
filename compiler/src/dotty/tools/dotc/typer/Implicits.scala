@@ -571,7 +571,7 @@ trait Implicits { self: Typer =>
     }
 
     def synthesizedTypeTag(formal: Type): Tree = formal.argInfos match {
-      case arg :: Nil =>
+      case arg :: Nil if !arg.typeSymbol.is(Param) =>
         object bindFreeVars extends TypeMap {
           var ok = true
           def apply(t: Type) = t match {
