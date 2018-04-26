@@ -2,7 +2,7 @@ package tasty
 
 object definitions {
 
-// ------ Names --------------------------------
+// ====== Names ======================================
 
   trait Name
   trait PossiblySignedName
@@ -23,45 +23,62 @@ object definitions {
 
   case class TypeName(name: TermName) extends Name
 
-// ------ Positions ---------------------------
+// ====== Positions ==================================
 
-  case class Position(firstOffset: Int, lastOffset: Int)
+  case class Position(firstOffset: Int, lastOffset: Int, sourceFile: String) {
+    def startLine: Int = ???
+    def startColumn: Int = ???
+    def endLine: Int = ???
+    def endColumn: Int = ???
+  }
 
   trait Positioned {
     def pos: Position = ???
   }
 
+// ====== Trees ======================================
+
+  trait Tree extends Positioned
+
 // ------ Statements ---------------------------------
 
-  sealed trait TopLevelStatement extends Positioned
+  sealed trait TopLevelStatement extends Tree
   sealed trait Statement extends TopLevelStatement
 
-  case class Package(pkg: Term, body: List[TopLevelStatement]) extends TopLevelStatement
+  case class PackageClause(pkg: Term, body: List[TopLevelStatement]) extends TopLevelStatement
 
   case class Import(expr: Term, selector: List[ImportSelector]) extends Statement
 
   enum ImportSelector {
-    case Simple(id: Id)
-    case Rename(id1: Id, id2: Id)
-    case Omit(id1: Id)
+    case SimpleSelector(id: Id)
+    case RenameSelector(id1: Id, id2: Id)
+    case OmitSelector(id1: Id)
   }
 
   case class Id(name: String) extends Positioned     // untyped ident
 
 // ------ Definitions ---------------------------------
 
-  trait Definition  extends Statement {
-    def name: Name
+  trait Definition {
     def owner: Definition = ???
   }
 
-  case class ValDef(name: TermName, tpt: Term, rhs: Option[Term], mods: List[Modifier]) extends Definition
+  // Does DefDef need a `def tpe: MethodType | PolyType`?
+  case class ValDef(name: TermName, tpt: TypeTree, rhs: Option[Term]) extends Definition {
+    def mods: List[Modifier] = ???
+  }
   case class DefDef(name: TermName, typeParams: List[TypeDef], paramss: List[List[ValDef]],
-                    returnTpt: Term, rhs: Option[Term], mods: List[Modifier]) extends Definition
-  case class TypeDef(name: TypeName, rhs: Term, mods: List[Modifier]) extends Definition
-  case class ClassDef(name: TypeName, constructor: DefDef, parents: List[Term],
-                      self: Option[ValDef], body: List[Statement], mods: List[Modifier]) extends Definition
-
+                    returnTpt: TypeTree, rhs: Option[Term]) extends Definition {
+    def mods: List[Modifier] = ???
+  }
+  case class TypeDef(name: TypeName, rhs: TypeTree | TypeBoundsTree) extends Definition {
+    def mods: List[Modifier] = ???
+  }
+  case class ClassDef(name: TypeName, constructor: DefDef, parents: List[Term | TypeTree],
+                      self: Option[ValDef], body: List[Statement]) extends Definition {
+    def mods: List[Modifier] = ???
+  }
+  case class PackageDef(name: TermName, members: List[Statement]) extends Definition
 
 // ------ Terms ---------------------------------
 
@@ -91,7 +108,7 @@ object definitions {
   }
 
   /** Trees denoting types */
-  enum TypeTree extends Positioned {
+  enum TypeTree extends Tree {
     def tpe: Type = ???
     case Synthetic()
     case Ident(name: TypeName, override val tpe: Type)
@@ -99,27 +116,31 @@ object definitions {
     case Singleton(ref: Term)
     case Refined(underlying: TypeTree, refinements: List[Definition])
     case Applied(tycon: TypeTree, args: List[TypeTree])
-    case TypeBounds(loBound: TypeTree, hiBound: TypeTree)
     case Annotated(tpt: TypeTree, annotation: Term)
     case And(left: TypeTree, right: TypeTree)
     case Or(left: TypeTree, right: TypeTree)
     case ByName(tpt: TypeTree)
   }
 
+  /** Trees denoting type bounds*/
+  case class TypeBoundsTree(loBound: TypeTree, hiBound: TypeTree) extends Tree {
+    def tpe: Type.TypeBounds = ???
+  }
+
   /** Trees denoting patterns */
-  enum Pattern extends Positioned {
+  enum Pattern extends Tree {
     def tpe: Type = ???
     case Value(v: Term)
     case Bind(name: TermName, pat: Pattern)
     case Unapply(unapply: Term, implicits: List[Term], pats: List[Pattern])
     case Alternative(pats: List[Pattern])
     case TypeTest(tpt: TypeTree)
-    case Wildcard()
   }
 
-  case class CaseDef(pat: Pattern, guard: Option[Term], rhs: Term) extends Positioned
+  /** Tree denoting pattern match case */
+  case class CaseDef(pat: Pattern, guard: Option[Term], rhs: Term) extends Tree
 
-// ------ Types ---------------------------------
+// ====== Types ======================================
 
   sealed trait Type
 
@@ -137,6 +158,7 @@ object definitions {
     case class OrType(left: Type, right: Type) extends Type
     case class ByNameType(underlying: Type) extends Type
     case class ParamRef(binder: LambdaType[_, _, _], idx: Int) extends Type
+    case class ThisType(tp: Type) extends Type
     case class RecursiveThis(binder: RecursiveType) extends Type
 
     case class RecursiveType private (private var _underlying: Type) extends Type {
@@ -197,43 +219,56 @@ object definitions {
     object ErasedImplicitMethodType extends SpecializedMethodTypeCompanion
 
     case class TypeBounds(loBound: Type, hiBound: Type)
+
     case class NoPrefix()
     object NoPrefix extends NoPrefix
   }
 
-// ------ Modifiers ---------------------------------
+// ====== Modifiers ==================================
 
-  enum Modifier extends Positioned {
-    case Private, Protected, Abstract, Final, Sealed, Case, Implicit, Erased, Lazy, Override, Inline,
-         Macro,                 // inline method containing toplevel splices
-         Static,                // mapped to static Java member
-         Object,                // an object or its class (used for a ValDef or a ClassDef, respectively)
-         Trait,                 // a trait (used for a ClassDef)
-         Local,                 // used in conjunction with Private/private[Type] to mean private[this], proctected[this]
-         Synthetic,             // generated by Scala compiler
-         Artifact,              // to be tagged Java Synthetic
-         Mutable,               // when used on a ValDef: a var
-         Label,                 // method generated as a label
-         FieldAccessor,         // a getter or setter
-         CaseAcessor,           // getter for case class parameter
-         Covariant,             // type parameter marked “+”
-         Contravariant,         // type parameter marked “-”
-         Scala2X,               // Imported from Scala2.x
-         DefaultParameterized,  // Method with default parameters
-         Stable                 // Method that is assumed to be stable
 
+  enum Modifier {
+    case Flags(flags: FlagSet)
     case QualifiedPrivate(boundary: Type)
     case QualifiedProtected(boundary: Type)
     case Annotation(tree: Term)
   }
 
-// ------ Constants ---------------------------------
+  trait FlagSet {
+    def isProtected: Boolean
+    def isAbstract: Boolean
+    def isFinal: Boolean
+    def isSealed: Boolean
+    def isCase: Boolean
+    def isImplicit: Boolean
+    def isErased: Boolean
+    def isLazy: Boolean
+    def isOverride: Boolean
+    def isInline: Boolean
+    def isMacro: Boolean                 // inline method containing toplevel splices
+    def isStatic: Boolean                // mapped to static Java member
+    def isObject: Boolean                // an object or its class (used for a ValDef or a ClassDef extends Modifier respectively)
+    def isTrait: Boolean                 // a trait (used for a ClassDef)
+    def isLocal: Boolean                 // used in conjunction with Private/private[Type] to mean private[this] extends Modifier proctected[this]
+    def isSynthetic: Boolean             // generated by Scala compiler
+    def isArtifact: Boolean              // to be tagged Java Synthetic
+    def isMutable: Boolean               // when used on a ValDef: a var
+    def isLabel: Boolean                 // method generated as a label
+    def isFieldAccessor: Boolean         // a getter or setter
+    def isCaseAcessor: Boolean           // getter for class parameter
+    def isCovariant: Boolean             // type parameter marked “+”
+    def isContravariant: Boolean         // type parameter marked “-”
+    def isScala2X: Boolean               // Imported from Scala2.x
+    def isDefaultParameterized: Boolean  // Method with default parameters
+    def isStable: Boolean                // Method that is assumed to be stable
+  }
+
+// ====== Constants ==================================
 
   enum Constant(val value: Any) {
     case Unit                        extends Constant(())
-    case False                       extends Constant(false)
-    case True                        extends Constant(true)
     case Null                        extends Constant(null)
+    case Boolean(v: scala.Boolean)   extends Constant(v)
     case Byte(v: scala.Byte)         extends Constant(v)
     case Short(v: scala.Short)       extends Constant(v)
     case Char(v: scala.Char)         extends Constant(v)

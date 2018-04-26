@@ -1,0 +1,42 @@
+NameRef(TypeName(Simple(Int)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+
+SymRef(<Simple(x)>, NoPrefix)
+
+TypeBounds(NameRef(TypeName(Simple(Nothing)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix)))), NameRef(TypeName(Simple(Any)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix)))))
+
+NameRef(TypeName(Simple(Nothing)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+
+NameRef(TypeName(Simple(Any)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+
+SymRef(<TypeName(Simple(T))>, NoPrefix)
+
+TypeBounds(NameRef(TypeName(Simple(Int)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix)))), NameRef(TypeName(Simple(Int)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix)))))
+
+NameRef(TypeName(Simple(Int)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+
+NameRef(TypeName(Simple(Int)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+
+SymRef(<TypeName(Simple(T))>, NoPrefix)
+
+NameRef(TypeName(Simple(Unit)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+
+NameRef(TypeName(Simple(Object)), SymRef(<Simple(lang)>, ThisType(SymRef(<TypeName(Simple(java))>, NoPrefix))))
+
+TypeBounds(NameRef(TypeName(Simple(Nothing)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix)))), NameRef(TypeName(Simple(Any)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix)))))
+
+NameRef(TypeName(Simple(Nothing)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+
+NameRef(TypeName(Simple(Any)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+
+Refinement(SymRef(<TypeName(Simple(Foo))>, NoPrefix), TypeName(Simple(X)), TypeBounds(NameRef(TypeName(Simple(String)), NameRef(Simple(Predef), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))), NameRef(TypeName(Simple(String)), NameRef(Simple(Predef), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix)))))))
+
+NameRef(TypeName(Simple(Unit)), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+
+SymRef(<TypeName(Simple(Foo))>, NoPrefix)
+
+NameRef(TypeName(Simple(String)), NameRef(Simple(Predef), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix)))))
+
+SymRef(<TypeName(Simple($anon))>, NoPrefix)
+
+Refinement(SymRef(<TypeName(Simple(Foo))>, NoPrefix), TypeName(Simple(X)), TypeBounds(NameRef(TypeName(Simple(String)), NameRef(Simple(Predef), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))), NameRef(TypeName(Simple(String)), NameRef(Simple(Predef), SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix)))))))
+

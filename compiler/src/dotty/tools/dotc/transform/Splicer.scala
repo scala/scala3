@@ -46,7 +46,7 @@ object Splicer {
    */
   private def getLiftedArgs(call: Tree, bindings: List[Tree])(implicit ctx: Context): List[Any] = {
     val bindMap = bindings.map {
-      case vdef: ValDef => (vdef.rhs, ref(vdef.symbol))
+      case vdef: ValDef => (vdef.rhs, ref(vdef.symbol).withPos(vdef.rhs.pos))
     }.toMap
     def allArgs(call: Tree, acc: List[List[Tree]]): List[List[Tree]] = call match {
       case call: Apply => allArgs(call.fun, call.args :: acc)
@@ -60,11 +60,11 @@ object Splicer {
           case (arg, tp) =>
             assert(!tp.hasAnnotation(defn.InlineParamAnnot))
             // Replace argument by its binding
-            new scala.quoted.Exprs.TreeExpr(bindMap.getOrElse(arg, arg))
+            new scala.quoted.Exprs.TreeExpr(bindMap.getOrElse(arg, arg), ctx)
         }
         args1 ::: liftArgs(tp.resType, args.tail)
       case tp: PolyType =>
-        val args1 = args.head.map(tp => new scala.quoted.Types.TreeType(tp))
+        val args1 = args.head.map(tp => new scala.quoted.Types.TreeType(tp, ctx))
         args1 ::: liftArgs(tp.resType, args.tail)
       case _ => Nil
     }
@@ -81,8 +81,8 @@ object Splicer {
       case NonFatal(ex) =>
         val msg =
           s"""Failed to evaluate inlined quote.
-             |  Caused by: ${ex.getMessage}
-             |  ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").init.mkString("\n  ")}
+             |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
+             |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").init.mkString("\n    ")}
          """.stripMargin
         ctx.error(msg, pos)
         None

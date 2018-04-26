@@ -1,14 +1,18 @@
 package dotty.tools.dotc.quoted
 
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.printing.RefinedPrinter
+import dotty.tools.dotc.tasty.internal
+import dotty.tools.dotc.tasty.internal.TastyContext
 
-import scala.quoted.Expr
+import scala.quoted.{Expr, Type}
+import scala.quoted.Exprs.{LiftedExpr, TreeExpr}
+import scala.quoted.Types.TreeType
 import scala.runtime.BoxedUnit
-import scala.quoted.Exprs.LiftedExpr
 import scala.runtime.quoted._
+import scala.tasty.trees
 
 /** Default runners for quoted expressions */
 object Toolbox {
@@ -42,19 +46,21 @@ object Toolbox {
       case _ => new QuoteDriver().show(expr, showSettings)
     }
 
-    def toConstantOpt(expr: Expr[T]): Option[T] = {
-      def toConstantOpt(tree: Tree): Option[T] = tree match {
-        case Literal(Constant(c)) => Some(c.asInstanceOf[T])
-        case Block(Nil, e) => toConstantOpt(e)
-        case Inlined(_, Nil, e) => toConstantOpt(e)
-        case _ => None
-      }
+    def toTasty(expr: Expr[T]): (trees.Term, scala.tasty.Context) = {
+      def box(tree: Tree, ctx: Context) = (internal.Term(tree),  new internal.TastyContext(ctx))
       expr match {
-        case expr: LiftedExpr[T] => Some(expr.value)
-        case _ => new QuoteDriver().withTree(expr, (tree, _) => toConstantOpt(tree), Settings.run())
+        case expr: TreeExpr[Tree, Context] @unchecked => box(expr.tree, expr.ctx)
+        case _ => new QuoteDriver().withTree(expr, (tree, ctx) => box(tree, ctx), Settings.run())
       }
     }
 
+    def toTasty(tpe: Type[T]): (trees.TypeTree, scala.tasty.Context) = {
+      def box(tree: TypTree, ctx: Context) = (internal.TypeTree(tree), new internal.TastyContext(ctx))
+      tpe match {
+        case typeTree: TreeType[TypeTree, Context] @unchecked => box(typeTree.typeTree, typeTree.ctx)
+        case _ => new QuoteDriver().withTypeTree(tpe, (tpt, ctx) => box(tpt, ctx), Settings.run())
+      }
+    }
   }
 
   class Settings[T] private (val outDir: Option[String], val rawTree: Boolean, val compilerArgs: List[String])
