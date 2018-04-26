@@ -29,6 +29,11 @@ Starting with Dotty 0.8.0, we will only support versions of sbt >= 1.1.4. Migrat
 lets us use the new improved incremental compiler for Scala called [Zinc](https://github.com/sbt/zinc),
 and enables integration with tools such as [Bloop](https://scalacenter.github.io/bloop/).
 
+If you are already using Dotty with sbt 0.13, follow these simple steps to upgrade:
+- update sbt version to 1.1.4 in `project/build.properties`
+- update sbt-dotty plugin to the latest version: `addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "0.2.2")`
+- update usages of `.withDottyCompat()` by `.withDottyCompat(scalaVersion.value)`
+
 ### Unchecked warnings [#4045](https://github.com/lampepfl/dotty/pull/4045)
 Dotty now emits `unchecked` warnings like `scalac` whenever a type test is performed but cannot
 safely be checked at runtime. For example:
@@ -164,7 +169,7 @@ According to `git shortlog -sn --no-merges 0.7.0..0.8.0-RC1` these are:
      1  Maxime Kjaer
      1  Saurabh Rawat
      1  Joan
-     1  jvican
+     1  Jorge Vicente Cantero
      1  Jasper Moeys
      1  Piotr Gabara
 ```
