@@ -179,6 +179,14 @@ object DottyPlugin extends AutoPlugin {
           dottyBridge
         else
           scalaBridge
+      },
+
+      // Needed for RCs publishing
+      scalaBinaryVersion := {
+        if (isDotty.value)
+          scalaVersion.value.split("\\.").take(2).mkString(".")
+        else
+          scalaBinaryVersion.value
       }
     )
   }
