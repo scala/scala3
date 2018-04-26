@@ -23,26 +23,6 @@ object ErrorReporting {
     ErrorType(msg)
   }
 
-  def cyclicErrorMsg(ex: CyclicReference)(implicit ctx: Context) = {
-    val cycleSym = ex.denot.symbol
-    def errorMsg(msg: Message, cx: Context): Message =
-      if (cx.mode is Mode.InferringReturnType) {
-        cx.tree match {
-          case tree: untpd.DefDef if !tree.tpt.typeOpt.exists =>
-            OverloadedOrRecursiveMethodNeedsResultType(tree.name)
-          case tree: untpd.ValDef if !tree.tpt.typeOpt.exists =>
-            RecursiveValueNeedsResultType(tree.name)
-          case _ =>
-            errorMsg(msg, cx.outer)
-        }
-      } else msg
-
-    if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
-      CyclicReferenceInvolvingImplicit(cycleSym)
-    else
-      errorMsg(ex.toMessage, ctx)
-  }
-
   def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: Position)(implicit ctx: Context) =
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual)(ctx), pos)
 

@@ -1614,7 +1614,7 @@ class RefChecks extends MiniPhase { thisPhase =>
       } catch {
         case ex: TypeError =>
           if (settings.debug) ex.printStackTrace()
-          unit.error(tree.pos, ex.getMessage())
+          unit.error(tree.pos, ex.toMssage)
           tree
       } finally {
         localTyper = savedLocalTyper

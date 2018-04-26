@@ -1862,8 +1862,7 @@ class Typer extends Namer
       assertPositioned(tree)
       try adapt(typedUnadapted(tree, pt, locked), pt, locked)
       catch {
-        case ex: CyclicReference => errorTree(tree, cyclicErrorMsg(ex))
-        case ex: TypeError => errorTree(tree, ex.getMessage)
+        case ex: TypeError => errorTree(tree, ex.toMessage)
       }
     }
 
