@@ -222,7 +222,11 @@ object Checking {
           // global symbols when doing the cyclicity check.
           def isInteresting(prefix: Type): Boolean = prefix.stripTypeVar match {
             case NoPrefix => true
-            case prefix: ThisType => sym.owner.isClass && prefix.cls.isContainedIn(sym.owner)
+            case prefix: ThisType =>
+              sym.owner.isClass && (
+                prefix.cls.isContainedIn(sym.owner)    // sym reachable through outer references
+                || sym.owner.isContainedIn(prefix.cls) // sym reachable through member references
+              )
             case prefix: NamedType =>
               (!sym.is(Private) && prefix.derivesFrom(sym.owner)) ||
               (!prefix.symbol.isStaticOwner && isInteresting(prefix.prefix))
@@ -232,6 +236,7 @@ object Checking {
             case _: RefinedOrRecType | _: AppliedType => true
             case _ => false
           }
+
           if (isInteresting(pre)) {
             val pre1 = this(pre, false, false)
             if (locked.contains(tp) || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter])

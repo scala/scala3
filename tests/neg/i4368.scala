@@ -98,12 +98,12 @@ object Test6 {
 
 object Test7 {
   class Fix[F[_]] {
-    class Foo { type R >: F[T] <: F[T] }
+    class Foo { type R >: F[T] <: F[T] } // error: cyclic
     type T = F[Foo#R]
   }
 
   object App {
-    type Nat = Fix[Option]#T // error: too deep
+    type Nat = Fix[Option]#T
   }
 }
 /*
