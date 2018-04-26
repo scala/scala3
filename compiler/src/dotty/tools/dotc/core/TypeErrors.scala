@@ -88,20 +88,21 @@ object handleRecursive {
 
 class CyclicReference private (val denot: SymDenotation) extends TypeError {
 
-  def errorMsg(cx: Context): Message =
-    if (cx.mode is Mode.InferringReturnType) {
-      cx.tree match {
-        case tree: untpd.DefDef if !tree.tpt.typeOpt.exists =>
-          OverloadedOrRecursiveMethodNeedsResultType(tree.name)
-        case tree: untpd.ValDef if !tree.tpt.typeOpt.exists =>
-          RecursiveValueNeedsResultType(tree.name)
-        case _ =>
-          errorMsg(cx.outer)
-      }
-    }
-    else CyclicReferenceInvolving(denot)
-
   override def toMessage(implicit ctx: Context) = {
+
+    def errorMsg(cx: Context): Message =
+      if (cx.mode is Mode.InferringReturnType) {
+        cx.tree match {
+          case tree: untpd.DefDef if !tree.tpt.typeOpt.exists =>
+            OverloadedOrRecursiveMethodNeedsResultType(tree.name)
+          case tree: untpd.ValDef if !tree.tpt.typeOpt.exists =>
+            RecursiveValueNeedsResultType(tree.name)
+          case _ =>
+            errorMsg(cx.outer)
+        }
+      }
+      else CyclicReferenceInvolving(denot)
+
     val cycleSym = denot.symbol
     if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
       CyclicReferenceInvolvingImplicit(cycleSym)
