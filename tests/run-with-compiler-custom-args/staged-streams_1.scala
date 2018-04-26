@@ -324,10 +324,7 @@ object Test {
     private def makeLinear[A: Type](stream: StagedStream[Expr[A]]): Producer[Expr[A]] = {
       stream match {
         case Linear(producer) => producer
-        case nested: Nested[A, bt] => {
-          val producer: Producer[bt]          = nested.producer
-          val nestedf:  bt => StagedStream[A] = nested.nestedf
-
+        case Nested(producer, nestedf) => {
           /** Helper function that orchestrates the handling of the function that represents an `advance: Unit => Unit`.
             * It reifies a nested stream as calls to `advance`. Advance encodes the step function of each nested stream.
             * It is used in the init of a producer of a nested stream. When an inner stream finishes, the
@@ -385,7 +382,7 @@ object Test {
                         val adv: Unit => Unit = { _ =>
                           ~hasNext.update(producer.hasNext(st))
                           if(~hasNext.get) {
-                            // ~producer.step(st, (el: bt) => makeAdvanceFunction[Expr[A]](advf, (a => curr.update(a)), nestedf(el)))
+                            ~producer.step(st, el => makeAdvanceFunction[Expr[A]](advf, (a => curr.update(a)), nestedf(el)))
                           }
                         }
 
