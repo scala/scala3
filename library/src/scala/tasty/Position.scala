@@ -1,10 +1,10 @@
 package scala.tasty
 
 trait Position {
-  def firstOffset: Int
-  def lastOffset: Int
+  def start: Int
+  def end: Int
 
-  def sourceFile: String
+  def sourceFile: java.nio.file.Path
 
   def startLine: Int
   def startColumn: Int
