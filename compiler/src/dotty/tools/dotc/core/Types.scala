@@ -670,7 +670,15 @@ object Types {
       catch {
         case ex: Throwable =>
           core.println(s"findMember exception for $this member $name, pre = $pre, recCount = $recCount")
-          throw new RecursionOverflow("find-member", pre, name, ex)
+
+          def showPrefixSafely(pre: Type)(implicit ctx: Context): String = pre.stripTypeVar match {
+            case pre: TermRef => i"${pre.termSymbol.name}."
+            case pre: TypeRef => i"${pre.typeSymbol.name}#"
+            case pre: TypeProxy => showPrefixSafely(pre.underlying)
+            case _ => if (pre.typeSymbol.exists) i"${pre.typeSymbol.name}#" else "."
+          }
+
+          handleRecursive("find-member", i"${showPrefixSafely(pre)}$name", ex)
       }
       finally {
         if (recCount >= Config.LogPendingFindMemberThreshold)
