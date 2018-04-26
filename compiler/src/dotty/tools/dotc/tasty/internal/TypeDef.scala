@@ -5,9 +5,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols.TypeSymbol
 
-import scala.tasty
-import scala.tasty.trees
-import scala.tasty.types
+import scala.tasty.{modifiers, trees, types}
 
 object TypeDef {
 
@@ -21,13 +19,12 @@ object TypeDef {
       case rhs: tpd.TypeBoundsTree => TypeBoundsTree(rhs)
       case rhs => TypeTree(rhs)
     }
-    Some((TypeName(tdef.name), rhs, Modifiers(tdef)))
+    Some((TypeName(tdef.name), rhs))
   }
 
   private[tasty] class Impl(val tree: tpd.TypeDef) extends trees.TypeDef with Definition with Positioned {
-
     def tpe: types.Type = Type(tree.tpe)
-
+    def mods(implicit ctx: scala.tasty.Context): List[modifiers.Modifier] = Modifiers(tree)
     override def toString: String = "TypeDef"
   }
 

@@ -30,11 +30,11 @@ object Test {
     val traverser = new TreeTraverser {
       override def traverse(tree: Tree)(implicit ctx: Context): Unit = {
         tree match {
-          case tree @ DefDef(name: Name, _, _, _, _, _) =>
+          case tree @ DefDef(name: Name, _, _, _, _) =>
             println(TastyPrinter.stringOf(name))
             println(TastyPrinter.stringOf(tree.owner))
             println()
-          case tree @ ValDef(name: Name, _, _, _) =>
+          case tree @ ValDef(name: Name, _, _) =>
             println(TastyPrinter.stringOf(name))
             println(TastyPrinter.stringOf(tree.owner))
             println()

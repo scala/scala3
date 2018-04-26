@@ -6,6 +6,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols.ClassSymbol
 
+import scala.tasty.modifiers
 import scala.tasty.trees
 import scala.tasty.types
 
@@ -35,14 +36,12 @@ object ClassDef {
     val classParents = parents.map(p => if (!p.isType) Term(p) else TypeTree(p))
     val selfVal = if (self.isEmpty) None else Some(ValDef(self))
     val body = impl.body.map(Statement(_))
-    val mods = Modifiers(arg.tree)
-    Some((className, constructor, classParents, selfVal, body, mods))
+    Some((className, constructor, classParents, selfVal, body))
   }
 
   private[tasty] class Impl(val tree: tpd.TypeDef) extends trees.ClassDef with Definition with Positioned {
-
     def tpe: types.Type = Type(tree.tpe)
-
+    def mods(implicit ctx: scala.tasty.Context): List[modifiers.Modifier] = Modifiers(tree)
     override def toString: String = "ClassDef"
   }
 

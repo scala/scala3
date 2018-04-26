@@ -64,12 +64,20 @@ object definitions {
   }
 
   // Does DefDef need a `def tpe: MethodType | PolyType`?
-  case class ValDef(name: TermName, tpt: TypeTree, rhs: Option[Term], mods: List[Modifier]) extends Definition
+  case class ValDef(name: TermName, tpt: TypeTree, rhs: Option[Term]) extends Definition {
+    def mods: List[Modifier] = ???
+  }
   case class DefDef(name: TermName, typeParams: List[TypeDef], paramss: List[List[ValDef]],
-                    returnTpt: TypeTree, rhs: Option[Term], mods: List[Modifier]) extends Definition
-  case class TypeDef(name: TypeName, rhs: TypeTree | TypeBoundsTree, mods: List[Modifier]) extends Definition
+                    returnTpt: TypeTree, rhs: Option[Term]) extends Definition {
+    def mods: List[Modifier] = ???
+  }
+  case class TypeDef(name: TypeName, rhs: TypeTree | TypeBoundsTree) extends Definition {
+    def mods: List[Modifier] = ???
+  }
   case class ClassDef(name: TypeName, constructor: DefDef, parents: List[Term | TypeTree],
-                      self: Option[ValDef], body: List[Statement], mods: List[Modifier]) extends Definition
+                      self: Option[ValDef], body: List[Statement]) extends Definition {
+    def mods: List[Modifier] = ???
+  }
   case class PackageDef(name: TermName, members: List[Statement]) extends Definition
 
 // ------ Terms ---------------------------------

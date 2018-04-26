@@ -7,7 +7,8 @@ import scala.tasty.modifiers
 
 object Modifiers {
 
-  def apply(tree: tpd.MemberDef)(implicit ctx: Context): List[modifiers.Modifier] = {
+  def apply(tree: tpd.MemberDef)(implicit tctx: scala.tasty.Context): List[modifiers.Modifier] = {
+    implicit val ctx = tctx.asInstanceOf[TastyContext].ctx
     FlagsModifier(tree.symbol) ::
     QualifiedModifier(tree).toList :::
     tree.symbol.annotations.map(AnnotationModifier(_))

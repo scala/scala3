@@ -84,16 +84,16 @@ abstract class TreeAccumulator[X] {
         this(x, patterns)
       case TypeTest(tpt) =>
         this(x, tpt)
-      case vdef @ ValDef(_, tpt, rhs, _) =>
+      case vdef @ ValDef(_, tpt, rhs) =>
         implicit val ctx = localCtx(vdef)
         this(this(x, tpt), rhs)
-      case ddef @ DefDef(_, tparams, vparamss, tpt, rhs, _) =>
+      case ddef @ DefDef(_, tparams, vparamss, tpt, rhs) =>
         implicit val ctx = localCtx(ddef)
         this(this((this(x, tparams) /: vparamss)(apply), tpt), rhs)
-      case tdef @ TypeDef(name, rhs, _) =>
+      case tdef @ TypeDef(name, rhs) =>
         implicit val ctx = localCtx(tdef)
         this(x, rhs)
-      case cdef @ ClassDef(_, constr, parents, self, body, _) =>
+      case cdef @ ClassDef(_, constr, parents, self, body) =>
         implicit val ctx = localCtx(cdef)
         this(this(this(this(x, constr), parents), self), body)
       case Import(expr, selectors) =>

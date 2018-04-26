@@ -242,17 +242,15 @@ object TastyPrinter {
       buff append "TypeTest("
       visit(tpt)
       buff append ")"
-    case ValDef(name, tpt, rhs, mods) =>
+    case ValDef(name, tpt, rhs) =>
       buff append "ValDef("
       visit(name: Name)
       buff append ", "
       visit(tpt)
       buff append ", "
       visitAny(rhs)
-      buff append ", "
-      visitAny(mods)
       buff append ")"
-    case DefDef(name, typeParams, paramss, returnTpt, rhs, mods) =>
+    case DefDef(name, typeParams, paramss, returnTpt, rhs) =>
       buff append "DefDef("
       visit(name: Name)
       buff append ", "
@@ -263,18 +261,14 @@ object TastyPrinter {
       visit(returnTpt)
       buff append ", "
       visitAny(rhs)
-      buff append ", "
-      visitAny(mods)
       buff append ")"
-    case TypeDef(name, rhs, mods) =>
+    case TypeDef(name, rhs) =>
       buff append "TypeDef("
       visit(name: Name)
       buff append ", "
       visit(rhs)
-      buff append ", "
-      visitAny(mods)
       buff append ")"
-    case ClassDef(name, constr, parents, self, body, mods) =>
+    case ClassDef(name, constr, parents, self, body) =>
       buff append "ClassDef("
       visit(name: Name)
       buff append ", "
@@ -285,8 +279,6 @@ object TastyPrinter {
       visitAny(self)
       buff append ", "
       visitAny(body)
-      buff append ", "
-      visitAny(mods)
       buff append ")"
     case PackageDef(name, members) =>
       buff append "PackageDef("
@@ -414,10 +406,10 @@ object TastyPrinter {
 
   private def visit(tpe: MaybeType)(implicit buff: StringBuilder, ctx: Context): Unit = {
     def visitName(sym: Definition): Unit = sym match {
-      case ValDef(name, _, _, _) => visit(name: Name)
-      case DefDef(name, _, _, _, _, _) => visit(name: Name)
-      case TypeDef(name, _, _) => visit(name: Name)
-      case ClassDef(name, _, _, _, _, _) => visit(name: Name)
+      case ValDef(name, _, _) => visit(name: Name)
+      case DefDef(name, _, _, _, _) => visit(name: Name)
+      case TypeDef(name, _) => visit(name: Name)
+      case ClassDef(name, _, _, _, _) => visit(name: Name)
       case PackageDef(name, _) => visit(name: Name)
       case _ => buff append "NoDefinition"
     }
