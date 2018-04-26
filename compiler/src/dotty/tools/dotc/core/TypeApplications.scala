@@ -168,7 +168,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  any type parameter that is-rebound by the refinement.
    */
   final def typeParams(implicit ctx: Context): List[TypeParamInfo] = /*>|>*/ track("typeParams") /*<|<*/ {
-    self match {
+    try self match {
       case self: TypeRef =>
         val tsym = self.symbol
         if (tsym.isClass) tsym.typeParams
@@ -192,6 +192,9 @@ class TypeApplications(val self: Type) extends AnyVal {
         self.superType.typeParams
       case _ =>
         Nil
+    }
+    catch {
+      case ex: Throwable => handleRecursive("type parameters of", self.show, ex)
     }
   }
 

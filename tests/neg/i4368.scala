@@ -106,18 +106,16 @@ object Test7 {
     type Nat = Fix[Option]#T
   }
 }
-/*
 object Test8 {
 
   class A {
-    type T = B#U
+    type T = B#U  // error: cyclic
   }
 
   class B {
     type U = A#T
   }
 }
-*/
 object Test9 {
   trait W {
     type A
@@ -147,4 +145,29 @@ object Test9 {
       // scalac reports a volatility error, but the dotty equivalent (checkRealizable)
       // is checked too late.
   }
+}
+object i4369 {
+  trait X { self =>
+    type R <: Z
+    type Z >: X { type R = self.R; type Z = self.R }
+  }
+  class Foo extends X { type R = Foo; type Z = Foo } // error: too deep
+}
+object i4370 {
+  class Foo { type R = A } // error: cyclic
+  type A = List[Foo#R]
+}
+object i4371 {
+  class Foo { type A = Boo#B } // error: cyclic
+  class Boo { type B = Foo#A }
+}
+object i318 {
+  trait Y {
+    type A <: { type T >: B }
+    type B >: { type T >: A }
+  }
+
+  val y: Y = ???
+  val a: y.A = ??? // error: too deep
+  val b: y.B = a   // error: too deep
 }
