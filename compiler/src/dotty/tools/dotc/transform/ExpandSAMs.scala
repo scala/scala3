@@ -74,27 +74,10 @@ class ExpandSAMs extends MiniPhase {
         val isDefinedAtFn = overrideSym(defn.PartialFunction_isDefinedAt)
         val applyOrElseFn = overrideSym(defn.PartialFunction_applyOrElse)
 
-        def isDefinedAtRhs(paramRefss: List[List[Tree]]) = {
-          val tru = Literal(Constant(true))
-          def translateCase(cdef: CaseDef) =
-            cpy.CaseDef(cdef)(body = tru).changeOwner(anonSym, isDefinedAtFn)
-          val paramRef = paramRefss.head.head
-          val defaultValue = Literal(Constant(false))
-          translateMatch(pf, paramRef, pf.cases.map(translateCase), defaultValue)
-        }
-
-        def applyOrElseRhs(paramRefss: List[List[Tree]]) = {
-          val List(paramRef, defaultRef) = paramRefss.head
-          def translateCase(cdef: CaseDef) =
-            cdef.changeOwner(anonSym, applyOrElseFn)
-          val defaultValue = defaultRef.select(nme.apply).appliedTo(paramRef)
-          translateMatch(pf, paramRef, pf.cases.map(translateCase), defaultValue)
-        }
-
-        def translateMatch(tree: Match, selector: Tree, cases: List[CaseDef], defaultValue: Tree) = {
-          assert(tree.selector.symbol == param.symbol)
+        def translateMatch(tree: Match, pfParam: Symbol, cases: List[CaseDef], defaultValue: Tree) = {
+          val selector = tree.selector
           val selectorTpe = selector.tpe.widen
-          val defaultSym = ctx.newSymbol(selector.symbol.owner, nme.WILDCARD, Synthetic, selectorTpe)
+          val defaultSym = ctx.newSymbol(pfParam.owner, nme.WILDCARD, Synthetic, selectorTpe)
           val defaultCase =
             CaseDef(
               Bind(defaultSym, Underscore(selectorTpe)),
@@ -102,10 +85,27 @@ class ExpandSAMs extends MiniPhase {
               defaultValue)
           val unchecked = Annotated(selector, New(ref(defn.UncheckedAnnotType)))
           cpy.Match(tree)(unchecked, cases :+ defaultCase)
-            .subst(param.symbol :: Nil, selector.symbol :: Nil)
+            .subst(param.symbol :: Nil, pfParam :: Nil)
               // Needed because  a partial function can be written as:
               // param => param match { case "foo" if foo(param) => param }
               // And we need to update all references to 'param'
+        }
+
+        def isDefinedAtRhs(paramRefss: List[List[Tree]]) = {
+          val tru = Literal(Constant(true))
+          def translateCase(cdef: CaseDef) =
+            cpy.CaseDef(cdef)(body = tru).changeOwner(anonSym, isDefinedAtFn)
+          val paramRef = paramRefss.head.head
+          val defaultValue = Literal(Constant(false))
+          translateMatch(pf, paramRef.symbol, pf.cases.map(translateCase), defaultValue)
+        }
+
+        def applyOrElseRhs(paramRefss: List[List[Tree]]) = {
+          val List(paramRef, defaultRef) = paramRefss.head
+          def translateCase(cdef: CaseDef) =
+            cdef.changeOwner(anonSym, applyOrElseFn)
+          val defaultValue = defaultRef.select(nme.apply).appliedTo(paramRef)
+          translateMatch(pf, paramRef.symbol, pf.cases.map(translateCase), defaultValue)
         }
 
         val isDefinedAtDef = transformFollowingDeep(DefDef(isDefinedAtFn, isDefinedAtRhs(_)))
