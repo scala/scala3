@@ -86,7 +86,7 @@ object handleRecursive {
   }
 }
 
-class CyclicReference private (val denot: SymDenotation)(implicit val ctx: Context) extends TypeError {
+class CyclicReference private (val denot: SymDenotation) extends TypeError {
 
   def errorMsg(cx: Context): Message =
     if (cx.mode is Mode.InferringReturnType) {
@@ -106,7 +106,7 @@ class CyclicReference private (val denot: SymDenotation)(implicit val ctx: Conte
     if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
       CyclicReferenceInvolvingImplicit(cycleSym)
     else
-      errorMsg(this.ctx)
+      errorMsg(ctx)
   }
 }
 
