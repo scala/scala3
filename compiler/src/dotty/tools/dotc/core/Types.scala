@@ -4562,8 +4562,15 @@ object Types {
     if (ctx.debug) printStackTrace()
   }
 
+  def showPrefixSafely(pre: Type)(implicit ctx: Context): String = pre.stripTypeVar match {
+    case pre: TermRef => i"${pre.termSymbol.name}."
+    case pre: TypeRef => i"${pre.typeSymbol.name}#"
+    case pre: TypeProxy => showPrefixSafely(pre.underlying)
+    case _ => if (pre.typeSymbol.exists) i"${pre.typeSymbol.name}#" else "."
+  }
+
   class CyclicFindMember(pre: Type, name: Name)(implicit ctx: Context) extends TypeError(
-    i"""member search with prefix $pre too deep.
+    i"""member search for ${showPrefixSafely(pre)}$name too deep.
        |searches, from inner to outer: .${ctx.pendingMemberSearches}% .%""")
 
   private def otherReason(pre: Type)(implicit ctx: Context): String = pre match {
