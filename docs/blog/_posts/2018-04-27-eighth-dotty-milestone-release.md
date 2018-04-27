@@ -3,17 +3,21 @@ layout: blog-page
 title: Announcing Dotty 0.7.0 and 0.8.0-RC1
 author: Allan Renucci
 authorImg: /images/allan.jpg
-date: 2018-04-26
+date: 2018-04-27
 ---
 
 Today, we are excited to release Dotty versions 0.7.0 and 0.8.0-RC1. These releases
 serve as a technology preview that demonstrates new language features and the compiler supporting them.
 
-If you’re not familiar with Dotty, it's a platform to try out new language concepts and compiler
-technologies for Scala. The focus is mainly on simplification. We remove extraneous syntax
-(e.g. no XML literals), and try to boil down Scala’s types into a smaller set of more fundamental
-constructs. The theory behind these constructs is researched in
-[DOT](https://infoscience.epfl.ch/record/215280), a calculus for dependent object types.
+Dotty is the project name for technologies that are considered for inclusion in Scala 3. Scala has
+pioneered the fusion of object-oriented and functional programming in a typed setting. Scala 3 will
+be a big step towards realizing the full potential of these ideas. Its main objectives are to
+- become more opinionated by promoting programming idioms we found to work well,
+- simplify where possible,
+- eliminate inconsistencies and surprising behaviors,
+- build on strong foundations to ensure the design hangs well together,
+- consolidate language constructs to improve the language’s consistency, safety, ergonomics, and performance.
+
 You can learn more about Dotty on our [website](https://dotty.epfl.ch).
 
 <!--more-->
