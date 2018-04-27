@@ -88,6 +88,7 @@ class UserDefinedErrorMessages extends ErrorMessagesTest {
     checkMessagesAfter("frontend") {
       """
         |class C {
+        |  import scala.language.implicitConversions
         |  @annotation.implicitAmbiguous("msg A=${A}")
         |  implicit def f[A](x: Int): String = "f was here"
         |  implicit def g(x: Int): String = "f was here"

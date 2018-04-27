@@ -249,7 +249,12 @@ object ProtoTypes {
           targ = arg.withType(WildcardType)
         else {
           targ = typerFn(arg)
-          if (!ctx.reporter.hasPending) {
+          if (!ctx.reporter.hasPendingErrors) {
+            // FIXME: This can swallow warnings by updating the typerstate from a nested
+            // context that gets discarded later. But we do have to update the
+            // typerstate if there are no errors. If we also omitted the next two lines
+            // when warning were emitted, `pos/t1756.scala` would fail when run with -feature.
+            // It would produce an orphan type parameter for CI when pickling.
             myTypedArg = myTypedArg.updated(arg, targ)
             evalState = evalState.updated(arg, (ctx.typerState, ctx.typerState.constraint))
           }

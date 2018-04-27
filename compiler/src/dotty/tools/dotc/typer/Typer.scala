@@ -1405,7 +1405,10 @@ class Typer extends Namer
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
     vparamss1.foreach(checkNoForwardDependencies)
-    if (sym is Implicit) checkImplicitParamsNotSingletons(vparamss1)
+    if (sym is Implicit) {
+      checkImplicitParamsNotSingletons(vparamss1)
+      checkImplicitConversionDefOK(sym)
+    }
     val tpt1 = checkSimpleKinded(typedType(tpt))
 
     var rhsCtx = ctx
@@ -2441,6 +2444,7 @@ class Typer extends Namer
       if (ctx.mode.is(Mode.ImplicitsEnabled))
         inferView(tree, pt) match {
           case SearchSuccess(inferred, _, _) =>
+            checkImplicitConversionUseOK(inferred.symbol, tree.pos)
             readapt(inferred)(ctx.retractMode(Mode.ImplicitsEnabled))
           case failure: SearchFailure =>
             if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous)
