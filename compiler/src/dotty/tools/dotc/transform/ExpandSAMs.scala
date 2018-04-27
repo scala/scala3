@@ -8,12 +8,13 @@ import MegaPhase._
 import SymUtils._
 import ast.untpd
 import ast.Trees._
+import dotty.tools.dotc.reporting.diagnostic.messages.TypeMismatch
 import dotty.tools.dotc.util.Positions.Position
 
 /** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.
  *  These fall into five categories
  *
- *   1. Partial function closures, we need to generate a isDefinedAt method for these.
+ *   1. Partial function closures, we need to generate isDefinedAt and applyOrElse methods for these.
  *   2. Closures implementing non-trait classes.
  *   3. Closures implementing classes that inherit from a class other than Object
  *      (a lambda cannot not be a run-time subtype of such a class)
@@ -35,8 +36,8 @@ class ExpandSAMs extends MiniPhase {
       tpt.tpe match {
         case NoType => tree // it's a plain function
         case tpe @ SAMType(_) if tpe.isRef(defn.PartialFunctionClass) =>
-          checkRefinements(tpe, fn.pos)
-          toPartialFunction(tree)
+          val tpe1 = checkRefinements(tpe, fn.pos)
+          toPartialFunction(tree, tpe1)
         case tpe @ SAMType(_) if isPlatformSam(tpe.classSymbol.asClass) =>
           checkRefinements(tpe, fn.pos)
           tree
@@ -50,42 +51,75 @@ class ExpandSAMs extends MiniPhase {
       tree
   }
 
-  private def toPartialFunction(tree: Block)(implicit ctx: Context): Tree = {
-    val Block(
-          (applyDef @ DefDef(nme.ANON_FUN, Nil, List(List(param)), _, _)) :: Nil,
-          Closure(_, _, tpt)) = tree
-    val applyRhs: Tree = applyDef.rhs
-    val applyFn = applyDef.symbol.asTerm
-
-    val MethodTpe(paramNames, paramTypes, _) = applyFn.info
-    val isDefinedAtFn = applyFn.copy(
-        name  = nme.isDefinedAt,
-        flags = Synthetic | Method,
-        info = MethodType(paramNames, paramTypes, defn.BooleanType)).asTerm
-    val tru = Literal(Constant(true))
-    def isDefinedAtRhs(paramRefss: List[List[Tree]]) = applyRhs match {
-      case Match(selector, cases) =>
-        assert(selector.symbol == param.symbol)
-        val paramRef = paramRefss.head.head
-        // Again, the alternative
-        //     val List(List(paramRef)) = paramRefs
-        // fails with a similar self instantiation error
-        def translateCase(cdef: CaseDef): CaseDef =
-          cpy.CaseDef(cdef)(body = tru).changeOwner(applyFn, isDefinedAtFn)
-        val defaultSym = ctx.newSymbol(isDefinedAtFn, nme.WILDCARD, Synthetic, selector.tpe.widen)
-        val defaultCase =
-          CaseDef(
-            Bind(defaultSym, Underscore(selector.tpe.widen)),
-            EmptyTree,
-            Literal(Constant(false)))
-        val annotated = Annotated(paramRef, New(ref(defn.UncheckedAnnotType)))
-        cpy.Match(applyRhs)(annotated, cases.map(translateCase) :+ defaultCase)
-      case _ =>
-        tru
+  private def toPartialFunction(tree: Block, tpe: Type)(implicit ctx: Context): Tree = {
+    // /** An extractor for match, either contained in a block or standalone. */
+    object PartialFunctionRHS {
+      def unapply(tree: Tree): Option[Match] = tree match {
+        case Block(Nil, expr) => unapply(expr)
+        case m: Match => Some(m)
+        case _ => None
+      }
     }
-    val isDefinedAtDef = transformFollowingDeep(DefDef(isDefinedAtFn, isDefinedAtRhs(_)))
-    val anonCls = AnonClass(tpt.tpe :: Nil, List(applyFn, isDefinedAtFn), List(nme.apply, nme.isDefinedAt))
-    cpy.Block(tree)(List(applyDef, isDefinedAtDef), anonCls)
+
+    val closureDef(anon @ DefDef(_, _, List(List(param)), _, _)) = tree
+    anon.rhs match {
+      case PartialFunctionRHS(pf) =>
+        val anonSym = anon.symbol
+
+        def overrideSym(sym: Symbol) = sym.copy(
+          owner = anonSym.owner,
+          flags = Synthetic | Method | Final,
+          info = tpe.memberInfo(sym),
+          coord = tree.pos).asTerm
+        val isDefinedAtFn = overrideSym(defn.PartialFunction_isDefinedAt)
+        val applyOrElseFn = overrideSym(defn.PartialFunction_applyOrElse)
+
+        def translateMatch(tree: Match, pfParam: Symbol, cases: List[CaseDef], defaultValue: Tree) = {
+          val selector = tree.selector
+          val selectorTpe = selector.tpe.widen
+          val defaultSym = ctx.newSymbol(pfParam.owner, nme.WILDCARD, Synthetic, selectorTpe)
+          val defaultCase =
+            CaseDef(
+              Bind(defaultSym, Underscore(selectorTpe)),
+              EmptyTree,
+              defaultValue)
+          val unchecked = Annotated(selector, New(ref(defn.UncheckedAnnotType)))
+          cpy.Match(tree)(unchecked, cases :+ defaultCase)
+            .subst(param.symbol :: Nil, pfParam :: Nil)
+              // Needed because  a partial function can be written as:
+              // param => param match { case "foo" if foo(param) => param }
+              // And we need to update all references to 'param'
+        }
+
+        def isDefinedAtRhs(paramRefss: List[List[Tree]]) = {
+          val tru = Literal(Constant(true))
+          def translateCase(cdef: CaseDef) =
+            cpy.CaseDef(cdef)(body = tru).changeOwner(anonSym, isDefinedAtFn)
+          val paramRef = paramRefss.head.head
+          val defaultValue = Literal(Constant(false))
+          translateMatch(pf, paramRef.symbol, pf.cases.map(translateCase), defaultValue)
+        }
+
+        def applyOrElseRhs(paramRefss: List[List[Tree]]) = {
+          val List(paramRef, defaultRef) = paramRefss.head
+          def translateCase(cdef: CaseDef) =
+            cdef.changeOwner(anonSym, applyOrElseFn)
+          val defaultValue = defaultRef.select(nme.apply).appliedTo(paramRef)
+          translateMatch(pf, paramRef.symbol, pf.cases.map(translateCase), defaultValue)
+        }
+
+        val isDefinedAtDef = transformFollowingDeep(DefDef(isDefinedAtFn, isDefinedAtRhs(_)))
+        val applyOrElseDef = transformFollowingDeep(DefDef(applyOrElseFn, applyOrElseRhs(_)))
+
+        val parent = defn.AbstractPartialFunctionType.appliedTo(tpe.argInfos)
+        val anonCls = AnonClass(parent :: Nil, List(isDefinedAtFn, applyOrElseFn), List(nme.isDefinedAt, nme.applyOrElse))
+        cpy.Block(tree)(List(isDefinedAtDef, applyOrElseDef), anonCls)
+
+      case _ =>
+        val found = tpe.baseType(defn.FunctionClass(1))
+        ctx.error(TypeMismatch(found, tpe), tree.pos)
+        tree
+    }
   }
 
   private def checkRefinements(tpe: Type, pos: Position)(implicit ctx: Context): Type = tpe.dealias match {
@@ -93,7 +127,7 @@ class ExpandSAMs extends MiniPhase {
       if (name.isTermName && tpe.member(name).symbol.ownersIterator.isEmpty) // if member defined in the refinement
         ctx.error("Lambda does not define " + name, pos)
       checkRefinements(parent, pos)
-    case _ =>
+    case tpe =>
       tpe
   }
 
