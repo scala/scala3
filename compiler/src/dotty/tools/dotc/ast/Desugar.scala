@@ -892,6 +892,9 @@ object desugar {
       .withMods(mods)
       .withPos(original.pos.withPoint(named.pos.start))
 
+  def checkWildcard(t: Tree)(implicit ctx: Context): Tree =
+    parsing.Parsers.rejectWildcard(t, ctx.error(UnboundWildcardType(), _), scalaAny)
+
   /** Main desugaring method */
   def apply(tree: Tree)(implicit ctx: Context): Tree = {
 
@@ -1114,8 +1117,8 @@ object desugar {
         Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
       case InfixOp(l, op, r) =>
         if (ctx.mode is Mode.Type)
-          if (!op.isBackquoted && op.name == tpnme.raw.AMP) AndTypeTree(l, r)     // l & r
-          else if (!op.isBackquoted && op.name == tpnme.raw.BAR) OrTypeTree(l, r) // l | r
+          if (!op.isBackquoted && op.name == tpnme.raw.AMP) AndTypeTree(checkWildcard(l), checkWildcard(r))     // l & r
+          else if (!op.isBackquoted && op.name == tpnme.raw.BAR) OrTypeTree(checkWildcard(l), checkWildcard(r)) // l | r
           else AppliedTypeTree(op, l :: r :: Nil) // op[l, r]
         else {
           assert(ctx.mode is Mode.Pattern) // expressions are handled separately by `binop`
