@@ -744,9 +744,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             true
           }
           else {
-            echo {
-              s"Error reported in ${error.pos.source}, but no annotation found"
-            }
+            echo(s"Error reported in ${error.pos.source}, but no annotation found")
             false
           }
         }
