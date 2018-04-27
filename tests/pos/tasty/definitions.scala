@@ -73,6 +73,7 @@ object definitions {
     case Literal(value: Constant)
     case This(id: Option[Id])
     case New(tpt: TypeTree)
+    case Throw(expr: Term)
     case NamedArg(name: TermName, arg: Term)
     case Apply(fn: Term, args: List[Term])
     case TypeApply(fn: Term, args: List[TypeTree])

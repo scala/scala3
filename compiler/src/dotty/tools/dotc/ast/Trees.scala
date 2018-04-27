@@ -908,7 +908,6 @@ object Trees {
      * so that they selectively retype themselves. Retyping needs a context.
      */
     abstract class TreeCopier {
-
       def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[T]
       def postProcess(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T]
 

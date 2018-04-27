@@ -1106,25 +1106,6 @@ class Typer extends Namer
     Throw(expr1).withPos(tree.pos)
   }
 
-  def typedQuote(tree: untpd.Quote, pt: Type)(implicit ctx: Context): Tree = track("typedQuote") {
-    val untpd.Quote(body) = tree
-    val isType = body.isType
-    val resultClass = if (isType) defn.QuotedTypeClass else defn.QuotedExprClass
-    val proto1 = pt.baseType(resultClass) match {
-      case AppliedType(_, argType :: Nil) => argType
-      case _ => WildcardType
-    }
-    val nestedCtx = ctx.fresh.setTree(tree)
-    if (isType) {
-      val body1 = typedType(body, proto1)(nestedCtx)
-      ref(defn.typeQuoteMethod).appliedToTypeTrees(body1 :: Nil)
-    }
-    else {
-      val body1 = typed(body, proto1)(nestedCtx)
-      ref(defn.quoteMethod).appliedToType(body1.tpe.widen).appliedTo(body1)
-    }
-  }
-
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral = track("typedSeqLiteral") {
     val elemProto = pt.elemType match {
       case NoType => WildcardType
@@ -1805,7 +1786,6 @@ class Typer extends Namer
           case tree: untpd.Super => typedSuper(tree, pt)
           case tree: untpd.SeqLiteral => typedSeqLiteral(tree, pt)
           case tree: untpd.Inlined => typedInlined(tree, pt)
-          case tree: untpd.Quote => typedQuote(tree, pt)
           case tree: untpd.TypeTree => typedTypeTree(tree, pt)
           case tree: untpd.SingletonTypeTree => typedSingletonTypeTree(tree)
           case tree: untpd.AndTypeTree => typedAndTypeTree(tree)
