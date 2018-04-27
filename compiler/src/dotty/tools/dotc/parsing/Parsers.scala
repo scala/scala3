@@ -468,9 +468,9 @@ object Parsers {
                 val l = opInfo.operand
                 val r = top
                 if (isType && !op.isBackquoted && op.name == tpnme.raw.BAR) {
-                  OrTypeTree(l, r)
+                  OrTypeTree(checkWildcard(l), checkWildcard(r))
                 } else if (isType && !op.isBackquoted && op.name == tpnme.raw.AMP) {
-                  AndTypeTree(l, r)
+                  AndTypeTree(checkWildcard(l), checkWildcard(r))
                 } else
                   InfixOp(l, op, r)
               }
@@ -784,7 +784,7 @@ object Parsers {
           val start = in.offset
           val tparams = typeParamClause(ParamOwner.TypeParam)
           if (in.token == ARROW)
-            atPos(start, in.skipToken())(LambdaTypeTree(tparams, typ()))
+            atPos(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
           else { accept(ARROW); typ() }
         }
         else infixType()
@@ -822,7 +822,7 @@ object Parsers {
 
     def refinedTypeRest(t: Tree): Tree = {
       newLineOptWhenFollowedBy(LBRACE)
-      if (in.token == LBRACE) refinedTypeRest(atPos(startOffset(t)) { RefinedTypeTree(t, refinement()) })
+      if (in.token == LBRACE) refinedTypeRest(atPos(startOffset(t)) { RefinedTypeTree(checkWildcard(t), refinement()) })
       else t
     }
 
@@ -886,7 +886,7 @@ object Parsers {
     private def simpleTypeRest(t: Tree): Tree = in.token match {
       case HASH => simpleTypeRest(typeProjection(t))
       case LBRACKET => simpleTypeRest(atPos(startOffset(t)) {
-        AppliedTypeTree(t, typeArgs(namedOK = false, wildOK = true)) })
+        AppliedTypeTree(checkWildcard(t), typeArgs(namedOK = false, wildOK = true)) })
       case _ => t
     }
 
@@ -2159,7 +2159,7 @@ object Parsers {
         in.token match {
           case EQUALS =>
             in.nextToken()
-            TypeDef(name, lambdaAbstract(tparams, typ())).withMods(mods).setComment(in.getDocComment(start))
+            TypeDef(name, lambdaAbstract(tparams, toplevelTyp())).withMods(mods).setComment(in.getDocComment(start))
           case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
             TypeDef(name, lambdaAbstract(tparams, typeBounds())).withMods(mods).setComment(in.getDocComment(start))
           case _ =>
@@ -2287,7 +2287,7 @@ object Parsers {
     /** ConstrApp         ::=  SimpleType {ParArgumentExprs}
      */
     val constrApp = () => {
-      val t = annotType()
+      val t = checkWildcard(annotType())
       if (in.token == LPAREN) parArgumentExprss(wrapNew(t))
       else t
     }
