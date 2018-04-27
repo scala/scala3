@@ -207,7 +207,10 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
         explicitTags.clear()
 
         // Maps type splices to type references of tags e.g., ~t -> some type T$1
-        val map: Map[Type, Type] = tagsExplicitTypeDefsPairs.map(x => (x._1, x._2.symbol.typeRef)).toMap
+        val map: Map[Type, Type] = {
+          tagsExplicitTypeDefsPairs.map(x => (x._1, x._2.symbol.typeRef)) ++
+          (itags.map(_._1) zip typeDefs.map(_.symbol.typeRef))
+        }.toMap
         val tMap = new TypeMap() {
           override def apply(tp: Type): Type = map.getOrElse(tp, mapOver(tp))
         }
@@ -242,7 +245,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
         l == level ||
         sym.is(Inline) && sym.owner.is(Macro) && sym.info.isValueType && l - 1 == level
       case None =>
-        true
+        level == 0
     }
 
     /** Issue a "splice outside quote" error unless we ar in the body of an inline method */
@@ -286,12 +289,12 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
         if (!isThis) sym.show
         else if (sym.is(ModuleClass)) sym.sourceModule.show
         else i"${sym.name}.this"
-      if (!isThis && sym.maybeOwner.isType)
+      if (!isThis && sym.maybeOwner.isType && !sym.is(Param))
         check(sym.owner, sym.owner.thisType, pos)
       else if (sym.exists && !sym.isStaticOwner && !levelOK(sym))
         for (errMsg <- tryHeal(tp, pos))
           ctx.error(em"""access to $symStr from wrong staging level:
-                        | - the definition is at level ${levelOf(sym)},
+                        | - the definition is at level ${levelOf.getOrElse(sym, 0)},
                         | - but the access is at level $level.$errMsg""", pos)
     }
 
@@ -310,7 +313,8 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
             }
           case tp: NamedType =>
             check(tp.symbol, tp, pos)
-            foldOver(acc, tp)
+            if (!tp.symbol.is(Param))
+              foldOver(acc, tp)
           case tp: ThisType =>
             check(tp.cls, tp, pos)
             foldOver(acc, tp)
