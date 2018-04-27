@@ -240,17 +240,20 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     case object Generic extends Failure
 
     private[this] var _failures = Set.empty[Failure]
+    private[this] var _failureCount = 0
+
     /** Fail the current test */
     protected[this] final def fail(failure: Failure = Generic): Unit = synchronized {
       _failures = _failures + failure
+      _failureCount = _failureCount + 1
     }
-    def didFail: Boolean = _failures.nonEmpty
+    def didFail: Boolean = _failureCount != 0
 
     /** A set of the different failures */
     def failureReasons: Set[Failure] = _failures
 
     /** Number of failed tests */
-    def failureCount: Int = _failures.size
+    def failureCount: Int = _failureCount
 
     protected def logBuildInstructions(reporter: TestReporter, testSource: TestSource, err: Int, war: Int) = {
       val errorMsg = testSource.buildInstructions(reporter.errorCount, reporter.warningCount)
