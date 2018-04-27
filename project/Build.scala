@@ -339,10 +339,11 @@ object Build {
   // - publishes its own empty artifact "dotty" that depends on "dotty-library" and "dotty-compiler",
   //   this is only necessary for compatibility with sbt which currently hardcodes the "dotty" artifact name
   lazy val dotty = project.in(file(".")).asDottyRoot(NonBootstrapped)
-  lazy val `dotty-bootstrapped` = project.asDottyRoot(Bootstrapped).disablePlugins(ScriptedPlugin)
-  lazy val `dotty-optimised` = project.asDottyRoot(BootstrappedOptimised).disablePlugins(ScriptedPlugin)
+  lazy val `dotty-bootstrapped` = project.asDottyRoot(Bootstrapped)
+  lazy val `dotty-optimised` = project.asDottyRoot(BootstrappedOptimised)
 
   lazy val `dotty-interfaces` = project.in(file("interfaces")).
+    disablePlugins(ScriptedPlugin).
     settings(commonScala2Settings). // Java-only project, so this is fine
     settings(
       // Do not append Scala versions to the generated artifacts
@@ -420,8 +421,8 @@ object Build {
   )
 
   lazy val `dotty-doc` = project.in(file("doc-tool")).asDottyDoc(NonBootstrapped)
-  lazy val `dotty-doc-bootstrapped` = project.in(file("doc-tool")).asDottyDoc(Bootstrapped).disablePlugins(ScriptedPlugin)
-  lazy val `dotty-doc-optimised` = project.in(file("doc-tool")).asDottyDoc(BootstrappedOptimised).disablePlugins(ScriptedPlugin)
+  lazy val `dotty-doc-bootstrapped` = project.in(file("doc-tool")).asDottyDoc(Bootstrapped)
+  lazy val `dotty-doc-optimised` = project.in(file("doc-tool")).asDottyDoc(BootstrappedOptimised)
 
   def dottyDoc(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `dotty-doc`
@@ -543,7 +544,7 @@ object Build {
           if path.contains("scala-library") ||
             // FIXME: currently needed for tests referencing scalac internals
             path.contains("scala-reflect") ||
-            // FIXME: should go away when xml literal parsing is removed
+            // used for tests that compile xml
             path.contains("scala-xml") ||
             // used for tests that compile dotty
             path.contains("scala-asm") ||
@@ -707,8 +708,8 @@ object Build {
     if (mode == NonBootstrapped) nonBootstrapedDottyCompilerSettings else bootstrapedDottyCompilerSettings
 
   lazy val `dotty-compiler` = project.in(file("compiler")).asDottyCompiler(NonBootstrapped)
-  lazy val `dotty-compiler-bootstrapped` = project.in(file("compiler")).asDottyCompiler(Bootstrapped).disablePlugins(ScriptedPlugin)
-  lazy val `dotty-compiler-optimised` = project.in(file("compiler")).asDottyCompiler(BootstrappedOptimised).disablePlugins(ScriptedPlugin)
+  lazy val `dotty-compiler-bootstrapped` = project.in(file("compiler")).asDottyCompiler(Bootstrapped)
+  lazy val `dotty-compiler-optimised` = project.in(file("compiler")).asDottyCompiler(BootstrappedOptimised)
 
   def dottyCompiler(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `dotty-compiler`
@@ -722,8 +723,8 @@ object Build {
   )
 
   lazy val `dotty-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
-  lazy val `dotty-library-bootstrapped`: Project = project.in(file("library")).asDottyLibrary(Bootstrapped).disablePlugins(ScriptedPlugin)
-  lazy val `dotty-library-optimised`: Project = project.in(file("library")).asDottyLibrary(BootstrappedOptimised).disablePlugins(ScriptedPlugin)
+  lazy val `dotty-library-bootstrapped`: Project = project.in(file("library")).asDottyLibrary(Bootstrapped)
+  lazy val `dotty-library-optimised`: Project = project.in(file("library")).asDottyLibrary(BootstrappedOptimised)
 
   def dottyLibrary(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `dotty-library`
@@ -764,7 +765,7 @@ object Build {
   )
 
   lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).asDottySbtBridge(NonBootstrapped)
-  lazy val `dotty-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge")).asDottySbtBridge(Bootstrapped).disablePlugins(ScriptedPlugin)
+  lazy val `dotty-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge")).asDottySbtBridge(Bootstrapped)
 
   lazy val `dotty-language-server` = project.in(file("language-server")).
     dependsOn(dottyCompiler(Bootstrapped)).
@@ -829,8 +830,8 @@ object Build {
     ).disablePlugins(ScriptedPlugin)
 
   lazy val `dotty-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
-  lazy val `dotty-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped).disablePlugins(ScriptedPlugin)
-  lazy val `dotty-bench-optimised` = project.in(file("bench")).asDottyBench(BootstrappedOptimised).disablePlugins(ScriptedPlugin)
+  lazy val `dotty-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
+  lazy val `dotty-bench-optimised` = project.in(file("bench")).asDottyBench(BootstrappedOptimised)
 
   // Depend on dotty-library so that sbt projects using dotty automatically
   // depend on the dotty-library
@@ -1133,8 +1134,8 @@ object Build {
   )
 
   lazy val dist = project.asDist(NonBootstrapped)
-  lazy val `dist-bootstrapped` = project.asDist(Bootstrapped).disablePlugins(ScriptedPlugin)
-  lazy val `dist-optimised` = project.asDist(BootstrappedOptimised).disablePlugins(ScriptedPlugin)
+  lazy val `dist-bootstrapped` = project.asDist(Bootstrapped)
+  lazy val `dist-optimised` = project.asDist(BootstrappedOptimised)
 
   // /** A sandbox to play with the Scala.js back-end of dotty.
   //  *
@@ -1182,6 +1183,7 @@ object Build {
 
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
+      disablePlugins(ScriptedPlugin).
       aggregate(`dotty-interfaces`, dottyLibrary, dottyCompiler, dottyDoc, dottySbtBridgeReference).
       bootstrappedAggregate(`scala-library`, `scala-compiler`, `scala-reflect`, scalap, `dotty-language-server`).
       dependsOn(dottyCompiler).
@@ -1191,11 +1193,13 @@ object Build {
       )
 
     def asDottyCompiler(implicit mode: Mode): Project = project.withCommonSettings.
+      disablePlugins(ScriptedPlugin).
       dependsOn(`dotty-interfaces`).
       dependsOn(dottyLibrary).
       settings(dottyCompilerSettings)
 
     def asDottyLibrary(implicit mode: Mode): Project = project.withCommonSettings.
+      disablePlugins(ScriptedPlugin).
       settings(dottyLibrarySettings).
       bootstrappedSettings(
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called.
@@ -1203,19 +1207,23 @@ object Build {
       )
 
     def asDottyDoc(implicit mode: Mode): Project = project.withCommonSettings.
+      disablePlugins(ScriptedPlugin).
       dependsOn(dottyCompiler, dottyCompiler % "test->test").
       settings(dottyDocSettings)
 
     def asDottySbtBridge(implicit mode: Mode): Project = project.withCommonSettings.
+      disablePlugins(ScriptedPlugin).
       dependsOn(dottyCompiler % Provided).
       settings(dottySbtBridgeSettings)
 
     def asDottyBench(implicit mode: Mode): Project = project.withCommonSettings.
+      disablePlugins(ScriptedPlugin).
       dependsOn(dottyCompiler).
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
 
     def asDist(implicit mode: Mode): Project = project.
+      disablePlugins(ScriptedPlugin).
       enablePlugins(PackPlugin).
       withCommonSettings.
       dependsOn(`dotty-interfaces`, dottyCompiler, dottyLibrary, dottyDoc).
