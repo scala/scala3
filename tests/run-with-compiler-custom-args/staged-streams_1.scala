@@ -310,8 +310,8 @@ object Test {
         case (Nested(producer1, nestf1), Linear(producer2)) =>
           mapRaw[(B, Expr[A]), (Expr[A], B)]((t => k => '{ ~k((t._2, t._1)) }), pushLinear[B, _, Expr[A]](producer2, producer1, nestf1))
 
-        case (Nested(producer1, nestf1), Nested(producer2, nestf2)) =>
-          zipRaw(Linear(makeLinear[A](stream1)), stream2)
+        case (Nested(producer1, nestf1), Nested(producer2, nestf2)) => ???
+          // zipRaw[A, B](Linear(makeLinear(stream1)), stream2)
       }
     }
 
@@ -437,7 +437,7 @@ object Test {
       })
     }
 
-    private def zip_producer[A: Type, B: Type](producer1: Producer[A], producer2: Producer[B]) = {
+    private def zip_producer[A, B](producer1: Producer[A], producer2: Producer[B]) = {
       new Producer[(A, B)] {
 
         type St = (producer1.St, producer2.St)
@@ -459,7 +459,7 @@ object Test {
       }
     }
 
-    def zip[B : Type, C : Type](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B]): Stream[C] = {
+    def zip[B: Type, C: Type](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B]): Stream[C] = {
 
       val Stream(stream_b) = stream2
 
