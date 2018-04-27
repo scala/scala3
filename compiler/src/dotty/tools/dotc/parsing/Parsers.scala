@@ -7,7 +7,7 @@ import scala.collection.immutable.BitSet
 import util.{ SourceFile, SourcePosition }
 import Tokens._
 import Scanners._
-import MarkupParsers._
+import xml.MarkupParsers.MarkupParser
 import core._
 import Flags._
 import Contexts._
@@ -397,7 +397,7 @@ object Parsers {
     /** the markup parser */
     lazy val xmlp = new MarkupParser(this, true)
 
-    object symbXMLBuilder extends SymbolicXMLBuilder(this, true) // DEBUG choices
+    object symbXMLBuilder extends xml.SymbolicXMLBuilder(this, true) // DEBUG choices
 
     def xmlLiteral() : Tree = xmlp.xLiteral
     def xmlLiteralPattern() : Tree = xmlp.xLiteralPattern

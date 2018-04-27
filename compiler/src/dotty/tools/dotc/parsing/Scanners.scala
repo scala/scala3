@@ -13,7 +13,6 @@ import scala.annotation.{ switch, tailrec }
 import scala.collection.mutable
 import scala.collection.immutable.SortedMap
 import mutable.ListBuffer
-import Utility.isNameStart
 import rewrite.Rewrites.patch
 
 object Scanners {
@@ -424,7 +423,7 @@ object Scanners {
             val last = if (charOffset >= 2) buf(charOffset - 2) else ' '
             nextChar()
             last match {
-              case ' ' | '\t' | '\n' | '{' | '(' | '>' if isNameStart(ch) || ch == '!' || ch == '?' =>
+              case ' ' | '\t' | '\n' | '{' | '(' | '>' if xml.Utility.isNameStart(ch) || ch == '!' || ch == '?' =>
                 token = XMLSTART
               case _ =>
                 // Console.println("found '<', but last is '" + in.last +"'"); // DEBUG
