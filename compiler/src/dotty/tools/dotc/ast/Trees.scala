@@ -31,7 +31,7 @@ object Trees {
   @sharable var ntrees = 0
 
   /** Property key for trees with documentation strings attached */
-  val DocComment = new Property.Key[Comment]
+  val DocComment = new Property.StickyKey[Comment]
 
   @sharable private[this] var nextId = 0 // for debugging
 
@@ -912,10 +912,10 @@ object Trees {
       def postProcess(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T]
 
       def finalize(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =
-        postProcess(tree, copied withPos tree.pos)
+        postProcess(tree, copied.withPos(tree.pos).withAttachmentsFrom(tree))
 
       def finalize(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T] =
-        postProcess(tree, copied withPos tree.pos)
+        postProcess(tree, copied.withPos(tree.pos).withAttachmentsFrom(tree))
 
       def Ident(tree: Tree)(name: Name): Ident = tree match {
         case tree: BackquotedIdent =>
