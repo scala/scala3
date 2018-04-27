@@ -193,7 +193,13 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       case tree: Alternative => goAlternative(tree, start)
       case tree => goOther(tree, start)
     }
-    if (tree.isInstanceOf[NameTree]) goNamed(tree, start) else goUnnamed(tree, start)
+    try
+      if (tree.isInstanceOf[NameTree]) goNamed(tree, start) else goUnnamed(tree, start)
+    catch {
+      case ex: TypeError =>
+        ctx.error(ex.toMessage, tree.pos)
+        tree
+    }
   }
 
   /** Transform full tree using all phases in this group that have idxInGroup >= start */

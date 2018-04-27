@@ -66,6 +66,7 @@ class RecursionOverflow(val op: String, details: => String, previous: Throwable,
     val mostCommon = recursions.groupBy(_.op).toList.maxBy(_._2.map(_.weight).sum)._2.reverse
     s"""Recursion limit exceeded.
        |Maybe there is an illegal cyclic reference?
+       |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
        |A recurring operation is (inner to outer):
        |${opsString(mostCommon)}""".stripMargin
   }
