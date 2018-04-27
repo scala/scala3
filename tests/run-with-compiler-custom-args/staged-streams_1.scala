@@ -101,7 +101,7 @@ object Test {
       * @tparam B      the element type of the resulting stream
       * @return        a new stream resulting from applying `f` in the `step` function of the input stream's producer.
       */
-    private def mapRaw[A: Type, B: Type](f: (A => (B => Expr[Unit]) => Expr[Unit]), stream: StagedStream[A]): StagedStream[B] = {
+    private def mapRaw[A, B](f: (A => (B => Expr[Unit]) => Expr[Unit]), stream: StagedStream[A]): StagedStream[B] = {
       stream match {
         case Linear(producer) => {
           val prod = new Producer[B] {
@@ -194,7 +194,7 @@ object Test {
       * @return        the stream with the new producer. If the passed stream was linear, the new termination is added
       *                otherwise the new termination is propagated to all nested ones, recursively.
       */
-    private def addTerminationCondition[A: Type](condition: Expr[Boolean] => Expr[Boolean], stream: StagedStream[A]): StagedStream[A] = {
+    private def addTerminationCondition[A](condition: Expr[Boolean] => Expr[Boolean], stream: StagedStream[A]): StagedStream[A] = {
       def addToProducer[A](f: Expr[Boolean] => Expr[Boolean], producer: Producer[A]): Producer[A] = {
         producer.card match {
             case Many =>
@@ -310,8 +310,8 @@ object Test {
         case (Nested(producer1, nestf1), Linear(producer2)) =>
           mapRaw[(B, Expr[A]), (Expr[A], B)]((t => k => '{ ~k((t._2, t._1)) }), pushLinear[B, _, Expr[A]](producer2, producer1, nestf1))
 
-        case (Nested(producer1, nestf1), Nested(producer2, nestf2)) => ???
-          // zipRaw[A, B](Linear(makeLinear(stream1)), stream2)
+        case (Nested(producer1, nestf1), Nested(producer2, nestf2)) =>
+          zipRaw[A, B](Linear(makeLinear(stream1)), stream2)
       }
     }
 
@@ -403,7 +403,7 @@ object Test {
       }
     }
 
-    private def pushLinear[A: Type, B, C: Type](producer: Producer[A], nestedProducer: Producer[B], nestedf: (B => StagedStream[C])): StagedStream[(A, C)] = {
+    private def pushLinear[A, B, C](producer: Producer[A], nestedProducer: Producer[B], nestedf: (B => StagedStream[C])): StagedStream[(A, C)] = {
       val newProducer = new Producer[(Var[Boolean], producer.St, B)] {
 
         type St = (Var[Boolean], producer.St, nestedProducer.St)
