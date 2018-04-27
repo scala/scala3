@@ -36,11 +36,11 @@ and enables integration with tools such as [Bloop](https://scalacenter.github.io
 If you are already using Dotty with sbt 0.13, follow these simple steps to upgrade:
 - update sbt version to 1.1.4 in `project/build.properties`
 - update sbt-dotty plugin to the latest version: `addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "0.2.2")`
-- update usages of `.withDottyCompat()` by `.withDottyCompat(scalaVersion.value)`
+- replace usages of `.withDottyCompat()` by `.withDottyCompat(scalaVersion.value)`
 
 ### Unchecked warnings [#4045](https://github.com/lampepfl/dotty/pull/4045)
-Dotty now emits `unchecked` warnings like `scalac` whenever a type test is performed but cannot
-safely be checked at runtime. For example:
+Dotty now emits `unchecked` warnings like `scalac` whenever a type test is performed but cannot be
+fully checked at runtime because of type erasure. For example:
 
 ```scala
 scala> def foo(x: Any) = x.isInstanceOf[List[String]]
@@ -90,8 +90,9 @@ f[[X] => String]
 section of our documentation.
 
 ### Improved support for SAM type [#4152](https://github.com/lampepfl/dotty/pull/4152)
-This release includes fixes to SAM types that greatly improve interoperability with Java 8 lambdas.
-One can now easely write Scala code that uses Java streams:
+This release includes fixes to [SAM types](https://www.scala-lang.org/news/2.12.0/#lambda-syntax-for-sam-types)
+that greatly improve interoperability with Java 8 lambdas. One can now easily write Scala code that
+uses Java streams:
 
 ```scala
 val myList =
@@ -104,6 +105,7 @@ myList
   .sorted
   .forEach(println(_))
 
+// prints:
 // C1
 // C2
 ```
