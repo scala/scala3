@@ -12,6 +12,7 @@ serve as a technology preview that demonstrates new language features and the co
 Dotty is the project name for technologies that are considered for inclusion in Scala 3. Scala has
 pioneered the fusion of object-oriented and functional programming in a typed setting. Scala 3 will
 be a big step towards realizing the full potential of these ideas. Its main objectives are to
+
 - become more opinionated by promoting programming idioms we found to work well,
 - simplify where possible,
 - eliminate inconsistencies and surprising behaviors,
@@ -34,8 +35,12 @@ lets us use the new improved incremental compiler for Scala called [Zinc](https:
 and enables integration with tools such as [Bloop](https://scalacenter.github.io/bloop/).
 
 If you are already using Dotty with sbt 0.13, follow these simple steps to upgrade:
+
 - update sbt version to 1.1.4 in `project/build.properties`
-- update sbt-dotty plugin to the latest version: `addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "0.2.2")`
+- update sbt-dotty plugin to the latest version:
+  ```scala
+  addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "0.2.2")
+  ```
 - replace usages of `.withDottyCompat()` by `.withDottyCompat(scalaVersion.value)`
 
 ### Unchecked warnings [#4045](https://github.com/lampepfl/dotty/pull/4045)

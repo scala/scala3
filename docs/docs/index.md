@@ -6,6 +6,7 @@ title: "Dotty Documentation"
 Dotty is the project name for technologies that are considered for inclusion in Scala 3. Scala has
 pioneered the fusion of object-oriented and functional programming in a typed setting. Scala 3 will
 be a big step towards realizing the full potential of these ideas. Its main objectives are to
+
 - become more opinionated by promoting programming idioms we found to work well,
 - simplify where possible,
 - eliminate inconsistencies and surprising behaviors,
