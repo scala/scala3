@@ -169,16 +169,17 @@ class ReplDriver(settings: Array[String],
     compiler
       .typeCheck(expr, errorsAllowed = true)
       .map { tree =>
-        implicit val ctx: Context = state.run.runContext
         val file = new dotc.util.SourceFile("compl", expr)
+        val unit = new CompilationUnit(file)
+        unit.tpdTree = tree
+        implicit val ctx: Context = state.run.runContext.fresh.setCompilationUnit(unit)
         val srcPos = dotc.util.SourcePosition(file, Position(cursor))
-        val (startOffset, completions) = Interactive.completions(SourceTree(tree, file) :: Nil, srcPos)(ctx)
+        val (startOffset, completions) = Interactive.completions(srcPos)
         val query =
           if (startOffset < cursor) expr.substring(startOffset, cursor) else ""
 
         def filterCompletions(name: String) =
           (query == "." || name.startsWith(query)) && name != query
-
 
         Completions(
           Math.min(startOffset, cursor) + { if (query == ".") 1 else 0 },

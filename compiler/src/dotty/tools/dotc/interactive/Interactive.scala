@@ -98,39 +98,6 @@ object Interactive {
    *
    *  @return offset and list of symbols for possible completions
    */
-  // deprecated
-  // FIXME: Remove this method
-  def completions(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): (Int, List[Symbol]) = {
-    val path = pathTo(trees, pos)
-    val boundary = enclosingDefinitionInPath(path).symbol
-
-    // FIXME: Get all declarations available in the current scope, not just
-    // those from the enclosing class
-    def scopeCompletions: List[Symbol] =
-      boundary.enclosingClass match {
-        case csym: ClassSymbol =>
-          val classRef = csym.classInfo.appliedRef
-          completions(classRef, boundary)
-        case _ =>
-          Nil
-      }
-
-    path.headOption.map {
-      case sel @ Select(qual, name) =>
-        // When completing "`a.foo`, return the members of `a`
-        (sel.pos.point, completions(qual.tpe, boundary))
-      case id @ Ident(name) =>
-        (id.pos.point, scopeCompletions)
-      case _ =>
-        (0, scopeCompletions)
-    }
-    .getOrElse((0, Nil))
-  }
-
-  /** Get possible completions from tree at `pos`
-   *
-   *  @return offset and list of symbols for possible completions
-   */
   def completions(pos: SourcePosition)(implicit ctx: Context): (Int, List[Symbol]) = {
     val path = pathTo(ctx.compilationUnit.tpdTree, pos.pos)
     computeCompletions(pos, path)(contextOfPath(path))
