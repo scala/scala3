@@ -18,7 +18,7 @@ object DepBug {
   }
   {   // error: Null does not take parameters (follow on)
     import dep._
-    a m (b)
+    a m (b) // error: not found: a
   }
   dep.a m (dep b) // error (follow on)
 }
