@@ -32,7 +32,7 @@ import config.Printers.typr
 import NameKinds.DefaultGetterName
 
 import collection.mutable
-import SymDenotations.NoCompleter
+import SymDenotations.{NoCompleter, NoDenotation}
 import dotty.tools.dotc.reporting.diagnostic.{ErrorMessageID, Message}
 import dotty.tools.dotc.reporting.diagnostic.messages._
 import dotty.tools.dotc.transform.ValueClasses._
@@ -731,20 +731,25 @@ trait Checking {
     case Nil =>
   }
 
-  /** Check that all named type that form part of this type have a denotation.
+  /** Check that all named types that form part of this type have a denotation.
    *  Called on inferred (result) types of ValDefs and DefDefs.
    *  This could fail for types where the member was originally available as part
    *  of the self type, yet is no longer visible once the `this` has been replaced
    *  by some other prefix. See neg/i3083.scala
    */
   def checkMembersOK(tp: Type, pos: Position)(implicit ctx: Context): Type = {
+    var ok = true
     val check: Type => Unit = {
-      case ref: NamedType if !ref.denot.exists =>
-        ctx.error(em"$ref is not defined in inferred type $tp", pos)
+      case ref: NamedType =>
+        val d = try ref.denot catch { case ex: TypeError => NoDenotation }
+        if (!d.exists) {
+          ctx.error(em"$ref is not defined in inferred type $tp", pos)
+          ok = false
+        }
       case _ =>
     }
     tp.foreachPart(check, stopAtStatic = true)
-    tp
+    if (ok) tp else UnspecifiedErrorType
   }
 
   /** Check that all non-synthetic references of the form `<ident>` or
