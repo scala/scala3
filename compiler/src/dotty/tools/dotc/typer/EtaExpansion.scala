@@ -43,7 +43,7 @@ abstract class Lifter {
   protected def liftedDef(sym: TermSymbol, rhs: Tree)(implicit ctx: Context): MemberDef = ValDef(sym, rhs)
 
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(implicit ctx: Context): Tree =
-    if (noLift(expr)) expr
+    if (noLift(expr) || !expr.hasType && ctx.reporter.errorsReported) expr
     else {
       val name = UniqueName.fresh(prefix)
       var liftedType = fullyDefinedType(expr.tpe.widen, "lifted expression", expr.pos)
