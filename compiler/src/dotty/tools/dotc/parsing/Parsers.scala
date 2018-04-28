@@ -1929,7 +1929,10 @@ object Parsers {
       commaSeparated(importExpr) match {
         case t :: rest =>
           // The first import should start at the position of the keyword.
-          t.withPos(t.pos.withStart(offset)) :: rest
+          val firstPos =
+            if (t.pos.exists) t.pos.withStart(offset)
+            else Position(offset, in.lastOffset)
+          t.withPos(firstPos) :: rest
         case nil => nil
       }
     }
