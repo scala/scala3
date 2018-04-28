@@ -147,7 +147,7 @@ ParamValueType    ::=  Type [‘*’]                                           
 TypeArgs          ::=  ‘[’ ArgTypes ‘]’                                         ts
 NamedTypeArg      ::=  id ‘=’ Type                                              NamedArg(id, t)
 NamedTypeArgs     ::=  ‘[’ NamedTypeArg {‘,’ NamedTypeArg} ‘]’                  nts
-Refinement        ::=  ‘{’ [Dcl] {semi [Dcl]} ‘}’                               ds
+Refinement        ::=  ‘{’ [RefineDcl] {semi [RefineDcl]} ‘}’                   ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type] | INT                            TypeBoundsTree(lo, hi)
 TypeParamBounds   ::=  TypeBounds {‘<%’ Type} {‘:’ Type}                        ContextBounds(typeBounds, tps)
 ```
@@ -299,12 +299,12 @@ ImportSelector    ::=  id [‘=>’ id | ‘=>’ ‘_’]                      
 
 ### Declarations and Definitions
 ```ebnf
-Dcl               ::=  ‘val’ ValDcl
-                    |  ‘var’ VarDcl
+RefineDcl         ::=  ‘val’ VarDcl
                     |  ‘def’ DefDcl
                     |  ‘type’ {nl} TypeDcl
                     |  INT
-
+Dcl               ::=  RefineDcl
+                    |  ‘var’ VarDcl
 ValDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 DefDcl            ::=  DefSig [‘:’ Type]                                        DefDef(_, name, tparams, vparamss, tpe, EmptyTree)

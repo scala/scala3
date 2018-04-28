@@ -256,6 +256,7 @@ trait TypeAssigner {
   def accessibleSelectionType(tree: untpd.RefTree, qual1: Tree)(implicit ctx: Context): Type = {
     var qualType = qual1.tpe.widenIfUnstable
     if (qualType.isLambdaSub) qualType = errorType(em"$qualType takes type parameters", qual1.pos)
+    else if (!qualType.isInstanceOf[TermType]) qualType = errorType(em"$qualType is illegal as a selection prefix", qual1.pos)
     val ownType = selectionType(qualType, tree.name, tree.pos)
     ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
   }

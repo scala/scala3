@@ -907,14 +907,19 @@ class Namer { typer: Typer =>
             case TypeApply(core, targs) => (core, targs)
             case core => (core, Nil)
           }
-          val Select(New(tpt), nme.CONSTRUCTOR) = core
-          val targs1 = targs map (typedAheadType(_))
-          val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
-          if (ptype.typeParams.isEmpty) ptype
-          else {
-            if (denot.is(ModuleClass) && denot.sourceModule.is(Implicit))
-              missingType(denot.symbol, "parent ")(creationContext)
-            fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.pos)
+          core match {
+            case Select(New(tpt), nme.CONSTRUCTOR) =>
+              val targs1 = targs map (typedAheadType(_))
+              val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
+              if (ptype.typeParams.isEmpty) ptype
+              else {
+                if (denot.is(ModuleClass) && denot.sourceModule.is(Implicit))
+                  missingType(denot.symbol, "parent ")(creationContext)
+                fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.pos)
+              }
+            case _ =>
+              assert(ctx.reporter.errorsReported)
+              UnspecifiedErrorType
           }
         }
 

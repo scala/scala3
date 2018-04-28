@@ -1186,7 +1186,7 @@ class Typer extends Namer
     val refineCls = createSymbol(refineClsDef).asClass
     val TypeDef(_, impl: Template) = typed(refineClsDef)
     val refinements1 = impl.body
-    assert(tree.refinements.length == refinements1.length, s"${tree.refinements} != $refinements1")
+    assert(tree.refinements.hasSameLengthAs(refinements1), i"${tree.refinements}%, % > $refinements1%, %")
     val seen = mutable.Set[Symbol]()
     for (refinement <- refinements1) { // TODO: get clarity whether we want to enforce these conditions
       typr.println(s"adding refinement $refinement")
@@ -2441,7 +2441,7 @@ class Typer extends Namer
         if (isFullyDefined(wtp, force = ForceDegree.all) &&
             ctx.typerState.constraint.ne(prevConstraint)) readapt(tree)
         else err.typeMismatch(tree, pt, failure)
-      if (ctx.mode.is(Mode.ImplicitsEnabled))
+      if (ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType)
         inferView(tree, pt) match {
           case SearchSuccess(inferred, _, _) =>
             checkImplicitConversionUseOK(inferred.symbol, tree.pos)

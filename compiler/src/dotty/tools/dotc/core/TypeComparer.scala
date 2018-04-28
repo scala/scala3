@@ -527,17 +527,18 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           case _ =>
         }
         either(recur(tp1, tp21), recur(tp1, tp22)) || fourthTry
-      case tp2: MethodOrPoly =>
+      case tp2: MethodType =>
         def compareMethod = tp1 match {
-          case tp1: MethodOrPoly =>
-            (tp1.signature consistentParams tp2.signature) &&
-              matchingParams(tp1, tp2) &&
-              (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
-              isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
-          case _ =>
-            false
+          case tp1: MethodType => compareMethodOrPoly(tp1, tp2)
+          case _ => false
         }
         compareMethod
+      case tp2: PolyType =>
+        def comparePoly = tp1 match {
+          case tp1: PolyType => compareMethodOrPoly(tp1, tp2)
+          case _ => false
+        }
+        comparePoly
       case tp2 @ ExprType(restpe2) =>
         def compareExpr = tp1 match {
           // We allow ()T to be a subtype of => T.
@@ -572,6 +573,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case _ =>
         fourthTry
     }
+
+    def compareMethodOrPoly(tp1: MethodOrPoly, tp2: MethodOrPoly) =
+      (tp1.signature consistentParams tp2.signature) &&
+      matchingParams(tp1, tp2) &&
+      (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
+      isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
 
     def fourthTry: Boolean = tp1 match {
       case tp1: TypeRef =>

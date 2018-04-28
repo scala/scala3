@@ -1929,7 +1929,10 @@ object Parsers {
       commaSeparated(importExpr) match {
         case t :: rest =>
           // The first import should start at the position of the keyword.
-          t.withPos(t.pos.withStart(offset)) :: rest
+          val firstPos =
+            if (t.pos.exists) t.pos.withStart(offset)
+            else Position(offset, in.lastOffset)
+          t.withPos(firstPos) :: rest
         case nil => nil
       }
     }
@@ -2422,22 +2425,35 @@ object Parsers {
       (self, if (stats.isEmpty) List(EmptyTree) else stats.toList)
     }
 
-    /** RefineStatSeq    ::= RefineStat {semi RefineStat}
-     *  RefineStat       ::= Dcl
-     *                     |
-     *  (in reality we admit Defs and filter them out afterwards)
+    /** RefineStatSeq    ::=  RefineStat {semi RefineStat}
+     *  RefineStat       ::=  ‘val’ VarDcl
+     *                     |  ‘def’ DefDcl
+     *                     |  ‘type’ {nl} TypeDcl
+     *  (in reality we admit Defs and vars and filter them out afterwards in `checkLegal`)
      */
     def refineStatSeq(): List[Tree] = {
       val stats = new ListBuffer[Tree]
+      def checkLegal(tree: Tree): List[Tree] = {
+        val isLegal = tree match {
+          case tree: ValDef => tree.rhs.isEmpty && !tree.mods.flags.is(Mutable)
+          case tree: DefDef => tree.rhs.isEmpty
+          case tree: TypeDef => true
+          case _ => false
+        }
+        if (isLegal) tree :: Nil
+        else {
+          syntaxError("illegal refinement", tree.pos)
+          Nil
+        }
+      }
       while (!isStatSeqEnd) {
-        if (isDclIntro) {
-          stats += defOrDcl(in.offset, Modifiers())
-        } else if (!isStatSep) {
+        if (isDclIntro)
+          stats ++= checkLegal(defOrDcl(in.offset, Modifiers()))
+        else if (!isStatSep)
           syntaxErrorOrIncomplete(
             "illegal start of declaration" +
             (if (inFunReturnType) " (possible cause: missing `=' in front of current method body)"
              else ""))
-        }
         acceptStatSepUnlessAtEnd()
       }
       stats.toList

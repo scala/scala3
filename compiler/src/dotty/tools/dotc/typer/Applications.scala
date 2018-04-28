@@ -366,7 +366,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             val denot = cx.denotNamed(getterName)
             if (denot.exists) ref(TermRef(cx.owner.thisType, getterName, denot))
             else {
-              assert(ctx.mode.is(Mode.Interactive),
+              assert(ctx.mode.is(Mode.Interactive) || ctx.reporter.errorsReported,
                 s"non-existent getter denotation ($denot) for getter($getterName)")
               findGetter(cx.outer)
             }
@@ -720,7 +720,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
 
       fun1.tpe match {
-        case err: ErrorType => untpd.cpy.Apply(tree)(fun1, tree.args).withType(err)
+        case err: ErrorType => untpd.cpy.Apply(tree)(fun1, proto.typedArgs).withType(err)
         case TryDynamicCallType => typedDynamicApply(tree, pt)
         case _ =>
           if (originalProto.isDropped) fun1
@@ -967,6 +967,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2
           case Apply(unapply, `dummyArg` :: Nil) => Nil
           case Inlined(u, _, _) => unapplyImplicits(u)
+          case _ => assert(ctx.reporter.errorsReported); Nil
         }
 
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.pos)

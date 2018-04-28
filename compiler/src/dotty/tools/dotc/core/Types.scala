@@ -1804,10 +1804,11 @@ object Types {
         param.derivedSingleDenotation(param, argInfo)
       }
       else {
-        assert(ctx.reporter.errorsReported,
-          i"""bad parameter reference $this at ${ctx.phase}
-            |the parameter is ${param.showLocated} but the prefix $prefix
-            |does not define any corresponding arguments.""")
+        if (!ctx.reporter.errorsReported)
+          throw new TypeError(
+            i"""bad parameter reference $this at ${ctx.phase}
+               |the parameter is ${param.showLocated} but the prefix $prefix
+               |does not define any corresponding arguments.""")
         NoDenotation
       }
     }
