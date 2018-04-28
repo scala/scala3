@@ -1,2 +1,2 @@
 trait x0 {
-new _
+new _  // error // error
