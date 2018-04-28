@@ -2447,7 +2447,7 @@ class Typer extends Namer
         if (isFullyDefined(wtp, force = ForceDegree.all) &&
             ctx.typerState.constraint.ne(prevConstraint)) readapt(tree)
         else err.typeMismatch(tree, pt, failure)
-      if (ctx.mode.is(Mode.ImplicitsEnabled))
+      if (ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType)
         inferView(tree, pt) match {
           case SearchSuccess(inferred, _, _) =>
             readapt(inferred)(ctx.retractMode(Mode.ImplicitsEnabled))
