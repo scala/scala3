@@ -106,7 +106,7 @@ object Formatting {
     else nonSensicalStartTag + str + nonSensicalEndTag
   }
 
-  private type Recorded = AnyRef /*Symbol | TypeParamRef | SkolemType */
+  private type Recorded = AnyRef /*Symbol | ParamRef | SkolemType */
 
   private class Seen extends mutable.HashMap[String, List[Recorded]] {
 
@@ -187,6 +187,7 @@ object Formatting {
   private def explanations(seen: Seen)(implicit ctx: Context): String = {
     def needsExplanation(entry: Recorded) = entry match {
       case param: TypeParamRef => ctx.typerState.constraint.contains(param)
+      case param: TermParamRef => false
       case skolem: SkolemType => true
       case sym: Symbol =>
         ctx.gadt.bounds.contains(sym) && ctx.gadt.bounds(sym) != TypeBounds.empty
