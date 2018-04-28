@@ -391,7 +391,7 @@ object TastyImpl extends Tasty {
 
     the reflect library (which is probably part of stdlib) contains a
 
-      val tastyAST: TastyAST
+      val tasty: Tasty
 
     this val is implemented reflectively, loading TastyImpl on demand. TastyImpl in turn
     depends on `tools.dotc`.
