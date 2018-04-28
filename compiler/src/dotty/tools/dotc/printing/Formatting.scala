@@ -167,6 +167,8 @@ object Formatting {
     entry match {
       case param: TypeParamRef =>
         s"is a type variable${addendum("constraint", ctx.typeComparer.bounds(param))}"
+      case param: TermParamRef =>
+        s"is a reference to a value parameter"
       case sym: Symbol =>
         val info =
           if (ctx.gadt.bounds.contains(sym))
