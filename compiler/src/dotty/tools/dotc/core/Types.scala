@@ -3478,7 +3478,7 @@ object Types {
       if (selfTypeCache == null)
         selfTypeCache = {
           val given = cls.givenSelfType
-          if (!given.exists) appliedRef
+          if (!given.isValueType) appliedRef
           else if (cls is Module) given
           else if (ctx.erasedTypes) appliedRef
           else AndType(given, appliedRef)
