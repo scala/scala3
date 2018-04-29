@@ -153,7 +153,8 @@ object Constants {
      */
     def convertTo(pt: Type)(implicit ctx: Context): Constant = {
       def classBound(pt: Type): Type = pt.dealias.stripTypeVar match {
-        case tref: TypeRef if !tref.symbol.isClass => classBound(tref.info.bounds.lo)
+        case tref: TypeRef if !tref.symbol.isClass && tref.info.exists =>
+          classBound(tref.info.bounds.lo)
         case param: TypeParamRef =>
           ctx.typerState.constraint.entry(param) match {
             case TypeBounds(lo, hi) =>
