@@ -219,7 +219,7 @@ object Interactive {
       case _  => getScopeCompletions(ctx)
     }
     interactiv.println(i"completion with pos = $pos, prefix = $prefix, termOnly = $termOnly, typeOnly = $typeOnly = ${completions.toList}%, %")
-    (completionPos, completions.toList)
+    (completionPos, completions.toList.sortBy(_.name.show))
   }
 
   /** Possible completions of members of `prefix` which are accessible when called inside `boundary` */
