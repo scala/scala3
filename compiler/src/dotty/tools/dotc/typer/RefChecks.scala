@@ -103,7 +103,7 @@ object RefChecks {
             cls.pos)
       }
       for (parent <- cinfo.classParents)
-        checkSelfConforms(parent.typeSymbol.asClass, "illegal inheritance", "parent")
+        checkSelfConforms(parent.classSymbol.asClass, "illegal inheritance", "parent")
       for (reqd <- cinfo.cls.givenSelfType.classSymbols)
         checkSelfConforms(reqd, "missing requirement", "required")
     case _ =>
