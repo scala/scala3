@@ -245,7 +245,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
         l == level ||
         sym.is(Inline) && sym.owner.is(Macro) && sym.info.isValueType && l - 1 == level
       case None =>
-        level == 0
+        !sym.is(Param) || levelOK(sym.owner)
     }
 
     /** Issue a "splice outside quote" error unless we ar in the body of an inline method */
