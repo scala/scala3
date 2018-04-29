@@ -1467,7 +1467,11 @@ object SymDenotations {
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
       for (p <- classParents) {
-        p.underlyingClassRef(refinementOK = false).typeSymbol match {
+      	var pcls = p.typeSymbol
+      	if (!pcls.isClass) pcls = p.underlyingClassRef(refinementOK = false).typeSymbol
+      		// This roundabout way is necessary for avoiding cyclic references.
+      		// A test case is CompilationTests.compileMixed
+      	pcls match {
           case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
           case _ => assert(isRefinementClass || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
         }

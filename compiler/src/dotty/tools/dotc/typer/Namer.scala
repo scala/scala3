@@ -164,8 +164,11 @@ object NamerContextOps {
   /** Find moduleClass/sourceModule in effective scope */
   private def findModuleBuddy(name: Name, scope: Scope)(implicit ctx: Context) = {
     val it = scope.lookupAll(name).filter(_ is Module)
-    assert(it.hasNext, s"no companion $name in $scope")
-    it.next()
+    if (it.hasNext) it.next()
+    else {
+      assert(ctx.reporter.errorsReported, s"no companion $name in $scope")
+      NoSymbol
+    }
   }
 }
 
@@ -1033,8 +1036,11 @@ class Namer { typer: Typer =>
    */
   def moduleValSig(sym: Symbol)(implicit ctx: Context): Type = {
     val clsName = sym.name.moduleClassName
-    val cls = ctx.denotNamed(clsName) suchThat (_ is ModuleClass)
-    ctx.owner.thisType select (clsName, cls)
+    val cls = ctx.denotNamed(clsName).suchThat(_ is ModuleClass).orElse {
+      assert(ctx.reporter.errorsReported)
+      ctx.newStubSymbol(ctx.owner, clsName)
+    }
+    ctx.owner.thisType.select(clsName, cls)
   }
 
   /** The type signature of a ValDef or DefDef
