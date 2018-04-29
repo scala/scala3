@@ -21,8 +21,6 @@ object Test {
     }
   }
 
-  type Id[A] = A
-
   trait Producer[A] { self =>
     type St
     val card: Cardinality
@@ -356,10 +354,12 @@ object Test {
                       }
                       else {
                         ~currentAdvance.update('{oldAdvance})
+                        oldAdvance(_)
                       }
-                      ~currentAdvance.update('{newAdvance})
-                      newAdvance(_)
                     }}
+
+                    ~currentAdvance.update('{newAdvance})
+                    newAdvance(_)
                   })
                 }
               case nested: Nested[A, bt] =>
@@ -379,7 +379,7 @@ object Test {
                 Var('{ (_: Unit) => ()}){ advf => {
                   Var('{ true }) { hasNext => {
                      Var('{ null.asInstanceOf[A] }) { curr => '{
-                        val adv: Unit => Unit = { _ =>
+                        def adv: Unit => Unit = { _ =>
                           ~hasNext.update(producer.hasNext(st))
                           if(~hasNext.get) {
                             ~producer.step(st, el => makeAdvanceFunction[Expr[A]](advf, (a => curr.update(a)), nestedf(el)))
@@ -395,9 +395,19 @@ object Test {
                 }})
             }
 
-            def step(st: St, k: Expr[A] => Expr[Unit]): Expr[Unit] = ???
+            def step(st: St, k: Expr[A] => Expr[Unit]): Expr[Unit] = {
+              val (flag, current, advf) = st
+              var el: Var[A] = current
+              val f: Expr[Unit => Unit] = advf.get
 
-            def hasNext(st: St): Expr[Boolean] = ???
+              f('())
+              k((el.get))
+            }
+
+            def hasNext(st: St): Expr[Boolean] = {
+              val (flag, _, _) = st
+              flag.get
+            }
           }
         }
       }
@@ -460,9 +470,7 @@ object Test {
     }
 
     def zip[B: Type, C: Type](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B]): Stream[C] = {
-
       val Stream(stream_b) = stream2
-
       Stream(mapRaw[(Expr[A], Expr[B]), Expr[C]]((t => k => '{ ~k(f(t._1)(t._2)) }), zipRaw[A, Expr[B]](stream, stream_b)))
     }
   }
@@ -548,6 +556,11 @@ object Test {
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ ~a + ~b }), Stream.of('{Array(1, 2, 3)}) )
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
 
+  def test10() = Stream
+    .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ ~d + ~dp }))
+    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ ~a + ~b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ ~d + ~dp })) )
+    .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
+
   def main(args: Array[String]): Unit = {
     println(test1().run)
     println
@@ -566,6 +579,8 @@ object Test {
     println(test8().run)
     println
     println(test9().run)
+    println
+    println(test10().run)
   }
 }
 
