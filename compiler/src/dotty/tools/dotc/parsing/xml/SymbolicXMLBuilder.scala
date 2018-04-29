@@ -1,9 +1,9 @@
 package dotty.tools
 package dotc
 package parsing
+package xml
 
 import scala.collection.mutable
-import scala.xml.{ EntityRef, Text }
 import core._
 import Decorators._
 import Flags.Mutable
@@ -146,14 +146,11 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
     (buf map convertToTextPat).toList
 
   def parseAttribute(pos: Position, s: String): Tree = {
-    val ts = scala.xml.Utility.parseAttributeValue(s) map {
-      case Text(s)      => text(pos, s)
-      case EntityRef(s) => entityRef(pos, s)
-    }
-    ts.length match {
-      case 0 => TypedSplice(tpd.ref(defn.NilModule) withPos pos)
-      case 1 => ts.head
-      case _ => makeXMLseq(pos, ts.toList)
+    val ts = Utility.parseAttributeValue(s, text(pos, _), entityRef(pos, _))
+    ts match {
+      case Nil      => TypedSplice(tpd.ref(defn.NilModule) withPos pos)
+      case t :: Nil => t
+      case _        => makeXMLseq(pos, ts)
     }
   }
 

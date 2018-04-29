@@ -1,5 +1,6 @@
 package dotty.tools.dotc
 package parsing
+package xml
 
 import scala.collection.mutable
 

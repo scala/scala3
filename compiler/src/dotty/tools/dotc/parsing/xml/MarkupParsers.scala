@@ -1,6 +1,7 @@
 package dotty.tools
 package dotc
 package parsing
+package xml
 
 import scala.collection.mutable
 import mutable.{ Buffer, ArrayBuffer, ListBuffer }

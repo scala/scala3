@@ -7,6 +7,7 @@
 \*                                                                      */
 package dotty.tools.dotc
 package parsing
+package xml
 
 import Utility._
 import util.Chars.SU
