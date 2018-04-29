@@ -589,13 +589,14 @@ object Types {
 
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
+        val pinfo = pdenot.info
         val rinfo = tp.refinedInfo
-        if (name.isTypeName) { // simplified case that runs more efficiently
+        if (name.isTypeName && !pinfo.isInstanceOf[ClassInfo]) { // simplified case that runs more efficiently
           val jointInfo =
             if (rinfo.isAlias) rinfo
-            else if (pdenot.info.isAlias) pdenot.info
-            else if (ctx.pendingMemberSearches.contains(name)) pdenot.info safe_& rinfo
-            else pdenot.info recoverable_& rinfo
+            else if (pinfo.isAlias) pinfo
+            else if (ctx.pendingMemberSearches.contains(name)) pinfo safe_& rinfo
+            else pinfo recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         } else {
           pdenot & (
