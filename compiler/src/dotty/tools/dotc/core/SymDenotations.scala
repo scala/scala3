@@ -1467,8 +1467,10 @@ object SymDenotations {
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
       for (p <- classParents) {
-        if (p.typeSymbol.isClass) builder.addAll(p.typeSymbol.asClass.baseClasses)
-        else assert(isRefinementClass || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
+        p.underlyingClassRef(refinementOK = false).typeSymbol match {
+          case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
+          case _ => assert(isRefinementClass || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
+        }
       }
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
