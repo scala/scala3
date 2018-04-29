@@ -165,10 +165,7 @@ object NamerContextOps {
   private def findModuleBuddy(name: Name, scope: Scope)(implicit ctx: Context) = {
     val it = scope.lookupAll(name).filter(_ is Module)
     if (it.hasNext) it.next()
-    else {
-      assert(ctx.reporter.errorsReported, s"no companion $name in $scope")
-      NoSymbol
-    }
+    else NoSymbol.assertingErrorsReported(s"no companion $name in $scope")
   }
 }
 
@@ -921,8 +918,7 @@ class Namer { typer: Typer =>
                 fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.pos)
               }
             case _ =>
-              assert(ctx.reporter.errorsReported)
-              UnspecifiedErrorType
+              UnspecifiedErrorType.assertingErrorsReported
           }
         }
 
@@ -1036,10 +1032,8 @@ class Namer { typer: Typer =>
    */
   def moduleValSig(sym: Symbol)(implicit ctx: Context): Type = {
     val clsName = sym.name.moduleClassName
-    val cls = ctx.denotNamed(clsName).suchThat(_ is ModuleClass).orElse {
-      assert(ctx.reporter.errorsReported)
-      ctx.newStubSymbol(ctx.owner, clsName)
-    }
+    val cls = ctx.denotNamed(clsName).suchThat(_ is ModuleClass)
+      .orElse(ctx.newStubSymbol(ctx.owner, clsName).assertingErrorsReported)
     ctx.owner.thisType.select(clsName, cls)
   }
 

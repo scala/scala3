@@ -1448,10 +1448,8 @@ class Typer extends Namer
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context): Tree = track("typedClassDef") {
-    if (!cls.info.isInstanceOf[ClassInfo]) {
-      assert(ctx.reporter.errorsReported)
-      return cdef.withType(UnspecifiedErrorType)
-    }
+    if (!cls.info.isInstanceOf[ClassInfo]) return EmptyTree.assertingErrorsReported
+
     val TypeDef(name, impl @ Template(constr, parents, self, _)) = cdef
     val superCtx = ctx.superCallContext
 

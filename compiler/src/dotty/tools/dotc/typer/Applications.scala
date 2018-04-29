@@ -973,7 +973,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2
           case Apply(unapply, `dummyArg` :: Nil) => Nil
           case Inlined(u, _, _) => unapplyImplicits(u)
-          case _ => assert(ctx.reporter.errorsReported); Nil
+          case _ => Nil.assertingErrorsReported
         }
 
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.pos)
