@@ -17,17 +17,17 @@ object CollectNullableFields {
   val name = "collectNullableFields"
 }
 
-/** Collect fields that can be null out after use in lazy initialization.
+/** Collect fields that can be nulled out after use in lazy initialization.
  *
  *  This information is used during lazy val transformation to assign null to private
  *  fields that are only used within a lazy val initializer. This is not just an optimization,
  *  but is needed for correctness to prevent memory leaks. E.g.
  *
- *  {{{
+ *  ```scala
  *  class TestByNameLazy(byNameMsg: => String) {
  *    lazy val byLazyValMsg = byNameMsg
  *  }
- *  }}}
+ *  ```
  *
  *  Here `byNameMsg` should be null out once `byLazyValMsg` is
  *  initialised.
