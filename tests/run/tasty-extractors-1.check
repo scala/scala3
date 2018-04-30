@@ -13,108 +13,108 @@ ConstantType(Float(2.1))
 Literal(Double(2.2))
 ConstantType(Double(2.2))
 
-Literal(String("abc"))
-ConstantType(String("abc"))
+Literal(String(abc))
+ConstantType(String(abc))
 
-Apply(Ident(Simple(println)), List(Literal(String("abc"))))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Apply(Ident(println), List(Literal(String(abc))))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Typed(Literal(Int(8)), Ident(TypeName(Simple(Int))))
-SymRef(<TypeName(Simple(Int))>, SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+Typed(Literal(Int(8)), TypeIdent(Int))
+SymRef(Int, SymRef(scala, ThisType(SymRef(<root>, NoPrefix))))
 
-Typed(Literal(Byte(8)), Ident(TypeName(Simple(Byte))))
-SymRef(<TypeName(Simple(Byte))>, SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+Typed(Literal(Byte(8)), TypeIdent(Byte))
+SymRef(Byte, SymRef(scala, ThisType(SymRef(<root>, NoPrefix))))
 
-Typed(Literal(Short(8)), Ident(TypeName(Simple(Short))))
-SymRef(<TypeName(Simple(Short))>, SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+Typed(Literal(Short(8)), TypeIdent(Short))
+SymRef(Short, SymRef(scala, ThisType(SymRef(<root>, NoPrefix))))
 
-Literal(Char('a'))
-ConstantType(Char('a'))
+Literal(Char(a))
+ConstantType(Char(a))
 
 Block(List(Literal(Int(1)), Literal(Int(2))), Literal(Int(3)))
 ConstantType(Int(3))
 
-If(Typed(Literal(Boolean(true)), Ident(TypeName(Simple(Boolean)))), Literal(Int(1)), Literal(Int(2)))
-SymRef(<TypeName(Simple(Int))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+If(Typed(Literal(Boolean(true)), TypeIdent(Boolean)), Literal(Int(1)), Literal(Int(2)))
+SymRef(Int, ThisType(SymRef(scala, NoPrefix)))
 
-Match(Literal(String("a")), List(CaseDef(Value(Literal(String("a"))), None, Block(Nil, Literal(Unit())))))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Match(Literal(String(a)), List(CaseDef(Value(Literal(String(a))), None, Block(Nil, Literal(Unit())))))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Match(Literal(String("b")), List(CaseDef(Bind(Simple(n), Value(Ident(Simple(_)))), None, Block(Nil, Literal(Unit())))))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Match(Literal(String(b)), List(CaseDef(Bind(n, Value(Ident(_))), None, Block(Nil, Literal(Unit())))))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Match(Literal(String("c")), List(CaseDef(Bind(Simple(n), TypeTest(Ident(TypeName(Simple(String))))), None, Block(Nil, Literal(Unit())))))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Match(Literal(String(c)), List(CaseDef(Bind(n, TypeTest(TypeIdent(String))), None, Block(Nil, Literal(Unit())))))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Match(Literal(String("e")), List(CaseDef(Value(Ident(Simple(_))), None, Block(Nil, Literal(Unit())))))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Match(Literal(String(e)), List(CaseDef(Value(Ident(_)), None, Block(Nil, Literal(Unit())))))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Match(Literal(String("f")), List(CaseDef(TypeTest(Ident(TypeName(Simple(String)))), None, Block(Nil, Literal(Unit())))))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Match(Literal(String(f)), List(CaseDef(TypeTest(TypeIdent(String)), None, Block(Nil, Literal(Unit())))))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Match(Typed(Literal(String("g")), Ident(TypeName(Simple(Any)))), List(CaseDef(Alternative(List(TypeTest(Ident(TypeName(Simple(String)))), TypeTest(Ident(TypeName(Simple(Int)))))), None, Block(Nil, Literal(Unit())))))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Match(Typed(Literal(String(g)), TypeIdent(Any)), List(CaseDef(Alternative(List(TypeTest(TypeIdent(String)), TypeTest(TypeIdent(Int)))), None, Block(Nil, Literal(Unit())))))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Match(Literal(String("h")), List(CaseDef(Value(Ident(Simple(_))), Some(Literal(Boolean(false))), Block(Nil, Literal(Unit())))))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Match(Literal(String(h)), List(CaseDef(Value(Ident(_)), Some(Literal(Boolean(false))), Block(Nil, Literal(Unit())))))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ValDef(Simple(a), Synthetic(), Some(Literal(String("o"))))), Match(Literal(String("i")), List(CaseDef(Bind(Simple(a), Value(Ident(Simple(_)))), None, Block(Nil, Literal(Unit()))))))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Block(List(ValDef(a, Synthetic(), Some(Literal(String(o))))), Match(Literal(String(i)), List(CaseDef(Bind(a, Value(Ident(_))), None, Block(Nil, Literal(Unit()))))))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Match(Ident(Simple(Nil)), List(CaseDef(Unapply(TypeApply(Select(Ident(Simple(List)), Simple(unapplySeq)), List(Synthetic())), Nil, List(Bind(Simple(a), Value(Ident(Simple(_)))), Bind(Simple(b), Value(Ident(Simple(_)))), Bind(Simple(c), Value(Ident(Simple(_)))))), None, Block(Nil, Literal(Unit())))))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Match(Ident(Nil), List(CaseDef(Unapply(TypeApply(Select(Ident(List), unapplySeq, Some(Signature(List(scala.collection.Seq), scala.Some))), List(Synthetic())), Nil, List(Bind(a, Value(Ident(_))), Bind(b, Value(Ident(_))), Bind(c, Value(Ident(_))))), None, Block(Nil, Literal(Unit())))))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Try(Literal(Int(1)), List(CaseDef(Value(Ident(Simple(_))), None, Block(Nil, Literal(Unit())))), None)
-OrType(SymRef(<TypeName(Simple(Int))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix))), SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix))))
+Try(Literal(Int(1)), List(CaseDef(Value(Ident(_)), None, Block(Nil, Literal(Unit())))), None)
+OrType(SymRef(Int, ThisType(SymRef(scala, NoPrefix))), SymRef(Unit, ThisType(SymRef(scala, NoPrefix))))
 
 Try(Literal(Int(2)), Nil, Some(Literal(Unit())))
 ConstantType(Int(2))
 
-Try(Literal(Int(3)), List(CaseDef(Value(Ident(Simple(_))), None, Block(Nil, Literal(Unit())))), Some(Literal(Unit())))
-OrType(SymRef(<TypeName(Simple(Int))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix))), SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix))))
+Try(Literal(Int(3)), List(CaseDef(Value(Ident(_)), None, Block(Nil, Literal(Unit())))), Some(Literal(Unit())))
+OrType(SymRef(Int, ThisType(SymRef(scala, NoPrefix))), SymRef(Unit, ThisType(SymRef(scala, NoPrefix))))
 
-Apply(Select(Literal(String("a")), Simple(==)), List(Literal(String("b"))))
-SymRef(<TypeName(Simple(Boolean))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Apply(Select(Literal(String(a)), ==, Some(Signature(List(java.lang.Object), scala.Boolean))), List(Literal(String(b))))
+SymRef(Boolean, ThisType(SymRef(scala, NoPrefix)))
 
-Apply(Select(New(Ident(TypeName(Simple(Object)))), Simple(<init>)), Nil)
-SymRef(<TypeName(Simple(Object))>, ThisType(SymRef(<TypeName(Simple(lang))>, NoPrefix)))
+Apply(Select(New(TypeIdent(Object)), <init>, Some(Signature(Nil, java.lang.Object))), Nil)
+SymRef(Object, ThisType(SymRef(lang, NoPrefix)))
 
-Apply(Select(Ident(Simple(Int)), Simple(box)), List(NamedArg(Simple(x), Literal(Int(9)))))
-SymRef(<TypeName(Simple(Integer))>, ThisType(SymRef(<TypeName(Simple(lang))>, NoPrefix)))
+Apply(Select(Ident(Int), box, Some(Signature(List(scala.Int), java.lang.Integer))), List(NamedArg(x, Literal(Int(9)))))
+SymRef(Integer, ThisType(SymRef(lang, NoPrefix)))
 
-Apply(TypeApply(Select(Ident(Simple(Ordering)), Simple(apply)), List(Ident(TypeName(Simple(Int))))), List(Ident(Simple(Int))))
-AppliedType(SymRef(<TypeName(Simple(Ordering))>, ThisType(SymRef(<TypeName(Simple(math))>, NoPrefix))), List(SymRef(<TypeName(Simple(Int))>, SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))))
+Apply(TypeApply(Select(Ident(Ordering), apply, Some(Signature(List(scala.math.Ordering), scala.math.Ordering))), List(TypeIdent(Int))), List(Ident(Int)))
+AppliedType(SymRef(Ordering, ThisType(SymRef(math, NoPrefix))), List(SymRef(Int, SymRef(scala, ThisType(SymRef(<root>, NoPrefix))))))
 
-Block(List(ValDef(Simple(a), Ident(TypeName(Simple(Int))), Some(Literal(Int(3))))), Literal(Unit()))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Block(List(ValDef(a, TypeIdent(Int), Some(Literal(Int(3))))), Literal(Unit()))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ValDef(Simple(b), Ident(TypeName(Simple(Int))), Some(Literal(Int(3))))), Literal(Unit()))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Block(List(ValDef(b, TypeIdent(Int), Some(Literal(Int(3))))), Literal(Unit()))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(DefDef(Simple(f1), Nil, Nil, Ident(TypeName(Simple(Int))), Some(Literal(Int(3))))), Literal(Unit()))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Block(List(DefDef(f1, Nil, Nil, TypeIdent(Int), Some(Literal(Int(3))))), Literal(Unit()))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(DefDef(Simple(f2), Nil, Nil, Ident(TypeName(Simple(Int))), Some(Return(Literal(Int(4)))))), Literal(Unit()))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Block(List(DefDef(f2, Nil, Nil, TypeIdent(Int), Some(Return(Literal(Int(4)))))), Literal(Unit()))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(DefDef(Simple(f3), Nil, List(List(ValDef(Simple(i), Ident(TypeName(Simple(Int))), None))), Ident(TypeName(Simple(Int))), Some(Ident(Simple(i))))), Literal(Unit()))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Block(List(DefDef(f3, Nil, List(List(ValDef(i, TypeIdent(Int), None))), TypeIdent(Int), Some(Ident(i)))), Literal(Unit()))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(DefDef(Simple(f4), Nil, List(List(ValDef(Simple(i), Ident(TypeName(Simple(Int))), None)), List(ValDef(Simple(j), Ident(TypeName(Simple(Int))), None))), Ident(TypeName(Simple(Int))), Some(Apply(Select(Ident(Simple(i)), Simple(+)), List(Ident(Simple(j))))))), Literal(Unit()))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Block(List(DefDef(f4, Nil, List(List(ValDef(i, TypeIdent(Int), None)), List(ValDef(j, TypeIdent(Int), None))), TypeIdent(Int), Some(Apply(Select(Ident(i), +, Some(Signature(List(scala.Int), scala.Int))), List(Ident(j)))))), Literal(Unit()))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(DefDef(Simple(f5), Nil, List(List(ValDef(Simple(i), Ident(TypeName(Simple(Int))), None))), Ident(TypeName(Simple(Int))), Some(Ident(Simple(i)))), DefDef(DefaultGetter(Simple(f5),f5), Nil, Nil, Synthetic(), Some(Literal(Int(9))))), Literal(Unit()))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Block(List(DefDef(f5, Nil, List(List(ValDef(i, TypeIdent(Int), None))), TypeIdent(Int), Some(Ident(i))), DefDef(f5$default$1, Nil, Nil, Synthetic(), Some(Literal(Int(9))))), Literal(Unit()))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(DefDef(Simple(f6), List(TypeDef(TypeName(Simple(T)), TypeBoundsTree(Synthetic(), Synthetic()))), List(List(ValDef(Simple(x), Ident(TypeName(Simple(T))), None))), Ident(TypeName(Simple(T))), Some(Ident(Simple(x))))), Literal(Unit()))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Block(List(DefDef(f6, List(TypeDef(T, TypeBoundsTree(Synthetic(), Synthetic()))), List(List(ValDef(x, TypeIdent(T), None))), TypeIdent(T), Some(Ident(x)))), Literal(Unit()))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(DefDef(Simple(f7), List(TypeDef(TypeName(Simple(T)), TypeBoundsTree(Synthetic(), Synthetic()))), List(List(ValDef(Simple(x), Ident(TypeName(Simple(T))), None))), Singleton(Ident(Simple(x))), Some(Ident(Simple(x))))), Literal(Unit()))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Block(List(DefDef(f7, List(TypeDef(T, TypeBoundsTree(Synthetic(), Synthetic()))), List(List(ValDef(x, TypeIdent(T), None))), Singleton(Ident(x)), Some(Ident(x)))), Literal(Unit()))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(DefDef(Simple(f8), Nil, List(List(ValDef(Simple(i), Annotated(Applied(Synthetic(), List(Ident(TypeName(Simple(Int))))), Apply(Select(New(Synthetic()), Simple(<init>)), Nil)), None))), Ident(TypeName(Simple(Int))), Some(Literal(Int(9))))), Apply(Ident(Simple(f8)), List(Typed(Repeated(List(Literal(Int(1)), Literal(Int(2)), Literal(Int(3)))), Synthetic()))))
-SymRef(<TypeName(Simple(Int))>, SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+Block(List(DefDef(f8, Nil, List(List(ValDef(i, Annotated(Applied(Synthetic(), List(TypeIdent(Int))), Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, scala.annotation.internal.Repeated))), Nil)), None))), TypeIdent(Int), Some(Literal(Int(9))))), Apply(Ident(f8), List(Typed(Repeated(List(Literal(Int(1)), Literal(Int(2)), Literal(Int(3)))), Synthetic()))))
+SymRef(Int, SymRef(scala, ThisType(SymRef(<root>, NoPrefix))))
 
-Block(List(DefDef(Simple(f9), Nil, List(List(ValDef(Simple(i), ByName(Ident(TypeName(Simple(Int)))), None))), Ident(TypeName(Simple(Int))), Some(Ident(Simple(i))))), Literal(Unit()))
-SymRef(<TypeName(Simple(Unit))>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))
+Block(List(DefDef(f9, Nil, List(List(ValDef(i, ByName(TypeIdent(Int)), None))), TypeIdent(Int), Some(Ident(i)))), Literal(Unit()))
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 

@@ -3,12 +3,9 @@ package scala.quoted
 import scala.quoted.Types.TaggedType
 import scala.reflect.ClassTag
 import scala.runtime.quoted.Unpickler.Pickled
-import scala.tasty.trees.TypeTree
-import scala.tasty.Context
 
 sealed abstract class Type[T] {
   type unary_~ = T
-  final def toTasty(implicit ctx: Context): TypeTree = ctx.toTasty(this)
 }
 
 /** Some basic type tags, currently incomplete */

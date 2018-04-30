@@ -1,8 +1,7 @@
 package scala.runtime.quoted
 
 import scala.annotation.implicitNotFound
-import scala.quoted.{Expr, Type}
-import scala.tasty
+import scala.quoted.Expr
 
 @implicitNotFound("Could not find implicit quoted.Toolbox. Default toolbox can be imported with `import dotty.tools.dotc.quoted.Toolbox._`")
 trait Toolbox[T] {

@@ -2,8 +2,6 @@ package scala.quoted
 
 import scala.runtime.quoted.Toolbox
 import scala.runtime.quoted.Unpickler.Pickled
-import scala.tasty.trees.Term
-import scala.tasty.Context
 
 sealed abstract class Expr[T] {
   final def unary_~ : T = throw new Error("~ should have been compiled away")
@@ -16,7 +14,6 @@ sealed abstract class Expr[T] {
 
   /** Show a source code like representation of this expression */
   final def show(implicit toolbox: Toolbox[T]): String = toolbox.show(this)
-  final def toTasty(implicit ctx: Context): Term = ctx.toTasty(this)
 }
 
 object Expr {

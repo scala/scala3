@@ -1,12 +1,12 @@
-Ident(TypeName(Simple(Int)))
-SymRef(<TypeName(Simple(Int))>, SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))
+TypeIdent(Int)
+SymRef(Int, SymRef(scala, ThisType(SymRef(<root>, NoPrefix))))
 
-Applied(Ident(TypeName(Simple(List))), List(Ident(TypeName(Simple(String)))))
-AppliedType(SymRef(<TypeName(Simple(List))>, ThisType(SymRef(<TypeName(Simple(immutable))>, NoPrefix))), List(SymRef(<TypeName(Simple(String))>, SymRef(<Simple(Predef)>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix))))))
+Applied(TypeIdent(List), List(TypeIdent(String)))
+AppliedType(SymRef(List, ThisType(SymRef(immutable, NoPrefix))), List(SymRef(String, SymRef(Predef, ThisType(SymRef(scala, NoPrefix))))))
 
-Applied(Ident(TypeName(Simple(Map))), List(Ident(TypeName(Simple(String))), Ident(TypeName(Simple(Int)))))
-AppliedType(SymRef(<TypeName(Simple(Map))>, ThisType(SymRef(<TypeName(Simple(immutable))>, NoPrefix))), List(SymRef(<TypeName(Simple(String))>, SymRef(<Simple(Predef)>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))), SymRef(<TypeName(Simple(Int))>, SymRef(<Simple(scala)>, ThisType(SymRef(<TypeName(Simple(<root>))>, NoPrefix))))))
+Applied(TypeIdent(Map), List(TypeIdent(String), TypeIdent(Int)))
+AppliedType(SymRef(Map, ThisType(SymRef(immutable, NoPrefix))), List(SymRef(String, SymRef(Predef, ThisType(SymRef(scala, NoPrefix)))), SymRef(Int, SymRef(scala, ThisType(SymRef(<root>, NoPrefix))))))
 
-Applied(Ident(TypeName(Simple(Map))), List(Ident(TypeName(Simple(String))), Ident(TypeName(Simple(I)))))
-AppliedType(SymRef(<TypeName(Simple(Map))>, ThisType(SymRef(<TypeName(Simple(immutable))>, NoPrefix))), List(SymRef(<TypeName(Simple(String))>, SymRef(<Simple(Predef)>, ThisType(SymRef(<TypeName(Simple(scala))>, NoPrefix)))), SymRef(<TypeName(Simple(I))>, NoPrefix)))
+Applied(TypeIdent(Map), List(TypeIdent(String), TypeIdent(I)))
+AppliedType(SymRef(Map, ThisType(SymRef(immutable, NoPrefix))), List(SymRef(String, SymRef(Predef, ThisType(SymRef(scala, NoPrefix)))), SymRef(I, NoPrefix)))
 

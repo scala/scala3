@@ -1,39 +1,44 @@
 import scala.quoted._
 import dotty.tools.dotc.quoted.Toolbox._
 
-import scala.tasty.Context
-import scala.tasty.names.Name
-import scala.tasty.trees._
+import scala.tasty.Universe
+import scala.tasty.Tasty
 import scala.tasty.util.{TastyPrinter, TreeTraverser}
 
 object Macros {
 
   implicit inline def printOwners[T](x: => T): Unit =
-    ~impl('(x))(Context.compilationContext) // FIXME infer Context.compilationContext within top level ~
+    ~impl('(x))(Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
 
-  def impl[T](x: Expr[T])(implicit ctx: Context): Expr[Unit] = {
+  def impl[T](x: Expr[T])(implicit u: Universe): Expr[Unit] = {
+    import u._
+    import u.tasty._
+
     val buff = new StringBuilder
-    val traverser = new TreeTraverser {
-      override def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+
+    val printer = new TreeTraverser(u.tasty) {
+      import tasty._
+      override def traverseTree(tree: TopLevelStatement)(implicit ctx: Context): Unit = {
         tree match {
-          case tree @ DefDef(name: Name, _, _, _, _) =>
-            buff.append(TastyPrinter.stringOf(name))
+          case tree @ DefDef(name, _, _, _, _) =>
+            buff.append(name)
             buff.append("\n")
-            buff.append(TastyPrinter.stringOf(tree.owner))
+            buff.append(TastyPrinter.stringOfTree(tasty)(tree.owner))
             buff.append("\n\n")
-          case tree @ ValDef(name: Name, _, _) =>
-            buff.append(TastyPrinter.stringOf(name))
+          case tree @ ValDef(name, _, _) =>
+            buff.append(name)
             buff.append("\n")
-            buff.append(TastyPrinter.stringOf(tree.owner))
+            buff.append(TastyPrinter.stringOfTree(tasty)(tree.owner))
             buff.append("\n\n")
           case _ =>
         }
-        traverseChildren(tree)
+        traverseTreeChildren(tree)
       }
     }
 
     val tree = x.toTasty
-    traverser.traverse(tree)(ctx)
+    printer.traverseTree(tree)
     '(print(~buff.result().toExpr))
   }
+
 }

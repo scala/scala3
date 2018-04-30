@@ -1,10 +1,7 @@
 import scala.quoted._
 import dotty.tools.dotc.quoted.Toolbox._
 
-import scala.tasty.trees._
-import scala.tasty.types._
-import scala.tasty.names._
-import scala.tasty.Context
+import scala.tasty.Universe
 import scala.tasty.util.TastyPrinter
 
 object Asserts {
@@ -17,13 +14,16 @@ object Asserts {
   object Ops
 
   inline def macroAssert(cond: Boolean): Unit =
-    ~impl('(cond))(Context.compilationContext) // FIXME infer Context.compilationContext within top level ~
+    ~impl('(cond))(Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
 
-  def impl(cond: Expr[Boolean])(implicit ctx: Context): Expr[Unit] = {
+  def impl(cond: Expr[Boolean])(implicit u: Universe): Expr[Unit] = {
+    import u._
+    import u.tasty._
+
     val tree = cond.toTasty
 
     def isOps(tpe: MaybeType): Boolean = tpe match {
-      case SymRef(DefDef(Simple("Ops"), _, _, _, _), _) => true // TODO check that the parent is Asserts
+      case SymRef(DefDef("Ops", _, _, _, _), _) => true // TODO check that the parent is Asserts
       case _ => false
     }
 
@@ -36,10 +36,10 @@ object Asserts {
     }
 
     tree match {
-      case Apply(Select(OpsTree(left), Simple(op)), right :: Nil) =>
+      case Apply(Select(OpsTree(left), op, _), right :: Nil) =>
         // FIXME splice the threes directly
-        val lExpr = TastyPrinter.stringOf(left).toExpr
-        val rExpr = TastyPrinter.stringOf(right).toExpr
+        val lExpr = TastyPrinter.stringOfTree(tasty)(left).toExpr
+        val rExpr = TastyPrinter.stringOfTree(tasty)(right).toExpr
         op match {
           case "===" => '(assertEquals(~lExpr, ~rExpr))
           case "!==" => '(assertNotEquals(~lExpr, ~rExpr))

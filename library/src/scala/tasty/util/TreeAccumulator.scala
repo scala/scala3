@@ -1,108 +1,114 @@
 package scala.tasty.util
 
-import scala.tasty.trees._
-import scala.tasty.Context
+import scala.tasty.Tasty
 
-abstract class TreeAccumulator[X] {
+abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
+  import tasty._
 
   // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
-  def apply(x: X, tree: Tree)(implicit ctx: Context): X
+  def foldTree(x: X, tree: TopLevelStatement)(implicit ctx: Context): X
+  def foldTypeTree(x: X, tree: MaybeTypeTree)(implicit ctx: Context): X
+  def foldCaseDef(x: X, tree: CaseDef)(implicit ctx: Context): X
+  def foldPattern(x: X, tree: Pattern)(implicit ctx: Context): X
+  def foldParent(x: X, tree: Parent)(implicit ctx: Context): X
 
-  def apply(x: X, trees: Traversable[Tree])(implicit ctx: Context): X = (x /: trees)(apply)
+  def foldTree(x: X, trees: Traversable[TopLevelStatement])(implicit ctx: Context): X = (x /: trees)(foldTree)
+  def foldTypeTree(x: X, trees: Traversable[MaybeTypeTree])(implicit ctx: Context): X = (x /: trees)(foldTypeTree)
+  def foldCaseDef(x: X, trees: Traversable[CaseDef])(implicit ctx: Context): X = (x /: trees)(foldCaseDef)
+  def foldPattern(x: X, trees: Traversable[Pattern])(implicit ctx: Context): X = (x /: trees)(foldPattern)
+  def foldParent(x: X, trees: Traversable[Parent])(implicit ctx: Context): X = (x /: trees)(foldParent)
 
-  def foldOver(x: X, tree: Tree)(implicit ctx: Context): X = {
+  def foldOverTree(x: X, tree: TopLevelStatement)(implicit ctx: Context): X = {
     def localCtx(definition: Definition): Context = definition.localContext
     tree match {
-      case Ident(name) =>
+      case Ident(_) =>
         x
-      case Select(qualifier, name) =>
-        this(x, qualifier)
+      case Select(qualifier, _, _) =>
+        foldTree(x, qualifier)
       case This(qual) =>
         x
-      case Super(qual, mix) =>
-        this(x, qual)
+      case Super(qual, _) =>
+        foldTree(x, qual)
       case Apply(fun, args) =>
-        this(this(x, fun), args)
+        foldTree(foldTree(x, fun), args)
       case TypeApply(fun, args) =>
-        this(this(x, fun), args)
+        foldTypeTree(foldTree(x, fun), args)
       case Literal(const) =>
         x
       case New(tpt) =>
-        this(x, tpt)
+        foldTypeTree(x, tpt)
       case Typed(expr, tpt) =>
-        this(this(x, expr), tpt)
-      case NamedArg(name, arg) =>
-        this(x, arg)
+        foldTypeTree(foldTree(x, expr), tpt)
+      case NamedArg(_, arg) =>
+        foldTree(x, arg)
       case Assign(lhs, rhs) =>
-        this(this(x, lhs), rhs)
+        foldTree(foldTree(x, lhs), rhs)
       case Block(stats, expr) =>
-        this(this(x, stats), expr)
+        foldTree(foldTree(x, stats), expr)
       case If(cond, thenp, elsep) =>
-        this(this(this(x, cond), thenp), elsep)
+        foldTree(foldTree(foldTree(x, cond), thenp), elsep)
       case Lambda(meth, tpt) =>
-        val a = this(x, meth)
-        tpt.fold(a)(b => this(a, b))
+        val a = foldTree(x, meth)
+        tpt.fold(a)(b => foldTypeTree(a, b))
       case Match(selector, cases) =>
-        this(this(x, selector), cases)
-      case CaseDef(pat, guard, body) =>
-        this(this(this(x, pat), guard), body)
+        foldCaseDef(foldTree(x, selector), cases)
       case Return(expr) =>
-        this(x, expr)
+        foldTree(x, expr)
       case Try(block, handler, finalizer) =>
-        this(this(this(x, block), handler), finalizer)
+        foldTree(foldCaseDef(foldTree(x, block), handler), finalizer)
       case Repeated(elems) =>
-        this(x, elems)
+        foldTree(x, elems)
       case Inlined(call, bindings, expansion) =>
-        this(this(x, bindings), expansion)
-      case TypeIdent(name) =>
-        x
-      case TypeSelect(qualifier, name) =>
-        this(x, qualifier)
-      case Singleton(ref) =>
-        this(x, ref)
-      case And(left, right) =>
-        this(this(x, left), right)
-      case Or(left, right) =>
-        this(this(x, left), right)
-      case Refined(tpt, refinements) =>
-        this(this(x, tpt), refinements)
-      case Applied(tpt, args) =>
-        this(this(x, tpt), args)
-      case ByName(result) =>
-        this(x, result)
-      case TypeBoundsTree(lo, hi) =>
-        this(this(x, lo), hi)
-      case Annotated(arg, annot) =>
-        this(this(x, arg), annot)
-      case Value(v) =>
-        this(x, v)
-      case Bind(_, body) =>
-        this(x, body)
-      case Unapply(fun, implicits, patterns) =>
-        this(this(this(x, fun), implicits), patterns)
-      case Alternative(patterns) =>
-        this(x, patterns)
-      case TypeTest(tpt) =>
-        this(x, tpt)
+        foldTree(foldTree(x, bindings), expansion)
+
       case vdef @ ValDef(_, tpt, rhs) =>
         implicit val ctx = localCtx(vdef)
-        this(this(x, tpt), rhs)
+        foldTree(foldTypeTree(x, tpt), rhs)
       case ddef @ DefDef(_, tparams, vparamss, tpt, rhs) =>
         implicit val ctx = localCtx(ddef)
-        this(this((this(x, tparams) /: vparamss)(apply), tpt), rhs)
-      case tdef @ TypeDef(name, rhs) =>
+        foldTree(foldTypeTree((foldTree(x, tparams) /: vparamss)(foldTree), tpt), rhs)
+      case tdef @ TypeDef(_, rhs) =>
         implicit val ctx = localCtx(tdef)
-        this(x, rhs)
+        foldTypeTree(x, rhs)
       case cdef @ ClassDef(_, constr, parents, self, body) =>
         implicit val ctx = localCtx(cdef)
-        this(this(this(this(x, constr), parents), self), body)
+        foldTree(foldTree(foldParent(foldTree(x, constr), parents), self), body)
       case Import(expr, selectors) =>
-        this(x, expr)
+        foldTree(x, expr)
       case clause @ PackageClause(pid, stats) =>
-        this(this(x, pid), stats)(localCtx(clause.definition))
-      case _ =>
-        x
+        foldTree(foldTree(x, pid), stats)(localCtx(clause.definition))
     }
+  }
+
+  def foldOverTypeTree(x: X, tree: MaybeTypeTree)(implicit ctx: Context): X = tree match {
+    case Synthetic() => x
+    case TypeIdent(_) => x
+    case TypeSelect(qualifier, _) => foldTree(x, qualifier)
+    case Singleton(ref) => foldTree(x, ref)
+    case And(left, right) => foldTypeTree(foldTypeTree(x, left), right)
+    case Or(left, right) => foldTypeTree(foldTypeTree(x, left), right)
+    case Refined(tpt, refinements) => foldTree(foldTypeTree(x, tpt), refinements)
+    case Applied(tpt, args) => foldTypeTree(foldTypeTree(x, tpt), args)
+    case ByName(result) => foldTypeTree(x, result)
+    case TypeBoundsTree(lo, hi) => foldTypeTree(foldTypeTree(x, lo), hi)
+    case Annotated(arg, annot) => foldTree(foldTypeTree(x, arg), annot)
+  }
+
+  def foldOverCaseDef(x: X, tree: CaseDef)(implicit ctx: Context): X = tree match {
+    case CaseDef(pat, guard, body) => foldTree(foldTree(foldPattern(x, pat), guard), body)
+  }
+
+  def foldOverPattern(x: X, tree: Pattern)(implicit ctx: Context): X = tree match {
+    case Value(v) => foldTree(x, v)
+    case Bind(_, body) => foldPattern(x, body)
+    case Unapply(fun, implicits, patterns) => foldPattern(foldTree(foldTree(x, fun), implicits), patterns)
+    case Alternative(patterns) => foldPattern(x, patterns)
+    case TypeTest(tpt) => foldTypeTree(x, tpt)
+  }
+
+  def foldOverParent(x: X, tree: Parent)(implicit ctx: Context): X = tree match {
+    case TermParent(term) => foldOverTree(x, term)
+    case TypeParent(typeTree) => foldOverTypeTree(x, typeTree)
   }
 
 }
