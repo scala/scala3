@@ -2,40 +2,6 @@ package tasty
 
 object definitions {
 
-// ====== Names ======================================
-
-  trait Name
-  trait PossiblySignedName
-
-  enum TermName extends Name with PossiblySignedName {
-    case Simple(str: String)
-    case Qualified(prefix: TermName, selector: String)              // s"$prefix.$name"
-
-    case DefaultGetter(methodName: TermName, idx: String)           // s"$methodName${"$default$"}${idx+1}"
-    case Variant(underlying: TermName, covariant: Boolean)          // s"${if (covariant) "+" else "-"}$underlying"
-    case SuperAccessor(underlying: TermName)                        // s"${"super$"}$underlying"
-    case ProtectedAccessor(underlying: TermName)                    // s"${"protected$"}$underlying"
-    case ProtectedSetter(underlying: TermName)                      // s"${"protected$set"}$underlying"
-    case ObjectClass(underlying: TermName)                          // s"$underlying${"$"}"
-  }
-
-  case class SignedName(name: TermName, resultSig: TypeName, paramSigs: List[TypeName]) extends PossiblySignedName
-
-  case class TypeName(name: TermName) extends Name
-
-// ====== Positions ==================================
-
-  case class Position(firstOffset: Int, lastOffset: Int, sourceFile: String) {
-    def startLine: Int = ???
-    def startColumn: Int = ???
-    def endLine: Int = ???
-    def endColumn: Int = ???
-  }
-
-  trait Positioned {
-    def pos: Position = ???
-  }
-
 // ====== Trees ======================================
 
   trait Tree extends Positioned
@@ -64,34 +30,34 @@ object definitions {
   }
 
   // Does DefDef need a `def tpe: MethodType | PolyType`?
-  case class ValDef(name: TermName, tpt: TypeTree, rhs: Option[Term]) extends Definition {
+  case class ValDef(name: String, tpt: TypeTree, rhs: Option[Term]) extends Definition {
     def mods: List[Modifier] = ???
   }
-  case class DefDef(name: TermName, typeParams: List[TypeDef], paramss: List[List[ValDef]],
+  case class DefDef(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]],
                     returnTpt: TypeTree, rhs: Option[Term]) extends Definition {
     def mods: List[Modifier] = ???
   }
-  case class TypeDef(name: TypeName, rhs: TypeTree | TypeBoundsTree) extends Definition {
+  case class TypeDef(name: String, rhs: TypeTree | TypeBoundsTree) extends Definition {
     def mods: List[Modifier] = ???
   }
-  case class ClassDef(name: TypeName, constructor: DefDef, parents: List[Term | TypeTree],
+  case class ClassDef(name: String, constructor: DefDef, parents: List[Term | TypeTree],
                       self: Option[ValDef], body: List[Statement]) extends Definition {
     def mods: List[Modifier] = ???
   }
-  case class PackageDef(name: TermName, members: List[Statement]) extends Definition
+  case class PackageDef(name: String, members: List[Statement]) extends Definition
 
 // ------ Terms ---------------------------------
 
   /** Trees denoting terms */
   enum Term extends Statement {
     def tpe: Type = ???
-    case Ident(name: TermName, override val tpe: Type)
-    case Select(prefix: Term, name: PossiblySignedName)
+    case Ident(name: String, override val tpe: Type)
+    case Select(prefix: Term, name: String, signature: Option[Signature])
     case Literal(value: Constant)
     case This(id: Option[Id])
     case New(tpt: TypeTree)
     case Throw(expr: Term)
-    case NamedArg(name: TermName, arg: Term)
+    case NamedArg(name: String, arg: Term)
     case Apply(fn: Term, args: List[Term])
     case TypeApply(fn: Term, args: List[TypeTree])
     case Super(thiz: Term, mixin: Option[Id])
@@ -112,8 +78,8 @@ object definitions {
   enum TypeTree extends Tree {
     def tpe: Type = ???
     case Synthetic()
-    case Ident(name: TypeName, override val tpe: Type)
-    case Select(prefix: Term, name: TypeName)
+    case Ident(name: String, override val tpe: Type)
+    case Select(prefix: Term, name: String)
     case Singleton(ref: Term)
     case Refined(underlying: TypeTree, refinements: List[Definition])
     case Applied(tycon: TypeTree, args: List[TypeTree])
@@ -132,7 +98,7 @@ object definitions {
   enum Pattern extends Tree {
     def tpe: Type = ???
     case Value(v: Term)
-    case Bind(name: TermName, pat: Pattern)
+    case Bind(name: String, pat: Pattern)
     case Unapply(unapply: Term, implicits: List[Term], pats: List[Pattern])
     case Alternative(pats: List[Pattern])
     case TypeTest(tpt: TypeTree)
@@ -150,15 +116,16 @@ object definitions {
 
     case class ConstantType(value: Constant) extends Type
     case class SymRef(sym: Definition, qualifier: Type | NoPrefix = NoPrefix) extends Type
-    case class NameRef(name: Name, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
+    case class TypeNameRef(name: String, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
+    case class TermNameRef(name: String, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
     case class SuperType(thistp: Type, underlying: Type) extends Type
-    case class Refinement(underlying: Type, name: Name, tpe: Type | TypeBounds) extends Type
+    case class Refinement(underlying: Type, name: String, tpe: Type | TypeBounds) extends Type
     case class AppliedType(tycon: Type, args: List[Type | TypeBounds]) extends Type
     case class AnnotatedType(underlying: Type, annotation: Term) extends Type
     case class AndType(left: Type, right: Type) extends Type
     case class OrType(left: Type, right: Type) extends Type
     case class ByNameType(underlying: Type) extends Type
-    case class ParamRef(binder: LambdaType[_, _, _], idx: Int) extends Type
+    case class ParamRef(binder: LambdaType[_, _], idx: Int) extends Type
     case class ThisType(tp: Type) extends Type
     case class RecursiveThis(binder: RecursiveType) extends Type
 
@@ -173,21 +140,21 @@ object definitions {
       }
     }
 
-    abstract class LambdaType[ParamName, ParamInfo, This <: LambdaType[ParamName, ParamInfo, This]](
-      val companion: LambdaTypeCompanion[ParamName, ParamInfo, This]
+    abstract class LambdaType[ParamInfo, This <: LambdaType[ParamInfo, This]](
+      val companion: LambdaTypeCompanion[ParamInfo, This]
     ) extends Type {
       private[Type] var _pinfos: List[ParamInfo]
       private[Type] var _restpe: Type
 
-      def paramNames: List[ParamName]
+      def paramNames: List[String]
       def paramInfos: List[ParamInfo] = _pinfos
       def resultType: Type = _restpe
     }
 
-    abstract class LambdaTypeCompanion[ParamName, ParamInfo, This <: LambdaType[ParamName, ParamInfo, This]] {
-      def apply(pnames: List[ParamName], ptypes: List[ParamInfo], restpe: Type): This
+    abstract class LambdaTypeCompanion[ParamInfo, This <: LambdaType[ParamInfo, This]] {
+      def apply(pnames: List[String], ptypes: List[ParamInfo], restpe: Type): This
 
-      def apply(pnames: List[ParamName], ptypesExp: This => List[ParamInfo], restpeExp: This => Type): This = {
+      def apply(pnames: List[String], ptypesExp: This => List[ParamInfo], restpeExp: This => Type): This = {
         val lambda = apply(pnames, Nil, PlaceHolder)
         lambda._pinfos = ptypesExp(lambda)
         lambda._restpe = restpeExp(lambda)
@@ -195,24 +162,24 @@ object definitions {
       }
     }
 
-    case class MethodType(paramNames: List[TermName], private[Type] var _pinfos: List[Type], private[Type] var _restpe: Type)
-    extends LambdaType[TermName, Type, MethodType](MethodType) {
+    case class MethodType(paramNames: List[String], private[Type] var _pinfos: List[Type], private[Type] var _restpe: Type)
+    extends LambdaType[Type, MethodType](MethodType) {
       def isImplicit = (companion `eq` ImplicitMethodType) || (companion `eq` ErasedImplicitMethodType)
       def isErased = (companion `eq` ErasedMethodType) || (companion `eq` ErasedImplicitMethodType)
     }
 
-    case class PolyType(paramNames: List[TypeName], private[Type] var _pinfos: List[TypeBounds], private[Type] var _restpe: Type)
-    extends LambdaType[TypeName, TypeBounds, PolyType](PolyType)
+    case class PolyType(paramNames: List[String], private[Type] var _pinfos: List[TypeBounds], private[Type] var _restpe: Type)
+    extends LambdaType[TypeBounds, PolyType](PolyType)
 
-    case class TypeLambda(paramNames: List[TypeName], private[Type] var _pinfos: List[TypeBounds], private[Type] var _restpe: Type)
-    extends LambdaType[TypeName, TypeBounds, TypeLambda](TypeLambda)
+    case class TypeLambda(paramNames: List[String], private[Type] var _pinfos: List[TypeBounds], private[Type] var _restpe: Type)
+    extends LambdaType[TypeBounds, TypeLambda](TypeLambda)
 
-    object TypeLambda extends LambdaTypeCompanion[TypeName, TypeBounds, TypeLambda]
-    object PolyType   extends LambdaTypeCompanion[TypeName, TypeBounds, PolyType]
-    object MethodType extends LambdaTypeCompanion[TermName, Type, MethodType]
+    object TypeLambda extends LambdaTypeCompanion[TypeBounds, TypeLambda]
+    object PolyType   extends LambdaTypeCompanion[TypeBounds, PolyType]
+    object MethodType extends LambdaTypeCompanion[Type, MethodType]
 
-    class SpecializedMethodTypeCompanion extends LambdaTypeCompanion[TermName, Type, MethodType] { self =>
-      def apply(pnames: List[TermName], ptypes: List[Type], restpe: Type): MethodType =
+    class SpecializedMethodTypeCompanion extends LambdaTypeCompanion[Type, MethodType] { self =>
+      def apply(pnames: List[String], ptypes: List[Type], restpe: Type): MethodType =
         new MethodType(pnames, ptypes, restpe) { override val companion = self }
     }
     object ImplicitMethodType       extends SpecializedMethodTypeCompanion
@@ -226,7 +193,6 @@ object definitions {
   }
 
 // ====== Modifiers ==================================
-
 
   enum Modifier {
     case Flags(flags: FlagSet)
@@ -262,6 +228,21 @@ object definitions {
     def isScala2X: Boolean               // Imported from Scala2.x
     def isDefaultParameterized: Boolean  // Method with default parameters
     def isStable: Boolean                // Method that is assumed to be stable
+  }
+
+  case class Signature(paramSigs: List[String], resultSig: String)
+
+// ====== Positions ==================================
+
+  case class Position(firstOffset: Int, lastOffset: Int, sourceFile: String) {
+    def startLine: Int = ???
+    def startColumn: Int = ???
+    def endLine: Int = ???
+    def endColumn: Int = ???
+  }
+
+  trait Positioned {
+    def pos: Position = ???
   }
 
 // ====== Constants ==================================
