@@ -193,6 +193,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      */
     protected def liftFun(): Unit = ()
 
+    /** Whether `liftFun` is needed? It is the case if default arguments are used.
+     */
+    protected def needLiftFun: Boolean =
+      !isJavaAnnotConstr(methRef.symbol) &&
+      args.size < reqiredArgNum(funType)
+
     /** A flag signalling that the typechecking the application was so far successful */
     private[this] var _ok = true
 
@@ -205,11 +211,24 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** The function's type after widening and instantiating polytypes
      *  with TypeParamRefs in constraint set
      */
-    val methType = funType.widen match {
+    lazy val methType: Type = liftedFunType.widen match {
       case funType: MethodType => funType
       case funType: PolyType => constrained(funType).resultType
       case tp => tp //was: funType
     }
+
+    def reqiredArgNum(tp: Type): Int = tp.widen match {
+      case funType: MethodType => funType.paramInfos.size
+      case funType: PolyType => reqiredArgNum(funType.resultType)
+      case tp => args.size
+    }
+
+    lazy val liftedFunType =
+      if (needLiftFun) {
+        liftFun()
+        normalizedFun.tpe
+      }
+      else funType
 
     /** The arguments re-ordered so that each named argument matches the
      *  same-named formal parameter.
@@ -231,6 +250,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             ()
           else
             fail(err.typeMismatchMsg(methType.resultType, resultType))
+
         // match all arguments with corresponding formal parameters
         matchArgs(orderedArgs, methType.paramInfos, 0)
       case _ =>
@@ -425,8 +445,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
 
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
-            if (!isJavaAnnotConstr(methRef.symbol))
-              liftFun()
             val getter = findDefaultGetter(n + numArgs(normalizedFun))
             if (getter.isEmpty) missingArg(n)
             else {

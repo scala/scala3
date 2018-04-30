@@ -46,7 +46,8 @@ abstract class Lifter {
     if (noLift(expr)) expr
     else {
       val name = UniqueName.fresh(prefix)
-      var liftedType = fullyDefinedType(expr.tpe.widen, "lifted expression", expr.pos)
+      // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
+      var liftedType = expr.tpe.widen
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
       val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags, liftedType, coord = positionCoord(expr.pos))
       defs += liftedDef(lifted, expr).withPos(expr.pos.focus)
