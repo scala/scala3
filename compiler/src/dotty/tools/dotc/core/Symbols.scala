@@ -31,6 +31,7 @@ import io.AbstractFile
 import language.implicitConversions
 import util.{NoSource, DotClass, Property}
 import scala.collection.JavaConverters._
+import config.Printers.typr
 
 /** Creation methods for symbols */
 trait Symbols { this: Context =>
@@ -234,8 +235,8 @@ trait Symbols { this: Context =>
   def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
     def stubCompleter = new StubInfo()
     val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
-    println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
-    println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
+    typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
+    typr.println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
     //if (base.settings.debug.value) throw new Error()
     val stub = name match {
       case name: TermName =>
