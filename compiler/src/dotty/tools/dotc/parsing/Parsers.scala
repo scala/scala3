@@ -56,7 +56,7 @@ object Parsers {
     findWildcardType(t) match {
       case Some(wildcardPos) =>
         report(wildcardPos)
-        fallbackTree
+        fallbackTree.withPos(wildcardPos)
       case None => t
     }
 
@@ -2279,7 +2279,8 @@ object Parsers {
     /** ConstrApp         ::=  SimpleType {ParArgumentExprs}
      */
     val constrApp = () => {
-      val t = checkWildcard(annotType())
+      // Using Ident(nme.ERROR) to avoid causing cascade errors on non-user-written code
+      val t = checkWildcard(annotType(), fallbackTree = Ident(nme.ERROR))
       if (in.token == LPAREN) parArgumentExprss(wrapNew(t))
       else t
     }
