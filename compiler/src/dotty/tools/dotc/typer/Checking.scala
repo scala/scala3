@@ -86,15 +86,11 @@ object Checking {
     if (boundsCheck) checkBounds(orderedArgs, bounds, instantiate)
 
     def checkWildcardApply(tp: Type, pos: Position): Unit = tp match {
-      case tp @ AppliedType(tycon, args) if args.exists(_.isInstanceOf[TypeBounds]) =>
-        tycon match {
-          case tycon: TypeLambda =>
-            ctx.errorOrMigrationWarning(
-              ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
-              pos)
-          case _ =>
-            checkWildcardApply(tp.superType, pos)
-        }
+      case tp @ AppliedType(tycon, args) =>
+        if (tycon.isLambdaSub && args.exists(_.isInstanceOf[TypeBounds]))
+          ctx.errorOrMigrationWarning(
+            ex"unreducible application of higher-kinded type $tycon to wildcard arguments",
+            pos)
       case _ =>
     }
     def checkValidIfApply(implicit ctx: Context): Unit =
