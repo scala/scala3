@@ -1,18 +1,19 @@
 package dotty.tools
 package repl
 
-import java.io.{ StringWriter, PrintWriter }
-import java.lang.{ ClassLoader, ExceptionInInitializerError }
+import java.io.{PrintWriter, StringWriter}
+import java.lang.{ClassLoader, ExceptionInInitializerError}
 import java.lang.reflect.InvocationTargetException
 
 import scala.util.control.NonFatal
-
 import dotc.core.Types._
 import dotc.core.Contexts.Context
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags
 import dotc.core.Symbols.Symbol
 import dotc.core.StdNames.str
+
+import scala.util.{Failure, Success, Try}
 
 /** This rendering object uses `ClassLoader`s to accomplish crossing the 4th
  *  wall (i.e. fetching back values from the compiled class files put into a
@@ -70,21 +71,38 @@ private[repl] class Rendering(compiler: ReplCompiler,
     d.symbol.showUser
 
   /** Render value definition result */
-  def renderVal(d: Denotation)(implicit ctx: Context): Option[String] = {
+  def renderVal(d: Denotation)(implicit ctx: Context): Either[String,Option[String]] = {
     val dcl = d.symbol.showUser
 
-    try {
+    Try {
+      val resultValue =
+        if (d.symbol.is(Flags.Lazy)) Some("<lazy>")
+        else valueOf(d.symbol)
+
+      resultValue.map(value => s"$dcl = $value")
+    } match {
+      case Success(s) => Right(s)
+      case Failure(ex: InvocationTargetException) => Left(renderError(ex))
+      case Failure(e) => Left("<evaluation error>")
+    }
+
+  }
+
+  def renderVal2(d: Denotation)(implicit ctx: Context): Try[Option[String]] = {
+    val dcl = d.symbol.showUser
+
+    Try {
       val resultValue =
         if (d.symbol.is(Flags.Lazy)) Some("<lazy>")
         else valueOf(d.symbol)
 
       resultValue.map(value => s"$dcl = $value")
     }
-    catch { case ex: InvocationTargetException => Some(renderError(ex)) }
+
   }
 
   /** Render the stack trace of the underlying exception */
-  private def renderError(ex: InvocationTargetException): String = {
+  def renderError(ex: InvocationTargetException): String = {
     val cause = ex.getCause match {
       case ex: ExceptionInInitializerError => ex.getCause
       case ex => ex

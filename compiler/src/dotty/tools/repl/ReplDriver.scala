@@ -1,38 +1,38 @@
 package dotty.tools
 package repl
 
-import java.io.{ InputStream, PrintStream }
+import java.io.{InputStream, PrintStream}
+import java.lang.reflect.InvocationTargetException
 
 import scala.annotation.tailrec
-
 import dotc.reporting.MessageRendering
 import dotc.reporting.diagnostic.MessageContainer
 import dotc.ast.untpd
 import dotc.ast.tpd
-import dotc.interactive.{ SourceTree, Interactive }
+import dotc.interactive.{Interactive, SourceTree}
 import dotc.core.Contexts.Context
-import dotc.{ CompilationUnit, Run }
+import dotc.{CompilationUnit, Run}
 import dotc.core.Mode
 import dotc.core.Flags._
 import dotc.core.Types._
 import dotc.core.StdNames._
 import dotc.core.Names.Name
 import dotc.core.NameOps._
-import dotc.core.Symbols.{ Symbol, NoSymbol, defn }
+import dotc.core.Symbols.{NoSymbol, Symbol, defn}
 import dotc.core.Denotations.Denotation
-import dotc.core.Types.{ ExprType, ConstantType }
+import dotc.core.Types.{ConstantType, ExprType}
 import dotc.core.NameKinds.SimpleNameKind
 import dotc.config.CompilerCommand
-import dotc.{ Compiler, Driver }
+import dotc.{Compiler, Driver}
 import dotc.printing.SyntaxHighlighting
 import dotc.reporting.diagnostic.Message
 import dotc.util.Positions.Position
 import dotc.util.SourcePosition
-
 import io._
-
 import AmmoniteReader._
 import results._
+
+import scala.util.Try
 
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation
@@ -239,14 +239,15 @@ class ReplDriver(settings: Array[String],
             // display warnings
             displayErrors(newState.run.runContext.flushBufferedMessages())(newState)
 
-            displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
+            val finalState = displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
+            finalState.getOrElse(state)
           }
         }
       )
   }
 
   /** Display definitions from `tree` */
-  private def displayDefinitions(tree: tpd.Tree, newestWrapper: Name)(implicit state: State): State = {
+  private def displayDefinitions(tree: tpd.Tree, newestWrapper: Name)(implicit state: State): Option[State] = {
     implicit val ctx = state.run.runContext
 
     def resAndUnit(denot: Denotation) = {
@@ -279,15 +280,27 @@ class ReplDriver(settings: Array[String],
       val typeAliases =
         info.bounds.hi.typeMembers.filter(_.symbol.info.isInstanceOf[TypeAlias])
 
-      (
-        typeAliases.map("// defined alias " + _.symbol.showUser) ++
-        defs.map(rendering.renderMethod) ++
-        vals.map(rendering.renderVal).flatten
-      ).foreach(str => out.println(SyntaxHighlighting(str)))
 
-      state.copy(valIndex = state.valIndex - vals.filter(resAndUnit).length)
+      val r2: Seq[Try[Option[String]]] = vals.map(rendering.renderVal2)
+      val (successes, failures) = r2.partition(_.isSuccess)
+      if (failures.isEmpty) {
+        val valRender = successes.map(_.get).flatten
+        (
+          typeAliases.map("// defined alias " + _.symbol.showUser) ++
+            defs.map(rendering.renderMethod) ++
+            valRender
+          ).foreach(str => out.println(SyntaxHighlighting(str)))
+        Some(state.copy(valIndex = state.valIndex - vals.filter(resAndUnit).length))
+
+      } else {
+        failures.foreach(fail => fail.failed.get match {
+          case (ite: InvocationTargetException) => out.println(SyntaxHighlighting(rendering.renderError(ite)))
+          case _ => out.println("<rendering error>")
+        })
+        None
+      }
     }
-    else state
+    else Some(state)
 
     def isSyntheticCompanion(sym: Symbol) =
       sym.is(Module) && sym.is(Synthetic)
@@ -313,7 +326,7 @@ class ReplDriver(settings: Array[String],
         }
         .getOrElse {
           // user defined a trait/class/object, so no module needed
-          state
+          Some(state)
         }
     }
   }
