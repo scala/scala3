@@ -631,7 +631,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           case EtaExpansion(tycon1) => recur(tycon1, tp2)
           case _ => tp2 match {
             case tp2: HKTypeLambda => false // this case was covered in thirdTry
-            case _ => tp2.isLambdaSub && isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefs))
+            case _ => tp2.typeParams.hasSameLengthAs(tp1.paramRefs) && isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefs))
           }
         }
         compareHKLambda

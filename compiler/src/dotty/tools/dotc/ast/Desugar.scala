@@ -88,8 +88,8 @@ object desugar {
             else {
               def msg =
                 s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"
-			  ErrorType(msg).assertingErrorsReported(msg)
-			}
+              ErrorType(msg).assertingErrorsReported(msg)
+            }
           case _ =>
             mapOver(tp)
         }
