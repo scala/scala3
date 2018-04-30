@@ -53,7 +53,7 @@ object GenericSignatures {
       val validParents =
         if (isTraitSignature)
           // java is unthrilled about seeing interfaces inherit from classes
-          minParents filter (p => isInterfaceOrTrait(p.typeSymbol))
+          minParents filter (p => isInterfaceOrTrait(p.classSymbol))
         else minParents
 
       val ps = ensureClassAsFirstParent(validParents)
@@ -329,11 +329,11 @@ object GenericSignatures {
         def isUnshadowed(psym: Symbol) =
           !(psyms exists (qsym => (psym ne qsym) && (qsym isSubClass psym)))
         val cs = parents.iterator.filter { p => // isUnshadowed is a bit expensive, so try classes first
-          val psym = p.typeSymbol
+          val psym = p.classSymbol
           psym.ensureCompleted()
           psym.isClass && !psym.is(Trait) && isUnshadowed(psym)
         }
-        (if (cs.hasNext) cs else parents.iterator.filter(p => isUnshadowed(p.typeSymbol))).next()
+        (if (cs.hasNext) cs else parents.iterator.filter(p => isUnshadowed(p.classSymbol))).next()
       }
     }
   }

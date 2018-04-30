@@ -769,28 +769,26 @@ object Trees {
   def genericEmptyTree[T >: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
 
   def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
-    var buf: ListBuffer[Tree[T]] = null
-    var xs = trees
-    while (!xs.isEmpty) {
-      xs.head match {
-        case Thicket(elems) =>
-          if (buf == null) {
-            buf = new ListBuffer
-            var ys = trees
-            while (ys ne xs) {
-              buf += ys.head
-              ys = ys.tail
+    def recur(buf: ListBuffer[Tree[T]], remaining: List[Tree[T]]): ListBuffer[Tree[T]] =
+      remaining match {
+        case Thicket(elems) :: remaining1 =>
+          var buf1 = buf
+          if (buf1 == null) {
+            buf1 = new ListBuffer[Tree[T]]
+            var scanned = trees
+            while (scanned `ne` remaining) {
+              buf1 += scanned.head
+              scanned = scanned.tail
             }
           }
-          for (elem <- elems) {
-            assert(!elem.isInstanceOf[Thicket[_]])
-            buf += elem
-          }
-        case tree =>
+          recur(recur(buf1, elems), remaining1)
+        case tree :: remaining1 =>
           if (buf != null) buf += tree
+          recur(buf, remaining1)
+        case nil =>
+          buf
       }
-      xs = xs.tail
-    }
+    val buf = recur(null, trees)
     if (buf != null) buf.toList else trees
   }
 

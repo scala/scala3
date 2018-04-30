@@ -175,8 +175,16 @@ object Decorators {
     recur(enclosingInlineds, pos)
   }
 
-  implicit class reportingDeco[T](val x: T) extends AnyVal {
+  implicit class genericDeco[T](val x: T) extends AnyVal {
     def reporting(op: T => String): T = { println(op(x)); x }
+    def assertingErrorsReported(implicit ctx: Context): T = {
+      assert(ctx.reporter.errorsReported)
+      x
+    }
+    def assertingErrorsReported(msg: => String)(implicit ctx: Context): T = {
+      assert(ctx.reporter.errorsReported, msg)
+      x
+    }
   }
 
   implicit class StringInterpolators(val sc: StringContext) extends AnyVal {

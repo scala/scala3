@@ -879,19 +879,25 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      */
     def trySelectUnapply(qual: untpd.Tree)(fallBack: Tree => Tree): Tree = {
       // try first for non-overloaded, then for overloaded ocurrences
-      def tryWithName(name: TermName)(fallBack: Tree => Tree)(implicit ctx: Context): Tree =
-        tryEither { implicit ctx =>
-          val specificProto = new UnapplyFunProto(selType, this)
-          typedExpr(untpd.Select(qual, name), specificProto)
+      def tryWithName(name: TermName)(fallBack: Tree => Tree)(implicit ctx: Context): Tree = {
+        def tryWithProto(pt: Type)(implicit ctx: Context) = {
+          val result = typedExpr(untpd.Select(qual, name), new UnapplyFunProto(pt, this))
+          if (!result.symbol.exists || result.symbol.name == name) result
+          else notAnExtractor(result)
+          	// It might be that the result of typedExpr is an `apply` selection or implicit conversion.
+          	// Reject in this case.
+        }
+        tryEither {
+          implicit ctx => tryWithProto(selType)
         } {
           (sel, _) =>
-            tryEither { implicit ctx =>
-              val genericProto = new UnapplyFunProto(WildcardType, this)
-              typedExpr(untpd.Select(qual, name), genericProto)
+            tryEither {
+              implicit ctx => tryWithProto(WildcardType)
             } {
               (_, _) => fallBack(sel)
             }
         }
+      }
       // try first for unapply, then for unapplySeq
       tryWithName(nme.unapply) {
         sel => tryWithName(nme.unapplySeq)(_ => fallBack(sel)) // for backwards compatibility; will be dropped
@@ -967,7 +973,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2
           case Apply(unapply, `dummyArg` :: Nil) => Nil
           case Inlined(u, _, _) => unapplyImplicits(u)
-          case _ => assert(ctx.reporter.errorsReported); Nil
+          case _ => Nil.assertingErrorsReported
         }
 
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.pos)

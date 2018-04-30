@@ -1466,10 +1466,11 @@ object SymDenotations {
       if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
-      for (p <- classParents) {
-        if (p.typeSymbol.isClass) builder.addAll(p.typeSymbol.asClass.baseClasses)
-        else assert(isRefinementClass || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
-      }
+      for (p <- classParents)
+        p.classSymbol match {
+          case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
+          case _ => assert(isRefinementClass || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
+        }
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
 
@@ -1598,7 +1599,7 @@ object SymDenotations {
       def collect(denots: PreDenotation, parents: List[Type]): PreDenotation = parents match {
         case p :: ps =>
           val denots1 = collect(denots, ps)
-          p.typeSymbol.denot match {
+          p.classSymbol.denot match {
             case parentd: ClassDenotation =>
               denots1 union
                 parentd.nonPrivateMembersNamed(name)
@@ -1747,7 +1748,7 @@ object SymDenotations {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
       for (p <- classParents)
-        for (name <- p.typeSymbol.asClass.memberNames(keepOnly))
+        for (name <- p.classSymbol.asClass.memberNames(keepOnly))
           maybeAdd(name)
       val ownSyms =
         if (keepOnly eq implicitFilter)

@@ -142,8 +142,11 @@ object Types {
     /** Is this type a value type? */
     final def isValueType: Boolean = this.isInstanceOf[ValueType]
 
-    /** Is the is value type or type lambda? */
+    /** Is this a value type or a type lambda? */
     final def isValueTypeOrLambda: Boolean = isValueType || this.isInstanceOf[TypeLambda]
+
+    /** Is this a value type or a wildcard? */
+    final def isValueTypeOrWildcard: Boolean = isValueType || this.isInstanceOf[WildcardType]
 
     /** Does this type denote a stable reference (i.e. singleton type)? */
     final def isStable(implicit ctx: Context): Boolean = stripTypeVar match {
@@ -589,13 +592,14 @@ object Types {
 
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
+        val pinfo = pdenot.info
         val rinfo = tp.refinedInfo
-        if (name.isTypeName) { // simplified case that runs more efficiently
+        if (name.isTypeName && !pinfo.isInstanceOf[ClassInfo]) { // simplified case that runs more efficiently
           val jointInfo =
             if (rinfo.isAlias) rinfo
-            else if (pdenot.info.isAlias) pdenot.info
-            else if (ctx.pendingMemberSearches.contains(name)) pdenot.info safe_& rinfo
-            else pdenot.info recoverable_& rinfo
+            else if (pinfo.isAlias) pinfo
+            else if (ctx.pendingMemberSearches.contains(name)) pinfo safe_& rinfo
+            else pinfo recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         } else {
           pdenot & (
@@ -1523,11 +1527,8 @@ object Types {
   /** A marker trait for types that can be types of values or prototypes of value types */
   trait ValueTypeOrProto extends TermType
 
-  /** A marker trait for types that can be types of values or wildcards */
-  trait ValueTypeOrWildcard extends TermType
-
   /** A marker trait for types that can be types of values or that are higher-kinded  */
-  trait ValueType extends ValueTypeOrProto with ValueTypeOrWildcard
+  trait ValueType extends ValueTypeOrProto
 
   /** A marker trait for types that are guaranteed to contain only a
    *  single non-null value (they might contain null in addition).
@@ -2479,8 +2480,8 @@ object Types {
 
   object AndType {
     def apply(tp1: Type, tp2: Type)(implicit ctx: Context): AndType = {
-      assert(tp1.isInstanceOf[ValueTypeOrWildcard] &&
-             tp2.isInstanceOf[ValueTypeOrWildcard], i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
+      assert(tp1.isValueTypeOrWildcard &&
+             tp2.isValueTypeOrWildcard, i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
       unchecked(tp1, tp2)
     }
 
@@ -2524,8 +2525,8 @@ object Types {
       myBaseClasses
     }
 
-    assert(tp1.isInstanceOf[ValueTypeOrWildcard] &&
-           tp2.isInstanceOf[ValueTypeOrWildcard], s"$tp1 $tp2")
+    assert(tp1.isValueTypeOrWildcard &&
+           tp2.isValueTypeOrWildcard, s"$tp1 $tp2")
 
     private[this] var myJoin: Type = _
     private[this] var myJoinPeriod: Period = Nowhere
@@ -3477,7 +3478,7 @@ object Types {
       if (selfTypeCache == null)
         selfTypeCache = {
           val given = cls.givenSelfType
-          if (!given.exists) appliedRef
+          if (!given.isValueType) appliedRef
           else if (cls is Module) given
           else if (ctx.erasedTypes) appliedRef
           else AndType(given, appliedRef)
@@ -3756,7 +3757,7 @@ object Types {
   object TryDynamicCallType extends FlexType
 
   /** Wildcard type, possibly with bounds */
-  abstract case class WildcardType(optBounds: Type) extends CachedGroundType with ValueTypeOrWildcard {
+  abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermType {
     def derivedWildcardType(optBounds: Type)(implicit ctx: Context) =
       if (optBounds eq this.optBounds) this
       else if (!optBounds.exists) WildcardType
