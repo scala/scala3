@@ -280,23 +280,16 @@ class ReplDriver(settings: Array[String],
       val typeAliases =
         info.bounds.hi.typeMembers.filter(_.symbol.info.isInstanceOf[TypeAlias])
 
-
-      val r2: Seq[Try[Option[String]]] = vals.map(rendering.renderVal2)
-      val (successes, failures) = r2.partition(_.isSuccess)
+      val (successes, failures) = vals.map(rendering.renderVal).partition(_.isSuccess)
       if (failures.isEmpty) {
-        val valRender = successes.map(_.get).flatten
-        (
-          typeAliases.map("// defined alias " + _.symbol.showUser) ++
+        val valRender = successes.flatMap(_.get)
+        (typeAliases.map("// defined alias " + _.symbol.showUser) ++
             defs.map(rendering.renderMethod) ++
             valRender
           ).foreach(str => out.println(SyntaxHighlighting(str)))
         Some(state.copy(valIndex = state.valIndex - vals.filter(resAndUnit).length))
-
       } else {
-        failures.foreach(fail => fail.failed.get match {
-          case (ite: InvocationTargetException) => out.println(SyntaxHighlighting(rendering.renderError(ite)))
-          case _ => out.println("<rendering error>")
-        })
+        displayRenderFailures(failures.map(_.failed.get))
         None
       }
     }
@@ -398,5 +391,13 @@ class ReplDriver(settings: Array[String],
   private def displayErrors(errs: Seq[MessageContainer])(implicit state: State): State = {
     errs.map(renderMessage(_)(state.run.runContext)).foreach(out.println)
     state
+  }
+
+  private def displayRenderFailures(failures: Seq[Throwable]) = {
+    failures.foreach(f => f match {
+      case (ite: InvocationTargetException) => out.println(SyntaxHighlighting(rendering.renderError(ite)))
+      case _ => out.println("<rendering error>")
+    })
+
   }
 }

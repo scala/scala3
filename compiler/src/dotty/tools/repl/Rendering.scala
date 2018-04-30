@@ -71,24 +71,7 @@ private[repl] class Rendering(compiler: ReplCompiler,
     d.symbol.showUser
 
   /** Render value definition result */
-  def renderVal(d: Denotation)(implicit ctx: Context): Either[String,Option[String]] = {
-    val dcl = d.symbol.showUser
-
-    Try {
-      val resultValue =
-        if (d.symbol.is(Flags.Lazy)) Some("<lazy>")
-        else valueOf(d.symbol)
-
-      resultValue.map(value => s"$dcl = $value")
-    } match {
-      case Success(s) => Right(s)
-      case Failure(ex: InvocationTargetException) => Left(renderError(ex))
-      case Failure(e) => Left("<evaluation error>")
-    }
-
-  }
-
-  def renderVal2(d: Denotation)(implicit ctx: Context): Try[Option[String]] = {
+  def renderVal(d: Denotation)(implicit ctx: Context): Try[Option[String]] = {
     val dcl = d.symbol.showUser
 
     Try {
