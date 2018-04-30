@@ -41,6 +41,25 @@ object Parsers {
     def nonePositive: Boolean = parCounts forall (_ <= 0)
   }
 
+  /** Checks whether `t` is a wildcard type.
+   *  If it is, returns the [[Position]] where the wildcard occurs.
+   */
+  @tailrec
+  final def findWildcardType(t: Tree): Option[Position] = t match {
+    case TypeBoundsTree(_, _) => Some(t.pos)
+    case Parens(t1) => findWildcardType(t1)
+    case Annotated(t1, _) => findWildcardType(t1)
+    case _ => None
+  }
+
+  def rejectWildcard(t: Tree, report: Position => Unit, fallbackTree: Tree): Tree =
+    findWildcardType(t) match {
+      case Some(wildcardPos) =>
+        report(wildcardPos)
+        fallbackTree
+      case None => t
+    }
+
   @sharable object Location extends Enumeration {
     val InParens, InBlock, InPattern, ElseWhere = Value
   }
@@ -709,15 +728,7 @@ object Parsers {
     /** Same as [[typ]], but if this results in a wildcard it emits a syntax error and
      *  returns a tree for type `Any` instead.
      */
-    def toplevelTyp(): Tree = {
-      val t = typ()
-      findWildcardType(t) match {
-        case Some(wildcardPos) =>
-          syntaxError(UnboundWildcardType(), wildcardPos)
-          scalaAny
-        case None => t
-      }
-    }
+    def toplevelTyp(): Tree = checkWildcard(typ())
 
     /** Type        ::=  [FunArgMods] FunArgTypes `=>' Type
      *                |  HkTypeParamClause `->' Type
@@ -917,7 +928,7 @@ object Parsers {
           else Nil
         first :: rest
       }
-      def typParser() = if (wildOK) typ() else toplevelTyp()
+      def typParser() = checkWildcard(typ(), wildOK)
       if (namedOK && in.token == IDENTIFIER)
         typParser() match {
           case Ident(name) if in.token == EQUALS =>
@@ -1001,16 +1012,8 @@ object Parsers {
       else if (location == Location.InPattern) refinedType()
       else infixType()
 
-    /** Checks whether `t` is a wildcard type.
-     *  If it is, returns the [[Position]] where the wildcard occurs.
-     */
-    @tailrec
-    private final def findWildcardType(t: Tree): Option[Position] = t match {
-      case TypeBoundsTree(_, _) => Some(t.pos)
-      case Parens(t1) => findWildcardType(t1)
-      case Annotated(t1, _) => findWildcardType(t1)
-      case _ => None
-    }
+    def checkWildcard(t: Tree, wildOK: Boolean = false, fallbackTree: Tree = scalaAny): Tree =
+      if (wildOK) t else rejectWildcard(t, syntaxError(UnboundWildcardType(), _), fallbackTree)
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
 
