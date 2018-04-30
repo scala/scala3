@@ -68,11 +68,11 @@ class TabcompleteTests extends ReplTest {
 
   @Test def sortedCompletions: Unit =
     fromInitialState { implicit state  =>
-      val src = """class Foo { def comp1 = 1; def compa = 3; def compA = 4 }"""
+      val src = "class Foo { def comp3 = 3; def comp1 = 1; def comp2 = 2 }"
       compiler.compile(src).stateOrFail
     }
     .andThen { implicit state =>
-      val expected = List("comp1", "compA", "compa")
+      val expected = List("comp1", "comp2", "comp3")
       assertEquals(expected, tabComplete("(new Foo).comp").suggestions)
     }
 }
