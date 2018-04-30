@@ -471,7 +471,7 @@ object Parsers {
       if (isLeftAssoc(op1) != op2LeftAssoc)
         syntaxError(MixedLeftAndRightAssociativeOps(op1, op2, op2LeftAssoc), offset)
 
-    def reduceStack(base: List[OpInfo], top: Tree, prec: Int, leftAssoc: Boolean, op2: Name): Tree = {
+    def reduceStack(base: List[OpInfo], top: Tree, prec: Int, leftAssoc: Boolean, op2: Name, isType: Boolean): Tree = {
       if (opStack != base && precedence(opStack.head.operator.name) == prec)
         checkAssoc(opStack.head.offset, opStack.head.operator.name, op2, leftAssoc)
       def recur(top: Tree): Tree = {
@@ -483,7 +483,15 @@ object Parsers {
             opStack = opStack.tail
             recur {
               atPos(opInfo.operator.pos union opInfo.operand.pos union top.pos) {
-                InfixOp(opInfo.operand, opInfo.operator, top)
+                val op = opInfo.operator
+                val l = opInfo.operand
+                val r = top
+                if (isType && !op.isBackquoted && op.name == tpnme.raw.BAR) {
+                  OrTypeTree(checkWildcard(l), checkWildcard(r))
+                } else if (isType && !op.isBackquoted && op.name == tpnme.raw.AMP) {
+                  AndTypeTree(checkWildcard(l), checkWildcard(r))
+                } else
+                  InfixOp(l, op, r)
               }
             }
           }
@@ -507,20 +515,20 @@ object Parsers {
       var top = first
       while (isIdent && isOperator) {
         val op = if (isType) typeIdent() else termIdent()
-        top = reduceStack(base, top, precedence(op.name), isLeftAssoc(op.name), op.name)
+        top = reduceStack(base, top, precedence(op.name), isLeftAssoc(op.name), op.name, isType)
         opStack = OpInfo(top, op, in.offset) :: opStack
         newLineOptWhenFollowing(canStartOperand)
         if (maybePostfix && !canStartOperand(in.token)) {
           val topInfo = opStack.head
           opStack = opStack.tail
-          val od = reduceStack(base, topInfo.operand, 0, true, in.name)
+          val od = reduceStack(base, topInfo.operand, 0, true, in.name, isType)
           return atPos(startOffset(od), topInfo.offset) {
             PostfixOp(od, topInfo.operator)
           }
         }
         top = operand()
       }
-      reduceStack(base, top, 0, true, in.name)
+      reduceStack(base, top, 0, true, in.name, isType)
     }
 
 /* -------- IDENTIFIERS AND LITERALS ------------------------------------------- */
