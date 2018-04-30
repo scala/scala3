@@ -65,4 +65,14 @@ class TabcompleteTests extends ReplTest {
       List("\"", ")", "'", "¨", "£", ":", ",", ";", "@", "}", "[", "]")
         .foreach(src => assertTrue(tabComplete(src).suggestions.isEmpty))
     }
+
+  @Test def sortedCompletions: Unit =
+    fromInitialState { implicit state  =>
+      val src = """class Foo { def comp1 = 1; def compa = 3; def compA = 4 }"""
+      compiler.compile(src).stateOrFail
+    }
+    .andThen { implicit state =>
+      val expected = List("comp1", "compA", "compa")
+      assertEquals(expected, tabComplete("(new Foo).comp").suggestions)
+    }
 }
