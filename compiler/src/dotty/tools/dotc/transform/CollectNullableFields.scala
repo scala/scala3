@@ -45,6 +45,13 @@ class CollectNullableFields extends MiniPhase {
 
   override def phaseName = CollectNullableFields.name
 
+  /** Running after `ElimByName` to see by names as nullable types.
+   *
+   *  We don't necessary need to run after `Getters`, but the implementation
+   *  could be simplified if we were to run before.
+   */
+  override def runsAfter = Set(Getters.name, ElimByName.name)
+
   private[this] sealed trait FieldInfo
   private[this] case object NotNullable extends FieldInfo
   private[this] case class Nullable(by: Symbol) extends FieldInfo
@@ -53,21 +60,20 @@ class CollectNullableFields extends MiniPhase {
   private[this] var nullability: IdentityHashMap[Symbol, FieldInfo] = _
 
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
-    nullability = new IdentityHashMap
+    if (nullability == null) nullability = new IdentityHashMap
     ctx
   }
 
   private def recordUse(tree: Tree)(implicit ctx: Context): Tree = {
-    val sym = tree.symbol
+    def isField(sym: Symbol) =
+       sym.isField || sym.isGetter // running after phase Getters
 
-    def isNullableType(tpe: Type) =
-      tpe.isInstanceOf[ExprType] ||
-      tpe.widenDealias.typeSymbol.isNullableClass
+    val sym = tree.symbol
     val isNullablePrivateField =
-      sym.isField &&
+      isField(sym) &&
       sym.is(Private, butNot = Lazy) &&
       !sym.owner.is(Trait) &&
-      isNullableType(sym.info)
+      sym.info.widenDealias.typeSymbol.isNullableClass
 
     if (isNullablePrivateField)
       nullability.get(sym) match {
@@ -76,8 +82,8 @@ class CollectNullableFields extends MiniPhase {
         case null => // not in the map
           val from = ctx.owner
           val isNullable =
-            from.is(Lazy) && from.isField && // used in lazy field initializer
-            from.owner.eq(sym.owner)         // lazy val and field in the same class
+            from.is(Lazy) && isField(from) && // used in lazy field initializer
+            from.owner.eq(sym.owner)          // lazy val and field defined in the same class
           val info = if (isNullable) Nullable(from) else NotNullable
           nullability.put(sym, info)
         case _ =>
@@ -96,16 +102,16 @@ class CollectNullableFields extends MiniPhase {
     recordUse(tree)
 
   /** Map lazy values to the fields they should null after initialization. */
-  def lazyValNullables(implicit ctx: Context): Map[Symbol, List[Symbol]] = {
-    val result = new mutable.HashMap[Symbol, mutable.ListBuffer[Symbol]]
+  def lazyValNullables(implicit ctx: Context): IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = {
+    val result = new IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]]
 
     nullability.forEach {
       case (sym, Nullable(from)) =>
-        val bldr = result.getOrElseUpdate(from, new mutable.ListBuffer)
+        val bldr = result.computeIfAbsent(from, _ => new mutable.ListBuffer)
         bldr += sym
       case _ =>
     }
 
-    result.mapValues(_.toList).toMap
+    result
   }
 }

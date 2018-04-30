@@ -72,7 +72,6 @@ class Compiler {
          new LiftTry,                // Put try expressions that might execute on non-empty stacks into their own methods
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
          new ClassOf,                // Expand `Predef.classOf` calls.
-         new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new RefChecks) ::           // Various checks mostly related to abstract members and overriding
     List(new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches
@@ -88,6 +87,7 @@ class Compiler {
          new InterceptedMethods,     // Special handling of `==`, `|=`, `getClass` methods
          new Getters,                // Replace non-private vals and vars with getter defs (fields are added later)
          new ElimByName,             // Expand by-name parameter references
+         new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections
          new AugmentScala2Traits,    // Expand traits defined in Scala 2.x to simulate old-style rewritings
          new ResolveSuper,           // Implement super accessors and add forwarders to trait methods

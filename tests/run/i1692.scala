@@ -119,7 +119,7 @@ object Test {
 
     val fromTrait = new LazyTrait {}
     assert(fromTrait.l0 == "A")
-    assert(readField("LazyTrait$$a", fromTrait) != null) // fragile: test will break if compiler generated name change
+    assert(readField("LazyTrait$$a", fromTrait) != null) // fragile: test will break if compiler generated names change
   }
 
   def readField(fieldName: String, target: Any): Any = {

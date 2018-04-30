@@ -26,6 +26,8 @@ import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.DenotTransformers.{SymTransformer, IdentityDenotTransformer, DenotTransformer}
 import Erasure.Boxing.adaptToType
 
+import java.util.IdentityHashMap
+
 class LazyVals extends MiniPhase with IdentityDenotTransformer {
   import LazyVals._
   import tpd._
@@ -51,14 +53,17 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   val containerFlagsMask = Flags.Method | Flags.Lazy | Flags.Accessor | Flags.Module
 
   /** A map of lazy values to the fields they should null after initialization. */
-  private[this] var lazyValNullables: Map[Symbol, List[Symbol]] = _
-  private def nullableFor(sym: Symbol)(implicit ctx: Context) =
-    if (sym.is(Flags.Module)) Nil
-    else lazyValNullables.getOrElse(sym, Nil)
+  private[this] var lazyValNullables: IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = _
+  private def nullableFor(sym: Symbol)(implicit ctx: Context) = {
+    val nullables = lazyValNullables.remove(sym)
+    if (nullables == null || sym.is(Flags.Module)) Nil
+    else nullables.toList
+  }
 
 
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
-    lazyValNullables = ctx.collectNullableFieldsPhase.asInstanceOf[CollectNullableFields].lazyValNullables
+    if (lazyValNullables == null)
+      lazyValNullables = ctx.collectNullableFieldsPhase.asInstanceOf[CollectNullableFields].lazyValNullables
     ctx
   }
 
