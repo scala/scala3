@@ -56,7 +56,7 @@ object Parsers {
     findWildcardType(t) match {
       case Some(wildcardPos) =>
         report(wildcardPos)
-        fallbackTree.withPos(wildcardPos)
+        fallbackTree
       case None => t
     }
 
