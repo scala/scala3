@@ -90,7 +90,7 @@ object Implicits {
                 mt.paramInfos.length != 1 ||
                 !ctx.test(implicit ctx => argType relaxed_<:< wildApprox(mt.paramInfos.head, null, Set.empty))
               case rtp =>
-                discardForView(wildApprox(rtp, null, Set.empty), argType)
+                discardForView(rtp, argType)
             }
           case tpw: TermRef =>
             false // can't discard overloaded refs
