@@ -1,19 +1,16 @@
 package dotty.tools
 package repl
 
-import java.io.{PrintWriter, StringWriter}
-import java.lang.{ClassLoader, ExceptionInInitializerError}
+import java.io.{ PrintWriter, StringWriter }
 import java.lang.reflect.InvocationTargetException
 
-import scala.util.control.NonFatal
-import dotc.core.Types._
 import dotc.core.Contexts.Context
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags
 import dotc.core.Symbols.Symbol
 import dotc.core.StdNames.str
 
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /** This rendering object uses `ClassLoader`s to accomplish crossing the 4th
  *  wall (i.e. fetching back values from the compiled class files put into a
