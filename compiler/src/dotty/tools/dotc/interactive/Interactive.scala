@@ -218,8 +218,10 @@ object Interactive {
       case (sel @ Select(qual, _)) :: _ => getMemberCompletions(qual)
       case _  => getScopeCompletions(ctx)
     }
-    interactiv.println(i"completion with pos = $pos, prefix = $prefix, termOnly = $termOnly, typeOnly = $typeOnly = ${completions.toList}%, %")
-    (completionPos, completions.toList)
+
+    val sortedCompletions = completions.toList.sortBy(_.name: Name)
+    interactiv.println(i"completion with pos = $pos, prefix = $prefix, termOnly = $termOnly, typeOnly = $typeOnly = $sortedCompletions%, %")
+    (completionPos, sortedCompletions)
   }
 
   /** Possible completions of members of `prefix` which are accessible when called inside `boundary` */
