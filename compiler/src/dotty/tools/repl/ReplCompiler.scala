@@ -53,7 +53,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
       }
 
       (1 to objectIndex)
-        .foldLeft(addImport("dotty.Show".toTermName)(initCtx)) { (ictx, i) =>
+        .foldLeft(initCtx) { (ictx, i) =>
           addImport(nme.EMPTY_PACKAGE ++ "." ++ objectNames(i))(ictx)
         }
     }
@@ -76,7 +76,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
 
     def createShow(name: TermName, pos: Position) = {
       val showName = name ++ "Show"
-      val select = Select(Ident(name), "show".toTermName)
+      val select = Select(Ident(name), nme.toString_)
       val valAsAnyRef = TypeApply(Select(Ident(name), nme.asInstanceOf_),
                                   List(Ident(tpnme.AnyRef)))
       val cond = InfixOp(valAsAnyRef,
@@ -154,7 +154,6 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
    *  package <none> {
    *    object rs$line$nextId {
    *      import rs$line${i <- 0 until nextId}._
-   *      import dotty.Show._
    *
    *      <trees>
    *    }

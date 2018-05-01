@@ -1,5 +1,3 @@
-import dotty.Show._
-
 class Foo(x: Int)
 
 object Test {
