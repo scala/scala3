@@ -8,7 +8,8 @@ Diff (expected on the left, actual right):
 [51mEOF[0m    |  [51mEOF[0m
 
 [error] Test dotty.tools.vulpix.VulpixMetaTests.runAll failed: java.lang.AssertionError: Run test failed, but should not, reasons:
-[error] , took 1.682 sec SKIP
+[error]
+[error]   - encountered 1 test failures(s), took 3.697 sec SKIP
 [error]     at dotty.tools.vulpix.ParallelTesting$CompilationTest.checkRuns(ParallelTesting.scala:993) SKIP
 [error]     at dotty.tools.vulpix.VulpixMetaTests.runAll(VulpixMetaTests.scala:26) SKIP
 [error]     ...
@@ -18,7 +19,7 @@ Testing tests/vulpix-tests/meta/neg/missing-error-annotation.scala
 Wrong number of errors encountered when compiling out/VulpixMetaTests/neg/missing-error-annotation, expected: 0, actual: 2
 [error] Test dotty.tools.vulpix.VulpixMetaTests.compileNeg failed: java.lang.AssertionError: Neg test shouldn't have failed, but did. Reasons:
 [error]
-[error]   - encountered 2 error(s), took 0.093 sec SKIP
+[error]   - encountered 1 test failures(s), took 0.156 sec SKIP
 [error]     at dotty.tools.vulpix.ParallelTesting$CompilationTest.checkExpectedErrors(ParallelTesting.scala:975) SKIP
 [error]     at dotty.tools.vulpix.VulpixMetaTests.compileNeg(VulpixMetaTests.scala:25) SKIP
 [error]     ...
@@ -30,7 +31,7 @@ Testing tests/vulpix-tests/meta/pos/does-not-compile.scala
   |  not found: a
 [error] Test dotty.tools.vulpix.VulpixMetaTests.compilePos failed: java.lang.AssertionError: Expected no errors when compiling, failed for the following reason(s):
 [error]
-[error]   - encountered 1 error(s), took 0.069 sec SKIP
+[error]   - encountered 1 test failure(s), took 0.069 sec SKIP
 [error]     at dotty.tools.vulpix.ParallelTesting$CompilationTest.checkCompile(ParallelTesting.scala:958) SKIP
 [error]     at dotty.tools.vulpix.VulpixMetaTests.compilePos(VulpixMetaTests.scala:24) SKIP
 [error]     ...

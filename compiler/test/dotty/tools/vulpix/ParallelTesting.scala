@@ -226,16 +226,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     /** Total amount of test sources being compiled by this test */
     val sourceCount = filteredSources.length
 
-    private[this] var _errorCount =  0
-    def errorCount: Int = _errorCount
-
     private[this] var _testSourcesCompleted = 0
     private def testSourcesCompleted: Int = _testSourcesCompleted
 
     /** Complete the current compilation with the amount of errors encountered */
-    protected final def registerCompletion(errors: Int) = synchronized {
+    protected final def registerCompletion() = synchronized {
       _testSourcesCompleted += 1
-      _errorCount += errors
     }
 
     sealed trait Failure
@@ -244,17 +240,20 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     case object Generic extends Failure
 
     private[this] var _failures = Set.empty[Failure]
+    private[this] var _failureCount = 0
+
     /** Fail the current test */
     protected[this] final def fail(failure: Failure = Generic): Unit = synchronized {
       _failures = _failures + failure
+      _failureCount = _failureCount + 1
     }
-    def didFail: Boolean = _failures.nonEmpty
+    def didFail: Boolean = _failureCount != 0
 
     /** A set of the different failures */
     def failureReasons: Set[Failure] = _failures
 
     /** Number of failed tests */
-    def failureCount: Int = _failures.size
+    def failureCount: Int = _failureCount
 
     protected def logBuildInstructions(reporter: TestReporter, testSource: TestSource, err: Int, war: Int) = {
       val errorMsg = testSource.buildInstructions(reporter.errorCount, reporter.warningCount)
@@ -327,7 +326,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           // run should fail
           failTestSource(testSource)
           e.printStackTrace()
-          registerCompletion(1)
+          registerCompletion()
           throw e
         }
       }
@@ -555,7 +554,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
               }
               else if (fromTasty) compileFromTasty(flags, false, outDir)
               else compile(testSource.sourceFiles, flags, false, outDir)
-            registerCompletion(reporter.errorCount)
+            registerCompletion()
 
             if (reporter.compilerCrashed || reporter.errorCount > 0) {
               logReporterContents(reporter)
@@ -574,7 +573,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
             def warningCount = reporters.foldLeft(0)(_ + _.warningCount)
 
-            registerCompletion(errorCount)
+            registerCompletion()
 
             if (compilerCrashed || errorCount > 0) {
               reporters.foreach(logReporterContents)
@@ -695,7 +694,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           addFailureInstruction(buildInstr)
           failTestSource(testSource)
         }
-        registerCompletion(errorCount)
+        registerCompletion()
       }
     }
   }
@@ -748,9 +747,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             true
           }
           else {
-            echo {
-              s"Error reported in ${error.pos.source}, but no annotation found"
-            }
+            echo(s"Error reported in ${error.pos.source}, but no annotation found")
             false
           }
         }
@@ -798,7 +795,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         else if (!errorMap.isEmpty)
           fail(s"\nExpected error(s) have {<error position>=<unreported error>}: $errorMap")
 
-        registerCompletion(actualErrors)
+        registerCompletion()
       }
     }
   }
@@ -1012,11 +1009,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     /** Extract `Failure` set and render from `Test` */
     private[this] def reasonsForFailure(test: Test): String = {
-      val errors =
-        if (test.errorCount == 0) ""
-        else s"\n  - encountered ${test.errorCount} error(s)"
+      val failureReport =
+        if (test.failureCount == 0) ""
+        else s"\n  - encountered ${test.failureCount} test failures(s)"
 
-      errors + test.failureReasons.collect {
+      failureReport + test.failureReasons.collect {
         case test.TimeoutFailure(title) =>
           s"  - test '$title' timed out"
         case test.JavaCompilationFailure(msg) =>
