@@ -518,8 +518,16 @@ object Parsers {
       }
 
     /** Accept identifier and return Ident with its name as a term name. */
-    def termIdent(): Ident = atPos(in.offset) {
-      makeIdent(in.token, ident())
+    def termIdent(): Ident = {
+      val start = in.offset
+      val id = makeIdent(in.token, ident())
+      if (id.name != nme.ERROR) {
+        atPos(start)(id)
+      } else {
+        // error identifiers don't consume any characters, so atPos(start)(id) wouldn't set a position.
+        // Some testcases would then fail in Positioned.checkPos. Set a position anyway!
+        atPos(start, start, in.lastOffset)(id)
+      }
     }
 
     /** Accept identifier and return Ident with its name as a type name. */
