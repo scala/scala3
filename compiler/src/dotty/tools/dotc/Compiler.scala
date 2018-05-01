@@ -7,16 +7,15 @@ import Periods._
 import Symbols._
 import Types._
 import Scopes._
-import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
-import reporting.{Reporter, ConsoleReporter}
+import typer.{FrontEnd, ImportInfo, RefChecks, Typer}
+import reporting.{ConsoleReporter, Reporter}
 import Phases.Phase
 import transform._
 import util.FreshNameCreator
 import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
-
-import dotty.tools.backend.jvm.{LabelDefs, GenBCode, CollectSuperCalls}
-import dotty.tools.dotc.transform.localopt.Simplify
+import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode, LabelDefs}
+import dotty.tools.dotc.transform.localopt.{Simplify, StringInterpolatorOpt}
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
@@ -78,6 +77,7 @@ class Compiler {
          new PatternMatcher,         // Compile pattern matches
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
+         new StringInterpolatorOpt,  // Optimizes raw and s string interpolators by rewriting them to string concatentations
          new CrossCastAnd,           // Normalize selections involving intersection types.
          new Splitter) ::            // Expand selections involving union types into conditionals
     List(new ErasedDecls,            // Removes all erased defs and vals decls (except for parameters)
