@@ -21,11 +21,35 @@ object Test {
     }
   }
 
+  /*** Producer represents a linear production of values.
+    *
+    * Conceptually the design of the producer has its roots in `unfold` where a stream is a product type of some state
+    * and a stepper function. The latter transforms the state and returns either the end-of-the-stream or a value and
+    * the new state. The existential quantification over the state keeps it private: the only permissible operation is
+    * to pass it to the step function.
+    *
+    * @tparam A type of the collection elements
+    */
   trait Producer[A] { self =>
     type St
     val card: Cardinality
 
+    /** Initialization method that defines new state, if needed by the combinator that this producer defines.
+      *
+      * e.g., `addCounter` which adds a counter
+      *
+      * @param  k the continuation that is invoked after the new state is defined in the body of `init`
+      * @return expr value of unit per the CPS-encoding
+      */
     def init(k: St => Expr[Unit]): Expr[Unit]
+
+    /** Step method that defines the transformation of data, if applicable.
+      *
+      *
+      * @param st
+      * @param k
+      * @return
+      */
     def step(st: St, k: (A => Expr[Unit])): Expr[Unit]
     def hasNext(st: St): Expr[Boolean]
   }
@@ -183,7 +207,7 @@ object Test {
       Stream(flatMapRaw[Expr[A], Expr[A]]((a => { Linear(filterStream(a)) }), stream))
     }
 
-    /** Adds a new termination condition to a producer of cardinality `Many`.
+    /** Adds a new termination condition to a stream (recursively if nested) of cardinality `Many`.
       *
       * @param  condition      the termination condition as a function accepting the existing condition (the result
       *                of the `hasNext` from the passed `stream`'s producer.
