@@ -51,10 +51,9 @@ private[repl] class Rendering(compiler: ReplCompiler,
     val defn = ctx.definitions
     val objectName = sym.owner.fullName.encode.toString.dropRight(1) // gotta drop the '$'
     val resObj: Class[_] = Class.forName(objectName, true, classLoader())
-
     val res =
       resObj
-        .getDeclaredMethods.find(_.getName == sym.name.toString + "Show").get
+        .getDeclaredMethods.find(_.getName == sym.name.toString).get
         .invoke(null).toString
 
     if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
