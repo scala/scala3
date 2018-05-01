@@ -5,6 +5,8 @@ class X1[A >: _ | X1[_]] // error
 class X2[A >: _ & X2[_]] // error
 class X3[A >: X3[_] | _] // error
 class X4[A >: X4[_] & _] // error
+class X5[A >: _ with X5[_]] // error
+class X6[A >: X6[_] with _] // error
 
 class A1 extends _ // error
 class A2 extends _ with _ // error // error

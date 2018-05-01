@@ -835,7 +835,7 @@ object Parsers {
         if (ctx.settings.strict.value)
           deprecationWarning(DeprecatedWithOperator())
         in.nextToken()
-        AndTypeTree(t, withType())
+        AndTypeTree(checkWildcard(t), checkWildcard(withType()))
       }
       else t
 
