@@ -9,7 +9,6 @@ import Symbols._
 import Contexts._
 import Decorators.PreNamedString
 import util.NameTransformer
-import scala.collection.breakOut
 
 object StdNames {
 

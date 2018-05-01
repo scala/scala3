@@ -29,7 +29,7 @@ import dotty.tools.dotc.transform.Erasure
 import printing.Printer
 import Hashable._
 import Uniques._
-import collection.{mutable, Seq, breakOut}
+import collection.{mutable, Seq}
 import config.Config
 import annotation.tailrec
 import Flags.FlagSet

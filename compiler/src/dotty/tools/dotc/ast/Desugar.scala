@@ -88,8 +88,8 @@ object desugar {
             else {
               def msg =
                 s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"
-			  ErrorType(msg).assertingErrorsReported(msg)
-			}
+              ErrorType(msg).assertingErrorsReported(msg)
+            }
           case _ =>
             mapOver(tp)
         }
@@ -366,6 +366,12 @@ object desugar {
       (if (args.isEmpty) tycon else AppliedTypeTree(tycon, args))
         .withPos(cdef.pos.startPos)
 
+    def isHK(tparam: Tree): Boolean = tparam match {
+      case TypeDef(_, LambdaTypeTree(tparams, body)) => true
+      case TypeDef(_, rhs: DerivedTypeTree) => isHK(rhs.watched)
+      case _ => false
+    }
+
     def appliedRef(tycon: Tree, tparams: List[TypeDef] = constrTparams, widenHK: Boolean = false) = {
       val targs = for (tparam <- tparams) yield {
         val targ = refOfDef(tparam)
@@ -467,18 +473,29 @@ object desugar {
     //      ev1: Eq[T1$1, T1$2], ..., evn: Eq[Tn$1, Tn$2]])
     //      : Eq[C[T1$, ..., Tn$1], C[T1$2, ..., Tn$2]] = Eq
     //
-    // If any of the T_i are higher-kinded, say `Ti[X1 >: L1 <: U1, ..., Xm >: Lm <: Um]`,
-    // the corresponding type parameters for $ev_i are `Ti$1[_, ..., _], Ti$2[_, ..., _]`
-    // (with m underscores `_`).
+    // Higher-kinded type arguments `Ti` are omitted as evidence parameters.
+    //
+    // FIXME: This is too simplistic. Instead of just generating evidence arguments
+    // for every first-kinded type parameter, we should look instead at the
+    // actual types occurring in cases and derive parameters from these. E.g. in
+    //
+    //    enum HK[F[_]] {
+    //      case C1(x: F[Int]) extends HK[F[Int]]
+    //      case C2(y: F[String]) extends HL[F[Int]]
+    //
+    // we would need evidence parameters for `F[Int]` and `F[String]`
+    // We should generate Eq instances with the techniques
+    // of typeclass derivation once that is available.
     def eqInstance = {
       val leftParams = constrTparams.map(derivedTypeParam(_, "$1"))
       val rightParams = constrTparams.map(derivedTypeParam(_, "$2"))
-      val subInstances = (leftParams, rightParams).zipped.map((param1, param2) =>
-        appliedRef(ref(defn.EqType), List(param1, param2), widenHK = true))
+      val subInstances =
+        for ((param1, param2) <- leftParams `zip` rightParams if !isHK(param1))
+        yield appliedRef(ref(defn.EqType), List(param1, param2), widenHK = true)
       DefDef(
           name = nme.eqInstance,
           tparams = leftParams ++ rightParams,
-          vparamss = List(makeImplicitParameters(subInstances)),
+          vparamss = if (subInstances.isEmpty) Nil else List(makeImplicitParameters(subInstances)),
           tpt = appliedTypeTree(ref(defn.EqType),
               appliedRef(classTycon, leftParams) :: appliedRef(classTycon, rightParams) :: Nil),
           rhs = ref(defn.EqModule.termRef)).withFlags(Synthetic | Implicit)
