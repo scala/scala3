@@ -1012,23 +1012,28 @@ object Parsers {
      *  If it is, returns the [[Position]] where the wildcard occurs.
      */
     @tailrec
-    private final def findWildcardType(t: Tree): Option[Position] = t match {
-      case TypeBoundsTree(_, _) => Some(t.pos)
-      case Parens(t1) => findWildcardType(t1)
-      case Annotated(t1, _) => findWildcardType(t1)
+    private final def findWildcardType(t: Tree, alsoNonValue: Boolean): Option[Tree] = t match {
+      case TypeBoundsTree(_, _) => Some(t)
+      case ByNameTypeTree(_) if alsoNonValue => Some(t)
+      case Parens(t1) => findWildcardType(t1, alsoNonValue)
+      case Annotated(t1, _) => findWildcardType(t1, alsoNonValue)
       case _ => None
     }
 
-    def rejectWildcard(t: Tree, report: Position => Unit, fallbackTree: Tree): Tree =
-      findWildcardType(t) match {
-        case Some(wildcardPos) =>
-          report(wildcardPos)
+    def rejectWildcard(t: Tree, fallbackTree: Tree): Tree =
+      findWildcardType(t, false) match {
+        case Some(wildcardTree) =>
+          syntaxError(UnboundWildcardType(), wildcardTree.pos)
           fallbackTree
         case None => t
       }
 
+
     def checkWildcard(t: Tree, wildOK: Boolean = false, fallbackTree: Tree = scalaAny): Tree =
-      if (wildOK) t else rejectWildcard(t, syntaxError(UnboundWildcardType(), _), fallbackTree)
+      if (wildOK)
+        t
+      else
+        rejectWildcard(t, fallbackTree)
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
 
