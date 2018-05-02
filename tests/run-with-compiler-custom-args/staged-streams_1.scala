@@ -21,14 +21,28 @@ object Test {
     }
   }
 
-  /*** Producer represents a linear production of values.
+  /*** Producer represents a linear production of values with a loop structure.
     *
     * Conceptually the design of the producer has its roots in `unfold` where a stream is a product type of some state
-    * and a stepper function. The latter transforms the state and returns either the end-of-the-stream or a value and
-    * the new state. The existential quantification over the state keeps it private: the only permissible operation is
-    * to pass it to the step function.
+    * and a stepper function:
     *
-    * @tparam A type of the collection elements
+    * {{
+    *   trait Stream[+A]
+    *   case class Unfold[S, +A](state: S, step: (S) => Option[(S, A)]) extends Stream[+A]
+    * }}
+    *
+    * The latter transforms the state and returns either the end-of-the-stream or a value and
+    * the new state. The existential quantification over the state keeps it private: the only permissible operation is
+    * to pass it to the function. However in `Producer` the elements are not pulled but the step accepts a continuation.
+    *
+    * A Producer defines the three basic elements of a loop structure:
+    * - `init` contributes the code before iteration starts
+    * - `step` contributes the code during execution
+    * - `hasNext` contributes the code of the boolean test to end the iteration
+    *
+    * @tparam A type of the collection element. Since a `Producer` is polymorphic yet it handles `Expr` values, we
+    *           can pack together fragments of code to accompany each element production (e.g., a variable incremented
+    *           during each transformation)
     */
   trait Producer[A] { self =>
     type St
@@ -36,17 +50,14 @@ object Test {
 
     /** Initialization method that defines new state, if needed by the combinator that this producer defines.
       *
-      * e.g., `addCounter` which adds a counter
-      *
       * @param  k the continuation that is invoked after the new state is defined in the body of `init`
       * @return expr value of unit per the CPS-encoding
       */
     def init(k: St => Expr[Unit]): Expr[Unit]
 
-    /** Step method that defines the transformation of data, if applicable.
+    /** Step method that defines the transformation of data.
       *
-      *
-      * @param st
+      * @param st the state needed for this iteration step
       * @param k
       * @return
       */
@@ -111,10 +122,10 @@ object Test {
 
     /** Handles generically the mapping of elements from one producer to another.
       * `mapRaw` can be potentially used threading quoted values from one stream to another. However
-      * is can be also used by handling any kind of quoted value.
+      * is can be also used by declaring any kind of computation we need to perform during each step.
       *
       * e.g., `mapRaw[(Var[Int], A), A]` transforms a stream that declares a variable and holds a value in each
-      * iteration step to a stream that is not aware of the aforementioned variable.
+      * iteration step, to a stream that is not aware of the aforementioned variable.
       *
       * @param  f      the function to apply at each step. f is of type `(A => (B => Expr[Unit])` where A is the type of
       *                the incoming stream. When applied to an element, `f` returns the continuation for elements of `B`
@@ -337,7 +348,12 @@ object Test {
       }
     }
 
-    /**
+    /** Make a stream linear
+      *
+      * Performs reification of the `stream`. It converts it to a function that will, when called, produce the current element
+      * and advance the stream -- or report the end-of-stream.
+      * The reified stream is an imperative *non-recursive* function, called `adv`, of `Unit => Unit` type. Nested streams are
+      * also handled.
       *
       * @param  stream
       * @tparam A
@@ -368,6 +384,10 @@ object Test {
                   case AtMost1 => producer.init(st => '{
                     if(~producer.hasNext(st)) {
                       ~producer.step(st, k)
+                    }
+                    else {
+                      val newAdvance = ~currentAdvance.get
+                      newAdvance(_)
                     }
                   })
                   case Many => producer.init(st => '{
