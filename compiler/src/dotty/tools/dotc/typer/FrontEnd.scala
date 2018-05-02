@@ -15,7 +15,7 @@ import ast.Trees._
 
 class FrontEnd extends Phase {
 
-  override def phaseName = "frontend"
+  override def phaseName = FrontEnd.name
   override def isTyper = true
   import ast.tpd
 
@@ -102,4 +102,8 @@ class FrontEnd extends Phase {
     enterSyms
     typeCheck
   }
+}
+
+object FrontEnd {
+  val name = "frontend"
 }

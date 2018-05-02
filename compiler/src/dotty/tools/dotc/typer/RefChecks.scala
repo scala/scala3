@@ -3,9 +3,8 @@ package typer
 
 import transform._
 import core._
-import config._
-import Symbols._, SymDenotations._, Types._, Contexts._, Decorators._, Flags._, Names._, NameOps._
-import StdNames._, Denotations._, Scopes._, Constants.Constant, SymUtils._
+import Symbols._, Types._, Contexts._, Flags._, Names._, NameOps._
+import StdNames._, Denotations._, SymUtils._
 import NameKinds.DefaultGetterName
 import Annotations._
 import util.Positions._
@@ -16,16 +15,16 @@ import Trees._
 import MegaPhase._
 import config.Printers.{checks, noPrinter}
 import util.DotClass
-import scala.util.{Try, Success, Failure}
-import config.{ScalaVersion, NoScalaVersion}
+import scala.util.Failure
+import config.NoScalaVersion
 import Decorators._
 import typer.ErrorReporting._
-import DenotTransformers._
 
 object RefChecks {
   import tpd._
-  import reporting.diagnostic.Message
   import reporting.diagnostic.messages._
+
+  val name = "refchecks"
 
   private val defaultMethodFilter = new NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = name.is(DefaultGetterName)
@@ -910,7 +909,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   import reporting.diagnostic.messages.ForwardReferenceExtendsOverDefinition
   import dotty.tools.dotc.reporting.diagnostic.messages.UnboundPlaceholderParameter
 
-  override def phaseName: String = "refchecks"
+  override def phaseName: String = RefChecks.name
 
   // Needs to run after ElimRepeated for override checks involving varargs methods
   override def runsAfter = Set(ElimRepeated.name)

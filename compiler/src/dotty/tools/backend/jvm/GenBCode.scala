@@ -4,45 +4,32 @@ import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.Names.TypeName
 
 import scala.collection.mutable
-import scala.collection.JavaConverters._
-import scala.tools.asm.{ClassVisitor, CustomAttr, FieldVisitor, MethodVisitor}
+import scala.tools.asm.CustomAttr
 import scala.tools.nsc.backend.jvm._
-import dotty.tools.dotc
-import dotty.tools.dotc.transform.Erasure
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.interfaces
 import java.util.Optional
 
-import scala.reflect.ClassTag
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.sbt.ExtractDependencies
-import Periods._
-import SymDenotations._
 import Contexts._
-import Types._
 import Symbols._
-import Denotations._
 import Decorators._
 
-import Phases._
-import java.lang.AssertionError
-import java.io.{DataOutputStream, File => JFile}
-import java.nio.file.{Files, FileSystem, FileSystems, Path => JPath}
+import java.io.DataOutputStream
 
-import dotty.tools.io.{Directory, File, Jar}
+import dotty.tools.io.Directory
 
 import scala.tools.asm
 import scala.tools.asm.tree._
-import dotty.tools.dotc.util.{DotClass, Positions}
 import tpd._
 import StdNames._
 import dotty.tools.io._
 
 class GenBCode extends Phase {
-  def phaseName: String = "genBCode"
+  def phaseName: String = GenBCode.name
   private val entryPoints = new mutable.HashSet[Symbol]()
   def registerEntryPoint(sym: Symbol) = entryPoints += sym
 
@@ -78,6 +65,10 @@ class GenBCode extends Phase {
       case _ =>
     }
   }
+}
+
+object GenBCode {
+  val name: String = "genBCode"
 }
 
 class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInterface)(implicit val ctx: Context) extends BCodeSyncAndTry {

@@ -6,8 +6,6 @@ import ast.{TreeTypeMap, tpd}
 import core._
 import Contexts.Context
 import Decorators._
-import DenotTransformers.IdentityDenotTransformer
-import Denotations.SingleDenotation
 import Symbols._
 import Types._
 import NameKinds.TailLabelName
@@ -160,9 +158,6 @@ class TailRec extends MiniPhase with FullParameterization {
         })
       case d: DefDef if d.symbol.hasAnnotation(defn.TailrecAnnot) || methodsWithInnerAnnots.contains(d.symbol) =>
         ctx.error(TailrecNotApplicable(sym), sym.pos)
-        d
-      case d if d.symbol.hasAnnotation(defn.TailrecAnnot) || methodsWithInnerAnnots.contains(d.symbol) =>
-        ctx.error("TailRec optimisation not applicable, not a method", sym.pos)
         d
       case _ => tree
     }

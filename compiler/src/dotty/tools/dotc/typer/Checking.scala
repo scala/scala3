@@ -7,33 +7,25 @@ import ast._
 import Contexts._
 import Types._
 import Flags._
-import Denotations._
 import Names._
 import StdNames._
-import NameOps._
 import Symbols._
 import Trees._
 import TreeInfo._
 import ProtoTypes._
-import Constants._
-import Scopes._
 import CheckRealizable._
 import ErrorReporting.errorTree
 
-import annotation.unchecked
 import util.Positions._
-import util.Stats
-import util.common._
 import transform.SymUtils._
 import Decorators._
-import Uniques._
 import ErrorReporting.{err, errorType}
 import config.Printers.typr
 import NameKinds.DefaultGetterName
 
 import collection.mutable
 import SymDenotations.{NoCompleter, NoDenotation}
-import dotty.tools.dotc.reporting.diagnostic.{ErrorMessageID, Message}
+import dotty.tools.dotc.reporting.diagnostic.Message
 import dotty.tools.dotc.reporting.diagnostic.messages._
 import dotty.tools.dotc.transform.ValueClasses._
 
@@ -358,6 +350,9 @@ object Checking {
       fail(AbstractOverrideOnlyInTraits(sym))
     if (sym.is(Trait) && sym.is(Final))
       fail(TraitsMayNotBeFinal(sym))
+    // Skip ModuleVal since the annotation will also be on the ModuleClass
+    if (sym.hasAnnotation(defn.TailrecAnnot) && !sym.is(Method | ModuleVal))
+      fail(TailrecNotApplicable(sym))
     if (sym.hasAnnotation(defn.NativeAnnot)) {
       if (!sym.is(Deferred))
         fail(NativeMembersMayNotHaveImplementation(sym))
