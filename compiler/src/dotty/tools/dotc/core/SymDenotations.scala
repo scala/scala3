@@ -1621,126 +1621,140 @@ object SymDenotations {
 
     /** Compute tp.baseType(this) */
     final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
+      val btrCache = baseTypeCache
+      def inCache(tp: Type) = btrCache.get(tp) != null
 
-      def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
-        case p :: ps1 => foldGlb(bt & baseTypeOf(p), ps1)
-        case _ => bt
+      def ensureAcyclic(baseTp: Type) = {
+        if (baseTp `eq` NoPrefix) throw CyclicReference(this)
+        baseTp
       }
 
-      /** We cannot cache:
-       *  - type variables which are uninstantiated or whose instances can
-       *    change, depending on typerstate.
-       *  - types where the underlying type is an ErasedValueType, because
-       *    this underlying type will change after ElimErasedValueType,
-       *    and this changes subtyping relations. As a shortcut, we do not
-       *    cache ErasedValueType at all.
-       */
-      def isCachable(tp: Type, btrCache: BaseTypeMap): Boolean = {
-        def inCache(tp: Type) = btrCache.containsKey(tp) && isCachable(tp, btrCache)
+      def recur(tp: Type): Type = try {
         tp match {
-          case tp: TypeRef if tp.symbol.isClass => true
-          case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
-          case tp: TypeParamRef if ctx.typerState.constraint.contains(tp) => false
-          //case tp: TypeProxy => inCache(tp.underlying) // disabled, can re-enable insyead of last two lines for performance testing
-          case tp: TypeProxy => isCachable(tp.underlying, btrCache)
-          case tp: AndType => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
-          case tp: OrType  => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
-          case _: TypeErasure.ErasedValueType => false
-          case _ => true
+          case tp: CachedType =>
+            val baseTp = btrCache.get(tp)
+            if (baseTp != null) return ensureAcyclic(baseTp)
+          case _ =>
         }
-      }
-
-      def computeBaseTypeOf(tp: Type): Type = {
         if (Stats.monitored) {
           Stats.record("computeBaseType, total")
           Stats.record(s"computeBaseType, ${tp.getClass}")
         }
-        if (symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty)
-          symbol.typeRef
-        else tp match {
+        tp match {
           case tp @ TypeRef(prefix, _) =>
-            val subsym = tp.symbol
-            if (subsym eq symbol) tp
-            else subsym.denot match {
-              case clsd: ClassDenotation =>
-                val owner = clsd.owner
-                val isOwnThis = prefix match {
-                  case prefix: ThisType => prefix.cls eq owner
-                  case NoPrefix => true
-                  case _ => false
-                }
-                if (isOwnThis)
-                  if (clsd.baseClassSet.contains(symbol)) foldGlb(NoType, clsd.classParents)
-                  else NoType
-                else
-                  baseTypeOf(clsd.typeRef).asSeenFrom(prefix, owner)
-              case _ =>
-                baseTypeOf(tp.superType)
+
+            def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
+              case p :: ps1 => foldGlb(bt & recur(p), ps1)
+              case _ => bt
             }
+
+            def computeTypeRef = {
+              btrCache.put(tp, NoPrefix)
+              tp.symbol.denot match {
+                case clsd: ClassDenotation =>
+                  def isOwnThis = prefix match {
+                    case prefix: ThisType => prefix.cls `eq` clsd.owner
+                    case NoPrefix => true
+                    case _ => false
+                  }
+                  val baseTp =
+                    if (tp.symbol eq symbol)
+                      tp
+                    else if (isOwnThis)
+                      if (clsd.baseClassSet.contains(symbol))
+                        if (symbol.isStatic && symbol.typeParams.isEmpty) symbol.typeRef
+                        else foldGlb(NoType, clsd.classParents)
+                      else NoType
+                    else
+                      recur(clsd.typeRef).asSeenFrom(prefix, clsd.owner)
+                  if (baseTp.exists) btrCache.put(tp, baseTp) else btrCache.remove(tp)
+                  baseTp
+                case _ =>
+                  val superTp = tp.superType
+                  val baseTp = recur(superTp)
+                  if (baseTp.exists && inCache(superTp) && tp.symbol.maybeOwner.isType)
+                    btrCache.put(tp, baseTp)   // typeref cannot be a GADT, so cache is stable
+                  else
+                    btrCache.remove(tp)
+                  baseTp
+              }
+            }
+            computeTypeRef
+
           case tp @ AppliedType(tycon, args) =>
-            val subsym = tycon.typeSymbol
-            if (subsym eq symbol) tp
-            else (tycon.typeParams: @unchecked) match {
-              case LambdaParam(_, _) :: _ =>
-                baseTypeOf(tp.superType)
-              case tparams: List[Symbol @unchecked] =>
-                baseTypeOf(tycon).subst(tparams, args)
+
+            def computeApplied = {
+              btrCache.put(tp, NoPrefix)
+              val baseTp =
+              	if (tycon.typeSymbol eq symbol) tp
+              	else (tycon.typeParams: @unchecked) match {
+                  case LambdaParam(_, _) :: _ =>
+                    recur(tp.superType)
+                  case tparams: List[Symbol @unchecked] =>
+                    recur(tycon).subst(tparams, args)
+                }
+              if (baseTp.exists) btrCache.put(tp, baseTp) else btrCache.remove(tp)
+              baseTp
             }
-          case tp: TypeParamRef =>
-            baseTypeOf(ctx.typeComparer.bounds(tp).hi)
+            computeApplied
+
+          case tp: TypeParamRef =>  // uncachable, since baseType depends on context bounds
+            recur(ctx.typeComparer.bounds(tp).hi)
           case tp: TypeProxy =>
-            baseTypeOf(tp.superType)
-          case AndType(tp1, tp2) =>
-            baseTypeOf(tp1) & baseTypeOf(tp2) match {
-              case AndType(tp1a, tp2a) if (tp1a eq tp1) && (tp2a eq tp2) => tp
-              case res => res
+
+            def computeTypeProxy = {
+              val superTp = tp.superType
+              val baseTp = recur(superTp)
+              tp match {
+                case tp: CachedType if baseTp.exists && inCache(superTp) =>
+                  // Note: This also works for TypeVars: If they are not instantiated, their supertype
+                  // is a TypeParamRef, which is never cached. So uninstantiated TypeVars are not cached either.
+                  btrCache.put(tp, baseTp)
+                case _ =>
+              }
+              baseTp
             }
-          case OrType(tp1, tp2) =>
-            baseTypeOf(tp1) | baseTypeOf(tp2) match {
-              case OrType(tp1a, tp2a) if (tp1a eq tp1) && (tp2a eq tp2) => tp
-              case res => res
+            computeTypeProxy
+
+          case tp: AndOrType =>
+
+            def computeAndOrType = {
+              val tp1 = tp.tp1
+              val tp2 = tp.tp2
+              val baseTp =
+                if (symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty)
+                  symbol.typeRef
+                else {
+                  val baseTp1 = recur(tp1)
+                  val baseTp2 = recur(tp2)
+                  val combined = if (tp.isAnd) baseTp1 & baseTp2 else baseTp1 | baseTp2
+                  combined match {
+                    case combined: AndOrType
+                    if (combined.tp1 eq tp1) && (combined.tp2 eq tp2) && (combined.isAnd == tp.isAnd) => tp
+                    case _ => combined
+                  }
+                }
+              if (baseTp.exists && inCache(tp1) && inCache(tp2)) btrCache.put(tp, baseTp)
+              baseTp
             }
+            computeAndOrType
+
           case JavaArrayType(_) if symbol == defn.ObjectClass =>
             this.typeRef
           case _ =>
             NoType
         }
       }
+      catch {
+        case ex: Throwable =>
+          btrCache.remove(tp)
+          throw ex
+      }
+
 
       /*>|>*/ trace.onDebug(s"$tp.baseType($this)") /*<|<*/ {
         Stats.record("baseTypeOf")
-        tp.stripTypeVar match {
-          case tp: CachedType =>
-          val btrCache = baseTypeCache
-          if (!isCachable(tp, btrCache))
-            computeBaseTypeOf(tp)
-          else
-            try {
-              var basetp = btrCache.get(tp)
-              if (basetp == null) {
-                btrCache.put(tp, NoPrefix)
-                basetp = computeBaseTypeOf(tp)
-                if (basetp.exists) {
-                  Stats.record("cached base type exists")
-                  btrCache.put(tp, basetp)
-                }
-                else {
-                  Stats.record("cached base type missing")
-                  btrCache.remove(tp)
-                }
-              }
-              else if (basetp `eq` NoPrefix)
-                throw CyclicReference(this)
-              basetp
-            }
-            catch {
-              case ex: Throwable =>
-                btrCache.put(tp, null)
-                throw ex
-            }
-          case tp =>
-            computeBaseTypeOf(tp)
-        }
+        recur(tp)
       }
     }
 

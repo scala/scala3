@@ -2438,7 +2438,14 @@ object Types {
 
   // --- AndType/OrType ---------------------------------------------------------------
 
-  abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with ValueType {
+  abstract class AndOrType extends CachedGroundType with ValueType {
+    def isAnd: Boolean
+    def tp1: Type
+    def tp2: Type
+  }
+
+  abstract case class AndType(tp1: Type, tp2: Type) extends AndOrType {
+    def isAnd = true
     private[this] var myBaseClassesPeriod: Period = Nowhere
     private[this] var myBaseClasses: List[ClassSymbol] = _
     /** Base classes of are the merge of the operand base classes. */
@@ -2502,7 +2509,8 @@ object Types {
         if (checkValid) apply(tp1, tp2) else unchecked(tp1, tp2)
   }
 
-  abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with ValueType {
+  abstract case class OrType(tp1: Type, tp2: Type) extends AndOrType {
+    def isAnd = false
     private[this] var myBaseClassesPeriod: Period = Nowhere
     private[this] var myBaseClasses: List[ClassSymbol] = _
     /** Base classes of are the intersection of the operand base classes. */
