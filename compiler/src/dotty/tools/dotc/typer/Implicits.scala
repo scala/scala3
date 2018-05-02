@@ -652,7 +652,7 @@ trait Implicits { self: Typer =>
           arg
       case fail @ SearchFailure(failed) =>
         def trySpecialCase(cls: ClassSymbol, handler: Type => Tree, ifNot: => Tree) = {
-          val base = formalValue.contextualBaseType(cls)
+          val base = formalValue.baseType(cls)
           if (base <:< formalValue) {
             // With the subtype test we enforce that the searched type `formalValue` is of the right form
             handler(base).orElse(ifNot)

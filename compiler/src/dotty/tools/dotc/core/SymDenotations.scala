@@ -1636,15 +1636,16 @@ object SymDenotations {
        *    cache ErasedValueType at all.
        */
       def isCachable(tp: Type, btrCache: BaseTypeMap): Boolean = {
-        def inCache(tp: Type) = btrCache.containsKey(tp)
+        def inCache(tp: Type) = btrCache.containsKey(tp) && isCachable(tp, btrCache)
         tp match {
-          case _: TypeErasure.ErasedValueType => false
           case tp: TypeRef if tp.symbol.isClass => true
           case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
+          case tp: TypeParamRef if ctx.typerState.constraint.contains(tp) => false
           //case tp: TypeProxy => inCache(tp.underlying) // disabled, can re-enable insyead of last two lines for performance testing
           case tp: TypeProxy => isCachable(tp.underlying, btrCache)
           case tp: AndType => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
           case tp: OrType  => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
+          case _: TypeErasure.ErasedValueType => false
           case _ => true
         }
       }
@@ -1685,6 +1686,8 @@ object SymDenotations {
               case tparams: List[Symbol @unchecked] =>
                 baseTypeOf(tycon).subst(tparams, args)
             }
+          case tp: TypeParamRef =>
+            baseTypeOf(ctx.typeComparer.bounds(tp).hi)
           case tp: TypeProxy =>
             baseTypeOf(tp.superType)
           case AndType(tp1, tp2) =>
@@ -1709,19 +1712,24 @@ object SymDenotations {
         tp.stripTypeVar match {
           case tp: CachedType =>
           val btrCache = baseTypeCache
+          if (!isCachable(tp, btrCache))
+            computeBaseTypeOf(tp)
+          else
             try {
-              var basetp = btrCache get tp
+              var basetp = btrCache.get(tp)
               if (basetp == null) {
                 btrCache.put(tp, NoPrefix)
                 basetp = computeBaseTypeOf(tp)
-                if (!basetp.exists) Stats.record("base type miss")
-                if (isCachable(tp, btrCache)) {
-                  if (basetp.exists) Stats.record("cached base type hit")
-                  else Stats.record("cached base type miss")
+                if (basetp.exists) {
+                  Stats.record("cached base type exists")
                   btrCache.put(tp, basetp)
                 }
-                else btrCache.remove(tp)
-              } else if (basetp `eq` NoPrefix)
+                else {
+                  Stats.record("cached base type missing")
+                  btrCache.remove(tp)
+                }
+              }
+              else if (basetp `eq` NoPrefix)
                 throw CyclicReference(this)
               basetp
             }
