@@ -40,4 +40,7 @@ object DottyPredef {
   @forceInline final def implicitly[T](implicit ev: T): T = ev
 
   @forceInline def locally[T](body: => T): T = body
+
+  type Partial[T] = T @scala.annotation.partial
+  type Filled[T]  = T @scala.annotation.filled
 }

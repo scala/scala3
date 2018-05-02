@@ -21,6 +21,7 @@ object Printers {
   val exhaustivity: Printer = noPrinter
   val gadts: Printer = noPrinter
   val hk: Printer = noPrinter
+  val init: Printer = noPrinter
   val implicits: Printer = noPrinter
   val implicitsDetailed: Printer = noPrinter
   val inlining: Printer = noPrinter

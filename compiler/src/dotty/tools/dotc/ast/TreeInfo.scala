@@ -559,14 +559,16 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *
    *  Note: targ and vargss may be empty
    */
-  def decomposeCall(tree: Tree): (Tree, List[Tree], List[List[Tree]]) = {
-    @tailrec
+  def decomposeCall(tree: Tree)(implicit ctx: Context): (Tree, List[Tree], List[List[Tree]]) = {
     def loop(tree: Tree, targss: List[Tree], argss: List[List[Tree]]): (Tree, List[Tree], List[List[Tree]]) =
       tree match {
         case Apply(fn, args) =>
           loop(fn, targss, args :: argss)
         case TypeApply(fn, targs) =>
           loop(fn, targs ::: targss, argss)
+        case Block(stats, expr) =>
+          val (fn, targss2, argss2) = loop(expr, targss, argss)
+          (Block(stats, fn), targss2, argss2)
         case _ =>
           (tree, targss, argss)
       }

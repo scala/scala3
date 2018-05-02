@@ -10,7 +10,7 @@
 */
 
 
-class Foo {
+final class Foo {
   val bar = new Bar
   class Bar {
     sealed abstract class A

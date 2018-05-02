@@ -4,6 +4,6 @@ class Test {
     case a: Int => f(a)
   }
 
-  val t: Int | String = 5
-  val t1 = remove[String](t, _.toString)
+  def t: Int | String = 5
+  def t1 = remove[String](t, _.toString)
 }

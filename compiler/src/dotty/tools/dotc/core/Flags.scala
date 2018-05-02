@@ -3,6 +3,7 @@ package core
 
 import language.implicitConversions
 
+@unchecked
 object Flags {
 
   /** A FlagSet represents a set of flags. Flags are encoded as follows:

@@ -1,8 +1,11 @@
+import scala.annotation.filled
+
 object App {
   def main(args: Array[String]): Unit = {
     trait ModuleSig {
       type Upper
 
+      @filled
       trait FooSig {
         type Type <: Upper
         def subst[F[_]](fa: F[Int]): F[Type]

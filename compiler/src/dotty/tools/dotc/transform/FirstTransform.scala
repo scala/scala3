@@ -52,8 +52,8 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     tree match {
       case Select(qual, name) if !name.is(OuterSelectName) && tree.symbol.exists =>
         assert(
-          qual.tpe.derivesFrom(tree.symbol.owner) ||
-            tree.symbol.is(JavaStatic) && qual.tpe.derivesFrom(tree.symbol.enclosingClass),
+          qual.tpe.widenDealias.derivesFrom(tree.symbol.owner) ||
+            tree.symbol.is(JavaStatic) && qual.tpe.widenDealias.derivesFrom(tree.symbol.enclosingClass),
           i"non member selection of ${tree.symbol.showLocated} from ${qual.tpe} in $tree")
       case _: TypeTree =>
       case _: Import | _: NamedArg | _: TypTree =>

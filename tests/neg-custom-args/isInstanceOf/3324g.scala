@@ -15,5 +15,5 @@ class Test {
     case _: B[T] => // should be an error!!
   }
 
-  quux(new C[Int])
+  def problem = quux(new C[Int])
 }
