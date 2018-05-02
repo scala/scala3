@@ -1,7 +1,7 @@
 package dotty.tools
 package repl
 
-import java.io.{InputStream, PrintStream}
+import java.io.{ InputStream, PrintStream }
 import java.lang.reflect.InvocationTargetException
 
 import scala.annotation.tailrec
@@ -9,7 +9,7 @@ import dotc.reporting.MessageRendering
 import dotc.reporting.diagnostic.MessageContainer
 import dotc.ast.untpd
 import dotc.ast.tpd
-import dotc.interactive.{Interactive, SourceTree}
+import dotc.interactive.{ Interactive, SourceTree }
 import dotc.core.Contexts.Context
 import dotc.{CompilationUnit, Run}
 import dotc.core.Mode
@@ -20,7 +20,7 @@ import dotc.core.Names.Name
 import dotc.core.NameOps._
 import dotc.core.Symbols.{NoSymbol, Symbol, defn}
 import dotc.core.Denotations.Denotation
-import dotc.core.Types.{ConstantType, ExprType}
+import dotc.core.Types.{ ConstantType, ExprType }
 import dotc.core.NameKinds.SimpleNameKind
 import dotc.config.CompilerCommand
 import dotc.{Compiler, Driver}
@@ -31,8 +31,6 @@ import dotc.util.SourcePosition
 import io._
 import AmmoniteReader._
 import results._
-
-import scala.util.Try
 
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation
@@ -239,8 +237,8 @@ class ReplDriver(settings: Array[String],
             // display warnings
             displayErrors(newState.run.runContext.flushBufferedMessages())(newState)
 
-            val finalState = displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
-            finalState.getOrElse(state)
+            val afterRender = displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
+            afterRender.getOrElse(state)
           }
         }
       )
@@ -393,7 +391,7 @@ class ReplDriver(settings: Array[String],
     state
   }
 
-  private def displayRenderFailures(failures: Seq[Throwable]) = {
+  private def displayRenderFailures(failures: Seq[Throwable]): Unit = {
     failures.foreach(f => f match {
       case (ite: InvocationTargetException) => out.println(SyntaxHighlighting(rendering.renderError(ite)))
       case _ => out.println("<rendering error>")
