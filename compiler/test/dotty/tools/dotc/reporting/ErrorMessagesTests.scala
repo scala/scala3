@@ -7,6 +7,7 @@ import dotty.tools.dotc.core.Types.WildcardType
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.reporting.diagnostic.messages._
 import dotty.tools.dotc.transform.PostTyper
+import dotty.tools.dotc.typer.FrontEnd
 import org.junit.Assert._
 import org.junit.Test
 
@@ -1361,4 +1362,26 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val (msg @ ImportRenamedTwice(ident)) :: Nil = messages
       assertEquals(ident.show, "Integer")
     }
+
+  @Test def tailRecOptimisation =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        |import scala.annotation.tailrec
+        |@tailrec
+        |object Test {
+        |  @tailrec val a = ""
+        |  @tailrec var b = ""
+        |}
+        |@tailrec
+        |class Test {}
+        |
+      """.stripMargin
+    }.expect{ (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(4, messages)
+
+      val tailRegMessages = messages.map{ case m :TailrecNotApplicable => m.symbolKind}.toSet
+      assertEquals(tailRegMessages, Set("variable", "value", "object", "class"))
+    }
+
 }

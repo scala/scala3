@@ -1825,10 +1825,15 @@ object messages {
       }
   }
 
-  case class TailrecNotApplicable(method: Symbol)(implicit ctx: Context)
+  case class TailrecNotApplicable(symbol: Symbol)(implicit ctx: Context)
     extends Message(TailrecNotApplicableID) {
     val kind = "Syntax"
-    val msg = hl"TailRec optimisation not applicable, $method is neither ${"private"} nor ${"final"}."
+    val symbolKind = symbol.showKind
+    val msg =
+      if (symbol.is(Method))
+        hl"TailRec optimisation not applicable, $symbol is neither ${"private"} nor ${"final"}."
+      else
+        hl"TailRec optimisation not applicable, ${symbolKind} isn't a method."
     val explanation =
       hl"A method annotated ${"@tailrec"} must be declared ${"private"} or ${"final"} so it can't be overridden."
   }
