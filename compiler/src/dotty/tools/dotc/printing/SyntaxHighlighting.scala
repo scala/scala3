@@ -10,6 +10,7 @@ import util.Chars
 /** This object provides functions for syntax highlighting in the REPL */
 object SyntaxHighlighting {
 
+  // Keep in sync with SyntaxHighlightingTests
   val NoColor         = Console.RESET
   val CommentColor    = Console.BLUE
   val KeywordColor    = Console.YELLOW
