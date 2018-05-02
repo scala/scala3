@@ -1674,12 +1674,12 @@ object SymDenotations {
                       else NoType
                     else
                       recur(clsd.typeRef).asSeenFrom(prefix, clsd.owner)
-                  if (baseTp.exists) record(tp, baseTp) else btrCache.remove(tp)
+                  record(tp, baseTp)
                   baseTp
                 case _ =>
                   val superTp = tp.superType
                   val baseTp = recur(superTp)
-                  if (baseTp.exists && inCache(superTp) && tp.symbol.maybeOwner.isType)
+                  if (inCache(superTp) && tp.symbol.maybeOwner.isType)
                     record(tp, baseTp)   // typeref cannot be a GADT, so cache is stable
                   else
                     btrCache.remove(tp)
@@ -1700,7 +1700,7 @@ object SymDenotations {
                   case tparams: List[Symbol @unchecked] =>
                     recur(tycon).subst(tparams, args)
                 }
-              if (baseTp.exists) record(tp, baseTp) else btrCache.remove(tp)
+              record(tp, baseTp)
               baseTp
             }
             computeApplied
