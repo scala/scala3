@@ -53,19 +53,23 @@ private[repl] class Rendering(compiler: ReplCompiler,
     val resObj: Class[_] = Class.forName(objectName, true, classLoader())
     val value =
       resObj
-        .getDeclaredMethods.find(_.getName == sym.name.encode.toString).get
-        .invoke(null)
-    val string = value match {
-      case null => "null" // Calling .toString on null => NPE
-      case ""   => "\"\"" // Sepcial cased for empty string, following scalac
-      case x    => x.toString
+        .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
+        .map(_.invoke(null))
+    val string = value.map {
+      case null        => "null" // Calling .toString on null => NPE
+      case ""          => "\"\"" // Special cased for empty string, following scalac
+      case a: Array[_] => a.mkString("Array(", ", ", ")")
+      case x           => x.toString
     }
     if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
       None
-    else if (string.startsWith(str.REPL_SESSION_LINE))
-      Some(string.drop(str.REPL_SESSION_LINE.length).dropWhile(c => c.isDigit || c == '$'))
     else
-      Some(string)
+      string.map { s =>
+        if (s.startsWith(str.REPL_SESSION_LINE))
+          s.drop(str.REPL_SESSION_LINE.length).dropWhile(c => c.isDigit || c == '$')
+        else
+          s
+      }
   }
 
   /** Render method definition result */
