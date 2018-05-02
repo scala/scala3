@@ -1623,6 +1623,13 @@ object SymDenotations {
     final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
       val btrCache = baseTypeCache
       def inCache(tp: Type) = btrCache.get(tp) != null
+      def record(tp: CachedType, baseTp: Type) = {
+        if (Stats.monitored) {
+          Stats.record("basetype cache entries")
+          if (!baseTp.exists) Stats.record("basetype cache NoTypes")
+        }
+        btrCache.put(tp, baseTp)
+      }
 
       def ensureAcyclic(baseTp: Type) = {
         if (baseTp `eq` NoPrefix) throw CyclicReference(this)
@@ -1667,13 +1674,13 @@ object SymDenotations {
                       else NoType
                     else
                       recur(clsd.typeRef).asSeenFrom(prefix, clsd.owner)
-                  if (baseTp.exists) btrCache.put(tp, baseTp) else btrCache.remove(tp)
+                  if (baseTp.exists) record(tp, baseTp) else btrCache.remove(tp)
                   baseTp
                 case _ =>
                   val superTp = tp.superType
                   val baseTp = recur(superTp)
                   if (baseTp.exists && inCache(superTp) && tp.symbol.maybeOwner.isType)
-                    btrCache.put(tp, baseTp)   // typeref cannot be a GADT, so cache is stable
+                    record(tp, baseTp)   // typeref cannot be a GADT, so cache is stable
                   else
                     btrCache.remove(tp)
                   baseTp
@@ -1693,7 +1700,7 @@ object SymDenotations {
                   case tparams: List[Symbol @unchecked] =>
                     recur(tycon).subst(tparams, args)
                 }
-              if (baseTp.exists) btrCache.put(tp, baseTp) else btrCache.remove(tp)
+              if (baseTp.exists) record(tp, baseTp) else btrCache.remove(tp)
               baseTp
             }
             computeApplied
@@ -1709,7 +1716,7 @@ object SymDenotations {
                 case tp: CachedType if baseTp.exists && inCache(superTp) =>
                   // Note: This also works for TypeVars: If they are not instantiated, their supertype
                   // is a TypeParamRef, which is never cached. So uninstantiated TypeVars are not cached either.
-                  btrCache.put(tp, baseTp)
+                  record(tp, baseTp)
                 case _ =>
               }
               baseTp
@@ -1734,7 +1741,7 @@ object SymDenotations {
                     case _ => combined
                   }
                 }
-              if (baseTp.exists && inCache(tp1) && inCache(tp2)) btrCache.put(tp, baseTp)
+              if (baseTp.exists && inCache(tp1) && inCache(tp2)) record(tp, baseTp)
               baseTp
             }
             computeAndOrType
