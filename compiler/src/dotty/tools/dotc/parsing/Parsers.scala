@@ -468,9 +468,9 @@ object Parsers {
                 val l = opInfo.operand
                 val r = top
                 if (isType && !op.isBackquoted && op.name == tpnme.raw.BAR) {
-                  OrTypeTree(checkWildcard(l), checkWildcard(r))
+                  OrTypeTree(checkAndOrArgument(l), checkAndOrArgument(r))
                 } else if (isType && !op.isBackquoted && op.name == tpnme.raw.AMP) {
-                  AndTypeTree(checkWildcard(l), checkWildcard(r))
+                  AndTypeTree(checkAndOrArgument(l), checkAndOrArgument(r))
                 } else
                   InfixOp(l, op, r)
               }
@@ -842,7 +842,7 @@ object Parsers {
         if (ctx.settings.strict.value)
           deprecationWarning(DeprecatedWithOperator())
         in.nextToken()
-        AndTypeTree(checkWildcard(t), checkWildcard(withType()))
+        AndTypeTree(checkAndOrArgument(t), checkAndOrArgument(withType()))
       }
       else t
 
@@ -1034,6 +1034,19 @@ object Parsers {
         t
       else
         rejectWildcard(t, fallbackTree)
+
+    def checkAndOrArgument(t: Tree): Tree =
+      findWildcardType(t, true) match {
+        case Some(typTree) =>
+          typTree match {
+            case typTree: TypeBoundsTree =>
+              syntaxError(UnboundWildcardType(), typTree.pos)
+            case typTree: ByNameTypeTree =>
+              syntaxError(ByNameParameterNotSupported(typTree), typTree.pos)
+          }
+          scalaAny
+        case None => t
+      }
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
 
