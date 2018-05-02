@@ -5,9 +5,7 @@ package printing
 import parsing.Tokens._
 import scala.annotation.switch
 import scala.collection.mutable.StringBuilder
-import core.Contexts.Context
 import util.Chars
-import Highlighting.{Highlight, HighlightBuffer}
 
 /** This object provides functions for syntax highlighting in the REPL */
 object SyntaxHighlighting {
@@ -280,9 +278,12 @@ object SyntaxHighlighting {
         case ' ' => true
         case '\n' => true
         case '(' => true
+        case ')' => true
         case '[' => true
+        case ']' => true
         case ':' => true
         case '@' => true
+        case ',' => true
         case '.' => true
         case _ => false
       }
