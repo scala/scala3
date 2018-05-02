@@ -18,7 +18,7 @@ object dotc {
 object Impl extends API {
   type CaseDef = dotc.CaseDef
 
-  val tagForCaseDef: ClassTag[dotc.CaseDef] = implicitly[ClassTag[dotc.CaseDef]]
+  val tagForCaseDef: ClassTag[dotc.CaseDef] = implicitly
 
   object CaseDef extends CaseDefCompanion {
     def apply(str: String): CaseDef = dotc.CaseDef(str)

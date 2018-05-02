@@ -863,6 +863,30 @@ object Types {
       }
     }
 
+    /** Like basetype, but follow context bounds */
+    final def contextualBaseType(cls: ClassSymbol)(implicit ctx: Context): Type = {
+      def loop(tp: Type): Type = tp match {
+        case tp: TypeRef =>
+          val sym = tp.symbol
+          if (sym.isClass) tp.baseType(cls) else loop(tp.superType): @tailrec
+        case tp: AppliedType =>
+          tp.baseType(cls)
+        case tp: TypeParamRef =>
+          loop(ctx.typeComparer.bounds(tp).hi): @tailrec
+        case tp: TypeProxy =>
+          loop(tp.superType): @tailrec
+        case tp: AndType =>
+          loop(tp.tp1) & loop(tp.tp2): @tailrec
+        case tp: OrType =>
+          loop(tp.tp1) | loop(tp.tp2): @tailrec
+        case tp: JavaArrayType =>
+          if (cls == defn.ObjectClass) cls.typeRef else NoType
+        case _ =>
+          NoType
+      }
+      loop(this)
+    }
+
     def & (that: Type)(implicit ctx: Context): Type = track("&") {
       ctx.typeComparer.glb(this, that)
     }
