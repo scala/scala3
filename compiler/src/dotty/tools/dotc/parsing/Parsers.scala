@@ -768,9 +768,16 @@ object Parsers {
             accept(RPAREN)
             if (imods.is(Implicit) || isValParamList || in.token == ARROW) functionRest(ts)
             else {
-              for (t <- ts)
-                if (t.isInstanceOf[ByNameTypeTree])
-                  syntaxError(ByNameParameterNotSupported())
+              val ts1 =
+                for (t <- ts) yield {
+                  t match {
+                    case t@ByNameTypeTree(t1) =>
+                      syntaxError(ByNameParameterNotSupported(t), t.pos)
+                      t1
+                    case _ =>
+                      t
+                  }
+                }
               val tuple = atPos(start) { makeTupleOrParens(ts) }
               infixTypeRest(
                 refinedTypeRest(

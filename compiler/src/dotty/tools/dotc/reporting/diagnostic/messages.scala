@@ -696,10 +696,10 @@ object messages {
     }
   }
 
-  case class ByNameParameterNotSupported()(implicit ctx: Context)
+  case class ByNameParameterNotSupported(tpe: untpd.TypTree)(implicit ctx: Context)
   extends Message(ByNameParameterNotSupportedID) {
     val kind = "Syntax"
-    val msg = "By-name parameter type not allowed here."
+    val msg = hl"By-name parameter type ${tpe} not allowed here."
 
     val explanation =
       hl"""|By-name parameters act like functions that are only evaluated when referenced,

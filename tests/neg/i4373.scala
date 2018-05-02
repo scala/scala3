@@ -21,5 +21,13 @@ object Test {
 
   // Open questions:
   type T5 = TypeConstr[_ { type S }] // error
-  type T5 = TypeConstr[_[Int]] // error
+  type T6 = TypeConstr[_[Int]] // error
+
+  // expression types
+  type T7 = (=> Int) | (Int => Int) // error
+  type T8 = (=> Int) & (Int => Int) // error
+  type T9 = (=> Int) with (Int => Int) // error
+  type T10 = (Int => Int) | (=> Int) // error
+  type T11 = (Int => Int) & (=> Int) // error
+  type T12 = (Int => Int) with (=> Int) // error
 }
