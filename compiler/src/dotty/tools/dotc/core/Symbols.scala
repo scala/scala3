@@ -16,6 +16,7 @@ import printing.Printer
 import Types._
 import Annotations._
 import util.Positions._
+import util.Stats
 import DenotTransformers._
 import StdNames._
 import NameOps._
@@ -415,6 +416,8 @@ object Symbols {
     type ThisName <: Name
 
     //assert(id != 723)
+
+    Stats.record("symbol")
 
     def coord: Coord = myCoord
     /** Set the coordinate of this class, this is only useful when the coordinate is
