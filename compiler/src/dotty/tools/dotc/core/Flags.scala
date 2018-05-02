@@ -542,6 +542,9 @@ object Flags {
   /** Either method or lazy */
   final val MethodOrLazy = Method | Lazy
 
+  /** Either method or module */
+  final val MethodOrModule = Method | Module
+
   /** Either method or lazy or deferred */
   final val MethodOrLazyOrDeferred = Method | Lazy | Deferred
 

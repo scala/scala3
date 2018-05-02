@@ -26,7 +26,7 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
      *  only in classes, never in traits.
      */
     override def parents = Array(root.superClass)
-    override def exclude(sym: Symbol) = !sym.is(Method) || super.exclude(sym)
+    override def exclude(sym: Symbol) = !sym.is(MethodOrModule) || super.exclude(sym)
   }
 
   //val site = root.thisType
@@ -97,8 +97,13 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
       toBeRemoved += other
     }
 
-    bridges +=
-      DefDef(bridge, This(root).select(member).appliedToArgss(_)).withPos(bridge.pos)
+    def bridgeRhs(argss: List[List[Tree]]) = {
+      val ref = This(root).select(member)
+      if (member.info.isParameterless) ref // can happen if `member` is a module
+      else ref.appliedToArgss(argss)
+    }
+
+    bridges += DefDef(bridge, bridgeRhs(_).withPos(bridge.pos))
   }
 
   /** Add all necessary bridges to template statements `stats`, and remove at the same
