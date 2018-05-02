@@ -1975,24 +1975,20 @@ object Parsers {
     /** ImportSelector ::= id [`=>' id | `=>' `_']
      */
     def importSelector(): Tree = {
-      val start = in.offset
       val from = termIdentOrWildcard()
       if (from.name != nme.WILDCARD && in.token == ARROW)
         atPos(startOffset(from), in.skipToken()) {
-          val start2 = in.offset
+          val start = in.offset
           val to = termIdentOrWildcard()
           val toWithPos =
             if (to.name == nme.ERROR)
               // error identifiers don't consume any characters, so atPos(start)(id) wouldn't set a position.
               // Some testcases would then fail in Positioned.checkPos. Set a position anyway!
-              atPos(start2, start2, in.lastOffset)(to)
+              atPos(start, start, in.lastOffset)(to)
             else
               to
           Thicket(from, toWithPos)
         }
-      else if (from.name == nme.ERROR) {
-        atPos(start, start, in.lastOffset)(from)
-      }
       else from
     }
 
