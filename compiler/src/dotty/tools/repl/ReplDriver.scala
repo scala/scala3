@@ -18,17 +18,19 @@ import dotc.core.Types._
 import dotc.core.StdNames._
 import dotc.core.Names.Name
 import dotc.core.NameOps._
-import dotc.core.Symbols.{NoSymbol, Symbol, defn}
+import dotc.core.Symbols.{ NoSymbol, Symbol, defn }
 import dotc.core.Denotations.Denotation
 import dotc.core.Types.{ ConstantType, ExprType }
 import dotc.core.NameKinds.SimpleNameKind
 import dotc.config.CompilerCommand
-import dotc.{Compiler, Driver}
+import dotc.{ Compiler, Driver }
 import dotc.printing.SyntaxHighlighting
 import dotc.reporting.diagnostic.Message
 import dotc.util.Positions.Position
 import dotc.util.SourcePosition
+
 import io._
+
 import AmmoniteReader._
 import results._
 
