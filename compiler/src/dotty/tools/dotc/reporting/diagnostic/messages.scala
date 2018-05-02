@@ -2105,4 +2105,11 @@ object messages {
     }
     val explanation = ""
   }
+
+  case class ImportRenamedTwice(ident: untpd.Ident)(implicit ctx: Context) extends Message(ImportRenamedTwiceID) {
+    val kind = "Syntax"
+    val msg: String = s"${ident.show} is renamed twice on the same import line."
+    val explanation: String = ""
+  }
+
 }

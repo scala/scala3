@@ -6,6 +6,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types.WildcardType
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.reporting.diagnostic.messages._
+import dotty.tools.dotc.transform.PostTyper
 import org.junit.Assert._
 import org.junit.Test
 
@@ -1347,5 +1348,17 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertMessageCount(1, messages)
       val (msg @ FunctionTypeNeedsNonEmptyParameterList(_, _)) :: Nil = messages
       assertEquals(msg.mods, "erased implicit")
+    }
+
+  @Test def renameImportTwice =
+    checkMessagesAfter(PostTyper.name) {
+      """
+        |import java.lang.{Integer => Foo, Integer => Baz}
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val (msg @ ImportRenamedTwice(ident)) :: Nil = messages
+      assertEquals(ident.show, "Integer")
     }
 }

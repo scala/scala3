@@ -129,6 +129,7 @@ public enum ErrorMessageID {
     JavaSymbolIsNotAValueID,
     DoubleDeclarationID,
     MatchCaseOnlyNullWarningID,
+    ImportRenamedTwiceID,
     ;
 
     public int errorNumber() {
