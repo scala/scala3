@@ -157,7 +157,7 @@ class TyperState(previous: TyperState /* | Null */) {
     assert(isCommittable)
     targetState.constraint =
       if (targetState.constraint eq previousConstraint) constraint
-      else targetState.constraint & constraint
+      else targetState.constraint & (constraint, otherHasErrors = reporter.errorsReported)
     constraint foreachTypeVar { tvar =>
       if (tvar.owningState.get eq this) tvar.owningState = new WeakReference(targetState)
     }
