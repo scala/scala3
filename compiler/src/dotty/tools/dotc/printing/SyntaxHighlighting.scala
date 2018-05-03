@@ -287,18 +287,24 @@ object SyntaxHighlighting {
         case '@' => true
         case ',' => true
         case '.' => true
-        case ',' => true
-        case ')' => true
         case _ => false
       }
 
-      def shouldUpdateLastToken(currentPotentialToken: String): Boolean =
-        (lastToken, currentPotentialToken) match {
-          case (_, ("var" | "val" | "def" | "case")) => true
-          case (("val" | "var"), "=") => true
-          case ("case", ("=>" | "class" | "object")) => true
-          case ("def", _) => true
-          case _ => false
+      val valDefStarterTokens = "var" :: "val" :: "def" :: "case" :: Nil
+
+      /** lastToken is used to check whether we want to show something
+       *  in valDef color or not. There are only a few cases when lastToken
+       *  should be updated, that way we can avoid stopping coloring too early.
+       *  eg.: case A(x, y, z) => ???
+       *  Without this function only x would be colored.
+       */
+      def updateLastToken(currentToken: String): String =
+        (lastToken, currentToken) match {
+          case _ if valDefStarterTokens.contains(currentToken) => currentToken
+          case (("val" | "var"), "=") => currentToken
+          case ("case", ("=>" | "class" | "object")) => currentToken
+          case ("def", _) => currentToken
+          case _ => lastToken
         }
 
       while (remaining.nonEmpty && !delim(curr)) {
@@ -310,13 +316,12 @@ object SyntaxHighlighting {
       val toAdd  =
         if (shouldHL(str))
           highlight(str)
-        else if (("var" :: "val" :: "def" :: "case" :: Nil).contains(lastToken) &&
-          !List("=", "=>").contains(str))
+        else if (valDefStarterTokens.contains(lastToken) && !List("=", "=>").contains(str))
           valDef(str)
         else str
       val suffix = if (delim(curr)) s"$curr" else ""
       newBuf append (toAdd + suffix)
-      if (shouldUpdateLastToken(str)) lastToken = str
+      lastToken = updateLastToken(str)
       prev = curr
     }
 
