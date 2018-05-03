@@ -90,8 +90,8 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
     case Refined(tpt, refinements) => foldTree(foldTypeTree(x, tpt), refinements)
     case Applied(tpt, args) => foldTypeTree(foldTypeTree(x, tpt), args)
     case ByName(result) => foldTypeTree(x, result)
-    case TypeBoundsTree(lo, hi) => foldTypeTree(foldTypeTree(x, lo), hi)
     case Annotated(arg, annot) => foldTree(foldTypeTree(x, arg), annot)
+    case TypeBoundsTree(lo, hi) => foldTypeTree(foldTypeTree(x, lo), hi)
   }
 
   def foldOverCaseDef(x: X, tree: CaseDef)(implicit ctx: Context): X = tree match {
