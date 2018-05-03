@@ -33,14 +33,16 @@ object Test {
     *
     * The latter transforms the state and returns either the end-of-the-stream or a value and
     * the new state. The existential quantification over the state keeps it private: the only permissible operation is
-    * to pass it to the function. However in `Producer` the elements are not pulled but the step accepts a continuation.
+    * to pass it to the function.
+    *
+    * Note: in `Producer` the elements are not pulled but the step accepts a continuation.
     *
     * A Producer defines the three basic elements of a loop structure:
     * - `init` contributes the code before iteration starts
     * - `step` contributes the code during execution
     * - `hasNext` contributes the code of the boolean test to end the iteration
     *
-    * @tparam A type of the collection element. Since a `Producer` is polymorphic yet it handles `Expr` values, we
+    * @tparam A type of the collection element. Since a `Producer` is polymorphic it handles `Expr` values, we
     *           can pack together fragments of code to accompany each element production (e.g., a variable incremented
     *           during each transformation)
     */
@@ -57,11 +59,17 @@ object Test {
 
     /** Step method that defines the transformation of data.
       *
-      * @param st the state needed for this iteration step
-      * @param k
-      * @return
+      * @param  st the state needed for this iteration step
+      * @param  k  the continuation that accepts each element and proceeds with the step-wise processing
+      * @return expr value of unit per the CPS-encoding
       */
     def step(st: St, k: (A => Expr[Unit])): Expr[Unit]
+
+    /** The condition that checks for termination
+      *
+      * @param  st the state needed for this iteration check
+      * @return the expression for a boolean
+      */
     def hasNext(st: St): Expr[Boolean]
   }
 
@@ -75,9 +83,18 @@ object Test {
 
   case class Stream[A: Type](stream: StagedStream[Expr[A]]) {
 
+    /** Main consumer
+      *
+      * Fold accumulates the results in a variable and delegates its functionality to `foldRaw`
+      *
+      * @param z   the accumulator
+      * @param f   the zipping function
+      * @tparam W  the type of the accumulator
+      * @return
+      */
      def fold[W: Type](z: Expr[W], f: ((Expr[W], Expr[A]) => Expr[W])): Expr[W] = {
        Var(z) { s: Var[W] => '{
-           ~fold_raw[Expr[A]]((a: Expr[A]) => '{
+           ~foldRaw[Expr[A]]((a: Expr[A]) => '{
              ~s.update(f(s.get, a))
            }, stream)
 
@@ -86,7 +103,7 @@ object Test {
        }
      }
 
-     private def fold_raw[A](consumer: A => Expr[Unit], stream: StagedStream[A]): Expr[Unit] = {
+     private def foldRaw[A](consumer: A => Expr[Unit], stream: StagedStream[A]): Expr[Unit] = {
        stream match {
          case Linear(producer) => {
            producer.card match {
@@ -105,7 +122,7 @@ object Test {
            }
          }
          case nested: Nested[A, bt] => {
-            fold_raw[bt](((e: bt) => fold_raw[A](consumer, nested.nestedf(e))), Linear(nested.producer))
+           foldRaw[bt](((e: bt) => foldRaw[A](consumer, nested.nestedf(e))), Linear(nested.producer))
          }
        }
      }
@@ -355,6 +372,43 @@ object Test {
       * The reified stream is an imperative *non-recursive* function, called `adv`, of `Unit => Unit` type. Nested streams are
       * also handled.
       *
+      * @example {{{
+      *
+      *    Stream.of(1,2,3).flatMap(d => ...)
+      *          .zip(Stream.of(1,2,3).flatMap(d => ...))
+      *          .map{ case (a, b) => a + b }
+      *          .fold(0)((a, b) => a + b)
+      * }}}
+      *
+      * -->
+      *
+      * {{{
+      *           /* initialization for stream 1 */
+      *
+      *           var curr = null.asInstanceOf[Int]  // keeps each element from reified stream
+      *           var nadv: Unit => Unit = (_) => () // keeps the advance for each nested level
+      *
+      *           def adv: Unit => Unit = /* Linearization of stream1 - updates curr from stream1 */
+      *           nadv = adv
+      *           adv()
+      *
+      *           /* initialization for stream 2 */
+      *
+      *           def outer () = {
+      *               /* initialization for outer stream of stream 2 */
+      *               def inner() = {
+      *                 /* initialization for inner stream of stream 2 */
+      *                 val el = curr
+      *                 nadv()
+      *                 /* process elements for map and fold */
+      *                 inner()
+      *               }
+      *               inner()
+      *               outer()
+      *           }
+      *           outer()
+      * }}}
+      *
       * @param  stream
       * @tparam A
       * @return
@@ -366,18 +420,18 @@ object Test {
           /** Helper function that orchestrates the handling of the function that represents an `advance: Unit => Unit`.
             * It reifies a nested stream as calls to `advance`. Advance encodes the step function of each nested stream.
             * It is used in the init of a producer of a nested stream. When an inner stream finishes, the
-            * `currentAdvance` holds the function to the `advance` function of the earlier stream.
+            * `nadv` holds the function to the `advance` function of the earlier stream.
             * `makeAdvanceFunction`, for each nested stream, installs a new `advance` function that after
             * the stream finishes it will restore the earlier one.
             *
             * When `advance` is called the result is consumed in the continuation. Within this continuation
             * the resulting value should be saved in a variable.
             *
-            * @param  currentAdvance variable that holds a function that represents the stream at each level.
+            * @param  nadv variable that holds a function that represents the stream at each level.
             * @param  k              the continuation that consumes a variable.
             * @return the quote of the orchestrated code that will be executed as
             */
-          def makeAdvanceFunction[A](currentAdvance: Var[Unit => Unit], k: A => Expr[Unit], stream: StagedStream[A]): Expr[Unit] = {
+          def makeAdvanceFunction[A](nadv: Var[Unit => Unit], k: A => Expr[Unit], stream: StagedStream[A]): Expr[Unit] = {
             stream match {
               case Linear(producer) =>
                 producer.card match {
@@ -386,28 +440,28 @@ object Test {
                       ~producer.step(st, k)
                     }
                     else {
-                      val newAdvance = ~currentAdvance.get
-                      newAdvance(_)
+                      val f = ~nadv.get
+                      f(())
                     }
                   })
                   case Many => producer.init(st => '{
-                    val oldAdvance : Unit => Unit = ~currentAdvance.get
-                    val newAdvance : Unit => Unit = { _: Unit => {
+                    val oldnadv: Unit => Unit = ~nadv.get
+                    val adv1: Unit => Unit = { _: Unit => {
                       if(~producer.hasNext(st)) {
                         ~producer.step(st, k)
                       }
                       else {
-                        ~currentAdvance.update('{oldAdvance})
-                        oldAdvance(_)
+                        ~nadv.update('{oldnadv})
+                        oldnadv(())
                       }
                     }}
 
-                    ~currentAdvance.update('{newAdvance})
-                    newAdvance(_)
+                    ~nadv.update('{adv1})
+                    adv1(())
                   })
                 }
               case nested: Nested[A, bt] =>
-                makeAdvanceFunction(currentAdvance, (a: bt) => makeAdvanceFunction(currentAdvance, k, nested.nestedf(a)), Linear(nested.producer))
+                makeAdvanceFunction(nadv, (a: bt) => makeAdvanceFunction(nadv, k, nested.nestedf(a)), Linear(nested.producer))
             }
           }
 
@@ -420,32 +474,37 @@ object Test {
 
             def init(k: St => Expr[Unit]): Expr[Unit] = {
               producer.init(st =>
-                Var('{ (_: Unit) => ()}){ advf => {
+                Var('{ (_: Unit) => ()}){ nadv => {
                   Var('{ true }) { hasNext => {
                      Var('{ null.asInstanceOf[A] }) { curr => '{
+
+                        // Code generation of the `adv` function
                         def adv: Unit => Unit = { _ =>
                           ~hasNext.update(producer.hasNext(st))
                           if(~hasNext.get) {
-                            ~producer.step(st, el => makeAdvanceFunction[Expr[A]](advf, (a => curr.update(a)), nestedf(el)))
+                            ~producer.step(st, el => {
+                              makeAdvanceFunction[Expr[A]](nadv, (a => curr.update(a)), nestedf(el))
+                            })
                           }
                         }
 
-                        ~advf.update('{adv})
+                        ~nadv.update('{adv})
                         adv(())
-
-                        ~k((hasNext, curr, advf))
+                        ~k((hasNext, curr, nadv))
                      }}
                   }}
                 }})
             }
 
             def step(st: St, k: Expr[A] => Expr[Unit]): Expr[Unit] = {
-              val (flag, current, advf) = st
-              var el: Var[A] = current
-              val f: Expr[Unit => Unit] = advf.get
+              val (flag, current, nadv) = st
+              '{
+                var el = ~current.get
+                val f: Unit => Unit = ~nadv.get
+                f(())
+                ~k('(el))
+              }
 
-              f('())
-              k((el.get))
             }
 
             def hasNext(st: St): Expr[Boolean] = {
@@ -465,8 +524,8 @@ object Test {
 
         def init(k: St => Expr[Unit]): Expr[Unit] = {
           producer.init(s1 => '{ ~nestedProducer.init(s2 =>
-            Var('{ ~producer.hasNext(s1) }) { term1r =>
-              k((term1r, s1, s2))
+            Var('{ ~producer.hasNext(s1) }) { flag =>
+              k((flag, s1, s2))
             })})
         }
 
@@ -491,6 +550,7 @@ object Test {
       })
     }
 
+    /** Computes the producer of zipping two linear streams **/
     private def zip_producer[A, B](producer1: Producer[A], producer2: Producer[B]) = {
       new Producer[(A, B)] {
 
@@ -513,6 +573,7 @@ object Test {
       }
     }
 
+    /** zip **/
     def zip[B: Type, C: Type](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B]): Stream[C] = {
       val Stream(stream_b) = stream2
       Stream(mapRaw[(Expr[A], Expr[B]), Expr[C]]((t => k => '{ ~k(f(t._1)(t._2)) }), zipRaw[A, Expr[B]](stream, stream_b)))
