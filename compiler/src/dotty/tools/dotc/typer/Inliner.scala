@@ -53,6 +53,7 @@ object Inliner {
        *  by excluding all symbols properly contained in the inlined method.
        */
       def needsAccessor(sym: Symbol)(implicit ctx: Context) =
+        sym.isTerm &&
         (sym.is(AccessFlags) || sym.privateWithin.exists) &&
         !sym.owner.isContainedIn(inlineMethod)
 
