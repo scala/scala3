@@ -1008,20 +1008,20 @@ object Parsers {
       else if (location == Location.InPattern) refinedType()
       else infixType()
 
-    /** Checks whether `t` is a wildcard type.
-     *  If it is, returns the [[Position]] where the wildcard occurs.
+    /** Checks whether `t` represents a non-value type (wildcard types, or ByNameTypeTree).
+     *  If it is, returns the [[Tree]] which immediately represents the non-value type.
      */
     @tailrec
-    private final def findWildcardType(t: Tree, alsoNonValue: Boolean): Option[Tree] = t match {
+    private final def findNonValueTypeTree(t: Tree, alsoNonValue: Boolean): Option[Tree] = t match {
       case TypeBoundsTree(_, _) => Some(t)
       case ByNameTypeTree(_) if alsoNonValue => Some(t)
-      case Parens(t1) => findWildcardType(t1, alsoNonValue)
-      case Annotated(t1, _) => findWildcardType(t1, alsoNonValue)
+      case Parens(t1) => findNonValueTypeTree(t1, alsoNonValue)
+      case Annotated(t1, _) => findNonValueTypeTree(t1, alsoNonValue)
       case _ => None
     }
 
     def rejectWildcard(t: Tree, fallbackTree: Tree): Tree =
-      findWildcardType(t, false) match {
+      findNonValueTypeTree(t, false) match {
         case Some(wildcardTree) =>
           syntaxError(UnboundWildcardType(), wildcardTree.pos)
           fallbackTree
@@ -1036,7 +1036,7 @@ object Parsers {
         rejectWildcard(t, fallbackTree)
 
     def checkAndOrArgument(t: Tree): Tree =
-      findWildcardType(t, true) match {
+      findNonValueTypeTree(t, true) match {
         case Some(typTree) =>
           typTree match {
             case typTree: TypeBoundsTree =>
