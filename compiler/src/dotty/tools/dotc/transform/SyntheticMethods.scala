@@ -2,18 +2,13 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Symbols._, Types._, Contexts._, Names._, StdNames._, Constants._, SymUtils._
-import scala.collection.{ mutable, immutable }
+import Symbols._, Types._, Contexts._, StdNames._, Constants._, SymUtils._
 import Flags._
-import MegaPhase._
 import DenotTransformers._
-import ast.Trees._
-import ast.untpd
 import Decorators._
 import NameOps._
 import Annotations.Annotation
 import ValueClasses.isDerivedValueClass
-import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
 
 /** Synthetic method implementations for case classes, case objects,
@@ -57,7 +52,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
   def caseModuleSymbols(implicit ctx: Context) = { initSymbols; myCaseModuleSymbols }
 
   /** The synthetic methods of the case or value class `clazz`. */
-  def syntheticMethods(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
+  def syntheticMethods(clazz: ClassSymbol, isSerializableObject: Boolean)(implicit ctx: Context): List[Tree] = {
     val clazzType = clazz.appliedRef
     lazy val accessors =
       if (isDerivedValueClass(clazz)) clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
@@ -261,12 +256,33 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
      */
     def canEqualBody(that: Tree): Tree = that.isInstance(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot)))
 
-    symbolsToSynthesize flatMap syntheticDefIfMissing
+    val methods = symbolsToSynthesize flatMap syntheticDefIfMissing
+
+    def createReadResolveMethod(implicit ctx: Context): Tree = {
+      ctx.log(s"adding readResolve to $clazz at ${ctx.phase}")
+      val readResolve = defn.readResolve(clazz, Private | Synthetic)
+      DefDef(readResolve, _ => ref(clazz.sourceModule)).withPos(ctx.owner.pos.focus)
+    }
+
+    if (isSerializableObject)
+      createReadResolveMethod :: methods
+     else
+      methods
   }
 
-  def addSyntheticMethods(impl: Template)(implicit ctx: Context) =
-    if (ctx.owner.is(Case) || isDerivedValueClass(ctx.owner))
-      cpy.Template(impl)(body = impl.body ++ syntheticMethods(ctx.owner.asClass))
+  def addSyntheticMethods(impl: Template)(implicit ctx: Context) = {
+    val isSerializableObject =
+      (ctx.owner.is(Module)
+        && ctx.owner.isStatic
+        && ctx.owner.derivesFrom(defn.JavaSerializableClass)
+        && !ctx.owner.asClass.membersNamed(nme.readResolve)
+             .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, isJava = false))
+             .exists)
+
+    if (ctx.owner.is(Case) || isDerivedValueClass(ctx.owner) || isSerializableObject)
+      cpy.Template(impl)(body = impl.body ++ syntheticMethods(ctx.owner.asClass, isSerializableObject))
     else
       impl
+  }
+
 }
