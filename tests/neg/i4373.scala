@@ -30,4 +30,22 @@ object Test {
   type T10 = (Int => Int) | (=> Int) // error
   type T11 = (Int => Int) & (=> Int) // error
   type T12 = (Int => Int) with (=> Int) // error
+
+  // annotations
+  type T13 = _ @ annotation.tailrec // error
+  type T14 = Int @ _ // error
+  type T15 = (_ | Int) @ annotation.tailrec // error
+  type T16 = (Int | _) @ annotation.tailrec // error
+  type T17 = Int @ (_ | annotation.tailrec) // error
+  type T18 = Int @ (annotation.tailrec | _) // error
+
+  type T19 = (_ with Int) @ annotation.tailrec // error
+  type T20 = (Int with _) @ annotation.tailrec // error
+  type T21 = Int @ (_ with annotation.tailrec) // error // error
+  type T22 = Int @ (annotation.tailrec with _) // error // error
+
+  type T23 = (_ & Int) @ annotation.tailrec // error
+  type T24 = (Int & _) @ annotation.tailrec // error
+  type T25 = Int @ (_ & annotation.tailrec) // error
+  type T26 = Int @ (annotation.tailrec & _) // error
 }
