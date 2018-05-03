@@ -707,7 +707,7 @@ class TreeUnpickler(reader: TastyReader,
 
       def readRhs(implicit ctx: Context) =
         if (noRhs(end)) EmptyTree
-        else readLater(end, rdr => ctx => rdr.readTerm()(ctx))
+        else readLater(end, rdr => ctx => rdr.readTerm()(ctx.retractMode(Mode.InSuperCall)))
 
       def ValDef(tpt: Tree) =
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(localCtx)), sym)
