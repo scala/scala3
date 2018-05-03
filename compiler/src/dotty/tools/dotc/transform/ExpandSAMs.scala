@@ -111,8 +111,8 @@ class ExpandSAMs extends MiniPhase {
         val isDefinedAtDef = transformFollowingDeep(DefDef(isDefinedAtFn, isDefinedAtRhs(_)))
         val applyOrElseDef = transformFollowingDeep(DefDef(applyOrElseFn, applyOrElseRhs(_)))
 
-        val parent = defn.AbstractPartialFunctionType.appliedTo(tpe.argInfos)
-        val anonCls = AnonClass(parent :: Nil, List(isDefinedAtFn, applyOrElseFn), List(nme.isDefinedAt, nme.applyOrElse))
+        val parents = List(defn.AbstractPartialFunctionType.appliedTo(tpe.argInfos), defn.SerializableType)
+        val anonCls = AnonClass(parents, List(isDefinedAtFn, applyOrElseFn), List(nme.isDefinedAt, nme.applyOrElse))
         cpy.Block(tree)(List(isDefinedAtDef, applyOrElseDef), anonCls)
 
       case _ =>
