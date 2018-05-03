@@ -607,6 +607,7 @@ class TreePickler(pickler: TastyPickler) {
       if (flags is DefaultParameterized) writeByte(DEFAULTparameterized)
       if (flags is Stable) writeByte(STABLE)
       if ((flags is ParamAccessor) && sym.isSetter) writeByte(PARAMsetter)
+      if ((flags is Label)) writeByte(LABEL)
     } else {
       if (flags is Sealed) writeByte(SEALED)
       if (flags is Abstract) writeByte(ABSTRACT)
