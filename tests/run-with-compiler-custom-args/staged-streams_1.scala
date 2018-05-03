@@ -1,6 +1,10 @@
 import dotty.tools.dotc.quoted.Toolbox._
 import scala.quoted._
 
+/**
+  * Port of the strymonas library as described in O. Kiselyov et al., Stream fusion, to completeness (POPL 2017)
+  */
+
 object Test {
 
   // TODO: remove as it exists in Quoted Lib
