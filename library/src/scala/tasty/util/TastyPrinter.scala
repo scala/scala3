@@ -4,7 +4,7 @@ import scala.tasty.Tasty
 
 object TastyPrinter {
 
-  def stringOfTree(tasty: Tasty)(tree: tasty.TopLevelStatement)(implicit ctx: tasty.Context): String = {
+  def stringOfTree(tasty: Tasty)(tree: tasty.Tree)(implicit ctx: tasty.Context): String = {
     implicit val buff: StringBuilder = new StringBuilder
     visitTree(tasty)(tree)
     buff.toString()
@@ -34,7 +34,7 @@ object TastyPrinter {
     buff.toString()
   }
 
-  private def visitTree(tasty: Tasty)(x: tasty.TopLevelStatement)(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+  private def visitTree(tasty: Tasty)(x: tasty.Tree)(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
     import tasty._
     x match {
       case Ident(name) =>
@@ -274,12 +274,12 @@ object TastyPrinter {
     }
   }
 
-  private def visitTrees(tasty: Tasty)(list: List[tasty.TopLevelStatement])(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
+  private def visitTrees(tasty: Tasty)(list: List[tasty.Tree])(implicit buff: StringBuilder, ctx: tasty.Context): Unit = {
     list match {
       case x0 :: xs =>
         buff append "List("
         visitTree(tasty)(x0)
-        def visitNext(xs: List[tasty.TopLevelStatement]): Unit = xs match {
+        def visitNext(xs: List[tasty.Tree]): Unit = xs match {
           case y :: ys =>
             buff append ", "
             visitTree(tasty)(y)

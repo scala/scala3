@@ -51,12 +51,9 @@ object TastyImpl extends scala.tasty.Tasty {
 
   // ===== Trees ====================================================
 
+  type Tree = tpd.Tree
 
-  // ----- Top Level Statements -----------------------------------------------
-
-  type TopLevelStatement = tpd.Tree
-
-  implicit def TopLevelStatementDeco(t: TopLevelStatement): AbstractTopLevelStatement = new AbstractTopLevelStatement {
+  implicit def TreeDeco(t: Tree): AbstractTree = new AbstractTree {
     def pos(implicit ctx: Context): Position = new TastyPosition(t.pos)
   }
 
@@ -65,7 +62,7 @@ object TastyImpl extends scala.tasty.Tasty {
   def packageClauseClassTag: ClassTag[PackageClause] = implicitly[ClassTag[PackageClause]]
 
   val PackageClause: PackageClauseExtractor = new PackageClauseExtractor {
-    def unapply(x: PackageClause)(implicit ctx: Context): Option[(Term, List[TopLevelStatement])] = x match {
+    def unapply(x: PackageClause)(implicit ctx: Context): Option[(Term, List[Tree])] = x match {
       case x: tpd.PackageDef @unchecked => Some((x.pid, x.stats))
       case _ => None
     }

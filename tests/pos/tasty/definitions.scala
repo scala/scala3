@@ -4,14 +4,13 @@ object definitions {
 
 // ====== Trees ======================================
 
-  trait Tree extends Positioned
+  sealed trait Tree // Top level statement
 
 // ------ Statements ---------------------------------
 
-  sealed trait TopLevelStatement extends Tree
-  sealed trait Statement extends TopLevelStatement
+  sealed trait Statement extends Tree
 
-  case class PackageClause(pkg: Term, body: List[TopLevelStatement]) extends TopLevelStatement
+  case class PackageClause(pkg: Term, body: List[Tree]) extends Tree
 
   case class Import(expr: Term, selector: List[ImportSelector]) extends Statement
 
@@ -82,7 +81,7 @@ object definitions {
   }
 
   /** Trees denoting types */
-  enum TypeTree extends Tree {
+  enum TypeTree extends Positioned {
     def tpe: Type = ???
     case Synthetic()
     case Ident(name: String, override val tpe: Type)
@@ -102,7 +101,7 @@ object definitions {
   }
 
   /** Trees denoting patterns */
-  enum Pattern extends Tree {
+  enum Pattern extends Positioned {
     def tpe: Type = ???
     case Value(v: Term)
     case Bind(name: String, pat: Pattern)

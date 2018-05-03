@@ -41,20 +41,18 @@ abstract class Tasty {
 
   // ===== Trees ====================================================
 
-  // ----- Top Level Statements -----------------------------------------------
+  type Tree
 
-  type TopLevelStatement
+  trait AbstractTree extends Positioned
+  implicit def TreeDeco(t: Tree): AbstractTree
 
-  trait AbstractTopLevelStatement extends Positioned
-  implicit def TopLevelStatementDeco(t: TopLevelStatement): AbstractTopLevelStatement
-
-  type PackageClause <: TopLevelStatement
+  type PackageClause <: Tree
 
   implicit def packageClauseClassTag: ClassTag[PackageClause]
 
   val PackageClause: PackageClauseExtractor
   abstract class PackageClauseExtractor {
-    def unapply(x: PackageClause)(implicit ctx: Context): Option[(Term, List[TopLevelStatement])]
+    def unapply(x: PackageClause)(implicit ctx: Context): Option[(Term, List[Tree])]
   }
 
   trait AbstractPackageClause {
@@ -64,7 +62,7 @@ abstract class Tasty {
 
   // ----- Statements -----------------------------------------------
 
-  type Statement <: TopLevelStatement
+  type Statement <: Tree
 
   type Import <: Statement
 

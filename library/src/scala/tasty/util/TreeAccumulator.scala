@@ -6,19 +6,19 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
   import tasty._
 
   // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
-  def foldTree(x: X, tree: TopLevelStatement)(implicit ctx: Context): X
+  def foldTree(x: X, tree: Tree)(implicit ctx: Context): X
   def foldTypeTree(x: X, tree: MaybeTypeTree)(implicit ctx: Context): X
   def foldCaseDef(x: X, tree: CaseDef)(implicit ctx: Context): X
   def foldPattern(x: X, tree: Pattern)(implicit ctx: Context): X
   def foldParent(x: X, tree: Parent)(implicit ctx: Context): X
 
-  def foldTree(x: X, trees: Traversable[TopLevelStatement])(implicit ctx: Context): X = (x /: trees)(foldTree)
+  def foldTree(x: X, trees: Traversable[Tree])(implicit ctx: Context): X = (x /: trees)(foldTree)
   def foldTypeTree(x: X, trees: Traversable[MaybeTypeTree])(implicit ctx: Context): X = (x /: trees)(foldTypeTree)
   def foldCaseDef(x: X, trees: Traversable[CaseDef])(implicit ctx: Context): X = (x /: trees)(foldCaseDef)
   def foldPattern(x: X, trees: Traversable[Pattern])(implicit ctx: Context): X = (x /: trees)(foldPattern)
   def foldParent(x: X, trees: Traversable[Parent])(implicit ctx: Context): X = (x /: trees)(foldParent)
 
-  def foldOverTree(x: X, tree: TopLevelStatement)(implicit ctx: Context): X = {
+  def foldOverTree(x: X, tree: Tree)(implicit ctx: Context): X = {
     def localCtx(definition: Definition): Context = definition.localContext
     tree match {
       case Ident(_) =>

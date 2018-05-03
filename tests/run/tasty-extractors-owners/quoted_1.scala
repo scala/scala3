@@ -18,7 +18,7 @@ object Macros {
 
     val printer = new TreeTraverser(u.tasty) {
       import tasty._
-      override def traverseTree(tree: TopLevelStatement)(implicit ctx: Context): Unit = {
+      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         tree match {
           case tree @ DefDef(name, _, _, _, _) =>
             buff.append(name)
