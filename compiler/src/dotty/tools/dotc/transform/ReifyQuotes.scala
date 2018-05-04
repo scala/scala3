@@ -73,7 +73,7 @@ import dotty.tools.dotc.core.quoted._
  *      ...
  *      val y1$1 = args(1).asInstanceOf[Expr[Y]]
  *      ...
- *      { ... T1$1.unary_~ ... x ... '(y1$1.unary_~) ... }
+ *      { ... x1$1 .... '{ ... T1$1.unary_~ ... x1$1.toExpr.unary_~ ... y1$1.unary_~ ... } ... }
  *    }
  *    ```
  *  Note: the parameters of `foo` are kept for simple overloading resolution but they are not used in the body of `foo`.
