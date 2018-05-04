@@ -604,6 +604,10 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
                   """.stripMargin, tree.rhs.pos)
                 EmptyTree
             }
+          case tree: ValDef if tree.symbol.is(Param | Inline) && tree.symbol.owner.is(Macro) &&
+              defn.isFunctionClass(tree.tpe.widen.typeSymbol) =>
+            ctx.error("Macro parameters of function type cannot be `inline`", tree.pos)
+            EmptyTree
           case _ =>
             markDef(tree)
             checkLevel(mapOverTree(enteredSyms))
