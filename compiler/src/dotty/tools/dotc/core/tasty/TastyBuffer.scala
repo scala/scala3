@@ -48,6 +48,10 @@ class TastyBuffer(initialSize: Int) {
 
   // -- Output routines --------------------------------------------
 
+  /** Write a boolean value. */
+  def writeBoolean(b: Boolean): Unit =
+    writeByte(if (b) 1 else 0)
+
   /** Write a byte of data. */
   def writeByte(b: Int): Unit = {
     if (length >= bytes.length)

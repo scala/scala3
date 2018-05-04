@@ -21,6 +21,7 @@ class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr]
       buf.writeAddr(addr)
       buf.writeNat(length)
       buf.writeBytes(bytes, length)
+      buf.writeBoolean(cmt.isExpanded)
     case other =>
       ()
   }

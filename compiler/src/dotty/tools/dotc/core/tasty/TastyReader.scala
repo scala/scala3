@@ -41,6 +41,10 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   def subReader(start: Addr, end: Addr): TastyReader =
     new TastyReader(bytes, index(start), index(end), base)
 
+  /** Read a boolean value. */
+  def readBoolean(): Boolean =
+    readByte() == 1
+
   /** Read a byte of data. */
   def readByte(): Int = {
     val result = bytes(bp) & 0xff
