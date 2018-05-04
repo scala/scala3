@@ -24,6 +24,19 @@ object PickledQuotes {
 
   /** Pickle the tree of the a quoted.Expr */
   def pickleExpr(tree: Tree)(implicit ctx: Context): scala.quoted.Expr[Any] = {
+    // Check that there are no free variables
+    new TreeTraverser {
+      private val definedHere = scala.collection.mutable.Set.empty[Symbol]
+      def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = tree match {
+        case tree: Ident if tree.symbol.exists && !definedHere(tree.symbol) =>
+          throw new scala.quoted.FreeVariableError(tree.name.toString)
+        case tree: DefTree =>
+          definedHere += tree.symbol
+          traverseChildren(tree)
+        case _ =>
+          traverseChildren(tree)
+      }
+    }.traverse(tree)
     val pickled = pickleQuote(tree)
     scala.runtime.quoted.Unpickler.unpickleExpr(pickled, Nil)
   }
