@@ -3,11 +3,13 @@ package dotty.tools.dotc.quoted
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.printing.RefinedPrinter
 
 import scala.quoted.Expr
 import scala.runtime.BoxedUnit
-import scala.quoted.Exprs.LiftedExpr
+import scala.quoted.Exprs.{LiftedExpr, TreeExpr}
 import scala.runtime.quoted._
 
 /** Default runners for quoted expressions */
@@ -23,8 +25,12 @@ object Toolbox {
     ): Toolbox[T] = new Toolbox[T] {
 
     def run(expr: Expr[T]): T = expr match {
-      case expr: LiftedExpr[T] => expr.value
-      case _ => new QuoteDriver().run(expr, runSettings)
+      case expr: LiftedExpr[T] =>
+        expr.value
+      case expr: TreeExpr[Tree] @unchecked =>
+        new QuoteDriver().run(expr.pickled, runSettings)
+      case _ =>
+        new QuoteDriver().run(expr, runSettings)
     }
 
     def show(expr: Expr[T]): String = expr match {

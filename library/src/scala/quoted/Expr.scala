@@ -37,7 +37,8 @@ object Exprs {
   }
 
   /** An Expr backed by a tree. Only the current compiler trees are allowed. */
-  final class TreeExpr[Tree](val tree: Tree) extends quoted.Expr[Any] {
+  final class TreeExpr[Tree](val tree: Tree, pickle: => Expr[_]) extends quoted.Expr[Any] {
+    def pickled[T]: Expr[T] = pickle.asInstanceOf[Expr[T]]
     override def toString: String = s"Expr(<raw>)"
   }
 

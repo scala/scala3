@@ -60,7 +60,8 @@ object Splicer {
           case (arg, tp) =>
             assert(!tp.hasAnnotation(defn.InlineParamAnnot))
             // Replace argument by its binding
-            new scala.quoted.Exprs.TreeExpr(bindMap.getOrElse(arg, arg))
+            val arg1 = bindMap.getOrElse(arg, arg)
+            new scala.quoted.Exprs.TreeExpr(arg1, PickledQuotes.pickleExpr(arg1))
         }
         args1 ::: liftArgs(tp.resType, args.tail)
       case tp: PolyType =>

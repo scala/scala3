@@ -19,7 +19,7 @@ import scala.collection.{ mutable, immutable }
 import config.Printers.pickling
 import typer.Checking
 import config.Config
-import dotty.tools.dotc.core.quoted.PickledQuotes
+import core.quoted.PickledQuotes
 import scala.quoted
 import scala.quoted.Types.TreeType
 import scala.quoted.Exprs.TreeExpr
@@ -1142,7 +1142,7 @@ class TreeUnpickler(reader: TastyReader,
       val idx = readNat()
       val args = until(end)(readTerm())
       val splice = splices(idx)
-      val reifiedArgs = args.map(arg => if (arg.isTerm) new TreeExpr(arg) else new TreeType(arg))
+      val reifiedArgs = args.map(arg => if (arg.isTerm) new TreeExpr(arg, PickledQuotes.pickleExpr(arg)) else new TreeType(arg))
       if (isType) {
         val quotedType = splice.asInstanceOf[Seq[Any] => quoted.Type[_]](reifiedArgs)
         PickledQuotes.quotedTypeToTree(quotedType)

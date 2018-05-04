@@ -22,7 +22,13 @@ import scala.reflect.ClassTag
 object PickledQuotes {
   import tpd._
 
-  /** Pickle the quote into strings */
+  /** Pickle the tree of the a quoted.Expr */
+  def pickleExpr(tree: Tree)(implicit ctx: Context): scala.quoted.Expr[Any] = {
+    val pickled = pickleQuote(tree)
+    scala.runtime.quoted.Unpickler.unpickleExpr(pickled, Nil)
+  }
+
+  /** Pickle the tree of the quote into strings */
   def pickleQuote(tree: Tree)(implicit ctx: Context): scala.runtime.quoted.Unpickler.Pickled = {
     if (ctx.reporter.hasErrors) Nil
     else {
