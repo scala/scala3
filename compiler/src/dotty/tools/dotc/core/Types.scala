@@ -3007,8 +3007,13 @@ object Types {
 
     def newParamRef(n: Int) = new TypeParamRef(this, n) {}
 
-    lazy val typeParams: List[LambdaParam] =
-      paramNames.indices.toList.map(new LambdaParam(this, _))
+    private[this] var myTypeParams: List[LambdaParam] = null
+
+    def typeParams: List[LambdaParam] = {
+      if (myTypeParams == null)
+        myTypeParams = paramNames.indices.toList.map(new LambdaParam(this, _))
+      myTypeParams
+    }
 
     def derivedLambdaAbstraction(paramNames: List[TypeName], paramInfos: List[TypeBounds], resType: Type)(implicit ctx: Context): Type =
       resType match {
