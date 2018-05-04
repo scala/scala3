@@ -660,6 +660,9 @@ class Definitions {
     lazy val QuotedType_applyR = QuotedTypeModule.requiredMethodRef(nme.apply)
     def QuotedType_apply(implicit ctx: Context) = QuotedType_applyR.symbol
 
+  lazy val QuotedLiftableType = ctx.requiredClassRef("scala.quoted.Liftable")
+  def QuotedLiftableClass(implicit ctx: Context) = QuotedLiftableType.symbol.asClass
+
   def Unpickler_unpickleExpr = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
   def Unpickler_liftedExpr = ctx.requiredMethod("scala.runtime.quoted.Unpickler.liftedExpr")
   def Unpickler_unpickleType = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
