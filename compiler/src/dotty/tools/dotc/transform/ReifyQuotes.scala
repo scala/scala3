@@ -73,7 +73,7 @@ import dotty.tools.dotc.core.quoted._
  *      ...
  *      val y1$1 = args(1).asInstanceOf[Expr[Y]]
  *      ...
- *      { ... T1$1.unary_~ ... x ... '(y1$1.unary_~) ... }
+ *      { ... x1$1 .... '{ ... T1$1.unary_~ ... x1$1.toExpr.unary_~ ... y1$1.unary_~ ... } ... }
  *    }
  *    ```
  *  Note: the parameters of `foo` are kept for simple overloading resolution but they are not used in the body of `foo`.
@@ -375,9 +375,15 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
       }
       else body match {
         case body: RefTree if isCaptured(body, level + 1) =>
-          // Optimization: avoid the full conversion when capturing `x`
-          // in '{ x } to '{ x$1.unary_~ } and go directly to `x$1`
-          capturers(body.symbol)(body)
+          if (body.symbol.is(Inline)) {
+            // Optimization: avoid the full conversion when capturing inlined `x`
+            // in '{ x } to '{ x$1.toExpr.unary_~ } and go directly to `x$1.toExpr`
+            liftValue(capturers(body.symbol)(body))
+          } else {
+            // Optimization: avoid the full conversion when capturing `x`
+            // in '{ x } to '{ x$1.unary_~ } and go directly to `x$1`
+            capturers(body.symbol)(body)
+          }
         case _=>
           val (body1, splices) = nested(isQuote = true).split(body)
           pickledQuote(body1, splices, isType).withPos(quote.pos)
@@ -546,8 +552,11 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
             splice(tree)
           case tree: RefTree if isCaptured(tree, level) =>
             val capturer = capturers(tree.symbol)
-            if (tree.symbol.is(Inline)) capturer(tree)
-            else splice(capturer(tree).select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
+            def captureAndSplice(t: Tree) =
+              splice(t.select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
+            if (tree.symbol.is(Inline) && level == 0) capturer(tree)
+            else if (tree.symbol.is(Inline)) captureAndSplice(liftValue(capturer(tree)))
+            else captureAndSplice(capturer(tree))
           case Block(stats, _) =>
             val last = enteredSyms
             stats.foreach(markDef)
@@ -600,6 +609,21 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
             checkLevel(mapOverTree(enteredSyms))
         }
       }
+
+    private def liftValue(tree: Tree)(implicit ctx: Context): Tree = {
+      val reqType = defn.QuotedLiftableType.appliedTo(tree.tpe.widen)
+      val liftable = ctx.typer.inferImplicitArg(reqType, tree.pos)
+      liftable.tpe match {
+        case fail: SearchFailureType =>
+          ctx.error(i"""
+                  |
+                  | The access would be accepted with the right Liftable, but
+                  | ${ctx.typer.missingArgMsg(liftable, reqType, "")}""")
+          EmptyTree
+        case _ =>
+          liftable.select("toExpr".toTermName).appliedTo(tree)
+      }
+    }
 
     private def liftList(list: List[Tree], tpe: Type)(implicit ctx: Context): Tree = {
       list.foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>
