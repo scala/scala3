@@ -3,6 +3,7 @@ package dotc
 package core
 package tasty
 
+import Comments.CommentsContext
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, Flags._, Constants._, Annotations._
 import NameKinds._
@@ -25,13 +26,15 @@ import scala.quoted.Types.TreeType
 import scala.quoted.Exprs.TastyTreeExpr
 
 /** Unpickler for typed trees
- *  @param reader          the reader from which to unpickle
- *  @param tastyName       the nametable
- *  @param posUNpicklerOpt the unpickler for positions, if it exists
+ *  @param reader              the reader from which to unpickle
+ *  @param posUnpicklerOpt     the unpickler for positions, if it exists
+ *  @param commentUnpicklerOpt the unpickler for comments, if it exists
+ *  @param splices
  */
 class TreeUnpickler(reader: TastyReader,
                     nameAtRef: NameRef => TermName,
                     posUnpicklerOpt: Option[PositionUnpickler],
+                    commentUnpicklerOpt: Option[CommentUnpickler],
                     splices: Seq[Any]) {
   import TastyFormat._
   import TreeUnpickler._
@@ -820,6 +823,16 @@ class TreeUnpickler(reader: TastyReader,
         // Child annotations for local classes and enum values are not pickled, so
         // need to be re-established here.
         sym.registerIfChild(late = true)
+
+      if (ctx.mode.is(Mode.ReadComments)) {
+        for { docCtx <- ctx.docCtx
+              commentUnpickler <- commentUnpicklerOpt } {
+          val comment = commentUnpickler.commentAt(start)
+          docCtx.addDocstring(tree.symbol, comment)
+          tree.setComment(comment)
+        }
+      }
+
       tree
     }
 

@@ -222,6 +222,10 @@ Standard Section: "Positions" Assoc*
                                             // same offset in the previously recorded node (or 0 for the first recorded node)
   Delta         = Int                       // Difference between consecutive offsets,
 
+Standard Section: "Comments" Comment*
+
+  Comment       = Length Bytes              // Raw comment's bytes encoded as UTF-8
+
 **************************************************************************************/
 
 object TastyFormat {

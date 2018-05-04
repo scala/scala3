@@ -2,7 +2,9 @@ package dotty.tools.dotc
 
 import dotty.tools.FatalError
 import config.CompilerCommand
+import core.Comments.{ContextDoc, ContextDocstrings}
 import core.Contexts.{Context, ContextBase}
+import core.Mode
 import util.DotClass
 import reporting._
 import scala.util.control.NonFatal
@@ -40,10 +42,24 @@ class Driver extends DotClass {
 
   protected def sourcesRequired = true
 
+  /**
+   * Should the `ContextDocstrings` be set for this context? The `ContextDocstrings` is used
+   * to store doc comments when `-Ykeep-comments` is set, or when TASTY is configured to
+   * unpickle the doc comments.
+   */
+  protected def shouldAddDocContext(implicit ctx: Context): Boolean = {
+    ctx.settings.YkeepComments.value || ctx.mode.is(Mode.ReadComments)
+  }
+
   def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
-    val ctx = rootCtx.fresh
-    val summary = CompilerCommand.distill(args)(ctx)
-    ctx.setSettings(summary.sstate)
+    val ctx0 = rootCtx.fresh
+    val summary = CompilerCommand.distill(args)(ctx0)
+    ctx0.setSettings(summary.sstate)
+
+    val ctx =
+      if (shouldAddDocContext(ctx0)) ctx0.setProperty(ContextDoc, new ContextDocstrings)
+      else ctx0
+
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
     (fileNames, ctx)
   }

@@ -93,4 +93,8 @@ object Mode {
 
   /** We are in the IDE */
   val Interactive = newMode(20, "Interactive")
+
+  /** Read comments from definitions when unpickling from TASTY */
+  val ReadComments = newMode(21, "ReadComments")
+
 }

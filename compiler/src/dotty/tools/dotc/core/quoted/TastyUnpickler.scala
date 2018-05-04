@@ -4,10 +4,10 @@ import dotty.tools.dotc.core.tasty._
 import dotty.tools.dotc.core.tasty.TastyUnpickler.NameTable
 
 object TastyUnpickler {
-  class QuotedTreeSectionUnpickler(posUnpickler: Option[PositionUnpickler], splices: Seq[Any])
-    extends DottyUnpickler.TreeSectionUnpickler(posUnpickler) {
+  class QuotedTreeSectionUnpickler(posUnpickler: Option[PositionUnpickler], commentUnpickler: Option[CommentUnpickler], splices: Seq[Any])
+    extends DottyUnpickler.TreeSectionUnpickler(posUnpickler, commentUnpickler) {
     override def unpickle(reader: TastyReader, nameAtRef: NameTable) =
-      new TreeUnpickler(reader, nameAtRef, posUnpickler, splices)
+      new TreeUnpickler(reader, nameAtRef, posUnpickler, commentUnpickler, splices)
   }
 }
 
@@ -19,6 +19,6 @@ class TastyUnpickler(bytes: Array[Byte], splices: Seq[Any]) extends DottyUnpickl
   import DottyUnpickler._
   import TastyUnpickler._
 
-  protected override def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler]): TreeSectionUnpickler =
-    new QuotedTreeSectionUnpickler(posUnpicklerOpt, splices)
+  protected override def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler], commentUnpicklerOpt: Option[CommentUnpickler]): TreeSectionUnpickler =
+    new QuotedTreeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt, splices)
 }
