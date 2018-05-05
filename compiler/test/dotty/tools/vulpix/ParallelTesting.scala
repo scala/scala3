@@ -404,9 +404,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       tastyOutput.mkdir()
       val flags = flags0 and ("-d", tastyOutput.getAbsolutePath) and "-from-tasty"
 
-      def hasTastyFileToClassName(f: JFile): String =
-        targetDir.toPath.relativize(f.toPath).toString.dropRight(".hasTasty".length).replace('/', '.')
-      val classes = flattenFiles(targetDir).filter(isHasTastyFile).map(hasTastyFileToClassName)
+      def tastyFileToClassName(f: JFile): String = {
+        val pathStr = targetDir.toPath.relativize(f.toPath).toString.replace('/', '.')
+        pathStr.stripSuffix(".tasty").stripSuffix(".hasTasty")
+      }
+      val classes = flattenFiles(targetDir).filter(isHasTastyFile).map(tastyFileToClassName)
 
       val reporter =
         TestReporter.reporter(realStdout, logLevel =
@@ -434,7 +436,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         "-decompile" and "-pagewidth" and "80"
 
       def hasTastyFileToClassName(f: JFile): String =
-        targetDir0.toPath.relativize(f.toPath).toString.dropRight(".hasTasty".length).replace('/', '.')
+        targetDir0.toPath.relativize(f.toPath).toString.stripSuffix(".hasTasty").stripSuffix(".tasty").replace('/', '.')
       val classes = flattenFiles(targetDir0).filter(isHasTastyFile).map(hasTastyFileToClassName).sorted
 
       val reporter =
@@ -1369,5 +1371,5 @@ object ParallelTesting {
   }
 
   def isHasTastyFile(f: JFile): Boolean =
-    f.getName.endsWith(".hasTasty")
+    f.getName.endsWith(".hasTasty") || f.getName.endsWith(".tasty")
 }
