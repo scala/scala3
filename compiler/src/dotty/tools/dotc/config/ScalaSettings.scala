@@ -90,7 +90,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YdebugNames = BooleanSetting("-Ydebug-names", "Show internal representation of names")
   val YtermConflict = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
   val Ylog = PhasesSetting("-Ylog", "Log operations during")
-  val YemitTasty = BooleanSetting("-Yemit-tasty", "Generate tasty in separate *.tasty file.")
+  val YemitTasty = BooleanSetting("-Yemit-tasty", "Generate tasty in separate *.tasty file.", true)
   val YlogClasspath = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
   val YdisableFlatCpCaching  = BooleanSetting("-YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
 
