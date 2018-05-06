@@ -177,12 +177,12 @@ To avoid clutter, the Scala implementation tries to convert any phase-incorrect
 reference to a type `T` to a type-splice, by rewriting `T` to `~implicitly[Type[T]]`.
 For instance, the user-level definition of `reflect`:
 
-    def reflect[T: Type, U](f: Expr[T] => Expr[U]) Expr[T => U] =
+    def reflect[T: Type, U](f: Expr[T] => Expr[U]): Expr[T => U] =
       ’{ (x: T) => ~f(’(x)) }
 
 would be rewritten to
 
-    def reflect[T: Type, U](f: Expr[T] => Expr[U]) Expr[T => U] =
+    def reflect[T: Type, U](f: Expr[T] => Expr[U]): Expr[T => U] =
       ’{ (x: ~implicitly[Type[T]]) => ~f(’(x)) }
 
 The `implicitly` query succeeds because there is an implicit value of
