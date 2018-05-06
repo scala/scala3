@@ -503,6 +503,25 @@ object Lst {
       this
     }
 
+    def exists(p: T => Boolean): Boolean =
+      if (len == 0) false
+      else if (len == 1) p(elem.asInstanceOf[T])
+      else {
+        var i = 0
+        while (i < len && !p(elems(i).asInstanceOf[T])) i += 1
+        i < len
+      }
+    def forall(p: T => Boolean): Boolean = !exists(!p(_))
+
+    def contains(x: T): Boolean =
+      if (len == 0) false
+      else if (len == 1) elem == x
+      else {
+        var i = 0
+        while (i < len && elems(i) != x) i += 1
+        i < len
+      }
+
     def toLst: Lst[T] =
       if (len == 0) Empty
       else if (len == 1) single(elem)
