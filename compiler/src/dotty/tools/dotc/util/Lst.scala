@@ -250,6 +250,27 @@ class Lst[+T](val elems: Any) extends AnyVal {
   def tail = drop(1)
   def take(n: Int): Lst[T] = slice(0, n)
 
+  def firstIndexOf(x: T): Int = elems match {
+    case null => 0
+    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
+      var i = 0
+      while (i < length && elem(i) != x) i += 1
+      i
+    case elem: T @ unchecked => if (elem == x) 0 else 1
+  }
+
+  def firstIndexWhere(p: T => Boolean): Int = elems match {
+    case null => 0
+    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
+      var i = 0
+      while (i < length && !p(elem(i))) i += 1
+      i
+    case elem: T @ unchecked => if (p(elem)) 0 else 1
+  }
+
+  def takeWhile(p: T => Boolean): Lst[T] = take(firstIndexWhere(!p(_)))
+  def dropWhile(p: T => Boolean): Lst[T] = drop(firstIndexWhere(!p(_)))
+
   def ++ [U >: T](that: Lst[U]): Lst[U] =
     if (elems == null) that
     else if (that.elems == null) this
