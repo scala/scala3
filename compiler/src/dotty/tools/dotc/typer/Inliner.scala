@@ -49,6 +49,10 @@ object Inliner {
     object addAccessors extends TreeMap {
       val accessors = new mutable.ListBuffer[MemberDef]
 
+      type AccessorMap = mutable.HashMap[Symbol, DefDef]
+      private val getters = new AccessorMap
+      private val setters = new AccessorMap
+
       /** A definition needs an accessor if it is private, protected, or qualified private
        *  and it is not part of the tree that gets inlined. The latter test is implemented
        *  by excluding all symbols properly contained in the inlined method.
@@ -85,71 +89,77 @@ object Inliner {
        *  @param rhs          A function that builds the right-hand side of the accessor,
        *                      given a reference to the accessed symbol and any type and
        *                      value arguments the need to be integrated.
+       *  @param seen         An map of already generated accessor methods of this kind (getter or setter)
        *  @return The call to the accessor method that replaces the original access.
        */
       def addAccessor(tree: Tree, refPart: Tree, targs: List[Tree], argss: List[List[Tree]],
-                      accessedType: Type, rhs: (Tree, List[Type], List[List[Tree]]) => Tree)(implicit ctx: Context): Tree = {
+                      accessedType: Type, rhs: (Tree, List[Type], List[List[Tree]]) => Tree,
+                      seen: AccessorMap)(implicit ctx: Context): Tree = {
         val qual = qualifier(refPart)
+
         def refIsLocal = qual match {
           case qual: This => qual.symbol == refPart.symbol.owner
           case _ => false
         }
-        val (accessorDef, accessorRef) =
-          if (refPart.symbol.isStatic || refIsLocal) {
-            // Easy case: Reference to a static symbol or a symbol referenced via `this.`
-            val accessorType = accessedType.ensureMethodic
-            val accessor = accessorSymbol(tree, accessorType).asTerm
-            val accessorDef = polyDefDef(accessor, tps => argss =>
-              rhs(refPart, tps, argss).withPos(tree.pos.focus))
-            val accessorRef = ref(accessor).appliedToTypeTrees(targs).appliedToArgss(argss).withPos(tree.pos)
-            (accessorDef, accessorRef)
-          } else {
-            // Hard case: Reference needs to go via a dynamic prefix
-            inlining.println(i"adding inline accessor for $tree -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
 
-            // Need to dealias in order to catch all possible references to abstracted over types in
-            // substitutions
-            val dealiasMap = new TypeMap {
-              def apply(t: Type) = mapOver(t.dealias)
-            }
+        def accessorDef(accessorType: Type, accessorDefFn: TermSymbol => DefDef): DefDef =
+          seen.getOrElseUpdate(refPart.symbol, {
+            val acc = accessorSymbol(tree, accessorType).asTerm
+            val accessorDef = accessorDefFn(acc)
+            accessors += accessorDef
+            inlining.println(i"added inline accessor: $accessorDef")
+            accessorDef
+          })
 
-            val qualType = dealiasMap(qual.tpe.widen)
+        if (refPart.symbol.isStatic || refIsLocal) {
+          // Easy case: Reference to a static symbol or a symbol referenced via `this.`
+          val accDef = accessorDef(
+            accessedType.ensureMethodic,
+            polyDefDef(_, tps => argss => rhs(refPart, tps, argss).withPos(tree.pos.focus)))
 
-            // Add qualifier type as leading method argument to argument `tp`
-            def addQualType(tp: Type): Type = tp match {
-              case tp: PolyType => tp.derivedLambdaType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
-              case tp: ExprType => addQualType(tp.resultType)
-              case tp => MethodType(qualType :: Nil, tp)
-            }
+          ref(accDef.symbol).appliedToTypeTrees(targs).appliedToArgss(argss).withPos(tree.pos)
+        }
+        else {
+          // Hard case: Reference needs to go via a dynamic prefix
+          inlining.println(i"adding inline accessor for $tree -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
 
-            // The types that are local to the inlined method, and that therefore have
-            // to be abstracted out in the accessor, which is external to the inlined method
-            val localRefs = qualType.namedPartsWith(ref =>
-              ref.isType && ref.symbol.isContainedIn(inlineMethod)).toList
-
-            // Abstract accessed type over local refs
-            def abstractQualType(mtpe: Type): Type =
-              if (localRefs.isEmpty) mtpe
-              else PolyType.fromParams(localRefs.map(_.symbol.asType), mtpe)
-                .asInstanceOf[PolyType].flatten
-
-            val accessorType = abstractQualType(addQualType(dealiasMap(accessedType)))
-            val accessor = accessorSymbol(tree, accessorType).asTerm
-
-            val accessorDef = polyDefDef(accessor, tps => argss =>
-              rhs(argss.head.head.select(refPart.symbol), tps.drop(localRefs.length), argss.tail)
-              .withPos(tree.pos.focus)
-            )
-
-            val accessorRef = ref(accessor)
-              .appliedToTypeTrees(localRefs.map(TypeTree(_)) ++ targs)
-              .appliedToArgss((qual :: Nil) :: argss)
-              .withPos(tree.pos)
-            (accessorDef, accessorRef)
+          // Need to dealias in order to catch all possible references to abstracted over types in
+          // substitutions
+          val dealiasMap = new TypeMap {
+            def apply(t: Type) = mapOver(t.dealias)
           }
-        accessors += accessorDef
-        inlining.println(i"added inline accessor: $accessorDef")
-        accessorRef
+
+          val qualType = dealiasMap(qual.tpe.widen)
+
+          // Add qualifier type as leading method argument to argument `tp`
+          def addQualType(tp: Type): Type = tp match {
+            case tp: PolyType => tp.derivedLambdaType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
+            case tp: ExprType => addQualType(tp.resultType)
+            case tp => MethodType(qualType :: Nil, tp)
+          }
+
+          // The types that are local to the inlined method, and that therefore have
+          // to be abstracted out in the accessor, which is external to the inlined method
+          val localRefs = qualType.namedPartsWith(ref =>
+            ref.isType && ref.symbol.isContainedIn(inlineMethod)).toList
+
+          // Abstract accessed type over local refs
+          def abstractQualType(mtpe: Type): Type =
+            if (localRefs.isEmpty) mtpe
+            else PolyType.fromParams(localRefs.map(_.symbol.asType), mtpe)
+              .asInstanceOf[PolyType].flatten
+
+          val accDef = accessorDef(
+            abstractQualType(addQualType(dealiasMap(accessedType))),
+            polyDefDef(_, tps => argss =>
+              rhs(argss.head.head.select(refPart.symbol), tps.drop(localRefs.length), argss.tail)
+                .withPos(tree.pos.focus)))
+
+          ref(accDef.symbol)
+            .appliedToTypeTrees(localRefs.map(TypeTree(_)) ++ targs)
+            .appliedToArgss((qual :: Nil) :: argss)
+            .withPos(tree.pos)
+        }
       }
 
       override def transform(tree: Tree)(implicit ctx: Context): Tree = super.transform {
@@ -160,12 +170,14 @@ object Inliner {
               if (methPart.symbol.isConstructor && needsAccessor(methPart.symbol)) {
                 ctx.error("Cannot use private constructors in inline methods", tree.pos)
                 tree // TODO: create a proper accessor for the private constructor
-              } else {
+              }
+              else
                 addAccessor(tree, methPart, targs, argss,
                     accessedType = methPart.tpe.widen,
-                    rhs = (qual, tps, argss) => qual.appliedToTypes(tps).appliedToArgss(argss))
-              }
-            } else {
+                    rhs = (qual, tps, argss) => qual.appliedToTypes(tps).appliedToArgss(argss),
+                    seen = getters)
+            }
+            else {
               // TODO: Handle references to non-public types.
               // This is quite tricky, as such types can appear anywhere, including as parts
               // of types of other things. For the moment we do nothing and complain
@@ -181,7 +193,8 @@ object Inliner {
           case Assign(lhs: RefTree, rhs) if needsAccessor(lhs.symbol) =>
             addAccessor(tree, lhs, Nil, (rhs :: Nil) :: Nil,
                 accessedType = MethodType(rhs.tpe.widen :: Nil, defn.UnitType),
-                rhs = (lhs, tps, argss) => lhs.becomes(argss.head.head))
+                rhs = (lhs, tps, argss) => lhs.becomes(argss.head.head),
+                seen = setters)
           case _ => tree
         }
       }
