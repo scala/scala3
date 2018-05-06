@@ -482,7 +482,7 @@ object Lst {
   }
 
   private def single[T](elem: Any): Lst[T] = elem match {
-    case elem: Arr =>
+    case null | _: Arr =>
       val wrapped = new Arr(1)
       wrapped(0) = elem
       new Lst[T](wrapped)
@@ -491,7 +491,7 @@ object Lst {
   }
 
   private def multi[T](elems: Array[Any]) =
-    if (elems.length == 1) new Lst[T](elems(0))
+    if (elems.length == 1) single(elems(0))
     else new Lst[T](elems)
 
   private def _fromArray[T](elems: Arr, start: Int, end: Int): Lst[T] = {
