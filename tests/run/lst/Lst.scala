@@ -4,6 +4,7 @@ package util
 import printing.{Printer, Texts}
 import Texts.Text
 import collection.mutable.{ListBuffer, StringBuilder}
+import reflect.ClassTag
 
 /** A lightweight class for lists, optimized for short and medium lengths.
  *  A list is represented at runtime as
@@ -25,7 +26,7 @@ class Lst[+T](val elems: Any) extends AnyVal {
   def isEmpty = elems == null
   def nonEmpty = elems != null
 
-  inline def foreach(inline op: T => Unit): Unit = {
+  /*inline*/ def foreach(/*inline*/ op: T => Unit): Unit = {
     def sharedOp(x: T) = op(x)
     elems match {
       case null =>
@@ -39,7 +40,7 @@ class Lst[+T](val elems: Any) extends AnyVal {
   /** Like `foreach`, but completely inlines `op`, at the price of generating the code twice.
    *  Should be used only of `op` is small
    */
-  inline def foreachInlined(inline op: T => Unit): Unit = elems match {
+  /*inline*/ def foreachInlined(/*inline*/ op: T => Unit): Unit = elems match {
     case null =>
     case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
       var i = 0
@@ -59,8 +60,14 @@ class Lst[+T](val elems: Any) extends AnyVal {
     case elem: T @ unchecked => target(from) = elem
   }
 
+  def toArray[U >: T : ClassTag]: Array[U] = {
+    val result = new Array[U](length)
+    copyToArray(result, 0)
+    result
+  }
+
   /** `f` is pulled out, not duplicated */
-  inline def map[U](inline f: T => U): Lst[U] = {
+  /*inline*/ def map[U](/*inline*/ f: T => U): Lst[U] = {
     def op(x: T) = f(x)
     elems match {
       case null => Empty
@@ -144,7 +151,7 @@ class Lst[+T](val elems: Any) extends AnyVal {
   }
   def filterNot(p: T => Boolean): Lst[T] = filter(!p(_))
 
-  inline def exists(inline p: T => Boolean): Boolean = {
+  /*inline*/ def exists(/*inline*/ p: T => Boolean): Boolean = {
     def op(x: T) = p(x)
     elems match {
       case null => false
@@ -157,7 +164,7 @@ class Lst[+T](val elems: Any) extends AnyVal {
     }
   }
 
-  inline def forall(inline p: T => Boolean): Boolean = {
+  /*inline*/ def forall(/*inline*/ p: T => Boolean): Boolean = {
     def op(x: T) = p(x)
     elems match {
       case null => true
@@ -170,7 +177,7 @@ class Lst[+T](val elems: Any) extends AnyVal {
     }
   }
 
-  inline def contains[U >: T](x: U): Boolean = elems match {
+  /*inline*/ def contains[U >: T](x: U): Boolean = elems match {
     case null => false
     case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
       var i = 0
@@ -180,7 +187,7 @@ class Lst[+T](val elems: Any) extends AnyVal {
       elem == x
   }
 
-  inline def foldLeft[U](z: U)(inline f: (U, T) => U) = {
+  /*inline*/ def foldLeft[U](z: U)(/*inline*/ f: (U, T) => U) = {
     def op(x: U, y: T) = f(x, y)
     elems match {
       case null => z
@@ -194,7 +201,7 @@ class Lst[+T](val elems: Any) extends AnyVal {
     }
   }
 
-  inline def /: [U](z: U)(inline op: (U, T) => U) = foldLeft(z)(op)
+  /*inline*/ def /: [U](z: U)(/*inline*/ op: (U, T) => U) = foldLeft(z)(op)
 
   def reduceLeft[U >: T](op: (U, U) => U) = elems match {
     case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
@@ -254,6 +261,9 @@ class Lst[+T](val elems: Any) extends AnyVal {
       that.copyToArray(newElems, len1)
       multi[U](newElems)
     }
+
+  def union [U >: T](that: Lst[U]): Lst[U] = this ++ that.filterNot(this.contains)
+  def intersect [U >: T](that: Lst[U]): Lst[U] = this.filter(that.contains)
 
   def zipWith[U, V](that: Lst[U])(op: (T, U) => V): Lst[V] =
     this.elems match {

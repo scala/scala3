@@ -18,7 +18,7 @@ import Denotations._
 import Periods._
 import util.Positions.{Position, NoPosition}
 import util.Stats._
-import util.{DotClass, SimpleIdentitySet}
+import util.{DotClass, SimpleIdentitySet, Lst}
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages.CyclicReferenceInvolving
 import ast.tpd._
@@ -394,20 +394,20 @@ object Types {
 
     /** The least (wrt <:<) set of class symbols of which this type is a subtype
      */
-    final def classSymbols(implicit ctx: Context): List[ClassSymbol] = this match {
+    final def classSymbols(implicit ctx: Context): Lst[ClassSymbol] = this match {
       case tp: ClassInfo =>
-        tp.cls :: Nil
+        Lst(tp.cls)
       case tp: TypeRef =>
         val sym = tp.symbol
-        if (sym.isClass) sym.asClass :: Nil else tp.superType.classSymbols: @tailrec
+        if (sym.isClass) Lst(sym.asClass) else tp.superType.classSymbols: @tailrec
       case tp: TypeProxy =>
         tp.underlying.classSymbols: @tailrec
       case AndType(l, r) =>
-        l.classSymbols union r.classSymbols
+        l.classSymbols `union` r.classSymbols
       case OrType(l, r) =>
-        l.classSymbols intersect r.classSymbols // TODO does not conform to spec
+        l.classSymbols `intersect` r.classSymbols // TODO does not conform to spec
       case _ =>
-        Nil
+        Lst()
     }
 
     /** The term symbol associated with the type */
