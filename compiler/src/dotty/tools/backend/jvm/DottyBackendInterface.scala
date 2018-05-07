@@ -845,8 +845,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       val directlyInheritedTraits = sym.directlyInheritedTraits
       def isRedundant(cls: Symbol) = directlyInheritedTraits.exists(t => (t `ne` cls) && t.derivesFrom(cls))
       val superCalls = superCallsMap.getOrElse(sym, Set.empty)
-      directlyInheritedTraits.filter(t => !isRedundant(t) || superCalls.contains(t)) ++
-        (superCalls.filter(_.is(Flags.Trait)) -- directlyInheritedTraits)
+      directlyInheritedTraits.filter(t => !isRedundant(t) || superCalls.contains(t)).toList ++
+        superCalls.filter(cls => cls.is(Flags.Trait) && !directlyInheritedTraits.contains(cls))
     }
 
     /**

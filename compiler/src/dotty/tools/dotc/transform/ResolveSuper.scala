@@ -74,7 +74,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
           polyDefDef(implementation(meth.asTerm), forwarder(meth))
         }
 
-    val overrides = mixins.flatMap(mixin => superAccessors(mixin) ::: methodOverrides(mixin))
+    val overrides = mixins.toList.flatMap(mixin => superAccessors(mixin) ::: methodOverrides(mixin))
 
     cpy.Template(impl)(body = overrides ::: impl.body)
   }

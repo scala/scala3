@@ -264,13 +264,14 @@ object TypeErasure {
           }
 
           // We are not interested in anything that is not a supertype of tp2
-          val tp2superclasses = tp1.baseClasses.filter(cls2.derivesFrom).toList
+          val tp2superclasses = tp1.baseClasses.filter(cls2.derivesFrom)
 
           // From the spec, "Linearization also satisfies the property that a
           // linearization of a class always contains the linearization of its
-          // direct superclass as a suffix"; it's enought to consider every
+          // direct superclass as a suffix"; it's enough to consider every
           // candidate up to the first class.
-          val candidates = takeUntil(tp2superclasses)(!_.is(Trait))
+          val firstRealClassIdx = tp2superclasses.firstIndexWhere(!_.is(Trait))
+          val candidates = tp2superclasses.take(firstRealClassIdx + 1)
 
           // Candidates st "no other common superclass or trait derives from S"
           val minimums = candidates.filter { cand =>
@@ -278,12 +279,9 @@ object TypeErasure {
           }
 
           // Pick the last minimum to prioritise classes over traits
-          minimums.lastOption match {
-            case Some(lub) if lub != defn.AnyClass && lub != defn.AnyValClass =>
-              lub.typeRef
-            case _ => // Any/AnyVal only exist before erasure
-              defn.ObjectType
-          }
+          val lub = if (minimums.isEmpty) defn.ObjectClass else minimums.last
+          if (lub == defn.AnyClass || lub == defn.AnyValClass) defn.ObjectType
+          else lub.typeRef
       }
   }
 

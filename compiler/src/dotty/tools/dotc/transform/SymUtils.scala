@@ -53,18 +53,18 @@ class SymUtils(val self: Symbol) extends AnyVal {
   import SymUtils._
 
   /** All traits implemented by a class or trait except for those inherited through the superclass. */
-  def directlyInheritedTraits(implicit ctx: Context): List[ClassSymbol] = {
+  def directlyInheritedTraits(implicit ctx: Context): Lst[ClassSymbol] = {
     val superCls = self.asClass.superClass
     val baseClasses = self.asClass.baseClasses
-    if (baseClasses.isEmpty) Nil
-    else baseClasses.slice(1, baseClasses.firstIndexWhere(_ `eq` superCls)).reverse.toList
+    if (baseClasses.isEmpty) Lst()
+    else baseClasses.slice(1, baseClasses.firstIndexWhere(_ `eq` superCls)).reverse
   }
 
   /** All traits implemented by a class, except for those inherited through the superclass.
    *  The empty list if `self` is a trait.
    */
-  def mixins(implicit ctx: Context): List[ClassSymbol] = {
-    if (self is Trait) Nil
+  def mixins(implicit ctx: Context): Lst[ClassSymbol] = {
+    if (self is Trait) Lst()
     else directlyInheritedTraits
   }
 

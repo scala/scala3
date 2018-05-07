@@ -13,7 +13,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   import ast.tpd._
 
   val superCls: Symbol = cls.superClass
-  val mixins: List[ClassSymbol] = cls.mixins
+  val mixins: Lst[ClassSymbol] = cls.mixins
 
   lazy val JUnit4Annotations: List[Symbol] = List("Test", "Ignore", "Before", "After", "BeforeClass", "AfterClass").
     map(n => ctx.getClassIfDefined("org.junit." + n)).

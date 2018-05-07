@@ -189,7 +189,6 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
             case _ =>
               val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
               val doms = dominators(commonBaseClasses)
-              println(i"dominators $tp / $commonBaseClasses = $doms")
               def baseTp(cls: ClassSymbol): Type =
                 tp.baseType(cls).mapReduceOr(identity)(mergeRefinedOrApplied)
               doms.map(baseTp).reduceLeft(AndType.apply)
