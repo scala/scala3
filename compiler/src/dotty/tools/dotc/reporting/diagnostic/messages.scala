@@ -352,7 +352,7 @@ object messages {
       }
 
       val closeMember = closest match {
-        case (n, sym) :: Nil => s""" - did you mean `${s"$siteName.$n"}`?"""
+        case (n, sym) :: Nil => s" - did you mean `$siteName.$n`?"
         case Nil => ""
         case _ => assert(
           false,
