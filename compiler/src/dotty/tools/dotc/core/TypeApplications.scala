@@ -210,9 +210,9 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Is self type bounded by a type lambda or AnyKind? */
   def isLambdaSub(implicit ctx: Context): Boolean = hkResult.exists
 
-  /** Is self type of kind != "*"? */
-  def hasHigherKind(implicit ctx: Context): Boolean =
-    typeParams.nonEmpty || self.isRef(defn.AnyKindClass)
+  /** Is self type of kind "*"? */
+  def hasSimpleKind(implicit ctx: Context): Boolean =
+    typeParams.isEmpty && !self.hasAnyKind
 
   /** If self type is higher-kinded, its result type, otherwise NoType.
    *  Note: The hkResult of an any-kinded type is again AnyKind.
