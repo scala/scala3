@@ -43,26 +43,33 @@ private[repl] class Rendering(compiler: ReplCompiler,
       myClassLoader
     }
 
-  /** Load the value of the symbol using reflection
+  /** Load the value of the symbol using reflection.
    *
    *  Calling this method evaluates the expression using reflection
    */
   private[this] def valueOf(sym: Symbol)(implicit ctx: Context): Option[String] = {
     val defn = ctx.definitions
-    val objectName = sym.owner.fullName.encode.toString.dropRight(1) // gotta drop the '$'
+    val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[_] = Class.forName(objectName, true, classLoader())
-
-    val res =
+    val value =
       resObj
-        .getDeclaredMethods.find(_.getName == sym.name.toString + "Show").get
-        .invoke(null).toString
-
+        .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
+        .map(_.invoke(null))
+    val string = value.map {
+      case null        => "null" // Calling .toString on null => NPE
+      case ""          => "\"\"" // Special cased for empty string, following scalac
+      case a: Array[_] => a.mkString("Array(", ", ", ")")
+      case x           => x.toString
+    }
     if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
       None
-    else if (res.startsWith(str.REPL_SESSION_LINE))
-      Some(res.drop(str.REPL_SESSION_LINE.length).dropWhile(c => c.isDigit || c == '$'))
     else
-      Some(res)
+      string.map { s =>
+        if (s.startsWith(str.REPL_SESSION_LINE))
+          s.drop(str.REPL_SESSION_LINE.length).dropWhile(c => c.isDigit || c == '$')
+        else
+          s
+      }
   }
 
   /** Render method definition result */

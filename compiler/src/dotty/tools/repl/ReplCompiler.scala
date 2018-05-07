@@ -53,7 +53,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
       }
 
       (1 to objectIndex)
-        .foldLeft(addImport("dotty.Show".toTermName)(initCtx)) { (ictx, i) =>
+        .foldLeft(initCtx) { (ictx, i) =>
           addImport(nme.EMPTY_PACKAGE ++ "." ++ objectNames(i))(ictx)
         }
     }
@@ -74,67 +74,22 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
 
     implicit val ctx: Context = state.run.runContext
 
-    def createShow(name: TermName, pos: Position) = {
-      val showName = name ++ "Show"
-      val select = Select(Ident(name), "show".toTermName)
-      val valAsAnyRef = TypeApply(Select(Ident(name), nme.asInstanceOf_),
-                                  List(Ident(tpnme.AnyRef)))
-      val cond = InfixOp(valAsAnyRef,
-                         Ident(nme.EQ),
-                         Literal(Constant(null)))
-      val showWithNullCheck = If(cond, Literal(Constant("null")), select)
-      DefDef(showName, Nil, Nil, TypeTree(), showWithNullCheck).withFlags(Synthetic).withPos(pos)
-    }
-
-    def createPatDefShows(patDef: PatDef) = {
-      def createDeepShows(tree: untpd.Tree) = {
-        class PatFolder extends UntypedDeepFolder[List[DefDef]] (
-          (acc, tree) => tree match {
-            case Ident(name) if name.isVariableName && name != nme.WILDCARD =>
-              createShow(name.toTermName, tree.pos) :: acc
-            case Bind(name, _) if name.isVariableName && name != nme.WILDCARD =>
-              createShow(name.toTermName, tree.pos) :: acc
-            case _ =>
-              acc
-          }
-        )
-        (new PatFolder).apply(Nil, tree).reverse
-      }
-
-      // cannot fold over the whole tree because we need to generate show methods
-      // for top level identifier starting with an uppercase (e.g. val X, Y = 2)
-      patDef.pats.flatMap {
-        case id @ Ident(name) if name != nme.WILDCARD =>
-          List(createShow(name.toTermName, id.pos))
-        case bd @ Bind(name, body) if name != nme.WILDCARD =>
-          createShow(name.toTermName, bd.pos) :: createDeepShows(body)
-        case other =>
-          createDeepShows(other)
-      }
-    }
-
     var valIdx = state.valIndex
 
     val defs = trees.flatMap {
-      case vd: ValDef =>
-        List(vd, createShow(vd.name, vd.pos))
-      case pd: PatDef =>
-        pd :: createPatDefShows(pd)
       case expr @ Assign(id: Ident, rhs) =>
         // special case simple reassignment (e.g. x = 3)
         // in order to print the new value in the REPL
         val assignName = (id.name ++ str.REPL_ASSIGN_SUFFIX).toTermName
         val assign = ValDef(assignName, TypeTree(), id).withPos(expr.pos)
-        val show = createShow(assignName, expr.pos)
-        List(expr, assign, show)
+        List(expr, assign)
       case expr if expr.isTerm =>
         val resName = (str.REPL_RES_PREFIX + valIdx).toTermName
         valIdx += 1
-        val show = createShow(resName, expr.pos)
         val vd = ValDef(resName, TypeTree(), expr).withPos(expr.pos)
-        List(vd, show)
+        vd :: Nil
       case other =>
-        List(other)
+        other :: Nil
     }
 
     Definitions(
@@ -154,7 +109,6 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
    *  package <none> {
    *    object rs$line$nextId {
    *      import rs$line${i <- 0 until nextId}._
-   *      import dotty.Show._
    *
    *      <trees>
    *    }

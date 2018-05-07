@@ -1,0 +1,2 @@
+scala> val a = Array(1, 2, 3)
+val a: Array[Int] = Array(1, 2, 3)
