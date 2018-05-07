@@ -272,14 +272,18 @@ trait TypeAssigner {
   def assignType(tree: untpd.Select, qual: Tree)(implicit ctx: Context): Select = {
     def qualType = qual.tpe.widen
     def arrayElemType = {
-      val JavaArrayType(elemtp) = qualType
-      elemtp
+      qualType match {
+        case JavaArrayType(elemtp) => elemtp
+        case _ =>
+          ctx.error("Array type conflict with " + qual.symbol.name, tree.pos)
+          defn.NothingType
+      }
     }
     val p = nme.primitive
     val tp = tree.name match {
       case p.arrayApply => MethodType(defn.IntType :: Nil, arrayElemType)
       case p.arrayUpdate => MethodType(defn.IntType :: arrayElemType :: Nil, defn.UnitType)
-      case p.arrayLength => MethodType(Nil, defn.IntType)
+      case p.arrayLength => arrayElemType; MethodType(Nil, defn.IntType)
 
       // Note that we do not need to handle calls to Array[T]#clone() specially:
       // The JLS section 10.7 says "The return type of the clone method of an array type
