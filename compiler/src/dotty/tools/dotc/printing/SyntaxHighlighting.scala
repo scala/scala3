@@ -42,18 +42,19 @@ object SyntaxHighlighting {
     'q' :: 'r' :: 's' :: 't' :: 'u' :: 'v' :: 'w' :: 'x' :: 'y' :: 'z' :: Nil
 
   private val typeEnders =
-   '{'  :: '}' :: ')' :: '(' :: '[' :: ']' :: '=' :: ' ' :: ',' :: '.' ::
-   '\n' :: Nil
+   '{'  :: '}' :: ')' :: '(' :: '[' :: ']' :: '=' :: ' ' :: ',' :: '.' :: '|' ::
+   '&' :: '\n' :: Nil
 
   def apply(chars: Iterable[Char]): Iterable[Char] = {
     var prev: Char = 0
     var remaining  = chars.toStream
     val newBuf     = new StringBuilder
-    var lastToken  = ""
+    var lastValDefToken  = ""
 
     @inline def keywordStart =
       prev == 0    || prev == ' ' || prev == '{' || prev == '(' ||
-      prev == '\n' || prev == '[' || prev == ','
+      prev == '\n' || prev == '[' || prev == ',' || prev == ':' ||
+      prev == '|'  || prev == '&'
 
     @inline def numberStart(c: Char) =
       c.isDigit && (!prev.isLetter || prev == '.' || prev == ' ' || prev == '(' || prev == '\u0000')
@@ -289,6 +290,23 @@ object SyntaxHighlighting {
         case _ => false
       }
 
+      val valDefStarterTokens = "var" :: "val" :: "def" :: "case" :: Nil
+
+      /** lastValDefToken is used to check whether we want to show something
+       *  in valDef color or not. There are only a few cases when lastValDefToken
+       *  should be updated, that way we can avoid stopping coloring too early.
+       *  eg.: case A(x, y, z) => ???
+       *  Without this function only x would be colored.
+       */
+      def updateLastToken(currentToken: String): String =
+        (lastValDefToken, currentToken) match {
+          case _ if valDefStarterTokens.contains(currentToken) => currentToken
+          case (("val" | "var"), "=") => currentToken
+          case ("case", ("=>" | "class" | "object")) => currentToken
+          case ("def", _) => currentToken
+          case _ => lastValDefToken
+        }
+
       while (remaining.nonEmpty && !delim(curr)) {
         curr = takeChar()
         if (!delim(curr)) sb += curr
@@ -298,12 +316,12 @@ object SyntaxHighlighting {
       val toAdd  =
         if (shouldHL(str))
           highlight(str)
-        else if (("var" :: "val" :: "def" :: "case" :: Nil).contains(lastToken))
+        else if (valDefStarterTokens.contains(lastValDefToken) && !List("=", "=>").contains(str))
           valDef(str)
         else str
       val suffix = if (delim(curr)) s"$curr" else ""
       newBuf append (toAdd + suffix)
-      lastToken = str
+      lastValDefToken = updateLastToken(str)
       prev = curr
     }
 
