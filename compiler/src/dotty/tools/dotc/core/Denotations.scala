@@ -332,21 +332,8 @@ object Denotations {
     }
 
     /** Handle merge conflict by throwing a `MergeError` exception */
-    private def mergeConflict(tp1: Type, tp2: Type, that: Denotation)(implicit ctx: Context): Type = {
-      def showSymbol(sym: Symbol): String = if (sym.exists) sym.showLocated else "[unknown]"
-      def showType(tp: Type) = tp match {
-        case ClassInfo(_, cls, _, _, _) => cls.showLocated
-        case bounds: TypeBounds => i"type bounds $bounds"
-        case _ => tp.show
-      }
-      val msg =
-        s"""cannot merge
-           |  ${showSymbol(this.symbol)} of type ${showType(tp1)}  and
-           |  ${showSymbol(that.symbol)} of type ${showType(tp2)}
-           """
-      if (true) throw new MergeError(msg, tp1, tp2)
-      else throw new Error(msg) // flip condition for debugging
-    }
+    private def mergeConflict(tp1: Type, tp2: Type, that: Denotation)(implicit ctx: Context): Type =
+      throw new MergeError(this.symbol, that.symbol, tp1, tp2, NoPrefix)
 
     /** Merge parameter names of lambda types. If names in corresponding positions match, keep them,
      *  otherwise generate new synthetic names.
@@ -537,8 +524,7 @@ object Denotations {
                   else if (pre.widen.classSymbol.is(Scala2x) || ctx.scala2Mode)
                     info1 // follow Scala2 linearization -
                   // compare with way merge is performed in SymDenotation#computeMembersNamed
-                  else
-                    throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}", ex.tp1, ex.tp2)
+                  else throw new MergeError(ex.sym1, ex.sym2, ex.tp1, ex.tp2, pre)
               }
             new JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor)
           }
@@ -1136,21 +1122,15 @@ object Denotations {
   def doubleDefError(denot1: Denotation, denot2: Denotation, pre: Type = NoPrefix)(implicit ctx: Context): Nothing = {
     val sym1 = denot1.symbol
     val sym2 = denot2.symbol
-    def fromWhere = if (pre == NoPrefix) "" else i"\nwhen seen as members of $pre"
-    val msg =
-      if (denot1.isTerm)
-        i"""cannot merge
-           |  $sym1: ${sym1.info}  and
-           |  $sym2: ${sym2.info};
-           |they are both defined in ${sym1.owner} but have matching signatures
-           |  ${denot1.info} and
-           |  ${denot2.info}$fromWhere"""
-      else
-        i"""cannot merge
-           |  $sym1 ${denot1.info}
-           |  $sym2 ${denot2.info}
-           |they are conflicting definitions$fromWhere"""
-    throw new MergeError(msg, denot2.info, denot2.info)
+    if (denot1.isTerm)
+      throw new MergeError(sym1, sym2, sym1.info, sym2.info, pre) {
+        override def addendum(implicit ctx: Context) =
+          i"""
+             |they are both defined in ${sym1.owner} but have matching signatures
+             |  ${denot1.info} and
+             |  ${denot2.info}${super.addendum}"""
+        }
+    else throw new MergeError(sym1, sym2, denot1.info, denot2.info, pre)
   }
 
   // --- Overloaded denotations and predenotations -------------------------------------------------

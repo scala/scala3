@@ -1544,6 +1544,8 @@ class Typer extends Namer
           cls, isRequired, cdef.pos)
       }
 
+      checkNonCyclicInherited(cls.thisType, cls.classParents, cls.info.decls, cdef.pos)
+
       // check value class constraints
       checkDerivedValueClass(cls, body1)
 
@@ -1855,8 +1857,7 @@ class Typer extends Namer
       assertPositioned(tree)
       try adapt(typedUnadapted(tree, pt, locked), pt, locked)
       catch {
-        case ex: CyclicReference => errorTree(tree, cyclicErrorMsg(ex))
-        case ex: TypeError => errorTree(tree, ex.getMessage)
+        case ex: TypeError => errorTree(tree, ex.toMessage)
       }
     }
 

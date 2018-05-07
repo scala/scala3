@@ -20,7 +20,6 @@ import util.Positions.{Position, NoPosition}
 import util.Stats._
 import util.{DotClass, SimpleIdentitySet}
 import reporting.diagnostic.Message
-import reporting.diagnostic.messages.CyclicReferenceInvolving
 import ast.tpd._
 import ast.TreeTypeMap
 import printing.Texts._
@@ -32,10 +31,9 @@ import Uniques._
 import collection.{mutable, Seq}
 import config.Config
 import annotation.tailrec
-import Flags.FlagSet
 import language.implicitConversions
 import scala.util.hashing.{ MurmurHash3 => hashing }
-import config.Printers.{core, typr, cyclicErrors}
+import config.Printers.{core, typr}
 import java.lang.ref.WeakReference
 
 object Types {
@@ -665,19 +663,22 @@ object Types {
       }
 
       val recCount = ctx.findMemberCount
-      if (recCount >= Config.LogPendingFindMemberThreshold) {
-        if (ctx.property(TypeOps.findMemberLimit).isDefined &&
-            ctx.findMemberCount > Config.PendingFindMemberLimit)
-          return NoDenotation
+      if (recCount >= Config.LogPendingFindMemberThreshold)
         ctx.pendingMemberSearches = name :: ctx.pendingMemberSearches
-      }
       ctx.findMemberCount = recCount + 1
-      //assert(ctx.findMemberCount < 20)
       try go(this)
       catch {
         case ex: Throwable =>
-          core.println(i"findMember exception for $this member $name, pre = $pre")
-          throw ex // DEBUG
+          core.println(s"findMember exception for $this member $name, pre = $pre, recCount = $recCount")
+
+          def showPrefixSafely(pre: Type)(implicit ctx: Context): String = pre.stripTypeVar match {
+            case pre: TermRef => i"${pre.termSymbol.name}."
+            case pre: TypeRef => i"${pre.typeSymbol.name}#"
+            case pre: TypeProxy => showPrefixSafely(pre.underlying)
+            case _ => if (pre.typeSymbol.exists) i"${pre.typeSymbol.name}#" else "."
+          }
+
+          handleRecursive("find-member", i"${showPrefixSafely(pre)}$name", ex)
       }
       finally {
         if (recCount >= Config.LogPendingFindMemberThreshold)
@@ -4552,45 +4553,6 @@ object Types {
      */
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = true
   }
-
-  // ----- Exceptions -------------------------------------------------------------
-
-  class TypeError(msg: String) extends Exception(msg)
-
-  class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name])
-    extends TypeError(
-      s"malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}")
-
-  class MissingType(pre: Type, name: Name)(implicit ctx: Context) extends TypeError(
-    i"""cannot resolve reference to type $pre.$name
-       |the classfile defining the type might be missing from the classpath${otherReason(pre)}""") {
-    if (ctx.debug) printStackTrace()
-  }
-
-  private def otherReason(pre: Type)(implicit ctx: Context): String = pre match {
-    case pre: ThisType if pre.cls.givenSelfType.exists =>
-      i"\nor the self type of $pre might not contain all transitive dependencies"
-    case _ => ""
-  }
-
-  class CyclicReference private (val denot: SymDenotation)
-    extends TypeError(s"cyclic reference involving $denot") {
-    def toMessage(implicit ctx: Context) = CyclicReferenceInvolving(denot)
-  }
-
-  object CyclicReference {
-    def apply(denot: SymDenotation)(implicit ctx: Context): CyclicReference = {
-      val ex = new CyclicReference(denot)
-      if (!(ctx.mode is Mode.CheckCyclic)) {
-        cyclicErrors.println(ex.getMessage)
-        for (elem <- ex.getStackTrace take 200)
-          cyclicErrors.println(elem.toString)
-      }
-      ex
-    }
-  }
-
-  class MergeError(msg: String, val tp1: Type, val tp2: Type) extends TypeError(msg)
 
   // ----- Debug ---------------------------------------------------------
 
