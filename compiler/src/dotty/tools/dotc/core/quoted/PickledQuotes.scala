@@ -152,9 +152,7 @@ object PickledQuotes {
           treeMap = tree => if (tree.symbol == paramSym) x1Ref().withPos(tree.pos) else tree
         ).transform(ddef.rhs)
       case Block(stats, expr) =>
-        val applied = rec(expr)
-        if (stats.isEmpty) applied
-        else Block(stats, applied)
+        seq(stats, rec(expr))
       case Inlined(call, bindings, expansion) =>
         Inlined(call, bindings, rec(expansion))
       case _ =>
