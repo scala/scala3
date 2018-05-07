@@ -29,18 +29,19 @@ class InterceptedMethods extends MiniPhase {
   override def phaseName: String = InterceptedMethods.name
 
   // this should be removed if we have guarantee that ## will get Apply node
-  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): Tree = {
-    if (tree.symbol.isTerm && (defn.Any_## eq tree.symbol.asTerm)) {
-      val rewrite = poundPoundValue(tree.qualifier)
-      ctx.log(s"$phaseName rewrote $tree to $rewrite")
-      rewrite
-    }
-    else tree
-  }
+  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): Tree =
+    transformRefTree(tree)
 
-  override def transformIdent(tree: tpd.Ident)(implicit ctx: Context): Tree = {
-    if (tree.symbol.isTerm && (defn.Any_## eq tree.symbol.asTerm)) {
-      val rewrite = poundPoundValue(tpd.desugarIdentPrefix(tree))
+  override def transformIdent(tree: tpd.Ident)(implicit ctx: Context): Tree =
+    transformRefTree(tree)
+
+  private def transformRefTree(tree: RefTree)(implicit ctx: Context): Tree = {
+    if (tree.symbol.isTerm && (defn.Any_## eq tree.symbol)) {
+      val qual = tree match {
+        case id: Ident => tpd.desugarIdentPrefix(id)
+        case sel: Select => sel.qualifier
+      }
+      val rewrite = poundPoundValue(qual)
       ctx.log(s"$phaseName rewrote $tree to $rewrite")
       rewrite
     }
