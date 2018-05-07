@@ -40,8 +40,7 @@ class InterceptedMethods extends MiniPhase {
 
   override def transformIdent(tree: tpd.Ident)(implicit ctx: Context): Tree = {
     if (tree.symbol.isTerm && (defn.Any_## eq tree.symbol.asTerm)) {
-      val cls = ctx.owner.ownersIterator.find(_.isClass).get.asClass
-      val rewrite = poundPoundValue(This(cls))
+      val rewrite = poundPoundValue(tpd.desugarIdentPrefix(tree))
       ctx.log(s"$phaseName rewrote $tree to $rewrite")
       rewrite
     }
