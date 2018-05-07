@@ -3,7 +3,6 @@ package transform
 
 import java.io.{PrintWriter, StringWriter}
 import java.lang.reflect.Method
-import java.net.URLClassLoader
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
@@ -14,6 +13,7 @@ import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.util.Sandbox
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.Positions.Position
@@ -73,8 +73,11 @@ object Splicer {
   }
 
   private def evaluateLambda(lambda: Seq[Any] => Object, args: Seq[Any], pos: Position)(implicit ctx: Context): Option[scala.quoted.Expr[Nothing]] = {
-    try Some(lambda(args).asInstanceOf[scala.quoted.Expr[Nothing]])
-    catch {
+    try {
+      val timeout = ctx.settings.macroTimeout.value
+      val res = Sandbox.runInSecuredThread(timeout)(lambda(args))
+      Some(res.asInstanceOf[scala.quoted.Expr[Nothing]])
+    } catch {
       case ex: scala.quoted.QuoteError =>
         ctx.error(ex.getMessage, pos)
         None

@@ -46,6 +46,9 @@ class ScalaSettings extends Settings.SettingGroup {
   val silentWarnings = BooleanSetting("-nowarn", "Silence all warnings.")
   val fromTasty = BooleanSetting("-from-tasty", "Compile classes from tasty in classpath. The arguments are used as class names.")
 
+  /** Macro settings */
+  val macroTimeout = IntSetting("-macro-timeout", "Timeout for the evaluation of a macro in ms", 1000, 1 to Int.MaxValue)
+
   /** Decompiler settings */
   val printTasty = BooleanSetting("-print-tasty", "Prints the raw tasty when decompiling.")
   val printLines = BooleanSetting("-print-lines", "Show source code line numbers.")
