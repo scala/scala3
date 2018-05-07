@@ -264,7 +264,7 @@ object TypeErasure {
           }
 
           // We are not interested in anything that is not a supertype of tp2
-          val tp2superclasses = tp1.baseClasses.filter(cls2.derivesFrom)
+          val tp2superclasses = tp1.baseClasses.filter(cls2.derivesFrom).toList
 
           // From the spec, "Linearization also satisfies the property that a
           // linearization of a class always contains the linearization of its

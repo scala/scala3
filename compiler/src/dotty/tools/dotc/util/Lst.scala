@@ -239,6 +239,8 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
   /*inline*/ def /: [U](z: U)(/*inline*/ op: (U, T) => U) = foldLeft(z)(op)
 
   def reduceLeft[U >: T](op: (U, U) => U) = elems match {
+    case null =>
+      throw new UnsupportedOperationException("Lst.Empty.reduceLeft")
     case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
       var i = 1
       var acc: U = elem(0)
@@ -515,6 +517,8 @@ object Lst {
         System.arraycopy(elems, 0, newElems, 0, len)
         elems = newElems
       }
+
+    def isEmpty = size == 0
 
     def += (x: T): this.type = {
       if (len == 0) elem = x

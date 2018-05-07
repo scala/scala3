@@ -14,7 +14,7 @@ import reflect.ClassTag
  *    and the element is not an array:   the element itself
  *    Otherwise:                         an Array[Any] containing the elements
  */
-class Lst[+T](val elems: Any) extends AnyVal {
+class Lst[+T](val elems: Any) extends AnyVal { self =>
   import Lst._
 
   def length: Int = elems match {
@@ -33,6 +33,17 @@ class Lst[+T](val elems: Any) extends AnyVal {
       case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
         var i = 0
         while (i < elems.length) { sharedOp(elem(i)); i += 1 }
+      case elem: T @ unchecked => sharedOp(elem)
+    }
+  }
+
+  /*inline*/ def foreachReversed(/*inline*/ op: T => Unit): Unit = {
+    def sharedOp(x: T) = op(x)
+    elems match {
+      case null =>
+      case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
+        var i = elems.length
+        while (i > 0) { i -= 1; sharedOp(elem(i)) }
       case elem: T @ unchecked => sharedOp(elem)
     }
   }
@@ -64,6 +75,28 @@ class Lst[+T](val elems: Any) extends AnyVal {
     val result = new Array[U](length)
     copyToArray(result, 0)
     result
+  }
+
+  def toSet[U >: T]: collection.immutable.Set[U] = {
+    var xs = Set[U]()
+    foreach(xs += _)
+    xs
+  }
+
+  def toList: List[T] = {
+    val buf = new collection.mutable.ListBuffer[T]
+    foreach(buf += _)
+    buf.toList
+  }
+
+  def toListReversed: List[T] = {
+    var result: List[T] = Nil
+    foreach(x => result = x :: result)
+    result
+  }
+
+  def toIterable: Iterable[T] = new Iterable[T] {
+    def iterator = self.iterator()
   }
 
   /** `f` is pulled out, not duplicated */
@@ -99,6 +132,8 @@ class Lst[+T](val elems: Any) extends AnyVal {
       if (newElems == null) this.asInstanceOf[Lst[U]] else multi[U](newElems)
     case elem: T @ unchecked => single[U](f(elem))
   }
+
+  def flatMapIterable[U](f: T => Iterable[U]): Lst[U] = flatMap(f.andThen(fromIterable))
 
   def flatMap[U](f: T => Lst[U]): Lst[U] = elems match {
     case null => Empty
@@ -243,29 +278,34 @@ class Lst[+T](val elems: Any) extends AnyVal {
     else elems match {
       case null => this
       case elems: Arr => _fromArray(elems, start, end `min` elems.length)
-      case elem: T @ unchecked => if (end == 0) Empty else this
+      case elem: T @ unchecked => if (start == 0 && end > 0) this else Empty
     }
 
   def drop(n: Int): Lst[T] = slice(n, length)
   def tail = drop(1)
   def take(n: Int): Lst[T] = slice(0, n)
 
-  def firstIndexOf(x: T): Int = elems match {
+  def firstIndexOf[U >: T](x: U, from: Int = 0): Int = elems match {
     case null => 0
     case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      var i = 0
+      var i = from
       while (i < length && elem(i) != x) i += 1
       i
-    case elem: T @ unchecked => if (elem == x) 0 else 1
+    case elem: T @ unchecked => if (from == 0 && elem == x) 0 else 1
   }
 
-  def firstIndexWhere(p: T => Boolean): Int = elems match {
+  def firstIndexWhere(p: T => Boolean, from: Int = 0): Int = elems match {
     case null => 0
     case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      var i = 0
+      var i = from
       while (i < length && !p(elem(i))) i += 1
       i
-    case elem: T @ unchecked => if (p(elem)) 0 else 1
+    case elem: T @ unchecked => if (from == 0 && p(elem)) 0 else 1
+  }
+
+  def find(p: T => Boolean): Option[T] = {
+    val idx = firstIndexWhere(p)
+    if (idx < length) Some(apply(idx)) else None
   }
 
   def takeWhile(p: T => Boolean): Lst[T] = take(firstIndexWhere(!p(_)))
@@ -558,4 +598,16 @@ object Lst {
 
   def fromArray[T](elems: Array[T], start: Int, end: Int): Lst[T] =
     _fromArray(elems.asInstanceOf[Arr], start, end)
+
+  def fromIterator[T](it: Iterator[T]): Lst[T] = {
+    val buf = new Buffer[T]
+    it.foreach(buf += _)
+    buf.toLst
+  }
+
+  def fromIterable[T](xs: Iterable[T]): Lst[T] = fromIterator(xs.iterator)
+
+  implicit class LstDeco[T](val xs: Iterable[T]) extends AnyVal {
+    def toLst: Lst[T] = fromIterable(xs)
+  }
 }

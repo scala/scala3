@@ -10,6 +10,7 @@ import StdNames._
 import Annotations._
 import collection.mutable
 import ast.tpd._
+import util.Lst
 
 /** Realizability status */
 object CheckRealizable {
@@ -142,7 +143,7 @@ class CheckRealizable(implicit ctx: Context) {
         }
     }
     val baseProblems =
-      tp.baseClasses.map(_.baseTypeOf(tp)).flatMap(baseTypeProblems)
+      tp.baseClasses.map(_.baseTypeOf(tp)).flatMap(x => Lst.fromIterable(baseTypeProblems(x)))
 
     ((((Realizable: Realizability)
       /: memberProblems)(_ andAlso _)

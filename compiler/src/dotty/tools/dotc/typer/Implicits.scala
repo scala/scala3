@@ -1175,8 +1175,9 @@ class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
     else {
       val size = typeSize(proto)
       val csyms = proto.classSymbols
-      def updateMap(idx: Int, seen: Map[ClassSymbol, Int]): SearchHistory =
-        if (idx < csyms.length) {
+      def updateMap(idx: Int, seen: Map[ClassSymbol, Int]): SearchHistory = {
+        val len = csyms.length
+        if (idx < len) {
           val csym = csyms(idx)
           seen.get(csym) match {
             // proto complexity is >= than the last time it was seen → diverge
@@ -1186,6 +1187,7 @@ class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
         }
         else
           new SearchHistory(searchDepth + 1, seen)
+      }
       if (csyms.isEmpty) this else updateMap(0, seen)
     }
   }

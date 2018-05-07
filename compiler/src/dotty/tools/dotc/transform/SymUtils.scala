@@ -13,6 +13,7 @@ import NameOps._
 import NameKinds._
 import Flags._
 import Annotations._
+import util.Lst
 
 import language.implicitConversions
 import scala.annotation.tailrec
@@ -20,6 +21,29 @@ import scala.annotation.tailrec
 object SymUtils {
   implicit def decorateSymbol(sym: Symbol): SymUtils = new SymUtils(sym)
   implicit def decorateSymDenot(d: SymDenotation): SymUtils = new SymUtils(d.symbol)
+
+  /** The minimal subsequence of classes in `cs` such that every other class in `cs` is a superclass
+   *  of a class in the dominator.
+   *  @pre earlier classes in `cs` can derive from later ones, but not vice versa.
+   */
+  def dominators(cs: Lst[ClassSymbol])(implicit ctx: Context): Lst[ClassSymbol] = {
+    val buf = new Lst.Buffer[ClassSymbol]
+    val len = cs.length
+    var i = 0
+    while (i < len) {
+      val c = cs(i)
+      if (!buf.exists(_.derivesFrom(c))) buf += c
+      val bcs = c.baseClasses
+      val delta = i
+      i += 1
+      while (i < cs.length && i - delta < bcs.length && cs(i) == bcs(i - delta)) i += 1
+    }
+    if (buf.isEmpty) { // this case can happen because after erasure we do not have a top class anymore
+      assert(ctx.erasedTypes || ctx.reporter.errorsReported)
+      buf += defn.ObjectClass
+    }
+    buf.toLst
+  }
 }
 
 /** A decorator that provides methods on symbols
@@ -33,7 +57,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
     val superCls = self.asClass.superClass
     val baseClasses = self.asClass.baseClasses
     if (baseClasses.isEmpty) Nil
-    else baseClasses.tail.takeWhile(_ ne superCls).reverse
+    else baseClasses.slice(1, baseClasses.firstIndexWhere(_ `eq` superCls)).reverse.toList
   }
 
   /** All traits implemented by a class, except for those inherited through the superclass.

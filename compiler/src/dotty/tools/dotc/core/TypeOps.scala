@@ -13,7 +13,8 @@ import StdNames._
 import Annotations._
 import annotation.tailrec
 import config.Config
-import util.Property
+import util.{Property, Lst}
+import transform.SymUtils.dominators
 import collection.mutable
 import ast.tpd._
 import reporting.trace
@@ -128,20 +129,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   def orDominator(tp: Type): Type = {
 
     /** a faster version of cs1 intersect cs2 */
-    def intersect(cs1: List[ClassSymbol], cs2: List[ClassSymbol]): List[ClassSymbol] = {
+    def intersect(cs1: Lst[ClassSymbol], cs2: Lst[ClassSymbol]): Lst[ClassSymbol] = {
       val cs2AsSet = new util.HashSet[ClassSymbol](128)
       cs2.foreach(cs2AsSet.addEntry)
       cs1.filter(cs2AsSet.contains)
-    }
-
-    /** The minimal set of classes in `cs` which derive all other classes in `cs` */
-    def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = (cs: @unchecked) match {
-      case c :: rest =>
-        val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
-        if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
-      case Nil => // this case can happen because after erasure we do not have a top class anymore
-        assert(ctx.erasedTypes || ctx.reporter.errorsReported)
-        defn.ObjectClass :: Nil
     }
 
     def mergeRefinedOrApplied(tp1: Type, tp2: Type): Type = {
@@ -197,7 +188,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
               err
             case _ =>
               val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
-              val doms = dominators(commonBaseClasses, Nil)
+              val doms = dominators(commonBaseClasses)
+              println(i"dominators $tp / $commonBaseClasses = $doms")
               def baseTp(cls: ClassSymbol): Type =
                 tp.baseType(cls).mapReduceOr(identity)(mergeRefinedOrApplied)
               doms.map(baseTp).reduceLeft(AndType.apply)
