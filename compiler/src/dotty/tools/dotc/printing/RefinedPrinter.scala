@@ -640,7 +640,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val tparamsTxt = withEnclosingDef(constr) { tparamsText(tparams) }
     val primaryConstrs = if (constr.rhs.isEmpty) Nil else constr :: Nil
     val prefix: Text =
-      if (constr.symbol.owner.is(Module)) " "
+      if (constr.symbol.owner.is(Module)) ""
       else if (vparamss.isEmpty || primaryConstrs.nonEmpty) tparamsTxt
       else {
         var modsText = modText(constr.mods, "")
@@ -661,7 +661,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       params ::: rest
     } else impl.body
 
-    val bodyText = "{" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
+    val bodyText =
+      (if (constr.symbol.owner.is(Module)) " {" else "{") ~~
+      selfText ~~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
 
     prefix ~ (keywordText(" extends") provided (!ofNew && parents.nonEmpty)) ~~ parentsText ~~ bodyText
   }
