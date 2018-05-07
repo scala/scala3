@@ -7,6 +7,8 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.quoted.PickledQuotes
+import dotty.tools.dotc.reporting.Reporter
+import dotty.tools.dotc.reporting.diagnostic.MessageContainer
 import dotty.tools.dotc.util.SourcePosition
 
 import scala.quoted
@@ -228,9 +230,40 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Term = tpd.Tree
 
-  def TermDeco(t: Term): AbstractTerm = new AbstractTerm {
-    def pos(implicit ctx: Context): Position = t.pos
-    def tpe(implicit ctx: Context): Types.Type = t.tpe
+  def TermDeco(tree: Term): AbstractTerm = new AbstractTerm {
+
+    def pos(implicit ctx: Context): Position = tree.pos
+
+    def tpe(implicit ctx: Context): Types.Type = tree.tpe
+
+    def toExpr[T: quoted.Type](implicit ctx: Context): quoted.Expr[T] = {
+      typecheck(ctx)
+      new quoted.Exprs.TastyTreeExpr(tree).asInstanceOf[quoted.Expr[T]]
+    }
+
+    private def typecheck[T: quoted.Type](ctx: Contexts.Context): Unit = {
+      implicit val ctx0: Contexts.FreshContext = ctx.fresh
+      ctx0.setTyperState(ctx0.typerState.fresh())
+      ctx0.typerState.setReporter(new Reporter {
+        def doReport(m: MessageContainer)(implicit ctx: Contexts.Context): Unit = ()
+      })
+      val tp = QuotedTypeDeco(implicitly[quoted.Type[T]]).toTasty
+      ctx0.typer.typed(tree, tp.tpe)
+      if (ctx0.reporter.hasErrors) {
+        val stack = new Exception().getStackTrace
+        def filter(elem: StackTraceElement) =
+          elem.getClassName.startsWith("dotty.tools.dotc.tasty.TastyImpl") ||
+          !elem.getClassName.startsWith("dotty.tools.dotc")
+        throw new scala.tasty.TastyTypecheckError(
+          s"""Error during tasty reflection while typing term
+             |term: ${tree.show}
+             |with expected type: ${tp.tpe.show}
+             |
+             |  ${stack.takeWhile(filter).mkString("\n  ")}
+           """.stripMargin
+        )
+      }
+    }
   }
 
   def termClassTag: ClassTag[Term] = implicitly[ClassTag[Term]]
