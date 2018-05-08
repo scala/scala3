@@ -1481,7 +1481,13 @@ class Typer extends Namer
     val seenParents = mutable.Set[Symbol]()
 
     def typedParent(tree: untpd.Tree): Tree = {
-      var result = if (tree.isType) typedType(tree)(superCtx) else typedExpr(tree)(superCtx)
+      @tailrec
+      def isTreeType(t: untpd.Tree): Boolean = t match {
+        case _: untpd.Function => true
+        case untpd.Parens(t1) => isTreeType(t1)
+        case _ => tree.isType
+      }
+      var result = if (isTreeType(tree)) typedType(tree)(superCtx) else typedExpr(tree)(superCtx)
       val psym = result.tpe.typeSymbol
       if (seenParents.contains(psym)) ctx.error(i"$psym is extended twice", tree.pos)
       seenParents += psym
