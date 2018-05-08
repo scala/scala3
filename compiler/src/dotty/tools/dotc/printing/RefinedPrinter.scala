@@ -640,8 +640,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val tparamsTxt = withEnclosingDef(constr) { tparamsText(tparams) }
     val primaryConstrs = if (constr.rhs.isEmpty) Nil else constr :: Nil
     val prefix: Text =
-      if (constr.symbol.owner.is(Module)) ""
-      else if (vparamss.isEmpty || primaryConstrs.nonEmpty) tparamsTxt
+      if (vparamss.isEmpty || primaryConstrs.nonEmpty) tparamsTxt
       else {
         var modsText = modText(constr.mods, "")
         if (!modsText.isEmpty) modsText = " " ~ modsText
@@ -649,7 +648,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         withEnclosingDef(constr) { addVparamssText(tparamsTxt ~~ modsText, vparamss) }
       }
     val parentsText = Text(parents map constrText, keywordStr(" with "))
-    val selfText = selfToText(impl)
+    val selfText = {
+      val selfName = if (self.name == nme.WILDCARD) keywordStr("this") else self.name.toString
+      (selfName ~ optText(self.tpt)(": " ~ _) ~ " =>").close
+    }.provided(!self.isEmpty)
     val body = if (ctx.settings.YtestPickler.value) {
       // Pickling/unpickling reorders the body members, so we need to homogenize
       val (params, rest) = impl.body partition {
@@ -661,17 +663,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       params ::: rest
     } else impl.body
 
-    val bodyText =
-      (if (constr.symbol.owner.is(Module)) " {" else "{") ~~
-      selfText ~~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
+    val bodyText = " {" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
 
-    prefix ~ (keywordText(" extends") provided (!ofNew && parents.nonEmpty)) ~~ parentsText ~~ bodyText
-  }
-
-  protected def selfToText(impl: Template): Text = {
-    val self = impl.self
-    val selfName = if (self.name == nme.WILDCARD) keywordStr("this") else self.name.toString
-    (selfName ~ optText(self.tpt)(": " ~ _) ~ " =>").close provided (!self.isEmpty)
+    prefix ~ keywordText(" extends").provided(!ofNew && parents.nonEmpty) ~~ parentsText ~ bodyText
   }
 
   protected def templateText(tree: TypeDef, impl: Template): Text = {
