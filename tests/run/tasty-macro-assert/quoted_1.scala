@@ -38,8 +38,9 @@ object Asserts {
     tree match {
       case Apply(Select(OpsTree(left), op, _), right :: Nil) =>
         // FIXME splice the threes directly
-        val lExpr = TastyPrinter.stringOfTree(tasty)(left).toExpr
-        val rExpr = TastyPrinter.stringOfTree(tasty)(right).toExpr
+        val printer = new TastyPrinter(tasty)
+        val lExpr = printer.stringOfTree(left).toExpr
+        val rExpr = printer.stringOfTree(right).toExpr
         op match {
           case "===" => '(assertEquals(~lExpr, ~rExpr))
           case "!==" => '(assertNotEquals(~lExpr, ~rExpr))
