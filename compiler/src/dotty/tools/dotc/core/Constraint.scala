@@ -135,8 +135,13 @@ abstract class Constraint extends Showable {
    */
   def uninstVars: collection.Seq[TypeVar]
 
-  /** The weakest constraint that subsumes both this constraint and `other` */
-  def & (other: Constraint)(implicit ctx: Context): Constraint
+  /** The weakest constraint that subsumes both this constraint and `other`.
+   *
+   *  @param otherHasErrors    If true, handle incompatible constraints by
+   *                           returning an approximate constraint, instead of
+   *                           failing with an exception
+   */
+  def & (other: Constraint, otherHasErrors: Boolean)(implicit ctx: Context): Constraint
 
   /** Check that no constrained parameter contains itself as a bound */
   def checkNonCyclic()(implicit ctx: Context): Unit
