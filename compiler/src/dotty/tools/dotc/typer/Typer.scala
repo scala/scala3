@@ -801,8 +801,7 @@ class Typer extends Namer
   }
 
   def typedFunctionValue(tree: untpd.Function, pt: Type)(implicit ctx: Context) = {
-    val untpd.Function(params0, body) = tree
-    val params: List[untpd.ValDef] = params0 collect { case t : untpd.ValDef => t }
+    val untpd.Function(params: List[untpd.ValDef] @unchecked, body) = tree
 
     pt match {
       case pt: TypeVar if untpd.isFunctionWithUnknownParamType(tree) =>
@@ -1482,7 +1481,13 @@ class Typer extends Namer
     val seenParents = mutable.Set[Symbol]()
 
     def typedParent(tree: untpd.Tree): Tree = {
-      var result = if (tree.isType) typedType(tree)(superCtx) else typedExpr(tree)(superCtx)
+      @tailrec
+      def isTreeType(t: untpd.Tree): Boolean = t match {
+        case _: untpd.Function => true
+        case untpd.Parens(t1) => isTreeType(t1)
+        case _ => tree.isType
+      }
+      var result = if (isTreeType(tree)) typedType(tree)(superCtx) else typedExpr(tree)(superCtx)
       val psym = result.tpe.typeSymbol
       if (seenParents.contains(psym)) ctx.error(i"$psym is extended twice", tree.pos)
       seenParents += psym
