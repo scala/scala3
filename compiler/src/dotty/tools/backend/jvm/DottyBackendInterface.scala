@@ -650,231 +650,234 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def mangledString: String = n.mangledString
   }
 
-  implicit def symHelper(sym: Symbol): SymbolHelper = new SymbolHelper {
-    // names
-    def fullName(sep: Char): String = sym.showFullName
-    def fullName: String = sym.showFullName
-    def simpleName: Name = sym.name
-    def javaSimpleName: String = toDenot(sym).name.mangledString // addModuleSuffix(simpleName.dropLocal)
-    def javaBinaryName: String = javaClassName.replace('.', '/') // TODO: can we make this a string? addModuleSuffix(fullNameInternal('/'))
-    def javaClassName: String = toDenot(sym).fullName.mangledString // addModuleSuffix(fullNameInternal('.')).toString
-    def name: Name = sym.name
-    def rawname: String = {
-      val original = toDenot(sym).initial
-      sym.name(ctx.withPhase(original.validFor.phaseId)).mangledString
-    }
-
-    // types
-    def info: Type = toDenot(sym).info
-    def tpe: Type = toDenot(sym).info // todo whats the differentce between tpe and info?
-    def thisType: Type = toDenot(sym).thisType
-
-    // tests
-    def isClass: Boolean = {
-      sym.isPackageObject || (sym.isClass)
-    }
-    def isType: Boolean = sym.isType
-    def isAnonymousClass: Boolean = toDenot(sym).isAnonymousClass
-    def isConstructor: Boolean = toDenot(sym).isConstructor
-    def isExpanded: Boolean = sym.name.is(ExpandedName)
-    def isAnonymousFunction: Boolean = toDenot(sym).isAnonymousFunction
-    def isMethod: Boolean = sym is Flags.Method
-    def isPublic: Boolean =  sym.flags.is(Flags.EmptyFlags, Flags.Private | Flags.Protected)
-    def isSynthetic: Boolean = sym is Flags.Synthetic
-    def isPackageClass: Boolean = sym is Flags.PackageClass
-    def isModuleClass: Boolean = sym is Flags.ModuleClass
-    def isModule: Boolean = sym is Flags.Module
-    def isStrictFP: Boolean = false // todo: implement
-    def isLabel: Boolean = sym is Flags.Label
-    def hasPackageFlag: Boolean = sym is Flags.Package
-    def isImplClass: Boolean = sym is Flags.ImplClass
-    def isInterface: Boolean = (sym is Flags.PureInterface) || (sym is Flags.Trait)
-    def isGetter: Boolean = toDenot(sym).isGetter
-    def isSetter: Boolean = toDenot(sym).isSetter
-    def isGetClass: Boolean = sym eq defn.Any_getClass
-    def isJavaDefined: Boolean = sym is Flags.JavaDefined
-    def isJavaDefaultMethod: Boolean = !((sym is Flags.Deferred)  || toDenot(sym).isClassConstructor)
-    def isDeferred: Boolean = sym is Flags.Deferred
-    def isPrivate: Boolean = sym is Flags.Private
-    def getsJavaFinalFlag: Boolean =
-      isFinal &&  !toDenot(sym).isClassConstructor && !(sym is Flags.Mutable) &&  !(sym.enclosingClass is Flags.Trait)
-
-    def getsJavaPrivateFlag: Boolean =
-      isPrivate //|| (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
-
-    def isFinal: Boolean = sym is Flags.Final
-    def isStaticMember: Boolean = (sym ne NoSymbol) &&
-      ((sym is Flags.JavaStatic) || (owner is Flags.ImplClass) || toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot))
-      // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
-
-    def isBottomClass: Boolean = (sym ne defn.NullClass) && (sym ne defn.NothingClass)
-    def isBridge: Boolean = sym is Flags.Bridge
-    def isArtifact: Boolean = sym is Flags.Artifact
-    def hasEnumFlag: Boolean = sym is Flags.Enum
-    def hasAccessBoundary: Boolean = sym.accessBoundary(defn.RootClass) ne defn.RootClass
-    def isVarargsMethod: Boolean = sym is Flags.JavaVarargs
-    def isDeprecated: Boolean = false
-    def isMutable: Boolean = sym is Flags.Mutable
-    def hasAbstractFlag: Boolean =
-      (sym is Flags.Abstract) || (sym is Flags.JavaInterface) || (sym is Flags.Trait)
-    def hasModuleFlag: Boolean = sym is Flags.Module
-    def isSynchronized: Boolean = sym is Flags.Synchronized
-    def isNonBottomSubClass(other: Symbol): Boolean = sym.derivesFrom(other)
-    def hasAnnotation(ann: Symbol): Boolean = toDenot(sym).hasAnnotation(ann)
-    def shouldEmitForwarders: Boolean =
-      (sym is Flags.Module) && !(sym is Flags.ImplClass) && sym.isStatic
-    def isJavaEntryPoint: Boolean = CollectEntryPoints.isJavaEntryPoint(sym)
-
-    def isClassConstructor: Boolean = toDenot(sym).isClassConstructor
-
-    /**
-     * True for module classes of modules that are top-level or owned only by objects. Module classes
-     * for such objects will get a MODULE$ flag and a corresponding static initializer.
-     */
-    def isStaticModuleClass: Boolean =
-      (sym is Flags.Module) && {
-        // scalac uses atPickling here
-        // this would not work if modules are created after pickling
-        // for example by specialization
+  implicit def symHelper(sym: Symbol): SymbolHelper = {
+    if (sym.symHelperCache == null) sym.symHelperCache = new SymbolHelper {
+      // names
+      def fullName(sep: Char): String = sym.showFullName
+      def fullName: String = sym.showFullName
+      def simpleName: Name = sym.name
+      def javaSimpleName: String = toDenot(sym).name.mangledString // addModuleSuffix(simpleName.dropLocal)
+      def javaBinaryName: String = javaClassName.replace('.', '/') // TODO: can we make this a string? addModuleSuffix(fullNameInternal('/'))
+      def javaClassName: String = toDenot(sym).fullName.mangledString // addModuleSuffix(fullNameInternal('.')).toString
+      def name: Name = sym.name
+      def rawname: String = {
         val original = toDenot(sym).initial
-        val validity = original.validFor
-        val shiftedContext = ctx.withPhase(validity.phaseId)
-        toDenot(sym)(shiftedContext).isStatic(shiftedContext)
+        sym.name(ctx.withPhase(original.validFor.phaseId)).mangledString
       }
 
-    def isStaticConstructor: Boolean = (isStaticMember && isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
+      // types
+      def info: Type = toDenot(sym).info
+      def tpe: Type = toDenot(sym).info // todo whats the differentce between tpe and info?
+      def thisType: Type = toDenot(sym).thisType
 
-
-    // navigation
-    def owner: Symbol = toDenot(sym).owner
-    def rawowner: Symbol = {
-      originalOwner
-    }
-    def originalOwner: Symbol =
-      // used to populate the EnclosingMethod attribute.
-      // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
-      if (sym.exists) {
-        val original = toDenot(sym).initial
-        val validity = original.validFor
-        val shiftedContext = ctx.withPhase(validity.phaseId)
-        val r = toDenot(sym)(shiftedContext).maybeOwner.lexicallyEnclosingClass(shiftedContext)
-        r
-      } else NoSymbol
-    def parentSymbols: List[Symbol] = toDenot(sym).info.parents.map(_.typeSymbol)
-    def superClass: Symbol =  {
-      val t = toDenot(sym).asClass.superClass
-      if (t.exists) t
-      else if (sym is Flags.ModuleClass) {
-        // workaround #371
-
-        println(s"Warning: mocking up superclass for $sym")
-        ObjectClass
+      // tests
+      def isClass: Boolean = {
+        sym.isPackageObject || (sym.isClass)
       }
-      else t
-    }
-    def enclClass: Symbol = toDenot(sym).enclosingClass
-    def linkedClassOfClass: Symbol = linkedClass
-    def linkedClass: Symbol = toDenot(sym)(ctx).linkedClass(ctx) //exitingPickler(sym.linkedClassOfClass)
-    def companionClass: Symbol = toDenot(sym).companionClass
-    def companionModule: Symbol = toDenot(sym).companionModule
-    def companionSymbol: Symbol = if (sym is Flags.Module) companionClass else companionModule
-    def moduleClass: Symbol = toDenot(sym).moduleClass
-    def enclosingClassSym: Symbol = {
-      if (this.isClass) {
-        val ct = ctx.withPhase(ctx.flattenPhase.prev)
-        toDenot(sym)(ct).owner.enclosingClass(ct)
-      }
-      else sym.enclosingClass(ctx.withPhase(ctx.flattenPhase.prev))
-    } //todo is handled specially for JavaDefined symbols in scalac
+      def isType: Boolean = sym.isType
+      def isAnonymousClass: Boolean = toDenot(sym).isAnonymousClass
+      def isConstructor: Boolean = toDenot(sym).isConstructor
+      def isExpanded: Boolean = sym.name.is(ExpandedName)
+      def isAnonymousFunction: Boolean = toDenot(sym).isAnonymousFunction
+      def isMethod: Boolean = sym is Flags.Method
+      def isPublic: Boolean =  sym.flags.is(Flags.EmptyFlags, Flags.Private | Flags.Protected)
+      def isSynthetic: Boolean = sym is Flags.Synthetic
+      def isPackageClass: Boolean = sym is Flags.PackageClass
+      def isModuleClass: Boolean = sym is Flags.ModuleClass
+      def isModule: Boolean = sym is Flags.Module
+      def isStrictFP: Boolean = false // todo: implement
+      def isLabel: Boolean = sym is Flags.Label
+      def hasPackageFlag: Boolean = sym is Flags.Package
+      def isImplClass: Boolean = sym is Flags.ImplClass
+      def isInterface: Boolean = (sym is Flags.PureInterface) || (sym is Flags.Trait)
+      def isGetter: Boolean = toDenot(sym).isGetter
+      def isSetter: Boolean = toDenot(sym).isSetter
+      def isGetClass: Boolean = sym eq defn.Any_getClass
+      def isJavaDefined: Boolean = sym is Flags.JavaDefined
+      def isJavaDefaultMethod: Boolean = !((sym is Flags.Deferred)  || toDenot(sym).isClassConstructor)
+      def isDeferred: Boolean = sym is Flags.Deferred
+      def isPrivate: Boolean = sym is Flags.Private
+      def getsJavaFinalFlag: Boolean =
+        isFinal &&  !toDenot(sym).isClassConstructor && !(sym is Flags.Mutable) &&  !(sym.enclosingClass is Flags.Trait)
 
-    // members
-    def primaryConstructor: Symbol = toDenot(sym).primaryConstructor
+      def getsJavaPrivateFlag: Boolean =
+        isPrivate //|| (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
-    /** For currently compiled classes: All locally defined classes including local classes.
-     *  The empty list for classes that are not currently compiled.
-     */
-    def nestedClasses: List[Symbol] = definedClasses(ctx.flattenPhase)
+      def isFinal: Boolean = sym is Flags.Final
+      def isStaticMember: Boolean = (sym ne NoSymbol) &&
+        ((sym is Flags.JavaStatic) || (owner is Flags.ImplClass) || toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot))
+        // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
-    /** For currently compiled classes: All classes that are declared as members of this class
-     *  (but not inherited ones). The empty list for classes that are not currently compiled.
-     */
-    def memberClasses: List[Symbol] = definedClasses(ctx.lambdaLiftPhase)
+      def isBottomClass: Boolean = (sym ne defn.NullClass) && (sym ne defn.NothingClass)
+      def isBridge: Boolean = sym is Flags.Bridge
+      def isArtifact: Boolean = sym is Flags.Artifact
+      def hasEnumFlag: Boolean = sym is Flags.Enum
+      def hasAccessBoundary: Boolean = sym.accessBoundary(defn.RootClass) ne defn.RootClass
+      def isVarargsMethod: Boolean = sym is Flags.JavaVarargs
+      def isDeprecated: Boolean = false
+      def isMutable: Boolean = sym is Flags.Mutable
+      def hasAbstractFlag: Boolean =
+        (sym is Flags.Abstract) || (sym is Flags.JavaInterface) || (sym is Flags.Trait)
+      def hasModuleFlag: Boolean = sym is Flags.Module
+      def isSynchronized: Boolean = sym is Flags.Synchronized
+      def isNonBottomSubClass(other: Symbol): Boolean = sym.derivesFrom(other)
+      def hasAnnotation(ann: Symbol): Boolean = toDenot(sym).hasAnnotation(ann)
+      def shouldEmitForwarders: Boolean =
+        (sym is Flags.Module) && !(sym is Flags.ImplClass) && sym.isStatic
+      def isJavaEntryPoint: Boolean = CollectEntryPoints.isJavaEntryPoint(sym)
 
-    private def definedClasses(phase: Phase) =
-      if (sym.isDefinedInCurrentRun)
-        ctx.atPhase(phase) { implicit ctx =>
-          toDenot(sym).info.decls.filter(_.isClass)
+      def isClassConstructor: Boolean = toDenot(sym).isClassConstructor
+
+      /**
+      * True for module classes of modules that are top-level or owned only by objects. Module classes
+      * for such objects will get a MODULE$ flag and a corresponding static initializer.
+      */
+      def isStaticModuleClass: Boolean =
+        (sym is Flags.Module) && {
+          // scalac uses atPickling here
+          // this would not work if modules are created after pickling
+          // for example by specialization
+          val original = toDenot(sym).initial
+          val validity = original.validFor
+          val shiftedContext = ctx.withPhase(validity.phaseId)
+          toDenot(sym)(shiftedContext).isStatic(shiftedContext)
         }
-      else Nil
 
-    def annotations: List[Annotation] = toDenot(sym).annotations
-    def companionModuleMembers: List[Symbol] =  {
-      // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
-      // not local classes of the companion module (E in the exmaple) that were lifted by lambdalift.
-      if (linkedClass.isTopLevelModuleClass) /*exitingPickler*/ linkedClass.memberClasses
-      else Nil
-    }
-    def fieldSymbols: List[Symbol] = {
-      toDenot(sym).info.decls.filter(p => p.isTerm && !p.is(Flags.Method))
-    }
-    def methodSymbols: List[Symbol] =
-      for (f <- toDenot(sym).info.decls.toList if f.isMethod && f.isTerm && !f.isModule) yield f
-    def serialVUID: Option[Long] = None
+      def isStaticConstructor: Boolean = (isStaticMember && isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
 
 
-    def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
-      ctx.newSymbol(sym, name.toTermName, FlagSet(flags), tpe, NoSymbol, pos)
-    }
+      // navigation
+      def owner: Symbol = toDenot(sym).owner
+      def rawowner: Symbol = {
+        originalOwner
+      }
+      def originalOwner: Symbol =
+        // used to populate the EnclosingMethod attribute.
+        // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
+        if (sym.exists) {
+          val original = toDenot(sym).initial
+          val validity = original.validFor
+          val shiftedContext = ctx.withPhase(validity.phaseId)
+          val r = toDenot(sym)(shiftedContext).maybeOwner.lexicallyEnclosingClass(shiftedContext)
+          r
+        } else NoSymbol
+      def parentSymbols: List[Symbol] = toDenot(sym).info.parents.map(_.typeSymbol)
+      def superClass: Symbol =  {
+        val t = toDenot(sym).asClass.superClass
+        if (t.exists) t
+        else if (sym is Flags.ModuleClass) {
+          // workaround #371
 
-    def getter(clz: Symbol): Symbol = decorateSymbol(sym).getter
-    def setter(clz: Symbol): Symbol = decorateSymbol(sym).setter
+          println(s"Warning: mocking up superclass for $sym")
+          ObjectClass
+        }
+        else t
+      }
+      def enclClass: Symbol = toDenot(sym).enclosingClass
+      def linkedClassOfClass: Symbol = linkedClass
+      def linkedClass: Symbol = toDenot(sym)(ctx).linkedClass(ctx) //exitingPickler(sym.linkedClassOfClass)
+      def companionClass: Symbol = toDenot(sym).companionClass
+      def companionModule: Symbol = toDenot(sym).companionModule
+      def companionSymbol: Symbol = if (sym is Flags.Module) companionClass else companionModule
+      def moduleClass: Symbol = toDenot(sym).moduleClass
+      def enclosingClassSym: Symbol = {
+        if (this.isClass) {
+          val ct = ctx.withPhase(ctx.flattenPhase.prev)
+          toDenot(sym)(ct).owner.enclosingClass(ct)
+        }
+        else sym.enclosingClass(ctx.withPhase(ctx.flattenPhase.prev))
+      } //todo is handled specially for JavaDefined symbols in scalac
 
-    def moduleSuffix: String = "" // todo: validate that names already have $ suffix
-    def outputDirectory: AbstractFile = DottyBackendInterface.this.outputDirectory
-    def pos: Position = sym.pos
+      // members
+      def primaryConstructor: Symbol = toDenot(sym).primaryConstructor
 
-    def throwsAnnotations: List[Symbol] = Nil
+      /** For currently compiled classes: All locally defined classes including local classes.
+      *  The empty list for classes that are not currently compiled.
+      */
+      def nestedClasses: List[Symbol] = definedClasses(ctx.flattenPhase)
 
-    /**
-     * All interfaces implemented by a class, except for those inherited through the superclass.
-     * Redundant interfaces are removed unless there is a super call to them.
-     */
-    def superInterfaces: List[Symbol] = {
-      val directlyInheritedTraits = decorateSymbol(sym).directlyInheritedTraits
-      val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
-      val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.symbol.asClass.baseClasses.drop(1)).toSet
-      val superCalls = superCallsMap.getOrElse(sym, Set.empty)
-      val additional = (superCalls -- directlyInheritedTraitsSet).filter(_.is(Flags.Trait))
-//      if (additional.nonEmpty)
-//        println(s"$fullName: adding supertraits $additional")
-      directlyInheritedTraits.filter(t => !allBaseClasses(t) || superCalls(t)) ++ additional
-    }
+      /** For currently compiled classes: All classes that are declared as members of this class
+      *  (but not inherited ones). The empty list for classes that are not currently compiled.
+      */
+      def memberClasses: List[Symbol] = definedClasses(ctx.lambdaLiftPhase)
 
-    /**
-     * True for module classes of package level objects. The backend will generate a mirror class for
-     * such objects.
-     */
-    def isTopLevelModuleClass: Boolean = sym.isModuleClass &&
-      ctx.atPhase(ctx.flattenPhase) { implicit ctx =>
-        toDenot(sym).owner.is(Flags.PackageClass)
+      private def definedClasses(phase: Phase) =
+        if (sym.isDefinedInCurrentRun)
+          ctx.atPhase(phase) { implicit ctx =>
+            toDenot(sym).info.decls.filter(_.isClass)
+          }
+        else Nil
+
+      def annotations: List[Annotation] = toDenot(sym).annotations
+      def companionModuleMembers: List[Symbol] =  {
+        // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
+        // not local classes of the companion module (E in the exmaple) that were lifted by lambdalift.
+        if (linkedClass.isTopLevelModuleClass) /*exitingPickler*/ linkedClass.memberClasses
+        else Nil
+      }
+      def fieldSymbols: List[Symbol] = {
+        toDenot(sym).info.decls.filter(p => p.isTerm && !p.is(Flags.Method))
+      }
+      def methodSymbols: List[Symbol] =
+        for (f <- toDenot(sym).info.decls.toList if f.isMethod && f.isTerm && !f.isModule) yield f
+      def serialVUID: Option[Long] = None
+
+
+      def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
+        ctx.newSymbol(sym, name.toTermName, FlagSet(flags), tpe, NoSymbol, pos)
       }
 
-    /**
-     * This is basically a re-implementation of sym.isStaticOwner, but using the originalOwner chain.
-     *
-     * The problem is that we are interested in a source-level property. Various phases changed the
-     * symbol's properties in the meantime, mostly lambdalift modified (destructively) the owner.
-     * Therefore, `sym.isStatic` is not what we want. For example, in
-     *   object T { def f { object U } }
-     * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
-     */
-    def isOriginallyStaticOwner: Boolean = sym.isStatic
+      def getter(clz: Symbol): Symbol = decorateSymbol(sym).getter
+      def setter(clz: Symbol): Symbol = decorateSymbol(sym).setter
+
+      def moduleSuffix: String = "" // todo: validate that names already have $ suffix
+      def outputDirectory: AbstractFile = DottyBackendInterface.this.outputDirectory
+      def pos: Position = sym.pos
+
+      def throwsAnnotations: List[Symbol] = Nil
+
+      /**
+      * All interfaces implemented by a class, except for those inherited through the superclass.
+      * Redundant interfaces are removed unless there is a super call to them.
+      */
+      def superInterfaces: List[Symbol] = {
+        val directlyInheritedTraits = decorateSymbol(sym).directlyInheritedTraits
+        val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
+        val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.symbol.asClass.baseClasses.drop(1)).toSet
+        val superCalls = superCallsMap.getOrElse(sym, Set.empty)
+        val additional = (superCalls -- directlyInheritedTraitsSet).filter(_.is(Flags.Trait))
+  //      if (additional.nonEmpty)
+  //        println(s"$fullName: adding supertraits $additional")
+        directlyInheritedTraits.filter(t => !allBaseClasses(t) || superCalls(t)) ++ additional
+      }
+
+      /**
+      * True for module classes of package level objects. The backend will generate a mirror class for
+      * such objects.
+      */
+      def isTopLevelModuleClass: Boolean = sym.isModuleClass &&
+        ctx.atPhase(ctx.flattenPhase) { implicit ctx =>
+          toDenot(sym).owner.is(Flags.PackageClass)
+        }
+
+      /**
+      * This is basically a re-implementation of sym.isStaticOwner, but using the originalOwner chain.
+      *
+      * The problem is that we are interested in a source-level property. Various phases changed the
+      * symbol's properties in the meantime, mostly lambdalift modified (destructively) the owner.
+      * Therefore, `sym.isStatic` is not what we want. For example, in
+      *   object T { def f { object U } }
+      * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
+      */
+      def isOriginallyStaticOwner: Boolean = sym.isStatic
 
 
-    def addRemoteRemoteExceptionAnnotation: Unit = ()
+      def addRemoteRemoteExceptionAnnotation: Unit = ()
 
-    def samMethod(): Symbol =
-      toDenot(sym).info.abstractTermMembers.headOption.getOrElse(toDenot(sym).info.member(nme.apply)).symbol
+      def samMethod(): Symbol =
+        toDenot(sym).info.abstractTermMembers.headOption.getOrElse(toDenot(sym).info.member(nme.apply)).symbol
+    }
+    sym.symHelperCache.asInstanceOf[SymbolHelper]
   }
 
 

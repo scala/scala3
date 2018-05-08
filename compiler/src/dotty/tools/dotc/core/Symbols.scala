@@ -625,6 +625,10 @@ object Symbols {
     def showFullName(implicit ctx: Context): String = ctx.fullNameString(this)
 
     override def hashCode() = id // for debugging.
+
+// ------ Backend optimization -----------------------------------------------
+
+    private[dotty] var symHelperCache: AnyRef = null
   }
 
   type TermSymbol = Symbol { type ThisName = TermName }
