@@ -801,7 +801,8 @@ class Typer extends Namer
   }
 
   def typedFunctionValue(tree: untpd.Function, pt: Type)(implicit ctx: Context) = {
-    val untpd.Function(params: List[untpd.ValDef] @unchecked, body) = tree
+    val untpd.Function(params0, body) = tree
+    val params: List[untpd.ValDef] = params0 collect { case t : untpd.ValDef => t }
 
     pt match {
       case pt: TypeVar if untpd.isFunctionWithUnknownParamType(tree) =>
