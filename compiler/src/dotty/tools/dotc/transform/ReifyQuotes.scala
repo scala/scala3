@@ -66,18 +66,19 @@ import dotty.tools.dotc.core.quoted._
  *    ```
  *  to
  *    ```
- *    inline def foo[T1, ...](inline x1: X, ..., y1: Y, ..., inline f1: X => Y): Seq[Any] => Object = { (args: Seq[Any]) => {
+ *    inline def foo[T1, ...](inline x1: X, ..., y1: Y, ....): Seq[Any] => Object = { (args: Seq[Any]) => {
  *      val T1$1 = args(0).asInstanceOf[Type[T1]]
  *      ...
  *      val x1$1 = args(0).asInstanceOf[X]
  *      ...
  *      val y1$1 = args(1).asInstanceOf[Expr[Y]]
  *      ...
- *      { ... x1$1 .... '{ ... T1$1.unary_~ ... x1$1.toExpr.unary_~ ... y1$1.unary_~ ... f1$1.unary_~ ... } ... }
+ *      { ... x1$1 .... '{ ... T1$1.unary_~ ... x1$1.toExpr.unary_~ ... y1$1.unary_~ ... } ... }
  *    }
  *    ```
  *  Where `inline` parameters with type Boolean, Byte, Short, Int, Long, Float, Double, Char and String are
- *  passed as their actual runtime value. See `isStage0Value`.
+ *  passed as their actual runtime value. See `isStage0Value`. Other `inline` arguments such as functions are handled
+ *  like `y1: Y`.
  *
  *  Note: the parameters of `foo` are kept for simple overloading resolution but they are not used in the body of `foo`.
  *
