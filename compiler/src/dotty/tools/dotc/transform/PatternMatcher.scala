@@ -698,13 +698,15 @@ object PatternMatcher {
               for ((rhs, _) <- seenVars if !seenAtLabel(plan.label).contains(rhs))
               yield (rhs, newVar(rhs.tree, Param))
           }
-          plan.args =
+          val newArgs =
             for {
               (rhs, actual) <- seenVars.toList
               formal <- paramsOfLabel(plan.label).get(rhs)
             }
             yield (formal -> actual)
-          plan
+          if (plan.args.isEmpty) { plan.args = newArgs; plan }
+          else if (newArgs == plan.args) plan
+          else CallPlan(plan.label, newArgs)
         }
       }
       (new Merge(Map()))(plan)
