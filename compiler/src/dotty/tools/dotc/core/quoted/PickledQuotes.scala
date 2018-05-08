@@ -22,7 +22,7 @@ import scala.reflect.ClassTag
 object PickledQuotes {
   import tpd._
 
-  /** Pickle the tree of the a quoted.Expr */
+  /** Pickle the tree of the quoted.Expr */
   def pickleExpr(tree: Tree)(implicit ctx: Context): scala.quoted.Expr[Any] = {
     // Check that there are no free variables
     new TreeTraverser {
