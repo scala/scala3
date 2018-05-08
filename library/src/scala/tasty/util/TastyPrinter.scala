@@ -2,7 +2,7 @@ package scala.tasty.util
 
 import scala.tasty.Tasty
 
-class TastyPrinter[T <: Tasty with Singleton](tasty: T) {
+class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
   import tasty._
 
   def stringOfTree(tree: Tree)(implicit ctx: Context): String = {
