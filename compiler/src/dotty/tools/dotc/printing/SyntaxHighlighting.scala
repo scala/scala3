@@ -129,9 +129,11 @@ object SyntaxHighlighting {
             }
             else if (n.isUpper && keywordStart)
               appendWhile(n, !typeEnders.contains(_), typeDef)
-            else if (numberStart(n))
-              appendWhile(n, { x => x.isDigit || x == '.' || x == '\u0000'}, literal)
-            else
+            else if (numberStart(n)) {
+              def isNumber(c: Char): Boolean =
+                c.isDigit || c == '\u0000' || (c == '.' && remaining.nonEmpty && remaining.head.isDigit)
+              appendWhile(n, isNumber , literal)
+            } else
               newBuf += n; prev = n
           }
         }

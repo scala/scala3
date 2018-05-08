@@ -41,6 +41,8 @@ class SyntaxHighlightingTests {
   @Test
   def literals = {
     test("1", "<L|1>")
+    test("1.1", "<L|1.1>")
+    test("1.1.toString", "<L|1.1>.toString")
     // test("1L", "<L|1L>")
   }
 
