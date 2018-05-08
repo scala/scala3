@@ -26,6 +26,7 @@ import ErrorReporting.errorTree
 import collection.mutable
 import transform.TypeUtils._
 import reporting.trace
+import util.Positions.Position
 
 object Inliner {
   import tpd._
@@ -53,6 +54,7 @@ object Inliner {
        *  by excluding all symbols properly contained in the inlined method.
        */
       def needsAccessor(sym: Symbol)(implicit ctx: Context) =
+        sym.isTerm &&
         (sym.is(AccessFlags) || sym.privateWithin.exists) &&
         !sym.owner.isContainedIn(inlineMethod)
 
@@ -536,6 +538,18 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   private object InlineTyper extends ReTyper {
 
     var retainedInlineables = Set[Symbol]()
+
+    override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
+      tpe match {
+        case tpe @ TypeRef(pre, _) if !tpe.symbol.isAccessibleFrom(pre, superAccess) =>
+          tpe.info match {
+            case TypeAlias(alias) => return ensureAccessible(alias, superAccess, pos)
+            case _ =>
+          }
+        case _ =>
+      }
+      super.ensureAccessible(tpe, superAccess, pos)
+    }
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context) =
       tree.asInstanceOf[tpd.Tree] match {
