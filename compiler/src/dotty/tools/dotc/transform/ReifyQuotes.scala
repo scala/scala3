@@ -386,17 +386,17 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
           }
         case _=>
           val (body1, splices) = nested(isQuote = true).split(body)
-          pickledQuote(body1, splices, isType).withPos(quote.pos)
+          pickledQuote(body1, splices, body.tpe, isType).withPos(quote.pos)
       }
     }
 
-    private def pickledQuote(body: Tree, splices: List[Tree], isType: Boolean)(implicit ctx: Context) = {
+    private def pickledQuote(body: Tree, splices: List[Tree], originalTp: Type, isType: Boolean)(implicit ctx: Context) = {
       def pickleAsValue[T](value: T) =
-        ref(defn.Unpickler_liftedExpr).appliedToType(body.tpe.widen).appliedTo(Literal(Constant(value)))
+        ref(defn.Unpickler_liftedExpr).appliedToType(originalTp.widen).appliedTo(Literal(Constant(value)))
       def pickleAsTasty() = {
         val meth =
-          if (isType) ref(defn.Unpickler_unpickleType).appliedToType(body.tpe)
-          else ref(defn.Unpickler_unpickleExpr).appliedToType(body.tpe.widen)
+          if (isType) ref(defn.Unpickler_unpickleType).appliedToType(originalTp)
+          else ref(defn.Unpickler_unpickleExpr).appliedToType(originalTp.widen)
         meth.appliedTo(
           liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType),
           liftList(splices, defn.AnyType))
