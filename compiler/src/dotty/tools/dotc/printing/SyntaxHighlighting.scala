@@ -132,7 +132,7 @@ object SyntaxHighlighting {
             else if (numberStart(n)) {
               def isNumber(c: Char): Boolean =
                 c.isDigit || c == '\u0000' || (c == '.' && remaining.nonEmpty && remaining.head.isDigit)
-              appendWhile(n, isNumber , literal)
+              appendWhile(n, isNumber, literal)
             } else
               newBuf += n; prev = n
           }
