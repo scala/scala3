@@ -13,22 +13,23 @@ object Macros {
   def impl[T](x: Expr[T])(implicit u: Universe): Expr[Unit] = {
     import u._
     import u.tasty._
+    val printer = new TastyPrinter(tasty)
 
     val buff = new StringBuilder
 
-    val printer = new TreeTraverser(u.tasty) {
+    val output = new TreeTraverser(u.tasty) {
       import tasty._
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         tree match {
           case tree @ DefDef(name, _, _, _, _) =>
             buff.append(name)
             buff.append("\n")
-            buff.append(TastyPrinter.stringOfTree(tasty)(tree.owner))
+            buff.append(printer.stringOfTree(tree.owner))
             buff.append("\n\n")
           case tree @ ValDef(name, _, _) =>
             buff.append(name)
             buff.append("\n")
-            buff.append(TastyPrinter.stringOfTree(tasty)(tree.owner))
+            buff.append(printer.stringOfTree(tree.owner))
             buff.append("\n\n")
           case _ =>
         }
@@ -37,7 +38,7 @@ object Macros {
     }
 
     val tree = x.toTasty
-    printer.traverseTree(tree)
+    output.traverseTree(tree)
     '(print(~buff.result().toExpr))
   }
 

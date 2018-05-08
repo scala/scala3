@@ -13,9 +13,10 @@ object Macros {
     import u._
     import u.tasty._
     val tree = x.toTasty
+    val printer = new TastyPrinter(tasty)
     '{
-      println(~TastyPrinter.stringOfTypeTree(u.tasty)(tree).toExpr)
-      println(~TastyPrinter.stringOfType(u.tasty)(tree.tpe).toExpr)
+      println(~printer.stringOfTypeTree(tree).toExpr)
+      println(~printer.stringOfType(tree.tpe).toExpr)
       println()
     }
   }

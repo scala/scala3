@@ -13,8 +13,9 @@ object Macros {
     import u._
     import tasty._
     val tree = x.toTasty
-    val treeStr = TastyPrinter.stringOfTree(tasty)(tree)
-    val treeTpeStr = TastyPrinter.stringOfType(tasty)(tree.tpe)
+    val printer = new TastyPrinter(tasty)
+    val treeStr = printer.stringOfTree(tree)
+    val treeTpeStr = printer.stringOfType(tree.tpe)
 
     '{
       println(~treeStr.toExpr)

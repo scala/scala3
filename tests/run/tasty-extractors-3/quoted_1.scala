@@ -13,10 +13,12 @@ object Macros {
     import u._
     import u.tasty._
 
+    val printer = new TastyPrinter(tasty)
+
     val buff = new StringBuilder
     val traverser = new TreeTraverser(u.tasty) {
       override def traverseTypeTree(tree: MaybeTypeTree)(implicit ctx: Context): Unit = {
-        buff.append(TastyPrinter.stringOfType(u.tasty)(tree.tpe))
+        buff.append(printer.stringOfType(tree.tpe))
         buff.append("\n\n")
         traverseTypeTreeChildren(tree)
       }
