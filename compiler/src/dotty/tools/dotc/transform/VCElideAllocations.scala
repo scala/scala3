@@ -29,7 +29,7 @@ class VCElideAllocations extends MiniPhase with IdentityDenotTransformer {
       case BinaryOp(NewWithArgs(tp1, List(u1)), op, NewWithArgs(tp2, List(u2)))
       if (tp1 eq tp2) && (op eq defn.Any_==) &&
          isDerivedValueClass(tp1.typeSymbol) &&
-         !defn.Any_equals.overridingSymbol(cls).exists =>
+         !defn.Any_equals.overridingSymbol(tp1.typeSymbol.asClass).exists =>
         // == is overloaded in primitive classes
         u1.equal(u2)
 
