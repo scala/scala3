@@ -2,12 +2,12 @@ package dotty
 package tools
 package vulpix
 
-import java.io.{ File => JFile }
+import java.io.{File => JFile}
 import java.text.SimpleDateFormat
 import java.util.HashMap
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.nio.file.{ Files, Path, Paths, NoSuchFileException }
-import java.util.concurrent.{ Executors => JExecutors, TimeUnit, TimeoutException }
+import java.nio.file.{Files, NoSuchFileException, Path, Paths}
+import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
 
 import scala.io.Source
 import scala.util.control.NonFatal
@@ -15,14 +15,14 @@ import scala.util.Try
 import scala.collection.mutable
 import scala.util.matching.Regex
 import scala.util.Random
-
 import dotc.core.Contexts._
-import dotc.reporting.{ Reporter, TestReporter }
+import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.diagnostic.MessageContainer
 import dotc.interfaces.Diagnostic.ERROR
 import dotc.util.DiffUtil
-import dotc.{ Driver, Compiler }
+import dotc.{Compiler, Driver}
 import dotc.decompiler
+import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
@@ -425,16 +425,17 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       reporter
     }
 
-    protected def decompile(flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
-      val decompilationOutput = new JFile(targetDir.getPath)
-      decompilationOutput.mkdir()
+    protected def decompile(flags0: TestFlags, suppressErrors: Boolean, targetDir0: JFile): TestReporter = {
+      val targetDir = new JFile(targetDir0.getParent + "_decompiled")
+      val decompilationOutput = new JFile(targetDir + "/" + targetDir0.getName)
+      decompilationOutput.mkdirs()
       val flags =
         flags0 and ("-d", decompilationOutput.getAbsolutePath) and
         "-decompile" and "-pagewidth" and "80"
 
       def hasTastyFileToClassName(f: JFile): String =
-        targetDir.toPath.relativize(f.toPath).toString.dropRight(".hasTasty".length).replace('/', '.')
-      val classes = flattenFiles(targetDir).filter(isHasTastyFile).map(hasTastyFileToClassName).sorted
+        targetDir0.toPath.relativize(f.toPath).toString.dropRight(".hasTasty".length).replace('/', '.')
+      val classes = flattenFiles(targetDir0).filter(isHasTastyFile).map(hasTastyFileToClassName).sorted
 
       val reporter =
         TestReporter.reporter(realStdout, logLevel =
@@ -522,7 +523,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
                 checkFileOpt match {
                   case Some(checkFile) =>
                     val stripTrailingWhitespaces = "(.*\\S|)\\s+".r
-                    val output = Source.fromFile(outDir + ".decompiled").getLines().map {line =>
+                    val output = Source.fromFile(outDir.getParent + "_decompiled/" + outDir.getName + "/decompiled.scala").getLines().map {line =>
                       stripTrailingWhitespaces.unapplySeq(line).map(_.head).getOrElse(line)
                     }.mkString("\n")
 
@@ -1257,8 +1258,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  Tests in the first part of the tuple must be executed before the second.
    *  Both testsRequires explicit delete().
    */
-  def compileTastyInDir(f: String, flags0: TestFlags, blacklist: Set[String] = Set.empty)(
-      implicit testGroup: TestGroup): (CompilationTest, CompilationTest, CompilationTest) = {
+  def compileTastyInDir(f: String, flags0: TestFlags, blacklist: Set[String], recompilationBlacklist: Set[String])(
+      implicit testGroup: TestGroup): TastyCompilationTest = {
     val outDir = defaultOutputDir + testGroup + "/"
     val flags = flags0 and "-Yretain-trees"
     val sourceDir = new JFile(f)
@@ -1284,13 +1285,52 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     val generateClassFiles = compileFilesInDir(f, flags0, blacklist)
 
-    (
+    val decompilationDir = outDir + sourceDir.getName + "_decompiled"
+
+    new TastyCompilationTest(
       generateClassFiles.keepOutput,
       new CompilationTest(targets).keepOutput,
-      new CompilationTest(targets2).keepOutput
+      new CompilationTest(targets2).keepOutput,
+      recompilationBlacklist,
+      decompilationDir,
+      shouldDelete = true
     )
   }
 
+  class TastyCompilationTest(step1: CompilationTest, step2: CompilationTest, step3: CompilationTest,
+      recompilationBlacklist: Set[String], decompilationDir: String, shouldDelete: Boolean)(implicit testGroup: TestGroup) {
+
+    def keepOutput: TastyCompilationTest =
+      new TastyCompilationTest(step1, step2, step3, recompilationBlacklist, decompilationDir, shouldDelete)
+
+    def checkCompile()(implicit summaryReport: SummaryReporting): this.type = {
+      step1.checkCompile() // Compile all files to generate the class files with tasty
+      step2.checkCompile() // Compile from tasty
+      step3.checkCompile() // Decompile from tasty
+
+      val step4 = compileFilesInDir(decompilationDir, defaultOptions, recompilationBlacklist).keepOutput
+      step4.checkCompile() // Recompile decompiled code
+
+      if (shouldDelete)
+        (step1 + step2 + step3 + step4).delete()
+
+      this
+    }
+
+    def checkRuns()(implicit summaryReport: SummaryReporting): this.type = {
+      step1.checkCompile() // Compile all files to generate the class files with tasty
+      step2.checkRuns() // Compile from tasty
+      step3.checkCompile() // Decompile from tasty
+
+      val step4 = compileFilesInDir(decompilationDir, defaultOptions, recompilationBlacklist).keepOutput
+      step4.checkRuns() // Recompile decompiled code
+
+      if (shouldDelete)
+        (step1 + step2 + step3 + step4).delete()
+
+      this
+    }
+  }
 
   /** This function behaves similar to `compileFilesInDir` but it ignores
    *  sub-directories and as such, does **not** perform separate compilation

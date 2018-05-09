@@ -24,7 +24,7 @@ class DecompilationPrinter extends Phase {
       var os: OutputStream = null
       var ps: PrintStream = null
       try {
-        os = File(outputDir + ".decompiled").outputStream(append = true)
+        os = File(outputDir + "/decompiled.scala").outputStream(append = true)
         ps = new PrintStream(os)
         printToOutput(ps)
       } finally {
@@ -38,21 +38,15 @@ class DecompilationPrinter extends Phase {
     val unit = ctx.compilationUnit
     val pageWidth = ctx.settings.pageWidth.value
     val printLines = ctx.settings.printLines.value
-    val doubleLine = "=" * pageWidth
-    val line = "-" * pageWidth
 
-    out.println(doubleLine)
-    out.println(unit.source)
-    out.println(line)
-
+    out.println(s"/** Decompiled from $unit */")
     val printer = new DecompilerPrinter(ctx)
-
     out.println(printer.toText(unit.tpdTree).mkString(pageWidth, printLines))
-    out.println(line)
 
     if (ctx.settings.printTasty.value) {
+      out.println("/*")
       new TastyPrinter(unit.pickled.head._2).printContents()
-      out.println(line)
+      out.println("*/")
     }
   }
 }

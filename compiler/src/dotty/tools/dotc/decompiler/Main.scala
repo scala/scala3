@@ -14,13 +14,14 @@ object Main extends dotc.Driver {
     assert(ctx.settings.fromTasty.value)
     val outputDir = ctx.settings.outputDir.value
     if (outputDir != ".")
-      Files.deleteIfExists(Paths.get(outputDir + ".decompiled"))
+      Files.deleteIfExists(Paths.get(outputDir + "/decompiled.scala"))
     new TASTYDecompiler
   }
 
   override def setup(args0: Array[String], rootCtx: Context): (List[String], Context) = {
     var args = args0.filter(a => a != "-decompile")
-    args = if (args.contains("-from-tasty")) args else "-from-tasty" +: args
+    if (!args.contains("-from-tasty")) args = "-from-tasty" +: args
+    if (args.contains("-d")) args = "-color:never" +: args
     super.setup(args, rootCtx)
   }
 }

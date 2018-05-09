@@ -651,8 +651,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val selfText = {
       val selfName = if (self.name == nme.WILDCARD) keywordStr("this") else self.name.toString
       (selfName ~ optText(self.tpt)(": " ~ _) ~ " =>").close
-    } provided !self.isEmpty
-
+    }.provided(!self.isEmpty)
     val body = if (ctx.settings.YtestPickler.value) {
       // Pickling/unpickling reorders the body members, so we need to homogenize
       val (params, rest) = impl.body partition {
@@ -664,9 +663,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       params ::: rest
     } else impl.body
 
-    val bodyText = "{" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
+    val bodyText = " {" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: body, "\n") ~ "}"
 
-    prefix ~ (keywordText(" extends") provided (!ofNew && parents.nonEmpty)) ~~ parentsText ~~ bodyText
+    prefix ~ keywordText(" extends").provided(!ofNew && parents.nonEmpty) ~~ parentsText ~ bodyText
   }
 
   protected def templateText(tree: TypeDef, impl: Template): Text = {

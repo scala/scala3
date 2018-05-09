@@ -1,7 +1,7 @@
 package dotty.tools.dotc.printing
 
 import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.untpd.{PackageDef, Template, TypeDef}
+import dotty.tools.dotc.ast.untpd.{Tree, PackageDef, Template, TypeDef}
 import dotty.tools.dotc.ast.{Trees, untpd}
 import dotty.tools.dotc.printing.Texts._
 import dotty.tools.dotc.core.Contexts._
@@ -55,8 +55,21 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
   }
 
   override protected def toTextTemplate(impl: Template, ofNew: Boolean = false): Text = {
-    val impl1 = impl.copy(parents = impl.parents.filterNot(_.symbol.maybeOwner == defn.ObjectClass))
-    super.toTextTemplate(impl1, ofNew)
+    def isSynthetic(parent: Tree): Boolean = {
+      val sym = parent.symbol
+      sym.maybeOwner == defn.ObjectClass ||
+      (sym == defn.ProductClass && impl.symbol.owner.is(Case))
+    }
+    val parents = impl.parents.filterNot(isSynthetic)
+
+    // We don't print self type and constructor for objects
+    val isObject = impl.constr.symbol.owner.is(Module)
+    if (isObject) {
+      val parentsText = keywordText(" extends") ~~ Text(parents.map(constrText), keywordStr(" with "))
+      val bodyText = " {" ~~ toTextGlobal(impl.body, "\n") ~ "}"
+      parentsText.provided(parents.nonEmpty) ~ bodyText
+    }
+    else super.toTextTemplate(impl.copy(parents = parents), ofNew)
   }
 
   override protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
