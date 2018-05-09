@@ -55,8 +55,9 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   /** A map of lazy values to the fields they should null after initialization. */
   private[this] var lazyValNullables: IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = _
   private def nullableFor(sym: Symbol)(implicit ctx: Context) = {
+    // optimisation: value only used once, we can remove the value from the map
     val nullables = lazyValNullables.remove(sym)
-    if (nullables == null || sym.is(Flags.Module)) Nil
+    if (nullables == null) Nil
     else nullables.toList
   }
 
@@ -195,8 +196,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   private def nullOut(nullables: List[Symbol])(implicit ctx: Context): List[Tree] = {
     val nullConst = Literal(Constants.Constant(null))
-    nullables.map { sym =>
-      val field = if (sym.isGetter) sym.field else sym
+    nullables.map { field =>
       assert(field.isField)
       field.setFlag(Flags.Mutable)
       ref(field).becomes(nullConst)

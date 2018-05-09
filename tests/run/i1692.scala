@@ -4,46 +4,46 @@ class VCString(val x: String) extends AnyVal
 class LazyNullable(a: => Int) {
   lazy val l0 = a // null out a
 
-  private val b = "B"
+  private[this] val b = "B"
   lazy val l1 = b // null out b
 
-  private val c = "C"
+  private[this] val c = "C"
   @volatile lazy val l2 = c // null out c
 
-  private val d = "D"
+  private[this] val d = "D"
   lazy val l3 = d + d // null out d (Scalac require single use?)
 }
 
 object LazyNullable2 {
-  private val a = "A"
+  private[this] val a = "A"
   lazy val l0 = a // null out a
 }
 
 class LazyNotNullable {
-  private val a = 'A'.toInt // not nullable type
+  private[this] val a = 'A'.toInt // not nullable type
   lazy val l0 = a
 
-  private val b = new VCInt('B'.toInt) // not nullable type
+  private[this] val b = new VCInt('B'.toInt) // not nullable type
   lazy val l1 = b
 
-  private val c = new VCString("C") // should be nullable but is not??
+  private[this] val c = new VCString("C") // should be nullable but is not??
   lazy val l2 = c
 
-  private lazy val d = "D" // not nullable because lazy
+  private[this] lazy val d = "D" // not nullable because lazy
   lazy val l3 = d
 
-  val e = "E" // not nullable because not private
+  private val e = "E" // not nullable because not private[this]
   lazy val l4 = e
 
-  private val f = "F" // not nullable because used in mutiple lazy vals
+  private[this] val f = "F" // not nullable because used in mutiple lazy vals
   lazy val l5 = f
   lazy val l6 = f
 
-  private val g = "G" // not nullable because used outside a lazy val initializer
+  private[this] val g = "G" // not nullable because used outside a lazy val initializer
   def foo = g
   lazy val l7 = g
 
-  private val h = "H" // not nullable because field and lazy val not defined in the same class
+  private[this] val h = "H" // not nullable because field and lazy val not defined in the same class
   class Inner {
     lazy val l8 = h
   }
@@ -53,6 +53,13 @@ trait LazyTrait {
   private val a = "A"
   lazy val l0 = a
 }
+
+class Foo(val x: String)
+
+class LazyNotNullable2(x: String) extends Foo(x) {
+  lazy val y = x // not nullable. Here x is super.x
+}
+
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -115,11 +122,15 @@ object Test {
 
     val inner = new lz.Inner
     assert(inner.l8 == "H")
-    assertNotNull("h")
+    assertNotNull("LazyNotNullable$$h") // fragile: test will break if compiler generated names change
 
     val fromTrait = new LazyTrait {}
     assert(fromTrait.l0 == "A")
     assert(readField("LazyTrait$$a", fromTrait) != null) // fragile: test will break if compiler generated names change
+
+    val lz2 = new LazyNotNullable2("Hello")
+    assert(lz2.y == "Hello")
+    assert(lz2.x == "Hello")
   }
 
   def readField(fieldName: String, target: Any): Any = {

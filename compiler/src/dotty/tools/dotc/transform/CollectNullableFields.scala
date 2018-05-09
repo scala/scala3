@@ -34,10 +34,10 @@ object CollectNullableFields {
  *
  *  A field is nullable if all the conditions below hold:
  *    - belongs to a non trait-class
- *    - is private
+ *    - is private[this]
  *    - is not lazy
- *    - its type is nullable, or is an expression type (e.g. => Int)
- *    - is on used in a lazy val initializer
+ *    - its type is nullable
+ *    - is only used in a lazy val initializer
  *    - defined in the same class as the lazy val
  */
 class CollectNullableFields extends MiniPhase {
@@ -45,12 +45,8 @@ class CollectNullableFields extends MiniPhase {
 
   override def phaseName = CollectNullableFields.name
 
-  /** Running after `ElimByName` to see by names as nullable types.
-   *
-   *  We don't necessary need to run after `Getters`, but the implementation
-   *  could be simplified if we were to run before.
-   */
-  override def runsAfter = Set(Getters.name, ElimByName.name)
+  /** Running after `ElimByName` to see by names as nullable types. */
+  override def runsAfter = Set(ElimByName.name)
 
   private[this] sealed trait FieldInfo
   private[this] case object NotNullable extends FieldInfo
@@ -65,14 +61,12 @@ class CollectNullableFields extends MiniPhase {
   }
 
   private def recordUse(tree: Tree)(implicit ctx: Context): Tree = {
-    def isField(sym: Symbol) =
-       sym.isField || sym.isGetter // running after phase Getters
-
     val sym = tree.symbol
     val isNullablePrivateField =
-      isField(sym) &&
-      sym.is(Private, butNot = Lazy) &&
+      sym.isField &&
+      !sym.is(Lazy) &&
       !sym.owner.is(Trait) &&
+      sym.initial.is(PrivateLocal) &&
       sym.info.widenDealias.typeSymbol.isNullableClass
 
     if (isNullablePrivateField)
@@ -82,8 +76,9 @@ class CollectNullableFields extends MiniPhase {
         case null => // not in the map
           val from = ctx.owner
           val isNullable =
-            from.is(Lazy) && isField(from) && // used in lazy field initializer
-            from.owner.eq(sym.owner)          // lazy val and field defined in the same class
+            from.is(Lazy, butNot = Module) && // is lazy val
+            from.owner.isClass &&             // is field
+            from.owner.eq(sym.owner)          // is lazy val and field defined in the same class
           val info = if (isNullable) Nullable(from) else NotNullable
           nullability.put(sym, info)
         case _ =>
