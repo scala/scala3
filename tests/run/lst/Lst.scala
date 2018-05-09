@@ -448,23 +448,27 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
       }
     }
 
-  def === [U](that: Lst[U]) =
-    (this `eqLst` that) || {
-      elems match {
-        case elems1: Arr =>
-          that.elems match {
-            case elems2: Arr =>
-              val len = elems1.length
-              len == elems2.length && {
-                var i = 0
-                while (i < len && elems1(i).equals(elems2(i))) i += 1
-                i == len
-              }
-            case _ => false
-          }
-        case elem => elem == that.elems
+  override def equals(that: Any) = that match {
+    case that: Lst[_] =>
+      (this `eqLst` that) || {
+        elems match {
+          case elems1: Arr =>
+            that.elems match {
+              case elems2: Arr =>
+                val len = elems1.length
+                len == elems2.length && {
+                  var i = 0
+                  while (i < len && elems1(i).equals(elems2(i))) i += 1
+                  i == len
+                }
+              case _ => false
+            }
+          case elem => elem == that.elems
+        }
       }
-    }
+    case _ =>
+      false
+  }
 
   def eqLst[U](that: Lst[U]) = eq(elems, that.elems)
 
