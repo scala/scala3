@@ -197,14 +197,12 @@ class ReplDriver(settings: Array[String],
   private def extractImports(trees: List[untpd.Tree]): List[untpd.Import] =
     trees.collect { case imp: untpd.Import => imp }
 
-  private def interpret(res: ParseResult)(implicit state: State): State =
-    res match {
+  private def interpret(res: ParseResult)(implicit state: State): State = {
+    val newState = res match {
       case parsed: Parsed if parsed.trees.nonEmpty =>
-        val newState = compile(parsed)
+        compile(parsed)
           .withHistory(parsed.sourceCode :: state.history)
           .newRun(compiler, rootCtx)
-        out.println() // Prints newline after commands, also fixes #1369
-        newState
 
       case SyntaxErrors(src, errs, _) =>
         displayErrors(errs)
@@ -218,6 +216,9 @@ class ReplDriver(settings: Array[String],
       case _ => // new line, empty tree
         state
     }
+    out.println()
+    newState
+  }
 
   /** Compile `parsed` trees and evolve `state` in accordance */
   protected[this] final def compile(parsed: Parsed)(implicit state: State): State = {
