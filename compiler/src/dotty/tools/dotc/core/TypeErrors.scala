@@ -75,6 +75,11 @@ class RecursionOverflow(val op: String, details: => String, previous: Throwable,
   override def getStackTrace() = previous.getStackTrace()
 }
 
+/** Post-process exceptions that might result from StackOverflow to add
+  * tracing information while unwalking the stack.
+  */
+// Beware: Since this object is only used when handling a StackOverflow, this code
+// cannot consume significant amounts of stack.
 object handleRecursive {
   def apply(op: String, details: => String, exc: Throwable, weight: Int = 1): Nothing = exc match {
     case _: RecursionOverflow =>
