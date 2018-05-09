@@ -335,7 +335,7 @@ abstract class Tasty {
   type MaybeTypeTree
 
   trait AbstractMaybeTypeTree {
-    def tpe: MaybeType
+    def tpe(implicit ctx: Context): MaybeType
   }
   implicit def MaybeTypeTreeDeco(x: MaybeTypeTree): AbstractMaybeTypeTree
 
@@ -420,7 +420,7 @@ abstract class Tasty {
   type MaybeType
 
   trait Typed {
-    def tpe: Type
+    def tpe(implicit ctx: Context): Type
   }
 
   // ----- Types ----------------------------------------------------

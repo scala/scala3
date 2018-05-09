@@ -231,7 +231,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   implicit def TermDeco(t: Term): AbstractTerm = new AbstractTerm {
     def pos(implicit ctx: Context): Position = new TastyPosition(t.pos)
-    def tpe: Types.Type = t.tpe
+    def tpe(implicit ctx: Context): Types.Type = t.tpe
   }
 
   def termClassTag: ClassTag[Term] = implicitly[ClassTag[Term]]
@@ -378,7 +378,7 @@ object TastyImpl extends scala.tasty.Tasty {
     def unapply(x: Term)(implicit ctx: Context): Option[(Term, Int, Type)] = x match {
       case x: tpd.Select @unchecked =>
         x.name match {
-          case NameKinds.OuterSelectName(_, levels) => Some((x.qualifier, levels, x.tpe))
+          case NameKinds.OuterSelectName(_, levels) => Some((x.qualifier, levels, x.tpe.stripTypeVar))
           case _ => None
         }
       case _ => None
@@ -405,7 +405,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   implicit def PatternDeco(x: Pattern): AbstractPattern = new AbstractPattern {
     def pos(implicit ctx: Context): Position = new TastyPosition(x.pos)
-    def tpe: Types.Type = x.tpe
+    def tpe(implicit ctx: Context): Types.Type = x.tpe.stripTypeVar
   }
 
   def patternClassTag: ClassTag[Pattern] = implicitly[ClassTag[Pattern]]
@@ -451,7 +451,7 @@ object TastyImpl extends scala.tasty.Tasty {
   type MaybeTypeTree = tpd.Tree
 
   implicit def MaybeTypeTreeDeco(x: MaybeTypeTree): AbstractMaybeTypeTree = new AbstractMaybeTypeTree {
-    def tpe: Type = x.tpe
+    def tpe(implicit ctx: Context): Type = x.tpe.stripTypeVar
   }
 
   // ----- TypeTrees ------------------------------------------------
@@ -462,7 +462,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   implicit def TypeTreeDeco(x: TypeTree): AbstractTypeTree = new AbstractTypeTree {
     def pos(implicit ctx: Context): Position = new TastyPosition(x.pos)
-    def tpe: Types.Type = x.tpe
+    def tpe(implicit ctx: Context): Types.Type = x.tpe.stripTypeVar
   }
 
   val Synthetic: SyntheticExtractor = new SyntheticExtractor {
@@ -605,35 +605,35 @@ object TastyImpl extends scala.tasty.Tasty {
 
   val AppliedType: AppliedTypeExtractor = new AppliedTypeExtractor {
     def unapply(x: Type)(implicit ctx: Context): Option[(Type, List[MaybeType /* Type | TypeBounds */])] = x match {
-      case Types.AppliedType(tycon, args) => Some((tycon, args))
+      case Types.AppliedType(tycon, args) => Some((tycon.stripTypeVar, args.map(_.stripTypeVar)))
       case _ => None
     }
   }
 
   val AnnotatedType: AnnotatedTypeExtractor = new AnnotatedTypeExtractor {
     def unapply(x: Type)(implicit ctx: Context): Option[(Type, Term)] = x match {
-      case Types.AnnotatedType(underlying, annot) => Some((underlying, annot.tree))
+      case Types.AnnotatedType(underlying, annot) => Some((underlying.stripTypeVar, annot.tree))
       case _ => None
     }
   }
 
   val AndType: AndTypeExtractor = new AndTypeExtractor {
     def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
-      case Types.AndType(left, right) => Some(left, right)
+      case Types.AndType(left, right) => Some(left.stripTypeVar, right.stripTypeVar)
       case _ => None
     }
   }
 
   val OrType: OrTypeExtractor = new OrTypeExtractor {
     def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
-      case Types.OrType(left, right) => Some(left, right)
+      case Types.OrType(left, right) => Some(left.stripTypeVar, right.stripTypeVar)
       case _ => None
     }
   }
 
   val ByNameType: ByNameTypeExtractor = new ByNameTypeExtractor {
     def unapply(x: Type)(implicit ctx: Context): Option[Type] = x match {
-      case Types.ExprType(resType) => Some(resType)
+      case Types.ExprType(resType) => Some(resType.stripTypeVar)
       case _ => None
     }
   }
@@ -668,7 +668,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   val RecursiveType: RecursiveTypeExtractor = new RecursiveTypeExtractor {
     def unapply(x: RecursiveType)(implicit ctx: Context): Option[Type] = x match {
-      case tp: Types.RecType => Some(tp.underlying)
+      case tp: Types.RecType => Some(tp.underlying.stripTypeVar)
       case _ => None
     }
   }
