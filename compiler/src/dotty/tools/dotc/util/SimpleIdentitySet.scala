@@ -59,7 +59,7 @@ object SimpleIdentitySet {
   private class Set3[+Elem <: AnyRef](x0: AnyRef, x1: AnyRef, x2: AnyRef) extends SimpleIdentitySet[Elem] {
     def size = 3
     def + [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[E] =
-      if (contains(this)) this
+      if (contains(x)) this
       else {
         val xs = new Array[AnyRef](4)
         xs(0) = x0
