@@ -1,0 +1,4 @@
+Lst(Lst())
+Lst(Lst(a))
+Lst(Lst(a), Lst(b), Lst(c), Lst(d), Lst(e))
+Lst(Lst(a), Lst(b), Lst(c), Lst(d), Lst(e), Lst(a), Lst(b), Lst(c), Lst(d), Lst(e))
