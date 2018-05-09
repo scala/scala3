@@ -81,8 +81,8 @@ case class Completions(cursor: Int,
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
-                 protected val out: PrintStream = Console.out,
-                 protected val classLoader: Option[ClassLoader] = None) extends Driver {
+                 out: PrintStream = Console.out,
+                 classLoader: Option[ClassLoader] = None) extends Driver {
 
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
@@ -197,8 +197,8 @@ class ReplDriver(settings: Array[String],
   private def extractImports(trees: List[untpd.Tree]): List[untpd.Import] =
     trees.collect { case imp: untpd.Import => imp }
 
-  private def interpret(res: ParseResult)(implicit state: State): State =
-    res match {
+  private def interpret(res: ParseResult)(implicit state: State): State = {
+    val newState = res match {
       case parsed: Parsed if parsed.trees.nonEmpty =>
         compile(parsed)
           .withHistory(parsed.sourceCode :: state.history)
@@ -216,6 +216,9 @@ class ReplDriver(settings: Array[String],
       case _ => // new line, empty tree
         state
     }
+    out.println()
+    newState
+  }
 
   /** Compile `parsed` trees and evolve `state` in accordance */
   protected[this] final def compile(parsed: Parsed)(implicit state: State): State = {

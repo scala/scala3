@@ -22,13 +22,13 @@ class ScriptedTests extends ReplTest with MessageRendering {
 
   private def testFile(f: JFile): Unit = {
     val prompt = "scala>"
-    val lines = Source.fromFile(f).getLines.buffered
+    val lines = Source.fromFile(f).getLines().buffered
+
+    assert(lines.head.startsWith(prompt),
+      s"""Each file has to start with the prompt: "$prompt"""")
 
     def extractInputs(prompt: String): List[String] = {
       val input = lines.next()
-
-      assert(input.startsWith(prompt),
-        s"""Each file has to start with the prompt: "$prompt"""")
 
       if (!input.startsWith(prompt)) extractInputs(prompt)
       else if (lines.hasNext) {
@@ -60,7 +60,7 @@ class ScriptedTests extends ReplTest with MessageRendering {
       }
 
     val expectedOutput =
-      Source.fromFile(f).getLines.flatMap(filterEmpties).mkString("\n")
+      Source.fromFile(f).getLines().flatMap(filterEmpties).mkString("\n")
     val actualOutput = {
       resetToInitial()
       init()
