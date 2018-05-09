@@ -18,7 +18,7 @@ import Denotations._
 import Periods._
 import util.Positions.{Position, NoPosition}
 import util.Stats._
-import util.{DotClass, SimpleIdentitySet}
+import util.{DotClass, SimpleIdentitySet, Lst}
 import reporting.diagnostic.Message
 import reporting.diagnostic.messages.CyclicReferenceInvolving
 import ast.tpd._
@@ -408,20 +408,20 @@ object Types {
 
     /** The least (wrt <:<) set of class symbols of which this type is a subtype
      */
-    final def classSymbols(implicit ctx: Context): List[ClassSymbol] = this match {
+    final def classSymbols(implicit ctx: Context): Lst[ClassSymbol] = this match {
       case tp: ClassInfo =>
-        tp.cls :: Nil
+        Lst(tp.cls)
       case tp: TypeRef =>
         val sym = tp.symbol
-        if (sym.isClass) sym.asClass :: Nil else tp.superType.classSymbols: @tailrec
+        if (sym.isClass) Lst(sym.asClass) else tp.superType.classSymbols: @tailrec
       case tp: TypeProxy =>
         tp.underlying.classSymbols: @tailrec
       case AndType(l, r) =>
-        l.classSymbols union r.classSymbols
+        l.classSymbols `union` r.classSymbols
       case OrType(l, r) =>
-        l.classSymbols intersect r.classSymbols // TODO does not conform to spec
+        l.classSymbols `intersect` r.classSymbols // TODO does not conform to spec
       case _ =>
-        Nil
+        Lst()
     }
 
     /** The term symbol associated with the type */
@@ -436,13 +436,13 @@ object Types {
      *  Inherited by all type proxies. Overridden for And and Or types.
      *  `Nil` for all other types.
      */
-    def baseClasses(implicit ctx: Context): List[ClassSymbol] = track("baseClasses") {
+    def baseClasses(implicit ctx: Context): Lst[ClassSymbol] = track("baseClasses") {
       this match {
         case tp: TypeProxy =>
           tp.underlying.baseClasses
         case tp: ClassInfo =>
           tp.cls.baseClasses
-        case _ => Nil
+        case _ => Lst()
       }
     }
 
@@ -2443,21 +2443,28 @@ object Types {
 
   abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with ValueType {
     private[this] var myBaseClassesPeriod: Period = Nowhere
-    private[this] var myBaseClasses: List[ClassSymbol] = _
-    /** Base classes of are the merge of the operand base classes. */
-    override final def baseClasses(implicit ctx: Context) = {
+    private[this] var myBaseClasses: Lst[ClassSymbol] = _
+
+    /** Base classes of and types are the merge of the operand base classes. */
+    override final def baseClasses(implicit ctx: Context): Lst[ClassSymbol] = {
       if (myBaseClassesPeriod != ctx.period) {
         val bcs1 = tp1.baseClasses
+        val bcs2 = tp2.baseClasses
         val bcs1set = BaseClassSet(bcs1)
-        def recur(bcs2: List[ClassSymbol]): List[ClassSymbol] = bcs2 match {
-          case bc2 :: bcs2rest =>
-            if (bcs1set contains bc2)
-              if (bc2.is(Trait)) recur(bcs2rest)
-              else bcs1 // common class, therefore rest is the same in both sequences
-            else bc2 :: recur(bcs2rest)
-          case nil => bcs1
+        val buf = new Lst.Buffer[ClassSymbol]
+        var i = 0
+        while (i < bcs2.length) {
+          val bc2 = bcs2(i)
+          if (bcs1set `contains` bc2)
+            if (bc2.is(Trait)) i += 1
+            else i = bcs2.length  // we have a common class, therefore rest is the same in both sequences
+          else {
+            buf += bc2
+            i += 1
+          }
         }
-        myBaseClasses = recur(tp2.baseClasses)
+        buf ++= bcs1
+        myBaseClasses = buf.toLst
         myBaseClassesPeriod = ctx.period
       }
       myBaseClasses
@@ -2507,22 +2514,26 @@ object Types {
 
   abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with ValueType {
     private[this] var myBaseClassesPeriod: Period = Nowhere
-    private[this] var myBaseClasses: List[ClassSymbol] = _
-    /** Base classes of are the intersection of the operand base classes. */
-    override final def baseClasses(implicit ctx: Context) = {
+    private[this] var myBaseClasses: Lst[ClassSymbol] = _
+    /** Base classes are the intersection of the operand base classes. */
+    override final def baseClasses(implicit ctx: Context): Lst[ClassSymbol] = {
       if (myBaseClassesPeriod != ctx.period) {
         val bcs1 = tp1.baseClasses
+        val bcs2 = tp2.baseClasses
         val bcs1set = BaseClassSet(bcs1)
-        def recur(bcs2: List[ClassSymbol]): List[ClassSymbol] = bcs2 match {
-          case bc2 :: bcs2rest =>
-            if (bcs1set contains bc2)
-              if (bc2.is(Trait)) bc2 :: recur(bcs2rest)
-              else bcs2
-            else recur(bcs2rest)
-          case nil =>
-            bcs2
+        val buf = new Lst.Buffer[ClassSymbol]
+        var i = 0
+        while (i < bcs2.length) {
+          val bc2 = bcs2(i)
+          if (bcs1set `contains` bc2) {
+            buf += bc2
+            i += 1
+            if (!bc2.is(Trait)) // common class, rest is shared
+              while (i < bcs2.length) { buf += bcs2(i); i += 1 }
+          }
+          else i += 1
         }
-        myBaseClasses = recur(tp2.baseClasses)
+        myBaseClasses = buf.toLst
         myBaseClassesPeriod = ctx.period
       }
       myBaseClasses
@@ -3010,8 +3021,13 @@ object Types {
 
     def newParamRef(n: Int) = new TypeParamRef(this, n) {}
 
-    lazy val typeParams: List[LambdaParam] =
-      paramNames.indices.toList.map(new LambdaParam(this, _))
+    private[this] var myTypeParams: List[LambdaParam] = null
+
+    def typeParams: List[LambdaParam] = {
+      if (myTypeParams == null)
+        myTypeParams = paramNames.indices.toList.map(new LambdaParam(this, _))
+      myTypeParams
+    }
 
     def derivedLambdaAbstraction(paramNames: List[TypeName], paramInfos: List[TypeBounds], resType: Type)(implicit ctx: Context): Type =
       resType match {

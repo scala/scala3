@@ -837,17 +837,16 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     /**
      * All interfaces implemented by a class, except for those inherited through the superclass.
-     * Redundant interfaces are removed unless there is a super call to them.
+     * Redundant* interfaces are removed unless there is a super call to them.
+     * An interface is redudundant if some other interface in the set derives from it.
+     * TODO: write a clearer and more efficient algorithm.
      */
     def superInterfaces: List[Symbol] = {
-      val directlyInheritedTraits = decorateSymbol(sym).directlyInheritedTraits
-      val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
-      val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.symbol.asClass.baseClasses.drop(1)).toSet
+      val directlyInheritedTraits = sym.directlyInheritedTraits
+      def isRedundant(cls: Symbol) = directlyInheritedTraits.exists(t => (t `ne` cls) && t.derivesFrom(cls))
       val superCalls = superCallsMap.getOrElse(sym, Set.empty)
-      val additional = (superCalls -- directlyInheritedTraitsSet).filter(_.is(Flags.Trait))
-//      if (additional.nonEmpty)
-//        println(s"$fullName: adding supertraits $additional")
-      directlyInheritedTraits.filter(t => !allBaseClasses(t) || superCalls(t)) ++ additional
+      directlyInheritedTraits.filter(t => !isRedundant(t) || superCalls.contains(t)).toList ++
+        superCalls.filter(cls => cls.is(Flags.Trait) && !directlyInheritedTraits.contains(cls))
     }
 
     /**

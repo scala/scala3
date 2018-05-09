@@ -31,7 +31,7 @@ import reporting.diagnostic.{Message, MessageContainer}
 import Inferencing.fullyDefinedType
 import Trees._
 import Hashable._
-import util.Property
+import util.{Property, Lst}
 import config.Config
 import config.Printers.{implicits, implicitsDetailed, typr}
 import collection.mutable
@@ -1174,18 +1174,21 @@ class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
       new SearchHistory(searchDepth + 1, seen)
     else {
       val size = typeSize(proto)
-      def updateMap(csyms: List[ClassSymbol], seen: Map[ClassSymbol, Int]): SearchHistory = csyms match {
-        case csym :: csyms1 =>
-          seen get csym match {
+      val csyms = proto.classSymbols
+      def updateMap(idx: Int, seen: Map[ClassSymbol, Int]): SearchHistory = {
+        val len = csyms.length
+        if (idx < len) {
+          val csym = csyms(idx)
+          seen.get(csym) match {
             // proto complexity is >= than the last time it was seen → diverge
             case Some(prevSize) if size >= prevSize => this
-            case _ => updateMap(csyms1, seen.updated(csym, size))
+            case _ => updateMap(idx + 1, seen.updated(csym, size))
           }
-        case _ =>
+        }
+        else
           new SearchHistory(searchDepth + 1, seen)
       }
-      if (proto.classSymbols.isEmpty) this
-      else updateMap(proto.classSymbols, seen)
+      if (csyms.isEmpty) this else updateMap(0, seen)
     }
   }
 

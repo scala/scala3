@@ -426,8 +426,8 @@ object Comments {
       case NoSymbol => None
       case _        =>
         val searchList =
-          if (site.flags.is(Flags.Module)) site :: site.info.baseClasses
-          else site.info.baseClasses
+          if (site.flags.is(Flags.Module)) site :: site.info.baseClasses.toList
+          else site.info.baseClasses.toList
 
         searchList collectFirst { case x if defs(x) contains vble => defs(x)(vble) } match {
           case Some(str) if str startsWith "$" => lookupVariable(str.tail, site)

@@ -16,7 +16,7 @@ import ast.Trees._
 import annotation.tailrec
 import CheckRealizable._
 import util.SimpleIdentityMap
-import util.Stats
+import util.{Lst, Stats}
 import java.util.WeakHashMap
 import config.Config
 import config.Printers.noPrinter
@@ -1077,10 +1077,7 @@ object SymDenotations {
       else overriddenFromType(owner.asClass.classInfo.selfType)
 
     private def overriddenFromType(tp: Type)(implicit ctx: Context): Iterator[Symbol] =
-      tp.baseClasses match {
-        case _ :: inherited => inherited.iterator map overriddenSymbol filter (_.exists)
-        case Nil => Iterator.empty
-      }
+      tp.baseClasses.iterator().drop(1).map(overriddenSymbol).filter(_.exists)
 
     /** The symbol overriding this symbol in given subclass `ofclazz`.
      *
@@ -1095,15 +1092,16 @@ object SymDenotations {
      *  pre: `this.owner` is in the base class sequence of `base`.
      */
     final def superSymbolIn(base: Symbol)(implicit ctx: Context): Symbol = {
-      @tailrec def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
-        case bc :: bcs1 =>
-          val sym = matchingDecl(bcs.head, base.thisType)
+      val bcs = base.info.baseClasses
+      val len = bcs.length
+      @tailrec def loop(i: Int): Symbol =
+        if (i < len) {
+          val sym = matchingDecl(bcs(i), base.thisType)
             .suchThat(alt => !(alt is Deferred)).symbol
-          if (sym.exists) sym else loop(bcs.tail)
-        case _ =>
-          NoSymbol
-      }
-      loop(base.info.baseClasses.dropWhile(owner != _).tail)
+          if (sym.exists) sym else loop(i + 1)
+        }
+        else NoSymbol
+      loop(bcs.firstIndexWhere(owner == _) + 1)
     }
 
     /** A member of class `base` is incomplete if
@@ -1445,7 +1443,7 @@ object SymDenotations {
 
     override def appliedRef(implicit ctx: Context): Type = classInfo.appliedRef
 
-    private def baseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
+    private def baseData(implicit onBehalf: BaseData, ctx: Context): (Lst[ClassSymbol], BaseClassSet) = {
       if (!baseDataCache.isValid) baseDataCache = BaseData.newCache()
       baseDataCache(this)
     }
@@ -1453,25 +1451,31 @@ object SymDenotations {
     /** The base classes of this class in linearization order,
      *  with the class itself as first element.
      */
-    def baseClasses(implicit onBehalf: BaseData, ctx: Context): List[ClassSymbol] =
+    def baseClasses(implicit onBehalf: BaseData, ctx: Context): Lst[ClassSymbol] =
       baseData._1
 
     /** A bitset that contains the superId's of all base classes */
     private def baseClassSet(implicit onBehalf: BaseData, ctx: Context): BaseClassSet =
       baseData._2
 
-    def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
+    def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (Lst[ClassSymbol], BaseClassSet) = {
       def emptyParentsExpected =
         is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
       if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
-      val builder = new BaseDataBuilder
+      val builder = new Lst.Buffer[ClassSymbol]
       for (p <- classParents)
         p.classSymbol match {
-          case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
-          case _ => assert(isRefinementClass || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
+          case pcls: ClassSymbol =>
+            pcls.baseClasses.foreachReversed { bc =>
+              if (!builder.contains(bc)) builder += bc
+            }
+          case _ =>
+            assert(isRefinementClass || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
         }
-      (classSymbol :: builder.baseClasses, builder.baseClassSet)
+      val bcs = BaseClassSet(builder.toLst)
+      builder += classSymbol
+      (builder.toLst.reverse, bcs)
     }
 
     final override def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean =
@@ -2038,7 +2042,7 @@ object SymDenotations {
    */
   trait BaseData extends InheritedCache {
     def apply(clsd: ClassDenotation)
-             (implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet)
+             (implicit onBehalf: BaseData, ctx: Context): (Lst[ClassSymbol], BaseClassSet)
     def signalProvisional(): Unit
   }
 
@@ -2123,7 +2127,7 @@ object SymDenotations {
   }
 
   private class BaseDataImpl(createdAt: Period) extends InheritedCacheImpl(createdAt) with BaseData {
-    private[this] var cache: (List[ClassSymbol], BaseClassSet) = null
+    private[this] var cache: (Lst[ClassSymbol], BaseClassSet) = null
 
     private[this] var valid = true
     private[this] var locked = false
@@ -2141,7 +2145,7 @@ object SymDenotations {
     def signalProvisional() = provisional = true
 
     def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context)
-        : (List[ClassSymbol], BaseClassSet) = {
+        : (Lst[ClassSymbol], BaseClassSet) = {
       assert(isValid)
       try {
         if (cache != null) cache
@@ -2181,48 +2185,8 @@ object SymDenotations {
   }
 
   object BaseClassSet {
-    def apply(bcs: List[ClassSymbol]): BaseClassSet =
+    def apply(bcs: Lst[ClassSymbol]): BaseClassSet =
       new BaseClassSet(bcs.toArray.map(_.id))
-  }
-
-  /** A class to combine base data from parent types */
-  class BaseDataBuilder {
-    private[this] var classes: List[ClassSymbol] = Nil
-    private[this] var classIds = new Array[Int](32)
-    private[this] var length = 0
-
-    private def resize(size: Int) = {
-      val classIds1 = new Array[Int](size)
-      Array.copy(classIds, 0, classIds1, 0, classIds.length min size)
-      classIds = classIds1
-    }
-
-    private def add(sym: Symbol): Unit = {
-      if (length == classIds.length) resize(length * 2)
-      classIds(length) = sym.id
-      length += 1
-    }
-
-    def addAll(bcs: List[ClassSymbol]): this.type = {
-      val len = length
-      bcs match {
-        case bc :: bcs1 =>
-          addAll(bcs1)
-          if (!new BaseClassSet(classIds).contains(bc, len)) {
-            add(bc)
-            classes = bc :: classes
-          }
-        case nil =>
-      }
-      this
-    }
-
-    def baseClassSet = {
-      if (length != classIds.length) resize(length)
-      new BaseClassSet(classIds)
-    }
-
-    def baseClasses: List[ClassSymbol] = classes
   }
 
   @sharable private[this] var indent = 0 // for completions printing

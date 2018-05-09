@@ -11,6 +11,7 @@ import config.Config
 import config.Printers.{typr, constr, subtyping, gadts, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
+import util.Lst
 import scala.util.control.NonFatal
 import reporting.trace
 
@@ -751,14 +752,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           case tp1w =>
             tp1w.typeSymbol.isClass && {
               val classBounds = tycon2.classSymbols
-              def liftToBase(bcs: List[ClassSymbol]): Boolean = bcs match {
-                case bc :: bcs1 =>
-                  classBounds.exists(bc.derivesFrom) && appOK(tp1w.baseType(bc)) ||
-                  liftToBase(bcs1)
-                case _ =>
-                  false
-              }
-              liftToBase(tp1w.baseClasses)
+              // TODO: Try to use testLifted
+              tp1w.baseClasses.exists(bc =>
+                classBounds.exists(bc.derivesFrom) && appOK(tp1w.baseType(bc)))
             } ||
             fourthTry
         }
@@ -924,17 +920,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    */
   private def testLifted(tp1: Type, tp2: Type, tparams: List[TypeParamInfo], p: Type => Boolean): Boolean = {
     val classBounds = tp2.classSymbols
-    def recur(bcs: List[ClassSymbol]): Boolean = bcs match {
-      case bc :: bcs1 =>
-        (classBounds.exists(bc.derivesFrom) &&
-          variancesConform(bc.typeParams, tparams) &&
-          p(tp1.baseType(bc))
-        ||
-        recur(bcs1))
-      case nil =>
-        false
-    }
-    recur(tp1.baseClasses)
+    tp1.baseClasses.exists(bc =>
+      classBounds.exists(bc.derivesFrom) &&
+      variancesConform(bc.typeParams, tparams) &&
+      p(tp1.baseType(bc))
+    )
   }
 
   /** Replace any top-level recursive type `{ z => T }` in `tp` with

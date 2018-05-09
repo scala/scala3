@@ -259,7 +259,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       body =
         if (cls is Trait) traitDefs(impl.body)
         else {
-          val mixInits = mixins.flatMap { mixin =>
+          val mixInits = mixins.toList.flatMap { mixin =>
             flatten(traitInits(mixin)) ::: superCallOpt(mixin) ::: setters(mixin)
           }
           superCallOpt(superCls) ::: mixInits ::: impl.body

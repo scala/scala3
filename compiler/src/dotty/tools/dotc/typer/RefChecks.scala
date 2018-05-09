@@ -690,11 +690,10 @@ object RefChecks {
       // by `Super`. So we cannot pretend they have a different type when seen from `Sub`.
       def checkParameterizedTraitsOK() = {
         val mixins = clazz.mixins
-        for {
-          cls <- clazz.info.baseClasses.tail
-          if cls.paramAccessors.nonEmpty && !mixins.contains(cls)
-          problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, "parameterized", "super")
-        } ctx.error(problem(), clazz.pos)
+        for (cls <- clazz.info.baseClasses)
+          if ((cls `ne` clazz) && cls.paramAccessors.nonEmpty && !mixins.contains(cls))
+            for (problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, "parameterized", "super"))
+              ctx.error(problem(), clazz.pos)
       }
 
       checkParameterizedTraitsOK()

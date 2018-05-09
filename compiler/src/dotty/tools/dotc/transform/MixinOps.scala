@@ -7,12 +7,13 @@ import util.Positions._
 import SymUtils._
 import StdNames._, NameOps._
 import Decorators._
+import util.Lst
 
 class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Context) {
   import ast.tpd._
 
   val superCls: Symbol = cls.superClass
-  val mixins: List[ClassSymbol] = cls.mixins
+  val mixins: Lst[ClassSymbol] = cls.mixins
 
   lazy val JUnit4Annotations: List[Symbol] = List("Test", "Ignore", "Before", "After", "BeforeClass", "AfterClass").
     map(n => ctx.getClassIfDefined("org.junit." + n)).
@@ -101,7 +102,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     superRef(target).appliedToTypes(targs).appliedToArgss(vrefss)
 
   private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] = {
-    cls.baseClasses.iterator
+    cls.baseClasses.iterator()
       .filter(_ ne meth.owner)
       .map(meth.overriddenSymbol)
       .filter(_.exists)

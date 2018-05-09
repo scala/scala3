@@ -3,7 +3,7 @@ package transform
 
 import core._
 import Flags._, Symbols._, Contexts._, Types._, Scopes._, Decorators._
-import util.HashSet
+import util.{HashSet, Lst}
 import collection.mutable
 import collection.immutable.BitSet
 import typer.ErrorReporting.cyclicErrorMsg
@@ -48,17 +48,14 @@ object OverridingPairs {
     private val decls = {
       val decls = newScope
       // fill `decls` with overriding shadowing overridden */
-      def fillDecls(bcs: List[Symbol], deferred: Boolean): Unit = bcs match {
-        case bc :: bcs1 =>
-          fillDecls(bcs1, deferred)
+      def fillDecls(bcs: Lst[Symbol], deferred: Boolean): Unit =
+      	bcs.foreachReversed { bc =>
           var e = bc.info.decls.lastEntry
           while (e != null) {
-            if (e.sym.is(Deferred) == deferred && !exclude(e.sym))
-              decls.enter(e.sym)
+            if (e.sym.is(Deferred) == deferred && !exclude(e.sym)) decls.enter(e.sym)
             e = e.prev
           }
-        case nil =>
-      }
+        }
       // first, deferred (this will need to change if we change lookup rules!
       fillDecls(base.info.baseClasses, deferred = true)
       // then, concrete.

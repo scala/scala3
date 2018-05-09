@@ -45,7 +45,7 @@ class PrimitiveForwarders extends MiniPhase with IdentityDenotTransformer { this
     import ops._
 
     def methodPrimitiveForwarders: List[Tree] =
-      for (meth <- mixins.flatMap(_.info.decls.toList.flatMap(needsPrimitiveForwarderTo)).distinct)
+      for (meth <- mixins.toList.flatMap(_.info.decls.toList.flatMap(needsPrimitiveForwarderTo)).distinct)
         yield polyDefDef(implementation(meth.asTerm), forwarder(meth))
 
     cpy.Template(impl)(body = methodPrimitiveForwarders ::: impl.body)

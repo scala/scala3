@@ -21,6 +21,7 @@ import printing.Printer
 import io.AbstractFile
 import config.Config
 import util.common._
+import util.Lst
 import collection.mutable.ListBuffer
 import Decorators.SymbolIteratorDecorator
 
@@ -461,10 +462,17 @@ object Denotations {
         val sym2Accessible = sym2.isAccessibleFrom(pre)
 
         /** Does `sym1` come before `sym2` in the linearization of `pre`? */
-        def precedes(sym1: Symbol, sym2: Symbol) = {
-          def precedesIn(bcs: List[ClassSymbol]): Boolean = bcs match {
-            case bc :: bcs1 => (sym1 eq bc) || !(sym2 eq bc) && precedesIn(bcs1)
-            case Nil => true
+        def precedes(sym1: Symbol, sym2: Symbol): Boolean = {
+          def precedesIn(bcs: Lst[ClassSymbol]): Boolean = {
+            var i = 0
+            val len = bcs.length
+            while (i < len) {
+              val bc = bcs(i)
+              if (bc `eq` sym1) return true
+              else if (bc `eq` sym2) return false
+              i += 1
+            }
+            true
           }
           (sym1 ne sym2) &&
             (sym1.derivesFrom(sym2) ||
