@@ -548,7 +548,7 @@ object Types {
         case tp: TypeProxy =>
           go(tp.underlying)
         case tp: ClassInfo =>
-          tp.cls.findMember(name, pre, excluded)
+          tp.cls.denot.findMember(name, pre, excluded)
         case AndType(l, r) =>
           goAnd(l, r)
         case tp: OrType =>
@@ -1629,7 +1629,7 @@ object Types {
     def computeSignature(implicit ctx: Context): Signature = {
       val lastd = lastDenotation
       if (lastd != null) lastd.signature
-      else symbol.asSeenFrom(prefix).signature
+      else symbol.denot.asSeenFrom(prefix).signature
     }
 
     /** The signature of the current denotation if it is known without forcing.
@@ -1642,8 +1642,8 @@ object Types {
         val lastd = lastDenotation
         if (lastd != null) lastd.signature
         else {
-          val sym = currentSymbol
-          if (sym.exists) sym.asSeenFrom(prefix).signature
+          val symd = currentSymbol.denot
+          if (symd.exists) symd.asSeenFrom(prefix).signature
           else Signature.NotAMethod
         }
       }
@@ -1694,6 +1694,7 @@ object Types {
 
     /** The denotation currently denoted by this type */
     final def denot(implicit ctx: Context): Denotation = {
+      record("NamedType.denot")
       val now = ctx.period
       // Even if checkedPeriod == now we still need to recheck lastDenotation.validFor
       // as it may have been mutated by SymDenotation#installAfter
@@ -2031,7 +2032,7 @@ object Types {
         if (d.isOverloaded && lastSymbol.exists)
           d = disambiguate(d,
                 if (lastSymbol.signature == Signature.NotAMethod) Signature.NotAMethod
-                else lastSymbol.asSeenFrom(prefix).signature)
+                else lastSymbol.denot.asSeenFrom(prefix).signature)
         NamedType(prefix, name, d)
       }
       if (prefix eq this.prefix) this
@@ -3584,7 +3585,7 @@ object Types {
         // Note: Taking a normal typeRef does not work here. A normal ref might contain
         // also other information about the named type (e.g. bounds).
         contains(
-          TypeRef(tp.prefix, cls).withDenot(new UniqueRefDenotation(cls, tp, cls.validFor)))
+          TypeRef(tp.prefix, cls).withDenot(new UniqueRefDenotation(cls, tp, cls.denot.validFor)))
       case _ =>
         lo <:< tp && tp <:< hi
     }

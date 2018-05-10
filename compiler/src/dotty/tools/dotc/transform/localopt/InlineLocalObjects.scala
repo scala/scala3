@@ -51,11 +51,11 @@ class InlineLocalObjects(val simplifyPhase: Simplify) extends Optimisation {
     if (newFieldsMapping == null) {
       newFieldsMapping = candidates.intersect(gettersCalled).map { refVal =>
         val accessors = refVal.info.classSymbol.caseAccessors.filter(_.isGetter)
-        val newLocals = accessors.map { x =>
+        val newLocals = accessors.map { accessor =>
           val owner: Symbol  = refVal.owner
           val name:  Name    = LocalOptInlineLocalObj.fresh()
           val flags: FlagSet = Synthetic
-          val info:  Type    = x.asSeenFrom(refVal.info).info.finalResultType.widenDealias
+          val info:  Type    = accessor.denot.asSeenFrom(refVal.info).info.finalResultType.widenDealias
           ctx.newSymbol(owner, name, flags, info)
         }
         (refVal, LinkedHashMap[Symbol, Symbol](accessors.zip(newLocals): _*))

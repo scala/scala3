@@ -129,6 +129,8 @@ object SymDenotations {
     initInfo: Type,
     initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol) {
 
+    Stats.record("SymDenotation")
+
     //assert(symbol.id != 4940, name)
 
     override protected def hasUniqueSym: Boolean = exists
@@ -991,7 +993,7 @@ object SymDenotations {
      */
     private def companionNamed(name: TypeName)(implicit ctx: Context): Symbol =
       if (owner.isClass)
-        owner.unforcedDecls.lookup(name).suchThat(_.isCoDefinedWith(symbol)).symbol
+        owner.unforcedDecls.lookup(name).ensuring(_.isCoDefinedWith(symbol))
       else if (!owner.exists || ctx.compilationUnit == null)
         NoSymbol
       else if (!ctx.compilationUnit.tpdTree.isEmpty)
@@ -1098,8 +1100,7 @@ object SymDenotations {
     final def superSymbolIn(base: Symbol)(implicit ctx: Context): Symbol = {
       @tailrec def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
         case bc :: bcs1 =>
-          val sym = matchingDecl(bcs.head, base.thisType)
-            .suchThat(alt => !(alt is Deferred)).symbol
+          val sym = matchingDecl(bcs.head, base.thisType).ensuring(!_.is(Deferred))
           if (sym.exists) sym else loop(bcs.tail)
         case _ =>
           NoSymbol
@@ -1289,6 +1290,8 @@ object SymDenotations {
     extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
 
     import util.LRUCache
+
+    Stats.record("ClassDenotation")
 
     // ----- caches -------------------------------------------------------
 

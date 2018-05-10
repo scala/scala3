@@ -56,7 +56,7 @@ trait NamerContextOps { this: Context =>
         owner.thisType.member(name)
       }
       else // we are in the outermost context belonging to a class; self is invisible here. See inClassContext.
-        owner.findMember(name, owner.thisType, EmptyFlags)
+        owner.denot.findMember(name, owner.thisType, EmptyFlags)
     else
       scope.denotsNamed(name).toDenot(NoPrefix)
 

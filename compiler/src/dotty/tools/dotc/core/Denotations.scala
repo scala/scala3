@@ -287,35 +287,6 @@ object Denotations {
           denot.symbol
       }
 
-    final def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol =
-      info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
-    final def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef =
-      requiredMethod(name).termRef
-
-    final def requiredMethod(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = {
-      info.member(name.toTermName).requiredSymbol { x =>
-        (x is Method) && {
-          x.info.paramInfoss match {
-            case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)
-            case _ => false
-          }
-        }
-      }.asTerm
-    }
-    final def requiredMethodRef(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermRef =
-      requiredMethod(name, argTypes).termRef
-
-    final def requiredValue(name: PreName)(implicit ctx: Context): TermSymbol =
-      info.member(name.toTermName).requiredSymbol(_.info.isParameterless).asTerm
-    final def requiredValueRef(name: PreName)(implicit ctx: Context): TermRef =
-      requiredValue(name).termRef
-
-    final def requiredClass(name: PreName)(implicit ctx: Context): ClassSymbol =
-      info.member(name.toTypeName).requiredSymbol(_.isClass).asClass
-
-    final def requiredType(name: PreName)(implicit ctx: Context): TypeSymbol =
-      info.member(name.toTypeName).requiredSymbol(_.isType).asType
-
     /** The alternative of this denotation that has a type matching `targetType` when seen
      *  as a member of type `site`, `NoDenotation` if none exists.
      */

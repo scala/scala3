@@ -513,8 +513,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             val unpickler = new ClassUnpickler(infoRef) withDecls symScope(cls)
             if (flags is ModuleClass)
               unpickler withSourceModule (implicit ctx =>
-                cls.owner.info.decls.lookup(cls.name.sourceModuleName)
-                  .suchThat(_ is Module).symbol)
+                cls.owner.info.decls.lookup(cls.name.sourceModuleName).ensuring(_ is Module))
             else unpickler
           }
           ctx.newClassSymbol(owner, name.asTypeName, flags, completer, coord = start)
@@ -527,8 +526,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           moduleRoot.symbol
         } else ctx.newSymbol(owner, name.asTermName, flags,
           new LocalUnpickler() withModuleClass(implicit ctx =>
-            owner.info.decls.lookup(name.moduleClassName)
-              .suchThat(_ is Module).symbol)
+            owner.info.decls.lookup(name.moduleClassName).ensuring(_ is Module))
           , coord = start)
       case _ =>
         errorBadSignature("bad symbol tag: " + tag)

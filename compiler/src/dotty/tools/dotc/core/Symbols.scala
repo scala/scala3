@@ -412,6 +412,8 @@ object Symbols {
    */
   class Symbol private[Symbols] (private[this] var myCoord: Coord, val id: Int) extends Designator with ParamInfo with printing.Showable {
 
+    util.Stats.record("Symbol")
+
     type ThisName <: Name
 
     //assert(id != 723)
@@ -541,7 +543,7 @@ object Symbols {
       else {
         if (this.owner.is(Package)) {
           denot.validFor |= InitialPeriod
-          if (this is Module) this.moduleClass.validFor = this.moduleClass.validFor | InitialPeriod
+          if (this is Module) this.moduleClass.denot.validFor = this.moduleClass.denot.validFor | InitialPeriod
         }
         else this.owner.asClass.ensureFreshScopeAfter(phase)
         if (!isPrivate)
@@ -596,22 +598,37 @@ object Symbols {
 
 // -------- Denot Forwarders-------------------------------------------------
 
-    final def exists(implicit ctx: Context): Boolean = denot.exists
-    final def validFor(implicit ctx: Context): Period = denot.validFor
-    final def validFor_=(p: Period)(implicit ctx: Context): Unit = denot.validFor_=(p)
-    final def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation = denot.suchThat(p)
-    final def requiredSymbol(p: Symbol => Boolean, source: AbstractFile = null, generateStubs: Boolean = true)(implicit ctx: Context): Symbol = denot.requiredSymbol(p, source, generateStubs)
-    final def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol = denot.requiredMethod(name)
-    final def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef = denot.requiredMethodRef(name)
-    final def requiredMethod(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = denot.requiredMethod(name, argTypes)
-    final def requiredMethodRef(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermRef = denot.requiredMethodRef(name, argTypes)
-    final def requiredValue(name: PreName)(implicit ctx: Context): TermSymbol = denot.requiredValue(name)
-    final def requiredValueRef(name: PreName)(implicit ctx: Context): TermRef = denot.requiredValueRef(name)
-    final def requiredClass(name: PreName)(implicit ctx: Context): ClassSymbol = denot.requiredClass(name)
-    final def requiredType(name: PreName)(implicit ctx: Context): TypeSymbol = denot.requiredType(name)
-    final def asSeenFrom(pre: Type)(implicit ctx: Context) = denot.asSeenFrom(pre)
-    final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = denot.findMember(name, pre, excluded)
-    final def matches(other: SingleDenotation)(implicit ctx: Context): Boolean = denot.matches(other)
+    final def exists(implicit ctx: Context): Boolean = lastDenot.exists  // no renaming necessary, any denot will do
+    final def ensuring(p: Symbol => Boolean)(implicit ctx: Context): Symbol = denot.suchThat(p).symbol
+
+    final def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol =
+      info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
+    final def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef =
+      requiredMethod(name).termRef
+
+    final def requiredMethod(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = {
+      info.member(name.toTermName).requiredSymbol { x =>
+        (x is Method) && {
+          x.info.paramInfoss match {
+            case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)
+            case _ => false
+          }
+        }
+      }.asTerm
+    }
+    final def requiredMethodRef(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermRef =
+      requiredMethod(name, argTypes).termRef
+
+    final def requiredValue(name: PreName)(implicit ctx: Context): TermSymbol =
+      info.member(name.toTermName).requiredSymbol(_.info.isParameterless).asTerm
+    final def requiredValueRef(name: PreName)(implicit ctx: Context): TermRef =
+      requiredValue(name).termRef
+
+    final def requiredClass(name: PreName)(implicit ctx: Context): ClassSymbol =
+      info.member(name.toTypeName).requiredSymbol(_.isClass).asClass
+
+    final def requiredType(name: PreName)(implicit ctx: Context): TypeSymbol =
+      info.member(name.toTypeName).requiredSymbol(_.isType).asType
 
     final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]
     final def maybeOwner(implicit ctx: Context): Symbol = denot.maybeOwner
