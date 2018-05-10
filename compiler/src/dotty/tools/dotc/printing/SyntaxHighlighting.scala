@@ -79,7 +79,7 @@ object SyntaxHighlighting {
         } else {
           if (n.isUpper && (keywordStart || prev == '.')) {
             appendWhile(n, !typeEnders.contains(_), typeDef)
-          } else if (keywordStart) {
+          } else if (keywordStart || prev.isDigit) {
             append(n, keywords.contains(_), { kw =>
               if (kw == "new") typeDef(kw) else keyword(kw)
             })
