@@ -5,6 +5,7 @@ package core
 import java.io.{IOException, File}
 import scala.compat.Platform.currentTime
 import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
+import config.Config
 import classpath._
 import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, util.Positions._, Names._
 import StdNames._, NameOps._
@@ -316,7 +317,7 @@ abstract class SymbolLoader extends LazyType {
     }
     try {
       val start = currentTime
-      if (ctx.settings.YdebugTrace.value)
+      if (Config.tracingEnabled && ctx.settings.YdebugTrace.value)
         trace(s">>>> loading ${root.debugString}", _ => s"<<<< loaded ${root.debugString}") {
           doComplete(root)
         }
