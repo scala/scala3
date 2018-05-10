@@ -28,6 +28,8 @@ f[Map]
 f[[X] => String]
 ```
 
+Beware that `AnyKind` is currently only accessible under option `-Ykind-polymorphism`.
+
 We call type parameters and abstract types with an `AnyKind` upper bound _any-kinded types_`.
 Since the actual kind of an any-kinded type is unknown, its usage must be heavily restricted: An any-kinded type
 can be neither the type of a value, nor can it be instantiated with type parameters. So about the only
