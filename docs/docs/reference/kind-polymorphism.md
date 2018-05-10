@@ -41,3 +41,6 @@ Some technical details: `AnyKind` is a synthesized class just like `Any`, but wi
 It is declared `abstract` and `final`, so it can be neither instantiated nor extended.
 
 `AnyKind` plays a special role in Scala's subtype system: It is a supertype of all other types no matter what their kind is. It is also assumed to be kind-compatible with all other types. Furthermore, `AnyKind` is treated as a higher-kinded type (so it cannot be used as a type of values), but at the same time it has no type parameters (so it cannot be instantiated).
+
+**Note**: This feature is considered experimental and is only enabled under a compiler flag
+(i.e. `-Ykind-polymorphism`). 
