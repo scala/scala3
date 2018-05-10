@@ -165,7 +165,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       val origMeth = tree.symbol
       val origClass = ctx.owner.asClass
       val staticClass = origClass.linkedClass
-      assert(staticClass.exists, s"$origClass lacks companion, ${origClass.owner.definedPeriodsString} ${origClass.owner.info.decls} ${origClass.owner.info.decls}")
+      assert(staticClass.exists, s"$origClass lacks companion, ${origClass.owner.denot.definedPeriodsString} ${origClass.owner.info.decls} ${origClass.owner.info.decls}")
       val extensionMeth = extensionMethod(origMeth)
       ctx.log(s"Value class $origClass spawns extension method.\n  Old: ${origMeth.showDcl}\n  New: ${extensionMeth.showDcl}")
       val store: ListBuffer[Tree] = extensionDefs.get(staticClass) match {

@@ -204,7 +204,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
             }
             else if (!stat.rhs.isEmpty) {
               dropped += sym
-              sym.copySymDenotation(
+              sym.denot.copySymDenotation(
                 initFlags = sym.flags &~ Private,
                 owner = constr.symbol).installAfter(thisPhase)
               constrStats += intoConstr(stat, sym)

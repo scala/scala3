@@ -198,7 +198,7 @@ object Denotations {
     /** Denotation points to unique symbol; false for overloaded denotations
      * and JointRef denotations.
      */
-    def hasUniqueSym: Boolean
+    protected def hasUniqueSym: Boolean
 
     /** The name of the denotation */
     def name(implicit ctx: Context): Name
@@ -273,7 +273,7 @@ object Denotations {
      *  if generateStubs is specified, return a stubsymbol if denotation is a missing ref.
      *  Throw a `TypeError` if predicate fails to disambiguate symbol or no alternative matches.
      */
-    def requiredSymbol(p: Symbol => Boolean, source: AbstractFile = null, generateStubs: Boolean = true)(implicit ctx: Context): Symbol =
+    final def requiredSymbol(p: Symbol => Boolean, source: AbstractFile = null, generateStubs: Boolean = true)(implicit ctx: Context): Symbol =
       disambiguate(p) match {
         case m @ MissingRef(ownerd, name) =>
           if (generateStubs) {
@@ -287,12 +287,12 @@ object Denotations {
           denot.symbol
       }
 
-    def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol =
+    final def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol =
       info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
-    def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef =
+    final def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef =
       requiredMethod(name).termRef
 
-    def requiredMethod(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = {
+    final def requiredMethod(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = {
       info.member(name.toTermName).requiredSymbol { x =>
         (x is Method) && {
           x.info.paramInfoss match {
@@ -302,18 +302,18 @@ object Denotations {
         }
       }.asTerm
     }
-    def requiredMethodRef(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermRef =
+    final def requiredMethodRef(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermRef =
       requiredMethod(name, argTypes).termRef
 
-    def requiredValue(name: PreName)(implicit ctx: Context): TermSymbol =
+    final def requiredValue(name: PreName)(implicit ctx: Context): TermSymbol =
       info.member(name.toTermName).requiredSymbol(_.info.isParameterless).asTerm
-    def requiredValueRef(name: PreName)(implicit ctx: Context): TermRef =
+    final def requiredValueRef(name: PreName)(implicit ctx: Context): TermRef =
       requiredValue(name).termRef
 
-    def requiredClass(name: PreName)(implicit ctx: Context): ClassSymbol =
+    final def requiredClass(name: PreName)(implicit ctx: Context): ClassSymbol =
       info.member(name.toTypeName).requiredSymbol(_.isClass).asClass
 
-    def requiredType(name: PreName)(implicit ctx: Context): TypeSymbol =
+    final def requiredType(name: PreName)(implicit ctx: Context): TypeSymbol =
       info.member(name.toTypeName).requiredSymbol(_.isType).asType
 
     /** The alternative of this denotation that has a type matching `targetType` when seen
@@ -935,7 +935,7 @@ object Denotations {
       val targetId = phase.next.id
       if (ctx.phaseId != targetId) installAfter(phase)(ctx.withPhase(phase.next))
       else {
-        val current = symbol.current
+        val current = symbol.denot.current
         // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
         // printPeriods(current)
         this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
@@ -953,7 +953,7 @@ object Denotations {
      *  given phase. Denotations are replaced while keeping the same validity periods.
      */
     protected def transformAfter(phase: DenotTransformer, f: SymDenotation => SymDenotation)(implicit ctx: Context): Unit = {
-      var current = symbol.current
+      var current = symbol.denot.current
       while (current.validFor.firstPhaseId < phase.id && (current.nextInRun.validFor.code > current.validFor.code))
         current = current.nextInRun
       var hasNext = true

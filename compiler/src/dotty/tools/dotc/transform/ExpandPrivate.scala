@@ -96,12 +96,12 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
     }
 
   override def transformIdent(tree: Ident)(implicit ctx: Context) = {
-    ensurePrivateAccessible(tree.symbol)
+    ensurePrivateAccessible(tree.symbol.denot)
     tree
   }
 
   override def transformSelect(tree: Select)(implicit ctx: Context) = {
-    ensurePrivateAccessible(tree.symbol)
+    ensurePrivateAccessible(tree.symbol.denot)
     tree
   }
 
@@ -112,7 +112,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
       if sym.is(PrivateParamAccessor) && sel.symbol.is(ParamAccessor) && sym.name == sel.symbol.name =>
         sym.ensureNotPrivate.installAfter(thisPhase)
       case _ =>
-        if (isVCPrivateParamAccessor(sym))
+        if (isVCPrivateParamAccessor(sym.denot))
           sym.ensureNotPrivate.installAfter(thisPhase)
     }
     tree

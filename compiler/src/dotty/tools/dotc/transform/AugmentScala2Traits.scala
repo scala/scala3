@@ -66,7 +66,7 @@ class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer with F
       def implMethod(meth: TermSymbol): Symbol = {
         val mold =
           if (meth.isConstructor)
-            meth.copySymDenotation(
+            meth.denot.copySymDenotation(
               name = nme.TRAIT_CONSTRUCTOR,
               info = MethodType(Nil, defn.UnitType))
           else meth.ensureNotPrivate

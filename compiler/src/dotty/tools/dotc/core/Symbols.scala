@@ -19,13 +19,13 @@ import util.Positions._
 import DenotTransformers._
 import StdNames._
 import NameOps._
-import NameKinds.LazyImplicitName
+import NameKinds.{LazyImplicitName, QualifiedNameKind}
 import ast.tpd
 import tpd.{Tree, TreeProvider, TreeOps}
 import ast.TreeTypeMap
 import Constants.Constant
 import reporting.diagnostic.Message
-import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
+import Denotations.{ Denotation, SingleDenotation, MultiDenotation, PreDenotation }
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
@@ -541,7 +541,7 @@ object Symbols {
       else {
         if (this.owner.is(Package)) {
           denot.validFor |= InitialPeriod
-          if (this is Module) this.moduleClass.validFor |= InitialPeriod
+          if (this is Module) this.moduleClass.validFor = this.moduleClass.validFor | InitialPeriod
         }
         else this.owner.asClass.ensureFreshScopeAfter(phase)
         if (!isPrivate)
@@ -556,15 +556,12 @@ object Symbols {
     /** If this symbol satisfies predicate `p` this symbol, otherwise `NoSymbol` */
     def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
 
-    /** The current name of this symbol */
-    final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]
-
     /** The source or class file from which this class or
      *  the class containing this symbol was generated, null if not applicable.
      *  Overridden in ClassSymbol
      */
     def associatedFile(implicit ctx: Context): AbstractFile =
-      if (lastDenot == null) null else lastDenot.topLevelClass.symbol.associatedFile
+      if (lastDenot == null) null else lastDenot.topLevelClass.associatedFile
 
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(implicit ctx: Context): AbstractFile = {
@@ -596,6 +593,166 @@ object Symbols {
      *  TODO: Consider changing this method return type to `SourcePosition`.
      */
     def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
+
+// -------- Denot Forwarders-------------------------------------------------
+
+    final def exists(implicit ctx: Context): Boolean = denot.exists
+    final def validFor(implicit ctx: Context): Period = denot.validFor
+    final def validFor_=(p: Period)(implicit ctx: Context): Unit = denot.validFor_=(p)
+    final def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation = denot.suchThat(p)
+    final def requiredSymbol(p: Symbol => Boolean, source: AbstractFile = null, generateStubs: Boolean = true)(implicit ctx: Context): Symbol = denot.requiredSymbol(p, source, generateStubs)
+    final def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol = denot.requiredMethod(name)
+    final def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef = denot.requiredMethodRef(name)
+    final def requiredMethod(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = denot.requiredMethod(name, argTypes)
+    final def requiredMethodRef(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermRef = denot.requiredMethodRef(name, argTypes)
+    final def requiredValue(name: PreName)(implicit ctx: Context): TermSymbol = denot.requiredValue(name)
+    final def requiredValueRef(name: PreName)(implicit ctx: Context): TermRef = denot.requiredValueRef(name)
+    final def requiredClass(name: PreName)(implicit ctx: Context): ClassSymbol = denot.requiredClass(name)
+    final def requiredType(name: PreName)(implicit ctx: Context): TypeSymbol = denot.requiredType(name)
+    final def asSeenFrom(pre: Type)(implicit ctx: Context) = denot.asSeenFrom(pre)
+    final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = denot.findMember(name, pre, excluded)
+    final def matches(other: SingleDenotation)(implicit ctx: Context): Boolean = denot.matches(other)
+
+    final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]
+    final def maybeOwner(implicit ctx: Context): Symbol = denot.maybeOwner
+    final def owner(implicit ctx: Context): Symbol = denot.owner
+    final def flags(implicit ctx: Context): FlagSet = denot.flags
+    final private[dotc] def flagsUNSAFE(implicit ctx: Context): FlagSet = denot.flagsUNSAFE
+    final def flags_=(flags: FlagSet)(implicit ctx: Context): Unit = denot.flags_=(flags)
+    final def setFlag(flags: FlagSet)(implicit ctx: Context): Unit = denot.setFlag(flags)
+    final def resetFlag(flags: FlagSet)(implicit ctx: Context): Unit = denot.resetFlag(flags)
+    final def setNoInitsFlags(flags: FlagSet)(implicit ctx: Context): Unit = denot.setNoInitsFlags(flags)
+    final def is(fs: FlagSet)(implicit ctx: Context): Boolean = denot.is(fs)
+    final def is(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context): Boolean = denot.is(fs, butNot)
+    final def is(fs: FlagConjunction)(implicit ctx: Context): Boolean = denot.is(fs)
+    final def is(fs: FlagConjunction, butNot: FlagSet)(implicit ctx: Context): Boolean = denot.is(fs, butNot)
+    final def info(implicit ctx: Context): Type = denot.info
+    final def infoOrCompleter(implicit ctx: Context): Type = denot.infoOrCompleter
+    final def unforcedInfo(implicit ctx: Context): Option[Type] = denot.unforcedInfo
+    final private[dotc] def info_=(tp: Type)(implicit ctx: Context): Unit = denot.info_=(tp)
+    final def effectiveName(implicit ctx: Context): Name = denot.effectiveName
+    final def privateWithin(implicit ctx: Context): Symbol = denot.privateWithin
+    final private[dotc] def privateWithin_=(sym: Symbol)(implicit ctx: Context): Unit = denot.privateWithin_=(sym)
+    final def annotations(implicit ctx: Context): List[Annotation] = denot.annotations
+    final def annotations_=(annots: List[Annotation])(implicit ctx: Context): Unit = denot.annotations_=(annots)
+    final def hasAnnotation(cls: Symbol)(implicit ctx: Context): Boolean = denot.hasAnnotation(cls)
+    final def transformAnnotations(f: Annotation => Annotation)(implicit ctx: Context): Unit = denot.transformAnnotations(f)
+    final def filterAnnotations(p: Annotation => Boolean)(implicit ctx: Context): Unit = denot.filterAnnotations(p)
+    final def getAnnotation(cls: Symbol)(implicit ctx: Context): Option[Annotation] = denot.getAnnotation(cls)
+    final def unforcedAnnotation(cls: Symbol)(implicit ctx: Context): Option[Annotation] = denot.unforcedAnnotation(cls)
+    final def addAnnotation(annot: Annotation)(implicit ctx: Context): Unit = denot.addAnnotation(annot)
+    final def removeAnnotation(cls: Symbol)(implicit ctx: Context): Unit = denot.removeAnnotation(cls)
+    final def updateAnnotation(annot: Annotation)(implicit ctx: Context): Unit = denot.updateAnnotation(annot)
+    final def addAnnotations(annots: TraversableOnce[Annotation])(implicit ctx: Context): Unit = denot.addAnnotations(annots)
+    final def isCompleted(implicit ctx: Context): Boolean = denot.isCompleted
+    final def isCompleting(implicit ctx: Context): Boolean = denot.isCompleting
+    final def completer(implicit ctx: Context): LazyType = denot.completer
+    final def ensureCompleted()(implicit ctx: Context): Unit = denot.ensureCompleted()
+    final def unforcedDecls(implicit ctx: Context): Scope = denot.unforcedDecls
+    final private[core] def currentPackageDecls(implicit ctx: Context): MutableScope = denot.currentPackageDecls
+    final def expandedName(implicit ctx: Context) = denot.expandedName
+    final def originalName(implicit ctx: Context) = denot.originalName
+    final def fullNameSeparated(kind: QualifiedNameKind)(implicit ctx: Context): Name = denot.fullNameSeparated(kind)
+    final def fullNameSeparated(prefixKind: QualifiedNameKind, kind: QualifiedNameKind, name: Name)(implicit ctx: Context): Name = denot.fullNameSeparated(prefixKind, kind, name)
+    final def flatName(implicit ctx: Context): Name = denot.flatName
+    final def fullName(implicit ctx: Context): Name = denot.fullName
+    final def isRealClass(implicit ctx: Context): Boolean = denot.isRealClass
+    final def isError(implicit ctx: Context): Boolean = denot.isError
+    final def markAbsent()(implicit ctx: Context): Unit = denot.markAbsent()
+    final def unforcedIsAbsent(implicit ctx: Context): Boolean = denot.unforcedIsAbsent
+    final def isAbsent(implicit ctx: Context): Boolean = denot.isAbsent
+    final def isRoot(implicit ctx: Context): Boolean = denot.isRoot
+    final def isEmptyPackage(implicit ctx: Context): Boolean = denot.isEmptyPackage
+    final def isEffectiveRoot(implicit ctx: Context): Boolean = denot.isEffectiveRoot
+    final def isAnonymousClass(implicit ctx: Context): Boolean = denot.isAnonymousClass
+    final def isAnonymousFunction(implicit ctx: Context): Boolean = denot.isAnonymousFunction
+    final def isAnonymousModuleVal(implicit ctx: Context): Boolean = denot.isAnonymousModuleVal
+    final def isCompanionMethod(implicit ctx: Context): Boolean = denot.isCompanionMethod
+    final def isValueClassConvertMethod(implicit ctx: Context): Boolean = denot.isValueClassConvertMethod
+    final def isPrimitiveValueClass(implicit ctx: Context): Boolean = denot.isPrimitiveValueClass
+    final def isNumericValueClass(implicit ctx: Context): Boolean = denot.isNumericValueClass
+    final def isNotRuntimeClass(implicit ctx: Context): Boolean = denot.isNotRuntimeClass
+    final def isRefinementClass(implicit ctx: Context): Boolean = denot.isRefinementClass
+    final def isPackageObject(implicit ctx: Context): Boolean = denot.isPackageObject
+    final def isAbstractType(implicit ctx: Context): Boolean = denot.isAbstractType
+    final def isAliasType(implicit ctx: Context): Boolean = denot.isAliasType
+    final def isAbstractOrAliasType(implicit ctx: Context): Boolean = denot.isAbstractOrAliasType
+    final def isAbstractOrParamType(implicit ctx: Context): Boolean = denot.isAbstractOrParamType
+    final def isSelfSym(implicit ctx: Context): Boolean = denot.isSelfSym
+    final def isContainedIn(boundary: Symbol)(implicit ctx: Context): Boolean = denot.isContainedIn(boundary)
+    final def isProperlyContainedIn(boundary: Symbol)(implicit ctx: Context): Boolean = denot.isProperlyContainedIn(boundary)
+    final def isStaticOwner(implicit ctx: Context): Boolean = denot.isStaticOwner
+    final def isCoDefinedWith(that: Symbol)(implicit ctx: Context): Boolean = denot.isCoDefinedWith(that)
+    final def isStable(implicit ctx: Context): Boolean = denot.isStable
+    final def isRealMethod(implicit ctx: Context): Boolean = denot.isRealMethod
+    final def isGetter(implicit ctx: Context): Boolean = denot.isGetter
+    final def isSetter(implicit ctx: Context): Boolean = denot.isSetter
+    final def isImport(implicit ctx: Context): Boolean = denot.isImport
+    final def isClassConstructor(implicit ctx: Context): Boolean = denot.isClassConstructor
+    final def isImplClassConstructor(implicit ctx: Context): Boolean = denot.isImplClassConstructor
+    final def isConstructor(implicit ctx: Context): Boolean = denot.isConstructor
+    final def isLocalDummy(implicit ctx: Context): Boolean = denot.isLocalDummy
+    final def isPrimaryConstructor(implicit ctx: Context): Boolean = denot.isPrimaryConstructor
+    final def isStaticConstructor(implicit ctx: Context): Boolean = denot.isStaticConstructor
+    final def isSubClass(base: Symbol)(implicit ctx: Context): Boolean = denot.isSubClass(base)
+    final def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean = denot.derivesFrom(base)
+    final def isValueClass(implicit ctx: Context): Boolean = denot.isValueClass
+    final def isNullableClass(implicit ctx: Context): Boolean = denot.isNullableClass
+    final def isAccessibleFrom(pre: Type, superAccess: Boolean = false, whyNot: StringBuffer = null)(implicit ctx: Context): Boolean = denot.isAccessibleFrom(pre, superAccess, whyNot)
+    final def membersNeedAsSeenFrom(pre: Type)(implicit ctx: Context): Boolean = denot.membersNeedAsSeenFrom(pre)
+    final def isAsConcrete(that: Symbol)(implicit ctx: Context): Boolean = denot.isAsConcrete(that)
+    final def hasDefaultParams(implicit ctx: Context): Boolean = denot.hasDefaultParams
+    final def isWeakOwner(implicit ctx: Context): Boolean = denot.isWeakOwner
+    final def isSkolem(implicit ctx: Context): Boolean = denot.isSkolem
+    final def isInlineMethod(implicit ctx: Context): Boolean = denot.isInlineMethod
+    final def matchNullaryLoosely(implicit ctx: Context): Boolean = denot.matchNullaryLoosely
+    final def moduleClass(implicit ctx: Context): Symbol = denot.moduleClass
+    final def sourceModule(implicit ctx: Context): Symbol = denot.sourceModule
+    final def accessedFieldOrGetter(implicit ctx: Context): Symbol = denot.accessedFieldOrGetter
+    final def underlyingSymbol(implicit ctx: Context): Symbol = denot.underlyingSymbol
+    final def ownersIterator(implicit ctx: Context) = denot.ownersIterator
+    final def skipWeakOwner(implicit ctx: Context): Symbol = denot.skipWeakOwner
+    final def effectiveOwner(implicit ctx: Context) = denot.effectiveOwner
+    final def enclosingClass(implicit ctx: Context): Symbol = denot.enclosingClass
+    final def lexicallyEnclosingClass(implicit ctx: Context): Symbol = denot.lexicallyEnclosingClass
+    final def isEffectivelyFinal(implicit ctx: Context): Boolean = denot.isEffectivelyFinal
+    final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = denot.enclosingClassNamed(name)
+    final def enclosingMethod(implicit ctx: Context): Symbol = denot.enclosingMethod
+    final def topLevelClass(implicit ctx: Context): Symbol = denot.topLevelClass
+    final def isTopLevelClass(implicit ctx: Context): Boolean = denot.isTopLevelClass
+    final def enclosingPackageClass(implicit ctx: Context): Symbol = denot.enclosingPackageClass
+    final def companionModule(implicit ctx: Context): Symbol = denot.companionModule
+    final def companionClass(implicit ctx: Context): Symbol = denot.companionClass
+    final def scalacLinkedClass(implicit ctx: Context): Symbol = denot.scalacLinkedClass
+    final def isLinkedWith(sym: Symbol)(implicit ctx: Context): Boolean = denot.isLinkedWith(sym)
+    final def linkedClass(implicit ctx: Context): Symbol = denot.linkedClass
+    final def enclosingSubClass(implicit ctx: Context) = denot.enclosingSubClass
+    final def matchingDecl(inClass: Symbol, site: Type)(implicit ctx: Context): Symbol = denot.matchingDecl(inClass, site)
+    final def matchingMember(site: Type)(implicit ctx: Context): Symbol = denot.matchingMember(site)
+    final def canMatchInheritedSymbols(implicit ctx: Context): Boolean = denot.canMatchInheritedSymbols
+    final def memberCanMatchInheritedSymbols(implicit ctx: Context): Boolean = denot.memberCanMatchInheritedSymbols
+    final def overriddenSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol = denot.overriddenSymbol(inClass)
+    final def allOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] = denot.allOverriddenSymbols
+    final def extendedOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] = denot.extendedOverriddenSymbols
+    final def overridingSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol = denot.overridingSymbol(inClass)
+    final def superSymbolIn(base: Symbol)(implicit ctx: Context): Symbol = denot.superSymbolIn(base)
+    final def isIncompleteIn(base: Symbol)(implicit ctx: Context): Boolean = denot.isIncompleteIn(base)
+    final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol = denot.accessBoundary(base)
+    final def primaryConstructor(implicit ctx: Context): Symbol = denot.primaryConstructor
+    final def currentSymbol(implicit ctx: Context): Symbol = denot.currentSymbol
+    final def typeParams(implicit ctx: Context): List[TypeSymbol] = denot.typeParams
+    final def thisType(implicit ctx: Context): Type = denot.thisType
+    final def appliedRef(implicit ctx: Context): Type = denot.appliedRef
+    final def namedType(implicit ctx: Context): NamedType = denot.namedType
+    final def typeRef(implicit ctx: Context): TypeRef = denot.typeRef
+    final def termRef(implicit ctx: Context): TermRef = denot.termRef
+    final def variance(implicit ctx: Context): Int = denot.variance
+    final def typeParamCreationFlags(implicit ctx: Context): FlagSet = denot.typeParamCreationFlags
+    final def debugString(implicit ctx: Context) = denot.debugString
+    final def hasSkolems(tp: Type)(implicit ctx: Context): Boolean = denot.hasSkolems(tp)
+    final def assertNoSkolems(tp: Type)(implicit ctx: Context) = denot.assertNoSkolems(tp)
+    final def initial(implicit ctx: Context): SymDenotation = denot.initial
+    final def ensureNotPrivate(implicit ctx: Context) = denot.ensureNotPrivate
 
     // ParamInfo types and methods
     def isTypeParam(implicit ctx: Context) = denot.is(TypeParam)
@@ -700,6 +857,25 @@ object Symbols {
       denot.asInstanceOf[ClassDenotation]
 
     override protected def prefixString = "ClassSymbol"
+
+// -------- Denot Forwarders-------------------------------------------------
+
+    final def classInfo(implicit ctx: Context): ClassInfo = classDenot.classInfo
+    final def classParents(implicit ctx: Context): List[Type] = classDenot.classParents
+    final def superClass(implicit ctx: Context): Symbol = classDenot.superClass
+    final def givenSelfType(implicit ctx: Context) = classDenot.givenSelfType
+    final def baseClasses(implicit onBehalf: BaseData, ctx: Context): List[ClassSymbol] = classDenot.baseClasses
+    final def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = classDenot.enter(sym, scope)
+    final def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = classDenot.enterNoReplace(sym, scope)
+    final def replace(prev: Symbol, replacement: Symbol)(implicit ctx: Context): Unit = classDenot.replace(prev, replacement)
+    final def delete(sym: Symbol)(implicit ctx: Context) = classDenot.delete(sym)
+    final def ensureTypeParamsInCorrectOrder()(implicit ctx: Context): Unit = classDenot.ensureTypeParamsInCorrectOrder()
+    final def membersNamed(name: Name)(implicit ctx: Context): PreDenotation = classDenot.membersNamed(name)
+    final def nonPrivateMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = classDenot.nonPrivateMembersNamed(name)
+    final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = classDenot.baseTypeOf(tp)
+    final def memberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = classDenot.memberNames(keepOnly)
+    final def paramAccessors(implicit ctx: Context): List[Symbol] = classDenot.paramAccessors
+    final def ensureFreshScopeAfter(phase: DenotTransformer)(implicit ctx: Context): Unit = classDenot.ensureFreshScopeAfter(phase)
   }
 
   class ErrorSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(NoCoord, ctx.nextId) {
@@ -729,12 +905,6 @@ object Symbols {
       else
         ctx.newSymbol(owner, name, flags, info, privateWithin, coord)
   }
-
-  /** Makes all denotation operations available on symbols */
-  implicit def toDenot(sym: Symbol)(implicit ctx: Context): SymDenotation = sym.denot
-
-  /** Makes all class denotation operations available on class symbols */
-  implicit def toClassDenot(cls: ClassSymbol)(implicit ctx: Context): ClassDenotation = cls.classDenot
 
   /** The Definitions object */
   def defn(implicit ctx: Context): Definitions = ctx.definitions

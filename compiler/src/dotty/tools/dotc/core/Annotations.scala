@@ -148,7 +148,7 @@ object Annotations {
 
     def makeAlias(sym: TermSymbol)(implicit ctx: Context) =
       apply(defn.AliasAnnot, List(
-        ref(TermRef(sym.owner.thisType, sym.name, sym))))
+        ref(TermRef(sym.owner.thisType, sym.name, sym.denot))))
 
     /** Extractor for child annotations */
     object Child {
@@ -157,7 +157,7 @@ object Annotations {
       def apply(delayedSym: Context => Symbol)(implicit ctx: Context): Annotation = {
         def makeChildLater(implicit ctx: Context) = {
           val sym = delayedSym(ctx)
-          New(defn.ChildAnnotType.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
+          New(defn.ChildAnnotType.appliedTo(sym.owner.thisType.select(sym.name, sym.denot)), Nil)
         }
         deferred(defn.ChildAnnot, implicit ctx => makeChildLater(ctx))
       }

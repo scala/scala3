@@ -78,7 +78,7 @@ class Valify(val simplifyPhase: Simplify) extends Optimisation {
         case x: ValDef if valsToDrop.contains(x) => EmptyTree
         case t: Assign => assignsToReplace.get(t) match {
           case Some(vd) =>
-            val newD = vd.symbol.asSymDenotation.copySymDenotation(initFlags = vd.symbol.flags.&~(Mutable))
+            val newD = vd.symbol.denot.copySymDenotation(initFlags = vd.symbol.flags.&~(Mutable))
             newD.installAfter(simplifyPhase)
             ValDef(vd.symbol.asTerm, t.rhs)
           case None => t

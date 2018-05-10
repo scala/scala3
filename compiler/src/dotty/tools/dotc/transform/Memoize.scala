@@ -98,9 +98,9 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         case _ => ()
       }
 
-    def removeAnnotations(denot: SymDenotation): Unit =
+    def removeAnnotations(): Unit =
       if (sym.annotations.nonEmpty) {
-        val cpy = sym.copySymDenotation()
+        val cpy = sym.denot.copySymDenotation()
         cpy.annotations = Nil
         cpy.installAfter(thisPhase)
       }
@@ -136,7 +136,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
           else transformFollowingDeep(ref(field))(ctx.withOwner(sym))
         val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
         addAnnotations(fieldDef.denot)
-        removeAnnotations(sym)
+        removeAnnotations()
         Thicket(fieldDef, getterDef)
       } else if (sym.isSetter) {
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // This is intended as an assertion
@@ -145,7 +145,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         else {
           val initializer = Assign(ref(field), adaptToField(ref(tree.vparamss.head.head.symbol)))
           val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(ctx.withOwner(sym)))
-          removeAnnotations(sym)
+          removeAnnotations()
           setterDef
         }
       }

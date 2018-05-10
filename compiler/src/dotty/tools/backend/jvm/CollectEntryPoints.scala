@@ -61,11 +61,11 @@ object CollectEntryPoints{
     val StringType = d.StringType
     // The given class has a main method.
     def hasJavaMainMethod(sym: Symbol): Boolean =
-      (toDenot(sym).info member nme.main).alternatives exists(x => isJavaMainMethod(x.symbol))
+      (sym.info member nme.main).alternatives exists(x => isJavaMainMethod(x.symbol))
 
     def fail(msg: String, pos: Position = sym.pos) = {
       ctx.warning(          sym.name +
-        s" has a main method with parameter type Array[String], but ${toDenot(sym).fullName} will not be a runnable program.\n  Reason: $msg",
+        s" has a main method with parameter type Array[String], but ${sym.fullName} will not be a runnable program.\n  Reason: $msg",
         sourcePos(sym.pos)
         // TODO: make this next claim true, if possible
         //   by generating valid main methods as static in module classes
@@ -77,7 +77,7 @@ object CollectEntryPoints{
     def failNoForwarder(msg: String) = {
       fail(s"$msg, which means no static forwarder can be generated.\n")
     }
-    val possibles = if (sym.flags is Flags.Module) (toDenot(sym).info nonPrivateMember nme.main).alternatives else Nil
+    val possibles = if (sym.flags is Flags.Module) (sym.info nonPrivateMember nme.main).alternatives else Nil
     val hasApproximate = possibles exists { m =>
       m.info match {
         case MethodTpe(_, p :: Nil, _) => p.typeSymbol == defn.ArrayClass
@@ -94,7 +94,7 @@ object CollectEntryPoints{
 
         if (hasJavaMainMethod(companion))
           failNoForwarder("companion contains its own main method")
-        else if (toDenot(companion).info.member(nme.main) != NoDenotation)
+        else if (companion.info.member(nme.main) != NoDenotation)
         // this is only because forwarders aren't smart enough yet
           failNoForwarder("companion contains its own main method (implementation restriction: no main is allowed, regardless of signature)")
         else if (companion.flags is Flags.Trait)
@@ -103,7 +103,7 @@ object CollectEntryPoints{
         // attempts to be java main methods.
         else (possibles exists(x=> isJavaMainMethod(x.symbol))) || {
           possibles exists { m =>
-            toDenot(m.symbol).info match {
+            m.symbol.info match {
               case t: PolyType =>
                 fail("main methods cannot be generic.")
               case MethodTpe(paramNames, paramTypes, resultType) =>

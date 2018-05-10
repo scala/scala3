@@ -51,7 +51,7 @@ trait TypeAssigner {
     def addRefinement(parent: Type, decl: Symbol) = {
       val inherited =
         parentType.findMember(decl.name, cls.thisType, excluded = Private)
-          .suchThat(decl.matches(_))
+          .suchThat(sym => decl.matches(sym.denot))
       val inheritedInfo = inherited.info
       if (inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info)) {
         val r = RefinedType(parent, decl.name, decl.info)

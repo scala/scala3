@@ -206,7 +206,7 @@ object Inliner {
    *                     to have the inlined method as owner.
    */
   def registerInlineInfo(
-      sym: SymDenotation, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
+      sym: Symbol, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
     sym.unforcedAnnotation(defn.BodyAnnot) match {
       case Some(ann: ConcreteBodyAnnotation) =>
       case Some(ann: LazyBodyAnnotation) if ann.isEvaluated =>
@@ -225,10 +225,10 @@ object Inliner {
   /** `sym` has an inline method with a known body to inline (note: definitions coming
    *  from Scala2x class files might be `@inline`, but still lack that body.
    */
-  def hasBodyToInline(sym: SymDenotation)(implicit ctx: Context): Boolean =
+  def hasBodyToInline(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.isInlineMethod && sym.hasAnnotation(defn.BodyAnnot)
 
-  private def bodyAndAccessors(sym: SymDenotation)(implicit ctx: Context): (Tree, List[MemberDef]) =
+  private def bodyAndAccessors(sym: Symbol)(implicit ctx: Context): (Tree, List[MemberDef]) =
     sym.unforcedAnnotation(defn.BodyAnnot).get.tree match {
       case Thicket(body :: accessors) => (body, accessors.asInstanceOf[List[MemberDef]])
       case body => (body, Nil)
@@ -237,14 +237,14 @@ object Inliner {
   /** The body to inline for method `sym`.
    *  @pre  hasBodyToInline(sym)
    */
-  def bodyToInline(sym: SymDenotation)(implicit ctx: Context): Tree =
+  def bodyToInline(sym: Symbol)(implicit ctx: Context): Tree =
     bodyAndAccessors(sym)._1
 
  /** The accessors to non-public members needed by the inlinable body of `sym`.
    * These accessors are dropped as a side effect of calling this method.
    * @pre  hasBodyToInline(sym)
    */
-  def removeInlineAccessors(sym: SymDenotation)(implicit ctx: Context): List[MemberDef] = {
+  def removeInlineAccessors(sym: Symbol)(implicit ctx: Context): List[MemberDef] = {
     val (body, accessors) = bodyAndAccessors(sym)
     if (accessors.nonEmpty) sym.updateAnnotation(ConcreteBodyAnnotation(body))
     accessors
