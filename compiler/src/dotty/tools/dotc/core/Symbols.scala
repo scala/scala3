@@ -707,7 +707,7 @@ object Symbols {
     denot = underlying.denot
   }
 
-  @sharable val NoSymbol: Symbol = new Symbol(NoCoord, 0) {
+  @sharable object NoSymbol extends Symbol(NoCoord, 0) {
     override def associatedFile(implicit ctx: Context): AbstractFile = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = NoDenotation
   }

@@ -2355,7 +2355,7 @@ object Types {
     private[this] var myRecThis: RecThis = null
 
     def recThis: RecThis = {
-      if (myRecThis == null) myRecThis = new RecThis(this) {}
+      if (myRecThis == null) myRecThis = new RecThisImpl(this)
       myRecThis
     }
 
@@ -2849,7 +2849,7 @@ object Types {
      */
     def isParamDependent(implicit ctx: Context): Boolean = paramDependencyStatus == TrueDeps
 
-    def newParamRef(n: Int) = new TermParamRef(this, n) {}
+    def newParamRef(n: Int): TermParamRef = new TermParamRefImpl(this, n)
 
     /** The least supertype of `resultType` that does not contain parameter dependencies */
     def nonDependentResultApprox(implicit ctx: Context): Type =
@@ -3008,7 +3008,7 @@ object Types {
     def isResultDependent(implicit ctx: Context): Boolean = true
     def isParamDependent(implicit ctx: Context): Boolean = true
 
-    def newParamRef(n: Int) = new TypeParamRef(this, n) {}
+    def newParamRef(n: Int): TypeParamRef = new TypeParamRefImpl(this, n)
 
     lazy val typeParams: List[LambdaParam] =
       paramNames.indices.toList.map(new LambdaParam(this, _))
@@ -3285,6 +3285,8 @@ object Types {
     def copyBoundType(bt: BT) = bt.paramRefs(paramNum)
   }
 
+  private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)
+
   /** Only created in `binder.paramRefs`. Use `binder.paramRefs(paramNum)` to
    *  refer to `TypeParamRef(binder, paramNum)`.
    */
@@ -3304,6 +3306,8 @@ object Types {
       case _ => false
     }
   }
+
+  private final class TypeParamRefImpl(binder: TypeLambda, paramNum: Int) extends TypeParamRef(binder, paramNum)
 
   /** a self-reference to an enclosing recursive type. The only creation method is
    *  `binder.recThis`, returning `RecThis(binder)`.
@@ -3330,6 +3334,8 @@ object Types {
         case ex: NullPointerException => s"RecThis(<under construction>)"
       }
   }
+
+  private final class RecThisImpl(binder: RecType) extends RecThis(binder)
 
   // ----- Skolem types -----------------------------------------------
 
