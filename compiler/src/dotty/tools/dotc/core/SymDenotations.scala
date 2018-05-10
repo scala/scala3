@@ -39,8 +39,8 @@ trait SymDenotations { this: Context =>
     initPrivateWithin: Symbol = NoSymbol)(implicit ctx: Context): SymDenotation = {
     val result =
       if (symbol.isClass)
-        if (initFlags is Package) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin, ctx.runId)
-        else new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin, ctx.runId)
+        if (initFlags is Package) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+        else new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
       else new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
     result.validFor = stablePeriod
     result
@@ -1284,8 +1284,7 @@ object SymDenotations {
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol,
-    initRunId: RunId)
+    initPrivateWithin: Symbol)
     extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
 
     import util.LRUCache
@@ -1811,9 +1810,8 @@ object SymDenotations {
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol,
-    initRunId: RunId)
-    extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin, initRunId) {
+    initPrivateWithin: Symbol)
+    extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
 
     private[this] var packageObjCache: SymDenotation = _
     private[this] var packageObjRunId: RunId = NoRunId
