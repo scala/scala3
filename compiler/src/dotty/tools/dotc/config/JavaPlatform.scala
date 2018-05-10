@@ -35,7 +35,7 @@ class JavaPlatform extends Platform {
       currentClassPath = Some(subst.getOrElse(cp, cp))
   }
 
-  def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = new ctx.base.loaders.PackageLoader(root, classPath)
+  def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = new SymbolLoaders.PackageLoader(root, classPath)
 
   /** Is the SAMType `cls` also a SAM under the rules of the JVM? */
   def isSam(cls: ClassSymbol)(implicit ctx: Context): Boolean =

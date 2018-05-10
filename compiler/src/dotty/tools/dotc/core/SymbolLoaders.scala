@@ -19,17 +19,14 @@ import parsing.Parsers.OutlineParser
 import reporting.trace
 
 object SymbolLoaders {
+  import ast.untpd._
+
   /** A marker trait for a completer that replaces the original
    *  Symbol loader for an unpickled root.
    */
   trait SecondCompleter
-}
 
-/** A base class for Symbol loaders with some overridable behavior  */
-class SymbolLoaders {
-  import ast.untpd._
-
-  protected def enterNew(
+  private def enterNew(
       owner: Symbol, member: Symbol,
       completer: SymbolLoader, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
     val comesFromScan =

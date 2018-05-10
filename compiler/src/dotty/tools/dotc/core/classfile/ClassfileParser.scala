@@ -703,7 +703,7 @@ class ClassfileParser(
     }
 
     def enterClassAndModule(entry: InnerClassEntry, file: AbstractFile, jflags: Int) = {
-      ctx.base.loaders.enterClassAndModule(
+      SymbolLoaders.enterClassAndModule(
           getOwner(jflags),
           entry.originalName,
           new ClassfileLoader(file),
