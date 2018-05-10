@@ -4,7 +4,6 @@ package transform
 import core._
 import Types._
 import Symbols._
-import SymDenotations._
 import Contexts._
 import Flags._
 import StdNames._
@@ -13,15 +12,14 @@ import SymUtils._
 /** Methods that apply to user-defined value classes */
 object ValueClasses {
 
-  def isDerivedValueClass(d: SymDenotation)(implicit ctx: Context): Boolean = {
+  def isDerivedValueClass(sym: Symbol)(implicit ctx: Context): Boolean = {
+    val d = sym.denot
     !ctx.settings.XnoValueClasses.value &&
     !d.isRefinementClass &&
     d.isValueClass &&
     (d.initial.symbol ne defn.AnyValClass) && // Compare the initial symbol because AnyVal does not exist after erasure
     !d.isPrimitiveValueClass
   }
-  def isDerivedValueClass(sym: Symbol)(implicit ctx: Context): Boolean =
-    isDerivedValueClass(sym.denot)
 
   def isMethodWithExtension(sym: Symbol)(implicit ctx: Context) =
     ctx.atPhaseNotLaterThan(ctx.extensionMethodsPhase) { implicit ctx =>
@@ -35,12 +33,9 @@ object ValueClasses {
     }
 
   /** The member of a derived value class that unboxes it. */
-  def valueClassUnbox(d: ClassDenotation)(implicit ctx: Context): Symbol =
-    // (info.decl(nme.unbox)).orElse(...)      uncomment once we accept unbox methods
-    d.classInfo.decls.find(_.is(ParamAccessor))
-
   def valueClassUnbox(cls: ClassSymbol)(implicit ctx: Context): Symbol =
-    valueClassUnbox(cls.classDenot)
+    // (info.decl(nme.unbox)).orElse(...)      uncomment once we accept unbox methods
+    cls.classInfo.decls.find(_.is(ParamAccessor))
 
   /** For a value class `d`, this returns the synthetic cast from the underlying type to
    *  ErasedValueType defined in the companion module. This method is added to the module
@@ -57,10 +52,8 @@ object ValueClasses {
     d.linkedClass.info.decl(nme.EVT2U).symbol
 
   /** The unboxed type that underlies a derived value class */
-  def underlyingOfValueClass(d: ClassDenotation)(implicit ctx: Context): Type =
-    valueClassUnbox(d).info.resultType
   def underlyingOfValueClass(sym: ClassSymbol)(implicit ctx: Context): Type =
-    underlyingOfValueClass(sym.classDenot)
+    valueClassUnbox(sym).info.resultType
 
   /** Whether a value class wraps itself */
   def isCyclic(cls: ClassSymbol)(implicit ctx: Context): Boolean = {
