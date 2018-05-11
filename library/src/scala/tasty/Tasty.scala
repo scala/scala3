@@ -687,7 +687,9 @@ abstract class Tasty {
 
   // ===== Positions ================================================
 
-  trait Position {
+  type Position
+
+  trait AbstractPosition {
     def start: Int
     def end: Int
 
@@ -698,6 +700,7 @@ abstract class Tasty {
     def endLine: Int
     def endColumn: Int
   }
+  implicit def PositionDeco(pos: Position): AbstractPosition
 
   trait Positioned {
     def pos(implicit ctx: Context): Position

@@ -37,7 +37,7 @@ object TastyImpl extends scala.tasty.Tasty {
   type Id = untpd.Ident
 
   implicit def IdDeco(x: Id): AbstractId = new AbstractId {
-    def pos(implicit ctx: Context): Position = new TastyPosition(x.pos)
+    def pos(implicit ctx: Context): Position = x.pos
   }
 
   def idClassTag: ClassTag[Id] = implicitly[ClassTag[Id]]
@@ -54,7 +54,7 @@ object TastyImpl extends scala.tasty.Tasty {
   type Tree = tpd.Tree
 
   implicit def TreeDeco(t: Tree): AbstractTree = new AbstractTree {
-    def pos(implicit ctx: Context): Position = new TastyPosition(t.pos)
+    def pos(implicit ctx: Context): Position = t.pos
   }
 
   type PackageClause = tpd.PackageDef
@@ -218,7 +218,7 @@ object TastyImpl extends scala.tasty.Tasty {
   type Term = tpd.Tree
 
   implicit def TermDeco(t: Term): AbstractTerm = new AbstractTerm {
-    def pos(implicit ctx: Context): Position = new TastyPosition(t.pos)
+    def pos(implicit ctx: Context): Position = t.pos
     def tpe(implicit ctx: Context): Types.Type = t.tpe
   }
 
@@ -398,7 +398,7 @@ object TastyImpl extends scala.tasty.Tasty {
   type Pattern = tpd.Tree
 
   implicit def PatternDeco(x: Pattern): AbstractPattern = new AbstractPattern {
-    def pos(implicit ctx: Context): Position = new TastyPosition(x.pos)
+    def pos(implicit ctx: Context): Position = x.pos
     def tpe(implicit ctx: Context): Types.Type = x.tpe.stripTypeVar
   }
 
@@ -458,7 +458,7 @@ object TastyImpl extends scala.tasty.Tasty {
   type TypeTree = tpd.Tree
 
   implicit def TypeTreeDeco(x: TypeTree): AbstractTypeTree = new AbstractTypeTree {
-    def pos(implicit ctx: Context): Position = new TastyPosition(x.pos)
+    def pos(implicit ctx: Context): Position = x.pos
     def tpe(implicit ctx: Context): Types.Type = x.tpe.stripTypeVar
   }
 
@@ -901,9 +901,11 @@ object TastyImpl extends scala.tasty.Tasty {
   }
 
 
-  // ===== Private Methods ==========================================
+  // ===== Positions ================================================
 
-  private class TastyPosition(val pos: SourcePosition) extends Position {
+  type Position = SourcePosition
+
+  def PositionDeco(pos: Position): AbstractPosition = new AbstractPosition {
     def start = pos.start
     def end = pos.end
 
@@ -914,7 +916,6 @@ object TastyImpl extends scala.tasty.Tasty {
 
     def startColumn = pos.startColumn
     def endColumn = pos.endColumn
-
-    override def toString: String = s"Position(${pos.line}, ${pos.column})"
   }
+
 }
