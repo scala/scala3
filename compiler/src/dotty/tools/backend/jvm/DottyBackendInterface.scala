@@ -842,7 +842,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def superInterfaces: List[Symbol] = {
       val directlyInheritedTraits = decorateSymbol(sym).directlyInheritedTraits
       val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
-      val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.symbol.asClass.baseClasses.drop(1)).toSet
+      val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
       val superCalls = superCallsMap.getOrElse(sym, Set.empty)
       val additional = (superCalls -- directlyInheritedTraitsSet).filter(_.is(Flags.Trait))
 //      if (additional.nonEmpty)
