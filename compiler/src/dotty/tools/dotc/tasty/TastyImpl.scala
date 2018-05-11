@@ -213,21 +213,13 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Parent = tpd.Tree
 
-  def parentClassTag: ClassTag[Parent] = implicitly[ClassTag[Parent]]
-
-  val TermParent: TermParentExtractor = new TermParentExtractor {
-    def unapply(x: Parent)(implicit ctx: Context): Option[Term] =
-      if (x.isTerm) Some(x) else None
-  }
-
-  val TypeParent: TypeParentExtractor = new TypeParentExtractor {
-    def unapply(x: Parent)(implicit ctx: Context): Option[TypeTree] =
-      if (x.isTerm) None else Some(x)
-  }
-
   // ----- Terms ----------------------------------------------------
 
   type Term = tpd.Tree
+
+  val Term: TermCaster = new TermCaster {
+    def unapply(x: Term)(implicit ctx: Context): Boolean = x.isTerm
+  }
 
   implicit def TermDeco(t: Term): AbstractTerm = new AbstractTerm {
     def pos(implicit ctx: Context): Position = new TastyPosition(t.pos)
@@ -457,6 +449,10 @@ object TastyImpl extends scala.tasty.Tasty {
   // ----- TypeTrees ------------------------------------------------
 
   type TypeTree = tpd.Tree
+
+  val TypeTree: TypeTreeCaster = new TypeTreeCaster {
+    def unapply(x: TypeTree)(implicit ctx: Context): Boolean = x.isType
+  }
 
   def typeTreeClassTag: ClassTag[TypeTree] = implicitly[ClassTag[TypeTree]]
 

@@ -72,7 +72,12 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
       case TypeDef(name, rhs) =>
         this += "TypeDef(" += name += ", " += rhs += ")"
       case ClassDef(name, constr, parents, self, body) =>
-        this += "ClassDef(" += name += ", " += constr += ", " ++= parents += ", " += self += ", " ++= body += ")"
+        this += "ClassDef(" += name += ", " += constr += ", "
+        visitList[Parent](parents, {
+          case parent @ Term() => this += parent
+          case parent @ TypeTree() => this += parent
+        })
+        this += ", " += self += ", " ++= body += ")"
       case PackageDef(name, members) =>
         this += "PackageDef(" += name += ", " ++= members += ")"
       case Import(expr, selectors) =>
@@ -194,11 +199,6 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
       case Annotation(tree) => this += "Annotation(" += tree += ")"
     }
 
-    def visitParent(x: Parent): Buffer = x match {
-      case TermParent(term) => this += "TermParent(" += term += ")"
-      case TypeParent(typeTree) => this += "TypeParent(" += typeTree += ")"
-    }
-
     def visitId(x: Id): Buffer = {
       val Id(name) = x
       this += "Id(" += name += ")"
@@ -237,11 +237,6 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
     private implicit class CaseDefOps(buff: Buffer) {
       def +=(x: CaseDef): Buffer = { visitCaseDef(x); buff }
       def ++=(x: List[CaseDef]): Buffer = { visitList(x, visitCaseDef); buff }
-    }
-
-    private implicit class ParentOps(buff: Buffer) {
-      def +=(x: Parent): Buffer = { visitParent(x); buff }
-      def ++=(x: List[Parent]): Buffer = { visitList(x, visitParent); buff }
     }
 
     private implicit class PatternOps(buff: Buffer) {

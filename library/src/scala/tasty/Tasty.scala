@@ -162,23 +162,16 @@ abstract class Tasty {
 
   // ----- Parents --------------------------------------------------
 
-  type Parent
-
-  implicit def parentClassTag: ClassTag[Parent]
-
-  val TermParent: TermParentExtractor
-  abstract class TermParentExtractor {
-    def unapply(x: Parent)(implicit ctx: Context): Option[Term]
-  }
-
-  val TypeParent: TypeParentExtractor
-  abstract class TypeParentExtractor {
-    def unapply(x: Parent)(implicit ctx: Context): Option[TypeTree]
-  }
+  type Parent /* Term | TypeTree */
 
   // ----- Terms ----------------------------------------------------
 
-  type Term <: Statement
+  type Term <: Statement with Parent
+
+  val Term: TermCaster
+  abstract class TermCaster {
+    def unapply(x: Term)(implicit ctx: Context): Boolean
+  }
 
   trait AbstractTerm extends Typed with Positioned
   implicit def TermDeco(t: Term): AbstractTerm
@@ -342,7 +335,12 @@ abstract class Tasty {
 
   // ----- TypeTrees ------------------------------------------------
 
-  type TypeTree <: TypeOrBoundsTree
+  type TypeTree <: TypeOrBoundsTree with Parent
+
+  val TypeTree: TypeTreeCaster
+  abstract class TypeTreeCaster {
+    def unapply(x: TypeTree)(implicit ctx: Context): Boolean
+  }
 
   trait AbstractTypeTree extends Typed with Positioned
   implicit def TypeTreeDeco(x: TypeTree): AbstractTypeTree

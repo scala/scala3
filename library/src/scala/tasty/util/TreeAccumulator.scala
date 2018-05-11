@@ -10,13 +10,12 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
   def foldTypeTree(x: X, tree: TypeOrBoundsTree)(implicit ctx: Context): X
   def foldCaseDef(x: X, tree: CaseDef)(implicit ctx: Context): X
   def foldPattern(x: X, tree: Pattern)(implicit ctx: Context): X
-  def foldParent(x: X, tree: Parent)(implicit ctx: Context): X
 
   def foldTrees(x: X, trees: Iterable[Tree])(implicit ctx: Context): X = (x /: trees)(foldTree)
   def foldTypeTrees(x: X, trees: Iterable[TypeOrBoundsTree])(implicit ctx: Context): X = (x /: trees)(foldTypeTree)
   def foldCaseDefs(x: X, trees: Iterable[CaseDef])(implicit ctx: Context): X = (x /: trees)(foldCaseDef)
   def foldPatterns(x: X, trees: Iterable[Pattern])(implicit ctx: Context): X = (x /: trees)(foldPattern)
-  def foldParents(x: X, trees: Iterable[Parent])(implicit ctx: Context): X = (x /: trees)(foldParent)
+  private def foldParents(x: X, trees: Iterable[Parent])(implicit ctx: Context): X = (x /: trees)(foldOverParent)
 
   def foldOverTree(x: X, tree: Tree)(implicit ctx: Context): X = {
     def localCtx(definition: Definition): Context = definition.localContext
@@ -106,9 +105,9 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
     case TypeTest(tpt) => foldTypeTree(x, tpt)
   }
 
-  def foldOverParent(x: X, tree: Parent)(implicit ctx: Context): X = tree match {
-    case TermParent(term) => foldOverTree(x, term)
-    case TypeParent(typeTree) => foldOverTypeTree(x, typeTree)
+  private def foldOverParent(x: X, tree: Parent)(implicit ctx: Context): X = tree match {
+    case tree @ Term() => foldOverTree(x, tree)
+    case tree @ TypeTree() => foldOverTypeTree(x, tree)
   }
 
 }

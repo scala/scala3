@@ -17,11 +17,11 @@ baz2
 ValDef(foo2, Synthetic(), None)
 
 <init>
-ClassDef(A, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(TypeDef(B, Synthetic()), DefDef(b, Nil, Nil, Synthetic(), None), ValDef(b2, Synthetic(), None)))
+ClassDef(A, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(TypeDef(B, Synthetic()), DefDef(b, Nil, Nil, Synthetic(), None), ValDef(b2, Synthetic(), None)))
 
 b
-ClassDef(A, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(TypeDef(B, Synthetic()), DefDef(b, Nil, Nil, Synthetic(), None), ValDef(b2, Synthetic(), None)))
+ClassDef(A, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(TypeDef(B, Synthetic()), DefDef(b, Nil, Nil, Synthetic(), None), ValDef(b2, Synthetic(), None)))
 
 b2
-ClassDef(A, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(TypeDef(B, Synthetic()), DefDef(b, Nil, Nil, Synthetic(), None), ValDef(b2, Synthetic(), None)))
+ClassDef(A, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(TypeDef(B, Synthetic()), DefDef(b, Nil, Nil, Synthetic(), None), ValDef(b2, Synthetic(), None)))
 

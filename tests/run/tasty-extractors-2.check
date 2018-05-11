@@ -34,10 +34,10 @@ ConstantType(Int(3))
 Block(List(Import(Select(Ident(scala), collection, None), List(OmitSelector(Id(mutable))))), Literal(Int(4)))
 ConstantType(Int(4))
 
-Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, Nil)), Literal(Unit()))
+Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, Nil)), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ValDef(Foo, TypeIdent(Foo$), Some(Apply(Select(New(TypeIdent(Foo$)), <init>, Some(Signature(Nil, Test$._$Foo$))), Nil))), ClassDef(Foo$, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), Some(ValDef(_, Singleton(Ident(Foo)), None)), Nil)), Literal(Unit()))
+Block(List(ValDef(Foo, TypeIdent(Foo$), Some(Apply(Select(New(TypeIdent(Foo$)), <init>, Some(Signature(Nil, Test$._$Foo$))), Nil))), ClassDef(Foo$, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), Some(ValDef(_, Singleton(Ident(Foo)), None)), Nil)), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
 Block(List(TypeDef(Foo, TypeBoundsTree(Synthetic(), Synthetic()))), Literal(Unit()))
@@ -49,61 +49,61 @@ SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 Block(List(TypeDef(Foo, TypeBoundsTree(TypeIdent(Null), TypeIdent(Object)))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(ValDef(a, Synthetic(), Some(Literal(Int(0)))), DefDef(a_=, Nil, List(List(ValDef(x$1, Synthetic(), None))), Synthetic(), Some(Literal(Unit())))))), Literal(Unit()))
+Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(ValDef(a, Synthetic(), Some(Literal(Int(0)))), DefDef(a_=, Nil, List(List(ValDef(x$1, Synthetic(), None))), Synthetic(), Some(Literal(Unit())))))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(DefDef(a, Nil, Nil, Synthetic(), Some(Literal(Int(0))))))), Literal(Unit()))
+Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(DefDef(a, Nil, Nil, Synthetic(), Some(Literal(Int(0))))))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(DefDef(a, Nil, Nil, Synthetic(), Some(Literal(Int(0))))))), Literal(Unit()))
+Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(DefDef(a, Nil, Nil, Synthetic(), Some(Literal(Int(0))))))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(DefDef(a, Nil, Nil, Synthetic(), Some(Literal(Int(0))))))), Literal(Unit()))
+Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(DefDef(a, Nil, Nil, Synthetic(), Some(Literal(Int(0))))))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo1, DefDef(<init>, Nil, List(List(ValDef(a, TypeIdent(Int), None))), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(ValDef(a, Synthetic(), None)))), Literal(Unit()))
+Block(List(ClassDef(Foo1, DefDef(<init>, Nil, List(List(ValDef(a, TypeIdent(Int), None))), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(ValDef(a, Synthetic(), None)))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo2, DefDef(<init>, Nil, List(List(ValDef(b, TypeIdent(Int), None))), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(ValDef(b, Synthetic(), None)))), Literal(Unit()))
+Block(List(ClassDef(Foo2, DefDef(<init>, Nil, List(List(ValDef(b, TypeIdent(Int), None))), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(ValDef(b, Synthetic(), None)))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo3, DefDef(<init>, Nil, List(List(ValDef(a, TypeIdent(Int), None))), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(ValDef(a, Synthetic(), None))), ValDef(Foo3, TypeIdent(Foo3$), Some(Apply(Select(New(TypeIdent(Foo3$)), <init>, Some(Signature(Nil, Test$._$Foo3$))), Nil))), ClassDef(Foo3$, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), Some(ValDef(_, Singleton(Ident(Foo3)), None)), List(DefDef($lessinit$greater$default$1, Nil, Nil, Synthetic(), Some(Literal(Int(5))))))), Literal(Unit()))
+Block(List(ClassDef(Foo3, DefDef(<init>, Nil, List(List(ValDef(a, TypeIdent(Int), None))), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(ValDef(a, Synthetic(), None))), ValDef(Foo3, TypeIdent(Foo3$), Some(Apply(Select(New(TypeIdent(Foo3$)), <init>, Some(Signature(Nil, Test$._$Foo3$))), Nil))), ClassDef(Foo3$, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), Some(ValDef(_, Singleton(Ident(Foo3)), None)), List(DefDef($lessinit$greater$default$1, Nil, Nil, Synthetic(), Some(Literal(Int(5))))))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo4, DefDef(<init>, Nil, List(List(ValDef(a, TypeIdent(Int), None)), List(ValDef(b, TypeIdent(Int), None))), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(ValDef(a, Synthetic(), None), ValDef(b, Synthetic(), None)))), Literal(Unit()))
+Block(List(ClassDef(Foo4, DefDef(<init>, Nil, List(List(ValDef(a, TypeIdent(Int), None)), List(ValDef(b, TypeIdent(Int), None))), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(ValDef(a, Synthetic(), None), ValDef(b, Synthetic(), None)))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo5, DefDef(<init>, Nil, List(List(ValDef(a, TypeIdent(Int), None)), List(ValDef(b, TypeIdent(Int), None))), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(ValDef(a, Synthetic(), None), ValDef(b, Synthetic(), None))), ValDef(Foo5, TypeIdent(Foo5$), Some(Apply(Select(New(TypeIdent(Foo5$)), <init>, Some(Signature(Nil, Test$._$Foo5$))), Nil))), ClassDef(Foo5$, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), Some(ValDef(_, Singleton(Ident(Foo5)), None)), List(DefDef($lessinit$greater$default$2, Nil, List(List(ValDef(a, TypeIdent(Int), None))), Synthetic(), Some(Ident(a)))))), Literal(Unit()))
+Block(List(ClassDef(Foo5, DefDef(<init>, Nil, List(List(ValDef(a, TypeIdent(Int), None)), List(ValDef(b, TypeIdent(Int), None))), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(ValDef(a, Synthetic(), None), ValDef(b, Synthetic(), None))), ValDef(Foo5, TypeIdent(Foo5$), Some(Apply(Select(New(TypeIdent(Foo5$)), <init>, Some(Signature(Nil, Test$._$Foo5$))), Nil))), ClassDef(Foo5$, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), Some(ValDef(_, Singleton(Ident(Foo5)), None)), List(DefDef($lessinit$greater$default$2, Nil, List(List(ValDef(a, TypeIdent(Int), None))), Synthetic(), Some(Ident(a)))))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo6, DefDef(<init>, Nil, List(List(ValDef(a, TypeIdent(Int), None)), List(ValDef(b, Singleton(Ident(a)), None))), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(ValDef(a, Synthetic(), None), ValDef(b, Synthetic(), None)))), Literal(Unit()))
+Block(List(ClassDef(Foo6, DefDef(<init>, Nil, List(List(ValDef(a, TypeIdent(Int), None)), List(ValDef(b, Singleton(Ident(a)), None))), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(ValDef(a, Synthetic(), None), ValDef(b, Synthetic(), None)))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo8, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(Apply(Ident(println), List(Literal(Int(0))))))), Literal(Unit()))
+Block(List(ClassDef(Foo8, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(Apply(Ident(println), List(Literal(Int(0))))))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo10, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(ValDef(a, Synthetic(), Some(Literal(Int(9))))))), Literal(Unit()))
+Block(List(ClassDef(Foo10, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(ValDef(a, Synthetic(), Some(Literal(Int(9))))))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo11, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(ValDef(a, Synthetic(), Some(Literal(Int(10)))), DefDef(a_=, Nil, List(List(ValDef(x$1, Synthetic(), None))), Synthetic(), Some(Literal(Unit())))))), Literal(Unit()))
+Block(List(ClassDef(Foo11, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(ValDef(a, Synthetic(), Some(Literal(Int(10)))), DefDef(a_=, Nil, List(List(ValDef(x$1, Synthetic(), None))), Synthetic(), Some(Literal(Unit())))))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo12, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(ValDef(a, Synthetic(), Some(Literal(Int(11))))))), Literal(Unit()))
+Block(List(ClassDef(Foo12, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(ValDef(a, Synthetic(), Some(Literal(Int(11))))))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, Nil), ClassDef(Bar, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, Test$._$Foo))), Nil))), None, Nil)), Literal(Unit()))
+Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, Nil), ClassDef(Bar, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, Test$._$Foo))), Nil)), None, Nil)), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo2, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TypeParent(Synthetic())), None, Nil), ClassDef(Bar, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), TypeParent(TypeIdent(Foo2))), None, Nil)), Literal(Unit()))
+Block(List(ClassDef(Foo2, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Synthetic()), None, Nil), ClassDef(Bar, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil), TypeIdent(Foo2)), None, Nil)), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(List(ValDef(i, TypeIdent(Int), None))), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(ValDef(i, Synthetic(), None))), ClassDef(Bar, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(TypeIdent(Foo)), <init>, Some(Signature(List(scala.Int), Test$._$Foo))), List(Literal(Int(1)))))), None, Nil)), Literal(Unit()))
+Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(List(ValDef(i, TypeIdent(Int), None))), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(ValDef(i, Synthetic(), None))), ClassDef(Bar, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(TypeIdent(Foo)), <init>, Some(Signature(List(scala.Int), Test$._$Foo))), List(Literal(Int(1))))), None, Nil)), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(TypeDef(X, TypeIdent(Int)))), DefDef(f, Nil, List(List(ValDef(a, TypeIdent(Foo), None))), TypeSelect(Ident(a), X), Some(Ident(???)))), Literal(Unit()))
+Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(TypeDef(X, TypeIdent(Int)))), DefDef(f, Nil, List(List(ValDef(a, TypeIdent(Foo), None))), TypeSelect(Ident(a), X), Some(Ident(???)))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
-Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(TermParent(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil))), None, List(TypeDef(X, TypeBoundsTree(Synthetic(), Synthetic())))), DefDef(f, Nil, List(List(ValDef(a, Refined(TypeIdent(Foo), List(TypeDef(X, TypeIdent(Int)))), None))), TypeSelect(Ident(a), X), Some(Ident(???)))), Literal(Unit()))
+Block(List(ClassDef(Foo, DefDef(<init>, Nil, List(Nil), Synthetic(), None), List(Apply(Select(New(Synthetic()), <init>, Some(Signature(Nil, java.lang.Object))), Nil)), None, List(TypeDef(X, TypeBoundsTree(Synthetic(), Synthetic())))), DefDef(f, Nil, List(List(ValDef(a, Refined(TypeIdent(Foo), List(TypeDef(X, TypeIdent(Int)))), None))), TypeSelect(Ident(a), X), Some(Ident(???)))), Literal(Unit()))
 SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
 
 Block(List(ValDef(lambda, Applied(Synthetic(), List(TypeIdent(Int), TypeIdent(Int))), Some(Block(List(DefDef($anonfun, Nil, List(List(ValDef(x, Synthetic(), None))), Synthetic(), Some(Ident(x)))), Lambda(Ident($anonfun), None))))), Literal(Unit()))
