@@ -377,7 +377,7 @@ object SymDenotations {
      *  Right now, the only usage is for the AnyRef alias in Definitions.
      */
     final private[core] def currentPackageDecls(implicit ctx: Context): MutableScope = myInfo match {
-      case pinfo: SymbolLoaders # PackageLoader => pinfo.currentDecls
+      case pinfo: SymbolLoaders.PackageLoader => pinfo.currentDecls
       case _ => unforcedDecls.openForMutations
     }
 

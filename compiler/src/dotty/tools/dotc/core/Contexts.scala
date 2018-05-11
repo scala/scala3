@@ -551,9 +551,6 @@ object Contexts {
     /** The initial context */
     val initialCtx: Context = new InitialContext(this, settings)
 
-    /** The symbol loaders */
-    val loaders = new SymbolLoaders
-
     /** The platform, initialized by `initPlatform()`. */
     private[this] var _platform: Platform = _
 
