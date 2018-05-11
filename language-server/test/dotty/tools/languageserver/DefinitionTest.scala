@@ -36,4 +36,11 @@ class DefinitionTest {
       .definition(m5 to m6, List(m1 to m2))
   }
 
+  @Test def liftedExpression: Unit = {
+    withSources(
+      code"class ${m1}A${m2}",
+      code"object B { val lst = new ${m3}A${m4} :: Nil }"
+    ).definition(m3 to m4, List(m1 to m2))
+  }
+
 }
