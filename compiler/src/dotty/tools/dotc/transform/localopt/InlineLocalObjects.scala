@@ -92,7 +92,7 @@ class InlineLocalObjects(val simplifyPhase: Simplify) extends Optimisation {
       case t @ NewCaseClassValDef(fun, args) if newFieldsMapping.contains(t.symbol) =>
         val newFields     = newFieldsMapping(t.symbol).values.toList
         val newFieldsDefs = newFields.zip(args).map { case (nf, arg) =>
-          val rhs = arg.changeOwnerAfter(t.symbol, nf.symbol, simplifyPhase)
+          val rhs = arg.changeOwnerAfter(t.symbol, nf, simplifyPhase)
           ValDef(nf.asTerm, rhs)
         }
         val recreate      = cpy.ValDef(t)(rhs = fun.appliedToArgs(newFields.map(x => ref(x))))
