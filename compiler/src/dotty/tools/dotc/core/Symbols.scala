@@ -434,11 +434,30 @@ object Symbols {
     private[this] var lastDenot: SymDenotation = _
     private[this] var checkedPeriod: Period = Nowhere
 
+    private[this] var cachedName: Name = _
+    private[this] var cachedOwner: Symbol = _
+    private[this] var cachedInfo: Type = _
+    private[this] var cachedFlags: FlagSet = _
+
     private[core] def invalidateDenotCache() = { checkedPeriod = Nowhere }
+
+    private[core] def updateInfoCache(d: SymDenotation, info: Type) =
+      if (lastDenot `eq` d) cachedInfo = info
+
+    private[core] def updateFlagsCache(d: SymDenotation, flags: FlagSet) =
+      if (lastDenot `eq` d) cachedFlags = flags
+
+    private[this] def setLastDenot(d: SymDenotation) = {
+      lastDenot = d
+      cachedName = d.name
+      cachedOwner = d.maybeOwner
+      cachedInfo = d.infoOrCompleter
+      cachedFlags = d.flagsUNSAFE
+    }
 
     /** Set the denotation of this symbol */
     private[core] def denot_=(d: SymDenotation) = {
-      lastDenot = d
+      setLastDenot(d)
       checkedPeriod = Nowhere
     }
 
@@ -461,7 +480,7 @@ object Symbols {
     protected def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context) = {
       Stats.record("Symbol.recomputeDenot")
       val newd = lastd.current.asInstanceOf[SymDenotation]
-      lastDenot = newd
+      setLastDenot(newd)
       newd
     }
 

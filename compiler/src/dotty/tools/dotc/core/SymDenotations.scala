@@ -160,8 +160,10 @@ object SymDenotations {
     private def adaptFlags(flags: FlagSet) = if (isType) flags.toTypeFlags else flags.toTermFlags
 
     /** Update the flag set */
-    final def flags_=(flags: FlagSet): Unit =
+    final def flags_=(flags: FlagSet): Unit = {
       myFlags = adaptFlags(flags)
+      symbol.updateFlagsCache(this, myFlags)
+    }
 
     /** Set given flags(s) of this denotation */
     final def setFlag(flags: FlagSet): Unit = { myFlags |= flags }
@@ -259,6 +261,7 @@ object SymDenotations {
         */
       if (Config.checkNoSkolemsInInfo) assertNoSkolems(tp)
       myInfo = tp
+      symbol.updateInfoCache(this, tp)
     }
 
     /** The name, except
