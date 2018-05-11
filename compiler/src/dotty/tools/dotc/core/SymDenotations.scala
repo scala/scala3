@@ -166,10 +166,16 @@ object SymDenotations {
     }
 
     /** Set given flags(s) of this denotation */
-    final def setFlag(flags: FlagSet): Unit = { myFlags |= flags }
+    final def setFlag(flags: FlagSet): Unit = {
+      myFlags |= flags
+      symbol.updateFlagsCache(this, myFlags)
+    }
 
     /** Unset given flags(s) of this denotation */
-    final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
+    final def resetFlag(flags: FlagSet): Unit = {
+      myFlags &~= flags
+      symbol.updateFlagsCache(this, myFlags)
+    }
 
     /** Set applicable flags from `flags` which is a subset of {NoInits, PureInterface} */
     final def setNoInitsFlags(flags: FlagSet): Unit = {
@@ -228,7 +234,7 @@ object SymDenotations {
         indent += 1
 
         if (myFlags is Touched) throw CyclicReference(this)
-        myFlags |= Touched
+        setFlag(Touched)
 
         // completions.println(s"completing ${this.debugString}")
         try completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
@@ -244,7 +250,7 @@ object SymDenotations {
       }
       else {
         if (myFlags is Touched) throw CyclicReference(this)
-        myFlags |= Touched
+        setFlag(Touched)
         completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
       }
 
@@ -452,8 +458,10 @@ object SymDenotations {
     def isError: Boolean = false
 
     /** Make denotation not exist */
-    final def markAbsent(): Unit =
+    final def markAbsent(): Unit = {
       myInfo = NoType
+      symbol.updateInfoCache(this, NoType)
+    }
 
     /** Is symbol known to not exist, or potentially not completed yet? */
     final def unforcedIsAbsent(implicit ctx: Context): Boolean =

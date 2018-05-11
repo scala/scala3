@@ -580,9 +580,6 @@ object Symbols {
     /** If this symbol satisfies predicate `p` this symbol, otherwise `NoSymbol` */
     def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
 
-    /** The current name of this symbol */
-    final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]
-
     /** The source or class file from which this class or
      *  the class containing this symbol was generated, null if not applicable.
      *  Overridden in ClassSymbol
@@ -630,13 +627,167 @@ object Symbols {
     def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
 
     // ParamInfo types and methods
-    def isTypeParam(implicit ctx: Context) = denot.is(TypeParam)
-    def paramName(implicit ctx: Context) = name.asInstanceOf[ThisName]
-    def paramInfo(implicit ctx: Context) = denot.info
+    def isTypeParam(implicit ctx: Context) = is(TypeParam)
+    def paramName(implicit ctx: Context) = name
+    def paramInfo(implicit ctx: Context) = info
     def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = pre.memberInfo(this)
-    def paramInfoOrCompleter(implicit ctx: Context): Type = denot.infoOrCompleter
+    def paramInfoOrCompleter(implicit ctx: Context): Type = infoOrCompleter
     def paramVariance(implicit ctx: Context) = denot.variance
     def paramRef(implicit ctx: Context) = denot.typeRef
+
+// -------- Cached SymDenotation facades -----------------------------------------------
+
+    private def ensureUpToDate()(implicit ctx: Context) =
+      if (checkedPeriod != ctx.period) computeDenot(lastDenot)
+
+    /** The current name of this symbol */
+    final def name(implicit ctx: Context): ThisName = {
+      Stats.record("Symbol.name")
+      ensureUpToDate()
+      cachedName.asInstanceOf[ThisName]
+    }
+
+    /** The current name of this symbol */
+    final def maybeOwner(implicit ctx: Context): Symbol = {
+      Stats.record("Symbol.owner")
+      ensureUpToDate()
+      cachedOwner
+    }
+
+    def owner(implicit ctx: Context): Symbol = maybeOwner
+
+    /** The symbol is completed: info is not a lazy type and attributes have defined values */
+    final def isCompleted(implicit ctx: Context): Boolean = {
+      ensureUpToDate()
+      !cachedInfo.isInstanceOf[LazyType]
+    }
+
+    /** The denotation is in train of being completed */
+    final def isCompleting(implicit ctx: Context): Boolean = {
+      ensureUpToDate()
+      cachedInfo.isInstanceOf[LazyType] && cachedFlags.is(Touched)
+    }
+
+    /** Make sure this denotation of this symbol is completed */
+    final def ensureCompleted()(implicit ctx: Context): Unit = {
+      ensureUpToDate()
+      if (cachedInfo.isInstanceOf[LazyType]) denot.ensureCompleted()
+    }
+
+    final def infoOrCompleter(implicit ctx: Context): Type = {
+      Stats.record("Symbol.info")
+      ensureUpToDate()
+      cachedInfo
+    }
+
+    final def info(implicit ctx: Context): Type = {
+      val tp = infoOrCompleter
+      if (tp.isInstanceOf[LazyType]) denot.info else tp
+    }
+
+    final private[dotc] def info_=(tp: Type)(implicit ctx: Context) = denot.info_=(tp)
+
+    final def flags(implicit ctx: Context): FlagSet = {
+      ensureCompleted()
+      val res = cachedFlags
+      assert(res == denot.flags, i"was: ${denot.flags}, now: $res")
+      res
+    }
+
+    final def flags_=(flags: FlagSet)(implicit ctx: Context): Unit = denot.flags_=(flags)
+
+    private def isCurrent(fs: FlagSet) =
+      fs <= (
+        if (cachedInfo.isInstanceOf[SymbolLoader]) FromStartFlags
+        else AfterLoadFlags)
+
+    final def is(fs: FlagSet)(implicit ctx: Context) = {
+      Stats.record("Symbol.is")
+      ensureUpToDate()
+      (if (isCurrent(fs)) cachedFlags else flags).is(fs)
+    }
+
+    /** Has this denotation one of the flags in `fs` set, whereas none of the flags
+     *  in `butNot` are set?
+     */
+    final def is(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context) = {
+      Stats.record("Symbol.is")
+      ensureUpToDate()
+      (if (isCurrent(fs) && isCurrent(butNot)) cachedFlags else flags).is(fs, butNot)
+    }
+
+    /** Has this denotation all of the flags in `fs` set? */
+    final def is(fs: FlagConjunction)(implicit ctx: Context) = {
+      Stats.record("Symbol.is")
+      ensureUpToDate()
+      (if (isCurrent(fs)) cachedFlags else flags).is(fs)
+    }
+
+    /** Has this denotation all of the flags in `fs` set, whereas none of the flags
+     *  in `butNot` are set?
+     */
+    final def is(fs: FlagConjunction, butNot: FlagSet)(implicit ctx: Context) = {
+      Stats.record("Symbol.is")
+      ensureUpToDate()
+      (if (isCurrent(fs) && isCurrent(butNot)) cachedFlags else flags).is(fs, butNot)
+    }
+
+    final def exists(implicit ctx: Context): Boolean = lastDenot.exists  // updating necessary, any denot will do
+
+    final def isRoot(implicit ctx: Context): Boolean = {
+      ensureUpToDate()
+      (maybeOwner eq NoSymbol) && (name.toTermName == nme.ROOT || name == nme.ROOTPKG)
+    }
+
+    final def isEmptyPackage(implicit ctx: Context): Boolean = {
+      ensureUpToDate()
+      name.toTermName == nme.EMPTY_PACKAGE && owner.isRoot
+    }
+
+    def isPrimitiveValueClass(implicit ctx: Context) = {
+      ensureUpToDate()
+      maybeOwner == defn.ScalaPackageClass && defn.ScalaValueClasses().contains(this)
+    }
+
+    /** Is this symbol a package object or its module class? */
+    def isPackageObject(implicit ctx: Context): Boolean = {
+      ensureUpToDate()
+      val nameMatches =
+        if (isType) name == tpnme.PACKAGE.moduleClassName
+        else name == nme.PACKAGE
+      nameMatches && (owner is Package) && (this is Module)
+    }
+
+// -------- Loading nested predefined symbols -----------------------------
+
+    def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol =
+      info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
+    def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef =
+      requiredMethod(name).termRef
+
+    def requiredMethod(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = {
+      info.member(name.toTermName).requiredSymbol { x =>
+        (x is Method) && {
+          x.info.paramInfoss match {
+            case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)
+            case _ => false
+          }
+        }
+      }.asTerm
+    }
+    def requiredMethodRef(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermRef =
+      requiredMethod(name, argTypes).termRef
+
+    def requiredValue(name: PreName)(implicit ctx: Context): TermSymbol =
+      info.member(name.toTermName).requiredSymbol(_.info.isParameterless).asTerm
+    def requiredValueRef(name: PreName)(implicit ctx: Context): TermRef =
+      requiredValue(name).termRef
+
+    def requiredClass(name: PreName)(implicit ctx: Context): ClassSymbol =
+      info.member(name.toTypeName).requiredSymbol(_.isClass).asClass
+
+    def requiredType(name: PreName)(implicit ctx: Context): TypeSymbol =
+      info.member(name.toTypeName).requiredSymbol(_.isType).asType
 
 // -------- Printing --------------------------------------------------------
 
