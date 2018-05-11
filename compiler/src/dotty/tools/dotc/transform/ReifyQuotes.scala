@@ -120,7 +120,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
      *
      *  See `isCaptured`
      */
-    val capturers = new mutable.HashMap[Symbol, RefTree => Tree]
+    val capturers = new mutable.HashMap[Symbol, Tree => Tree]
   }
 
   /** The main transformer class
@@ -143,6 +143,9 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
 
     /** We are in a `~(...)` context that is not shadowed by a nested `'(...)` */
     def inSplice = outer != null && !inQuote
+
+    /** We are not in a `~(...)` or a `'(...)` */
+    def isRoot = outer != null
 
     /** A map from type ref T to expressions of type `quoted.Type[T]`".
      *  These will be turned into splices using `addTags` and represent type variables
@@ -291,6 +294,8 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
         else i"${sym.name}.this"
       if (!isThis && sym.maybeOwner.isType && !sym.is(Param))
         check(sym.owner, sym.owner.thisType, pos)
+      else if (level == 1 && sym.isType && sym.is(Param) && sym.owner.is(Macro) && outer.isRoot)
+        importedTags(sym.typeRef) = capturers(sym)(ref(sym))
       else if (sym.exists && !sym.isStaticOwner && !levelOK(sym))
         for (errMsg <- tryHeal(tp, pos))
           ctx.error(em"""access to $symStr from wrong staging level:
