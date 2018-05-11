@@ -39,18 +39,11 @@ object definitions {
   case class TypeDef(name: String, rhs: TypeTree | TypeBoundsTree) extends Definition {
     def mods: List[Modifier] = ???
   }
-  case class ClassDef(name: String, constructor: DefDef, parents: List[Parent],
+  case class ClassDef(name: String, constructor: DefDef, parents: List[Term | TypeTree],
                       self: Option[ValDef], body: List[Statement]) extends Definition {
     def mods: List[Modifier] = ???
   }
   case class PackageDef(name: String, members: List[Statement]) extends Definition
-
-// ------ Parents--------------------------------
-
-  enum Parent {
-    case TermParent(parent: Term)
-    case TypeParent(parent: TypeTree)
-  }
 
 // ------ Terms ---------------------------------
 
