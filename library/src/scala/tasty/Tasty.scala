@@ -439,8 +439,13 @@ abstract class Tasty {
     def unapply(x: Type)(implicit ctx: Context): Option[(Definition, TypeOrBounds /* Type | NoPrefix */)]
   }
 
-  val NameRef: NameRefExtractor
-  abstract class NameRefExtractor {
+  val TermRef: TermRefExtractor
+  abstract class TermRefExtractor {
+    def unapply(x: Type)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)]
+  }
+
+  val TypeRef: TypeRefExtractor
+  abstract class TypeRefExtractor {
     def unapply(x: Type)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)]
   }
 

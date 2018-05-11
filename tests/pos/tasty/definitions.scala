@@ -122,8 +122,8 @@ object definitions {
 
     case class ConstantType(value: Constant) extends Type
     case class SymRef(sym: Definition, qualifier: Type | NoPrefix = NoPrefix) extends Type
-    case class TypeNameRef(name: String, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
-    case class TermNameRef(name: String, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
+    case class TypeRef(name: String, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
+    case class TermRef(name: String, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
     case class SuperType(thistp: Type, underlying: Type) extends Type
     case class Refinement(underlying: Type, name: String, tpe: Type | TypeBounds) extends Type
     case class AppliedType(tycon: Type, args: List[Type | TypeBounds]) extends Type

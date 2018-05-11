@@ -481,8 +481,12 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
       buff append ", "
       visitType(qual)
       buff append ")"
-    case NameRef(name, qual) =>
-      buff append "NameRef(" append name append ", "
+    case TermRef(name, qual) =>
+      buff append "TermRef(" append name append ", "
+      visitType(qual)
+      buff append ")"
+    case TypeRef(name, qual) =>
+      buff append "TypeRef(" append name append ", "
       visitType(qual)
       buff append ")"
     case Refinement(parent, name, info) =>

@@ -578,11 +578,22 @@ object TastyImpl extends scala.tasty.Tasty {
     }
   }
 
-  val NameRef: NameRefExtractor = new NameRefExtractor {
+  val TermRef: TermRefExtractor = new TermRefExtractor {
     def unapply(x: Type)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
       case tp: Types.NamedType =>
         tp.designator match {
-          case name: Names.Name => Some(name.toString, tp.prefix)
+          case name: Names.TermName => Some(name.toString, tp.prefix)
+          case _ => None
+        }
+      case _ => None
+    }
+  }
+
+  val TypeRef: TypeRefExtractor = new TypeRefExtractor {
+    def unapply(x: Type)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
+      case tp: Types.NamedType =>
+        tp.designator match {
+          case name: Names.TypeName => Some(name.toString, tp.prefix)
           case _ => None
         }
       case _ => None
