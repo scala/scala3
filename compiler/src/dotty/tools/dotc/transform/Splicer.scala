@@ -46,7 +46,8 @@ object Splicer {
    */
   private def getLiftedArgs(call: Tree, bindings: List[Tree])(implicit ctx: Context): List[Any] = {
     val bindMap = bindings.map {
-      case vdef: ValOrDefDef => (vdef.rhs, ref(vdef.symbol))
+      case vdef: ValDef => (vdef.rhs, ref(vdef.symbol))
+      case ddef: DefDef => (ddef.rhs, ddef.rhs)
     }.toMap
     def allArgs(call: Tree, acc: List[List[Tree]]): List[List[Tree]] = call match {
       case call: Apply => allArgs(call.fun, call.args :: acc)

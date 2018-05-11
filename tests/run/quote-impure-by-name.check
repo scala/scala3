@@ -1,0 +1,1 @@
+1 + {Index.zero[String("bar"), scala.Tuple2[String("baz"), scala.Unit]]}
