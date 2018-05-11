@@ -29,7 +29,7 @@ import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
-import util.{NoSource, DotClass, Property}
+import util.{NoSource, DotClass, Property, Stats}
 import scala.collection.JavaConverters._
 import config.Printers.typr
 
@@ -416,6 +416,8 @@ object Symbols {
 
     //assert(id != 723)
 
+    Stats.record("Symbol")
+
     def coord: Coord = myCoord
     /** Set the coordinate of this class, this is only useful when the coordinate is
      *  not known at symbol creation. This is the case for root symbols
@@ -442,12 +444,14 @@ object Symbols {
 
     /** The current denotation of this symbol */
     final def denot(implicit ctx: Context): SymDenotation = {
+      Stats.record("Symbol.denot")
       val lastd = lastDenot
       if (checkedPeriod == ctx.period) lastd
       else computeDenot(lastd)
     }
 
     private def computeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = {
+      Stats.record("Symbol.computeDenot")
       val now = ctx.period
       checkedPeriod = now
       if (lastd.validFor contains now) lastd else recomputeDenot(lastd)
@@ -455,6 +459,7 @@ object Symbols {
 
     /** Overridden in NoSymbol */
     protected def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context) = {
+      Stats.record("Symbol.recomputeDenot")
       val newd = lastd.current.asInstanceOf[SymDenotation]
       lastDenot = newd
       newd

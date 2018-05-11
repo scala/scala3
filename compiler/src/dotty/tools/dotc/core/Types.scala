@@ -1690,6 +1690,7 @@ object Types {
 
     /** The denotation currently denoted by this type */
     final def denot(implicit ctx: Context): Denotation = {
+      record("NamedType.denot")
       val now = ctx.period
       // Even if checkedPeriod == now we still need to recheck lastDenotation.validFor
       // as it may have been mutated by SymDenotation#installAfter

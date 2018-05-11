@@ -127,6 +127,8 @@ object SymDenotations {
 
     //assert(symbol.id != 4940, name)
 
+    Stats.record("SymDenotation")
+
     override def hasUniqueSym: Boolean = exists
 
     /** Debug only

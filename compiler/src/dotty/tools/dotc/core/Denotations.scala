@@ -21,6 +21,7 @@ import printing.Printer
 import io.AbstractFile
 import config.Config
 import util.common._
+import util.Stats
 import collection.mutable.ListBuffer
 import Decorators.SymbolIteratorDecorator
 
@@ -174,6 +175,7 @@ object Denotations {
   abstract class Denotation(val symbol: Symbol) extends PreDenotation with printing.Showable {
 
     type AsSeenFromResult <: Denotation
+    Stats.record("Denotation")
 
     /** The type info of the denotation, exists only for non-overloaded denotations */
     def info(implicit ctx: Context): Type
@@ -1139,6 +1141,8 @@ object Denotations {
     def denot1: PreDenotation
     def denot2: PreDenotation
 
+    Stats.record("MultiPreDenotation")
+
     assert(denot1.exists && denot2.exists, s"Union of non-existing denotations ($denot1) and ($denot2)")
     def first = denot1.first
     def last = denot2.last
@@ -1290,7 +1294,7 @@ object Denotations {
 
   /** An exception for accessing symbols that are no longer valid in current run */
   class StaleSymbol(msg: => String) extends Exception {
-    util.Stats.record("stale symbol")
+    Stats.record("stale symbol")
     override def getMessage() = msg
   }
 }
