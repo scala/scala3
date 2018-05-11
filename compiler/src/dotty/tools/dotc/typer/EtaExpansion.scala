@@ -49,8 +49,8 @@ abstract class Lifter {
       var liftedType = fullyDefinedType(expr.tpe.widen, "lifted expression", expr.pos)
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
       val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags, liftedType, coord = positionCoord(expr.pos))
-      defs += liftedDef(lifted, expr).withPos(expr.pos.focus)
-      ref(lifted.termRef).withPos(expr.pos)
+      defs += liftedDef(lifted, expr).withPos(expr.pos)
+      ref(lifted.termRef).withPos(expr.pos.focus)
     }
 
   /** Lift out common part of lhs tree taking part in an operator assignment such as
