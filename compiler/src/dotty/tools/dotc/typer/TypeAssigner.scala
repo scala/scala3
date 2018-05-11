@@ -49,12 +49,13 @@ trait TypeAssigner {
     val parentType = info.parents.reduceLeft(ctx.typeComparer.andType(_, _))
 
     def addRefinement(parent: Type, decl: Symbol) = {
+      val decld = decl.denot
       val inherited =
-        parentType.findMember(decl.name, cls.thisType, excluded = Private)
-          .suchThat(decl.matches(_))
+        parentType.findMember(decld.name, cls.thisType, excluded = Private)
+          .suchThat(sym => decld.matches(sym.denot))
       val inheritedInfo = inherited.info
-      if (inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info)) {
-        val r = RefinedType(parent, decl.name, decl.info)
+      if (inheritedInfo.exists && decld.info <:< inheritedInfo && !(inheritedInfo <:< decld.info)) {
+        val r = RefinedType(parent, decld.name, decld.info)
         typr.println(i"add ref $parent $decl --> " + r)
         r
       }

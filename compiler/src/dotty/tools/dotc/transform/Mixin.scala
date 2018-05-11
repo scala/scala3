@@ -132,7 +132,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
             initName,
             Protected | Synthetic | Method,
             sym.info,
-            coord = sym.symbol.coord).enteredAfter(thisPhase))
+            coord = sym.coord).enteredAfter(thisPhase))
     }
   }.asTerm
 

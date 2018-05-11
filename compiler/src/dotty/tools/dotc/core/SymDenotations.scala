@@ -129,9 +129,11 @@ object SymDenotations {
     initInfo: Type,
     initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol) {
 
+    Stats.record("SymDenotation")
+
     //assert(symbol.id != 4940, name)
 
-    override def hasUniqueSym: Boolean = exists
+    override protected def hasUniqueSym: Boolean = exists
 
     /** Debug only
     override def validFor_=(p: Period) = {
@@ -268,7 +270,7 @@ object SymDenotations {
      *   - if this is a companion object with a clash-avoiding name, strip the
      *     "avoid clash" suffix
      */
-    def effectiveName(implicit ctx: Context) =
+    def effectiveName(implicit ctx: Context): Name =
       if (this is ModuleClass) name.stripModuleClassSuffix
       else name.exclude(AvoidClashName)
 
@@ -492,7 +494,7 @@ object SymDenotations {
      *  and used in SymDenotations#companionClass and
      *  SymDenotations#companionModule .
      */
-    final def isCompanionMethod(implicit ctx: Context) =
+    final def isCompanionMethod(implicit ctx: Context): Boolean =
       name.toTermName == nme.COMPANION_CLASS_METHOD ||
       name.toTermName == nme.COMPANION_MODULE_METHOD
 
@@ -500,20 +502,21 @@ object SymDenotations {
       *  These methods are generated in ExtensionMethods
       *  and used in ElimErasedValueType.
       */
-    final def isValueClassConvertMethod(implicit ctx: Context) =
+    final def isValueClassConvertMethod(implicit ctx: Context): Boolean =
       name.toTermName == nme.U2EVT ||
       name.toTermName == nme.EVT2U
 
     /** Is symbol a primitive value class? */
-    def isPrimitiveValueClass(implicit ctx: Context) =
+    def isPrimitiveValueClass(implicit ctx: Context): Boolean =
       maybeOwner == defn.ScalaPackageClass && defn.ScalaValueClasses().contains(symbol)
 
     /** Is symbol a primitive numeric value class? */
-    def isNumericValueClass(implicit ctx: Context) =
+    def isNumericValueClass(implicit ctx: Context): Boolean =
       maybeOwner == defn.ScalaPackageClass && defn.ScalaNumericValueClasses().contains(symbol)
 
     /** Is symbol a class for which no runtime representation exists? */
-    def isNotRuntimeClass(implicit ctx: Context) = defn.NotRuntimeClasses contains symbol
+    def isNotRuntimeClass(implicit ctx: Context): Boolean =
+      defn.NotRuntimeClasses contains symbol
 
     /** Is this symbol a class representing a refinement? These classes
      *  are used only temporarily in Typer and Unpickler as an intermediate
@@ -531,16 +534,16 @@ object SymDenotations {
     }
 
     /** Is this symbol an abstract type? */
-    final def isAbstractType(implicit ctx: Context) = this is DeferredType
+    final def isAbstractType(implicit ctx: Context): Boolean = this is DeferredType
 
     /** Is this symbol an alias type? */
-    final def isAliasType(implicit ctx: Context) = isAbstractOrAliasType && !(this is Deferred)
+    final def isAliasType(implicit ctx: Context): Boolean = isAbstractOrAliasType && !(this is Deferred)
 
     /** Is this symbol an abstract or alias type? */
-    final def isAbstractOrAliasType = isType & !isClass
+    final def isAbstractOrAliasType: Boolean = isType & !isClass
 
     /** Is this symbol an abstract type or type parameter? */
-    final def isAbstractOrParamType(implicit ctx: Context) = this is DeferredOrTypeParam
+    final def isAbstractOrParamType(implicit ctx: Context): Boolean = this is DeferredOrTypeParam
 
     /** Is this the denotation of a self symbol of some class?
      *  This is the case if one of two conditions holds:
@@ -552,7 +555,7 @@ object SymDenotations {
      *  TODO: Find a more robust way to characterize self symbols, maybe by
      *       spending a Flag on them?
      */
-    final def isSelfSym(implicit ctx: Context) = owner.infoOrCompleter match {
+    final def isSelfSym(implicit ctx: Context): Boolean = owner.infoOrCompleter match {
       case ClassInfo(_, _, _, _, selfInfo) =>
         selfInfo == symbol ||
           selfInfo.isInstanceOf[Type] && name == nme.WILDCARD
@@ -575,7 +578,7 @@ object SymDenotations {
       symbol != boundary && isContainedIn(boundary)
 
     /** Is this denotation static (i.e. with no outer instance)? */
-    final def isStatic(implicit ctx: Context) =
+    final def isStatic(implicit ctx: Context): Boolean =
       (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.originDenotation.isStaticOwner) ||
         myFlags.is(JavaStatic)
 
@@ -584,13 +587,13 @@ object SymDenotations {
       myFlags.is(ModuleClass) && (myFlags.is(PackageClass) || isStatic)
 
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
-    final def isCoDefinedWith(that: Symbol)(implicit ctx: Context) =
+    final def isCoDefinedWith(that: Symbol)(implicit ctx: Context): Boolean =
       (this.effectiveOwner == that.effectiveOwner) &&
       (  !(this.effectiveOwner is PackageClass)
         || this.unforcedIsAbsent || that.unforcedIsAbsent
         || { // check if they are defined in the same file(or a jar)
            val thisFile = this.symbol.associatedFile
-           val thatFile = that.symbol.associatedFile
+           val thatFile = that.associatedFile
            (  thisFile == null
            || thatFile == null
            || thisFile.path == thatFile.path // Cheap possibly wrong check, then expensive normalization
@@ -600,7 +603,7 @@ object SymDenotations {
       )
 
     /** Is this a denotation of a stable term (or an arbitrary type)? */
-    final def isStable(implicit ctx: Context) =
+    final def isStable(implicit ctx: Context): Boolean =
       isType || !is(Erased) && (is(Stable) || !(is(UnstableValue) || info.isInstanceOf[ExprType]))
 
     /** Is this a "real" method? A real method is a method which is:
@@ -609,53 +612,53 @@ object SymDenotations {
      *  - not an anonymous function
      *  - not a companion method
      */
-    final def isRealMethod(implicit ctx: Context) =
+    final def isRealMethod(implicit ctx: Context): Boolean =
       this.is(Method, butNot = AccessorOrLabel) &&
         !isAnonymousFunction &&
         !isCompanionMethod
 
     /** Is this a getter? */
-    final def isGetter(implicit ctx: Context) =
+    final def isGetter(implicit ctx: Context): Boolean =
       (this is Accessor) && !originalName.isSetterName && !originalName.isScala2LocalSuffix
 
     /** Is this a setter? */
-    final def isSetter(implicit ctx: Context) =
+    final def isSetter(implicit ctx: Context): Boolean =
       (this is Accessor) &&
       originalName.isSetterName &&
       (!isCompleted || info.firstParamTypes.nonEmpty) // to avoid being fooled by   var x_= : Unit = ...
 
     /** is this a symbol representing an import? */
-    final def isImport = name == nme.IMPORT
+    final def isImport: Boolean = name == nme.IMPORT
 
     /** is this the constructor of a class? */
-    final def isClassConstructor = name == nme.CONSTRUCTOR
+    final def isClassConstructor: Boolean = name == nme.CONSTRUCTOR
 
     /** Is this the constructor of a trait? */
-    final def isImplClassConstructor = name == nme.TRAIT_CONSTRUCTOR
+    final def isImplClassConstructor: Boolean = name == nme.TRAIT_CONSTRUCTOR
 
     /** Is this the constructor of a trait or a class */
-    final def isConstructor = name.isConstructorName
+    final def isConstructor: Boolean = name.isConstructorName
 
     /** Is this a local template dummmy? */
     final def isLocalDummy: Boolean = name.isLocalDummyName
 
     /** Does this symbol denote the primary constructor of its enclosing class? */
-    final def isPrimaryConstructor(implicit ctx: Context) =
+    final def isPrimaryConstructor(implicit ctx: Context): Boolean =
       isConstructor && owner.primaryConstructor == symbol
 
     /** Does this symbol denote the static constructor of its enclosing class? */
-    final def isStaticConstructor(implicit ctx: Context) =
+    final def isStaticConstructor(implicit ctx: Context): Boolean =
       name.isStaticConstructorName
 
     /** Is this a subclass of the given class `base`? */
-    def isSubClass(base: Symbol)(implicit ctx: Context) = false
+    def isSubClass(base: Symbol)(implicit ctx: Context): Boolean = false
 
     /** Is this a subclass of `base`,
      *  and is the denoting symbol also different from `Null` or `Nothing`?
      *  @note  erroneous classes are assumed to derive from all other classes
      *         and all classes derive from them.
      */
-    def derivesFrom(base: Symbol)(implicit ctx: Context) = false
+    def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean = false
 
     /** Is this symbol a class that extends `AnyVal`? */
     final def isValueClass(implicit ctx: Context): Boolean = {
@@ -751,7 +754,7 @@ object SymDenotations {
     /** Do members of this symbol need translation via asSeenFrom when
      *  accessed via prefix `pre`?
      */
-    def membersNeedAsSeenFrom(pre: Type)(implicit ctx: Context) =
+    def membersNeedAsSeenFrom(pre: Type)(implicit ctx: Context): Boolean =
       !(  this.isTerm
        || this.isStaticOwner
        || ctx.erasedTypes
@@ -846,7 +849,7 @@ object SymDenotations {
     }
 
     /** The field accessed by this getter or setter, or if it does not exist, the getter */
-    def accessedFieldOrGetter(implicit ctx: Context): Symbol = {
+    final def accessedFieldOrGetter(implicit ctx: Context): Symbol = {
       val fieldName = if (isSetter) name.asTermName.getterName else name
       val d = owner.info.decl(fieldName)
       val field = d.suchThat(!_.is(Method)).symbol
@@ -858,7 +861,7 @@ object SymDenotations {
      *  if it does not exists, the getter of a setter, or
      *  if that does not exist the symbol itself.
      */
-    def underlyingSymbol(implicit ctx: Context): Symbol =
+    final def underlyingSymbol(implicit ctx: Context): Symbol =
       if (is(Accessor)) accessedFieldOrGetter orElse symbol else symbol
 
     /** The chain of owners of this denotation, starting with the denoting symbol itself */
@@ -930,9 +933,9 @@ object SymDenotations {
      *  except for a toplevel module, where its module class is returned.
      */
     final def topLevelClass(implicit ctx: Context): Symbol = {
-      @tailrec def topLevel(d: SymDenotation): Symbol = {
+      @tailrec def topLevel(d: SymDenotation): Symbol = { // TODO: rewrite to take Symbols?
         if (d.isTopLevelClass) d.symbol
-        else topLevel(d.owner)
+        else topLevel(d.owner.denot)
       }
 
       val sym = topLevel(this)
@@ -990,7 +993,7 @@ object SymDenotations {
      */
     private def companionNamed(name: TypeName)(implicit ctx: Context): Symbol =
       if (owner.isClass)
-        owner.unforcedDecls.lookup(name).suchThat(_.isCoDefinedWith(symbol)).symbol
+        owner.unforcedDecls.lookup(name).ensuring(_.isCoDefinedWith(symbol))
       else if (!owner.exists || ctx.compilationUnit == null)
         NoSymbol
       else if (!ctx.compilationUnit.tpdTree.isEmpty)
@@ -1097,8 +1100,7 @@ object SymDenotations {
     final def superSymbolIn(base: Symbol)(implicit ctx: Context): Symbol = {
       @tailrec def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
         case bc :: bcs1 =>
-          val sym = matchingDecl(bcs.head, base.thisType)
-            .suchThat(alt => !(alt is Deferred)).symbol
+          val sym = matchingDecl(bcs.head, base.thisType).ensuring(!_.is(Deferred))
           if (sym.exists) sym else loop(bcs.tail)
         case _ =>
           NoSymbol
@@ -1115,7 +1117,7 @@ object SymDenotations {
       (this is Deferred) ||
       (this is AbsOverride) && {
         val supersym = superSymbolIn(base)
-        supersym == NoSymbol || supersym.isIncompleteIn(base)
+        supersym == NoSymbol || supersym.denot.isIncompleteIn(base)
       }
 
     /** The class or term symbol up to which this symbol is accessible,
@@ -1139,7 +1141,7 @@ object SymDenotations {
     /** The current declaration in this symbol's class owner that has the same name
      *  as this one, and, if there are several, also has the same signature.
      */
-    def currentSymbol(implicit ctx: Context): Symbol = {
+    final def currentSymbol(implicit ctx: Context): Symbol = {
       val candidates = owner.info.decls.lookupAll(name)
       def test(sym: Symbol): Symbol =
         if (sym == symbol || sym.signature == signature) sym
@@ -1289,6 +1291,8 @@ object SymDenotations {
 
     import util.LRUCache
 
+    Stats.record("ClassDenotation")
+
     // ----- caches -------------------------------------------------------
 
     private[this] var myTypeParams: List[TypeSymbol] = null
@@ -1358,7 +1362,7 @@ object SymDenotations {
     def classSymbol: ClassSymbol = symbol.asInstanceOf[ClassSymbol]
 
     /** The info asserted to have type ClassInfo */
-    def classInfo(implicit ctx: Context): ClassInfo = info.asInstanceOf[ClassInfo]
+    final def classInfo(implicit ctx: Context): ClassInfo = info.asInstanceOf[ClassInfo]
 
     /** The type parameters in this class, in the order they appear in the current
      *  scope `decls`. This might be temporarily the incorrect order when
@@ -1393,13 +1397,13 @@ object SymDenotations {
       super.info_=(tp)
     }
 
-    def classParents(implicit ctx: Context): List[Type] = info match {
+    final def classParents(implicit ctx: Context): List[Type] = info match {
       case classInfo: ClassInfo => classInfo.parents
       case _ => Nil
     }
 
     /** The symbol of the superclass, NoSymbol if no superclass exists */
-    def superClass(implicit ctx: Context): Symbol = classParents match {
+    final def superClass(implicit ctx: Context): Symbol = classParents match {
       case parent :: _ =>
         val cls = parent.classSymbol
         if (cls is Trait) NoSymbol else cls
@@ -1410,7 +1414,7 @@ object SymDenotations {
     /** The explicitly given self type (self types of modules are assumed to be
      *  explcitly given here).
      */
-    def givenSelfType(implicit ctx: Context) = classInfo.selfInfo match {
+    final def givenSelfType(implicit ctx: Context) = classInfo.selfInfo match {
       case tp: Type => tp
       case self: Symbol => self.info
     }
@@ -1424,7 +1428,7 @@ object SymDenotations {
      *  - for a module class `m`: A term ref to m's source module.
      *  - for all other classes `c` with owner `o`: ThisType(TypeRef(o.thisType, c))
      */
-    override def thisType(implicit ctx: Context): Type = {
+    final override def thisType(implicit ctx: Context): Type = {
       if (myThisType == null) myThisType = computeThisType
       myThisType
     }
@@ -1437,12 +1441,12 @@ object SymDenotations {
 
     private[this] var myTypeRef: TypeRef = null
 
-    override def typeRef(implicit ctx: Context): TypeRef = {
+    final override def typeRef(implicit ctx: Context): TypeRef = {
       if (myTypeRef == null) myTypeRef = super.typeRef
       myTypeRef
     }
 
-    override def appliedRef(implicit ctx: Context): Type = classInfo.appliedRef
+    final override def appliedRef(implicit ctx: Context): Type = classInfo.appliedRef
 
     private def baseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       if (!baseDataCache.isValid) baseDataCache = BaseData.newCache()
@@ -1452,14 +1456,14 @@ object SymDenotations {
     /** The base classes of this class in linearization order,
      *  with the class itself as first element.
      */
-    def baseClasses(implicit onBehalf: BaseData, ctx: Context): List[ClassSymbol] =
+    final def baseClasses(implicit onBehalf: BaseData, ctx: Context): List[ClassSymbol] =
       baseData._1
 
     /** A bitset that contains the superId's of all base classes */
     private def baseClassSet(implicit onBehalf: BaseData, ctx: Context): BaseClassSet =
       baseData._2
 
-    def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
+    final def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       def emptyParentsExpected =
         is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
       if (classParents.isEmpty && !emptyParentsExpected)
@@ -1497,7 +1501,7 @@ object SymDenotations {
      *  @param scope   The scope in which symbol should be entered.
      *                 If this is EmptyScope, the scope is `decls`.
      */
-    def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
+    final def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
       val mscope = scope match {
         case scope: MutableScope =>
           // if enter gets a scope as an argument,
@@ -1520,7 +1524,7 @@ object SymDenotations {
     }
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
-    def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
+    final def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
       scope.enter(sym)
       if (myMemberCache != null) myMemberCache.invalidate(sym.name)
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
@@ -1530,7 +1534,7 @@ object SymDenotations {
      *  If `prev` is not defined in current class, do nothing.
      *  @pre `prev` and `replacement` have the same name.
      */
-    def replace(prev: Symbol, replacement: Symbol)(implicit ctx: Context): Unit = {
+    final def replace(prev: Symbol, replacement: Symbol)(implicit ctx: Context): Unit = {
       unforcedDecls.openForMutations.replace(prev, replacement)
       if (myMemberCache != null) myMemberCache.invalidate(replacement.name)
     }
@@ -1539,7 +1543,7 @@ object SymDenotations {
      *  Note: We require that this does not happen after the first time
      *  someone does a findMember on a subclass.
      */
-    def delete(sym: Symbol)(implicit ctx: Context) = {
+    final def delete(sym: Symbol)(implicit ctx: Context) = {
       info.decls.openForMutations.unlink(sym)
       if (myMemberCache != null) myMemberCache.invalidate(sym.name)
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
@@ -1548,7 +1552,7 @@ object SymDenotations {
     /** Make sure the type parameters of this class appear in the order given
      *  by `typeParams` in the scope of the class. Reorder definitions in scope if necessary.
      */
-    def ensureTypeParamsInCorrectOrder()(implicit ctx: Context): Unit = {
+    final def ensureTypeParamsInCorrectOrder()(implicit ctx: Context): Unit = {
       val tparams = typeParams
       if (!ctx.erasedTypes && !typeParamsFromDecls.corresponds(tparams)(_.name == _.name)) {
         val decls = info.decls
@@ -1743,7 +1747,7 @@ object SymDenotations {
         memberNamesCache(keepOnly, this)
       }
 
-    def computeMemberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = {
+    final def computeMemberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
       for (p <- classParents)
@@ -1758,7 +1762,7 @@ object SymDenotations {
       names
     }
 
-    override final def fullNameSeparated(kind: QualifiedNameKind)(implicit ctx: Context): Name = {
+    final override def fullNameSeparated(kind: QualifiedNameKind)(implicit ctx: Context): Name = {
       val cached = fullNameCache(kind)
       if (cached != null) cached
       else {
@@ -1769,9 +1773,9 @@ object SymDenotations {
     }
 
     // to avoid overloading ambiguities
-    override def fullName(implicit ctx: Context): Name = super.fullName
+    final override def fullName(implicit ctx: Context): Name = super.fullName
 
-    override def primaryConstructor(implicit ctx: Context): Symbol = {
+    final override def primaryConstructor(implicit ctx: Context): Symbol = {
       def constrNamed(cname: TermName) = info.decls.denotsNamed(cname).last.symbol
         // denotsNamed returns Symbols in reverse order of occurrence
       if (this.is(ImplClass)) constrNamed(nme.TRAIT_CONSTRUCTOR) // ignore normal constructor
@@ -1782,13 +1786,13 @@ object SymDenotations {
     /** The term parameter accessors of this class.
      *  Both getters and setters are returned in this list.
      */
-    def paramAccessors(implicit ctx: Context): List[Symbol] =
+    final def paramAccessors(implicit ctx: Context): List[Symbol] =
       unforcedDecls.filter(_.is(ParamAccessor))
 
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
      */
-    def ensureFreshScopeAfter(phase: DenotTransformer)(implicit ctx: Context): Unit =
+    final def ensureFreshScopeAfter(phase: DenotTransformer)(implicit ctx: Context): Unit =
       if (ctx.phaseId != phase.next.id) ensureFreshScopeAfter(phase)(ctx.withPhase(phase.next))
       else {
         val prevCtx = ctx.withPhase(phase)

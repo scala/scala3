@@ -116,7 +116,7 @@ class DropNoEffects(val simplifyPhase: Simplify) extends Optimisation {
           case et: ExprType =>
             et.derivedExprType(defn.UnitType)
         }
-        val newD = app.symbol.asSymDenotation.copySymDenotation(info = newLabelType)
+        val newD = app.symbol.denot.copySymDenotation(info = newLabelType)
         newD.installAfter(simplifyPhase)
       }
 

@@ -266,7 +266,7 @@ object SymbolLoaders {
       val pre = root.owner.thisType
       root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre select sourceModule)
       if (!sourceModule.isCompleted)
-        sourceModule.completer.complete(sourceModule)
+        sourceModule.completer.complete(sourceModule.denot)
 
       val packageName = if (root.isEffectiveRoot) "" else root.fullName.mangledString
 

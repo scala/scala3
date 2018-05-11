@@ -157,7 +157,7 @@ class ClassfileParser(
       moduleRoot.setFlag(Flags.JavaDefined | Flags.ModuleClassCreationFlags)
       setPrivateWithin(classRoot, jflags)
       setPrivateWithin(moduleRoot, jflags)
-      setPrivateWithin(moduleRoot.sourceModule, jflags)
+      setPrivateWithin(moduleRoot.sourceModule.denot, jflags)
 
       for (i <- 0 until in.nextChar) parseMember(method = false)
       for (i <- 0 until in.nextChar) parseMember(method = true)
@@ -172,7 +172,7 @@ class ClassfileParser(
       setClassInfo(classRoot, classInfo)
       setClassInfo(moduleRoot, staticInfo)
     } else if (result == Some(NoEmbedded)) {
-      for (sym <- List(moduleRoot.sourceModule.symbol, moduleRoot.symbol, classRoot.symbol)) {
+      for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
         classRoot.owner.asClass.delete(sym)
         if (classRoot.owner == defn.ScalaShadowingPackageClass) {
           // Symbols in scalaShadowing are also added to scala
@@ -758,7 +758,7 @@ class ClassfileParser(
 
       def unpickleTASTY(bytes: Array[Byte]): Some[Embedded]  = {
         val unpickler = new tasty.DottyUnpickler(bytes)
-        unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))
+        unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule.denot))
         Some(unpickler)
       }
 

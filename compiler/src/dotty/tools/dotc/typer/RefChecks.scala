@@ -96,9 +96,9 @@ object RefChecks {
   private def checkParents(cls: Symbol)(implicit ctx: Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
       def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
-        val otherSelf = other.givenSelfType.asSeenFrom(cls.thisType, other.classSymbol)
+        val otherSelf = other.givenSelfType.asSeenFrom(cls.thisType, other)
         if (otherSelf.exists && !(cinfo.selfType <:< otherSelf))
-          ctx.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other.classSymbol),
+          ctx.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other),
             cls.pos)
       }
       for (parent <- cinfo.classParents)
@@ -441,7 +441,7 @@ object RefChecks {
             clazz.info.nonPrivateMember(sym.name).hasAltWith { alt =>
               alt.symbol.is(JavaDefined, butNot = Deferred) &&
                 !sym.owner.derivesFrom(alt.symbol.owner) &&
-                alt.matches(sym)
+                alt.matches(sym.denot)
             }
           }
 
@@ -581,7 +581,7 @@ object RefChecks {
       // (3) is violated but not (2).
       def checkNoAbstractDecls(bc: Symbol): Unit = {
         for (decl <- bc.info.decls) {
-          if (decl.is(Deferred) && !ignoreDeferred(decl)) {
+          if (decl.is(Deferred) && !ignoreDeferred(decl.denot)) {
             val impl = decl.matchingMember(clazz.thisType)
             if (impl == NoSymbol || (decl.owner isSubClass impl.owner)) {
               val impl1 = clazz.thisType.nonPrivateMember(decl.name) // DEBUG

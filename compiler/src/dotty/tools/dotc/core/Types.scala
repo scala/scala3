@@ -484,7 +484,7 @@ object Types {
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, excluded)
       case err: ErrorType =>
-        ctx.newErrorSymbol(classSymbol orElse defn.RootClass, name, err.msg)
+        ctx.newErrorSymbol(classSymbol orElse defn.RootClass, name, err.msg).denot
       case _ =>
         NoDenotation
     }
@@ -548,7 +548,7 @@ object Types {
         case tp: TypeProxy =>
           go(tp.underlying)
         case tp: ClassInfo =>
-          tp.cls.findMember(name, pre, excluded)
+          tp.cls.denot.findMember(name, pre, excluded)
         case AndType(l, r) =>
           goAnd(l, r)
         case tp: OrType =>
@@ -560,7 +560,7 @@ object Types {
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, excluded)
         case err: ErrorType =>
-          ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name, err.msg)
+          ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name, err.msg).denot
         case _ =>
           NoDenotation
       }
@@ -1629,7 +1629,7 @@ object Types {
     def computeSignature(implicit ctx: Context): Signature = {
       val lastd = lastDenotation
       if (lastd != null) lastd.signature
-      else symbol.asSeenFrom(prefix).signature
+      else symbol.denot.asSeenFrom(prefix).signature
     }
 
     /** The signature of the current denotation if it is known without forcing.
@@ -1642,8 +1642,8 @@ object Types {
         val lastd = lastDenotation
         if (lastd != null) lastd.signature
         else {
-          val sym = currentSymbol
-          if (sym.exists) sym.asSeenFrom(prefix).signature
+          val symd = currentSymbol.denot
+          if (symd.exists) symd.asSeenFrom(prefix).signature
           else Signature.NotAMethod
         }
       }
@@ -1694,6 +1694,7 @@ object Types {
 
     /** The denotation currently denoted by this type */
     final def denot(implicit ctx: Context): Denotation = {
+      record("NamedType.denot")
       val now = ctx.period
       // Even if checkedPeriod == now we still need to recheck lastDenotation.validFor
       // as it may have been mutated by SymDenotation#installAfter
@@ -1805,7 +1806,7 @@ object Types {
             else arg recoverable_& rebase(pbounds)
           case arg => TypeAlias(arg)
         }
-        param.derivedSingleDenotation(param, argInfo)
+        param.denot.derivedSingleDenotation(param, argInfo)
       }
       else {
         if (!ctx.reporter.errorsReported)
@@ -1880,7 +1881,7 @@ object Types {
 
     /** Is this a reference to a class or object member? */
     def isMemberRef(implicit ctx: Context) = designator match {
-      case sym: Symbol => infoDependsOnPrefix(sym, prefix)
+      case sym: Symbol => infoDependsOnPrefix(sym.denot, prefix)
       case _ => true
     }
 
@@ -2031,14 +2032,14 @@ object Types {
         if (d.isOverloaded && lastSymbol.exists)
           d = disambiguate(d,
                 if (lastSymbol.signature == Signature.NotAMethod) Signature.NotAMethod
-                else lastSymbol.asSeenFrom(prefix).signature)
+                else lastSymbol.denot.asSeenFrom(prefix).signature)
         NamedType(prefix, name, d)
       }
       if (prefix eq this.prefix) this
       else if (lastDenotation == null) NamedType(prefix, designator)
       else designator match {
         case sym: Symbol =>
-          if (infoDependsOnPrefix(sym, prefix) && !prefix.isArgPrefixOf(sym)) {
+          if (infoDependsOnPrefix(sym.denot, prefix) && !prefix.isArgPrefixOf(sym.denot)) {
             val candidate = reload()
             val falseOverride = sym.isClass && candidate.symbol.exists && candidate.symbol != symbol
               // A false override happens if we rebind an inner class to another type with the same name
@@ -3590,7 +3591,7 @@ object Types {
         // Note: Taking a normal typeRef does not work here. A normal ref might contain
         // also other information about the named type (e.g. bounds).
         contains(
-          TypeRef(tp.prefix, cls).withDenot(new UniqueRefDenotation(cls, tp, cls.validFor)))
+          TypeRef(tp.prefix, cls).withDenot(new UniqueRefDenotation(cls, tp, cls.denot.validFor)))
       case _ =>
         lo <:< tp && tp <:< hi
     }
@@ -4165,7 +4166,7 @@ object Types {
      *  underlying bounds to a range, otherwise return the expansion.
      */
     def expandParam(tp: NamedType, pre: Type) = tp.argForParam(pre) match {
-      case arg @ TypeRef(pre, _) if pre.isArgPrefixOf(arg.symbol) =>
+      case arg @ TypeRef(pre, _) if pre.isArgPrefixOf(arg.symbol.denot) =>
         arg.info match {
           case TypeBounds(lo, hi) => range(atVariance(-variance)(reapply(lo)), reapply(hi))
           case arg => reapply(arg)
@@ -4594,6 +4595,8 @@ object Types {
       }
       ex
     }
+    def apply(sym: Symbol)(implicit ctx: Context): CyclicReference =
+      apply(sym.denot)
   }
 
   class MergeError(msg: String, val tp1: Type, val tp2: Type) extends TypeError(msg)

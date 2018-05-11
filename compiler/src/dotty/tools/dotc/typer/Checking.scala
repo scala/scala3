@@ -662,7 +662,7 @@ trait Checking {
     def checkDecl(decl: Symbol): Unit = {
       for (other <- seen(decl.name)) {
         typr.println(i"conflict? $decl $other")
-        if (decl.matches(other)) {
+        if (decl.denot.matches(other.denot)) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               ctx.error(DoubleDeclaration(decl, other), decl.pos)

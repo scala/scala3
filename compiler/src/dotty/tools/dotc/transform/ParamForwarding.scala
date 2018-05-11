@@ -65,7 +65,7 @@ class ParamForwarding(thisPhase: DenotTransformer) {
                 val alias = inheritedAccessor(sym)
                 if (alias.exists) {
                   def forwarder(implicit ctx: Context) = {
-                    sym.copySymDenotation(initFlags = sym.flags | Method | Stable, info = sym.info.ensureMethodic)
+                    sym.denot.copySymDenotation(initFlags = sym.flags | Method | Stable, info = sym.info.ensureMethodic)
                       .installAfter(thisPhase)
                     val superAcc =
                       Super(This(currentClass), tpnme.EMPTY, inConstrCall = false).select(alias)

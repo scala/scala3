@@ -56,7 +56,7 @@ trait NamerContextOps { this: Context =>
         owner.thisType.member(name)
       }
       else // we are in the outermost context belonging to a class; self is invisible here. See inClassContext.
-        owner.findMember(name, owner.thisType, EmptyFlags)
+        owner.denot.findMember(name, owner.thisType, EmptyFlags)
     else
       scope.denotsNamed(name).toDenot(NoPrefix)
 
@@ -611,8 +611,8 @@ class Namer { typer: Typer =>
 
     /** Create links between companion object and companion class */
     def createLinks(classTree: TypeDef, moduleTree: TypeDef)(implicit ctx: Context) = {
-      val claz = ctx.effectiveScope.lookup(classTree.name)
-      val modl = ctx.effectiveScope.lookup(moduleTree.name)
+      val claz = ctx.effectiveScope.lookup(classTree.name).denot
+      val modl = ctx.effectiveScope.lookup(moduleTree.name).denot
       if (claz.isClass && modl.isClass) {
         ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, modl).entered
         ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, modl, claz).entered
@@ -821,12 +821,12 @@ class Namer { typer: Typer =>
       else completeInCreationContext(denot)
     }
 
-    private def addInlineInfo(denot: SymDenotation) = original match {
-      case original: untpd.DefDef if denot.isInlineMethod =>
+    private def addInlineInfo(sym: Symbol) = original match {
+      case original: untpd.DefDef if sym.isInlineMethod =>
         Inliner.registerInlineInfo(
-            denot,
+            sym,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
-          )(localContext(denot.symbol))
+          )(localContext(sym))
       case _ =>
     }
 
@@ -839,7 +839,7 @@ class Namer { typer: Typer =>
         case original: MemberDef => addAnnotations(sym, original)
         case _ =>
       }
-      addInlineInfo(denot)
+      addInlineInfo(sym)
       denot.info = typeSig(sym)
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym, sym.pos)
@@ -990,7 +990,7 @@ class Namer { typer: Typer =>
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.info = avoidPrivateLeaks(cls, cls.pos)
-      cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
+      cls.baseClasses.foreach(_.classDenot.invalidateBaseTypeCache()) // we might have looked before and found nothing
     }
   }
 
@@ -1033,7 +1033,7 @@ class Namer { typer: Typer =>
   def moduleValSig(sym: Symbol)(implicit ctx: Context): Type = {
     val clsName = sym.name.moduleClassName
     val cls = ctx.denotNamed(clsName).suchThat(_ is ModuleClass)
-      .orElse(ctx.newStubSymbol(ctx.owner, clsName).assertingErrorsReported)
+      .orElse(ctx.newStubSymbol(ctx.owner, clsName).assertingErrorsReported.denot)
     ctx.owner.thisType.select(clsName, cls)
   }
 
