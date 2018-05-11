@@ -8,7 +8,7 @@ class Selectable(val receiver: Any) extends AnyVal with scala.Selectable {
       fld.get(receiver)
     }
     catch {
-      case ex: NoSuchFieldError =>
+      case ex: NoSuchFieldException =>
         selectDynamicMethod(name).asInstanceOf[() => Any]()
     }
   }
