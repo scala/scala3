@@ -27,43 +27,43 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
     def result(): String = sb.result()
 
     def visitTree(x: Tree): Buffer = x match {
-      case Ident(name) =>
+      case Term.Ident(name) =>
         this += "Ident(" += name += ")"
-      case Select(qualifier, name, signature) =>
+      case Term.Select(qualifier, name, signature) =>
         this += "Select(" += qualifier += ", " += name += ", " += signature += ")"
-      case This(qual) =>
+      case Term.This(qual) =>
         this += "This(" += qual += ")"
-      case Super(qual, mix) =>
+      case Term.Super(qual, mix) =>
         this += "TypeApply(" += qual += ", " += mix += ")"
-      case Apply(fun, args) =>
+      case Term.Apply(fun, args) =>
         this += "Apply(" += fun += ", " ++= args += ")"
-      case TypeApply(fun, args) =>
+      case Term.TypeApply(fun, args) =>
         this += "TypeApply(" += fun += ", " ++= args += ")"
-      case Literal(const) =>
+      case Term.Literal(const) =>
         this += "Literal(" += const += ")"
-      case New(tpt) =>
+      case Term.New(tpt) =>
         this += "New(" += tpt += ")"
-      case Typed(expr, tpt) =>
+      case Term.Typed(expr, tpt) =>
         this += "Typed(" += expr += ", "  += tpt += ")"
-      case NamedArg(name, arg) =>
+      case Term.NamedArg(name, arg) =>
         this += "NamedArg(" += name += ", " += arg += ")"
-      case Assign(lhs, rhs) =>
+      case Term.Assign(lhs, rhs) =>
         this += "Assign(" += lhs += ", " += rhs += ")"
-      case Block(stats, expr) =>
+      case Term.Block(stats, expr) =>
         this += "Block(" ++= stats += ", " += expr += ")"
-      case If(cond, thenp, elsep) =>
+      case Term.If(cond, thenp, elsep) =>
         this += "If(" += cond += ", " += thenp += ", " += elsep += ")"
-      case Lambda(meth, tpt) =>
+      case Term.Lambda(meth, tpt) =>
         this += "Lambda(" += meth += ", " += tpt += ")"
-      case Match(selector, cases) =>
+      case Term.Match(selector, cases) =>
         this += "Match(" += selector += ", " ++= cases += ")"
-      case Return(expr) =>
+      case Term.Return(expr) =>
         this += "Return(" += expr += ")"
-      case Try(block, handlers, finalizer) =>
+      case Term.Try(block, handlers, finalizer) =>
         this += "Try(" += block += ", " ++= handlers += ", " += finalizer += ")"
-      case Repeated(elems) =>
+      case Term.Repeated(elems) =>
         this += "Repeated(" ++= elems += ")"
-      case Inlined(call, bindings, expansion) =>
+      case Term.Inlined(call, bindings, expansion) =>
         this += "Inlined(" += call += ", " ++= bindings += ", " += expansion += ")"
       case ValDef(name, tpt, rhs) =>
         this += "ValDef(" += name += ", " += tpt += ", " += rhs += ")"
@@ -87,25 +87,25 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
     }
 
     def visitTypeTree(x: TypeOrBoundsTree): Buffer = x match {
-      case Synthetic() =>
+      case TypeTree.Synthetic() =>
         this += "Synthetic()"
-      case TypeIdent(name) =>
+      case TypeTree.TypeIdent(name) =>
         this += "TypeIdent(" += name += ")"
-      case TypeSelect(qualifier, name) =>
+      case TypeTree.TypeSelect(qualifier, name) =>
         this += "TypeSelect(" += qualifier += ", " += name += ")"
-      case Singleton(ref) =>
+      case TypeTree.Singleton(ref) =>
         this += "Singleton(" += ref += ")"
-      case And(left, right) =>
+      case TypeTree.And(left, right) =>
         this += "And(" += left += ", " += right += ")"
-      case Or(left, right) =>
+      case TypeTree.Or(left, right) =>
         this += "Or(" += left += ", " += right += ")"
-      case Refined(tpt, refinements) =>
+      case TypeTree.Refined(tpt, refinements) =>
         this += "Refined(" += tpt += ", " ++= refinements += ")"
-      case Applied(tpt, args) =>
+      case TypeTree.Applied(tpt, args) =>
         this += "Applied(" += tpt += ", " ++= args += ")"
-      case ByName(result) =>
+      case TypeTree.ByName(result) =>
         this += "ByName(" += result += ")"
-      case Annotated(arg, annot) =>
+      case TypeTree.Annotated(arg, annot) =>
         this += "Annotated(" += arg += ", " += annot += ")"
       case TypeBoundsTree(lo, hi) =>
         this += "TypeBoundsTree(" += lo += ", " += hi += ")"
@@ -117,15 +117,15 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
     }
 
     def visitPattern(x: Pattern): Buffer = x match {
-      case Value(v) =>
+      case Pattern.Value(v) =>
         this += "Value(" += v += ")"
-      case Bind(name, body) =>
+      case Pattern.Bind(name, body) =>
         this += "Bind(" += name += ", " += body += ")"
-      case Unapply(fun, implicits, patterns) =>
+      case Pattern.Unapply(fun, implicits, patterns) =>
         this += "Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
-      case Alternative(patterns) =>
+      case Pattern.Alternative(patterns) =>
         this += "Alternative(" ++= patterns += ")"
-      case TypeTest(tpt) =>
+      case Pattern.TypeTest(tpt) =>
         this += "TypeTest(" += tpt += ")"
     }
 
@@ -144,9 +144,9 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
     }
 
     def visitType(x: TypeOrBounds): Buffer = x match {
-      case ConstantType(value) =>
+      case Type.ConstantType(value) =>
         this += "ConstantType(" += value += ")"
-      case SymRef(sym, qual) =>
+      case Type.SymRef(sym, qual) =>
         def visitName(sym: Definition): Buffer = sym match {
           case ValDef(name, _, _) => this += name
           case DefDef(name, _, _, _, _) => this += name
@@ -158,33 +158,33 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
         this += "SymRef("
         visitName(sym)
         this += ", " += qual += ")"
-      case TermRef(name, qual) =>
+      case Type.TermRef(name, qual) =>
         this += "TermRef(" += name += ", " += qual += ")"
-      case TypeRef(name, qual) =>
+      case Type.TypeRef(name, qual) =>
         this += "TypeRef(" += name += ", " += qual += ")"
-      case Refinement(parent, name, info) =>
+      case Type.Refinement(parent, name, info) =>
         this += "Refinement(" += parent += ", " += name += ", " += info += ")"
-      case AppliedType(tycon, args) =>
+      case Type.AppliedType(tycon, args) =>
         this += "AppliedType(" += tycon += ", " ++= args += ")"
-      case AnnotatedType(underlying, annot) =>
+      case Type.AnnotatedType(underlying, annot) =>
         this += "AnnotatedType(" += underlying += ", " += annot += ")"
-      case AndType(left, right) =>
+      case Type.AndType(left, right) =>
         this += "AndType(" += left += ", " += right += ")"
-      case OrType(left, right) =>
+      case Type.OrType(left, right) =>
         this += "OrType(" += left += ", " += right += ")"
-      case ByNameType(underlying) =>
+      case Type.ByNameType(underlying) =>
         this += "ByNameType(" += underlying += ")"
-      case ParamRef(binder, idx) =>
+      case Type.ParamRef(binder, idx) =>
         this += "ParamRef(" += binder+= ", " += idx += ")"
-      case ThisType(tp) =>
+      case Type.ThisType(tp) =>
         this += "ThisType(" += tp += ")"
-      case RecursiveThis(binder) =>
+      case Type.RecursiveThis(binder) =>
         this += "RecursiveThis(" += binder += ")"
-      case MethodType(argNames, argTypes, resType) =>
+      case Type.MethodType(argNames, argTypes, resType) =>
         this += "MethodType(" ++= argNames += ", " ++= argTypes += ", " += resType += ")"
-      case PolyType(argNames, argBounds, resType) =>
+      case Type.PolyType(argNames, argBounds, resType) =>
         this += "PolyType(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
-      case TypeLambda(argNames, argBounds, resType) =>
+      case Type.TypeLambda(argNames, argBounds, resType) =>
         this += "TypeLambda(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
       case TypeBounds(lo, hi) =>
         this += "TypeBounds(" += lo += ", " += hi += ")"
@@ -193,10 +193,10 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
     }
 
     def visitModifier(x: Modifier): Buffer = x match {
-      case Flags(flags) => this += "Flags(" += flags.toString += ")"
-      case QualifiedPrivate(tp) => this += "QualifiedPrivate(" += tp += ")"
-      case QualifiedProtected(tp) => this += "QualifiedProtected(" += tp += ")"
-      case Annotation(tree) => this += "Annotation(" += tree += ")"
+      case Modifier.Flags(flags) => this += "Flags(" += flags.toString += ")"
+      case Modifier.QualifiedPrivate(tp) => this += "QualifiedPrivate(" += tp += ")"
+      case Modifier.QualifiedProtected(tp) => this += "QualifiedProtected(" += tp += ")"
+      case Modifier.Annotation(tree) => this += "Annotation(" += tree += ")"
     }
 
     def visitId(x: Id): Buffer = {

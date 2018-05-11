@@ -32,11 +32,11 @@ object Index {
     import u.tasty._
 
     def name(tp: TypeOrBounds): String = tp match {
-      case ConstantType(Constant.String(str)) => str
+      case Type.ConstantType(Constant.String(str)) => str
     }
 
     def names(tp: TypeOrBounds): List[String] = tp match {
-      case AppliedType(_, x1 :: x2 :: Nil) => name(x1) :: names(x2)
+      case Type.AppliedType(_, x1 :: x2 :: Nil) => name(x1) :: names(x2)
       case _ => Nil
     }
 

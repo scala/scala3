@@ -23,20 +23,20 @@ object Asserts {
     val tree = cond.toTasty
 
     def isOps(tpe: TypeOrBounds): Boolean = tpe match {
-      case SymRef(DefDef("Ops", _, _, _, _), _) => true // TODO check that the parent is Asserts
+      case Type.SymRef(DefDef("Ops", _, _, _, _), _) => true // TODO check that the parent is Asserts
       case _ => false
     }
 
     object OpsTree {
       def unapply(arg: Term): Option[Term] = arg match {
-        case Apply(TypeApply(term, _), left :: Nil) if isOps(term.tpe) =>
+        case Term.Apply(Term.TypeApply(term, _), left :: Nil) if isOps(term.tpe) =>
           Some(left)
         case _ => None
       }
     }
 
     tree match {
-      case Apply(Select(OpsTree(left), op, _), right :: Nil) =>
+      case Term.Apply(Term.Select(OpsTree(left), op, _), right :: Nil) =>
         // FIXME splice the threes directly
         val printer = new TastyPrinter(tasty)
         val lExpr = printer.stringOfTree(left).toExpr

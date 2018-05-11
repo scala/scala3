@@ -217,10 +217,6 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Term = tpd.Tree
 
-  val Term: TermCaster = new TermCaster {
-    def unapply(x: Term)(implicit ctx: Context): Boolean = x.isTerm
-  }
-
   implicit def TermDeco(t: Term): AbstractTerm = new AbstractTerm {
     def pos(implicit ctx: Context): Position = new TastyPosition(t.pos)
     def tpe(implicit ctx: Context): Types.Type = t.tpe
@@ -228,153 +224,159 @@ object TastyImpl extends scala.tasty.Tasty {
 
   def termClassTag: ClassTag[Term] = implicitly[ClassTag[Term]]
 
-  val Ident: IdentExtractor = new IdentExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[String] = x match {
-      case x: tpd.Ident @unchecked if x.isTerm => Some(x.name.show)
-      case _ => None
-    }
-  }
+  object Term extends TermModule {
 
-  val Select: SelectExtractor = new SelectExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(Term, String, Option[Signature])] = x match {
-      case x: tpd.Select @unchecked if x.isTerm =>
-        val sig =
-          if (x.symbol.signature == core.Signature.NotAMethod) None
-          else Some(x.symbol.signature)
-        Some((x.qualifier, x.name.toString, sig))
-      case _ => None
-    }
-  }
+    def unapply(x: Term)(implicit ctx: Context): Boolean = x.isTerm
 
-  val Literal: LiteralExtractor = new LiteralExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[Constant] = x match {
-      case Trees.Literal(const) => Some(const)
-      case _ => None
+    object Ident extends IdentExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[String] = x match {
+        case x: tpd.Ident @unchecked if x.isTerm => Some(x.name.show)
+        case _ => None
+      }
     }
-  }
 
-  val This: ThisExtractor = new ThisExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[Option[Id]] = x match {
-      case Trees.This(qual) => Some(if (qual.isEmpty) None else Some(qual))
-      case _ => None
+    object Select extends SelectExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, String, Option[Signature])] = x match {
+        case x: tpd.Select @unchecked if x.isTerm =>
+          val sig =
+            if (x.symbol.signature == core.Signature.NotAMethod) None
+            else Some(x.symbol.signature)
+          Some((x.qualifier, x.name.toString, sig))
+        case _ => None
+      }
     }
-  }
 
-  val New: NewExtractor = new NewExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[TypeTree] = x match {
-      case x: tpd.New @unchecked => Some(x.tpt)
-      case _ => None
+    object Literal extends LiteralExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[Constant] = x match {
+        case Trees.Literal(const) => Some(const)
+        case _ => None
+      }
     }
-  }
 
-  val NamedArg: NamedArgExtractor = new NamedArgExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(String, Term)] = x match {
-      case x: tpd.NamedArg @unchecked if x.name.isInstanceOf[Names.TermName] => Some((x.name.toString, x.arg))
-      case _ => None
+    object This extends ThisExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[Option[Id]] = x match {
+        case Trees.This(qual) => Some(if (qual.isEmpty) None else Some(qual))
+        case _ => None
+      }
     }
-  }
 
-  val Apply: ApplyExtractor = new ApplyExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[Term])] = x match {
-      case x: tpd.Apply @unchecked => Some((x.fun, x.args))
-      case _ => None
+    object New extends NewExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[TypeTree] = x match {
+        case x: tpd.New @unchecked => Some(x.tpt)
+        case _ => None
+      }
     }
-  }
 
-  val TypeApply: TypeApplyExtractor = new TypeApplyExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[TypeTree])] = x match {
-      case x: tpd.TypeApply @unchecked => Some((x.fun, x.args))
-      case _ => None
+    object NamedArg extends NamedArgExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(String, Term)] = x match {
+        case x: tpd.NamedArg @unchecked if x.name.isInstanceOf[Names.TermName] => Some((x.name.toString, x.arg))
+        case _ => None
+      }
     }
-  }
 
-  val Super: SuperExtractor = new SuperExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(Term, Option[Id])] = x match {
-      case x: tpd.Super @unchecked => Some((x.qual, if (x.mix.isEmpty) None else Some(x.mix)))
-      case _ => None
+    object Apply extends ApplyExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[Term])] = x match {
+        case x: tpd.Apply @unchecked => Some((x.fun, x.args))
+        case _ => None
+      }
     }
-  }
 
-  val Typed: TypedExtractor = new TypedExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(Term, TypeTree)] = x match {
-      case x: tpd.Typed @unchecked => Some((x.expr, x.tpt))
-      case _ => None
+    object TypeApply extends TypeApplyExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[TypeTree])] = x match {
+        case x: tpd.TypeApply @unchecked => Some((x.fun, x.args))
+        case _ => None
+      }
     }
-  }
 
-  val Assign: AssignExtractor = new AssignExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term)] = x match {
-      case x: tpd.Assign @unchecked => Some((x.lhs, x.rhs))
-      case _ => None
+    object Super extends SuperExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, Option[Id])] = x match {
+        case x: tpd.Super @unchecked => Some((x.qual, if (x.mix.isEmpty) None else Some(x.mix)))
+        case _ => None
+      }
     }
-  }
 
-  val Block: BlockExtractor = new BlockExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(List[Statement], Term)] = x match {
-      case x: tpd.Block @unchecked => Some((x.stats, x.expr))
-      case _ => None
+    object Typed extends TypedExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, TypeTree)] = x match {
+        case x: tpd.Typed @unchecked => Some((x.expr, x.tpt))
+        case _ => None
+      }
     }
-  }
 
-  val Inlined: InlinedExtractor = new InlinedExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[Statement], Term)] = x match {
-      case x: tpd.Inlined @unchecked =>
-        Some((x.call, x.bindings, x.expansion))
-      case _ => None
+    object Assign extends AssignExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term)] = x match {
+        case x: tpd.Assign @unchecked => Some((x.lhs, x.rhs))
+        case _ => None
+      }
     }
-  }
 
-  val Lambda: LambdaExtractor = new LambdaExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(Term, Option[TypeTree])] = x match {
-      case x: tpd.Closure @unchecked => Some((x.meth, if (x.tpt.isEmpty) None else Some(x.tpt)))
-      case _ => None
+    object Block extends BlockExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(List[Statement], Term)] = x match {
+        case x: tpd.Block @unchecked => Some((x.stats, x.expr))
+        case _ => None
+      }
     }
-  }
 
-  val If: IfExtractor = new IfExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term, Term)] = x match {
-      case x: tpd.If @unchecked => Some((x.cond, x.thenp, x.elsep))
-      case _ => None
+    object Inlined extends InlinedExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[Statement], Term)] = x match {
+        case x: tpd.Inlined @unchecked =>
+          Some((x.call, x.bindings, x.expansion))
+        case _ => None
+      }
     }
-  }
 
-  val Match: MatchExtractor = new MatchExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[CaseDef])] = x match {
-      case x: tpd.Match @unchecked => Some((x.selector, x.cases))
-      case _ => None
+    object Lambda extends LambdaExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, Option[TypeTree])] = x match {
+        case x: tpd.Closure @unchecked => Some((x.meth, if (x.tpt.isEmpty) None else Some(x.tpt)))
+        case _ => None
+      }
     }
-  }
 
-  val Try: TryExtractor = new TryExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[CaseDef], Option[Term])] = x match {
-      case x: tpd.Try @unchecked => Some((x.expr, x.cases, if (x.finalizer.isEmpty) None else Some(x.finalizer)))
-      case _ => None
+    object If extends IfExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term, Term)] = x match {
+        case x: tpd.If @unchecked => Some((x.cond, x.thenp, x.elsep))
+        case _ => None
+      }
     }
-  }
 
-  val Return: ReturnExtractor = new ReturnExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[Term] = x match {
-      case x: tpd.Return @unchecked => Some(x.expr)
-      case _ => None
+    object Match extends MatchExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[CaseDef])] = x match {
+        case x: tpd.Match @unchecked => Some((x.selector, x.cases))
+        case _ => None
+      }
     }
-  }
 
-  val Repeated: RepeatedExtractor = new RepeatedExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[List[Term]] = x match {
-      case x: tpd.SeqLiteral @unchecked => Some(x.elems)
-      case _ => None
+    object Try extends TryExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[CaseDef], Option[Term])] = x match {
+        case x: tpd.Try @unchecked => Some((x.expr, x.cases, if (x.finalizer.isEmpty) None else Some(x.finalizer)))
+        case _ => None
+      }
     }
-  }
 
-  val SelectOuter: SelectOuterExtractor = new SelectOuterExtractor {
-    def unapply(x: Term)(implicit ctx: Context): Option[(Term, Int, Type)] = x match {
-      case x: tpd.Select @unchecked =>
-        x.name match {
-          case NameKinds.OuterSelectName(_, levels) => Some((x.qualifier, levels, x.tpe.stripTypeVar))
-          case _ => None
-        }
-      case _ => None
+    object Return extends ReturnExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[Term] = x match {
+        case x: tpd.Return @unchecked => Some(x.expr)
+        case _ => None
+      }
     }
+
+    object Repeated extends RepeatedExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[List[Term]] = x match {
+        case x: tpd.SeqLiteral @unchecked => Some(x.elems)
+        case _ => None
+      }
+    }
+
+    object SelectOuter extends SelectOuterExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, Int, Type)] = x match {
+        case x: tpd.Select @unchecked =>
+          x.name match {
+            case NameKinds.OuterSelectName(_, levels) => Some((x.qualifier, levels, x.tpe.stripTypeVar))
+            case _ => None
+          }
+        case _ => None
+      }
+    }
+
   }
 
   // ----- CaseDef --------------------------------------------------
@@ -402,41 +404,46 @@ object TastyImpl extends scala.tasty.Tasty {
 
   def patternClassTag: ClassTag[Pattern] = implicitly[ClassTag[Pattern]]
 
-  val Value: ValueExtractor = new ValueExtractor {
-    def unapply(x: Pattern)(implicit ctx: Context): Option[Term] = x match {
-      case lit: tpd.Literal @unchecked => Some(lit)
-      case ident: tpd.Ident @unchecked if ident.isTerm => Some(ident)
-      case _ => None
+  object Pattern extends PatternModule {
+
+    object Value extends ValueExtractor {
+      def unapply(x: Pattern)(implicit ctx: Context): Option[Term] = x match {
+        case lit: tpd.Literal @unchecked => Some(lit)
+        case ident: tpd.Ident @unchecked if ident.isTerm => Some(ident)
+        case _ => None
+      }
     }
+
+    object Bind extends BindExtractor {
+      def unapply(x: Pattern)(implicit ctx: Context): Option[(String, Pattern)] = x match {
+        case x: tpd.Bind @unchecked if x.name.isInstanceOf[Names.TermName] => Some(x.name.toString, x.body)
+        case _ => None
+      }
+    }
+
+    object Unapply extends UnapplyExtractor {
+      def unapply(x: Pattern)(implicit ctx: Context): Option[(Term, List[Term], List[Pattern])] = x match {
+        case x: tpd.UnApply @unchecked => Some(x.fun, x.implicits, x.patterns)
+        case _ => None
+      }
+    }
+
+    object Alternative extends AlternativeExtractor {
+      def unapply(x: Pattern)(implicit ctx: Context): Option[List[Pattern]] = x match {
+        case x: tpd.Alternative @unchecked => Some(x.trees)
+        case _ => None
+      }
+    }
+
+    object TypeTest extends TypeTestExtractor {
+      def unapply(x: Pattern)(implicit ctx: Context): Option[TypeTree] = x match {
+        case x: tpd.Typed @unchecked => Some(x.tpt)
+        case _ => None
+      }
+    }
+
   }
 
-  val Bind: BindExtractor = new BindExtractor {
-    def unapply(x: Pattern)(implicit ctx: Context): Option[(String, Pattern)] = x match {
-      case x: tpd.Bind @unchecked if x.name.isInstanceOf[Names.TermName] => Some(x.name.toString, x.body)
-      case _ => None
-    }
-  }
-
-  val Unapply: UnapplyExtractor = new UnapplyExtractor {
-    def unapply(x: Pattern)(implicit ctx: Context): Option[(Term, List[Term], List[Pattern])] = x match {
-      case x: tpd.UnApply @unchecked => Some(x.fun, x.implicits, x.patterns)
-      case _ => None
-    }
-  }
-
-  val Alternative: AlternativeExtractor = new AlternativeExtractor {
-    def unapply(x: Pattern)(implicit ctx: Context): Option[List[Pattern]] = x match {
-      case x: tpd.Alternative @unchecked => Some(x.trees)
-      case _ => None
-    }
-  }
-
-  val TypeTest: TypeTestExtractor = new TypeTestExtractor {
-    def unapply(x: Pattern)(implicit ctx: Context): Option[TypeTree] = x match {
-      case x: tpd.Typed @unchecked => Some(x.tpt)
-      case _ => None
-    }
-  }
 
   // ----- TypeOrBoundsTree ------------------------------------------------
 
@@ -450,85 +457,87 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type TypeTree = tpd.Tree
 
-  val TypeTree: TypeTreeCaster = new TypeTreeCaster {
-    def unapply(x: TypeTree)(implicit ctx: Context): Boolean = x.isType
-  }
-
-  def typeTreeClassTag: ClassTag[TypeTree] = implicitly[ClassTag[TypeTree]]
-
   implicit def TypeTreeDeco(x: TypeTree): AbstractTypeTree = new AbstractTypeTree {
     def pos(implicit ctx: Context): Position = new TastyPosition(x.pos)
     def tpe(implicit ctx: Context): Types.Type = x.tpe.stripTypeVar
   }
 
-  val Synthetic: SyntheticExtractor = new SyntheticExtractor {
-    def unapply(x: TypeTree)(implicit ctx: Context): Boolean = x match {
-      case Trees.TypeTree() => true
-      case _ => false
-    }
-  }
+  def typeTreeClassTag: ClassTag[TypeTree] = implicitly[ClassTag[TypeTree]]
 
-  val TypeIdent: TypeIdentExtractor = new TypeIdentExtractor {
-    def unapply(x: TypeTree)(implicit ctx: Context): Option[String] = x match {
-      case x: tpd.Ident @unchecked if x.isType => Some(x.name.toString)
-      case _ => None
-    }
-  }
+  object TypeTree extends TypeTreeModule {
 
-  val TypeSelect: TypeSelectExtractor = new TypeSelectExtractor {
-    def unapply(x: TypeTree)(implicit ctx: Context): Option[(Term, String)] = x match {
-      case x: tpd.Select @unchecked if x.isType => Some(x.qualifier, x.name.toString)
-      case _ => None
-    }
-  }
+    def unapply(x: TypeTree)(implicit ctx: Context): Boolean = x.isType
 
-  val Singleton: SingletonExtractor = new SingletonExtractor {
-    def unapply(x: TypeTree)(implicit ctx: Context): Option[Term] = x match {
-      case x: tpd.SingletonTypeTree @unchecked => Some(x.ref)
-      case _ => None
+    object Synthetic extends SyntheticExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Boolean = x match {
+        case Trees.TypeTree() => true
+        case _ => false
+      }
     }
-  }
 
-  val Refined: RefinedExtractor = new RefinedExtractor {
-    def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, List[Definition])] = x match {
-      case x: tpd.RefinedTypeTree @unchecked => Some(x.tpt, x.refinements)
-      case _ => None
+    object TypeIdent extends TypeIdentExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[String] = x match {
+        case x: tpd.Ident @unchecked if x.isType => Some(x.name.toString)
+        case _ => None
+      }
     }
-  }
 
-  val Applied: AppliedExtractor = new AppliedExtractor {
-    def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, List[TypeTree])] = x match {
-      case x: tpd.AppliedTypeTree @unchecked => Some(x.tpt, x.args)
-      case _ => None
+    object TypeSelect extends TypeSelectExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(Term, String)] = x match {
+        case x: tpd.Select @unchecked if x.isType => Some(x.qualifier, x.name.toString)
+        case _ => None
+      }
     }
-  }
 
-  val Annotated: AnnotatedExtractor = new AnnotatedExtractor {
-    def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, Term)] = x match {
-      case x: tpd.Annotated @unchecked => Some(x.arg, x.annot)
-      case _ => None
+    object Singleton extends SingletonExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[Term] = x match {
+        case x: tpd.SingletonTypeTree @unchecked => Some(x.ref)
+        case _ => None
+      }
     }
-  }
 
-  val And: AndExtractor = new AndExtractor {
-    def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] = x match {
-      case x: tpd.AndTypeTree @unchecked => Some(x.left, x.right)
-      case _ => None
+    object Refined extends RefinedExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, List[Definition])] = x match {
+        case x: tpd.RefinedTypeTree @unchecked => Some(x.tpt, x.refinements)
+        case _ => None
+      }
     }
-  }
 
-  val Or: OrExtractor = new OrExtractor {
-    def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] = x match {
-      case x: tpd.OrTypeTree @unchecked => Some(x.left, x.right)
-      case _ => None
+    object Applied extends AppliedExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, List[TypeTree])] = x match {
+        case x: tpd.AppliedTypeTree @unchecked => Some(x.tpt, x.args)
+        case _ => None
+      }
     }
-  }
 
-  val ByName: ByNameExtractor = new ByNameExtractor {
-    def unapply(x: TypeTree)(implicit ctx: Context): Option[TypeTree] = x match {
-      case x: tpd.ByNameTypeTree @unchecked => Some(x.result)
-      case _ => None
+    object Annotated extends AnnotatedExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, Term)] = x match {
+        case x: tpd.Annotated @unchecked => Some(x.arg, x.annot)
+        case _ => None
+      }
     }
+
+    object And extends AndExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] = x match {
+        case x: tpd.AndTypeTree @unchecked => Some(x.left, x.right)
+        case _ => None
+      }
+    }
+
+    object Or extends OrExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] = x match {
+        case x: tpd.OrTypeTree @unchecked => Some(x.left, x.right)
+        case _ => None
+      }
+    }
+
+    object ByName extends ByNameExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[TypeTree] = x match {
+        case x: tpd.ByNameTypeTree @unchecked => Some(x.result)
+        case _ => None
+      }
+    }
+
   }
 
   // ----- TypeBoundsTrees ------------------------------------------------
@@ -553,173 +562,171 @@ object TastyImpl extends scala.tasty.Tasty {
   // ----- Types ----------------------------------------------------
 
   type Type = Types.Type
+  type RecursiveType = Types.RecType
+  type LambdaType[ParamInfo <: TypeOrBounds] = Types.LambdaType { type PInfo = ParamInfo }
+  type MethodType = Types.MethodType
+  type PolyType = Types.PolyType
+  type TypeLambda = Types.TypeLambda
 
   def typeClassTag: ClassTag[Type] = implicitly[ClassTag[Type]]
-
-  val ConstantType: ConstantTypeExtractor = new ConstantTypeExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[Constant] = x match {
-      case Types.ConstantType(value) => Some(value)
-      case _ => None
-    }
-  }
-
-  val SymRef: SymRefExtractor = new SymRefExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(Definition, TypeOrBounds /* Type | NoPrefix */)] = x  match {
-      case tp: Types.NamedType =>
-        tp.designator match {
-          case sym: Symbol => Some((FromSymbol.definition(sym), tp.prefix))
-          case _ => None
-        }
-      case _ => None
-    }
-  }
-
-  val TermRef: TermRefExtractor = new TermRefExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
-      case tp: Types.NamedType =>
-        tp.designator match {
-          case name: Names.TermName => Some(name.toString, tp.prefix)
-          case _ => None
-        }
-      case _ => None
-    }
-  }
-
-  val TypeRef: TypeRefExtractor = new TypeRefExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
-      case tp: Types.NamedType =>
-        tp.designator match {
-          case name: Names.TypeName => Some(name.toString, tp.prefix)
-          case _ => None
-        }
-      case _ => None
-    }
-  }
-
-  val SuperType: SuperTypeExtractor = new SuperTypeExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
-      case Types.SuperType(thistpe, supertpe) => Some(thistpe, supertpe)
-      case _ => None
-    }
-  }
-
-  val Refinement: RefinementExtractor = new RefinementExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] = x match {
-      case Types.RefinedType(parent, name, info) => Some(parent, name.toString, info)
-      case _ => None
-    }
-  }
-
-  val AppliedType: AppliedTypeExtractor = new AppliedTypeExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] = x match {
-      case Types.AppliedType(tycon, args) => Some((tycon.stripTypeVar, args.map(_.stripTypeVar)))
-      case _ => None
-    }
-  }
-
-  val AnnotatedType: AnnotatedTypeExtractor = new AnnotatedTypeExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(Type, Term)] = x match {
-      case Types.AnnotatedType(underlying, annot) => Some((underlying.stripTypeVar, annot.tree))
-      case _ => None
-    }
-  }
-
-  val AndType: AndTypeExtractor = new AndTypeExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
-      case Types.AndType(left, right) => Some(left.stripTypeVar, right.stripTypeVar)
-      case _ => None
-    }
-  }
-
-  val OrType: OrTypeExtractor = new OrTypeExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
-      case Types.OrType(left, right) => Some(left.stripTypeVar, right.stripTypeVar)
-      case _ => None
-    }
-  }
-
-  val ByNameType: ByNameTypeExtractor = new ByNameTypeExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[Type] = x match {
-      case Types.ExprType(resType) => Some(resType.stripTypeVar)
-      case _ => None
-    }
-  }
-
-  val ParamRef: ParamRefExtractor = new ParamRefExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] = x match {
-      case Types.TypeParamRef(binder, idx) =>
-        Some((
-          binder.asInstanceOf[LambdaType[TypeOrBounds]], // Cast to tpd
-          idx))
-      case _ => None
-    }
-  }
-
-  val ThisType: ThisTypeExtractor = new ThisTypeExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[Type] = x match {
-      case Types.ThisType(tp) => Some(tp)
-      case _ => None
-    }
-  }
-
-  val RecursiveThis: RecursiveThisExtractor = new RecursiveThisExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[RecursiveType] = x match {
-      case Types.RecThis(binder) => Some(binder)
-      case _ => None
-    }
-  }
-
-  type RecursiveType = Types.RecType
-
   def recursiveTypeClassTag: ClassTag[RecursiveType] = implicitly[ClassTag[RecursiveType]]
-
-  val RecursiveType: RecursiveTypeExtractor = new RecursiveTypeExtractor {
-    def unapply(x: RecursiveType)(implicit ctx: Context): Option[Type] = x match {
-      case tp: Types.RecType => Some(tp.underlying.stripTypeVar)
-      case _ => None
-    }
-  }
-
-  // ----- Methodic Types -------------------------------------------
-
-  type LambdaType[ParamInfo <: TypeOrBounds] = Types.LambdaType { type PInfo = ParamInfo }
-
-  type MethodType = Types.MethodType
+  def methodTypeClassTag: ClassTag[MethodType] = implicitly[ClassTag[MethodType]]
+  def polyTypeClassTag: ClassTag[PolyType] = implicitly[ClassTag[PolyType]]
+  def typeLambdaClassTag: ClassTag[TypeLambda] = implicitly[ClassTag[TypeLambda]]
 
   implicit def MethodTypeDeco(x: MethodType): AbstractMethodType = new AbstractMethodType {
     def isErased: Boolean = x.isErasedMethod
     def isImplicit: Boolean = x.isImplicitMethod
   }
 
-  def methodTypeClassTag: ClassTag[MethodType] = implicitly[ClassTag[MethodType]]
+  object Type extends TypeModule {
 
-  val MethodType: MethodTypeExtractor = new MethodTypeExtractor {
-    def unapply(x: MethodType)(implicit ctx: Context): Option[(List[String], List[Type], Type)] = x match {
-      case x: MethodType => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
-      case _ => None
+    def unapply(x: Type)(implicit ctx: Context): Boolean = x match {
+      case x: Types.TypeBounds => false
+      case x => x != Types.NoPrefix
     }
-  }
 
-  type PolyType = Types.PolyType
-
-  def polyTypeClassTag: ClassTag[PolyType] = implicitly[ClassTag[PolyType]]
-
-  val PolyType: PolyTypeExtractor = new PolyTypeExtractor {
-    def unapply(x: PolyType)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] = x match {
-      case x: PolyType => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
-      case _ => None
+    object ConstantType extends ConstantTypeExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[Constant] = x match {
+        case Types.ConstantType(value) => Some(value)
+        case _ => None
+      }
     }
-  }
 
-  type TypeLambda = Types.TypeLambda
-
-  def typeLambdaClassTag: ClassTag[TypeLambda] = implicitly[ClassTag[TypeLambda]]
-
-  val TypeLambda: TypeLambdaExtractor = new TypeLambdaExtractor {
-    def unapply(x: TypeLambda)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] = x match {
-      case x: TypeLambda => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
-      case _ => None
+    object SymRef extends SymRefExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[(Definition, TypeOrBounds /* Type | NoPrefix */)] = x  match {
+        case tp: Types.NamedType =>
+          tp.designator match {
+            case sym: Symbol => Some((FromSymbol.definition(sym), tp.prefix))
+            case _ => None
+          }
+        case _ => None
+      }
     }
+
+    object TermRef extends TermRefExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
+        case tp: Types.NamedType =>
+          tp.designator match {
+            case name: Names.TermName => Some(name.toString, tp.prefix)
+            case _ => None
+          }
+        case _ => None
+      }
+    }
+
+    object TypeRef extends TypeRefExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
+        case tp: Types.NamedType =>
+          tp.designator match {
+            case name: Names.TypeName => Some(name.toString, tp.prefix)
+            case _ => None
+          }
+        case _ => None
+      }
+    }
+
+    object SuperType extends SuperTypeExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
+        case Types.SuperType(thistpe, supertpe) => Some(thistpe, supertpe)
+        case _ => None
+      }
+    }
+
+    object Refinement extends RefinementExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] = x match {
+        case Types.RefinedType(parent, name, info) => Some(parent, name.toString, info)
+        case _ => None
+      }
+    }
+
+    object AppliedType extends AppliedTypeExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] = x match {
+        case Types.AppliedType(tycon, args) => Some((tycon.stripTypeVar, args.map(_.stripTypeVar)))
+        case _ => None
+      }
+    }
+
+    object AnnotatedType extends AnnotatedTypeExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[(Type, Term)] = x match {
+        case Types.AnnotatedType(underlying, annot) => Some((underlying.stripTypeVar, annot.tree))
+        case _ => None
+      }
+    }
+
+    object AndType extends AndTypeExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
+        case Types.AndType(left, right) => Some(left.stripTypeVar, right.stripTypeVar)
+        case _ => None
+      }
+    }
+
+    object OrType extends OrTypeExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
+        case Types.OrType(left, right) => Some(left.stripTypeVar, right.stripTypeVar)
+        case _ => None
+      }
+    }
+
+    object ByNameType extends ByNameTypeExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[Type] = x match {
+        case Types.ExprType(resType) => Some(resType.stripTypeVar)
+        case _ => None
+      }
+    }
+
+    object ParamRef extends ParamRefExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] = x match {
+        case Types.TypeParamRef(binder, idx) =>
+          Some((
+            binder.asInstanceOf[LambdaType[TypeOrBounds]], // Cast to tpd
+            idx))
+        case _ => None
+      }
+    }
+
+    object ThisType extends ThisTypeExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[Type] = x match {
+        case Types.ThisType(tp) => Some(tp)
+        case _ => None
+      }
+    }
+
+    object RecursiveThis extends RecursiveThisExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[RecursiveType] = x match {
+        case Types.RecThis(binder) => Some(binder)
+        case _ => None
+      }
+    }
+
+    object RecursiveType extends RecursiveTypeExtractor {
+      def unapply(x: RecursiveType)(implicit ctx: Context): Option[Type] = x match {
+        case tp: Types.RecType => Some(tp.underlying.stripTypeVar)
+        case _ => None
+      }
+    }
+
+    object MethodType extends MethodTypeExtractor {
+      def unapply(x: MethodType)(implicit ctx: Context): Option[(List[String], List[Type], Type)] = x match {
+        case x: MethodType => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
+        case _ => None
+      }
+    }
+
+    object PolyType extends PolyTypeExtractor {
+      def unapply(x: PolyType)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] = x match {
+        case x: PolyType => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
+        case _ => None
+      }
+    }
+
+    object TypeLambda extends TypeLambdaExtractor {
+      def unapply(x: TypeLambda)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] = x match {
+        case x: TypeLambda => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
+        case _ => None
+      }
+    }
+
   }
 
   // ----- TypeBounds ------------------------------------------------
@@ -848,32 +855,37 @@ object TastyImpl extends scala.tasty.Tasty {
 
   def modifierClassTag: ClassTag[Modifier] = implicitly[ClassTag[Modifier]]
 
-  val Annotation: AnnotationExtractor = new AnnotationExtractor {
-    def unapply(x: Modifier)(implicit ctx: Context): Option[Term] = x match {
-      case ModAnnot(tree) => Some(tree)
-      case _ => None
-    }
-  }
 
-  val Flags: FlagsExtractor = new FlagsExtractor {
-    def unapply(x: Modifier)(implicit ctx: Context): Option[FlagSet] = x match {
-      case ModFlags(flags) => Some(flags)
-      case _ => None
-    }
-  }
+  object Modifier extends ModifierModule {
 
-  val QualifiedPrivate: QualifiedPrivateExtractor = new QualifiedPrivateExtractor {
-    def unapply(x: Modifier)(implicit ctx: Context): Option[Type] = x match {
-      case ModQual(tp, false) => Some(tp)
-      case _ => None
+    object Annotation extends AnnotationExtractor {
+      def unapply(x: Modifier)(implicit ctx: Context): Option[Term] = x match {
+        case ModAnnot(tree) => Some(tree)
+        case _ => None
+      }
     }
-  }
 
-  val QualifiedProtected: QualifiedProtectedExtractor = new QualifiedProtectedExtractor {
-    def unapply(x: Modifier)(implicit ctx: Context): Option[Type] = x match {
-      case ModQual(tp, true) => Some(tp)
-      case _ => None
+    object Flags extends FlagsExtractor {
+      def unapply(x: Modifier)(implicit ctx: Context): Option[FlagSet] = x match {
+        case ModFlags(flags) => Some(flags)
+        case _ => None
+      }
     }
+
+    object QualifiedPrivate extends QualifiedPrivateExtractor {
+      def unapply(x: Modifier)(implicit ctx: Context): Option[Type] = x match {
+        case ModQual(tp, false) => Some(tp)
+        case _ => None
+      }
+    }
+
+    object QualifiedProtected extends QualifiedProtectedExtractor {
+      def unapply(x: Modifier)(implicit ctx: Context): Option[Type] = x match {
+        case ModQual(tp, true) => Some(tp)
+        case _ => None
+      }
+    }
+
   }
 
   // ===== Signature ================================================

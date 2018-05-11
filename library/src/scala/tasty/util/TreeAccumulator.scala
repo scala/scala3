@@ -20,46 +20,45 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
   def foldOverTree(x: X, tree: Tree)(implicit ctx: Context): X = {
     def localCtx(definition: Definition): Context = definition.localContext
     tree match {
-      case Ident(_) =>
+      case Term.Ident(_) =>
         x
-      case Select(qualifier, _, _) =>
+      case Term.Select(qualifier, _, _) =>
         foldTree(x, qualifier)
-      case This(qual) =>
+      case Term.This(qual) =>
         x
-      case Super(qual, _) =>
+      case Term.Super(qual, _) =>
         foldTree(x, qual)
-      case Apply(fun, args) =>
+      case Term.Apply(fun, args) =>
         foldTrees(foldTree(x, fun), args)
-      case TypeApply(fun, args) =>
+      case Term.TypeApply(fun, args) =>
         foldTypeTrees(foldTree(x, fun), args)
-      case Literal(const) =>
+      case Term.Literal(const) =>
         x
-      case New(tpt) =>
+      case Term.New(tpt) =>
         foldTypeTree(x, tpt)
-      case Typed(expr, tpt) =>
+      case Term.Typed(expr, tpt) =>
         foldTypeTree(foldTree(x, expr), tpt)
-      case NamedArg(_, arg) =>
+      case Term.NamedArg(_, arg) =>
         foldTree(x, arg)
-      case Assign(lhs, rhs) =>
+      case Term.Assign(lhs, rhs) =>
         foldTree(foldTree(x, lhs), rhs)
-      case Block(stats, expr) =>
+      case Term.Block(stats, expr) =>
         foldTree(foldTrees(x, stats), expr)
-      case If(cond, thenp, elsep) =>
+      case Term.If(cond, thenp, elsep) =>
         foldTree(foldTree(foldTree(x, cond), thenp), elsep)
-      case Lambda(meth, tpt) =>
+      case Term.Lambda(meth, tpt) =>
         val a = foldTree(x, meth)
         tpt.fold(a)(b => foldTypeTree(a, b))
-      case Match(selector, cases) =>
+      case Term.Match(selector, cases) =>
         foldCaseDefs(foldTree(x, selector), cases)
-      case Return(expr) =>
+      case Term.Return(expr) =>
         foldTree(x, expr)
-      case Try(block, handler, finalizer) =>
+      case Term.Try(block, handler, finalizer) =>
         foldTrees(foldCaseDefs(foldTree(x, block), handler), finalizer)
-      case Repeated(elems) =>
+      case Term.Repeated(elems) =>
         foldTrees(x, elems)
-      case Inlined(call, bindings, expansion) =>
+      case Term.Inlined(call, bindings, expansion) =>
         foldTree(foldTrees(x, bindings), expansion)
-
       case vdef @ ValDef(_, tpt, rhs) =>
         implicit val ctx = localCtx(vdef)
         foldTrees(foldTypeTree(x, tpt), rhs)
@@ -80,16 +79,16 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
   }
 
   def foldOverTypeTree(x: X, tree: TypeOrBoundsTree)(implicit ctx: Context): X = tree match {
-    case Synthetic() => x
-    case TypeIdent(_) => x
-    case TypeSelect(qualifier, _) => foldTree(x, qualifier)
-    case Singleton(ref) => foldTree(x, ref)
-    case And(left, right) => foldTypeTree(foldTypeTree(x, left), right)
-    case Or(left, right) => foldTypeTree(foldTypeTree(x, left), right)
-    case Refined(tpt, refinements) => foldTrees(foldTypeTree(x, tpt), refinements)
-    case Applied(tpt, args) => foldTypeTrees(foldTypeTree(x, tpt), args)
-    case ByName(result) => foldTypeTree(x, result)
-    case Annotated(arg, annot) => foldTree(foldTypeTree(x, arg), annot)
+    case TypeTree.Synthetic() => x
+    case TypeTree.TypeIdent(_) => x
+    case TypeTree.TypeSelect(qualifier, _) => foldTree(x, qualifier)
+    case TypeTree.Singleton(ref) => foldTree(x, ref)
+    case TypeTree.And(left, right) => foldTypeTree(foldTypeTree(x, left), right)
+    case TypeTree.Or(left, right) => foldTypeTree(foldTypeTree(x, left), right)
+    case TypeTree.Refined(tpt, refinements) => foldTrees(foldTypeTree(x, tpt), refinements)
+    case TypeTree.Applied(tpt, args) => foldTypeTrees(foldTypeTree(x, tpt), args)
+    case TypeTree.ByName(result) => foldTypeTree(x, result)
+    case TypeTree.Annotated(arg, annot) => foldTree(foldTypeTree(x, arg), annot)
     case TypeBoundsTree(lo, hi) => foldTypeTree(foldTypeTree(x, lo), hi)
   }
 
@@ -98,11 +97,11 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
   }
 
   def foldOverPattern(x: X, tree: Pattern)(implicit ctx: Context): X = tree match {
-    case Value(v) => foldTree(x, v)
-    case Bind(_, body) => foldPattern(x, body)
-    case Unapply(fun, implicits, patterns) => foldPatterns(foldTrees(foldTree(x, fun), implicits), patterns)
-    case Alternative(patterns) => foldPatterns(x, patterns)
-    case TypeTest(tpt) => foldTypeTree(x, tpt)
+    case Pattern.Value(v) => foldTree(x, v)
+    case Pattern.Bind(_, body) => foldPattern(x, body)
+    case Pattern.Unapply(fun, implicits, patterns) => foldPatterns(foldTrees(foldTree(x, fun), implicits), patterns)
+    case Pattern.Alternative(patterns) => foldPatterns(x, patterns)
+    case Pattern.TypeTest(tpt) => foldTypeTree(x, tpt)
   }
 
   private def foldOverParent(x: X, tree: Parent)(implicit ctx: Context): X = tree match {

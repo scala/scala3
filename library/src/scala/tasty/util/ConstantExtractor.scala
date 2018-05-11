@@ -20,9 +20,9 @@ class ConstantExtractor[T <: Tasty with Singleton](val tasty: T) {
 
   def unapply[T](expr: Expr[T])(implicit ctx: Context): Option[T] = {
     def const(tree: Term): Option[T] = tree match {
-      case Literal(c) => Some(c.value.asInstanceOf[T])
-      case Block(Nil, e) => const(e)
-      case Inlined(_, Nil, e) => const(e)
+      case Term.Literal(c) => Some(c.value.asInstanceOf[T])
+      case Term.Block(Nil, e) => const(e)
+      case Term.Inlined(_, Nil, e) => const(e)
       case _  => None
     }
     const(expr.toTasty)
