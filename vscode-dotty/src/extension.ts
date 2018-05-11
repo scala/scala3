@@ -16,10 +16,12 @@ export function activate(context: ExtensionContext) {
   extensionContext = context
   outputChannel = vscode.window.createOutputChannel('Dotty Language Client');
 
-  const artifactFile = `${vscode.workspace.rootPath}/.dotty-ide-artifact`
-  const defaultArtifact = "ch.epfl.lamp:dotty-language-server_0.8:0.8.0-bin-SNAPSHOT"
-  fs.readFile(artifactFile, (err, data) => {
-    const artifact = err ? defaultArtifact : data.toString().trim()
+  const sbtArtifact = "org.scala-sbt:sbt-launch:1.1.4"
+  const languageServerArtifactFile = `${vscode.workspace.rootPath}/.dotty-ide-artifact`
+  const languageServerDefaultArtifact = "ch.epfl.lamp:dotty-language-server_0.8:0.8.0-RC1"
+  const loadPluginArtifact = "ch.epfl.scala:load-plugin_2.12:0.1.0+2-496ac670"
+  fs.readFile(languageServerArtifactFile, (err, data) => {
+    const languageServerArtifact = err ? languageServerDefaultArtifact : data.toString().trim()
 
     if (process.env['DLS_DEV_MODE']) {
       const portFile = `${vscode.workspace.rootPath}/.dotty-ide-dev-port`
@@ -35,93 +37,99 @@ export function activate(context: ExtensionContext) {
         })
       })
     } else {
-      fetchAndRun(artifact)
+      fetchAndRun(sbtArtifact, languageServerArtifact, loadPluginArtifact)
     }
   })
 }
 
-function fetchAndRun(artifact: string) {
+function fetchAndRun(sbtArtifact: string, languageServerArtifact: string, loadPluginArtifact: string) {
   const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
 
-  vscode.window.withProgress({
-    location: vscode.ProgressLocation.Window,
-    title: 'Fetching the Dotty Language Server'
-  }, (progress) => {
+  const sbtPromise = fetchWithCoursier(coursierPath, sbtArtifact)
+  const languageServerPromise = fetchWithCoursier(coursierPath, languageServerArtifact)
+  const loadPluginPromise = fetchWithCoursier(coursierPath, loadPluginArtifact)
 
-    const coursierPromise =
-      cpp.spawn("java", [
+  Promise.all([sbtPromise, languageServerPromise, loadPluginPromise]).then((results) => {
+    const [sbtClasspath, languageServerClasspath, loadPluginJar] = results
+    return configureIDE(sbtClasspath, languageServerClasspath, loadPluginJar)
+  }).then((languageServerClasspath) => {
+    run({
+      command: "java",
+      args: ["-classpath", languageServerClasspath, "dotty.tools.languageserver.Main", "-stdio"]
+    })
+  })
+
+}
+
+function fetchWithCoursier(coursierPath: string, artifact: string, extra: string[] = []) {
+  return vscode.window.withProgress({
+      location: vscode.ProgressLocation.Window,
+      title: `Fetching ${ artifact }`
+    }, (progress) => {
+      const args = [
         "-jar", coursierPath,
         "fetch",
         "-p",
         artifact
-      ])
-    const coursierProc = coursierPromise.childProcess
+      ].concat(extra)
 
-    let classPath = ""
+      const coursierPromise = cpp.spawn("java", args)
+      const coursierProc = coursierPromise.childProcess
 
-    coursierProc.stdout.on('data', (data: Buffer) => {
-      classPath += data.toString().trim()
-    })
-    coursierProc.stderr.on('data', (data: Buffer) => {
-      let msg = data.toString()
-      outputChannel.append(msg)
-    })
+      let classPath = ""
 
-    coursierProc.on('close', (code: number) => {
-      if (code != 0) {
-        let msg = "Fetching the language server failed."
-        outputChannel.append(msg)
-        throw new Error(msg)
-      }
-
-      configureIDE().then((res) => {
-        run({
-          command: "java",
-          args: ["-classpath", classPath, "dotty.tools.languageserver.Main", "-stdio"]
-        })
+      coursierProc.stdout.on('data', (data: Buffer) => {
+        classPath += data.toString().trim()
       })
+      coursierProc.stderr.on('data', (data: Buffer) => {
+        let msg = data.toString()
+        outputChannel.append(msg)
+      })
+
+      coursierProc.on('close', (code: number) => {
+        if (code != 0) {
+          let msg = `Couldn't fetch '${ artifact }' (exit code ${ code }).`
+          outputChannel.append(msg)
+          throw new Error(msg)
+        }
+      })
+      return coursierPromise.then(() => {
+        return classPath;
+      });
     })
-    return coursierPromise
-  })
 }
 
-function configureIDE() {
-  const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
-  const loadPluginPath = path.join(extensionContext.extensionPath, './out/load-plugin.jar');
-
+function configureIDE(sbtClasspath: string, languageServerClasspath: string, loadPluginJar: string) {
   return vscode.window.withProgress({
     location: vscode.ProgressLocation.Window,
     title: 'Configuring IDE...'
   }, (progress) => {
-
-      const applyLoadPlugin = "apply -cp " + loadPluginPath + " ch.epfl.scala.loadplugin.LoadPlugin"
-      const ifAbsentCommands = [
-        "if-absent dotty.tools.sbtplugin.DottyPlugin",
-        "\"set every scalaVersion := \\\"0.8.0-bin-SNAPSHOT\\\"\"",
-        "\"load-plugin ch.epfl.lamp:sbt-dotty:0.2.0-SNAPSHOT dotty.tools.sbtplugin.DottyPlugin\"",
-        "\"load-plugin ch.epfl.lamp:sbt-dotty:0.2.0-SNAPSHOT dotty.tools.sbtplugin.DottyIDEPlugin\""
-      ].join(" ")
-
+    const applyLoadPlugin = `apply -cp ${ loadPluginJar } ch.epfl.scala.loadplugin.LoadPlugin`
+    const ifAbsentCommands = [
+      "if-absent dotty.tools.sbtplugin.DottyPlugin",
+      "\"set every scalaVersion := \\\"0.8.0-RC1\\\"\"",
+      "\"load-plugin ch.epfl.lamp:sbt-dotty:0.2.2 dotty.tools.sbtplugin.DottyPlugin\"",
+      "\"load-plugin ch.epfl.lamp:sbt-dotty:0.2.2 dotty.tools.sbtplugin.DottyIDEPlugin\""
+    ].join(" ")
     const sbtPromise =
       cpp.spawn("java", [
-          "-jar", coursierPath,
-          "launch",
-          "org.scala-sbt:sbt-launch:1.1.2", "--",
-          applyLoadPlugin,
-          ifAbsentCommands,
-          "configureIDE"
+        "-classpath", sbtClasspath,
+        "xsbt.boot.Boot",
+        applyLoadPlugin,
+        ifAbsentCommands,
+        "configureIDE"
       ])
-    const sbtProc = sbtPromise.childProcess
 
+    const sbtProc = sbtPromise.childProcess
     sbtProc.on('close', (code: number) => {
       if (code != 0) {
-        let msg = "Configuring the IDE failed."
+        const msg = "Configuring the IDE failed."
         outputChannel.append(msg)
         throw new Error(msg)
       }
     })
 
-    return sbtPromise;
+    return sbtPromise.then(() => { return languageServerClasspath });
   })
 }
 

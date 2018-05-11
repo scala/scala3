@@ -51,7 +51,7 @@
     "vscode:prepublish": "npm install && ./node_modules/.bin/tsc -p ./",
     "compile": "./node_modules/.bin/tsc -p ./",
     "test": "node ./node_modules/vscode/bin/test",
-    "postinstall": "node ./node_modules/vscode/bin/install && curl -L -o out/coursier https://github.com/coursier/coursier/raw/v1.0.3/coursier && curl -L -o out/load-plugin.jar https://oss.sonatype.org/content/repositories/releases/ch/epfl/scala/load-plugin_2.12/0.1.0+2-496ac670/load-plugin_2.12-0.1.0+2-496ac670.jar"
+    "postinstall": "node ./node_modules/vscode/bin/install && curl -L -o out/coursier https://github.com/coursier/coursier/raw/v1.0.3/coursier"
   },
   "extensionDependencies": [
     "daltonjorge.scala"
