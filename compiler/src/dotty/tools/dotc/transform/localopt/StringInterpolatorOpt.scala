@@ -44,14 +44,12 @@ class StringInterpolatorOpt extends MiniPhase {
   /** Matches an s or raw string interpolator */
   private object SOrRawInterpolator {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Literal], List[Tree])] = {
-      if (tree.symbol.eq(defn.StringContextRaw) || tree.symbol.eq(defn.StringContextS)) {
-        tree match {
-          case Apply(Select(Apply(StringContextApply(), List(Literals(strs))), _),
-          List(SeqLiteral(elems, _))) if elems.length == strs.length - 1 =>
-            Some(strs, elems)
-          case _ => None
-        }
-      } else None
+      tree match {
+        case Apply(Select(Apply(StringContextApply(), List(Literals(strs))), _),
+        List(SeqLiteral(elems, _))) if elems.length == strs.length - 1 =>
+          Some(strs, elems)
+        case _ => None
+      }
     }
   }
 
@@ -82,6 +80,15 @@ class StringInterpolatorOpt extends MiniPhase {
   }
 
   override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
+    val sym = tree.symbol
+    val isInterpolatedMethod = // Test names first to avoid loading scala.StringContext if not used
+      (sym.name == nme.raw_ && sym.eq(defn.StringContextRaw)) ||
+      (sym.name == nme.s && sym.eq(defn.StringContextS))
+    if (isInterpolatedMethod) transformInterpolator(tree)
+    else tree
+  }
+
+  private def transformInterpolator(tree: Tree)(implicit ctx: Context): Tree = {
     tree match {
       case StringContextIntrinsic(strs: List[Literal], elems: List[Tree]) =>
         val stri = strs.iterator
