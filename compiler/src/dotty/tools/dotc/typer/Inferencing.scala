@@ -279,7 +279,7 @@ object Inferencing {
       case tp: TypeRef =>
         val companion = tp.classSymbol.companionModule
         if (companion.exists)
-          companion.termRef.asSeenFrom(tp.prefix, companion.symbol.owner)
+          companion.termRef.asSeenFrom(tp.prefix, companion.owner)
         else NoType
       case _ => NoType
     }
