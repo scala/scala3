@@ -25,7 +25,7 @@ OrType(SymRef(Int, SymRef(scala, ThisType(SymRef(<root>, NoPrefix)))), SymRef(St
 Block(List(Import(Select(Ident(scala), collection, None), List(SimpleSelector(Id(mutable))))), Literal(Int(1)))
 ConstantType(Int(1))
 
-Block(List(Import(Select(Ident(scala), collection, None), List(SimpleSelector(Id(mutable))SimpleSelector(Id(immutable))))), Literal(Int(2)))
+Block(List(Import(Select(Ident(scala), collection, None), List(SimpleSelector(Id(mutable)), SimpleSelector(Id(immutable))))), Literal(Int(2)))
 ConstantType(Int(2))
 
 Block(List(Import(Select(Ident(scala), collection, None), List(RenameSelector(Id(mutable), Id(mut))))), Literal(Int(3)))

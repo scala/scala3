@@ -5,641 +5,303 @@ import scala.tasty.Tasty
 class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
   import tasty._
 
-  def stringOfTree(tree: Tree)(implicit ctx: Context): String = {
-    implicit val buff: StringBuilder = new StringBuilder
-    visitTree(tree)
-    buff.toString()
-  }
+  def stringOfTree(tree: Tree)(implicit ctx: Context): String =
+    new Buffer().visitTree(tree).result()
 
-  def stringOfTypeTree(tree: TypeOrBoundsTree)(implicit ctx: Context): String = {
-    implicit val buff: StringBuilder = new StringBuilder
-    visitTypeTree(tree)
-    buff.toString()
-  }
+  def stringOfTypeTree(tree: TypeOrBoundsTree)(implicit ctx: Context): String =
+    new Buffer().visitTypeTree(tree).result()
 
-  def stringOfType(tpe: TypeOrBounds)(implicit ctx: Context): String = {
-    implicit val buff: StringBuilder = new StringBuilder
-    visitType(tpe)
-    buff.toString()
-  }
+  def stringOfType(tpe: TypeOrBounds)(implicit ctx: Context): String =
+    new Buffer().visitType(tpe).result()
 
-  def stringOfModifier(mod: Modifier)(implicit ctx: Context): String = {
-    implicit val buff: StringBuilder = new StringBuilder
-    visitModifier(mod)
-    buff.toString()
-  }
+  def stringOfModifier(mod: Modifier)(implicit ctx: Context): String =
+    new Buffer().visitModifier(mod).result()
 
-  def stringOfConstant(mod: Constant)(implicit ctx: Context): String = {
-    implicit val buff: StringBuilder = new StringBuilder
-    visitConstant(mod)
-    buff.toString()
-  }
+  def stringOfConstant(const: Constant)(implicit ctx: Context): String =
+    new Buffer().visitConstant(const).result()
 
-  private def visitTree(x: Tree)(implicit buff: StringBuilder, ctx: Context): Unit = x match {
-    case Ident(name) =>
-      buff append "Ident(" append name append ")"
-    case Select(qualifier, name, signature) =>
-      buff append "Select("
-      visitTree(qualifier)
-      buff append ", " append name append ", "
-      signature match {
-        case Some(sig) =>
-          val Signature(params, res) = sig
-          buff append "Some(Signature("
-          if (params.isEmpty) buff append "Nil"
-          else buff append params
-          buff append ", " append res append "))"
-        case None => buff append "None"
-      }
-      buff append ")"
-    case This(qual) =>
-      buff append "This("
-      qual match {
-        case Some(id) =>
-          buff append "Some("
-          visitId(id)
-          buff append ")"
-        case None => buff append "None"
-      }
-      buff append ")"
-    case Super(qual, mix) =>
-      buff append "TypeApply("
-      visitTree(qual)
-      buff append ", "
-      mix match {
-        case Some(id) =>
-          buff append "Some("
-          visitId(id)
-          buff append ")"
-        case None => buff append "None"
-      }
-      buff append ")"
-    case Apply(fun, args) =>
-      buff append "Apply("
-      visitTree(fun)
-      buff append ", "
-      visitTrees(args)
-      buff append ")"
-    case TypeApply(fun, args) =>
-      buff append "TypeApply("
-      visitTree(fun)
-      buff append ", "
-      visitTypeTrees(args)
-      buff append ")"
-    case Literal(const) =>
-      buff append "Literal("
-      visitConstant(const)
-      buff append ")"
-    case New(tpt) =>
-      buff append "New("
-      visitTypeTree(tpt)
-      buff append ")"
-    case Typed(expr, tpt) =>
-      buff append "Typed("
-      visitTree(expr)
-      buff append ", "
-      visitTypeTree(tpt)
-      buff append ")"
-    case NamedArg(name, arg) =>
-      buff append "NamedArg(" append name append ", "
-      visitTree(arg)
-      buff append ")"
-    case Assign(lhs, rhs) =>
-      buff append "Assign("
-      visitTree(lhs)
-      buff append ", "
-      visitTree(rhs)
-      buff append ")"
-    case Block(stats, expr) =>
-      buff append "Block("
-      visitTrees(stats)
-      buff append ", "
-      visitTree(expr)
-      buff append ")"
-    case If(cond, thenp, elsep) =>
-      buff append "If("
-      visitTree(cond)
-      buff append ", "
-      visitTree(thenp)
-      buff append ", "
-      visitTree(elsep)
-      buff append ")"
-    case Lambda(meth, tpt) =>
-      buff append "Lambda("
-      visitTree(meth)
-      buff append ", "
-      tpt match {
-        case Some(tree) =>
-          buff append "Some("
-          visitTypeTree(tree)
-          buff append ")"
-        case _ => buff append "None"
-      }
-      buff append ")"
-    case Match(selector, cases) =>
-      buff append "Match("
-      visitTree(selector)
-      buff append ", "
-      visitCaseDefs(cases)
-      buff append ")"
-    case Return(expr) =>
-      buff append "Return("
-      visitTree(expr)
-      buff append ")"
-    case Try(block, handlers, finalizer) =>
-      buff append "Try("
-      visitTree(block)
-      buff append ", "
-      visitCaseDefs(handlers)
-      buff append ", "
-      finalizer match {
-        case Some(tree) =>
-          buff append "Some("
-          visitTree(tree)
-          buff append ")"
-        case _ => buff append "None"
-      }
-      buff append ")"
-    case Repeated(elems) =>
-      buff append "Repeated("
-      visitTrees(elems)
-      buff append ")"
-    case Inlined(call, bindings, expansion) =>
-      buff append "Inlined("
-      visitTree(call)
-      buff append ", "
-      visitTrees(bindings)
-      buff append ", "
-      visitTree(expansion)
-      buff append ")"
-    case ValDef(name, tpt, rhs) =>
-      buff append "ValDef(" append name append ", "
-      visitTypeTree(tpt)
-      buff append ", "
-      rhs match {
-        case Some(tree) =>
-          buff append "Some("
-          visitTree(tree)
-          buff append ")"
-        case _ => buff append "None"
-      }
-      buff append ")"
-    case DefDef(name, typeParams, paramss, returnTpt, rhs) =>
-      buff append "DefDef(" append name append ", "
-      visitTrees(typeParams)
-      buff append ", "
-      paramss match {
-        case x0 :: xs =>
-          buff append "List("
-          visitTrees(x0)
-          def visitNext(xs: List[List[ValDef]]): Unit = xs match {
-            case y :: ys =>
-              buff append ", "
-              visitTrees(y)
-              visitNext(ys)
-            case Nil =>
-          }
-          visitNext(xs)
-          buff append ")"
-        case Nil => buff append "Nil"
-      }
-      buff append ", "
-      visitTypeTree(returnTpt)
-      buff append ", "
-      rhs match {
-        case Some(tree) =>
-          buff append "Some("
-          visitTree(tree)
-          buff append ")"
-        case None => buff append "None"
-      }
-      buff append ")"
-    case TypeDef(name, rhs) =>
-      buff append "TypeDef(" append name append ", "
-      visitTypeTree(rhs)
-      buff append ")"
-    case ClassDef(name, constr, parents, self, body) =>
-      buff append "ClassDef(" append name append ", "
-      visitTree(constr)
-      buff append ", "
-      visitParents(parents)
-      buff append ", "
-      self match {
-        case Some(tree) =>
-          buff append "Some("
-          visitTree(tree)
-          buff append ")"
-        case _ => buff append "None"
-      }
-      buff append ", "
-      visitTrees(body)
-      buff append ")"
-    case PackageDef(name, members) =>
-      buff append "PackageDef("
-      buff append name
-      buff append ", "
-      visitTrees(members)
-      buff append ")"
-    case Import(expr, selectors) =>
-      buff append "Import("
-      visitTree(expr)
-      buff append ", "
+  private class Buffer(implicit ctx: Context) { self =>
 
-      buff append "List("
-      selectors.foreach {
-        case SimpleSelector(id) =>
-          buff append "SimpleSelector("
-          visitId(id)
-          buff append ")"
-        case RenameSelector(id1, id2) =>
-          buff append "RenameSelector("
-          visitId(id1)
-          buff append ", "
-          visitId(id2)
-          buff append ")"
-        case OmitSelector(id) =>
-          buff append "OmitSelector("
-          visitId(id)
-          buff append ")"
-      }
-      buff append ")"
-      buff append ")"
-    case PackageClause(pid, stats) =>
-      buff append "PackageClause("
-      visitTree(pid)
-      buff append ", "
-      visitTrees(stats)
-      buff append ")"
-  }
+    private val sb: StringBuilder = new StringBuilder
 
-  private def visitTrees(list: List[Tree])(implicit buff: StringBuilder, ctx: Context): Unit = {
-    list match {
-      case x0 :: xs =>
-        buff append "List("
-        visitTree(x0)
-        def visitNext(xs: List[Tree]): Unit = xs match {
-          case y :: ys =>
-            buff append ", "
-            visitTree(y)
-            visitNext(ys)
-          case Nil =>
-        }
-        visitNext(xs)
-        buff append ")"
-      case Nil => buff append "Nil"
+    def result(): String = sb.result()
+
+    def visitTree(x: Tree): Buffer = x match {
+      case Ident(name) =>
+        this += "Ident(" += name += ")"
+      case Select(qualifier, name, signature) =>
+        this += "Select(" += qualifier += ", " += name += ", " += signature += ")"
+      case This(qual) =>
+        this += "This(" += qual += ")"
+      case Super(qual, mix) =>
+        this += "TypeApply(" += qual += ", " += mix += ")"
+      case Apply(fun, args) =>
+        this += "Apply(" += fun += ", " ++= args += ")"
+      case TypeApply(fun, args) =>
+        this += "TypeApply(" += fun += ", " ++= args += ")"
+      case Literal(const) =>
+        this += "Literal(" += const += ")"
+      case New(tpt) =>
+        this += "New(" += tpt += ")"
+      case Typed(expr, tpt) =>
+        this += "Typed(" += expr += ", "  += tpt += ")"
+      case NamedArg(name, arg) =>
+        this += "NamedArg(" += name += ", " += arg += ")"
+      case Assign(lhs, rhs) =>
+        this += "Assign(" += lhs += ", " += rhs += ")"
+      case Block(stats, expr) =>
+        this += "Block(" ++= stats += ", " += expr += ")"
+      case If(cond, thenp, elsep) =>
+        this += "If(" += cond += ", " += thenp += ", " += elsep += ")"
+      case Lambda(meth, tpt) =>
+        this += "Lambda(" += meth += ", " += tpt += ")"
+      case Match(selector, cases) =>
+        this += "Match(" += selector += ", " ++= cases += ")"
+      case Return(expr) =>
+        this += "Return(" += expr += ")"
+      case Try(block, handlers, finalizer) =>
+        this += "Try(" += block += ", " ++= handlers += ", " += finalizer += ")"
+      case Repeated(elems) =>
+        this += "Repeated(" ++= elems += ")"
+      case Inlined(call, bindings, expansion) =>
+        this += "Inlined(" += call += ", " ++= bindings += ", " += expansion += ")"
+      case ValDef(name, tpt, rhs) =>
+        this += "ValDef(" += name += ", " += tpt += ", " += rhs += ")"
+      case DefDef(name, typeParams, paramss, returnTpt, rhs) =>
+        this += "DefDef(" += name += ", " ++= typeParams += ", " +++= paramss += ", " += returnTpt += ", " += rhs += ")"
+      case TypeDef(name, rhs) =>
+        this += "TypeDef(" += name += ", " += rhs += ")"
+      case ClassDef(name, constr, parents, self, body) =>
+        this += "ClassDef(" += name += ", " += constr += ", " ++= parents += ", " += self += ", " ++= body += ")"
+      case PackageDef(name, members) =>
+        this += "PackageDef(" += name += ", " ++= members += ")"
+      case Import(expr, selectors) =>
+        this += "Import(" += expr += ", " ++= selectors += ")"
+      case PackageClause(pid, stats) =>
+        this += "PackageClause(" += pid += ", " ++= stats += ")"
     }
-  }
 
-  private def visitTypeTree(x: TypeOrBoundsTree)(implicit buff: StringBuilder, ctx: Context): Unit = {
-    x match {
+    def visitTypeTree(x: TypeOrBoundsTree): Buffer = x match {
       case Synthetic() =>
-        buff append "Synthetic()"
+        this += "Synthetic()"
       case TypeIdent(name) =>
-        buff append "TypeIdent(" append name append ")"
+        this += "TypeIdent(" += name += ")"
       case TypeSelect(qualifier, name) =>
-        buff append "TypeSelect("
-        visitTree(qualifier)
-        buff append ", " append name append ")"
+        this += "TypeSelect(" += qualifier += ", " += name += ")"
       case Singleton(ref) =>
-        buff append "Singleton("
-        visitTree(ref)
-        buff append ")"
+        this += "Singleton(" += ref += ")"
       case And(left, right) =>
-        buff append "And("
-        visitTypeTree(left)
-        buff append ", "
-        visitTypeTree(right)
-        buff append ")"
+        this += "And(" += left += ", " += right += ")"
       case Or(left, right) =>
-        buff append "Or("
-        visitTypeTree(left)
-        buff append ", "
-        visitTypeTree(right)
-        buff append ")"
+        this += "Or(" += left += ", " += right += ")"
       case Refined(tpt, refinements) =>
-        buff append "Refined("
-        visitTypeTree(tpt)
-        buff append ", "
-        visitTrees(refinements)
-        buff append ")"
+        this += "Refined(" += tpt += ", " ++= refinements += ")"
       case Applied(tpt, args) =>
-        buff append "Applied("
-        visitTypeTree(tpt)
-        buff append ", "
-        visitTypeTrees(args)
-        buff append ")"
+        this += "Applied(" += tpt += ", " ++= args += ")"
       case ByName(result) =>
-        buff append "ByName("
-        visitTypeTree(result)
-        buff append ")"
+        this += "ByName(" += result += ")"
       case Annotated(arg, annot) =>
-        buff append "Annotated("
-        visitTypeTree(arg)
-        buff append ", "
-        visitTree(annot)
-        buff append ")"
+        this += "Annotated(" += arg += ", " += annot += ")"
       case TypeBoundsTree(lo, hi) =>
-        buff append "TypeBoundsTree("
-        visitTypeTree(lo)
-        buff append ", "
-        visitTypeTree(hi)
-        buff append ")"
+        this += "TypeBoundsTree(" += lo += ", " += hi += ")"
     }
-  }
 
-  private def visitTypeTrees(list: List[TypeTree])(implicit buff: StringBuilder, ctx: Context): Unit = {
-    list match {
+    def visitCaseDef(x: CaseDef): Buffer = {
+      val CaseDef(pat, guard, body) = x
+      this += "CaseDef(" += pat += ", " += guard += ", " += body += ")"
+    }
+
+    def visitPattern(x: Pattern): Buffer = x match {
+      case Value(v) =>
+        this += "Value(" += v += ")"
+      case Bind(name, body) =>
+        this += "Bind(" += name += ", " += body += ")"
+      case Unapply(fun, implicits, patterns) =>
+        this += "Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
+      case Alternative(patterns) =>
+        this += "Alternative(" ++= patterns += ")"
+      case TypeTest(tpt) =>
+        this += "TypeTest(" += tpt += ")"
+    }
+
+    def visitConstant(x: Constant): Buffer = x match {
+      case UnitConstant() => this += "Unit()"
+      case NullConstant() => this += "Null()"
+      case BooleanConstant(value) => this += "Boolean(" += value += ")"
+      case ByteConstant(value) => this += "Byte(" += value += ")"
+      case ShortConstant(value) => this += "Short(" += value += ")"
+      case CharConstant(value) => this += "Char(" += value += ")"
+      case IntConstant(value) => this += "Int(" += value.toString += ")"
+      case LongConstant(value) => this += "Long(" += value += ")"
+      case FloatConstant(value) => this += "Float(" += value += ")"
+      case DoubleConstant(value) => this += "Double(" += value += ")"
+      case StringConstant(value) => this += "String(" += value += ")"
+    }
+
+    def visitType(x: TypeOrBounds): Buffer = x match {
+      case ConstantType(value) =>
+        this += "ConstantType(" += value += ")"
+      case SymRef(sym, qual) =>
+        def visitName(sym: Definition): Buffer = sym match {
+          case ValDef(name, _, _) => this += name
+          case DefDef(name, _, _, _, _) => this += name
+          case TypeDef(name, _) => this += name
+          case ClassDef(name, _, _, _, _) => this += name
+          case PackageDef(name, _) => this += name
+          case _ => this += "#"
+        }
+        this += "SymRef("
+        visitName(sym)
+        this += ", " += qual += ")"
+      case TermRef(name, qual) =>
+        this += "TermRef(" += name += ", " += qual += ")"
+      case TypeRef(name, qual) =>
+        this += "TypeRef(" += name += ", " += qual += ")"
+      case Refinement(parent, name, info) =>
+        this += "Refinement(" += parent += ", " += name += ", " += info += ")"
+      case AppliedType(tycon, args) =>
+        this += "AppliedType(" += tycon += ", " ++= args += ")"
+      case AnnotatedType(underlying, annot) =>
+        this += "AnnotatedType(" += underlying += ", " += annot += ")"
+      case AndType(left, right) =>
+        this += "AndType(" += left += ", " += right += ")"
+      case OrType(left, right) =>
+        this += "OrType(" += left += ", " += right += ")"
+      case ByNameType(underlying) =>
+        this += "ByNameType(" += underlying += ")"
+      case ParamRef(binder, idx) =>
+        this += "ParamRef(" += binder+= ", " += idx += ")"
+      case ThisType(tp) =>
+        this += "ThisType(" += tp += ")"
+      case RecursiveThis(binder) =>
+        this += "RecursiveThis(" += binder += ")"
+      case MethodType(argNames, argTypes, resType) =>
+        this += "MethodType(" ++= argNames += ", " ++= argTypes += ", " += resType += ")"
+      case PolyType(argNames, argBounds, resType) =>
+        this += "PolyType(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
+      case TypeLambda(argNames, argBounds, resType) =>
+        this += "TypeLambda(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
+      case TypeBounds(lo, hi) =>
+        this += "TypeBounds(" += lo += ", " += hi += ")"
+      case NoPrefix() =>
+        this += "NoPrefix"
+    }
+
+    def visitModifier(x: Modifier): Buffer = x match {
+      case Flags(flags) => this += "Flags(" += flags.toString += ")"
+      case QualifiedPrivate(tp) => this += "QualifiedPrivate(" += tp += ")"
+      case QualifiedProtected(tp) => this += "QualifiedProtected(" += tp += ")"
+      case Annotation(tree) => this += "Annotation(" += tree += ")"
+    }
+
+    def visitParent(x: Parent): Buffer = x match {
+      case TermParent(term) => this += "TermParent(" += term += ")"
+      case TypeParent(typeTree) => this += "TypeParent(" += typeTree += ")"
+    }
+
+    def visitId(x: Id): Buffer = {
+      val Id(name) = x
+      this += "Id(" += name += ")"
+    }
+
+    def visitSignature(sig: Signature): Buffer = {
+      val Signature(params, res) = sig
+      this += "Signature(" ++= params += ", " += res += ")"
+    }
+
+    def visitImportSelector(sel: ImportSelector): Buffer = sel match {
+      case SimpleSelector(id) => this += "SimpleSelector(" += id += ")"
+      case RenameSelector(id1, id2) => this += "RenameSelector(" += id1 += ", " += id2 += ")"
+      case OmitSelector(id) => this += "OmitSelector(" += id += ")"
+    }
+
+    def +=(x: Boolean): Buffer = { sb.append(x); this }
+    def +=(x: Byte): Buffer = { sb.append(x); this }
+    def +=(x: Short): Buffer = { sb.append(x); this }
+    def +=(x: Int): Buffer = { sb.append(x); this }
+    def +=(x: Long): Buffer = { sb.append(x); this }
+    def +=(x: Float): Buffer = { sb.append(x); this }
+    def +=(x: Double): Buffer = { sb.append(x); this }
+    def +=(x: Char): Buffer = { sb.append(x); this }
+    def +=(x: String): Buffer = { sb.append(x); this }
+
+    def ++=(xs: List[String]): Buffer = visitList[String](xs, +=)
+
+    private implicit class TreeOps(buff: Buffer) {
+      def +=(x: Tree): Buffer = { visitTree(x); buff }
+      def +=(x: Option[Tree]): Buffer = { visitOption(x, visitTree); buff }
+      def ++=(x: List[Tree]): Buffer = { visitList(x, visitTree); buff }
+      def +++=(x: List[List[Tree]]): Buffer = { visitList(x, ++=); buff }
+    }
+
+    private implicit class CaseDefOps(buff: Buffer) {
+      def +=(x: CaseDef): Buffer = { visitCaseDef(x); buff }
+      def ++=(x: List[CaseDef]): Buffer = { visitList(x, visitCaseDef); buff }
+    }
+
+    private implicit class ParentOps(buff: Buffer) {
+      def +=(x: Parent): Buffer = { visitParent(x); buff }
+      def ++=(x: List[Parent]): Buffer = { visitList(x, visitParent); buff }
+    }
+
+    private implicit class PatternOps(buff: Buffer) {
+      def +=(x: Pattern): Buffer = { visitPattern(x); buff }
+      def ++=(x: List[Pattern]): Buffer = { visitList(x, visitPattern); buff }
+    }
+
+    private implicit class ConstantOps(buff: Buffer) {
+      def +=(x: Constant): Buffer = { visitConstant(x); buff }
+    }
+
+    private implicit class TypeTreeOps(buff: Buffer) {
+      def +=(x: TypeOrBoundsTree): Buffer = { visitTypeTree(x); buff }
+      def +=(x: Option[TypeTree]): Buffer = { visitOption(x, visitTypeTree); buff }
+      def ++=(x: List[TypeTree]): Buffer = { visitList(x, visitTypeTree); buff }
+    }
+
+    private implicit class TypeOps(buff: Buffer) {
+      def +=(x: TypeOrBounds): Buffer = { visitType(x); buff }
+      def ++=(x: List[TypeOrBounds]): Buffer = { visitList(x, visitType); buff }
+    }
+
+    private implicit class IdOps(buff: Buffer) {
+      def +=(x: Id): Buffer = { visitId(x); buff }
+      def +=(x: Option[Id]): Buffer = { visitOption(x, visitId); buff }
+    }
+
+    private implicit class SignatureOps(buff: Buffer) {
+      def +=(x: Option[Signature]): Buffer = { visitOption(x, visitSignature); buff }
+    }
+
+    private implicit class ImportSelectorOps(buff: Buffer) {
+      def ++=(x: List[ImportSelector]): Buffer = { visitList(x, visitImportSelector); buff }
+    }
+
+    private def visitOption[U](opt: Option[U], visit: U => Buffer): Buffer = opt match {
+      case Some(x) =>
+        this += "Some("
+        visit(x)
+        this += ")"
+      case _ =>
+        this += "None"
+    }
+
+    private def visitList[U](list: List[U], visit: U => Buffer): Buffer = list match {
       case x0 :: xs =>
-        buff append "List("
-        visitTypeTree(x0)
-        def visitNext(xs: List[TypeTree]): Unit = xs match {
+        this += "List("
+        visit(x0)
+        def visitNext(xs: List[U]): Unit = xs match {
           case y :: ys =>
-            buff append ", "
-            visitTypeTree(y)
+            this += ", "
+            visit(y)
             visitNext(ys)
           case Nil =>
         }
         visitNext(xs)
-        buff append ")"
-      case Nil => buff append "Nil"
+        this += ")"
+      case Nil =>
+        this += "Nil"
     }
   }
 
-  private def visitCaseDef(x: CaseDef)(implicit buff: StringBuilder, ctx: Context): Unit = {
-    x match {
-      case CaseDef(pat, guard, body) =>
-        buff append "CaseDef("
-        visitPattern(pat)
-        buff append ", "
-        guard match {
-          case Some(tree) =>
-            buff append "Some("
-            visitTree(guard.get)
-            buff append ")"
-          case None =>
-            buff append "None"
-        }
-        buff append ", "
-        visitTree(body)
-        buff append ")"
-    }
-  }
-
-  private def visitCaseDefs(list: List[CaseDef])(implicit buff: StringBuilder, ctx: Context): Unit = {
-    list match {
-      case x0 :: xs =>
-        buff append "List("
-        visitCaseDef(x0)
-        def visitNext(xs: List[CaseDef]): Unit = xs match {
-          case y :: ys =>
-            buff append ", "
-            visitCaseDef(y)
-            visitNext(ys)
-          case Nil =>
-        }
-        visitNext(xs)
-        buff append ")"
-      case Nil => buff append "Nil"
-    }
-  }
-
-  private def visitPattern(x: Pattern)(implicit buff: StringBuilder, ctx: Context): Unit = x match {
-    case Value(v) =>
-      buff append "Value("
-      visitTree(v)
-      buff append ")"
-    case Bind(name, body) =>
-      buff append "Bind(" append name append ", "
-      visitPattern(body)
-      buff append ")"
-    case Unapply(fun, implicits, patterns) =>
-      buff append "Unapply("
-      visitTree(fun)
-      buff append ", "
-      visitTrees(implicits)
-      buff append ", "
-      visitPatterns(patterns)
-      buff append ")"
-    case Alternative(patterns) =>
-      buff append "Alternative("
-      visitPatterns(patterns)
-      buff append ")"
-    case TypeTest(tpt) =>
-      buff append "TypeTest("
-      visitTypeTree(tpt)
-      buff append ")"
-  }
-
-  private def visitPatterns(list: List[Pattern])(implicit buff: StringBuilder, ctx: Context): Unit = {
-    list match {
-      case x0 :: xs =>
-        buff append "List("
-        visitPattern(x0)
-        def visitNext(xs: List[Pattern]): Unit = xs match {
-          case y :: ys =>
-            buff append ", "
-            visitPattern(y)
-            visitNext(ys)
-          case Nil =>
-        }
-        visitNext(xs)
-        buff append ")"
-      case Nil => buff append "Nil"
-    }
-  }
-
-  private def visitConstant(x: Constant)(implicit buff: StringBuilder, ctx: Context): Unit = x match {
-    case UnitConstant() => buff append "Unit()"
-    case NullConstant() => buff append "Null()"
-    case BooleanConstant(value) => buff append "Boolean(" append value append ")"
-    case ByteConstant(value) => buff append "Byte(" append value append ")"
-    case ShortConstant(value) => buff append "Short(" append value append ")"
-    case CharConstant(value) => buff append "Char(" append value append ")"
-    case IntConstant(value) => buff append "Int(" append value append ")"
-    case LongConstant(value) => buff append "Long(" append value append ")"
-    case FloatConstant(value) => buff append "Float(" append value append ")"
-    case DoubleConstant(value) => buff append "Double(" append value append ")"
-    case StringConstant(value) => buff append "String(" append value append ")"
-  }
-
-  private def visitType(x: TypeOrBounds)(implicit buff: StringBuilder, ctx: Context): Unit = x match {
-    case ConstantType(value) =>
-      buff append "ConstantType("
-      visitConstant(value)
-      buff append ")"
-    case SymRef(sym, qual) =>
-      def visitName(sym: Definition): Unit = sym match {
-        case ValDef(name, _, _) => buff append name
-        case DefDef(name, _, _, _, _) => buff append name
-        case TypeDef(name, _) => buff append name
-        case ClassDef(name, _, _, _, _) => buff append name
-        case PackageDef(name, _) => buff append name
-        case _ => buff append "#"
-      }
-      buff append "SymRef("
-      visitName(sym)
-      buff append ", "
-      visitType(qual)
-      buff append ")"
-    case TermRef(name, qual) =>
-      buff append "TermRef(" append name append ", "
-      visitType(qual)
-      buff append ")"
-    case TypeRef(name, qual) =>
-      buff append "TypeRef(" append name append ", "
-      visitType(qual)
-      buff append ")"
-    case Refinement(parent, name, info) =>
-      buff append "Refinement("
-      visitType(parent)
-      buff append ", " append name append ", "
-      visitType(info)
-      buff append ")"
-    case AppliedType(tycon, args) =>
-      buff append "AppliedType("
-      visitType(tycon)
-      buff append ", "
-      visitTypes(args)
-      buff append ")"
-    case AnnotatedType(underlying, annot) =>
-      buff append "AnnotatedType("
-      visitType(underlying)
-      buff append ", "
-      visitTree(annot)
-      buff append ")"
-    case AndType(left, right) =>
-      buff append "AndType("
-      visitType(left)
-      buff append ", "
-      visitType(right)
-      buff append ")"
-    case OrType(left, right) =>
-      buff append "OrType("
-      visitType(left)
-      buff append ", "
-      visitType(right)
-      buff append ")"
-    case ByNameType(underlying) =>
-      buff append "ByNameType("
-      visitType(underlying)
-      buff append ")"
-    case ParamRef(binder, idx) =>
-      buff append "ParamRef("
-      visitType(binder)
-      buff append ", " append idx append ")"
-    case ThisType(tp) =>
-      buff append "ThisType("
-      visitType(tp)
-      buff append ")"
-    case RecursiveThis(binder) =>
-      buff append "RecursiveThis("
-      visitType(binder)
-      buff append ")"
-    case MethodType(argNames, argTypes, resType) =>
-      buff append "MethodType("
-      if (argNames.isEmpty) buff append "Nil"
-      else buff append argNames
-      buff append ", "
-      visitTypes(argTypes)
-      buff append ", "
-      visitType(resType)
-      buff append ")"
-    case PolyType(argNames, argBounds, resType) =>
-      buff append "PolyType("
-      if (argNames.isEmpty) buff append "Nil"
-      else buff append argNames
-      buff append ", "
-      visitTypes(argBounds)
-      buff append ", "
-      visitType(resType)
-      buff append ")"
-    case TypeLambda(argNames, argBounds, resType) =>
-      buff append "TypeLambda("
-      if (argNames.isEmpty) buff append "Nil"
-      else buff append argNames
-      buff append ", "
-      visitTypes(argBounds)
-      buff append ", "
-      visitType(resType)
-      buff append ")"
-    case TypeBounds(lo, hi) =>
-      buff append "TypeBounds("
-      visitType(lo)
-      buff append ", "
-      visitType(hi)
-      buff append ")"
-    case NoPrefix() =>
-      buff append "NoPrefix"
-  }
-
-  private def visitTypes(list: List[TypeOrBounds])(implicit buff: StringBuilder, ctx: Context): Unit = {
-    list match {
-      case x0 :: xs =>
-        buff append "List("
-        visitType(x0)
-        def visitNext(xs: List[TypeOrBounds]): Unit = xs match {
-          case y :: ys =>
-            buff append ", "
-            visitType(y)
-            visitNext(ys)
-          case Nil =>
-        }
-        visitNext(xs)
-        buff append ")"
-      case Nil => buff append "Nil"
-    }
-  }
-
-  private def visitModifier(x: Modifier)(implicit buff: StringBuilder, ctx: Context): Unit = x match {
-    case Flags(flags) =>
-      buff append "Flags(" append flags append ")"
-    case QualifiedPrivate(tp) =>
-      buff append "QualifiedPrivate("
-      visitType(tp)
-      buff append ")"
-    case QualifiedProtected(tp) =>
-      buff append "QualifiedProtected("
-      visitType(tp)
-      buff append ")"
-    case Annotation(tree) =>
-      buff append "Annotation("
-      visitTree(tree)
-      buff append ")"
-  }
-
-  private def visitParent(x: Parent)(implicit buff: StringBuilder, ctx: Context): Unit = x match {
-    case TermParent(term) =>
-      buff append "TermParent("
-      visitTree(term)
-      buff append ")"
-    case TypeParent(typeTree) =>
-      buff append "TypeParent("
-      visitTypeTree(typeTree)
-      buff append ")"
-  }
-
-  private def visitParents(list: List[Parent])(implicit buff: StringBuilder, ctx: Context): Unit = {
-    list match {
-      case x0 :: xs =>
-        buff append "List("
-        visitParent(x0)
-        def visitNext(xs: List[Parent]): Unit = xs match {
-          case y :: ys =>
-            buff append ", "
-            visitParent(y)
-            visitNext(ys)
-          case Nil =>
-        }
-        visitNext(xs)
-        buff append ")"
-      case Nil => buff append "Nil"
-    }
-  }
-
-  private def visitId(x: Id)(implicit buff: StringBuilder, ctx: Context): Unit = {
-    import tasty._
-    x match {
-      case Id(name) => buff append "Id(" append name append ")"
-    }
-  }
 }
