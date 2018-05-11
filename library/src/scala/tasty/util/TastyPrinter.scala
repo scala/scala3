@@ -130,17 +130,17 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
     }
 
     def visitConstant(x: Constant): Buffer = x match {
-      case UnitConstant() => this += "Unit()"
-      case NullConstant() => this += "Null()"
-      case BooleanConstant(value) => this += "Boolean(" += value += ")"
-      case ByteConstant(value) => this += "Byte(" += value += ")"
-      case ShortConstant(value) => this += "Short(" += value += ")"
-      case CharConstant(value) => this += "Char(" += value += ")"
-      case IntConstant(value) => this += "Int(" += value.toString += ")"
-      case LongConstant(value) => this += "Long(" += value += ")"
-      case FloatConstant(value) => this += "Float(" += value += ")"
-      case DoubleConstant(value) => this += "Double(" += value += ")"
-      case StringConstant(value) => this += "String(" += value += ")"
+      case Constant.Unit() => this += "Unit()"
+      case Constant.Null() => this += "Null()"
+      case Constant.Boolean(value) => this += "Boolean(" += value += ")"
+      case Constant.Byte(value) => this += "Byte(" += value += ")"
+      case Constant.Short(value) => this += "Short(" += value += ")"
+      case Constant.Char(value) => this += "Char(" += value += ")"
+      case Constant.Int(value) => this += "Int(" += value.toString += ")"
+      case Constant.Long(value) => this += "Long(" += value += ")"
+      case Constant.Float(value) => this += "Float(" += value += ")"
+      case Constant.Double(value) => this += "Double(" += value += ")"
+      case Constant.String(value) => this += "String(" += value += ")"
     }
 
     def visitType(x: TypeOrBounds): Buffer = x match {

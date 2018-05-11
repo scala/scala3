@@ -573,59 +573,64 @@ abstract class Tasty {
 
   implicit def constantClassTag: ClassTag[Constant]
 
-  val UnitConstant: UnitExtractor
-  abstract class UnitExtractor {
-    def unapply(x: Constant): Boolean
-  }
+  val Constant: ConstantModule
+  abstract class ConstantModule {
 
-  val NullConstant: NullExtractor
-  abstract class NullExtractor {
-    def unapply(x: Constant): Boolean
-  }
+    val Unit: UnitExtractor
+    abstract class UnitExtractor {
+      def unapply(x: Constant): Boolean
+    }
 
-  val BooleanConstant: BooleanExtractor
-  abstract class BooleanExtractor {
-    def unapply(x: Constant): Option[Boolean]
-  }
+    val Null: NullExtractor
+    abstract class NullExtractor {
+      def unapply(x: Constant): Boolean
+    }
 
-  val ByteConstant: ByteExtractor
-  abstract class ByteExtractor {
-    def unapply(x: Constant): Option[Byte]
-  }
+    val Boolean: BooleanExtractor
+    abstract class BooleanExtractor {
+      def unapply(x: Constant): Option[Boolean]
+    }
 
-  val ShortConstant: ShortExtractor
-  abstract class ShortExtractor {
-    def unapply(x: Constant): Option[Short]
-  }
+    val Byte: ByteExtractor
+    abstract class ByteExtractor {
+      def unapply(x: Constant): Option[Byte]
+    }
 
-  val CharConstant: CharExtractor
-  abstract class CharExtractor {
-    def unapply(x: Constant): Option[Char]
-  }
+    val Short: ShortExtractor
+    abstract class ShortExtractor {
+      def unapply(x: Constant): Option[Short]
+    }
 
-  val IntConstant: IntExtractor
-  abstract class IntExtractor {
-    def unapply(x: Constant): Option[Int]
-  }
+    val Char: CharExtractor
+    abstract class CharExtractor {
+      def unapply(x: Constant): Option[Char]
+    }
 
-  val LongConstant: LongExtractor
-  abstract class LongExtractor {
-    def unapply(x: Constant): Option[Long]
-  }
+    val Int: IntExtractor
+    abstract class IntExtractor {
+      def unapply(x: Constant): Option[Int]
+    }
 
-  val FloatConstant: FloatExtractor
-  abstract class FloatExtractor {
-    def unapply(x: Constant): Option[Float]
-  }
+    val Long: LongExtractor
+    abstract class LongExtractor {
+      def unapply(x: Constant): Option[Long]
+    }
 
-  val DoubleConstant: DoubleExtractor
-  abstract class DoubleExtractor {
-    def unapply(x: Constant): Option[Double]
-  }
+    val Float: FloatExtractor
+    abstract class FloatExtractor {
+      def unapply(x: Constant): Option[Float]
+    }
 
-  val StringConstant: StringExtractor
-  abstract class StringExtractor {
-    def unapply(x: Constant): Option[String]
+    val Double: DoubleExtractor
+    abstract class DoubleExtractor {
+      def unapply(x: Constant): Option[Double]
+    }
+
+    val String: StringExtractor
+    abstract class StringExtractor {
+      def unapply(x: Constant): Option[String]
+    }
+
   }
 
   // ===== Modifiers ================================================

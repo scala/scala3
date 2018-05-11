@@ -25,10 +25,10 @@ object Macros {
       e.toTasty.tpe match {
         case SymRef(ValDef(_, tpt, _), pre) =>
           tpt.tpe match {
-            case ConstantType(IntConstant(i)) => Some(i)
+            case ConstantType(Constant.Int(i)) => Some(i)
             case _ => None
           }
-        case ConstantType(IntConstant(i)) => Some(i)
+        case ConstantType(Constant.Int(i)) => Some(i)
         case _ => None
       }
     }
