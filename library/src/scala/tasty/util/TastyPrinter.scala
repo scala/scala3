@@ -11,13 +11,13 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
     buff.toString()
   }
 
-  def stringOfTypeTree(tree: MaybeTypeTree)(implicit ctx: Context): String = {
+  def stringOfTypeTree(tree: TypeOrBoundsTree)(implicit ctx: Context): String = {
     implicit val buff: StringBuilder = new StringBuilder
     visitTypeTree(tree)
     buff.toString()
   }
 
-  def stringOfType(tpe: MaybeType)(implicit ctx: Context): String = {
+  def stringOfType(tpe: TypeOrBounds)(implicit ctx: Context): String = {
     implicit val buff: StringBuilder = new StringBuilder
     visitType(tpe)
     buff.toString()
@@ -290,7 +290,7 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
     }
   }
 
-  private def visitTypeTree(x: MaybeTypeTree)(implicit buff: StringBuilder, ctx: Context): Unit = {
+  private def visitTypeTree(x: TypeOrBoundsTree)(implicit buff: StringBuilder, ctx: Context): Unit = {
     x match {
       case Synthetic() =>
         buff append "Synthetic()"
@@ -462,7 +462,7 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
     case StringConstant(value) => buff append "String(" append value append ")"
   }
 
-  private def visitType(x: MaybeType)(implicit buff: StringBuilder, ctx: Context): Unit = x match {
+  private def visitType(x: TypeOrBounds)(implicit buff: StringBuilder, ctx: Context): Unit = x match {
     case ConstantType(value) =>
       buff append "ConstantType("
       visitConstant(value)
@@ -568,12 +568,12 @@ class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
       buff append "NoPrefix"
   }
 
-  private def visitTypes(list: List[MaybeType])(implicit buff: StringBuilder, ctx: Context): Unit = {
+  private def visitTypes(list: List[TypeOrBounds])(implicit buff: StringBuilder, ctx: Context): Unit = {
     list match {
       case x0 :: xs =>
         buff append "List("
         visitType(x0)
-        def visitNext(xs: List[MaybeType]): Unit = xs match {
+        def visitNext(xs: List[TypeOrBounds]): Unit = xs match {
           case y :: ys =>
             buff append ", "
             visitType(y)

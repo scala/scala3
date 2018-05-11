@@ -7,13 +7,13 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
 
   // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
   def foldTree(x: X, tree: Tree)(implicit ctx: Context): X
-  def foldTypeTree(x: X, tree: MaybeTypeTree)(implicit ctx: Context): X
+  def foldTypeTree(x: X, tree: TypeOrBoundsTree)(implicit ctx: Context): X
   def foldCaseDef(x: X, tree: CaseDef)(implicit ctx: Context): X
   def foldPattern(x: X, tree: Pattern)(implicit ctx: Context): X
   def foldParent(x: X, tree: Parent)(implicit ctx: Context): X
 
   def foldTrees(x: X, trees: Iterable[Tree])(implicit ctx: Context): X = (x /: trees)(foldTree)
-  def foldTypeTrees(x: X, trees: Iterable[MaybeTypeTree])(implicit ctx: Context): X = (x /: trees)(foldTypeTree)
+  def foldTypeTrees(x: X, trees: Iterable[TypeOrBoundsTree])(implicit ctx: Context): X = (x /: trees)(foldTypeTree)
   def foldCaseDefs(x: X, trees: Iterable[CaseDef])(implicit ctx: Context): X = (x /: trees)(foldCaseDef)
   def foldPatterns(x: X, trees: Iterable[Pattern])(implicit ctx: Context): X = (x /: trees)(foldPattern)
   def foldParents(x: X, trees: Iterable[Parent])(implicit ctx: Context): X = (x /: trees)(foldParent)
@@ -80,7 +80,7 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
     }
   }
 
-  def foldOverTypeTree(x: X, tree: MaybeTypeTree)(implicit ctx: Context): X = tree match {
+  def foldOverTypeTree(x: X, tree: TypeOrBoundsTree)(implicit ctx: Context): X = tree match {
     case Synthetic() => x
     case TypeIdent(_) => x
     case TypeSelect(qualifier, _) => foldTree(x, qualifier)

@@ -22,7 +22,7 @@ object Asserts {
 
     val tree = cond.toTasty
 
-    def isOps(tpe: MaybeType): Boolean = tpe match {
+    def isOps(tpe: TypeOrBounds): Boolean = tpe match {
       case SymRef(DefDef("Ops", _, _, _, _), _) => true // TODO check that the parent is Asserts
       case _ => false
     }

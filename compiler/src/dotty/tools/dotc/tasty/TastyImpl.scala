@@ -186,7 +186,7 @@ object TastyImpl extends scala.tasty.Tasty {
   def typeDefClassTag: ClassTag[TypeDef] = implicitly[ClassTag[TypeDef]]
 
   val TypeDef: TypeDefExtractor = new TypeDefExtractor {
-    def unapply(x: TypeDef)(implicit ctx: Context): Option[(String, MaybeTypeTree /* TypeTree | TypeBoundsTree */)] = x match {
+    def unapply(x: TypeDef)(implicit ctx: Context): Option[(String, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)] = x match {
       case x: tpd.TypeDef @unchecked if !x.symbol.isClass => Some((x.name.toString, x.rhs))
       case _ => None
     }
@@ -446,11 +446,11 @@ object TastyImpl extends scala.tasty.Tasty {
     }
   }
 
-  // ----- MaybeTypeTree ------------------------------------------------
+  // ----- TypeOrBoundsTree ------------------------------------------------
 
-  type MaybeTypeTree = tpd.Tree
+  type TypeOrBoundsTree = tpd.Tree
 
-  implicit def MaybeTypeTreeDeco(x: MaybeTypeTree): AbstractMaybeTypeTree = new AbstractMaybeTypeTree {
+  implicit def TypeOrBoundsTreeDeco(x: TypeOrBoundsTree): AbstractTypeOrBoundsTree = new AbstractTypeOrBoundsTree {
     def tpe(implicit ctx: Context): Type = x.tpe.stripTypeVar
   }
 
@@ -552,7 +552,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   // ===== Types ====================================================
 
-  type MaybeType = Types.Type
+  type TypeOrBounds = Types.Type
 
   // ----- Types ----------------------------------------------------
 
@@ -568,7 +568,7 @@ object TastyImpl extends scala.tasty.Tasty {
   }
 
   val SymRef: SymRefExtractor = new SymRefExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(Definition, MaybeType /* Type | NoPrefix */)] = x  match {
+    def unapply(x: Type)(implicit ctx: Context): Option[(Definition, TypeOrBounds /* Type | NoPrefix */)] = x  match {
       case tp: Types.NamedType =>
         tp.designator match {
           case sym: Symbol => Some((FromSymbol.definition(sym), tp.prefix))
@@ -579,7 +579,7 @@ object TastyImpl extends scala.tasty.Tasty {
   }
 
   val NameRef: NameRefExtractor = new NameRefExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(String, MaybeType /* Type | NoPrefix */)] = x match {
+    def unapply(x: Type)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
       case tp: Types.NamedType =>
         tp.designator match {
           case name: Names.Name => Some(name.toString, tp.prefix)
@@ -597,14 +597,14 @@ object TastyImpl extends scala.tasty.Tasty {
   }
 
   val Refinement: RefinementExtractor = new RefinementExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(Type, String, MaybeType /* Type | TypeBounds */)] = x match {
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] = x match {
       case Types.RefinedType(parent, name, info) => Some(parent, name.toString, info)
       case _ => None
     }
   }
 
   val AppliedType: AppliedTypeExtractor = new AppliedTypeExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(Type, List[MaybeType /* Type | TypeBounds */])] = x match {
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] = x match {
       case Types.AppliedType(tycon, args) => Some((tycon.stripTypeVar, args.map(_.stripTypeVar)))
       case _ => None
     }
@@ -639,10 +639,10 @@ object TastyImpl extends scala.tasty.Tasty {
   }
 
   val ParamRef: ParamRefExtractor = new ParamRefExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(LambdaType[MaybeType], Int)] = x match {
+    def unapply(x: Type)(implicit ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] = x match {
       case Types.TypeParamRef(binder, idx) =>
         Some((
-          binder.asInstanceOf[LambdaType[MaybeType]], // Cast to tpd
+          binder.asInstanceOf[LambdaType[TypeOrBounds]], // Cast to tpd
           idx))
       case _ => None
     }
@@ -675,7 +675,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   // ----- Methodic Types -------------------------------------------
 
-  type LambdaType[ParamInfo <: MaybeType] = Types.LambdaType { type PInfo = ParamInfo }
+  type LambdaType[ParamInfo <: TypeOrBounds] = Types.LambdaType { type PInfo = ParamInfo }
 
   type MethodType = Types.MethodType
 

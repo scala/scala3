@@ -31,11 +31,11 @@ object Index {
     import u._
     import u.tasty._
 
-    def name(tp: MaybeType): String = tp match {
+    def name(tp: TypeOrBounds): String = tp match {
       case ConstantType(StringConstant(str)) => str
     }
 
-    def names(tp: MaybeType): List[String] = tp match {
+    def names(tp: TypeOrBounds): List[String] = tp match {
       case AppliedType(_, x1 :: x2 :: Nil) => name(x1) :: names(x2)
       case _ => Nil
     }

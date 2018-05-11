@@ -146,7 +146,7 @@ abstract class Tasty {
 
   val TypeDef: TypeDefExtractor
   abstract class TypeDefExtractor {
-    def unapply(x: TypeDef)(implicit ctx: Context): Option[(String, MaybeTypeTree /* TypeTree | TypeBoundsTree */)]
+    def unapply(x: TypeDef)(implicit ctx: Context): Option[(String, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)]
   }
 
   // PackageDef
@@ -332,17 +332,17 @@ abstract class Tasty {
 
   // ----- TypeTrees ------------------------------------------------
 
-  type MaybeTypeTree
+  type TypeOrBoundsTree
 
-  trait AbstractMaybeTypeTree {
-    def tpe(implicit ctx: Context): MaybeType
+  trait AbstractTypeOrBoundsTree {
+    def tpe(implicit ctx: Context): TypeOrBounds
   }
-  implicit def MaybeTypeTreeDeco(x: MaybeTypeTree): AbstractMaybeTypeTree
+  implicit def TypeOrBoundsTreeDeco(x: TypeOrBoundsTree): AbstractTypeOrBoundsTree
 
 
   // ----- TypeTrees ------------------------------------------------
 
-  type TypeTree <: MaybeTypeTree
+  type TypeTree <: TypeOrBoundsTree
 
   trait AbstractTypeTree extends Typed with Positioned
   implicit def TypeTreeDeco(x: TypeTree): AbstractTypeTree
@@ -401,7 +401,7 @@ abstract class Tasty {
 
   // ----- TypeBoundsTrees ------------------------------------------------
 
-  type TypeBoundsTree <: MaybeTypeTree
+  type TypeBoundsTree <: TypeOrBoundsTree
 
   trait AbstractTypeBoundsTree {
     def tpe: TypeBounds
@@ -417,7 +417,7 @@ abstract class Tasty {
 
   // ===== Types ====================================================
 
-  type MaybeType
+  type TypeOrBounds
 
   trait Typed {
     def tpe(implicit ctx: Context): Type
@@ -425,7 +425,7 @@ abstract class Tasty {
 
   // ----- Types ----------------------------------------------------
 
-  type Type <: MaybeType
+  type Type <: TypeOrBounds
 
   implicit def typeClassTag: ClassTag[Type]
 
@@ -436,12 +436,12 @@ abstract class Tasty {
 
   val SymRef: SymRefExtractor
   abstract class SymRefExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(Definition, MaybeType /* Type | NoPrefix */)]
+    def unapply(x: Type)(implicit ctx: Context): Option[(Definition, TypeOrBounds /* Type | NoPrefix */)]
   }
 
   val NameRef: NameRefExtractor
   abstract class NameRefExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(String, MaybeType /* Type | NoPrefix */)]
+    def unapply(x: Type)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)]
   }
 
   val SuperType: SuperTypeExtractor
@@ -451,12 +451,12 @@ abstract class Tasty {
 
   val Refinement: RefinementExtractor
   abstract class RefinementExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(Type, String, MaybeType /* Type | TypeBounds */)]
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)]
   }
 
   val AppliedType: AppliedTypeExtractor
   abstract class AppliedTypeExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(Type, List[MaybeType /* Type | TypeBounds */])]
+    def unapply(x: Type)(implicit ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])]
   }
 
   val AnnotatedType: AnnotatedTypeExtractor
@@ -481,7 +481,7 @@ abstract class Tasty {
 
   val ParamRef: ParamRefExtractor
   abstract class ParamRefExtractor {
-    def unapply(x: Type)(implicit ctx: Context): Option[(LambdaType[MaybeType], Int)]
+    def unapply(x: Type)(implicit ctx: Context): Option[(LambdaType[TypeOrBounds], Int)]
   }
 
   val ThisType: ThisTypeExtractor
@@ -503,7 +503,7 @@ abstract class Tasty {
 
   // ----- Methodic Types -------------------------------------------
 
-  type LambdaType[ParamInfo <: MaybeType] <: Type
+  type LambdaType[ParamInfo <: TypeOrBounds] <: Type
 
   type MethodType <: LambdaType[Type]
 
@@ -540,7 +540,7 @@ abstract class Tasty {
 
   // ----- TypeBounds -----------------------------------------------
 
-  type TypeBounds <: MaybeType
+  type TypeBounds <: TypeOrBounds
 
   implicit def typeBoundsClassTag: ClassTag[TypeBounds]
 
@@ -551,7 +551,7 @@ abstract class Tasty {
 
   // ----- NoPrefix -------------------------------------------------
 
-  type NoPrefix <: MaybeType
+  type NoPrefix <: TypeOrBounds
 
   implicit def noPrefixClassTag: ClassTag[NoPrefix]
 

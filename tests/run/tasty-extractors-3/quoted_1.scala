@@ -17,7 +17,7 @@ object Macros {
 
     val buff = new StringBuilder
     val traverser = new TreeTraverser(u.tasty) {
-      override def traverseTypeTree(tree: MaybeTypeTree)(implicit ctx: Context): Unit = {
+      override def traverseTypeTree(tree: TypeOrBoundsTree)(implicit ctx: Context): Unit = {
         buff.append(printer.stringOfType(tree.tpe))
         buff.append("\n\n")
         traverseTypeTreeChildren(tree)
