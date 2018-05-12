@@ -169,7 +169,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         "<noprefix>"
       case tp: MethodType =>
         changePrec(GlobalPrec) {
-          (if (tp.isImplicitMethod) "(implicit " else "(") ~ paramsText(tp) ~
+          ("(" + (if (tp.isErasedMethod)   "erased "   else "")
+               + (if (tp.isImplicitMethod) "implicit " else "")
+          ) ~ paramsText(tp) ~
           (if (tp.resultType.isInstanceOf[MethodType]) ")" else "): ") ~
           toText(tp.resultType)
         }
@@ -536,9 +538,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def literalText(text: Text): Text = coloredText(text, SyntaxHighlighting.LiteralColor)
   protected def stringText(text: Text): Text = coloredText(text, SyntaxHighlighting.StringColor)
 
-  private def coloredStr(text: String, color: String): String =
+  protected def coloredStr(text: String, color: String): String =
     if (ctx.useColors) color + text + SyntaxHighlighting.NoColor else text
-  private def coloredText(text: Text, color: String): Text =
+  protected def coloredText(text: Text, color: String): Text =
     if (ctx.useColors) color ~ text ~ SyntaxHighlighting.NoColor else text
 }
 

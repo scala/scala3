@@ -37,4 +37,9 @@ class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
       else ":" ~~ toText(sym.info)
     }
   }
+
+  // We don't want the colors coming from RefinedPrinter as the REPL uses its
+  // own syntax coloring mechanism.
+  override def coloredStr(text: String, color: String): String = text
+  override def coloredText(text: Text, color: String): Text = text
 }
