@@ -434,16 +434,12 @@ object Symbols {
     private[this] var lastDenot: SymDenotation = _
     private[this] var checkedPeriod: Period = Nowhere
 
-    private[this] var cachedValidFor: Period = _
     private[this] var cachedName: Name = _
     private[this] var cachedOwner: Symbol = _
     private[this] var cachedInfo: Type = _
     private[this] var cachedFlags: FlagSet = _
 
-    private[core] def updateValidForCache(d: Denotation, validFor: Period) = {
-      if (lastDenot `eq` d) cachedValidFor = validFor
-      checkedPeriod = Nowhere  // this forces recomputeDenot() on next call to denot
-    }
+    private[core] def invalidateDenotCache() = { checkedPeriod = Nowhere }
 
     private[core] def updateInfoCache(d: SymDenotation, info: Type) =
       if (lastDenot `eq` d) cachedInfo = info
@@ -453,7 +449,6 @@ object Symbols {
 
     private[this] def setLastDenot(d: SymDenotation) = {
       lastDenot = d
-      cachedValidFor = d.validFor
       cachedName = d.name
       cachedOwner = d.maybeOwner
       cachedInfo = d.infoOrCompleter
@@ -469,21 +464,22 @@ object Symbols {
     /** The current denotation of this symbol */
     final def denot(implicit ctx: Context): SymDenotation = {
       Stats.record("Symbol.denot")
-      if (checkedPeriod == ctx.period) lastDenot
-      else computeDenot()
+      val lastd = lastDenot
+      if (checkedPeriod == ctx.period) lastd
+      else computeDenot(lastd)
     }
 
-    private def computeDenot()(implicit ctx: Context): SymDenotation = {
+    private def computeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = {
       Stats.record("Symbol.computeDenot")
       val now = ctx.period
       checkedPeriod = now
-      if (cachedValidFor contains now) lastDenot else recomputeDenot()
+      if (lastd.validFor contains now) lastd else recomputeDenot(lastd)
     }
 
     /** Overridden in NoSymbol */
-    protected def recomputeDenot()(implicit ctx: Context) = {
+    protected def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context) = {
       Stats.record("Symbol.recomputeDenot")
-      val newd = lastDenot.current.asInstanceOf[SymDenotation]
+      val newd = lastd.current.asInstanceOf[SymDenotation]
       setLastDenot(newd)
       newd
     }
@@ -642,7 +638,7 @@ object Symbols {
 // -------- Cached SymDenotation facades -----------------------------------------------
 
     private def ensureUpToDate()(implicit ctx: Context) =
-      if (checkedPeriod != ctx.period) computeDenot()
+      if (checkedPeriod != ctx.period) computeDenot(lastDenot)
 
     /** The current name of this symbol */
     final def name(implicit ctx: Context): ThisName = {
@@ -897,7 +893,7 @@ object Symbols {
   @sharable object NoSymbol extends Symbol(NoCoord, 0) {
     override def owner(implicit ctx: Context): Symbol = throw new AssertionError("NoSymbol.owner")
     override def associatedFile(implicit ctx: Context): AbstractFile = NoSource.file
-    override def recomputeDenot()(implicit ctx: Context): SymDenotation = NoDenotation
+    override def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = NoDenotation
   }
 
   NoDenotation // force it in order to set `denot` field of NoSymbol
