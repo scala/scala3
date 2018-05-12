@@ -66,7 +66,7 @@ object Uniques {
       designator match {
         case sym: Symbol =>
           val symd = sym.lastKnownDenotation
-          if (symd != null) {
+          if (symd != null && symd.exists) {
             val ref = symd.namedRef
             if (prefix `eq` ref.prefix) {
               record("namedRef reuse")

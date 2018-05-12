@@ -1191,11 +1191,15 @@ object SymDenotations {
       cachedRef
     }
 
-    override def typeRef(implicit ctx: Context): TypeRef =
-      namedRef.asInstanceOf[TypeRef]
+    override def typeRef(implicit ctx: Context): TypeRef = namedRef match {
+      case ref: TypeRef => ref
+      case _ => defn.AnyClass.typeRef // case arises when compiling parser-stabiility-1.scala
+    }
 
-    override def termRef(implicit ctx: Context): TermRef =
-      namedRef.asInstanceOf[TermRef]
+    override def termRef(implicit ctx: Context): TermRef = namedRef match {
+      case ref: TermRef => ref
+      case _ => defn.EmptyPackageVal.termRef
+    }
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
