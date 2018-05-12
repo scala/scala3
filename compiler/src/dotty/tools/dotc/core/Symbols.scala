@@ -891,6 +891,7 @@ object Symbols {
   }
 
   @sharable object NoSymbol extends Symbol(NoCoord, 0) {
+    override def owner(implicit ctx: Context): Symbol = throw new AssertionError("NoSymbol.owner")
     override def associatedFile(implicit ctx: Context): AbstractFile = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = NoDenotation
   }
