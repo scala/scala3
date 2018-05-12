@@ -1175,11 +1175,27 @@ object SymDenotations {
     /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(implicit ctx: Context): Type = NoPrefix
 
+    private[this] var cachedRef: NamedType = null
+
+    def namedRef(implicit ctx: Context): NamedType = {
+      if (cachedRef == null) {
+        val initl = initial
+        val thistpe = maybeOwner.thisType
+        if ((initl `ne` this) && (thistpe `eq` initl.maybeOwner.thisType))
+          cachedRef = initial.namedRef
+        else {
+          Stats.record("namedRef create")
+          cachedRef = ctx.uniqueNamedTypes.newType(thistpe, symbol, isTerm)
+        }
+      }
+      cachedRef
+    }
+
     override def typeRef(implicit ctx: Context): TypeRef =
-      TypeRef(owner.thisType, symbol)
+      namedRef.asInstanceOf[TypeRef]
 
     override def termRef(implicit ctx: Context): TermRef =
-      TermRef(owner.thisType, symbol)
+      namedRef.asInstanceOf[TermRef]
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter

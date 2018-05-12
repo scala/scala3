@@ -53,16 +53,33 @@ object Uniques {
       e
     }
 
+    def newType(prefix: Type, designator: Designator, hc: Int, isTerm: Boolean): NamedType =
+      if (isTerm) new CachedTermRef(prefix, designator, hc)
+      else new CachedTypeRef(prefix, designator, hc)
+
+    def newType(prefix: Type, designator: Designator, isTerm: Boolean)(implicit ctx: Context): NamedType =
+      newType(prefix, designator, doHash(null, designator, prefix), isTerm)
+
     def enterIfNew(prefix: Type, designator: Designator, isTerm: Boolean)(implicit ctx: Context): NamedType = {
       val h = doHash(null, designator, prefix)
       if (monitored) recordCaching(h, classOf[NamedType])
-      def newType =
-        if (isTerm) new CachedTermRef(prefix, designator, h)
-        else new CachedTypeRef(prefix, designator, h)
-      if (h == NotCached) newType
+      designator match {
+        case sym: Symbol =>
+          val symd = sym.lastKnownDenotation
+          if (symd != null) {
+            val ref = symd.namedRef
+            if (prefix `eq` ref.prefix) {
+              record("namedRef reuse")
+              return ref
+            }
+          }
+        case _ =>
+      }
+      if (h == NotCached) newType(prefix, designator, h, isTerm)
       else {
         val r = findPrevious(h, prefix, designator)
-        if ((r ne null) && (r.isTerm == isTerm)) r else addEntryAfterScan(newType)
+        if ((r ne null) && (r.isTerm == isTerm)) r
+        else addEntryAfterScan(newType(prefix, designator, h, isTerm))
       }
     }
   }
