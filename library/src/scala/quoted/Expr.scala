@@ -5,7 +5,14 @@ import scala.runtime.quoted.Unpickler.Pickled
 
 sealed abstract class Expr[T] {
   final def unary_~ : T = throw new Error("~ should have been compiled away")
+
+  /** Evaluate the contents of this expression and return the result.
+   *
+   *  May throw a FreeVariableError on expressions that came from an inline macro.
+   */
   final def run(implicit toolbox: Toolbox[T]): T = toolbox.run(this)
+
+  /** Show a source code like representation of this expression */
   final def show(implicit toolbox: Toolbox[T]): String = toolbox.show(this)
 }
 
@@ -36,8 +43,15 @@ object Exprs {
     override def toString: String = s"Expr($value)"
   }
 
-  /** An Expr backed by a tree. Only the current compiler trees are allowed. */
-  final class TreeExpr[Tree](val tree: Tree) extends quoted.Expr[Any] {
+  /** An Expr backed by a tree. Only the current compiler trees are allowed.
+   *
+   *  These expressions are used for arguments of inline macros. They contain and actual tree
+   *  from the program that is being expanded by the macro.
+   *
+   *  May contain references to code defined outside this Expr instance.
+   */
+  final class TreeExpr[Tree](val tree: Tree, pickle: => Expr[_]) extends quoted.Expr[Any] {
+    def pickled[T]: Expr[T] = pickle.asInstanceOf[Expr[T]]
     override def toString: String = s"Expr(<raw>)"
   }
 

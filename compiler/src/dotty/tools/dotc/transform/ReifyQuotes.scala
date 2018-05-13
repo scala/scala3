@@ -569,7 +569,8 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
                 // see PostTyper `case Inlined(...) =>` for description of the simplification
                 val call2 = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
                 val spliced = Splicer.splice(body, call, bindings, tree.pos, macroClassLoader).withPos(tree.pos)
-                transform(cpy.Inlined(tree)(call2, bindings, spliced))
+                if (ctx.reporter.hasErrors) EmptyTree
+                else transform(cpy.Inlined(tree)(call2, bindings, spliced))
               }
               else super.transform(tree)
 
