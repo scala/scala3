@@ -650,17 +650,20 @@ trait Implicits { self: Typer =>
             ref(lazyImplicit))
         else
           arg
-      case fail @ SearchFailure(tree) =>
-        if (fail.isAmbiguous)
-          tree
-        else if (formalValue.isRef(defn.ClassTagClass))
-          synthesizedClassTag(formalValue).orElse(tree)
-        else if (formalValue.isRef(defn.QuotedTypeClass))
-          synthesizedTypeTag(formalValue).orElse(tree)
-        else if (formalValue.isRef(defn.EqClass))
-          synthesizedEq(formalValue).orElse(tree)
+      case fail @ SearchFailure(failed) =>
+        def trySpecialCase(cls: ClassSymbol, handler: Type => Tree, ifNot: => Tree) = {
+          val base = formalValue.baseType(cls)
+          if (base <:< formalValue) {
+            // With the subtype test we enforce that the searched type `formalValue` is of the right form
+            handler(base).orElse(ifNot)
+          }
+          else ifNot
+        }
+        if (fail.isAmbiguous) failed
         else
-          tree
+          trySpecialCase(defn.ClassTagClass, synthesizedClassTag,
+            trySpecialCase(defn.QuotedTypeClass, synthesizedTypeTag,
+              trySpecialCase(defn.EqClass, synthesizedEq, failed)))
     }
   }
 
