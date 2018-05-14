@@ -29,7 +29,8 @@ inlined at the point of use. Example:
 The `Config` object contains a definition of an `inline` value
 `logging`. This means that `logging` is treated as a constant value,
 equivalent to its right-hand side `false`. The right-hand side of such
-an inline val must itself be a constant expression. Used in this way,
+an inline val must itself be a [constant
+expression](#the-definition-of-constant-expression). Used in this way,
 `inline` is equivalent to Java and Scala 2's `final`. `final` meaning
 "constant" is still supported in Dotty, but will be phased out.
 
@@ -124,6 +125,13 @@ it in backticks, i.e.
 
     @`inline` def ...
 
+### The definition of constant expression
+
+Right-hand sides of inline values and of arguments for inline parameters
+must be constant expressions in the sense defined by the [SLS §
+6.24](https://www.scala-lang.org/files/archive/spec/2.12/06-expressions.html#constant-expressions),
+including "platform-specific" extensions such as constant folding of
+pure numeric computations.
 
 ### Reference
 
