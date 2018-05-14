@@ -53,6 +53,11 @@ object Build {
   }
   val dottyNonBootstrappedVersion = dottyVersion + "-nonbootstrapped"
 
+  val sbtDottyVersion = {
+    val base = "0.2.3"
+    if (isRelease) base else base + "-SNAPSHOT"
+  }
+
   val agentOptions = List(
     // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
     // "-agentpath:/home/dark/opt/yjp-2013-build-13072/bin/linux-x86-64/libyjpagent.so"
@@ -930,11 +935,7 @@ object Build {
   lazy val `sbt-dotty` = project.in(file("sbt-dotty")).
     settings(commonSettings).
     settings(
-      version := {
-        val base = "0.2.3"
-        if (isRelease) base else base + "-SNAPSHOT"
-      },
-
+      version := sbtDottyVersion,
       // Keep in sync with inject-sbt-dotty.sbt
       libraryDependencies ++= Seq(
         Dependencies.`jackson-databind`,
@@ -973,10 +974,16 @@ object Build {
       publishArtifact := false,
       includeFilter in unmanagedSources := NothingFilter | "*.ts" | "**.json",
       watchSources in Global ++= (unmanagedSources in Compile).value,
-      compile in Compile := {
+      resourceGenerators in Compile += Def.task {
+        val out = baseDirectory.value / "out" / "default-dotty-ide-config"
+        IO.writeLines(out, Seq(dottyVersion, sbtDottyVersion))
+        Seq(out)
+      },
+      compile in Compile := Def.task {
         val workingDir = baseDirectory.value
-        val coursier = workingDir / "out/coursier"
+        val coursier = workingDir / "out" / "coursier"
         val packageJson = workingDir / "package.json"
+        // val _ = (managedResources in Compile).value
         if (!coursier.exists || packageJson.lastModified > coursier.lastModified)
           runProcess(Seq("npm", "install"), wait = true, directory = workingDir)
         val tsc = workingDir / "node_modules" / ".bin" / "tsc"
@@ -988,7 +995,7 @@ object Build {
         runProcess(codeCommand.value ++ Seq("--install-extension", "daltonjorge.scala"), wait = true)
 
         sbt.internal.inc.Analysis.Empty
-      },
+      }.dependsOn(managedResources in Compile).value,
       sbt.Keys.`package`:= {
         runProcess(Seq("vsce", "package"), wait = true, directory = baseDirectory.value)
 

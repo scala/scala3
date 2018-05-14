@@ -17,46 +17,67 @@ export function activate(context: ExtensionContext) {
   outputChannel = vscode.window.createOutputChannel('Dotty Language Client');
 
   const sbtArtifact = "org.scala-sbt:sbt-launch:1.1.4"
-  const languageServerArtifactFile = `${vscode.workspace.rootPath}/.dotty-ide-artifact`
-  const languageServerDefaultArtifact = "ch.epfl.lamp:dotty-language-server_0.8:0.8.0-RC1"
   const loadPluginArtifact = "ch.epfl.scala:load-plugin_2.12:0.1.0+2-496ac670"
-  fs.readFile(languageServerArtifactFile, (err, data) => {
-    const languageServerArtifact = err ? languageServerDefaultArtifact : data.toString().trim()
+  const languageServerArtifactFile = `${vscode.workspace.rootPath}/.dotty-ide-artifact`
+  const languageServerDefaultConfigFile = path.join(extensionContext.extensionPath, './out/default-dotty-ide-config')
+  const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
 
-    if (process.env['DLS_DEV_MODE']) {
-      const portFile = `${vscode.workspace.rootPath}/.dotty-ide-dev-port`
-      fs.readFile(portFile, (err, port) => {
-        if (err) {
-          outputChannel.append(`Unable to parse ${portFile}`)
-          throw err
+  if (process.env['DLS_DEV_MODE']) {
+    const portFile = `${vscode.workspace.rootPath}/.dotty-ide-dev-port`
+    fs.readFile(portFile, (err, port) => {
+      if (err) {
+        outputChannel.append(`Unable to parse ${portFile}`)
+        throw err
+      }
+
+      run({
+        module: context.asAbsolutePath('out/src/passthrough-server.js'),
+        args: [ port.toString() ]
+      })
+    })
+
+  } else {
+
+    // Check whether `.dotty-ide-artifact` exists to know whether the IDE has been already
+    // configured (via `configureIDE` for instance). If not, start sbt and run `configureIDE`.
+    if (!fs.existsSync(languageServerArtifactFile)) {
+      fs.readFile(languageServerDefaultConfigFile, (err, data) => {
+        if (err) throw err
+        else {
+          const [languageServerScalaVersion, sbtDottyVersion] = data.toString().trim().split(/\r?\n/)
+            fetchAndConfigure(coursierPath, sbtArtifact, languageServerScalaVersion, sbtDottyVersion, loadPluginArtifact).then(() => {
+              runLanguageServer(coursierPath, languageServerArtifactFile)
+            })
         }
-
-        run({
-          module: context.asAbsolutePath('out/src/passthrough-server.js'),
-          args: [ port.toString() ]
-        })
       })
     } else {
-      fetchAndRun(sbtArtifact, languageServerArtifact, loadPluginArtifact)
+        runLanguageServer(coursierPath, languageServerArtifactFile)
+    }
+  }
+}
+
+function runLanguageServer(coursierPath: string, languageServerArtifactFile: string) {
+  fs.readFile(languageServerArtifactFile, (err, data) => {
+    if (err) throw err
+    else {
+      const languageServerArtifact = data.toString().trim()
+      fetchWithCoursier(coursierPath, languageServerArtifact).then((languageServerClasspath) => {
+        run({
+          command: "java",
+          args: ["-classpath", languageServerClasspath, "dotty.tools.languageserver.Main", "-stdio"]
+        })
+      })
     }
   })
 }
 
-function fetchAndRun(sbtArtifact: string, languageServerArtifact: string, loadPluginArtifact: string) {
-  const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
-
+function fetchAndConfigure(coursierPath: string, sbtArtifact: string, languageServerScalaVersion: string, sbtDottyVersion: string, loadPluginArtifact: string) {
   const sbtPromise = fetchWithCoursier(coursierPath, sbtArtifact)
-  const languageServerPromise = fetchWithCoursier(coursierPath, languageServerArtifact)
   const loadPluginPromise = fetchWithCoursier(coursierPath, loadPluginArtifact)
 
-  Promise.all([sbtPromise, languageServerPromise, loadPluginPromise]).then((results) => {
-    const [sbtClasspath, languageServerClasspath, loadPluginJar] = results
-    return configureIDE(sbtClasspath, languageServerClasspath, loadPluginJar)
-  }).then((languageServerClasspath) => {
-    run({
-      command: "java",
-      args: ["-classpath", languageServerClasspath, "dotty.tools.languageserver.Main", "-stdio"]
-    })
+  return Promise.all([sbtPromise, loadPluginPromise]).then((results) => {
+    const [sbtClasspath, loadPluginJar] = results
+    return configureIDE(sbtClasspath, languageServerScalaVersion, sbtDottyVersion, loadPluginJar)
   })
 
 }
@@ -72,7 +93,6 @@ function fetchWithCoursier(coursierPath: string, artifact: string, extra: string
         "-p",
         artifact
       ].concat(extra)
-
       const coursierPromise = cpp.spawn("java", args)
       const coursierProc = coursierPromise.childProcess
 
@@ -82,7 +102,7 @@ function fetchWithCoursier(coursierPath: string, artifact: string, extra: string
         classPath += data.toString().trim()
       })
       coursierProc.stderr.on('data', (data: Buffer) => {
-        let msg = data.toString()
+        let msg = data.toString().trim()
         outputChannel.append(msg)
       })
 
@@ -93,13 +113,11 @@ function fetchWithCoursier(coursierPath: string, artifact: string, extra: string
           throw new Error(msg)
         }
       })
-      return coursierPromise.then(() => {
-        return classPath;
-      });
+      return coursierPromise.then(() => { return classPath })
     })
 }
 
-function configureIDE(sbtClasspath: string, languageServerClasspath: string, loadPluginJar: string) {
+function configureIDE(sbtClasspath: string, languageServerScalaVersion: string, sbtDottyVersion: string, loadPluginJar: string) {
   return vscode.window.withProgress({
     location: vscode.ProgressLocation.Window,
     title: 'Configuring IDE...'
@@ -107,10 +125,13 @@ function configureIDE(sbtClasspath: string, languageServerClasspath: string, loa
     const applyLoadPlugin = `apply -cp ${ loadPluginJar } ch.epfl.scala.loadplugin.LoadPlugin`
     const ifAbsentCommands = [
       "if-absent dotty.tools.sbtplugin.DottyPlugin",
-      "\"set every scalaVersion := \\\"0.8.0-RC1\\\"\"",
-      "\"load-plugin ch.epfl.lamp:sbt-dotty:0.2.2 dotty.tools.sbtplugin.DottyPlugin\"",
-      "\"load-plugin ch.epfl.lamp:sbt-dotty:0.2.2 dotty.tools.sbtplugin.DottyIDEPlugin\""
+      "\"set every scalaVersion := \\\"" + languageServerScalaVersion + "\\\"\"",
+      "\"load-plugin ch.epfl.lamp:sbt-dotty:" + sbtDottyVersion + " dotty.tools.sbtplugin.DottyPlugin\"",
+      "\"load-plugin ch.epfl.lamp:sbt-dotty:" + sbtDottyVersion + " dotty.tools.sbtplugin.DottyIDEPlugin\""
     ].join(" ")
+
+    // Run sbt to configure the IDE. If the `DottyPlugin` is not present, dynamically load it and
+    // eventually run `configureIDE`.
     const sbtPromise =
       cpp.spawn("java", [
         "-classpath", sbtClasspath,
@@ -129,7 +150,7 @@ function configureIDE(sbtClasspath: string, languageServerClasspath: string, loa
       }
     })
 
-    return sbtPromise.then(() => { return languageServerClasspath });
+    return sbtPromise
   })
 }
 
