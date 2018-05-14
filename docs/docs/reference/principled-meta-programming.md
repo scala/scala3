@@ -394,9 +394,10 @@ point. To reflect this, we loosen the phase consistency requirements
 as follows:
 
  - If `x` is an inline value (or an inline parameter of an inline
-function), it can be accessed in all contexts where the number of
-splices minus the number of quotes between use and definition is
-either 0 or 1.
+   function) of type Boolean, Byte, Short, Int, Long, Float, Double,
+   Char or String, it can be accessed in all contexts where the number
+   of splices minus the number of quotes between use and definition
+   is either 0 or 1.
 
 ### Relationship with Staging
 
