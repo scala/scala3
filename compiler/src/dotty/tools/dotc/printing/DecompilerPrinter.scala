@@ -61,6 +61,7 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
       (sym == defn.ProductClass && impl.symbol.owner.is(Case))
     }
     val parents = impl.parents.filterNot(isSynthetic)
+    val body = impl.body.filterNot(_.symbol.is(ParamAccessor))
 
     // We don't print self type and constructor for objects
     val isObject = impl.constr.symbol.owner.is(Module)
@@ -69,7 +70,7 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
       val bodyText = " {" ~~ toTextGlobal(impl.body, "\n") ~ "}"
       parentsText.provided(parents.nonEmpty) ~ bodyText
     }
-    else super.toTextTemplate(impl.copy(parents = parents), ofNew)
+    else super.toTextTemplate(impl.copy(parents = parents, preBody = body), ofNew)
   }
 
   override protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
