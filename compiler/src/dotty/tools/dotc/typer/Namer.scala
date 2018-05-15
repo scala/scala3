@@ -415,7 +415,7 @@ class Namer { typer: Typer =>
 
   /** Expand tree and store in `expandedTree` */
   def expand(tree: Tree)(implicit ctx: Context): Unit = tree match {
-    case mdef: DefTree =>
+    case mdef: DefTree if !ctx.reporter.hasErrors =>
       val expanded = desugar.defTree(mdef)
       typr.println(i"Expansion: $mdef expands to $expanded")
       if (expanded ne mdef) mdef.pushAttachment(ExpandedTree, expanded)
