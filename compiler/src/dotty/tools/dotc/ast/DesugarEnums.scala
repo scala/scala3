@@ -88,16 +88,14 @@ object DesugarEnums {
     def enumDefDef(name: String, select: String) =
       DefDef(name.toTermName, Nil, Nil, TypeTree(), valuesDot(select))
 
-    if (enumClass.exists) {
-      val privateValuesDef =
-        ValDef(nme.DOLLAR_VALUES, TypeTree(),
-          New(TypeTree(defn.EnumValuesType.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
-          .withFlags(Private)
-      val valueOfDef = enumDefDef("enumValue", "fromInt")
-      val withNameDef = enumDefDef("enumValueNamed", "fromName")
-      val valuesDef = enumDefDef("enumValues", "values")
-      List(privateValuesDef, valueOfDef, withNameDef, valuesDef)
-    } else List.empty
+    val privateValuesDef =
+      ValDef(nme.DOLLAR_VALUES, TypeTree(),
+        New(TypeTree(defn.EnumValuesType.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
+        .withFlags(Private)
+    val valueOfDef = enumDefDef("enumValue", "fromInt")
+    val withNameDef = enumDefDef("enumValueNamed", "fromName")
+    val valuesDef = enumDefDef("enumValues", "values")
+    List(privateValuesDef, valueOfDef, withNameDef, valuesDef)
   }
 
   /** A creation method for a value of enum type `E`, which is defined as follows:
@@ -198,7 +196,8 @@ object DesugarEnums {
   /** Expand a module definition representing a parameterless enum case */
   def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree = {
     assert(impl.body.isEmpty)
-    if (impl.parents.isEmpty)
+    if (!enumClass.exists) EmptyTree
+    else if (impl.parents.isEmpty)
       expandSimpleEnumCase(name, mods, pos)
     else {
       def toStringMeth =
@@ -213,8 +212,7 @@ object DesugarEnums {
 
   /** Expand a simple enum case */
   def expandSimpleEnumCase(name: TermName, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree =
-    if (!enumClass.exists) EmptyTree
-    else if (enumClass.typeParams.nonEmpty) {
+    if (enumClass.typeParams.nonEmpty) {
       val parent = interpolatedEnumParent(pos)
       val impl = Template(emptyConstructor, parent :: Nil, EmptyValDef, Nil)
       expandEnumModule(name, impl, mods, pos)
