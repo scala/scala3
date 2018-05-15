@@ -64,7 +64,8 @@ object DesugarEnums {
   }
 
   /** A type tree referring to `enumClass` */
-  def enumClassRef(implicit ctx: Context) = TypeTree(enumClass.typeRef)
+  def enumClassRef(implicit ctx: Context) =
+    if (enumClass.exists) TypeTree(enumClass.typeRef) else TypeTree()
 
   /** Add implied flags to an enum class or an enum case */
   def addEnumFlags(cdef: TypeDef)(implicit ctx: Context) =
