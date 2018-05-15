@@ -87,14 +87,17 @@ object DesugarEnums {
   private def enumScaffolding(implicit ctx: Context): List[Tree] = {
     def enumDefDef(name: String, select: String) =
       DefDef(name.toTermName, Nil, Nil, TypeTree(), valuesDot(select))
-    val privateValuesDef =
-      ValDef(nme.DOLLAR_VALUES, TypeTree(),
-             New(TypeTree(defn.EnumValuesType.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
-        .withFlags(Private)
-    val valueOfDef = enumDefDef("enumValue", "fromInt")
-    val withNameDef = enumDefDef("enumValueNamed", "fromName")
-    val valuesDef = enumDefDef("enumValues", "values")
-    List(privateValuesDef, valueOfDef, withNameDef, valuesDef)
+
+    if (enumClass.exists) {
+      val privateValuesDef =
+        ValDef(nme.DOLLAR_VALUES, TypeTree(),
+          New(TypeTree(defn.EnumValuesType.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
+          .withFlags(Private)
+      val valueOfDef = enumDefDef("enumValue", "fromInt")
+      val withNameDef = enumDefDef("enumValueNamed", "fromName")
+      val valuesDef = enumDefDef("enumValues", "values")
+      List(privateValuesDef, valueOfDef, withNameDef, valuesDef)
+    } else List.empty
   }
 
   /** A creation method for a value of enum type `E`, which is defined as follows:
