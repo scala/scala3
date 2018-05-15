@@ -38,7 +38,7 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
     }
     val statsText = stats match {
       case (pdef: PackageDef) :: Nil => toText(pdef)
-      case _ => toTextGlobal(stats, "\n")
+      case _ => Fluid(toTextGlobal(stats, "\n") :: Nil)
     }
     val bodyText =
       if (tree.pid.symbol.isEmptyPackage) statsText
