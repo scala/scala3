@@ -196,7 +196,8 @@ object DesugarEnums {
   /** Expand a module definition representing a parameterless enum case */
   def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree = {
     assert(impl.body.isEmpty)
-    if (impl.parents.isEmpty)
+    if (!enumClass.exists) EmptyTree
+    else if (impl.parents.isEmpty)
       expandSimpleEnumCase(name, mods, pos)
     else {
       def toStringMeth =
@@ -211,7 +212,8 @@ object DesugarEnums {
 
   /** Expand a simple enum case */
   def expandSimpleEnumCase(name: TermName, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree =
-    if (enumClass.typeParams.nonEmpty) {
+    if (!enumClass.exists) EmptyTree
+    else if (enumClass.typeParams.nonEmpty) {
       val parent = interpolatedEnumParent(pos)
       val impl = Template(emptyConstructor, parent :: Nil, EmptyValDef, Nil)
       expandEnumModule(name, impl, mods, pos)
