@@ -64,7 +64,8 @@ object DesugarEnums {
   }
 
   /** A type tree referring to `enumClass` */
-  def enumClassRef(implicit ctx: Context) = TypeTree(enumClass.typeRef)
+  def enumClassRef(implicit ctx: Context) =
+    if (enumClass.exists) TypeTree(enumClass.typeRef) else TypeTree()
 
   /** Add implied flags to an enum class or an enum case */
   def addEnumFlags(cdef: TypeDef)(implicit ctx: Context) =
@@ -87,7 +88,6 @@ object DesugarEnums {
   private def enumScaffolding(implicit ctx: Context): List[Tree] = {
     def enumDefDef(name: String, select: String) =
       DefDef(name.toTermName, Nil, Nil, TypeTree(), valuesDot(select))
-
     val privateValuesDef =
       ValDef(nme.DOLLAR_VALUES, TypeTree(),
         New(TypeTree(defn.EnumValuesType.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
@@ -196,8 +196,7 @@ object DesugarEnums {
   /** Expand a module definition representing a parameterless enum case */
   def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, pos: Position)(implicit ctx: Context): Tree = {
     assert(impl.body.isEmpty)
-    if (!enumClass.exists) EmptyTree
-    else if (impl.parents.isEmpty)
+    if (impl.parents.isEmpty)
       expandSimpleEnumCase(name, mods, pos)
     else {
       def toStringMeth =
