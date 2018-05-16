@@ -3,11 +3,19 @@ package dotc
 package printing
 
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.parsing.Parsers.Parser
+import dotty.tools.dotc.parsing.Scanners.Scanner
+import dotty.tools.dotc.parsing.Tokens._
+import dotty.tools.dotc.reporting.Reporter
+import dotty.tools.dotc.reporting.diagnostic.MessageContainer
+import dotty.tools.dotc.util.Positions.Position
 
-import parsing.Tokens._
 import scala.annotation.switch
 import scala.collection.mutable.StringBuilder
-import util.Chars
+import util.{Chars, SourceFile}
+
+import scala.collection.mutable
 
 /** This object provides functions for syntax highlighting in the REPL */
 object SyntaxHighlighting {
@@ -360,5 +368,86 @@ object SyntaxHighlighting {
     }
 
     newBuf.toIterable
+  }
+
+  private class NoReporter extends Reporter {
+    override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = ()
+  }
+
+  def highlight(in: String)(ctx0: Context): String = {
+    import dotty.tools.dotc.ast.untpd._
+
+    implicit val ctx: Context = ctx0.fresh.setReporter(new NoReporter)
+
+    val sf = new SourceFile("<highlighting>", in.toCharArray)
+    val p = new Parser(sf)
+    val s = new Scanner(sf)
+    val trees = p.blockStatSeq()
+
+    val outputH = Array.fill(in.length)(NoColor)
+
+    def highlightRange(p: Position, color: String): Unit = {
+      if(p.exists) {
+        for {
+          i <- p.start until math.min(p.end, outputH.length)
+        } outputH(i) = color
+      }
+    }
+
+    val treeTraverser = new UntypedTreeTraverser {
+      def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+        tree match {
+          case tpe : TypeDef =>
+            highlightRange(tpe.namePos, TypeColor)
+          case _ : TypTree =>
+            highlightRange(tree.pos, TypeColor)
+          case mod: ModuleDef =>
+            highlightRange(mod.namePos, TypeColor)
+          case v : ValOrDefDef =>
+            highlightRange(v.namePos, ValDefColor)
+            highlightRange(v.tpt.pos, TypeColor)
+          case _ : Literal =>
+            highlightRange(tree.pos, LiteralColor)
+          case _ =>
+        }
+        traverseChildren(tree)
+      }
+    }
+
+    for {
+      t <- trees
+    } {
+      treeTraverser.traverse(t)
+    }
+
+    val sb = new mutable.StringBuilder()
+
+    while(s.token != EOF) {
+      val isKwd = isKeyword(s.token)
+      val offsetStart = s.offset
+
+
+      if(s.token == IDENTIFIER && s.name == nme.???) {
+        highlightRange(Position(s.offset, s.offset + s.name.length), Console.RED_B)
+      }
+      s.nextToken()
+
+      if(isKwd) {
+        val offsetEnd = s.lastOffset
+        highlightRange(Position(offsetStart, offsetEnd), KeywordColor)
+      }
+    }
+
+    for {
+      idx <- outputH.indices
+    } {
+      if(idx == 0 || outputH(idx-1) != outputH(idx)){
+        sb.append(outputH(idx))
+      }
+      sb.append(in(idx))
+    }
+    sb.append(NoColor)
+
+    sb.mkString
   }
 }
