@@ -1,16 +1,16 @@
 package dotty.tools.dotc.printing
 
+import dotty.tools.DottyTest
 import org.junit.Assert._
 import org.junit.Test
 
 /** Adapted from Ammonite HighlightTests
  */
-class SyntaxHighlightingTests {
+class SyntaxHighlightingTests extends DottyTest {
   import SyntaxHighlighting._
 
   private def test(source: String, expected: String): Unit = {
-    val highlighted = SyntaxHighlighting.highlight(source)
-      .mkString
+    val highlighted = SyntaxHighlighting.highlight(source)(ctx)
       .replace(NoColor,         ">")
       .replace(CommentColor,    "<C|")
       .replace(KeywordColor,    "<K|")
