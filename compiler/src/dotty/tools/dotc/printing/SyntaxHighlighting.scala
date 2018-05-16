@@ -374,6 +374,8 @@ object SyntaxHighlighting {
     override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = ()
   }
 
+  private val ignoredKwds = Seq(nme.ARROWkw, nme.EQ, nme.EQL, nme.COLONkw)
+
   def highlight(in: String)(ctx0: Context): String = {
     import dotty.tools.dotc.ast.untpd._
 
@@ -423,9 +425,8 @@ object SyntaxHighlighting {
     val sb = new mutable.StringBuilder()
 
     while(s.token != EOF) {
-      val isKwd = isKeyword(s.token)
+      val isKwd = isKeyword(s.token) && !ignoredKwds.contains(s.name)
       val offsetStart = s.offset
-
 
       if(s.token == IDENTIFIER && s.name == nme.???) {
         highlightRange(Position(s.offset, s.offset + s.name.length), Console.RED_B)
@@ -446,7 +447,9 @@ object SyntaxHighlighting {
       }
       sb.append(in(idx))
     }
-    sb.append(NoColor)
+    if(outputH.last != NoColor) {
+      sb.append(NoColor)
+    }
 
     sb.mkString
   }
