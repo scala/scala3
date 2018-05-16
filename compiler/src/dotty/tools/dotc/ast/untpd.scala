@@ -596,6 +596,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     }
   }
 
+  abstract class UntypedTreeTraverser extends UntypedTreeAccumulator[Unit] {
+    def traverse(tree: Tree)(implicit ctx: Context): Unit
+    def apply(x: Unit, tree: Tree)(implicit ctx: Context) = traverse(tree)
+    protected def traverseChildren(tree: Tree)(implicit ctx: Context) = foldOver((), tree)
+  }
+
   /** Fold `f` over all tree nodes, in depth-first, prefix order */
   class UntypedDeepFolder[X](f: (X, Tree) => X) extends UntypedTreeAccumulator[X] {
     def apply(x: X, tree: Tree)(implicit ctx: Context): X = foldOver(f(x, tree), tree)
