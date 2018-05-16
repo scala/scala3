@@ -709,9 +709,12 @@ class TreeUnpickler(reader: TastyReader,
         if (noRhs(end)) EmptyTree
         else readLater(end, rdr => ctx => rdr.readTerm()(ctx.retractMode(Mode.InSuperCall)))
 
-      def ValDef(tpt: Tree) =
-        ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(localCtx)), sym)
-
+      def ValDef(tpt: Tree) = {
+        val ctx2 =
+          if (sym.name != nme.PICKLED_QUOTE && sym.name != nme.PICKLED_TYPE_QUOTE) localCtx
+          else ctx.outer // Unpickle rhs with quote destination context. See PickledQuotes.{unpickleExpr|unpickleType}
+        ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(ctx2)), sym)
+      }
       def DefDef(tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree) =
          ta.assignType(
             untpd.DefDef(sym.name.asTermName, tparams, vparamss, tpt, readRhs(localCtx)),
