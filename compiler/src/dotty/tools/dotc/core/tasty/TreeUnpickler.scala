@@ -74,18 +74,12 @@ class TreeUnpickler(reader: TastyReader,
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling
    */
-  def enterTopLevel(roots: Set[SymDenotation])(implicit ctx: Context): Unit = {
+  def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit = {
     this.roots = roots
     val rdr = new TreeReader(reader).fork
     ownerTree = new OwnerTree(NoAddr, 0, rdr.fork, reader.endAddr)
-    rdr.indexStats(reader.endAddr)
-  }
-
-  def unpickleExpr()(implicit ctx: Context): Tree = {
-    this.roots = Set(ctx.owner)
-    val rdr = new TreeReader(reader).fork
-    ownerTree = new OwnerTree(NoAddr, 0, rdr.fork, reader.endAddr)
-    rdr.readTerm()
+    if (rdr.isTopLevel)
+      rdr.indexStats(reader.endAddr)
   }
 
   def unpickleTypeTree()(implicit ctx: Context): Tree = {
@@ -96,9 +90,14 @@ class TreeUnpickler(reader: TastyReader,
   }
 
   /** The unpickled trees */
-  def unpickle()(implicit ctx: Context): List[Tree] = {
+  def unpickle(mode: UnpickleMode)(implicit ctx: Context): List[Tree] = {
     assert(roots != null, "unpickle without previous enterTopLevel")
-    new TreeReader(reader).readTopLevel()
+    val rdr = new TreeReader(reader)
+    mode match {
+      case UnpickleMode.TopLevel => rdr.readTopLevel()
+      case UnpickleMode.Term => rdr.readTerm() :: Nil
+      case UnpickleMode.TypeTree => rdr.readTpt() :: Nil
+    }
   }
 
   class Completer(owner: Symbol, reader: TastyReader) extends LazyType {
@@ -885,21 +884,22 @@ class TreeUnpickler(reader: TastyReader,
     }
 
     def skipToplevel()(implicit ctx: Context): Unit= {
-      if (!isAtEnd)
-        nextByte match {
-          case IMPORT | PACKAGE =>
-            skipTree()
-            skipToplevel()
-          case _ =>
-        }
+      if (!isAtEnd && isTopLevel) {
+        skipTree()
+        skipToplevel()
+      }
     }
 
+    def isTopLevel(implicit ctx: Context): Boolean =
+      nextByte == IMPORT || nextByte == PACKAGE
+
     def readTopLevel()(implicit ctx: Context): List[Tree] = {
-      @tailrec def read(acc: ListBuffer[Tree]): List[Tree] = nextByte match {
-        case IMPORT | PACKAGE =>
+      @tailrec def read(acc: ListBuffer[Tree]): List[Tree] = {
+        if (isTopLevel) {
           acc += readIndexedStat(NoSymbol)
           if (!isAtEnd) read(acc) else acc.toList
-        case _ => // top-level trees which are not imports or packages are not part of tree
+        }
+        else // top-level trees which are not imports or packages are not part of tree
           acc.toList
       }
       read(new ListBuffer[tpd.Tree])
@@ -1297,6 +1297,13 @@ class TreeUnpickler(reader: TastyReader,
 }
 
 object TreeUnpickler {
+
+  sealed trait UnpickleMode
+  object UnpickleMode {
+    object TopLevel extends UnpickleMode
+    object Term extends UnpickleMode
+    object TypeTree extends UnpickleMode
+  }
 
   /** A marker value used to detect cyclic reference while unpickling definitions. */
   @sharable val PoisonTree: tpd.Tree = Thicket(Nil)

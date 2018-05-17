@@ -98,7 +98,7 @@ class Pickler extends Phase {
     val unpicklers =
       for ((cls, pickler) <- picklers) yield {
         val unpickler = new DottyUnpickler(pickler.assembleParts())
-        unpickler.enter(roots = Set())
+        unpickler.enter(roots = Set.empty)
         cls -> unpickler
       }
     pickling.println("************* entered toplevel ***********")

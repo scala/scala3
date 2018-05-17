@@ -99,15 +99,14 @@ object PickledQuotes {
 
   /** Unpickle TASTY bytes into it's tree */
   private def unpickle(bytes: Array[Byte], splices: Seq[Any], isType: Boolean)(implicit ctx: Context): Tree = {
-    val unpickler = new TastyUnpickler(bytes, splices)
     if (pickling ne noPrinter) {
       println(i"**** unpickling quote from TASTY")
       new TastyPrinter(bytes).printContents()
     }
 
-    val tree =
-      if (isType) unpickler.unpickleTypeTree()
-      else unpickler.unpickleExpr()
+    val unpickler = new TastyUnpickler(bytes, splices, isType)
+    unpickler.enter(Set.empty)
+    val tree = unpickler.tree
 
     if (pickling ne noPrinter)
       println(i"**** unpickle quote ${tree.show}")

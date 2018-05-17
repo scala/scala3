@@ -46,14 +46,13 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with t
   private val commentUnpicklerOpt = unpickler.unpickle(new CommentsSectionUnpickler)
   private val treeUnpickler = unpickler.unpickle(treeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)).get
 
+  protected def mode: TreeUnpickler.UnpickleMode = TreeUnpickler.UnpickleMode.TopLevel
+
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling
    */
   def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit =
-    treeUnpickler.enterTopLevel(roots)
-
-  def unpickleExpr()(implicit ctx: Context): Tree =
-    treeUnpickler.unpickleExpr()
+    treeUnpickler.enter(roots)
 
   def unpickleTypeTree()(implicit ctx: Context): Tree =
     treeUnpickler.unpickleTypeTree()
@@ -62,7 +61,7 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with t
     new TreeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)
   }
 
-  protected def computeTrees(implicit ctx: Context) = treeUnpickler.unpickle()
+  protected def computeTrees(implicit ctx: Context) = treeUnpickler.unpickle(mode)
 
   private[this] var ids: Array[String] = null
 
