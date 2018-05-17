@@ -102,7 +102,7 @@ trait NamerContextOps { this: Context =>
   }
 
   /** A new context for the interior of a class */
-  def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/): Context = {
+  def inClassContext(selfInfo: AnyRef /* Should be Type | Symbol*/): Context = {
     val localCtx: Context = ctx.fresh.setNewScope
     selfInfo match {
       case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)

@@ -8,7 +8,7 @@ import dotty.tools.dotc.util.DotClass
  *  run ids represent compiler runs
  *  phase ids represent compiler phases
  */
-abstract class Periods extends DotClass { self: Context =>
+abstract class Periods { self: Context =>
   import Periods._
 
   /** The current phase identifier */
