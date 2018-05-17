@@ -1,0 +1,14 @@
+3
+{
+  def ff: Int = 
+    {
+      val a: List[Int] = 
+        {
+          type T = List[Int]
+          val b: T = Nil.::[Int](3)
+          b: List[Int]
+        }
+      a.head: Int
+    }
+  ff: Int
+}
