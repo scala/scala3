@@ -46,8 +46,7 @@ object PickledQuotes {
     if (ctx.reporter.hasErrors) Nil
     else {
       assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'(~x)` which should be optimized to `x`
-      val encapsulated = encapsulateQuote(tree)
-      val pickled = pickle(encapsulated)
+      val pickled = pickle(tree)
       TastyString.pickle(pickled)
     }
   }
@@ -75,37 +74,13 @@ object PickledQuotes {
   /** Unpickle the tree contained in the TastyExpr */
   private def unpickleExpr(expr: TastyExpr[_])(implicit ctx: Context): Tree = {
     val tastyBytes = TastyString.unpickle(expr.tasty)
-    val unpickled = unpickle(tastyBytes, expr.args)
-    unpickled match {
-      case PackageDef(_, (vdef: ValDef) :: Nil) =>
-        vdef.rhs.changeOwner(vdef.symbol, ctx.owner)
-    }
+    unpickle(tastyBytes, expr.args)
   }
 
   /** Unpickle the tree contained in the TastyType */
   private def unpickleType(ttpe: TastyType[_])(implicit ctx: Context): Tree = {
     val tastyBytes = TastyString.unpickle(ttpe.tasty)
-    val unpickled = unpickle(tastyBytes, ttpe.args)
-    unpickled match {
-      case PackageDef(_, (vdef: ValDef) :: Nil) =>
-        vdef.rhs.asInstanceOf[TypeApply].args.head
-          .changeOwner(vdef.symbol, ctx.owner)
-    }
-  }
-
-  /** Encapsulate the tree in a top level `val` or `type`
-   *    `<tree>` ==> `package _root_ { val $quote: Any = <tree> }`
-   *    or
-   *    `<type tree>` ==> `package _root_ { val $typeQuote: Any = null.asInstanceOf[<tree>] }`
-   */
-  private def encapsulateQuote(tree: Tree)(implicit ctx: Context): Tree = {
-    val name = (if (tree.isTerm) "$quote" else "$typeQuote").toTermName
-    val sym = ctx.newSymbol(ctx.owner, name, Synthetic, defn.AnyType, coord = tree.pos)
-    val encoded =
-      if (tree.isTerm) tree
-      else Literal(Constant(null)).select(nme.asInstanceOf_).appliedToTypeTrees(tree :: Nil)
-    val quoted = ValDef(sym, encoded).withPos(tree.pos)
-    PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], quoted :: Nil).withPos(tree.pos)
+    unpickle(tastyBytes, ttpe.args)
   }
 
   // TASTY picklingtests/pos/quoteTest.scala
@@ -135,8 +110,7 @@ object PickledQuotes {
   /** Unpickle TASTY bytes into it's tree */
   private def unpickle(bytes: Array[Byte], splices: Seq[Any])(implicit ctx: Context): Tree = {
     val unpickler = new TastyUnpickler(bytes, splices)
-    unpickler.enter(roots = Set(defn.RootPackage))
-    val tree = unpickler.tree
+    val tree = unpickler.unpickleExpr()
     if (pickling ne noPrinter) {
       println(i"**** unpickled quote for \n${tree.show}")
       new TastyPrinter(bytes).printContents()

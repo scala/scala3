@@ -73,9 +73,16 @@ class TreeUnpickler(reader: TastyReader,
    */
   def enterTopLevel(roots: Set[SymDenotation])(implicit ctx: Context): Unit = {
     this.roots = roots
-    var rdr = new TreeReader(reader).fork
+    val rdr = new TreeReader(reader).fork
     ownerTree = new OwnerTree(NoAddr, 0, rdr.fork, reader.endAddr)
     rdr.indexStats(reader.endAddr)
+  }
+
+  def unpickleExpr()(implicit ctx: Context): Tree = {
+    this.roots = Set(ctx.owner)
+    val rdr = new TreeReader(reader).fork
+    ownerTree = new OwnerTree(NoAddr, 0, rdr.fork, reader.endAddr)
+    rdr.readTerm()
   }
 
   /** The unpickled trees */
