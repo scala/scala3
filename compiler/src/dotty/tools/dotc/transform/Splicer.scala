@@ -36,21 +36,10 @@ object Splicer {
       val liftedArgs = getLiftedArgs(call, bindings)
       val interpreter = new Interpreter(pos, classLoader)
       val interpreted = interpreter.interpretCallToSymbol[Seq[Any] => Object](call.symbol)
-      try {
+      evaluateMacro(pos) {
+        // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
         val evaluated = interpreted.map(lambda => lambda(liftedArgs).asInstanceOf[scala.quoted.Expr[Nothing]])
         evaluated.fold(tree)(PickledQuotes.quotedExprToTree)
-      } catch {
-        case ex: scala.quoted.QuoteError =>
-          ctx.error(ex.getMessage, pos)
-          EmptyTree
-        case NonFatal(ex) =>
-          val msg =
-            s"""Failed to evaluate inlined quote.
-               |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
-               |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").init.mkString("\n    ")}
-         """.stripMargin
-          ctx.error(msg, pos)
-          EmptyTree
       }
   }
 
@@ -85,6 +74,24 @@ object Splicer {
     }
 
     liftArgs(call.symbol.info, allArgs(call, Nil))
+  }
+
+  /* Evaluate the code in the macro and handle exceptions durring evaluation */
+  private def evaluateMacro(pos: Position)(code: => Tree)(implicit ctx: Context): Tree = {
+    try code
+    catch {
+      case ex: scala.quoted.QuoteError =>
+        ctx.error(ex.getMessage, pos)
+        EmptyTree
+      case NonFatal(ex) =>
+        val msg =
+          s"""Failed to evaluate inlined quote.
+             |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
+             |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").init.mkString("\n    ")}
+         """.stripMargin
+        ctx.error(msg, pos)
+        EmptyTree
+    }
   }
 
   /** Tree interpreter that can interpret calls to static methods with it's default arguments
