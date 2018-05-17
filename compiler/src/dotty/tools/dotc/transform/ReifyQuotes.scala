@@ -145,7 +145,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
     def inSplice = outer != null && !inQuote
 
     /** We are not in a `~(...)` or a `'(...)` */
-    def isRoot = outer != null
+    def isRoot = outer == null
 
     /** A map from type ref T to expressions of type `quoted.Type[T]`".
      *  These will be turned into splices using `addTags` and represent type variables
@@ -294,7 +294,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
         else i"${sym.name}.this"
       if (!isThis && sym.maybeOwner.isType && !sym.is(Param))
         check(sym.owner, sym.owner.thisType, pos)
-      else if (level == 1 && sym.isType && sym.is(Param) && sym.owner.is(Macro) && outer.isRoot)
+      else if (level == 1 && sym.isType && sym.is(Param) && sym.owner.is(Macro) && !outer.isRoot)
         importedTags(sym.typeRef) = capturers(sym)(ref(sym))
       else if (sym.exists && !sym.isStaticOwner && !levelOK(sym))
         for (errMsg <- tryHeal(tp, pos))
