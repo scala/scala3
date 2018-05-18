@@ -94,12 +94,12 @@ class SyntaxHighlightingTests extends DottyTest {
 
   @Test
   def unionTypes = {
-    test("type A = String|Int| Long", "<K|type> <T|A> = <T|String>|<T|Int>| <T|Long>")
-    test("type B = String |Int| Long", "<K|type> <T|B> = <T|String> |<T|Int>| <T|Long>")
-    test("type C = String | Int | Long", "<K|type> <T|C> = <T|String> | <T|Int> | <T|Long>")
-    test("type D = String&Int& Long", "<K|type> <T|D> = <T|String>&<T|Int>& <T|Long>")
-    test("type E = String &Int& Long", "<K|type> <T|E> = <T|String> &<T|Int>& <T|Long>")
-    test("type F = String & Int & Long", "<K|type> <T|F> = <T|String> & <T|Int> & <T|Long>")
-    test("fn[String|Char](input)", "fn[<T|String>|<T|Char>](input)")
+    test("type A = String|Int| Long", "<K|type> <T|A> = <T|String|Int| Long>")
+    test("type B = String |Int| Long", "<K|type> <T|B> = <T|String |Int| Long>")
+    test("type C = String | Int | Long", "<K|type> <T|C> = <T|String | Int | Long>")
+    test("type D = String&Int& Long", "<K|type> <T|D> = <T|String&Int& Long>")
+    test("type E = String &Int& Long", "<K|type> <T|E> = <T|String &Int& Long>")
+    test("type F = String & Int & Long", "<K|type> <T|F> = <T|String & Int & Long>")
+    test("fn[String|Char](input)", "fn[<T|String|Char>](input)")
   }
 }
