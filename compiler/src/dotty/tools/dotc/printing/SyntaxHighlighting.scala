@@ -402,6 +402,8 @@ object SyntaxHighlighting {
     val treeHighlighter = new UntypedTreeTraverser {
       def traverse(tree: Tree)(implicit ctx: Context): Unit = {
         tree match {
+          case id: Ident if id.isType =>
+            highlightPosition(id.pos, TypeColor)
           case tpe : TypeDef =>
             highlightPosition(tpe.namePos, TypeColor)
           case _ : TypTree =>
