@@ -374,83 +374,84 @@ object SyntaxHighlighting {
     override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = ()
   }
 
-  private val ignoredKwds = Seq(nme.ARROWkw, nme.EQ, nme.EQL, nme.COLONkw)
+  private val ignoredKwds = Set(nme.ARROWkw, nme.EQ, nme.EQL, nme.COLONkw)
 
   def highlight(in: String)(ctx0: Context): String = {
     import dotty.tools.dotc.ast.untpd._
 
     implicit val ctx: Context = ctx0.fresh.setReporter(new NoReporter)
 
-    val sf = new SourceFile("<highlighting>", in.toCharArray)
-    val p = new Parser(sf)
-    val s = new Scanner(sf)
-    val trees = p.blockStatSeq()
+    val source = new SourceFile("<highlighting>", in.toCharArray)
+    val parser = new Parser(source)
+    val trees = parser.blockStatSeq()
 
-    val outputH = Array.fill(in.length)(NoColor)
+    val colorAt = Array.fill(in.length)(NoColor)
 
-    def highlightRange(p: Position, color: String): Unit = {
-      if(p.exists) {
-        for {
-          i <- p.start until math.min(p.end, outputH.length)
-        } outputH(i) = color
+    def highlightRange(from: Int, to: Int, color: String) = {
+      try {
+        for (i <- from until to)
+          colorAt(i) = color
+      } catch {
+        case _: IndexOutOfBoundsException =>
+          ctx.error("Encountered tree with invalid position, please open an issue with the code snippet that caused the error")
       }
     }
+    def highlightPosition(pos: Position, color: String) =
+      if (pos.exists) highlightRange(pos.start, pos.end, color)
 
-    val treeTraverser = new UntypedTreeTraverser {
+    val treeHighlighter = new UntypedTreeTraverser {
       def traverse(tree: Tree)(implicit ctx: Context): Unit = {
         tree match {
           case tpe : TypeDef =>
-            highlightRange(tpe.namePos, TypeColor)
+            highlightPosition(tpe.namePos, TypeColor)
           case _ : TypTree =>
-            highlightRange(tree.pos, TypeColor)
+            highlightPosition(tree.pos, TypeColor)
           case mod: ModuleDef =>
-            highlightRange(mod.namePos, TypeColor)
+            highlightPosition(mod.namePos, TypeColor)
           case v : ValOrDefDef =>
-            highlightRange(v.namePos, ValDefColor)
-            highlightRange(v.tpt.pos, TypeColor)
+            highlightPosition(v.namePos, ValDefColor)
+            highlightPosition(v.tpt.pos, TypeColor)
           case _ : Literal =>
-            highlightRange(tree.pos, LiteralColor)
+            highlightPosition(tree.pos, LiteralColor)
           case _ =>
         }
         traverseChildren(tree)
       }
     }
 
-    for {
-      t <- trees
-    } {
-      treeTraverser.traverse(t)
+    for (tree <- trees)
+      treeHighlighter.traverse(tree)
+
+    val scanner = new Scanner(source)
+
+    while (scanner.token != EOF) {
+      val isKwd = isKeyword(scanner.token) && !ignoredKwds.contains(scanner.name)
+      val offsetStart = scanner.offset
+
+      if (scanner.token == IDENTIFIER && scanner.name == nme.???) {
+        highlightRange(scanner.offset, scanner.offset + scanner.name.length, Console.RED_B)
+      }
+      scanner.nextToken()
+
+      if (isKwd) {
+        val offsetEnd = scanner.lastOffset
+        highlightPosition(Position(offsetStart, offsetEnd), KeywordColor)
+      }
     }
 
     val sb = new mutable.StringBuilder()
 
-    while(s.token != EOF) {
-      val isKwd = isKeyword(s.token) && !ignoredKwds.contains(s.name)
-      val offsetStart = s.offset
-
-      if(s.token == IDENTIFIER && s.name == nme.???) {
-        highlightRange(Position(s.offset, s.offset + s.name.length), Console.RED_B)
-      }
-      s.nextToken()
-
-      if(isKwd) {
-        val offsetEnd = s.lastOffset
-        highlightRange(Position(offsetStart, offsetEnd), KeywordColor)
-      }
-    }
-
-    for {
-      idx <- outputH.indices
-    } {
-      if(idx == 0 || outputH(idx-1) != outputH(idx)){
-        sb.append(outputH(idx))
+    for (idx <- colorAt.indices) {
+      if ( (idx == 0 && colorAt(idx) != NoColor)
+        || (idx > 0 && colorAt(idx-1) != colorAt(idx))) {
+        sb.append(colorAt(idx))
       }
       sb.append(in(idx))
     }
-    if(outputH.last != NoColor) {
+    if (colorAt.nonEmpty && colorAt.last != NoColor) {
       sb.append(NoColor)
     }
 
-    sb.mkString
+    sb.toString
   }
 }
