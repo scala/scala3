@@ -5,7 +5,6 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Flags._
 
-
 object FromSymbol {
 
   def definition(sym: Symbol)(implicit ctx: Context): tpd.Tree = {
@@ -18,8 +17,7 @@ object FromSymbol {
     else valDef(sym.asTerm)
   }
 
-  def packageDef(sym: Symbol)(implicit ctx: Context): tpd.PackageDef =
-    tpd.PackageDef(tpd.Ident(sym.typeRef), Nil)
+  def packageDef(sym: Symbol)(implicit ctx: Context): PackageDefinition = PackageDefinitionImpl(sym)
 
   def classDef(cls: ClassSymbol)(implicit ctx: Context): tpd.Tree = {
     val constr = tpd.DefDef(cls.unforcedDecls.find(_.isPrimaryConstructor).asTerm)

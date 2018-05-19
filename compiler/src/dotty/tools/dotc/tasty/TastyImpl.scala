@@ -192,13 +192,13 @@ object TastyImpl extends scala.tasty.Tasty {
     }
   }
 
-  type PackageDef = tpd.Tree
+  type PackageDef = PackageDefinition
 
   def packageDefClassTag: ClassTag[PackageDef] = implicitly[ClassTag[PackageDef]]
 
   object PackageDef extends PackageDefExtractor {
     def unapply(x: PackageDef)(implicit ctx: Context): Option[(String, List[Statement])] = x match {
-      case x: tpd.PackageDef =>
+      case x: PackageDefinition =>
         // FIXME Do not do this eagerly as it forces everithing in the package to be loaded.
         //       An alternative would be to add it as an extension method instead.
         val definitions =
