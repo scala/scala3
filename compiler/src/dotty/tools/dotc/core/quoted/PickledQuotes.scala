@@ -16,7 +16,6 @@ import dotty.tools.dotc.core.tasty.{TastyPickler, TastyPrinter, TastyString}
 
 import scala.quoted.Types._
 import scala.quoted.Exprs._
-
 import scala.reflect.ClassTag
 
 object PickledQuotes {
@@ -53,7 +52,13 @@ object PickledQuotes {
 
   /** Transform the expression into its fully spliced Tree */
   def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree = expr match {
-    case expr: TastyExpr[_] => unpickleExpr(expr)
+    case expr: TastyExpr[_] =>
+      val unpickled = unpickleExpr(expr)
+      val force = new TreeTraverser {
+        def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = traverseChildren(tree)
+      }
+      force.traverse(unpickled)
+      unpickled
     case expr: LiftedExpr[T] =>
       expr.value match {
         case value: Class[_] => ref(defn.Predef_classOf).appliedToType(classToType(value))
