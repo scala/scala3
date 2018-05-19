@@ -338,7 +338,7 @@ object Trees {
      */
     def namePos =
       if (pos.exists)
-        if (rawMods.is(Synthetic)) Position(pos.point, pos.point)
+        if (rawMods.is(Synthetic) || name.toTermName == nme.ERROR) Position(pos.point, pos.point)
         else Position(pos.point, pos.point + name.stripModuleClassSuffix.lastPart.length, pos.point)
       else pos
   }
