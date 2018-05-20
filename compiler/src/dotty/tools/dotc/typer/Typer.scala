@@ -761,13 +761,8 @@ class Typer extends Namer
   def typedFunctionType(tree: untpd.Function, pt: Type)(implicit ctx: Context) = {
     val untpd.Function(args, body) = tree
     val (isImplicit, isErased) = tree match {
-      case tree: untpd.NonEmptyFunction =>
-        if (args.nonEmpty) (tree.mods.is(Implicit), tree.mods.is(Erased))
-        else {
-          ctx.error(FunctionTypeNeedsNonEmptyParameterList(tree.mods.is(Implicit), tree.mods.is(Erased)), tree.pos)
-          (false, false)
-        }
-      case _ => (false, false)
+      case tree: untpd.FunctionWithMods => (tree.mods.is(Implicit), tree.mods.is(Erased))
+     case _ => (false, false)
     }
     val funCls = defn.FunctionClass(args.length, isImplicit, isErased)
 

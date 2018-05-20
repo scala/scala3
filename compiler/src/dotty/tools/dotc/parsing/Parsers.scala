@@ -732,7 +732,7 @@ object Parsers {
       def functionRest(params: List[Tree]): Tree =
         atPos(start, accept(ARROW)) {
           val t = typ()
-          if (imods.is(Implicit) || imods.is(Erased)) new NonEmptyFunction(params, t, imods)
+          if (imods.is(Implicit) || imods.is(Erased)) new FunctionWithMods(params, t, imods)
           else Function(params, t)
         }
       def funArgTypesRest(first: Tree, following: () => Tree) = {
@@ -800,7 +800,7 @@ object Parsers {
         case ARROW => functionRest(t :: Nil)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
-          if (imods.is(Implicit) && !t.isInstanceOf[NonEmptyFunction])
+          if (imods.is(Implicit) && !t.isInstanceOf[FunctionWithMods])
             syntaxError("Types with implicit keyword can only be function types", Position(start, start + nme.IMPLICITkw.asSimpleName.length))
           t
       }

@@ -1722,26 +1722,6 @@ object messages {
     }
   }
 
-  case class FunctionTypeNeedsNonEmptyParameterList(isImplicit: Boolean, isErased: Boolean)(implicit ctx: Context)
-    extends Message(FunctionTypeNeedsNonEmptyParameterListID) {
-    assert(isImplicit || isErased)
-    val kind = "Syntax"
-    val mods = ((isErased, "erased") :: (isImplicit, "implicit") :: Nil).collect { case (true, mod) => mod }.mkString(" ")
-    val msg = mods + " function type needs non-empty parameter list"
-    val explanation = {
-      val code1 = s"type Transactional[T] = $mods Transaction => T"
-      val code2 = "val cl: implicit A => B"
-      hl"""It is not allowed to leave $mods function parameter list empty.
-         |Possible ways to define $mods function type:
-         |
-         |$code1
-         |
-         |or
-         |
-         |$code2""".stripMargin
-    }
-  }
-
   case class WrongNumberOfParameters(expected: Int)(implicit ctx: Context)
     extends Message(WrongNumberOfParametersID) {
     val kind = "Syntax"
