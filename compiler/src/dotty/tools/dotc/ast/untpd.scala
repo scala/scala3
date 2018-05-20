@@ -112,8 +112,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Protected() extends Mod(Flags.Protected)
 
-    case class Val() extends Mod(Flags.EmptyFlags)
-
     case class Var() extends Mod(Flags.Mutable)
 
     case class Implicit() extends Mod(Flags.ImplicitCommon)
@@ -131,8 +129,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case class Lazy() extends Mod(Flags.Lazy)
 
     case class Inline() extends Mod(Flags.Inline)
-
-    case class Type() extends Mod(Flags.EmptyFlags)
 
     case class Enum() extends Mod(Flags.EmptyFlags)
 

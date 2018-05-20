@@ -1879,15 +1879,18 @@ object Parsers {
           mods =
             atPos(start, in.offset) {
               if (in.token == VAL) {
-                val mod = atPos(in.skipToken()) { Mod.Val() }
-                mods.withAddedMod(mod)
-              } else if (in.token == VAR) {
+                in.nextToken()
+                mods
+              }
+              else if (in.token == VAR) {
                 val mod = atPos(in.skipToken()) { Mod.Var() }
                 addMod(mods, mod)
-              } else {
+              }
+              else {
                 if (!(mods.flags &~ (ParamAccessor | Inline)).isEmpty)
                   syntaxError("`val' or `var' expected")
-                if (firstClauseOfCaseClass) mods else mods | PrivateLocal
+                if (firstClauseOfCaseClass) mods
+                else mods | PrivateLocal
               }
             }
         }
@@ -2038,9 +2041,8 @@ object Parsers {
      */
     def defOrDcl(start: Int, mods: Modifiers): Tree = in.token match {
       case VAL =>
-        val mod = atPos(in.skipToken()) { Mod.Val() }
-        val mods1 = mods.withAddedMod(mod)
-        patDefOrDcl(start, mods1)
+        in.nextToken()
+        patDefOrDcl(start, mods)
       case VAR =>
         val mod = atPos(in.skipToken()) { Mod.Var() }
         val mod1 = addMod(mods, mod)
