@@ -73,7 +73,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
     ctx.fresh.updateStore(DirectMeth, newMutableSymbolMap[Symbol])
 
   /** Should `sym` get a ..$direct companion?
-    *  This is the case if (1) `sym` is a method with an implicit function type as final result type.
+    *  This is the case if `sym` is a method with a non-nullary implicit function type as final result type.
     *  However if `specializeMonoTargets` is false, we exclude symbols that are known
     *  to be only targets of monomorphic calls because they are effectively
     *  final and don't override anything.
@@ -81,6 +81,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
   private def shouldBeSpecialized(sym: Symbol)(implicit ctx: Context) =
     sym.is(Method, butNot = Accessor) &&
     defn.isImplicitFunctionType(sym.info.finalResultType) &&
+    defn.functionArity(sym.info.finalResultType) > 0 &&
     !sym.isAnonymousFunction &&
     (specializeMonoTargets || !sym.isEffectivelyFinal || sym.allOverriddenSymbols.nonEmpty)
 

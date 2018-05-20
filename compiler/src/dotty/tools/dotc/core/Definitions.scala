@@ -855,22 +855,17 @@ class Definitions {
 
   lazy val TupleType = mkArityArray("scala.Tuple", MaxTupleArity, 2)
 
-  def FunctionClass(n: Int, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: Context) = {
-    if (isImplicit && isErased) {
-      require(n > 0)
+  def FunctionClass(n: Int, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: Context) =
+    if (isImplicit && isErased)
       ctx.requiredClass("scala.ErasedImplicitFunction" + n.toString)
-    }
-    else if (isImplicit) {
-      require(n > 0)
+    else if (isImplicit)
       ctx.requiredClass("scala.ImplicitFunction" + n.toString)
-    }
-    else if (isErased) {
-      require(n > 0)
+    else if (isErased)
       ctx.requiredClass("scala.ErasedFunction" + n.toString)
-    }
-    else if (n <= MaxImplementedFunctionArity) FunctionClassPerRun()(ctx)(n)
-    else ctx.requiredClass("scala.Function" + n.toString)
-  }
+    else if (n <= MaxImplementedFunctionArity)
+      FunctionClassPerRun()(ctx)(n)
+    else
+      ctx.requiredClass("scala.Function" + n.toString)
 
     lazy val Function0_applyR = ImplementedFunctionType(0).symbol.requiredMethodRef(nme.apply)
     def Function0_apply(implicit ctx: Context) = Function0_applyR.symbol
@@ -899,23 +894,26 @@ class Definitions {
   def isBottomType(tp: Type) =
     tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
 
-  /** Is a function class.
-   *   - FunctionN for N >= 0
-   *   - ImplicitFunctionN for N > 0
-   *   - ErasedFunctionN for N > 0
-   *   - ErasedImplicitFunctionN for N > 0
+  /** Is a function class, i.e. on of
+   *   - FunctionN
+   *   - ImplicitFunctionN
+   *   - ErasedFunctionN
+   *   - ErasedImplicitFunctionN
+   *  for N >= 0
    */
   def isFunctionClass(cls: Symbol) = scalaClassName(cls).isFunction
 
   /** Is an implicit function class.
-   *   - ImplicitFunctionN for N > 0
-   *   - ErasedImplicitFunctionN for N > 0
+   *   - ImplicitFunctionN
+   *   - ErasedImplicitFunctionN
+   *  for N >= 0
    */
   def isImplicitFunctionClass(cls: Symbol) = scalaClassName(cls).isImplicitFunction
 
   /** Is an erased function class.
-   *   - ErasedFunctionN for N > 0
-   *   - ErasedImplicitFunctionN for N > 0
+   *   - ErasedFunctionN
+   *   - ErasedImplicitFunctionN
+   *  for N >= 0
    */
   def isErasedFunctionClass(cls: Symbol) = scalaClassName(cls).isErasedFunction
 
@@ -942,7 +940,7 @@ class Definitions {
    *    - FunctionN for N > 22 becomes FunctionXXL
    *    - FunctionN for 22 > N >= 0 remains as FunctionN
    *    - ImplicitFunctionN for N > 22 becomes FunctionXXL
-   *    - ImplicitFunctionN for 22 > N >= 0 becomes FunctionN
+   *    - ImplicitFunctionN for N <= 22 becomes FunctionN
    *    - ErasedFunctionN becomes Function0
    *    - ImplicitErasedFunctionN becomes Function0
    *    - anything else becomes a NoSymbol
@@ -959,7 +957,7 @@ class Definitions {
    *    - FunctionN for N > 22 becomes FunctionXXL
    *    - FunctionN for 22 > N >= 0 remains as FunctionN
    *    - ImplicitFunctionN for N > 22 becomes FunctionXXL
-   *    - ImplicitFunctionN for 22 > N >= 0 becomes FunctionN
+   *    - ImplicitFunctionN for N <= 22 becomes FunctionN
    *    - ErasedFunctionN becomes Function0
    *    - ImplicitErasedFunctionN becomes Function0
    *    - anything else becomes a NoType

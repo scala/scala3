@@ -762,8 +762,9 @@ class Typer extends Namer
     val untpd.Function(args, body) = tree
     val (isImplicit, isErased) = tree match {
       case tree: untpd.FunctionWithMods => (tree.mods.is(Implicit), tree.mods.is(Erased))
-     case _ => (false, false)
+      case _ => (false, false)
     }
+    if (isErased && args.isEmpty) ctx.error(em"empty function cannot not be erased", tree.pos)
     val funCls = defn.FunctionClass(args.length, isImplicit, isErased)
 
     /** Typechecks dependent function type with given parameters `params` */
@@ -797,6 +798,11 @@ class Typer extends Namer
 
   def typedFunctionValue(tree: untpd.Function, pt: Type)(implicit ctx: Context) = {
     val untpd.Function(params: List[untpd.ValDef] @unchecked, body) = tree
+
+    val isImplicit = tree match {
+      case tree: untpd.FunctionWithMods => tree.mods.is(Implicit)
+      case _ => false
+    }
 
     pt match {
       case pt: TypeVar if untpd.isFunctionWithUnknownParamType(tree) =>
@@ -916,8 +922,8 @@ class Typer extends Namer
             else cpy.ValDef(param)(
               tpt = untpd.TypeTree(
                 inferredParamType(param, protoFormal(i)).underlyingIfRepeated(isJava = false)))
-        val inlineable = pt.hasAnnotation(defn.InlineParamAnnot)
-        desugar.makeClosure(inferredParams, fnBody, resultTpt, inlineable)
+        val isInlineable = pt.hasAnnotation(defn.InlineParamAnnot)
+        desugar.makeClosure(inferredParams, fnBody, resultTpt, isInlineable, isImplicit)
       }
     typed(desugared, pt)
   }
@@ -942,7 +948,11 @@ class Typer extends Namer
                      |because it has internal parameter dependencies,
                      |position = ${tree.pos}, raw type = ${mt.toString}""") // !!! DEBUG. Eventually, convert to an error?
                 }
-                else EmptyTree
+                else if ((tree.tpt `eq` untpd.ImplicitEmptyTree) && mt.paramNames.isEmpty)
+                  // Note implicitness of function in target type sicne there are no method parameters that indicate it.
+                  TypeTree(defn.FunctionOf(Nil, mt.resType, isImplicit = true, isErased = false))
+                else
+                  EmptyTree
             }
           case tp =>
             throw new java.lang.Error(i"internal error: closing over non-method $tp, pos = ${tree.pos}")

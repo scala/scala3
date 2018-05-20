@@ -15,12 +15,14 @@ import dotty.tools.dotc.util.Positions.Position
  *  These fall into five categories
  *
  *   1. Partial function closures, we need to generate isDefinedAt and applyOrElse methods for these.
- *   2. Closures implementing non-trait classes.
+ *   2. Closures implementing non-trait classes
  *   3. Closures implementing classes that inherit from a class other than Object
  *      (a lambda cannot not be a run-time subtype of such a class)
  *   4. Closures that implement traits which run initialization code.
  *   5. Closures that get synthesized abstract methods in the transformation pipeline. These methods can be
  *      (1) superaccessors, (2) outer references, (3) accessors for fields.
+ *
+ *  However, implicit function types do not count as SAM types.
  */
 class ExpandSAMs extends MiniPhase {
   override def phaseName = "expandSAMs"
@@ -32,9 +34,12 @@ class ExpandSAMs extends MiniPhase {
     ctx.platform.isSam(cls)
 
   override def transformBlock(tree: Block)(implicit ctx: Context): Tree = tree match {
-    case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
+    case Block(stats @ (fn: DefDef) :: Nil, cl @ Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
       tpt.tpe match {
-        case NoType => tree // it's a plain function
+        case NoType =>
+          tree // it's a plain function
+        case tpe if defn.isImplicitFunctionType(tpe) =>
+          tree
         case tpe @ SAMType(_) if tpe.isRef(defn.PartialFunctionClass) =>
           val tpe1 = checkRefinements(tpe, fn.pos)
           toPartialFunction(tree, tpe1)
