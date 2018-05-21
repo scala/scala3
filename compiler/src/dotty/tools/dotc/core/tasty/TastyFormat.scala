@@ -227,7 +227,7 @@ object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
   val MajorVersion = 7
-  val MinorVersion = 0
+  val MinorVersion = 1
 
   /** Tags used to serialize names */
   class NameTags {
@@ -259,6 +259,10 @@ object TastyFormat {
                                      // It is kept for Scala-2 compatibility.
 
     final val OBJECTCLASS = 23       // The name of an object class (or: module class) `<name>$`.
+
+    final val INLINEGETTER = 24     // The name of an inline getter `inline_get$name`
+
+    final val INLINESETTER = 25     // The name of an inline setter `inline_set$name`
 
     final val SIGNED = 63            // A pair of a name and a signature, used to idenitfy
                                      // possibly overloaded methods.
