@@ -578,7 +578,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
                 }
               }
               val alias = readDisambiguatedSymbolRef(disambiguate).asTerm
-              denot.addAnnotation(Annotation.makeAlias(alias))
+              denot.addAnnotation(Annotation.Alias(alias))
             }
         }
         // println(s"unpickled ${denot.debugString}, info = ${denot.info}") !!! DEBUG
