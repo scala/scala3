@@ -90,9 +90,14 @@ object TypeTestsCasts {
 
           if (expr.tpe <:< testType)
             if (expr.tpe.isNotNull) {
-              ctx.warning(
-                em"this will always yield true, since `$foundCls` is a subclass of `$testCls`",
-                expr.pos)
+              if (inMatch)
+                ctx.warning(
+                  em"this case will always be taken because the scrutinee has type `$testType`",
+                  tree.pos)
+              else
+                ctx.warning(
+                  em"this will always yield true, since `$foundCls` is a subclass of `$testCls`",
+                  expr.pos)
               constant(expr, Literal(Constant(true)))
             }
             else expr.testNotNull
