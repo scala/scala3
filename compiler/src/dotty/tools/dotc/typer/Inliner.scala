@@ -126,11 +126,15 @@ object Inliner {
     else addAccessors.transform(tree)
   }
 
-  /** The inline accessor definitions that need to be added to class `cls` */
+  /** The inline accessor definitions that need to be added to class `cls`
+   *  As a side-effect, this method removes the `Accessed` annotations from
+   *  the accessor symbols. So a second call of the same method will yield the empty list.
+   */
   def accessorDefs(cls: Symbol)(implicit ctx: Context): List[DefDef] =
     for (accessor <- cls.info.decls.filter(sym => sym.name.is(InlineGetterName) || sym.name.is(InlineSetterName)))
     yield polyDefDef(accessor.asTerm, tps => argss => {
       val Annotation.Accessed(accessed) = accessor.getAnnotation(defn.AccessedAnnot).get
+      accessor.removeAnnotation(defn.AccessedAnnot)
       val rhs =
         if (accessor.name.is(InlineSetterName) &&
             argss.nonEmpty && argss.head.nonEmpty) // defensive conditions
