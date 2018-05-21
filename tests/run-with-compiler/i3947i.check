@@ -1,12 +1,12 @@
 
-classOf[Array[Int]].getCanonicalName()
+scala.Predef.classOf[scala.Array[scala.Int]].getCanonicalName()
 int[]
 
-classOf[Array[Long]].getCanonicalName()
+scala.Predef.classOf[scala.Array[scala.Long]].getCanonicalName()
 long[]
 
-classOf[Array[Float]].getCanonicalName()
+scala.Predef.classOf[scala.Array[scala.Float]].getCanonicalName()
 float[]
 
-classOf[Array[Double]].getCanonicalName()
+scala.Predef.classOf[scala.Array[scala.Double]].getCanonicalName()
 double[]

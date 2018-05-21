@@ -31,6 +31,8 @@ class FlagSet(flags: Flags.FlagSet) extends scala.tasty.FlagSet {
   def isScala2X: Boolean = flags.is(Scala2x)
   def isDefaultParameterized: Boolean = flags.is(DefaultParameterized)
   def isStable: Boolean = flags.is(Stable)
+  def isParam: Boolean = flags.is(Param)
+  def isParamAccessor: Boolean = flags.is(ParamAccessor)
 
   override def toString: String = {
     val flags = List.newBuilder[String]
@@ -60,6 +62,8 @@ class FlagSet(flags: Flags.FlagSet) extends scala.tasty.FlagSet {
     if (isScala2X) flags += "scala2x"
     if (isDefaultParameterized) flags += "defaultParameterized"
     if (isStable) flags += "stable"
+    if (isParam) flags += "param"
+    if (isParamAccessor) flags += "paramAccessor"
     flags.result().mkString("<", ",", ">")
   }
 

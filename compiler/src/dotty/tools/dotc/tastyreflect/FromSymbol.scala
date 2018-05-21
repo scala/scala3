@@ -20,7 +20,9 @@ object FromSymbol {
   def packageDef(sym: Symbol)(implicit ctx: Context): PackageDefinition = PackageDefinitionImpl(sym)
 
   def classDef(cls: ClassSymbol)(implicit ctx: Context): tpd.Tree = {
-    val constr = tpd.DefDef(cls.unforcedDecls.find(_.isPrimaryConstructor).asTerm)
+    val constrSym = cls.unforcedDecls.find(_.isPrimaryConstructor)
+    if (!constrSym.exists) return tpd.EmptyTree
+    val constr = tpd.DefDef(constrSym.asTerm)
     val body = cls.unforcedDecls.filter(!_.isPrimaryConstructor).map(s => definition(s))
     val superArgs = Nil // TODO
     tpd.ClassDef(cls, constr, body, superArgs)

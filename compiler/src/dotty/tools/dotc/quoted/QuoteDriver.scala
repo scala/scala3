@@ -5,13 +5,12 @@ import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
-import dotty.tools.dotc.printing.DecompilerPrinter
 
 import scala.quoted.{Expr, Type}
-
 import java.net.URLClassLoader
 
-import Toolbox.{Settings, Run, Show}
+import Toolbox.{Run, Settings, Show}
+import dotty.tools.dotc.tastyreflect.TastyImpl
 
 class QuoteDriver extends Driver {
   import tpd._
@@ -42,10 +41,8 @@ class QuoteDriver extends Driver {
 
   def show(expr: Expr[_], settings: Settings[Show]): String = {
     def show(tree: Tree, ctx: Context): String = {
-      val printer = new DecompilerPrinter(ctx)
-      val pageWidth = ctx.settings.pageWidth.value(ctx)
       val tree1 = if (settings.rawTree) tree else (new TreeCleaner).transform(tree)(ctx)
-      printer.toText(tree1).mkString(pageWidth, false)
+      TastyImpl.showSourceCode.showTree(tree1)(ctx)
     }
     withTree(expr, show, settings)
   }

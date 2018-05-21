@@ -23,8 +23,7 @@ abstract class Tasty { tasty =>
 
   def showExtractors: Show[tasty.type]
 
-  // TODO
-  // def showSourceCode: Show[tasty.type]
+  def showSourceCode: Show[tasty.type]
 
   // ===== Contexts =================================================
 
@@ -108,9 +107,15 @@ abstract class Tasty { tasty =>
 
   type Definition <: Statement
 
+  val Definition: DefinitionExtractor
+  abstract class DefinitionExtractor {
+    def unapply(x: Definition)(implicit ctx: Context): Boolean
+  }
+
   implicit def definitionClassTag: ClassTag[Definition]
 
   trait AbstractDefinition {
+    def flags(implicit ctx: Context): FlagSet
     def mods(implicit ctx: Context): List[Modifier]
     def owner(implicit ctx: Context): Definition
     def localContext(implicit ctx: Context): Context

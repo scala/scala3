@@ -1,9 +1,9 @@
 
-classOf[Object].getCanonicalName()
+scala.Predef.classOf[lang.Object].getCanonicalName()
 java.lang.Object
 
-classOf[Array[Foo]].getCanonicalName()
+scala.Predef.classOf[scala.Array[Foo]].getCanonicalName()
 Foo[]
 
-classOf[Array[Array[Foo]]].getCanonicalName()
+scala.Predef.classOf[scala.Array[scala.Array[Foo]]].getCanonicalName()
 Foo[][]

@@ -1,16 +1,14 @@
 /** Decompiled from out/posTestFromTasty/pos/simpleCaseObject/foo/Foo.class */
 package foo {
   case object Foo {
-    override def hashCode(): Int = 1045991777
-    override def toString(): String = "Foo"
-    override def canEqual(that: Any): Boolean =
-      that.isInstanceOf[foo.Foo @unchecked]
-    override def productArity: Int = 0
-    override def productPrefix: String = "Foo"
-    override def productElement(n: Int): Any =
-      n match
-        {
-          case _ => throw new IndexOutOfBoundsException(n.toString())
-        }
+    override def hashCode(): scala.Int = 1045991777
+    override def toString(): java.lang.String = "Foo"
+    override def canEqual(that: scala.Any): scala.Boolean = that.isInstanceOf[foo.Foo]
+    override def productArity: scala.Int = 0
+    override def productPrefix: java.lang.String = "Foo"
+    override def productElement(n: scala.Int): scala.Any = n match {
+      case _ =>
+        throw new java.lang.IndexOutOfBoundsException(n.toString())
+    }
   }
 }

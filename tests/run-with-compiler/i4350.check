@@ -1,6 +1,6 @@
 {
-  null.asInstanceOf[Object]
+  null.asInstanceOf[lang.Object]
 }
 {
-  null.asInstanceOf[String]
+  null.asInstanceOf[scala.Predef.String]
 }

@@ -1,14 +1,12 @@
 3
 {
-  def ff: Int = 
-    {
-      val a: List[Int] = 
-        {
-          type T = List[Int]
-          val b: T = Nil.::[Int](3)
-          b: List[Int]
-        }
-      a.head: Int
+  def ff: scala.Int = {
+    val a: immutable.List[scala.Int] = {
+      type T = immutable.List[scala.Int]
+      val b: T = scala.Nil.::[scala.Int](3)
+      (b: collection.immutable.List[scala.Int])
     }
-  ff: Int
+    (a.head: scala.Int)
+  }
+  (ff: scala.Int)
 }

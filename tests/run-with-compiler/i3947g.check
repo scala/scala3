@@ -1,12 +1,12 @@
 
-classOf[Array[Boolean]].getCanonicalName()
+scala.Predef.classOf[scala.Array[scala.Boolean]].getCanonicalName()
 boolean[]
 
-classOf[Array[Byte]].getCanonicalName()
+scala.Predef.classOf[scala.Array[scala.Byte]].getCanonicalName()
 byte[]
 
-classOf[Array[Char]].getCanonicalName()
+scala.Predef.classOf[scala.Array[scala.Char]].getCanonicalName()
 char[]
 
-classOf[Array[Short]].getCanonicalName()
+scala.Predef.classOf[scala.Array[scala.Short]].getCanonicalName()
 short[]

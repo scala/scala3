@@ -1,5 +1,5 @@
 6
 {
-  val x$1: Int = 3
+  val x$1: scala.Int = 3
   x$1.+(x$1)
 }
