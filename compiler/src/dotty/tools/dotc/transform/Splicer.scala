@@ -49,7 +49,7 @@ object Splicer {
    *  - Other parameters are lifted to quoted.Types.TreeExpr (may reference a binding)
    */
   private def getLiftedArgs(call: Tree, bindings: List[Tree])(implicit ctx: Context): List[Any] = {
-    val bindMap = bindings.map {
+    val bindMap = bindings.collect {
       case vdef: ValDef => (vdef.rhs, ref(vdef.symbol))
     }.toMap
     def allArgs(call: Tree, acc: List[List[Tree]]): List[List[Tree]] = call match {
