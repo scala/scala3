@@ -25,7 +25,6 @@ import ErrorReporting._
 import Checking._
 import Inferencing._
 import EtaExpansion.etaExpand
-import dotty.tools.dotc.transform.Erasure.Boxing
 import util.Positions._
 import util.common._
 import util.{Property, SourcePosition}
@@ -1523,7 +1522,7 @@ class Typer extends Namer
       cdef.withType(UnspecifiedErrorType)
     } else {
       val dummy = localDummy(cls, impl)
-      val body1 = addInlineAccessorDefs(cls,
+      val body1 = addAccessorDefs(cls,
         typedStats(impl.body, dummy)(ctx.inClassContext(self1.symbol)))
       if (!ctx.isAfterTyper)
         cls.setNoInitsFlags((NoInitsInterface /: body1) ((fs, stat) => fs & defKind(stat)))
@@ -1562,10 +1561,8 @@ class Typer extends Namer
     }
   }
 
-  protected def addInlineAccessorDefs(cls: Symbol, body: List[Tree])(implicit ctx: Context): List[Tree] = {
-    val accDefs = Inliner.accessorDefs(cls)
-    if (accDefs.isEmpty) body else body ++ accDefs
-  }
+  protected def addAccessorDefs(cls: Symbol, body: List[Tree])(implicit ctx: Context): List[Tree] =
+    Inliner.InlineAccessors.addAccessorDefs(cls, body)
 
   /** Ensure that the first type in a list of parent types Ps points to a non-trait class.
    *  If that's not already the case, add one. The added class type CT is determined as follows.

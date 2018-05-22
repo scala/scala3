@@ -20,6 +20,7 @@ import typer.ProtoTypes._
 import typer.ErrorReporting._
 import core.TypeErasure._
 import core.Decorators._
+import core.NameKinds._
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import ast.Trees._
 import scala.collection.mutable.ListBuffer
@@ -29,7 +30,6 @@ import TypeUtils._
 import ExplicitOuter._
 import core.Mode
 import reporting.trace
-
 
 class Erasure extends Phase with DenotTransformer {
 
@@ -315,6 +315,10 @@ object Erasure {
       }
   }
 
+  /** The erasure typer.
+   *  Also inserts protected accessors where needed. This logic is placed here
+   *  since it is most naturally done in a macro transform.
+   */
   class Typer extends typer.ReTyper with NoChecking {
     import Boxing._
 
@@ -322,6 +326,23 @@ object Erasure {
       val tp = tree.typeOpt
       if (tree.isTerm) erasedRef(tp) else valueErasure(tp)
     }
+
+    object ProtectedAccessors extends AccessProxies {
+      def getterName = ProtectedAccessorName
+      def setterName = ProtectedSetterName
+
+      val insert = new Insert {
+        def needsAccessor(sym: Symbol)(implicit ctx: Context): Boolean =
+          false &&
+          sym.isTerm && sym.is(Flags.Protected) &&
+          ctx.owner.enclosingPackageClass != sym.enclosingPackageClass &&
+          !ctx.owner.enclosingClass.derivesFrom(sym.owner) &&
+            { println(i"need protected acc $sym accessed from ${ctx.owner}"); assert(false); false }
+        }
+    }
+
+    override def addAccessorDefs(cls: Symbol, body: List[Tree])(implicit ctx: Context): List[Tree] =
+      ProtectedAccessors.addAccessorDefs(cls, body)
 
     override def promote(tree: untpd.Tree)(implicit ctx: Context): tree.ThisTree[Type] = {
       assert(tree.hasType)
@@ -356,6 +377,9 @@ object Erasure {
           .appliedTo(Literal(Constant(tree.const.scalaSymbolValue.name)))
       else
         super.typedLiteral(tree)
+
+    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree =
+      ProtectedAccessors.insert.accessorIfNeeded(super.typedIdent(tree, pt))
 
     /** Type check select nodes, applying the following rewritings exhaustively
      *  on selections `e.m`, where `OT` is the type of the owner of `m` and `ET`
@@ -437,8 +461,11 @@ object Erasure {
         }
       }
 
-      recur(typed(tree.qualifier, AnySelectionProto))
+      ProtectedAccessors.insert.accessorIfNeeded(recur(typed(tree.qualifier, AnySelectionProto)))
     }
+
+    override def typedAssign(tree: untpd.Assign, pt: Type)(implicit ctx: Context): Tree =
+      ProtectedAccessors.insert.accessorIfNeeded(super.typedAssign(tree, pt))
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
       if (tree.symbol == ctx.owner.lexicallyEnclosingClass || tree.symbol.isStaticOwner) promote(tree)

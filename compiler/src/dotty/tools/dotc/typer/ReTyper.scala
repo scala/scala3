@@ -123,6 +123,6 @@ class ReTyper extends Typer with ReChecking {
     Implicits.NoMatchingImplicitsFailure
   override def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def inlineExpansion(mdef: DefDef)(implicit ctx: Context): Tree = mdef
-  override protected def addInlineAccessorDefs(cls: Symbol, body: List[Tree])(implicit ctx: Context): List[Tree] = body
+  override protected def addAccessorDefs(cls: Symbol, body: List[Tree])(implicit ctx: Context): List[Tree] = body
   override protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(implicit ctx: Context): Unit = ()
 }

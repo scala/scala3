@@ -19,7 +19,7 @@ import NameKinds.{ClassifiedNameKind, InlineGetterName, InlineSetterName}
 import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
 import Annotations._
-import transform.ExplicitOuter
+import transform.{ExplicitOuter, AccessProxies}
 import Inferencing.fullyDefinedType
 import config.Printers.inlining
 import ErrorReporting.errorTree
@@ -31,118 +31,50 @@ import util.Positions.Position
 object Inliner {
   import tpd._
 
-  /** Adds accessors for all non-public term members accessed
-   *  from `tree`. Non-public type members are currently left as they are.
-   *  This means that references to a private type will lead to typing failures
-   *  on the code when it is inlined. Less than ideal, but hard to do better (see below).
-   *
-   *  @return If there are accessors generated, a thicket consisting of the rewritten `tree`
-   *          and all accessors, otherwise the original tree.
-   */
-  private def makeInlineable(tree: Tree)(implicit ctx: Context) = {
-
-    val inlineMethod = ctx.owner
+  object InlineAccessors extends AccessProxies {
+    def getterName = InlineGetterName
+    def setterName = InlineSetterName
 
     /** A tree map which inserts accessors for all non-public term members accessed
-     *  from inlined code. Accessors are collected in the `accessors` buffer.
-     */
-    object addAccessors extends TreeMap {
+      *  from inlined code. Accessors are collected in the `accessors` buffer.
+      */
+    class MakeInlineable(inlineSym: Symbol) extends TreeMap with Insert {
 
       /** A definition needs an accessor if it is private, protected, or qualified private
-       *  and it is not part of the tree that gets inlined. The latter test is implemented
-       *  by excluding all symbols properly contained in the inlined method.
-       */
+        *  and it is not part of the tree that gets inlined. The latter test is implemented
+        *  by excluding all symbols properly contained in the inlined method.
+        */
       def needsAccessor(sym: Symbol)(implicit ctx: Context) =
         sym.isTerm &&
         (sym.is(AccessFlags) || sym.privateWithin.exists) &&
-        !sym.owner.isContainedIn(inlineMethod)
+        !sym.isContainedIn(inlineSym)
 
-      /** A fresh accessor symbol.
-       *
-       *  @param tree          The tree representing the original access to the non-public member
-       */
-      def newAccessorSymbol(accessed: TermSymbol, name: TermName, info: Type)(implicit ctx: Context): TermSymbol =
-        ctx.newSymbol(accessed.owner, name, Synthetic | Method, info, coord = accessed.pos).entered
-
-      /** Create an inline accessor unless one exists already, and replace the original
-       *  access with a reference to the accessor.
-       *
-       *  @param reference    The original reference to the non-public symbol
-       *  @param onLHS        The reference is on the left-hand side of an assignment
-       */
-      def useAccessor(reference: RefTree, onLHS: Boolean)(implicit ctx: Context): Tree = {
-
-        def nameKind = if (onLHS) InlineSetterName else InlineGetterName
-        val accessed = reference.symbol.asTerm
-
-        def refersToAccessed(sym: Symbol) = sym.getAnnotation(defn.AccessedAnnot) match {
-          case Some(Annotation.Accessed(sym)) => sym `eq` accessed
-          case _ => false
-        }
-
-        val accessorInfo =
-          if (onLHS) MethodType(accessed.info :: Nil, defn.UnitType)
-          else accessed.info.ensureMethodic
-        val accessorName = nameKind(accessed.name)
-        val accessorSymbol =
-          accessed.owner.info.decl(accessorName).suchThat(refersToAccessed).symbol
-            .orElse {
-              val acc = newAccessorSymbol(accessed, accessorName, accessorInfo)
-              acc.addAnnotation(Annotation.Accessed(accessed))
-              acc
-            }
-
-        { reference match {
-            case Select(qual, _) => qual.select(accessorSymbol)
-            case Ident(name) => ref(accessorSymbol)
-          }
-        }.withPos(reference.pos)
-      }
 
       // TODO: Also handle references to non-public types.
       // This is quite tricky, as such types can appear anywhere, including as parts
       // of types of other things. For the moment we do nothing and complain
       // at the implicit expansion site if there's a reference to an inaccessible type.
-      override def transform(tree: Tree)(implicit ctx: Context): Tree = super.transform {
-        tree match {
-          case tree: RefTree if needsAccessor(tree.symbol) =>
-            if (tree.symbol.isConstructor) {
-              ctx.error("Implementation restriction: cannot use private constructors in inline methods", tree.pos)
-              tree // TODO: create a proper accessor for the private constructor
-            }
-            else useAccessor(tree, onLHS = false)
-          case Assign(lhs: RefTree, rhs) if needsAccessor(lhs.symbol) =>
-            cpy.Apply(tree)(useAccessor(lhs, onLHS = true), List(rhs))
-          case _ =>
-            tree
-        }
-      }
+      override def transform(tree: Tree)(implicit ctx: Context): Tree =
+        super.transform(accessorIfNeeded(tree))
     }
 
-    if (inlineMethod.owner.isTerm)
-      // Inline methods in local scopes can only be called in the scope they are defined,
-      // so no accessors are needed for them.
-      tree
-    else addAccessors.transform(tree)
+    /** Adds accessors for all non-public term members accessed
+    *  from `tree`. Non-public type members are currently left as they are.
+    *  This means that references to a private type will lead to typing failures
+    *  on the code when it is inlined. Less than ideal, but hard to do better (see below).
+    *
+    *  @return If there are accessors generated, a thicket consisting of the rewritten `tree`
+    *          and all accessors, otherwise the original tree.
+    */
+    def makeInlineable(tree: Tree)(implicit ctx: Context) = {
+      val inlineSym = ctx.owner
+      if (inlineSym.owner.isTerm)
+        // Inline methods in local scopes can only be called in the scope they are defined,
+        // so no accessors are needed for them.
+        tree
+      else new MakeInlineable(inlineSym).transform(tree)
+    }
   }
-
-  /** The inline accessor definitions that need to be added to class `cls`
-   *  As a side-effect, this method removes the `Accessed` annotations from
-   *  the accessor symbols. So a second call of the same method will yield the empty list.
-   */
-  def accessorDefs(cls: Symbol)(implicit ctx: Context): List[DefDef] =
-    for (accessor <- cls.info.decls.filter(sym => sym.name.is(InlineGetterName) || sym.name.is(InlineSetterName)))
-    yield polyDefDef(accessor.asTerm, tps => argss => {
-      val Annotation.Accessed(accessed) = accessor.getAnnotation(defn.AccessedAnnot).get
-      accessor.removeAnnotation(defn.AccessedAnnot)
-      val rhs =
-        if (accessor.name.is(InlineSetterName) &&
-            argss.nonEmpty && argss.head.nonEmpty) // defensive conditions
-          ref(accessed).becomes(argss.head.head)
-        else
-          ref(accessed).appliedToTypes(tps).appliedToArgss(argss)
-      rhs.withPos(accessed.pos)
-    })
 
   /** Register inline info for given inline method `sym`.
    *
@@ -163,7 +95,7 @@ object Inliner {
           sym.updateAnnotation(LazyBodyAnnotation { _ =>
             implicit val ctx = inlineCtx
             val body = treeExpr(ctx)
-            if (ctx.reporter.hasErrors) body else makeInlineable(body)
+            if (ctx.reporter.hasErrors) body else InlineAccessors.makeInlineable(body)
           })
         }
     }
