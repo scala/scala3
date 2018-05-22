@@ -205,7 +205,7 @@ object DottyIDEPlugin extends AutoPlugin {
     origState
   }
 
-  private def projectConfigTask(config: Configuration): Initialize[Task[Option[ProjectConfig]]] = Def.taskDyn {
+  private def projectConfigTask(config: Configuration, sourcesInBase: Initialize[Boolean]): Initialize[Task[Option[ProjectConfig]]] = Def.taskDyn {
     if ((sources in config).value.isEmpty) Def.task { None }
     else Def.task {
       // Not needed to generate the config, but this guarantees that the
@@ -216,7 +216,8 @@ object DottyIDEPlugin extends AutoPlugin {
       val id = s"${thisProject.value.id}/${config.name}"
       val compilerVersion = (scalaVersion in config).value
       val compilerArguments = (scalacOptions in config).value
-      val sourceDirectories = (unmanagedSourceDirectories in config).value ++ (managedSourceDirectories in config).value
+      val baseSourceDirectory = if (sourcesInBase.value) baseDirectory.value :: Nil else Nil
+      val sourceDirectories = baseSourceDirectory ++ (unmanagedSourceDirectories in config).value ++ (managedSourceDirectories in config).value
       val depClasspath = Attributed.data((dependencyClasspath in config).value)
       val classDir = (classDirectory in config).value
 
@@ -235,8 +236,8 @@ object DottyIDEPlugin extends AutoPlugin {
     // TODO: It would be better to use Def.derive to define projectConfig in
     // every configuration where the keys it depends on exist, however this
     // currently breaks aggregated tasks: https://github.com/sbt/sbt/issues/3580
-    projectConfig in Compile := projectConfigTask(Compile).value,
-    projectConfig in Test := projectConfigTask(Test).value
+    projectConfig in Compile := projectConfigTask(Compile, sourcesInBase).value,
+    projectConfig in Test := projectConfigTask(Test, sourcesInBase = Def.setting(false)).value
   )
 
   override def buildSettings: Seq[Setting[_]] = Seq(
