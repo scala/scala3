@@ -6,7 +6,7 @@ import scala.io.Codec
 
 import ast.tpd
 import core._, core.Decorators.{sourcePos => _, _}
-import Contexts._, NameOps._, Symbols._
+import Contexts._, NameOps._, Symbols._, StdNames._
 import util._, util.Positions._
 
 /** A typechecked named `tree` coming from `source` */
@@ -18,7 +18,7 @@ case class SourceTree(tree: tpd.NameTree, source: SourceFile) {
   def namePos(implicit ctx: Context): SourcePosition = {
     // FIXME: Merge with NameTree#namePos ?
     val treePos = tree.pos
-    if (treePos.isZeroExtent)
+    if (treePos.isZeroExtent || tree.name.toTermName == nme.ERROR)
       NoSourcePosition
     else {
       val nameLength = tree.name.stripModuleClassSuffix.show.toString.length
