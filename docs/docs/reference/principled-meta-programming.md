@@ -322,9 +322,12 @@ program that calls `assert`.
         '{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~expr}") }
     }
 
-    val program = {
-      val x = 1
-      Macros.assert(x != 0)
+    // has to be in a different compilation unit that depends on Macros
+    object App {
+      val program = {
+        val x = 1
+        Macros.assert(x != 0)
+      }
     }
 
 Inlining the `assert` function would give the following program:
