@@ -104,16 +104,16 @@ class DottyLanguageServer extends LanguageServer
 
   /** The driver instance responsible for compiling `uri` */
   def driverFor(uri: URI): InteractiveDriver = {
-    val matchingConfig =
-      drivers.keys.find(config => config.sourceDirectories.exists(sourceDir =>
-        new File(uri.getPath).getCanonicalPath.startsWith(sourceDir.getCanonicalPath)))
-    matchingConfig match {
-      case Some(config) =>
-        drivers(config)
-      case None =>
-        val config = drivers.keys.head
-        println(s"No configuration contains $uri as a source file, arbitrarily choosing ${config.id}")
-        drivers(config)
+    val needle = new File(uri.getPath).getCanonicalPath
+    val sourceDirToConfig = for { (config, driver) <- drivers; sourceDir <- config.sourceDirectories } yield sourceDir.getCanonicalPath -> driver
+    val matchingConfigs = sourceDirToConfig.filterKeys(needle.startsWith(_))
+    if (matchingConfigs.nonEmpty) {
+      val (_, driver) = matchingConfigs.maxBy(_._1.length)
+      driver
+    } else {
+      val config = drivers.keys.head
+      println(s"No configuration contains $uri as a source file, arbitrarily choosing ${config.id}")
+      drivers(config)
     }
   }
 
