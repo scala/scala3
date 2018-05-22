@@ -146,26 +146,11 @@ object Annotations {
     def deferredResolve(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
       deferred(atp.classSymbol, implicit ctx => resolveConstructor(atp, args))
 
-    class TermRefAnnotExtractor(annotFn: Context => Symbol) {
+    def makeAlias(sym: TermSymbol)(implicit ctx: Context) =
+      apply(defn.AliasAnnot, List(
+        ref(TermRef(sym.owner.thisType, sym.name, sym))))
 
-      def apply(sym: TermSymbol)(implicit ctx: Context): Annotation =
-      	Annotation(annotFn(ctx).typeRef, List(ref(TermRef(sym.owner.thisType, sym.name, sym))))
-
-      def unapply(ann: Annotation)(implicit ctx: Context): Option[Symbol] =
-        if (ann.symbol == annotFn(ctx)) {
-          val ast.Trees.Apply(fn, arg :: Nil) = ann.tree
-          Some(arg.symbol)
-        }
-        else None
-    }
-
-    /** Extractor for "accessed" annotations */
-    object Accessed extends TermRefAnnotExtractor(implicit ctx => defn.AccessedAnnot)
-
-    /** Extractor for "aliased" annotations */
-    object Alias extends TermRefAnnotExtractor(implicit ctx => defn.AliasAnnot)
-
-    /** Extractor for "child" annotations */
+    /** Extractor for child annotations */
     object Child {
 
       /** A deferred annotation to the result of a given child computation */

@@ -31,7 +31,7 @@ import util.Positions.Position
 object Inliner {
   import tpd._
 
-  object InlineAccessors extends AccessProxies {
+  class InlineAccessors extends AccessProxies {
     def getterName = InlineGetterName
     def setterName = InlineSetterName
 
@@ -95,7 +95,7 @@ object Inliner {
           sym.updateAnnotation(LazyBodyAnnotation { _ =>
             implicit val ctx = inlineCtx
             val body = treeExpr(ctx)
-            if (ctx.reporter.hasErrors) body else InlineAccessors.makeInlineable(body)
+            if (ctx.reporter.hasErrors) body else ctx.compilationUnit.inlineAccessors.makeInlineable(body)
           })
         }
     }

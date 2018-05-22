@@ -1562,7 +1562,7 @@ class Typer extends Namer
   }
 
   protected def addAccessorDefs(cls: Symbol, body: List[Tree])(implicit ctx: Context): List[Tree] =
-    Inliner.InlineAccessors.addAccessorDefs(cls, body)
+    ctx.compilationUnit.inlineAccessors.addAccessorDefs(cls, body)
 
   /** Ensure that the first type in a list of parent types Ps points to a non-trait class.
    *  If that's not already the case, add one. The added class type CT is determined as follows.

@@ -15,32 +15,36 @@ import ast.Trees._
 import util.Property
 import util.Positions.Position
 
+/** A utility class for generating access proxies. Currently used for
+ *  inline accessors and protected accessors.
+ */
 abstract class AccessProxies {
   import ast.tpd._
 
   def getterName: ClassifiedNameKind
   def setterName: ClassifiedNameKind
 
-  /** The accessor definitions that need to be added to class `cls`
-   *  As a side-effect, this method removes the `Accessed` annotations from
-   *  the accessor symbols. So a second call of the same method will yield the empty list.
-   */
-  private def accessorDefs(cls: Symbol)(implicit ctx: Context): List[DefDef] =
-    for {
-      accessor <- cls.info.decls.filter(sym => sym.name.is(getterName) || sym.name.is(setterName))
-      Annotation.Accessed(accessed) <- accessor.getAnnotation(defn.AccessedAnnot)
-    }
-    yield polyDefDef(accessor.asTerm, tps => argss => {
-      accessor.removeAnnotation(defn.AccessedAnnot)
-      val rhs =
-        if (accessor.name.is(setterName) &&
-            argss.nonEmpty && argss.head.nonEmpty) // defensive conditions
-          ref(accessed).becomes(argss.head.head)
-        else
-          ref(accessed).appliedToTypes(tps).appliedToArgss(argss)
-      rhs.withPos(accessed.pos)
-    })
+  /** accessor -> accessed */
+  private val accessedBy = newMutableSymbolMap[Symbol]
 
+  /** The accessor definitions that need to be added to class `cls`
+   *  As a side-effect, this method removes entries from the `accessedBy` map.
+   *  So a second call of the same method will yield the empty list.
+   */
+  private def accessorDefs(cls: Symbol)(implicit ctx: Context): Iterator[DefDef] =
+    for (accessor <- cls.info.decls.iterator; accessed <- accessedBy.remove(accessor)) yield
+      polyDefDef(accessor.asTerm, tps => argss => {
+        val accessRef = ref(TermRef(cls.thisType, accessed))
+        val rhs =
+          if (accessor.name.is(setterName) &&
+              argss.nonEmpty && argss.head.nonEmpty) // defensive conditions
+            accessRef.becomes(argss.head.head)
+          else
+            accessRef.appliedToTypes(tps).appliedToArgss(argss)
+        rhs.withPos(accessed.pos)
+      })
+
+  /** Add all needed accessors to the `body` of class `cls` */
   def addAccessorDefs(cls: Symbol, body: List[Tree])(implicit ctx: Context): List[Tree] = {
     val accDefs = accessorDefs(cls)
     if (accDefs.isEmpty) body else body ++ accDefs
@@ -67,10 +71,7 @@ abstract class AccessProxies {
       def nameKind = if (onLHS) setterName else getterName
       val accessed = reference.symbol.asTerm
 
-      def refersToAccessed(sym: Symbol) = sym.getAnnotation(defn.AccessedAnnot) match {
-        case Some(Annotation.Accessed(sym)) => sym `eq` accessed
-        case _ => false
-      }
+      def refersToAccessed(sym: Symbol) = accessedBy.get(sym) == Some(accessed)
 
       val accessorInfo =
         if (onLHS) MethodType(accessed.info :: Nil, defn.UnitType)
@@ -80,7 +81,7 @@ abstract class AccessProxies {
         accessed.owner.info.decl(accessorName).suchThat(refersToAccessed).symbol
           .orElse {
             val acc = newAccessorSymbol(accessed, accessorName, accessorInfo)
-            acc.addAnnotation(Annotation.Accessed(accessed))
+            accessedBy(acc) = accessed
             acc
           }
 
