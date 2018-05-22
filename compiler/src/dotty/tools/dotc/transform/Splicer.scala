@@ -173,7 +173,24 @@ object Splicer {
       sym.signature.paramsSig.map { param =>
         defn.valueTypeNameToJavaType(param) match {
           case Some(clazz) => clazz
-          case None => classLoader.loadClass(param.toString)
+          case None =>
+            def javaArraySig(name: String): String = {
+              if (name.endsWith("[]")) "[" + javaArraySig(name.dropRight(2))
+              else name match {
+                case "scala.Boolean" => "Z"
+                case "scala.Byte" => "B"
+                case "scala.Short" => "S"
+                case "scala.Int" => "I"
+                case "scala.Long" => "J"
+                case "scala.Float" => "F"
+                case "scala.Double" => "D"
+                case "scala.Char" => "C"
+                case paramName => "L" + paramName + ";"
+              }
+            }
+            def javaSig(name: String): String =
+              if (name.endsWith("[]")) javaArraySig(name) else name
+            java.lang.Class.forName(javaSig(param.toString), false, classLoader)
         }
       }
     }
