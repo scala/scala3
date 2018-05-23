@@ -3,7 +3,6 @@ package transform
 
 import java.io.{PrintWriter, StringWriter}
 import java.lang.reflect.Method
-import java.net.URLClassLoader
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
@@ -11,6 +10,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags.Package
 import dotty.tools.dotc.core.NameKinds.FlatName
 import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.StdNames.str.MODULE_INSTANCE_FIELD
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
@@ -128,7 +128,9 @@ object Splicer {
     private def loadModule(sym: Symbol): (Class[_], Object) = {
       if (sym.owner.is(Package)) {
         // is top level object
-        (loadClass(sym.companionModule.fullName), null)
+        val moduleClass = loadClass(sym.fullName)
+        val moduleInstance = moduleClass.getField(MODULE_INSTANCE_FIELD).get(null)
+        (moduleClass, moduleInstance)
       } else {
         // nested object in an object
         val clazz = loadClass(sym.fullNameSeparated(FlatName))
