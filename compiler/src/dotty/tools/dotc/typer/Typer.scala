@@ -25,7 +25,6 @@ import ErrorReporting._
 import Checking._
 import Inferencing._
 import EtaExpansion.etaExpand
-import dotty.tools.dotc.transform.Erasure.Boxing
 import util.Positions._
 import util.common._
 import util.{Property, SourcePosition}
@@ -1523,7 +1522,8 @@ class Typer extends Namer
       cdef.withType(UnspecifiedErrorType)
     } else {
       val dummy = localDummy(cls, impl)
-      val body1 = typedStats(impl.body, dummy)(ctx.inClassContext(self1.symbol))
+      val body1 = addAccessorDefs(cls,
+        typedStats(impl.body, dummy)(ctx.inClassContext(self1.symbol)))
       if (!ctx.isAfterTyper)
         cls.setNoInitsFlags((NoInitsInterface /: body1) ((fs, stat) => fs & defKind(stat)))
 
@@ -1560,6 +1560,9 @@ class Typer extends Namer
       // 4. Polymorphic type defs override nothing.
     }
   }
+
+  protected def addAccessorDefs(cls: Symbol, body: List[Tree])(implicit ctx: Context): List[Tree] =
+    ctx.compilationUnit.inlineAccessors.addAccessorDefs(cls, body)
 
   /** Ensure that the first type in a list of parent types Ps points to a non-trait class.
    *  If that's not already the case, add one. The added class type CT is determined as follows.
@@ -1882,7 +1885,7 @@ class Typer extends Namer
           case none =>
             typed(mdef) match {
               case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
-                buf ++= inlineExpansion(mdef1)
+                buf += inlineExpansion(mdef1)
               case mdef1 =>
                 import untpd.modsDeco
                 mdef match {
@@ -1913,12 +1916,11 @@ class Typer extends Namer
   }
 
   /** Given an inline method `mdef`, the method rewritten so that its body
-   *  uses accessors to access non-public members, followed by the accessor definitions.
+   *  uses accessors to access non-public members.
    *  Overwritten in Retyper to return `mdef` unchanged.
    */
-  protected def inlineExpansion(mdef: DefDef)(implicit ctx: Context): List[Tree] =
-    tpd.cpy.DefDef(mdef)(rhs = Inliner.bodyToInline(mdef.symbol)) ::
-        Inliner.removeInlineAccessors(mdef.symbol)
+  protected def inlineExpansion(mdef: DefDef)(implicit ctx: Context): Tree =
+    tpd.cpy.DefDef(mdef)(rhs = Inliner.bodyToInline(mdef.symbol))
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, pt)(ctx retractMode Mode.PatternOrTypeBits)
