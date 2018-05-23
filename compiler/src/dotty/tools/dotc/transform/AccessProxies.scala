@@ -21,6 +21,7 @@ import config.Printers.transforms
  */
 abstract class AccessProxies {
   import ast.tpd._
+  import AccessProxies._
 
   def getterName: ClassifiedNameKind
   def setterName: ClassifiedNameKind
@@ -76,17 +77,13 @@ abstract class AccessProxies {
 
       def refersToAccessed(sym: Symbol) = accessedBy.get(sym) == Some(accessed)
 
-      val accessorClass = {
-        def owningClass(start: Symbol) =
-          start.ownersIterator.findSymbol(_.derivesFrom(accessed.owner))
+      var accessorClass = hostForAccessorOf(accessed: Symbol)
+      if (!accessorClass.exists) {
         val curCls = ctx.owner.enclosingClass
-        var owner = owningClass(curCls) //`orElse` owningClass(curCls.linkedClass)
-        if (!owner.exists) {
-          transforms.println(i"${curCls.ownersIterator.toList}%, %")
-          ctx.error(i"illegal access to protected ${accessed.showLocated} from $curCls", reference.pos)
-          owner = curCls
-        }
-        owner
+        transforms.println(i"${curCls.ownersIterator.toList}%, %")
+        ctx.error(i"illegal access to protected ${accessed.showLocated} from $curCls",
+          reference.pos)
+        accessorClass = curCls
       }
 
       val accessorRawInfo =
@@ -125,4 +122,8 @@ abstract class AccessProxies {
         tree
     }
   }
+}
+object AccessProxies {
+  def hostForAccessorOf(accessed: Symbol)(implicit ctx: Context): Symbol =
+    ctx.owner.ownersIterator.findSymbol(_.derivesFrom(accessed.owner))
 }
