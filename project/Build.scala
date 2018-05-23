@@ -398,7 +398,7 @@ object Build {
 
     dottydoc := Def.inputTaskDyn {
       val args = spaceDelimited("<arg>").parsed
-      val cp = Seq("-classpath", dottydocClasspath.value)
+      val cp = dottydocClasspath.value
 
       (runMain in Compile).toTask(s" dotty.tools.dottydoc.Main -classpath $cp " + args.mkString(" "))
     }.evaluated,
