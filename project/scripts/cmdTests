@@ -47,7 +47,7 @@ grep -qe "$EXPECTED_OUTPUT" "$tmp"
 
 echo "testing loading tasty from .tasty file in jar"
 clear_out "$OUT"
-"$SBT" ";dotc -d $OUT/out.jar -Yemit-tasty $SOURCE; dotc -decompile -classpath $OUT/out.jar -color:never $MAIN" > "$tmp"
+"$SBT" ";dotc -d $OUT/out.jar $SOURCE; dotc -decompile -classpath $OUT/out.jar -color:never $MAIN" > "$tmp"
 grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
 
 echo "testing scala.quoted.Expr.run from sbt dotr"

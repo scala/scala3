@@ -102,7 +102,7 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/pos-no-optimise", defaultOptions) +
     compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes) +
     compileFilesInDir("tests/pos-kind-polymorphism", defaultOptions and "-Ykind-polymorphism") +
-    compileDir("tests/pos/i1137-1", defaultOptions and "-Yemit-tasty") +
+    compileDir("tests/pos/i1137-1", defaultOptions) +
     compileFile(
       // succeeds despite -Xfatal-warnings because of -nowarn
       "tests/neg-custom-args/fatal-warnings/xfatalWarnings.scala",
@@ -257,7 +257,7 @@ class CompilationTests extends ParallelTesting {
       defaultOutputDir + dotty1Group + "/dotty/:" +
       // and the other compiler dependecies:
       Jars.dottyInterfaces + ":" + Jars.jline,
-      Array("-Ycheck-reentrant")
+      Array("-Ycheck-reentrant", "-Yemit-tasty-in-class")
     )
 
     val lib =
