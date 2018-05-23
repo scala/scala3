@@ -1,0 +1,13 @@
+# Should compile OK without the plugin
+> app/compile
+
+# Publish plugin locally
+> plugin/publishLocal
+
+# Enable plugin
+$ copy-file changes/build.sbt build.sbt
+> reload
+
+# Should NOT compile with the plugin
+> clean
+-> app/compile

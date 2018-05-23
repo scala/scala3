@@ -12,14 +12,15 @@ import Symbols.Symbol
 import Constants.Constant
 import transform.{LinkAll, Pickler}
 
+/** Compiler plugin that emits an error when compiling a division by zero */
 class DivideZero extends PluginPhase with StandardPlugin {
   val name: String = "divideZero"
   override val description: String = "divide zero check"
 
   val phaseName = name
 
-  override val runsAfter = Set(Pickler.phaseName)
-  override val runsBefore = Set(LinkAll.phaseName)
+  override val runsAfter = Set(Pickler.name)
+  override val runsBefore = Set(LinkAll.name)
 
   override def init(options: List[String]): List[PluginPhase] = this :: Nil
 
@@ -32,7 +33,7 @@ class DivideZero extends PluginPhase with StandardPlugin {
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = tree match {
     case tpd.Apply(fun, tpd.Literal(Constants.Constant(v)) :: Nil) if isNumericDivide(fun.symbol) && v == 0 =>
-      ctx.warning("divide by zero", tree.pos)
+      ctx.error("divide by zero", tree.pos)
       tpd.Literal(Constant(0))
     case _ =>
       tree
