@@ -216,12 +216,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case sel: Select =>
               val args1 = transform(args)
               val sel1 = transformSelect(sel, args1)
-              if (superAcc.isProtectedAccessor(sel1)) sel1 else cpy.TypeApply(tree1)(sel1, args1)
+              cpy.TypeApply(tree1)(sel1, args1)
             case _ =>
               super.transform(tree1)
           }
-        case tree @ Assign(sel: Select, _) =>
-          super.transform(superAcc.transformAssign(tree))
         case Inlined(call, bindings, expansion) =>
           // Leave only a call trace consisting of
           //  - a reference to the top-level class from which the call was inlined,
