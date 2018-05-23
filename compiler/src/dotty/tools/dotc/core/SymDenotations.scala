@@ -711,11 +711,6 @@ object SymDenotations {
             i"""
                | Access to protected $this not permitted because enclosing ${ctx.owner.enclosingClass.showLocated}
                | is not a subclass of ${owner.showLocated} where target is defined""")
-        else if (cls.is(Trait) && !this.owner.is(Trait))
-          fail(
-            i"""
-               | Access to protected $this not permitted from $cls,
-               | since traits cannot access protected members of superclasses""")
         else if (
           !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
            || pre.derivesFrom(cls)

@@ -143,7 +143,7 @@ package p {
 
         trait InnerInner {
           val g = getB
-          //g.tie(self2.asInstanceOf[g.Node]) -- this would be a static error
+          g.tie(self2.asInstanceOf[g.Node])
         }
       }
     }
