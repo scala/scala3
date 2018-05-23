@@ -145,9 +145,9 @@ object DottyPlugin extends AutoPlugin {
     onLoad in Global := onLoad.in(Global).value.andThen { state =>
       val sbtV = sbtVersion.value
       sbtFullVersion(sbtV) match {
-        case Some((1, sbtMinor, sbtPatch)) if sbtMinor > 1 || (sbtMinor == 1  && sbtPatch >= 4) =>
+        case Some((1, sbtMinor, sbtPatch)) if sbtMinor > 1 || (sbtMinor == 1  && sbtPatch >= 5) =>
         case _ =>
-          sys.error(s"The sbt-dotty plugin cannot work with this version of sbt ($sbtV), sbt >= 1.1.4 is required.")
+          sys.error(s"The sbt-dotty plugin cannot work with this version of sbt ($sbtV), sbt >= 1.1.5 is required.")
       }
       state
     }
