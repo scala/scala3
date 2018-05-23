@@ -1,12 +1,13 @@
-package dotty.tools.dotc
+package dotty.tools.dotc.core.tasty
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.tpd.TreeOps
+import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Comments.CommentsContext
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators.PreNamedString
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Names.Name
-import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
 
@@ -17,18 +18,13 @@ import java.nio.file.{FileSystems, FileVisitOption, FileVisitResult, FileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.EnumSet
 
+import scala.collection.JavaConverters.asScalaIteratorConverter
 import scala.concurrent.duration.{Duration, DurationInt}
 
 import org.junit.Test
 import org.junit.Assert.{assertEquals, assertFalse, fail}
 
-class CommentPicklingTest extends ParallelTesting {
-
-  override def isInteractive: Boolean = false
-  override def testFilter: Option[String] = None
-  override def maxDuration: Duration = 30.seconds
-  override def numberOfSlaves: Int = 5
-  override def safeMode: Boolean = false
+class CommentPicklingTest {
 
   val compileOptions = TestConfiguration.defaultOptions and "-Ykeep-comments" and "-Yemit-tasty"
   val unpickleOptions = TestConfiguration.defaultOptions
@@ -68,7 +64,7 @@ class CommentPicklingTest extends ParallelTesting {
     compileAndCheckComment(sources, "buzz".toTermName, Some("/** foo */"))
   }
 
-  private def compileAndCheckComment(sources: Seq[String], treeName: Name, expectedComment: Option[String]): Unit = {
+  private def compileAndCheckComment(sources: List[String], treeName: Name, expectedComment: Option[String]): Unit = {
     compileAndUnpickle(sources) { (trees, ctx) =>
       findTreeNamed(treeName)(trees, ctx) match {
         case Some(md: tpd.MemberDef) =>
@@ -82,12 +78,11 @@ class CommentPicklingTest extends ParallelTesting {
     }
   }
 
-  private def findTreeNamed(name: Name)(trees: Seq[tpd.Tree], ctx: Context): Option[tpd.NameTree] = {
+  private def findTreeNamed(name: Name)(trees: List[tpd.Tree], ctx: Context): Option[tpd.NameTree] = {
     val acc = new tpd.TreeAccumulator[Option[tpd.NameTree]] {
       override def apply(x: Option[tpd.NameTree], tree: tpd.Tree)(implicit ctx: Context): Option[tpd.NameTree] = {
         x.orElse(tree match {
           case md: tpd.NameTree if md.name == name => Some(md)
-          case md: tpd.NameTree => foldOver(None, md)
           case other => foldOver(None, other)
         })
       }
@@ -95,7 +90,7 @@ class CommentPicklingTest extends ParallelTesting {
     acc(None, trees)(ctx)
   }
 
-  private def compileAndUnpickle[T](sources: Seq[String])(fn: (Seq[tpd.Tree], Context) => T) = {
+  private def compileAndUnpickle[T](sources: List[String])(fn: (List[tpd.Tree], Context) => T) = {
     inTempDirectory { tmp =>
       val sourceFiles = sources.zipWithIndex.map {
         case (src, id) =>
@@ -124,7 +119,7 @@ class CommentPicklingTest extends ParallelTesting {
 
   private class UnpicklingDriver extends Driver {
     override def initCtx = super.initCtx.addMode(Mode.ReadComments)
-    def unpickle[T](args: Array[String], paths: Seq[Path])(fn: (Seq[tpd.Tree], Context) => T): T = {
+    def unpickle[T](args: Array[String], paths: List[Path])(fn: (List[tpd.Tree], Context) => T): T = {
       implicit val (_, ctx: Context) = setup(args, initCtx)
       ctx.initialize()
       val trees = paths.flatMap { p =>
@@ -146,33 +141,11 @@ class CommentPicklingTest extends ParallelTesting {
     }
   }
 
-  private def getAll(base: Path,
-             pattern: String,
-             maxDepth: Int = Int.MaxValue): Seq[Path] = {
-    val out = collection.mutable.ListBuffer.empty[Path]
+  private def getAll(base: Path, pattern: String): List[Path] = {
+    val paths = Files.walk(base)
     val matcher = FileSystems.getDefault.getPathMatcher(pattern)
-    val visitor = new FileVisitor[Path] {
-      override def preVisitDirectory(directory: Path, attributes: BasicFileAttributes): FileVisitResult = {
-        if (matcher.matches(directory)) out += directory
-        FileVisitResult.CONTINUE
-      }
-
-      override def postVisitDirectory(directory: Path, exception: IOException): FileVisitResult =
-        FileVisitResult.CONTINUE
-
-      override def visitFile(file: Path, attributes: BasicFileAttributes): FileVisitResult = {
-        if (matcher.matches(file)) out += file
-        FileVisitResult.CONTINUE
-      }
-
-      override def visitFileFailed(file: Path, exception: IOException): FileVisitResult =
-        FileVisitResult.CONTINUE
-    }
-    Files.walkFileTree(base,
-                       EnumSet.of(FileVisitOption.FOLLOW_LINKS),
-                       maxDepth,
-                       visitor)
-    out
+    try paths.filter(matcher.matches).iterator().asScala.toList
+    finally paths.close()
   }
 
 }
