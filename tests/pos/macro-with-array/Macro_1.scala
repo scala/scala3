@@ -1,6 +1,7 @@
 
 object Macro {
 
+  inline def foo0(i: Int): Unit = ~{ '() }
   inline def foo1(arr: Array[Boolean]): Unit = ~{ '() }
   inline def foo2(arr: Array[Byte]): Unit = ~{ '() }
   inline def foo3(arr: Array[Short]): Unit = ~{ '() }
@@ -19,7 +20,15 @@ object Macro {
   inline def foo16(arr: Array[AnyVal]): Unit = ~{ '() }
   inline def foo17(arr: Array[AnyRef]): Unit = ~{ '() }
   inline def foo18(arr: Array[Foo]): Unit = ~{ '() }
+  inline def foo19(arr: Array[Macro.type]): Unit = ~{ '() }
+  inline def foo20(arr: Array[Bar]): Unit = ~{ '() }
+  inline def foo21(arr: Array[Baz.type]): Unit = ~{ '() }
+  inline def foo22(arr: Array[Foo#A]): Unit = ~{ '() }
 
+  class Bar
+  object Baz
 }
 
-class Foo
+class Foo {
+  class A
+}

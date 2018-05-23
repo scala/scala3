@@ -3,7 +3,6 @@ package transform
 
 import java.io.{PrintWriter, StringWriter}
 import java.lang.reflect.Method
-import java.net.URLClassLoader
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
@@ -14,6 +13,7 @@ import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.TypeErasure
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.Positions.Position
@@ -170,28 +170,49 @@ object Splicer {
 
     /** List of classes of the parameters of the signature of `sym` */
     private def paramsSig(sym: Symbol): List[Class[_]] = {
-      sym.signature.paramsSig.map { param =>
-        defn.valueTypeNameToJavaType(param) match {
-          case Some(clazz) => clazz
-          case None =>
-            def javaArraySig(name: String): String = {
-              if (name.endsWith("[]")) "[" + javaArraySig(name.dropRight(2))
-              else name match {
-                case "scala.Boolean" => "Z"
-                case "scala.Byte" => "B"
-                case "scala.Short" => "S"
-                case "scala.Int" => "I"
-                case "scala.Long" => "J"
-                case "scala.Float" => "F"
-                case "scala.Double" => "D"
-                case "scala.Char" => "C"
-                case paramName => "L" + paramName + ";"
-              }
+      TypeErasure.erasure(sym.info) match {
+        case meth: MethodType =>
+          meth.paramInfos.map { param =>
+            def arrayDepth(tpe: Type, depth: Int): (Type, Int) = tpe match {
+              case JavaArrayType(elemType) => arrayDepth(elemType, depth + 1)
+              case _ => (tpe, depth)
             }
-            def javaSig(name: String): String =
-              if (name.endsWith("[]")) javaArraySig(name) else name
-            java.lang.Class.forName(javaSig(param.toString), false, classLoader)
-        }
+            def javaArraySig(tpe: Type): String = {
+              val (elemType, depth) = arrayDepth(tpe, 0)
+              val sym = elemType.classSymbol
+              val suffix =
+                if (sym == defn.BooleanClass) "Z"
+                else if (sym == defn.ByteClass) "B"
+                else if (sym == defn.ShortClass) "S"
+                else if (sym == defn.IntClass) "I"
+                else if (sym == defn.LongClass) "J"
+                else if (sym == defn.FloatClass) "F"
+                else if (sym == defn.DoubleClass) "D"
+                else if (sym == defn.CharClass) "C"
+                else "L" + javaSig(elemType) + ";"
+              ("[" * depth) + suffix
+            }
+            def javaSig(tpe: Type): String = tpe match {
+              case tpe: JavaArrayType => javaArraySig(tpe)
+              case _ =>
+                // Take the flatten name of the class and the full package name
+                val pack = tpe.classSymbol.topLevelClass.owner
+                val packageName = if (pack == defn.EmptyPackageClass) "" else pack.fullName + "."
+                packageName + tpe.classSymbol.fullNameSeparated(FlatName).toString
+            }
+
+            val sym = param.classSymbol
+            if (sym == defn.BooleanClass) classOf[Boolean]
+            else if (sym == defn.ByteClass) classOf[Byte]
+            else if (sym == defn.CharClass) classOf[Char]
+            else if (sym == defn.ShortClass) classOf[Short]
+            else if (sym == defn.IntClass) classOf[Int]
+            else if (sym == defn.LongClass) classOf[Long]
+            else if (sym == defn.FloatClass) classOf[Float]
+            else if (sym == defn.DoubleClass) classOf[Double]
+            else java.lang.Class.forName(javaSig(param), false, classLoader)
+          }
+        case _ => Nil
       }
     }
 

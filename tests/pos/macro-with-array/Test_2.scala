@@ -1,4 +1,5 @@
 object PowerInlined1 {
+  Macro.foo0(2)
   Macro.foo1(Array.empty)
   Macro.foo2(Array.empty)
   Macro.foo3(Array.empty)
@@ -17,4 +18,8 @@ object PowerInlined1 {
   Macro.foo16(Array.empty)
   Macro.foo17(Array.empty)
   Macro.foo18(Array.empty)
+  Macro.foo19(Array.empty)
+  Macro.foo20(Array.empty)
+  Macro.foo21(Array.empty)
+  Macro.foo22(Array.empty)
 }
