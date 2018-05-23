@@ -45,7 +45,10 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
   /** the following two members override abstract members in Transform */
   override def phaseName: String = ExtensionMethods.name
 
-  override def runsAfter = Set(ElimRepeated.name)
+  override def runsAfter = Set(
+    ElimRepeated.name,
+    ProtectedAccessors.name  // protected accessors cannot handle code that is moved from class to companion object
+  )
 
   override def runsAfterGroupsOf = Set(FirstTransform.name) // need companion objects to exist
 
