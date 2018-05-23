@@ -314,10 +314,6 @@ object Erasure {
       }
   }
 
-  /** The erasure typer.
-   *  Also inserts protected accessors where needed. This logic is placed here
-   *  since it is most naturally done in a macro transform.
-   */
   class Typer extends typer.ReTyper with NoChecking {
     import Boxing._
 
