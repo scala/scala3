@@ -393,7 +393,7 @@ object SyntaxHighlighting {
           colorAt(i) = color
       } catch {
         case _: IndexOutOfBoundsException =>
-          ctx.error("Encountered tree with invalid position, please open an issue with the code snippet that caused the error")
+          println("Encountered tree with invalid position, please open an issue with the code snippet that caused the error")
       }
     }
     def highlightPosition(pos: Position, color: String) =
