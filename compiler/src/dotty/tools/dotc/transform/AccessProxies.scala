@@ -14,6 +14,7 @@ import NameKinds.ClassifiedNameKind
 import ast.Trees._
 import util.Property
 import util.Positions.Position
+import config.Printers.transforms
 
 /** A utility class for generating access proxies. Currently used for
  *  inline accessors and protected accessors.
@@ -56,9 +57,11 @@ abstract class AccessProxies {
     def needsAccessor(sym: Symbol)(implicit ctx: Context): Boolean
 
     /** A fresh accessor symbol */
-    def newAccessorSymbol(accessed: Symbol, name: TermName, info: Type)(implicit ctx: Context): TermSymbol =
-      ctx.newSymbol(accessed.owner.enclosingSubClass, name, Synthetic | Method,
-                    info, coord = accessed.pos).entered
+    def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, pos: Position)(implicit ctx: Context): TermSymbol = {
+      val sym = ctx.newSymbol(owner, name, Synthetic | Method, info, coord = pos).entered
+      if (sym.allOverriddenSymbols.exists(!_.is(Deferred))) sym.setFlag(Override)
+      sym
+    }
 
     /** Create an accessor unless one exists already, and replace the original
       *  access with a reference to the accessor.
@@ -73,14 +76,30 @@ abstract class AccessProxies {
 
       def refersToAccessed(sym: Symbol) = accessedBy.get(sym) == Some(accessed)
 
-      val accessorInfo =
+      val accessorClass = {
+        def owningClass(start: Symbol) =
+          start.ownersIterator.findSymbol(_.derivesFrom(accessed.owner))
+        val curCls = ctx.owner.enclosingClass
+        var owner = owningClass(curCls) //`orElse` owningClass(curCls.linkedClass)
+        if (!owner.exists) {
+          transforms.println(i"${curCls.ownersIterator.toList}%, %")
+          ctx.error(i"illegal access to protected ${accessed.showLocated} from $curCls", reference.pos)
+          owner = curCls
+        }
+        owner
+      }
+
+      val accessorRawInfo =
         if (onLHS) MethodType(accessed.info :: Nil, defn.UnitType)
         else accessed.info.ensureMethodic
+      val accessorInfo =
+        accessorRawInfo.asSeenFrom(accessorClass.thisType, accessed.owner)
       val accessorName = nameKind(accessed.name)
+
       val accessorSymbol =
-        accessed.owner.info.decl(accessorName).suchThat(refersToAccessed).symbol
+        accessorClass.info.decl(accessorName).suchThat(refersToAccessed).symbol
           .orElse {
-            val acc = newAccessorSymbol(accessed, accessorName, accessorInfo)
+            val acc = newAccessorSymbol(accessorClass, accessorName, accessorInfo, accessed.pos)
             accessedBy(acc) = accessed
             acc
           }
