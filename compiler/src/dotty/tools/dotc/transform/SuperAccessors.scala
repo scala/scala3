@@ -11,7 +11,7 @@ import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTrans
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import util.Positions._
 import Decorators._
-import NameKinds.{ProtectedAccessorName, ProtectedSetterName, OuterSelectName, SuperAccessorName}
+import NameKinds.{ProtectedGetterName, ProtectedSetterName, OuterSelectName, SuperAccessorName}
 import Symbols._, TypeUtils._, SymUtils._
 
 /** This class performs the following functions:
@@ -166,7 +166,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       assert(clazz.exists, sym)
       ctx.debuglog("Decided for host class: " + clazz)
 
-      val accName = ProtectedAccessorName(sym.name)
+      val accName = ProtectedGetterName(sym.name)
 
       // if the result type depends on the this type of an enclosing class, the accessor
       // has to take an object of exactly this type, otherwise it's more general
@@ -206,7 +206,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
 
     def isProtectedAccessor(tree: Tree)(implicit ctx: Context): Boolean = tree match {
       case Apply(TypeApply(Select(_, name), _), qual :: Nil) =>
-        name.is(ProtectedAccessorName) || name.is(ProtectedSetterName)
+        name.is(ProtectedGetterName) || name.is(ProtectedSetterName)
       case _ => false
     }
 
@@ -221,7 +221,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       assert(clazz.exists, sym)
       ctx.debuglog("Decided for host class: " + clazz)
 
-      val accName = ProtectedAccessorName(sym.name)
+      val accName = ProtectedGetterName(sym.name)
 
       // if the result type depends on the this type of an enclosing class, the accessor
       // has to take an object of exactly this type, otherwise it's more general

@@ -20,7 +20,7 @@ class ProtectedAccessors extends MiniPhase {
   override def phaseName = ProtectedAccessors.name
 
   object Accessors extends AccessProxies {
-    def getterName = ProtectedAccessorName
+    def getterName = ProtectedGetterName
     def setterName = ProtectedSetterName
 
     val insert = new Insert {
