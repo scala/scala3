@@ -353,8 +353,8 @@ object NameKinds {
 
   val SuperAccessorName = new PrefixNameKind(SUPERACCESSOR, "super$")
   val InitializerName = new PrefixNameKind(INITIALIZER, "initial$")
-  val ProtectedAccessorName = new PrefixNameKind(PROTECTEDACCESSOR, "protected$")
-  val ProtectedSetterName = new PrefixNameKind(PROTECTEDSETTER, "protected$set") // dubious encoding, kept for Scala2 compatibility
+  val ProtectedGetterName = new PrefixNameKind(PROTECTEDGETTER, "protected_get$")
+  val ProtectedSetterName = new PrefixNameKind(PROTECTEDSETTER, "protected_set$")
   val InlineGetterName = new PrefixNameKind(INLINEGETTER, "inline_get$")
   val InlineSetterName = new PrefixNameKind(INLINESETTER, "inline_set$")
 
@@ -388,9 +388,12 @@ object NameKinds {
     def infoString: String = "Signed"
   }
 
-  /** Possible name kinds of a method that comes from Scala2 pickling info. */
+  /** Possible name kinds of a method that comes from Scala2 pickling info.
+   *  and that need to be unmangled. Note: Scala2 protected accessors and setters
+   *  can be left mangled, so they are not included in thus list.
+   */
   val Scala2MethodNameKinds: List[NameKind] =
-    List(DefaultGetterName, ExtMethName, UniqueExtMethName, ProtectedAccessorName, ProtectedSetterName)
+    List(DefaultGetterName, ExtMethName, UniqueExtMethName)
 
   def simpleNameKindOfTag      : collection.Map[Int, ClassifiedNameKind] = simpleNameKinds
   def qualifiedNameKindOfTag   : collection.Map[Int, QualifiedNameKind]  = qualifiedNameKinds
