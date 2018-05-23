@@ -374,17 +374,12 @@ object SyntaxHighlighting {
     override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = ()
   }
 
-  private val ignoredKwds = Set(nme.ARROWkw, nme.EQ, nme.EQL, nme.COLONkw)
-
   def highlight(in: String)(ctx0: Context): String = {
     import dotty.tools.dotc.ast.untpd._
 
     implicit val ctx: Context = ctx0.fresh.setReporter(new NoReporter)
 
     val source = new SourceFile("<highlighting>", in.toCharArray)
-    val parser = new Parser(source)
-    val trees = parser.blockStatSeq()
-
     val colorAt = Array.fill(in.length)(NoColor)
 
     def highlightRange(from: Int, to: Int, color: String) = {
@@ -399,35 +394,10 @@ object SyntaxHighlighting {
     def highlightPosition(pos: Position, color: String) =
       if (pos.exists) highlightRange(pos.start, pos.end, color)
 
-    val treeHighlighter = new UntypedTreeTraverser {
-      def traverse(tree: Tree)(implicit ctx: Context): Unit = {
-        tree match {
-          case id: Ident if id.isType =>
-            highlightPosition(id.pos, TypeColor)
-          case tpe : TypeDef =>
-            highlightPosition(tpe.namePos, TypeColor)
-          case _ : TypTree =>
-            highlightPosition(tree.pos, TypeColor)
-          case mod: ModuleDef =>
-            highlightPosition(mod.namePos, TypeColor)
-          case v : ValOrDefDef =>
-            highlightPosition(v.namePos, ValDefColor)
-            highlightPosition(v.tpt.pos, TypeColor)
-          case _ : Literal =>
-            highlightPosition(tree.pos, LiteralColor)
-          case _ =>
-        }
-        traverseChildren(tree)
-      }
-    }
-
-    for (tree <- trees)
-      treeHighlighter.traverse(tree)
-
     val scanner = new Scanner(source)
 
     while (scanner.token != EOF) {
-      val isKwd = isKeyword(scanner.token) && !ignoredKwds.contains(scanner.name)
+      val isKwd = alphaKeywords.contains(scanner.token)
       val offsetStart = scanner.offset
 
       if (scanner.token == IDENTIFIER && scanner.name == nme.???) {
@@ -440,6 +410,38 @@ object SyntaxHighlighting {
         highlightPosition(Position(offsetStart, offsetEnd), KeywordColor)
       }
     }
+
+    val treeHighlighter = new UntypedTreeTraverser {
+      def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+        tree match {
+          case id : Ident if id.isType =>
+            highlightPosition(id.pos, TypeColor)
+          case tpe : TypeDef =>
+            for (annotation <- tpe.rawMods.annotations)
+              highlightPosition(annotation.pos, AnnotationColor)
+            highlightPosition(tpe.namePos, TypeColor)
+          case _ : TypTree =>
+            highlightPosition(tree.pos, TypeColor)
+          case mod: ModuleDef =>
+            highlightPosition(mod.namePos, TypeColor)
+          case v : ValOrDefDef =>
+            for (annotation <- v.rawMods.annotations)
+              highlightPosition(annotation.pos, AnnotationColor)
+            highlightPosition(v.namePos, ValDefColor)
+            highlightPosition(v.tpt.pos, TypeColor)
+          case _ : Literal =>
+            highlightPosition(tree.pos, LiteralColor)
+          case _ =>
+        }
+        traverseChildren(tree)
+      }
+    }
+
+    val parser = new Parser(source)
+    val trees = parser.blockStatSeq()
+
+    for (tree <- trees)
+      treeHighlighter.traverse(tree)
 
     val sb = new mutable.StringBuilder()
 

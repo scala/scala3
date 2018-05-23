@@ -58,7 +58,25 @@ class SyntaxHighlightingTests extends DottyTest {
 
   @Test
   def annotations = {
-    test("@tailrec", "<T|@tailrec>")
+    val source =
+      """
+        |@deprecated
+        |class Foo {
+        |  @inline val bar = 42
+        |}
+      """.stripMargin
+
+    val expected =
+      """
+        |<T|@deprecated>
+        |<K|class> <T|Foo> {
+        |  <T|@inline> <K|val> <V|bar> = <L|42>
+        |}
+      """.stripMargin
+
+    test(source, expected)
+
+    test("@deprecated class Foo", "<T|@deprecated> <K|class> <T|Foo>")
   }
 
   @Test
