@@ -30,8 +30,8 @@ class DocCompiler extends Compiler {
     List(new DocImplicitsPhase) ::
     List(new DocASTPhase) ::
     List(DocMiniTransformations(new UsecasePhase,
-                                new DocstringPhase,
-                                new PackageObjectsPhase,
+                                new DocstringPhase)) ::
+    List(DocMiniTransformations(new PackageObjectsPhase,
                                 new LinkReturnTypes,
                                 new LinkParamListTypes,
                                 new LinkImplicitlyAddedTypes,
