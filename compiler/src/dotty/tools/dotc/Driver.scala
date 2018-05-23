@@ -52,13 +52,11 @@ class Driver extends DotClass {
   }
 
   def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
-    val ctx0 = rootCtx.fresh
-    val summary = CompilerCommand.distill(args)(ctx0)
-    ctx0.setSettings(summary.sstate)
+    val ctx = rootCtx.fresh
+    val summary = CompilerCommand.distill(args)(ctx)
+    ctx.setSettings(summary.sstate)
 
-    val ctx =
-      if (shouldAddDocContext(ctx0)) ctx0.setProperty(ContextDoc, new ContextDocstrings)
-      else ctx0
+    if (shouldAddDocContext(ctx)) ctx.setProperty(ContextDoc, new ContextDocstrings)
 
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
     (fileNames, ctx)
