@@ -1,0 +1,12 @@
+TypeIdent(Int)
+SymRef(Int, SymRef(scala, ThisType(SymRef(<root>, NoPrefix))))
+
+Applied(TypeIdent(List), List(TypeIdent(String)))
+AppliedType(SymRef(List, ThisType(SymRef(immutable, NoPrefix))), List(SymRef(String, SymRef(Predef, ThisType(SymRef(scala, NoPrefix))))))
+
+Applied(TypeIdent(Map), List(TypeIdent(String), TypeIdent(Int)))
+AppliedType(SymRef(Map, ThisType(SymRef(immutable, NoPrefix))), List(SymRef(String, SymRef(Predef, ThisType(SymRef(scala, NoPrefix)))), SymRef(Int, SymRef(scala, ThisType(SymRef(<root>, NoPrefix))))))
+
+Applied(TypeIdent(Map), List(TypeIdent(String), TypeIdent(I)))
+AppliedType(SymRef(Map, ThisType(SymRef(immutable, NoPrefix))), List(SymRef(String, SymRef(Predef, ThisType(SymRef(scala, NoPrefix)))), SymRef(I, NoPrefix)))
+

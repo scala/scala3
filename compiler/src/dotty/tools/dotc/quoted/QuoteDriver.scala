@@ -7,7 +7,7 @@ import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory
 import dotty.tools.repl.AbstractFileClassLoader
 import dotty.tools.dotc.printing.DecompilerPrinter
 
-import scala.quoted.Expr
+import scala.quoted.{Expr, Type}
 
 import java.net.URLClassLoader
 
@@ -28,7 +28,7 @@ class QuoteDriver extends Driver {
         new VirtualDirectory("(memory)", None)
     }
 
-    val driver = new ExprCompiler(outDir)
+    val driver = new QuoteCompiler(outDir)
     driver.newRun(ctx).compileExpr(expr)
 
     val classLoader = new AbstractFileClassLoader(outDir, this.getClass.getClassLoader)
@@ -58,8 +58,20 @@ class QuoteDriver extends Driver {
       assert(output.isEmpty)
       output = Some(f(tree, ctx))
     }
-    new ExprDecompiler(registerTree).newRun(ctx).compileExpr(expr)
+    new QuoteDecompiler(registerTree).newRun(ctx).compileExpr(expr)
     output.getOrElse(throw new Exception("Could not extract " + expr))
+  }
+
+  def withTypeTree[T](tpe: Type[_], f: (TypTree, Context) => T, settings: Settings[_]): T = {
+    val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
+
+    var output: Option[T] = None
+    def registerTree(tree: tpd.Tree)(ctx: Context): Unit = {
+      assert(output.isEmpty)
+      output = Some(f(tree.asInstanceOf[TypTree], ctx))
+    }
+    new QuoteDecompiler(registerTree).newRun(ctx).compileType(tpe)
+    output.getOrElse(throw new Exception("Could not extract " + tpe))
   }
 
   override def initCtx: Context = {

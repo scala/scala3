@@ -1,0 +1,42 @@
+SymRef(Int, ThisType(SymRef(scala, NoPrefix)))
+
+SymRef(x, NoPrefix)
+
+TypeBounds(SymRef(#, ThisType(SymRef(scala, NoPrefix))), SymRef(#, ThisType(SymRef(scala, NoPrefix))))
+
+SymRef(#, ThisType(SymRef(scala, NoPrefix)))
+
+SymRef(#, ThisType(SymRef(scala, NoPrefix)))
+
+SymRef(T, NoPrefix)
+
+TypeBounds(SymRef(Int, SymRef(scala, ThisType(SymRef(<root>, NoPrefix)))), SymRef(Int, SymRef(scala, ThisType(SymRef(<root>, NoPrefix)))))
+
+SymRef(Int, SymRef(scala, ThisType(SymRef(<root>, NoPrefix))))
+
+SymRef(Int, SymRef(scala, ThisType(SymRef(<root>, NoPrefix))))
+
+SymRef(T, NoPrefix)
+
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
+
+SymRef(Object, ThisType(SymRef(lang, NoPrefix)))
+
+TypeBounds(SymRef(#, ThisType(SymRef(scala, NoPrefix))), SymRef(#, ThisType(SymRef(scala, NoPrefix))))
+
+SymRef(#, ThisType(SymRef(scala, NoPrefix)))
+
+SymRef(#, ThisType(SymRef(scala, NoPrefix)))
+
+Refinement(SymRef(Foo, NoPrefix), X, TypeBounds(SymRef(String, SymRef(Predef, ThisType(SymRef(scala, NoPrefix)))), SymRef(String, SymRef(Predef, ThisType(SymRef(scala, NoPrefix))))))
+
+SymRef(Unit, ThisType(SymRef(scala, NoPrefix)))
+
+SymRef(Foo, NoPrefix)
+
+SymRef(String, SymRef(Predef, ThisType(SymRef(scala, NoPrefix))))
+
+SymRef($anon, NoPrefix)
+
+Refinement(SymRef(Foo, NoPrefix), X, TypeBounds(SymRef(String, SymRef(Predef, ThisType(SymRef(scala, NoPrefix)))), SymRef(String, SymRef(Predef, ThisType(SymRef(scala, NoPrefix))))))
+

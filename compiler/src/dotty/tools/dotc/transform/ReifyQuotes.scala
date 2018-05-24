@@ -509,11 +509,23 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
     private def transformWithCapturer(tree: Tree)(capturer: mutable.Map[Symbol, Tree] => Tree => Tree)(implicit ctx: Context): Tree = {
       val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
       val captured2 = capturer(captured)
-      outer.enteredSyms.foreach(s => capturers.put(s, captured2))
-      if (ctx.owner.owner.is(Macro))
-        outer.enteredSyms.reverse.foreach(s => captured2(ref(s)))
+
+      def registerCapturer(sym: Symbol): Unit = capturers.put(sym, captured2)
+      def forceCapture(sym: Symbol): Unit = captured2(ref(sym))
+
+      outer.enteredSyms.foreach(registerCapturer)
+
+      if (ctx.owner.owner.is(Macro)) {
+        registerCapturer(defn.TastyUniverse_compilationUniverse)
+        // Force a macro to have the context in first position
+        forceCapture(defn.TastyUniverse_compilationUniverse)
+        // Force all parameters of the macro to be created in the definition order
+        outer.enteredSyms.reverse.foreach(forceCapture)
+      }
+
       val tree2 = transform(tree)
       capturers --= outer.enteredSyms
+
       seq(captured.result().valuesIterator.toList, tree2)
     }
 
@@ -636,7 +648,8 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
     }
 
     private def isStage0Value(sym: Symbol)(implicit ctx: Context): Boolean =
-      sym.is(Inline) && sym.owner.is(Macro) && !defn.isFunctionType(sym.info)
+      (sym.is(Inline) && sym.owner.is(Macro) && !defn.isFunctionType(sym.info)) ||
+      sym == defn.TastyUniverse_compilationUniverse // intrinsic value at stage 0
 
     private def liftList(list: List[Tree], tpe: Type)(implicit ctx: Context): Tree = {
       list.foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>

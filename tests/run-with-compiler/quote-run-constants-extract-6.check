@@ -1,8 +1,0 @@
-Test.dynamicPower(
-  {
-    println("foo")
-    2
-  }
-, 6.0)
-foo
-36.0

@@ -40,7 +40,7 @@ object Types {
   }
 
   /** An Type backed by a tree */
-  final class TreeType[Tree](val tree: Tree) extends quoted.Type[Any] {
+  final class TreeType[Tree](val typeTree: Tree) extends quoted.Type[Any] {
     override def toString: String = s"Type(<raw>)"
   }
 }

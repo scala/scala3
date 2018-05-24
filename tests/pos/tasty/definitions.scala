@@ -4,14 +4,13 @@ object definitions {
 
 // ====== Trees ======================================
 
-  trait Tree extends Positioned
+  sealed trait Tree // Top level statement
 
 // ------ Statements ---------------------------------
 
-  sealed trait TopLevelStatement extends Tree
-  sealed trait Statement extends TopLevelStatement
+  sealed trait Statement extends Tree
 
-  case class PackageClause(pkg: Term, body: List[TopLevelStatement]) extends TopLevelStatement
+  case class PackageClause(pkg: Term, body: List[Tree]) extends Tree
 
   case class Import(expr: Term, selector: List[ImportSelector]) extends Statement
 
@@ -75,7 +74,7 @@ object definitions {
   }
 
   /** Trees denoting types */
-  enum TypeTree extends Tree {
+  enum TypeTree extends Positioned {
     def tpe: Type = ???
     case Synthetic()
     case Ident(name: String, override val tpe: Type)
@@ -95,7 +94,7 @@ object definitions {
   }
 
   /** Trees denoting patterns */
-  enum Pattern extends Tree {
+  enum Pattern extends Positioned {
     def tpe: Type = ???
     case Value(v: Term)
     case Bind(name: String, pat: Pattern)
@@ -116,8 +115,8 @@ object definitions {
 
     case class ConstantType(value: Constant) extends Type
     case class SymRef(sym: Definition, qualifier: Type | NoPrefix = NoPrefix) extends Type
-    case class TypeNameRef(name: String, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
-    case class TermNameRef(name: String, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
+    case class TypeRef(name: String, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
+    case class TermRef(name: String, qualifier: Type | NoPrefix = NoPrefix) extends Type // NoPrefix means: select from _root_
     case class SuperType(thistp: Type, underlying: Type) extends Type
     case class Refinement(underlying: Type, name: String, tpe: Type | TypeBounds) extends Type
     case class AppliedType(tycon: Type, args: List[Type | TypeBounds]) extends Type
