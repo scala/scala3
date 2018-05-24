@@ -48,7 +48,7 @@ object Exprs {
    *  These expressions are used for arguments of inline macros. They contain and actual tree
    *  from the program that is being expanded by the macro.
    *
-   *  May contain references to code defined outside this Expr instance.
+   *  May contain references to code defined outside this TastyTreeExpr instance.
    */
   final class TastyTreeExpr[Tree](val tree: Tree) extends quoted.Expr[Any] {
     override def toString: String = s"Expr(<tasty tree>)"

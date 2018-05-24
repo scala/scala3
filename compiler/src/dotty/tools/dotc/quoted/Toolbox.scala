@@ -25,7 +25,7 @@ object Toolbox {
       case expr: LiftedExpr[T] =>
         expr.value
       case expr: TastyTreeExpr[Tree] @unchecked =>
-        throw new scala.quoted.QuoteError("Can't run and scala.quoted.Expr coming from a macro argument")
+        throw new Exception("Cannot call `Expr.run` on an `Expr` that comes from an inline macro argument.")
       case _ =>
         new QuoteDriver().run(expr, runSettings)
     }
