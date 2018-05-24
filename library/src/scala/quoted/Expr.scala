@@ -33,7 +33,7 @@ object Expr {
 object Exprs {
   /** An Expr backed by a pickled TASTY tree */
   final class TastyExpr[T](val tasty: Pickled, val args: Seq[Any]) extends Expr[T] {
-    override def toString: String = s"Expr(<pickled>)"
+    override def toString: String = s"Expr(<pickled tasty>)"
   }
 
   /** An Expr backed by a lifted value.
@@ -48,11 +48,10 @@ object Exprs {
    *  These expressions are used for arguments of inline macros. They contain and actual tree
    *  from the program that is being expanded by the macro.
    *
-   *  May contain references to code defined outside this Expr instance.
+   *  May contain references to code defined outside this TastyTreeExpr instance.
    */
-  final class TreeExpr[Tree](val tree: Tree, pickle: => Expr[_]) extends quoted.Expr[Any] {
-    def pickled[T]: Expr[T] = pickle.asInstanceOf[Expr[T]]
-    override def toString: String = s"Expr(<raw>)"
+  final class TastyTreeExpr[Tree](val tree: Tree) extends quoted.Expr[Any] {
+    override def toString: String = s"Expr(<tasty tree>)"
   }
 
   /** An Expr representing `'{(~f).apply(~x)}` but it is beta-reduced when the closure is known */

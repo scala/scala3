@@ -22,7 +22,7 @@ import config.Config
 import core.quoted.PickledQuotes
 import scala.quoted
 import scala.quoted.Types.TreeType
-import scala.quoted.Exprs.TreeExpr
+import scala.quoted.Exprs.TastyTreeExpr
 
 /** Unpickler for typed trees
  *  @param reader          the reader from which to unpickle
@@ -1150,7 +1150,7 @@ class TreeUnpickler(reader: TastyReader,
       val args = until(end)(readTerm())
       val splice = splices(idx)
       def wrap(arg: Tree) =
-        if (arg.isTerm) new TreeExpr(arg, PickledQuotes.pickleExpr(arg))
+        if (arg.isTerm) new TastyTreeExpr(arg)
         else new TreeType(arg)
       val reifiedArgs = args.map(wrap)
       if (isType) {
