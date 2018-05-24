@@ -2,7 +2,7 @@ package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ContextBase}
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 import dotty.tools.dotc.printing.DecompilerPrinter
@@ -11,7 +11,8 @@ import scala.quoted.{Expr, Type}
 
 import java.net.URLClassLoader
 
-import Toolbox.{Settings, Run, Show}
+import Toolbox.{Run, Settings, Show}
+import dotty.tools.dotc.core.Definitions
 
 class QuoteDriver extends Driver {
   import tpd._
@@ -74,8 +75,12 @@ class QuoteDriver extends Driver {
     output.getOrElse(throw new Exception("Could not extract " + tpe))
   }
 
+  private[this] val myDefinitions = new ThreadLocal[Definitions] {
+    override def initialValue(): Definitions = new Definitions
+  }
+
   override def initCtx: Context = {
-    val ictx = super.initCtx.fresh
+    val ictx = new ContextBase { override val definitions: Definitions = myDefinitions.get() }.initialCtx
     var classpath = System.getProperty("java.class.path")
     this.getClass.getClassLoader match {
       case cl: URLClassLoader =>
