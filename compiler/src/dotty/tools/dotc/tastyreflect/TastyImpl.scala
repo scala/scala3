@@ -82,7 +82,7 @@ object TastyImpl extends scala.tasty.Tasty {
   }
 
   def PackageClauseDeco(x: PackageClause): AbstractPackageClause = new AbstractPackageClause {
-    override def definition: Definition = ???
+    def definition(implicit ctx: Context): Definition = FromSymbol.packageDef(x.symbol)
   }
 
   // ----- Statements -----------------------------------------------
@@ -589,7 +589,9 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type TypeBoundsTree = tpd.TypeBoundsTree
 
-  def TypeBoundsTreeDeco(x: TypeBoundsTree): AbstractTypeBoundsTree = ???
+  def TypeBoundsTreeDeco(x: TypeBoundsTree): AbstractTypeBoundsTree = new AbstractTypeBoundsTree {
+    def tpe(implicit ctx: Context): TypeBounds = x.tpe.bounds
+  }
 
   def typeBoundsTreeClassTag: ClassTag[TypeBoundsTree] = implicitly[ClassTag[TypeBoundsTree]]
 

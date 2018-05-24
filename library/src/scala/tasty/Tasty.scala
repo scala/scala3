@@ -68,7 +68,7 @@ abstract class Tasty { tasty =>
   }
 
   trait AbstractPackageClause {
-    def definition: Definition
+    def definition(implicit ctx: Context): Definition
   }
   implicit def PackageClauseDeco(x: PackageClause): AbstractPackageClause
 
@@ -426,7 +426,7 @@ abstract class Tasty { tasty =>
   type TypeBoundsTree <: TypeOrBoundsTree
 
   trait AbstractTypeBoundsTree {
-    def tpe: TypeBounds
+    def tpe(implicit ctx: Context): TypeBounds
   }
   implicit def TypeBoundsTreeDeco(x: TypeBoundsTree): AbstractTypeBoundsTree
 
