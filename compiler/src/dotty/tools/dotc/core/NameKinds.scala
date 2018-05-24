@@ -290,6 +290,7 @@ object NameKinds {
   val SkolemName              = new UniqueNameKind("?")
   val LiftedTreeName          = new UniqueNameKind("liftedTree")
   val SuperArgName            = new UniqueNameKind("$superArg$")
+  val DocArtifactName         = new UniqueNameKind("$doc")
 
   /** A kind of unique extension methods; Unlike other unique names, these can be
    *  unmangled.

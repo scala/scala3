@@ -13,7 +13,7 @@ import core.Flags._
 import core.Constants._
 import core.StdNames._
 import core.NameOps._
-import core.NameKinds.OuterSelectName
+import core.NameKinds.{DocArtifactName, OuterSelectName}
 import core.Decorators._
 import core.TypeErasure.isErasedType
 import core.Phases.Phase
@@ -379,7 +379,8 @@ class TreeChecker extends Phase with SymTransformer {
         x.is(Method) &&
           !x.isCompanionMethod &&
           !x.isValueClassConvertMethod &&
-          !(x.is(Macro) && ctx.phase.refChecked)
+          !(x.is(Macro) && ctx.phase.refChecked) &&
+          !x.name.is(DocArtifactName)
 
       val symbolsNotDefined = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMethod) -- impl.body.map(_.symbol) - constr.symbol
 
