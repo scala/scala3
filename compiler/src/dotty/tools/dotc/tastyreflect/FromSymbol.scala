@@ -1,9 +1,9 @@
-package dotty.tools.dotc.tasty
+package dotty.tools.dotc.tastyreflect
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Symbols._
 
 object FromSymbol {
 

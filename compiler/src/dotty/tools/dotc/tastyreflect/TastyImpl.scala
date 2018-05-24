@@ -1,11 +1,11 @@
-package dotty.tools.dotc.tasty
+package dotty.tools.dotc.tastyreflect
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import dotty.tools.dotc.core
-import dotty.tools.dotc.core._
+import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.reporting.diagnostic.MessageContainer
