@@ -60,7 +60,7 @@ class Pickler extends Phase {
       if (tree.pos.exists)
         new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
-      if (ctx.settings.YkeepComments.value)
+      if (!ctx.settings.YdropComments.value)
         new CommentPickler(pickler, treePkl.buf.addrOfTree).pickleComment(tree)
 
       // other pickle sections go here.

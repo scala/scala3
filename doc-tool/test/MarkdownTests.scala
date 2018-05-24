@@ -15,7 +15,6 @@ class MarkdownTests extends DottyDocTest {
     import base.settings._
     val ctx = base.initialCtx.fresh
     ctx.setSetting(ctx.settings.language, List("Scala2"))
-    ctx.setSetting(ctx.settings.YkeepComments, true)
     ctx.setSetting(ctx.settings.YnoInline, true)
     ctx.setSetting(ctx.settings.Ycheck, "all" :: Nil)
     // No wiki syntax!

@@ -44,11 +44,11 @@ class Driver extends DotClass {
 
   /**
    * Should the `ContextDocstrings` be set for this context? The `ContextDocstrings` is used
-   * to store doc comments when `-Ykeep-comments` is set, or when TASTY is configured to
+   * to store doc comments unless `-Ydrop-comments` is set, or when TASTY is configured to
    * unpickle the doc comments.
    */
   protected def shouldAddDocContext(implicit ctx: Context): Boolean = {
-    ctx.settings.YkeepComments.value || ctx.mode.is(Mode.ReadComments)
+    !ctx.settings.YdropComments.value || ctx.mode.is(Mode.ReadComments)
   }
 
   def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
