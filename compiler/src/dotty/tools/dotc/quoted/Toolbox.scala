@@ -6,7 +6,7 @@ import dotty.tools.dotc.printing.RefinedPrinter
 
 import scala.quoted.Expr
 import scala.runtime.BoxedUnit
-import scala.quoted.Exprs.{LiftedExpr, TreeExpr}
+import scala.quoted.Exprs.{LiftedExpr, TastyTreeExpr}
 import scala.runtime.quoted._
 
 /** Default runners for quoted expressions */
@@ -24,8 +24,8 @@ object Toolbox {
     def run(expr: Expr[T]): T = expr match {
       case expr: LiftedExpr[T] =>
         expr.value
-      case expr: TreeExpr[Tree] @unchecked =>
-        new QuoteDriver().run(expr.pickled, runSettings)
+      case expr: TastyTreeExpr[Tree] @unchecked =>
+        throw new scala.quoted.QuoteError("Can't run and scala.quoted.Expr coming from a macro argument")
       case _ =>
         new QuoteDriver().run(expr, runSettings)
     }
