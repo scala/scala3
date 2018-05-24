@@ -2,7 +2,6 @@ import scala.quoted._
 import dotty.tools.dotc.quoted.Toolbox._
 
 import scala.tasty.Universe
-import scala.tasty.util.TastyPrinter
 
 object Macros {
 
@@ -13,9 +12,8 @@ object Macros {
     import u._
     import tasty._
     val tree = x.toTasty
-    val printer = new TastyPrinter(tasty)
-    val treeStr = printer.stringOfTree(tree)
-    val treeTpeStr = printer.stringOfType(tree.tpe)
+    val treeStr = tree.show
+    val treeTpeStr = tree.tpe.show
 
     '{
       println(~treeStr.toExpr)

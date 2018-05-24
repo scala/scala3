@@ -1,7 +1,7 @@
 import scala.quoted._
 
 import scala.tasty.Universe
-import scala.tasty.util.{TastyPrinter, TreeTraverser}
+import scala.tasty.util.TreeTraverser
 
 object Macros {
 

@@ -1,8 +1,9 @@
 package scala.tasty
 
 import scala.reflect.ClassTag
+import scala.tasty.util.Show
 
-abstract class Tasty {
+abstract class Tasty { tasty =>
 
   // ===== Quotes ===================================================
 
@@ -16,6 +17,15 @@ abstract class Tasty {
   }
   implicit def QuotedTypeDeco[T](x: quoted.Type[T]): AbstractQuotedType
 
+  // ===== Show =====================================================
+
+  implicit def defaultShow: Show[tasty.type]
+
+  def showExtractors: Show[tasty.type]
+
+  // TODO
+  // def showSourceCode: Show[tasty.type]
+
   // ===== Contexts =================================================
 
   type Context
@@ -23,7 +33,7 @@ abstract class Tasty {
   trait AbstractContext {
     def owner: Definition
   }
-  implicit def ContextDeco(x: Context): AbstractContext
+  implicit def ContextDeco(ctx: Context): AbstractContext
 
   // ===== Id =======================================================
 
@@ -43,8 +53,10 @@ abstract class Tasty {
 
   type Tree
 
-  trait AbstractTree extends Positioned
-  implicit def TreeDeco(t: Tree): AbstractTree
+  trait AbstractTree extends Positioned {
+    def show(implicit ctx: Context, s: Show[tasty.type]): String
+  }
+  implicit def TreeDeco(tree: Tree): AbstractTree
 
   type PackageClause <: Tree
 
@@ -335,9 +347,10 @@ abstract class Tasty {
   type TypeOrBoundsTree
 
   trait AbstractTypeOrBoundsTree {
+    def show(implicit ctx: Context, s: Show[tasty.type]): String
     def tpe(implicit ctx: Context): TypeOrBounds
   }
-  implicit def TypeOrBoundsTreeDeco(x: TypeOrBoundsTree): AbstractTypeOrBoundsTree
+  implicit def TypeOrBoundsTreeDeco(tpt: TypeOrBoundsTree): AbstractTypeOrBoundsTree
 
 
   // ----- TypeTrees ------------------------------------------------
@@ -429,6 +442,11 @@ abstract class Tasty {
   trait Typed {
     def tpe(implicit ctx: Context): Type
   }
+
+  trait AbstractTypeOrBounds {
+    def show(implicit ctx: Context, s: Show[tasty.type]): String
+  }
+  implicit def TypeOrBoundsDeco(tpe: TypeOrBounds): AbstractTypeOrBounds
 
   // ----- Types ----------------------------------------------------
 
@@ -576,9 +594,10 @@ abstract class Tasty {
 
   type Constant
   trait AbstractConstant {
+    def show(implicit ctx: Context, s: Show[tasty.type]): String
     def value: Any
   }
-  implicit def ConstantDeco(x: Constant): AbstractConstant
+  implicit def ConstantDeco(const: Constant): AbstractConstant
 
   implicit def constantClassTag: ClassTag[Constant]
 

@@ -1,7 +1,7 @@
 package scala.tasty
 
 trait Universe {
-  implicit val tasty: Tasty
+  val tasty: Tasty
   implicit val context: tasty.Context
 }
 

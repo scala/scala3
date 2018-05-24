@@ -2,7 +2,6 @@
 import scala.quoted._
 
 import scala.tasty.Universe
-import scala.tasty.util.TastyPrinter
 
 class MyMap[Keys](private val underlying: Array[Int]) extends AnyVal {
   def get[K <: String](implicit i: Index[K, Keys]): Int = underlying(i.index)

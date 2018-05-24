@@ -11,6 +11,7 @@ import dotty.tools.dotc.util.SourcePosition
 
 import scala.quoted
 import scala.reflect.ClassTag
+import scala.tasty.util.{Show, ShowExtractors}
 
 object TastyImpl extends scala.tasty.Tasty {
 
@@ -23,6 +24,15 @@ object TastyImpl extends scala.tasty.Tasty {
   def QuotedTypeDeco[T](x: quoted.Type[T]): AbstractQuotedType = new AbstractQuotedType {
     def toTasty(implicit ctx: Context): TypeTree = PickledQuotes.quotedTypeToTree(x)
   }
+
+  // ===== Show =====================================================
+
+  def defaultShow: Show[this.type] = showExtractors
+
+  def showExtractors: Show[this.type] = new ShowExtractors(this)
+
+  // TODO
+  // def showSourceCode: Show[this.type] = ???
 
   // ===== Contexts =================================================
 
@@ -53,8 +63,9 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Tree = tpd.Tree
 
-  def TreeDeco(t: Tree): AbstractTree = new AbstractTree {
-    def pos(implicit ctx: Context): Position = t.pos
+  def TreeDeco(tree: Tree): AbstractTree = new AbstractTree {
+    def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showTree(tree)
+    def pos(implicit ctx: Context): Position = tree.pos
   }
 
   type PackageClause = tpd.PackageDef
@@ -449,8 +460,9 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type TypeOrBoundsTree = tpd.Tree
 
-  def TypeOrBoundsTreeDeco(x: TypeOrBoundsTree): AbstractTypeOrBoundsTree = new AbstractTypeOrBoundsTree {
-    def tpe(implicit ctx: Context): Type = x.tpe.stripTypeVar
+  def TypeOrBoundsTreeDeco(tpt: TypeOrBoundsTree): AbstractTypeOrBoundsTree = new AbstractTypeOrBoundsTree {
+    def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showTypeOrBoundsTree(tpt)
+    def tpe(implicit ctx: Context): Type = tpt.tpe.stripTypeVar
   }
 
   // ----- TypeTrees ------------------------------------------------
@@ -558,6 +570,10 @@ object TastyImpl extends scala.tasty.Tasty {
   // ===== Types ====================================================
 
   type TypeOrBounds = Types.Type
+
+  def TypeOrBoundsDeco(tpe: Types.Type): AbstractTypeOrBounds = new AbstractTypeOrBounds {
+    def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showTypeOrBounds(tpe)
+  }
 
   // ----- Types ----------------------------------------------------
 
@@ -756,8 +772,9 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Constant = Constants.Constant
 
-  def ConstantDeco(x: Constant): AbstractConstant = new AbstractConstant {
-    def value: Any = x.value
+  def ConstantDeco(const: Constant): AbstractConstant = new AbstractConstant {
+    def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showConstant(const)
+    def value: Any = const.value
   }
 
   def constantClassTag: ClassTag[Constant] = implicitly[ClassTag[Constant]]
