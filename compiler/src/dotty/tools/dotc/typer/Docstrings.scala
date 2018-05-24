@@ -17,7 +17,7 @@ trait Docstrings { self: Typer =>
     */
   def cookComments(syms: List[Symbol], owner: Symbol)(implicit ctx: Context): Unit =
     ctx.docCtx.foreach { docbase =>
-      val relevantSyms = syms.filter(docbase.docstring(_).isDefined)
+      val relevantSyms = syms.filter(docbase.docstring(_).exists(!_.isExpanded))
       relevantSyms.foreach { sym =>
         expandParentDocs(sym)
         val usecases = docbase.docstring(sym).map(_.usecases).getOrElse(Nil)
