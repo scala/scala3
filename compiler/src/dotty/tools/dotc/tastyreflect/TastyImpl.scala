@@ -207,17 +207,19 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type PackageDef = PackageDefinition
 
+  def PackageDefDeco(t: PackageDef): AbstractPackageDef = new AbstractPackageDef {
+    def members(implicit ctx: Context): List[Statement] = {
+      if (t.symbol.is(core.Flags.JavaDefined)) Nil // FIXME should also support java packages
+      else t.symbol.info.decls.iterator.map(FromSymbol.definition).toList
+    }
+  }
+
   def packageDefClassTag: ClassTag[PackageDef] = implicitly[ClassTag[PackageDef]]
 
   object PackageDef extends PackageDefExtractor {
-    def unapply(x: PackageDef)(implicit ctx: Context): Option[(String, List[Statement])] = x match {
+    def unapply(x: PackageDef)(implicit ctx: Context): Option[(String, PackageDef)] = x match {
       case x: PackageDefinition =>
-        // FIXME Do not do this eagerly as it forces everithing in the package to be loaded.
-        //       An alternative would be to add it as an extension method instead.
-        val definitions =
-          if (x.symbol.is(core.Flags.JavaDefined)) Nil // FIXME should also support java packages
-          else x.symbol.info.decls.iterator.map(FromSymbol.definition).toList
-        Some(x.symbol.name.toString, definitions)
+        Some((x.symbol.name.toString, FromSymbol.packageDef(x.symbol.owner)))
       case _ => None
     }
   }

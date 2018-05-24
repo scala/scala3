@@ -165,11 +165,16 @@ abstract class Tasty { tasty =>
 
   type PackageDef <: Definition
 
+  trait AbstractPackageDef {
+    def members(implicit ctx: Context): List[Statement]
+  }
+  implicit def PackageDefDeco(t: PackageDef): AbstractPackageDef
+
   implicit def packageDefClassTag: ClassTag[PackageDef]
 
   val PackageDef: PackageDefExtractor
   abstract class PackageDefExtractor {
-    def unapply(x: PackageDef)(implicit ctx: Context): Option[(String, List[Statement])]
+    def unapply(x: PackageDef)(implicit ctx: Context): Option[(String, PackageDef)]
   }
 
   // ----- Parents --------------------------------------------------
