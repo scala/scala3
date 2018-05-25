@@ -145,11 +145,11 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "ConstantType(" += value += ")"
       case Type.SymRef(sym, qual) =>
         def visitName(sym: Definition): Buffer = sym match {
-          case ValDef(name, _, _) => this += name
-          case DefDef(name, _, _, _, _) => this += name
-          case TypeDef(name, _) => this += name
-          case ClassDef(name, _, _, _, _) => this += name
-          case PackageDef(name, _) => this += name
+          case ValDef(name, _, _) => this += "ValDef(" += name += ", _, _)"
+          case DefDef(name, _, _, _, _) => this += "DefDef(" += name += ", _, _, _, _)"
+          case TypeDef(name, _) => this += "TypeDef(" += name += ", _)"
+          case ClassDef(name, _, _, _, _) => this += "ClassDef(" += name += ", _, _, _, _)"
+          case PackageDef(name, _) => this += "PackageDef(" += name += ", _)"
           case _ => this += "#"
         }
         this += "SymRef("
