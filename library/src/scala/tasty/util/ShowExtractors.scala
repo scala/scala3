@@ -25,9 +25,9 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def visitTree(x: Tree): Buffer = x match {
       case Term.Ident(name) =>
-        this += "Ident(" += name += ")"
+        this += "Ident(\"" += name += "\")"
       case Term.Select(qualifier, name, signature) =>
-        this += "Select(" += qualifier += ", " += name += ", " += signature += ")"
+        this += "Select(" += qualifier += ", \"" += name += "\", " += signature += ")"
       case Term.This(qual) =>
         this += "This(" += qual += ")"
       case Term.Super(qual, mix) =>
@@ -43,7 +43,7 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Term.Typed(expr, tpt) =>
         this += "Typed(" += expr += ", "  += tpt += ")"
       case Term.NamedArg(name, arg) =>
-        this += "NamedArg(" += name += ", " += arg += ")"
+        this += "NamedArg(\"" += name += "\", " += arg += ")"
       case Term.Assign(lhs, rhs) =>
         this += "Assign(" += lhs += ", " += rhs += ")"
       case Term.Block(stats, expr) =>
@@ -63,20 +63,20 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Term.Inlined(call, bindings, expansion) =>
         this += "Inlined(" += call += ", " ++= bindings += ", " += expansion += ")"
       case ValDef(name, tpt, rhs) =>
-        this += "ValDef(" += name += ", " += tpt += ", " += rhs += ")"
+        this += "ValDef(\"" += name += "\", " += tpt += ", " += rhs += ")"
       case DefDef(name, typeParams, paramss, returnTpt, rhs) =>
-        this += "DefDef(" += name += ", " ++= typeParams += ", " +++= paramss += ", " += returnTpt += ", " += rhs += ")"
+        this += "DefDef(\"" += name += "\", " ++= typeParams += ", " +++= paramss += ", " += returnTpt += ", " += rhs += ")"
       case TypeDef(name, rhs) =>
-        this += "TypeDef(" += name += ", " += rhs += ")"
+        this += "TypeDef(\"" += name += "\", " += rhs += ")"
       case ClassDef(name, constr, parents, self, body) =>
-        this += "ClassDef(" += name += ", " += constr += ", "
+        this += "ClassDef(\"" += name += "\", " += constr += ", "
         visitList[Parent](parents, {
           case parent @ Term() => this += parent
           case parent @ TypeTree() => this += parent
         })
         this += ", " += self += ", " ++= body += ")"
       case PackageDef(name, members) =>
-        this += "PackageDef(" += name += ", " ++= members += ")"
+        this += "PackageDef(\"" += name += "\", " ++= members += ")"
       case Import(expr, selectors) =>
         this += "Import(" += expr += ", " ++= selectors += ")"
       case PackageClause(pid, stats) =>
@@ -87,9 +87,9 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case TypeTree.Synthetic() =>
         this += "Synthetic()"
       case TypeTree.TypeIdent(name) =>
-        this += "TypeIdent(" += name += ")"
+        this += "TypeIdent(\"" += name += "\")"
       case TypeTree.TypeSelect(qualifier, name) =>
-        this += "TypeSelect(" += qualifier += ", " += name += ")"
+        this += "TypeSelect(" += qualifier += ", \"" += name += "\")"
       case TypeTree.Singleton(ref) =>
         this += "Singleton(" += ref += ")"
       case TypeTree.And(left, right) =>
@@ -117,7 +117,7 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Pattern.Value(v) =>
         this += "Value(" += v += ")"
       case Pattern.Bind(name, body) =>
-        this += "Bind(" += name += ", " += body += ")"
+        this += "Bind(\"" += name += "\", " += body += ")"
       case Pattern.Unapply(fun, implicits, patterns) =>
         this += "Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
       case Pattern.Alternative(patterns) =>
@@ -137,7 +137,7 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Constant.Long(value) => this += "Long(" += value += ")"
       case Constant.Float(value) => this += "Float(" += value += ")"
       case Constant.Double(value) => this += "Double(" += value += ")"
-      case Constant.String(value) => this += "String(" += value += ")"
+      case Constant.String(value) => this += "String(\"" += value += "\")"
     }
 
     def visitType(x: TypeOrBounds): Buffer = x match {
@@ -145,20 +145,20 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "ConstantType(" += value += ")"
       case Type.SymRef(sym, qual) =>
         def visitName(sym: Definition): Buffer = sym match {
-          case ValDef(name, _, _) => this += "ValDef(" += name += ", _, _)"
-          case DefDef(name, _, _, _, _) => this += "DefDef(" += name += ", _, _, _, _)"
-          case TypeDef(name, _) => this += "TypeDef(" += name += ", _)"
-          case ClassDef(name, _, _, _, _) => this += "ClassDef(" += name += ", _, _, _, _)"
-          case PackageDef(name, _) => this += "PackageDef(" += name += ", _)"
+          case ValDef(name, _, _) => this += "ValDef(\"" += name += "\", _, _)"
+          case DefDef(name, _, _, _, _) => this += "DefDef(\"" += name += "\", _, _, _, _)"
+          case TypeDef(name, _) => this += "TypeDef(\"" += name += "\", _)"
+          case ClassDef(name, _, _, _, _) => this += "ClassDef(\"" += name += "\", _, _, _, _)"
+          case PackageDef(name, _) => this += "PackageDef(\"" += name += "\", _)"
           case _ => this += "#"
         }
         this += "SymRef("
         visitName(sym)
         this += ", " += qual += ")"
       case Type.TermRef(name, qual) =>
-        this += "TermRef(" += name += ", " += qual += ")"
+        this += "TermRef(\"" += name += "\", " += qual += ")"
       case Type.TypeRef(name, qual) =>
-        this += "TypeRef(" += name += ", " += qual += ")"
+        this += "TypeRef(\"" += name += "\", " += qual += ")"
       case Type.Refinement(parent, name, info) =>
         this += "Refinement(" += parent += ", " += name += ", " += info += ")"
       case Type.AppliedType(tycon, args) =>
@@ -198,7 +198,7 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def visitId(x: Id): Buffer = {
       val Id(name) = x
-      this += "Id(" += name += ")"
+      this += "Id(\"" += name += "\")"
     }
 
     def visitSignature(sig: Signature): Buffer = {
