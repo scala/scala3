@@ -25,43 +25,43 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def visitTree(x: Tree): Buffer = x match {
       case Term.Ident(name) =>
-        this += "Ident(\"" += name += "\")"
+        this += "Term.Ident(\"" += name += "\")"
       case Term.Select(qualifier, name, signature) =>
-        this += "Select(" += qualifier += ", \"" += name += "\", " += signature += ")"
+        this += "Term.Select(" += qualifier += ", \"" += name += "\", " += signature += ")"
       case Term.This(qual) =>
-        this += "This(" += qual += ")"
+        this += "Term.This(" += qual += ")"
       case Term.Super(qual, mix) =>
-        this += "TypeApply(" += qual += ", " += mix += ")"
+        this += "Term.TypeApply(" += qual += ", " += mix += ")"
       case Term.Apply(fun, args) =>
-        this += "Apply(" += fun += ", " ++= args += ")"
+        this += "Term.Apply(" += fun += ", " ++= args += ")"
       case Term.TypeApply(fun, args) =>
-        this += "TypeApply(" += fun += ", " ++= args += ")"
+        this += "Term.TypeApply(" += fun += ", " ++= args += ")"
       case Term.Literal(const) =>
-        this += "Literal(" += const += ")"
+        this += "Term.Literal(" += const += ")"
       case Term.New(tpt) =>
-        this += "New(" += tpt += ")"
+        this += "Term.New(" += tpt += ")"
       case Term.Typed(expr, tpt) =>
-        this += "Typed(" += expr += ", "  += tpt += ")"
+        this += "Term.Typed(" += expr += ", "  += tpt += ")"
       case Term.NamedArg(name, arg) =>
-        this += "NamedArg(\"" += name += "\", " += arg += ")"
+        this += "Term.NamedArg(\"" += name += "\", " += arg += ")"
       case Term.Assign(lhs, rhs) =>
-        this += "Assign(" += lhs += ", " += rhs += ")"
+        this += "Term.Assign(" += lhs += ", " += rhs += ")"
       case Term.Block(stats, expr) =>
-        this += "Block(" ++= stats += ", " += expr += ")"
+        this += "Term.Block(" ++= stats += ", " += expr += ")"
       case Term.If(cond, thenp, elsep) =>
-        this += "If(" += cond += ", " += thenp += ", " += elsep += ")"
+        this += "Term.If(" += cond += ", " += thenp += ", " += elsep += ")"
       case Term.Lambda(meth, tpt) =>
-        this += "Lambda(" += meth += ", " += tpt += ")"
+        this += "Term.Lambda(" += meth += ", " += tpt += ")"
       case Term.Match(selector, cases) =>
-        this += "Match(" += selector += ", " ++= cases += ")"
+        this += "Term.Match(" += selector += ", " ++= cases += ")"
       case Term.Return(expr) =>
-        this += "Return(" += expr += ")"
+        this += "Term.Return(" += expr += ")"
       case Term.Try(block, handlers, finalizer) =>
-        this += "Try(" += block += ", " ++= handlers += ", " += finalizer += ")"
+        this += "Term.Try(" += block += ", " ++= handlers += ", " += finalizer += ")"
       case Term.Repeated(elems) =>
-        this += "Repeated(" ++= elems += ")"
+        this += "Term.Repeated(" ++= elems += ")"
       case Term.Inlined(call, bindings, expansion) =>
-        this += "Inlined(" += call += ", " ++= bindings += ", " += expansion += ")"
+        this += "Term.Inlined(" += call += ", " ++= bindings += ", " += expansion += ")"
       case ValDef(name, tpt, rhs) =>
         this += "ValDef(\"" += name += "\", " += tpt += ", " += rhs += ")"
       case DefDef(name, typeParams, paramss, returnTpt, rhs) =>
@@ -85,25 +85,25 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def visitTypeTree(x: TypeOrBoundsTree): Buffer = x match {
       case TypeTree.Synthetic() =>
-        this += "Synthetic()"
+        this += "TypeTree.Synthetic()"
       case TypeTree.TypeIdent(name) =>
-        this += "TypeIdent(\"" += name += "\")"
+        this += "TypeTree.TypeIdent(\"" += name += "\")"
       case TypeTree.TypeSelect(qualifier, name) =>
-        this += "TypeSelect(" += qualifier += ", \"" += name += "\")"
+        this += "TypeTree.TypeSelect(" += qualifier += ", \"" += name += "\")"
       case TypeTree.Singleton(ref) =>
-        this += "Singleton(" += ref += ")"
+        this += "TypeTree.Singleton(" += ref += ")"
       case TypeTree.And(left, right) =>
-        this += "And(" += left += ", " += right += ")"
+        this += "TypeTree.And(" += left += ", " += right += ")"
       case TypeTree.Or(left, right) =>
-        this += "Or(" += left += ", " += right += ")"
+        this += "TypeTree.Or(" += left += ", " += right += ")"
       case TypeTree.Refined(tpt, refinements) =>
-        this += "Refined(" += tpt += ", " ++= refinements += ")"
+        this += "TypeTree.Refined(" += tpt += ", " ++= refinements += ")"
       case TypeTree.Applied(tpt, args) =>
-        this += "Applied(" += tpt += ", " ++= args += ")"
+        this += "TypeTree.Applied(" += tpt += ", " ++= args += ")"
       case TypeTree.ByName(result) =>
-        this += "ByName(" += result += ")"
+        this += "TypeTree.ByName(" += result += ")"
       case TypeTree.Annotated(arg, annot) =>
-        this += "Annotated(" += arg += ", " += annot += ")"
+        this += "TypeTree.Annotated(" += arg += ", " += annot += ")"
       case TypeBoundsTree(lo, hi) =>
         this += "TypeBoundsTree(" += lo += ", " += hi += ")"
     }
@@ -115,34 +115,34 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def visitPattern(x: Pattern): Buffer = x match {
       case Pattern.Value(v) =>
-        this += "Value(" += v += ")"
+        this += "Pattern.Value(" += v += ")"
       case Pattern.Bind(name, body) =>
-        this += "Bind(\"" += name += "\", " += body += ")"
+        this += "Pattern.Bind(\"" += name += "\", " += body += ")"
       case Pattern.Unapply(fun, implicits, patterns) =>
-        this += "Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
+        this += "Pattern.Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
       case Pattern.Alternative(patterns) =>
-        this += "Alternative(" ++= patterns += ")"
+        this += "Pattern.Alternative(" ++= patterns += ")"
       case Pattern.TypeTest(tpt) =>
-        this += "TypeTest(" += tpt += ")"
+        this += "Pattern.TypeTest(" += tpt += ")"
     }
 
     def visitConstant(x: Constant): Buffer = x match {
-      case Constant.Unit() => this += "Unit()"
-      case Constant.Null() => this += "Null()"
-      case Constant.Boolean(value) => this += "Boolean(" += value += ")"
-      case Constant.Byte(value) => this += "Byte(" += value += ")"
-      case Constant.Short(value) => this += "Short(" += value += ")"
-      case Constant.Char(value) => this += "Char(" += value += ")"
-      case Constant.Int(value) => this += "Int(" += value.toString += ")"
-      case Constant.Long(value) => this += "Long(" += value += ")"
-      case Constant.Float(value) => this += "Float(" += value += ")"
-      case Constant.Double(value) => this += "Double(" += value += ")"
-      case Constant.String(value) => this += "String(\"" += value += "\")"
+      case Constant.Unit() => this += "Constant.Unit()"
+      case Constant.Null() => this += "Constant.Null()"
+      case Constant.Boolean(value) => this += "Constant.Boolean(" += value += ")"
+      case Constant.Byte(value) => this += "Constant.Byte(" += value += ")"
+      case Constant.Short(value) => this += "Constant.Short(" += value += ")"
+      case Constant.Char(value) => this += "Constant.Char(" += value += ")"
+      case Constant.Int(value) => this += "Constant.Int(" += value.toString += ")"
+      case Constant.Long(value) => this += "Constant.Long(" += value += ")"
+      case Constant.Float(value) => this += "Constant.Float(" += value += ")"
+      case Constant.Double(value) => this += "Constant.Double(" += value += ")"
+      case Constant.String(value) => this += "Constant.String(\"" += value += "\")"
     }
 
     def visitType(x: TypeOrBounds): Buffer = x match {
       case Type.ConstantType(value) =>
-        this += "ConstantType(" += value += ")"
+        this += "Type.ConstantType(" += value += ")"
       case Type.SymRef(sym, qual) =>
         def visitName(sym: Definition): Buffer = sym match {
           case ValDef(name, _, _) => this += "ValDef(\"" += name += "\", _, _)"
@@ -152,48 +152,48 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case PackageDef(name, _) => this += "PackageDef(\"" += name += "\", _)"
           case _ => this += "#"
         }
-        this += "SymRef("
+        this += "Type.SymRef("
         visitName(sym)
         this += ", " += qual += ")"
       case Type.TermRef(name, qual) =>
-        this += "TermRef(\"" += name += "\", " += qual += ")"
+        this += "Type.TermRef(\"" += name += "\", " += qual += ")"
       case Type.TypeRef(name, qual) =>
-        this += "TypeRef(\"" += name += "\", " += qual += ")"
+        this += "Type.TypeRef(\"" += name += "\", " += qual += ")"
       case Type.Refinement(parent, name, info) =>
-        this += "Refinement(" += parent += ", " += name += ", " += info += ")"
+        this += "Type.Refinement(" += parent += ", " += name += ", " += info += ")"
       case Type.AppliedType(tycon, args) =>
-        this += "AppliedType(" += tycon += ", " ++= args += ")"
+        this += "Type.AppliedType(" += tycon += ", " ++= args += ")"
       case Type.AnnotatedType(underlying, annot) =>
-        this += "AnnotatedType(" += underlying += ", " += annot += ")"
+        this += "Type.AnnotatedType(" += underlying += ", " += annot += ")"
       case Type.AndType(left, right) =>
-        this += "AndType(" += left += ", " += right += ")"
+        this += "Type.AndType(" += left += ", " += right += ")"
       case Type.OrType(left, right) =>
-        this += "OrType(" += left += ", " += right += ")"
+        this += "Type.OrType(" += left += ", " += right += ")"
       case Type.ByNameType(underlying) =>
-        this += "ByNameType(" += underlying += ")"
+        this += "Type.ByNameType(" += underlying += ")"
       case Type.ParamRef(binder, idx) =>
-        this += "ParamRef(" += binder+= ", " += idx += ")"
+        this += "Type.ParamRef(" += binder+= ", " += idx += ")"
       case Type.ThisType(tp) =>
-        this += "ThisType(" += tp += ")"
+        this += "Type.ThisType(" += tp += ")"
       case Type.RecursiveThis(binder) =>
-        this += "RecursiveThis(" += binder += ")"
+        this += "Type.RecursiveThis(" += binder += ")"
       case Type.MethodType(argNames, argTypes, resType) =>
-        this += "MethodType(" ++= argNames += ", " ++= argTypes += ", " += resType += ")"
+        this += "Type.MethodType(" ++= argNames += ", " ++= argTypes += ", " += resType += ")"
       case Type.PolyType(argNames, argBounds, resType) =>
-        this += "PolyType(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
+        this += "Type.PolyType(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
       case Type.TypeLambda(argNames, argBounds, resType) =>
-        this += "TypeLambda(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
+        this += "Type.TypeLambda(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
       case TypeBounds(lo, hi) =>
         this += "TypeBounds(" += lo += ", " += hi += ")"
       case NoPrefix() =>
-        this += "NoPrefix"
+        this += "NoPrefix()"
     }
 
     def visitModifier(x: Modifier): Buffer = x match {
-      case Modifier.Flags(flags) => this += "Flags(" += flags.toString += ")"
-      case Modifier.QualifiedPrivate(tp) => this += "QualifiedPrivate(" += tp += ")"
-      case Modifier.QualifiedProtected(tp) => this += "QualifiedProtected(" += tp += ")"
-      case Modifier.Annotation(tree) => this += "Annotation(" += tree += ")"
+      case Modifier.Flags(flags) => this += "Modifier.Flags(" += flags.toString += ")"
+      case Modifier.QualifiedPrivate(tp) => this += "Modifier.QualifiedPrivate(" += tp += ")"
+      case Modifier.QualifiedProtected(tp) => this += "Modifier.QualifiedProtected(" += tp += ")"
+      case Modifier.Annotation(tree) => this += "Modifier.Annotation(" += tree += ")"
     }
 
     def visitId(x: Id): Buffer = {

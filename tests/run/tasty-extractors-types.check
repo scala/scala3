@@ -1,12 +1,12 @@
-TypeIdent("Int")
-SymRef(ClassDef("Int", _, _, _, _), SymRef(PackageDef("scala", _), ThisType(SymRef(PackageDef("<root>", _), NoPrefix))))
+TypeTree.TypeIdent("Int")
+Type.SymRef(ClassDef("Int", _, _, _, _), Type.SymRef(PackageDef("scala", _), Type.ThisType(Type.SymRef(PackageDef("<root>", _), NoPrefix()))))
 
-Applied(TypeIdent("List"), List(TypeIdent("String")))
-AppliedType(SymRef(ClassDef("List", _, _, _, _), ThisType(SymRef(PackageDef("immutable", _), NoPrefix))), List(SymRef(TypeDef("String", _), SymRef(ValDef("Predef", _, _), ThisType(SymRef(PackageDef("scala", _), NoPrefix))))))
+TypeTree.Applied(TypeTree.TypeIdent("List"), List(TypeTree.TypeIdent("String")))
+Type.AppliedType(Type.SymRef(ClassDef("List", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("immutable", _), NoPrefix()))), List(Type.SymRef(TypeDef("String", _), Type.SymRef(ValDef("Predef", _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))))))
 
-Applied(TypeIdent("Map"), List(TypeIdent("String"), TypeIdent("Int")))
-AppliedType(SymRef(ClassDef("Map", _, _, _, _), ThisType(SymRef(PackageDef("immutable", _), NoPrefix))), List(SymRef(TypeDef("String", _), SymRef(ValDef("Predef", _, _), ThisType(SymRef(PackageDef("scala", _), NoPrefix)))), SymRef(ClassDef("Int", _, _, _, _), SymRef(PackageDef("scala", _), ThisType(SymRef(PackageDef("<root>", _), NoPrefix))))))
+TypeTree.Applied(TypeTree.TypeIdent("Map"), List(TypeTree.TypeIdent("String"), TypeTree.TypeIdent("Int")))
+Type.AppliedType(Type.SymRef(ClassDef("Map", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("immutable", _), NoPrefix()))), List(Type.SymRef(TypeDef("String", _), Type.SymRef(ValDef("Predef", _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))), Type.SymRef(ClassDef("Int", _, _, _, _), Type.SymRef(PackageDef("scala", _), Type.ThisType(Type.SymRef(PackageDef("<root>", _), NoPrefix()))))))
 
-Applied(TypeIdent("Map"), List(TypeIdent("String"), TypeIdent("I")))
-AppliedType(SymRef(ClassDef("Map", _, _, _, _), ThisType(SymRef(PackageDef("immutable", _), NoPrefix))), List(SymRef(TypeDef("String", _), SymRef(ValDef("Predef", _, _), ThisType(SymRef(PackageDef("scala", _), NoPrefix)))), SymRef(TypeDef("I", _), NoPrefix)))
+TypeTree.Applied(TypeTree.TypeIdent("Map"), List(TypeTree.TypeIdent("String"), TypeTree.TypeIdent("I")))
+Type.AppliedType(Type.SymRef(ClassDef("Map", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("immutable", _), NoPrefix()))), List(Type.SymRef(TypeDef("String", _), Type.SymRef(ValDef("Predef", _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))), Type.SymRef(TypeDef("I", _), NoPrefix())))
 
