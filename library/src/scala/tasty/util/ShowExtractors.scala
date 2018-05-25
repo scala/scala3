@@ -2,22 +2,19 @@ package scala.tasty.util
 
 import scala.tasty.Tasty
 
-class TastyPrinter[T <: Tasty with Singleton](val tasty: T) {
+class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty0) {
   import tasty._
 
-  def stringOfTree(tree: Tree)(implicit ctx: Context): String =
+  def showTree(tree: Tree)(implicit ctx: Context): String =
     new Buffer().visitTree(tree).result()
 
-  def stringOfTypeTree(tree: TypeOrBoundsTree)(implicit ctx: Context): String =
-    new Buffer().visitTypeTree(tree).result()
+  def showTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): String =
+    new Buffer().visitTypeTree(tpt).result()
 
-  def stringOfType(tpe: TypeOrBounds)(implicit ctx: Context): String =
+  def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String =
     new Buffer().visitType(tpe).result()
 
-  def stringOfModifier(mod: Modifier)(implicit ctx: Context): String =
-    new Buffer().visitModifier(mod).result()
-
-  def stringOfConstant(const: Constant)(implicit ctx: Context): String =
+  def showConstant(const: Constant)(implicit ctx: Context): String =
     new Buffer().visitConstant(const).result()
 
   private class Buffer(implicit ctx: Context) { self =>

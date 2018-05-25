@@ -2,7 +2,6 @@ import scala.quoted._
 import dotty.tools.dotc.quoted.Toolbox._
 
 import scala.tasty.Universe
-import scala.tasty.util.TastyPrinter
 
 object Asserts {
 
@@ -38,9 +37,8 @@ object Asserts {
     tree match {
       case Term.Apply(Term.Select(OpsTree(left), op, _), right :: Nil) =>
         // FIXME splice the threes directly
-        val printer = new TastyPrinter(tasty)
-        val lExpr = printer.stringOfTree(left).toExpr
-        val rExpr = printer.stringOfTree(right).toExpr
+        val lExpr = left.show.toExpr
+        val rExpr = right.show.toExpr
         op match {
           case "===" => '(assertEquals(~lExpr, ~rExpr))
           case "!==" => '(assertNotEquals(~lExpr, ~rExpr))

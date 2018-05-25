@@ -2,7 +2,7 @@ import scala.quoted._
 import dotty.tools.dotc.quoted.Toolbox._
 
 import scala.tasty.Universe
-import scala.tasty.util.{TastyPrinter, TreeTraverser}
+import scala.tasty.util.TreeTraverser
 
 object Macros {
 
@@ -13,12 +13,10 @@ object Macros {
     import u._
     import u.tasty._
 
-    val printer = new TastyPrinter(tasty)
-
     val buff = new StringBuilder
     val traverser = new TreeTraverser(u.tasty) {
       override def traverseTypeTree(tree: TypeOrBoundsTree)(implicit ctx: Context): Unit = {
-        buff.append(printer.stringOfType(tree.tpe))
+        buff.append(tree.tpe.show)
         buff.append("\n\n")
         traverseTypeTreeChildren(tree)
       }
