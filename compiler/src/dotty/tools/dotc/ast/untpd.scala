@@ -24,8 +24,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A typed subtree of an untyped tree needs to be wrapped in a TypedSlice
    *  @param owner  The current owner at the time the tree was defined
    */
-  abstract case class TypedSplice(tree: tpd.Tree)(val owner: Symbol) extends ProxyTree {
-    def forwardTo = tree
+  abstract case class TypedSplice(splice: tpd.Tree)(val owner: Symbol) extends ProxyTree {
+    def forwardTo = splice
   }
 
   object TypedSplice {
@@ -496,10 +496,16 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: PatDef if (mods eq tree.mods) && (pats eq tree.pats) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
       case _ => finalize(tree, untpd.PatDef(mods, pats, tpt, rhs))
     }
+    def TypedSplice(tree: Tree)(splice: tpd.Tree)(implicit ctx: Context) = tree match {
+      case tree: TypedSplice if splice `eq` tree.splice => tree
+      case _ => finalize(tree, untpd.TypedSplice(splice))
+    }
   }
 
   abstract class UntypedTreeMap(cpy: UntypedTreeCopier = untpd.cpy) extends TreeMap(cpy) {
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+    protected def typedMap: tpd.Tree => tpd.Tree = identity
+
+    override def handleMoreCases(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case ModuleDef(name, impl) =>
         cpy.ModuleDef(tree)(name, transformSub(impl))
       case ParsedTry(expr, handler, finalizer) =>
@@ -540,10 +546,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.ContextBounds(tree)(transformSub(bounds), transform(cxBounds))
       case PatDef(mods, pats, tpt, rhs) =>
         cpy.PatDef(tree)(mods, transform(pats), transform(tpt), transform(rhs))
-      case TypedSplice(_) =>
-        tree
+      case TypedSplice(splice) =>
+        cpy.TypedSplice(tree)(typedMap(splice))
       case _ =>
-        super.transform(tree)
+        super.handleMoreCases(tree)
     }
   }
 

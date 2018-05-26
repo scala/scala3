@@ -1148,6 +1148,9 @@ object Trees {
 
     abstract class TreeMap(val cpy: TreeCopier = inst.cpy) {
 
+      protected def handleMoreCases(tree: Tree)(implicit ctx: Context): Tree =
+        if (ctx.reporter.errorsReported) tree else throw new MatchError(tree)
+
       def transform(tree: Tree)(implicit ctx: Context): Tree = {
         Stats.record(s"TreeMap.transform $getClass")
         Stats.record("TreeMap.transform total")
@@ -1245,8 +1248,8 @@ object Trees {
           case Thicket(trees) =>
             val trees1 = transform(trees)
             if (trees1 eq trees) tree else Thicket(trees1)
-          case _ if ctx.reporter.errorsReported =>
-            tree
+          case _ =>
+            handleMoreCases(tree)
         }
       }
 
