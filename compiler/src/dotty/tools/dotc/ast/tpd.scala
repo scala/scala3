@@ -324,7 +324,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case pre: ThisType =>
         tp.isType ||
         pre.cls.isStaticOwner ||
-          tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
+        tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
           // was ctx.owner.enclosingClass.derivesFrom(pre.cls) which was not tight enough
           // and was spuriously triggered in case inner class would inherit from outer one
           // eg anonymous TypeMap inside TypeMap.andThen
@@ -471,6 +471,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       } else foldOver(sym, tree)
   }
 
+  case class UntypedSplice(splice: untpd.Tree) extends Tree
+
   override val cpy: TypedTreeCopier = // Type ascription needed to pick up any new members in TreeCopier (currently there are none)
     new TypedTreeCopier
 
@@ -609,6 +611,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
+    def UntypedSplice(tree: Tree)(splice: untpd.Tree) = tree match {
+      case tree: tpd.UntypedSplice if tree.splice `eq` splice => tree
+      case _ => finalize(tree, tpd.UntypedSplice(splice))
+    }
+
     override def If(tree: If)(cond: Tree = tree.cond, thenp: Tree = tree.thenp, elsep: Tree = tree.elsep)(implicit ctx: Context): If =
       If(tree: Tree)(cond, thenp, elsep)
     override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(implicit ctx: Context): Closure =
@@ -636,6 +643,18 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(implicit ctx: Context): Closure =
       Closure(tree: Tree)(env, meth, tpt)
+  }
+
+  class TypedTreeMap(cpy: TypedTreeCopier = tpd.cpy) extends TreeMap(cpy) { self =>
+    override def handleMoreCases(tree: Tree)(implicit ctx: Context) = tree match {
+      case UntypedSplice(utree) =>
+        val umap = new untpd.UntypedTreeMap() {
+          override def typedMap = self.transform(_)
+        }
+        cpy.UntypedSplice(tree)(umap.transform(utree))
+      case _ =>
+        super.handleMoreCases(tree)
+    }
   }
 
   override def skipTransform(tree: Tree)(implicit ctx: Context) = tree.tpe.isError

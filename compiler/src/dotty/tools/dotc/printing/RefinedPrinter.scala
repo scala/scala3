@@ -447,6 +447,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "<empty>"
       case TypedSplice(t) =>
         toText(t)
+      case tpd.UntypedSplice(t) =>
+        toText(t)
       case tree @ ModuleDef(name, impl) =>
         withEnclosingDef(tree) {
           modText(tree.mods, NoSymbol, keywordStr("object")) ~~ nameIdText(tree) ~ toTextTemplate(impl)

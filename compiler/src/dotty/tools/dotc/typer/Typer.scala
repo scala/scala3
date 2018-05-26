@@ -1648,7 +1648,7 @@ class Typer extends Namer
   }
 
   def typedTypedSplice(tree: untpd.TypedSplice)(implicit ctx: Context): Tree =
-    tree.tree match {
+    tree.splice match {
       case tree1: TypeTree => tree1  // no change owner necessary here ...
       case tree1: Ident => tree1     // ... or here, since these trees cannot contain bindings
       case tree1 =>
