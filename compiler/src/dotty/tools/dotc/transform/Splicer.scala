@@ -65,7 +65,7 @@ object Splicer {
         val args1 = args.head.zip(tp.paramInfos).map {
           case (arg: Literal, tp) if tp.hasAnnotation(defn.InlineParamAnnot) => arg.const.value
           case (arg, tp) =>
-            assert(!tp.hasAnnotation(defn.InlineParamAnnot))
+            assert(!tp.hasAnnotation(defn.InlineParamAnnot) || defn.isFunctionType(tp))
             // Replace argument by its binding
             val arg1 = bindMap.getOrElse(arg, arg)
             new scala.quoted.Exprs.TastyTreeExpr(arg1)
