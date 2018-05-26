@@ -38,7 +38,7 @@ class TreeTypeMap(
   val oldOwners: List[Symbol] = Nil,
   val newOwners: List[Symbol] = Nil,
   val substFrom: List[Symbol] = Nil,
-  val substTo: List[Symbol] = Nil)(implicit ctx: Context) extends tpd.TypedTreeMap {
+  val substTo: List[Symbol] = Nil)(implicit ctx: Context) extends tpd.TreeMap {
   import tpd._
 
   /** If `sym` is one of `oldOwners`, replace by corresponding symbol in `newOwners` */
