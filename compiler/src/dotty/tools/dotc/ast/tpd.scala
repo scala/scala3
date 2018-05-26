@@ -611,11 +611,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    def UntypedSplice(tree: Tree)(splice: untpd.Tree) = tree match {
-      case tree: tpd.UntypedSplice if tree.splice `eq` splice => tree
-      case _ => finalize(tree, tpd.UntypedSplice(splice))
-    }
-
     override def If(tree: If)(cond: Tree = tree.cond, thenp: Tree = tree.thenp, elsep: Tree = tree.elsep)(implicit ctx: Context): If =
       If(tree: Tree)(cond, thenp, elsep)
     override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(implicit ctx: Context): Closure =
@@ -643,18 +638,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(implicit ctx: Context): Closure =
       Closure(tree: Tree)(env, meth, tpt)
-  }
-
-  class TypedTreeMap(cpy: TypedTreeCopier = tpd.cpy) extends TreeMap(cpy) { self =>
-    override def handleMoreCases(tree: Tree)(implicit ctx: Context) = tree match {
-      case UntypedSplice(utree) =>
-        val umap = new untpd.UntypedTreeMap() {
-          override def typedMap = self.transform(_)
-        }
-        cpy.UntypedSplice(tree)(umap.transform(utree))
-      case _ =>
-        super.handleMoreCases(tree)
-    }
   }
 
   override def skipTransform(tree: Tree)(implicit ctx: Context) = tree.tpe.isError

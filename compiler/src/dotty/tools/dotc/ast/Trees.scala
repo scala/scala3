@@ -1109,6 +1109,10 @@ object Trees {
         case tree: Annotated if (arg eq tree.arg) && (annot eq tree.annot) => tree
         case _ => finalize(tree, untpd.Annotated(arg, annot))
       }
+      def UntypedSplice(tree: Tree)(splice: untpd.Tree) = tree match {
+        case tree: tpd.UntypedSplice if tree.splice `eq` splice => tree
+        case _ => finalize(tree, tpd.UntypedSplice(splice))
+      }
       def Thicket(tree: Tree)(trees: List[Tree]): Thicket = tree match {
         case tree: Thicket if trees eq tree.trees => tree
         case _ => finalize(tree, untpd.Thicket(trees))
@@ -1146,10 +1150,7 @@ object Trees {
      */
     protected def inlineContext(call: Tree)(implicit ctx: Context): Context = ctx
 
-    abstract class TreeMap(val cpy: TreeCopier = inst.cpy) {
-
-      protected def handleMoreCases(tree: Tree)(implicit ctx: Context): Tree =
-        if (ctx.reporter.errorsReported) tree else throw new MatchError(tree)
+    abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self =>
 
       def transform(tree: Tree)(implicit ctx: Context): Tree = {
         Stats.record(s"TreeMap.transform $getClass")
@@ -1249,7 +1250,7 @@ object Trees {
             val trees1 = transform(trees)
             if (trees1 eq trees) tree else Thicket(trees1)
           case _ =>
-            handleMoreCases(tree)
+            transformMoreCases(tree)
         }
       }
 
@@ -1261,9 +1262,26 @@ object Trees {
         transform(tree).asInstanceOf[Tr]
       def transformSub[Tr <: Tree](trees: List[Tr])(implicit ctx: Context): List[Tr] =
         transform(trees).asInstanceOf[List[Tr]]
+
+      protected def transformMoreCases(tree: Tree)(implicit ctx: Context): Tree = tree match {
+        case tpd.UntypedSplice(usplice) =>
+          // For a typed tree map: homomorphism on the untyped part with
+          // recursive mapping of typed splices.
+          // The case is overridden in UntypedTreeMap.##
+          val untpdMap = new untpd.UntypedTreeMap {
+            override def transform(tree: untpd.Tree)(implicit ctx: Context): untpd.Tree = tree match {
+              case untpd.TypedSplice(tsplice) =>
+                untpd.cpy.TypedSplice(tree)(self.transform(tsplice).asInstanceOf[tpd.Tree])
+                  // the cast is safe, since the UntypedSplice case is overridden in UntypedTreeMap.
+              case _ => super.transform(tree)
+            }
+          }
+          cpy.UntypedSplice(tree)(untpdMap.transform(usplice))
+        case _ if ctx.reporter.errorsReported => tree
+      }
     }
 
-    abstract class TreeAccumulator[X] {
+    abstract class TreeAccumulator[X] { self =>
       // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
       def apply(x: X, tree: Tree)(implicit ctx: Context): X
 
@@ -1358,13 +1376,28 @@ object Trees {
             this(this(x, arg), annot)
           case Thicket(ts) =>
             this(x, ts)
-          case _ if ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive) =>
-            // In interactive mode, errors might come from previous runs.
-            // In case of errors it may be that typed trees point to untyped ones.
-            // The IDE can still traverse inside such trees, either in the run where errors
-            // are reported, or in subsequent ones.
-            x
+          case _ =>
+            foldMoreCases(x, tree)
         }
+      }
+
+      def foldMoreCases(x: X, tree: Tree)(implicit ctx: Context): X = tree match {
+        case tpd.UntypedSplice(usplice) =>
+          // For a typed tree accumulator: skip the untyped part and fold all typed splices.
+          // The case is overridden in UntypedTreeAccumulator.
+          val untpdAcc = new untpd.UntypedTreeAccumulator[X] {
+            override def apply(x: X, tree: untpd.Tree)(implicit ctx: Context): X = tree match {
+              case untpd.TypedSplice(tsplice) => self(x, tsplice)
+              case _ => foldOver(x, tree)
+            }
+          }
+          untpdAcc(x, usplice)
+        case _ if ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive) =>
+          // In interactive mode, errors might come from previous runs.
+          // In case of errors it may be that typed trees point to untyped ones.
+          // The IDE can still traverse inside such trees, either in the run where errors
+          // are reported, or in subsequent ones.
+          x
       }
     }
 
