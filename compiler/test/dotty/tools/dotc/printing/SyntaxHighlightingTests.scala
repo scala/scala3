@@ -50,6 +50,10 @@ class SyntaxHighlightingTests {
   def strings = {
     // For some reason we currently use literal color for string
     test("\"Hello\"", "<L|\"Hello\">")
+    test("s\"Hello\"", "s<L|\"Hello\">")
+    test("s\"Hello $name\"", "s<L|\"Hello <V|$name<L|\">")
+    test("raw\"Hello\"", "raw<L|\"Hello\">")
+    test("raw\"\"\"Hello\"\"\"", "raw<L|\"\"\"Hello\"\"\">")
   }
 
   @Test
