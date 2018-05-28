@@ -5,6 +5,7 @@ class Selectable(val receiver: Any) extends AnyVal with scala.Selectable {
     val rcls = receiver.getClass
     try {
       val fld = rcls.getField(name)
+      ensureAccessible(fld)
       fld.get(receiver)
     }
     catch {
@@ -17,6 +18,7 @@ class Selectable(val receiver: Any) extends AnyVal with scala.Selectable {
     val rcls = receiver.getClass
     val paramClasses = paramTypes.map(_.runtimeClass)
     val mth = rcls.getMethod(name, paramClasses: _*)
+    ensureAccessible(mth)
     paramTypes.length match {
       case 0 => () =>
         mth.invoke(receiver)
