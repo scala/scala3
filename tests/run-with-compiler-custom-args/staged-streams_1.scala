@@ -389,12 +389,15 @@ object Test {
       * {{{
       *           /* initialization for stream 1 */
       *
-      *           var curr = null.asInstanceOf[Int]  // keeps each element from reified stream
+      *           var curr = 0.asInstanceOf[Int]  // keeps each element from reified stream
       *           var nadv: Unit => Unit = (_) => () // keeps the advance for each nested level
       *
-      *           def adv: Unit => Unit = /* Linearization of stream1 - updates curr from stream1 */
+      *           def adv: Unit => Unit = {
+      *              /* Linearization of stream1 - updates curr from stream1 */
+      *              curr = ...
+      *           }
       *           nadv = adv
-      *           adv()
+      *           nadv()
       *
       *           /* initialization for stream 2 */
       *
