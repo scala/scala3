@@ -17,6 +17,7 @@ class MarkdownTests extends DottyDocTest {
     ctx.setSetting(ctx.settings.language, List("Scala2"))
     ctx.setSetting(ctx.settings.YkeepComments, true)
     ctx.setSetting(ctx.settings.YnoInline, true)
+    ctx.setSetting(ctx.settings.Ycheck, "all" :: Nil)
     // No wiki syntax!
     ctx.setSetting(ctx.settings.wikiSyntax, false)
     ctx.setProperty(ContextDoc, new ContextDottydoc)
