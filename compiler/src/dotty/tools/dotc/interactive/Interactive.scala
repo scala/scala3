@@ -219,9 +219,9 @@ object Interactive {
       case _  => getScopeCompletions(ctx)
     }
 
-    val sortedCompletions = completions.toList.sortBy(_.name: Name)
-    interactiv.println(i"completion with pos = $pos, prefix = $prefix, termOnly = $termOnly, typeOnly = $typeOnly = $sortedCompletions%, %")
-    (completionPos, sortedCompletions)
+    val completionList = completions.toList
+    interactiv.println(i"completion with pos = $pos, prefix = $prefix, termOnly = $termOnly, typeOnly = $typeOnly = $completionList%, %")
+    (completionPos, completionList)
   }
 
   /** Possible completions of members of `prefix` which are accessible when called inside `boundary` */

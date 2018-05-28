@@ -141,7 +141,7 @@ object ParseResult {
     sourceCode match {
       case CommandExtract(_) | "" => false
       case _ => {
-        val reporter = storeReporter
+        val reporter = newStoreReporter
         var needsMore = false
         reporter.withIncompleteHandler(_ => _ => needsMore = true) {
           parseStats(sourceCode)(ctx.fresh.setReporter(reporter))

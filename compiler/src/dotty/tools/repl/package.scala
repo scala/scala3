@@ -8,7 +8,7 @@ import dotc.reporting.{HideNonSensicalMessages, StoreReporter, UniqueMessagePosi
 
 package object repl {
   /** Create empty outer store reporter */
-  private[repl] def storeReporter: StoreReporter =
+  private[repl] def newStoreReporter: StoreReporter =
     new StoreReporter(null)
     with UniqueMessagePositions with HideNonSensicalMessages
 

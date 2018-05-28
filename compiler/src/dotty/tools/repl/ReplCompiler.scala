@@ -42,7 +42,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
 
   def newRun(initCtx: Context, objectIndex: Int) = new Run(this, initCtx) {
     override protected[this] def rootContext(implicit ctx: Context) =
-      addMagicImports(super.rootContext.fresh.setReporter(storeReporter))
+      addMagicImports(super.rootContext.fresh.setReporter(newStoreReporter))
 
     private def addMagicImports(initCtx: Context): Context = {
       def addImport(path: TermName)(implicit ctx: Context) = {
@@ -228,7 +228,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     wrapped(expr, src, state)(runCtx).flatMap { pkg =>
       val unit = new CompilationUnit(src)
       unit.untpdTree = pkg
-      run.compileUnits(unit :: Nil, runCtx.fresh.setReporter(storeReporter))
+      run.compileUnits(unit :: Nil, runCtx.fresh.setReporter(newStoreReporter))
 
       if (errorsAllowed || !reporter.hasErrors)
         unwrapped(unit.tpdTree, src)(runCtx)

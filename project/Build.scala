@@ -518,6 +518,7 @@ object Build {
         ("org.scala-lang.modules" %% "scala-xml" % "1.1.0").withDottyCompat(scalaVersion.value),
         "org.scala-lang" % "scala-library" % scalacVersion % "test",
         Dependencies.compilerInterface(sbtVersion.value),
+        "org.jline" % "jline" % "3.7.0" // used by the REPL
       ),
 
       // For convenience, change the baseDirectory when running the compiler

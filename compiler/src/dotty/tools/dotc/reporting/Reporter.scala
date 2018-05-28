@@ -23,6 +23,12 @@ object Reporter {
           simple.report(m)
       }
     }
+
+  /** A reporter that ignores reports */
+  object NoReporter extends Reporter {
+    def doReport(m: MessageContainer)(implicit ctx: Context) = ()
+    override def report(m: MessageContainer)(implicit ctx: Context): Unit = ()
+  }
 }
 
 import Reporter._
