@@ -85,6 +85,7 @@ case "$1" in
         -repl) PROG_NAME="$ReplMain" && shift ;;
      -compile) PROG_NAME="$CompilerMain" && shift ;;
    -decompile) PROG_NAME="$DecompilerMain" && shift ;;
+ -print-tasty) PROG_NAME="$DecompilerMain" && shift ;;
          -run) PROG_NAME="$ReplMain" && shift ;;
       -bootcp) bootcp=true && shift ;;
    -nobootcp) unset bootcp && shift ;;

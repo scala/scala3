@@ -39,14 +39,12 @@ class DecompilationPrinter extends Phase {
     val pageWidth = ctx.settings.pageWidth.value
     val printLines = ctx.settings.printLines.value
 
-    out.println(s"/** Decompiled from $unit */")
-    val printer = new DecompilerPrinter(ctx)
-    out.println(printer.toText(unit.tpdTree).mkString(pageWidth, printLines))
-
     if (ctx.settings.printTasty.value) {
-      out.println("/*")
       new TastyPrinter(unit.pickled.head._2).printContents()
-      out.println("*/")
+    } else {
+      out.println(s"/** Decompiled from $unit */")
+      val printer = new DecompilerPrinter(ctx)
+      out.println(printer.toText(unit.tpdTree).mkString(pageWidth, printLines))
     }
   }
 }
