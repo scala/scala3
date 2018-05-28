@@ -180,7 +180,9 @@ abstract class Tasty { tasty =>
 
   type Term <: Statement with Parent
 
-  trait AbstractTerm extends Typed with Positioned
+  trait AbstractTerm extends Typed with Positioned {
+    def toExpr[T: quoted.Type](implicit ctx: Context): quoted.Expr[T]
+  }
   implicit def TermDeco(t: Term): AbstractTerm
 
   implicit def termClassTag: ClassTag[Term]

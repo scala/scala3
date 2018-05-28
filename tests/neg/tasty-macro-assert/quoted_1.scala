@@ -35,10 +35,7 @@ object Asserts {
 
     tree match {
       case Term.Apply(Term.Select(OpsTree(left), op, _), right :: Nil) =>
-        op match {
-          case "===" => '(assertEquals(~left.toExpr[Any], ~right.toExpr[Any]))
-          case "!==" => '(assertNotEquals(~left.toExpr[Any], ~right.toExpr[Any]))
-        }
+        '(assertTrue(~left.toExpr[Boolean])) // Buggy code. To generate the errors
       case _ =>
         '(assertTrue(~cond))
     }
