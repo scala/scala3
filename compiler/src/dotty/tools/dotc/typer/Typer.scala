@@ -1886,7 +1886,7 @@ class Typer extends Namer
               case mdef1 =>
                 import untpd.modsDeco
                 mdef match {
-                  case mdef: untpd.TypeDef if mdef.mods.hasMod[untpd.Mod.Enum] =>
+                  case mdef: untpd.TypeDef if mdef.mods.isEnumClass =>
                     enumContexts(mdef1.symbol) = ctx
                   case _ =>
                 }

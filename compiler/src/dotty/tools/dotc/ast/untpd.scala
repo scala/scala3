@@ -131,8 +131,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case class Inline() extends Mod(Flags.Inline)
 
     case class Enum() extends Mod(Flags.EmptyFlags)
-
-    case class EnumCase() extends Mod(Flags.EmptyFlags)
   }
 
   /** Modifiers and annotations for definitions
@@ -190,6 +188,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       val cls = implicitly[ClassTag[T]].runtimeClass
       mods.exists(mod => cls.isAssignableFrom(mod.getClass))
     }
+
+    def isEnumCase = hasMod[Mod.Enum] && is(Case)
+    def isEnumClass = hasMod[Mod.Enum] && !is(Case)
   }
 
   @sharable val EmptyModifiers: Modifiers = new Modifiers()

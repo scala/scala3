@@ -2270,7 +2270,7 @@ object Parsers {
     /** EnumCase = `case' (id ClassConstr [`extends' ConstrApps] | ids)
      */
     def enumCase(start: Offset, mods: Modifiers): DefTree = {
-      val mods1 = mods.withAddedMod(atPos(in.offset)(Mod.EnumCase())) | Case
+      val mods1 = mods.withAddedMod(atPos(in.offset)(Mod.Enum())) | Case
       accept(CASE)
 
       in.adjustSepRegions(ARROW)
