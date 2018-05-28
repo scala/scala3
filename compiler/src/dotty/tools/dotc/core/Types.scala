@@ -1593,6 +1593,7 @@ object Types {
 
     private[this] var myName: Name = null
     private[this] var mySig: Signature = null
+    private[this] var mySigRunId: Int = NoRunId
     private[this] var lastDenotation: Denotation = null
     private[this] var lastSymbol: Symbol = null
     private[this] var checkedPeriod: Period = Nowhere
@@ -1601,6 +1602,7 @@ object Types {
     // Invariants:
     // (1) checkedPeriod != Nowhere  =>  lastDenotation != null
     // (2) lastDenotation != null    =>  lastSymbol != null
+    // (3) mySigRunId != NoRunId     =>  mySig != null
 
     def isType = isInstanceOf[TypeRef]
     def isTerm = isInstanceOf[TermRef]
@@ -1622,7 +1624,10 @@ object Types {
      *  signature of the symbol
      */
     final override def signature(implicit ctx: Context): Signature = {
-      if (mySig == null) mySig = computeSignature
+      if (ctx.runId != mySigRunId) {
+        mySig = computeSignature
+        if (!mySig.isUnderDefined) mySigRunId = ctx.runId
+      }
       mySig
     }
 
@@ -1637,7 +1642,7 @@ object Types {
      *  Otherwise NotAMethod.
      */
     private def currentSignature(implicit ctx: Context): Signature =
-      if (mySig != null) mySig
+      if (ctx.runId == mySigRunId) mySig
       else {
         val lastd = lastDenotation
         if (lastd != null) lastd.signature
