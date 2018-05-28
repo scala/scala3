@@ -563,6 +563,9 @@ object Flags {
   /** An inline parameter */
   final val InlineParam = allOf(Inline, Param)
 
+  /** An enum case */
+  final val EnumCase = allOf(Enum, Case)
+
   /** A term parameter or parameter accessor */
   final val TermParamOrAccessor = Param | ParamAccessor
 
