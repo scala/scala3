@@ -66,13 +66,13 @@ object PickledQuotes {
   /** Unpickle the tree contained in the TastyExpr */
   private def unpickleExpr(expr: TastyExpr[_])(implicit ctx: Context): Tree = {
     val tastyBytes = TastyString.unpickle(expr.tasty)
-    unpickle(tastyBytes, expr.args)
+    unpickle(tastyBytes, expr.args, isType = false)
   }
 
   /** Unpickle the tree contained in the TastyType */
   private def unpickleType(ttpe: TastyType[_])(implicit ctx: Context): Tree = {
     val tastyBytes = TastyString.unpickle(ttpe.tasty)
-    unpickle(tastyBytes, ttpe.args)
+    unpickle(tastyBytes, ttpe.args, isType = true)
   }
 
   // TASTY picklingtests/pos/quoteTest.scala
@@ -85,28 +85,33 @@ object PickledQuotes {
     treePkl.compactify()
     pickler.addrOfTree = treePkl.buf.addrOfTree
     pickler.addrOfSym = treePkl.addrOfSym
-    // if (tree.pos.exists)
-    //   new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
-    // other pickle sections go here.
+    if (pickling ne noPrinter)
+      println(i"**** pickling quote of \n${tree.show}")
+
     val pickled = pickler.assembleParts()
 
-    if (pickling ne noPrinter) {
-      println(i"**** pickled quote of \n${tree.show}")
+    if (pickling ne noPrinter)
       new TastyPrinter(pickled).printContents()
-    }
 
     pickled
   }
 
   /** Unpickle TASTY bytes into it's tree */
-  private def unpickle(bytes: Array[Byte], splices: Seq[Any])(implicit ctx: Context): Tree = {
+  private def unpickle(bytes: Array[Byte], splices: Seq[Any], isType: Boolean)(implicit ctx: Context): Tree = {
     val unpickler = new TastyUnpickler(bytes, splices)
-    val tree = unpickler.unpickleExpr()
     if (pickling ne noPrinter) {
-      println(i"**** unpickled quote for \n${tree.show}")
+      println(i"**** unpickling quote from TASTY")
       new TastyPrinter(bytes).printContents()
     }
+
+    val tree =
+      if (isType) unpickler.unpickleTypeTree()
+      else unpickler.unpickleExpr()
+
+    if (pickling ne noPrinter)
+      println(i"**** unpickle quote ${tree.show}")
+
     tree
   }
 
