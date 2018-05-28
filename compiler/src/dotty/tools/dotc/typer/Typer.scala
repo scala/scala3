@@ -1527,8 +1527,10 @@ class Typer extends Namer
       if (!ctx.isAfterTyper)
         cls.setNoInitsFlags((NoInitsInterface /: body1) ((fs, stat) => fs & defKind(stat)))
 
-      // Expand comments and type usecases
-      cookComments(body1.map(_.symbol), self1.symbol)(ctx.localContext(cdef, cls).setNewScope)
+      // Expand comments and type usecases if `-Ycook-comments` is set.
+      if (ctx.settings.YcookComments.value) {
+        cookComments(body1.map(_.symbol), self1.symbol)(ctx.localContext(cdef, cls).setNewScope)
+      }
 
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
