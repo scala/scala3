@@ -34,7 +34,7 @@ class ExpandSAMs extends MiniPhase {
     ctx.platform.isSam(cls)
 
   override def transformBlock(tree: Block)(implicit ctx: Context): Tree = tree match {
-    case Block(stats @ (fn: DefDef) :: Nil, cl @ Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
+    case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
       tpt.tpe match {
         case NoType =>
           tree // it's a plain function
