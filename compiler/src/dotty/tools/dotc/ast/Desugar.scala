@@ -297,8 +297,8 @@ object desugar {
     val isCaseClass  = mods.is(Case) && !mods.is(Module)
     val isCaseObject = mods.is(Case) && mods.is(Module)
     val isImplicit = mods.is(Implicit)
-    val isEnum = mods.hasMod[Mod.Enum] && !mods.is(Module)
-    val isEnumCase = mods.hasMod[Mod.EnumCase]
+    val isEnum = mods.isEnumClass && !mods.is(Module)
+    def isEnumCase = mods.isEnumCase
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
       // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
 
@@ -641,7 +641,7 @@ object desugar {
     val moduleName = checkNotReservedName(mdef).asTermName
     val impl = mdef.impl
     val mods = mdef.mods
-    lazy val isEnumCase = mods.hasMod[Mod.EnumCase]
+    def isEnumCase = mods.isEnumCase
     if (mods is Package)
       PackageDef(Ident(moduleName), cpy.ModuleDef(mdef)(nme.PACKAGE, impl).withMods(mods &~ Package) :: Nil)
     else if (isEnumCase)
@@ -688,7 +688,7 @@ object desugar {
    */
   def patDef(pdef: PatDef)(implicit ctx: Context): Tree = flatTree {
     val PatDef(mods, pats, tpt, rhs) = pdef
-    if (mods.hasMod[Mod.EnumCase])
+    if (mods.isEnumCase)
       pats map {
         case id: Ident =>
           expandSimpleEnumCase(id.name.asTermName, mods,

@@ -855,7 +855,7 @@ trait Checking {
       cls.isAnonymousClass &&
       cls.owner.isTerm &&
       (cls.owner.flagsUNSAFE.is(Case) || cls.owner.name == nme.DOLLAR_NEW)
-    if (!cdef.mods.hasMod[untpd.Mod.EnumCase] && !isEnumAnonCls)
+    if (!cdef.mods.isEnumCase && !isEnumAnonCls)
       ctx.error(em"normal case $cls in ${cls.owner} cannot extend an enum", cdef.pos)
   }
 
