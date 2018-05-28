@@ -761,10 +761,17 @@ class Typer extends Namer
   def typedFunctionType(tree: untpd.Function, pt: Type)(implicit ctx: Context) = {
     val untpd.Function(args, body) = tree
     val (isImplicit, isErased) = tree match {
-      case tree: untpd.FunctionWithMods => (tree.mods.is(Implicit), tree.mods.is(Erased))
+      case tree: untpd.FunctionWithMods =>
+        val isImplicit = tree.mods.is(Implicit)
+        var isErased = tree.mods.is(Erased)
+        if (isErased && args.isEmpty) {
+          ctx.error("An empty function cannot not be erased", tree.pos)
+          isErased = false
+        }
+        (isImplicit, isErased)
       case _ => (false, false)
     }
-    if (isErased && args.isEmpty) ctx.error(em"empty function cannot not be erased", tree.pos)
+
     val funCls = defn.FunctionClass(args.length, isImplicit, isErased)
 
     /** Typechecks dependent function type with given parameters `params` */

@@ -169,33 +169,36 @@ object NameOps {
 
     def functionArity: Int =
       functionArityFor(str.Function) max
-      functionArityFor(str.ImplicitFunction) max
-      functionArityFor(str.ErasedFunction) max
-      functionArityFor(str.ErasedImplicitFunction)
+      functionArityFor(str.ImplicitFunction) max {
+        val n =
+          functionArityFor(str.ErasedFunction) max
+          functionArityFor(str.ErasedImplicitFunction)
+        if (n == 0) -1 else n
+      }
 
-    /** Is a function name, i.e one of FunctionN, ImplicitFunctionN, ErasedFunctionN, ErasedImplicitFunctionN for N >= 0
+    /** Is a function name, i.e one of FunctionN, ImplicitFunctionN for N >= 0 or ErasedFunctionN, ErasedImplicitFunctionN for N > 0
      */
     def isFunction: Boolean = functionArity >= 0
 
-    /** Is an implicit function name, i.e one of ImplicitFunctionN, ErasedImplicitFunctionN for N >= 0
+    /** Is an implicit function name, i.e one of ImplicitFunctionN for N >= 0 or ErasedImplicitFunctionN for N > 0
      */
     def isImplicitFunction: Boolean = {
       functionArityFor(str.ImplicitFunction) >= 0 ||
-      functionArityFor(str.ErasedImplicitFunction) >= 0
+      functionArityFor(str.ErasedImplicitFunction) > 0
     }
 
-    /** Is an erased function name, i.e. one of ErasedFunctionN, ErasedImplicitFunctionN for N >= 0
+    /** Is an erased function name, i.e. one of ErasedFunctionN, ErasedImplicitFunctionN for N > 0
       */
     def isErasedFunction: Boolean = {
-      functionArityFor(str.ErasedFunction) >= 0 ||
-      functionArityFor(str.ErasedImplicitFunction) >= 0
+      functionArityFor(str.ErasedFunction) > 0 ||
+      functionArityFor(str.ErasedImplicitFunction) > 0
     }
 
     /** Is a synthetic function name, i.e. one of
      *    - FunctionN for N > 22
      *    - ImplicitFunctionN for N >= 0
-     *    - ErasedFunctionN for N >= 0
-     *    - ErasedImplicitFunctionN for N >= 0
+     *    - ErasedFunctionN for N > 0
+     *    - ErasedImplicitFunctionN for N > 0
      */
     def isSyntheticFunction: Boolean = {
       functionArityFor(str.Function) > MaxImplementedFunctionArity ||
