@@ -50,7 +50,7 @@ object desugar {
    */
   class DerivedFromParamTree(suffix: String) extends DerivedTypeTree {
 
-    /** Make sure that for all enclosing module classes their companion lasses
+    /** Make sure that for all enclosing module classes their companion classes
      *  are completed. Reason: We need the constructor of such companion classes to
      *  be completed so that OriginalSymbol attachments are pushed to DerivedTypeTrees
      *  in apply/unapply methods.
@@ -88,8 +88,7 @@ object desugar {
             else {
               def msg =
                 s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"
-              if (ctx.reporter.errorsReported) ErrorType(msg)
-              else throw new java.lang.Error(msg)
+              ErrorType(msg).assertingErrorsReported(msg)
             }
           case _ =>
             mapOver(tp)
@@ -367,6 +366,12 @@ object desugar {
       (if (args.isEmpty) tycon else AppliedTypeTree(tycon, args))
         .withPos(cdef.pos.startPos)
 
+    def isHK(tparam: Tree): Boolean = tparam match {
+      case TypeDef(_, LambdaTypeTree(tparams, body)) => true
+      case TypeDef(_, rhs: DerivedTypeTree) => isHK(rhs.watched)
+      case _ => false
+    }
+
     def appliedRef(tycon: Tree, tparams: List[TypeDef] = constrTparams, widenHK: Boolean = false) = {
       val targs = for (tparam <- tparams) yield {
         val targ = refOfDef(tparam)
@@ -429,7 +434,6 @@ object desugar {
         }
         val hasRepeatedParam = constrVparamss.exists(_.exists {
           case ValDef(_, tpt, _) => isRepeated(tpt)
-          case _ => false
         })
         if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
         else {
@@ -469,18 +473,29 @@ object desugar {
     //      ev1: Eq[T1$1, T1$2], ..., evn: Eq[Tn$1, Tn$2]])
     //      : Eq[C[T1$, ..., Tn$1], C[T1$2, ..., Tn$2]] = Eq
     //
-    // If any of the T_i are higher-kinded, say `Ti[X1 >: L1 <: U1, ..., Xm >: Lm <: Um]`,
-    // the corresponding type parameters for $ev_i are `Ti$1[_, ..., _], Ti$2[_, ..., _]`
-    // (with m underscores `_`).
+    // Higher-kinded type arguments `Ti` are omitted as evidence parameters.
+    //
+    // FIXME: This is too simplistic. Instead of just generating evidence arguments
+    // for every first-kinded type parameter, we should look instead at the
+    // actual types occurring in cases and derive parameters from these. E.g. in
+    //
+    //    enum HK[F[_]] {
+    //      case C1(x: F[Int]) extends HK[F[Int]]
+    //      case C2(y: F[String]) extends HL[F[Int]]
+    //
+    // we would need evidence parameters for `F[Int]` and `F[String]`
+    // We should generate Eq instances with the techniques
+    // of typeclass derivation once that is available.
     def eqInstance = {
       val leftParams = constrTparams.map(derivedTypeParam(_, "$1"))
       val rightParams = constrTparams.map(derivedTypeParam(_, "$2"))
-      val subInstances = (leftParams, rightParams).zipped.map((param1, param2) =>
-        appliedRef(ref(defn.EqType), List(param1, param2), widenHK = true))
+      val subInstances =
+        for ((param1, param2) <- leftParams `zip` rightParams if !isHK(param1))
+        yield appliedRef(ref(defn.EqType), List(param1, param2), widenHK = true)
       DefDef(
           name = nme.eqInstance,
           tparams = leftParams ++ rightParams,
-          vparamss = List(makeImplicitParameters(subInstances)),
+          vparamss = if (subInstances.isEmpty) Nil else List(makeImplicitParameters(subInstances)),
           tpt = appliedTypeTree(ref(defn.EqType),
               appliedRef(classTycon, leftParams) :: appliedRef(classTycon, rightParams) :: Nil),
           rhs = ref(defn.EqModule.termRef)).withFlags(Synthetic | Implicit)
@@ -645,7 +660,7 @@ object desugar {
         .withPos(mdef.pos.startPos)
       val ValDef(selfName, selfTpt, _) = impl.self
       val selfMods = impl.self.mods
-      if (!selfTpt.isEmpty || selfName != nme.WILDCARD) ctx.error(ObjectMayNotHaveSelfType(mdef), impl.self.pos)
+      if (!selfTpt.isEmpty) ctx.error(ObjectMayNotHaveSelfType(mdef), impl.self.pos)
       val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(moduleName)), impl.self.rhs)
         .withMods(selfMods)
         .withPos(impl.self.pos orElse impl.pos.startPos)
@@ -805,7 +820,7 @@ object desugar {
    *  If `inlineable` is true, tag $anonfun with an @inline annotation.
    */
   def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), inlineable: Boolean)(implicit ctx: Context) = {
-    var mods = synthetic
+    var mods = synthetic | Artifact
     if (inlineable) mods |= Inline
     Block(
       DefDef(nme.ANON_FUN, Nil, params :: Nil, tpt, body).withMods(mods),
@@ -1094,6 +1109,11 @@ object desugar {
     val desugared = tree match {
       case SymbolLit(str) =>
         Literal(Constant(scala.Symbol(str)))
+      case Quote(expr) =>
+        if (expr.isType)
+          TypeApply(ref(defn.QuotedType_applyR), List(expr))
+        else
+          Apply(ref(defn.QuotedExpr_applyR), expr)
       case InterpolatedString(id, segments) =>
         val strs = segments map {
           case ts: Thicket => ts.trees.head
@@ -1110,9 +1130,7 @@ object desugar {
         Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
       case InfixOp(l, op, r) =>
         if (ctx.mode is Mode.Type)
-          if (!op.isBackquoted && op.name == tpnme.raw.AMP) AndTypeTree(l, r)     // l & r
-          else if (!op.isBackquoted && op.name == tpnme.raw.BAR) OrTypeTree(l, r) // l | r
-          else AppliedTypeTree(op, l :: r :: Nil) // op[l, r]
+          AppliedTypeTree(op, l :: r :: Nil) // op[l, r]
         else {
           assert(ctx.mode is Mode.Pattern) // expressions are handled separately by `binop`
           Apply(op, l :: r :: Nil) // op(l, r)

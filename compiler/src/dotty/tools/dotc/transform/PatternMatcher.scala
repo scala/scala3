@@ -24,20 +24,17 @@ class PatternMatcher extends MiniPhase {
   import ast.tpd._
   import PatternMatcher._
 
-  override def phaseName = "patternMatcher"
-  override def runsAfter = Set(classOf[ElimRepeated])
-  override def runsAfterGroupsOf = Set(classOf[TailRec]) // tailrec is not capable of reversing the patmat tranformation made for tree
+  override def phaseName = PatternMatcher.name
+  override def runsAfter = Set(ElimRepeated.name)
+  override def runsAfterGroupsOf = Set(TailRec.name) // tailrec is not capable of reversing the patmat tranformation made for tree
 
   override def transformMatch(tree: Match)(implicit ctx: Context): Tree = {
     val translated = new Translator(tree.tpe, this).translateMatch(tree)
 
     // check exhaustivity and unreachability
     val engine = new patmat.SpaceEngine
-
-    if (engine.checkable(tree)) {
-      engine.checkExhaustivity(tree)
-      engine.checkRedundancy(tree)
-    }
+    engine.checkExhaustivity(tree)
+    engine.checkRedundancy(tree)
 
     translated.ensureConforms(tree.tpe)
   }
@@ -45,6 +42,8 @@ class PatternMatcher extends MiniPhase {
 
 object PatternMatcher {
   import ast.tpd._
+
+  val name = "patternMatcher"
 
   final val selfCheck = false // debug option, if on we check that no case gets generated twice
 
@@ -290,7 +289,7 @@ object PatternMatcher {
 
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
           matchArgsPlan(caseAccessors.map(ref(scrutinee).select(_)), args, onSuccess)
-        else if (unapp.tpe.isRef(defn.BooleanClass))
+        else if (unapp.tpe.widenSingleton.isRef(defn.BooleanClass))
           TestPlan(GuardTest, unapp, unapp.pos, onSuccess, onFailure)
         else {
           letAbstract(unapp) { unappResult =>
@@ -699,13 +698,15 @@ object PatternMatcher {
               for ((rhs, _) <- seenVars if !seenAtLabel(plan.label).contains(rhs))
               yield (rhs, newVar(rhs.tree, Param))
           }
-          plan.args =
+          val newArgs =
             for {
               (rhs, actual) <- seenVars.toList
               formal <- paramsOfLabel(plan.label).get(rhs)
             }
             yield (formal -> actual)
-          plan
+          if (plan.args.isEmpty) { plan.args = newArgs; plan }
+          else if (newArgs == plan.args) plan
+          else CallPlan(plan.label, newArgs)
         }
       }
       (new Merge(Map()))(plan)

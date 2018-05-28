@@ -11,6 +11,7 @@ import ast.Trees._
 import ast.untpd
 import Decorators._
 import NameOps._
+import Annotations.Annotation
 import ValueClasses.isDerivedValueClass
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
@@ -152,23 +153,26 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
      *  def equals(that: Any): Boolean =
      *    (this eq that) || {
      *      that match {
-     *        case x$0 @ (_: C) => this.x == this$0.x && this.y == x$0.y
+     *        case x$0 @ (_: C @unchecked) => this.x == this$0.x && this.y == x$0.y
      *        case _ => false
      *     }
      *  ```
      *
      *  If `C` is a value class the initial `eq` test is omitted.
+     *
+     *  `@unchecked` is needed for parametric case classes.
+     *
      */
     def equalsBody(that: Tree)(implicit ctx: Context): Tree = {
       val thatAsClazz = ctx.newSymbol(ctx.owner, nme.x_0, Synthetic, clazzType, coord = ctx.owner.pos) // x$0
       def wildcardAscription(tp: Type) = Typed(Underscore(tp), TypeTree(tp))
-      val pattern = Bind(thatAsClazz, wildcardAscription(clazzType)) // x$0 @ (_: C)
+      val pattern = Bind(thatAsClazz, wildcardAscription(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot)))) // x$0 @ (_: C @unchecked)
       val comparisons = accessors map { accessor =>
-        This(clazz).select(accessor).select(defn.Any_==).appliedTo(ref(thatAsClazz).select(accessor)) }
+        This(clazz).select(accessor).equal(ref(thatAsClazz).select(accessor)) }
       val rhs = // this.x == this$0.x && this.y == x$0.y
         if (comparisons.isEmpty) Literal(Constant(true)) else comparisons.reduceLeft(_ and _)
       val matchingCase = CaseDef(pattern, EmptyTree, rhs) // case x$0 @ (_: C) => this.x == this$0.x && this.y == x$0.y
-      val defaultCase = CaseDef(wildcardAscription(defn.AnyType), EmptyTree, Literal(Constant(false))) // case _ => false
+      val defaultCase = CaseDef(Underscore(defn.AnyType), EmptyTree, Literal(Constant(false))) // case _ => false
       val matchExpr = Match(that, List(matchingCase, defaultCase))
       if (isDerivedValueClass(clazz)) matchExpr
       else {
@@ -250,10 +254,12 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
      *  gets the `canEqual` method
      *
      *  ```
-     *  def canEqual(that: Any) = that.isInstanceOf[C]
+     *  def canEqual(that: Any) = that.isInstanceOf[C @unchecked]
      *  ```
+     *
+     *  `@unchecked` is needed for parametric case classes.
      */
-    def canEqualBody(that: Tree): Tree = that.isInstance(clazzType)
+    def canEqualBody(that: Tree): Tree = that.isInstance(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot)))
 
     symbolsToSynthesize flatMap syntheticDefIfMissing
   }

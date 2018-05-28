@@ -164,8 +164,8 @@ object NamerContextOps {
   /** Find moduleClass/sourceModule in effective scope */
   private def findModuleBuddy(name: Name, scope: Scope)(implicit ctx: Context) = {
     val it = scope.lookupAll(name).filter(_ is Module)
-    assert(it.hasNext, s"no companion $name in $scope")
-    it.next()
+    if (it.hasNext) it.next()
+    else NoSymbol.assertingErrorsReported(s"no companion $name in $scope")
   }
 }
 
@@ -907,14 +907,18 @@ class Namer { typer: Typer =>
             case TypeApply(core, targs) => (core, targs)
             case core => (core, Nil)
           }
-          val Select(New(tpt), nme.CONSTRUCTOR) = core
-          val targs1 = targs map (typedAheadType(_))
-          val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
-          if (ptype.typeParams.isEmpty) ptype
-          else {
-            if (denot.is(ModuleClass) && denot.sourceModule.is(Implicit))
-              missingType(denot.symbol, "parent ")(creationContext)
-            fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.pos)
+          core match {
+            case Select(New(tpt), nme.CONSTRUCTOR) =>
+              val targs1 = targs map (typedAheadType(_))
+              val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
+              if (ptype.typeParams.isEmpty) ptype
+              else {
+                if (denot.is(ModuleClass) && denot.sourceModule.is(Implicit))
+                  missingType(denot.symbol, "parent ")(creationContext)
+                fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.pos)
+              }
+            case _ =>
+              UnspecifiedErrorType.assertingErrorsReported
           }
         }
 
@@ -954,7 +958,13 @@ class Namer { typer: Typer =>
 
       val selfInfo =
         if (self.isEmpty) NoType
-        else if (cls.is(Module)) cls.owner.thisType.select(sourceModule)
+        else if (cls.is(Module)) {
+          val moduleType = cls.owner.thisType select sourceModule
+          if (self.name == nme.WILDCARD) moduleType
+          else recordSym(
+            ctx.newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.pos),
+            self)
+        }
         else createSymbol(self)
 
       // pre-set info, so that parent types can refer to type params
@@ -1022,8 +1032,9 @@ class Namer { typer: Typer =>
    */
   def moduleValSig(sym: Symbol)(implicit ctx: Context): Type = {
     val clsName = sym.name.moduleClassName
-    val cls = ctx.denotNamed(clsName) suchThat (_ is ModuleClass)
-    ctx.owner.thisType select (clsName, cls)
+    val cls = ctx.denotNamed(clsName).suchThat(_ is ModuleClass)
+      .orElse(ctx.newStubSymbol(ctx.owner, clsName).assertingErrorsReported)
+    ctx.owner.thisType.select(clsName, cls)
   }
 
   /** The type signature of a ValDef or DefDef
@@ -1131,12 +1142,17 @@ class Namer { typer: Typer =>
       }
 
       def cookedRhsType = deskolemize(dealiasIfUnit(widenRhs(rhsType)))
-      lazy val lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.pos)
+      def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.pos)
       //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
-      if (inherited.exists)
-        if (sym.is(Final, butNot = Method) && lhsType.isInstanceOf[ConstantType])
-          lhsType // keep constant types that fill in for a non-constant (to be revised when inline has landed).
+      if (inherited.exists) {
+        if (sym.is(Final, butNot = Method)) {
+          val tp = lhsType
+          if (tp.isInstanceOf[ConstantType])
+            tp // keep constant types that fill in for a non-constant (to be revised when inline has landed).
+          else inherited
+        }
         else inherited
+      }
       else {
         if (sym is Implicit)
           mdef match {

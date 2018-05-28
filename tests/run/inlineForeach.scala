@@ -35,6 +35,22 @@ object Test {
     zs
   }
 
+  implicit class intArrayOps(arr: Array[Int]) {
+    inline def foreach(inline op: Int => Unit): Unit = {
+      var i = 0
+      while (i < arr.length) {
+        op(arr(i))
+        i += 1
+      }
+    }
+  }
+
+  def sum(ints: Array[Int]): Int = {
+    var t = 0
+    for (n <- ints) t += n
+    t
+  }
+
   def main(args: Array[String]) = {
     1.until(10).foreach(i => println(i))
     1.until(10).foreach(println(_))
@@ -44,5 +60,8 @@ object Test {
     for (k1 <- 1 to 10)
       for (k2 <- 1 to 10)
         println(s"$k1")
+
+    val xs = Array(1, 2, 3, 4)
+    assert(sum(xs) == 10, sum(xs))
   }
 }

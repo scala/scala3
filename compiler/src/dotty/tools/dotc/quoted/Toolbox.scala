@@ -1,13 +1,14 @@
 package dotty.tools.dotc.quoted
 
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.printing.RefinedPrinter
 
 import scala.quoted.Expr
 import scala.runtime.BoxedUnit
-import scala.quoted.Exprs.ValueExpr
+import scala.quoted.Exprs.{LiftedExpr, TastyTreeExpr}
 import scala.runtime.quoted._
 
 /** Default runners for quoted expressions */
@@ -23,32 +24,27 @@ object Toolbox {
     ): Toolbox[T] = new Toolbox[T] {
 
     def run(expr: Expr[T]): T = expr match {
-      case expr: ValueExpr[T] => expr.value
-      case _ => new QuoteDriver().run(expr, runSettings)
+      case expr: LiftedExpr[T] =>
+        expr.value
+      case expr: TastyTreeExpr[Tree] @unchecked =>
+        throw new Exception("Cannot call `Expr.run` on an `Expr` that comes from an inline macro argument.")
+      case _ =>
+        new QuoteDriver().run(expr, runSettings)
     }
 
     def show(expr: Expr[T]): String = expr match {
-      case expr: ValueExpr[T] =>
-        implicit val ctx = new QuoteDriver().initCtx
-        if (showSettings.compilerArgs.contains("-color:never"))
-          ctx.settings.color.update("never")
-        val printer = new RefinedPrinter(ctx)
-        if (expr.value == BoxedUnit.UNIT) "()"
-        else printer.toText(Literal(Constant(expr.value))).mkString(Int.MaxValue, false)
+      case expr: LiftedExpr[T] =>
+        expr.value match {
+          case value: Class[_] => s"classOf[${value.getCanonicalName}]"
+          case value if value == BoxedUnit.UNIT => "()"
+          case value =>
+            implicit val ctx = new QuoteDriver().initCtx
+            if (showSettings.compilerArgs.contains("-color:never"))
+              ctx.settings.color.update("never")
+            val printer = new RefinedPrinter(ctx)
+            printer.toText(Literal(Constant(value))).mkString(Int.MaxValue, false)
+        }
       case _ => new QuoteDriver().show(expr, showSettings)
-    }
-
-    def toConstantOpt(expr: Expr[T]): Option[T] = {
-      def toConstantOpt(tree: Tree): Option[T] = tree match {
-        case Literal(Constant(c)) => Some(c.asInstanceOf[T])
-        case Block(Nil, e) => toConstantOpt(e)
-        case Inlined(_, Nil, e) => toConstantOpt(e)
-        case _ => None
-      }
-      expr match {
-        case expr: ValueExpr[T] => Some(expr.value)
-        case _ => new QuoteDriver().withTree(expr, (tree, _) => toConstantOpt(tree), Settings.run())
-      }
     }
 
   }

@@ -22,7 +22,7 @@ class SeqLiterals extends MiniPhase {
   import ast.tpd._
 
   override def phaseName = "seqLiterals"
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[PatternMatcher])
+  override def runsAfter = Set(PatternMatcher.name)
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case tpd: SeqLiteral => assert(tpd.isInstanceOf[JavaSeqLiteral])

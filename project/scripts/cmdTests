@@ -78,23 +78,24 @@ echo "testing ./bin/dotd"
 clear_out "$OUT"
 ./bin/dotd -project Hello -siteroot "$OUT" "$SOURCE"
 
-echo "running Vulpix meta test"
-tmp=$(mktemp)
-if "$SBT" "dotty-compiler/testOnly dotty.tools.vulpix.VulpixMetaTests" > "$tmp" 2>&1; then
-  cat "$tmp"
-  echo "failed: sbt exited without error on VulpixMetaTests, these tests are expected to fail"
-  exit -1
-fi
-tmp1=$(mktemp)
-cat "$tmp" | sed '/Test run started/,$!d' > "$tmp1"
-set +x # Or the code below produces too much noise
-while read expected <&4 && read actual <&3; do
-  if [[ "$expected" != *"SKIP" ]]; then
-    if [ "$actual" != "$expected" ]; then
-      echo "failed Vulpix meta: the output of sbt differs from the expected output"
-      echo "expected : $expected"
-      echo "actual   : $actual"
-      exit -1
-    fi
-  fi
-done 3<"$tmp1" 4<"./tests/vulpix-tests/meta/sbt-output.check"
+## Disabled because of flakeyness, should be changed to not depend on sbt
+# echo "running Vulpix meta test"
+# tmp=$(mktemp)
+# if "$SBT" "dotty-compiler/testOnly dotty.tools.vulpix.VulpixMetaTests" > "$tmp" 2>&1; then
+#   cat "$tmp"
+#   echo "failed: sbt exited without error on VulpixMetaTests, these tests are expected to fail"
+#   exit -1
+# fi
+# tmp1=$(mktemp)
+# cat "$tmp" | sed '/Test run started/,$!d' > "$tmp1"
+# set +x # Or the code below produces too much noise
+# while read expected <&4 && read actual <&3; do
+#   if [[ "$expected" != *"SKIP" ]]; then
+#     if [ "$actual" != "$expected" ]; then
+#       echo "failed Vulpix meta: the output of sbt differs from the expected output"
+#       echo "expected : $expected"
+#       echo "actual   : $actual"
+#       exit -1
+#     fi
+#   fi
+# done 3<"$tmp1" 4<"./tests/vulpix-tests/meta/sbt-output.check"

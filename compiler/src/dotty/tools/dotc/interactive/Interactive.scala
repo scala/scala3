@@ -98,39 +98,6 @@ object Interactive {
    *
    *  @return offset and list of symbols for possible completions
    */
-  // deprecated
-  // FIXME: Remove this method
-  def completions(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): (Int, List[Symbol]) = {
-    val path = pathTo(trees, pos)
-    val boundary = enclosingDefinitionInPath(path).symbol
-
-    // FIXME: Get all declarations available in the current scope, not just
-    // those from the enclosing class
-    def scopeCompletions: List[Symbol] =
-      boundary.enclosingClass match {
-        case csym: ClassSymbol =>
-          val classRef = csym.classInfo.appliedRef
-          completions(classRef, boundary)
-        case _ =>
-          Nil
-      }
-
-    path.headOption.map {
-      case sel @ Select(qual, name) =>
-        // When completing "`a.foo`, return the members of `a`
-        (sel.pos.point, completions(qual.tpe, boundary))
-      case id @ Ident(name) =>
-        (id.pos.point, scopeCompletions)
-      case _ =>
-        (0, scopeCompletions)
-    }
-    .getOrElse((0, Nil))
-  }
-
-  /** Get possible completions from tree at `pos`
-   *
-   *  @return offset and list of symbols for possible completions
-   */
   def completions(pos: SourcePosition)(implicit ctx: Context): (Int, List[Symbol]) = {
     val path = pathTo(ctx.compilationUnit.tpdTree, pos.pos)
     computeCompletions(pos, path)(contextOfPath(path))
@@ -251,8 +218,10 @@ object Interactive {
       case (sel @ Select(qual, _)) :: _ => getMemberCompletions(qual)
       case _  => getScopeCompletions(ctx)
     }
-    interactiv.println(i"completion with pos = $pos, prefix = $prefix, termOnly = $termOnly, typeOnly = $typeOnly = ${completions.toList}%, %")
-    (completionPos, completions.toList)
+
+    val sortedCompletions = completions.toList.sortBy(_.name: Name)
+    interactiv.println(i"completion with pos = $pos, prefix = $prefix, termOnly = $termOnly, typeOnly = $typeOnly = $sortedCompletions%, %")
+    (completionPos, sortedCompletions)
   }
 
   /** Possible completions of members of `prefix` which are accessible when called inside `boundary` */
@@ -305,7 +274,7 @@ object Interactive {
     val buf = new mutable.ListBuffer[SourceTree]
 
     trees foreach { case SourceTree(topTree, source) =>
-      (new untpd.TreeTraverser {
+      new untpd.TreeTraverser {
         override def traverse(tree: untpd.Tree)(implicit ctx: Context) = {
           tree match {
             case utree: untpd.NameTree if tree.hasType =>
@@ -324,7 +293,7 @@ object Interactive {
               traverseChildren(tree)
           }
         }
-      }).traverse(topTree)
+      }.traverse(topTree)
     }
 
     buf.toList

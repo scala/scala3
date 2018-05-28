@@ -26,6 +26,7 @@ import Constants._
 import Applications._
 import ProtoTypes._
 import ErrorReporting._
+import Annotations.Annotation
 import reporting.diagnostic.{Message, MessageContainer}
 import Inferencing.fullyDefinedType
 import Trees._
@@ -78,7 +79,7 @@ object Implicits {
         def discardForView(tpw: Type, argType: Type): Boolean = tpw match {
           case mt: MethodType =>
             mt.isImplicitMethod ||
-            mt.paramInfos.length != 1 ||
+            mt.paramInfos.lengthCompare(1) != 0 ||
             !ctx.test(implicit ctx => argType relaxed_<:< mt.paramInfos.head)
           case poly: PolyType =>
             // We do not need to call ProtoTypes#constrained on `poly` because
@@ -448,7 +449,7 @@ trait ImplicitRunInfo { self: Run =>
                   comps += companion.asSeenFrom(pre, compSym.owner).asInstanceOf[TermRef]
               }
               def addParentScope(parent: Type): Unit =
-                iscopeRefs(tp.baseType(parent.typeSymbol)) foreach addRef
+                iscopeRefs(tp.baseType(parent.classSymbol)) foreach addRef
               val companion = cls.companionModule
               if (companion.exists) addRef(companion.termRef)
               cls.classParents foreach addParentScope
@@ -545,7 +546,7 @@ trait Implicits { self: Typer =>
 
     /** If `formal` is of the form ClassTag[T], where `T` is a class type,
      *  synthesize a class tag for `T`.
-   	 */
+     */
     def synthesizedClassTag(formal: Type): Tree = formal.argInfos match {
       case arg :: Nil =>
         fullyDefinedType(arg, "ClassTag argument", pos) match {
@@ -553,11 +554,15 @@ trait Implicits { self: Typer =>
             val etag = inferImplicitArg(defn.ClassTagType.appliedTo(elemTp), pos)
             if (etag.tpe.isError) EmptyTree else etag.select(nme.wrap)
           case tp if hasStableErasure(tp) && !defn.isBottomClass(tp.typeSymbol) =>
-            ref(defn.ClassTagModule)
-              .select(nme.apply)
-              .appliedToType(tp)
-              .appliedTo(clsOf(erasure(tp)))
-              .withPos(pos)
+            val sym = tp.typeSymbol
+            if (sym == defn.UnitClass || sym == defn.AnyClass || sym == defn.AnyValClass)
+              ref(defn.ClassTagModule).select(sym.name.toTermName).withPos(pos)
+            else
+              ref(defn.ClassTagModule)
+                .select(nme.apply)
+                .appliedToType(tp)
+                .appliedTo(clsOf(erasure(tp)))
+                .withPos(pos)
           case tp =>
             EmptyTree
         }
@@ -566,7 +571,7 @@ trait Implicits { self: Typer =>
     }
 
     def synthesizedTypeTag(formal: Type): Tree = formal.argInfos match {
-      case arg :: Nil =>
+      case arg :: Nil if !arg.typeSymbol.is(Param) =>
         object bindFreeVars extends TypeMap {
           var ok = true
           def apply(t: Type) = t match {
@@ -582,7 +587,7 @@ trait Implicits { self: Typer =>
           }
         }
         val tag = bindFreeVars(arg)
-        if (bindFreeVars.ok) ref(defn.typeQuoteMethod).appliedToType(tag)
+        if (bindFreeVars.ok) ref(defn.QuotedType_apply).appliedToType(tag)
         else EmptyTree
       case _ =>
         EmptyTree
@@ -590,7 +595,7 @@ trait Implicits { self: Typer =>
 
     /** If `formal` is of the form Eq[T, U], where no `Eq` instance exists for
      *  either `T` or `U`, synthesize `Eq.eqAny[T, U]` as solution.
-   	 */
+     */
     def synthesizedEq(formal: Type)(implicit ctx: Context): Tree = {
       //println(i"synth eq $formal / ${formal.argTypes}%, %")
       formal.argTypes match {
@@ -645,17 +650,20 @@ trait Implicits { self: Typer =>
             ref(lazyImplicit))
         else
           arg
-      case fail @ SearchFailure(tree) =>
-        if (fail.isAmbiguous)
-          tree
-        else if (formalValue.isRef(defn.ClassTagClass))
-          synthesizedClassTag(formalValue).orElse(tree)
-        else if (formalValue.isRef(defn.QuotedTypeClass))
-          synthesizedTypeTag(formalValue).orElse(tree)
-        else if (formalValue.isRef(defn.EqClass))
-          synthesizedEq(formalValue).orElse(tree)
+      case fail @ SearchFailure(failed) =>
+        def trySpecialCase(cls: ClassSymbol, handler: Type => Tree, ifNot: => Tree) = {
+          val base = formalValue.baseType(cls)
+          if (base <:< formalValue) {
+            // With the subtype test we enforce that the searched type `formalValue` is of the right form
+            handler(base).orElse(ifNot)
+          }
+          else ifNot
+        }
+        if (fail.isAmbiguous) failed
         else
-          tree
+          trySpecialCase(defn.ClassTagClass, synthesizedClassTag,
+            trySpecialCase(defn.QuotedTypeClass, synthesizedTypeTag,
+              trySpecialCase(defn.EqClass, synthesizedEq, failed)))
     }
   }
 
@@ -685,22 +693,67 @@ trait Implicits { self: Typer =>
         }
     }
     def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
+
+    /** Extract a user defined error message from a symbol `sym`
+     *  with an annotation matching the given class symbol `cls`.
+     */
+    def userDefinedMsg(sym: Symbol, cls: Symbol) = for {
+      ann <- sym.getAnnotation(cls)
+      Trees.Literal(Constant(msg: String)) <- ann.argument(0)
+    } yield msg
+
+
     arg.tpe match {
       case ambi: AmbiguousImplicits =>
-        msg(s"ambiguous implicit arguments: ${ambi.explanation}${location("of")}")(
-            s"ambiguous implicit arguments of type ${pt.show} found${location("for")}")
+        object AmbiguousImplicitMsg {
+          def unapply(search: SearchSuccess): Option[String] =
+            userDefinedMsg(search.ref.symbol, defn.ImplicitAmbiguousAnnot)
+        }
+
+        /** Construct a custom error message given an ambiguous implicit
+         *  candidate `alt` and a user defined message `raw`.
+         */
+        def userDefinedAmbiguousImplicitMsg(alt: SearchSuccess, raw: String) = {
+          val params = alt.ref.underlying match {
+            case p: PolyType => p.paramNames.map(_.toString)
+            case _           => Nil
+          }
+          def resolveTypes(targs: List[Tree])(implicit ctx: Context) =
+            targs.map(a => fullyDefinedType(a.tpe, "type argument", a.pos))
+
+          // We can extract type arguments from:
+          //   - a function call:
+          //     @implicitAmbiguous("msg A=${A}")
+          //     implicit def f[A](): String = ...
+          //     implicitly[String] // found: f[Any]()
+          //
+          //   - an eta-expanded function:
+          //     @implicitAmbiguous("msg A=${A}")
+          //     implicit def f[A](x: Int): String = ...
+          //     implicitly[Int => String] // found: x => f[Any](x)
+
+          val call = closureBody(alt.tree) // the tree itself if not a closure
+          val (_, targs, _) = decomposeCall(call)
+          val args = resolveTypes(targs)(ctx.fresh.setTyperState(alt.tstate))
+          err.userDefinedErrorString(raw, params, args)
+        }
+
+        (ambi.alt1, ambi.alt2) match {
+          case (alt @ AmbiguousImplicitMsg(msg), _) =>
+            userDefinedAmbiguousImplicitMsg(alt, msg)
+          case (_, alt @ AmbiguousImplicitMsg(msg)) =>
+            userDefinedAmbiguousImplicitMsg(alt, msg)
+          case _ =>
+            msg(s"ambiguous implicit arguments: ${ambi.explanation}${location("of")}")(
+                s"ambiguous implicit arguments of type ${pt.show} found${location("for")}")
+        }
+
       case _ =>
-        val userDefined =
-          for {
-            notFound <- pt.typeSymbol.getAnnotation(defn.ImplicitNotFoundAnnot)
-            Trees.Literal(Constant(raw: String)) <- notFound.argument(0)
-          }
-          yield {
-            err.implicitNotFoundString(
-              raw,
-              pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
-              pt.argInfos)
-          }
+        val userDefined = userDefinedMsg(pt.typeSymbol, defn.ImplicitNotFoundAnnot).map(raw =>
+          err.userDefinedErrorString(
+            raw,
+            pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
+            pt.argInfos))
         msg(userDefined.getOrElse(em"no implicit argument of type $pt was found${location("for")}"))()
     }
   }

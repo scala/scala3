@@ -23,6 +23,7 @@ class DocDriver extends Driver {
 
     ctx.setSettings(summary.sstate)
     ctx.setSetting(ctx.settings.YkeepComments, true)
+    ctx.setSetting(ctx.settings.YcookComments, true)
     ctx.setSetting(ctx.settings.YnoInline, true)
     ctx.setProperty(ContextDoc, new ContextDottydoc)
 

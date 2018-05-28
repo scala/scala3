@@ -1,0 +1,6 @@
+foo Location(List(Test$, loc1))
+foo Location(List(Test$, main))
+foo Location(List(Test$, main))
+foo Location(List(Test$, main, bar))
+foo Location(List(Test$, main, bar, baz))
+foo Location(List(Test$, main, f, $anonfun))

@@ -118,7 +118,13 @@ trait RunnerOrchestration {
           if (childStdout eq null)
             childStdout = new BufferedReader(new InputStreamReader(process.getInputStream))
 
-          var childOutput = childStdout.readLine()
+          var childOutput: String = childStdout.readLine()
+
+          // Discard all messages until the test starts
+          while (childOutput != ChildJVMMain.MessageStart && childOutput != null)
+            childOutput = childStdout.readLine()
+          childOutput = childStdout.readLine()
+
           while (childOutput != ChildJVMMain.MessageEnd && childOutput != null) {
             sb.append(childOutput)
             sb += '\n'

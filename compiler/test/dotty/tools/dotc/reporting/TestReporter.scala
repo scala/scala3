@@ -86,7 +86,7 @@ object TestReporter {
   private[this] def initLog() = if (logWriter eq null) {
     val date = new Date
     val df0 = new SimpleDateFormat("yyyy-MM-dd")
-    val df1 = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss")
+    val df1 = new SimpleDateFormat("yyyy-MM-dd-'T'HH-mm-ss")
     val folder = s"testlogs/tests-${df0.format(date)}"
     new JFile(folder).mkdirs()
     outFile = new JFile(s"$folder/tests-${df1.format(date)}.log")

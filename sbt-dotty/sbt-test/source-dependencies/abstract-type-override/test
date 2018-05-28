@@ -11,4 +11,4 @@ $ copy-file changes/Bar1.scala src/main/scala/Bar.scala
 # second iteration
 #> compile
 # check if there are only two compile iterations performed
-> check-number-of-compiler-iterations 2
+> checkNumberOfCompilerIterations 2

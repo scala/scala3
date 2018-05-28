@@ -2,26 +2,12 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Names._
-import StdNames.nme
-import Types._
 import dotty.tools.dotc.transform.MegaPhase._
-import ast.Trees._
 import Flags._
 import Contexts.Context
 import Symbols._
-import Constants._
-import Denotations._
-import SymDenotations._
-import Decorators.StringInterpolators
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
-import scala.collection.mutable
-import DenotTransformers._
-import Names.Name
-import NameOps._
 import Decorators._
-import TypeUtils._
 import reporting.diagnostic.messages.{MissingCompanionForStatic, StaticFieldsOnlyAllowedInObjects}
 
 /** A transformer that check that requirements of Static fields\methods are implemented:
@@ -39,7 +25,7 @@ import reporting.diagnostic.messages.{MissingCompanionForStatic, StaticFieldsOnl
 class CheckStatic extends MiniPhase {
   import ast.tpd._
 
-  override def phaseName = "checkStatic"
+  override def phaseName = CheckStatic.name
 
   override def transformTemplate(tree: tpd.Template)(implicit ctx: Context): tpd.Tree = {
     val defns = tree.body.collect{case t: ValOrDefDef => t}
@@ -90,4 +76,8 @@ class CheckStatic extends MiniPhase {
       else tree
     } else tree
   }
+}
+
+object CheckStatic {
+  val name = "checkStatic"
 }

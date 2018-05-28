@@ -56,10 +56,10 @@ Standard-Section: "ASTs" TopLevelStat*
                   Stat
 
   Stat          = Term
-                  VALDEF         Length NameRef Type rhs_Term? Modifier*
-                  DEFDEF         Length NameRef TypeParam* Params* return_Type rhs_Term?
+                  VALDEF         Length NameRef type_Term rhs_Term? Modifier*
+                  DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
                                         Modifier*
-                  TYPEDEF        Length NameRef (Type | Template) Modifier*
+                  TYPEDEF        Length NameRef (type_Term | Template) Modifier*
                   IMPORT         Length qual_Term Selector*
   Selector      = IMPORTED              name_NameRef
                   RENAMED               to_NameRef
@@ -69,24 +69,24 @@ Standard-Section: "ASTs" TopLevelStat*
   TypeParam     = TYPEPARAM      Length NameRef Type Modifier*
   Params        = PARAMS         Length Param*
   Param         = PARAM          Length NameRef Type rhs_Term? Modifier*  // rhs_Term is present in the case of an aliased class parameter
-  Template      = TEMPLATE       Length TypeParam* Param* Parent* Self? Stat* // Stat* always starts with the primary constructor.
-  Parent        = Application
-                  Type
+  Template      = TEMPLATE       Length TypeParam* Param* parent_Term* Self? Stat* // Stat* always starts with the primary constructor.
   Self          = SELFDEF               selfName_NameRef selfType_Type
 
   Term          = Path
-                  Application
                   IDENT                 NameRef Type     // used when term ident’s type is not a TermRef
                   SELECT                possiblySigned_NameRef qual_Term
                   QUALTHIS              typeIdent_Tree
-                  NEW                   cls_Type
+                  NEW                   clsType_Term
+                  THROW                 throwableExpr_Term
                   NAMEDARG              paramName_NameRef arg_Term
+                  APPLY          Length fn_Term arg_Term*
+                  TYPEAPPLY      Length fn_Term arg_Type*
                   SUPER          Length this_Term mixinTypeIdent_Tree?
-                  TYPED          Length expr_Term ascription_Type
+                  TYPED          Length expr_Term ascriptionType_Tern
                   ASSIGN         Length lhs_Term rhs_Term
                   BLOCK          Length expr_Term Stat*
                   INLINED        Length call_Term expr_Term Stat*
-                  LAMBDA         Length meth_Term target_Type
+                  LAMBDA         Length meth_Term target_Type?
                   IF             Length cond_Term then_Term else_Term
                   MATCH          Length sel_Term CaseDef*
                   TRY            Length expr_Term CaseDef* finalizer_Term?
@@ -98,7 +98,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   UNAPPLY        Length fun_Term ImplicitArg* pat_Type pat_Term*
                   IDENTtpt              NameRef Type      // used for all type idents
                   SELECTtpt             NameRef qual_Term
-                  SINGLETONtpt          Path
+                  SINGLETONtpt          ref_Term
                   REFINEDtpt     Length underlying_Term refinement_Stat*
                   APPLIEDtpt     Length tycon_Term arg_Term*
                   POLYtpt        Length TypeParam* body_Term
@@ -110,9 +110,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   EMPTYTREE
                   SHAREDterm            term_ASTRef
                   HOLE           Length idx_Nat arg_Tree*
-  Application   = APPLY          Length fn_Term arg_Term*
 
-                  TYPEAPPLY      Length fn_Term arg_Type*
   CaseDef       = CASEDEF        Length pat_Term rhs_Tree guard_Tree?
   ImplicitArg   = IMPLICITARG           arg_Term
   ASTRef        = Nat                               // byte position in AST payload
@@ -163,7 +161,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   BYNAMEtype            underlying_Type
                   PARAMtype      Length binder_ASTref paramNum_Nat
                   POLYtype       Length result_Type NamesTypes
-                  METHODtype     Length result_Type NamesTypes      // needed for refinements
+                  methodType(_, _) Length result_Type NamesTypes    // needed for refinements
                   TYPELAMBDAtype Length result_Type NamesTypes      // variance encoded in front of name: +/-/(nothing)
                   SHAREDtype            type_ASTRef
   NamesTypes    = NameType*
@@ -179,6 +177,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SEALED
                   CASE
                   IMPLICIT
+                  ERASED
                   LAZY
                   OVERRIDE
                   INLINE                              // inline method
@@ -198,6 +197,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SCALA2X                             // Imported from Scala2.x
                   DEFAULTparameterized                // Method with default parameters
                   STABLE                              // Method that is assumed to be stable
+                  PARAMsetter                         // A setter without a body named `x_=` where `x` is pickled as a PARAM
                   Annotation
 
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term
@@ -226,8 +226,8 @@ Standard Section: "Positions" Assoc*
 object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion = 4
-  val MinorVersion = 0
+  val MajorVersion = 7
+  val MinorVersion = 1
 
   /** Tags used to serialize names */
   class NameTags {
@@ -260,6 +260,10 @@ object TastyFormat {
 
     final val OBJECTCLASS = 23       // The name of an object class (or: module class) `<name>$`.
 
+    final val INLINEGETTER = 24     // The name of an inline getter `inline_get$name`
+
+    final val INLINESETTER = 25     // The name of an inline setter `inline_set$name`
+
     final val SIGNED = 63            // A pair of a name and a signature, used to idenitfy
                                      // possibly overloaded methods.
   }
@@ -268,6 +272,7 @@ object TastyFormat {
   // AST tags
   // Cat. 1:    tag
 
+  final val firstSimpleTreeTag = UNITconst
   final val UNITconst = 2
   final val FALSEconst = 3
   final val TRUEconst = 4
@@ -299,6 +304,8 @@ object TastyFormat {
   final val DEFAULTparameterized = 30
   final val STABLE = 31
   final val MACRO = 32
+  final val ERASED = 33
+  final val PARAMsetter = 34
 
   // Cat. 2:    tag Nat
 
@@ -330,12 +337,13 @@ object TastyFormat {
   final val BYNAMEtype = 84
   final val BYNAMEtpt = 85
   final val NEW = 86
-  final val IMPLICITarg = 87
-  final val PRIVATEqualified = 88
-  final val PROTECTEDqualified = 89
-  final val RECtype = 90
-  final val TYPEALIAS = 91
-  final val SINGLETONtpt = 92
+  final val THROW = 87
+  final val IMPLICITarg = 88
+  final val PRIVATEqualified = 89
+  final val PROTECTEDqualified = 90
+  final val RECtype = 91
+  final val TYPEALIAS = 92
+  final val SINGLETONtpt = 93
 
   // Cat. 4:    tag Nat AST
 
@@ -392,17 +400,30 @@ object TastyFormat {
   final val ANDtpt = 165
   final val ORtype = 166
   final val ORtpt = 167
-  final val METHODtype = 168
-  final val POLYtype = 169
-  final val TYPELAMBDAtype = 170
-  final val LAMBDAtpt = 171
-  final val PARAMtype = 172
-  final val ANNOTATION = 173
-  final val TERMREFin = 174
-  final val TYPEREFin = 175
+  final val POLYtype = 168
+  final val TYPELAMBDAtype = 169
+  final val LAMBDAtpt = 170
+  final val PARAMtype = 171
+  final val ANNOTATION = 172
+  final val TERMREFin = 173
+  final val TYPEREFin = 174
+
+  // In binary: 101100EI
+  // I = implicit method type
+  // E = erased method type
+  final val METHODtype = 176
+  final val IMPLICITMETHODtype = 177
+  final val ERASEDMETHODtype = 178
+  final val ERASEDIMPLICITMETHODtype = 179
+
+  def methodType(isImplicit: Boolean = false, isErased: Boolean = false) = {
+    val implicitOffset = if (isImplicit) 1 else 0
+    val erasedOffset = if (isErased) 2 else 0
+    METHODtype + implicitOffset + erasedOffset
+  }
+
   final val HOLE = 255
 
-  final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHAREDterm
   final val firstASTTreeTag = THIS
   final val firstNatASTTreeTag = IDENT
@@ -410,7 +431,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= MACRO ||
+    firstSimpleTreeTag <= tag && tag <= PARAMsetter ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -428,6 +449,7 @@ object TastyFormat {
        | SEALED
        | CASE
        | IMPLICIT
+       | ERASED
        | LAZY
        | OVERRIDE
        | INLINE
@@ -447,6 +469,7 @@ object TastyFormat {
        | SCALA2X
        | DEFAULTparameterized
        | STABLE
+       | PARAMsetter
        | ANNOTATION
        | PRIVATEqualified
        | PROTECTEDqualified => true
@@ -482,6 +505,7 @@ object TastyFormat {
     case SEALED => "SEALED"
     case CASE => "CASE"
     case IMPLICIT => "IMPLICIT"
+    case ERASED => "ERASED"
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
     case INLINE => "INLINE"
@@ -501,6 +525,7 @@ object TastyFormat {
     case SCALA2X => "SCALA2X"
     case DEFAULTparameterized => "DEFAULTparameterized"
     case STABLE => "STABLE"
+    case PARAMsetter => "PARAMsetter"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"
@@ -541,6 +566,7 @@ object TastyFormat {
     case APPLY => "APPLY"
     case TYPEAPPLY => "TYPEAPPLY"
     case NEW => "NEW"
+    case THROW => "THROW"
     case TYPED => "TYPED"
     case NAMEDARG => "NAMEDARG"
     case ASSIGN => "ASSIGN"
@@ -588,6 +614,9 @@ object TastyFormat {
     case BYNAMEtpt => "BYNAMEtpt"
     case POLYtype => "POLYtype"
     case METHODtype => "METHODtype"
+    case IMPLICITMETHODtype => "IMPLICITMETHODtype"
+    case ERASEDMETHODtype => "ERASEDMETHODtype"
+    case ERASEDIMPLICITMETHODtype => "ERASEDIMPLICITMETHODtype"
     case TYPELAMBDAtype => "TYPELAMBDAtype"
     case LAMBDAtpt => "LAMBDAtpt"
     case PARAMtype => "PARAMtype"

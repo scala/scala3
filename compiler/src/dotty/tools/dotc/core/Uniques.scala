@@ -62,7 +62,7 @@ object Uniques {
       if (h == NotCached) newType
       else {
         val r = findPrevious(h, prefix, designator)
-        if (r ne null) r else addEntryAfterScan(newType)
+        if ((r ne null) && (r.isTerm == isTerm)) r else addEntryAfterScan(newType)
       }
     }
   }

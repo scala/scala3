@@ -1,0 +1,12 @@
+# TODO: Implement checkRecompilations
+
+> compile
+
+$ copy-file changes/A.scala A.scala
+
+> compile
+
+> checkRecompilations 0
+> checkRecompilations 1 A
+> checkRecompilations 2 B C
+> checkRecompilations 3 D

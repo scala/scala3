@@ -81,8 +81,8 @@ case class Completions(cursor: Int,
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
-                 protected val out: PrintStream = Console.out,
-                 protected val classLoader: Option[ClassLoader] = None) extends Driver {
+                 out: PrintStream = Console.out,
+                 classLoader: Option[ClassLoader] = None) extends Driver {
 
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
@@ -169,16 +169,17 @@ class ReplDriver(settings: Array[String],
     compiler
       .typeCheck(expr, errorsAllowed = true)
       .map { tree =>
-        implicit val ctx: Context = state.run.runContext
         val file = new dotc.util.SourceFile("compl", expr)
+        val unit = new CompilationUnit(file)
+        unit.tpdTree = tree
+        implicit val ctx: Context = state.run.runContext.fresh.setCompilationUnit(unit)
         val srcPos = dotc.util.SourcePosition(file, Position(cursor))
-        val (startOffset, completions) = Interactive.completions(SourceTree(tree, file) :: Nil, srcPos)(ctx)
+        val (startOffset, completions) = Interactive.completions(srcPos)
         val query =
           if (startOffset < cursor) expr.substring(startOffset, cursor) else ""
 
         def filterCompletions(name: String) =
           (query == "." || name.startsWith(query)) && name != query
-
 
         Completions(
           Math.min(startOffset, cursor) + { if (query == ".") 1 else 0 },
@@ -196,8 +197,8 @@ class ReplDriver(settings: Array[String],
   private def extractImports(trees: List[untpd.Tree]): List[untpd.Import] =
     trees.collect { case imp: untpd.Import => imp }
 
-  private def interpret(res: ParseResult)(implicit state: State): State =
-    res match {
+  private def interpret(res: ParseResult)(implicit state: State): State = {
+    val newState = res match {
       case parsed: Parsed if parsed.trees.nonEmpty =>
         compile(parsed)
           .withHistory(parsed.sourceCode :: state.history)
@@ -215,6 +216,9 @@ class ReplDriver(settings: Array[String],
       case _ => // new line, empty tree
         state
     }
+    out.println()
+    newState
+  }
 
   /** Compile `parsed` trees and evolve `state` in accordance */
   protected[this] final def compile(parsed: Parsed)(implicit state: State): State = {
@@ -234,6 +238,9 @@ class ReplDriver(settings: Array[String],
             val newestWrapper = extractNewestWrapper(unit.untpdTree)
             val newImports = newState.imports ++ extractImports(parsed.trees)
             val newStateWithImports = newState.copy(imports = newImports)
+
+            // display warnings
+            displayErrors(newState.run.runContext.flushBufferedMessages())(newState)
 
             displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
           }

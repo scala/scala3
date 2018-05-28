@@ -190,7 +190,7 @@ object Names {
     private[this] var derivedNames: AnyRef /* immutable.Map[NameInfo, DerivedName] | j.u.HashMap */ =
       immutable.Map.empty[NameInfo, DerivedName]
 
-    private def getDerived(info: NameInfo): DerivedName /* | Null */= derivedNames match {
+    private def getDerived(info: NameInfo): DerivedName /* | Null */ = derivedNames match {
       case derivedNames: immutable.AbstractMap[NameInfo, DerivedName] @unchecked =>
         if (derivedNames.contains(info)) derivedNames(info) else null
       case derivedNames: HashMap[NameInfo, DerivedName] @unchecked =>
@@ -422,7 +422,8 @@ object Names {
               "dotty$tools$dotc$core$NameOps$NameDecorator$$functionArityFor$extension",
               "dotty$tools$dotc$typer$Checking$CheckNonCyclicMap$$apply",
               "$plus$plus",
-              "readConstant")
+              "readConstant",
+              "extractedName")
             .contains(elem.getMethodName))
     }
 
@@ -546,13 +547,15 @@ object Names {
   private[this] var size = 1
 
   /** The hash of a name made of from characters cs[offset..offset+len-1].  */
-  private def hashValue(cs: Array[Char], offset: Int, len: Int): Int =
-    if (len > 0)
-      (len * (41 * 41 * 41) +
-        cs(offset) * (41 * 41) +
-        cs(offset + len - 1) * 41 +
-        cs(offset + (len >> 1)))
-    else 0
+  private def hashValue(cs: Array[Char], offset: Int, len: Int): Int = {
+    var i = offset
+    var hash = 0
+    while (i < len + offset) {
+      hash = 31 * hash + cs(i)
+      i += 1
+    }
+    hash
+  }
 
   /** Is (the ASCII representation of) name at given index equal to
    *  cs[offset..offset+len-1]?

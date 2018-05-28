@@ -19,10 +19,10 @@ import scala.collection.{ mutable, immutable }
 import config.Printers.pickling
 import typer.Checking
 import config.Config
-import dotty.tools.dotc.core.quoted.PickledQuotes
+import core.quoted.PickledQuotes
 import scala.quoted
 import scala.quoted.Types.TreeType
-import scala.quoted.Exprs.TreeExpr
+import scala.quoted.Exprs.TastyTreeExpr
 
 /** Unpickler for typed trees
  *  @param reader          the reader from which to unpickle
@@ -73,9 +73,16 @@ class TreeUnpickler(reader: TastyReader,
    */
   def enterTopLevel(roots: Set[SymDenotation])(implicit ctx: Context): Unit = {
     this.roots = roots
-    var rdr = new TreeReader(reader).fork
+    val rdr = new TreeReader(reader).fork
     ownerTree = new OwnerTree(NoAddr, 0, rdr.fork, reader.endAddr)
     rdr.indexStats(reader.endAddr)
+  }
+
+  def unpickleExpr()(implicit ctx: Context): Tree = {
+    this.roots = Set(ctx.owner)
+    val rdr = new TreeReader(reader).fork
+    ownerTree = new OwnerTree(NoAddr, 0, rdr.fork, reader.endAddr)
+    rdr.readTerm()
   }
 
   /** The unpickled trees */
@@ -251,9 +258,9 @@ class TreeUnpickler(reader: TastyReader,
               val space = readType()
               sname match {
                 case SignedName(name, sig) =>
-                  TermRef(prefix, name, space.decl(name).atSignature(sig))
+                  TermRef(prefix, name, space.decl(name).asSeenFrom(prefix).atSignature(sig))
                 case name =>
-                  TermRef(prefix, name, space.decl(name))
+                  TermRef(prefix, name, space.decl(name).asSeenFrom(prefix))
               }
             case TYPEREFin =>
               val name = readName().toTypeName
@@ -261,7 +268,7 @@ class TreeUnpickler(reader: TastyReader,
               val space = readType()
               space.decl(name) match {
                 case symd: SymDenotation if prefix.isArgPrefixOf(symd.symbol) => TypeRef(prefix, symd.symbol)
-                case _ => TypeRef(prefix, name, space.decl(name))
+                case _ => TypeRef(prefix, name, space.decl(name).asSeenFrom(prefix))
               }
             case REFINEDtype =>
               var name: Name = readName()
@@ -287,6 +294,12 @@ class TreeUnpickler(reader: TastyReader,
               readMethodic(PolyType, _.toTypeName)
             case METHODtype =>
               readMethodic(MethodType, _.toTermName)
+            case IMPLICITMETHODtype =>
+              readMethodic(ImplicitMethodType, _.toTermName)
+            case ERASEDMETHODtype =>
+              readMethodic(ErasedMethodType, _.toTermName)
+            case ERASEDIMPLICITMETHODtype =>
+              readMethodic(ErasedImplicitMethodType, _.toTermName)
             case TYPELAMBDAtype =>
               readMethodic(HKTypeLambda, _.toTypeName)
             case PARAMtype =>
@@ -418,7 +431,11 @@ class TreeUnpickler(reader: TastyReader,
         flags = flags | (if (tag == VALDEF) ModuleValCreationFlags else ModuleClassCreationFlags)
       if (ctx.owner.isClass) {
         if (tag == TYPEPARAM) flags |= Param
-        else if (tag == PARAM) flags |= ParamAccessor
+        else if (tag == PARAM) {
+          flags |= ParamAccessor
+          if (!rhsIsEmpty) // param alias
+            flags |= Method
+        }
       }
       else if (isParamTag(tag)) flags |= Param
       flags
@@ -559,6 +576,7 @@ class TreeUnpickler(reader: TastyReader,
           case SEALED => addFlag(Sealed)
           case CASE => addFlag(Case)
           case IMPLICIT => addFlag(Implicit)
+          case ERASED => addFlag(Erased)
           case LAZY => addFlag(Lazy)
           case OVERRIDE => addFlag(Override)
           case INLINE => addFlag(Inline)
@@ -578,6 +596,8 @@ class TreeUnpickler(reader: TastyReader,
           case SCALA2X => addFlag(Scala2x)
           case DEFAULTparameterized => addFlag(DefaultParameterized)
           case STABLE => addFlag(Stable)
+          case PARAMsetter =>
+            addFlag(ParamAccessor)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readType().typeSymbol
@@ -694,7 +714,7 @@ class TreeUnpickler(reader: TastyReader,
 
       def readRhs(implicit ctx: Context) =
         if (noRhs(end)) EmptyTree
-        else readLater(end, rdr => ctx => rdr.readTerm()(ctx))
+        else readLater(end, rdr => ctx => rdr.readTerm()(ctx.retractMode(Mode.InSuperCall)))
 
       def ValDef(tpt: Tree) =
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(localCtx)), sym)
@@ -721,11 +741,6 @@ class TreeUnpickler(reader: TastyReader,
               vparamss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
           val resType = ctx.effectiveResultType(sym, typeParams, tpt.tpe)
           sym.info = ctx.methodType(typeParams, valueParamss, resType)
-          if (sym.isSetter && sym.accessedFieldOrGetter.is(ParamAccessor)) {
-            // reconstitute ParamAccessor flag of setters for var parameters, which is not pickled
-            sym.setFlag(ParamAccessor)
-            sym.resetFlag(Deferred)
-          }
           DefDef(tparams, vparamss, tpt)
         case VALDEF =>
           val tpt = readTpt()(localCtx)
@@ -768,7 +783,6 @@ class TreeUnpickler(reader: TastyReader,
             ValDef(tpt)
           }
           else {
-            sym.setFlag(Method)
             sym.info = ExprType(tpt.tpe)
             pickling.println(i"reading param alias $name -> $currentAddr")
             DefDef(Nil, Nil, tpt)
@@ -967,6 +981,8 @@ class TreeUnpickler(reader: TastyReader,
           untpd.This(qual).withType(ThisType.raw(tref))
         case NEW =>
           New(readTpt())
+        case THROW =>
+          Throw(readTerm())
         case SINGLETONtpt =>
           SingletonTypeTree(readTerm())
         case BYNAMEtpt =>
@@ -1126,14 +1142,17 @@ class TreeUnpickler(reader: TastyReader,
     def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context => T)(implicit ctx: Context): Trees.Lazy[T] = {
       val localReader = fork
       goto(end)
-      new LazyReader(localReader, ctx.owner, op)
+      new LazyReader(localReader, ctx.owner, ctx.mode, op)
     }
 
     def readHole(end: Addr, isType: Boolean)(implicit ctx: Context): Tree = {
       val idx = readNat()
       val args = until(end)(readTerm())
       val splice = splices(idx)
-      val reifiedArgs = args.map(arg => if (arg.isTerm) new TreeExpr(arg) else new TreeType(arg))
+      def wrap(arg: Tree) =
+        if (arg.isTerm) new TastyTreeExpr(arg)
+        else new TreeType(arg)
+      val reifiedArgs = args.map(wrap)
       if (isType) {
         val quotedType = splice.asInstanceOf[Seq[Any] => quoted.Type[_]](reifiedArgs)
         PickledQuotes.quotedTypeToTree(quotedType)
@@ -1173,10 +1192,10 @@ class TreeUnpickler(reader: TastyReader,
     }
   }
 
-  class LazyReader[T <: AnyRef](reader: TreeReader, owner: Symbol, op: TreeReader => Context => T) extends Trees.Lazy[T] {
+  class LazyReader[T <: AnyRef](reader: TreeReader, owner: Symbol, mode: Mode, op: TreeReader => Context => T) extends Trees.Lazy[T] {
     def complete(implicit ctx: Context): T = {
       pickling.println(i"starting to read at ${reader.reader.currentAddr} with owner $owner")
-      op(reader)(ctx.withPhaseNoLater(ctx.picklerPhase).withOwner(owner))
+      op(reader)(ctx.withPhaseNoLater(ctx.picklerPhase).withOwner(owner).withModeBits(mode))
     }
   }
 

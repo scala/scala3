@@ -1,11 +1,6 @@
-================================================================================
-out/posTestFromTasty/pos/methodTypes/Foo.class
---------------------------------------------------------------------------------
-package <empty> {
-  class Foo() extends Object() {
-    val x: Int = 1
-    def y: Int = 2
-    def z(): Int = 3
-  }
+/** Decompiled from out/posTestFromTasty/pos/methodTypes/Foo.class */
+class Foo() {
+  val x: Int = 1
+  def y: Int = 2
+  def z(): Int = 3
 }
---------------------------------------------------------------------------------

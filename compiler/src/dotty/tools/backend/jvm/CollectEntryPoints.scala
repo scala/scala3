@@ -6,7 +6,6 @@ import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc
-import dotty.tools.dotc.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.core.Flags.FlagSet
 import dotty.tools.dotc.transform.Erasure
 import dotty.tools.dotc.transform.SymUtils._

@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.lang.reflect.Method;
 
 public class ChildJVMMain {
+    static final String MessageStart = "##THIS IS THE START FOR ME, HELLO##";
     static final String MessageEnd = "##THIS IS THE END FOR ME, GOODBYE##";
 
     private static void runMain(String dir) throws Exception {
@@ -23,6 +24,9 @@ public class ChildJVMMain {
         Class<?> cls = ucl.loadClass("Test");
         Method meth = cls.getMethod("main", String[].class);
         Object[] args = new Object[]{ new String[]{ "jvm" } };
+
+        System.out.println(MessageStart);
+
         meth.invoke(null, args);
     }
 

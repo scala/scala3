@@ -88,7 +88,10 @@ function fetchAndRun(artifact: string) {
 
 function run(serverOptions: ServerOptions) {
   const clientOptions: LanguageClientOptions = {
-    documentSelector: ['scala'],
+    documentSelector: [
+      { language: 'scala', scheme: 'file', pattern: '**/*.scala' },
+      { language: 'scala', scheme: 'untitled', pattern: '**/*.scala' }
+    ],
     synchronize: {
       configurationSection: 'dotty'
     }

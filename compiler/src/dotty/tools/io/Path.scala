@@ -138,14 +138,7 @@ class Path private[io] (val jpath: JPath) {
     if (p isSame this) Nil else p :: p.parents
   }
   // if name ends with an extension (e.g. "foo.jpg") returns the extension ("jpg"), otherwise ""
-  def extension: String = {
-    var i = name.length - 1
-    while (i >= 0 && name.charAt(i) != '.')
-      i -= 1
-
-    if (i < 0) ""
-    else name.substring(i + 1)
-  }
+  def extension: String = Path.extension(name)
   // compares against extensions in a CASE INSENSITIVE way.
   def hasExtension(ext: String, exts: String*) = {
     val lower = extension.toLowerCase

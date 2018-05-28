@@ -7,7 +7,7 @@ import scala.collection.immutable.BitSet
 import util.{ SourceFile, SourcePosition }
 import Tokens._
 import Scanners._
-import MarkupParsers._
+import xml.MarkupParsers.MarkupParser
 import core._
 import Flags._
 import Contexts._
@@ -397,7 +397,7 @@ object Parsers {
     /** the markup parser */
     lazy val xmlp = new MarkupParser(this, true)
 
-    object symbXMLBuilder extends SymbolicXMLBuilder(this, true) // DEBUG choices
+    object symbXMLBuilder extends xml.SymbolicXMLBuilder(this, true) // DEBUG choices
 
     def xmlLiteral() : Tree = xmlp.xLiteral
     def xmlLiteralPattern() : Tree = xmlp.xLiteralPattern
@@ -452,7 +452,7 @@ object Parsers {
       if (isLeftAssoc(op1) != op2LeftAssoc)
         syntaxError(MixedLeftAndRightAssociativeOps(op1, op2, op2LeftAssoc), offset)
 
-    def reduceStack(base: List[OpInfo], top: Tree, prec: Int, leftAssoc: Boolean, op2: Name): Tree = {
+    def reduceStack(base: List[OpInfo], top: Tree, prec: Int, leftAssoc: Boolean, op2: Name, isType: Boolean): Tree = {
       if (opStack != base && precedence(opStack.head.operator.name) == prec)
         checkAssoc(opStack.head.offset, opStack.head.operator.name, op2, leftAssoc)
       def recur(top: Tree): Tree = {
@@ -464,7 +464,15 @@ object Parsers {
             opStack = opStack.tail
             recur {
               atPos(opInfo.operator.pos union opInfo.operand.pos union top.pos) {
-                InfixOp(opInfo.operand, opInfo.operator, top)
+                val op = opInfo.operator
+                val l = opInfo.operand
+                val r = top
+                if (isType && !op.isBackquoted && op.name == tpnme.raw.BAR) {
+                  OrTypeTree(checkAndOrArgument(l), checkAndOrArgument(r))
+                } else if (isType && !op.isBackquoted && op.name == tpnme.raw.AMP) {
+                  AndTypeTree(checkAndOrArgument(l), checkAndOrArgument(r))
+                } else
+                  InfixOp(l, op, r)
               }
             }
           }
@@ -488,20 +496,20 @@ object Parsers {
       var top = first
       while (isIdent && isOperator) {
         val op = if (isType) typeIdent() else termIdent()
-        top = reduceStack(base, top, precedence(op.name), isLeftAssoc(op.name), op.name)
+        top = reduceStack(base, top, precedence(op.name), isLeftAssoc(op.name), op.name, isType)
         opStack = OpInfo(top, op, in.offset) :: opStack
         newLineOptWhenFollowing(canStartOperand)
         if (maybePostfix && !canStartOperand(in.token)) {
           val topInfo = opStack.head
           opStack = opStack.tail
-          val od = reduceStack(base, topInfo.operand, 0, true, in.name)
+          val od = reduceStack(base, topInfo.operand, 0, true, in.name, isType)
           return atPos(startOffset(od), topInfo.offset) {
             PostfixOp(od, topInfo.operator)
           }
         }
         top = operand()
       }
-      reduceStack(base, top, 0, true, in.name)
+      reduceStack(base, top, 0, true, in.name, isType)
     }
 
 /* -------- IDENTIFIERS AND LITERALS ------------------------------------------- */
@@ -709,15 +717,7 @@ object Parsers {
     /** Same as [[typ]], but if this results in a wildcard it emits a syntax error and
      *  returns a tree for type `Any` instead.
      */
-    def toplevelTyp(): Tree = {
-      val t = typ()
-      findWildcardType(t) match {
-        case Some(wildcardPos) =>
-          syntaxError(UnboundWildcardType(), wildcardPos)
-          scalaAny
-        case None => t
-      }
-    }
+    def toplevelTyp(): Tree = checkWildcard(typ())
 
     /** Type        ::=  [FunArgMods] FunArgTypes `=>' Type
      *                |  HkTypeParamClause `->' Type
@@ -759,8 +759,8 @@ object Parsers {
               case Ident(name) if name != tpnme.WILDCARD && in.token == COLON =>
                 isValParamList = true
                 funArgTypesRest(
-                    typedFunParam(paramStart, name.toTermName),
-                    () => typedFunParam(in.offset, ident()))
+                    typedFunParam(paramStart, name.toTermName, imods),
+                    () => typedFunParam(in.offset, ident(), imods))
               case t =>
                 funArgTypesRest(t, funArgType)
             }
@@ -768,9 +768,16 @@ object Parsers {
             accept(RPAREN)
             if (imods.is(Implicit) || isValParamList || in.token == ARROW) functionRest(ts)
             else {
-              for (t <- ts)
-                if (t.isInstanceOf[ByNameTypeTree])
-                  syntaxError(ByNameParameterNotSupported())
+              val ts1 =
+                for (t <- ts) yield {
+                  t match {
+                    case t@ByNameTypeTree(t1) =>
+                      syntaxError(ByNameParameterNotSupported(t), t.pos)
+                      t1
+                    case _ =>
+                      t
+                  }
+                }
               val tuple = atPos(start) { makeTupleOrParens(ts) }
               infixTypeRest(
                 refinedTypeRest(
@@ -784,7 +791,7 @@ object Parsers {
           val start = in.offset
           val tparams = typeParamClause(ParamOwner.TypeParam)
           if (in.token == ARROW)
-            atPos(start, in.skipToken())(LambdaTypeTree(tparams, typ()))
+            atPos(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
           else { accept(ARROW); typ() }
         }
         else infixType()
@@ -800,9 +807,9 @@ object Parsers {
     }
 
     /** TypedFunParam   ::= id ':' Type */
-    def typedFunParam(start: Offset, name: TermName): Tree = atPos(start) {
+    def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): Tree = atPos(start) {
       accept(COLON)
-      makeParameter(name, typ(), Modifiers(Param))
+      makeParameter(name, typ(), mods | Param)
     }
 
     /** InfixType ::= RefinedType {id [nl] refinedType}
@@ -822,7 +829,7 @@ object Parsers {
 
     def refinedTypeRest(t: Tree): Tree = {
       newLineOptWhenFollowedBy(LBRACE)
-      if (in.token == LBRACE) refinedTypeRest(atPos(startOffset(t)) { RefinedTypeTree(t, refinement()) })
+      if (in.token == LBRACE) refinedTypeRest(atPos(startOffset(t)) { RefinedTypeTree(checkWildcard(t), refinement()) })
       else t
     }
 
@@ -835,7 +842,7 @@ object Parsers {
         if (ctx.settings.strict.value)
           deprecationWarning(DeprecatedWithOperator())
         in.nextToken()
-        AndTypeTree(t, withType())
+        AndTypeTree(checkAndOrArgument(t), checkAndOrArgument(withType()))
       }
       else t
 
@@ -886,7 +893,7 @@ object Parsers {
     private def simpleTypeRest(t: Tree): Tree = in.token match {
       case HASH => simpleTypeRest(typeProjection(t))
       case LBRACKET => simpleTypeRest(atPos(startOffset(t)) {
-        AppliedTypeTree(t, typeArgs(namedOK = false, wildOK = true)) })
+        AppliedTypeTree(checkWildcard(t), typeArgs(namedOK = false, wildOK = true)) })
       case _ => t
     }
 
@@ -917,7 +924,7 @@ object Parsers {
           else Nil
         first :: rest
       }
-      def typParser() = if (wildOK) typ() else toplevelTyp()
+      def typParser() = checkWildcard(typ(), wildOK)
       if (namedOK && in.token == IDENTIFIER)
         typParser() match {
           case Ident(name) if in.token == EQUALS =>
@@ -1001,16 +1008,45 @@ object Parsers {
       else if (location == Location.InPattern) refinedType()
       else infixType()
 
-    /** Checks whether `t` is a wildcard type.
-     *  If it is, returns the [[Position]] where the wildcard occurs.
+    /** Checks whether `t` represents a non-value type (wildcard types, or ByNameTypeTree).
+     *  If it is, returns the [[Tree]] which immediately represents the non-value type.
      */
     @tailrec
-    private final def findWildcardType(t: Tree): Option[Position] = t match {
-      case TypeBoundsTree(_, _) => Some(t.pos)
-      case Parens(t1) => findWildcardType(t1)
-      case Annotated(t1, _) => findWildcardType(t1)
+    private final def findNonValueTypeTree(t: Tree, alsoNonValue: Boolean): Option[Tree] = t match {
+      case TypeBoundsTree(_, _) => Some(t)
+      case ByNameTypeTree(_) if alsoNonValue => Some(t)
+      case Parens(t1) => findNonValueTypeTree(t1, alsoNonValue)
+      case Annotated(t1, _) => findNonValueTypeTree(t1, alsoNonValue)
       case _ => None
     }
+
+    def rejectWildcard(t: Tree, fallbackTree: Tree): Tree =
+      findNonValueTypeTree(t, false) match {
+        case Some(wildcardTree) =>
+          syntaxError(UnboundWildcardType(), wildcardTree.pos)
+          fallbackTree
+        case None => t
+      }
+
+
+    def checkWildcard(t: Tree, wildOK: Boolean = false, fallbackTree: Tree = scalaAny): Tree =
+      if (wildOK)
+        t
+      else
+        rejectWildcard(t, fallbackTree)
+
+    def checkAndOrArgument(t: Tree): Tree =
+      findNonValueTypeTree(t, true) match {
+        case Some(typTree) =>
+          typTree match {
+            case typTree: TypeBoundsTree =>
+              syntaxError(UnboundWildcardType(), typTree.pos)
+            case typTree: ByNameTypeTree =>
+              syntaxError(ByNameParameterNotSupported(typTree), typTree.pos)
+          }
+          scalaAny
+        case None => t
+      }
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
 
@@ -1843,15 +1879,18 @@ object Parsers {
           mods =
             atPos(start, in.offset) {
               if (in.token == VAL) {
-                val mod = atPos(in.skipToken()) { Mod.Val() }
-                mods.withAddedMod(mod)
-              } else if (in.token == VAR) {
+                in.nextToken()
+                mods
+              }
+              else if (in.token == VAR) {
                 val mod = atPos(in.skipToken()) { Mod.Var() }
                 addMod(mods, mod)
-              } else {
+              }
+              else {
                 if (!(mods.flags &~ (ParamAccessor | Inline)).isEmpty)
                   syntaxError("`val' or `var' expected")
-                if (firstClauseOfCaseClass) mods else mods | PrivateLocal
+                if (firstClauseOfCaseClass) mods
+                else mods | PrivateLocal
               }
             }
         }
@@ -1929,7 +1968,10 @@ object Parsers {
       commaSeparated(importExpr) match {
         case t :: rest =>
           // The first import should start at the position of the keyword.
-          t.withPos(t.pos.withStart(offset)) :: rest
+          val firstPos =
+            if (t.pos.exists) t.pos.withStart(offset)
+            else Position(offset, in.lastOffset)
+          t.withPos(firstPos) :: rest
         case nil => nil
       }
     }
@@ -1999,9 +2041,8 @@ object Parsers {
      */
     def defOrDcl(start: Int, mods: Modifiers): Tree = in.token match {
       case VAL =>
-        val mod = atPos(in.skipToken()) { Mod.Val() }
-        val mods1 = mods.withAddedMod(mod)
-        patDefOrDcl(start, mods1)
+        in.nextToken()
+        patDefOrDcl(start, mods)
       case VAR =>
         val mod = atPos(in.skipToken()) { Mod.Var() }
         val mod1 = addMod(mods, mod)
@@ -2145,7 +2186,7 @@ object Parsers {
         in.token match {
           case EQUALS =>
             in.nextToken()
-            TypeDef(name, lambdaAbstract(tparams, typ())).withMods(mods).setComment(in.getDocComment(start))
+            TypeDef(name, lambdaAbstract(tparams, toplevelTyp())).withMods(mods).setComment(in.getDocComment(start))
           case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
             TypeDef(name, lambdaAbstract(tparams, typeBounds())).withMods(mods).setComment(in.getDocComment(start))
           case _ =>
@@ -2273,7 +2314,8 @@ object Parsers {
     /** ConstrApp         ::=  SimpleType {ParArgumentExprs}
      */
     val constrApp = () => {
-      val t = annotType()
+      // Using Ident(nme.ERROR) to avoid causing cascade errors on non-user-written code
+      val t = checkWildcard(annotType(), fallbackTree = Ident(nme.ERROR))
       if (in.token == LPAREN) parArgumentExprss(wrapNew(t))
       else t
     }
@@ -2422,22 +2464,35 @@ object Parsers {
       (self, if (stats.isEmpty) List(EmptyTree) else stats.toList)
     }
 
-    /** RefineStatSeq    ::= RefineStat {semi RefineStat}
-     *  RefineStat       ::= Dcl
-     *                     |
-     *  (in reality we admit Defs and filter them out afterwards)
+    /** RefineStatSeq    ::=  RefineStat {semi RefineStat}
+     *  RefineStat       ::=  ‘val’ VarDcl
+     *                     |  ‘def’ DefDcl
+     *                     |  ‘type’ {nl} TypeDcl
+     *  (in reality we admit Defs and vars and filter them out afterwards in `checkLegal`)
      */
     def refineStatSeq(): List[Tree] = {
       val stats = new ListBuffer[Tree]
+      def checkLegal(tree: Tree): List[Tree] = {
+        val isLegal = tree match {
+          case tree: ValDef => tree.rhs.isEmpty && !tree.mods.flags.is(Mutable)
+          case tree: DefDef => tree.rhs.isEmpty
+          case tree: TypeDef => true
+          case _ => false
+        }
+        if (isLegal) tree :: Nil
+        else {
+          syntaxError("illegal refinement", tree.pos)
+          Nil
+        }
+      }
       while (!isStatSeqEnd) {
-        if (isDclIntro) {
-          stats += defOrDcl(in.offset, Modifiers())
-        } else if (!isStatSep) {
+        if (isDclIntro)
+          stats ++= checkLegal(defOrDcl(in.offset, Modifiers()))
+        else if (!isStatSep)
           syntaxErrorOrIncomplete(
             "illegal start of declaration" +
             (if (inFunReturnType) " (possible cause: missing `=' in front of current method body)"
              else ""))
-        }
         acceptStatSepUnlessAtEnd()
       }
       stats.toList

@@ -251,7 +251,7 @@ class TreePickler(pickler: TastyPickler) {
     case tpe: PolyType if richTypes =>
       pickleMethodic(POLYtype, tpe)
     case tpe: MethodType if richTypes =>
-      pickleMethodic(METHODtype, tpe)
+      pickleMethodic(methodType(isImplicit = tpe.isImplicitMethod, isErased = tpe.isErasedMethod), tpe)
     case tpe: ParamRef =>
       assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")
     case tpe: LazyRef =>
@@ -361,10 +361,15 @@ class TreePickler(pickler: TastyPickler) {
               pickleTree(qual)
           }
         case Apply(fun, args) =>
-          writeByte(APPLY)
-          withLength {
-            pickleTree(fun)
-            args.foreach(pickleTree)
+          if (fun.symbol eq defn.throwMethod) {
+            writeByte(THROW)
+            pickleTree(args.head)
+          } else {
+            writeByte(APPLY)
+            withLength {
+              pickleTree(fun)
+              args.foreach(pickleTree)
+            }
           }
         case TypeApply(fun, args) =>
           writeByte(TYPEAPPLY)
@@ -593,6 +598,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags is Scala2x) writeByte(SCALA2X)
     if (sym.isTerm) {
       if (flags is Implicit) writeByte(IMPLICIT)
+      if (flags is Erased) writeByte(ERASED)
       if ((flags is Lazy) && !(sym is Module)) writeByte(LAZY)
       if (flags is AbsOverride) { writeByte(ABSTRACT); writeByte(OVERRIDE) }
       if (flags is Mutable) writeByte(MUTABLE)
@@ -600,6 +606,8 @@ class TreePickler(pickler: TastyPickler) {
       if (flags is CaseAccessor) writeByte(CASEaccessor)
       if (flags is DefaultParameterized) writeByte(DEFAULTparameterized)
       if (flags is Stable) writeByte(STABLE)
+      if ((flags is ParamAccessor) && sym.isSetter) writeByte(PARAMsetter)
+      if ((flags is Label)) writeByte(LABEL)
     } else {
       if (flags is Sealed) writeByte(SEALED)
       if (flags is Abstract) writeByte(ABSTRACT)

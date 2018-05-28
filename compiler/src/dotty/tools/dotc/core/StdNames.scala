@@ -9,7 +9,6 @@ import Symbols._
 import Contexts._
 import Decorators.PreNamedString
 import util.NameTransformer
-import scala.collection.breakOut
 
 object StdNames {
 
@@ -196,6 +195,7 @@ object StdNames {
     final val REIFY_TYPECREATOR_PREFIX: N       = "$typecreator"
 
     final val Any: N                 = "Any"
+    final val AnyKind: N             = "AnyKind"
     final val AnyVal: N              = "AnyVal"
     final val ExprApi: N             = "ExprApi"
     final val Mirror: N              = "Mirror"
@@ -435,10 +435,12 @@ object StdNames {
     val head: N                 = "head"
     val higherKinds: N          = "higherKinds"
     val identity: N             = "identity"
+    val implicitConversions: N  = "implicitConversions"
     val implicitly: N           = "implicitly"
     val in: N                   = "in"
     val info: N                 = "info"
     val inlinedEquals: N        = "inlinedEquals"
+    val internal: N             = "internal"
     val isArray: N              = "isArray"
     val isDefinedAt: N          = "isDefinedAt"
     val isDefinedAtImpl: N      = "$isDefinedAt"
@@ -484,8 +486,10 @@ object StdNames {
     val productElement: N       = "productElement"
     val productIterator: N      = "productIterator"
     val productPrefix: N        = "productPrefix"
+    val raw_ : N                = "raw"
     val readResolve: N          = "readResolve"
     val reflect : N             = "reflect"
+    val reflectiveSelectable: N = "reflectiveSelectable"
     val reify : N               = "reify"
     val rootMirror : N          = "rootMirror"
     val run: N                  = "run"
@@ -493,6 +497,7 @@ object StdNames {
     val runtime: N              = "runtime"
     val runtimeClass: N         = "runtimeClass"
     val runtimeMirror: N        = "runtimeMirror"
+    val s: N                    = "s"
     val sameElements: N         = "sameElements"
     val scala_ : N              = "scala"
     val scalaShadowing : N      = "scalaShadowing"

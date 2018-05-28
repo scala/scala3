@@ -332,14 +332,20 @@ object Denotations {
     }
 
     /** Handle merge conflict by throwing a `MergeError` exception */
-    private def mergeConflict(tp1: Type, tp2: Type)(implicit ctx: Context): Type = {
+    private def mergeConflict(tp1: Type, tp2: Type, that: Denotation)(implicit ctx: Context): Type = {
+      def showSymbol(sym: Symbol): String = if (sym.exists) sym.showLocated else "[unknown]"
       def showType(tp: Type) = tp match {
         case ClassInfo(_, cls, _, _, _) => cls.showLocated
         case bounds: TypeBounds => i"type bounds $bounds"
         case _ => tp.show
       }
-      if (true) throw new MergeError(s"cannot merge ${showType(tp1)} with ${showType(tp2)}", tp1, tp2)
-      else throw new Error(s"cannot merge ${showType(tp1)} with ${showType(tp2)}") // flip condition for debugging
+      val msg =
+        s"""cannot merge
+           |  ${showSymbol(this.symbol)} of type ${showType(tp1)}  and
+           |  ${showSymbol(that.symbol)} of type ${showType(tp2)}
+           """
+      if (true) throw new MergeError(msg, tp1, tp2)
+      else throw new Error(msg) // flip condition for debugging
     }
 
     /** Merge parameter names of lambda types. If names in corresponding positions match, keep them,
@@ -389,13 +395,13 @@ object Denotations {
             tp2 match {
               case tp2: TypeBounds => if (safeIntersection) tp1 safe_& tp2 else tp1 & tp2
               case tp2: ClassInfo if tp1 contains tp2 => tp2
-              case _ => mergeConflict(tp1, tp2)
+              case _ => mergeConflict(tp1, tp2, that)
             }
           case tp1: ClassInfo =>
             tp2 match {
               case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
               case tp2: TypeBounds if tp2 contains tp1 => tp1
-              case _ => mergeConflict(tp1, tp2)
+              case _ => mergeConflict(tp1, tp2, that)
             }
           case tp1: MethodOrPoly =>
             tp2 match {
@@ -420,9 +426,9 @@ object Denotations {
                   tp1.derivedLambdaType(
                     mergeParamNames(tp1, tp2), tp1.paramInfos,
                     infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
-                else mergeConflict(tp1, tp2)
+                else mergeConflict(tp1, tp2, that)
               case _ =>
-                mergeConflict(tp1, tp2)
+                mergeConflict(tp1, tp2, that)
             }
           case _ =>
             tp1 & tp2
@@ -523,7 +529,12 @@ object Denotations {
               try infoMeet(info1, info2)
               catch {
                 case ex: MergeError =>
-                  if (pre.widen.classSymbol.is(Scala2x) || ctx.scala2Mode)
+                  // TODO: this picks one type over the other whereas it might be better
+                  // to return a MultiDenotation instead. But doing so would affect lots of
+                  // things, starting with the return type of this method.
+                  if (preferSym(sym2, sym1)) info2
+                  else if (preferSym(sym1, sym2)) info1
+                  else if (pre.widen.classSymbol.is(Scala2x) || ctx.scala2Mode)
                     info1 // follow Scala2 linearization -
                   // compare with way merge is performed in SymDenotation#computeMembersNamed
                   else
@@ -560,13 +571,13 @@ object Denotations {
           tp2 match {
             case tp2: TypeBounds => tp1 | tp2
             case tp2: ClassInfo if tp1 contains tp2 => tp1
-            case _ => mergeConflict(tp1, tp2)
+            case _ => mergeConflict(tp1, tp2, that)
           }
         case tp1: ClassInfo =>
           tp2 match {
             case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
             case tp2: TypeBounds if tp2 contains tp1 => tp2
-            case _ => mergeConflict(tp1, tp2)
+            case _ => mergeConflict(tp1, tp2, that)
           }
         case tp1: MethodOrPoly =>
           tp2 match {
@@ -577,7 +588,7 @@ object Denotations {
                 mergeParamNames(tp1, tp2), tp1.paramInfos,
                 tp1.resultType | tp2.resultType.subst(tp2, tp1))
             case _ =>
-              mergeConflict(tp1, tp2)
+              mergeConflict(tp1, tp2, that)
           }
         case _ =>
           tp1 | tp2
@@ -1008,12 +1019,6 @@ object Denotations {
       } while (cur ne this)
       interval
     }
-
-    /** For ClassDenotations only:
-     *  If caches influenced by parent classes are still valid, the denotation
-     *  itself, otherwise a freshly initialized copy.
-     */
-    def syncWithParents(implicit ctx: Context): SingleDenotation = this
 
     /** Show declaration string; useful for showing declarations
      *  as seen from subclasses.

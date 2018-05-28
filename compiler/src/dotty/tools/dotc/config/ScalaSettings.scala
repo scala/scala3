@@ -50,6 +50,14 @@ class ScalaSettings extends Settings.SettingGroup {
   val printTasty = BooleanSetting("-print-tasty", "Prints the raw tasty when decompiling.")
   val printLines = BooleanSetting("-print-lines", "Show source code line numbers.")
 
+  /** Plugin-related setting */
+  val plugin             = MultiStringSetting  ("-Xplugin", "paths", "Load a plugin from each classpath.")
+  val disable            = MultiStringSetting  ("-Xplugin-disable", "plugin", "Disable plugins by name.")
+  val require            = MultiStringSetting  ("-Xplugin-require", "plugin", "Abort if a named plugin is not loaded.")
+  val showPlugins        = BooleanSetting      ("-Xplugin-list", "Print a synopsis of loaded plugins.")
+  val pluginsDir         = StringSetting       ("-Xpluginsdir", "path", "Path to search for plugin archives.", Defaults.scalaPluginPath)
+  val pluginOptions      = MultiStringSetting  ("-P", "plugin:opt", "Pass an option to a plugin, e.g. -P:<plugin>:<opt>")
+
   /** -X "Advanced" settings
    */
   val Xhelp = BooleanSetting("-X", "Print a synopsis of advanced options.")
@@ -109,6 +117,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YtestPickler = BooleanSetting("-Ytest-pickler", "self-test for pickling functionality; should be used with -Ystop-after:pickler")
   val YcheckReentrant = BooleanSetting("-Ycheck-reentrant", "check that compiled program does not contain vars that can be accessed from a global root.")
   val YkeepComments = BooleanSetting("-Ykeep-comments", "Keep comments when scanning source files.")
+  val YcookComments = BooleanSetting("-Ycook-comments", "Cook the comments (type check `@usecase`, etc.)")
   val YforceSbtPhases = BooleanSetting("-Yforce-sbt-phases", "Run the phases used by sbt for incremental compilation (ExtractDependencies and ExtractAPI) even if the compiler is ran outside of sbt, for debugging.")
   val YdumpSbtInc = BooleanSetting("-Ydump-sbt-inc", "For every compiled foo.scala, output the API representation and dependencies used for sbt incremental compilation in foo.inc, implies -Yforce-sbt-phases.")
   val YcheckAllPatmat = BooleanSetting("-Ycheck-all-patmat", "Check exhaustivity and redundancy of all pattern matching (used for testing the algorithm)")
@@ -122,6 +131,9 @@ class ScalaSettings extends Settings.SettingGroup {
       //.withPostSetHook( _ => YprofileEnabled.value = true )
   val YprofileRunGcBetweenPhases = PhasesSetting("-Yprofile-run-gc", "Run a GC between phases - this allows heap size to be accurate at the expense of more time. Specify a list of phases, or *", "_")
       //.withPostSetHook( _ => YprofileEnabled.value = true )
+
+  // Extremely experimental language features
+  val YkindPolymorphism = BooleanSetting("-Ykind-polymorphism", "Enable kind polymorphism (see http://dotty.epfl.ch/docs/reference/kind-polymorphism.html). Potentially unsound.")
 
   /** Area-specific debug output */
   val YexplainLowlevel = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")

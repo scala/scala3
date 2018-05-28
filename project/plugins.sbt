@@ -3,17 +3,16 @@
 // e.g. addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
 
 // Scala IDE project file generator
-addSbtPlugin("com.typesafe.sbteclipse" % "sbteclipse-plugin" % "5.1.0")
+addSbtPlugin("com.typesafe.sbteclipse" % "sbteclipse-plugin" % "5.2.4")
 
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.14")
+// addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.21")
 
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.4")
+addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "2.1")
 
-addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "1.1")
-
-addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.0.0")
+addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.1.0")
 
 addSbtPlugin("org.xerial.sbt" % "sbt-pack" % "0.10.1")
 
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.2.24")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.3.2")
 
+addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.9.0")

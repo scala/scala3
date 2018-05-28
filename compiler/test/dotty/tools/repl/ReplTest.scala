@@ -11,38 +11,20 @@ import org.junit.Assert.fail
 import dotc.reporting.diagnostic.MessageContainer
 import results.Result
 
-sealed class NullPrintStream extends ByteArrayOutputStream {
-  override def write(b: Int) = ()
-  override def write(b: Array[Byte], off: Int, len: Int) = ()
-  override def writeTo(out: OutputStream) = ()
-}
 
-sealed class StoringPrintStream extends PrintStream(new NullPrintStream) {
-  private[this] var sb = new StringBuilder
-
-  override def println(obj: Object) =
-    println(obj.toString)
-
-  override def println(str: String) = {
-    sb.append(str)
-    sb += '\n'
-  }
-
-  def flushStored(): String = {
-    val str = sb.toString
-    sb = new StringBuilder
-    str
-  }
-}
-
-class ReplTest extends ReplDriver(
+class ReplTest private (out: ByteArrayOutputStream) extends ReplDriver(
   Array("-classpath", List(Jars.dottyLib, Jars.dottyInterfaces).mkString(":"), "-color:never"),
-  new StoringPrintStream
+  new PrintStream(out)
 ) with MessageRendering {
 
-  /** Get the stored output from `out`, resetting the `StoringPrintStream` */
-  def storedOutput(): String =
-    stripColor(out.asInstanceOf[StoringPrintStream].flushStored())
+  def this() = this(new ByteArrayOutputStream)
+
+  /** Get the stored output from `out`, resetting the buffer */
+  def storedOutput(): String = {
+    val output = stripColor(out.toString)
+    out.reset()
+    output
+  }
 
   protected implicit def toParsed(expr: String)(implicit state: State): Parsed = {
     implicit val ctx = state.run.runContext

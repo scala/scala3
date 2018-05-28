@@ -304,6 +304,16 @@ class Definitions {
     def ObjectMethods = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
 
+  lazy val AnyKindClass = {
+    val cls = ctx.newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil)
+    if (ctx.settings.YkindPolymorphism.value) {
+      // Enable kind-polymorphism by exposing scala.AnyKind
+      cls.entered
+    }
+    cls
+  }
+  def AnyKindType = AnyKindClass.typeRef
+
   /** Marker method to indicate an argument to a call-by-name parameter.
    *  Created by byNameClosures and elimByName, eliminated by Erasure,
    */
@@ -313,16 +323,6 @@ class Definitions {
   /** Method representing a throw */
   lazy val throwMethod = enterMethod(OpsPackageClass, nme.THROWkw,
       MethodType(List(ThrowableType), NothingType))
-
-  /** Method representing a term quote */
-  lazy val quoteMethod = enterPolyMethod(OpsPackageClass, nme.QUOTE, 1,
-      pt => MethodType(pt.paramRefs(0) :: Nil, QuotedExprType.appliedTo(pt.paramRefs(0) :: Nil)),
-      useCompleter = true)
-
-  /** Method representing a type quote */
-  lazy val typeQuoteMethod = enterPolyMethod(OpsPackageClass, nme.TYPE_QUOTE, 1,
-      pt => QuotedTypeType.appliedTo(pt.paramRefs(0) :: Nil),
-      useCompleter = true)
 
   lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
@@ -573,10 +573,26 @@ class Definitions {
     lazy val StringAdd_plusR = StringAddClass.requiredMethodRef(nme.raw.PLUS)
     def StringAdd_+(implicit ctx: Context) = StringAdd_plusR.symbol
 
+  lazy val StringContextType: TypeRef       = ctx.requiredClassRef("scala.StringContext")
+  def StringContextClass(implicit ctx: Context) = StringContextType.symbol.asClass
+    lazy val StringContextSR = StringContextClass.requiredMethodRef(nme.s)
+    def StringContextS(implicit ctx: Context) = StringContextSR.symbol
+    lazy val StringContextRawR = StringContextClass.requiredMethodRef(nme.raw_)
+    def StringContextRaw(implicit ctx: Context) = StringContextRawR.symbol
+  def StringContextModule(implicit ctx: Context) = StringContextClass.companionModule
+    lazy val StringContextModule_applyR = StringContextModule.requiredMethodRef(nme.apply)
+    def StringContextModule_apply(implicit ctx: Context) = StringContextModule_applyR.symbol
+
   lazy val PartialFunctionType: TypeRef         = ctx.requiredClassRef("scala.PartialFunction")
   def PartialFunctionClass(implicit ctx: Context) = PartialFunctionType.symbol.asClass
+    lazy val PartialFunction_isDefinedAtR = PartialFunctionClass.requiredMethodRef(nme.isDefinedAt)
+    def PartialFunction_isDefinedAt(implicit ctx: Context) = PartialFunction_isDefinedAtR.symbol
+    lazy val PartialFunction_applyOrElseR = PartialFunctionClass.requiredMethodRef(nme.applyOrElse)
+    def PartialFunction_applyOrElse(implicit ctx: Context) = PartialFunction_applyOrElseR.symbol
+
   lazy val AbstractPartialFunctionType: TypeRef = ctx.requiredClassRef("scala.runtime.AbstractPartialFunction")
   def AbstractPartialFunctionClass(implicit ctx: Context) = AbstractPartialFunctionType.symbol.asClass
+
   lazy val FunctionXXLType: TypeRef         = ctx.requiredClassRef("scala.FunctionXXL")
   def FunctionXXLClass(implicit ctx: Context) = FunctionXXLType.symbol.asClass
 
@@ -620,10 +636,18 @@ class Definitions {
   lazy val QuotedExprType = ctx.requiredClassRef("scala.quoted.Expr")
   def QuotedExprClass(implicit ctx: Context) = QuotedExprType.symbol.asClass
 
+  lazy val QuotedExprModuleType = ctx.requiredModuleRef("scala.quoted.Expr")
+  def QuotedExprModule(implicit ctx: Context) = QuotedExprModuleType.symbol
+    lazy val QuotedExpr_applyR = QuotedExprModule.requiredMethodRef(nme.apply)
+    def QuotedExpr_apply(implicit ctx: Context) = QuotedExpr_applyR.symbol
+
     lazy val QuotedExpr_spliceR = QuotedExprClass.requiredMethod(nme.UNARY_~)
     def QuotedExpr_~(implicit ctx: Context) = QuotedExpr_spliceR.symbol
     lazy val QuotedExpr_runR = QuotedExprClass.requiredMethodRef(nme.run)
     def QuotedExpr_run(implicit ctx: Context) = QuotedExpr_runR.symbol
+
+  lazy val QuotedExprsModule = ctx.requiredModule("scala.quoted.Exprs")
+  def QuotedExprsClass(implicit ctx: Context) = QuotedExprsModule.symbol.asClass
 
   lazy val QuotedTypeType = ctx.requiredClassRef("scala.quoted.Type")
   def QuotedTypeClass(implicit ctx: Context) = QuotedTypeType.symbol.asClass
@@ -631,12 +655,23 @@ class Definitions {
     lazy val QuotedType_spliceR = QuotedTypeClass.requiredType(tpnme.UNARY_~).typeRef
     def QuotedType_~ = QuotedType_spliceR.symbol
 
-  lazy val QuotedTypeModule = QuotedTypeClass.companionModule
+  lazy val QuotedTypeModuleType = ctx.requiredModuleRef("scala.quoted.Type")
+  def QuotedTypeModule(implicit ctx: Context) = QuotedTypeModuleType.symbol
     lazy val QuotedType_applyR = QuotedTypeModule.requiredMethodRef(nme.apply)
     def QuotedType_apply(implicit ctx: Context) = QuotedType_applyR.symbol
 
+  lazy val QuotedLiftableType = ctx.requiredClassRef("scala.quoted.Liftable")
+  def QuotedLiftableClass(implicit ctx: Context) = QuotedLiftableType.symbol.asClass
+
   def Unpickler_unpickleExpr = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
+  def Unpickler_liftedExpr = ctx.requiredMethod("scala.runtime.quoted.Unpickler.liftedExpr")
   def Unpickler_unpickleType = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
+
+  lazy val TastyUniverseModule = ctx.requiredModule("scala.tasty.Universe")
+  def TastyUniverseModuleClass(implicit ctx: Context) = TastyUniverseModule.symbol.asClass
+
+    lazy val TastyUniverse_compilationUniverseR = TastyUniverseModule.requiredMethod("compilationUniverse")
+    def TastyUniverse_compilationUniverse(implicit ctx: Context) = TastyUniverse_compilationUniverseR.symbol
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass
@@ -675,6 +710,8 @@ class Definitions {
   def ContravariantBetweenAnnot(implicit ctx: Context) = ContravariantBetweenAnnotType.symbol.asClass
   lazy val DeprecatedAnnotType = ctx.requiredClassRef("scala.deprecated")
   def DeprecatedAnnot(implicit ctx: Context) = DeprecatedAnnotType.symbol.asClass
+  lazy val ImplicitAmbiguousAnnotType = ctx.requiredClassRef("scala.annotation.implicitAmbiguous")
+  def ImplicitAmbiguousAnnot(implicit ctx: Context) = ImplicitAmbiguousAnnotType.symbol.asClass
   lazy val ImplicitNotFoundAnnotType = ctx.requiredClassRef("scala.annotation.implicitNotFound")
   def ImplicitNotFoundAnnot(implicit ctx: Context) = ImplicitNotFoundAnnotType.symbol.asClass
   lazy val InlineAnnotType = ctx.requiredClassRef("scala.inline")
@@ -1106,7 +1143,7 @@ class Definitions {
 
 //  private val unboxedTypeRef = mutable.Map[TypeName, TypeRef]()
 //  private val javaTypeToValueTypeRef = mutable.Map[Class[_], TypeRef]()
-  private val valueTypeNamesToJavaType = mutable.Map[TypeName, Class[_]]()
+//  private val valueTypeNamesToJavaType = mutable.Map[TypeName, Class[_]]()
 
   private def valueTypeRef(name: String, boxed: TypeRef, jtype: Class[_], enc: Int, tag: Name): TypeRef = {
     val vcls = ctx.requiredClassRef(name)
@@ -1115,7 +1152,7 @@ class Definitions {
     typeTags(vcls.name) = tag
 //    unboxedTypeRef(boxed.name) = vcls
 //    javaTypeToValueTypeRef(jtype) = vcls
-    valueTypeNamesToJavaType(vcls.name) = jtype
+//    valueTypeNamesToJavaType(vcls.name) = jtype
     vcls
   }
 
@@ -1125,9 +1162,9 @@ class Definitions {
   /** The JVM tag for `tp` if it's a primitive, `java.lang.Object` otherwise. */
   def typeTag(tp: Type)(implicit ctx: Context): Name = typeTags(scalaClassName(tp))
 
-  /** The `Class[_]` of a primitive value type name */
-  def valueTypeNameToJavaType(name: TypeName)(implicit ctx: Context): Option[Class[_]] =
-    valueTypeNamesToJavaType.get(if (name.firstPart eq nme.scala_) name.lastPart.toTypeName else name)
+//  /** The `Class[_]` of a primitive value type name */
+//  def valueTypeNameToJavaType(name: TypeName)(implicit ctx: Context): Option[Class[_]] =
+//    valueTypeNamesToJavaType.get(if (name.firstPart eq nme.scala_) name.lastPart.toTypeName else name)
 
   type PrimitiveClassEnc = Int
 
@@ -1152,6 +1189,7 @@ class Definitions {
   lazy val syntheticScalaClasses = List(
     AnyClass,
     AnyRefAlias,
+    AnyKindClass,
     RepeatedParamClass,
     ByNameParamClass2x,
     AnyValClass,
@@ -1166,7 +1204,7 @@ class Definitions {
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticCoreMethods =
-    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod, quoteMethod, typeQuoteMethod)
+    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
 
   lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 

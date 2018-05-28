@@ -2,16 +2,25 @@ package dotty.tools.dotc
 package sbt
 
 import ast.{Trees, tpd}
-import core._, core.Decorators._
-import Annotations._, Contexts._, Flags._, Phases._, Trees._, Types._, Symbols._
-import Names._, NameOps._, StdNames._
+import core._
+import core.Decorators._
+import Annotations._
+import Contexts._
+import Flags._
+import Phases._
+import Trees._
+import Types._
+import Symbols._
+import NameOps._
 import NameKinds.DefaultGetterName
 import typer.Inliner
 import typer.ErrorReporting.cyclicErrorMsg
+import transform.ValueClasses
 import transform.SymUtils._
-
-import dotty.tools.io.Path
+import dotty.tools.io.File
 import java.io.PrintWriter
+
+import xsbti.api.DefinitionType
 
 import scala.collection.mutable
 
@@ -38,7 +47,7 @@ class ExtractAPI extends Phase {
   // after `PostTyper` (unlike `ExtractDependencies`, the simplication to trees
   // done by `PostTyper` do not affect this phase because it only cares about
   // definitions, and `PostTyper` does not change definitions).
-  override def runsAfter = Set(classOf[transform.PostTyper])
+  override def runsAfter = Set(transform.PostTyper.name)
 
   override def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
@@ -46,20 +55,26 @@ class ExtractAPI extends Phase {
     val forceRun = dumpInc || ctx.settings.YforceSbtPhases.value
     if ((ctx.sbtCallback != null || forceRun) && !unit.isJava) {
       val sourceFile = unit.source.file
+      if (ctx.sbtCallback != null)
+        ctx.sbtCallback.startSource(sourceFile.file)
+
       val apiTraverser = new ExtractAPICollector
-      val source = apiTraverser.apiSource(unit.tpdTree)
+      val classes = apiTraverser.apiSource(unit.tpdTree)
+      val mainClasses = apiTraverser.mainClasses
 
       if (dumpInc) {
         // Append to existing file that should have been created by ExtractDependencies
-        val pw = new PrintWriter(Path(sourceFile.jpath).changeExtension("inc").toFile
+        val pw = new PrintWriter(File(sourceFile.jpath).changeExtension("inc").toFile
           .bufferedWriter(append = true), true)
         try {
-          pw.println(DefaultShowAPI(source))
+          classes.foreach(source => pw.println(DefaultShowAPI(source)))
         } finally pw.close()
       }
 
-      if (ctx.sbtCallback != null)
-        ctx.sbtCallback.api(sourceFile.file, source)
+      if (ctx.sbtCallback != null) {
+        classes.foreach(ctx.sbtCallback.api(sourceFile.file, _))
+        mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.file, _))
+      }
     }
   }
 }
@@ -113,24 +128,27 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
   /** This cache is necessary for correctness, see the comment about inherited
    *  members in `apiClassStructure`
    */
-  private[this] val classLikeCache = new mutable.HashMap[ClassSymbol, api.ClassLike]
+  private[this] val classLikeCache = new mutable.HashMap[ClassSymbol, api.ClassLikeDef]
   /** This cache is optional, it avoids recomputing representations */
   private[this] val typeCache = new mutable.HashMap[Type, api.Type]
   /** This cache is necessary to avoid unstable name hashing when `typeCache` is present,
    *  see the comment in the `RefinedType` case in `computeType`
    *  The cache key is (api of RefinedType#parent, api of RefinedType#refinedInfo).
-   */
+    */
   private[this] val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition), api.Structure]
+
+  private[this] val allNonLocalClassesInSrc = new mutable.HashSet[xsbti.api.ClassLike]
+  private[this] val _mainClasses = new mutable.HashSet[String]
 
   private[this] object Constants {
     val emptyStringArray = Array[String]()
-    val local            = new api.ThisQualifier
-    val public           = new api.Public
-    val privateLocal     = new api.Private(local)
-    val protectedLocal   = new api.Protected(local)
-    val unqualified      = new api.Unqualified
-    val thisPath         = new api.This
-    val emptyType        = new api.EmptyType
+    val local            = api.ThisQualifier.create()
+    val public           = api.Public.create()
+    val privateLocal     = api.Private.create(local)
+    val protectedLocal   = api.Protected.create(local)
+    val unqualified      = api.Unqualified.create()
+    val thisPath         = api.This.create()
+    val emptyType        = api.EmptyType.create()
     val emptyModifiers   =
       new api.Modifiers(false, false, false, false, false,false, false, false)
   }
@@ -144,33 +162,38 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
    *  @param marker  A special annotation to differentiate our type
    */
   private def withMarker(tp: api.Type, marker: api.Annotation) =
-    new api.Annotated(tp, Array(marker))
+    api.Annotated.of(tp, Array(marker))
   private def marker(name: String) =
-    new api.Annotation(new api.Constant(Constants.emptyType, name), Array())
+    api.Annotation.of(api.Constant.of(Constants.emptyType, name), Array())
   val orMarker = marker("Or")
   val byNameMarker = marker("ByName")
 
 
   /** Extract the API representation of a source file */
-  def apiSource(tree: Tree): api.SourceAPI = {
-    val classes = new mutable.ListBuffer[api.ClassLike]
+  def apiSource(tree: Tree): Seq[api.ClassLike] = {
     def apiClasses(tree: Tree): Unit = tree match {
       case PackageDef(_, stats) =>
         stats.foreach(apiClasses)
       case tree: TypeDef =>
-        classes += apiClass(tree.symbol.asClass)
+        apiClass(tree.symbol.asClass)
       case _ =>
     }
 
     apiClasses(tree)
     forceThunks()
-    new api.SourceAPI(Array(), classes.toArray)
+
+    allNonLocalClassesInSrc.toSeq
   }
 
-  def apiClass(sym: ClassSymbol): api.ClassLike =
+  def apiClass(sym: ClassSymbol): api.ClassLikeDef =
     classLikeCache.getOrElseUpdate(sym, computeClass(sym))
 
-  private def computeClass(sym: ClassSymbol): api.ClassLike = {
+  def mainClasses: Set[String] = {
+    forceThunks()
+    _mainClasses.toSet
+  }
+
+  private def computeClass(sym: ClassSymbol): api.ClassLikeDef = {
     import xsbti.api.{DefinitionType => dt}
     val defType =
       if (sym.is(Trait)) dt.Trait
@@ -181,16 +204,34 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
 
     val selfType = apiType(sym.givenSelfType)
 
-    val name = if (sym.is(ModuleClass)) sym.fullName.sourceModuleName else sym.fullName
+    val name = sym.fullName.stripModuleClassSuffix.toString
+      // We strip module class suffix. Zinc relies on a class and its companion having the same name
 
-    val tparams = sym.typeParams.map(apiTypeParameter)
+    val tparams = sym.typeParams.map(apiTypeParameter).toArray
 
     val structure = apiClassStructure(sym)
+    val acc = apiAccess(sym)
+    val modifiers = apiModifiers(sym)
+    val anns = apiAnnotations(sym).toArray
+    val topLevel = sym.isTopLevelClass
+    val childrenOfSealedClass = sym.children.sorted(classFirstSort).map(c =>
+      if (c.isClass)
+        apiType(c.typeRef)
+      else
+        apiType(c.termRef)
+    ).toArray
 
-    new api.ClassLike(
-      defType, strict2lzy(selfType), strict2lzy(structure), Constants.emptyStringArray,
-      tparams.toArray, name.toString, apiAccess(sym), apiModifiers(sym),
-      apiAnnotations(sym).toArray)
+    val cl = api.ClassLike.of(
+      name, acc, modifiers, anns, defType, api.SafeLazy.strict(selfType), api.SafeLazy.strict(structure), Constants.emptyStringArray,
+      childrenOfSealedClass, topLevel, tparams)
+
+    allNonLocalClassesInSrc += cl
+
+    if (sym.isStatic && defType == DefinitionType.Module && ctx.platform.hasMainMethod(sym)) {
+      _mainClasses += name
+    }
+
+    api.ClassLikeDef.of(name, acc, modifiers, anns, tparams, defType)
   }
 
   private[this] val LegacyAppClass = ctx.requiredClass("dotty.runtime.LegacyApp")
@@ -198,15 +239,25 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
   def apiClassStructure(csym: ClassSymbol): api.Structure = {
     val cinfo = csym.classInfo
 
-    val bases =
-      try linearizedAncestorTypes(cinfo)
-      catch {
-        case ex: CyclicReference =>
-          // See neg/i1750a for an example where a cyclic error can arise.
-          // The root cause in this example is an illegal "override" of an inner trait
-          ctx.error(cyclicErrorMsg(ex), csym.pos)
-          defn.ObjectType :: Nil
-       }
+    val bases = {
+      val ancestorTypes0 =
+        try linearizedAncestorTypes(cinfo)
+        catch {
+          case ex: CyclicReference =>
+            // See neg/i1750a for an example where a cyclic error can arise.
+            // The root cause in this example is an illegal "override" of an inner trait
+            ctx.error(cyclicErrorMsg(ex), csym.pos)
+            defn.ObjectType :: Nil
+        }
+      if (ValueClasses.isDerivedValueClass(csym)) {
+        val underlying = ValueClasses.valueClassUnbox(csym).info.finalResultType
+        // The underlying type of a value class should be part of the name hash
+        // of the value class (see the test `value-class-underlying`), this is accomplished
+        // by adding the underlying type to the list of parent types.
+        underlying :: ancestorTypes0
+      } else
+        ancestorTypes0
+    }
 
     val apiBases = bases.map(apiType)
 
@@ -230,7 +281,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     // this works because of `classLikeCache`
     val apiInherited = lzy(apiDefinitions(inherited).toArray)
 
-    new api.Structure(strict2lzy(apiBases.toArray), strict2lzy(apiDecls.toArray), apiInherited)
+    api.Structure.of(api.SafeLazy.strict(apiBases.toArray), api.SafeLazy.strict(apiDecls.toArray), apiInherited)
   }
 
   def linearizedAncestorTypes(info: ClassInfo): List[Type] = {
@@ -239,48 +290,48 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     info.baseClasses.tail.map(ref.baseType)
   }
 
-  def apiDefinitions(defs: List[Symbol]): List[api.Definition] = {
-    // The hash generated by sbt for definitions is supposed to be symmetric so
-    // we shouldn't have to sort them, but it actually isn't symmetric for
-    // definitions which are classes, therefore we need to sort classes to
-    // ensure a stable hash.
-    // Modules and classes come first and are sorted by name, all other
-    // definitions come later and are not sorted.
-    object classFirstSort extends Ordering[Symbol] {
-      override def compare(a: Symbol, b: Symbol) = {
-        val aIsClass = a.isClass
-        val bIsClass = b.isClass
-        if (aIsClass == bIsClass) {
-          if (aIsClass) {
-            if (a.is(Module) == b.is(Module))
-              a.fullName.toString.compareTo(b.fullName.toString)
-            else if (a.is(Module))
-              -1
-            else
-              1
-          } else
-            0
-        } else if (aIsClass)
-          -1
-        else
-          1
-      }
+  // The hash generated by sbt for definitions is supposed to be symmetric so
+  // we shouldn't have to sort them, but it actually isn't symmetric for
+  // definitions which are classes, therefore we need to sort classes to
+  // ensure a stable hash.
+  // Modules and classes come first and are sorted by name, all other
+  // definitions come later and are not sorted.
+  private object classFirstSort extends Ordering[Symbol] {
+    override def compare(a: Symbol, b: Symbol) = {
+      val aIsClass = a.isClass
+      val bIsClass = b.isClass
+      if (aIsClass == bIsClass) {
+        if (aIsClass) {
+          if (a.is(Module) == b.is(Module))
+            a.fullName.toString.compareTo(b.fullName.toString)
+          else if (a.is(Module))
+            -1
+          else
+            1
+        } else
+          0
+      } else if (aIsClass)
+      -1
+    else
+      1
     }
+  }
 
+  def apiDefinitions(defs: List[Symbol]): List[api.ClassDefinition] = {
     defs.sorted(classFirstSort).map(apiDefinition)
   }
 
-  def apiDefinition(sym: Symbol): api.Definition = {
+  def apiDefinition(sym: Symbol): api.ClassDefinition = {
     if (sym.isClass) {
       apiClass(sym.asClass)
     } else if (sym.isType) {
       apiTypeMember(sym.asType)
     } else if (sym.is(Mutable, butNot = Accessor)) {
-      new api.Var(apiType(sym.info), sym.name.toString,
-        apiAccess(sym), apiModifiers(sym), apiAnnotations(sym).toArray)
+      api.Var.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
+        apiAnnotations(sym).toArray, apiType(sym.info))
     } else if (sym.isStable) {
-      new api.Val(apiType(sym.info), sym.name.toString,
-        apiAccess(sym), apiModifiers(sym), apiAnnotations(sym).toArray)
+      api.Val.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
+        apiAnnotations(sym).toArray, apiType(sym.info))
     } else {
       apiDef(sym.asTerm)
     }
@@ -301,14 +352,14 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
                 sym.owner.companionModule // default getters for class constructors are found in the companion object
               else
                 sym.owner
-            (0 until pnames.length).map(i =>
+            pnames.indices.map(i =>
               qual.info.member(DefaultGetterName(sym.name, start + i)).exists)
           } else
-            (0 until pnames.length).map(Function.const(false))
+            pnames.indices.map(Function.const(false))
         val params = (pnames, ptypes, defaults).zipped.map((pname, ptype, isDefault) =>
-          new api.MethodParameter(pname.toString, apiType(ptype),
+          api.MethodParameter.of(pname.toString, apiType(ptype),
             isDefault, api.ParameterModifier.Plain))
-        new api.ParameterList(params.toArray, mt.isImplicitMethod) :: paramLists(restpe, params.length)
+        api.ParameterList.of(params.toArray, mt.isImplicitMethod) :: paramLists(restpe, params.length)
       case _ =>
         Nil
     }
@@ -323,8 +374,8 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     val vparamss = paramLists(sym.info)
     val retTp = sym.info.finalResultType.widenExpr
 
-    new api.Def(vparamss.toArray, apiType(retTp), tparams.toArray,
-      sym.name.toString, apiAccess(sym), apiModifiers(sym), apiAnnotations(sym).toArray)
+    api.Def.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
+      apiAnnotations(sym).toArray, tparams.toArray, vparamss.toArray, apiType(retTp))
   }
 
   def apiTypeMember(sym: TypeSymbol): api.TypeMember = {
@@ -336,17 +387,17 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     val tpe = sym.info
 
     if (sym.isAliasType)
-      new api.TypeAlias(apiType(tpe.bounds.hi), typeParams, name, access, modifiers, as.toArray)
+      api.TypeAlias.of(name, access, modifiers, as.toArray, typeParams, apiType(tpe.bounds.hi))
     else {
       assert(sym.isAbstractType)
-      new api.TypeDeclaration(apiType(tpe.bounds.lo), apiType(tpe.bounds.hi), typeParams, name, access, modifiers, as.to)
+      api.TypeDeclaration.of(name, access, modifiers, as.toArray, typeParams, apiType(tpe.bounds.lo), apiType(tpe.bounds.hi))
     }
   }
 
   // Hack to represent dotty types which don't have an equivalent in xsbti
   def combineApiTypes(apiTps: api.Type*): api.Type = {
-    new api.Structure(strict2lzy(apiTps.toArray),
-      strict2lzy(Array()), strict2lzy(Array()))
+    api.Structure.of(api.SafeLazy.strict(apiTps.toArray),
+      api.SafeLazy.strict(Array()), api.SafeLazy.strict(Array()))
   }
 
   def apiType(tp: Type): api.Type = {
@@ -357,7 +408,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     // TODO: Never dealias. We currently have to dealias because
     // sbt main class discovery relies on the signature of the main
     // method being fully dealiased. See https://github.com/sbt/zinc/issues/102
-    val tp2 = if (!tp.isHK) tp.dealiasKeepAnnots else tp
+    val tp2 = if (!tp.isLambdaSub) tp.dealiasKeepAnnots else tp
     tp2 match {
       case NoPrefix | NoType =>
         Constants.emptyType
@@ -371,11 +422,11 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         // that some API changed when it didn't, leading to overcompilation
         // (recompiling more things than what is needed for incremental
         // compilation to be correct).
-        val prefix = if (sym.owner.is(Package))
+        val prefix = if (sym.maybeOwner.is(Package)) // { type T } here T does not have an owner
           sym.owner.thisType
         else
           tp.prefix
-        new api.Projection(simpleType(prefix), sym.name.toString)
+        api.Projection.of(apiType(prefix), sym.name.toString)
       case AppliedType(tycon, args) =>
         def processArg(arg: Type): api.Type = arg match {
           case arg @ TypeBounds(lo, hi) => // Handle wildcard parameters
@@ -383,32 +434,32 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
               Constants.emptyType
             else {
               val name = "_"
-              val ref = new api.ParameterRef(name)
-              new api.Existential(ref,
+              val ref = api.ParameterRef.of(name)
+              api.Existential.of(ref,
                 Array(apiTypeParameter(name, 0, lo, hi)))
             }
           case _ =>
             apiType(arg)
         }
 
-        val apiTycon = simpleType(tycon)
+        val apiTycon = apiType(tycon)
         val apiArgs = args.map(processArg)
-        new api.Parameterized(apiTycon, apiArgs.toArray)
+        api.Parameterized.of(apiTycon, apiArgs.toArray)
       case tl: TypeLambda =>
         val apiTparams = tl.typeParams.map(apiTypeParameter)
         val apiRes = apiType(tl.resType)
-        new api.Polymorphic(apiRes, apiTparams.toArray)
+        api.Polymorphic.of(apiRes, apiTparams.toArray)
       case rt: RefinedType =>
         val name = rt.refinedName.toString
         val parent = apiType(rt.parent)
 
         def typeRefinement(name: String, tp: TypeBounds): api.TypeMember = tp match {
           case TypeAlias(alias) =>
-            new api.TypeAlias(apiType(alias),
-              Array(), name, Constants.public, Constants.emptyModifiers, Array())
+            api.TypeAlias.of(name,
+              Constants.public, Constants.emptyModifiers, Array(), Array(), apiType(alias))
           case TypeBounds(lo, hi) =>
-            new api.TypeDeclaration(apiType(lo), apiType(hi),
-              Array(), name, Constants.public, Constants.emptyModifiers, Array())
+            api.TypeDeclaration.of(name,
+              Constants.public, Constants.emptyModifiers, Array(), Array(), apiType(lo), apiType(hi))
         }
         val decl = rt.refinedInfo match {
           case rinfo: TypeBounds =>
@@ -440,8 +491,8 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         // `apiFoo == apiBar` always imply `apiFoo eq apiBar`. This is what
         // `refinedTypeCache` is for.
         refinedTypeCache.getOrElseUpdate((parent, decl), {
-          val adecl: Array[api.Definition] = if (decl == null) Array() else Array(decl)
-          new api.Structure(strict2lzy(Array(parent)), strict2lzy(adecl), strict2lzy(Array()))
+          val adecl: Array[api.ClassDefinition] = if (decl == null) Array() else Array(decl)
+          api.Structure.of(api.SafeLazy.strict(Array(parent)), api.SafeLazy.strict(adecl), api.SafeLazy.strict(Array()))
         })
       case tp: RecType =>
         apiType(tp.parent)
@@ -458,15 +509,15 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       case ExprType(resultType) =>
         withMarker(apiType(resultType), byNameMarker)
       case ConstantType(constant) =>
-        new api.Constant(apiType(constant.tpe), constant.stringValue)
+        api.Constant.of(apiType(constant.tpe), constant.stringValue)
       case AnnotatedType(tpe, annot) =>
-        new api.Annotated(apiType(tpe), Array(apiAnnotation(annot)))
+        api.Annotated.of(apiType(tpe), Array(apiAnnotation(annot)))
       case tp: ThisType =>
         apiThis(tp.cls)
       case tp: ParamRef =>
         // TODO: Distinguishing parameters based on their names alone is not enough,
         // the binder is also needed (at least for type lambdas).
-        new api.ParameterRef(tp.paramName.toString)
+        api.ParameterRef.of(tp.paramName.toString)
       case tp: LazyRef =>
         apiType(tp.ref)
       case tp: TypeVar =>
@@ -478,26 +529,17 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     }
   }
 
-  // TODO: Get rid of this method. See https://github.com/sbt/zinc/issues/101
-  def simpleType(tp: Type): api.SimpleType = apiType(tp) match {
-    case tp: api.SimpleType =>
-      tp
-    case _ =>
-      ctx.debuglog("sbt-api: Not a simple type: " + tp.show)
-      Constants.emptyType
-  }
-
   def apiLazy(tp: => Type): api.Type = {
     // TODO: The sbt api needs a convenient way to make a lazy type.
     // For now, we repurpose Structure for this.
     val apiTp = lzy(Array(apiType(tp)))
-    new api.Structure(apiTp, strict2lzy(Array()), strict2lzy(Array()))
+    api.Structure.of(apiTp, api.SafeLazy.strict(Array()), api.SafeLazy.strict(Array()))
   }
 
   def apiThis(sym: Symbol): api.Singleton = {
     val pathComponents = sym.ownersIterator.takeWhile(!_.isEffectiveRoot)
-      .map(s => new api.Id(s.name.toString))
-    new api.Singleton(new api.Path(pathComponents.toArray.reverse ++ Array(Constants.thisPath)))
+      .map(s => api.Id.of(s.name.toString))
+    api.Singleton.of(api.Path.of(pathComponents.toArray.reverse ++ Array(Constants.thisPath)))
   }
 
   def apiTypeParameter(tparam: ParamInfo): api.TypeParameter =
@@ -505,7 +547,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       tparam.paramInfo.bounds.lo, tparam.paramInfo.bounds.hi)
 
   def apiTypeParameter(name: String, variance: Int, lo: Type, hi: Type): api.TypeParameter =
-    new api.TypeParameter(name, Array(), Array(), apiVariance(variance),
+    api.TypeParameter.of(name, Array(), Array(), apiVariance(variance),
       apiType(lo), apiType(hi))
 
   def apiVariance(v: Int): api.Variance = {
@@ -529,11 +571,11 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         if (sym.privateWithin eq NoSymbol)
           Constants.unqualified
         else
-          new api.IdQualifier(sym.privateWithin.fullName.toString)
+          api.IdQualifier.of(sym.privateWithin.fullName.toString)
       if (sym.is(Protected))
-        new api.Protected(qualifier)
+        api.Protected.of(qualifier)
       else
-        new api.Private(qualifier)
+        api.Private.of(qualifier)
     }
   }
 
@@ -556,7 +598,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       // To do this properly we would need a way to hash trees and types in
       // dotty itself.
       val printTypesCtx = ctx.fresh.setSetting(ctx.settings.XprintTypes, true)
-      annots += marker(Inliner.bodyToInline(s).show(printTypesCtx).toString)
+      annots += marker(Inliner.bodyToInline(s).show(printTypesCtx))
     }
 
     // In the Scala2 ExtractAPI phase we only extract annotations that extend
@@ -578,8 +620,8 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     // However, we still need to extract the annotation type in the way sbt expect
     // because sbt uses this information to find tests to run (for example
     // junit tests are annotated @org.junit.Test).
-    new api.Annotation(
+    api.Annotation.of(
       apiType(annot.tree.tpe), // Used by sbt to find tests to run
-      Array(new api.AnnotationArgument("FULLTREE", annot.tree.show.toString)))
+      Array(api.AnnotationArgument.of("FULLTREE", annot.tree.show)))
   }
 }

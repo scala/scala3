@@ -341,7 +341,7 @@ object LambdaLift {
         local.copySymDenotation(
           owner = newOwner,
           name = newName(local),
-          initFlags = local.flags &~ Module &~ Final | Private | maybeStatic,
+          initFlags = local.flags &~ Module &~ Final | Private | Lifted | maybeStatic,
             // drop Module because class is no longer a singleton in the lifted context.
           info = liftedInfo(local)).installAfter(thisPhase)
       }
@@ -493,7 +493,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   override def relaxedTypingInGroup = true
     // Because it adds free vars as additional proxy parameters
 
-  override def runsAfterGroupsOf: Set[Class[_ <: Phase]] = Set(classOf[Constructors], classOf[HoistSuperArgs])
+  override def runsAfterGroupsOf = Set(Constructors.name, HoistSuperArgs.name)
     // Constructors has to happen before LambdaLift because the lambda lift logic
     // becomes simpler if it can assume that parameter accessors have already been
     // converted to parameters in super calls. Without this it is very hard to get

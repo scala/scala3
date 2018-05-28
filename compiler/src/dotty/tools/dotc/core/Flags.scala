@@ -222,9 +222,8 @@ object Flags {
   final val Final = commonFlag(6, "final")
 
   /** A method symbol. */
-  final val MethodOrHKCommon = commonFlag(7, "<method>")
-  final val Method = MethodOrHKCommon.toTermFlags
-  final val HigherKinded = MethodOrHKCommon.toTypeFlags
+  final val Method = termFlag(7, "<method>")
+  final val HigherKinded = typeFlag(7, "<higher kinded>")
 
   /** A (term or type) parameter to a class or method */
   final val Param     = commonFlag(8, "<param>")
@@ -378,9 +377,6 @@ object Flags {
   /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
   final val Touched = commonFlag(48, "<touched>")
 
-  /** An error symbol */
-  final val Erroneous = commonFlag(50, "<is-error>")
-
   /** Class has been lifted out to package level, local value has been lifted out to class level */
   final val Lifted = commonFlag(51, "<lifted>")
 
@@ -454,17 +450,19 @@ object Flags {
   /** Flags representing access rights */
   final val AccessFlags = Private | Protected | Local
 
-  /** Flags guaranteed to be set upon symbol creation */
+  /** Flags that are not (re)set when completing the denotation */
   final val FromStartFlags =
-    Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor.toCommonFlags |
+    Module | Package | Deferred | Method.toCommonFlags |
+    HigherKinded.toCommonFlags | Param | ParamAccessor.toCommonFlags |
     Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
-    NonMember | Erroneous | ImplicitCommon | Permanent | Synthetic |
+    NonMember | ImplicitCommon | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
 
-  /** Flags guaranteed to be set upon symbol creation, or, if symbol is a top-level
-   *  class or object, when the class file defining the symbol is loaded (which
-   *  is generally before the symbol is completed
+  /** Flags that are not (re)set when completing the denotation, or, if symbol is
+   *  a top-level class or object, when completing the denotation once the class
+   *  file defining the symbol is loaded (which is generally before the denotation
+   *  is completed)
    */
   final val AfterLoadFlags =
     FromStartFlags | AccessFlags | Final | AccessorOrSealed | LazyOrTrait | SelfNameOrImplClass
@@ -510,7 +508,7 @@ object Flags {
   final val RetainedModuleValAndClassFlags: FlagSet =
     AccessFlags | Package | Case |
     Synthetic | JavaDefined | JavaStatic | Artifact |
-    Erroneous | Lifted | MixedIn | Specialized
+    Lifted | MixedIn | Specialized
 
   /** Flags that can apply to a module val */
   final val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
@@ -543,6 +541,9 @@ object Flags {
 
   /** Either method or lazy */
   final val MethodOrLazy = Method | Lazy
+
+  /** Either method or module */
+  final val MethodOrModule = Method | Module
 
   /** Either method or lazy or deferred */
   final val MethodOrLazyOrDeferred = Method | Lazy | Deferred

@@ -30,11 +30,11 @@ object Jars {
     dottyLib :: dottyCompiler :: dottyInterfaces :: dottyExtras
 
   /** Dotty runtime with compiler dependencies, used for quoted.Expr.run */
-  val dottyRunWithCompiler: List[String] =
+  lazy val dottyRunWithCompiler: List[String] =
     dottyLib :: dottyCompiler :: dottyInterfaces :: scalaAsm :: Nil
 
   def scalaLibrary: String = sys.env.get("DOTTY_SCALA_LIBRARY")
-    .getOrElse(findJarFromRuntime("scala-library-2."))
+    .getOrElse(findJarFromRuntime("scala-library"))
 
   /** Gets the scala 2.* library at runtime, note that doing this is unsafe
    *  unless you know that the library will be on the classpath of the running

@@ -1,0 +1,6 @@
+# TODO: Implement checkProducts
+
+> compile
+> checkProducts DefaultPkg.scala: A.class B$.class B.class
+> checkProducts Nested.scala: foo/bar/Outer$InnerC$T.class foo/bar/Outer$InnerO$B$.class foo/bar/Outer$InnerO$.class foo/bar/Outer$X.class foo/bar/Outer$.class foo/bar/Outer.class foo/bar/Outer$InnerC.class foo/bar/Outer$X$Y$.class foo/bar/Outer$InnerO$A.class
+> checkProducts Local.scala: T.class Container.class Container$$anon$1.class Container$C$1.class

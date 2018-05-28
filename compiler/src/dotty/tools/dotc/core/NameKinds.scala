@@ -63,7 +63,7 @@ object NameKinds {
     def infoString: String
   }
 
-  object SimpleNameKind extends NameKind(UTF8) {
+  object SimpleNameKind extends NameKind(UTF8) { self =>
     type ThisInfo = Info
     val info = new Info
     def mkString(underlying: TermName, info: ThisInfo) = unsupported("mkString")
@@ -275,7 +275,6 @@ object NameKinds {
   }
 
   /** Other unique names */
-  val InlineAccessorName      = new UniqueNameKind("$_inlineAccessor_$")
   val TempResultName          = new UniqueNameKind("ev$")
   val EvidenceParamName       = new UniqueNameKind("evidence$")
   val DepParamName            = new UniqueNameKind("(param)")
@@ -356,6 +355,9 @@ object NameKinds {
   val InitializerName = new PrefixNameKind(INITIALIZER, "initial$")
   val ProtectedAccessorName = new PrefixNameKind(PROTECTEDACCESSOR, "protected$")
   val ProtectedSetterName = new PrefixNameKind(PROTECTEDSETTER, "protected$set") // dubious encoding, kept for Scala2 compatibility
+  val InlineGetterName = new PrefixNameKind(INLINEGETTER, "inline_get$")
+  val InlineSetterName = new PrefixNameKind(INLINESETTER, "inline_set$")
+
   val AvoidClashName = new SuffixNameKind(AVOIDCLASH, "$_avoid_name_clash_$")
   val DirectMethodName = new SuffixNameKind(DIRECT, "$direct") { override def definesNewName = true }
   val FieldName = new SuffixNameKind(FIELD, "$$local") {

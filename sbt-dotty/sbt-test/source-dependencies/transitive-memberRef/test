@@ -8,4 +8,4 @@ $ copy-file changes/A1.scala src/main/scala/A.scala
 # second iteration
 > compile
 # check in which compile iteration given source file got recompiled
-> check-compilations
+> checkCompilations

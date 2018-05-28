@@ -193,18 +193,31 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def polyDefDef(sym: TermSymbol, rhsFn: List[Type] => List[List[Tree]] => Tree)(implicit ctx: Context): DefDef = {
     val (tparams, mtp) = sym.info match {
       case tp: PolyType =>
-        val tparams = ctx.newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateBounds)
+        val tparams = ctx.newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_))
         (tparams, tp.instantiate(tparams map (_.typeRef)))
       case tp => (Nil, tp)
     }
 
     def valueParamss(tp: Type): (List[List[TermSymbol]], Type) = tp match {
       case tp: MethodType =>
-        def valueParam(name: TermName, info: Type): TermSymbol = {
+        val isParamDependent = tp.isParamDependent
+        val previousParamRefs = if (isParamDependent) new mutable.ListBuffer[TermRef]() else null
+
+        def valueParam(name: TermName, origInfo: Type): TermSymbol = {
           val maybeImplicit = if (tp.isImplicitMethod) Implicit else EmptyFlags
           val maybeErased = if (tp.isErasedMethod) Erased else EmptyFlags
-          ctx.newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
+
+          def makeSym(info: Type) = ctx.newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
+
+          if (isParamDependent) {
+            val sym = makeSym(origInfo.substParams(tp, previousParamRefs.toList))
+            previousParamRefs += sym.termRef
+            sym
+          }
+          else
+            makeSym(origInfo)
         }
+
         val params = (tp.paramNames, tp.paramInfos).zipped.map(valueParam)
         val (paramss, rtp) = valueParamss(tp.instantiate(params map (_.termRef)))
         (params :: paramss, rtp)
@@ -269,12 +282,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val parents1 =
       if (parents.head.classSymbol.is(Trait)) parents.head.parents.head :: parents
       else parents
-    val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic, parents1,
+    val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic | Final, parents1,
         coord = fns.map(_.pos).reduceLeft(_ union _))
     val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil).entered
     def forwarder(fn: TermSymbol, name: TermName) = {
-      val fwdMeth = fn.copy(cls, name, Synthetic | Method).entered.asTerm
-      DefDef(fwdMeth, prefss => ref(fn).appliedToArgss(prefss))
+      var flags = Synthetic | Method | Final
+      def isOverriden(denot: SingleDenotation) = fn.info.overrides(denot.info, matchLoosely = true)
+      val isOverride = parents.exists(_.member(name).hasAltWith(isOverriden))
+      if (isOverride) flags = flags | Override
+      val fwdMeth = fn.copy(cls, name, flags).entered.asTerm
+      polyDefDef(fwdMeth, tprefs => prefss => ref(fn).appliedToTypes(tprefs).appliedToArgss(prefss))
     }
     val forwarders = (fns, methNames).zipped.map(forwarder)
     val cdef = ClassDef(cls, DefDef(constr), forwarders)

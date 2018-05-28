@@ -3,8 +3,6 @@ layout: doc-page
 title: "Principled Meta Programming"
 ---
 
-# Principled Meta Programming
-
 Principled meta programming is a new framework for staging and for some
 forms of macros. It is expressed as strongly and statically typed
 code using two fundamental operations: quotations and splicing. A
@@ -29,13 +27,13 @@ prints it again in an error message if it evaluates to `false`.
     import scala.quoted._
 
     inline def assert(expr: => Boolean): Unit =
-      ~ assertImpl(’(expr))
+      ~ assertImpl('(expr))
 
     def assertImpl(expr: Expr[Boolean]) =
-      ’{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~showExpr(expr)}") }
+      '{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~showExpr(expr)}") }
 
-If `e` is an expression, then `’(e)` or `’{e}` represent the typed
-abstract syntax tree representing `e`. If `T` is a type, then `’[T]`
+If `e` is an expression, then `'(e)` or `'{e}` represent the typed
+abstract syntax tree representing `e`. If `T` is a type, then `'[T]`
 represents the type structure representing `T`.  The precise
 definitions of "typed abstract syntax tree" or "type-structure" do not
 matter for now, the terms are used only to give some
@@ -50,10 +48,10 @@ quotation.
 Quotes and splices are duals of each other. For arbitrary
 expressions `e` and types `T` we have:
 
-    ~’(e) = e
-    ’(~e) = e
-    ~’[T] = T
-    ’[~T] = T
+    ~'(e) = e
+    '(~e) = e
+    ~'[T] = T
+    '[~T] = T
 
 ### Types for Quotations
 
@@ -97,7 +95,7 @@ not a free variable. So references to global definitions are
 allowed everywhere.
 
 The phase consistency principle can be motivated as follows: First,
-suppose the result of a program `P` is some quoted text `’{ ... x
+suppose the result of a program `P` is some quoted text `'{ ... x
 ... }` that refers to a free variable `x` in `P` This can be
 represented only by referring to the original variable `x`. Hence, the
 result of the program will need to persist the program state itself as
@@ -140,7 +138,7 @@ describing a function into a function mapping trees to trees.
 This decorator gives `Expr` the `apply` operation of an applicative functor, where `Expr`s
 over function types can be applied to `Expr` arguments. The definition
 of `AsFunction(f).apply(x)` is assumed to be functionally the same as
-`’((~f)(~x))`, however it should optimize this call by returning the
+`'((~f)(~x))`, however it should optimize this call by returning the
 result of beta-reducing `f(x)` if `f` is a known lambda expression
 
 The `AsFunction` decorator distributes applications of `Expr` over function
@@ -150,8 +148,8 @@ arrows:
 
 Its dual, let’s call it `reflect`, can be defined as follows:
 
-    def reflect[T, U](f: Expr[T] => Expr[U]): Expr[T => U] = ’{
-      (x: T) => ~f(’(x))
+    def reflect[T, U](f: Expr[T] => Expr[U]): Expr[T => U] = '{
+      (x: T) => ~f('(x))
     }
 
 Note how the fundamental phase consistency principle works in two
@@ -169,7 +167,7 @@ usage. But the code can be made phase correct by adding a binding
 of a `Type[T]` tag:
 
     def reflect[T, U](f: Expr[T] => Expr[U])(implicit t: Type[T]): Expr[T => U] =
-      ’{ (x: ~t) => ~f(’(x)) }
+      '{ (x: ~t) => ~f('(x)) }
 
 In this version of `reflect`, the type of `x` is now the result of
 splicing the `Type` value `t`. This operation _is_ splice correct -- there
@@ -179,13 +177,13 @@ To avoid clutter, the Scala implementation tries to convert any phase-incorrect
 reference to a type `T` to a type-splice, by rewriting `T` to `~implicitly[Type[T]]`.
 For instance, the user-level definition of `reflect`:
 
-    def reflect[T: Type, U](f: Expr[T] => Expr[U]) Expr[T => U] =
-      ’{ (x: T) => ~f(’(x)) }
+    def reflect[T: Type, U](f: Expr[T] => Expr[U]): Expr[T => U] =
+      '{ (x: T) => ~f('(x)) }
 
 would be rewritten to
 
-    def reflect[T: Type, U](f: Expr[T] => Expr[U]) Expr[T => U] =
-      ’{ (x: ~implicitly[Type[T]]) => ~f(’(x)) }
+    def reflect[T: Type, U](f: Expr[T] => Expr[U]): Expr[T => U] =
+      '{ (x: ~implicitly[Type[T]]) => ~f('(x)) }
 
 The `implicitly` query succeeds because there is an implicit value of
 type `Type[T]` available (namely the evidence parameter corresponding
@@ -225,20 +223,20 @@ is handled by the compiler, using the algorithm sketched above.
 Assume an `Array` class with an inline `map` method that forwards to a macro implementation.
 
     class Array[T] {
-      inline def map[U](f: T => U): Array[U] = ~ Macros.mapImpl[T, U](’[U], ’(this), ’(f))
+      inline def map[U](f: T => U): Array[U] = ~ Macros.mapImpl[T, U]('[U], '(this), '(f))
     }
 
 Here’s the definition of the `mapImpl` macro, which takes quoted types and expressions to a quoted expression:
 
     object Macros {
 
-      def mapImpl[T, U](u: Type[U], arr: Expr[Array[T]], op: Expr[T => U]): Expr[Array[U]] = ’{
+      def mapImpl[T, U](u: Type[U], arr: Expr[Array[T]], op: Expr[T => U]): Expr[Array[U]] = '{
         var i = 0
         val xs = ~arr
         var len = xs.length
         val ys = new Array[~u](len)
         while (i < len) {
-          ys(i) = ~op(’(xs(i)))
+          ys(i) = ~op('(xs(i)))
           i += 1
         }
         ys
@@ -253,7 +251,7 @@ Here’s an application of `map` and how it rewrites to optimized code:
 
     val $this: Seq[Int] = genSeq[Int]()
     val f: Int => Int = x => x + 1
-    ~ _root_.Macros.mapImpl[Int, Int](’[Int], ’($this), ’(f))
+    ~ _root_.Macros.mapImpl[Int, Int]('[Int], '($this), '(f))
 
 ==> (splice)
 
@@ -262,11 +260,11 @@ Here’s an application of `map` and how it rewrites to optimized code:
 
     {
       var i = 0
-      val xs = ~’($this)
+      val xs = ~'($this)
       var len = xs.length
-      val ys = new Array[~’[Int]](len)
+      val ys = new Array[~'[Int]](len)
       while (i < len) {
-        ys(i) = ~(’(f)(’(xs(i))))
+        ys(i) = ~('(f)('(xs(i))))
         i += 1
       }
       ys
@@ -318,22 +316,25 @@ program that calls `assert`.
     object Macros {
 
       inline def assert(expr: => Boolean): Unit =
-        ~ assertImpl(’(expr))
+        ~ assertImpl('(expr))
 
       def assertImpl(expr: Expr[Boolean]) =
-        ’{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~expr}") }
+        '{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~expr}") }
     }
 
-    val program = {
-      val x = 1
-      Macros.assert(x != 0)
+    // has to be in a different compilation unit that depends on Macros
+    object App {
+      val program = {
+        val x = 1
+        Macros.assert(x != 0)
+      }
     }
 
 Inlining the `assert` function would give the following program:
 
     val program = {
       val x = 1
-      ~Macros.assertImpl(’(x != 0))
+      ~Macros.assertImpl('(x != 0))
     }
 
 The example is only phase correct because Macros is a global value and
@@ -352,9 +353,9 @@ definitions, reflecting the fact that macros have to be defined and
 compiled before they are used. Hence, conceptually the program part
 should be treated by the compiler as if it was quoted:
 
-    val program = ’{
+    val program = '{
       val x = 1
-      ~Macros.assertImpl(’(x != 0))
+      ~Macros.assertImpl('(x != 0))
     }
 
 If `program` is treated as a quoted expression, the call to
@@ -377,15 +378,15 @@ aspect is also important for macro expansion.  To illustrate this,
 consider an implementation of the `power` function that makes use of a
 statically known exponent:
 
-    inline def power(inline n: Int, x: Double) = ~powerCode(n, ’(x))
+    inline def power(inline n: Int, x: Double) = ~powerCode(n, '(x))
 
     private def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
-      if (n == 0) ’(1.0)
+      if (n == 0) '(1.0)
       else if (n == 1) x
-      else if (n % 2 == 0) ’{ { val y = ~x * ~x; ~powerCode(n / 2, ’(y)) } }
-      else ’{ ~x * ~powerCode(n - 1, x) }
+      else if (n % 2 == 0) '{ { val y = ~x * ~x; ~powerCode(n / 2, '(y)) } }
+      else '{ ~x * ~powerCode(n - 1, x) }
 
-The reference to `n` as an argument in `~powerCode(n, ’(x))` is not
+The reference to `n` as an argument in `~powerCode(n, '(x))` is not
 phase-consistent, since `n` appears in a splice without an enclosing
 quote. Normally that would be a problem because it means that we need
 the _value_ of `n` at compile time, which is not available for general
@@ -396,9 +397,10 @@ point. To reflect this, we loosen the phase consistency requirements
 as follows:
 
  - If `x` is an inline value (or an inline parameter of an inline
-function), it can be accessed in all contexts where the number of
-splices minus the number of quotes between use and definition is
-either 0 or 1.
+   function) of type Boolean, Byte, Short, Int, Long, Float, Double,
+   Char or String, it can be accessed in all contexts where the number
+   of splices minus the number of quotes between use and definition
+   is either 0 or 1.
 
 ### Relationship with Staging
 
@@ -458,7 +460,7 @@ restriction that needs to be imposed on splices to guarantee soundness:
 code in splices must be free of side effects. The restriction prevents code like this:
 
      var x: Expr[T]
-     ’{ (y: T) => ~{ x = ’(y); 1 } }
+     '{ (y: T) => ~{ x = '(y); 1 } }
 
 This code, if it was accepted, would "extrude" a reference to a quoted variable `y` from its scope.
 This means we an subsequently access a variable outside the scope where it is defined, which is
@@ -470,12 +472,12 @@ to the status of pattern guards in Scala, which are also required, but not verif
 
 There is also a problem with `run` in splices. Consider the following expression:
 
-    ’{ (x: Int) => ~{ {’(x)}.run; 1 } }
+    '{ (x: Int) => ~{ {'(x)}.run; 1 } }
 
 This is again phase correct, but will lead us into trouble. Indeed, evaluating the splice will reduce the
-expression `{’(x)}.run` to `x`. But then the result
+expression `{'(x)}.run` to `x`. But then the result
 
-    ’{ (x: Int) => ~{ x; 1 } }
+    '{ (x: Int) => ~{ x; 1 } }
 
 is no longer phase correct. To prevent this soundness hole it seems easiest to classify `run` as a side-effecting
 operation. It would thus be prevented from appearing in splices. In a base language with side-effects we'd have to
@@ -507,37 +509,38 @@ The compiler takes an environment that maps variable names to Scala `Expr`s.
 
     def compile(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
       case Num(n) =>
-        n
+        n.toExpr
       case Plus(e1, e2) =>
-        ’(~compile(e1, env) + ~compile(e2, env))
+        '(~compile(e1, env) + ~compile(e2, env))
       case Var(x) =>
         env(x)
       case Let(x, e, body) =>
-        ’{ val y = ~compile(e, env); ~compile(body, env + (x -> ’(y))) }
+        '{ val y = ~compile(e, env); ~compile(body, env + (x -> '(y))) }
     }
 
 Running `compile(letExp, Map())` would yield the following Scala code:
 
-    ’{ val y = 3; (2 + y) + 4 }
+    '{ val y = 3; (2 + y) + 4 }
 
-The body of the first clause, `case Num(n) => n`, looks suspicious. `n`
-is declared as an `Int`, yet the result of `compile` is declared to be
-`Expr[Int]`. Shouldn’t `n` be quoted? In fact this would not
-work since replacing `n` by `’n` in the clause would not be phase
+The body of the first clause, `case Num(n) => n.toExpr`, looks suspicious. `n`
+is declared as an `Int`, yet it is conveted to an `Expr[Int]` with `toExpr`.
+Shouldn’t `n` be quoted? In fact this would not
+work since replacing `n` by `'n` in the clause would not be phase
 correct.
 
-What happens instead "under the hood" is an implicit conversion: `n`
-is expanded to `scala.quoted.Expr.toExpr(n)`. The `toExpr` conversion
-is defined in the companion object of class `Expr` as follows:
+What happens instead "under the hood" is an extension method `toExpr` is added: `n.toExpr`
+is expanded to `new scala.quoted.LiftExprOps(n).toExpr`. The `toExpr` extension
+is defined in the companion object of class `Liftable` as follows:
 
-    object Expr {
-      implicit def toExpr[T](x: T)(implicit ev: Liftable[T]): Expr[T] =
-        ev.toExpr(x)
+    package object quoted {
+      implicit class LiftExprOps[T](val x: T) extends AnyVal {
+        def toExpr(implicit ev: Liftable[T]): Expr[T] = ev.toExpr(x)
+      }
     }
 
-The conversion says that values of types implementing the `Liftable`
-type class can be converted ("lifted") automatically to `Expr`
-values. Dotty comes with instance definitions of `Liftable` for
+The extension says that values of types implementing the `Liftable` type class can be
+converted ("lifted") to `Expr` values using `toExpr` when `scala.quoted._` is imported.
+Dotty comes with instance definitions of `Liftable` for
 several types including `Boolean`, `String`, and all primitive number
 types. For example, `Int` values can be converted to `Expr[Int]`
 values by wrapping the value in a `Literal` tree node. This makes use
@@ -548,7 +551,7 @@ knowing anything about the representation of `Expr` trees. For
 instance, here is a possible instance of `Liftable[Boolean]`:
 
     implicit def BooleanIsLiftable: Liftable[Boolean] = new {
-      implicit def toExpr(b: Boolean) = if (b) ’(true) else ’(false)
+      implicit def toExpr(b: Boolean) = if (b) '(true) else '(false)
     }
 
 Once we can lift bits, we can work our way up. For instance, here is a
@@ -557,11 +560,11 @@ tree machinery:
 
     implicit def IntIsLiftable: Liftable[Int] = new {
       def toExpr(n: Int): Expr[Int] = n match {
-        case Int.MinValue    => ’(Int.MinValue)
-        case _ if n < 0      => ’(-(~toExpr(n)))
-        case 0               => ’(0)
-        case _ if n % 2 == 0 => ’(~toExpr(n / 2) * 2)
-        case _               => ’(~toExpr(n / 2) * 2 + 1)
+        case Int.MinValue    => '(Int.MinValue)
+        case _ if n < 0      => '(-(~toExpr(n)))
+        case 0               => '(0)
+        case _ if n % 2 == 0 => '(~toExpr(n / 2) * 2)
+        case _               => '(~toExpr(n / 2) * 2 + 1)
       }
     }
 
@@ -570,8 +573,8 @@ a `List` is liftable if its element type is:
 
     implicit def ListIsLiftable[T: Liftable]: Liftable[List[T]] = new {
       def toExpr(xs: List[T]): Expr[List[T]] = xs match {
-        case x :: xs1 => ’(~implicitly[Liftable[T]].toExpr(x) :: ~toExpr(xs1))
-        case Nil => ’(Nil: List[T])
+        case x :: xs1 => '(~x.toExpr :: ~toExpr(xs1))
+        case Nil => '(Nil: List[T])
       }
     }
 
@@ -602,21 +605,21 @@ need a syntax change that introduces prefix operators as types.
 Analogously to the situation with expressions, a prefix type operator
 such as `~ e` is treated as a shorthand for the type `e.unary_~`.
 
-Quotes are supported by introducing new tokens `’(`, `’{`, and `’[`
-and adding quoted variants `’(...)`, `’{...}` and `’[...]` to the
+Quotes are supported by introducing new tokens `'(`, `'{`, and `'[`
+and adding quoted variants `'(...)`, `'{...}` and `'[...]` to the
 `SimpleExpr` productions.
 
       SimpleExpr        ::=  ...
-                          |  ‘’{’ BlockExprContents ‘}’
-                          |  ‘’’ ‘(’ ExprsInParens ‘)’
-                          |  ‘’’ ‘[’ Type ‘]’
+                          |  ‘'{’ BlockExprContents ‘}’
+                          |  ‘'’ ‘(’ ExprsInParens ‘)’
+                          |  ‘'’ ‘[’ Type ‘]’
 
 Syntax changes are given relative to the [Dotty reference
 grammar](../internal/syntax.md).
 
-An alternative syntax would treat `’` as a separate operator. This
+An alternative syntax would treat `'` as a separate operator. This
 would be attractive since it enables quoting single identifiers as
-e.g. `’x` instead of `’(x)`. But it would clash with symbol
+e.g. `'x` instead of `'(x)`. But it would clash with symbol
 literals. So it could be done only if symbol literals were abolished.
 
 ### Implementation in `dotc`
@@ -655,13 +658,13 @@ The syntax of terms, values, and types is given as follows:
     Terms         t  ::=  x                 variable
                           (x: T) => t       lambda
                           t t               application
-                          ’t                quote
+                          't                quote
                           ~t                splice
 
     Values        v  ::=  (x: T) => t       lambda
-                          ’u                quote
+                          'u                quote
 
-    Simple terms  u  ::=  x  |  (x: T) => u  |  u u  |  ’t
+    Simple terms  u  ::=  x  |  (x: T) => u  |  u u  |  't
 
     Types         T  ::=  A                 base type
                           T -> T            function type
@@ -670,7 +673,7 @@ The syntax of terms, values, and types is given as follows:
 Typing rules are formulated using a stack of environments
 `Es`. Individual environments `E` consist as usual of variable
 bindings `x: T`. Environments can be combined using the two
-combinators `’` and `~`.
+combinators `'` and `~`.
 
     Environment   E  ::=  ()                empty
                           E, x: T
@@ -679,7 +682,7 @@ combinators `’` and `~`.
                           E                 simple
                           Es * Es           combined
 
-    Separator     *  ::=  ’
+    Separator     *  ::=  '
                           ~
 
 The two environment combinators are both associative with left and
@@ -691,7 +694,7 @@ We define a small step reduction relation `-->` with the following rules:
 
                 ((x: T) => t) v  -->  [x := v]t
 
-                          ~(’u)  -->  u
+                          ~('u)  -->  u
 
                              t1  -->  t2
                           -----------------
@@ -703,7 +706,7 @@ is a context rule; it says that reduction is allowed in the hole `[ ]`
 position of an evaluation context.  Evaluation contexts `e` and
 splice evaluation context `e_s` are defined syntactically as follows:
 
-    Eval context    e    ::=  [ ]  |  e t  |  v e  |  ’e_s[~e]
+    Eval context    e    ::=  [ ]  |  e t  |  v e  |  'e_s[~e]
     Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  u e_s
 
 ### Typing rules
@@ -714,12 +717,12 @@ cancel each other out:
 
                           Es1 * Es2 |- t: T
                      ---------------------------
-                     Es1 ~ E1 ’ E2 * Es2 |- t: T
+                     Es1 ~ E1 ' E2 * Es2 |- t: T
 
 
                           Es1 * Es2 |- t: T
                      ---------------------------
-                     Es1 ’ E1 ~ E2 * Es2 |- t: T
+                     Es1 ' E1 ~ E2 * Es2 |- t: T
 
 The lambda calculus fragment of the rules is standard, except that we
 use a stack of environments. The rules only interact with the topmost
@@ -739,7 +742,7 @@ environment of the stack.
                    ---------------------------------
                           Es |- t1 t2: T
 
-The rules for quotes and splices map between `expr T` and `T` by trading `’` and `~` between
+The rules for quotes and splices map between `expr T` and `T` by trading `'` and `~` between
 environments and terms.
 
                          Es ~ () |- t: expr T
@@ -747,12 +750,12 @@ environments and terms.
                              Es |- ~t: T
 
 
-                           Es ’ () |- t: T
+                           Es ' () |- t: T
                            ----------------
-                           Es |- ’t: expr T
+                           Es |- 't: expr T
 
 The meta theory of a slightly simplified variant 2-stage variant of this calculus
-is studied [separatey](../simple-smp.md)
+is studied [separately](simple-smp.md).
 
 ## Going Further
 
@@ -767,9 +770,9 @@ exponent is statically known and falls back to the dynamic
 implementation of power otherwise.
 
     inline def power(n: Int, x: Double): Double = ~{
-      ’(n) match {
-        case Constant(n1) => powerCode(n1, ’(x))
-        case _ => ’{ dynamicPower(n, x) }
+      '(n) match {
+        case Constant(n1) => powerCode(n1, '(x))
+        case _ => '{ dynamicPower(n, x) }
       }
     }
 
@@ -789,7 +792,7 @@ be implemented in user code:
       def apply(x: Expr[T]): Expr[U] =
         f match {
           case Lambda(g) => g(x)
-          case _ => ’((~f)(~x))
+          case _ => '((~f)(~x))
         }
 
 This assumes an extractor

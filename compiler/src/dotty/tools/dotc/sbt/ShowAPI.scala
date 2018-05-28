@@ -18,17 +18,17 @@ object DefaultShowAPI {
 
   def apply(d: Definition) = ShowAPI.showDefinition(d)(defaultNesting)
   def apply(d: Type) = ShowAPI.showType(d)(defaultNesting)
-  def apply(a: SourceAPI) = ShowAPI.showApi(a)(defaultNesting)
+  def apply(a: ClassLike) = ShowAPI.showApi(a)(defaultNesting)
 }
 
 object ShowAPI {
   private lazy val numDecls = Try { java.lang.Integer.parseInt(sys.props.get("sbt.inc.apidiff.decls").get) } getOrElse 0
 
-  private def truncateDecls(decls: Array[Definition]): Array[Definition] = if (numDecls <= 0) decls else decls.take(numDecls)
+  private def truncateDecls(decls: Array[ClassDefinition]): Array[ClassDefinition] = if (numDecls <= 0) decls else decls.take(numDecls)
   private def lines(ls: Seq[String]): String = ls.mkString("\n", "\n", "\n")
 
-  def showApi(a: SourceAPI)(implicit nesting: Int) =
-    a.packages.map(pkg => "package " + pkg.name).mkString("\n") + lines(truncateDecls(a.definitions).map(showDefinition))
+  def showApi(c: ClassLike)(implicit nesting: Int) =
+    showDefinition(c)
 
   def showDefinition(d: Definition)(implicit nesting: Int): String = d match {
     case v: Val              => showMonoDef(v, "val") + ": " + showType(v.tpe)
@@ -36,7 +36,9 @@ object ShowAPI {
     case d: Def              => showPolyDef(d, "def") + showValueParams(d.valueParameters) + ": " + showType(d.returnType)
     case ta: TypeAlias       => showPolyDef(ta, "type") + " = " + showType(ta.tpe)
     case td: TypeDeclaration => showPolyDef(td, "type") + showBounds(td.lowerBound, td.upperBound)
-    case cl: ClassLike       => showPolyDef(cl, showDefinitionType(cl.definitionType)) + " extends " + showTemplate(cl)
+    case cl: ClassLike => showMonoDef(d, showDefinitionType(cl.definitionType)) +
+      showTypeParameters(cl.typeParameters) + " extends " + showTemplate(cl)
+    case cl: ClassLikeDef => showPolyDef(cl, showDefinitionType(cl.definitionType))
   }
 
   private def showTemplate(cl: ClassLike)(implicit nesting: Int) =
@@ -61,14 +63,17 @@ object ShowAPI {
     case s: Structure =>
       s.parents.map(showType).mkString(" with ") + (
         if (nesting <= 0) "{ <nesting level reached> }"
-        else truncateDecls(s.declared).map(showNestedDefinition).mkString(" {", "\n", "}"))
+        else truncateDecls(s.declared).map(showNestedDefinition).mkString(" {", "\n", "}")
+      )
     case e: Existential =>
       showType(e.baseType) + (
         if (nesting <= 0) " forSome { <nesting level reached> }"
-        else e.clause.map(t => "type " + showNestedTypeParameter(t)).mkString(" forSome { ", "; ", " }"))
+        else e.clause.map(t => "type " + showNestedTypeParameter(t)).mkString(" forSome { ", "; ", " }")
+      )
     case p: Polymorphic => showType(p.baseType) + (
       if (nesting <= 0) " [ <nesting level reached> ]"
-      else showNestedTypeParameters(p.parameters))
+      else showNestedTypeParameters(p.parameters)
+    )
   }
 
   private def showPath(p: Path): String = p.components.map(showPathComponent).mkString(".")
@@ -104,9 +109,7 @@ object ShowAPI {
   private def showValueParams(ps: Seq[ParameterList])(implicit nesting: Int): String =
     ps.map(pl =>
       pl.parameters.map(mp =>
-        mp.name + ": " + showParameterModifier(showType(mp.tpe), mp.modifier) + (if (mp.hasDefault) "= ..." else "")
-      ).mkString(if (pl.isImplicit) "(implicit " else "(", ", ", ")")
-    ).mkString("")
+        mp.name + ": " + showParameterModifier(showType(mp.tpe), mp.modifier) + (if (mp.hasDefault) "= ..." else "")).mkString(if (pl.isImplicit) "(implicit " else "(", ", ", ")")).mkString("")
 
   private def showParameterModifier(base: String, pm: ParameterModifier): String = pm match {
     case ParameterModifier.Plain    => base
@@ -154,3 +157,4 @@ object ShowAPI {
   private def showNestedTypeParameters(tps: Seq[TypeParameter])(implicit nesting: Int) = showTypeParameters(tps)(nesting - 1)
   private def showNestedDefinition(d: Definition)(implicit nesting: Int) = showDefinition(d)(nesting - 1)
 }
+

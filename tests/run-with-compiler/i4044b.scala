@@ -1,4 +1,5 @@
 import scala.quoted._
+
 import dotty.tools.dotc.quoted.Toolbox._
 
 sealed abstract class VarRef[T] {
@@ -21,7 +22,7 @@ object VarRef {
 
 object Test {
   def main(args: Array[String]): Unit = {
-    val q = VarRef(4)(varRef => '{ ~varRef.update(3); ~varRef.expr })
+    val q = VarRef('(4))(varRef => '{ ~varRef.update('(3)); ~varRef.expr })
     println(q.show)
   }
 }

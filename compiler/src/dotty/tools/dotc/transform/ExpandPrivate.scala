@@ -41,7 +41,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
   override def phaseName: String = "expandPrivate"
 
   // This phase moves methods around (in infotransform) so it may need to make other methods public
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[MoveStatics])
+  override def runsAfter = Set(MoveStatics.name)
 
   override def changesMembers = true // the phase introduces new members with mangled names
 

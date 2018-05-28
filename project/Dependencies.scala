@@ -9,4 +9,7 @@ object Dependencies {
     "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion
   val `jackson-dataformat-yaml` =
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
+
+  def compilerInterface(sbtVersion: String) = "org.scala-sbt" % "compiler-interface" % sbtVersion
+  def zincApiinfo(sbtVersion: String) = "org.scala-sbt" %% "zinc-apiinfo" % sbtVersion
 }

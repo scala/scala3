@@ -140,7 +140,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
       case Nil => // this case can happen because after erasure we do not have a top class anymore
-        assert(ctx.erasedTypes)
+        assert(ctx.erasedTypes || ctx.reporter.errorsReported)
         defn.ObjectClass :: Nil
     }
 
@@ -292,25 +292,17 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
    *  the prefix "dotty.language.".
    */
   def featureEnabled(owner: ClassSymbol, feature: TermName): Boolean = {
-    def toPrefix(sym: Symbol): String =
-      if (!sym.exists || (sym eq defn.LanguageModuleClass)) ""
-      else toPrefix(sym.owner) + sym.name + "."
-    def featureName = toPrefix(owner) + feature
-    def hasImport(implicit ctx: Context): Boolean = {
-      if (ctx.importInfo eq null) false
-      else {
-        val isImportOwner = ctx.importInfo.site.widen.typeSymbol eq owner
-        if (isImportOwner && ctx.importInfo.originals.contains(feature)) true
-        else if (isImportOwner && ctx.importInfo.excluded.contains(feature)) false
-        else {
-          var c = ctx.outer
-          while (c.importInfo eq ctx.importInfo) c = c.outer
-          hasImport(c)
-        }
-      }
+    val hasImport =
+      ctx.importInfo != null &&
+      ctx.importInfo.featureImported(owner, feature)(ctx.withPhase(ctx.typerPhase))
+    def hasOption = {
+      def toPrefix(sym: Symbol): String =
+        if (!sym.exists || (sym eq defn.LanguageModuleClass)) ""
+        else toPrefix(sym.owner) + sym.name + "."
+      val featureName = toPrefix(owner) + feature
+      ctx.base.settings.language.value exists (s => s == featureName || s == "_")
     }
-    def hasOption = ctx.base.settings.language.value exists (s => s == featureName || s == "_")
-    hasImport(ctx.withPhase(ctx.typerPhase)) || hasOption
+    hasImport || hasOption
   }
 
   /** Is auto-tupling enabled? */

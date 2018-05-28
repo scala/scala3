@@ -127,6 +127,9 @@ public enum ErrorMessageID {
     PolymorphicMethodMissingTypeInParentID,
     ParamsNoInlineID,
     JavaSymbolIsNotAValueID,
+    DoubleDeclarationID,
+    MatchCaseOnlyNullWarningID,
+    ImportRenamedTwiceID,
     ;
 
     public int errorNumber() {

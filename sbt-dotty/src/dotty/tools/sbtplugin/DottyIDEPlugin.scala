@@ -55,7 +55,7 @@ object DottyIDEPlugin extends AutoPlugin {
     else {
       def matchingSetting(setting: Setting[_]) =
         setting.key.key == scalaVersion.key &&
-        setting.key.scope.project.fold(ref => projRefs.contains(ref), ifGlobal = true, ifThis = true)
+        setting.key.scope.project.fold(ref => projRefs.contains(ref), ifZero = true, ifThis = true)
 
       val newSettings = extracted.session.mergeSettings.collect {
         case setting if matchingSetting(setting) =>
@@ -151,8 +151,8 @@ object DottyIDEPlugin extends AutoPlugin {
    *  @param directory  If not null, run `cmd` in this directory.
    */
   def runProcess(cmd: Seq[String], wait: Boolean = false, directory: File = null): Unit = {
-    val pb0 = new ProcessBuilder(prepareCommand(cmd): _*).inheritIO()
-    val pb = if (directory != null) pb0.directory(directory) else pb0
+    val pb = new ProcessBuilder(prepareCommand(cmd): _*).inheritIO()
+    if (directory != null) pb.directory(directory)
     if (wait) {
       val exitCode = pb.start().waitFor()
       if (exitCode != 0) {
@@ -205,9 +205,9 @@ object DottyIDEPlugin extends AutoPlugin {
     origState
   }
 
-  private def projectConfigTask(config: Configuration): Initialize[Task[Option[ProjectConfig]]] = Def.task {
-    if ((sources in config).value.isEmpty) None
-    else {
+  private def projectConfigTask(config: Configuration): Initialize[Task[Option[ProjectConfig]]] = Def.taskDyn {
+    if ((sources in config).value.isEmpty) Def.task { None }
+    else Def.task {
       // Not needed to generate the config, but this guarantees that the
       // generated config is usable by an IDE without any extra compilation
       // step.

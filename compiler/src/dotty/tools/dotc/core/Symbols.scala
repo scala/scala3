@@ -31,6 +31,7 @@ import io.AbstractFile
 import language.implicitConversions
 import util.{NoSource, DotClass, Property}
 import scala.collection.JavaConverters._
+import config.Printers.typr
 
 /** Creation methods for symbols */
 trait Symbols { this: Context =>
@@ -234,8 +235,8 @@ trait Symbols { this: Context =>
   def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
     def stubCompleter = new StubInfo()
     val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
-    println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
-    println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
+    typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
+    typr.println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
     //if (base.settings.debug.value) throw new Error()
     val stub = name match {
       case name: TermName =>
@@ -568,13 +569,13 @@ object Symbols {
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(implicit ctx: Context): AbstractFile = {
       val file = associatedFile
-      if (file != null && file.path.endsWith("class")) file else null
+      if (file != null && file.extension == "class") file else null
     }
 
     /** The source file from which this class was generated, null if not applicable. */
     final def sourceFile(implicit ctx: Context): AbstractFile = {
       val file = associatedFile
-      if (file != null && !file.path.endsWith("class")) file
+      if (file != null && file.extension != "class") file
       else {
         val topLevelCls = denot.topLevelClass(ctx.withPhaseNoLater(ctx.flattenPhase))
         topLevelCls.getAnnotation(defn.SourceFileAnnot) match {
@@ -706,7 +707,7 @@ object Symbols {
     denot = underlying.denot
   }
 
-  @sharable val NoSymbol: Symbol = new Symbol(NoCoord, 0) {
+  @sharable object NoSymbol extends Symbol(NoCoord, 0) {
     override def associatedFile(implicit ctx: Context): AbstractFile = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = NoDenotation
   }

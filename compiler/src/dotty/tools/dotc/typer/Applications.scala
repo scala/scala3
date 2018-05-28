@@ -114,7 +114,7 @@ object Applications {
         productSelectorTypes(unapplyResult)
       else if (isGetMatch(unapplyResult, pos))
         getUnapplySelectors(getTp, args, pos)
-      else if (unapplyResult isRef defn.BooleanClass)
+      else if (unapplyResult.widenSingleton isRef defn.BooleanClass)
         Nil
       else if (defn.isProductSubType(unapplyResult))
         productSelectorTypes(unapplyResult)
@@ -193,6 +193,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      */
     protected def liftFun(): Unit = ()
 
+    /** Whether `liftFun` is needed? It is the case if default arguments are used.
+     */
+    protected def needLiftFun: Boolean =
+      !isJavaAnnotConstr(methRef.symbol) &&
+      args.size < reqiredArgNum(funType)
+
     /** A flag signalling that the typechecking the application was so far successful */
     private[this] var _ok = true
 
@@ -205,11 +211,24 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** The function's type after widening and instantiating polytypes
      *  with TypeParamRefs in constraint set
      */
-    val methType = funType.widen match {
+    lazy val methType: Type = liftedFunType.widen match {
       case funType: MethodType => funType
       case funType: PolyType => constrained(funType).resultType
       case tp => tp //was: funType
     }
+
+    def reqiredArgNum(tp: Type): Int = tp.widen match {
+      case funType: MethodType => funType.paramInfos.size
+      case funType: PolyType => reqiredArgNum(funType.resultType)
+      case tp => args.size
+    }
+
+    lazy val liftedFunType =
+      if (needLiftFun) {
+        liftFun()
+        normalizedFun.tpe
+      }
+      else funType
 
     /** The arguments re-ordered so that each named argument matches the
      *  same-named formal parameter.
@@ -231,6 +250,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             ()
           else
             fail(err.typeMismatchMsg(methType.resultType, resultType))
+
         // match all arguments with corresponding formal parameters
         matchArgs(orderedArgs, methType.paramInfos, 0)
       case _ =>
@@ -366,7 +386,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             val denot = cx.denotNamed(getterName)
             if (denot.exists) ref(TermRef(cx.owner.thisType, getterName, denot))
             else {
-              assert(ctx.mode.is(Mode.Interactive),
+              assert(ctx.mode.is(Mode.Interactive) || ctx.reporter.errorsReported,
                 s"non-existent getter denotation ($denot) for getter($getterName)")
               findGetter(cx.outer)
             }
@@ -425,8 +445,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           }
 
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
-            if (!isJavaAnnotConstr(methRef.symbol))
-              liftFun()
             val getter = findDefaultGetter(n + numArgs(normalizedFun))
             if (getter.isEmpty) missingArg(n)
             else {
@@ -482,7 +500,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         false
       case argtpe =>
         def SAMargOK = formal match {
-          case SAMType(meth) => argtpe <:< meth.info.toFunctionType()
+          case SAMType(sam) => argtpe <:< sam.toFunctionType()
           case _ => false
         }
         isCompatible(argtpe, formal) || ctx.mode.is(Mode.ImplicitsEnabled) && SAMargOK
@@ -720,7 +738,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
 
       fun1.tpe match {
-        case err: ErrorType => untpd.cpy.Apply(tree)(fun1, tree.args).withType(err)
+        case err: ErrorType => untpd.cpy.Apply(tree)(fun1, proto.typedArgs).withType(err)
         case TryDynamicCallType => typedDynamicApply(tree, pt)
         case _ =>
           if (originalProto.isDropped) fun1
@@ -879,19 +897,25 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      */
     def trySelectUnapply(qual: untpd.Tree)(fallBack: Tree => Tree): Tree = {
       // try first for non-overloaded, then for overloaded ocurrences
-      def tryWithName(name: TermName)(fallBack: Tree => Tree)(implicit ctx: Context): Tree =
-        tryEither { implicit ctx =>
-          val specificProto = new UnapplyFunProto(selType, this)
-          typedExpr(untpd.Select(qual, name), specificProto)
+      def tryWithName(name: TermName)(fallBack: Tree => Tree)(implicit ctx: Context): Tree = {
+        def tryWithProto(pt: Type)(implicit ctx: Context) = {
+          val result = typedExpr(untpd.Select(qual, name), new UnapplyFunProto(pt, this))
+          if (!result.symbol.exists || result.symbol.name == name) result
+          else notAnExtractor(result)
+          	// It might be that the result of typedExpr is an `apply` selection or implicit conversion.
+          	// Reject in this case.
+        }
+        tryEither {
+          implicit ctx => tryWithProto(selType)
         } {
           (sel, _) =>
-            tryEither { implicit ctx =>
-              val genericProto = new UnapplyFunProto(WildcardType, this)
-              typedExpr(untpd.Select(qual, name), genericProto)
+            tryEither {
+              implicit ctx => tryWithProto(WildcardType)
             } {
               (_, _) => fallBack(sel)
             }
         }
+      }
       // try first for unapply, then for unapplySeq
       tryWithName(nme.unapply) {
         sel => tryWithName(nme.unapplySeq)(_ => fallBack(sel)) // for backwards compatibility; will be dropped
@@ -933,7 +957,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *   - If a type proxy P is not a reference to a class, P's supertype is in G
      */
     def isSubTypeOfParent(subtp: Type, tp: Type)(implicit ctx: Context): Boolean =
-      if (subtp <:< tp) true
+      if (constrainPatternType(subtp, tp)) true
       else tp match {
         case tp: TypeRef if tp.symbol.isClass => isSubTypeOfParent(subtp, tp.firstParent)
         case tp: TypeProxy => isSubTypeOfParent(subtp, tp.superType)
@@ -967,6 +991,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2
           case Apply(unapply, `dummyArg` :: Nil) => Nil
           case Inlined(u, _, _) => unapplyImplicits(u)
+          case _ => Nil.assertingErrorsReported
         }
 
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.pos)
@@ -1120,7 +1145,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           val tp1Params = tp1.newLikeThis(tp1.paramNames, tp1.paramInfos, defn.AnyType)
           fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.pos)
 
-          val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateBounds)
+          val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateParamInfos(_))
           isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
         }
       case _ => // (3)
@@ -1142,15 +1167,15 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *
      *    flip(T) <: flip(U)
      *
-     *  where `flip` changes top-level contravariant type aliases to covariant ones.
-     *  Intuitively `<:s` means subtyping `<:`, except that all top-level arguments
+     *  where `flip` changes covariant occurrences of contravariant type parameters to
+     *  covariant ones. Intuitively `<:s` means subtyping `<:`, except that all arguments
      *  to contravariant parameters are compared as if they were covariant. E.g. given class
      *
      *     class Cmp[-X]
      *
-     *  `Cmp[T] <:s Cmp[U]` if `T <: U`. On the other hand, nested occurrences
-     *  of parameters are not affected.
-     *  So `T <: U` would imply `List[Cmp[U]] <:s List[Cmp[T]]`, as usual.
+     *  `Cmp[T] <:s Cmp[U]` if `T <: U`. On the other hand, non-variant occurrences
+     *  of parameters are not affected. So `T <: U` would imply `Set[Cmp[U]] <:s Set[Cmp[T]]`,
+     *  as usual, because `Set` is non-variant.
      *
      *  This relation might seem strange, but it models closely what happens for methods.
      *  Indeed, if we integrate the existing rules for methods into `<:s` we have now that
@@ -1167,7 +1192,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       else {
         val flip = new TypeMap {
           def apply(t: Type) = t match {
-            case t: TypeBounds => t
             case t @ AppliedType(tycon, args) =>
               def mapArg(arg: Type, tparam: TypeParamInfo) =
                 if (variance > 0 && tparam.paramVariance < 0) defn.FunctionOf(arg :: Nil, defn.UnitType)

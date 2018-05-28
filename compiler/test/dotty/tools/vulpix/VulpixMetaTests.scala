@@ -8,16 +8,18 @@ import dotty.Properties
 import TestConfiguration._
 
 /** Meta tests for the Vulpix test suite. This test follows the structure of
- *  CompilationTests.scala. It is ment to be called from bash to diff with
+ *  CompilationTests.scala. It is meant to be called from bash to diff with
  *  output againts an expected result.
  */
 @Category(Array(classOf[dotty.VulpixMetaTests]))
 class VulpixMetaTests extends ParallelTesting {
   def maxDuration = 1.seconds
-  def numberOfSlaves = 5
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
+  // Ensure maximum reproducibility.
+  def numberOfSlaves = 1
+  def safeMode = false // Don't fork a new VM after each run test
+  def isInteractive = false // Don't beautify output for interactive use.
+  def testFilter = None // Run all the tests.
+
   implicit val summaryReport: SummaryReporting = new SummaryReport
   implicit def testGroup: TestGroup = TestGroup("VulpixMetaTests")
 

@@ -7,16 +7,15 @@ import Periods._
 import Symbols._
 import Types._
 import Scopes._
-import typer.{FrontEnd, Typer, ImportInfo, RefChecks}
-import reporting.{Reporter, ConsoleReporter}
+import typer.{FrontEnd, ImportInfo, RefChecks, Typer}
+import reporting.{ConsoleReporter, Reporter}
 import Phases.Phase
 import transform._
 import util.FreshNameCreator
 import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
-
-import dotty.tools.backend.jvm.{LabelDefs, GenBCode, CollectSuperCalls}
-import dotty.tools.dotc.transform.localopt.Simplify
+import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode, LabelDefs}
+import dotty.tools.dotc.transform.localopt.{Simplify, StringInterpolatorOpt}
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
@@ -67,6 +66,7 @@ class Compiler {
          new NormalizeFlags,         // Rewrite some definition flags
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
+         new ShortcutImplicits,      // Allow implicit functions without creating closures
          new TailRec,                // Rewrite tail recursion to loops
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
          new LiftTry,                // Put try expressions that might execute on non-empty stacks into their own methods
@@ -77,15 +77,17 @@ class Compiler {
          new PatternMatcher,         // Compile pattern matches
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
-         new ShortcutImplicits,      // Allow implicit functions without creating closures
+         new StringInterpolatorOpt,  // Optimizes raw and s string interpolators by rewriting them to string concatentations
          new CrossCastAnd,           // Normalize selections involving intersection types.
          new Splitter) ::            // Expand selections involving union types into conditionals
     List(new ErasedDecls,            // Removes all erased defs and vals decls (except for parameters)
+         new IsInstanceOfChecker,    // check runtime realisability for `isInstanceOf`
          new VCInlineMethods,        // Inlines calls to value class methods
          new SeqLiterals,            // Express vararg arguments as arrays
          new InterceptedMethods,     // Special handling of `==`, `|=`, `getClass` methods
          new Getters,                // Replace non-private vals and vars with getter defs (fields are added later)
          new ElimByName,             // Expand by-name parameter references
+         new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections
          new AugmentScala2Traits,    // Expand traits defined in Scala 2.x to simulate old-style rewritings
          new ResolveSuper,           // Implement super accessors and add forwarders to trait methods
@@ -96,7 +98,7 @@ class Compiler {
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
     List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
          new VCElideAllocations,     // Peep-hole optimization to eliminate unnecessary value class allocations
-         new Mixin,                   // Expand trait fields and trait initializers
+         new Mixin,                  // Expand trait fields and trait initializers
          new LazyVals,               // Expand lazy vals
          new Memoize,                // Add private fields to getters and setters
          new NonLocalReturns,        // Expand non-local returns

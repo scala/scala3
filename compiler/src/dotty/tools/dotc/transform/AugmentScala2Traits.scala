@@ -17,6 +17,10 @@ import NameOps._
 import NameKinds.{ExpandedName, TraitSetterName}
 import ast.Trees._
 
+object AugmentScala2Traits {
+  val name = "augmentScala2Traits"
+}
+
 /** This phase augments Scala2 traits with implementation classes and with additional members
  *  needed for mixin composition.
  *  These symbols would have been added between Unpickling and Mixin in the Scala2 pipeline.
@@ -33,7 +37,7 @@ class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer with F
 
   override def changesMembers = true
 
-  override def phaseName: String = "augmentScala2Traits"
+  override def phaseName: String = AugmentScala2Traits.name
 
   override def rewiredTarget(referenced: Symbol, derived: Symbol)(implicit ctx: Context) = NoSymbol
 

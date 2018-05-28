@@ -7,6 +7,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
   private[this] var limit: Int = _
   private[this] var table: Array[AnyRef] = _
 
+  assert(Integer.bitCount(powerOfTwoInitialCapacity) == 1)
   protected def isEqual(x: T, y: T): Boolean = x.equals(y)
 
   // Counters for Stats

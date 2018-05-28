@@ -31,7 +31,7 @@ object Trees {
   @sharable var ntrees = 0
 
   /** Property key for trees with documentation strings attached */
-  val DocComment = new Property.Key[Comment]
+  val DocComment = new Property.StickyKey[Comment]
 
   @sharable private[this] var nextId = 0 // for debugging
 
@@ -769,28 +769,26 @@ object Trees {
   def genericEmptyTree[T >: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
 
   def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
-    var buf: ListBuffer[Tree[T]] = null
-    var xs = trees
-    while (xs.nonEmpty) {
-      xs.head match {
-        case Thicket(elems) =>
-          if (buf == null) {
-            buf = new ListBuffer
-            var ys = trees
-            while (ys ne xs) {
-              buf += ys.head
-              ys = ys.tail
+    def recur(buf: ListBuffer[Tree[T]], remaining: List[Tree[T]]): ListBuffer[Tree[T]] =
+      remaining match {
+        case Thicket(elems) :: remaining1 =>
+          var buf1 = buf
+          if (buf1 == null) {
+            buf1 = new ListBuffer[Tree[T]]
+            var scanned = trees
+            while (scanned `ne` remaining) {
+              buf1 += scanned.head
+              scanned = scanned.tail
             }
           }
-          for (elem <- elems) {
-            assert(!elem.isInstanceOf[Thicket[_]])
-            buf += elem
-          }
-        case tree =>
+          recur(recur(buf1, elems), remaining1)
+        case tree :: remaining1 =>
           if (buf != null) buf += tree
+          recur(buf, remaining1)
+        case nil =>
+          buf
       }
-      xs = xs.tail
-    }
+    val buf = recur(null, trees)
     if (buf != null) buf.toList else trees
   }
 
@@ -805,7 +803,7 @@ object Trees {
     def unforced: AnyRef
     protected def force(x: AnyRef): Unit
     def forceIfLazy(implicit ctx: Context): T = unforced match {
-      case lzy: Lazy[T] =>
+      case lzy: Lazy[T @unchecked] =>
         val x = lzy.complete
         force(x)
         x
@@ -908,15 +906,14 @@ object Trees {
      * so that they selectively retype themselves. Retyping needs a context.
      */
     abstract class TreeCopier {
-
       def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[T]
       def postProcess(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T]
 
       def finalize(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =
-        postProcess(tree, copied withPos tree.pos)
+        postProcess(tree, copied.withPos(tree.pos).withAttachmentsFrom(tree))
 
       def finalize(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T] =
-        postProcess(tree, copied withPos tree.pos)
+        postProcess(tree, copied.withPos(tree.pos).withAttachmentsFrom(tree))
 
       def Ident(tree: Tree)(name: Name): Ident = tree match {
         case tree: BackquotedIdent =>
@@ -1184,6 +1181,7 @@ object Trees {
           case AppliedTypeTree(tpt, args) =>
             cpy.AppliedTypeTree(tree)(transform(tpt), transform(args))
           case LambdaTypeTree(tparams, body) =>
+            implicit val ctx = localCtx
             cpy.LambdaTypeTree(tree)(transformSub(tparams), transform(body))
           case ByNameTypeTree(result) =>
             cpy.ByNameTypeTree(tree)(transform(result))
@@ -1213,7 +1211,7 @@ object Trees {
           case Import(expr, selectors) =>
             cpy.Import(tree)(transform(expr), selectors)
           case PackageDef(pid, stats) =>
-            cpy.PackageDef(tree)(transformSub(pid), transformStats(stats))
+            cpy.PackageDef(tree)(transformSub(pid), transformStats(stats)(localCtx))
           case Annotated(arg, annot) =>
             cpy.Annotated(tree)(transform(arg), transform(annot))
           case Thicket(trees) =>

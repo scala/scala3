@@ -5,13 +5,12 @@ package printing
 import parsing.Tokens._
 import scala.annotation.switch
 import scala.collection.mutable.StringBuilder
-import core.Contexts.Context
 import util.Chars
-import Highlighting.{Highlight, HighlightBuffer}
 
 /** This object provides functions for syntax highlighting in the REPL */
 object SyntaxHighlighting {
 
+  // Keep in sync with SyntaxHighlightingTests
   val NoColor         = Console.RESET
   val CommentColor    = Console.BLUE
   val KeywordColor    = Console.YELLOW
@@ -32,7 +31,7 @@ object SyntaxHighlighting {
   private val tripleQs = Console.RED_B + "???" + NoColor
 
   private val keywords: Seq[String] = for {
-    index <- IF to ENUM // All alpha keywords
+    index <- IF to ERASED // All alpha keywords
   } yield tokenString(index)
 
   private val interpolationPrefixes =
@@ -43,18 +42,19 @@ object SyntaxHighlighting {
     'q' :: 'r' :: 's' :: 't' :: 'u' :: 'v' :: 'w' :: 'x' :: 'y' :: 'z' :: Nil
 
   private val typeEnders =
-   '{'  :: '}' :: ')' :: '(' :: '[' :: ']' :: '=' :: ' ' :: ',' :: '.' ::
-   '\n' :: Nil
+   '{'  :: '}' :: ')' :: '(' :: '[' :: ']' :: '=' :: ' ' :: ',' :: '.' :: '|' ::
+   '&' :: '\n' :: Nil
 
   def apply(chars: Iterable[Char]): Iterable[Char] = {
     var prev: Char = 0
     var remaining  = chars.toStream
     val newBuf     = new StringBuilder
-    var lastToken  = ""
+    var lastValDefToken  = ""
 
     @inline def keywordStart =
       prev == 0    || prev == ' ' || prev == '{' || prev == '(' ||
-      prev == '\n' || prev == '[' || prev == ','
+      prev == '\n' || prev == '[' || prev == ',' || prev == ':' ||
+      prev == '|'  || prev == '&'
 
     @inline def numberStart(c: Char) =
       c.isDigit && (!prev.isLetter || prev == '.' || prev == ' ' || prev == '(' || prev == '\u0000')
@@ -129,9 +129,11 @@ object SyntaxHighlighting {
             }
             else if (n.isUpper && keywordStart)
               appendWhile(n, !typeEnders.contains(_), typeDef)
-            else if (numberStart(n))
-              appendWhile(n, { x => x.isDigit || x == '.' || x == '\u0000'}, literal)
-            else
+            else if (numberStart(n)) {
+              def isNumber(c: Char): Boolean =
+                c.isDigit || c == '\u0000' || (c == '.' && remaining.nonEmpty && remaining.head.isDigit)
+              appendWhile(n, isNumber, literal)
+            } else
               newBuf += n; prev = n
           }
         }
@@ -280,12 +282,32 @@ object SyntaxHighlighting {
         case ' ' => true
         case '\n' => true
         case '(' => true
+        case ')' => true
         case '[' => true
+        case ']' => true
         case ':' => true
         case '@' => true
+        case ',' => true
         case '.' => true
         case _ => false
       }
+
+      val valDefStarterTokens = "var" :: "val" :: "def" :: "case" :: Nil
+
+      /** lastValDefToken is used to check whether we want to show something
+       *  in valDef color or not. There are only a few cases when lastValDefToken
+       *  should be updated, that way we can avoid stopping coloring too early.
+       *  eg.: case A(x, y, z) => ???
+       *  Without this function only x would be colored.
+       */
+      def updateLastToken(currentToken: String): String =
+        (lastValDefToken, currentToken) match {
+          case _ if valDefStarterTokens.contains(currentToken) => currentToken
+          case (("val" | "var"), "=") => currentToken
+          case ("case", ("=>" | "class" | "object")) => currentToken
+          case ("def", _) => currentToken
+          case _ => lastValDefToken
+        }
 
       while (remaining.nonEmpty && !delim(curr)) {
         curr = takeChar()
@@ -296,12 +318,12 @@ object SyntaxHighlighting {
       val toAdd  =
         if (shouldHL(str))
           highlight(str)
-        else if (("var" :: "val" :: "def" :: "case" :: Nil).contains(lastToken))
+        else if (valDefStarterTokens.contains(lastValDefToken) && !List("=", "=>").contains(str))
           valDef(str)
         else str
       val suffix = if (delim(curr)) s"$curr" else ""
       newBuf append (toAdd + suffix)
-      lastToken = str
+      lastValDefToken = updateLastToken(str)
       prev = curr
     }
 

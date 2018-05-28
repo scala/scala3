@@ -1,0 +1,7 @@
+scala> def foo(x: Option[Int]) = x match { case None => }
+1 | def foo(x: Option[Int]) = x match { case None => }
+  |                           ^
+  |                           match may not be exhaustive.
+  |
+  |                           It would fail on pattern case: Some(_)
+def foo(x: Option[Int]): Unit

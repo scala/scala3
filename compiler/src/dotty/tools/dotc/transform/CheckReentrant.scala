@@ -82,7 +82,7 @@ class CheckReentrant extends MiniPhase {
               }
             }
         for (parent <- cls.classInfo.classParents)
-          addVars(parent.typeSymbol.asClass)
+          addVars(parent.classSymbol.asClass)
       }
     }
   }

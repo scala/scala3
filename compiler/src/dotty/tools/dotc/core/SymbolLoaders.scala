@@ -5,6 +5,7 @@ package core
 import java.io.{IOException, File}
 import scala.compat.Platform.currentTime
 import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
+import config.Config
 import classpath._
 import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, util.Positions._, Names._
 import StdNames._, NameOps._
@@ -19,17 +20,14 @@ import parsing.Parsers.OutlineParser
 import reporting.trace
 
 object SymbolLoaders {
+  import ast.untpd._
+
   /** A marker trait for a completer that replaces the original
    *  Symbol loader for an unpickled root.
    */
   trait SecondCompleter
-}
 
-/** A base class for Symbol loaders with some overridable behavior  */
-class SymbolLoaders {
-  import ast.untpd._
-
-  protected def enterNew(
+  private def enterNew(
       owner: Symbol, member: Symbol,
       completer: SymbolLoader, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
     val comesFromScan =
@@ -316,7 +314,7 @@ abstract class SymbolLoader extends LazyType {
     }
     try {
       val start = currentTime
-      if (ctx.settings.YdebugTrace.value)
+      if (Config.tracingEnabled && ctx.settings.YdebugTrace.value)
         trace(s">>>> loading ${root.debugString}", _ => s"<<<< loaded ${root.debugString}") {
           doComplete(root)
         }

@@ -82,16 +82,16 @@ class ModifiersParsingTest {
     assert(source.firstConstrValDef.modifiers == List(Mod.Var()))
 
     source = "class A(val a: Int)"
-    assert(source.firstConstrValDef.modifiers == List(Mod.Val()))
+    assert(source.firstConstrValDef.modifiers == List())
 
     source = "class A(private val a: Int)"
-    assert(source.firstConstrValDef.modifiers == List(Mod.Private(), Mod.Val()))
+    assert(source.firstConstrValDef.modifiers == List(Mod.Private()))
 
     source = "class A(protected var a: Int)"
     assert(source.firstConstrValDef.modifiers == List(Mod.Protected(), Mod.Var()))
 
     source = "class A(protected implicit val a: Int)"
-    assert(source.firstConstrValDef.modifiers == List(Mod.Protected(), Mod.Implicit(), Mod.Val()))
+    assert(source.firstConstrValDef.modifiers == List(Mod.Protected(), Mod.Implicit()))
 
     source = "class A[T]"
     assert(source.firstTypeParam.modifiers == List())
@@ -125,8 +125,8 @@ class ModifiersParsingTest {
       """.stripMargin
 
     assert(source.field("a").modifiers == List(Mod.Lazy(), Mod.Var()))
-    assert(source.field("b").modifiers == List(Mod.Lazy(), Mod.Private(), Mod.Val()))
-    assert(source.field("c").modifiers == List(Mod.Final(), Mod.Val()))
+    assert(source.field("b").modifiers == List(Mod.Lazy(), Mod.Private()))
+    assert(source.field("c").modifiers == List(Mod.Final()))
     assert(source.field("f").modifiers == List(Mod.Abstract(), Mod.Override()))
     assert(source.field("g").modifiers == List(Mod.Inline()))
   }
@@ -146,7 +146,7 @@ class ModifiersParsingTest {
 
   @Test def blockDef = {
     var source: Tree = "implicit val x : A = ???"
-    assert(source.modifiers == List(Mod.Implicit(), Mod.Val()))
+    assert(source.modifiers == List(Mod.Implicit()))
 
     source = "implicit var x : A = ???"
     assert(source.modifiers == List(Mod.Implicit(), Mod.Var()))

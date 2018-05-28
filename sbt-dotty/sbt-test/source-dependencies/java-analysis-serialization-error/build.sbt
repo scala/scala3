@@ -1,1 +1,1 @@
-incOptions := incOptions.value.withNameHashing(true).withApiDebug(true)
+incOptions := incOptions.value.withApiDebug(true)

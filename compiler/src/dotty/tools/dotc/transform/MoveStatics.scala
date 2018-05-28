@@ -15,11 +15,15 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.MethodType
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
+object MoveStatics {
+  val name = "moveStatic"
+}
+
 /** Move static methods from companion to the class itself */
 class MoveStatics extends MiniPhase with SymTransformer {
 
   import tpd._
-  override def phaseName = "moveStatic"
+  override def phaseName = MoveStatics.name
 
   def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
     if (sym.hasAnnotation(defn.ScalaStaticAnnot) && sym.owner.is(Flags.Module) && sym.owner.companionClass.exists) {

@@ -3,9 +3,8 @@ package typer
 
 import transform._
 import core._
-import config._
-import Symbols._, SymDenotations._, Types._, Contexts._, Decorators._, Flags._, Names._, NameOps._
-import StdNames._, Denotations._, Scopes._, Constants.Constant, SymUtils._
+import Symbols._, Types._, Contexts._, Flags._, Names._, NameOps._
+import StdNames._, Denotations._, SymUtils._
 import NameKinds.DefaultGetterName
 import Annotations._
 import util.Positions._
@@ -16,16 +15,16 @@ import Trees._
 import MegaPhase._
 import config.Printers.{checks, noPrinter}
 import util.DotClass
-import scala.util.{Try, Success, Failure}
-import config.{ScalaVersion, NoScalaVersion}
+import scala.util.Failure
+import config.NoScalaVersion
 import Decorators._
 import typer.ErrorReporting._
-import DenotTransformers._
 
 object RefChecks {
   import tpd._
-  import reporting.diagnostic.Message
   import reporting.diagnostic.messages._
+
+  val name = "refchecks"
 
   private val defaultMethodFilter = new NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = name.is(DefaultGetterName)
@@ -103,7 +102,7 @@ object RefChecks {
             cls.pos)
       }
       for (parent <- cinfo.classParents)
-        checkSelfConforms(parent.typeSymbol.asClass, "illegal inheritance", "parent")
+        checkSelfConforms(parent.classSymbol.asClass, "illegal inheritance", "parent")
       for (reqd <- cinfo.cls.givenSelfType.classSymbols)
         checkSelfConforms(reqd, "missing requirement", "required")
     case _ =>
@@ -343,7 +342,10 @@ object RefChecks {
         if (autoOverride(member) ||
             other.owner.is(JavaTrait) && ctx.testScala2Mode("`override' modifier required when a Java 8 default method is re-implemented", member.pos))
           member.setFlag(Override)
-        else if (member.owner != clazz && other.owner != clazz && !(other.owner derivesFrom member.owner))
+        else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))
+          () // OK, don't complain about type aliases which are equal
+        else if (member.owner != clazz && other.owner != clazz &&
+                 !(other.owner derivesFrom member.owner))
           emitOverrideError(
             clazz + " inherits conflicting members:\n  "
               + infoStringWithLocation(other) + "  and\n  " + infoStringWithLocation(member)
@@ -594,12 +596,73 @@ object RefChecks {
           checkNoAbstractDecls(bc.asClass.superClass)
       }
 
+      // Check that every term member of this concrete class has a symbol that matches the member's type
+      // Member types are computed by intersecting the types of all members that have the same name
+      // and signature. But a member selection will pick one particular implementation, according to
+      // the rules of overriding and linearization. This method checks that the implementation has indeed
+      // a type that subsumes the full member type.
+      def checkMemberTypesOK() = {
+
+        // First compute all member names we need to check in `membersToCheck`.
+        // We do not check
+        //  - types
+        //  - synthetic members or bridges
+        //  - members in other concrete classes, since these have been checked before
+        //    (this is done for efficiency)
+        //  - members in a prefix of inherited parents that all come from Java or Scala2
+        //    (this is done to avoid false positives since Scala2's rules for checking are different)
+        val membersToCheck = new util.HashSet[Name](4096)
+        val seenClasses = new util.HashSet[Symbol](256)
+        def addDecls(cls: Symbol): Unit =
+          if (!seenClasses.contains(cls)) {
+            seenClasses.addEntry(cls)
+            for (mbr <- cls.info.decls)
+              if (mbr.isTerm && !mbr.is(Synthetic | Bridge) && mbr.memberCanMatchInheritedSymbols &&
+                  !membersToCheck.contains(mbr.name))
+                membersToCheck.addEntry(mbr.name)
+            cls.info.parents.map(_.classSymbol)
+              .filter(_.is(AbstractOrTrait))
+              .dropWhile(_.is(JavaDefined | Scala2x))
+              .foreach(addDecls)
+          }
+        addDecls(clazz)
+
+        // For each member, check that the type of its symbol, as seen from `self`
+        // can override the info of this member
+        for (name <- membersToCheck) {
+          for (mbrd <- self.member(name).alternatives) {
+            val mbr = mbrd.symbol
+            val mbrType = mbr.info.asSeenFrom(self, mbr.owner)
+            if (!mbrType.overrides(mbrd.info, matchLoosely = true))
+              ctx.errorOrMigrationWarning(
+                em"""${mbr.showLocated} is not a legal implementation of `$name' in $clazz
+                    |  its type             $mbrType
+                    |  does not conform to  ${mbrd.info}""",
+                (if (mbr.owner == clazz) mbr else clazz).pos)
+          }
+        }
+      }
+
+      /** Check that inheriting a case class does not constitute a variant refinement
+       *  of a base type of the case class. It is because of this restriction that we
+       *  can assume invariant refinement for case classes in `constrainPatternType`.
+       */
+      def checkCaseClassInheritanceInvariant() = {
+        for (caseCls <- clazz.info.baseClasses.tail.find(_.is(Case)))
+          for (baseCls <- caseCls.info.baseClasses.tail)
+            if (baseCls.typeParams.exists(_.paramVariance != 0))
+              for (problem <- variantInheritanceProblems(baseCls, caseCls, "non-variant", "case "))
+                ctx.errorOrMigrationWarning(problem(), clazz.pos)
+      }
       checkNoAbstractMembers()
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
 
       if (abstractErrors.nonEmpty)
         ctx.error(abstractErrorMessage, clazz.pos)
+
+      checkMemberTypesOK()
+      checkCaseClassInheritanceInvariant()
     } else if (clazz.is(Trait) && !(clazz derivesFrom defn.AnyValClass)) {
       // For non-AnyVal classes, prevent abstract methods in interfaces that override
       // final members in Object; see #4431
@@ -611,6 +674,51 @@ object RefChecks {
         if (overridden.is(Final))
           ctx.error(TraitRedefinedFinalMethodFromAnyRef(overridden), decl.pos)
       }
+    }
+
+    if (!clazz.is(Trait)) {
+      // check that parameterized base classes and traits are typed in the same way as from the superclass
+      // I.e. say we have
+      //
+      //    Sub extends Super extends* Base
+      //
+      // where `Base` has value parameters. Enforce that
+      //
+      //    Sub.thisType.baseType(Base)  =:=  Sub.thisType.baseType(Super).baseType(Base)
+      //
+      // This is necessary because parameter values are determined directly or indirectly
+      // by `Super`. So we cannot pretend they have a different type when seen from `Sub`.
+      def checkParameterizedTraitsOK() = {
+        val mixins = clazz.mixins
+        for {
+          cls <- clazz.info.baseClasses.tail
+          if cls.paramAccessors.nonEmpty && !mixins.contains(cls)
+          problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, "parameterized", "super")
+        } ctx.error(problem(), clazz.pos)
+      }
+
+      checkParameterizedTraitsOK()
+    }
+
+    /** Check that `site` does not inherit conflicting generic instances of `baseCls`,
+     *  when doing a direct base type or going via intermediate class `middle`. I.e, we require:
+     *
+     *     site.baseType(baseCls)  =:=  site.baseType(middle).baseType(baseCls)
+     *
+     *  Return an optional by name error message if this test fails.
+     */
+    def variantInheritanceProblems(
+        baseCls: Symbol, middle: Symbol, baseStr: String, middleStr: String): Option[() => String] = {
+      val superBT = self.baseType(middle)
+      val thisBT = self.baseType(baseCls)
+      val combinedBT = superBT.baseType(baseCls)
+      if (combinedBT =:= thisBT) None // ok
+      else
+        Some(() =>
+          em"""illegal inheritance: $clazz inherits conflicting instances of $baseStr base $baseCls.
+              |
+              |  Direct basetype: $thisBT
+              |  Basetype via $middleStr$middle: $combinedBT""")
     }
 
     /* Returns whether there is a symbol declared in class `inclazz`
@@ -801,10 +909,10 @@ class RefChecks extends MiniPhase { thisPhase =>
   import reporting.diagnostic.messages.ForwardReferenceExtendsOverDefinition
   import dotty.tools.dotc.reporting.diagnostic.messages.UnboundPlaceholderParameter
 
-  override def phaseName: String = "refchecks"
+  override def phaseName: String = RefChecks.name
 
   // Needs to run after ElimRepeated for override checks involving varargs methods
-  override def runsAfter = Set(classOf[ElimRepeated])
+  override def runsAfter = Set(ElimRepeated.name)
 
   private var LevelInfo: Store.Location[OptLevelInfo] = _
   private def currentLevel(implicit ctx: Context): OptLevelInfo = ctx.store(LevelInfo)
@@ -838,7 +946,9 @@ class RefChecks extends MiniPhase { thisPhase =>
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context) = {
     checkDeprecatedOvers(tree)
-    if (tree.symbol is Macro) EmptyTree else tree
+    if (tree.symbol.is(Macro))
+      tree.symbol.resetFlag(Macro)
+    tree
   }
 
   override def transformTemplate(tree: Template)(implicit ctx: Context) = try {

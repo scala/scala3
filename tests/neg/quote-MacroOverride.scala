@@ -5,7 +5,7 @@ object Test {
     inline def g(): Unit = ()
   }
 
-  class B extends A {
+  object B extends A {
     inline def f() = ~('())  // error: may not override
     override def g() = ()    // error: may not override
   }

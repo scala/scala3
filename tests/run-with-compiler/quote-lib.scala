@@ -12,7 +12,7 @@ import liftable.Exprs._
 object Test {
   def main(args: Array[String]): Unit = {
 
-    val liftedUnit: Expr[Unit] = ()
+    val liftedUnit: Expr[Unit] = '()
 
     letVal('(1))(a => '{ ~a + 1 }).show
     letLazyVal('(1))(a => '{ ~a + 1 }).show
@@ -21,18 +21,18 @@ object Test {
     liftedWhile('(true))('{ println(1) }).show
     liftedDoWhile('{ println(1) })('(true)).show
 
-    val t1: Expr[Tuple1[Int]] = Tuple1(4)
-    val t2: Expr[(Int, Int)] = (2, 3)
-    val t3: Expr[(Int, Int, Int)] = (2, 3, 4)
-    val t4: Expr[(Int, Int, Int, Int)] = (2, 3, 4, 5)
+    val t1: Expr[Tuple1[Int]] = Tuple1(4).toExpr
+    val t2: Expr[(Int, Int)] = (2, 3).toExpr
+    val t3: Expr[(Int, Int, Int)] = (2, 3, 4).toExpr
+    val t4: Expr[(Int, Int, Int, Int)] = (2, 3, 4, 5).toExpr
 
     val list: List[Int] = List(1, 2, 3)
-    val liftedList: Expr[List[Int]] = list
+    val liftedList: Expr[List[Int]] = list.toExpr
 
-    liftedList.foldLeft[Int](0)('{ (acc: Int, x: Int) => acc + x }).show
+    liftedList.foldLeft[Int](0.toExpr)('{ (acc: Int, x: Int) => acc + x }).show
     liftedList.foreach('{ (x: Int) => println(x) }).show
 
-    list.unrolledFoldLeft[Int](0)('{ (acc: Int, x: Int) => acc + x }).show
+    list.unrolledFoldLeft[Int](0.toExpr)('{ (acc: Int, x: Int) => acc + x }).show
     list.unrolledForeach('{ (x: Int) => println(x) }).show
 
     println("quote lib ok")
@@ -42,7 +42,6 @@ object Test {
 
 package liftable {
   import scala.quoted.Liftable
-  import scala.quoted.Liftable._
   import scala.reflect.ClassTag
 
   object Exprs {
@@ -113,16 +112,14 @@ package liftable {
       }
        def unrolledForeach(f: Expr[T => Unit]): Expr[Unit] = list match {
          case x :: xs => '{ (~f).apply(~x.toExpr); ~xs.unrolledForeach(f) }
-         case Nil => ()
+         case Nil => '()
        }
     }
 
     object Arrays {
-      // FIXME missing hole for ~t
-//      implicit def ArrayIsLiftable[T: Liftable](implicit t: Type[T], ct: Expr[ClassTag[T]]): Liftable[Array[T]] = (arr: Array[T]) => '{
-//        new Array[~t](~(arr.length: Expr[Int]))(~ct)
-//      }
-
+      implicit def ArrayIsLiftable[T: Liftable](implicit t: Type[T], ct: Expr[ClassTag[T]]): Liftable[Array[T]] = (arr: Array[T]) => '{
+        new Array[~t](~arr.length.toExpr)(~ct)
+      }
     }
 
   }

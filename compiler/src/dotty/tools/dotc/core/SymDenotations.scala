@@ -12,6 +12,7 @@ import collection.BitSet
 import dotty.tools.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
+import ast.Trees._
 import annotation.tailrec
 import CheckRealizable._
 import util.SimpleIdentityMap
@@ -38,8 +39,8 @@ trait SymDenotations { this: Context =>
     initPrivateWithin: Symbol = NoSymbol)(implicit ctx: Context): SymDenotation = {
     val result =
       if (symbol.isClass)
-        if (initFlags is Package) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin, ctx.runId)
-        else new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin, ctx.runId)
+        if (initFlags is Package) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+        else new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
       else new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
     result.validFor = stablePeriod
     result
@@ -376,7 +377,7 @@ object SymDenotations {
      *  Right now, the only usage is for the AnyRef alias in Definitions.
      */
     final private[core] def currentPackageDecls(implicit ctx: Context): MutableScope = myInfo match {
-      case pinfo: SymbolLoaders # PackageLoader => pinfo.currentDecls
+      case pinfo: SymbolLoaders.PackageLoader => pinfo.currentDecls
       case _ => unforcedDecls.openForMutations
     }
 
@@ -667,7 +668,7 @@ object SymDenotations {
 
     /** Is this symbol a class references to which that are supertypes of null? */
     final def isNullableClass(implicit ctx: Context): Boolean =
-      isClass && !isValueClass && !(this is ModuleClass) && symbol != defn.NothingClass
+      isClass && !isValueClass && !is(ModuleClass) && symbol != defn.NothingClass
 
     /** Is this definition accessible as a member of tree with type `pre`?
      *  @param pre          The type of the tree from which the selection is made
@@ -929,16 +930,17 @@ object SymDenotations {
      *  except for a toplevel module, where its module class is returned.
      */
     final def topLevelClass(implicit ctx: Context): Symbol = {
-
-      def topLevel(d: SymDenotation): Symbol =
-        if (!exists || d.isEffectiveRoot || (d is PackageClass) || (d.owner is PackageClass))
-          d.symbol
-        else
-          topLevel(d.owner)
+      @tailrec def topLevel(d: SymDenotation): Symbol = {
+        if (d.isTopLevelClass) d.symbol
+        else topLevel(d.owner)
+      }
 
       val sym = topLevel(this)
       if (sym.isClass) sym else sym.moduleClass
     }
+
+    final def isTopLevelClass(implicit ctx: Context): Boolean =
+      !this.exists || this.isEffectiveRoot || (this is PackageClass) || (this.owner is PackageClass)
 
     /** The package class containing this denotation */
     final def enclosingPackageClass(implicit ctx: Context): Symbol =
@@ -988,7 +990,7 @@ object SymDenotations {
      */
     private def companionNamed(name: TypeName)(implicit ctx: Context): Symbol =
       if (owner.isClass)
-        owner.info.decl(name).suchThat(_.isCoDefinedWith(symbol)).symbol
+        owner.unforcedDecls.lookup(name).suchThat(_.isCoDefinedWith(symbol)).symbol
       else if (!owner.exists || ctx.compilationUnit == null)
         NoSymbol
       else if (!ctx.compilationUnit.tpdTree.isEmpty)
@@ -1282,8 +1284,7 @@ object SymDenotations {
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol,
-    initRunId: RunId)
+    initPrivateWithin: Symbol)
     extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
 
     import util.LRUCache
@@ -1464,10 +1465,11 @@ object SymDenotations {
       if (classParents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
-      for (p <- classParents) {
-        if (p.typeSymbol.isClass) builder.addAll(p.typeSymbol.asClass.baseClasses)
-        else assert(ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
-      }
+      for (p <- classParents)
+        p.classSymbol match {
+          case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
+          case _ => assert(isRefinementClass || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
+        }
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
 
@@ -1476,8 +1478,6 @@ object SymDenotations {
       base.isClass &&
       (  (symbol eq base)
       || (baseClassSet contains base)
-      || (this is Erroneous)
-      || (base is Erroneous)
       )
 
     final override def isSubClass(base: Symbol)(implicit ctx: Context) =
@@ -1598,7 +1598,7 @@ object SymDenotations {
       def collect(denots: PreDenotation, parents: List[Type]): PreDenotation = parents match {
         case p :: ps =>
           val denots1 = collect(denots, ps)
-          p.typeSymbol.denot match {
+          p.classSymbol.denot match {
             case parentd: ClassDenotation =>
               denots1 union
                 parentd.nonPrivateMembersNamed(name)
@@ -1620,118 +1620,147 @@ object SymDenotations {
 
     /** Compute tp.baseType(this) */
     final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
-
-      def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
-        case p :: ps1 => foldGlb(bt & baseTypeOf(p), ps1)
-        case _ => bt
-      }
-
-      /** We cannot cache:
-       *  - type variables which are uninstantiated or whose instances can
-       *    change, depending on typerstate.
-       *  - types where the underlying type is an ErasedValueType, because
-       *    this underlying type will change after ElimErasedValueType,
-       *    and this changes subtyping relations. As a shortcut, we do not
-       *    cache ErasedValueType at all.
-       */
-      def isCachable(tp: Type, btrCache: BaseTypeMap): Boolean = {
-        def inCache(tp: Type) = btrCache.containsKey(tp)
-        tp match {
-          case _: TypeErasure.ErasedValueType => false
-          case tp: TypeRef if tp.symbol.isClass => true
-          case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
-          //case tp: TypeProxy => inCache(tp.underlying) // disabled, can re-enable insyead of last two lines for performance testing
-          case tp: TypeProxy => isCachable(tp.underlying, btrCache)
-          case tp: AndType => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
-          case tp: OrType  => isCachable(tp.tp1, btrCache) && isCachable(tp.tp2, btrCache)
-          case _ => true
+      val btrCache = baseTypeCache
+      def inCache(tp: Type) = btrCache.get(tp) != null
+      def record(tp: CachedType, baseTp: Type) = {
+        if (Stats.monitored) {
+          Stats.record("basetype cache entries")
+          if (!baseTp.exists) Stats.record("basetype cache NoTypes")
         }
+        btrCache.put(tp, baseTp)
       }
 
-      def computeBaseTypeOf(tp: Type): Type = {
+      def ensureAcyclic(baseTp: Type) = {
+        if (baseTp `eq` NoPrefix) throw CyclicReference(this)
+        baseTp
+      }
+
+      def recur(tp: Type): Type = try {
+        tp match {
+          case tp: CachedType =>
+            val baseTp = btrCache.get(tp)
+            if (baseTp != null) return ensureAcyclic(baseTp)
+          case _ =>
+        }
         if (Stats.monitored) {
           Stats.record("computeBaseType, total")
           Stats.record(s"computeBaseType, ${tp.getClass}")
         }
-        if (symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty)
-          symbol.typeRef
-        else tp match {
+        tp match {
           case tp @ TypeRef(prefix, _) =>
-            val subsym = tp.symbol
-            if (subsym eq symbol) tp
-            else subsym.denot match {
-              case clsd: ClassDenotation =>
-                val owner = clsd.owner
-                val isOwnThis = prefix match {
-                  case prefix: ThisType => prefix.cls eq owner
-                  case NoPrefix => true
-                  case _ => false
-                }
-                if (isOwnThis)
-                  if (clsd.baseClassSet.contains(symbol)) foldGlb(NoType, clsd.classParents)
-                  else NoType
-                else
-                  baseTypeOf(clsd.typeRef).asSeenFrom(prefix, owner)
-              case _ =>
-                baseTypeOf(tp.superType)
+
+            def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
+              case p :: ps1 => foldGlb(bt & recur(p), ps1)
+              case _ => bt
             }
+
+            def computeTypeRef = {
+              btrCache.put(tp, NoPrefix)
+              tp.symbol.denot match {
+                case clsd: ClassDenotation =>
+                  def isOwnThis = prefix match {
+                    case prefix: ThisType => prefix.cls `eq` clsd.owner
+                    case NoPrefix => true
+                    case _ => false
+                  }
+                  val baseTp =
+                    if (tp.symbol eq symbol)
+                      tp
+                    else if (isOwnThis)
+                      if (clsd.baseClassSet.contains(symbol))
+                        if (symbol.isStatic && symbol.typeParams.isEmpty) symbol.typeRef
+                        else foldGlb(NoType, clsd.classParents)
+                      else NoType
+                    else
+                      recur(clsd.typeRef).asSeenFrom(prefix, clsd.owner)
+                  record(tp, baseTp)
+                  baseTp
+                case _ =>
+                  val superTp = tp.superType
+                  val baseTp = recur(superTp)
+                  if (inCache(superTp) && tp.symbol.maybeOwner.isType)
+                    record(tp, baseTp)   // typeref cannot be a GADT, so cache is stable
+                  else
+                    btrCache.remove(tp)
+                  baseTp
+              }
+            }
+            computeTypeRef
+
           case tp @ AppliedType(tycon, args) =>
-            val subsym = tycon.typeSymbol
-            if (subsym eq symbol) tp
-            else tycon.typeParams match {
-              case LambdaParam(_, _) :: _ =>
-                baseTypeOf(tp.superType)
-              case tparams: List[Symbol @unchecked] =>
-                baseTypeOf(tycon).subst(tparams, args)
+
+            def computeApplied = {
+              btrCache.put(tp, NoPrefix)
+              val baseTp =
+              	if (tycon.typeSymbol eq symbol) tp
+              	else (tycon.typeParams: @unchecked) match {
+                  case LambdaParam(_, _) :: _ =>
+                    recur(tp.superType)
+                  case tparams: List[Symbol @unchecked] =>
+                    recur(tycon).subst(tparams, args)
+                }
+              record(tp, baseTp)
+              baseTp
             }
+            computeApplied
+
+          case tp: TypeParamRef =>  // uncachable, since baseType depends on context bounds
+            recur(ctx.typeComparer.bounds(tp).hi)
           case tp: TypeProxy =>
-            baseTypeOf(tp.superType)
-          case AndType(tp1, tp2) =>
-            baseTypeOf(tp1) & baseTypeOf(tp2) match {
-              case AndType(tp1a, tp2a) if (tp1a eq tp1) && (tp2a eq tp2) => tp
-              case res => res
+
+            def computeTypeProxy = {
+              val superTp = tp.superType
+              val baseTp = recur(superTp)
+              tp match {
+                case tp: CachedType if baseTp.exists && inCache(superTp) =>
+                  // Note: This also works for TypeVars: If they are not instantiated, their supertype
+                  // is a TypeParamRef, which is never cached. So uninstantiated TypeVars are not cached either.
+                  record(tp, baseTp)
+                case _ =>
+              }
+              baseTp
             }
-          case OrType(tp1, tp2) =>
-            baseTypeOf(tp1) | baseTypeOf(tp2) match {
-              case OrType(tp1a, tp2a) if (tp1a eq tp1) && (tp2a eq tp2) => tp
-              case res => res
+            computeTypeProxy
+
+          case tp: AndOrType =>
+
+            def computeAndOrType = {
+              val tp1 = tp.tp1
+              val tp2 = tp.tp2
+              val baseTp =
+                if (symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty)
+                  symbol.typeRef
+                else {
+                  val baseTp1 = recur(tp1)
+                  val baseTp2 = recur(tp2)
+                  val combined = if (tp.isAnd) baseTp1 & baseTp2 else baseTp1 | baseTp2
+                  combined match {
+                    case combined: AndOrType
+                    if (combined.tp1 eq tp1) && (combined.tp2 eq tp2) && (combined.isAnd == tp.isAnd) => tp
+                    case _ => combined
+                  }
+                }
+              if (baseTp.exists && inCache(tp1) && inCache(tp2)) record(tp, baseTp)
+              baseTp
             }
+            computeAndOrType
+
           case JavaArrayType(_) if symbol == defn.ObjectClass =>
             this.typeRef
           case _ =>
             NoType
         }
       }
+      catch {
+        case ex: Throwable =>
+          btrCache.remove(tp)
+          throw ex
+      }
+
 
       /*>|>*/ trace.onDebug(s"$tp.baseType($this)") /*<|<*/ {
         Stats.record("baseTypeOf")
-        tp.stripTypeVar match {
-          case tp: CachedType =>
-          val btrCache = baseTypeCache
-            try {
-              var basetp = btrCache get tp
-              if (basetp == null) {
-                btrCache.put(tp, NoPrefix)
-                basetp = computeBaseTypeOf(tp)
-                if (!basetp.exists) Stats.record("base type miss")
-                if (isCachable(tp, btrCache)) {
-                  if (basetp.exists) Stats.record("cached base type hit")
-                  else Stats.record("cached base type miss")
-                  btrCache.put(tp, basetp)
-                }
-                else btrCache.remove(tp)
-              } else if (basetp `eq` NoPrefix)
-                throw CyclicReference(this)
-              basetp
-            }
-            catch {
-              case ex: Throwable =>
-                btrCache.put(tp, null)
-                throw ex
-            }
-          case tp =>
-            computeBaseTypeOf(tp)
-        }
+        recur(tp)
       }
     }
 
@@ -1747,7 +1776,7 @@ object SymDenotations {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
       for (p <- classParents)
-        for (name <- p.typeSymbol.asClass.memberNames(keepOnly))
+        for (name <- p.classSymbol.asClass.memberNames(keepOnly))
           maybeAdd(name)
       val ownSyms =
         if (keepOnly eq implicitFilter)
@@ -1810,9 +1839,8 @@ object SymDenotations {
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol,
-    initRunId: RunId)
-    extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin, initRunId) {
+    initPrivateWithin: Symbol)
+    extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
 
     private[this] var packageObjCache: SymDenotation = _
     private[this] var packageObjRunId: RunId = NoRunId

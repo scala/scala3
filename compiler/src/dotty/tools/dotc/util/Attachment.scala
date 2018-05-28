@@ -2,9 +2,12 @@ package dotty.tools.dotc.util
 
 /** A class inheriting from Attachment.Container supports
  *  adding, removing and lookup of attachments. Attachments are typed key/value pairs.
+ *
+ *  Attachments whose key is an instance of `StickyKey` will be kept when the attachments
+ *  are copied using `withAttachmentsFrom`.
  */
 object Attachment {
-  import Property.Key
+  import Property.{Key, StickyKey}
 
   /** An implementation trait for attachments.
    *  Clients should inherit from Container instead.
@@ -87,6 +90,16 @@ object Attachment {
   /** A trait for objects that can contain attachments */
   trait Container extends LinkSource {
     private[Attachment] var next: Link[_] = null
+
+    /** Copy the sticky attachments from `container` to this container. */
+    final def withAttachmentsFrom(container: Container): this.type = {
+      var current: Link[_] = container.next
+      while (current != null) {
+        if (current.key.isInstanceOf[StickyKey[_]]) pushAttachment(current.key, current.value)
+        current = current.next
+      }
+      this
+    }
 
     final def pushAttachment[V](key: Key[V], value: V): Unit = {
       assert(!getAttachment(key).isDefined, s"duplicate attachment for key $key")

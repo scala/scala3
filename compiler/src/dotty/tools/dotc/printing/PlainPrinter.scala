@@ -169,7 +169,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         "<noprefix>"
       case tp: MethodType =>
         changePrec(GlobalPrec) {
-          (if (tp.isImplicitMethod) "(implicit " else "(") ~ paramsText(tp) ~
+          ("(" + (if (tp.isErasedMethod)   "erased "   else "")
+               + (if (tp.isImplicitMethod) "implicit " else "")
+          ) ~ paramsText(tp) ~
           (if (tp.resultType.isInstanceOf[MethodType]) ")" else "): ") ~
           toText(tp.resultType)
         }
@@ -473,26 +475,21 @@ class PlainPrinter(_ctx: Context) extends Printer {
     ("Scope{" ~ dclsText(sc.toList) ~ "}").close
 
   def toText[T >: Untyped](tree: Tree[T]): Text = {
-    tree match {
-      case node: Positioned =>
-        def toTextElem(elem: Any): Text = elem match {
-          case elem: Showable => elem.toText(this)
-          case elem: List[_] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"
-          case elem => elem.toString
-        }
-        val nodeName = node.productPrefix
-        val elems =
-          Text(node.productIterator.map(toTextElem).toList, ", ")
-        val tpSuffix =
-          if (ctx.settings.XprintTypes.value && tree.hasType)
-            " | " ~ toText(tree.typeOpt)
-          else
-            Text()
-
-        nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(node.pos.toString) provided ctx.settings.YprintPos.value)
-      case _ =>
-        tree.fallbackToText(this)
+    def toTextElem(elem: Any): Text = elem match {
+      case elem: Showable => elem.toText(this)
+      case elem: List[_] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"
+      case elem => elem.toString
     }
+    val nodeName = tree.productPrefix
+    val elems =
+      Text(tree.productIterator.map(toTextElem).toList, ", ")
+    val tpSuffix =
+      if (ctx.settings.XprintTypes.value && tree.hasType)
+        " | " ~ toText(tree.typeOpt)
+      else
+        Text()
+
+    nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.pos.toString) provided ctx.settings.YprintPos.value)
   }.close // todo: override in refined printer
 
   def toText(result: SearchResult): Text = result match {
@@ -541,9 +538,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def literalText(text: Text): Text = coloredText(text, SyntaxHighlighting.LiteralColor)
   protected def stringText(text: Text): Text = coloredText(text, SyntaxHighlighting.StringColor)
 
-  private def coloredStr(text: String, color: String): String =
+  protected def coloredStr(text: String, color: String): String =
     if (ctx.useColors) color + text + SyntaxHighlighting.NoColor else text
-  private def coloredText(text: Text, color: String): Text =
+  protected def coloredText(text: Text, color: String): Text =
     if (ctx.useColors) color ~ text ~ SyntaxHighlighting.NoColor else text
 }
 

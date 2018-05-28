@@ -105,6 +105,7 @@ object ProtoTypes {
     private def hasUnknownMembers(tp: Type)(implicit ctx: Context): Boolean = tp match {
       case tp: TypeVar => !tp.isInstantiated
       case tp: WildcardType => true
+      case NoType => true
       case tp: TypeRef =>
         val sym = tp.symbol
         sym == defn.NothingClass ||
@@ -114,6 +115,7 @@ object ProtoTypes {
             bound.isProvisional && hasUnknownMembers(bound)
           }
         }
+      case tp: AppliedType => hasUnknownMembers(tp.tycon) || hasUnknownMembers(tp.superType)
       case tp: TypeProxy => hasUnknownMembers(tp.superType)
       case _ => false
     }
@@ -124,7 +126,7 @@ object ProtoTypes {
         val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
         def qualifies(m: SingleDenotation) =
           memberProto.isRef(defn.UnitClass) ||
-          compat.normalizedCompatible(NamedType(tp1, name, m), memberProto)
+          tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto)
             // Note: can't use `m.info` here because if `m` is a method, `m.info`
             //       loses knowledge about `m`'s default arguments.
         mbr match { // hasAltWith inlined for performance
@@ -210,7 +212,7 @@ object ProtoTypes {
     private[this] var evalState: SimpleIdentityMap[untpd.Tree, (TyperState, Constraint)] = SimpleIdentityMap.Empty
 
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
-      typer.isApplicable(tp, Nil, typedArgs, resultType)
+      typer.isApplicable(tp, Nil, unforcedTypedArgs, resultType)
 
     def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer) =
       if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
@@ -238,13 +240,24 @@ object ProtoTypes {
       myTypedArg.size == args.length
     }
 
-    private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree)(implicit ctx: Context): Tree = {
+    private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(implicit ctx: Context): Tree = {
       var targ = myTypedArg(arg)
       if (targ == null) {
-        targ = typerFn(arg)
-        if (!ctx.reporter.hasPending) {
-          myTypedArg = myTypedArg.updated(arg, targ)
-          evalState = evalState.updated(arg, (ctx.typerState, ctx.typerState.constraint))
+        if (!force && untpd.functionWithUnknownParamType(arg).isDefined)
+          // If force = false, assume ? rather than reporting an error.
+          // That way we don't cause a "missing parameter" error in `typerFn(arg)`
+          targ = arg.withType(WildcardType)
+        else {
+          targ = typerFn(arg)
+          if (!ctx.reporter.hasPendingErrors) {
+            // FIXME: This can swallow warnings by updating the typerstate from a nested
+            // context that gets discarded later. But we do have to update the
+            // typerstate if there are no errors. If we also omitted the next two lines
+            // when warning were emitted, `pos/t1756.scala` would fail when run with -feature.
+            // It would produce an orphan type parameter for CI when pickling.
+            myTypedArg = myTypedArg.updated(arg, targ)
+            evalState = evalState.updated(arg, (ctx.typerState, ctx.typerState.constraint))
+          }
         }
       }
       targ
@@ -252,19 +265,25 @@ object ProtoTypes {
 
     /** The typed arguments. This takes any arguments already typed using
      *  `typedArg` into account.
+     *  @param  force   if true try to typecheck arguments even if they are functions
+     *                  with unknown parameter types - this will then cause a
+     *                  "missing parameter type" error
      */
-    def typedArgs: List[Tree] = {
+    private def typedArgs(force: Boolean): List[Tree] = {
       if (myTypedArgs.size != args.length)
-        myTypedArgs = args.mapconserve(cacheTypedArg(_, typer.typed(_)))
+        myTypedArgs = args.mapconserve(cacheTypedArg(_, typer.typed(_), force))
       myTypedArgs
     }
+
+    def typedArgs: List[Tree] = typedArgs(force = true)
+    def unforcedTypedArgs: List[Tree] = typedArgs(force = false)
 
     /** Type single argument and remember the unadapted result in `myTypedArg`.
      *  used to avoid repeated typings of trees when backtracking.
      */
     def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
       val locked = ctx.typerState.ownedVars
-      val targ = cacheTypedArg(arg, typer.typedUnadapted(_, formal, locked))
+      val targ = cacheTypedArg(arg, typer.typedUnadapted(_, formal, locked), force = true)
       typer.adapt(targ, formal, locked)
     }
 
@@ -453,16 +472,18 @@ object ProtoTypes {
   }
 
   /** Create a new TypeVar that represents a dependent method parameter singleton */
-  def newDepTypeVar(tp: Type)(implicit ctx: Context): TypeVar =
+  def newDepTypeVar(tp: Type)(implicit ctx: Context): TypeVar = {
     newTypeVar(TypeBounds.upper(AndType(tp.widenExpr, defn.SingletonClass.typeRef)))
-
+  }
   /** The result type of `mt`, where all references to parameters of `mt` are
    *  replaced by either wildcards (if typevarsMissContext) or TypeParamRefs.
    */
   def resultTypeApprox(mt: MethodType)(implicit ctx: Context): Type =
     if (mt.isResultDependent) {
       def replacement(tp: Type) =
-        if (ctx.mode.is(Mode.TypevarsMissContext)) WildcardType else newDepTypeVar(tp)
+        if (ctx.mode.is(Mode.TypevarsMissContext) ||
+            !tp.widenExpr.isValueTypeOrWildcard) WildcardType
+        else newDepTypeVar(tp)
       mt.resultType.substParams(mt, mt.paramInfos.map(replacement))
     }
     else mt.resultType

@@ -241,4 +241,27 @@ class TestBCode extends DottyBytecodeTest {
       assert(!hasInstanceof, "Try case should not issue INSTANCEOF opcode\n")
     }
   }
+
+  @Test def noBoxingInSyntheticEquals = {
+    val source =
+      """
+        |case class Case(x: Long)
+        |class Value(val x: Long) extends AnyVal
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      for ((clsName, methodName) <- List(("Case", "equals"), ("Value$", "equals$extension"))) {
+        val moduleIn = dir.lookupName(s"$clsName.class", directory = false)
+        val moduleNode = loadClassNode(moduleIn.input)
+        val equalsMethod = getMethod(moduleNode, methodName)
+
+        val callsEquals = instructionsFromMethod(equalsMethod).exists {
+            case i @ Invoke(_, _, "equals", _, _) => true
+            case i => false
+        }
+
+        assert(!callsEquals, s"equals method should not be called in the definition of $clsName#$methodName\n")
+      }
+    }
+  }
 }

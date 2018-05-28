@@ -55,12 +55,10 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/pos-scala2/rewrites.scala", scala2Mode.and("-rewrite")).copyToTarget() +
     compileFile("tests/pos-special/utf8encoded.scala", explicitUTF8) +
     compileFile("tests/pos-special/utf16encoded.scala", explicitUTF16) +
-    compileFile("tests/pos-special/i3323.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("tests/pos-special/i3323b.scala", defaultOptions.and("-Xfatal-warnings")) +
-    compileFile("tests/pos-special/i3589-b.scala", defaultOptions.and("-Xfatal-warnings")) +
     compileFile("tests/pos-special/completeFromSource/Test.scala", defaultOptions.and("-sourcepath", "tests/pos-special")) +
     compileFile("tests/pos-special/completeFromSource/Test2.scala", defaultOptions.and("-sourcepath", "tests/pos-special")) +
     compileFile("tests/pos-special/completeFromSource/Test3.scala", defaultOptions.and("-sourcepath", "tests/pos-special", "-scansource")) +
+    compileFilesInDir("tests/pos-special/fatal-warnings", defaultOptions.and("-Xfatal-warnings")) +
     compileList(
       "compileMixed",
       List(
@@ -76,6 +74,7 @@ class CompilationTests extends ParallelTesting {
     ) +
     compileFilesInDir("tests/pos-special/spec-t5545", defaultOptions) +
     compileFilesInDir("tests/pos-special/strawman-collections", defaultOptions) +
+    compileFilesInDir("tests/pos-special/isInstanceOf", allowDeepSubtypes.and("-Xfatal-warnings")) +
     compileFile("scala2-library/src/library/scala/collection/immutable/IndexedSeq.scala", defaultOptions) +
     compileFile("scala2-library/src/library/scala/collection/parallel/mutable/ParSetLike.scala", defaultOptions) +
     compileList(
@@ -102,6 +101,7 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/pos", defaultOptions) +
     compileFilesInDir("tests/pos-no-optimise", defaultOptions) +
     compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes) +
+    compileFilesInDir("tests/pos-kind-polymorphism", defaultOptions and "-Ykind-polymorphism") +
     compileDir("tests/pos/i1137-1", defaultOptions and "-Yemit-tasty") +
     compileFile(
       // succeeds despite -Xfatal-warnings because of -nowarn
@@ -175,8 +175,10 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/neg", defaultOptions) +
     compileFilesInDir("tests/neg-tailcall", defaultOptions) +
     compileFilesInDir("tests/neg-no-optimise", defaultOptions) +
+    compileFilesInDir("tests/neg-kind-polymorphism", defaultOptions and "-Ykind-polymorphism") +
     compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")) +
     compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings) +
+    compileDir("tests/neg-custom-args/impl-conv", defaultOptions.and("-Xfatal-warnings", "-feature")) +
     compileFile("tests/neg-custom-args/i3246.scala", scala2Mode) +
     compileFile("tests/neg-custom-args/overrideClass.scala", scala2Mode) +
     compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")) +
@@ -186,6 +188,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/neg-custom-args/noimports2.scala", defaultOptions.and("-Yno-imports")) +
     compileFile("tests/neg-custom-args/i3882.scala", allowDeepSubtypes) +
     compileFile("tests/neg-custom-args/i1754.scala", allowDeepSubtypes) +
+    compileFilesInDir("tests/neg-custom-args/isInstanceOf", allowDeepSubtypes and "-Xfatal-warnings") +
     compileFile("tests/neg-custom-args/i3627.scala", allowDeepSubtypes)
   }.checkExpectedErrors()
 
@@ -311,6 +314,33 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/pos", defaultOptimised).checkCompile()
     compileFilesInDir("tests/run", defaultOptimised).checkRuns()
     compileFilesInDir("tests/neg", defaultOptimised).checkExpectedErrors()
+  }
+
+  @Test def testPlugins: Unit = {
+    val pluginFile = "plugin.properties"
+
+    // 1. hack with absolute path for -Xplugin
+    // 2. copy `pluginFile` to destination
+    def compileFilesInDir(dir: String): CompilationTest = {
+      val outDir = defaultOutputDir + "testPlugins/"
+      val sourceDir = new JFile(dir)
+
+      val dirs = sourceDir.listFiles.foldLeft(List.empty[JFile]) { case (dirs, f) =>
+        if (f.isDirectory) f :: dirs else dirs
+      }
+
+      val targets = dirs.map { dir =>
+        val compileDir = createOutputDirsForDir(dir, sourceDir, outDir)
+        import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+        Files.copy(dir.toPath.resolve(pluginFile), compileDir.toPath.resolve(pluginFile), REPLACE_EXISTING)
+        val flags = TestFlags(classPath, noCheckOptions) and ("-Xplugin:" + compileDir.getAbsolutePath)
+        SeparateCompilationSource("testPlugins", dir, flags, compileDir)
+      }
+
+      new CompilationTest(targets)
+    }
+
+    compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
   }
 
   private val (compilerSources, backendSources, backendJvmSources) = {
