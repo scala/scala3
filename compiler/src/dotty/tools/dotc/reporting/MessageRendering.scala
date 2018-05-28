@@ -62,7 +62,7 @@ trait MessageRendering {
 
     val syntax =
       if (ctx.settings.color.value != "never")
-        SyntaxHighlighting(pos.linesSlice).toArray
+        SyntaxHighlighting.highlight(pos.linesSlice.mkString)(ctx).toArray
       else pos.linesSlice
     val lines = linesFrom(syntax)
     val (before, after) = pos.beforeAndAfterPoint
