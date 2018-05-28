@@ -269,7 +269,7 @@ class ReplDriver(settings: Array[String],
         typeAliases.map("// defined alias " + _.symbol.showUser) ++
         defs.map(rendering.renderMethod) ++
         vals.map(rendering.renderVal).flatten
-      ).foreach(str => out.println(SyntaxHighlighting(str)))
+      ).foreach(str => out.println(SyntaxHighlighting.highlight(str)(ctx)))
 
       state.copy(valIndex = state.valIndex - vals.count(resAndUnit))
     }
@@ -284,7 +284,7 @@ class ReplDriver(settings: Array[String],
           x.symbol
       }
       .foreach { sym =>
-        out.println(SyntaxHighlighting("// defined " + sym.showUser))
+        out.println(SyntaxHighlighting.highlight("// defined " + sym.showUser)(ctx))
       }
 
 
