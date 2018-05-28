@@ -55,7 +55,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "."
         printImportSelectors(selectors)
 
-      case cdef@ClassDef(name, DefDef(_, targs, argss, _, _), parents, self, stats) =>
+      case cdef @ ClassDef(name, DefDef(_, targs, argss, _, _), parents, self, stats) =>
         val flags = cdef.flags
         if (flags.isFinal && !flags.isObject) this += "final "
         if (flags.isCase) this += "case "
@@ -437,6 +437,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printArgsDefs(args: List[ValDef]): Unit = {
       this += "("
+      args match {
+        case Nil =>
+        case arg :: _ =>
+          if (arg.flags.isErased) this += "erased "
+          if (arg.flags.isImplicit) this += "implicit "
+      }
 
       def printSeparated(list: List[ValDef]): Unit = list match {
         case Nil =>
