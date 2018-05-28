@@ -536,7 +536,7 @@ class TreePickler(pickler: TastyPickler) {
           pickleTree(tp)
         case Annotated(tree, annot) =>
           writeByte(ANNOTATEDtpt)
-          withLength { pickleTree(tree); pickleTree(annot.tree) }
+          withLength { pickleTree(tree); pickleTree(annot) }
         case LambdaTypeTree(tparams, body) =>
           writeByte(LAMBDAtpt)
           withLength { pickleParams(tparams); pickleTree(body) }
@@ -577,15 +577,24 @@ class TreePickler(pickler: TastyPickler) {
 
   def pickleModifiers(sym: Symbol)(implicit ctx: Context): Unit = {
     import Flags._
-    val flags = sym.flags
+    var flags = sym.flags
     val privateWithin = sym.privateWithin
     if (privateWithin.exists) {
       writeByte(if (flags is Protected) PROTECTEDqualified else PRIVATEqualified)
       pickleType(privateWithin.typeRef)
+      flags = flags &~ Protected
     }
+    if ((flags is ParamAccessor) && sym.isTerm && !sym.isSetter)
+      flags = flags &~ ParamAccessor // we only generate a tag for parameter setters
+    pickleFlags(flags, sym.isTerm)
+    sym.annotations.foreach(pickleAnnotation(sym, _))
+  }
+
+  def pickleFlags(flags: Flags.FlagSet, isTerm: Boolean)(implicit ctx: Context): Unit = {
+    import Flags._
     if (flags is Private) writeByte(PRIVATE)
-    if (flags is Protected) if (!privateWithin.exists) writeByte(PROTECTED)
-    if ((flags is Final) && !(sym is Module)) writeByte(FINAL)
+    if (flags is Protected) writeByte(PROTECTED)
+    if (flags.is(Final, butNot = Module)) writeByte(FINAL)
     if (flags is Case) writeByte(CASE)
     if (flags is Override) writeByte(OVERRIDE)
     if (flags is Inline) writeByte(INLINE)
@@ -598,7 +607,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags is Synthetic) writeByte(SYNTHETIC)
     if (flags is Artifact) writeByte(ARTIFACT)
     if (flags is Scala2x) writeByte(SCALA2X)
-    if (sym.isTerm) {
+    if (isTerm) {
       if (flags is Implicit) writeByte(IMPLICIT)
       if (flags is Erased) writeByte(ERASED)
       if (flags.is(Lazy, butNot = Module)) writeByte(LAZY)
@@ -608,7 +617,7 @@ class TreePickler(pickler: TastyPickler) {
       if (flags is CaseAccessor) writeByte(CASEaccessor)
       if (flags is DefaultParameterized) writeByte(DEFAULTparameterized)
       if (flags is Stable) writeByte(STABLE)
-      if ((flags is ParamAccessor) && sym.isSetter) writeByte(PARAMsetter)
+      if (flags is ParamAccessor) writeByte(PARAMsetter)
       if (flags is Label) writeByte(LABEL)
     } else {
       if (flags is Sealed) writeByte(SEALED)
@@ -617,7 +626,6 @@ class TreePickler(pickler: TastyPickler) {
       if (flags is Covariant) writeByte(COVARIANT)
       if (flags is Contravariant) writeByte(CONTRAVARIANT)
     }
-    sym.annotations.foreach(pickleAnnotation(sym, _))
   }
 
   private def isUnpicklable(owner: Symbol, ann: Annotation)(implicit ctx: Context) = ann match {
