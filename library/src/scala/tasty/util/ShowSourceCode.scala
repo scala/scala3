@@ -57,12 +57,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case cdef@ClassDef(name, DefDef(_, targs, argss, _, _), parents, self, stats) =>
         val flags = cdef.flags
+        if (flags.isFinal && !flags.isObject) this += "final "
         if (flags.isCase) this += "case "
 
-        if (cdef.flags.isObject) this += "object " += name.stripSuffix("$")
+        if (flags.isObject) this += "object " += name.stripSuffix("$")
         else this += "class " += name
 
-        if (!cdef.flags.isObject) {
+        if (!flags.isObject) {
           printTargsDefs(targs)
           val it = argss.iterator
           while (it.hasNext)
@@ -200,7 +201,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "]"
 
       case Term.Super(qual, tptOpt) =>
-        ???
+        printTree(qual)
+        this += ".super"
+        // TODO use tptOpt?
 
       case Term.Typed(term, tpt) =>
         this += "("
@@ -531,7 +534,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printType(tree.tpe)
 
       case TypeTree.TypeSelect(qual, name) =>
-        printTree(qual) += "." += name
+        (qual: Any) match {
+          case qual @ TypeTree.TypeIdent(_) => printTypeTree(qual) // FIXME: qual is of type Tree buy we are getting a TypeTree qualifier
+          case _ => printTree(qual)
+        }
+        this += "." += name
 
       case TypeTree.Singleton(ref) =>
         printTree(ref)
@@ -586,7 +593,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Type.SymRef(sym, prefix) =>
         prefix match {
-          case Type.ThisType(Type.SymRef(PackageDef(pack, _), NoPrefix())) if pack == "<root>" || pack == "<empty>" =>
+          case EmptyPackage() =>
+          case RootPackage() =>
           case prefix@Type.SymRef(ClassDef(_, _, _, _, _), _) =>
             printType(prefix)
             this += "#"
@@ -610,10 +618,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Type.TypeRef(name, prefix) =>
         prefix match {
+          case NoPrefix() =>
           case prefix@Type() =>
             printType(prefix)
             this += "."
-          case NoPrefix() =>
         }
         this += name.stripSuffix("$")
 
@@ -714,4 +722,24 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case _ => false
     }
   }
+
+  private object RootPackage {
+    def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
+      case Type.ThisType(Type.SymRef(PackageDef("<root>", _), NoPrefix())) => true
+      case _ => false
+    }
+  }
+
+  private object EmptyPackage {
+    def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
+      case Type.ThisType(Type.SymRef(PackageDef("<empty>", _), prefix)) =>
+        prefix match {
+          case NoPrefix() => true
+          case RootPackage() => true
+          case _ => false
+        }
+      case _ => false
+    }
+  }
+
 }
