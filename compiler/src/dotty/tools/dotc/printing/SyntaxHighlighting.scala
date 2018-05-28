@@ -70,12 +70,12 @@ object SyntaxHighlighting {
       val n = takeChar()
       if (interpolationPrefixes.contains(n)) {
         // Interpolation prefixes are a superset of the keyword start chars
-        val next = remaining.take(3).mkString
-        if (next.startsWith("\"")) {
-          newBuf += n
-          prev = n
-          if (remaining.nonEmpty) takeChar() // drop 1 for appendLiteral
-          appendString('"', next == "\"\"\"")
+        val (prefix, after) = remaining.span(interpolationPrefixes.contains)
+        if (after.startsWith("\"")) {
+          newBuf += n ++= prefix
+          prev = prefix.lastOption.getOrElse(n)
+          if (remaining.nonEmpty) takeChars(prefix.length + 1) // drop 1 for appendLiteral
+          appendString('"', after.startsWith("\"\"\""), true)
         } else {
           if (n.isUpper && (keywordStart || prev == '.')) {
             appendWhile(n, !typeEnders.contains(_), typeDef)
@@ -116,7 +116,7 @@ object SyntaxHighlighting {
           case '@'  =>
             appendWhile('@', !typeEnders.contains(_), annotation)
           case '\"' =>
-            appendString('\"', multiline = remaining.take(2).mkString == "\"\"")
+            appendString('\"', multiline = remaining.take(2).mkString == "\"\"", false)
           case '\'' =>
             appendSingleQuote('\'')
           case '`'  =>
@@ -181,11 +181,10 @@ object SyntaxHighlighting {
       newBuf append NoColor
     }
 
-    def appendString(delim: Char, multiline: Boolean = false) = {
+    def appendString(delim: Char, multiline: Boolean = false, inInterpolation: Boolean) = {
       var curr: Char      = 0
       var continue        = true
       var closing         = 0
-      val inInterpolation = interpolationPrefixes.contains(prev)
       newBuf append (LiteralColor + delim)
 
       def shouldInterpolate =
