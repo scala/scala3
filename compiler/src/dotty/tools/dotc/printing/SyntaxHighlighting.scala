@@ -72,7 +72,7 @@ object SyntaxHighlighting {
         // Interpolation prefixes are a superset of the keyword start chars
         val (prefix, after) = remaining.span(interpolationPrefixes.contains)
         if (after.startsWith("\"")) {
-          newBuf ++= (n +: prefix)
+          newBuf += n ++= prefix
           prev = prefix.lastOption.getOrElse(n)
           if (remaining.nonEmpty) takeChars(prefix.length + 1) // drop 1 for appendLiteral
           appendString('"', after.startsWith("\"\"\""), true)
