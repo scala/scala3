@@ -1580,7 +1580,7 @@ object Types {
 
 // --- NamedTypes ------------------------------------------------------------------
 
-  abstract class NamedType extends CachedProxyType with ValueType { self =>
+  abstract class NamedType extends CachedProxyType with ValueType with SignatureCachingType { self =>
 
     type ThisType >: this.type <: NamedType
     type ThisName <: Name
@@ -1592,8 +1592,6 @@ object Types {
     assert(prefix.isValueType || (prefix eq NoPrefix), s"invalid prefix $prefix")
 
     private[this] var myName: Name = null
-    private[this] var mySig: Signature = null
-    private[this] var mySigRunId: Int = NoRunId
     private[this] var lastDenotation: Denotation = null
     private[this] var lastSymbol: Symbol = null
     private[this] var checkedPeriod: Period = Nowhere
@@ -1623,15 +1621,7 @@ object Types {
     /** The signature of the last known denotation, or if there is none, the
      *  signature of the symbol
      */
-    final override def signature(implicit ctx: Context): Signature = {
-      if (ctx.runId != mySigRunId) {
-        mySig = computeSignature
-        if (!mySig.isUnderDefined) mySigRunId = ctx.runId
-      }
-      mySig
-    }
-
-    def computeSignature(implicit ctx: Context): Signature = {
+    protected def computeSignature(implicit ctx: Context): Signature = {
       val lastd = lastDenotation
       if (lastd != null) lastd.signature
       else symbol.asSeenFrom(prefix).signature
@@ -1642,7 +1632,7 @@ object Types {
      *  Otherwise NotAMethod.
      */
     private def currentSignature(implicit ctx: Context): Signature =
-      if (ctx.runId == mySigRunId) mySig
+      if (ctx.runId == mySignatureRunId) mySignature
       else {
         val lastd = lastDenotation
         if (lastd != null) lastd.signature
@@ -2589,13 +2579,22 @@ object Types {
   // and therefore two different poly types would never be equal.
 
   /** A trait that mixes in functionality for signature caching */
-  trait MethodicType extends TermType {
-
-    private[this] var mySignature: Signature = _
-    private[this] var mySignatureRunId: Int = NoRunId
+  trait SignatureCachingType extends TermType {
+    protected[this] var mySignature: Signature = _
+    protected[this] var mySignatureRunId: Int = NoRunId
 
     protected def computeSignature(implicit ctx: Context): Signature
 
+    final override def signature(implicit ctx: Context): Signature = {
+      if (ctx.runId != mySignatureRunId) {
+        mySignature = computeSignature
+        if (!mySignature.isUnderDefined) mySignatureRunId = ctx.runId
+      }
+      mySignature
+    }
+  }
+
+  trait MethodicType extends SignatureCachingType {
     protected def resultSignature(implicit ctx: Context) = try resultType match {
       case rtp: MethodicType => rtp.signature
       case tp =>
@@ -2606,14 +2605,6 @@ object Types {
       case ex: AssertionError =>
         println(i"failure while taking result signature of $this: $resultType")
         throw ex
-    }
-
-    final override def signature(implicit ctx: Context): Signature = {
-      if (ctx.runId != mySignatureRunId) {
-        mySignature = computeSignature
-        if (!mySignature.isUnderDefined) mySignatureRunId = ctx.runId
-      }
-      mySignature
     }
   }
 
