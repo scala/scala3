@@ -658,18 +658,19 @@ object Build {
     val dottyCompiler = jars("dotty-compiler")
     val args0: List[String] = spaceDelimited("<arg>").parsed.toList
     val decompile = args0.contains("-decompile")
+    val printTasty = args0.contains("-print-tasty")
     val debugFromTasty = args0.contains("-Ythrough-tasty")
     val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
         arg != "-with-compiler" && arg != "-Ythrough-tasty")
 
     val main =
       if (repl) "dotty.tools.repl.Main"
-      else if (decompile) "dotty.tools.dotc.decompiler.Main"
+      else if (decompile || printTasty) "dotty.tools.dotc.decompiler.Main"
       else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
       else "dotty.tools.dotc.Main"
 
     var extraClasspath = dottyLib
-    if (decompile && !args.contains("-classpath")) extraClasspath += ":."
+    if ((decompile || printTasty) && !args.contains("-classpath")) extraClasspath += ":."
     if (args0.contains("-with-compiler")) extraClasspath += s":$dottyCompiler"
 
     val fullArgs = main :: insertClasspathInArgs(args, extraClasspath)

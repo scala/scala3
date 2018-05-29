@@ -47,7 +47,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val fromTasty = BooleanSetting("-from-tasty", "Compile classes from tasty in classpath. The arguments are used as class names.")
 
   /** Decompiler settings */
-  val printTasty = BooleanSetting("-print-tasty", "Prints the raw tasty when decompiling.")
+  val printTasty = BooleanSetting("-print-tasty", "Prints the raw tasty.")
   val printLines = BooleanSetting("-print-lines", "Show source code line numbers.")
 
   /** Plugin-related setting */
