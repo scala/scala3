@@ -25,9 +25,7 @@ class LinkTests extends ParallelTesting {
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
 
-
-  // Disabled until strawman is fixed
-  // @Test
+  @Test
   def linkTest: Unit = {
     // Setup and compile libraries
     val strawmanLibGroup = TestGroup("linkTest/strawmanLibrary")
