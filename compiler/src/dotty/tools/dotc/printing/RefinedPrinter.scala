@@ -447,8 +447,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (ctx.settings.YprintDebug.value) "[" ~ toText(t) ~ "]#TS#"
         else toText(t)
       case tpd.UntypedSplice(t) =>
-        if (ctx.settings.YprintDebug.value) "[" ~ toText(t) ~ "]#US#"      
-        toText(t)
+        if (ctx.settings.YprintDebug.value) "[" ~ toText(t) ~ ":" ~ toText(tree.typeOpt) ~ "]#US#"
+        else toText(t)
       case tree @ ModuleDef(name, impl) =>
         withEnclosingDef(tree) {
           modText(tree.mods, NoSymbol, keywordStr("object")) ~~ nameIdText(tree) ~ toTextTemplate(impl)
