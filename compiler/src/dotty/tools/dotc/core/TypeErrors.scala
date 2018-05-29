@@ -81,14 +81,20 @@ class RecursionOverflow(val op: String, details: => String, previous: Throwable,
 // Beware: Since this object is only used when handling a StackOverflow, this code
 // cannot consume significant amounts of stack.
 object handleRecursive {
-  def apply(op: String, details: => String, exc: Throwable, weight: Int = 1): Nothing = exc match {
-    case _: RecursionOverflow =>
-      throw new RecursionOverflow(op, details, exc, weight)
-    case _ =>
-      var e = exc
-      while (e != null && !e.isInstanceOf[StackOverflowError]) e = e.getCause
-      if (e != null) throw new RecursionOverflow(op, details, e, weight)
-      else throw exc
+  def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(implicit ctx: Context): Nothing = {
+    if (ctx.settings.YnoDecodeStacktraces.value) {
+      throw exc
+    } else {
+      exc match {
+        case _: RecursionOverflow =>
+          throw new RecursionOverflow(op, details, exc, weight)
+        case _ =>
+          var e = exc
+          while (e != null && !e.isInstanceOf[StackOverflowError]) e = e.getCause
+          if (e != null) throw new RecursionOverflow(op, details, e, weight)
+          else throw exc
+      }
+    }
   }
 }
 
