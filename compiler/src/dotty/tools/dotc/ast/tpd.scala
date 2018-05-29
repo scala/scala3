@@ -642,7 +642,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   override def skipTransform(tree: Tree)(implicit ctx: Context) = tree.tpe.isError
 
-  implicit class TreeOps[ThisTree <: tpd.Tree](val tree: ThisTree) extends AnyVal {
+  implicit class TreeOps[ThisTree <: tpd.Tree](private val tree: ThisTree) extends AnyVal {
 
     def isValue(implicit ctx: Context): Boolean =
       tree.isTerm && tree.tpe.widen.isValueType
