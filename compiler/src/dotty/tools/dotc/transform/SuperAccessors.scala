@@ -155,7 +155,6 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         AccessProxies.hostForAccessorOf(sym).is(Trait)
       qual match {
         case _: This if needsSuperAccessor =>
-          println(i"trans super $sel in $currentClass")
           /*
            * A trait which extends a class and accesses a protected member
            *  of that class cannot implement the necessary accessor method
@@ -165,7 +164,6 @@ class SuperAccessors(thisPhase: DenotTransformer) {
            *  by the implementing class.  See SI-2296.
            */
           superAccessorCall(sel)
-            .reporting(res => i"trans super $sel in $currentClass = $res")
         case Super(_, mix) =>
           transformSuperSelect(sel)
         case _ =>
