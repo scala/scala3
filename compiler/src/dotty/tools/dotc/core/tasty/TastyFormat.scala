@@ -55,20 +55,20 @@ Standard-Section: "ASTs" TopLevelStat*
                   Stat
 
   Stat          = Term
-                  VALDEF         Length NameRef type_Term rhs_Term? Mods
+                  VALDEF         Length NameRef type_Term rhs_Term? Modifier*
                   DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
-                                        Mods
-                  TYPEDEF        Length NameRef (type_Term | Template) Mods
-                  OBJECTDEF      Length NameRef Template Mods
+                                        Modifier*
+                  TYPEDEF        Length NameRef (type_Term | Template) Modifier*
+                  OBJECTDEF      Length NameRef Template Modifier*
                   IMPORT         Length qual_Term Selector*
   Selector      = IMPORTED              name_NameRef
                   RENAMED               to_NameRef
 
                                  // Imports are for scala.meta, they are not used in the backend
 
-  TypeParam     = TYPEPARAM      Length NameRef type_Term Mods
+  TypeParam     = TYPEPARAM      Length NameRef type_Term Modifier*
   Params        = PARAMS         Length Param*
-  Param         = PARAM          Length NameRef type_Term rhs_Term? Mods  // rhs_Term is present in the case of an aliased class parameter
+  Param         = PARAM          Length NameRef type_Term rhs_Term? Modifier*  // rhs_Term is present in the case of an aliased class parameter
   Template      = TEMPLATE       Length TypeParam* Param* parent_Term* Self? Stat* // Stat* always starts with the primary constructor.
   Self          = SELFDEF               selfName_NameRef selfType_Term
 
@@ -168,8 +168,6 @@ Standard-Section: "ASTs" TopLevelStat*
   NamesTypes    = NameType*
   NameType      = paramName_NameRef typeOrBounds_ASTRef
 
-  Mods          = Modifier* Annotation*
-
   Modifier      = PRIVATE
                   INTERNAL                            // package private
                   PROTECTED
@@ -209,9 +207,10 @@ Standard-Section: "ASTs" TopLevelStat*
 // --------------- untyped additions ------------------------------------------
 
   TermUntyped   = Term
+                  TYPEDSPLICE Length splice_Term
                   FUNCTION    Length body_Term arg_Term*
                   INFIXOP     Length op_NameRef left_Term right_Term
-                  TYPEDSPLICE Length splice_Term
+                  PATDEF      Length type_Term rhs_Term pattern_Term* Modifier*
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 
@@ -428,6 +427,7 @@ object TastyFormat {
   final val TYPEDSPLICE = 200
   final val FUNCTION = 201
   final val INFIXOP = 202
+  final val PATDEF = 203
 
   def methodType(isImplicit: Boolean = false, isErased: Boolean = false) = {
     val implicitOffset = if (isImplicit) 1 else 0
@@ -643,6 +643,7 @@ object TastyFormat {
     case TYPEDSPLICE => "TYPEDSPLICE"
     case FUNCTION => "FUNCTION"
     case INFIXOP => "INFIXOP"
+    case PATDEF => "PATDEF"
   }
 
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.

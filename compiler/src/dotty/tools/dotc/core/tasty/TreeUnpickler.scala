@@ -421,7 +421,7 @@ class TreeUnpickler(reader: TastyReader,
 
 // ------ Reading definitions -----------------------------------------------------
 
-    private def noRhs(end: Addr): Boolean =
+    private def nothingButMods(end: Addr): Boolean =
       currentAddr == end || isModifierTag(nextByte)
 
     private def localContext(owner: Symbol)(implicit ctx: Context) =
@@ -511,7 +511,7 @@ class TreeUnpickler(reader: TastyReader,
       val templateStart = currentAddr
       skipTree() // tpt
       val rhsStart = currentAddr
-      val rhsIsEmpty = noRhs(end)
+      val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
       val (givenFlags, annots, privateWithin) = readModifiers(end, readAnnot, readWithin, NoSymbol)
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
@@ -732,7 +732,7 @@ class TreeUnpickler(reader: TastyReader,
       val localCtx = localContext(sym)
 
       def readRhs(implicit ctx: Context) =
-        if (noRhs(end)) EmptyTree
+        if (nothingButMods(end)) EmptyTree
         else readLater(end, rdr => ctx => rdr.readTerm()(ctx.retractMode(Mode.InSuperCall)))
 
       def ValDef(tpt: Tree) =
@@ -797,7 +797,7 @@ class TreeUnpickler(reader: TastyReader,
           }
         case PARAM =>
           val tpt = readTpt()(localCtx)
-          if (noRhs(end)) {
+          if (nothingButMods(end)) {
             sym.info = tpt.tpe
             ValDef(tpt)
           }
@@ -1242,7 +1242,7 @@ class TreeUnpickler(reader: TastyReader,
         case NAMEDARG =>
           untpd.NamedArg(readName(), readUntyped())
         case SHAREDtype =>
-          assert(readByte() == 0)
+          assert(readNat() == 0)
           untpd.TypeTree()
         case _ =>
           untpd.Literal(readConstant(tag))
@@ -1258,7 +1258,7 @@ class TreeUnpickler(reader: TastyReader,
         }
 
         def readRhs(): untpd.Tree =
-          if (noRhs(end)) untpd.EmptyTree else readUntyped()
+          if (nothingButMods(end)) untpd.EmptyTree else readUntyped()
 
         val result = (tag: @switch) match {
           case SUPER =>
@@ -1352,6 +1352,11 @@ class TreeUnpickler(reader: TastyReader,
             untpd.Function(params, body)
           case INFIXOP =>
             untpd.InfixOp(readUntyped(), readIdent(), readUntyped())
+          case PATDEF =>
+            val tpt = readUntyped()
+            val rhs = readUntyped()
+            val pats = collectWhile(!nothingButMods(end))(readUntyped())
+            untpd.PatDef(readMods(), pats, tpt, rhs)
         }
         assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
         result
