@@ -547,7 +547,6 @@ class TreePickler(pickler: TastyPickler) {
             if (hi ne lo) pickleTree(hi)
           }
         case tpd.UntypedSplice(splice) =>
-          //println(i"UNTYPED: $splice")
           writeByte(UNTYPEDSPLICE)
           withLength { pickleUntyped(splice); pickleType(tree.tpe) }
         case Hole(idx, args) =>
@@ -651,204 +650,223 @@ class TreePickler(pickler: TastyPickler) {
 // ---- pickling untyped trees ----------------------------------
 
   def pickleUntyped(tree: untpd.Tree)(implicit ctx: Context): Unit = {
-      try desugar(tree) match {
-        case Ident(name) =>
-          writeByte(if (name.isTypeName) TYPEREF else TERMREF)
-          pickleName(name)
-          pickleDummyType()
-        case This(qual) =>
-          writeByte(QUALTHIS)
-          pickleUntyped(qual)
-        case Select(qual, name) =>
-          writeByte(if (name.isTypeName) SELECTtpt else SELECT)
-          pickleName(name)
-          pickleUntyped(qual)
-        case Apply(fun, args) =>
-          writeByte(APPLY)
-          withLength {
-            pickleUntyped(fun)
-            args.foreach(pickleUntyped)
-          }
-        case untpd.Throw(exc) =>
-          writeByte(THROW)
-          pickleUntyped(exc)
-        case TypeApply(fun, args) =>
-          writeByte(TYPEAPPLY)
-          withLength {
-            pickleUntyped(fun)
-            args.foreach(pickleUntyped)
-          }
-        case Literal(const) =>
-          pickleConstant(const)
-        case Super(qual, mix) =>
-          writeByte(SUPER)
-          withLength {
-            pickleUntyped(qual);
-            if (!mix.isEmpty) pickleUntyped(mix)
-          }
-        case New(tpt) =>
-          writeByte(NEW)
-          pickleUntyped(tpt)
-        case Typed(expr, tpt) =>
-          writeByte(TYPED)
-          withLength { pickleUntyped(expr); pickleUntyped(tpt) }
-        case NamedArg(name, arg) =>
-          writeByte(NAMEDARG)
-          pickleName(name)
-          pickleUntyped(arg)
-        case Assign(lhs, rhs) =>
-          writeByte(ASSIGN)
-          withLength { pickleUntyped(lhs); pickleUntyped(rhs) }
-        case Block(stats, expr) =>
-          writeByte(BLOCK)
-          withLength { pickleUntyped(expr); stats.foreach(pickleUntyped) }
-        case If(cond, thenp, elsep) =>
-          writeByte(IF)
-          withLength { pickleUntyped(cond); pickleUntyped(thenp); pickleUntyped(elsep) }
-        case Match(selector, cases) =>
-          writeByte(MATCH)
-          withLength { pickleUntyped(selector); cases.foreach(pickleUntyped) }
-        case CaseDef(pat, guard, rhs) =>
-          writeByte(CASEDEF)
-          withLength { pickleUntyped(pat); pickleUntyped(rhs); pickleUntypedUnlessEmpty(guard) }
-        case Return(expr, from) =>
-          writeByte(RETURN)
-          withLength { pickleDummyRef(); pickleUntypedUnlessEmpty(expr) }
-        case Try(block, cases, finalizer) =>
-          writeByte(TRY)
-          withLength { pickleUntyped(block); cases.foreach(pickleUntyped); pickleUntypedUnlessEmpty(finalizer) }
-        case Bind(name, body) =>
-          writeByte(BIND)
-          withLength {
-            pickleName(name); pickleDummyType(); pickleUntyped(body)
-          }
-        case Alternative(alts) =>
-          writeByte(ALTERNATIVE)
-          withLength { alts.foreach(pickleUntyped) }
-        case tree: untpd.ValDef =>
-          pickleUntypedDef(VALDEF, tree, tree.tpt, tree.rhs)
-        case tree: untpd.DefDef =>
-          pickleUntypedDef(DEFDEF, tree, tree.tpt, tree.rhs, pickleAllUntypedParams(tree))
-        case tree: untpd.TypeDef =>
-          pickleUntypedDef(TYPEDEF, tree, tree.rhs)
-        case tree: untpd.ModuleDef =>
-          pickleUntypedDef(OBJECTDEF, tree, tree.impl)
-        case tree: untpd.Template =>
-          writeByte(TEMPLATE)
-          tree.parents.foreach(pickleUntyped)
-          if (!tree.self.isEmpty) {
-            writeByte(SELFDEF); pickleName(tree.self.name); pickleUntyped(tree.self.tpt)
-          }
-          pickleUntyped(tree.constr)
-          tree.body.foreach(pickleUntyped)
-        case Import(expr, selectors) =>
-          writeByte(IMPORT)
-          withLength { pickleUntyped(expr); pickleSelectors(selectors) }
-        case tree: untpd.TypeTree =>
-          pickleDummyType()
-        case SingletonTypeTree(ref) =>
-          writeByte(SINGLETONtpt)
-          pickleUntyped(ref)
-        case RefinedTypeTree(parent, refinements) =>
-          writeByte(REFINEDtpt)
-          withLength { pickleUntyped(parent); refinements.foreach(pickleUntyped) }
-        case AppliedTypeTree(tycon, args) =>
-          writeByte(APPLIEDtpt)
-          withLength { pickleUntyped(tycon); args.foreach(pickleUntyped) }
-        case AndTypeTree(tp1, tp2) =>
-          writeByte(ANDtpt)
-          withLength { pickleUntyped(tp1); pickleUntyped(tp2) }
-        case OrTypeTree(tp1, tp2) =>
-          writeByte(ORtpt)
-          withLength { pickleUntyped(tp1); pickleUntyped(tp2) }
-        case ByNameTypeTree(tp) =>
-          writeByte(BYNAMEtpt)
-          pickleUntyped(tp)
-        case Annotated(tree, annot) =>
-          writeByte(ANNOTATEDtpt)
-          withLength { pickleUntyped(tree); pickleUntyped(annot) }
-        case LambdaTypeTree(tparams, body) =>
-          writeByte(LAMBDAtpt)
-          withLength { pickleUntypedParams(tparams); pickleUntyped(body) }
-        case TypeBoundsTree(lo, hi) =>
-          writeByte(TYPEBOUNDStpt)
-          withLength {
-            pickleUntyped(lo);
-            if (hi ne lo) pickleUntyped(hi)
-          }
-        case untpd.Function(args, body) =>
-          writeByte(FUNCTION)
-          withLength { pickleUntyped(body); args.foreach(pickleUntyped) }
-        case untpd.InfixOp(l, op, r) =>
-          writeByte(INFIXOP)
-          withLength { pickleUntyped(l); pickleUntyped(op); pickleUntyped(r) }
-        case Thicket(trees) =>
-          trees.foreach(pickleUntyped)
-        case untpd.TypedSplice(splice) =>
-          writeByte(TYPEDSPLICE)
-          withLength { pickleTree(splice) }
+
+    def pickleDummyRef(): Unit = writeNat(0)
+
+    def pickleDummyType(): Unit = {
+      writeByte(SHAREDtype)
+      pickleDummyRef()
+    }
+
+    def pickleUnlessEmpty(tree: untpd.Tree): Unit =
+      if (!tree.isEmpty) pickleUntyped(tree)
+
+    def pickleTpt(tree: untpd.Tree) = pickleUntyped(tree)(ctx.addMode(Mode.Type))
+    def pickleTerm(tree: untpd.Tree) = pickleUntyped(tree)(ctx.retractMode(Mode.Type))
+
+    def pickleAllParams(tree: untpd.DefDef): Unit = {
+      pickleParams(tree.tparams)
+      for (vparams <- tree.vparamss) {
+        writeByte(PARAMS)
+        withLength { pickleParams(vparams) }
       }
-      catch {
-        case ex: AssertionError =>
-          println(i"error when pickling tree $tree")
-          throw ex
+    }
+
+    def pickleParams(trees: List[untpd.Tree]): Unit =
+      trees.foreach(pickleParam)
+
+    def pickleParam(tree: untpd.Tree): Unit = tree match {
+      case tree: untpd.ValDef => pickleDef(PARAM, tree, tree.tpt)
+      case tree: untpd.DefDef => pickleDef(PARAM, tree, tree.tpt, tree.rhs)
+      case tree: untpd.TypeDef => pickleDef(TYPEPARAM, tree, tree.rhs)
+    }
+
+    def pickleParent(tree: untpd.Tree): Unit = tree match {
+      case _: untpd.Apply | _: untpd.TypeApply => pickleUntyped(tree)
+      case _ => pickleTpt(tree)
+    }
+
+    def pickleDef(tag: Int, tree: untpd.MemberDef, tpt: untpd.Tree, rhs: untpd.Tree = untpd.EmptyTree, pickleParams: => Unit = ()) = {
+      import untpd.modsDeco
+      writeByte(tag)
+      withLength {
+        pickleName(tree.name)
+        pickleParams
+        pickleTpt(tpt)
+        pickleUnlessEmpty(rhs)
+        pickleModifiers(tree.mods)
       }
-  }
-
-  def pickleUntypedUnlessEmpty(tree: untpd.Tree)(implicit ctx: Context): Unit =
-    if (!tree.isEmpty) pickleUntyped(tree)
-
-  def pickleAllUntypedParams(tree: untpd.DefDef)(implicit ctx: Context): Unit = {
-    pickleUntypedParams(tree.tparams)
-    for (vparams <- tree.vparamss) {
-      writeByte(PARAMS)
-      withLength { pickleUntypedParams(vparams) }
     }
-  }
 
-  def pickleUntypedParams(trees: List[untpd.Tree])(implicit ctx: Context): Unit =
-    trees.foreach(pickleUntypedParam)
-
-  def pickleUntypedDef(tag: Int, tree: untpd.MemberDef, tpt: untpd.Tree, rhs: untpd.Tree = untpd.EmptyTree, pickleParams: => Unit = ())(implicit ctx: Context) = {
-    import untpd.modsDeco
-    writeByte(tag)
-    withLength {
-      pickleName(tree.name)
-      pickleParams
-      pickleUntyped(tpt)
-      pickleUntypedUnlessEmpty(rhs)
-      pickleUntypedModifiers(tree.mods)
+    def pickleModifiers(mods: untpd.Modifiers): Unit = {
+      import Flags._
+      var flags = mods.flags
+      val privateWithin = mods.privateWithin
+      if (!privateWithin.isEmpty) {
+        writeByte(if (flags is Protected) PROTECTEDqualified else PRIVATEqualified)
+        pickleUntyped(untpd.Ident(privateWithin))
+        flags = flags &~ Protected
+      }
+      mods.annotations.foreach(pickleAnnotation)
     }
-  }
 
-  def pickleUntypedParam(tree: untpd.Tree)(implicit ctx: Context): Unit = tree match {
-    case tree: untpd.ValDef => pickleUntypedDef(PARAM, tree, tree.tpt)
-    case tree: untpd.DefDef => pickleUntypedDef(PARAM, tree, tree.tpt, tree.rhs)
-    case tree: untpd.TypeDef => pickleUntypedDef(TYPEPARAM, tree, tree.rhs)
-  }
-
-  def pickleUntypedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Unit = {
-    import Flags._
-    var flags = mods.flags
-    val privateWithin = mods.privateWithin
-    if (!privateWithin.isEmpty) {
-      writeByte(if (flags is Protected) PROTECTEDqualified else PRIVATEqualified)
-      pickleUntyped(untpd.Ident(privateWithin))
-      flags = flags &~ Protected
+    def pickleAnnotation(annotTree: untpd.Tree) = {
+      writeByte(ANNOTATION)
+      withLength { pickleDummyType(); pickleUntyped(annotTree) }
     }
-    mods.annotations.foreach(pickleUntypedAnnotation)
-  }
 
-  def pickleUntypedAnnotation(annotTree: untpd.Tree)(implicit ctx: Context) = {
-    writeByte(ANNOTATION)
-    withLength { pickleDummyType(); pickleUntyped(annotTree) }
-  }
-
-  def pickleDummyRef(): Unit = writeNat(0)
-
-  def pickleDummyType(): Unit = {
-    writeByte(SHAREDtype)
-    pickleDummyRef()
+    try tree match {
+      case Ident(name) =>
+        writeByte(if (name.isTypeName) TYPEREF else TERMREF)
+        pickleName(name)
+        pickleDummyType()
+      case This(qual) =>
+        writeByte(QUALTHIS)
+        pickleUntyped(qual)
+      case Select(qual, name) =>
+        writeByte(if (name.isTypeName) SELECTtpt else SELECT)
+        pickleName(name)
+        if (qual.isType) pickleTpt(qual) else pickleTerm(qual)
+      case Apply(fun, args) =>
+        writeByte(APPLY)
+        withLength {
+          pickleUntyped(fun)
+          args.foreach(pickleUntyped)
+        }
+      case untpd.Throw(exc) =>
+        writeByte(THROW)
+        pickleUntyped(exc)
+      case TypeApply(fun, args) =>
+        writeByte(TYPEAPPLY)
+        withLength {
+          pickleUntyped(fun)
+          args.foreach(pickleTpt)
+        }
+      case Literal(const) =>
+        pickleConstant(const)
+      case Super(qual, mix) =>
+        writeByte(SUPER)
+        withLength {
+          pickleUntyped(qual);
+          if (!mix.isEmpty) pickleUntyped(mix)
+        }
+      case New(tpt) =>
+        writeByte(NEW)
+        pickleTpt(tpt)
+      case Typed(expr, tpt) =>
+        writeByte(TYPED)
+        withLength { pickleUntyped(expr); pickleTpt(tpt) }
+      case NamedArg(name, arg) =>
+        writeByte(NAMEDARG)
+        pickleName(name)
+        pickleUntyped(arg)
+      case Assign(lhs, rhs) =>
+        writeByte(ASSIGN)
+        withLength { pickleUntyped(lhs); pickleUntyped(rhs) }
+      case Block(stats, expr) =>
+        writeByte(BLOCK)
+        withLength { pickleUntyped(expr); stats.foreach(pickleUntyped) }
+      case If(cond, thenp, elsep) =>
+        writeByte(IF)
+        withLength { pickleUntyped(cond); pickleUntyped(thenp); pickleUntyped(elsep) }
+      case Match(selector, cases) =>
+        writeByte(MATCH)
+        withLength { pickleUntyped(selector); cases.foreach(pickleUntyped) }
+      case CaseDef(pat, guard, rhs) =>
+        writeByte(CASEDEF)
+        withLength { pickleUntyped(pat); pickleUntyped(rhs); pickleUnlessEmpty(guard) }
+      case Return(expr, from) =>
+        writeByte(RETURN)
+        withLength { pickleDummyRef(); pickleUnlessEmpty(expr) }
+      case Try(block, cases, finalizer) =>
+        writeByte(TRY)
+        withLength { pickleUntyped(block); cases.foreach(pickleUntyped); pickleUnlessEmpty(finalizer) }
+      case Bind(name, body) =>
+        writeByte(BIND)
+        withLength {
+          pickleName(name); pickleDummyType(); pickleUntyped(body)
+        }
+      case Alternative(alts) =>
+        writeByte(ALTERNATIVE)
+        withLength { alts.foreach(pickleUntyped) }
+      case tree: untpd.ValDef =>
+        pickleDef(VALDEF, tree, tree.tpt, tree.rhs)
+      case tree: untpd.DefDef =>
+        pickleDef(DEFDEF, tree, tree.tpt, tree.rhs, pickleAllParams(tree))
+      case tree: untpd.TypeDef =>
+        pickleDef(TYPEDEF, tree, tree.rhs)
+      case tree: untpd.ModuleDef =>
+        pickleDef(OBJECTDEF, tree, tree.impl)
+      case tree: untpd.Template =>
+        writeByte(TEMPLATE)
+        tree.parents.foreach(pickleParent)
+        if (!tree.self.isEmpty) {
+          writeByte(SELFDEF); pickleName(tree.self.name); pickleTpt(tree.self.tpt)
+        }
+        pickleUntyped(tree.constr)
+        tree.body.foreach(pickleUntyped)
+      case Import(expr, selectors) =>
+        writeByte(IMPORT)
+        withLength { pickleUntyped(expr); pickleSelectors(selectors) }
+      case tree: untpd.TypeTree =>
+        pickleDummyType()
+      case SingletonTypeTree(ref) =>
+        writeByte(SINGLETONtpt)
+        pickleTerm(ref)
+      case RefinedTypeTree(parent, refinements) =>
+        writeByte(REFINEDtpt)
+        withLength { pickleTpt(parent); refinements.foreach(pickleTerm) }
+      case AppliedTypeTree(tycon, args) =>
+        writeByte(APPLIEDtpt)
+        withLength { pickleTpt(tycon); args.foreach(pickleTpt) }
+      case AndTypeTree(tp1, tp2) =>
+        writeByte(ANDtpt)
+        withLength { pickleTpt(tp1); pickleTpt(tp2) }
+      case OrTypeTree(tp1, tp2) =>
+        writeByte(ORtpt)
+        withLength { pickleTpt(tp1); pickleTpt(tp2) }
+      case ByNameTypeTree(tp) =>
+        writeByte(BYNAMEtpt)
+        pickleTpt(tp)
+      case Annotated(tree, annot) =>
+        writeByte(ANNOTATEDtpt)
+        withLength { pickleTpt(tree); pickleTerm(annot) }
+      case LambdaTypeTree(tparams, body) =>
+        writeByte(LAMBDAtpt)
+        withLength { pickleParams(tparams); pickleTpt(body) }
+      case TypeBoundsTree(lo, hi) =>
+        writeByte(TYPEBOUNDStpt)
+        withLength {
+          pickleTpt(lo);
+          if (hi ne lo) pickleTpt(hi)
+        }
+      case untpd.Function(args, body) =>
+        writeByte(FUNCTION)
+        withLength { pickleUntyped(body); args.foreach(pickleUntyped) }
+      case untpd.InfixOp(l, op, r) =>
+        writeByte(INFIXOP)
+        withLength { pickleUntyped(l); pickleUntyped(op); pickleUntyped(r) }
+      case untpd.PatDef(mods, pats, tpt, rhs) =>
+        writeByte(PATDEF)
+        withLength {
+          pickleTpt(tpt)
+          pickleUntyped(rhs)
+          pats.foreach(pickleUntyped)
+          pickleModifiers(mods)
+        }
+      case untpd.TypedSplice(splice) =>
+        writeByte(TYPEDSPLICE)
+        withLength { pickleTree(splice) }
+      case Thicket(trees) =>
+        trees.foreach(pickleUntyped)
+      case _ =>
+        pickleUntyped(desugar(tree))
+    }
+    catch {
+      case ex: AssertionError =>
+        println(i"error when pickling tree $tree")
+        throw ex
+    }
   }
 
 // ---- main entry points ---------------------------------------

@@ -1267,7 +1267,7 @@ F            if (isClass)
         case NAMEDARG =>
           untpd.NamedArg(readName(), readUntyped())
         case SHAREDtype =>
-          assert(readByte() == 0)
+          assert(readNat() == 0)
           untpd.TypeTree()
         case _ =>
           untpd.Literal(readConstant(tag))
@@ -1283,7 +1283,7 @@ F            if (isClass)
         }
 
         def readRhs(): untpd.Tree =
-          if (noRhs(end)) untpd.EmptyTree else readUntyped()
+          if (nothingButMods(end)) untpd.EmptyTree else readUntyped()
 
         val result = (tag: @switch) match {
           case SUPER =>
@@ -1377,6 +1377,11 @@ F            if (isClass)
             untpd.Function(params, body)
           case INFIXOP =>
             untpd.InfixOp(readUntyped(), readIdent(), readUntyped())
+          case PATDEF =>
+            val tpt = readUntyped()
+            val rhs = readUntyped()
+            val pats = collectWhile(!nothingButMods(end))(readUntyped())
+            untpd.PatDef(readMods(), pats, tpt, rhs)
         }
         assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
         result

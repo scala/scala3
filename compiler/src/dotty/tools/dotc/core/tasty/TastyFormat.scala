@@ -59,7 +59,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
                                         Modifier*
                   TYPEDEF        Length NameRef (type_Term | Template) Modifier*
-                  OBJECTDEF      Length NameRef Template Mods
+                  OBJECTDEF      Length NameRef Template Modifier*
                   IMPORT         Length qual_Term Selector*
   Selector      = IMPORTED              name_NameRef
                   RENAMED               to_NameRef
@@ -208,9 +208,10 @@ Standard-Section: "ASTs" TopLevelStat*
 // --------------- untyped additions ------------------------------------------
 
   TermUntyped   = Term
+                  TYPEDSPLICE Length splice_Term
                   FUNCTION    Length body_Term arg_Term*
                   INFIXOP     Length op_NameRef left_Term right_Term
-                  TYPEDSPLICE Length splice_Term
+                  PATDEF      Length type_Term rhs_Term pattern_Term* Modifier*
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 
@@ -433,6 +434,7 @@ object TastyFormat {
   final val TYPEDSPLICE = 200
   final val FUNCTION = 201
   final val INFIXOP = 202
+  final val PATDEF = 203
 
   def methodType(isImplicit: Boolean = false, isErased: Boolean = false) = {
     val implicitOffset = if (isImplicit) 1 else 0
@@ -650,6 +652,7 @@ object TastyFormat {
     case TYPEDSPLICE => "TYPEDSPLICE"
     case FUNCTION => "FUNCTION"
     case INFIXOP => "INFIXOP"
+    case PATDEF => "PATDEF"
   }
 
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.
