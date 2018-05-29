@@ -591,6 +591,7 @@ class TreeUnpickler(reader: TastyReader,
           case STATIC => addFlag(JavaStatic)
           case OBJECT => addFlag(Module)
           case TRAIT => addFlag(Trait)
+          case ENUM => addFlag(Enum)
           case LOCAL => addFlag(Local)
           case SYNTHETIC => addFlag(Synthetic)
           case ARTIFACT => addFlag(Artifact)
