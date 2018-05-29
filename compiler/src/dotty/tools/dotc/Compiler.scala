@@ -60,13 +60,13 @@ class Compiler {
   protected def transformPhases: List[List[Phase]] =
     List(new FirstTransform,         // Some transformations to put trees into a canonical form
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
-         new ProtectedAccessors,     // Add accessors for protected members
          new ElimPackagePrefixes) :: // Eliminate references to package prefixes in Select nodes
     List(new CheckStatic,            // Check restrictions that apply to @static members
          new ElimRepeated,           // Rewrite vararg parameters and arguments
          new NormalizeFlags,         // Rewrite some definition flags
-         new ExtensionMethods,       // Expand methods of value classes with extension methods
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
+         new ProtectedAccessors,     // Add accessors for protected members
+         new ExtensionMethods,       // Expand methods of value classes with extension methods
          new ShortcutImplicits,      // Allow implicit functions without creating closures
          new TailRec,                // Rewrite tail recursion to loops
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
