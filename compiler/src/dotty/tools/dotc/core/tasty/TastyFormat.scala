@@ -55,21 +55,22 @@ Standard-Section: "ASTs" TopLevelStat*
                   Stat
 
   Stat          = Term
-                  VALDEF         Length NameRef type_Term rhs_Term? Modifier*
+                  VALDEF         Length NameRef type_Term rhs_Term? Mods
                   DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
-                                        Modifier*
-                  TYPEDEF        Length NameRef (type_Term | Template) Modifier*
+                                        Mods
+                  TYPEDEF        Length NameRef (type_Term | Template) Mods
+                  OBJECTDEF      Length NameRef Template Mods
                   IMPORT         Length qual_Term Selector*
   Selector      = IMPORTED              name_NameRef
                   RENAMED               to_NameRef
 
                                  // Imports are for scala.meta, they are not used in the backend
 
-  TypeParam     = TYPEPARAM      Length NameRef Type Modifier*
+  TypeParam     = TYPEPARAM      Length NameRef type_Term Mods
   Params        = PARAMS         Length Param*
-  Param         = PARAM          Length NameRef Type rhs_Term? Modifier*  // rhs_Term is present in the case of an aliased class parameter
+  Param         = PARAM          Length NameRef type_Term rhs_Term? Mods  // rhs_Term is present in the case of an aliased class parameter
   Template      = TEMPLATE       Length TypeParam* Param* parent_Term* Self? Stat* // Stat* always starts with the primary constructor.
-  Self          = SELFDEF               selfName_NameRef selfType_Type
+  Self          = SELFDEF               selfName_NameRef selfType_Term
 
   Term          = Path
                   IDENT                 NameRef Type     // used when term ident’s type is not a TermRef
@@ -109,6 +110,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   EMPTYTREE
                   SHAREDterm            term_ASTRef
                   HOLE           Length idx_Nat arg_Tree*
+                  UNTYPEDSPLICE  Length splice_TermUntyped splice_Type
 
   CaseDef       = CASEDEF        Length pat_Term rhs_Tree guard_Tree?
   ImplicitArg   = IMPLICITARG           arg_Term
@@ -166,6 +168,8 @@ Standard-Section: "ASTs" TopLevelStat*
   NamesTypes    = NameType*
   NameType      = paramName_NameRef typeOrBounds_ASTRef
 
+  Mods          = Modifier* Annotation*
+
   Modifier      = PRIVATE
                   INTERNAL                            // package private
                   PROTECTED
@@ -201,6 +205,13 @@ Standard-Section: "ASTs" TopLevelStat*
                   Annotation
 
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term
+
+// --------------- untyped additions ------------------------------------------
+
+  TermUntyped   = Term
+                  FUNCTION    Length body_Term arg_Term*
+                  INFIXOP     Length op_NameRef left_Term right_Term
+                  TYPEDSPLICE Length splice_Term
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 
@@ -320,6 +331,7 @@ object TastyFormat {
   final val IMPORTED = 65
   final val RENAMED = 66
   final val SYMBOLconst = 67
+  final val UIDENT = 68
 
   // Cat. 3:    tag AST
 
@@ -400,6 +412,7 @@ object TastyFormat {
   final val ANNOTATION = 172
   final val TERMREFin = 173
   final val TYPEREFin = 174
+  final val OBJECTDEF = 175
 
   // In binary: 101100EI
   // I = implicit method type
@@ -408,6 +421,13 @@ object TastyFormat {
   final val IMPLICITMETHODtype = 177
   final val ERASEDMETHODtype = 178
   final val ERASEDIMPLICITMETHODtype = 179
+
+  final val UNTYPEDSPLICE = 199
+
+  // Tags for untyped trees only:
+  final val TYPEDSPLICE = 200
+  final val FUNCTION = 201
+  final val INFIXOP = 202
 
   def methodType(isImplicit: Boolean = false, isErased: Boolean = false) = {
     val implicitOffset = if (isImplicit) 1 else 0
@@ -550,6 +570,7 @@ object TastyFormat {
     case VALDEF => "VALDEF"
     case DEFDEF => "DEFDEF"
     case TYPEDEF => "TYPEDEF"
+    case OBJECTDEF => "OBJECTDEF"
     case IMPORT => "IMPORT"
     case TYPEPARAM => "TYPEPARAM"
     case PARAMS => "PARAMS"
@@ -617,13 +638,18 @@ object TastyFormat {
     case PRIVATEqualified => "PRIVATEqualified"
     case PROTECTEDqualified => "PROTECTEDqualified"
     case HOLE => "HOLE"
+
+    case UNTYPEDSPLICE => "UNTYPEDSPLICE"
+    case TYPEDSPLICE => "TYPEDSPLICE"
+    case FUNCTION => "FUNCTION"
+    case INFIXOP => "INFIXOP"
   }
 
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.
    *          If negative, minus the number of leading non-reference trees.
    */
   def numRefs(tag: Int) = tag match {
-    case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
+    case VALDEF | DEFDEF | TYPEDEF | OBJECTDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
          SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | HOLE => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | METHODtype | TYPELAMBDAtype => -1
