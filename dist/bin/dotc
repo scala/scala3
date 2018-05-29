@@ -95,8 +95,8 @@ case "$1" in
           # break out -D and -J options and add them to JAVA_OPTS as well
           # so they reach the JVM in time to do some good. The -D options
           # will be available as system properties.
-          -D*) addJava "$1" && addScala "$1" && shift ;;
-          -J*) addJava "${1:2}" && addScala "$1" && shift ;;
+          -D*) addJava "$1" && shift ;;
+          -J*) addJava "${1:2}" && shift ;;
             *) addResidual "$1" && shift ;;
   esac
 done
