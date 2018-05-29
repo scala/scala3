@@ -601,6 +601,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags is Macro) writeByte(MACRO)
     if (flags is JavaStatic) writeByte(STATIC)
     if (flags is Module) writeByte(OBJECT)
+    if (flags is Enum) writeByte(ENUM)
     if (flags is Local) writeByte(LOCAL)
     if (flags is Synthetic) writeByte(SYNTHETIC)
     if (flags is Artifact) writeByte(ARTIFACT)
