@@ -1863,12 +1863,11 @@ class Typer extends Namer
       try adapt(typedUnadapted(tree, pt, locked), pt, locked)
       catch {
         case ex: TypeError =>
-          // This is equivalent to errorTree(tree, ex.toMessage) but
-          // uses tree.pos.focus instead of tree.pos. We use this because:
+          errorTree(tree, ex.toMessage, tree.pos.focus)
+          // This uses tree.pos.focus instead of the default tree.pos, because:
           // - since tree can be a top-level definition, tree.pos can point to the whole definition
           // - that would in turn hide all other type errors inside tree.
           // TODO: might be even better to store positions inside TypeErrors.
-          tree withType errorType(ex.toMessage, tree.pos.focus)
       }
     }
 
