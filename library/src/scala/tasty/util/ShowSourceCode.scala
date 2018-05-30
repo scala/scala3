@@ -486,9 +486,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
               this += " <: "
               printTypeTree(hi)
           }
-        case tpt@TypeTree() =>
+        case rhs @ SyntheticBounds() =>
+          printTypeOrBound(rhs.tpe)
+        case rhs @ TypeTree() =>
           this += " = "
-          printTypeTree(tpt)
+          printTypeTree(rhs)
       }
     }
 
@@ -604,6 +606,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printTypeTree(lo)
         this += " <: "
         printTypeTree(hi)
+      case tpt @ SyntheticBounds() =>
+        printTypeOrBound(tpt.tpe)
       case tpt @ TypeTree() =>
         printTypeTree(tpt)
     }

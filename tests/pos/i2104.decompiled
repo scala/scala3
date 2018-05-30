@@ -1,0 +1,50 @@
+/** Decompiled from out/posTestFromTasty/pos/i2104/Cons.class */
+class Cons[H, T]() extends java.lang.Object
+object Cons {
+  def apply[H, T](h: H, t: T): Cons[H, T] = scala.Predef.???
+  def unapply[H, T](t: Cons[H, T]): scala.Option[<empty>.Pair[H, T]] = scala.Predef.???
+}/** Decompiled from out/posTestFromTasty/pos/i2104/Pair.class */
+case class Pair[A, B](_1: A, _2: B) {
+  def copy[A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any](_1: A, _2: B): Pair[A, B] = new Pair[A, B](_1, _2)
+  def copy$default$1[A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any]: Pair.A = (Pair._1: Pair._1)
+  def copy$default$2[A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any]: Pair.B = (Pair._2: Pair._2)
+  override def hashCode(): scala.Int = {
+    var acc: scala.Int = 2479866
+    acc = scala.runtime.Statics.mix(acc, scala.runtime.Statics.anyHash(Pair._1))
+    acc = scala.runtime.Statics.mix(acc, scala.runtime.Statics.anyHash(Pair._2))
+    scala.runtime.Statics.finalizeHash(acc, 2)
+  }
+  override def equals(x$0: scala.Any): scala.Boolean = this.eq(x$0.asInstanceOf[java.lang.Object]).||(x$0 match {
+    case x$0: Pair[Pair.A, Pair.B] =>
+      this._1.==(x$0._1).&&(this._2.==(x$0._2))
+    case _ =>
+      false
+  })
+  override def toString(): java.lang.String = scala.runtime.ScalaRunTime._toString(this)
+  override def canEqual(that: scala.Any): scala.Boolean = that.isInstanceOf[Pair[Pair.A, Pair.B]]
+  override def productArity: scala.Int = 2
+  override def productPrefix: java.lang.String = "Pair"
+  override def productElement(n: scala.Int): scala.Any = n match {
+    case 0 =>
+      this._1
+    case 1 =>
+      this._2
+    case _ =>
+      throw new java.lang.IndexOutOfBoundsException(n.toString())
+  }
+}
+object Pair extends scala.AnyRef {
+  def apply[A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any](_1: A, _2: B): Pair[A, B] = new Pair[A, B](_1, _2)
+  def unapply[A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any](x$1: Pair[A, B]): Pair[A, B] = x$1
+}/** Decompiled from out/posTestFromTasty/pos/i2104/Test.class */
+object Test {
+  def main(args: scala.Array[scala.Predef.String]): scala.Unit = {
+    <empty>.Cons.apply[scala.Option[scala.Int], scala.None](scala.Option.apply[scala.Int](1), scala.None) match {
+      case <empty>.Cons.unapply[scala.Option[scala.Int], scala.None](, scala.None) =>
+        {
+          (i: scala.Int)
+          dotty.DottyPredef.assert(i.==(1))
+        }
+    }
+  }
+}

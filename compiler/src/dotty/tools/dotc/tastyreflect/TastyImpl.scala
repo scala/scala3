@@ -538,7 +538,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
     object Synthetic extends SyntheticExtractor {
       def unapply(x: TypeTree)(implicit ctx: Context): Boolean = x match {
-        case Trees.TypeTree() => true
+        case x @ Trees.TypeTree() => !x.tpe.isInstanceOf[Types.TypeBounds]
         case _ => false
       }
     }
@@ -610,10 +610,10 @@ object TastyImpl extends scala.tasty.Tasty {
 
   // ----- TypeBoundsTrees ------------------------------------------------
 
-  type TypeBoundsTree = tpd.TypeBoundsTree
+  type TypeBoundsTree = tpd.Tree
 
   def TypeBoundsTreeDeco(x: TypeBoundsTree): TypeBoundsTreeAPI = new TypeBoundsTreeAPI {
-    def tpe(implicit ctx: Context): TypeBounds = x.tpe.bounds
+    def tpe(implicit ctx: Context): TypeBounds = x.tpe.asInstanceOf[Types.TypeBounds]
   }
 
   def typeBoundsTreeClassTag: ClassTag[TypeBoundsTree] = implicitly[ClassTag[TypeBoundsTree]]
@@ -622,6 +622,13 @@ object TastyImpl extends scala.tasty.Tasty {
     def unapply(x: TypeBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] = x match {
       case x: tpd.TypeBoundsTree @unchecked => Some(x.lo, x.hi)
       case _ => None
+    }
+  }
+
+  object SyntheticBounds extends SyntheticBoundsExtractor {
+    def unapply(x: TypeBoundsTree)(implicit ctx: Context): Boolean = x match {
+      case x @ Trees.TypeTree() => x.tpe.isInstanceOf[Types.TypeBounds]
+      case _ => false
     }
   }
 

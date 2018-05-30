@@ -112,6 +112,8 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "TypeTree.Annotated(" += arg += ", " += annot += ")"
       case TypeBoundsTree(lo, hi) =>
         this += "TypeBoundsTree(" += lo += ", " += hi += ")"
+      case SyntheticBounds() =>
+        this += s"SyntheticBounds()"
     }
 
     def visitCaseDef(x: CaseDef): Buffer = {
@@ -188,7 +190,8 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Type.PolyType(argNames, argBounds, resType) =>
         this += "Type.PolyType(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
       case Type.TypeLambda(argNames, argBounds, resType) =>
-        this += "Type.TypeLambda(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
+        // resType is not printed to avoid cycles
+        this += "Type.TypeLambda(" ++= argNames += ", " ++= argBounds += ", _)"
       case TypeBounds(lo, hi) =>
         this += "TypeBounds(" += lo += ", " += hi += ")"
       case NoPrefix() =>
