@@ -31,7 +31,7 @@ addJvmOptions () {
   jvm_options+=("$1")
 }
 
-addRawJvmOptions () {
+addDotcOptions () {
   java_options+=("$1")
 }
 
@@ -47,7 +47,8 @@ CLASS_PATH=""
 # Little hack to check if all arguments are options
 all_params="$*"
 truncated_params="${*#-}"
-not_only_options=$(( ${#all_params} - ${#truncated_params} - $# ))
+# options_indicator != 0 if at least one parameter is not an option
+options_indicator=$(( ${#all_params} - ${#truncated_params} - $# ))
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -75,7 +76,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -J*)
       addJvmOptions "${1:2}"
-      addRawJvmOptions "${1}"
+      addDotcOptions "${1}"
       shift ;;
     *)
       residual_args+=("$1")
@@ -84,7 +85,7 @@ while [[ $# -gt 0 ]]; do
 
   esac
 done
-if [ $execute_repl == true ] || ([ $execute_run == false ] && [ $not_only_options == 0 ]); then
+if [ $execute_repl == true ] || ([ $execute_run == false ] && [ $options_indicator == 0 ]); then
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi

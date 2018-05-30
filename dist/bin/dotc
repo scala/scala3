@@ -92,8 +92,8 @@ case "$1" in
    -no-colors) unset colors && shift ;;
   -with-compiler) jvm_cp_args="$PSEP$DOTTY_COMP" && shift ;;
 
-          # break out -D and -J options and add them to JAVA_OPTS as well
-          # so they reach the JVM in time to do some good. The -D options
+          # break out -D and -J options and add them to java_args so
+          # they reach the JVM in time to do some good. The -D options
           # will be available as system properties.
           -D*) addJava "$1" && shift ;;
           -J*) addJava "${1:2}" && shift ;;
