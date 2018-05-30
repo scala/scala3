@@ -462,11 +462,6 @@ class Typer extends Namer
       // SI-3120 Java uses the same syntax, A.B, to express selection from the
       // value A and from the type A. We have to try both.
       selectWithFallback(tryJavaSelectOnType(_)) // !!! possibly exponential bcs of qualifier retyping
-    else if (tree.name == nme.withFilter && tree.getAttachment(desugar.MaybeFilter).isDefined)
-      selectWithFallback {
-        implicit ctx =>
-          typedSelect(untpd.cpy.Select(tree)(tree.qualifier, nme.filter), pt) // !!! possibly exponential bcs of qualifier retyping
-      }
     else
       typeSelectOnTerm(ctx)
   }
