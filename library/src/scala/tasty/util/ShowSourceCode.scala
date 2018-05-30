@@ -71,7 +71,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
 
         val parents1 = parents.filter {
-          case Term.Apply(Term.Select(Term.New(tpt), _, _), _) if Types.isJavaLangObject(tpt.tpe) => false
+          case Term.Apply(Term.Select(Term.New(tpt), _, _), _) => !Types.JavaLangObject.unapply(tpt.tpe)
           case TypeTree.TypeSelect(Term.Select(Term.Ident("_root_"), "scala", _), "Product") => false
           case _ => true
         }
@@ -612,8 +612,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Type.SymRef(sym, prefix) =>
         prefix match {
-          case EmptyPackage() =>
-          case RootPackage() =>
+          case Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) =>
           case prefix@Type.SymRef(ClassDef(_, _, _, _, _), _) =>
             printType(prefix)
             this += "#"
@@ -717,44 +716,44 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
   }
 
+  // TODO Provide some of these in scala.tasty.Tasty.scala and implement them using checks on symbols for performance
   private object Types {
-    def isJavaLangObject(tpe: Type)(implicit ctx: Context): Boolean = tpe match {
-      case Type.TypeRef("Object", Type.SymRef(PackageDef("lang", _), Type.ThisType(Type.SymRef(PackageDef("java", _), NoPrefix())))) => true
-      case _ => false
+
+    object JavaLangObject {
+      def unapply(tpe: Type)(implicit ctx: Context): Boolean = tpe match {
+        case Type.TypeRef("Object", Type.SymRef(PackageDef("lang", _), Type.ThisType(Type.SymRef(PackageDef("java", _), NoPrefix())))) => true
+        case _ => false
+      }
     }
-    
+
     object Repeated {
       def unapply(tpe: Type)(implicit ctx: Context): Option[Type] = tpe match {
         case Type.AppliedType(Type.TypeRef("<repeated>", ScalaPackage()), (tp@Type()) :: Nil) => Some(tp)
         case _ => None
       }
     }
-  }
 
-  private object ScalaPackage {
-    def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-      case Type.SymRef(PackageDef("scala", _), RootPackage()) => true
-      case _ => false
+    object ScalaPackage {
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
+        case Type.SymRef(PackageDef("scala", _), Type.ThisType(RootPackage())) => true
+        case _ => false
+      }
+    }
+
+    object RootPackage {
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
+        case Type.SymRef(PackageDef("<root>", _), NoPrefix()) => true
+        case _ => false
+      }
+    }
+
+    object EmptyPackage {
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
+        case Type.SymRef(PackageDef("<empty>", _), NoPrefix() | Type.ThisType(RootPackage())) => true
+        case _ => false
+      }
     }
   }
 
-  private object RootPackage {
-    def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-      case Type.ThisType(Type.SymRef(PackageDef("<root>", _), NoPrefix())) => true
-      case _ => false
-    }
-  }
-
-  private object EmptyPackage {
-    def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-      case Type.ThisType(Type.SymRef(PackageDef("<empty>", _), prefix)) =>
-        prefix match {
-          case NoPrefix() => true
-          case RootPackage() => true
-          case _ => false
-        }
-      case _ => false
-    }
-  }
 
 }
