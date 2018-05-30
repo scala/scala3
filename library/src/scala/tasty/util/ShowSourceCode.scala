@@ -206,11 +206,16 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         // TODO use tptOpt?
 
       case Term.Typed(term, tpt) =>
-        this += "("
-        printTree(term)
-        this += ": "
-        printTypeTree(tpt)
-        this += ")"
+        tpt.tpe match {
+          case Types.Repeated(_) =>
+            printTree(term)
+          case _ =>
+            this += "("
+            printTree(term)
+            this += ": "
+            printTypeTree(tpt)
+            this += ")"
+        }
 
       case Term.Assign(lhs, rhs) =>
         printTree(lhs)
@@ -715,6 +720,20 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
   private object Types {
     def isJavaLangObject(tpe: Type)(implicit ctx: Context): Boolean = tpe match {
       case Type.TypeRef("Object", Type.SymRef(PackageDef("lang", _), Type.ThisType(Type.SymRef(PackageDef("java", _), NoPrefix())))) => true
+      case _ => false
+    }
+    
+    object Repeated {
+      def unapply(tpe: Type)(implicit ctx: Context): Option[Type] = tpe match {
+        case Type.AppliedType(Type.TypeRef("<repeated>", ScalaPackage()), (tp@Type()) :: Nil) => Some(tp)
+        case _ => None
+      }
+    }
+  }
+
+  private object ScalaPackage {
+    def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
+      case Type.SymRef(PackageDef("scala", _), RootPackage()) => true
       case _ => false
     }
   }
