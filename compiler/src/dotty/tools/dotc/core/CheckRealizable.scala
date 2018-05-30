@@ -80,7 +80,7 @@ class CheckRealizable(implicit ctx: Context) {
             else realizability(tp.info).mapError(r => new ProblemInUnderlying(tp.info, r))
           r andAlso {
             sym.setFlag(Stable)
-            realizability(tp.prefix)
+            realizability(tp.prefix).mapError(r => new ProblemInUnderlying(tp.prefix, r))
           }
         }
       if (r == Realizable || tp.info.isStableRealizable) Realizable else r
