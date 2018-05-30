@@ -347,10 +347,10 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
+      val MethodDoesNotTakeParameters(tree, methodStr) :: Nil = messages
 
       assertEquals("Scope.foo", tree.show)
-      assertEquals("=> Unit(Scope.foo)", methodPart.show)
+      assertEquals("method foo in object Scope", methodStr)
     }
 
   @Test def methodDoesNotTakeMorePrameters =
@@ -365,10 +365,10 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
 
-      assertMessageCount(1, messages)
-      val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
+      val MethodDoesNotTakeParameters(tree, methodStr) :: Nil = messages
+
       assertEquals("Scope.foo(1)", tree.show)
-      assertEquals("((a: Int): Unit)(Scope.foo)", methodPart.show)
+      assertEquals("method foo in object Scope", methodStr)
     }
 
   @Test def ambiugousOverloadWithWildcard =
