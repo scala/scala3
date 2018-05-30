@@ -311,8 +311,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Term.Repeated(elems) =>
         printTrees(elems, ", ")
 
-      case Term.SelectOuter(_, _, _) =>
-        ???
+      case _ =>
+        throw new MatchError(tree.show)
 
     }
 
@@ -528,8 +528,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
 
     def printTypeOrBoundsTree(tpt: TypeOrBoundsTree): Buffer = tpt match {
-      case TypeBoundsTree(lo, hi) => ???
-      case tpt@Type() => printType(tpt)
+      case TypeBoundsTree(lo, hi) =>
+        this += " >: "
+        printTypeTree(lo)
+        this += " <: "
+        printTypeTree(hi)
+      case tpt@Type() =>
+        printType(tpt)
     }
 
     def printTypeTree(tree: TypeTree): Buffer = tree match {
@@ -582,6 +587,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "=> "
         printTypeTree(result)
 
+      case _ =>
+        throw new MatchError(tree.show)
+
     }
 
     def printTypeOrBound(tpe: TypeOrBounds): Buffer = tpe match {
@@ -631,9 +639,6 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
         this += name.stripSuffix("$")
 
-      case Type.SuperType(thistpe, supertpe) =>
-        ???
-
       case Type.Refinement(parent, name, info) =>
         printType(parent)
         // TODO add refinements
@@ -661,26 +666,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += " => "
         printType(tp)
 
-      case Type.ParamRef(binder, idx) =>
-        ???
-
       case Type.ThisType(tp) =>
         printType(tp)
 
-      case Type.RecursiveThis(rec) =>
-        ???
-
-      case Type.RecursiveType(tp) =>
-        ???
-
-      case Type.MethodType(paramNames, paramTypes, resType) =>
-        ???
-
-      case Type.PolyType(paramNames, paramBounds, resType) =>
-        ???
-
-      case Type.TypeLambda(paramNames, paramBounds, resType) =>
-        ???
+      case _ =>
+        throw new MatchError(tpe.show)
     }
 
     def printImportSelector(sel: ImportSelector): Buffer = sel match {
