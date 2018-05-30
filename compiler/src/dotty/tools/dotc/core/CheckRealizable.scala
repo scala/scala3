@@ -95,7 +95,7 @@ class CheckRealizable(implicit ctx: Context) {
             // The symbol itself is stable, cache this information:
             sym.setFlag(Stable)
             // Realizability now depends on the prefix:
-            patchRealizability(realizability(tp.prefix))
+            patchRealizability(realizability(tp.prefix).mapError(r => new ProblemInUnderlying(tp.prefix, r)))
           } else if (!sym.isEffectivelyFinal)
             patchRealizability(new NotFinal(sym))
           else
