@@ -615,6 +615,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def printTypeTree(tree: TypeTree): Buffer = tree match {
       case TypeTree.Synthetic() =>
         printType(tree.tpe)
+        tree.tpe match {
+          case tpe @ Type.TypeRef(name, _) if name.endsWith("$") => this += ".type"
+          case tpe => this
+        }
 
       case TypeTree.TypeIdent(name) =>
         printType(tree.tpe)
@@ -713,9 +717,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Type.TypeRef(name, prefix) =>
         prefix match {
           case NoPrefix() | Type.ThisType(Types.EmptyPackage()) =>
-          case prefix@Type() =>
-            printType(prefix)
-            this += "."
+          case prefix@Type() => printType(prefix) += "."
         }
         this += name.stripSuffix("$")
 
