@@ -367,7 +367,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
 
       assertMessageCount(1, messages)
       val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
-
       assertEquals("Scope.foo(1)", tree.show)
       assertEquals("((a: Int): Unit)(Scope.foo)", methodPart.show)
     }
