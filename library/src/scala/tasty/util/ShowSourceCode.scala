@@ -631,7 +631,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Type.TermRef(name, prefix) =>
         prefix match {
-          case prefix@Type() =>
+          case Type.ThisType(Types.EmptyPackage()) =>
+            this += name
+          case prefix @ Type() =>
             printType(prefix)
             if (name != "package")
               this += "." += name
@@ -642,7 +644,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Type.TypeRef(name, prefix) =>
         prefix match {
-          case NoPrefix() =>
+          case NoPrefix() | Type.ThisType(Types.EmptyPackage()) =>
           case prefix@Type() =>
             printType(prefix)
             this += "."
