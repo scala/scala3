@@ -694,11 +694,11 @@ class TreePickler(pickler: TastyPickler) {
         pickleParams
         pickleTpt(tpt)
         pickleUnlessEmpty(rhs)
-        pickleModifiers(tree.mods)
+        pickleModifiers(tree.mods, tree.name.isTermName)
       }
     }
 
-    def pickleModifiers(mods: untpd.Modifiers): Unit = {
+    def pickleModifiers(mods: untpd.Modifiers, isTerm: Boolean): Unit = {
       import Flags._
       var flags = mods.flags
       val privateWithin = mods.privateWithin
@@ -707,6 +707,7 @@ class TreePickler(pickler: TastyPickler) {
         pickleUntyped(untpd.Ident(privateWithin))
         flags = flags &~ Protected
       }
+      pickleFlags(flags, isTerm)
       mods.annotations.foreach(pickleAnnotation)
     }
 
@@ -852,7 +853,7 @@ class TreePickler(pickler: TastyPickler) {
           pickleTpt(tpt)
           pickleUntyped(rhs)
           pats.foreach(pickleUntyped)
-          pickleModifiers(mods)
+          pickleModifiers(mods, isTerm = true)
         }
       case untpd.TypedSplice(splice) =>
         writeByte(TYPEDSPLICE)
