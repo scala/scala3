@@ -34,8 +34,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def printTree(tree: Tree): Buffer = tree match {
       case tree @ PackageClause(Term.Ident(name), stats) =>
         val stats1 = stats.collect {
-          case stat@Definition() if !(stat.flags.isObject && stat.flags.isLazy) => stat
-          case stat@Import(_, _) => stat
+          case stat @ PackageClause(_, _) => stat
+          case stat @ Definition() if !(stat.flags.isObject && stat.flags.isLazy) => stat
+          case stat @ Import(_, _) => stat
         }
 
         if (name == "<empty>") {
