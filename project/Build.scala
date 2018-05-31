@@ -433,6 +433,15 @@ object Build {
     case BootstrappedOptimised => `dotty-doc-optimised`
   }
 
+  def testOnlyFiltered(test: String, options: String) = Def.inputTaskDyn {
+    val args = spaceDelimited("<arg>").parsed
+    val cmd = s" $test -- $options" + {
+      if (args.nonEmpty) " -Ddotty.tests.filter=" + args.mkString(" ")
+      else ""
+    }
+    (testOnly in Test).toTask(cmd)
+  }
+
   // Settings shared between dotty-compiler and dotty-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
 
@@ -1233,14 +1242,5 @@ object Build {
       case Bootstrapped => commonBootstrappedSettings
       case BootstrappedOptimised => commonOptimisedSettings
     })
-  }
-
-  def testOnlyFiltered(test: String, options: String) = Def.inputTaskDyn {
-    val args = spaceDelimited("<arg>").parsed
-    val cmd = s" $test -- $options" + {
-      if (args.nonEmpty) " -Ddotty.tests.filter=" + args.mkString(" ")
-      else ""
-    }
-    (testOnly in Test).toTask(cmd)
   }
 }
