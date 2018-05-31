@@ -10,6 +10,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
   def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String =
     (new Buffer).printCaseDef(caseDef).result()
 
+  def showPattern(pattern: Pattern)(implicit ctx: Context): String =
+    (new Buffer).printPattern(pattern).result()
+
   def showTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): String =
     (new Buffer).printTypeOrBoundsTree(tpt).result()
 
