@@ -1,9 +1,9 @@
 
-classOf[Foo].getCanonicalName()
+scala.Predef.classOf[Foo].getCanonicalName()
 Foo
 
-classOf[Foo#Bar].getCanonicalName()
+scala.Predef.classOf[Foo#Bar].getCanonicalName()
 Foo.Bar
 
-classOf[Foo.Baz].getCanonicalName()
+scala.Predef.classOf[Foo.Baz].getCanonicalName()
 Foo.Baz

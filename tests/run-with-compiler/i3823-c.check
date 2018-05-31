@@ -1,4 +1,4 @@
 {
-  val z: Int = 2
+  val z: scala.Int = 2
   ()
 }

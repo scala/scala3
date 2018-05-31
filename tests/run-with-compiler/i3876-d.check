@@ -1,8 +1,7 @@
 6
 {
-  val x$1: Int = 3
-  /* inlined from Test*/ 
-    {
-      x$1.+(x$1)
-    }
+  val x$1: scala.Int = 3
+  { // inlined
+    x$1.+(x$1)
+  }
 }

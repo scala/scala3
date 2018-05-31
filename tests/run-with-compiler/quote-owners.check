@@ -1,9 +1,8 @@
 9
 {
-  def ff: Int = 
-    {
-      val a: Int = 9
-      a.+(0)
-    }
-  ff: Int
+  def ff: scala.Int = {
+    val a: scala.Int = 9
+    a.+(0)
+  }
+  (ff: scala.Int)
 }

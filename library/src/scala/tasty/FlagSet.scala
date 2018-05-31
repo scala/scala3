@@ -27,4 +27,6 @@ trait FlagSet {
   def isScala2X: Boolean               // Imported from Scala2.x
   def isDefaultParameterized: Boolean  // Method with default parameters
   def isStable: Boolean                // Method that is assumed to be stable
+  def isParam: Boolean
+  def isParamAccessor: Boolean
 }

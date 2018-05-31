@@ -1,11 +1,9 @@
 /** Decompiled from out/posTestFromTasty/pos/simpleWhile/Foo.class */
 class Foo() {
-  def foo: Unit =
-    {
-      var i: Int = 1
-      while (i.!=(0))
-        {
-          i = 0
-        }
+  def foo: scala.Unit = {
+    var i: scala.Int = 1
+    while (i.!=(0)) {
+      i = 0
     }
+  }
 }
