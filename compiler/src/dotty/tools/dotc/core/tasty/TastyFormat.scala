@@ -39,8 +39,8 @@ Macro-format:
                   VARIANT           Length underlying_NameRef variance_Nat      // 0: Contravariant, 1: Covariant
 
                   SUPERACCESSOR     Length underlying_NameRef
-                  PROTECTEDACCESSOR Length underlying_NameRef
-                  PROTECTEDSETTER   Length underlying_NameRef
+                  INLINEGETTER      Length underlying_NameRef
+                  INLINESETTER      Length underlying_NameRef
                   OBJECTCLASS       Length underlying_NameRef
 
                   SIGNED            Length original_NameRef resultSig_NameRef paramSig_NameRef*
@@ -226,8 +226,8 @@ Standard Section: "Positions" Assoc*
 object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion = 7
-  val MinorVersion = 1
+  val MajorVersion = 8
+  val MinorVersion = 0
 
   /** Tags used to serialize names */
   class NameTags {
@@ -252,17 +252,11 @@ object TastyFormat {
 
     final val SUPERACCESSOR = 20     // The name of a super accessor `super$name` created by SuperAccesors.
 
-    final val PROTECTEDACCESSOR = 21 // The name of a protected accessor `protected$<name>` created by SuperAccesors.
+    final val INLINEGETTER = 21    // The name of an inline getter `inline_get$name`
 
-    final val PROTECTEDSETTER = 22   // The name of a protected setter `protected$set<name>` created by SuperAccesors.
-                                     // This is a dubious encoding for its risk for ambiguity.
-                                     // It is kept for Scala-2 compatibility.
+    final val INLINESETTER = 22     // The name of an inline setter `inline_set$name`
 
     final val OBJECTCLASS = 23       // The name of an object class (or: module class) `<name>$`.
-
-    final val INLINEGETTER = 24     // The name of an inline getter `inline_get$name`
-
-    final val INLINESETTER = 25     // The name of an inline setter `inline_set$name`
 
     final val SIGNED = 63            // A pair of a name and a signature, used to idenitfy
                                      // possibly overloaded methods.
