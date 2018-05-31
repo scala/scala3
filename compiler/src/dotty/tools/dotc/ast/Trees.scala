@@ -337,9 +337,11 @@ object Trees {
      *  a calling chain from `viewExists`), in that case the return position is NoPosition.
      */
     def namePos =
-      if (pos.exists)
-        if (rawMods.is(Synthetic)) Position(pos.point, pos.point)
-        else Position(pos.point, pos.point + name.stripModuleClassSuffix.lastPart.length, pos.point)
+      if (pos.exists) {
+        val point = pos.point
+        if (rawMods.is(Synthetic) || name.toTermName == nme.ERROR) Position(point)
+        else Position(point, point + name.stripModuleClassSuffix.lastPart.length, point)
+      }
       else pos
   }
 
