@@ -533,6 +533,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "_: "
         printTypeOrBoundsTree(tpt)
 
+      case _ =>
+        throw new MatchError(pattern.show)
+
     }
 
     def printConstant(const: Constant): Buffer = const match {
