@@ -14,30 +14,18 @@ object BazSeq {
 class Foo() {
   def bar(x: scala.Any): scala.Unit = x match {
     case Bar(a) =>
-      {
-        scala.Predef.println(a)
-      }
+      scala.Predef.println(a)
     case BarSeq(a) =>
-      {
-        scala.Predef.println(a)
-      }
+      scala.Predef.println(a)
     case BarSeq(a, b) =>
-      {
-        scala.Predef.println(a)
-      }
+      scala.Predef.println(a)
   }
   def baz(x: scala.Any): scala.Unit = x match {
     case Baz(a) =>
-      {
-        scala.Predef.println(a)
-      }
+      scala.Predef.println(a)
     case BazSeq(a) =>
-      {
-        scala.Predef.println(a)
-      }
+      scala.Predef.println(a)
     case BazSeq(a, b) =>
-      {
-        scala.Predef.println(a)
-      }
+      scala.Predef.println(a)
   }
 }
