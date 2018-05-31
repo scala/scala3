@@ -52,7 +52,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this += lineBreak()
             printTrees(stats1, lineBreak())
           }
-          this += lineBreak() += "}" += lineBreak()
+          this += lineBreak() += "}"
         }
 
       case Import(expr, selectors) =>
