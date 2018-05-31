@@ -7,6 +7,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
   def showTree(tree: Tree)(implicit ctx: Context): String =
     (new Buffer).printTree(tree).result()
 
+  def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String =
+    (new Buffer).printCaseDef(caseDef).result()
+
   def showTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): String =
     (new Buffer).printTypeOrBoundsTree(tpt).result()
 
@@ -351,9 +354,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def printCases(cases: List[CaseDef], sep: String): Buffer = {
       def printSeparated(list: List[CaseDef]): Unit = list match {
         case Nil =>
-        case x :: Nil => printCase(x)
+        case x :: Nil => printCaseDef(x)
         case x :: xs =>
-          printCase(x)
+          printCaseDef(x)
           this += sep
           printSeparated(xs)
       }
@@ -468,7 +471,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       printTypeTree(tpt)
     }
 
-    def printCase(caseDef: CaseDef): Buffer = {
+    def printCaseDef(caseDef: CaseDef): Buffer = {
       val CaseDef(pat, guard, body) = caseDef
       this += "case "
       printPattern(pat)
