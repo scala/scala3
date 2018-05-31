@@ -511,7 +511,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printPattern(pattern)
 
       case Pattern.Unapply(fun, implicits, patterns) =>
-        printTree(fun)
+        fun match {
+          case Term.Select(extractor, "unapply" | "unapplySeq", _) => printTree(extractor)
+          case Term.TypeApply(Term.Select(extractor, "unapply" | "unapplySeq", _), _) => printTree(extractor)
+          case _ => throw new MatchError(fun.show)
+        }
         this += "("
         printPatterns(patterns, ", ")
         this += ")"
@@ -520,7 +524,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printPatterns(trees, " | ")
 
       case Pattern.TypeTest(tpt) =>
-        this
+        this += "_: "
+        printTypeOrBoundsTree(tpt)
 
     }
 
