@@ -15,9 +15,7 @@ object NameTags extends TastyFormat.NameTags {
                                 // outer accessor that will be filled in by ExplicitOuter.
                                 // <num> indicates the number of hops needed to select the outer field.
 
-  final val PROTECTEDGETTER = 24 // The name of a protected getter `protected_get$<name>` created by ProtectedAccessors.
-
-  final val PROTECTEDSETTER = 25 // The name of a protected setter `protected_set$<name>` created by ProtectedAccessors.
+  final val PROTECTEDACCESSOR = 24 // The name of a protected accesor `protected$<name>` created by ProtectedAccessors.
 
   final val INITIALIZER = 26    // A mixin initializer method
 
@@ -51,10 +49,8 @@ object NameTags extends TastyFormat.NameTags {
     case OUTERSELECT => "OUTERSELECT"
 
     case SUPERACCESSOR => "SUPERACCESSOR"
-    case INLINEGETTER => "INLINEGETTER"
-    case INLINESETTER => "INLINESETTER"
-    case PROTECTEDGETTER => "PROTECTEDGETTER"
-    case PROTECTEDSETTER => "PROTECTEDSETTER"
+    case INLINEACCESSOR => "INLINEACCESSOR"
+    case PROTECTEDACCESSOR => "PROTECTEDACCESSOR"
     case INITIALIZER => "INITIALIZER"
     case AVOIDCLASH => "AVOIDCLASH"
     case DIRECT => "DIRECT"

@@ -15,7 +15,7 @@ import StdNames.nme
 import Contexts.Context
 import Names.{Name, TermName, EmptyTermName}
 import NameOps._
-import NameKinds.{ClassifiedNameKind, InlineGetterName, InlineSetterName}
+import NameKinds.{ClassifiedNameKind, InlineAccessorName}
 import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
 import Annotations._
@@ -32,13 +32,12 @@ object Inliner {
   import tpd._
 
   class InlineAccessors extends AccessProxies {
-    def getterName = InlineGetterName
-    def setterName = InlineSetterName
 
     /** A tree map which inserts accessors for all non-public term members accessed
       *  from inlined code. Accessors are collected in the `accessors` buffer.
       */
     class MakeInlineable(inlineSym: Symbol) extends TreeMap with Insert {
+      def accessorNameKind = InlineAccessorName
 
       /** A definition needs an accessor if it is private, protected, or qualified private
         *  and it is not part of the tree that gets inlined. The latter test is implemented
@@ -54,8 +53,23 @@ object Inliner {
       // This is quite tricky, as such types can appear anywhere, including as parts
       // of types of other things. For the moment we do nothing and complain
       // at the implicit expansion site if there's a reference to an inaccessible type.
-      override def transform(tree: Tree)(implicit ctx: Context): Tree =
-        super.transform(accessorIfNeeded(tree))
+      override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+        case tree: Assign =>
+          transform(tree.lhs) match {
+            case lhs1: RefTree =>
+              lhs1.name match {
+                case InlineAccessorName(name) =>
+                  cpy.Apply(tree)(useSetter(lhs1), transform(tree.rhs) :: Nil)
+                case _ =>
+                  super.transform(tree)
+              }
+            case _ =>
+              super.transform(tree)
+          }
+        case _ =>
+          super.transform(accessorIfNeeded(tree))
+      }
+
     }
 
     /** Adds accessors for all non-public term members accessed

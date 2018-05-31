@@ -8,7 +8,6 @@ import core.Flags._
 import core.Decorators._
 import MegaPhase.MiniPhase
 import ast.Trees._
-import util.Property
 
 /** Add accessors for all protected accesses. An accessor is needed if
  *  according to the rules of the JVM a protected class member is not accesissible
@@ -17,8 +16,6 @@ import util.Property
  */
 object ProtectedAccessors {
   val name = "protectedAccessors"
-
-  private val LHS = new Property.StickyKey[Unit]
 
   /** Is the current context's owner inside the access boundary established by `sym`? */
   def insideBoundaryOf(sym: Symbol)(implicit ctx: Context): Boolean = {
@@ -56,32 +53,30 @@ class ProtectedAccessors extends MiniPhase {
   override def phaseName = ProtectedAccessors.name
 
   object Accessors extends AccessProxies {
-    def getterName = ProtectedGetterName
-    def setterName = ProtectedSetterName
-
     val insert = new Insert {
+      def accessorNameKind = ProtectedAccessorName
       def needsAccessor(sym: Symbol)(implicit ctx: Context) = ProtectedAccessors.needsAccessor(sym)
     }
   }
 
-  override def prepareForAssign(tree: Assign)(implicit ctx: Context) = {
-    tree.lhs match {
-      case lhs: RefTree if needsAccessor(lhs.symbol) => lhs.putAttachment(LHS, ())
-      case _ =>
-    }
-    ctx
-  }
-
-  private def isLHS(tree: RefTree) = tree.removeAttachment(LHS).isDefined
-
   override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
-    if (isLHS(tree)) tree else Accessors.insert.accessorIfNeeded(tree)
+    Accessors.insert.accessorIfNeeded(tree)
 
   override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
-    if (isLHS(tree)) tree else Accessors.insert.accessorIfNeeded(tree)
+    Accessors.insert.accessorIfNeeded(tree)
 
   override def transformAssign(tree: Assign)(implicit ctx: Context): Tree =
-    Accessors.insert.accessorIfNeeded(tree)
+    tree.lhs match {
+      case lhs: RefTree =>
+        lhs.name match {
+          case ProtectedAccessorName(name) =>
+            cpy.Apply(tree)(Accessors.insert.useSetter(lhs), tree.rhs :: Nil)
+          case _ =>
+            tree
+        }
+      case _ =>
+        tree
+    }
 
   override def transformTemplate(tree: Template)(implicit ctx: Context): Tree =
     cpy.Template(tree)(body = Accessors.addAccessorDefs(tree.symbol.owner, tree.body))

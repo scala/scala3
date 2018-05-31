@@ -39,8 +39,7 @@ Macro-format:
                   VARIANT           Length underlying_NameRef variance_Nat      // 0: Contravariant, 1: Covariant
 
                   SUPERACCESSOR     Length underlying_NameRef
-                  INLINEGETTER      Length underlying_NameRef
-                  INLINESETTER      Length underlying_NameRef
+                  INLINEACCESSOR    Length underlying_NameRef
                   OBJECTCLASS       Length underlying_NameRef
 
                   SIGNED            Length original_NameRef resultSig_NameRef paramSig_NameRef*
@@ -252,9 +251,7 @@ object TastyFormat {
 
     final val SUPERACCESSOR = 20     // The name of a super accessor `super$name` created by SuperAccesors.
 
-    final val INLINEGETTER = 21    // The name of an inline getter `inline_get$name`
-
-    final val INLINESETTER = 22     // The name of an inline setter `inline_set$name`
+    final val INLINEACCESSOR = 21    // The name of an inline accessor `inline$name`
 
     final val OBJECTCLASS = 23       // The name of an object class (or: module class) `<name>$`.
 

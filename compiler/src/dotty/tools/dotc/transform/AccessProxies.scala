@@ -6,6 +6,7 @@ import Contexts.Context
 import Symbols._
 import Flags._
 import Names._
+import NameOps._
 import Decorators._
 import TypeUtils._
 import Annotations.Annotation
@@ -23,9 +24,6 @@ abstract class AccessProxies {
   import ast.tpd._
   import AccessProxies._
 
-  def getterName: ClassifiedNameKind
-  def setterName: ClassifiedNameKind
-
   /** accessor -> accessed */
   private val accessedBy = newMutableSymbolMap[Symbol]
 
@@ -38,7 +36,7 @@ abstract class AccessProxies {
       polyDefDef(accessor.asTerm, tps => argss => {
         val accessRef = ref(TermRef(cls.thisType, accessed))
         val rhs =
-          if (accessor.name.is(setterName) &&
+          if (accessor.name.isSetterName &&
               argss.nonEmpty && argss.head.nonEmpty) // defensive conditions
             accessRef.becomes(argss.head.head)
           else
@@ -56,6 +54,7 @@ abstract class AccessProxies {
   trait Insert {
     import ast.tpd._
 
+    def accessorNameKind: ClassifiedNameKind
     def needsAccessor(sym: Symbol)(implicit ctx: Context): Boolean
 
     /** A fresh accessor symbol */
@@ -65,6 +64,30 @@ abstract class AccessProxies {
       sym
     }
 
+    private def rewire(reference: RefTree, accessor: Symbol)(implicit ctx: Context): Tree = {
+      reference match {
+        case Select(qual, _) => qual.select(accessor)
+        case Ident(name) => ref(accessor)
+      }
+    }.withPos(reference.pos)
+
+    private def isAccessor(sym: Symbol, accessed: Symbol) = accessedBy.get(sym) == Some(accessed)
+
+    def useSetter(getterRef: RefTree)(implicit ctx: Context): Tree = {
+      val getter = getterRef.symbol
+      val accessed = accessedBy(getter)
+      val accessedName = accessed.name.asTermName
+      val setterName = accessorNameKind(accessedName.setterName)
+      val setter =
+        getter.owner.info.decl(setterName).suchThat(isAccessor(_, accessed)).symbol.orElse {
+          val setterInfo = MethodType(getter.info.widenExpr :: Nil, defn.UnitType)
+          val setter = newAccessorSymbol(getter.owner, setterName, setterInfo, getter.pos)
+          accessedBy(setter) = accessed
+          setter
+        }
+      rewire(getterRef, setter)
+    }
+
     /** Create an accessor unless one exists already, and replace the original
       *  access with a reference to the accessor.
       *
@@ -72,11 +95,10 @@ abstract class AccessProxies {
       *  @param onLHS        The reference is on the left-hand side of an assignment
       */
     def useAccessor(reference: RefTree, onLHS: Boolean)(implicit ctx: Context): Tree = {
+      assert(!onLHS)
 
-      def nameKind = if (onLHS) setterName else getterName
       val accessed = reference.symbol.asTerm
 
-      def refersToAccessed(sym: Symbol) = accessedBy.get(sym) == Some(accessed)
 
       var accessorClass = hostForAccessorOf(accessed: Symbol)
       if (!accessorClass.exists) {
@@ -87,26 +109,23 @@ abstract class AccessProxies {
         accessorClass = curCls
       }
 
-      val accessorRawInfo =
-        if (onLHS) MethodType(accessed.info :: Nil, defn.UnitType)
-        else accessed.info.ensureMethodic
-      val accessorInfo =
-        accessorRawInfo.asSeenFrom(accessorClass.thisType, accessed.owner)
-      val accessorName = nameKind(accessed.name)
+      val accessorName = accessorNameKind(
+        if (onLHS) accessed.name.setterName else accessed.name)
 
-      val accessorSymbol =
-        accessorClass.info.decl(accessorName).suchThat(refersToAccessed).symbol
-          .orElse {
-            val acc = newAccessorSymbol(accessorClass, accessorName, accessorInfo, accessed.pos)
-            accessedBy(acc) = accessed
-            acc
-          }
 
-      { reference match {
-          case Select(qual, _) => qual.select(accessorSymbol)
-          case Ident(name) => ref(accessorSymbol)
+      val accessor =
+        accessorClass.info.decl(accessorName).suchThat(isAccessor(_, accessed)).symbol.orElse {
+          val accessorRawInfo =
+            if (onLHS) MethodType(accessed.info :: Nil, defn.UnitType)
+            else accessed.info.ensureMethodic
+          val accessorInfo =
+            accessorRawInfo.asSeenFrom(accessorClass.thisType, accessed.owner)
+
+          val acc = newAccessorSymbol(accessorClass, accessorName, accessorInfo, accessed.pos)
+          accessedBy(acc) = accessed
+          acc
         }
-      }.withPos(reference.pos)
+      rewire(reference, accessor)
     }
 
     /** Replace tree with a reference to an accessor if needed */
