@@ -65,6 +65,9 @@ object Build {
   // Run tests with filter through vulpix test suite
   lazy val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
 
+  // Run TASTY tests with filter through vulpix test suite
+  lazy val testFromTasty = inputKey[Unit]("runs tasty integration test with the supplied filter")
+
   // Spawns a repl with the correct classpath
   lazy val repl = inputKey[Unit]("run the REPL with correct classpath")
 
@@ -577,6 +580,15 @@ object Build {
       testCompilation := Def.inputTaskDyn {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
         val cmd = " dotty.tools.dotc.CompilationTests -- --exclude-categories=dotty.SlowTests" + {
+          if (args.nonEmpty) " -Ddotty.tests.filter=" + args.mkString(" ")
+          else ""
+        }
+        (testOnly in Test).toTask(cmd)
+      }.evaluated,
+
+      testFromTasty := Def.inputTaskDyn {
+        val args: Seq[String] = spaceDelimited("<arg>").parsed
+        val cmd = " dotty.tools.dotc.FromTastyTests -- " + {
           if (args.nonEmpty) " -Ddotty.tests.filter=" + args.mkString(" ")
           else ""
         }
