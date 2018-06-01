@@ -86,27 +86,12 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
             val evt2uSym = ctx.newSymbol(moduleSym, nme.EVT2U, Synthetic | Method,
               MethodType(List(nme.x_0), List(evt), underlying))
 
-            val defn = ctx.definitions
-
-            val underlyingCls = underlying.classSymbol
-            val underlyingClsName =
-              if (underlyingCls.isNumericValueClass || underlyingCls == defn.BooleanClass) underlyingCls.name
-              else nme.Object
-
-            val syp = ctx.requiredClass(s"dotty.runtime.vc.VC${underlyingClsName}Companion").asClass
-
-            newSuperClass = tpd.ref(syp).select(nme.CONSTRUCTOR).appliedToType(valueClass.typeRef).tpe.resultType
-
             decls1.enter(u2evtSym)
             decls1.enter(evt2uSym)
           }
 
-          // Add the extension methods, the cast methods u2evt$ and evt2u$, and a VC*Companion superclass
-          moduleClassSym.copySymDenotation(info =
-            cinfo.derivedClassInfo(
-              // FIXME: use of VC*Companion superclasses is disabled until the conflicts with SyntheticMethods are solved.
-              //classParents = List(newSuperClass)
-              decls = decls1))
+          // Add the extension methods and the cast methods u2evt$ and evt2u$
+          moduleClassSym.copySymDenotation(info = cinfo.derivedClassInfo(decls = decls1))
         case _ =>
           moduleClassSym
       }
