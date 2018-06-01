@@ -62,33 +62,37 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
           val decls1 = cinfo.decls.cloneScope
           val moduleSym = moduleClassSym.symbol.asClass
 
-          ctx.atPhase(thisPhase.next) { implicit ctx =>
-            // In Scala 2, extension methods are added before pickling so we should
-            // not generate them again.
-            if (!(valueClass is Scala2x)) ctx.atPhase(thisPhase) { implicit ctx =>
-              for (decl <- valueClass.classInfo.decls) {
-                if (isMethodWithExtension(decl)) {
-                  val meth = createExtensionMethod(decl, moduleClassSym.symbol)
-                  decls1.enter(meth)
-                  // Workaround #1895: force denotation of `meth` to be
-                  // at phase where `meth` is entered into the decls of a class
-                  meth.denot(ctx.withPhase(thisPhase.next))
-                }
-              }
-            }
-
-            val underlying = valueErasure(underlyingOfValueClass(valueClass))
-            val evt = ErasedValueType(valueClass.typeRef, underlying)
-            val u2evtSym = ctx.newSymbol(moduleSym, nme.U2EVT, Synthetic | Method,
-              MethodType(List(nme.x_0), List(underlying), evt))
-            val evt2uSym = ctx.newSymbol(moduleSym, nme.EVT2U, Synthetic | Method,
-              MethodType(List(nme.x_0), List(evt), underlying))
-
-            decls1.enter(u2evtSym)
-            decls1.enter(evt2uSym)
+          def enterInModuleClass(sym: Symbol): Unit = {
+            decls1.enter(sym)
+            // This is tricky: in this denotation transformer, we transform
+            // companion modules of value classes by adding methods to them.
+            // Running the transformer will create these methods, but they're
+            // only valid once it has finished running. This means we cannot use
+            // `ctx.withPhase(thisPhase.next)` here without potentially running
+            // into cycles. Instead, we manually set their validity after having
+            // created them to match the validity of the owner transformed
+            // denotation.
+            sym.validFor = thisPhase.validFor
           }
 
-          // Add the extension methods and the cast methods u2evt$ and evt2u$
+          // Create extension methods, except if the class comes from Scala 2
+          // because it adds extension methods before pickling.
+          if (!(valueClass.is(Scala2x)))
+            for (decl <- valueClass.classInfo.decls)
+              if (isMethodWithExtension(decl))
+                enterInModuleClass(createExtensionMethod(decl, moduleClassSym.symbol))
+
+          // Create synthetic methods to cast values between the underlying type
+          // and the ErasedValueType. These methods are removed in ElimErasedValueType.
+          val underlying = valueErasure(underlyingOfValueClass(valueClass))
+          val evt = ErasedValueType(valueClass.typeRef, underlying)
+          val u2evtSym = ctx.newSymbol(moduleSym, nme.U2EVT, Synthetic | Method,
+            MethodType(List(nme.x_0), List(underlying), evt))
+          val evt2uSym = ctx.newSymbol(moduleSym, nme.EVT2U, Synthetic | Method,
+            MethodType(List(nme.x_0), List(evt), underlying))
+          enterInModuleClass(u2evtSym)
+          enterInModuleClass(evt2uSym)
+
           moduleClassSym.copySymDenotation(info = cinfo.derivedClassInfo(decls = decls1))
         case _ =>
           moduleClassSym
