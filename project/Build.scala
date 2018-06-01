@@ -65,6 +65,9 @@ object Build {
   // Run tests with filter through vulpix test suite
   lazy val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
 
+  // Run TASTY tests with filter through vulpix test suite
+  lazy val testFromTasty = inputKey[Unit]("runs tasty integration test with the supplied filter")
+
   // Spawns a repl with the correct classpath
   lazy val repl = inputKey[Unit]("run the REPL with correct classpath")
 
@@ -430,6 +433,15 @@ object Build {
     case BootstrappedOptimised => `dotty-doc-optimised`
   }
 
+  def testOnlyFiltered(test: String, options: String) = Def.inputTaskDyn {
+    val args = spaceDelimited("<arg>").parsed
+    val cmd = s" $test -- $options" + {
+      if (args.nonEmpty) " -Ddotty.tests.filter=" + args.mkString(" ")
+      else ""
+    }
+    (testOnly in Test).toTask(cmd)
+  }
+
   // Settings shared between dotty-compiler and dotty-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
 
@@ -574,14 +586,8 @@ object Build {
         jarOpts ::: tuning ::: agentOptions ::: ci_build ::: path.toList
       },
 
-      testCompilation := Def.inputTaskDyn {
-        val args: Seq[String] = spaceDelimited("<arg>").parsed
-        val cmd = " dotty.tools.dotc.CompilationTests -- --exclude-categories=dotty.SlowTests" + {
-          if (args.nonEmpty) " -Ddotty.tests.filter=" + args.mkString(" ")
-          else ""
-        }
-        (testOnly in Test).toTask(cmd)
-      }.evaluated,
+      testCompilation := testOnlyFiltered("dotty.tools.dotc.CompilationTests", "--exclude-categories=dotty.SlowTests").evaluated,
+      testFromTasty := testOnlyFiltered("dotty.tools.dotc.FromTastyTests", "").evaluated,
 
       dotr := {
         val args: List[String] = spaceDelimited("<arg>").parsed.toList

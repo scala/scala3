@@ -1267,25 +1267,32 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     val (dirs, files) = compilationTargets(sourceDir, blacklist)
 
-    val targets =
-      files.map { f =>
-        val classpath = createOutputDirsForFile(f, sourceDir, outDir)
-        JointCompilationSource(testGroup.name, Array(f), flags.withClasspath(classpath.getPath), classpath, fromTasty = true)
-      }
+    val filteredFiles = testFilter match {
+      case Some(str) => files.filter(_.getAbsolutePath.contains(str))
+      case None => files
+    }
+
+    val targets = filteredFiles.map { f =>
+      val classpath = createOutputDirsForFile(f, sourceDir, outDir)
+      JointCompilationSource(testGroup.name, Array(f), flags.withClasspath(classpath.getPath), classpath, fromTasty = true)
+    }
     // TODO add SeparateCompilationSource from tasty?
 
     val targets2 =
-      files
+      filteredFiles
         .filter(f => dotty.tools.io.File(f.toPath).changeExtension("decompiled").exists)
         .map { f =>
-        val classpath = createOutputDirsForFile(f, sourceDir, outDir)
-        JointCompilationSource(testGroup.name, Array(f), flags.withClasspath(classpath.getPath), classpath, decompilation = true)
-      }
+          val classpath = createOutputDirsForFile(f, sourceDir, outDir)
+          JointCompilationSource(testGroup.name, Array(f), flags.withClasspath(classpath.getPath), classpath, decompilation = true)
+        }
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     val generateClassFiles = compileFilesInDir(f, flags0, blacklist)
 
     val decompilationDir = outDir + sourceDir.getName + "_decompiled"
+
+    if (targets2.isEmpty)
+      new JFile(decompilationDir).mkdirs()
 
     new TastyCompilationTest(
       generateClassFiles.keepOutput,
