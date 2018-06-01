@@ -62,8 +62,6 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
           val decls1 = cinfo.decls.cloneScope
           val moduleSym = moduleClassSym.symbol.asClass
 
-          var newSuperClass: Type = null
-
           ctx.atPhase(thisPhase.next) { implicit ctx =>
             // In Scala 2, extension methods are added before pickling so we should
             // not generate them again.
