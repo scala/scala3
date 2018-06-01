@@ -269,7 +269,7 @@ class ReplDriver(settings: Array[String],
         typeAliases.map("// defined alias " + _.symbol.showUser) ++
         defs.map(rendering.renderMethod) ++
         vals.map(rendering.renderVal).flatten
-      ).foreach(str => out.println(SyntaxHighlighting.highlight(str)(ctx)))
+      ).foreach(str => out.println(SyntaxHighlighting.highlight(str)))
 
       state.copy(valIndex = state.valIndex - vals.count(resAndUnit))
     }
@@ -284,7 +284,9 @@ class ReplDriver(settings: Array[String],
           x.symbol
       }
       .foreach { sym =>
-        out.println(SyntaxHighlighting.highlight("// defined " + sym.showUser)(ctx))
+        // FIXME syntax highlighting on comment is currently not working
+        // out.println(SyntaxHighlighting.highlight("// defined " + sym.showUser))
+        out.println(SyntaxHighlighting.CommentColor + "// defined " + sym.showUser + SyntaxHighlighting.NoColor)
       }
 
 

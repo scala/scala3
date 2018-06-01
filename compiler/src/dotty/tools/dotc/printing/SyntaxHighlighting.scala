@@ -1,7 +1,6 @@
-package dotty.tools
-package dotc
-package printing
+package dotty.tools.dotc.printing
 
+import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.parsing.Parsers.Parser
@@ -10,13 +9,15 @@ import dotty.tools.dotc.parsing.Tokens._
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.reporting.diagnostic.MessageContainer
 import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.SourceFile
 
-import util.SourceFile
-
-import scala.collection.mutable
+import java.util.Arrays
 
 /** This object provides functions for syntax highlighting in the REPL */
 object SyntaxHighlighting {
+
+  /** if true, log erroneous positions being highlighted */
+  private final val debug = false
 
   // Keep in sync with SyntaxHighlightingTests
   val NoColor         = Console.RESET
@@ -32,88 +33,89 @@ object SyntaxHighlighting {
     override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = ()
   }
 
-  def highlight(in: String)(ctx0: Context): String = {
-    import dotty.tools.dotc.ast.untpd._
+  def highlight(in: String)(implicit ctx: Context): String = {
+    def freshCtx = ctx.fresh.setReporter(new NoReporter)
+    if (in.isEmpty || ctx.settings.color.value == "never") in
+    else {
+      implicit val ctx = freshCtx
+      val source = new SourceFile("<highlighting>", in.toCharArray)
+      val colorAt = Array.fill(in.length)(NoColor)
 
-    implicit val ctx: Context = ctx0.fresh.setReporter(new NoReporter)
+      def highlightRange(from: Int, to: Int, color: String) =
+        Arrays.fill(colorAt.asInstanceOf[Array[AnyRef]], from, to, color)
 
-    val source = new SourceFile("<highlighting>", in.toCharArray)
-    val colorAt = Array.fill(in.length)(NoColor)
-
-    def highlightRange(from: Int, to: Int, color: String) = {
-      try {
-        for (i <- from until to)
-          colorAt(i) = color
-      } catch {
-        case _: IndexOutOfBoundsException =>
-          println("Encountered tree with invalid position, please open an issue with the code snippet that caused the error")
-      }
-    }
-    def highlightPosition(pos: Position, color: String) =
-      if (pos.exists) highlightRange(pos.start, pos.end, color)
-
-    val scanner = new Scanner(source)
-
-    while (scanner.token != EOF) {
-      val isKwd = alphaKeywords.contains(scanner.token)
-      val offsetStart = scanner.offset
-
-      if (scanner.token == IDENTIFIER && scanner.name == nme.???) {
-        highlightRange(scanner.offset, scanner.offset + scanner.name.length, Console.RED_B)
-      }
-      scanner.nextToken()
-
-      if (isKwd) {
-        val offsetEnd = scanner.lastOffset
-        highlightPosition(Position(offsetStart, offsetEnd), KeywordColor)
-      }
-    }
-
-    val treeHighlighter = new UntypedTreeTraverser {
-      def traverse(tree: Tree)(implicit ctx: Context): Unit = {
-        tree match {
-          case id : Ident if id.isType =>
-            highlightPosition(id.pos, TypeColor)
-          case tpe : TypeDef =>
-            for (annotation <- tpe.rawMods.annotations)
-              highlightPosition(annotation.pos, AnnotationColor)
-            highlightPosition(tpe.namePos, TypeColor)
-          case _ : TypTree =>
-            highlightPosition(tree.pos, TypeColor)
-          case mod: ModuleDef =>
-            highlightPosition(mod.namePos, TypeColor)
-          case v : ValOrDefDef =>
-            for (annotation <- v.rawMods.annotations)
-              highlightPosition(annotation.pos, AnnotationColor)
-            highlightPosition(v.namePos, ValDefColor)
-            highlightPosition(v.tpt.pos, TypeColor)
-          case _ : Literal =>
-            highlightPosition(tree.pos, LiteralColor)
-          case _ =>
+      def highlightPosition(pos: Position, color: String) = if (pos.exists) {
+        if (pos.start < 0 || pos.end > in.length) {
+          if (debug)
+            println(s"Trying to highlight erroneous position $pos. Input size: ${in.length}")
         }
-        traverseChildren(tree)
+        else
+          highlightRange(pos.start, pos.end, color)
       }
-    }
 
-    val parser = new Parser(source)
-    val trees = parser.blockStatSeq()
+      val scanner = new Scanner(source)
+      while (scanner.token != EOF) {
+        val start = scanner.offset
+        val token = scanner.token
+        val name = scanner.name
+        scanner.nextToken()
+        val end = scanner.lastOffset
 
-    for (tree <- trees)
-      treeHighlighter.traverse(tree)
-
-    val sb = new mutable.StringBuilder()
-
-    for (idx <- colorAt.indices) {
-      if ( (idx == 0 && colorAt(idx) != NoColor)
-        || (idx > 0 && colorAt(idx-1) != colorAt(idx))) {
-        sb.append(colorAt(idx))
+        if (alphaKeywords.contains(token))
+          highlightRange(start, end, KeywordColor)
+        else if (token == IDENTIFIER && name == nme.???)
+          highlightRange(start, end, Console.RED_B)
       }
-      sb.append(in(idx))
-    }
-    if (colorAt.nonEmpty && colorAt.last != NoColor) {
-      sb.append(NoColor)
-    }
 
-    sb.toString
+      val treeHighlighter = new untpd.UntypedTreeTraverser {
+        import untpd._
+
+        def ignored(tree: NameTree) = {
+          val name = tree.name.toTermName
+          // trees named <error> and <init> have weird positions
+          name == nme.ERROR || name == nme.CONSTRUCTOR
+        }
+
+        def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+          tree match {
+            case tree: NameTree if ignored(tree) =>
+              ()
+            case tree: MemberDef /* ValOrDefDef | ModuleDef | TypeDef */ =>
+              for (annotation <- tree.rawMods.annotations)
+                highlightPosition(annotation.pos, AnnotationColor)
+              val color = if (tree.isInstanceOf[ValOrDefDef]) ValDefColor else TypeColor
+              highlightPosition(tree.namePos, color)
+            case tree : Ident if tree.isType =>
+              highlightPosition(tree.pos, TypeColor)
+            case _ : TypTree =>
+              highlightPosition(tree.pos, TypeColor)
+            case _ : Literal =>
+              highlightPosition(tree.pos, LiteralColor)
+            case _ =>
+          }
+          traverseChildren(tree)
+        }
+      }
+
+      val parser = new Parser(source)
+      val trees = parser.blockStatSeq()
+      for (tree <- trees)
+        treeHighlighter.traverse(tree)
+
+      val highlighted = new StringBuilder()
+
+      for (idx <- colorAt.indices) {
+        val prev = if (idx == 0) NoColor else colorAt(idx - 1)
+        val curr = colorAt(idx)
+        if (curr != prev)
+          highlighted.append(curr)
+        highlighted.append(in(idx))
+      }
+
+      if (colorAt.last != NoColor)
+        highlighted.append(NoColor)
+
+      highlighted.toString
+    }
   }
 }
