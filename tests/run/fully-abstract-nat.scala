@@ -1,5 +1,4 @@
 import scala.reflect.ClassTag
-import scala.tasty.FlagSet
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -119,7 +118,7 @@ abstract class Numbers {
 object CaseClassImplementation extends Numbers {
 
   sealed trait N
-  final case class Z() extends N
+  final object Z extends N { override def toString: String = "Z" }
   final case class S(n: N) extends N
 
   // === Nat ==========================================
@@ -138,12 +137,12 @@ object CaseClassImplementation extends Numbers {
 
   // --- Zero ----------------------------------------
 
-  type Zero = Z
+  type Zero = Z.type
 
   def zeroClassTag: ClassTag[Zero] = implicitly
 
   val Zero: ZeroExtractor = new ZeroExtractor {
-    def apply(): Zero = new Z()
+    def apply(): Zero = Z
     def unapply(zero: Zero): Boolean = true // checked by class tag before calling the unapply
   }
 

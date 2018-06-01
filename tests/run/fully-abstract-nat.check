@@ -1,13 +1,13 @@
 CaseClassImplementation
-underlying rep: Z()
+underlying rep: Z
 test1 OK
 test2 OK
 
-underlying rep: S(S(S(Z())))
+underlying rep: S(S(S(Z)))
 test3 OK
-Succ(S(S(Z()))) = 3
+Succ(S(S(Z))) = 3
 test4 OK
-Succ(S(S(Z()))) = 3
+Succ(S(S(Z))) = 3
 
 IntImplementation
 underlying rep: 0

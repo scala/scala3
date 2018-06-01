@@ -1,5 +1,4 @@
 import scala.reflect.ClassTag
-import scala.tasty.FlagSet
 
 object Test {
   def main(args: Array[String]): Unit = {
