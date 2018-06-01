@@ -17,7 +17,7 @@ import java.util.Arrays
 object SyntaxHighlighting {
 
   /** if true, log erroneous positions being highlighted */
-  private final val debug = false
+  private final val debug = true
 
   // Keep in sync with SyntaxHighlightingTests
   val NoColor         = Console.RESET
@@ -85,11 +85,11 @@ object SyntaxHighlighting {
                 highlightPosition(annotation.pos, AnnotationColor)
               val color = if (tree.isInstanceOf[ValOrDefDef]) ValDefColor else TypeColor
               highlightPosition(tree.namePos, color)
-            case tree : Ident if tree.isType =>
+            case tree: Ident if tree.isType =>
               highlightPosition(tree.pos, TypeColor)
-            case _ : TypTree =>
+            case _: TypTree =>
               highlightPosition(tree.pos, TypeColor)
-            case _ : Literal =>
+            case _: Literal =>
               highlightPosition(tree.pos, LiteralColor)
             case _ =>
           }
