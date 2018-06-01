@@ -13,6 +13,7 @@ import Symbols._
 import Trees._
 import TreeInfo._
 import ProtoTypes._
+import Scopes._
 import CheckRealizable._
 import ErrorReporting.errorTree
 
@@ -221,7 +222,11 @@ object Checking {
           // global symbols when doing the cyclicity check.
           def isInteresting(prefix: Type): Boolean = prefix.stripTypeVar match {
             case NoPrefix => true
-            case prefix: ThisType => sym.owner.isClass && prefix.cls.isContainedIn(sym.owner)
+            case prefix: ThisType =>
+              sym.owner.isClass && (
+                prefix.cls.isContainedIn(sym.owner)    // sym reachable through outer references
+                || sym.owner.isContainedIn(prefix.cls) // sym reachable through member references
+              )
             case prefix: NamedType =>
               (!sym.is(Private) && prefix.derivesFrom(sym.owner)) ||
               (!prefix.symbol.isStaticOwner && isInteresting(prefix.prefix))
@@ -231,6 +236,7 @@ object Checking {
             case _: RefinedOrRecType | _: AppliedType => true
             case _ => false
           }
+
           if (isInteresting(pre)) {
             val pre1 = this(pre, false, false)
             if (locked.contains(tp) || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter])
@@ -319,6 +325,33 @@ object Checking {
       }
     }
     checkTree((), refinement)
+  }
+
+  /** Check type members inherited from different `parents` of `joint` type for cycles,
+   *  unless a type with the same name aleadry appears in `decls`.
+   *  @return    true iff no cycles were detected
+   */
+  def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: Position)(implicit ctx: Context): Unit = {
+    def qualifies(sym: Symbol) = sym.name.isTypeName && !sym.is(Private)
+    val abstractTypeNames =
+      for (parent <- parents; mbr <- parent.abstractTypeMembers if qualifies(mbr.symbol))
+      yield mbr.name.asTypeName
+
+   for (name <- abstractTypeNames)
+      try {
+        val mbr = joint.member(name)
+        mbr.info match {
+          case bounds: TypeBounds =>
+            !checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
+          case _ =>
+            true
+        }
+      }
+      catch {
+        case ex: RecursionOverflow =>
+          ctx.error(em"cyclic reference involving type $name", pos)
+          false
+      }
   }
 
   /** Check that symbol's definition is well-formed. */
@@ -519,6 +552,9 @@ trait Checking {
 
   def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type =
     Checking.checkNonCyclic(sym, info, reportErrors)
+
+  def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: Position)(implicit ctx: Context): Unit =
+    Checking.checkNonCyclicInherited(joint, parents, decls, pos)
 
   /** Check that Java statics and packages can only be used in selections.
    */
@@ -906,6 +942,7 @@ trait ReChecking extends Checking {
 trait NoChecking extends ReChecking {
   import tpd._
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
+  override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassType(tp: Type, pos: Position, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp

@@ -121,7 +121,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
     val saved = approx
     this.approx = a
-    try recur(tp1, tp2) finally this.approx = saved
+    try recur(tp1, tp2)
+    catch {
+      case ex: Throwable => handleRecursive("subtype", i"$tp1 <:< $tp2", ex, weight = 2)
+    }
+    finally this.approx = saved
   }
 
   protected def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, NoApprox)
@@ -161,7 +165,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         try {
           pendingSubTypes += p
           firstTry
-        } finally {
+        }
+        finally {
           pendingSubTypes -= p
         }
       }
