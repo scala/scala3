@@ -476,6 +476,9 @@ class Typer extends Namer
       case pt: SelectionProto if pt.name == nme.CONSTRUCTOR => true
       case _ => false
     }
+    val enclosingInlineable = ctx.owner.ownersIterator.findSymbol(_.isInlineableMethod)
+    if (enclosingInlineable.exists && !Inliner.isLocal(qual1.symbol, enclosingInlineable))
+      ctx.error(SuperCallsNotAllowedInline(enclosingInlineable), tree.pos)
     pt match {
       case pt: SelectionProto if pt.name.isTypeName =>
         qual1 // don't do super references for types; they are meaningless anyway

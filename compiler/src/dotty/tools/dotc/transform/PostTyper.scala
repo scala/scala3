@@ -192,10 +192,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           }
           else
             transformSelect(tree, Nil)
-        case tree: Super =>
-          if (ctx.owner.enclosingMethod.isInlinedMethod)
-            ctx.error(SuperCallsNotAllowedInline(ctx.owner), tree.pos)
-          super.transform(tree)
         case tree: Apply =>
           methPart(tree) match {
             case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
