@@ -1908,7 +1908,7 @@ class Typer extends Namer
                     // from separately compiled files - the original BodyAnnotation is not kept.
                 }
                 else {
-                  assert(mdef.symbol.isTransparentMethod)
+                  assert(mdef1.symbol.isTransparentMethod, mdef.symbol)
                   Inliner.bodyToInline(mdef1.symbol) // just make sure accessors are computed,
                   buf += mdef1                       // but keep original definition, since inline-expanded code
                                                      // is pickled in this case.
