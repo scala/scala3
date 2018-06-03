@@ -535,7 +535,7 @@ class TreeUnpickler(reader: TastyReader,
             rootd.symbol
           case _ =>
             val completer = adjustIfModule(new Completer(ctx.owner, subReader(start, end)))
-F            if (isClass)
+            if (isClass)
               ctx.newClassSymbol(ctx.owner, name.asTypeName, flags, completer, privateWithin, coord)
             else
               ctx.newSymbol(ctx.owner, name, flags, completer, privateWithin, coord)
@@ -550,7 +550,7 @@ F            if (isClass)
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
-      else if (sym.isInlineableMethod)
+      else if (sym.isInlinedMethod)
         sym.addAnnotation(LazyBodyAnnotation { ctx0 =>
           implicit val ctx: Context = localContext(sym)(ctx0).addMode(Mode.ReadPositions)
             // avoids space leaks by not capturing the current context

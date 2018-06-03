@@ -1428,6 +1428,7 @@ class Typer extends Namer
       (tparams1, sym.owner.typeParams).zipped.foreach ((tdef, tparam) =>
         rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
     }
+    if (sym.isTransparentMethod) rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
     val rhs1 = normalizeErasedRhs(typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx), sym)
 
     // Overwrite inline body to make sure it is not evaluated twice
