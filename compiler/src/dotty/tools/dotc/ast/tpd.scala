@@ -20,6 +20,8 @@ import scala.io.Codec
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
+  case class UntypedSplice(splice: untpd.Tree) extends Tree
+
   private def ta(implicit ctx: Context) = ctx.typeAssigner
 
   def Ident(tp: NamedType)(implicit ctx: Context): Ident =
@@ -470,8 +472,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         else sym
       } else foldOver(sym, tree)
   }
-
-  case class UntypedSplice(splice: untpd.Tree) extends Tree
 
   override val cpy: TypedTreeCopier = // Type ascription needed to pick up any new members in TreeCopier (currently there are none)
     new TypedTreeCopier

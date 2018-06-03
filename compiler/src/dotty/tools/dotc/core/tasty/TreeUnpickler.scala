@@ -636,8 +636,9 @@ class TreeUnpickler(reader: TastyReader,
         val end = readEnd()
         val tp = readType()
         val lazyAnnotTree = readLaterWithOwner(end, rdr => ctx => rdr.readTerm()(ctx))
-
-        owner =>
+        if (tp.isRef(defn.BodyAnnot))
+          LazyBodyAnnotation(implicit ctx => lazyAnnotTree(owner).complete)
+        else
           Annotation.deferredSymAndTree(
             implicit ctx => tp.typeSymbol,
             implicit ctx => lazyAnnotTree(owner).complete)

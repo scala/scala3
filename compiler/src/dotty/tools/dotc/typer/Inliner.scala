@@ -27,9 +27,19 @@ import collection.mutable
 import transform.TypeUtils._
 import reporting.trace
 import util.Positions.Position
+import util.Property
 
 object Inliner {
   import tpd._
+
+  /** Marks an implicit reference found in the context (as opposed to the implicit scope)
+   *  from an inlineable body. Such references will be carried along with the body to
+   *  the expansion site.
+   */
+  private val ContextualImplicit = new Property.StickyKey[Unit]
+
+  def markContextualImplicit(tree: Tree)(implicit ctx: Context): Unit =
+    methPart(tree).putAttachment(ContextualImplicit, ())
 
   class InlineAccessors extends AccessProxies {
 
@@ -212,7 +222,7 @@ object Inliner {
    *                     to have the inlined method as owner.
    */
   def registerInlineInfo(
-      inlined: Symbol, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
+      inlined: Symbol, originalBody: untpd.Tree, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
     inlined.unforcedAnnotation(defn.BodyAnnot) match {
       case Some(ann: ConcreteBodyAnnotation) =>
       case Some(ann: LazyBodyAnnotation) if ann.isEvaluated =>

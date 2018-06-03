@@ -95,7 +95,9 @@ class TreeTypeMap(
           val (tmap2, vparamss1) = tmap1.transformVParamss(vparamss)
           val res = cpy.DefDef(ddef)(name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(ddef.rhs))
           res.symbol.transformAnnotations {
-            case ann: BodyAnnotation => ann.derivedAnnotation(res.rhs)
+            case ann: BodyAnnotation =>
+              if (res.symbol.isTransparentMethod) ann.derivedAnnotation(transform(ann.tree))
+              else ann.derivedAnnotation(res.rhs)
             case ann => ann
           }
           res
@@ -126,7 +128,7 @@ class TreeTypeMap(
   override def transformStats(trees: List[tpd.Tree])(implicit ctx: Context) =
     transformDefs(trees)._2
 
-  private def transformDefs[TT <: tpd.Tree](trees: List[TT])(implicit ctx: Context): (TreeTypeMap, List[TT]) = {
+  def transformDefs[TT <: tpd.Tree](trees: List[TT])(implicit ctx: Context): (TreeTypeMap, List[TT]) = {
     val tmap = withMappedSyms(tpd.localSyms(trees))
     (tmap, tmap.transformSub(trees))
   }
