@@ -70,7 +70,9 @@ object Inliner {
 
       def postTransform(tree: Tree)(implicit ctx: Context) = tree match {
         case Assign(lhs, rhs) if lhs.symbol.name.is(InlineAccessorName) =>
-          cpy.Apply(tree)(useSetter(lhs), rhs :: Nil)
+          val setter = useSetter(lhs)
+          if (inlineSym.isTransparentMethod) tree // just generate a setter, but don't integrate it in the tree
+          else cpy.Apply(tree)(setter, rhs :: Nil)
         case _ =>
           tree
       }
@@ -686,6 +688,18 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    */
   trait InlineTyping extends Typer {
 
+    override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
+      tpe match {
+        case tpe @ TypeRef(pre, _) if !tpe.symbol.isAccessibleFrom(pre, superAccess) =>
+          tpe.info match {
+            case TypeAlias(alias) => return ensureAccessible(alias, superAccess, pos)
+            case _ =>
+          }
+        case _ =>
+      }
+      super.ensureAccessible(tpe, superAccess, pos)
+    }
+
     override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = {
       val cond1 = typed(tree.cond, defn.BooleanType)
       cond1.tpe.widenTermRefExpr match {
@@ -751,18 +765,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
   /** A re-typer used for inlined methods */
   private class InlineReTyper extends ReTyper with InlineTyping {
-
-    override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
-      tpe match {
-        case tpe @ TypeRef(pre, _) if !tpe.symbol.isAccessibleFrom(pre, superAccess) =>
-          tpe.info match {
-            case TypeAlias(alias) => return ensureAccessible(alias, superAccess, pos)
-            case _ =>
-          }
-        case _ =>
-      }
-      super.ensureAccessible(tpe, superAccess, pos)
-    }
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context) =
       tree.asInstanceOf[tpd.Tree] match {
