@@ -197,12 +197,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def hasFlags = flags != EmptyFlags
     def hasAnnotations = annotations.nonEmpty
     def hasPrivateWithin = privateWithin != tpnme.EMPTY
-    def hasMod[T: ClassTag] = {
-      val cls = implicitly[ClassTag[T]].runtimeClass
-      mods.exists(mod => cls.isAssignableFrom(mod.getClass))
-    }
 
-    private def isEnum = hasMod[Mod.Enum] || is(Enum, butNot = JavaDefined)
+    private def isEnum = is(Enum, butNot = JavaDefined)
 
     def isEnumCase = isEnum && is(Case)
     def isEnumClass = isEnum && !is(Case)
