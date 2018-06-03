@@ -417,7 +417,7 @@ class Typer extends Namer
 
   /** Check that a stable identifier pattern is indeed stable (SLS 8.1.5)
    */
-  private def checkStableIdentPattern(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
+  private def checkStableIdentPattern(tree: Tree, pt: Type)(implicit ctx: Context): tree.type = {
     if (ctx.mode.is(Mode.Pattern) &&
         !tree.isType &&
         !pt.isInstanceOf[ApplyingProto] &&
@@ -915,8 +915,7 @@ class Typer extends Namer
             else cpy.ValDef(param)(
               tpt = untpd.TypeTree(
                 inferredParamType(param, protoFormal(i)).underlyingIfRepeated(isJava = false)))
-        val inlineable = pt.hasAnnotation(defn.InlineParamAnnot)
-        desugar.makeClosure(inferredParams, fnBody, resultTpt, inlineable)
+        desugar.makeClosure(inferredParams, fnBody, resultTpt)
       }
     typed(desugared, pt)
   }

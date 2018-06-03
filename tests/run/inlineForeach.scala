@@ -3,7 +3,7 @@ object Test {
   class Range(from: Int, end: Int) {
 
     inline
-    def foreach(inline op: Int => Unit): Unit = {
+    def foreach(op: => Int => Unit): Unit = {
       var i = from
       while (i < end) {
         op(i)
@@ -36,7 +36,7 @@ object Test {
   }
 
   implicit class intArrayOps(arr: Array[Int]) {
-    inline def foreach(inline op: Int => Unit): Unit = {
+    inline def foreach(op: => Int => Unit): Unit = {
       var i = 0
       while (i < arr.length) {
         op(arr(i))

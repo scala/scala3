@@ -645,9 +645,8 @@ trait Checking {
       case tp: TermRef if tp.symbol.is(InlineParam) => // ok
       case tp => tp.widenTermRefExpr match {
         case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
-        case tp if defn.isFunctionType(tp) && exprPurity(tree) >= purityLevel => // ok
         case _ =>
-          if (!ctx.erasedTypes) ctx.error(em"$what must be a constant expression or a function", tree.pos)
+          if (!ctx.erasedTypes) ctx.error(em"$what must be a constant expression", tree.pos)
       }
     }
   }

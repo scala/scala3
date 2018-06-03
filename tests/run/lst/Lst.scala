@@ -25,7 +25,7 @@ class Lst[+T](val elems: Any) extends AnyVal {
   def isEmpty = elems == null
   def nonEmpty = elems != null
 
-  inline def foreach(inline op: T => Unit): Unit = {
+  inline def foreach(op: => T => Unit): Unit = {
     def sharedOp(x: T) = op(x)
     elems match {
       case null =>
@@ -39,7 +39,7 @@ class Lst[+T](val elems: Any) extends AnyVal {
   /** Like `foreach`, but completely inlines `op`, at the price of generating the code twice.
    *  Should be used only of `op` is small
    */
-  inline def foreachInlined(inline op: T => Unit): Unit = elems match {
+  inline def foreachInlined(op: => T => Unit): Unit = elems match {
     case null =>
     case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
       var i = 0
@@ -60,7 +60,7 @@ class Lst[+T](val elems: Any) extends AnyVal {
   }
 
   /** `f` is pulled out, not duplicated */
-  inline def map[U](inline f: T => U): Lst[U] = {
+  inline def map[U](f: => T => U): Lst[U] = {
     def op(x: T) = f(x)
     elems match {
       case null => Empty
@@ -144,7 +144,7 @@ class Lst[+T](val elems: Any) extends AnyVal {
   }
   def filterNot(p: T => Boolean): Lst[T] = filter(!p(_))
 
-  inline def exists(inline p: T => Boolean): Boolean = {
+  inline def exists(p: => T => Boolean): Boolean = {
     def op(x: T) = p(x)
     elems match {
       case null => false
@@ -157,7 +157,7 @@ class Lst[+T](val elems: Any) extends AnyVal {
     }
   }
 
-  inline def forall(inline p: T => Boolean): Boolean = {
+  inline def forall(p: => T => Boolean): Boolean = {
     def op(x: T) = p(x)
     elems match {
       case null => true
@@ -180,7 +180,7 @@ class Lst[+T](val elems: Any) extends AnyVal {
       elem == x
   }
 
-  inline def foldLeft[U](z: U)(inline f: (U, T) => U) = {
+  inline def foldLeft[U](z: U)(f: => (U, T) => U) = {
     def op(x: U, y: T) = f(x, y)
     elems match {
       case null => z
@@ -194,7 +194,7 @@ class Lst[+T](val elems: Any) extends AnyVal {
     }
   }
 
-  inline def /: [U](z: U)(inline op: (U, T) => U) = foldLeft(z)(op)
+  inline def /: [U](z: U)(op: => (U, T) => U) = foldLeft(z)(op)
 
   def reduceLeft[U >: T](op: (U, U) => U) = elems match {
     case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]

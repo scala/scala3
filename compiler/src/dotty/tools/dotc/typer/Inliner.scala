@@ -218,6 +218,31 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   private def newSym(name: Name, flags: FlagSet, info: Type): Symbol =
     ctx.newSymbol(ctx.owner, name, flags, info, coord = call.pos)
 
+  /** A binding for the parameter of an inlined method. This is a `val` def for
+   *  by-value parameters and a `def` def for by-name parameters. `val` defs inherit
+   *  inline annotations from their parameters. The generated `def` is appended
+   *  to `bindingsBuf`.
+   *  @param name        the name of the parameter
+   *  @param paramtp     the type of the parameter
+   *  @param arg         the argument corresponding to the parameter
+   *  @param bindingsBuf the buffer to which the definition should be appended
+   */
+  private def paramBindingDef(name: Name, paramtp: Type, arg: Tree,
+                              bindingsBuf: mutable.ListBuffer[ValOrDefDef]): ValOrDefDef = {
+    val argtpe = arg.tpe.dealias
+    def isByName = paramtp.dealias.isInstanceOf[ExprType]
+    val inlineFlag = if (paramtp.hasAnnotation(defn.InlineParamAnnot)) Inline else EmptyFlags
+    val (bindingFlags, bindingType) =
+      if (isByName) (Method, ExprType(argtpe.widen))
+      else (inlineFlag, argtpe.widen)
+    val boundSym = newSym(name, bindingFlags, bindingType).asTerm
+    val binding =
+      if (isByName) DefDef(boundSym, arg.changeOwner(ctx.owner, boundSym))
+      else ValDef(boundSym, arg)
+    bindingsBuf += binding
+    binding
+  }
+
   /** Populate `paramBinding` and `bindingsBuf` by matching parameters with
    *  corresponding arguments. `bindingbuf` will be further extended later by
    *  proxies to this-references.
@@ -230,20 +255,9 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       computeParamBindings(tp.resultType, Nil, argss)
     case tp: MethodType =>
       (tp.paramNames, tp.paramInfos, argss.head).zipped.foreach { (name, paramtp, arg) =>
-        def isByName = paramtp.dealias.isInstanceOf[ExprType]
         paramBinding(name) = arg.tpe.dealias match {
           case _: SingletonType if isIdempotentExpr(arg) => arg.tpe
-          case argtpe =>
-            val inlineFlag = if (paramtp.hasAnnotation(defn.InlineParamAnnot)) Inline else EmptyFlags
-            val (bindingFlags, bindingType) =
-              if (isByName) (inlineFlag | Method, ExprType(argtpe.widen))
-              else (inlineFlag, argtpe.widen)
-            val boundSym = newSym(name, bindingFlags, bindingType).asTerm
-            val binding =
-              if (isByName) DefDef(boundSym, arg.changeOwner(ctx.owner, boundSym))
-              else ValDef(boundSym, arg)
-            bindingsBuf += binding
-            boundSym.termRef
+          case _ => paramBindingDef(name, paramtp, arg, bindingsBuf).symbol.termRef
         }
       }
       computeParamBindings(tp.resultType, targs, argss.tail)
@@ -265,7 +279,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
    *      The proxy is not yet entered in `bindingsBuf`; that will come later.
    *  2.  If given type refers to a parameter, make `paramProxy` refer to the entry stored
    *      in `paramNames` under the parameter's name. This roundabout way to bind parameter
-   *      references to proxies is done because  we not known a priori what the parameter
+   *      references to proxies is done because  we don't know a priori what the parameter
    *      references of a method are (we only know the method's type, but that contains TypeParamRefs
    *      and MethodParams, not TypeRefs or TermRefs.
    */
@@ -374,16 +388,15 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       // The final expansion runs a typing pass over the inlined tree. See InlineTyper for details.
       val expansion1 = InlineTyper.typed(expansion, pt)(inlineCtx)
 
-      /** Does given definition bind a closure that will be inlined? */
-      def bindsDeadInlineable(defn: ValOrDefDef) = Ident(defn.symbol.termRef) match {
-        case InlineableArg(_) => !InlineTyper.retainedInlineables.contains(defn.symbol)
-        case _ => false
-      }
-
       /** All bindings in `bindingsBuf` except bindings of inlineable closures */
-      val bindings = bindingsBuf.toList.filterNot(bindsDeadInlineable).map(_.withPos(call.pos))
+      val bindings = bindingsBuf.toList.map(_.withPos(call.pos))
 
-      tpd.Inlined(call, bindings, expansion1)
+      inlining.println(i"original bindings = $bindings%\n%")
+      inlining.println(i"original expansion = $expansion1")
+
+      val (finalBindings, finalExpansion) = dropUnusedDefs(bindings, expansion1)
+
+      tpd.Inlined(call, finalBindings, finalExpansion)
     }
   }
 
@@ -413,8 +426,6 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
    *  5. Make sure that the tree's typing is idempotent (so that future -Ycheck passes succeed)
    */
   private object InlineTyper extends ReTyper {
-
-    var retainedInlineables = Set[Symbol]()
 
     override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
       tpe match {
@@ -455,13 +466,103 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
       }
     }
 
-    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) =
-      tree.asInstanceOf[tpd.Tree] match {
-        case Apply(Select(InlineableArg(closure(_, fn, _)), nme.apply), args) =>
-          inlining.println(i"reducing $tree with closure $fn")
-          typed(fn.appliedToArgs(args), pt)
-        case _ =>
-          super.typedApply(tree, pt)
+    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) = {
+
+      def betaReduce(tree: Tree) = tree match {
+        case Apply(Select(cl @ closureDef(ddef), nme.apply), args) =>
+          ddef.tpe.widen match {
+            case mt: MethodType if ddef.vparamss.head.length == args.length =>
+              val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
+              val argSyms = (mt.paramNames, mt.paramInfos, args).zipped.map { (name, paramtp, arg) =>
+                arg.tpe.dealias match {
+                  case ref @ TermRef(NoPrefix, _) => ref.symbol
+                  case _ => paramBindingDef(name, paramtp, arg, bindingsBuf).symbol
+                }
+              }
+              val expander = new TreeTypeMap(
+                oldOwners = ddef.symbol :: Nil,
+                newOwners = ctx.owner :: Nil,
+                substFrom = ddef.vparamss.head.map(_.symbol),
+                substTo = argSyms)
+              Block(bindingsBuf.toList, expander.transform(ddef.rhs))
+            case _ => tree
+          }
+        case _ => tree
       }
+
+      betaReduce(super.typedApply(tree, pt))
+    }
+  }
+
+  /** Drop any side-effect-free bindings that are unused in expansion or other reachable bindings.
+   *  Inline def bindings that are used only once.
+   */
+  def dropUnusedDefs(bindings: List[ValOrDefDef], tree: Tree)(implicit ctx: Context): (List[ValOrDefDef], Tree) = {
+    val refCount = newMutableSymbolMap[Int]
+    val bindingOfSym = newMutableSymbolMap[ValOrDefDef]
+    def isInlineable(binding: ValOrDefDef) = binding match {
+      case DefDef(_, Nil, Nil, _, _) => true
+      case vdef @ ValDef(_, _, _) => isPureExpr(vdef.rhs)
+      case _ => false
+    }
+    for (binding <- bindings if isInlineable(binding)) {
+      refCount(binding.symbol) = 0
+      bindingOfSym(binding.symbol) = binding
+    }
+    val countRefs = new TreeTraverser {
+      override def traverse(t: Tree)(implicit ctx: Context) = {
+        t match {
+          case t: RefTree =>
+            refCount.get(t.symbol) match {
+              case Some(x) => refCount(t.symbol) = x + 1
+              case none =>
+            }
+          case _: New | _: TypeTree =>
+            //println(i"refcount ${t.tpe}")
+            t.tpe.foreachPart {
+              case ref: TermRef =>
+                refCount.get(ref.symbol) match {
+                  case Some(x) => refCount(ref.symbol) = x + 2
+                  case none =>
+                }
+              case _ =>
+            }
+          case _ =>
+        }
+        traverseChildren(t)
+      }
+    }
+    countRefs.traverse(tree)
+    for (binding <- bindings) countRefs.traverse(binding.rhs)
+    val inlineBindings = new TreeMap {
+      override def transform(t: Tree)(implicit ctx: Context) =
+        super.transform {
+          t match {
+            case t: RefTree =>
+              val sym = t.symbol
+              refCount.get(sym) match {
+                case Some(1) if sym.is(Method) =>
+                  bindingOfSym(sym).rhs.changeOwner(sym, ctx.owner)
+                case none => t
+              }
+            case _ => t
+          }
+        }
+      }
+    def retain(binding: ValOrDefDef) = refCount.get(binding.symbol) match {
+      case Some(x) => x > 1 || x == 1 && !binding.symbol.is(Method)
+      case none => true
+    }
+    val retained = bindings.filterConserve(retain)
+    if (retained `eq` bindings) {
+      //println(i"DONE\n${bindings}%\n% ;;;\n ${tree}")
+      (bindings, tree)
+    }
+    else {
+      val expanded = inlineBindings.transform(tree)
+      //println(i"ref counts: ${refCount.toMap map { case (sym, count) => i"$sym -> $count" }}")
+      //println(i"""MAPPING\n${bindings}%\n% ;;;\n ${tree} \n------->\n${retained}%\n%;;;\n ${expanded} """)
+      dropUnusedDefs(retained, expanded)
+    }
   }
 }
