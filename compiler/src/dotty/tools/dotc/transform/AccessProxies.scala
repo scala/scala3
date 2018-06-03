@@ -6,6 +6,7 @@ import Contexts.Context
 import Symbols._
 import Flags._
 import Names._
+import NameOps._
 import Decorators._
 import TypeUtils._
 import Annotations.Annotation
@@ -23,9 +24,6 @@ abstract class AccessProxies {
   import ast.tpd._
   import AccessProxies._
 
-  def getterName: ClassifiedNameKind
-  def setterName: ClassifiedNameKind
-
   /** accessor -> accessed */
   private val accessedBy = newMutableSymbolMap[Symbol]
 
@@ -38,7 +36,7 @@ abstract class AccessProxies {
       polyDefDef(accessor.asTerm, tps => argss => {
         val accessRef = ref(TermRef(cls.thisType, accessed))
         val rhs =
-          if (accessor.name.is(setterName) &&
+          if (accessor.name.isSetterName &&
               argss.nonEmpty && argss.head.nonEmpty) // defensive conditions
             accessRef.becomes(argss.head.head)
           else
@@ -49,19 +47,50 @@ abstract class AccessProxies {
   /** Add all needed accessors to the `body` of class `cls` */
   def addAccessorDefs(cls: Symbol, body: List[Tree])(implicit ctx: Context): List[Tree] = {
     val accDefs = accessorDefs(cls)
+    transforms.println(i"add accessors for $cls: $accDefs%, %")
     if (accDefs.isEmpty) body else body ++ accDefs
   }
 
   trait Insert {
     import ast.tpd._
 
+    def accessorNameKind: ClassifiedNameKind
     def needsAccessor(sym: Symbol)(implicit ctx: Context): Boolean
 
     /** A fresh accessor symbol */
-    def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, pos: Position)(implicit ctx: Context): TermSymbol = {
+    private def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, pos: Position)(implicit ctx: Context): TermSymbol = {
       val sym = ctx.newSymbol(owner, name, Synthetic | Method, info, coord = pos).entered
       if (sym.allOverriddenSymbols.exists(!_.is(Deferred))) sym.setFlag(Override)
       sym
+    }
+
+    /** An accessor symbol, create a fresh one unless one exists already */
+    private def accessorSymbol(owner: Symbol, accessorName: TermName, accessorInfo: Type, accessed: Symbol)(implicit ctx: Context) = {
+      def refersToAccessed(sym: Symbol) = accessedBy.get(sym) == Some(accessed)
+      owner.info.decl(accessorName).suchThat(refersToAccessed).symbol.orElse {
+        val acc = newAccessorSymbol(owner, accessorName, accessorInfo, accessed.pos)
+        accessedBy(acc) = accessed
+        acc
+      }
+    }
+
+    /** Rewire reference to refer to `accessor` symbol */
+    private def rewire(reference: RefTree, accessor: Symbol)(implicit ctx: Context): Tree = {
+      reference match {
+        case Select(qual, _) => qual.select(accessor)
+        case Ident(name) => ref(accessor)
+      }
+    }.withPos(reference.pos)
+
+    /** Given a reference to a getter accessor, the corresponding setter reference */
+    def useSetter(getterRef: RefTree)(implicit ctx: Context): Tree = {
+      val getter = getterRef.symbol
+      val accessed = accessedBy(getter)
+      val accessedName = accessed.name.asTermName
+      val setterName = accessorNameKind(accessedName.setterName)
+      val setterInfo = MethodType(getter.info.widenExpr :: Nil, defn.UnitType)
+      val setter = accessorSymbol(getter.owner, setterName, setterInfo, accessed)
+      rewire(getterRef, setter)
     }
 
     /** Create an accessor unless one exists already, and replace the original
@@ -70,13 +99,8 @@ abstract class AccessProxies {
       *  @param reference    The original reference to the non-public symbol
       *  @param onLHS        The reference is on the left-hand side of an assignment
       */
-    def useAccessor(reference: RefTree, onLHS: Boolean)(implicit ctx: Context): Tree = {
-
-      def nameKind = if (onLHS) setterName else getterName
+    def useAccessor(reference: RefTree)(implicit ctx: Context): Tree = {
       val accessed = reference.symbol.asTerm
-
-      def refersToAccessed(sym: Symbol) = accessedBy.get(sym) == Some(accessed)
-
       var accessorClass = hostForAccessorOf(accessed: Symbol)
       if (!accessorClass.exists) {
         val curCls = ctx.owner.enclosingClass
@@ -85,27 +109,11 @@ abstract class AccessProxies {
           reference.pos)
         accessorClass = curCls
       }
-
-      val accessorRawInfo =
-        if (onLHS) MethodType(accessed.info :: Nil, defn.UnitType)
-        else accessed.info.ensureMethodic
+      val accessorName = accessorNameKind(accessed.name)
       val accessorInfo =
-        accessorRawInfo.asSeenFrom(accessorClass.thisType, accessed.owner)
-      val accessorName = nameKind(accessed.name)
-
-      val accessorSymbol =
-        accessorClass.info.decl(accessorName).suchThat(refersToAccessed).symbol
-          .orElse {
-            val acc = newAccessorSymbol(accessorClass, accessorName, accessorInfo, accessed.pos)
-            accessedBy(acc) = accessed
-            acc
-          }
-
-      { reference match {
-          case Select(qual, _) => qual.select(accessorSymbol)
-          case Ident(name) => ref(accessorSymbol)
-        }
-      }.withPos(reference.pos)
+        accessed.info.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
+      val accessor = accessorSymbol(accessorClass, accessorName, accessorInfo, accessed)
+      rewire(reference, accessor)
     }
 
     /** Replace tree with a reference to an accessor if needed */
@@ -115,15 +123,16 @@ abstract class AccessProxies {
           ctx.error("Implementation restriction: cannot use private constructors in inline methods", tree.pos)
           tree // TODO: create a proper accessor for the private constructor
         }
-        else useAccessor(tree, onLHS = false)
-      case Assign(lhs: RefTree, rhs) if needsAccessor(lhs.symbol) =>
-        cpy.Apply(tree)(useAccessor(lhs, onLHS = true), List(rhs))
+        else useAccessor(tree)
       case _ =>
         tree
     }
   }
 }
 object AccessProxies {
+  /** Where an accessor for the `accessed` symbol should be placed.
+   *  This is the closest enclosing class that has `accessed` as a member.
+   */
   def hostForAccessorOf(accessed: Symbol)(implicit ctx: Context): Symbol =
     ctx.owner.ownersIterator.findSymbol(_.derivesFrom(accessed.owner))
 }

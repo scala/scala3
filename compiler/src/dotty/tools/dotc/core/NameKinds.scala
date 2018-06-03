@@ -354,10 +354,8 @@ object NameKinds {
 
   val SuperAccessorName = new PrefixNameKind(SUPERACCESSOR, "super$")
   val InitializerName = new PrefixNameKind(INITIALIZER, "initial$")
-  val ProtectedGetterName = new PrefixNameKind(PROTECTEDGETTER, "protected_get$")
-  val ProtectedSetterName = new PrefixNameKind(PROTECTEDSETTER, "protected_set$")
-  val InlineGetterName = new PrefixNameKind(INLINEGETTER, "inline_get$")
-  val InlineSetterName = new PrefixNameKind(INLINESETTER, "inline_set$")
+  val ProtectedAccessorName = new PrefixNameKind(PROTECTEDACCESSOR, "protected$")
+  val InlineAccessorName = new PrefixNameKind(INLINEACCESSOR, "inline$")
 
   val AvoidClashName = new SuffixNameKind(AVOIDCLASH, "$_avoid_name_clash_$")
   val DirectMethodName = new SuffixNameKind(DIRECT, "$direct") { override def definesNewName = true }

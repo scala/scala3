@@ -836,12 +836,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree.select(defn.Boolean_||).appliedTo(that)
 
     /** The translation of `tree = rhs`.
-     *  This is either the tree as an assignment, to a setter call.
+     *  This is either the tree as an assignment, or a setter call.
      */
-    def becomes(rhs: Tree)(implicit ctx: Context): Tree =
-      if (tree.symbol is Method) {
-        val setter = tree.symbol.setter
-        assert(setter.exists, tree.symbol.showLocated)
+    def becomes(rhs: Tree)(implicit ctx: Context): Tree = {
+      val sym = tree.symbol
+      if (sym is Method) {
+        val setter = sym.setter.orElse {
+          assert(sym.name.isSetterName && sym.info.firstParamTypes.nonEmpty)
+          sym
+        }
         val qual = tree match {
           case id: Ident => desugarIdentPrefix(id)
           case Select(qual, _) => qual
@@ -849,6 +852,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         qual.select(setter).appliedTo(rhs)
       }
       else Assign(tree, rhs)
+    }
 
     /** A synthetic select with that will be turned into an outer path by ExplicitOuter.
      *  @param levels  How many outer levels to select
