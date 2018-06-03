@@ -859,7 +859,8 @@ class TreePickler(pickler: TastyPickler) {
         writeByte(TYPEDSPLICE)
         withLength { pickleTree(splice) }
       case Thicket(trees) =>
-        trees.foreach(pickleUntyped)
+        if (trees.isEmpty) writeByte(EMPTYTREE)
+        else trees.foreach(pickleUntyped)
       case _ =>
         pickleUntyped(desugar(tree))
     }

@@ -1223,7 +1223,11 @@ class TreeUnpickler(reader: TastyReader,
       def readIdent(): untpd.Ident = readUntyped().asInstanceOf[untpd.Ident]
 
       def readParams[T <: untpd.MemberDef](tag: Int): List[T] =
-        collectWhile(nextByte == tag)(readUntyped().asInstanceOf[T])
+        collectWhile(nextByte == tag) {
+          import untpd.modsDeco
+          val m: T = readUntyped().asInstanceOf[T]
+          m.withMods(m.mods | Param).asInstanceOf[T]
+        }
 
       def readParamss(): List[List[untpd.ValDef]] =
         collectWhile(nextByte == PARAMS) {
@@ -1266,8 +1270,11 @@ class TreeUnpickler(reader: TastyReader,
           untpd.ByNameTypeTree(readUntyped())
         case NAMEDARG =>
           untpd.NamedArg(readName(), readUntyped())
+        case EMPTYTREE =>
+          untpd.EmptyTree
         case SHAREDtype =>
-          assert(readNat() == 0)
+          val b = readNat()
+          assert(b == 0, i"bad shared type $b at $currentAddr when reading ${ctx.owner.ownersIterator.toList}%, %")
           untpd.TypeTree()
         case _ =>
           untpd.Literal(readConstant(tag))
@@ -1373,7 +1380,11 @@ class TreeUnpickler(reader: TastyReader,
             untpd.TypedSplice(readTerm())
           case FUNCTION =>
             val body = readUntyped()
-            val params = until(end)(readUntyped())
+            import untpd.modsDeco
+            val params = until(end)(readUntyped()).map {
+              case param: untpd.ValDef => param.withMods(param.mods | Param)
+              case param => param
+            }
             untpd.Function(params, body)
           case INFIXOP =>
             untpd.InfixOp(readUntyped(), readIdent(), readUntyped())

@@ -317,6 +317,7 @@ object TastyFormat {
   final val MACRO = 34
   final val ERASED = 35
   final val PARAMsetter = 36
+  final val EMPTYTREE = 37
 
   // Cat. 2:    tag Nat
 
@@ -451,7 +452,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= PARAMsetter ||
+    firstSimpleTreeTag <= tag && tag <= EMPTYTREE ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -548,6 +549,7 @@ object TastyFormat {
     case DEFAULTparameterized => "DEFAULTparameterized"
     case STABLE => "STABLE"
     case PARAMsetter => "PARAMsetter"
+    case EMPTYTREE => "EMPTYTREE"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"
