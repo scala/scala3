@@ -66,7 +66,7 @@ abstract class AccessProxies {
 
     /** An accessor symbol, create a fresh one unless one exists already */
     private def accessorSymbol(owner: Symbol, accessorName: TermName, accessorInfo: Type, accessed: Symbol)(implicit ctx: Context) = {
-      def refersToAccessed(sym: Symbol) = accessedBy.get(sym) == Some(accessed)
+      def refersToAccessed(sym: Symbol) = accessedBy.get(sym).contains(accessed)
       owner.info.decl(accessorName).suchThat(refersToAccessed).symbol.orElse {
         val acc = newAccessorSymbol(owner, accessorName, accessorInfo, accessed.pos)
         accessedBy(acc) = accessed
