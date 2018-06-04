@@ -1,10 +1,17 @@
 object Test extends App {
 
-  trait Nat
+  trait Nat {
+    def toInt: Int
+  }
 
-  case object Z extends Nat
+  case object Z extends Nat {
+    transparent def toInt = 0
+  }
+
   type Z = Z.type
-  case class S[N <: Nat](n: Nat) extends Nat
+  case class S[N <: Nat](n: N) extends Nat {
+    transparent def toInt = n.toInt + 1
+  }
 
   abstract class HasResult[T] { type Result = T }
   case class ToNat[+T](val value: T) extends HasResult[T]
@@ -13,7 +20,7 @@ object Test extends App {
     if n == 0 then new ToNat(Z)
     else {
       val n1 = ToNat(n - 1)
-      new ToNat[S[n1.Result]](S(n1.value))
+      new ToNat(S(n1.value))
     }
 
   val x0 = ToNat(0)
@@ -28,6 +35,10 @@ object Test extends App {
   println(x0)
   println(x1)
   println(x2)
+  transparent val i0 = y0.toInt
+  val j0: 0 = i0
+  transparent val i2 = y2.toInt
+  val j2: 2 = i2
 
   trait HList {
     def isEmpty: Boolean
@@ -41,7 +52,7 @@ object Test extends App {
     override def tail: Nothing = ???
   }
 
-  case object HNil extends HNil
+  lazy val HNil: HNil = new HNil
 
   case class HCons[H, T <: HList](hd: H, tl: T) extends HList {
     transparent override def isEmpty = false
@@ -61,6 +72,38 @@ object Test extends App {
   val r3 = concat(xs, xs)
 
   val r4 = concat(HNil, HCons(1, HCons("a", HNil)))
-  val r5 = concat(HCons(1, HCons("a", HNil)), HNil)
+  val r5 = concat(HCons(1, HCons("a", HNil)) , HNil)
   val r6 = concat(HCons(1, HCons("a", HNil)), HCons(1, HCons("a", HNil)))
+
+  transparent def size(xs: HList): Nat =
+    if (xs.isEmpty) Z
+    else S(size(xs.tail))
+
+  val s0 = size(HNil)
+  val s1 = size(xs)
+
+  transparent def index(xs: HList, inline idx: Int): Any =
+    if (idx == 0) xs.head
+    else index(xs.tail, idx - 1)
+
+  val s2 = index(xs, 0)
+  val ss2: Int = s2
+  val s3 = index(xs, 1)
+  var ss3: String = s3
+  def s4 = index(xs, 2)
+  def ss4: Nothing = s4
+
+/** Does not work yet:
+
+  implicit class HListDeco(xs: HList) {
+    transparent def ++ (ys: HList) = concat(xs, ys)
+  }
+
+  val rr0 = HNil ++ HNil
+  val rr1 = HNil ++ xs
+  val rr2 = xs ++ HNil
+  val rr3 = xs ++ xs
+  val rr3a: HCons[Int, HCons[String, HCons[Int, HCons[String, HNil]]]] = rr3
+
+*/
 }
