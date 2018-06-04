@@ -24,8 +24,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A typed subtree of an untyped tree needs to be wrapped in a TypedSlice
    *  @param owner  The current owner at the time the tree was defined
    */
-  abstract case class TypedSplice(tree: tpd.Tree)(val owner: Symbol) extends ProxyTree {
-    def forwardTo = tree
+  abstract case class TypedSplice(splice: tpd.Tree)(val owner: Symbol) extends ProxyTree {
+    def forwardTo = splice
   }
 
   object TypedSplice {
@@ -130,9 +130,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Inline() extends Mod(Flags.Inline)
 
-    case class Enum() extends Mod(Flags.EmptyFlags)
-
-    case class EnumCase() extends Mod(Flags.EmptyFlags)
+    case class Enum() extends Mod(Flags.Enum)
   }
 
   /** Modifiers and annotations for definitions
@@ -163,15 +161,26 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       if (this.flags == flags) this
       else copy(flags = flags)
 
-   def withAddedMod(mod: Mod): Modifiers =
-     if (mods.exists(_ eq mod)) this
-     else withMods(mods :+ mod)
+    def withAddedMod(mod: Mod): Modifiers =
+      if (mods.exists(_ eq mod)) this
+      else withMods(mods :+ mod)
 
-   def withMods(ms: List[Mod]): Modifiers =
-     if (mods eq ms) this
-     else copy(mods = ms)
+    /** Modifiers with given list of Mods. It is checked that
+     *  all modifiers are already accounted for in `flags` and `privateWithin`.
+     */
+    def withMods(ms: List[Mod]): Modifiers = {
+      if (mods eq ms) this
+      else {
+        if (ms.nonEmpty)
+          for (m <- ms)
+            assert(flags.is(m.flags) ||
+                   m.isInstanceOf[Mod.Private] && !privateWithin.isEmpty,
+                   s"unaccounted modifier: $m in $this when adding $ms")
+        copy(mods = ms)
+      }
+    }
 
-   def withAddedAnnotation(annot: Tree): Modifiers =
+    def withAddedAnnotation(annot: Tree): Modifiers =
       if (annotations.exists(_ eq annot)) this
       else withAnnotations(annotations :+ annot)
 
@@ -186,10 +195,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def hasFlags = flags != EmptyFlags
     def hasAnnotations = annotations.nonEmpty
     def hasPrivateWithin = privateWithin != tpnme.EMPTY
-    def hasMod[T: ClassTag] = {
-      val cls = implicitly[ClassTag[T]].runtimeClass
-      mods.exists(mod => cls.isAssignableFrom(mod.getClass))
-    }
+
+    private def isEnum = is(Enum, butNot = JavaDefined)
+
+    def isEnumCase = isEnum && is(Case)
+    def isEnumClass = isEnum && !is(Case)
   }
 
   @sharable val EmptyModifiers: Modifiers = new Modifiers()
@@ -482,10 +492,14 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: PatDef if (mods eq tree.mods) && (pats eq tree.pats) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
       case _ => finalize(tree, untpd.PatDef(mods, pats, tpt, rhs))
     }
+    def TypedSplice(tree: Tree)(splice: tpd.Tree)(implicit ctx: Context) = tree match {
+      case tree: TypedSplice if splice `eq` tree.splice => tree
+      case _ => finalize(tree, untpd.TypedSplice(splice))
+    }
   }
 
   abstract class UntypedTreeMap(cpy: UntypedTreeCopier = untpd.cpy) extends TreeMap(cpy) {
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+    override def transformMoreCases(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case ModuleDef(name, impl) =>
         cpy.ModuleDef(tree)(name, transformSub(impl))
       case ParsedTry(expr, handler, finalizer) =>
@@ -526,15 +540,17 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.ContextBounds(tree)(transformSub(bounds), transform(cxBounds))
       case PatDef(mods, pats, tpt, rhs) =>
         cpy.PatDef(tree)(mods, transform(pats), transform(tpt), transform(rhs))
+      case tpd.UntypedSplice(splice) =>
+        cpy.UntypedSplice(tree)(transform(splice))
       case TypedSplice(_) =>
         tree
       case _ =>
-        super.transform(tree)
+        super.transformMoreCases(tree)
     }
   }
 
-  abstract class UntypedTreeAccumulator[X] extends TreeAccumulator[X] {
-    override def foldOver(x: X, tree: Tree)(implicit ctx: Context): X = tree match {
+  abstract class UntypedTreeAccumulator[X] extends TreeAccumulator[X] { self =>
+    override def foldMoreCases(x: X, tree: Tree)(implicit ctx: Context): X = tree match {
       case ModuleDef(name, impl) =>
         this(x, impl)
       case ParsedTry(expr, handler, finalizer) =>
@@ -575,10 +591,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(this(x, bounds), cxBounds)
       case PatDef(mods, pats, tpt, rhs) =>
         this(this(this(x, pats), tpt), rhs)
-      case TypedSplice(tree) =>
-        this(x, tree)
+      case TypedSplice(splice) =>
+        this(x, splice)
+      case tpd.UntypedSplice(splice) =>
+        this(x, splice)
       case _ =>
-        super.foldOver(x, tree)
+        super.foldMoreCases(x, tree)
     }
   }
 

@@ -1825,7 +1825,7 @@ object Types {
 
     private def setDenot(denot: Denotation)(implicit ctx: Context): Unit = {
       if (ctx.isAfterTyper)
-        assert(!denot.isOverloaded, this)
+        assert(!denot.isOverloaded || ctx.mode.is(Mode.Printing), this)
       if (Config.checkNoDoubleBindings)
         if (ctx.settings.YnoDoubleBindings.value)
           checkSymAssign(denot.symbol)

@@ -563,6 +563,9 @@ object Flags {
   /** An inline parameter */
   final val InlineParam = allOf(Inline, Param)
 
+  /** An enum case */
+  final val EnumCase = allOf(Enum, Case)
+
   /** A term parameter or parameter accessor */
   final val TermParamOrAccessor = Param | ParamAccessor
 
@@ -619,6 +622,15 @@ object Flags {
 
   /** A Java companion object */
   final val JavaProtected = allOf(JavaDefined, Protected)
+
+  /** A Java enum */
+  final val JavaEnum = allOf(JavaDefined, Enum)
+
+  /** A Java enum trait */
+  final val JavaEnumTrait = allOf(JavaDefined, Enum)
+
+  /** A Java enum value */
+  final val JavaEnumValue = allOf(Stable, JavaStatic, JavaDefined, Enum)
 
   /** Labeled private[this] */
   final val PrivateLocal = allOf(Private, Local)

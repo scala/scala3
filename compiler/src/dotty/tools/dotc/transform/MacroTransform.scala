@@ -58,6 +58,8 @@ abstract class MacroTransform extends Phase {
             transform(parents)(ctx.superCallContext),
             transformSelf(self),
             transformStats(impl.body, tree.symbol))
+        case UntypedSplice(_) =>
+          tree
         case _ =>
           super.transform(tree)
       }
