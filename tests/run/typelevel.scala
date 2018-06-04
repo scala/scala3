@@ -28,4 +28,39 @@ object Test extends App {
   println(x0)
   println(x1)
   println(x2)
+
+  trait HList {
+    def isEmpty: Boolean
+    def head: Any
+    def tail: HList
+  }
+
+  class HNil extends HList {
+    transparent override def isEmpty = true
+    override def head: Nothing = ???
+    override def tail: Nothing = ???
+  }
+
+  case object HNil extends HNil
+
+  case class HCons[H, T <: HList](hd: H, tl: T) extends HList {
+    transparent override def isEmpty = false
+    override def head: H = this.hd
+    override def tail: T = this.tl
+  }
+
+  transparent def concat(xs: HList, ys: HList): HList =
+    if (xs.isEmpty) ys
+    else HCons(xs.head, concat(xs.tail, ys))
+
+  transparent val xs = HCons(1, HCons("a", HNil))
+
+  val r0 = concat(HNil, HNil)
+  val r1 = concat(HNil, xs)
+  val r2 = concat(xs, HNil)
+  val r3 = concat(xs, xs)
+
+  val r4 = concat(HNil, HCons(1, HCons("a", HNil)))
+  val r5 = concat(HCons(1, HCons("a", HNil)), HNil)
+  val r6 = concat(HCons(1, HCons("a", HNil)), HCons(1, HCons("a", HNil)))
 }
