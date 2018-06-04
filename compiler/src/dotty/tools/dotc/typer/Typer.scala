@@ -2133,7 +2133,7 @@ class Typer extends Namer
           else
             tree
         case _ => tryInsertApplyOrImplicit(tree, pt, locked) {
-          errorTree(tree, MethodDoesNotTakeParameters(tree, methPart(tree).tpe)(err))
+          errorTree(tree, MethodDoesNotTakeParameters(tree))
         }
       }
 
