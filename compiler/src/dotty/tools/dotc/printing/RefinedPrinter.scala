@@ -169,8 +169,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     homogenize(tp) match {
-      case x: ConstantType if homogenizedView =>
-        return toText(x.widen)
       case AppliedType(tycon, args) =>
         val cls = tycon.typeSymbol
         if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
@@ -544,6 +542,15 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       // add type to term nodes; replace type nodes with their types unless -Yprint-pos is also set.
       def tp = tree.typeOpt match {
         case tp: TermRef if tree.isInstanceOf[RefTree] && !tp.denot.isOverloaded => tp.underlying
+        case tp: ConstantType if homogenizedView =>
+          // constant folded types are forgotten in Tasty, are reconstituted subsequently in FirstTransform.
+          // Therefore we have to gloss over this when comparing before/after pickling by widening to
+          // underlying type `T`, or, if expression is a unary primitive operation, to `=> T`.
+          tree match {
+            case Select(qual, _) if qual.typeOpt.widen.typeSymbol.isPrimitiveValueClass =>
+              ExprType(tp.widen)
+            case _ => tp.widen
+          }
         case tp => tp
       }
       if (!suppressTypes)
