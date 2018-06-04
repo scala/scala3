@@ -565,7 +565,7 @@ class Typer extends Namer
         val tpt1 = typedTpt
         if (!ctx.isAfterTyper) constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
         // special case for an abstract type that comes with a class tag
-        tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
+        tryWithAbstractTypeTag(ascription(tpt1, isWildcard = true), pt)
       }
       cases(
         ifPat = handlePattern,
@@ -574,14 +574,14 @@ class Typer extends Namer
     }
   }
 
-  /** For a typed tree `e: T`, if `T` is an abstract type for which an implicit class tag `ctag`
-   *  exists, rewrite to `ctag(e)`.
+  /** For a typed tree `e: T`, if `T` is an abstract type for which an implicit abstract type tag `tag`
+   *  exists, rewrite to `tag(e)`.
    *  @pre We are in pattern-matching mode (Mode.Pattern)
    */
-  def tryWithClassTag(tree: Typed, pt: Type)(implicit ctx: Context) = tree.tpt.tpe.dealias match {
+  def tryWithAbstractTypeTag(tree: Typed, pt: Type)(implicit ctx: Context) = tree.tpt.tpe.dealias match {
     case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper =>
       require(ctx.mode.is(Mode.Pattern))
-      inferImplicit(defn.ClassTagType.appliedTo(tref),
+      inferImplicit(defn.AbstractTypeTagType.appliedTo(tref),
                     EmptyTree, tree.tpt.pos)(ctx.retractMode(Mode.Pattern)) match {
         case SearchSuccess(clsTag, _, _) =>
           typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt)
@@ -1297,10 +1297,10 @@ class Typer extends Namer
     val body1 = typed(tree.body, pt1)
     body1 match {
       case UnApply(fn, Nil, arg :: Nil)
-      if fn.symbol.exists && fn.symbol.owner == defn.ClassTagClass && !body1.tpe.isError =>
-        // A typed pattern `x @ (e: T)` with an implicit `ctag: ClassTag[T]`
-        // was rewritten to `x @ ctag(e)` by `tryWithClassTag`.
-        // Rewrite further to `ctag(x @ e)`
+      if fn.symbol.exists && fn.symbol.owner == defn.AbstractTypeTagClass && !body1.tpe.isError =>
+        // A typed pattern `x @ (e: T)` with an implicit `tag: AbstractTypeTag[T]`
+        // was rewritten to `x @ tag(e)` by `tryWithAbstractTypeTag`.
+        // Rewrite further to `tag(x @ e)`
         tpd.cpy.UnApply(body1)(fn, Nil,
             typed(untpd.Bind(tree.name, untpd.TypedSplice(arg)).withPos(tree.pos), arg.tpe) :: Nil)
       case _ =>

@@ -1,4 +1,4 @@
-import scala.reflect.ClassTag
+import scala.reflect.AbstractTypeTag
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -76,7 +76,7 @@ abstract class Numbers {
   //   case class Succ(pred: Nat) extends Nat
 
   type Nat
-  implicit def natClassTag: ClassTag[Nat]
+  implicit def natAbstractTypeTag: AbstractTypeTag[Nat]
 
   trait AbstractNat  {
     def value: Int
@@ -88,7 +88,7 @@ abstract class Numbers {
 
   type Zero <: Nat
 
-  implicit def zeroClassTag: ClassTag[Zero]
+  implicit def zeroAbstractTypeTag: AbstractTypeTag[Zero]
 
   val Zero: ZeroExtractor
   abstract class ZeroExtractor {
@@ -100,7 +100,7 @@ abstract class Numbers {
 
   type Succ <: Nat
 
-  implicit def succClassTag: ClassTag[Succ]
+  implicit def succAbstractTypeTag: AbstractTypeTag[Succ]
 
   val Succ: SuccExtractor
   abstract class SuccExtractor {
@@ -125,7 +125,7 @@ object CaseClassImplementation extends Numbers {
 
   type Nat = N
 
-  def natClassTag: ClassTag[Nat] = implicitly
+  def natAbstractTypeTag: AbstractTypeTag[Nat] = AbstractTypeTag.classTag
 
   implicit def NatDeco(nat: Nat): AbstractNat = new AbstractNat {
     def value: Int = nat match {
@@ -139,7 +139,7 @@ object CaseClassImplementation extends Numbers {
 
   type Zero = Z.type
 
-  def zeroClassTag: ClassTag[Zero] = implicitly
+  def zeroAbstractTypeTag: AbstractTypeTag[Zero] = AbstractTypeTag.classTag
 
   val Zero: ZeroExtractor = new ZeroExtractor {
     def apply(): Zero = Z
@@ -150,7 +150,7 @@ object CaseClassImplementation extends Numbers {
 
   type Succ = S
 
-  def succClassTag: ClassTag[Succ] = implicitly
+  def succAbstractTypeTag: AbstractTypeTag[Succ] = AbstractTypeTag.classTag
 
   val Succ: SuccExtractor = new SuccExtractor {
     def apply(nat: Nat): Succ = S(nat)
@@ -170,7 +170,7 @@ object IntImplementation extends Numbers {
 
   type Nat = Int
 
-  def natClassTag: ClassTag[Nat] = intClassTag(_ >= 0)
+  def natAbstractTypeTag: AbstractTypeTag[Nat] = intAbstractTypeTag(_ >= 0)
 
   implicit def NatDeco(nat: Nat): AbstractNat = new AbstractNat {
     def value: Int = nat
@@ -181,7 +181,7 @@ object IntImplementation extends Numbers {
 
   type Zero = Int
 
-  def zeroClassTag: ClassTag[Zero] = intClassTag(_ == 0)
+  def zeroAbstractTypeTag: AbstractTypeTag[Zero] = intAbstractTypeTag(_ == 0)
 
   val Zero: ZeroExtractor = new ZeroExtractor {
     def apply(): Zero = 0
@@ -192,7 +192,7 @@ object IntImplementation extends Numbers {
 
   type Succ = Int
 
-  def succClassTag: ClassTag[Succ] = intClassTag(_ > 0)
+  def succAbstractTypeTag: AbstractTypeTag[Succ] = intAbstractTypeTag(_ > 0)
 
   val Succ: SuccExtractor = new SuccExtractor {
     def apply(nat: Nat): Succ = nat + 1
@@ -203,9 +203,8 @@ object IntImplementation extends Numbers {
     def pred: Nat = succ - 1
   }
 
-  private def intClassTag(cond: Int => Boolean): ClassTag[Int] = new ClassTag[Int] {
-    def runtimeClass: Class[_] = classOf[Int]
-    override def unapply(x: Any): Option[Int] = x match {
+  private def intAbstractTypeTag(cond: Int => Boolean): AbstractTypeTag[Int] = new AbstractTypeTag[Int] {
+    def unapply(x: Any): Option[Int] = x match {
       case i: Int if cond(i) => Some(i)
       case _ => None
     }
@@ -219,9 +218,8 @@ object UnboundedIntImplementation extends Numbers {
 
   type Nat = Any // Int | BigInt
 
-  def natClassTag: ClassTag[Nat] = new ClassTag[Any] {
-    def runtimeClass: Class[_] = classOf[Any]
-    override def unapply(x: Any): Option[Nat] = x match {
+  def natAbstractTypeTag: AbstractTypeTag[Nat] = new AbstractTypeTag[Any] {
+    def unapply(x: Any): Option[Nat] = x match {
       case i: Int if i >= 0 => Some(i)
       case i: BigInt if i > Int.MaxValue => Some(i)
       case _ => None
@@ -245,9 +243,8 @@ object UnboundedIntImplementation extends Numbers {
 
   type Zero = Int
 
-  def zeroClassTag: ClassTag[Zero] = new ClassTag[Int] {
-    def runtimeClass: Class[_] = classOf[Int]
-    override def unapply(x: Any): Option[Int] = if (x == 0) Some(0) else None
+  def zeroAbstractTypeTag: AbstractTypeTag[Zero] = new AbstractTypeTag[Int] {
+    def unapply(x: Any): Option[Int] = if (x == 0) Some(0) else None
   }
 
   object Zero extends ZeroExtractor {
@@ -259,9 +256,8 @@ object UnboundedIntImplementation extends Numbers {
 
   type Succ = Any // Int | BigInt
 
-  def succClassTag: ClassTag[Succ] = new ClassTag[Any] {
-    def runtimeClass: Class[_] = classOf[Any]
-    override def unapply(x: Any): Option[Succ] = x match {
+  def succAbstractTypeTag: AbstractTypeTag[Succ] = new AbstractTypeTag[Any] {
+    def unapply(x: Any): Option[Succ] = x match {
       case i: Int if i > 0 => Some(i)
       case i: BigInt if i > Int.MaxValue => Some(i)
       case _ => None
