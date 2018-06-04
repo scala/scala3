@@ -516,7 +516,7 @@ class TreeUnpickler(reader: TastyReader,
       val rhsStart = currentAddr
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
-      val (givenFlags, annotFns, privateWithin) = readModifiers(end)
+      val (givenFlags, annotFns, privateWithin) = readModifiers(end, readAnnot, readWithin, NoSymbol)
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
@@ -564,10 +564,10 @@ class TreeUnpickler(reader: TastyReader,
      *  boundary symbol.
      */
     def readModifiers[WithinType, AnnotType]
-        (end: Addr, readAnnot: Context => AnnotType, readWithin: Context => WithinType, defaultWithin: WithinType)
-        (implicit ctx: Context): (FlagSet, List[AnnotType], WithinType) = {
+        (end: Addr, readAnnot: Context => Symbol => AnnotType, readWithin: Context => WithinType, defaultWithin: WithinType)
+        (implicit ctx: Context): (FlagSet, List[Symbol => AnnotType], WithinType) = {
       var flags: FlagSet = EmptyFlags
-      var annotFns: List[Symbol => Annotation] = Nil
+      var annotFns: List[Symbol => AnnotType] = Nil
       var privateWithin = defaultWithin
       while (currentAddr.index != end.index) {
         def addFlag(flag: FlagSet) = {
@@ -636,12 +636,14 @@ class TreeUnpickler(reader: TastyReader,
         val end = readEnd()
         val tp = readType()
         val lazyAnnotTree = readLaterWithOwner(end, rdr => ctx => rdr.readTerm()(ctx))
-        if (tp.isRef(defn.BodyAnnot))
-          LazyBodyAnnotation(implicit ctx => lazyAnnotTree(owner).complete)
-        else
-          Annotation.deferredSymAndTree(
-            implicit ctx => tp.typeSymbol,
-            implicit ctx => lazyAnnotTree(owner).complete)
+
+        owner =>
+          if (tp.isRef(defn.BodyAnnot))
+            LazyBodyAnnotation(implicit ctx => lazyAnnotTree(owner).complete)
+          else
+            Annotation.deferredSymAndTree(
+              implicit ctx => tp.typeSymbol,
+              implicit ctx => lazyAnnotTree(owner).complete)
     }
 
     /** Create symbols for the definitions in the statement sequence between
@@ -1287,7 +1289,7 @@ class TreeUnpickler(reader: TastyReader,
         def readMods(): untpd.Modifiers = {
           val (flags, annots, privateWithin) =
             readModifiers(end, readUntypedAnnot, readUntypedWithin, EmptyTypeName)
-          untpd.Modifiers(flags, privateWithin, annots)
+          untpd.Modifiers(flags, privateWithin, annots.map(_(NoSymbol)))
         }
 
         def readRhs(): untpd.Tree =
@@ -1406,8 +1408,8 @@ class TreeUnpickler(reader: TastyReader,
     private val readUntypedWithin: Context => TypeName =
       implicit ctx => readName().toTypeName
 
-    private val readUntypedAnnot: Context => untpd.Tree =
-      implicit ctx => readUntyped()
+    private val readUntypedAnnot: Context => Symbol => untpd.Tree =
+      implicit ctx => _ => readUntyped()
 
 // ------ Setting positions ------------------------------------------------
 
