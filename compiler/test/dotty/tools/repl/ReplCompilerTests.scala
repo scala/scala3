@@ -125,4 +125,9 @@ class ReplCompilerTests extends ReplTest {
     compile("def f(g: => Int): Int = g")
     assertTrue(storedOutput().startsWith("def f(g: => Int): Int"))
   }
+
+  @Test def singletonType: Unit = fromInitialState { implicit state =>
+    compile("""val a = "foo"; val x: a.type = a""")
+    assertTrue(storedOutput().contains("""val x: a.type = "foo""""))
+  }
 }
