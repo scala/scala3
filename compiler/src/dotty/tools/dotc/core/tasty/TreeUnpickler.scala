@@ -513,7 +513,7 @@ class TreeUnpickler(reader: TastyReader,
       val rhsStart = currentAddr
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
-      val (givenFlags, annots, privateWithin) = readModifiers(end)
+      val (givenFlags, annotFns, privateWithin) = readModifiers(end)
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
@@ -532,13 +532,12 @@ class TreeUnpickler(reader: TastyReader,
             rootd.symbol
           case _ =>
             val completer = adjustIfModule(new Completer(ctx.owner, subReader(start, end)))
-
             if (isClass)
               ctx.newClassSymbol(ctx.owner, name.asTypeName, flags, completer, privateWithin, coord)
             else
               ctx.newSymbol(ctx.owner, name, flags, completer, privateWithin, coord)
         }
-      sym.annotations = annots
+      sym.annotations = annotFns.map(_(sym))
       ctx.owner match {
         case cls: ClassSymbol => cls.enter(sym)
         case _ =>
@@ -561,9 +560,9 @@ class TreeUnpickler(reader: TastyReader,
     /** Read modifier list into triplet of flags, annotations and a privateWithin
      *  boundary symbol.
      */
-    def readModifiers(end: Addr)(implicit ctx: Context): (FlagSet, List[Annotation], Symbol) = {
+    def readModifiers(end: Addr)(implicit ctx: Context): (FlagSet, List[Symbol => Annotation], Symbol) = {
       var flags: FlagSet = EmptyFlags
-      var annots: List[Annotation] = Nil
+      var annotFns: List[Symbol => Annotation] = Nil
       var privateWithin: Symbol = NoSymbol
       while (currentAddr.index != end.index) {
         def addFlag(flag: FlagSet) = {
@@ -615,23 +614,25 @@ class TreeUnpickler(reader: TastyReader,
             addFlag(Protected)
             privateWithin = readType().typeSymbol
           case ANNOTATION =>
-            annots = readAnnot(ctx) :: annots
+            annotFns = readAnnot(ctx) :: annotFns
           case tag =>
             assert(false, s"illegal modifier tag $tag at $currentAddr, end = $end")
         }
       }
-      (flags, annots.reverse, privateWithin)
+      (flags, annotFns.reverse, privateWithin)
     }
 
-    private val readAnnot: Context => Annotation = {
+    private val readAnnot: Context => Symbol => Annotation = {
       implicit ctx =>
         readByte()
         val end = readEnd()
         val tp = readType()
-        val lazyAnnotTree = readLater(end, rdr => ctx => rdr.readTerm()(ctx))
-        Annotation.deferredSymAndTree(
-          implicit ctx => tp.typeSymbol,
-          implicit ctx => lazyAnnotTree.complete)
+        val lazyAnnotTree = readLaterWithOwner(end, rdr => ctx => rdr.readTerm()(ctx))
+
+        owner =>
+          Annotation.deferredSymAndTree(
+            implicit ctx => tp.typeSymbol,
+            implicit ctx => lazyAnnotTree(owner).complete)
     }
 
     /** Create symbols for the definitions in the statement sequence between
@@ -1154,10 +1155,13 @@ class TreeUnpickler(reader: TastyReader,
       setPos(start, CaseDef(pat, guard, rhs))
     }
 
-    def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context => T)(implicit ctx: Context): Trees.Lazy[T] = {
+    def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context => T)(implicit ctx: Context): Trees.Lazy[T] =
+      readLaterWithOwner(end, op)(ctx)(ctx.owner)
+
+    def readLaterWithOwner[T <: AnyRef](end: Addr, op: TreeReader => Context => T)(implicit ctx: Context): Symbol => Trees.Lazy[T] = {
       val localReader = fork
       goto(end)
-      new LazyReader(localReader, ctx.owner, ctx.mode, op)
+      owner => new LazyReader(localReader, owner, ctx.mode, op)
     }
 
     def readHole(end: Addr, isType: Boolean)(implicit ctx: Context): Tree = {
