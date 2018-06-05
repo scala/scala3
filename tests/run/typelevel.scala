@@ -41,13 +41,14 @@ object Test extends App {
   val j2: 2 = i2
 
   trait HList {
-    def isEmpty: Boolean
+    transparent def isEmpty: Boolean = length == 0
+    def length: Int
     def head: Any
     def tail: HList
   }
 
   class HNil extends HList {
-    transparent override def isEmpty = true
+    transparent override def length = 0
     override def head: Nothing = ???
     override def tail: Nothing = ???
   }
@@ -55,7 +56,7 @@ object Test extends App {
   lazy val HNil: HNil = new HNil
 
   case class HCons[H, T <: HList](hd: H, tl: T) extends HList {
-    transparent override def isEmpty = false
+    transparent override def length = 1 + tl.length
     override def head: H = this.hd
     override def tail: T = this.tl
   }
@@ -79,8 +80,28 @@ object Test extends App {
     if (xs.isEmpty) Z
     else S(size(xs.tail))
 
+  transparent def sizeDefensive(xs: HList): Nat = xs.isEmpty match {
+    case true => Z
+    case false => S(sizeDefensive(xs.tail))
+  }
+/*
+  transparent def toInt1[T]: Nat = type T match {
+    case Z => 0
+    case S[type N] => toInt[N] + 1
+  }
+
+  transparent def toInt1[T]: Nat = implicit match {
+    case T <:< Z => 0
+    case T <:< S[type N] => toInt[N] + 1
+  }
+*/
+
   val s0 = size(HNil)
   val s1 = size(xs)
+  transparent val l0 = HNil.length
+  val l0a: 0 = l0
+  transparent val l1 = xs.length
+  val l1a: 2 = l1
 
   transparent def index(xs: HList, inline idx: Int): Any =
     if (idx == 0) xs.head
@@ -92,10 +113,12 @@ object Test extends App {
   var ss3: String = s3
   def s4 = index(xs, 2)
   def ss4: Nothing = s4
+  val s5 = index(xs, xs.length - 1)
+  val ss5: String = s5
 
 /** Does not work yet:
 
-  implicit class HListDeco(xs: HList) {
+  implicit class HListDeco(transparent val xs: HList) {
     transparent def ++ (ys: HList) = concat(xs, ys)
   }
 
