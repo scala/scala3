@@ -20,5 +20,4 @@ object Responder {
     override def responseFor(value: Future[Response]): Request.To[Future[Response]] =
       value
   }
-
 }

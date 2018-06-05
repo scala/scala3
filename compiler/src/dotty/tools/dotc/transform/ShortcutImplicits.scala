@@ -187,7 +187,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
 
       val (remappedCore, fwdClosure) = splitClosure(mdef.rhs)
       val directDef = transformDefDef(polyDefDef(direct.asTerm, remappedCore))
-      if (original.allOverriddenSymbols.exists(!_.is(Deferred))) {
+      if (original.allOverriddenSymbols.nonEmpty) {
         // if original overrides something we only generate
         // the direct method and remove original
         original.owner.asClass.delete(original)
