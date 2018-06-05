@@ -157,42 +157,56 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   /** Transform node using all phases in this group that have idxInGroup >= start */
   def transformNode(tree: Tree, start: Int)(implicit ctx: Context): Tree = {
-    def goNamed(tree: Tree, start: Int) = tree match {
-      case tree: Ident => goIdent(tree, start)
-      case tree: Select => goSelect(tree, start)
-      case tree: ValDef => goValDef(tree, start)
-      case tree: DefDef => goDefDef(tree, start)
-      case tree: TypeDef => goTypeDef(tree, start)
-      case tree: Bind => goBind(tree, start)
-      case _ => goOther(tree, start)
-    }
-    def goUnnamed(tree: Tree, start: Int) = tree match {
-      case tree: Apply => goApply(tree, start)
-      case tree: TypeTree => goTypeTree(tree, start)
-      case tree: Thicket =>
-        cpy.Thicket(tree)(tree.trees.mapConserve(transformNode(_, start)))
-      case tree: This => goThis(tree, start)
-      case tree: Literal => goLiteral(tree, start)
-      case tree: Block => goBlock(tree, start)
-      case tree: TypeApply => goTypeApply(tree, start)
-      case tree: If => goIf(tree, start)
-      case tree: New => goNew(tree, start)
-      case tree: Typed => goTyped(tree, start)
-      case tree: CaseDef => goCaseDef(tree, start)
-      case tree: Closure => goClosure(tree, start)
-      case tree: Assign => goAssign(tree, start)
-      case tree: SeqLiteral => goSeqLiteral(tree, start)
-      case tree: Super => goSuper(tree, start)
-      case tree: Template => goTemplate(tree, start)
-      case tree: Match => goMatch(tree, start)
-      case tree: UnApply => goUnApply(tree, start)
-      case tree: PackageDef => goPackageDef(tree, start)
-      case tree: Try => goTry(tree, start)
-      case tree: Inlined => goInlined(tree, start)
-      case tree: Return => goReturn(tree, start)
-      case tree: Alternative => goAlternative(tree, start)
-      case tree => goOther(tree, start)
-    }
+    def goNamed(tree: Tree, start: Int) =
+      try
+        tree match {
+          case tree: Ident => goIdent(tree, start)
+          case tree: Select => goSelect(tree, start)
+          case tree: ValDef => goValDef(tree, start)
+          case tree: DefDef => goDefDef(tree, start)
+          case tree: TypeDef => goTypeDef(tree, start)
+          case tree: Bind => goBind(tree, start)
+          case _ => goOther(tree, start)
+        }
+      catch {
+        case ex: TypeError =>
+          ctx.error(ex.toMessage, tree.pos)
+          tree
+      }
+    def goUnnamed(tree: Tree, start: Int) =
+      try
+        tree match {
+          case tree: Apply => goApply(tree, start)
+          case tree: TypeTree => goTypeTree(tree, start)
+          case tree: Thicket =>
+            cpy.Thicket(tree)(tree.trees.mapConserve(transformNode(_, start)))
+          case tree: This => goThis(tree, start)
+          case tree: Literal => goLiteral(tree, start)
+          case tree: Block => goBlock(tree, start)
+          case tree: TypeApply => goTypeApply(tree, start)
+          case tree: If => goIf(tree, start)
+          case tree: New => goNew(tree, start)
+          case tree: Typed => goTyped(tree, start)
+          case tree: CaseDef => goCaseDef(tree, start)
+          case tree: Closure => goClosure(tree, start)
+          case tree: Assign => goAssign(tree, start)
+          case tree: SeqLiteral => goSeqLiteral(tree, start)
+          case tree: Super => goSuper(tree, start)
+          case tree: Template => goTemplate(tree, start)
+          case tree: Match => goMatch(tree, start)
+          case tree: UnApply => goUnApply(tree, start)
+          case tree: PackageDef => goPackageDef(tree, start)
+          case tree: Try => goTry(tree, start)
+          case tree: Inlined => goInlined(tree, start)
+          case tree: Return => goReturn(tree, start)
+          case tree: Alternative => goAlternative(tree, start)
+          case tree => goOther(tree, start)
+        }
+      catch {
+        case ex: TypeError =>
+          ctx.error(ex.toMessage, tree.pos)
+          tree
+      }
     if (tree.isInstanceOf[NameTree]) goNamed(tree, start) else goUnnamed(tree, start)
   }
 

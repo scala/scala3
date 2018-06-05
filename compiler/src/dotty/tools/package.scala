@@ -5,6 +5,11 @@ package object tools {
   class sharable extends Annotation
   class unshared extends Annotation
 
+  // Ensure this object is already classloaded, since it's only actually used
+  // when handling stack overflows and every operation (including class loading)
+  // risks failing.
+  dotty.tools.dotc.core.handleRecursive
+
   val ListOfNil = Nil :: Nil
 
   /** True if two lists have the same length.  Since calling length on linear sequences

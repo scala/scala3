@@ -136,13 +136,13 @@ object Inliner {
    *            and body that replace it.
    */
   def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
-    if (enclosingInlineds.length < ctx.settings.xmaxInlines.value) {
+    if (enclosingInlineds.length < ctx.settings.XmaxInlines.value) {
       val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
       if (ctx.reporter.hasErrors) tree else new Inliner(tree, body).inlined(pt)
     }
     else errorTree(
       tree,
-      i"""|Maximal number of successive inlines (${ctx.settings.xmaxInlines.value}) exceeded,
+      i"""|Maximal number of successive inlines (${ctx.settings.XmaxInlines.value}) exceeded,
           |Maybe this is caused by a recursive inline method?
           |You can use -Xmax:inlines to change the limit."""
     )
