@@ -612,7 +612,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   private def toTextOwner(tree: Tree[_]) =
-    "[owner = " ~ tree.symbol.owner.show ~ "]" provided ctx.settings.YprintDebugOwners.value
+    "[owner = " ~ tree.symbol.maybeOwner.show ~ "]" provided ctx.settings.YprintDebugOwners.value
 
   protected def dclTextOr[T >: Untyped](tree: Tree[T])(treeText: => Text) =
     toTextOwner(tree) ~ {
