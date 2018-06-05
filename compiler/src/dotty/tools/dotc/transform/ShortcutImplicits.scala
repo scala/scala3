@@ -34,12 +34,20 @@ import collection.mutable
  *  (and equivalently for methods with type parameters or a different number of value parameter lists).
  *  An abstract method definition
  *
- *     def m(xs: Ts): IF
+ *      def m(xs: Ts): IF
  *
  *  is expanded to:
  *
- *     def m(xs: Ts): IF
- *     def m$direct(xs: Ts)(ys: Us): R
+ *      def m(xs: Ts): IF = implicit (ys: Us) => m$direct(xs)(ys)
+ *      def m$direct(xs: Ts)(ys: Us): R
+ *
+ *  An overriding method definition
+ *
+ *      override def m(xs: Ts): IF = implicit (ys: Us) => E
+ *
+ *  is expanded to:
+ *
+ *      def m$direct(xs: Ts)(ys: Us): R = E
  *
  *  (2) A reference `qual.apply` where `qual` has implicit function type and
  *  `qual` refers to a method `m` is rewritten to a reference to `m$direct`,
@@ -164,13 +172,31 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
           val fwdClosure = cpy.Block(tree)(cpy.DefDef(meth)(rhs = forwarder) :: Nil, cl)
           (remappedCore, fwdClosure)
         case EmptyTree =>
-          (_ => _ => EmptyTree, EmptyTree)
+          original.resetFlag(Deferred) // original is no longer abstract
+          val tpe = original.info.finalResultType.dealias.asInstanceOf[AppliedType]
+          val methTpe = ImplicitMethodType(tpe.args.init, tpe.args.last)
+          val tparams = mdef.tparams.map(tp => ref(tp.symbol))
+          val vparams = mdef.vparamss.map(_.map(vp => ref(vp.symbol)))
+          def forwarder(args: List[Tree]) = ref(direct)
+            .appliedToTypeTrees(tparams)
+            .appliedToArgss(vparams)
+            .appliedToArgs(args)
+          val fwdClosure = Lambda(methTpe, forwarder(_))(ctx.withOwner(original))
+          (_ => _ => EmptyTree, fwdClosure)
       }
 
       val (remappedCore, fwdClosure) = splitClosure(mdef.rhs)
-      val originalDef = cpy.DefDef(mdef)(rhs = fwdClosure)
       val directDef = transformDefDef(polyDefDef(direct.asTerm, remappedCore))
-      flatTree(List(originalDef, directDef))
+      if (original.allOverriddenSymbols.exists(!_.is(Deferred))) {
+        // if original overrides something we only generate
+        // the direct method and remove original
+        original.owner.asClass.delete(original)
+        directDef
+      }
+      else {
+        val originalDef = cpy.DefDef(mdef)(rhs = fwdClosure)
+        flatTree(List(originalDef, directDef))
+      }
     }
     else mdef
   }
