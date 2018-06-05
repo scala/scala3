@@ -53,23 +53,13 @@ object Inliner {
       // This is quite tricky, as such types can appear anywhere, including as parts
       // of types of other things. For the moment we do nothing and complain
       // at the implicit expansion site if there's a reference to an inaccessible type.
-      override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-        case tree: Assign =>
-          transform(tree.lhs) match {
-            case lhs1: RefTree =>
-              lhs1.name match {
-                case InlineAccessorName(name) =>
-                  cpy.Apply(tree)(useSetter(lhs1), transform(tree.rhs) :: Nil)
-                case _ =>
-                  super.transform(tree)
-              }
-            case _ =>
-              super.transform(tree)
-          }
-        case _ =>
-          super.transform(accessorIfNeeded(tree))
-      }
-
+      override def transform(tree: Tree)(implicit ctx: Context): Tree =
+        super.transform(accessorIfNeeded(tree)) match {
+          case tree1 @ Assign(lhs: RefTree, rhs) if lhs.symbol.name.is(InlineAccessorName) =>
+            cpy.Apply(tree1)(useSetter(lhs), rhs :: Nil)
+          case tree1 =>
+            tree1
+        }
     }
 
     /** Adds accessors for all non-public term members accessed
@@ -104,14 +94,14 @@ object Inliner {
    *                     to have the inlined method as owner.
    */
   def registerInlineInfo(
-      sym: SymDenotation, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
-    sym.unforcedAnnotation(defn.BodyAnnot) match {
+      inlined: Symbol, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
+    inlined.unforcedAnnotation(defn.BodyAnnot) match {
       case Some(ann: ConcreteBodyAnnotation) =>
       case Some(ann: LazyBodyAnnotation) if ann.isEvaluated =>
       case _ =>
         if (!ctx.isAfterTyper) {
           val inlineCtx = ctx
-          sym.updateAnnotation(LazyBodyAnnotation { _ =>
+          inlined.updateAnnotation(LazyBodyAnnotation { _ =>
             implicit val ctx = inlineCtx
             val body = treeExpr(ctx)
             if (ctx.reporter.hasErrors) body else ctx.compilationUnit.inlineAccessors.makeInlineable(body)
@@ -173,10 +163,10 @@ object Inliner {
 
 /** Produces an inlined version of `call` via its `inlined` method.
  *
- *  @param  call  The original call to a `@inline` method
- *  @param  rhs   The body of the inline method that replaces the call.
+ *  @param  call         the original call to a `@inline` method
+ *  @param  rhsToInline  the body of the inline method that replaces the call.
  */
-class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
+class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   import tpd._
   import Inliner._
 
@@ -200,7 +190,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
    */
   private val paramProxy = new mutable.HashMap[Type, Type]
 
-  /** A map from the classes of (direct and outer) this references in `rhs`
+  /** A map from the classes of (direct and outer) this references in `rhsToInline`
    *  to references of their proxies.
    *  Note that we can't index by the ThisType itself since there are several
    *  possible forms to express what is logicaly the same ThisType. E.g.
@@ -315,7 +305,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     if (!isIdempotentExpr(prefix)) registerType(meth.owner.thisType)
 
     // Register types of all leaves of inlined body so that the `paramProxy` and `thisProxy` maps are defined.
-    rhs.foreachSubTree(registerLeaf)
+    rhsToInline.foreachSubTree(registerLeaf)
 
     // The class that the this-proxy `selfSym` represents
     def classOf(selfSym: Symbol) = selfSym.info.widen.classSymbol
@@ -387,7 +377,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
     // the owner from the inlined method to the current owner.
     val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)(inlineCtx)
 
-    val expansion = inliner(rhs.withPos(call.pos))
+    val expansion = inliner(rhsToInline.withPos(call.pos))
     trace(i"inlining $call\n, BINDINGS =\n${bindingsBuf.toList}%\n%\nEXPANSION =\n$expansion", inlining, show = true) {
 
       // The final expansion runs a typing pass over the inlined tree. See InlineTyper for details.
@@ -426,7 +416,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   /** A typer for inlined code. Its purpose is:
    *  1. Implement constant folding over inlined code
    *  2. Selectively expand ifs with constant conditions
-   *  3. Inline arguments that are inlineable closures
+   *  3. Inline arguments that are by-name closures
    *  4. Make sure inlined code is type-correct.
    *  5. Make sure that the tree's typing is idempotent (so that future -Ycheck passes succeed)
    */

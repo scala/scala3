@@ -821,12 +821,12 @@ class Namer { typer: Typer =>
       else completeInCreationContext(denot)
     }
 
-    private def addInlineInfo(denot: SymDenotation) = original match {
-      case original: untpd.DefDef if denot.isInlineableMethod =>
+    private def addInlineInfo(sym: Symbol) = original match {
+      case original: untpd.DefDef if sym.isInlineableMethod =>
         Inliner.registerInlineInfo(
-            denot,
+            sym,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
-          )(localContext(denot.symbol))
+          )(localContext(sym))
       case _ =>
     }
 
@@ -839,7 +839,7 @@ class Namer { typer: Typer =>
         case original: MemberDef => addAnnotations(sym, original)
         case _ =>
       }
-      addInlineInfo(denot)
+      addInlineInfo(sym)
       denot.info = typeSig(sym)
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym, sym.pos)
