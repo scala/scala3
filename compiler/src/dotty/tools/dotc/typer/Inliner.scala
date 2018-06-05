@@ -230,7 +230,7 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
   private def paramBindingDef(name: Name, paramtp: Type, arg: Tree,
                               bindingsBuf: mutable.ListBuffer[ValOrDefDef]): ValOrDefDef = {
     val argtpe = arg.tpe.dealias
-    def isByName = paramtp.dealias.isInstanceOf[ExprType]
+    val isByName = paramtp.dealias.isInstanceOf[ExprType]
     val inlineFlag = if (paramtp.hasAnnotation(defn.InlineParamAnnot)) Inline else EmptyFlags
     val (bindingFlags, bindingType) =
       if (isByName) (Method, ExprType(argtpe.widen))

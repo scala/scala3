@@ -811,7 +811,7 @@ object desugar {
    *      def $anonfun(params) = body
    *      Closure($anonfun)
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), isImplicit: Boolean)(implicit ctx: Context) = {
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), isImplicit: Boolean)(implicit ctx: Context) =
     Block(
       DefDef(nme.ANON_FUN, Nil, params :: Nil, tpt, body).withMods(synthetic | Artifact),
       Closure(Nil, Ident(nme.ANON_FUN), if (isImplicit) ImplicitEmptyTree else EmptyTree))
