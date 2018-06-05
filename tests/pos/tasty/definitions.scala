@@ -43,7 +43,9 @@ object definitions {
                       self: Option[ValDef], body: List[Statement]) extends Definition {
     def mods: List[Modifier] = ???
   }
-  case class PackageDef(name: String, members: List[Statement]) extends Definition
+  case class PackageDef(name: String, override val owner: PackageDef) extends Definition {
+    def members: List[Statement] = ???
+  }
 
 // ------ Terms ---------------------------------
 

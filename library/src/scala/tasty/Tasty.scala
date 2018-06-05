@@ -67,7 +67,7 @@ abstract class Tasty { tasty =>
   }
 
   trait AbstractPackageClause {
-    def definition: Definition
+    def definition(implicit ctx: Context): Definition
   }
   implicit def PackageClauseDeco(x: PackageClause): AbstractPackageClause
 
@@ -170,11 +170,16 @@ abstract class Tasty { tasty =>
 
   type PackageDef <: Definition
 
+  trait AbstractPackageDef {
+    def members(implicit ctx: Context): List[Statement]
+  }
+  implicit def PackageDefDeco(t: PackageDef): AbstractPackageDef
+
   implicit def packageDefClassTag: ClassTag[PackageDef]
 
   val PackageDef: PackageDefExtractor
   abstract class PackageDefExtractor {
-    def unapply(x: PackageDef)(implicit ctx: Context): Option[(String, List[Statement])]
+    def unapply(x: PackageDef)(implicit ctx: Context): Option[(String, PackageDef)]
   }
 
   // ----- Parents --------------------------------------------------
@@ -431,7 +436,7 @@ abstract class Tasty { tasty =>
   type TypeBoundsTree <: TypeOrBoundsTree
 
   trait AbstractTypeBoundsTree {
-    def tpe: TypeBounds
+    def tpe(implicit ctx: Context): TypeBounds
   }
   implicit def TypeBoundsTreeDeco(x: TypeBoundsTree): AbstractTypeBoundsTree
 
