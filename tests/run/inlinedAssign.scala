@@ -1,6 +1,6 @@
 object Test {
 
-  inline def swap[T](x: T, inline x_= : T => Unit, y: T, inline y_= : T => Unit) = {
+  inline def swap[T](x: T, x_= : => T => Unit, y: T, y_= : => T => Unit) = {
     x_=(y)
     y_=(x)
   }

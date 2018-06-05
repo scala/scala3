@@ -810,16 +810,11 @@ object desugar {
    *  ==>
    *      def $anonfun(params) = body
    *      Closure($anonfun)
-   *
-   *  If `inlineable` is true, tag $anonfun with an @inline annotation.
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), isInlineable: Boolean, isImplicit: Boolean)(implicit ctx: Context) = {
-    var mods = synthetic | Artifact
-    if (isInlineable) mods |= Inline
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), isImplicit: Boolean)(implicit ctx: Context) = {
     Block(
-      DefDef(nme.ANON_FUN, Nil, params :: Nil, tpt, body).withMods(mods),
+      DefDef(nme.ANON_FUN, Nil, params :: Nil, tpt, body).withMods(synthetic | Artifact),
       Closure(Nil, Ident(nme.ANON_FUN), if (isImplicit) ImplicitEmptyTree else EmptyTree))
-  }
 
   /** If `nparams` == 1, expand partial function
    *
