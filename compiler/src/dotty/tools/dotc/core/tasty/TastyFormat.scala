@@ -65,11 +65,11 @@ Standard-Section: "ASTs" TopLevelStat*
 
                                  // Imports are for scala.meta, they are not used in the backend
 
-  TypeParam     = TYPEPARAM      Length NameRef Type Modifier*
+  TypeParam     = TYPEPARAM      Length NameRef type_Term Modifier*
   Params        = PARAMS         Length Param*
-  Param         = PARAM          Length NameRef Type rhs_Term? Modifier*  // rhs_Term is present in the case of an aliased class parameter
+  Param         = PARAM          Length NameRef type_Term rhs_Term? Modifier*  // rhs_Term is present in the case of an aliased class parameter
   Template      = TEMPLATE       Length TypeParam* Param* parent_Term* Self? Stat* // Stat* always starts with the primary constructor.
-  Self          = SELFDEF               selfName_NameRef selfType_Type
+  Self          = SELFDEF               selfName_NameRef selfType_Term
 
   Term          = Path
                   IDENT                 NameRef Type     // used when term ident’s type is not a TermRef
