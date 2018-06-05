@@ -822,7 +822,7 @@ class Namer { typer: Typer =>
     }
 
     private def addInlineInfo(denot: SymDenotation) = original match {
-      case original: untpd.DefDef if denot.isInlineMethod =>
+      case original: untpd.DefDef if denot.isInlineableMethod =>
         Inliner.registerInlineInfo(
             denot,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
@@ -1113,7 +1113,7 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      def isInline = sym.is(FinalOrInline, butNot = Method | Mutable)
+      def isInline = sym.is(FinalOrInlineOrTransparent, butNot = Method | Mutable)
 
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types
@@ -1128,7 +1128,8 @@ class Namer { typer: Typer =>
       // it would be erased to BoxedUnit.
       def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
-      val rhsCtx = ctx.addMode(Mode.InferringReturnType)
+      var rhsCtx = ctx.addMode(Mode.InferringReturnType)
+      if (sym.isTransparentMethod) rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
       def rhsType = typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.

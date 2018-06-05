@@ -548,7 +548,7 @@ class TreeUnpickler(reader: TastyReader,
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
-      else if (sym.isInlineMethod)
+      else if (sym.isInlineableMethod)
         sym.addAnnotation(LazyBodyAnnotation { ctx0 =>
           implicit val ctx: Context = localContext(sym)(ctx0).addMode(Mode.ReadPositions)
             // avoids space leaks by not capturing the current context
@@ -588,6 +588,7 @@ class TreeUnpickler(reader: TastyReader,
           case LAZY => addFlag(Lazy)
           case OVERRIDE => addFlag(Override)
           case INLINE => addFlag(Inline)
+          case TRANSPARENT => addFlag(Transparent)
           case MACRO => addFlag(Macro)
           case STATIC => addFlag(JavaStatic)
           case OBJECT => addFlag(Module)

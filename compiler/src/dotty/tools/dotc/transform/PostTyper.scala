@@ -165,7 +165,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
       def markAsMacro(c: Context): Unit =
         if (c.owner eq c.outer.owner) markAsMacro(c.outer)
-        else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
+        else if (c.owner.isInlineableMethod) c.owner.setFlag(Macro)
         else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
 
       if (sym.isSplice || sym.isQuote) {
@@ -193,7 +193,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           else
             transformSelect(tree, Nil)
         case tree: Super =>
-          if (ctx.owner.enclosingMethod.isInlineMethod)
+          if (ctx.owner.enclosingMethod.isInlinedMethod)
             ctx.error(SuperCallsNotAllowedInline(ctx.owner), tree.pos)
           super.transform(tree)
         case tree: Apply =>

@@ -94,4 +94,6 @@ object Mode {
   /** We are in the IDE */
   val Interactive = newMode(20, "Interactive")
 
+  /** We are typing the body of a transparent method */
+  val TransparentBody = newMode(21, "TransparentBody")
 }

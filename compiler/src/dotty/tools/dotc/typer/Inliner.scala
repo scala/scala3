@@ -90,6 +90,11 @@ object Inliner {
     }
   }
 
+  def isLocal(sym: Symbol, inlineMethod: Symbol)(implicit ctx: Context) =
+    sym.isContainedIn(inlineMethod) &&
+    sym != inlineMethod &&
+    (!sym.is(Param) || sym.owner != inlineMethod)
+
   /** Register inline info for given inline method `sym`.
    *
    *  @param sym         The symbol denotatioon of the inline method for which info is registered
@@ -119,7 +124,7 @@ object Inliner {
    *  from Scala2x class files might be `@inline`, but still lack that body.
    */
   def hasBodyToInline(sym: SymDenotation)(implicit ctx: Context): Boolean =
-    sym.isInlineMethod && sym.hasAnnotation(defn.BodyAnnot)
+    sym.isInlinedMethod && sym.hasAnnotation(defn.BodyAnnot) // TODO: Open this up for transparent methods as well
 
   /** The body to inline for method `sym`.
    *  @pre  hasBodyToInline(sym)

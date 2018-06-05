@@ -1675,16 +1675,17 @@ object Parsers {
 /* -------- MODIFIERS and ANNOTATIONS ------------------------------------------- */
 
     private def modOfToken(tok: Int): Mod = tok match {
-      case ABSTRACT  => Mod.Abstract()
-      case FINAL     => Mod.Final()
-      case IMPLICIT  => Mod.Implicit()
-      case ERASED    => Mod.Erased()
-      case INLINE    => Mod.Inline()
-      case LAZY      => Mod.Lazy()
-      case OVERRIDE  => Mod.Override()
-      case PRIVATE   => Mod.Private()
-      case PROTECTED => Mod.Protected()
-      case SEALED    => Mod.Sealed()
+      case ABSTRACT    => Mod.Abstract()
+      case FINAL       => Mod.Final()
+      case IMPLICIT    => Mod.Implicit()
+      case ERASED      => Mod.Erased()
+      case INLINE      => Mod.Inline()
+      case TRANSPARENT => Mod.Transparent()
+      case LAZY        => Mod.Lazy()
+      case OVERRIDE    => Mod.Override()
+      case PRIVATE     => Mod.Private()
+      case PROTECTED   => Mod.Protected()
+      case SEALED      => Mod.Sealed()
     }
 
     /** Drop `private' modifier when followed by a qualifier.
