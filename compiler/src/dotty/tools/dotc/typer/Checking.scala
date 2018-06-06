@@ -485,9 +485,10 @@ object Checking {
             prefix = apply(tp.prefix),
             classParents =
               tp.parents.map { p =>
-                apply(p).stripAnnots match {
-                  case ref: TypeRef => ref
-                  case ref: AppliedType => ref
+                val p1 = apply(p)
+                p1.stripAnnots match {
+                  case ref: TypeRef => p1
+                  case ref: AppliedType => p1
                   case _ => defn.ObjectType // can happen if class files are missing
                 }
               }
