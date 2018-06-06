@@ -145,6 +145,39 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this
         }
 
+      case While(cond, stats) =>
+        this += "while ("
+        printTree(cond)
+        this += ") "
+        stats match {
+          case stat :: Nil =>
+            printTree(stat)
+          case stats =>
+            this += "{"
+            indented {
+              this += lineBreak()
+              printTrees(stats, lineBreak())
+            }
+            this += lineBreak() += "}"
+        }
+
+      case DoWhile(stats, cond) =>
+        this += "do "
+        stats match {
+          case stat :: Nil =>
+            printTree(stat)
+          case stats =>
+            this += "{"
+            indented {
+              this += lineBreak()
+              printTrees(stats, lineBreak())
+            }
+            this += lineBreak() += "}"
+        }
+        this += " while ("
+        printTree(cond)
+        this += ")"
+
       case ddef@DefDef(name, targs, argss, tpt, rhs) =>
         val flags = ddef.flags
         if (flags.isOverride) sb.append("override ")
@@ -225,7 +258,14 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += " = "
         printTree(rhs)
 
-      case Term.Block(stats, expr) =>
+      case Term.Block(stats0, expr) =>
+        def isLoopEntryPoint(tree: Tree): Boolean = tree match {
+          case Term.Apply(Term.Ident("while$" | "doWhile$"), _) => true
+          case _ => false
+        }
+
+        val stats = stats0.filterNot(isLoopEntryPoint)
+
         expr match {
           case Term.Lambda(_, _) =>
             // Decompile lambda from { def annon$(...) = ...; closure(annon$, ...)}
@@ -235,22 +275,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this += " => "
             printTree(rhs)
             this += ")"
-
-          case Term.Apply(Term.Ident("while$"), _) =>
-            val DefDef("while$", _, _, _, Some(Term.If(cond, Term.Block(body :: Nil, _), _))) = stats.head
-            this += "while ("
-            printTree(cond)
-            this += ") "
-            printTree(body)
-
-          case Term.Apply(Term.Ident("doWhile$"), _) =>
-            val DefDef("doWhile$", _, _, _, Some(Term.Block(List(body), Term.If(cond, _, _)))) = stats.head
-            this += "do "
-            printTree(body)
-            this += " while ("
-            printTree(cond)
-            this += ")"
-
+          case expr if isLoopEntryPoint(expr) && stats.size == 1 =>
+            // Print { def while$() = ...; while$() }
+            // as while (...) ...
+            // instead of { while (...) ... }
+            printTree(stats.head)
           case _ =>
             this += "{"
             indented {
@@ -258,8 +287,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
                 this += lineBreak()
                 printTrees(stats, lineBreak())
               }
-              this += lineBreak()
-              printTree(expr)
+              if (!isLoopEntryPoint(expr)) {
+                this += lineBreak()
+                printTree(expr)
+              }
             }
             this += lineBreak() += "}"
         }
@@ -715,6 +746,20 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             Some((op, args))
           case _ => None
         }
+      case _ => None
+    }
+  }
+
+  private object While {
+    def unapply(arg: Tree)(implicit ctx: Context): Option[(Term, List[Statement])] = arg match {
+      case DefDef("while$", _, _, _, Some(Term.If(cond, Term.Block(bodyStats, _), _))) => Some((cond, bodyStats))
+      case _ => None
+    }
+  }
+
+  private object DoWhile {
+    def unapply(arg: Tree)(implicit ctx: Context): Option[(List[Statement], Term)] = arg match {
+      case DefDef("doWhile$", _, _, _, Some(Term.Block(body, Term.If(cond, _, _)))) => Some((body, cond))
       case _ => None
     }
   }

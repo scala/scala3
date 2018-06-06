@@ -1,31 +1,31 @@
 Normal function
 {
-  var i: Int = 0
-  val j: Int = 5
-  <label> def while$(): Unit = 
-    if i.<(j) then 
-      {
-        val x$1: Int = i
-        f.apply(x$1)
-        i = i.+(1)
-        while$()
-      }
-     else ()
-  while$()
+  var i: scala.Int = 0
+  val j: scala.Int = 5
+  while (i.<(j)) {
+    val x$1: scala.Int = i
+    f.apply(x$1)
+    i = i.+(1)
+  }
+  do {
+    val x$2: scala.Int = i
+    f.apply(x$2)
+    i = i.+(1)
+  } while (i.<(j))
 }
 
 By name function
 {
-  var i: Int = 0
-  val j: Int = 5
-  <label> def while$(): Unit = 
-    if i.<(j) then 
-      {
-        val x$1: Int = i
-        scala.Predef.println(x$1)
-        i = i.+(1)
-        while$()
-      }
-     else ()
-  while$()
+  var i: scala.Int = 0
+  val j: scala.Int = 5
+  while (i.<(j)) {
+    val x$1: scala.Int = i
+    scala.Predef.println(x$1)
+    i = i.+(1)
+  }
+  do {
+    val x$2: scala.Int = i
+    scala.Predef.println(x$2)
+    i = i.+(1)
+  } while (i.<(j))
 }

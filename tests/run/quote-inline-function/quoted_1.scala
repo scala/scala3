@@ -15,6 +15,10 @@ object Macros {
         ~f.apply('(i))
         i += 1
       }
+      do {
+        ~f.apply('(i))
+        i += 1
+      } while (i < j)
     }
     res.show.toExpr
   }
