@@ -1128,8 +1128,7 @@ class Namer { typer: Typer =>
       // it would be erased to BoxedUnit.
       def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
-      var rhsCtx = ctx.addMode(Mode.InferringReturnType)
-      if (sym.isTransparentMethod) rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
+      val rhsCtx = ctx.addMode(Mode.InferringReturnType)
       def rhsType = typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.
