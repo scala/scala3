@@ -3929,6 +3929,21 @@ object Types {
       else None
   }
 
+  // ----- TypeOf -------------------------------------------------------------------------
+
+  case class TypeOf(tree: Tree, underlyingTp: Type) extends UncachedProxyType /* with SingletonType */ {
+    def underlying(implicit ctx: Context) = underlyingTp
+
+    def equals(that: Type): Boolean = that match {
+      case that: TypeOf => this eq that
+      case _ => false
+    }
+
+    def derivedTypeOf(tree: Tree, underlyingTp: Type)(implicit ctx: Context): TypeOf =
+      if ((this.tree eq tree) && (this.underlyingTp eq underlyingTp)) this
+      else TypeOf(tree, underlyingTp)
+  }
+
   // ----- TypeMaps --------------------------------------------------------------------
 
   /** Common base class of TypeMap and TypeAccumulator */
@@ -3982,6 +3997,8 @@ object Types {
     // note: currying needed  because Scala2 does not support param-dependencies
     protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
       tp.derivedLambdaType(tp.paramNames, formals, restpe)
+    protected def derivedTypeOf(tp: TypeOf, tree: Tree, underlyingTp: Type): Type =
+      tp.derivedTypeOf(tree, underlyingTp)
 
     /** Map this function over given type */
     def mapOver(tp: Type): Type = {
@@ -4073,6 +4090,20 @@ object Types {
           val underlying1 = this(underlying)
           if (underlying1 eq underlying) tp
           else derivedAnnotatedType(tp, underlying1, mapOver(annot))
+
+        case tp: TypeOf =>
+          // TODO: Don't clone if type is unchanged
+          def copyMapped(tree: Tree): Tree = tree.clone.withTypeUnchecked(this(tree.tpe))
+          val tree1 = tp.tree match {
+            case tree: Apply =>
+              cpy.Apply(tree)(copyMapped(tree.fun), tree.args.mapConserve(copyMapped))
+            case tree: If =>
+              cpy.If(tree)(copyMapped(tree.cond), copyMapped(tree.thenp), copyMapped(tree.elsep))
+            case tree: Match =>
+              ???
+            case tree => throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
+          }
+          derivedTypeOf(tp, tree1, this(tp.underlyingTp))
 
         case tp: WildcardType =>
           derivedWildcardType(tp, mapOver(tp.optBounds))
@@ -4351,6 +4382,10 @@ object Types {
         case _ =>
           tp.derivedLambdaType(tp.paramNames, formals, restpe)
       }
+
+    // TODO: Implement derivedTypeOf in ApproximatingTypeMap
+//    override protected def derivedTypeOf(tp: TypeOf, tree: Tree, underlyingTp: Type): Type =
+//      tp.derivedTypeOf(tree, underlyingTp)
 
     protected def reapply(tp: Type): Type = apply(tp)
   }
