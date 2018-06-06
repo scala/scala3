@@ -842,7 +842,7 @@ object JavaParsers {
         List(Literal(Constant(null)),Literal(Constant(0))))
       val enumclazz = atPos(start, nameOffset) {
         TypeDef(name,
-          makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.Enum)
+          makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.JavaEnum)
       }
       addCompanionObject(consts ::: statics ::: predefs, enumclazz)
     }
@@ -861,7 +861,7 @@ object JavaParsers {
           skipAhead()
           accept(RBRACE)
         }
-        ValDef(name.toTermName, enumType, unimplementedExpr).withMods(Modifiers(Flags.Enum | Flags.Stable | Flags.JavaDefined | Flags.JavaStatic))
+        ValDef(name.toTermName, enumType, unimplementedExpr).withMods(Modifiers(Flags.JavaEnum | Flags.Stable | Flags.JavaDefined | Flags.JavaStatic))
       }
     }
 

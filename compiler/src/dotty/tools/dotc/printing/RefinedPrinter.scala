@@ -37,7 +37,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   /** A stack of enclosing DefDef, TypeDef, or ClassDef, or ModuleDefs nodes */
   private[this] var enclosingDef: untpd.Tree = untpd.EmptyTree
-  private[this] var myCtx: Context = _ctx
+  private[this] var myCtx: Context = super.ctx
   private[this] var printPos = ctx.settings.YprintPos.value
   private[this] val printLines = ctx.settings.printLines.value
 
@@ -444,7 +444,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case EmptyTree =>
         "<empty>"
       case TypedSplice(t) =>
-        toText(t)
+        if (ctx.settings.YprintDebug.value) "[" ~ toText(t) ~ "]#TS#"
+        else toText(t)
       case tree @ ModuleDef(name, impl) =>
         withEnclosingDef(tree) {
           modText(tree.mods, NoSymbol, keywordStr("object")) ~~ nameIdText(tree) ~ toTextTemplate(impl)
@@ -610,11 +611,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else toText(tree.name) ~ idText(tree)
   }
 
+  private def toTextOwner(tree: Tree[_]) =
+    "[owner = " ~ tree.symbol.owner.show ~ "]" provided ctx.settings.YprintDebugOwners.value
+
   protected def dclTextOr[T >: Untyped](tree: Tree[T])(treeText: => Text) =
-    if (useSymbol(tree))
-      annotsText(tree.symbol) ~~ dclText(tree.symbol) ~
-        ( " <in " ~ toText(tree.symbol.owner) ~ ">" provided ctx.settings.YdebugOwners.value)
-    else treeText
+    toTextOwner(tree) ~ {
+      if (useSymbol(tree)) annotsText(tree.symbol) ~~ dclText(tree.symbol)
+      else treeText
+    }
 
   def tparamsText[T >: Untyped](params: List[Tree[T]]): Text =
     "[" ~ toText(params, ", ") ~ "]" provided params.nonEmpty

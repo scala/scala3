@@ -228,6 +228,39 @@ class TreeUnpickler(reader: TastyReader,
         createSymbol()
     }
 
+    def readConstant(tag: Int)(implicit ctx: Context): Constant = (tag: @switch) match {
+      case UNITconst =>
+        Constant(())
+      case TRUEconst =>
+        Constant(true)
+      case FALSEconst =>
+        Constant(false)
+      case BYTEconst =>
+        Constant(readInt().toByte)
+      case SHORTconst =>
+        Constant(readInt().toShort)
+      case CHARconst =>
+        Constant(readNat().toChar)
+      case INTconst =>
+        Constant(readInt())
+      case LONGconst =>
+        Constant(readLongInt())
+      case FLOATconst =>
+        Constant(java.lang.Float.intBitsToFloat(readInt()))
+      case DOUBLEconst =>
+        Constant(java.lang.Double.longBitsToDouble(readLongInt()))
+      case STRINGconst =>
+        Constant(readName().toString)
+      case NULLconst =>
+        Constant(null)
+      case CLASSconst =>
+        Constant(readType())
+      case ENUMconst =>
+        Constant(readTermRef().termSymbol)
+      case SYMBOLconst =>
+        Constant(scala.Symbol(readName().toString))
+    }
+
     /** Read a type */
     def readType()(implicit ctx: Context): Type = {
       val start = currentAddr
@@ -313,10 +346,6 @@ class TreeUnpickler(reader: TastyReader,
               readTypeRef() match {
                 case binder: LambdaType => binder.paramRefs(readNat())
               }
-            case CLASSconst =>
-              ConstantType(Constant(readType()))
-            case ENUMconst =>
-              ConstantType(Constant(readTermRef().termSymbol))
             case HOLE =>
               readHole(end, isType = true).tpe
           }
@@ -356,38 +385,10 @@ class TreeUnpickler(reader: TastyReader,
         case SHAREDtype =>
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
-        case UNITconst =>
-          ConstantType(Constant(()))
-        case TRUEconst =>
-          ConstantType(Constant(true))
-        case FALSEconst =>
-          ConstantType(Constant(false))
-        case BYTEconst =>
-          ConstantType(Constant(readInt().toByte))
-        case SHORTconst =>
-          ConstantType(Constant(readInt().toShort))
-        case CHARconst =>
-          ConstantType(Constant(readNat().toChar))
-        case INTconst =>
-          ConstantType(Constant(readInt()))
-        case LONGconst =>
-          ConstantType(Constant(readLongInt()))
-        case FLOATconst =>
-          ConstantType(Constant(java.lang.Float.intBitsToFloat(readInt())))
-        case DOUBLEconst =>
-          ConstantType(Constant(java.lang.Double.longBitsToDouble(readLongInt())))
-        case STRINGconst =>
-          ConstantType(Constant(readName().toString))
-        case NULLconst =>
-          ConstantType(Constant(null))
-        case CLASSconst =>
-          ConstantType(Constant(readType()))
-        case ENUMconst =>
-          ConstantType(Constant(readTermRef().termSymbol))
-        case SYMBOLconst =>
-          ConstantType(Constant(scala.Symbol(readName().toString)))
         case BYNAMEtype =>
           ExprType(readType())
+        case _ =>
+          ConstantType(readConstant(tag))
       }
 
       if (tag < firstLengthTreeTag) readSimpleType() else readLengthType()
@@ -420,7 +421,7 @@ class TreeUnpickler(reader: TastyReader,
 
 // ------ Reading definitions -----------------------------------------------------
 
-    private def noRhs(end: Addr): Boolean =
+    private def nothingButMods(end: Addr): Boolean =
       currentAddr == end || isModifierTag(nextByte)
 
     private def localContext(owner: Symbol)(implicit ctx: Context) =
@@ -510,7 +511,7 @@ class TreeUnpickler(reader: TastyReader,
       val templateStart = currentAddr
       skipTree() // tpt
       val rhsStart = currentAddr
-      val rhsIsEmpty = noRhs(end)
+      val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
       val (givenFlags, annots, privateWithin) = readModifiers(end)
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
@@ -562,7 +563,7 @@ class TreeUnpickler(reader: TastyReader,
      */
     def readModifiers(end: Addr)(implicit ctx: Context): (FlagSet, List[Annotation], Symbol) = {
       var flags: FlagSet = EmptyFlags
-      var annots = new mutable.ListBuffer[Annotation]
+      var annots: List[Annotation] = Nil
       var privateWithin: Symbol = NoSymbol
       while (currentAddr.index != end.index) {
         def addFlag(flag: FlagSet) = {
@@ -591,6 +592,7 @@ class TreeUnpickler(reader: TastyReader,
           case STATIC => addFlag(JavaStatic)
           case OBJECT => addFlag(Module)
           case TRAIT => addFlag(Trait)
+          case ENUM => addFlag(Enum)
           case LOCAL => addFlag(Local)
           case SYNTHETIC => addFlag(Synthetic)
           case ARTIFACT => addFlag(Artifact)
@@ -612,18 +614,23 @@ class TreeUnpickler(reader: TastyReader,
             addFlag(Protected)
             privateWithin = readType().typeSymbol
           case ANNOTATION =>
-            readByte()
-            val end = readEnd()
-            val tp = readType()
-            val lazyAnnotTree = readLater(end, rdr => ctx => rdr.readTerm()(ctx))
-            annots += Annotation.deferredSymAndTree(
-              implicit ctx => tp.typeSymbol,
-              implicit ctx => lazyAnnotTree.complete)
+            annots = readAnnot(ctx) :: annots
           case tag =>
             assert(false, s"illegal modifier tag $tag at $currentAddr, end = $end")
         }
       }
-      (flags, annots.toList, privateWithin)
+      (flags, annots.reverse, privateWithin)
+    }
+
+    private val readAnnot: Context => Annotation = {
+      implicit ctx =>
+        readByte()
+        val end = readEnd()
+        val tp = readType()
+        val lazyAnnotTree = readLater(end, rdr => ctx => rdr.readTerm()(ctx))
+        Annotation.deferredSymAndTree(
+          implicit ctx => tp.typeSymbol,
+          implicit ctx => lazyAnnotTree.complete)
     }
 
     /** Create symbols for the definitions in the statement sequence between
@@ -720,7 +727,7 @@ class TreeUnpickler(reader: TastyReader,
       val localCtx = localContext(sym)
 
       def readRhs(implicit ctx: Context) =
-        if (noRhs(end)) EmptyTree
+        if (nothingButMods(end)) EmptyTree
         else readLater(end, rdr => ctx => rdr.readTerm()(ctx.retractMode(Mode.InSuperCall)))
 
       def ValDef(tpt: Tree) =
@@ -785,7 +792,7 @@ class TreeUnpickler(reader: TastyReader,
           }
         case PARAM =>
           val tpt = readTpt()(localCtx)
-          if (noRhs(end)) {
+          if (nothingButMods(end)) {
             sym.info = tpt.tpe
             ValDef(tpt)
           }

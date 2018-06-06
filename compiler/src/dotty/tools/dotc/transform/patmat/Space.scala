@@ -460,7 +460,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         )
       case tp if tp.isRef(defn.UnitClass) =>
         Typ(ConstantType(Constant(())), true) :: Nil
-      case tp if tp.classSymbol.is(Enum) =>
+      case tp if tp.classSymbol.is(JavaEnum) =>
         children.map(sym => Typ(sym.termRef, true))
       case tp =>
         val parts = children.map { sym =>
@@ -730,7 +730,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       }) ||
       tp.isRef(defn.BooleanClass) ||
       tp.isRef(defn.UnitClass) ||
-      tp.classSymbol.is(allOf(Enum, Sealed))  // Enum value doesn't have Sealed flag
+      tp.classSymbol.is(JavaEnumTrait)
 
     debug.println(s"decomposable: ${tp.show} = $res")
 
@@ -874,7 +874,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           isCheckable(and.tp1) || isCheckable(and.tp2)
         }) ||
         tpw.isRef(defn.BooleanClass) ||
-        tpw.typeSymbol.is(Enum) ||
+        tpw.typeSymbol.is(JavaEnum) ||
         canDecompose(tpw) ||
         (defn.isTupleType(tpw) && tpw.argInfos.exists(isCheckable(_)))
       }

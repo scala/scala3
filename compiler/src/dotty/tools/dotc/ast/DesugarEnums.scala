@@ -33,8 +33,8 @@ object DesugarEnums {
 
   /** Is `tree` an (untyped) enum case? */
   def isEnumCase(tree: Tree)(implicit ctx: Context): Boolean = tree match {
-    case tree: MemberDef => tree.mods.hasMod[Mod.EnumCase]
-    case PatDef(mods, _, _, _) => mods.hasMod[Mod.EnumCase]
+    case tree: MemberDef => tree.mods.isEnumCase
+    case PatDef(mods, _, _, _) => mods.isEnumCase
     case _ => false
   }
 
@@ -69,7 +69,7 @@ object DesugarEnums {
 
   /** Add implied flags to an enum class or an enum case */
   def addEnumFlags(cdef: TypeDef)(implicit ctx: Context) =
-    if (cdef.mods.hasMod[Mod.Enum]) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Abstract | Sealed))
+    if (cdef.mods.isEnumClass) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Abstract | Sealed))
     else if (isEnumCase(cdef)) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Final))
     else cdef
 

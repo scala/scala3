@@ -132,9 +132,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Inline() extends Mod(Flags.Inline)
 
-    case class Enum() extends Mod(Flags.EmptyFlags)
-
-    case class EnumCase() extends Mod(Flags.EmptyFlags)
+    case class Enum() extends Mod(Flags.Enum)
   }
 
   /** Modifiers and annotations for definitions
@@ -165,15 +163,26 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       if (this.flags == flags) this
       else copy(flags = flags)
 
-   def withAddedMod(mod: Mod): Modifiers =
-     if (mods.exists(_ eq mod)) this
-     else withMods(mods :+ mod)
+    def withAddedMod(mod: Mod): Modifiers =
+      if (mods.exists(_ eq mod)) this
+      else withMods(mods :+ mod)
 
-   def withMods(ms: List[Mod]): Modifiers =
-     if (mods eq ms) this
-     else copy(mods = ms)
+    /** Modifiers with given list of Mods. It is checked that
+     *  all modifiers are already accounted for in `flags` and `privateWithin`.
+     */
+    def withMods(ms: List[Mod]): Modifiers = {
+      if (mods eq ms) this
+      else {
+        if (ms.nonEmpty)
+          for (m <- ms)
+            assert(flags.is(m.flags) ||
+                   m.isInstanceOf[Mod.Private] && !privateWithin.isEmpty,
+                   s"unaccounted modifier: $m in $this when adding $ms")
+        copy(mods = ms)
+      }
+    }
 
-   def withAddedAnnotation(annot: Tree): Modifiers =
+    def withAddedAnnotation(annot: Tree): Modifiers =
       if (annotations.exists(_ eq annot)) this
       else withAnnotations(annotations :+ annot)
 
@@ -188,10 +197,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def hasFlags = flags != EmptyFlags
     def hasAnnotations = annotations.nonEmpty
     def hasPrivateWithin = privateWithin != tpnme.EMPTY
-    def hasMod[T: ClassTag] = {
-      val cls = implicitly[ClassTag[T]].runtimeClass
-      mods.exists(mod => cls.isAssignableFrom(mod.getClass))
-    }
+
+    private def isEnum = is(Enum, butNot = JavaDefined)
+
+    def isEnumCase = isEnum && is(Case)
+    def isEnumClass = isEnum && !is(Case)
   }
 
   @sharable val EmptyModifiers: Modifiers = new Modifiers()

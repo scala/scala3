@@ -186,8 +186,8 @@ class ClassfileParser(
     if (isEnum) {
       instanceScope.toList.map(_.ensureCompleted())
       staticScope.toList.map(_.ensureCompleted())
-      classRoot.setFlag(Flags.Enum)
-      moduleRoot.setFlag(Flags.Enum)
+      classRoot.setFlag(Flags.JavaEnum)
+      moduleRoot.setFlag(Flags.JavaEnum)
     }
 
     result
