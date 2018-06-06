@@ -33,12 +33,10 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer {
         case origClass: ClassSymbol if isDerivedValueClass(origClass) =>
           val cinfo = tp.asInstanceOf[ClassInfo]
           val decls1 = cinfo.decls.cloneScope
-          ctx.atPhase(this.next) { implicit ctx =>
-            // Remove synthetic cast methods introduced by ExtensionMethods,
-            // they are no longer needed after this phase.
-            decls1.unlink(cinfo.decl(nme.U2EVT).symbol)
-            decls1.unlink(cinfo.decl(nme.EVT2U).symbol)
-          }
+          // Remove synthetic cast methods introduced by ExtensionMethods,
+          // they are no longer needed after this phase.
+          decls1.unlink(cinfo.decl(nme.U2EVT).symbol)
+          decls1.unlink(cinfo.decl(nme.EVT2U).symbol)
           cinfo.derivedClassInfo(decls = decls1)
         case _ =>
           tp
