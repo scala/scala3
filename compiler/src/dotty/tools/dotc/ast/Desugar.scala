@@ -813,12 +813,12 @@ object desugar {
    *
    *  If `inlineable` is true, tag $anonfun with an @inline annotation.
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), inlineable: Boolean)(implicit ctx: Context) = {
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), isInlineable: Boolean, isImplicit: Boolean)(implicit ctx: Context) = {
     var mods = synthetic | Artifact
-    if (inlineable) mods |= Inline
+    if (isInlineable) mods |= Inline
     Block(
       DefDef(nme.ANON_FUN, Nil, params :: Nil, tpt, body).withMods(mods),
-      Closure(Nil, Ident(nme.ANON_FUN), EmptyTree))
+      Closure(Nil, Ident(nme.ANON_FUN), if (isImplicit) ImplicitEmptyTree else EmptyTree))
   }
 
   /** If `nparams` == 1, expand partial function
@@ -863,7 +863,7 @@ object desugar {
 
   def makeImplicitFunction(formals: List[Type], body: Tree)(implicit ctx: Context): Tree = {
     val params = makeImplicitParameters(formals.map(TypeTree))
-    new NonEmptyFunction(params, body, Modifiers(Implicit))
+    new FunctionWithMods(params, body, Modifiers(Implicit))
   }
 
   /** Add annotation to tree:

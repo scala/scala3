@@ -56,13 +56,15 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def isType = body.isType
   }
 
-  /** A function type that should have non empty args */
-  class NonEmptyFunction(args: List[Tree], body: Tree, val mods: Modifiers) extends Function(args, body)
+  /** A function type with `implicit` or `erased` modifiers */
+  class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers) extends Function(args, body)
 
   /** A function created from a wildcard expression
    *  @param  placeholderParams  a list of definitions of synthetic parameters.
    *  @param  body               the function body where wildcards are replaced by
    *                             references to synthetic parameters.
+   *  This is equivalent to Function, except that forms a special case for the overlapping
+   *  positions tests.
    */
   class WildcardFunction(placeholderParams: List[ValDef], body: Tree) extends Function(placeholderParams, body)
 
