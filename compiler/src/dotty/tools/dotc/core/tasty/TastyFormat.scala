@@ -402,6 +402,7 @@ object TastyFormat {
   final val ANNOTATION = 172
   final val TERMREFin = 173
   final val TYPEREFin = 174
+  final val TYPEOF = 175
 
   // In binary: 101100EI
   // I = implicit method type
@@ -430,7 +431,7 @@ object TastyFormat {
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
-    firstLengthTreeTag <= tag && tag <= TYPEREFin ||
+    firstLengthTreeTag <= tag && tag <= ERASEDIMPLICITMETHODtype ||
     tag == HOLE
 
   def isParamTag(tag: Int) = tag == PARAM || tag == TYPEPARAM
@@ -595,6 +596,7 @@ object TastyFormat {
     case SUPERtype => "SUPERtype"
     case TERMREFin => "TERMREFin"
     case TYPEREFin => "TYPEREFin"
+    case TYPEOF => "TYPEOF"
 
     case REFINEDtype => "REFINEDtype"
     case REFINEDtpt => "REFINEDtpt"
