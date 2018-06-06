@@ -1018,7 +1018,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
         if ((ownType eq selType) || ownType.isError) result
-        else tryWithClassTag(Typed(result, TypeTree(ownType)), selType)
+        else tryWithAbstractTypeTag(Typed(result, TypeTree(ownType)), selType)
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
         val typedArgsErr = args mapconserve (typed(_, defn.AnyType))
