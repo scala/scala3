@@ -137,6 +137,7 @@ SimpleType        ::=  SimpleType TypeArgs                                      
                     |  ‘(’ ArgTypes ‘)’                                         Tuple(ts)
                     |  ‘_’ TypeBounds
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
+                    |  TypeOf                                                   TypeOfTypeTree(expr)
                     |  SimpleLiteral                                            SingletonTypeTree(l)
 ArgTypes          ::=  Type {‘,’ Type}
                     |  NamedTypeArg {‘,’ NamedTypeArg}
@@ -148,6 +149,7 @@ TypeArgs          ::=  ‘[’ ArgTypes ‘]’                                 
 NamedTypeArg      ::=  id ‘=’ Type                                              NamedArg(id, t)
 NamedTypeArgs     ::=  ‘[’ NamedTypeArg {‘,’ NamedTypeArg} ‘]’                  nts
 Refinement        ::=  ‘{’ [RefineDcl] {semi [RefineDcl]} ‘}’                   ds
+TypeOf            ::=  ‘{’ Expr1 ‘}’                                            expr
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type] | INT                            TypeBoundsTree(lo, hi)
 TypeParamBounds   ::=  TypeBounds {‘<%’ Type} {‘:’ Type}                        ContextBounds(typeBounds, tps)
 ```

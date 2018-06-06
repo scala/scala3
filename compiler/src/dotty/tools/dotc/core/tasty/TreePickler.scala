@@ -513,6 +513,7 @@ class TreePickler(pickler: TastyPickler) {
         case SingletonTypeTree(ref) =>
           writeByte(SINGLETONtpt)
           pickleTree(ref)
+        // TODO: case TypeOfTypeTree
         case RefinedTypeTree(parent, refinements) =>
           if (refinements.isEmpty) pickleTree(parent)
           else {

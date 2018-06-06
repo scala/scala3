@@ -137,6 +137,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def SingletonTypeTree(ref: Tree)(implicit ctx: Context): SingletonTypeTree =
     ta.assignType(untpd.SingletonTypeTree(ref), ref)
 
+  def TypeOfTypeTree(ref: Tree)(implicit ctx: Context): TypeOfTypeTree =
+    ta.assignType(untpd.TypeOfTypeTree(ref), ref)
+
   def AndTypeTree(left: Tree, right: Tree)(implicit ctx: Context): AndTypeTree =
     ta.assignType(untpd.AndTypeTree(left, right), left, right)
 

@@ -1001,6 +1001,7 @@ class TreeUnpickler(reader: TastyReader,
           Throw(readTerm())
         case SINGLETONtpt =>
           SingletonTypeTree(readTerm())
+        // TODO: case TypeOfTypeTree =>
         case BYNAMEtpt =>
           ByNameTypeTree(readTpt())
         case NAMEDARG =>

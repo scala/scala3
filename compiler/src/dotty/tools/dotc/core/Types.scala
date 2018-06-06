@@ -4099,6 +4099,14 @@ object Types {
               cpy.Apply(tree)(copyMapped(tree.fun), tree.args.mapConserve(copyMapped))
             case tree: If =>
               cpy.If(tree)(copyMapped(tree.cond), copyMapped(tree.thenp), copyMapped(tree.elsep))
+            case tree: Ident =>
+              copyMapped(tree)
+            case tree: Select =>
+              cpy.Select(tree)(copyMapped(tree.qualifier), tree.name)
+            case tree: Literal =>
+              copyMapped(tree)
+            case tree: Block =>
+              copyMapped(tree)
             case tree: Match =>
               ???
             case tree => throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")

@@ -1175,6 +1175,18 @@ class Typer extends Namer
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
   }
 
+  def typedTypeOfTypeTree(tree: untpd.TypeOfTypeTree)(implicit ctx: Context): TypeOfTypeTree = track("typedTypeOfTypeTree") {
+    val ref1 = typedExpr(tree.ref)
+    ref1 match {
+      case _: Apply | _: If | _: Match | _: Block | _: Ident | _: Select | _: Literal =>
+        // Ident, Select & Literal are also available in the alternative syntax,
+        // that is a.type, a.b.type, 1. For now we treat them differently
+        // depending on the syntax.
+      case tree => ctx.error(s"$tree is not a valid singleton type.", ref1.pos)
+    }
+    assignType(cpy.TypeOfTypeTree(tree)(ref1), ref1)
+  }
+
   def typedAndTypeTree(tree: untpd.AndTypeTree)(implicit ctx: Context): AndTypeTree = track("typedAndTypeTree") {
     val left1 = checkSimpleKinded(typed(tree.left))
     val right1 = checkSimpleKinded(typed(tree.right))
@@ -1810,6 +1822,7 @@ class Typer extends Namer
           case tree: untpd.Inlined => typedInlined(tree, pt)
           case tree: untpd.TypeTree => typedTypeTree(tree, pt)
           case tree: untpd.SingletonTypeTree => typedSingletonTypeTree(tree)
+          case tree: untpd.TypeOfTypeTree => typedTypeOfTypeTree(tree)
           case tree: untpd.AndTypeTree => typedAndTypeTree(tree)
           case tree: untpd.OrTypeTree => typedOrTypeTree(tree)
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)

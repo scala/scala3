@@ -484,6 +484,12 @@ trait TypeAssigner {
   def assignType(tree: untpd.SingletonTypeTree, ref: Tree)(implicit ctx: Context) =
     tree.withType(ref.tpe)
 
+  def assignType(tree: untpd.TypeOfTypeTree, ref: Tree)(implicit ctx: Context) = {
+    val typeOf = TypeOf(ref, ref.tpe)
+    ref.withTypeUnchecked(typeOf)
+    tree.withType(typeOf)
+  }
+
   def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
     tree.withType(AndType(left.tpe, right.tpe))
 

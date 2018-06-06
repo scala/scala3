@@ -283,6 +283,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree): Inlined = new Inlined(call, bindings, expansion)
   def TypeTree() = new TypeTree()
   def SingletonTypeTree(ref: Tree): SingletonTypeTree = new SingletonTypeTree(ref)
+  def TypeOfTypeTree(ref: Tree): TypeOfTypeTree = new TypeOfTypeTree(ref)
   def AndTypeTree(left: Tree, right: Tree): AndTypeTree = new AndTypeTree(left, right)
   def OrTypeTree(left: Tree, right: Tree): OrTypeTree = new OrTypeTree(left, right)
   def RefinedTypeTree(tpt: Tree, refinements: List[Tree]): RefinedTypeTree = new RefinedTypeTree(tpt, refinements)
