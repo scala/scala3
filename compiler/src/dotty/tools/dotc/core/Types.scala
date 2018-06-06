@@ -171,7 +171,7 @@ object Types {
       case this1: RefinedOrRecType =>
         this1.parent.isRef(sym)
       case this1: AppliedType =>
-        val this2 = this1.dealias
+        val this2 = this1.dealiasStripAnnots
         if (this2 ne this1) this2.isRef(sym)
         else this1.underlying.isRef(sym)
       case _ => false
@@ -244,7 +244,7 @@ object Types {
     }
 
     /** Is this type a (possibly aliased) singleton type? */
-    def isSingleton(implicit ctx: Context) = dealias.isInstanceOf[SingletonType]
+    def isSingleton(implicit ctx: Context) = dealiasStripAnnots.isInstanceOf[SingletonType]
 
     /** Is this type of kind `AnyKind`? */
     def hasAnyKind(implicit ctx: Context): Boolean = {
@@ -931,6 +931,11 @@ object Types {
       */
     def stripAnnots(implicit ctx: Context): Type = this
 
+    def rewrapAnnots(tp: Type)(implicit ctx: Context): Type = tp.stripTypeVar match {
+      case AnnotatedType(tp1, annot) => AnnotatedType(rewrapAnnots(tp1), annot)
+      case _ => this
+    }
+
     /** Strip PolyType prefix */
     def stripPoly(implicit ctx: Context): Type = this match {
       case tp: PolyType => tp.resType.stripPoly
@@ -1046,18 +1051,21 @@ object Types {
     final def dealiasKeepAnnots(implicit ctx: Context): Type =
       dealias1(keepAnnots = true)
 
+    final def dealias(implicit ctx: Context): Type = dealiasStripAnnots
+
     /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
      *  TypeVars until type is no longer alias type, annotated type, LazyRef,
      *  or instantiated type variable.
      */
-    final def dealias(implicit ctx: Context): Type =
+    final def dealiasStripAnnots(implicit ctx: Context): Type =
       dealias1(keepAnnots = false)
 
     /** Perform successive widenings and dealiasings until none can be applied anymore */
-    @tailrec final def widenDealias(implicit ctx: Context): Type = {
-      val res = this.widen.dealias
-      if (res eq this) res else res.widenDealias
+    @tailrec final def widenDealiasStripAnnots(implicit ctx: Context): Type = {
+      val res = this.widen.dealiasStripAnnots
+      if (res eq this) res else res.widenDealiasStripAnnots
     }
+    final def widenDealias(implicit ctx: Context): Type = widenDealiasStripAnnots
 
     /** Widen from constant type to its underlying non-constant
      *  base type.
@@ -1068,7 +1076,7 @@ object Types {
     }
 
     /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
-    final def dropDependentRefinement(implicit ctx: Context): Type = dealias match {
+    final def dropDependentRefinement(implicit ctx: Context): Type = dealiasStripAnnots match {
       case RefinedType(parent, nme.apply, _) => parent
       case tp => tp
     }
@@ -1083,7 +1091,7 @@ object Types {
      *  a class, the class type ref, otherwise NoType.
      *  @param  refinementOK   If `true` we also skip refinements.
      */
-    def underlyingClassRef(refinementOK: Boolean)(implicit ctx: Context): Type = dealias match {
+    def underlyingClassRef(refinementOK: Boolean)(implicit ctx: Context): Type = dealiasStripAnnots match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else if (tp.symbol.isAliasType) tp.underlying.underlyingClassRef(refinementOK)
@@ -1805,8 +1813,8 @@ object Types {
           case arg: TypeBounds =>
             val v = param.paramVariance
             val pbounds = param.paramInfo
-            if (v > 0 && pbounds.loBound.dealias.isBottomType) TypeAlias(arg.hiBound & rebase(pbounds.hiBound))
-            else if (v < 0 && pbounds.hiBound.dealias.isTopType) TypeAlias(arg.loBound | rebase(pbounds.loBound))
+            if (v > 0 && pbounds.loBound.dealiasKeepAnnots.isBottomType) TypeAlias(arg.hiBound & rebase(pbounds.hiBound))
+            else if (v < 0 && pbounds.hiBound.dealiasKeepAnnots.isTopType) TypeAlias(arg.loBound | rebase(pbounds.loBound))
             else arg recoverable_& rebase(pbounds)
           case arg => TypeAlias(arg)
         }
@@ -4165,11 +4173,12 @@ object Types {
      */
     def tryWiden(tp: NamedType, pre: Type): Type = pre.member(tp.name) match {
       case d: SingleDenotation =>
-        d.info.dealias match {
+        val tp1 = d.info.dealiasKeepAnnots
+        tp1.stripAnnots match {
           case TypeAlias(alias) =>
             // if H#T = U, then for any x in L..H, x.T =:= U,
             // hence we can replace with U under all variances
-            reapply(alias)
+            reapply(alias.rewrapAnnots(tp1))
           case TypeBounds(lo, hi) =>
             // If H#T = _ >: S <: U, then for any x in L..H, S <: x.T <: U,
             // hence we can replace with S..U under all variances
