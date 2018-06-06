@@ -8,6 +8,9 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
   def showTree(tree: Tree)(implicit ctx: Context): String =
     new Buffer().visitTree(tree).result()
 
+  def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String =
+    new Buffer().visitCaseDef(caseDef).result()
+
   def showTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): String =
     new Buffer().visitTypeTree(tpt).result()
 

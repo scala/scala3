@@ -310,6 +310,11 @@ abstract class Tasty { tasty =>
 
   implicit def caseDefClassTag: ClassTag[CaseDef]
 
+  trait AbstractCaseDef {
+    def show(implicit ctx: Context, s: Show[tasty.type]): String
+  }
+  implicit def CaseDefDeco(caseDef: CaseDef): AbstractCaseDef
+
   val CaseDef: CaseDefExtractor
   abstract class CaseDefExtractor {
     def unapply(x: CaseDef): Option[(Pattern, Option[Term], Term)]

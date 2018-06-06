@@ -438,6 +438,10 @@ object TastyImpl extends scala.tasty.Tasty {
 
   def caseDefClassTag: ClassTag[CaseDef] = implicitly[ClassTag[CaseDef]]
 
+  def CaseDefDeco(caseDef: CaseDef): AbstractCaseDef = new AbstractCaseDef {
+    def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showCaseDef(caseDef)
+  }
+
   object CaseDef extends CaseDefExtractor {
     def unapply(x: CaseDef): Option[(Pattern, Option[Term], Term)] = x match {
       case x: tpd.CaseDef @unchecked =>

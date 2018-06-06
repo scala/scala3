@@ -48,6 +48,7 @@ object Macros {
 class DummyShow[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty0) {
   import tasty._
   def showTree(tree: Tree)(implicit ctx: Context): String = "Tree"
+  def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String = "CaseDef"
   def showTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): String = "TypeOrBoundsTree"
   def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String = "TypeOrBounds"
   def showConstant(const: Constant)(implicit ctx: Context): String = "Constant"
