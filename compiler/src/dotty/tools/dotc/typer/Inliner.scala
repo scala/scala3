@@ -468,8 +468,19 @@ class Inliner(call: tpd.Tree, rhs: tpd.Tree)(implicit ctx: Context) {
 
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) = {
 
+      /** Rewrite an application
+       *
+       *    ((x1, ..., sn) => b)(e1, ..., en)
+       *
+       *  to
+       *
+       *    val/def x1 = e1; ...; val/def xn = en; b
+       *
+       *  where `def` is used for call-by-name parameters. However, we shortcut any NoPrefix
+       *  refs among the ei's directly without creating an intermediate binding.
+       */
       def betaReduce(tree: Tree) = tree match {
-        case Apply(Select(cl @ closureDef(ddef), nme.apply), args) =>
+        case Apply(Select(cl @ closureDef(ddef), nme.apply), args) if defn.isFunctionType(cl.tpe) =>
           ddef.tpe.widen match {
             case mt: MethodType if ddef.vparamss.head.length == args.length =>
               val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
