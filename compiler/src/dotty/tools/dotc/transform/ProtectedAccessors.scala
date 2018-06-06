@@ -67,13 +67,8 @@ class ProtectedAccessors extends MiniPhase {
 
   override def transformAssign(tree: Assign)(implicit ctx: Context): Tree =
     tree.lhs match {
-      case lhs: RefTree =>
-        lhs.name match {
-          case ProtectedAccessorName(name) =>
-            cpy.Apply(tree)(Accessors.insert.useSetter(lhs), tree.rhs :: Nil)
-          case _ =>
-            tree
-        }
+      case lhs: RefTree if lhs.name.is(ProtectedAccessorName) =>
+        cpy.Apply(tree)(Accessors.insert.useSetter(lhs), tree.rhs :: Nil)
       case _ =>
         tree
     }
