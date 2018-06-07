@@ -351,7 +351,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         if (tp11.stripTypeVar eq tp12.stripTypeVar) recur(tp11, tp2)
         else thirdTry
       case tp1 @ OrType(tp11, tp12) =>
-        def joinOK = tp2.dealias match {
+        def joinOK = tp2.dealiasKeepRefiningAnnots match {
           case tp2: AppliedType if !tp2.tycon.typeSymbol.isClass =>
             // If we apply the default algorithm for `A[X] | B[Y] <: C[Z]` where `C` is a
             // type parameter, we will instantiate `C` to `A` and then fail when comparing
@@ -510,7 +510,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         }
         compareTypeLambda
       case OrType(tp21, tp22) =>
-        val tp1a = tp1.widenDealias
+        val tp1a = tp1.widenDealiasKeepRefiningAnnots
         if (tp1a ne tp1)
           // Follow the alias; this might avoid truncating the search space in the either below
           // Note that it's safe to widen here because singleton types cannot be part of `|`.
@@ -644,7 +644,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         }
         compareHKLambda
       case AndType(tp11, tp12) =>
-        val tp2a = tp2.dealias
+        val tp2a = tp2.dealiasKeepRefiningAnnots
         if (tp2a ne tp2) // Follow the alias; this might avoid truncating the search space in the either below
           return recur(tp1, tp2a)
 
@@ -690,13 +690,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       */
       def isMatchingApply(tp1: Type): Boolean = tp1 match {
         case AppliedType(tycon1, args1) =>
-          tycon1.dealias match {
+          tycon1.dealiasKeepRefiningAnnots match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
               canConstrain(tycon1) && tryInstantiate(tycon1, tycon2)) &&
               isSubArgs(args1, args2, tp1, tparams)
             case tycon1: TypeRef =>
-              tycon2.dealias match {
+              tycon2.dealiasKeepRefiningAnnots match {
                 case tycon2: TypeRef if tycon1.symbol == tycon2.symbol =>
                   isSubType(tycon1.prefix, tycon2.prefix) &&
                   isSubArgs(args1, args2, tp1, tparams)
@@ -1104,11 +1104,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
    *  is some combination of TypeRefs that point to classes, where the
    *  combiners are AppliedTypes, RefinedTypes, RecTypes, And/Or-Types or AnnotatedTypes.
    */
-   private def isCovered(tp: Type): Boolean = tp.dealias.stripTypeVar match {
+   private def isCovered(tp: Type): Boolean = tp.dealiasKeepRefiningAnnots.stripTypeVar match {
     case tp: TypeRef => tp.symbol.isClass && tp.symbol != NothingClass && tp.symbol != NullClass
     case tp: AppliedType => isCovered(tp.tycon)
     case tp: RefinedOrRecType => isCovered(tp.parent)
-    case tp: AnnotatedType => isCovered(tp.underlying)
     case tp: AndType => isCovered(tp.tp1) && isCovered(tp.tp2)
     case tp: OrType  => isCovered(tp.tp1) && isCovered(tp.tp2)
     case _ => false

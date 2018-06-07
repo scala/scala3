@@ -275,7 +275,7 @@ trait ConstraintHandling {
       case tp: OrType  => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
       case _ => true
     }
-    def isOrType(tp: Type): Boolean = tp.stripTypeVar.dealias match {
+    def isOrType(tp: Type): Boolean = tp.dealias match {
       case tp: OrType => true
       case tp: RefinedOrRecType => isOrType(tp.parent)
       case AndType(tp1, tp2) => isOrType(tp1) | isOrType(tp2)
