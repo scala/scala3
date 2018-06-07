@@ -821,12 +821,12 @@ class Namer { typer: Typer =>
       else completeInCreationContext(denot)
     }
 
-    private def addInlineInfo(denot: SymDenotation) = original match {
-      case original: untpd.DefDef if denot.isInlineMethod =>
+    private def addInlineInfo(sym: Symbol) = original match {
+      case original: untpd.DefDef if sym.isInlineableMethod =>
         Inliner.registerInlineInfo(
-            denot,
+            sym,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
-          )(localContext(denot.symbol))
+          )(localContext(sym))
       case _ =>
     }
 
@@ -839,7 +839,7 @@ class Namer { typer: Typer =>
         case original: MemberDef => addAnnotations(sym, original)
         case _ =>
       }
-      addInlineInfo(denot)
+      addInlineInfo(sym)
       denot.info = typeSig(sym)
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym, sym.pos)
@@ -1113,7 +1113,7 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      def isInline = sym.is(FinalOrInline, butNot = Method | Mutable)
+      def isInline = sym.is(FinalOrInlineOrTransparent, butNot = Method | Mutable)
 
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types

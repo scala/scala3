@@ -363,7 +363,10 @@ object Flags {
   /** Symbol is a Java default method */
   final val DefaultMethod = termFlag(38, "<defaultmethod>")
 
-  /** Symbol is a Java enum */
+  /** Labelled with `transparent` modifier */
+  final val Transparent = termFlag(39, "transparent")
+
+  /** Symbol is an enum class or enum case (if used with case) */
   final val Enum = commonFlag(40, "<enum>")
 
   /** Labeled with `erased` modifier (erased value)  */
@@ -436,7 +439,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   final val SourceModifierFlags =
-    commonFlags(Private, Protected, Abstract, Final, Inline,
+    commonFlags(Private, Protected, Abstract, Final, Inline, Transparent,
      Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic, Erased)
 
   /** Flags representing modifiers that can appear in trees */
@@ -457,7 +460,7 @@ object Flags {
     Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
     NonMember | ImplicitCommon | Permanent | Synthetic |
-    SuperAccessorOrScala2x | Inline
+    SuperAccessorOrScala2x | Inline | Transparent.toCommonFlags
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class
@@ -513,7 +516,7 @@ object Flags {
   /** Flags that can apply to a module val */
   final val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
     Override | Final | Method | Implicit | Lazy |
-    Accessor | AbsOverride | Stable | Captured | Synchronized | Inline | Erased
+    Accessor | AbsOverride | Stable | Captured | Synchronized | Erased
 
   /** Flags that can apply to a module class */
   final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | ImplClass | Enum
@@ -548,8 +551,8 @@ object Flags {
   /** Either method or lazy or deferred */
   final val MethodOrLazyOrDeferred = Method | Lazy | Deferred
 
-  /** Labeled `private`, `final`, or `inline` */
-  final val PrivateOrFinalOrInline = Private | Final | Inline
+  /** Labeled `private`, `final`, `inline`, or `transparent` */
+  final val EffectivelyFinal = Private | Final | Inline | Transparent.toCommonFlags
 
   /** A private method */
   final val PrivateMethod = allOf(Private, Method)
@@ -559,6 +562,9 @@ object Flags {
 
   /** An inline method */
   final val InlineMethod = allOf(Inline, Method)
+
+  /** An transparent method */
+  final val TransparentMethod = allOf(Transparent, Method)
 
   /** An inline parameter */
   final val InlineParam = allOf(Inline, Param)
@@ -575,6 +581,9 @@ object Flags {
   /** An accessor or label */
   final val AccessorOrLabel = Accessor | Label
 
+  /** An accessor or a synthetic symbol */
+  final val AccessorOrSynthetic = Accessor | Synthetic
+
   /** A synthetic or private definition */
   final val SyntheticOrPrivate = Synthetic | Private
 
@@ -584,8 +593,8 @@ object Flags {
   /** A deferred type member or parameter (these don't have right hand sides) */
   final val DeferredOrTypeParam = Deferred | TypeParam
 
-  /** value that's final or inline */
-  final val FinalOrInline = Final | Inline
+  /** value that's final, inline, or transparent */
+  final val FinalOrInlineOrTransparent = Final | Inline | Transparent.toCommonFlags
 
   /** A covariant type parameter instance */
   final val LocalCovariant = allOf(Local, Covariant)

@@ -1575,7 +1575,7 @@ object messages {
     private val varNote =
       if (sym.is(Mutable)) "Note that variables need to be initialized to be defined."
       else ""
-    val msg = hl"""only classes can have declared but undefined members"""
+    val msg = hl"""declaration of $sym not allowed here: only classes can have declared but undefined members"""
     val kind = "Syntax"
     val explanation = s"$varNote"
   }

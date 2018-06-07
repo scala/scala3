@@ -404,6 +404,8 @@ object Checking {
     checkCombination(Private, Protected)
     checkCombination(Abstract, Override)
     checkCombination(Lazy, Inline)
+    checkCombination(Module, Inline)
+    checkCombination(Transparent, Inline)
     checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
     if (sym.is(Inline)) checkApplicable(Inline, sym.isTerm && !sym.is(Mutable | Module))
     if (sym.is(Lazy)) checkApplicable(Lazy, !sym.is(Method | Mutable))
@@ -682,7 +684,8 @@ trait Checking {
       case tp => tp.widenTermRefExpr match {
         case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
         case _ =>
-          if (!ctx.erasedTypes) ctx.error(em"$what must be a constant expression", tree.pos)
+          val allow = ctx.erasedTypes || ctx.owner.ownersIterator.exists(_.isInlineableMethod)
+          if (!allow) ctx.error(em"$what must be a constant expression", tree.pos)
       }
     }
   }

@@ -179,7 +179,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   ERASED
                   LAZY
                   OVERRIDE
-                  INLINE                              // inline method
+                  INLINE
+                  TRANSPARENT
                   MACRO                               // inline method containing toplevel splices
                   STATIC                              // mapped to static Java member
                   OBJECT                              // an object or its class
@@ -280,25 +281,26 @@ object TastyFormat {
   final val LAZY = 14
   final val OVERRIDE = 15
   final val INLINE = 16
-  final val STATIC = 17
-  final val OBJECT = 18
-  final val TRAIT = 19
-  final val ENUM = 20
-  final val LOCAL = 21
-  final val SYNTHETIC = 22
-  final val ARTIFACT = 23
-  final val MUTABLE = 24
-  final val LABEL = 25
-  final val FIELDaccessor = 26
-  final val CASEaccessor = 27
-  final val COVARIANT = 28
-  final val CONTRAVARIANT = 29
-  final val SCALA2X = 30
-  final val DEFAULTparameterized = 31
-  final val STABLE = 32
-  final val MACRO = 33
-  final val ERASED = 34
-  final val PARAMsetter = 35
+  final val TRANSPARENT = 17
+  final val STATIC = 18
+  final val OBJECT = 19
+  final val TRAIT = 20
+  final val ENUM = 21
+  final val LOCAL = 22
+  final val SYNTHETIC = 23
+  final val ARTIFACT = 24
+  final val MUTABLE = 25
+  final val LABEL = 26
+  final val FIELDaccessor = 27
+  final val CASEaccessor = 28
+  final val COVARIANT = 29
+  final val CONTRAVARIANT = 30
+  final val SCALA2X = 31
+  final val DEFAULTparameterized = 32
+  final val STABLE = 33
+  final val MACRO = 34
+  final val ERASED = 35
+  final val PARAMsetter = 36
 
   // Cat. 2:    tag Nat
 
@@ -446,6 +448,7 @@ object TastyFormat {
        | LAZY
        | OVERRIDE
        | INLINE
+       | TRANSPARENT
        | MACRO
        | STATIC
        | OBJECT
@@ -502,6 +505,7 @@ object TastyFormat {
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
     case INLINE => "INLINE"
+    case TRANSPARENT => "TRANSPARENT"
     case MACRO => "MACRO"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"

@@ -476,6 +476,9 @@ class Typer extends Namer
       case pt: SelectionProto if pt.name == nme.CONSTRUCTOR => true
       case _ => false
     }
+    val enclosingInlineable = ctx.owner.ownersIterator.findSymbol(_.isInlineableMethod)
+    if (enclosingInlineable.exists && !Inliner.isLocal(qual1.symbol, enclosingInlineable))
+      ctx.error(SuperCallsNotAllowedInline(enclosingInlineable), tree.pos)
     pt match {
       case pt: SelectionProto if pt.name.isTypeName =>
         qual1 // don't do super references for types; they are meaningless anyway
@@ -1068,7 +1071,7 @@ class Typer extends Namer
         (EmptyTree, WildcardType)
       }
       else if (owner != cx.outer.owner && owner.isRealMethod) {
-        if (owner.isInlineMethod)
+        if (owner.isInlineableMethod)
           (EmptyTree, errorType(NoReturnFromInline(owner), tree.pos))
         else if (!owner.isCompleted)
           (EmptyTree, errorType(MissingReturnTypeWithReturnStatement(owner), tree.pos))
@@ -1428,7 +1431,7 @@ class Typer extends Namer
     val rhs1 = normalizeErasedRhs(typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx), sym)
 
     // Overwrite inline body to make sure it is not evaluated twice
-    if (sym.isInlineMethod) Inliner.registerInlineInfo(sym, _ => rhs1)
+    if (sym.isInlineableMethod) Inliner.registerInlineInfo(sym, _ => rhs1)
 
     if (sym.isConstructor && !sym.isPrimaryConstructor)
       for (param <- tparams1 ::: vparamss1.flatten)
@@ -2343,7 +2346,7 @@ class Typer extends Namer
         if (pt.hasAnnotation(defn.InlineParamAnnot))
           checkInlineConformant(tree, isFinal = false, "argument to inline parameter")
         if (Inliner.hasBodyToInline(tree.symbol) &&
-            !ctx.owner.ownersIterator.exists(_.isInlineMethod) &&
+            !ctx.owner.ownersIterator.exists(_.isInlineableMethod) &&
             !ctx.settings.YnoInline.value &&
             !ctx.isAfterTyper &&
             !ctx.reporter.hasErrors)

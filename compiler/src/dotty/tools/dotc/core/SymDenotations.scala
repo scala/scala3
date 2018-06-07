@@ -779,7 +779,13 @@ object SymDenotations {
 
     def isSkolem: Boolean = name == nme.SKOLEM
 
-    def isInlineMethod(implicit ctx: Context): Boolean = is(InlineMethod, butNot = Accessor)
+    def isInlinedMethod(implicit ctx: Context): Boolean =
+      is(InlineMethod, butNot = Accessor)
+
+    def isTransparentMethod(implicit ctx: Context): Boolean =
+      is(TransparentMethod, butNot = Accessor)
+
+    def isInlineableMethod(implicit ctx: Context) = isInlinedMethod || isTransparentMethod
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,
@@ -905,7 +911,7 @@ object SymDenotations {
 
     /** A symbol is effectively final if it cannot be overridden in a subclass */
     final def isEffectivelyFinal(implicit ctx: Context): Boolean =
-      is(PrivateOrFinalOrInline) || !owner.isClass || owner.is(ModuleOrFinal) || owner.isAnonymousClass
+      is(EffectivelyFinal) || !owner.isClass || owner.is(ModuleOrFinal) || owner.isAnonymousClass
 
     /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {
