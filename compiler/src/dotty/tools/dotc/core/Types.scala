@@ -171,7 +171,7 @@ object Types {
       case this1: RefinedOrRecType =>
         this1.parent.isRef(sym)
       case this1: AppliedType =>
-        val this2 = this1.dealias
+        val this2 = this1.dealiasStripAnnots
         if (this2 ne this1) this2.isRef(sym)
         else this1.underlying.isRef(sym)
       case _ => false
@@ -244,7 +244,7 @@ object Types {
     }
 
     /** Is this type a (possibly aliased) singleton type? */
-    def isSingleton(implicit ctx: Context) = dealias.isInstanceOf[SingletonType]
+    def isSingleton(implicit ctx: Context) = dealiasStripAnnots.isInstanceOf[SingletonType]
 
     /** Is this type of kind `AnyKind`? */
     def hasAnyKind(implicit ctx: Context): Boolean = {
@@ -280,6 +280,15 @@ object Types {
     /** Does the type carry an annotation that is an instance of `cls`? */
     @tailrec final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = stripTypeVar match {
       case AnnotatedType(tp, annot) => (annot matches cls) || (tp hasAnnotation cls)
+      case _ => false
+    }
+
+    /** Does this type have a supertype with an annotation satisfying given predicate `p`? */
+    def derivesAnnotWith(p: Annotation => Boolean)(implicit ctx: Context): Boolean = this match {
+      case tp: AnnotatedType => p(tp.annot) || tp.tpe.derivesAnnotWith(p)
+      case tp: TypeProxy => tp.superType.derivesAnnotWith(p)
+      case AndType(l, r) => l.derivesAnnotWith(p) || r.derivesAnnotWith(p)
+      case OrType(l, r) => l.derivesAnnotWith(p) && r.derivesAnnotWith(p)
       case _ => false
     }
 
@@ -922,6 +931,11 @@ object Types {
       */
     def stripAnnots(implicit ctx: Context): Type = this
 
+    def rewrapAnnots(tp: Type)(implicit ctx: Context): Type = tp.stripTypeVar match {
+      case AnnotatedType(tp1, annot) => AnnotatedType(rewrapAnnots(tp1), annot)
+      case _ => this
+    }
+
     /** Strip PolyType prefix */
     def stripPoly(implicit ctx: Context): Type = this match {
       case tp: PolyType => tp.resType.stripPoly
@@ -1008,47 +1022,54 @@ object Types {
         this
     }
 
-    private def dealias1(keepAnnots: Boolean)(implicit ctx: Context): Type = this match {
+    private def dealias1(keep: AnnotatedType => Context => Boolean)(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else tp.info match {
-          case TypeAlias(alias) => alias.dealias1(keepAnnots): @tailrec
+          case TypeAlias(alias) => alias.dealias1(keep): @tailrec
           case _ => tp
         }
       case app @ AppliedType(tycon, args) =>
-        val tycon1 = tycon.dealias1(keepAnnots)
-        if (tycon1 ne tycon) app.superType.dealias1(keepAnnots): @tailrec
+        val tycon1 = tycon.dealias1(keep)
+        if (tycon1 ne tycon) app.superType.dealias1(keep): @tailrec
         else this
       case tp: TypeVar =>
         val tp1 = tp.instanceOpt
-        if (tp1.exists) tp1.dealias1(keepAnnots): @tailrec else tp
+        if (tp1.exists) tp1.dealias1(keep): @tailrec else tp
       case tp: AnnotatedType =>
-        val tp1 = tp.tpe.dealias1(keepAnnots)
-        if (keepAnnots) tp.derivedAnnotatedType(tp1, tp.annot) else tp1
+        val tp1 = tp.tpe.dealias1(keep)
+        if (keep(tp)(ctx)) tp.derivedAnnotatedType(tp1, tp.annot) else tp1
       case tp: LazyRef =>
-        tp.ref.dealias1(keepAnnots): @tailrec
+        tp.ref.dealias1(keep): @tailrec
       case _ => this
     }
-
-    /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
-     *  is no longer alias type, LazyRef, or instantiated type variable.
-     *  Goes through annotated types and rewraps annotations on the result.
-     */
-    final def dealiasKeepAnnots(implicit ctx: Context): Type =
-      dealias1(keepAnnots = true)
 
     /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
      *  TypeVars until type is no longer alias type, annotated type, LazyRef,
      *  or instantiated type variable.
      */
-    final def dealias(implicit ctx: Context): Type =
-      dealias1(keepAnnots = false)
+    final def dealiasStripAnnots(implicit ctx: Context): Type = dealias1(keepNever)
+
+    /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
+     *  is no longer alias type, LazyRef, or instantiated type variable.
+     *  Goes through annotated types and rewraps annotations on the result.
+     */
+    final def dealiasKeepAnnots(implicit ctx: Context): Type = dealias1(keepAlways)
+
+    final def dealiasKeepSubTypeAnnots(implicit ctx: Context): Type = dealias1(keepIfSubTypeAnnotated)
+
+    final def dealias(implicit ctx: Context): Type = dealiasStripAnnots
 
     /** Perform successive widenings and dealiasings until none can be applied anymore */
-    @tailrec final def widenDealias(implicit ctx: Context): Type = {
-      val res = this.widen.dealias
-      if (res eq this) res else res.widenDealias
+    private def widenDealias1(keep: AnnotatedType => Context => Boolean)(implicit ctx: Context): Type = {
+      val res = this.widen.dealias1(keep)
+      if (res eq this) res else res.widenDealias1(keep)
     }
+
+    final def widenDealiasStripAnnots(implicit ctx: Context): Type = widenDealias1(keepNever)
+    final def widenDealiasKeepAnnots(implicit ctx: Context): Type = widenDealias1(keepAlways)
+    final def widenDealiasKeepSubTyoeAnnots(implicit ctx: Context): Type = widenDealias1(keepIfSubTypeAnnotated)
+    final def widenDealias(implicit ctx: Context): Type = widenDealiasStripAnnots
 
     /** Widen from constant type to its underlying non-constant
      *  base type.
@@ -1059,7 +1080,7 @@ object Types {
     }
 
     /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
-    final def dropDependentRefinement(implicit ctx: Context): Type = dealias match {
+    final def dropDependentRefinement(implicit ctx: Context): Type = dealiasStripAnnots match {
       case RefinedType(parent, nme.apply, _) => parent
       case tp => tp
     }
@@ -1074,7 +1095,7 @@ object Types {
      *  a class, the class type ref, otherwise NoType.
      *  @param  refinementOK   If `true` we also skip refinements.
      */
-    def underlyingClassRef(refinementOK: Boolean)(implicit ctx: Context): Type = dealias match {
+    def underlyingClassRef(refinementOK: Boolean)(implicit ctx: Context): Type = dealiasStripAnnots match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else if (tp.symbol.isAliasType) tp.underlying.underlyingClassRef(refinementOK)
@@ -1796,8 +1817,8 @@ object Types {
           case arg: TypeBounds =>
             val v = param.paramVariance
             val pbounds = param.paramInfo
-            if (v > 0 && pbounds.loBound.dealias.isBottomType) TypeAlias(arg.hiBound & rebase(pbounds.hiBound))
-            else if (v < 0 && pbounds.hiBound.dealias.isTopType) TypeAlias(arg.loBound | rebase(pbounds.loBound))
+            if (v > 0 && pbounds.loBound.dealiasKeepAnnots.isBottomType) TypeAlias(arg.hiBound & rebase(pbounds.hiBound))
+            else if (v < 0 && pbounds.hiBound.dealiasKeepAnnots.isTopType) TypeAlias(arg.loBound | rebase(pbounds.loBound))
             else arg recoverable_& rebase(pbounds)
           case arg => TypeAlias(arg)
         }
@@ -3693,6 +3714,17 @@ object Types {
 
     override def stripAnnots(implicit ctx: Context): Type = tpe.stripAnnots
 
+    private[this] var isSubTypeAnnotatedKnown = false
+    private[this] var isSubTypeAnnotatedCache: Boolean = _
+
+    def isSubTypeAnnotated(implicit ctx: Context) = {
+      if (!isSubTypeAnnotatedKnown) {
+        isSubTypeAnnotatedCache = annot.symbol.derivesFrom(defn.SubTypeAnnotationClass)
+        isSubTypeAnnotatedKnown = true
+      }
+      isSubTypeAnnotatedCache
+    }
+
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: AnnotatedType => tpe.equals(that.tpe, bs) && (annot `eq` that.annot)
       case _ => false
@@ -4145,11 +4177,12 @@ object Types {
      */
     def tryWiden(tp: NamedType, pre: Type): Type = pre.member(tp.name) match {
       case d: SingleDenotation =>
-        d.info.dealias match {
+        val tp1 = d.info.dealiasKeepAnnots
+        tp1.stripAnnots match {
           case TypeAlias(alias) =>
             // if H#T = U, then for any x in L..H, x.T =:= U,
             // hence we can replace with U under all variances
-            reapply(alias)
+            reapply(alias.rewrapAnnots(tp1))
           case TypeBounds(lo, hi) =>
             // If H#T = _ >: S <: U, then for any x in L..H, S <: x.T <: U,
             // hence we can replace with S..U under all variances
@@ -4575,7 +4608,7 @@ object Types {
     case _ => false
   }
 
-  // ----- Decorator implicits --------------------------------------------
+  // ----- Helpers and Decorator implicits --------------------------------------
 
   implicit def decorateTypeApplications(tpe: Type): TypeApplications = new TypeApplications(tpe)
 
@@ -4588,4 +4621,9 @@ object Types {
         else tps2.nonEmpty && tps1.head.equals(tps2.head, bs) && tps1.tail.equalElements(tps2.tail, bs)
       }
   }
+
+  private val keepAlways: AnnotatedType => Context => Boolean = _ => _ => true
+  private val keepNever: AnnotatedType => Context => Boolean = _ => _ => false
+  private val keepIfSubTypeAnnotated: AnnotatedType => Context => Boolean =
+    tp => ctx => tp.isSubTypeAnnotated(ctx)
 }

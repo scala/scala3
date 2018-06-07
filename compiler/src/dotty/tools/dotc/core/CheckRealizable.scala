@@ -69,7 +69,7 @@ class CheckRealizable(implicit ctx: Context) {
   private def isLateInitialized(sym: Symbol) = sym.is(Lazy, butNot = Module)
 
   /** The realizability status of given type `tp`*/
-  def realizability(tp: Type): Realizability = tp.dealias match {
+  def realizability(tp: Type): Realizability = tp.dealiasStripAnnots match {
     case tp: TermRef =>
       val sym = tp.symbol
       if (sym.is(Stable)) realizability(tp.prefix)
@@ -85,7 +85,7 @@ class CheckRealizable(implicit ctx: Context) {
     case _: SingletonType | NoPrefix =>
       Realizable
     case tp =>
-      def isConcrete(tp: Type): Boolean = tp.dealias match {
+      def isConcrete(tp: Type): Boolean = tp.dealiasStripAnnots match {
         case tp: TypeRef => tp.symbol.isClass
         case tp: TypeProxy => isConcrete(tp.underlying)
         case tp: AndType => isConcrete(tp.tp1) && isConcrete(tp.tp2)
@@ -96,7 +96,7 @@ class CheckRealizable(implicit ctx: Context) {
       else boundsRealizability(tp).andAlso(memberRealizability(tp))
   }
 
-  private def refinedNames(tp: Type): Set[Name] = tp.dealias match {
+  private def refinedNames(tp: Type): Set[Name] = tp.dealiasStripAnnots match {
     case tp: RefinedType => refinedNames(tp.parent) + tp.refinedName
     case tp: AndType => refinedNames(tp.tp1) ++ refinedNames(tp.tp2)
     case tp: OrType  => refinedNames(tp.tp1) ++ refinedNames(tp.tp2)

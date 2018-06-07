@@ -64,7 +64,7 @@ object Checkable {
    *  8. otherwise, TRUE
    */
   def checkable(X: Type, P: Type, pos: Position)(implicit ctx: Context): Boolean = {
-    def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
+    def isAbstract(P: Type) = !P.dealiasStripAnnots.typeSymbol.isClass
     def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
 
     def replaceP(tp: Type)(implicit ctx: Context) = new TypeMap {

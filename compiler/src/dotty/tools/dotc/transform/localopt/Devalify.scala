@@ -193,7 +193,7 @@ class Devalify extends Optimisation {
     case t @ Select(qual, _) if !isEffectivelyMutable(t) =>
       readingOnlyVals(qual)
 
-    case t: Ident if !t.symbol.is(Mutable | Method) && !t.symbol.info.dealias.isInstanceOf[ExprType] =>
+    case t: Ident if !t.symbol.is(Mutable | Method) && !t.symbol.info.dealiasStripAnnots.isInstanceOf[ExprType] =>
       desugarIdent(t) match { case s: Select => readingOnlyVals(s); case _ => true }
 
     case t: This => true

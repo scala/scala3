@@ -55,7 +55,7 @@ class InlineLocalObjects(val simplifyPhase: Simplify) extends Optimisation {
           val owner: Symbol  = refVal.owner
           val name:  Name    = LocalOptInlineLocalObj.fresh()
           val flags: FlagSet = Synthetic
-          val info:  Type    = x.asSeenFrom(refVal.info).info.finalResultType.widenDealias
+          val info:  Type    = x.asSeenFrom(refVal.info).info.finalResultType.widenDealiasStripAnnots
           ctx.newSymbol(owner, name, flags, info)
         }
         (refVal, LinkedHashMap[Symbol, Symbol](accessors.zip(newLocals): _*))
@@ -72,7 +72,7 @@ class InlineLocalObjects(val simplifyPhase: Simplify) extends Optimisation {
              !t.symbol.is(Lazy | Mutable)                                     && // is lhs a val?
              !t.symbol.info.classSymbol.caseAccessors.exists(_.is(Mutable))   && // is the case class immutable?
              fun.symbol.isConstructor                                         && // is rhs a new?
-             t.tpe.widenDealias == t.symbol.info.finalResultType.widenDealias => // no case class inheritance or enums
+             t.tpe.widenDealiasStripAnnots == t.symbol.info.finalResultType.widenDealiasStripAnnots => // no case class inheritance or enums
           Some((fun, args))
         case _ => None
       }

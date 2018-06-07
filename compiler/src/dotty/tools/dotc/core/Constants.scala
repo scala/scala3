@@ -152,7 +152,7 @@ object Constants {
     /** Convert constant value to conform to given type.
      */
     def convertTo(pt: Type)(implicit ctx: Context): Constant = {
-      def classBound(pt: Type): Type = pt.dealias.stripTypeVar match {
+      def classBound(pt: Type): Type = pt.dealiasStripAnnots.stripTypeVar match {
         case tref: TypeRef if !tref.symbol.isClass && tref.info.exists =>
           classBound(tref.info.bounds.lo)
         case param: TypeParamRef =>

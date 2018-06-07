@@ -213,6 +213,31 @@ object Trees {
 
     override def toText(printer: Printer) = printer.toText(this)
 
+    def sameTree(that: Tree[_]): Boolean = {
+      def isSame(x: Any, y: Any): Boolean =
+        x.asInstanceOf[AnyRef].eq(y.asInstanceOf[AnyRef]) || {
+          x match {
+            case x: Tree[_] =>
+              y match {
+                case y: Tree[_] => x.sameTree(y)
+                case _ => false
+              }
+            case x: List[_] =>
+              y match {
+                case y: List[_] => x.corresponds(y)(isSame)
+                case _ => false
+              }
+            case _ =>
+              false
+          }
+        }
+      this.getClass == that.getClass && {
+        val it1 = this.productIterator
+        val it2 = that.productIterator
+        it1.corresponds(it2)(isSame)
+      }
+    }
+
     override def hashCode(): Int = uniqueId // for debugging; was: System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
 

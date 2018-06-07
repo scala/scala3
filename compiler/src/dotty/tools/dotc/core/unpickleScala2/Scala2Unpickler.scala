@@ -109,7 +109,7 @@ object Scala2Unpickler {
     denot.info = tempInfo // first rough info to avoid CyclicReferences
     val normalizedParents =
     	if (parents.isEmpty) defn.ObjectType :: Nil
-    	else parents.map(_.dealias)
+    	else parents.map(_.dealiasStripAnnots)
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
       if (tsym.exists) tsym.setFlag(TypeParam)

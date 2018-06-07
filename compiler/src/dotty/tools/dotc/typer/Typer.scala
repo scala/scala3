@@ -512,7 +512,7 @@ class Typer extends Namer
       case _ =>
         var tpt1 = typedType(tree.tpt)
         tpt1 = tpt1.withType(ensureAccessible(tpt1.tpe, superAccess = false, tpt1.pos))
-        tpt1.tpe.dealias match {
+        tpt1.tpe.dealiasStripAnnots match {
           case TypeApplications.EtaExpansion(tycon) => tpt1 = tpt1.withType(tycon)
           case _ =>
         }
@@ -581,7 +581,7 @@ class Typer extends Namer
    *  exists, rewrite to `ctag(e)`.
    *  @pre We are in pattern-matching mode (Mode.Pattern)
    */
-  def tryWithClassTag(tree: Typed, pt: Type)(implicit ctx: Context) = tree.tpt.tpe.dealias match {
+  def tryWithClassTag(tree: Typed, pt: Type)(implicit ctx: Context) = tree.tpt.tpe.dealiasKeepSubTypeAnnots match {
     case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper =>
       require(ctx.mode.is(Mode.Pattern))
       inferImplicit(defn.ClassTagType.appliedTo(tref),
@@ -735,7 +735,7 @@ class Typer extends Namer
         // if expected parameter type(s) are wildcards, approximate from below.
         // if expected result type is a wildcard, approximate from above.
         // this can type the greatest set of admissible closures.
-        val funType = pt.dealias
+        val funType = pt.dealiasStripAnnots
         (funType.argTypesLo.init, typeTree(funType.argTypesHi.last))
       case SAMType(sam @ MethodTpe(_, formals, restpe)) =>
         (formals,
@@ -2527,7 +2527,7 @@ class Typer extends Namer
           if (pt.isInstanceOf[PolyProto]) tree
           else {
             var typeArgs = tree match {
-              case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree)
+              case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealiasStripAnnots.argTypesLo.map(TypeTree)
               case _ => Nil
             }
             if (typeArgs.isEmpty) typeArgs = constrained(poly, tree)._2

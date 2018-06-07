@@ -387,7 +387,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  that are not top-level are not affected.
    */
   def replace(param: TypeParamRef, tp: Type)(implicit ctx: Context): OrderingConstraint = {
-    val replacement = tp.dealias.stripTypeVar
+    val replacement = tp.dealiasKeepAnnots.stripTypeVar
     if (param == replacement) this
     else {
       assert(replacement.isValueTypeOrLambda)

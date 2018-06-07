@@ -66,7 +66,7 @@ class DottyPrimitives(ctx: Context) {
       case _ => getPrimitive(fun)
     }
 
-    def elementType: Type = tpe.widenDealias match {
+    def elementType: Type = tpe.widenDealiasStripAnnots match {
       case defn.ArrayOf(el) => el
       case JavaArrayType(el) => el
       case _ =>

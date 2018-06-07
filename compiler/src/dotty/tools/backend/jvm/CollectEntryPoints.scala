@@ -49,8 +49,8 @@ object CollectEntryPoints{
   def isJavaMainMethod(sym: Symbol)(implicit ctx: Context) = {
     (sym.name == nme.main) && (sym.info match {
       case r@MethodTpe(_, List(defn.ArrayOf(t)), _) =>
-        (t.widenDealias =:= defn.StringType) && (
-        r.resultType.widenDealias =:= defn.UnitType)
+        (t.widenDealiasStripAnnots =:= defn.StringType) && (
+        r.resultType.widenDealiasStripAnnots =:= defn.UnitType)
       case _ => false
     })
   }

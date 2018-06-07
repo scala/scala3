@@ -421,7 +421,7 @@ object Erasure {
       def recur(qual: Tree): Tree = {
         val qualIsPrimitive = qual.tpe.widen.isPrimitiveValueType
         val symIsPrimitive = sym.owner.isPrimitiveValueClass
-        if (qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType)
+        if (qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealiasStripAnnots.isErasedValueType)
           recur(box(qual))
         else if (!qualIsPrimitive && symIsPrimitive)
           recur(unbox(qual, sym.owner.typeRef))

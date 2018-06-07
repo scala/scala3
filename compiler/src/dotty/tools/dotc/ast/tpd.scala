@@ -353,7 +353,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Ident(tp)
     else {
       val pre = tp.prefix
-      if (pre.isSingleton) followOuterLinks(singleton(pre.dealias)).select(tp)
+      if (pre.isSingleton) followOuterLinks(singleton(pre.dealiasStripAnnots)).select(tp)
       else Select(TypeTree(pre), tp)
     }
 
@@ -791,7 +791,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       applyOverloaded(tree, nme.EQ, that :: Nil, Nil, defn.BooleanType)
 
     /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
-    def isInstance(tp: Type)(implicit ctx: Context): Tree = tp.dealias match {
+    def isInstance(tp: Type)(implicit ctx: Context): Tree = tp.dealiasStripAnnots match {
       case tp: SingletonType =>
         if (tp.widen.derivesFrom(defn.ObjectClass))
           tree.ensureConforms(defn.ObjectType).select(defn.Object_eq).appliedTo(singleton(tp))
@@ -963,7 +963,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val alternatives = ctx.typer.resolveOverloaded(allAlts, proto)
         assert(alternatives.size == 1,
           i"${if (alternatives.isEmpty) "no" else "multiple"} overloads available for " +
-          i"$method on ${receiver.tpe.widenDealias} with targs: $targs%, %; args: $args%, % of types ${args.tpes}%, %; expectedType: $expectedType." +
+          i"$method on ${receiver.tpe.widenDealiasKeepAnnots} with targs: $targs%, %; args: $args%, % of types ${args.tpes}%, %; expectedType: $expectedType." +
           i" isAnnotConstructor = $isAnnotConstructor.\n" +
           i"all alternatives: ${allAlts.map(_.symbol.showDcl).mkString(", ")}\n" +
           i"matching alternatives: ${alternatives.map(_.symbol.showDcl).mkString(", ")}.") // this is parsed from bytecode tree. there's nothing user can do about it

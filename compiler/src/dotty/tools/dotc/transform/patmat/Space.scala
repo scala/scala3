@@ -445,7 +445,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
     debug.println(s"candidates for ${tp.show} : [${children.map(_.show).mkString(", ")}]")
 
-    tp.dealias match {
+    tp.dealiasStripAnnots match {
       case AndType(tp1, tp2) =>
         intersect(Typ(tp1, false), Typ(tp2, false)) match {
           case Or(spaces) => spaces
@@ -520,7 +520,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     }
     else {
       debug.println(s"$child instantiated ------> $resTp")
-      resTp.dealias
+      resTp.dealiasStripAnnots
     }
   }
 
@@ -563,17 +563,17 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
         tp
     }
 
-    def isSingleton(tp: Type): Boolean = tp.dealias match {
+    def isSingleton(tp: Type): Boolean = tp.dealiasStripAnnots match {
       case AndType(l, r)  => isSingleton(l) || isSingleton(r)
       case OrType(l, r)   => isSingleton(l) && isSingleton(r)
       case tp             => tp.isSingleton
     }
 
-    def recur(tp: Type): Boolean = tp.dealias match {
+    def recur(tp: Type): Boolean = tp.dealiasStripAnnots match {
       case AndType(tp1, tp2) =>
         recur(tp1) && recur(tp2) && {
-          val bases1 = tp1.widenDealias.classSymbols
-          val bases2 = tp2.widenDealias.classSymbols
+          val bases1 = tp1.widenDealiasStripAnnots.classSymbols
+          val bases2 = tp2.widenDealiasStripAnnots.classSymbols
 
           debug.println(s"bases of ${tp1.show}: " + bases1)
           debug.println(s"bases of ${tp2.show}: " + bases2)
@@ -718,7 +718,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
   def canDecompose(tp: Type): Boolean = {
-    val dealiasedTp = tp.dealias
+    val dealiasedTp = tp.dealiasStripAnnots
     val res =
       (tp.classSymbol.is(Sealed) &&
         tp.classSymbol.is(AbstractOrTrait) &&
@@ -865,7 +865,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     // Possible to check everything, but be compatible with scalac by default
     def isCheckable(tp: Type): Boolean =
       !tp.hasAnnotation(defn.UncheckedAnnot) && {
-        val tpw = tp.widen.dealias
+        val tpw = tp.widen.dealiasStripAnnots
         ctx.settings.YcheckAllPatmat.value ||
         tpw.typeSymbol.is(Sealed) ||
         tpw.isInstanceOf[OrType] ||
@@ -895,7 +895,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   def checkExhaustivity(_match: Match): Unit = {
     val Match(sel, cases) = _match
-    val selTyp = sel.tpe.widen.dealias
+    val selTyp = sel.tpe.widen.dealiasStripAnnots
 
     if (!exhaustivityCheckable(sel)) return
 
@@ -921,7 +921,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   def checkRedundancy(_match: Match): Unit = {
     val Match(sel, cases) = _match
-    val selTyp = sel.tpe.widen.dealias
+    val selTyp = sel.tpe.widen.dealiasStripAnnots
 
     if (!redundancyCheckable(sel)) return
 

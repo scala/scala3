@@ -78,7 +78,7 @@ object desugar {
           case tp: NamedType if tp.symbol.exists && (tp.symbol.owner eq originalOwner) =>
             val defctx = ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next()
             var local = defctx.denotNamed(tp.name ++ suffix).suchThat(_.isParamOrAccessor).symbol
-            if (local.exists) (defctx.owner.thisType select local).dealias
+            if (local.exists) (defctx.owner.thisType select local).dealiasKeepAnnots
             else {
               def msg =
                 s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"

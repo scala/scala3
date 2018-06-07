@@ -93,7 +93,7 @@ trait TypeAssigner {
       def apply(tp: Type): Type = tp match {
         case tp: TermRef
         if toAvoid(tp.symbol) || partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
-          tp.info.widenExpr.dealias match {
+          tp.info.widenExpr.dealiasStripAnnots match {
             case info: SingletonType => apply(info)
             case info => range(defn.NothingType, apply(info))
           }

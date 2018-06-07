@@ -898,7 +898,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def members: List[Symbol] = tp.allMembers.map(_.symbol).toList
 
-    def typeSymbol: Symbol = tp.widenDealias.typeSymbol
+    def typeSymbol: Symbol = tp.widenDealiasStripAnnots.typeSymbol
 
     def =:=(other: Type): Boolean = tp =:= other
 
@@ -932,7 +932,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         ObjectReference.asInstanceOf[ct.bTypes.ClassBType]
       }
 
-      tp.widenDealias match {
+      tp.widenDealiasStripAnnots match {
         case JavaArrayType(el) =>ArrayBType(el.toTypeKind(ct)(storage)) // Array type such as Array[Int] (kept by erasure)
         case t: TypeRef =>
           t.info match {
@@ -1190,8 +1190,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       val t = field.tpt.tpe.typeSymbol
       if (t.exists) t
       else {
-        val arity = field.meth.tpe.widenDealias.paramTypes.size - _1.size
-        val returnsUnit = field.meth.tpe.widenDealias.resultType.classSymbol == UnitClass
+        val arity = field.meth.tpe.widenDealiasStripAnnots.paramTypes.size - _1.size
+        val returnsUnit = field.meth.tpe.widenDealiasStripAnnots.resultType.classSymbol == UnitClass
         if (returnsUnit)
           ctx.requiredClass(("scala.compat.java8.JProcedure" + arity).toTermName)
         else ctx.requiredClass(("scala.compat.java8.JFunction" + arity).toTermName)

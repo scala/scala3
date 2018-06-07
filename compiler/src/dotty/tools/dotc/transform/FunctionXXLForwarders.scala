@@ -32,7 +32,7 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
     def forwarderRhs(receiver: Tree, xsTree: Tree): Tree =  {
       val argsApply = ref(xsTree.symbol).select(nme.apply)
       var idx = -1
-      val argss = receiver.tpe.widenDealias.paramInfoss.map(_.map { param =>
+      val argss = receiver.tpe.widenDealiasStripAnnots.paramInfoss.map(_.map { param =>
         idx += 1
         argsApply.appliedToArgs(List(Literal(Constant(idx)))).asInstance(param)
       })

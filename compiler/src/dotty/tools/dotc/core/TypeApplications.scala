@@ -220,7 +220,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** If self type is higher-kinded, its result type, otherwise NoType.
    *  Note: The hkResult of an any-kinded type is again AnyKind.
    */
-  def hkResult(implicit ctx: Context): Type = self.dealias match {
+  def hkResult(implicit ctx: Context): Type = self.dealiasStripAnnots match {
     case self: TypeRef =>
       if (self.symbol == defn.AnyKindClass) self else self.info.hkResult
     case self: AppliedType =>
