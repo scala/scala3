@@ -353,7 +353,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Ident(tp)
     else {
       val pre = tp.prefix
-      if (pre.isSingleton) followOuterLinks(singleton(pre.dealias)).select(tp)
+      if (pre.isSingleton) followOuterLinks(singleton(pre.dealiasStripAnnots)).select(tp)
       else Select(TypeTree(pre), tp)
     }
 
@@ -791,7 +791,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       applyOverloaded(tree, nme.EQ, that :: Nil, Nil, defn.BooleanType)
 
     /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
-    def isInstance(tp: Type)(implicit ctx: Context): Tree = tp.dealias match {
+    def isInstance(tp: Type)(implicit ctx: Context): Tree = tp.dealiasStripAnnots match {
       case tp: SingletonType =>
         if (tp.widen.derivesFrom(defn.ObjectClass))
           tree.ensureConforms(defn.ObjectType).select(defn.Object_eq).appliedTo(singleton(tp))

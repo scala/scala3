@@ -50,7 +50,7 @@ trait ConstraintHandling {
   private def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean): Boolean =
     !constraint.contains(param) || {
       def occursIn(bound: Type): Boolean = {
-        val b = bound.dealias
+        val b = bound.dealiasStripAnnots
         (b eq param) || {
           b match {
             case b: AndType => occursIn(b.tp1) || occursIn(b.tp2)
@@ -275,7 +275,7 @@ trait ConstraintHandling {
       case tp: OrType  => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
       case _ => true
     }
-    def isOrType(tp: Type): Boolean = tp.stripTypeVar.dealias match {
+    def isOrType(tp: Type): Boolean = tp.dealiasStripAnnots match {
       case tp: OrType => true
       case tp: RefinedOrRecType => isOrType(tp.parent)
       case AndType(tp1, tp2) => isOrType(tp1) | isOrType(tp2)

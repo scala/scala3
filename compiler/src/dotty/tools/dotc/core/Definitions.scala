@@ -797,7 +797,7 @@ class Definitions {
     def unapply(ft: Type)(implicit ctx: Context) = {
       val tsym = ft.typeSymbol
       if (isFunctionClass(tsym)) {
-        val targs = ft.dealias.argInfos
+        val targs = ft.dealiasStripAnnots.argInfos
         if (targs.isEmpty) None
         else Some(targs.init, targs.last, tsym.name.isImplicitFunction, tsym.name.isErasedFunction)
       }
@@ -810,7 +810,7 @@ class Definitions {
       PartialFunctionType.appliedTo(arg :: result :: Nil)
     def unapply(pft: Type)(implicit ctx: Context) = {
       if (pft.isRef(PartialFunctionClass)) {
-        val targs = pft.dealias.argInfos
+        val targs = pft.dealiasStripAnnots.argInfos
         if (targs.length == 2) Some((targs.head, targs.tail)) else None
       }
       else None
@@ -821,7 +821,7 @@ class Definitions {
     def apply(elem: Type)(implicit ctx: Context) =
       if (ctx.erasedTypes) JavaArrayType(elem)
       else ArrayType.appliedTo(elem :: Nil)
-    def unapply(tp: Type)(implicit ctx: Context): Option[Type] = tp.dealias match {
+    def unapply(tp: Type)(implicit ctx: Context): Option[Type] = tp.dealiasStripAnnots match {
       case AppliedType(at, arg :: Nil) if at isRef ArrayType.symbol => Some(arg)
       case _ => None
     }
@@ -842,7 +842,7 @@ class Definitions {
       if (ndims == 0) elem else ArrayOf(apply(elem, ndims - 1))
     def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp match {
       case ArrayOf(elemtp) =>
-        def recur(elemtp: Type): Option[(Type, Int)] = elemtp.dealias match {
+        def recur(elemtp: Type): Option[(Type, Int)] = elemtp.dealiasStripAnnots match {
           case TypeBounds(lo, hi) => recur(hi)
           case MultiArrayOf(finalElemTp, n) => Some(finalElemTp, n + 1)
           case _ => Some(elemtp, 1)
@@ -1022,7 +1022,7 @@ class Definitions {
      (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf)
 
   def isTupleType(tp: Type)(implicit ctx: Context) = {
-    val arity = tp.dealias.argInfos.length
+    val arity = tp.dealiasStripAnnots.argInfos.length
     arity <= MaxTupleArity && TupleType(arity) != null && (tp isRef TupleType(arity).symbol)
   }
 
@@ -1038,7 +1038,7 @@ class Definitions {
    */
   def isNonDepFunctionType(tp: Type)(implicit ctx: Context) = {
     val arity = functionArity(tp)
-    val sym = tp.dealias.typeSymbol
+    val sym = tp.dealiasStripAnnots.typeSymbol
     arity >= 0 && isFunctionClass(sym) && tp.isRef(FunctionType(arity, sym.name.isImplicitFunction, sym.name.isErasedFunction).typeSymbol)
   }
 
@@ -1084,7 +1084,7 @@ class Definitions {
         false
     })
 
-  def functionArity(tp: Type)(implicit ctx: Context) = tp.dealias.argInfos.length - 1
+  def functionArity(tp: Type)(implicit ctx: Context) = tp.dealiasStripAnnots.argInfos.length - 1
 
   /** Return underlying immplicit function type (i.e. instance of an ImplicitFunctionN class)
    *  or NoType if none exists. The following types are considered as underlying types:
@@ -1093,7 +1093,7 @@ class Definitions {
    *   - the upper bound of a TypeParamRef in the current constraint
    */
   def asImplicitFunctionType(tp: Type)(implicit ctx: Context): Type =
-    tp.stripTypeVar.dealias match {
+    tp.stripTypeVar.dealiasStripAnnots match {
       case tp1: TypeParamRef if ctx.typerState.constraint.contains(tp1) =>
         asImplicitFunctionType(ctx.typeComparer.bounds(tp1).hiBound)
       case tp1 =>
@@ -1106,7 +1106,7 @@ class Definitions {
     asImplicitFunctionType(tp).exists
 
   def isErasedFunctionType(tp: Type)(implicit ctx: Context) =
-    isFunctionType(tp) && tp.dealias.typeSymbol.name.isErasedFunction
+    isFunctionType(tp) && tp.dealiasStripAnnots.typeSymbol.name.isErasedFunction
 
   // ----- primitive value class machinery ------------------------------------------
 
