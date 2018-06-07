@@ -283,6 +283,15 @@ object Types {
       case _ => false
     }
 
+    /** Does this type have a supertype with an annotation satisfying given predicate `p`? */
+    def derivesAnnotWith(p: Annotation => Boolean)(implicit ctx: Context): Boolean = this match {
+      case tp: AnnotatedType => p(tp.annot) || tp.tpe.derivesAnnotWith(p)
+      case tp: TypeProxy => tp.superType.derivesAnnotWith(p)
+      case AndType(l, r) => l.derivesAnnotWith(p) || r.derivesAnnotWith(p)
+      case OrType(l, r) => l.derivesAnnotWith(p) && r.derivesAnnotWith(p)
+      case _ => false
+    }
+
     /** Does this type occur as a part of type `that`? */
     final def occursIn(that: Type)(implicit ctx: Context): Boolean =
       that existsPart (this == _)
@@ -3692,6 +3701,17 @@ object Types {
       derivedAnnotatedType(tpe.stripTypeVar, annot)
 
     override def stripAnnots(implicit ctx: Context): Type = tpe.stripAnnots
+
+    private[this] var isRefiningKnown = false
+    private[this] var isRefiningCache: Boolean = _
+
+    def isRefining(implicit ctx: Context) = {
+      if (!isRefiningKnown) {
+        isRefiningCache = annot.symbol.derivesFrom(defn.RefiningAnnotationClass)
+        isRefiningKnown = true
+      }
+      isRefiningCache
+    }
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: AnnotatedType => tpe.equals(that.tpe, bs) && (annot `eq` that.annot)
