@@ -48,7 +48,7 @@ class InlineCaseIntrinsics(val simplifyPhase: Simplify) extends Optimisation {
         case _ => fun
       }
       val constructor = a.symbol.owner.companionClass.primaryConstructor.asTerm
-      evalreceiver(a, rollInArgs(argss.tail, New(a.tpe.widenDealias.simplified, constructor, argss.head)))
+      evalreceiver(a, rollInArgs(argss.tail, New(a.tpe.widenDealiasStripAnnots.simplified, constructor, argss.head)))
 
     // For synthetic dotty unapplies on case classes:
     // - CC.unapply(arg): CC → arg
@@ -80,7 +80,7 @@ class InlineCaseIntrinsics(val simplifyPhase: Simplify) extends Optimisation {
         // CC.unapply(arg): Option[CC] → new Some(new scala.TupleN(arg._1, ..., arg._N))
         // The output is defined as a Tree => Tree to go thought tpd.evalOnce.
         def some(e: Tree) = {
-          val accessors = e.tpe.widenDealias.classSymbol.caseAccessors.filter(_.is(Method))
+          val accessors = e.tpe.widenDealiasStripAnnots.classSymbol.caseAccessors.filter(_.is(Method))
           val fields    = accessors.map(x => e.select(x).ensureApplied)
           val tplType   = noBounds(a.tpe.baseType(defn.OptionClass).argInfos.head)
           val someTpe   = a.tpe.translateParameterized(defn.OptionClass, defn.SomeClass)
@@ -110,8 +110,8 @@ class InlineCaseIntrinsics(val simplifyPhase: Simplify) extends Optimisation {
         case t: TypeApply => receiver(t.fun)
         case t: Ident     =>
           val prefix = desugarIdentPrefix(t)
-          prefix.tpe.widenDealias
-        case t: Select => t.qualifier.tpe.widenDealias
+          prefix.tpe.widenDealiasStripAnnots
+        case t: Select => t.qualifier.tpe.widenDealiasStripAnnots
       }
 
       val recv = receiver(a)

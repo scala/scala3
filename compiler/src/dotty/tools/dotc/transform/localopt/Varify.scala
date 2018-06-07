@@ -43,7 +43,7 @@ import scala.collection.mutable
     case t: ValDef if t.symbol.is(Mutable) =>
       t.rhs.foreachSubTree { subtree =>
         if (paramsTimesUsed.contains(subtree.symbol) &&
-          t.symbol.info.widenDealias <:< subtree.symbol.info.widenDealias) {
+          t.symbol.info.widenDealiasStripAnnots <:< subtree.symbol.info.widenDealiasStripAnnots) {
           val newSet = possibleRenames.getOrElse(t.symbol, Set.empty) + subtree.symbol
           possibleRenames.update(t.symbol, newSet)
         }
