@@ -195,7 +195,7 @@ object TypeErasure {
    *  or a universal trait as upper bound and that is not Java defined? Arrays of such types are
    *  erased to `Object` instead of `Object[]`.
    */
-  def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias match {
+  def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealiasStripAnnots match {
     case tp: TypeRef =>
       !tp.symbol.isClass &&
       !tp.derivesFrom(defn.ObjectClass) &&
@@ -212,7 +212,7 @@ object TypeErasure {
   }
 
   /** Is `tp` an abstract type or polymorphic type parameter, or another unbounded generic type? */
-  def isGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias match {
+  def isGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealiasStripAnnots match {
     case tp: TypeRef => !tp.symbol.isClass
     case tp: TypeParamRef => true
     case tp: TypeProxy => isGeneric(tp.underlying)

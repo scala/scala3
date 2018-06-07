@@ -59,7 +59,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case tp: LazyRef =>
           homogenize(tp.ref)
         case AppliedType(tycon, args) =>
-          tycon.dealias.appliedTo(args)
+          tycon.dealiasStripAnnots.appliedTo(args)
         case _ =>
           tp
       }

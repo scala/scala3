@@ -125,7 +125,7 @@ object GenericSignatures {
     @noinline
     def jsig(tp0: Type, toplevel: Boolean = false, primitiveOK: Boolean = true): Unit = {
 
-      val tp = tp0.dealias
+      val tp = tp0.dealiasStripAnnots
       tp match {
 
         case ref @ TypeParamRef(_: PolyType, _) =>

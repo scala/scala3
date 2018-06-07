@@ -98,7 +98,7 @@ object Inferencing {
       inst
     }
     private[this] var toMaximize: Boolean = false
-    def apply(x: Boolean, tp: Type): Boolean = tp.dealias match {
+    def apply(x: Boolean, tp: Type): Boolean = tp.dealiasStripAnnots match {
       case _: WildcardType | _: ProtoType =>
         false
       case tvar: TypeVar

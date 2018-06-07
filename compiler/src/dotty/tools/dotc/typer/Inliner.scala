@@ -224,8 +224,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    */
   private def paramBindingDef(name: Name, paramtp: Type, arg: Tree,
                               bindingsBuf: mutable.ListBuffer[ValOrDefDef]): ValOrDefDef = {
-    val argtpe = arg.tpe.dealias
-    val isByName = paramtp.dealias.isInstanceOf[ExprType]
+    val argtpe = arg.tpe.dealiasKeepAnnots
+    val isByName = paramtp.dealiasStripAnnots.isInstanceOf[ExprType]
     val inlineFlag = if (paramtp.hasAnnotation(defn.InlineParamAnnot)) Inline else EmptyFlags
     val (bindingFlags, bindingType) =
       if (isByName) (Method, ExprType(argtpe.widen))
@@ -250,7 +250,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       computeParamBindings(tp.resultType, Nil, argss)
     case tp: MethodType =>
       (tp.paramNames, tp.paramInfos, argss.head).zipped.foreach { (name, paramtp, arg) =>
-        paramBinding(name) = arg.tpe.dealias match {
+        paramBinding(name) = arg.tpe.dealiasStripAnnots match {
           case _: SingletonType if isIdempotentExpr(arg) => arg.tpe
           case _ => paramBindingDef(name, paramtp, arg, bindingsBuf).symbol.termRef
         }
@@ -323,7 +323,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     var lastSelf: Symbol = NoSymbol
     var lastLevel: Int = 0
     for ((level, selfSym) <- sortedProxies) {
-      lazy val rhsClsSym = selfSym.info.widenDealias.classSymbol
+      lazy val rhsClsSym = selfSym.info.widenDealiasStripAnnots.classSymbol
       val rhs =
         if (lastSelf.exists)
           ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
@@ -480,7 +480,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             case mt: MethodType if ddef.vparamss.head.length == args.length =>
               val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
               val argSyms = (mt.paramNames, mt.paramInfos, args).zipped.map { (name, paramtp, arg) =>
-                arg.tpe.dealias match {
+                arg.tpe.dealiasStripAnnots match {
                   case ref @ TermRef(NoPrefix, _) => ref.symbol
                   case _ => paramBindingDef(name, paramtp, arg, bindingsBuf).symbol
                 }

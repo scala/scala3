@@ -45,7 +45,7 @@ object ProtoTypes {
         isCompatible(normTp, pt) || pt.isRef(defn.UnitClass) && normTp.isParameterless
       }
 
-    private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealias match {
+    private def disregardProto(pt: Type)(implicit ctx: Context): Boolean = pt.dealiasKeepSubTypeAnnots match {
       case _: OrType => true
       case pt => pt.isRef(defn.UnitClass)
     }

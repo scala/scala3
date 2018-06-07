@@ -788,7 +788,7 @@ object PatternMatcher {
           def outerTestNeeded: Boolean = {
             // See the test for SI-7214 for motivation for dealias. Later `treeCondStrategy#outerTest`
             // generates an outer test based on `patType.prefix` with automatically dealises.
-            expectedTp.dealias match {
+            expectedTp.dealiasStripAnnots match {
               case tref @ TypeRef(pre: SingletonType, _) =>
                 tref.symbol.isClass &&
                 ExplicitOuter.needsOuterIfReferenced(tref.symbol.asClass)
@@ -799,7 +799,7 @@ object PatternMatcher {
 
           def outerTest: Tree = thisPhase.transformFollowingDeep {
             val expectedOuter = singleton(expectedTp.normalizedPrefix)
-            val expectedClass = expectedTp.dealias.classSymbol.asClass
+            val expectedClass = expectedTp.dealiasStripAnnots.classSymbol.asClass
             ExplicitOuter.ensureOuterAccessors(expectedClass)
             scrutinee.ensureConforms(expectedTp)
               .outerSelect(1, expectedClass.owner.typeRef)
@@ -807,7 +807,7 @@ object PatternMatcher {
               .appliedTo(expectedOuter)
           }
 
-          expectedTp.dealias match {
+          expectedTp.dealiasStripAnnots match {
             case expectedTp: SingletonType =>
               scrutinee.isInstance(expectedTp)  // will be translated to an equality test
             case _ =>
