@@ -1022,49 +1022,53 @@ object Types {
         this
     }
 
-    private def dealias1(keepAnnots: Boolean)(implicit ctx: Context): Type = this match {
+    private def dealias1(keep: AnnotatedType => Context => Boolean)(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else tp.info match {
-          case TypeAlias(alias) => alias.dealias1(keepAnnots): @tailrec
+          case TypeAlias(alias) => alias.dealias1(keep): @tailrec
           case _ => tp
         }
       case app @ AppliedType(tycon, args) =>
-        val tycon1 = tycon.dealias1(keepAnnots)
-        if (tycon1 ne tycon) app.superType.dealias1(keepAnnots): @tailrec
+        val tycon1 = tycon.dealias1(keep)
+        if (tycon1 ne tycon) app.superType.dealias1(keep): @tailrec
         else this
       case tp: TypeVar =>
         val tp1 = tp.instanceOpt
-        if (tp1.exists) tp1.dealias1(keepAnnots): @tailrec else tp
+        if (tp1.exists) tp1.dealias1(keep): @tailrec else tp
       case tp: AnnotatedType =>
-        val tp1 = tp.tpe.dealias1(keepAnnots)
-        if (keepAnnots) tp.derivedAnnotatedType(tp1, tp.annot) else tp1
+        val tp1 = tp.tpe.dealias1(keep)
+        if (keep(tp)(ctx)) tp.derivedAnnotatedType(tp1, tp.annot) else tp1
       case tp: LazyRef =>
-        tp.ref.dealias1(keepAnnots): @tailrec
+        tp.ref.dealias1(keep): @tailrec
       case _ => this
     }
-
-    /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
-     *  is no longer alias type, LazyRef, or instantiated type variable.
-     *  Goes through annotated types and rewraps annotations on the result.
-     */
-    final def dealiasKeepAnnots(implicit ctx: Context): Type =
-      dealias1(keepAnnots = true)
-
-    final def dealias(implicit ctx: Context): Type = dealiasStripAnnots
 
     /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
      *  TypeVars until type is no longer alias type, annotated type, LazyRef,
      *  or instantiated type variable.
      */
-    final def dealiasStripAnnots(implicit ctx: Context): Type =
-      dealias1(keepAnnots = false)
+    final def dealiasStripAnnots(implicit ctx: Context): Type = dealias1(keepNever)
+
+    /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
+     *  is no longer alias type, LazyRef, or instantiated type variable.
+     *  Goes through annotated types and rewraps annotations on the result.
+     */
+    final def dealiasKeepAnnots(implicit ctx: Context): Type = dealias1(keepAlways)
+
+    final def dealiasKeepSubTypeAnnots(implicit ctx: Context): Type = dealias1(keepIfSubTypeAnnotated)
+
+    final def dealias(implicit ctx: Context): Type = dealiasStripAnnots
 
     /** Perform successive widenings and dealiasings until none can be applied anymore */
-    @tailrec final def widenDealiasStripAnnots(implicit ctx: Context): Type = {
-      val res = this.widen.dealiasStripAnnots
-      if (res eq this) res else res.widenDealiasStripAnnots
+    private def widenDealias1(keep: AnnotatedType => Context => Boolean)(implicit ctx: Context): Type = {
+      val res = this.widen.dealias1(keep)
+      if (res eq this) res else res.widenDealias1(keep)
     }
+
+    final def widenDealiasStripAnnots(implicit ctx: Context): Type = widenDealias1(keepNever)
+    final def widenDealiasKeepAnnots(implicit ctx: Context): Type = widenDealias1(keepAlways)
+    final def widenDealiasKeepSubTyoeAnnots(implicit ctx: Context): Type = widenDealias1(keepIfSubTypeAnnotated)
     final def widenDealias(implicit ctx: Context): Type = widenDealiasStripAnnots
 
     /** Widen from constant type to its underlying non-constant
@@ -4604,7 +4608,7 @@ object Types {
     case _ => false
   }
 
-  // ----- Decorator implicits --------------------------------------------
+  // ----- Helpers and Decorator implicits --------------------------------------
 
   implicit def decorateTypeApplications(tpe: Type): TypeApplications = new TypeApplications(tpe)
 
@@ -4617,4 +4621,9 @@ object Types {
         else tps2.nonEmpty && tps1.head.equals(tps2.head, bs) && tps1.tail.equalElements(tps2.tail, bs)
       }
   }
+
+  private val keepAlways: AnnotatedType => Context => Boolean = _ => _ => true
+  private val keepNever: AnnotatedType => Context => Boolean = _ => _ => false
+  private val keepIfSubTypeAnnotated: AnnotatedType => Context => Boolean =
+    tp => ctx => tp.isSubTypeAnnotated(ctx)
 }
