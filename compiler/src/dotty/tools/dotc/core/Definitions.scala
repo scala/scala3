@@ -664,10 +664,9 @@ class Definitions {
   def Unpickler_unpickleType = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
 
   lazy val TastyUniverseModule = ctx.requiredModule("scala.tasty.Universe")
-  def TastyUniverseModuleClass(implicit ctx: Context) = TastyUniverseModule.symbol.asClass
+  def TastyUniverseModuleClass(implicit ctx: Context) = TastyUniverseModule.moduleClass.asClass
 
-    lazy val TastyUniverse_compilationUniverseR = TastyUniverseModule.requiredMethod("compilationUniverse")
-    def TastyUniverse_compilationUniverse(implicit ctx: Context) = TastyUniverse_compilationUniverseR.symbol
+    lazy val TastyUniverse_compilationUniverse = TastyUniverseModule.requiredMethod("compilationUniverse")
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass
