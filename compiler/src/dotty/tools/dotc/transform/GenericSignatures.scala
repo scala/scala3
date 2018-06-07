@@ -60,7 +60,7 @@ object GenericSignatures {
       ps.foreach(boxedSig)
     }
 
-    def boxedSig(tp: Type): Unit = jsig(tp.widenDealias, primitiveOK = false)
+    def boxedSig(tp: Type): Unit = jsig(tp.widenDealiasStripAnnots, primitiveOK = false)
 
     def boundsSig(bounds: List[Type]): Unit = {
       val (isTrait, isClass) = bounds partition (_.typeSymbol.is(Trait))
@@ -363,7 +363,7 @@ object GenericSignatures {
     leaves.toList
   }
 
-  private def hiBounds(bounds: TypeBounds)(implicit ctx: Context): List[Type] = bounds.hi.widenDealias match {
+  private def hiBounds(bounds: TypeBounds)(implicit ctx: Context): List[Type] = bounds.hi.widenDealiasStripAnnots match {
     case AndType(tp1, tp2) => hiBounds(tp1.bounds) ::: hiBounds(tp2.bounds)
     case tp => tp :: Nil
   }
@@ -427,7 +427,7 @@ object GenericSignatures {
     /** Is `tp` an unbounded generic type (i.e. which could be instantiated
       *  with primitive as well as class types)?.
       */
-    private def genericCore(tp: Type)(implicit ctx: Context): Type = tp.widenDealias match {
+    private def genericCore(tp: Type)(implicit ctx: Context): Type = tp.widenDealiasStripAnnots match {
       /* A Java Array<T> is erased to Array[Object] (T can only be a reference type), where as a Scala Array[T] is
        * erased to Object. However, there is only symbol for the Array class. So to make the distinction between
        * a Java and a Scala array, we check if the owner of T comes from a Java class.
@@ -452,7 +452,7 @@ object GenericSignatures {
       *  then Some((N, T)) where N is the number of Array constructors enclosing `T`,
       *  otherwise None. Existentials on any level are ignored.
       */
-    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp.widenDealias match {
+    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp.widenDealiasStripAnnots match {
       case defn.ArrayOf(arg) =>
         genericCore(arg) match {
           case NoType =>

@@ -38,7 +38,7 @@ abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransfor
   override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
     trace(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
 
-    def transformArg(arg: Tree, formal: Type): Tree = formal.dealias match {
+    def transformArg(arg: Tree, formal: Type): Tree = formal.dealiasStripAnnots match {
       case formalExpr: ExprType =>
         var argType = arg.tpe.widenIfUnstable
         if (defn.isBottomType(argType)) argType = formal.widenExpr

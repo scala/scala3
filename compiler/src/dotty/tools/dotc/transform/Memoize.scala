@@ -130,7 +130,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         var rhs = tree.rhs.changeOwnerAfter(sym, field, thisPhase)
         if (isWildcardArg(rhs)) rhs = EmptyTree
         val fieldDef = transformFollowing(ValDef(field, adaptToField(rhs)))
-        val rhsClass = tree.tpt.tpe.widenDealias.classSymbol
+        val rhsClass = tree.tpt.tpe.widenDealiasStripAnnots.classSymbol
         val getterRhs =
           if (isErasableBottomField(rhsClass)) erasedBottomTree(rhsClass)
           else transformFollowingDeep(ref(field))(ctx.withOwner(sym))

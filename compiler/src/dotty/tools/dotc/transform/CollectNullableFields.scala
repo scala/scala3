@@ -67,7 +67,7 @@ class CollectNullableFields extends MiniPhase {
       !sym.is(Lazy) &&
       !sym.owner.is(Trait) &&
       sym.initial.is(PrivateLocal) &&
-      sym.info.widenDealias.typeSymbol.isNullableClass
+      sym.info.widenDealiasStripAnnots.typeSymbol.isNullableClass
 
     if (isNullablePrivateField)
       nullability.get(sym) match {

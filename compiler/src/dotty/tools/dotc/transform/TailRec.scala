@@ -213,7 +213,7 @@ class TailRec extends MiniPhase with FullParameterization {
         val argumentss = arguments.map(noTailTransforms)
 
         val isRecursiveCall = (method eq sym)
-        val recvWiden = prefix.tpe.widenDealias
+        val recvWiden = prefix.tpe.widenDealiasStripAnnots
 
         def continue = {
           val method = noTailTransform(call)

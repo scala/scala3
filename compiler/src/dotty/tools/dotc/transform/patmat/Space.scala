@@ -572,8 +572,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     def recur(tp: Type): Boolean = tp.dealiasStripAnnots match {
       case AndType(tp1, tp2) =>
         recur(tp1) && recur(tp2) && {
-          val bases1 = tp1.widenDealias.classSymbols
-          val bases2 = tp2.widenDealias.classSymbols
+          val bases1 = tp1.widenDealiasStripAnnots.classSymbols
+          val bases2 = tp2.widenDealiasStripAnnots.classSymbols
 
           debug.println(s"bases of ${tp1.show}: " + bases1)
           debug.println(s"bases of ${tp2.show}: " + bases2)
