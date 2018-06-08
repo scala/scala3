@@ -275,11 +275,6 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this += " => "
             printTree(rhs)
             this += ")"
-          case expr if isLoopEntryPoint(expr) && stats.size == 1 =>
-            // Print { def while$() = ...; while$() }
-            // as while (...) ...
-            // instead of { while (...) ... }
-            printTree(stats.head)
           case _ =>
             this += "{"
             indented {
@@ -753,6 +748,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
   private object While {
     def unapply(arg: Tree)(implicit ctx: Context): Option[(Term, List[Statement])] = arg match {
       case DefDef("while$", _, _, _, Some(Term.If(cond, Term.Block(bodyStats, _), _))) => Some((cond, bodyStats))
+      case Term.Block(List(tree), _) => unapply(tree)
       case _ => None
     }
   }
@@ -760,6 +756,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
   private object DoWhile {
     def unapply(arg: Tree)(implicit ctx: Context): Option[(List[Statement], Term)] = arg match {
       case DefDef("doWhile$", _, _, _, Some(Term.Block(body, Term.If(cond, _, _)))) => Some((body, cond))
+      case Term.Block(List(tree), _) => unapply(tree)
       case _ => None
     }
   }
