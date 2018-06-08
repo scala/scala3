@@ -31,6 +31,9 @@ abstract class Tasty { tasty =>
 
   trait ContextAPI {
     def owner: Definition
+
+    /** Returns the source file being compiled. The path is relative to the current working directory. */
+    def source: java.nio.file.Path
   }
   implicit def ContextDeco(ctx: Context): ContextAPI
 
