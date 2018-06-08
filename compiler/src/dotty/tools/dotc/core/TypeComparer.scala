@@ -237,7 +237,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case tp2: LazyRef =>
         !tp2.evaluating && recur(tp1, tp2.ref)
       case tp2: AnnotatedType if !tp2.isRefining =>
-        recur(tp1, tp2.tpe)
+        recur(tp1, tp2.parent)
       case tp2: ThisType =>
         def compareThis = {
           val cls2 = tp2.cls
@@ -346,7 +346,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         // See i859.scala for an example where we hit this case.
         !tp1.evaluating && recur(tp1.ref, tp2)
       case tp1: AnnotatedType if !tp1.isRefining =>
-        recur(tp1.tpe, tp2)
+        recur(tp1.parent, tp2)
       case AndType(tp11, tp12) =>
         if (tp11.stripTypeVar eq tp12.stripTypeVar) recur(tp11, tp2)
         else thirdTry
@@ -569,7 +569,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         compareTypeBounds
       case tp2: AnnotatedType if tp2.isRefining =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || defn.isBottomType(tp1)) &&
-        recur(tp1, tp2.tpe)
+        recur(tp1, tp2.parent)
       case ClassInfo(pre2, cls2, _, _, _) =>
         def compareClassInfo = tp1 match {
           case ClassInfo(pre1, cls1, _, _, _) =>
@@ -665,7 +665,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         }
         either(recur(tp11, tp2), recur(tp12, tp2))
       case tp1: AnnotatedType if tp1.isRefining =>
-        isNewSubType(tp1.tpe)
+        isNewSubType(tp1.parent)
       case JavaArrayType(elem1) =>
         def compareJavaArray = tp2 match {
           case JavaArrayType(elem2) => isSubType(elem1, elem2)

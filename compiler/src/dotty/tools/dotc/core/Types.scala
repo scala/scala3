@@ -152,7 +152,7 @@ object Types {
       case _: SingletonType | NoPrefix => true
       case tp: RefinedOrRecType => tp.parent.isStable
       case tp: ExprType => tp.resultType.isStable
-      case tp: AnnotatedType => tp.tpe.isStable
+      case tp: AnnotatedType => tp.parent.isStable
       case _ => false
     }
 
@@ -285,7 +285,7 @@ object Types {
 
     /** Does this type have a supertype with an annotation satisfying given predicate `p`? */
     def derivesAnnotWith(p: Annotation => Boolean)(implicit ctx: Context): Boolean = this match {
-      case tp: AnnotatedType => p(tp.annot) || tp.tpe.derivesAnnotWith(p)
+      case tp: AnnotatedType => p(tp.annot) || tp.parent.derivesAnnotWith(p)
       case tp: TypeProxy => tp.superType.derivesAnnotWith(p)
       case AndType(l, r) => l.derivesAnnotWith(p) || r.derivesAnnotWith(p)
       case OrType(l, r) => l.derivesAnnotWith(p) && r.derivesAnnotWith(p)
@@ -1037,7 +1037,7 @@ object Types {
         val tp1 = tp.instanceOpt
         if (tp1.exists) tp1.dealias1(keep): @tailrec else tp
       case tp: AnnotatedType =>
-        val tp1 = tp.tpe.dealias1(keep)
+        val tp1 = tp.parent.dealias1(keep)
         if (keep(tp)(ctx)) tp.derivedAnnotatedType(tp1, tp.annot) else tp1
       case tp: LazyRef =>
         tp.ref.dealias1(keep): @tailrec
@@ -3702,19 +3702,19 @@ object Types {
   // ----- Annotated and Import types -----------------------------------------------
 
   /** An annotated type tpe @ annot */
-  case class AnnotatedType(tpe: Type, annot: Annotation) extends UncachedProxyType with ValueType {
+  case class AnnotatedType(parent: Type, annot: Annotation) extends UncachedProxyType with ValueType {
     // todo: cache them? but this makes only sense if annotations and trees are also cached.
 
-    override def underlying(implicit ctx: Context): Type = tpe
+    override def underlying(implicit ctx: Context): Type = parent
 
-    def derivedAnnotatedType(tpe: Type, annot: Annotation) =
-      if ((tpe eq this.tpe) && (annot eq this.annot)) this
-      else AnnotatedType(tpe, annot)
+    def derivedAnnotatedType(parent: Type, annot: Annotation) =
+      if ((parent eq this.parent) && (annot eq this.annot)) this
+      else AnnotatedType(parent, annot)
 
     override def stripTypeVar(implicit ctx: Context): Type =
-      derivedAnnotatedType(tpe.stripTypeVar, annot)
+      derivedAnnotatedType(parent.stripTypeVar, annot)
 
-    override def stripAnnots(implicit ctx: Context): Type = tpe.stripAnnots
+    override def stripAnnots(implicit ctx: Context): Type = parent.stripAnnots
 
     private[this] var isRefiningKnown = false
     private[this] var isRefiningCache: Boolean = _
@@ -3728,7 +3728,7 @@ object Types {
     }
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
-      case that: AnnotatedType => tpe.equals(that.tpe, bs) && (annot `eq` that.annot)
+      case that: AnnotatedType => parent.equals(that.parent, bs) && (annot `eq` that.annot)
       case _ => false
     }
     // equals comes from case class; no matching override is needed
