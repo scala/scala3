@@ -10,6 +10,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
   def showCaseDef(caseDef: CaseDef)(implicit ctx: Context): String =
     (new Buffer).printCaseDef(caseDef).result()
 
+  def showPattern(pattern: Pattern)(implicit ctx: Context): String =
+    (new Buffer).printPattern(pattern).result()
+
   def showTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): String =
     (new Buffer).printTypeOrBoundsTree(tpt).result()
 
@@ -50,7 +53,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this += lineBreak()
             printTrees(stats1, lineBreak())
           }
-          this += lineBreak() += "}" += lineBreak()
+          this += lineBreak() += "}"
         }
 
       case Import(expr, selectors) =>
@@ -485,7 +488,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       this += " =>"
       indented {
         this += lineBreak()
-        printTree(body)
+        body match {
+          case Term.Block(stats, expr) =>
+            printTrees(stats, lineBreak())
+            printTree(expr)
+          case body =>
+            printTree(body)
+        }
       }
       this
     }
@@ -509,7 +518,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printPattern(pattern)
 
       case Pattern.Unapply(fun, implicits, patterns) =>
-        printTree(fun)
+        fun match {
+          case Term.Select(extractor, "unapply" | "unapplySeq", _) => printTree(extractor)
+          case Term.TypeApply(Term.Select(extractor, "unapply" | "unapplySeq", _), _) => printTree(extractor)
+          case _ => throw new MatchError(fun.show)
+        }
         this += "("
         printPatterns(patterns, ", ")
         this += ")"
@@ -518,7 +531,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printPatterns(trees, " | ")
 
       case Pattern.TypeTest(tpt) =>
-        this
+        this += "_: "
+        printTypeOrBoundsTree(tpt)
+
+      case _ =>
+        throw new MatchError(pattern.show)
 
     }
 
@@ -542,8 +559,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printTypeTree(lo)
         this += " <: "
         printTypeTree(hi)
-      case tpt@Type() =>
-        printType(tpt)
+      case tpt @ TypeTree() =>
+        printTypeTree(tpt)
     }
 
     def printTypeTree(tree: TypeTree): Buffer = tree match {
@@ -629,7 +646,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Type.TermRef(name, prefix) =>
         prefix match {
-          case prefix@Type() =>
+          case Type.ThisType(Types.EmptyPackage()) =>
+            this += name
+          case prefix @ Type() =>
             printType(prefix)
             if (name != "package")
               this += "." += name
@@ -640,7 +659,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Type.TypeRef(name, prefix) =>
         prefix match {
-          case NoPrefix() =>
+          case NoPrefix() | Type.ThisType(Types.EmptyPackage()) =>
           case prefix@Type() =>
             printType(prefix)
             this += "."

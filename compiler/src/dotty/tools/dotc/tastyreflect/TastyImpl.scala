@@ -454,9 +454,10 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Pattern = tpd.Tree
 
-  def PatternDeco(x: Pattern): AbstractPattern = new AbstractPattern {
-    def pos(implicit ctx: Context): Position = x.pos
-    def tpe(implicit ctx: Context): Types.Type = x.tpe.stripTypeVar
+  def PatternDeco(pattern: Pattern): AbstractPattern = new AbstractPattern {
+    def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showPattern(pattern)
+    def pos(implicit ctx: Context): Position = pattern.pos
+    def tpe(implicit ctx: Context): Types.Type = pattern.tpe.stripTypeVar
   }
 
   def patternClassTag: ClassTag[Pattern] = implicitly[ClassTag[Pattern]]

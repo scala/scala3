@@ -324,7 +324,9 @@ abstract class Tasty { tasty =>
 
   type Pattern
 
-  trait AbstractPattern extends Typed with Positioned
+  trait AbstractPattern extends Typed with Positioned {
+    def show(implicit ctx: Context, s: Show[tasty.type]): String
+  }
   implicit def PatternDeco(x: Pattern): AbstractPattern
 
   implicit def patternClassTag: ClassTag[Pattern]
