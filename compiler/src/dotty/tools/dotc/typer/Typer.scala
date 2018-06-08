@@ -2258,7 +2258,7 @@ class Typer extends Namer
 
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
-          if (tree.symbol.hasDefaultParams && !propFail.isInstanceOf[AmbiguousImplicits]) {
+          if (methPart(tree).symbol.hasDefaultParams && !propFail.isInstanceOf[AmbiguousImplicits]) {
             val namedArgs = (wtp.paramNames, args).zipped.flatMap { (pname, arg) =>
               if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }
