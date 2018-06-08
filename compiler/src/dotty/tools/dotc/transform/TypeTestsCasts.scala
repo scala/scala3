@@ -10,6 +10,7 @@ import ValueClasses._
 import SymUtils._
 import core.Flags._
 import util.Positions._
+import reporting.diagnostic.messages.PatternMatchAlwaysSucceeds
 import reporting.trace
 
 
@@ -91,10 +92,7 @@ object TypeTestsCasts {
           if (expr.tpe <:< testType)
             if (expr.tpe.isNotNull) {
               if (inMatch)
-                ctx.warning(
-                  em"the type check in the highlighted part of the pattern match case statement " +
-                    em"will always succeed, since `$foundCls` is a subclass of `$testCls`",
-                  tree.pos)
+                ctx.warning(PatternMatchAlwaysSucceeds(foundCls, testCls), tree.pos)
               else
                 ctx.warning(
                   em"this will always yield true, since `$foundCls` is a subclass of `$testCls`",
