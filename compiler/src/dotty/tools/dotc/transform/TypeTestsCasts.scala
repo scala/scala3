@@ -92,7 +92,8 @@ object TypeTestsCasts {
             if (expr.tpe.isNotNull) {
               if (inMatch)
                 ctx.warning(
-                  em"the highlighted part of the pattern match case statement will always succeed, since `$foundCls` is a subclass of `$testCls`",
+                  em"the type check in the highlighted part of the pattern match case statement " +
+                    em"will always succeed, since `$foundCls` is a subclass of `$testCls`",
                   tree.pos)
               else
                 ctx.warning(
