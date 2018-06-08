@@ -183,7 +183,7 @@ object factories {
       paramLists(mp.underlying)
 
     case annot: AnnotatedType =>
-      paramLists(annot.tpe)
+      paramLists(annot.parent)
 
     case _ =>
       Nil // return types should not be in the paramlist

@@ -302,7 +302,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     /** Check that all methods have MethodicType */
     def isMethodType(pt: Type)(implicit ctx: Context): Boolean = pt match {
-      case at: AnnotatedType => isMethodType(at.tpe)
+      case at: AnnotatedType => isMethodType(at.parent)
       case _: MethodicType => true  // MethodType, ExprType, PolyType
       case _ => false
     }

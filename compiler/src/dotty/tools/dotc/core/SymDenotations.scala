@@ -1208,7 +1208,7 @@ object SymDenotations {
       case tp: LambdaType => tp.paramInfos.exists(hasSkolems) || hasSkolems(tp.resType)
       case tp: AndType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
       case tp: OrType  => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
-      case tp: AnnotatedType => hasSkolems(tp.tpe)
+      case tp: AnnotatedType => hasSkolems(tp.parent)
       case _ => false
     }
 

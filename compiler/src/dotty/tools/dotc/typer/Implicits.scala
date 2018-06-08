@@ -763,7 +763,7 @@ trait Implicits { self: Typer =>
     tree match {
       case Select(qual, nme.apply) if defn.isFunctionType(qual.tpe.widen) =>
         val qt = qual.tpe.widen
-        val qt1 = qt.dealias
+        val qt1 = qt.dealiasKeepAnnots
         def addendum = if (qt1 eq qt) "" else (i"\nwhich is an alias of: $qt1")
         em"parameter of ${qual.tpe.widen}$addendum"
       case _ =>
