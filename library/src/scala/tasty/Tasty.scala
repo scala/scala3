@@ -7,15 +7,15 @@ abstract class Tasty { tasty =>
 
   // ===== Quotes ===================================================
 
-  trait AbstractQuotedExpr {
+  trait QuotedExprAPI {
     def toTasty(implicit ctx: Context): Term
   }
-  implicit def QuotedExprDeco[T](x: quoted.Expr[T]): AbstractQuotedExpr
+  implicit def QuotedExprDeco[T](x: quoted.Expr[T]): QuotedExprAPI
 
-  trait AbstractQuotedType {
+  trait QuotedTypeAPI {
     def toTasty(implicit ctx: Context): TypeTree
   }
-  implicit def QuotedTypeDeco[T](x: quoted.Type[T]): AbstractQuotedType
+  implicit def QuotedTypeDeco[T](x: quoted.Type[T]): QuotedTypeAPI
 
   // ===== Show =====================================================
 
@@ -29,17 +29,17 @@ abstract class Tasty { tasty =>
 
   type Context
 
-  trait AbstractContext {
+  trait ContextAPI {
     def owner: Definition
   }
-  implicit def ContextDeco(ctx: Context): AbstractContext
+  implicit def ContextDeco(ctx: Context): ContextAPI
 
   // ===== Id =======================================================
 
   type Id
 
-  trait AbstractId extends Positioned
-  implicit def IdDeco(x: Id): AbstractId
+  trait IdAPI extends Positioned
+  implicit def IdDeco(x: Id): IdAPI
 
   implicit def idClassTag: ClassTag[Id]
 
@@ -52,10 +52,10 @@ abstract class Tasty { tasty =>
 
   type Tree
 
-  trait AbstractTree extends Positioned {
+  trait TreeAPI extends Positioned {
     def show(implicit ctx: Context, s: Show[tasty.type]): String
   }
-  implicit def TreeDeco(tree: Tree): AbstractTree
+  implicit def TreeDeco(tree: Tree): TreeAPI
 
   type PackageClause <: Tree
 
@@ -66,10 +66,10 @@ abstract class Tasty { tasty =>
     def unapply(x: PackageClause)(implicit ctx: Context): Option[(Term, List[Tree])]
   }
 
-  trait AbstractPackageClause {
+  trait PackageClauseAPI {
     def definition(implicit ctx: Context): Definition
   }
-  implicit def PackageClauseDeco(x: PackageClause): AbstractPackageClause
+  implicit def PackageClauseDeco(x: PackageClause): PackageClauseAPI
 
   // ----- Statements -----------------------------------------------
 
@@ -114,13 +114,13 @@ abstract class Tasty { tasty =>
 
   implicit def definitionClassTag: ClassTag[Definition]
 
-  trait AbstractDefinition {
+  trait DefinitionAPI {
     def flags(implicit ctx: Context): FlagSet
     def mods(implicit ctx: Context): List[Modifier]
     def owner(implicit ctx: Context): Definition
     def localContext(implicit ctx: Context): Context
   }
-  implicit def DefinitionDeco(x: Definition): AbstractDefinition
+  implicit def DefinitionDeco(x: Definition): DefinitionAPI
 
   // ClassDef
 
@@ -170,10 +170,10 @@ abstract class Tasty { tasty =>
 
   type PackageDef <: Definition
 
-  trait AbstractPackageDef {
+  trait PackageDefAPI {
     def members(implicit ctx: Context): List[Statement]
   }
-  implicit def PackageDefDeco(t: PackageDef): AbstractPackageDef
+  implicit def PackageDefDeco(t: PackageDef): PackageDefAPI
 
   implicit def packageDefClassTag: ClassTag[PackageDef]
 
@@ -190,10 +190,10 @@ abstract class Tasty { tasty =>
 
   type Term <: Statement with Parent
 
-  trait AbstractTerm extends Typed with Positioned {
+  trait TermAPI extends Typed with Positioned {
     def toExpr[T: quoted.Type](implicit ctx: Context): quoted.Expr[T]
   }
-  implicit def TermDeco(t: Term): AbstractTerm
+  implicit def TermDeco(t: Term): TermAPI
 
   implicit def termClassTag: ClassTag[Term]
 
@@ -310,10 +310,10 @@ abstract class Tasty { tasty =>
 
   implicit def caseDefClassTag: ClassTag[CaseDef]
 
-  trait AbstractCaseDef {
+  trait CaseDefAPI {
     def show(implicit ctx: Context, s: Show[tasty.type]): String
   }
-  implicit def CaseDefDeco(caseDef: CaseDef): AbstractCaseDef
+  implicit def CaseDefDeco(caseDef: CaseDef): CaseDefAPI
 
   val CaseDef: CaseDefExtractor
   abstract class CaseDefExtractor {
@@ -324,10 +324,10 @@ abstract class Tasty { tasty =>
 
   type Pattern
 
-  trait AbstractPattern extends Typed with Positioned {
+  trait PatternAPI extends Typed with Positioned {
     def show(implicit ctx: Context, s: Show[tasty.type]): String
   }
-  implicit def PatternDeco(x: Pattern): AbstractPattern
+  implicit def PatternDeco(x: Pattern): PatternAPI
 
   implicit def patternClassTag: ClassTag[Pattern]
 
@@ -365,19 +365,19 @@ abstract class Tasty { tasty =>
 
   type TypeOrBoundsTree
 
-  trait AbstractTypeOrBoundsTree {
+  trait TypeOrBoundsTreeAPI {
     def show(implicit ctx: Context, s: Show[tasty.type]): String
     def tpe(implicit ctx: Context): TypeOrBounds
   }
-  implicit def TypeOrBoundsTreeDeco(tpt: TypeOrBoundsTree): AbstractTypeOrBoundsTree
+  implicit def TypeOrBoundsTreeDeco(tpt: TypeOrBoundsTree): TypeOrBoundsTreeAPI
 
 
   // ----- TypeTrees ------------------------------------------------
 
   type TypeTree <: TypeOrBoundsTree with Parent
 
-  trait AbstractTypeTree extends Typed with Positioned
-  implicit def TypeTreeDeco(x: TypeTree): AbstractTypeTree
+  trait TypeTreeAPI extends Typed with Positioned
+  implicit def TypeTreeDeco(x: TypeTree): TypeTreeAPI
 
   implicit def typeTreeClassTag: ClassTag[TypeTree]
 
@@ -442,10 +442,10 @@ abstract class Tasty { tasty =>
 
   type TypeBoundsTree <: TypeOrBoundsTree
 
-  trait AbstractTypeBoundsTree {
+  trait TypeBoundsTreeAPI {
     def tpe(implicit ctx: Context): TypeBounds
   }
-  implicit def TypeBoundsTreeDeco(x: TypeBoundsTree): AbstractTypeBoundsTree
+  implicit def TypeBoundsTreeDeco(x: TypeBoundsTree): TypeBoundsTreeAPI
 
   implicit def typeBoundsTreeClassTag: ClassTag[TypeBoundsTree]
 
@@ -462,10 +462,10 @@ abstract class Tasty { tasty =>
     def tpe(implicit ctx: Context): Type
   }
 
-  trait AbstractTypeOrBounds {
+  trait TypeOrBoundsAPI {
     def show(implicit ctx: Context, s: Show[tasty.type]): String
   }
-  implicit def TypeOrBoundsDeco(tpe: TypeOrBounds): AbstractTypeOrBounds
+  implicit def TypeOrBoundsDeco(tpe: TypeOrBounds): TypeOrBoundsAPI
 
   // ----- Types ----------------------------------------------------
 
@@ -484,11 +484,11 @@ abstract class Tasty { tasty =>
   implicit def typeLambdaClassTag: ClassTag[TypeLambda]
   implicit def recursiveTypeClassTag: ClassTag[RecursiveType]
 
-  trait AbstractMethodType {
+  trait MethodTypeAPI {
     def isImplicit: Boolean
     def isErased: Boolean
   }
-  implicit def MethodTypeDeco(x: MethodType): AbstractMethodType
+  implicit def MethodTypeDeco(x: MethodType): MethodTypeAPI
 
   val Type: TypeModule
   abstract class TypeModule {
@@ -612,11 +612,11 @@ abstract class Tasty { tasty =>
   // ===== Constants ================================================
 
   type Constant
-  trait AbstractConstant {
+  trait ConstantAPI {
     def show(implicit ctx: Context, s: Show[tasty.type]): String
     def value: Any
   }
-  implicit def ConstantDeco(const: Constant): AbstractConstant
+  implicit def ConstantDeco(const: Constant): ConstantAPI
 
   implicit def constantClassTag: ClassTag[Constant]
 
@@ -727,7 +727,7 @@ abstract class Tasty { tasty =>
 
   type Position
 
-  trait AbstractPosition {
+  trait PositionAPI {
     def start: Int
     def end: Int
 
@@ -738,7 +738,7 @@ abstract class Tasty { tasty =>
     def endLine: Int
     def endColumn: Int
   }
-  implicit def PositionDeco(pos: Position): AbstractPosition
+  implicit def PositionDeco(pos: Position): PositionAPI
 
   trait Positioned {
     def pos(implicit ctx: Context): Position

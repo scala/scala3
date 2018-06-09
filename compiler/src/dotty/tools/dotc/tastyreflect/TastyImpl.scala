@@ -19,11 +19,11 @@ object TastyImpl extends scala.tasty.Tasty {
 
   // ===== Quotes ===================================================
 
-  def QuotedExprDeco[T](x: quoted.Expr[T]): AbstractQuotedExpr = new AbstractQuotedExpr {
+  def QuotedExprDeco[T](x: quoted.Expr[T]): QuotedExprAPI = new QuotedExprAPI {
     def toTasty(implicit ctx: Context): Term = PickledQuotes.quotedExprToTree(x)
   }
 
-  def QuotedTypeDeco[T](x: quoted.Type[T]): AbstractQuotedType = new AbstractQuotedType {
+  def QuotedTypeDeco[T](x: quoted.Type[T]): QuotedTypeAPI = new QuotedTypeAPI {
     def toTasty(implicit ctx: Context): TypeTree = PickledQuotes.quotedTypeToTree(x)
   }
 
@@ -39,7 +39,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Context = Contexts.Context
 
-  def ContextDeco(ctx: Context): AbstractContext = new AbstractContext {
+  def ContextDeco(ctx: Context): ContextAPI = new ContextAPI {
     def owner: Definition = FromSymbol.definition(ctx.owner)(ctx)
   }
 
@@ -47,7 +47,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Id = untpd.Ident
 
-  def IdDeco(x: Id): AbstractId = new AbstractId {
+  def IdDeco(x: Id): IdAPI = new IdAPI {
     def pos(implicit ctx: Context): Position = x.pos
   }
 
@@ -64,7 +64,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Tree = tpd.Tree
 
-  def TreeDeco(tree: Tree): AbstractTree = new AbstractTree {
+  def TreeDeco(tree: Tree): TreeAPI = new TreeAPI {
     def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showTree(tree)
     def pos(implicit ctx: Context): Position = tree.pos
   }
@@ -80,7 +80,7 @@ object TastyImpl extends scala.tasty.Tasty {
     }
   }
 
-  def PackageClauseDeco(x: PackageClause): AbstractPackageClause = new AbstractPackageClause {
+  def PackageClauseDeco(x: PackageClause): PackageClauseAPI = new PackageClauseAPI {
     def definition(implicit ctx: Context): Definition = FromSymbol.packageDef(x.symbol)
   }
 
@@ -133,7 +133,7 @@ object TastyImpl extends scala.tasty.Tasty {
       x.isInstanceOf[Trees.MemberDef[_]]
   }
 
-  def DefinitionDeco(x: Definition): AbstractDefinition = new AbstractDefinition {
+  def DefinitionDeco(x: Definition): DefinitionAPI = new DefinitionAPI {
 
     def owner(implicit ctx: Context): Definition = FromSymbol.definition(x.symbol.owner)
 
@@ -214,7 +214,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type PackageDef = PackageDefinition
 
-  def PackageDefDeco(t: PackageDef): AbstractPackageDef = new AbstractPackageDef {
+  def PackageDefDeco(t: PackageDef): PackageDefAPI = new PackageDefAPI {
     def members(implicit ctx: Context): List[Statement] = {
       if (t.symbol.is(core.Flags.JavaDefined)) Nil // FIXME should also support java packages
       else t.symbol.info.decls.iterator.map(FromSymbol.definition).toList
@@ -239,7 +239,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Term = tpd.Tree
 
-  def TermDeco(tree: Term): AbstractTerm = new AbstractTerm {
+  def TermDeco(tree: Term): TermAPI = new TermAPI {
 
     def pos(implicit ctx: Context): Position = tree.pos
 
@@ -438,7 +438,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   def caseDefClassTag: ClassTag[CaseDef] = implicitly[ClassTag[CaseDef]]
 
-  def CaseDefDeco(caseDef: CaseDef): AbstractCaseDef = new AbstractCaseDef {
+  def CaseDefDeco(caseDef: CaseDef): CaseDefAPI = new CaseDefAPI {
     def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showCaseDef(caseDef)
   }
 
@@ -454,7 +454,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Pattern = tpd.Tree
 
-  def PatternDeco(pattern: Pattern): AbstractPattern = new AbstractPattern {
+  def PatternDeco(pattern: Pattern): PatternAPI = new PatternAPI {
     def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showPattern(pattern)
     def pos(implicit ctx: Context): Position = pattern.pos
     def tpe(implicit ctx: Context): Types.Type = pattern.tpe.stripTypeVar
@@ -507,7 +507,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type TypeOrBoundsTree = tpd.Tree
 
-  def TypeOrBoundsTreeDeco(tpt: TypeOrBoundsTree): AbstractTypeOrBoundsTree = new AbstractTypeOrBoundsTree {
+  def TypeOrBoundsTreeDeco(tpt: TypeOrBoundsTree): TypeOrBoundsTreeAPI = new TypeOrBoundsTreeAPI {
     def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showTypeOrBoundsTree(tpt)
     def tpe(implicit ctx: Context): Type = tpt.tpe.stripTypeVar
   }
@@ -516,7 +516,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type TypeTree = tpd.Tree
 
-  def TypeTreeDeco(x: TypeTree): AbstractTypeTree = new AbstractTypeTree {
+  def TypeTreeDeco(x: TypeTree): TypeTreeAPI = new TypeTreeAPI {
     def pos(implicit ctx: Context): Position = x.pos
     def tpe(implicit ctx: Context): Types.Type = x.tpe.stripTypeVar
   }
@@ -603,7 +603,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type TypeBoundsTree = tpd.TypeBoundsTree
 
-  def TypeBoundsTreeDeco(x: TypeBoundsTree): AbstractTypeBoundsTree = new AbstractTypeBoundsTree {
+  def TypeBoundsTreeDeco(x: TypeBoundsTree): TypeBoundsTreeAPI = new TypeBoundsTreeAPI {
     def tpe(implicit ctx: Context): TypeBounds = x.tpe.bounds
   }
 
@@ -620,7 +620,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type TypeOrBounds = Types.Type
 
-  def TypeOrBoundsDeco(tpe: Types.Type): AbstractTypeOrBounds = new AbstractTypeOrBounds {
+  def TypeOrBoundsDeco(tpe: Types.Type): TypeOrBoundsAPI = new TypeOrBoundsAPI {
     def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showTypeOrBounds(tpe)
   }
 
@@ -639,7 +639,7 @@ object TastyImpl extends scala.tasty.Tasty {
   def polyTypeClassTag: ClassTag[PolyType] = implicitly[ClassTag[PolyType]]
   def typeLambdaClassTag: ClassTag[TypeLambda] = implicitly[ClassTag[TypeLambda]]
 
-  def MethodTypeDeco(x: MethodType): AbstractMethodType = new AbstractMethodType {
+  def MethodTypeDeco(x: MethodType): MethodTypeAPI = new MethodTypeAPI {
     def isErased: Boolean = x.isErasedMethod
     def isImplicit: Boolean = x.isImplicitMethod
   }
@@ -821,7 +821,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Constant = Constants.Constant
 
-  def ConstantDeco(const: Constant): AbstractConstant = new AbstractConstant {
+  def ConstantDeco(const: Constant): ConstantAPI = new ConstantAPI {
     def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showConstant(const)
     def value: Any = const.value
   }
@@ -970,7 +970,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
   type Position = SourcePosition
 
-  def PositionDeco(pos: Position): AbstractPosition = new AbstractPosition {
+  def PositionDeco(pos: Position): PositionAPI = new PositionAPI {
     def start = pos.start
     def end = pos.end
 
