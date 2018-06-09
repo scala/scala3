@@ -38,4 +38,22 @@ object inlines {
     }
     val inner = new Inner
   }
+
+  class C[T](private[inlines] val x: T) {
+    private[inlines] def next[U](y: U): (T, U) = (xx, y)
+    private[inlines] var xx: T =  _
+  }
+
+  class TestPassing {
+    inline def foo[A](x: A): (A, Int) = {
+      val c = new C[A](x)
+      c.xx = c.x
+      c.next(1)
+    }
+    inline def bar[A](x: A): (A, String) = {
+      val c = new C[A](x)
+      c.xx = c.x
+      c.next("")
+    }
+  }
 }

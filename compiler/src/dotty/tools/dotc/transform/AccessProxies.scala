@@ -27,6 +27,11 @@ abstract class AccessProxies {
   /** accessor -> accessed */
   private val accessedBy = newMutableSymbolMap[Symbol]
 
+  /** Given the name of an accessor, is the receiver of the call to accessed obtained
+   *  as a parameterer?
+   */
+  protected def passReceiverAsArg(accessorName: Name)(implicit ctx: Context) = false
+
   /** The accessor definitions that need to be added to class `cls`
    *  As a side-effect, this method removes entries from the `accessedBy` map.
    *  So a second call of the same method will yield the empty list.
@@ -34,13 +39,21 @@ abstract class AccessProxies {
   private def accessorDefs(cls: Symbol)(implicit ctx: Context): Iterator[DefDef] =
     for (accessor <- cls.info.decls.iterator; accessed <- accessedBy.remove(accessor)) yield
       polyDefDef(accessor.asTerm, tps => argss => {
-        val accessRef = ref(TermRef(cls.thisType, accessed))
+        def numTypeParams = accessed.info match {
+          case info: PolyType => info.paramNames.length
+          case _ => 0
+        }
+        val (accessRef, forwardedTypes, forwardedArgss) =
+          if (passReceiverAsArg(accessor.name))
+            (argss.head.head.select(accessed), tps.takeRight(numTypeParams), argss.tail)
+          else
+            (ref(TermRef(cls.thisType, accessed)), tps, argss)
         val rhs =
           if (accessor.name.isSetterName &&
-              argss.nonEmpty && argss.head.nonEmpty) // defensive conditions
-            accessRef.becomes(argss.head.head)
+              forwardedArgss.nonEmpty && forwardedArgss.head.nonEmpty) // defensive conditions
+            accessRef.becomes(forwardedArgss.head.head)
           else
-            accessRef.appliedToTypes(tps).appliedToArgss(argss)
+            accessRef.appliedToTypes(forwardedTypes).appliedToArgss(forwardedArgss)
         rhs.withPos(accessed.pos)
       })
 
@@ -65,7 +78,7 @@ abstract class AccessProxies {
     }
 
     /** An accessor symbol, create a fresh one unless one exists already */
-    private def accessorSymbol(owner: Symbol, accessorName: TermName, accessorInfo: Type, accessed: Symbol)(implicit ctx: Context) = {
+    protected def accessorSymbol(owner: Symbol, accessorName: TermName, accessorInfo: Type, accessed: Symbol)(implicit ctx: Context) = {
       def refersToAccessed(sym: Symbol) = accessedBy.get(sym).contains(accessed)
       owner.info.decl(accessorName).suchThat(refersToAccessed).symbol.orElse {
         val acc = newAccessorSymbol(owner, accessorName, accessorInfo, accessed.pos)
@@ -83,14 +96,24 @@ abstract class AccessProxies {
     }.withPos(reference.pos)
 
     /** Given a reference to a getter accessor, the corresponding setter reference */
-    def useSetter(getterRef: RefTree)(implicit ctx: Context): Tree = {
-      val getter = getterRef.symbol
-      val accessed = accessedBy(getter)
-      val accessedName = accessed.name.asTermName
-      val setterName = accessorNameKind(accessedName.setterName)
-      val setterInfo = MethodType(getter.info.widenExpr :: Nil, defn.UnitType)
-      val setter = accessorSymbol(getter.owner, setterName, setterInfo, accessed)
-      rewire(getterRef, setter)
+    def useSetter(getterRef: Tree)(implicit ctx: Context): Tree = getterRef match {
+      case getterRef: RefTree =>
+        val getter = getterRef.symbol.asTerm
+        val accessed = accessedBy(getter)
+        val setterName = getter.name.setterName
+        def toSetterInfo(getterInfo: Type): Type = getterInfo match {
+          case getterInfo: LambdaType =>
+            getterInfo.derivedLambdaType(resType = toSetterInfo(getterInfo.resType))
+          case _ =>
+            MethodType(getterInfo :: Nil, defn.UnitType)
+        }
+        val setterInfo = toSetterInfo(getter.info.widenExpr)
+        val setter = accessorSymbol(getter.owner, setterName, setterInfo, accessed)
+        rewire(getterRef, setter)
+      case Apply(fn, args) =>
+        cpy.Apply(getterRef)(useSetter(fn), args)
+      case TypeApply(fn, args) =>
+        cpy.TypeApply(getterRef)(useSetter(fn), args)
     }
 
     /** Create an accessor unless one exists already, and replace the original

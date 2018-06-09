@@ -15,7 +15,7 @@ import StdNames.nme
 import Contexts.Context
 import Names.{Name, TermName, EmptyTermName}
 import NameOps._
-import NameKinds.{ClassifiedNameKind, InlineAccessorName}
+import NameKinds.{ClassifiedNameKind, InlineAccessorName, UniqueInlineName}
 import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
 import Annotations._
@@ -33,10 +33,18 @@ object Inliner {
 
   class InlineAccessors extends AccessProxies {
 
-    /** A tree map which inserts accessors for all non-public term members accessed
-      *  from inlined code. Accessors are collected in the `accessors` buffer.
-      */
-    class MakeInlineable(inlineSym: Symbol) extends TreeMap with Insert {
+    /** If an inline accessor name wraps a unique inline name, this is taken as indication
+     *  that the inline accessor takes its receiver as first parameter. Such accessors
+     *  are created by MakeInlineablePassing.
+     */
+    override def passReceiverAsArg(name: Name)(implicit ctx: Context) = name match {
+      case InlineAccessorName(UniqueInlineName(_, _)) => true
+      case _ => false
+    }
+
+    /** A tree map which inserts accessors for non-public term members accessed from inlined code.
+     */
+    abstract class MakeInlineableMap(val inlineSym: Symbol) extends TreeMap with Insert {
       def accessorNameKind = InlineAccessorName
 
       /** A definition needs an accessor if it is private, protected, or qualified private
@@ -48,18 +56,126 @@ object Inliner {
         (sym.is(AccessFlags) || sym.privateWithin.exists) &&
         !sym.isContainedIn(inlineSym)
 
+      def preTransform(tree: Tree)(implicit ctx: Context): Tree
 
-      // TODO: Also handle references to non-public types.
-      // This is quite tricky, as such types can appear anywhere, including as parts
-      // of types of other things. For the moment we do nothing and complain
-      // at the implicit expansion site if there's a reference to an inaccessible type.
+      def postTransform(tree: Tree)(implicit ctx: Context) = tree match {
+        case Assign(lhs, rhs) if lhs.symbol.name.is(InlineAccessorName) =>
+          cpy.Apply(tree)(useSetter(lhs), rhs :: Nil)
+        case _ =>
+          tree
+      }
+
       override def transform(tree: Tree)(implicit ctx: Context): Tree =
-        super.transform(accessorIfNeeded(tree)) match {
-          case tree1 @ Assign(lhs: RefTree, rhs) if lhs.symbol.name.is(InlineAccessorName) =>
-            cpy.Apply(tree1)(useSetter(lhs), rhs :: Nil)
-          case tree1 =>
-            tree1
-        }
+        postTransform(super.transform(preTransform(tree)))
+    }
+
+    /** Direct approach: place the accessor with the accessed symbol. This has the
+     *  advantage that we can re-use the receiver as is. But it is only
+     *  possible if the receiver is essentially this or an outer this, which is indicated
+     *  by the test that we can find a host for the accessor.
+     */
+    class MakeInlineableDirect(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
+      def preTransform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+        case tree: RefTree if needsAccessor(tree.symbol) =>
+          if (tree.symbol.isConstructor) {
+            ctx.error("Implementation restriction: cannot use private constructors in inline methods", tree.pos)
+            tree // TODO: create a proper accessor for the private constructor
+          }
+          else if (AccessProxies.hostForAccessorOf(tree.symbol).exists) useAccessor(tree)
+          else tree
+        case _ =>
+          tree
+      }
+    }
+
+    /** Fallback approach if the direct approach does not work: Place the accessor method
+     *  in the same class as the inlined method, and let it take the receiver as parameter.
+     *  This is tricky, since we have to find a suitable type for the parameter, which might
+     *  require additional type parameters for the inline accessor. An example is in the
+     *  `TestPassing` class in test `run/inline/inlines_1`:
+     *
+     *    class C[T](x: T) {
+     *      private[inlines] def next[U](y: U): (T, U) = (x, y)
+     *    }
+     *    class TestPassing {
+     *      inline def foo[A](x: A): (A, Int) = {
+     *      val c = new C[A](x)
+     *      c.next(1)
+     *    }
+     *    inline def bar[A](x: A): (A, String) = {
+     *      val c = new C[A](x)
+     *      c.next("")
+     *    }
+     *
+     *  `C` could be compiled separately, so we cannot place the inline accessor in it.
+     *  Instead, the inline accessor goes into `TestPassing` and takes the actual receiver
+     *  type as argument:
+     *
+     *    def inline$next$i1[A, U](x$0: C[A])(y: U): (A, U) =
+     *      x$0.next[U](y)
+     *
+     *  Since different calls might have different receiver types, we need to generate one
+     *  such accessor per call, so they need to have unique names.
+     */
+    class MakeInlineablePassing(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
+
+      def preTransform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+        case _: Apply | _: TypeApply | _: RefTree
+        if needsAccessor(tree.symbol) && tree.isTerm && !tree.symbol.isConstructor =>
+          val (refPart, targs, argss) = decomposeCall(tree)
+          val qual = qualifier(refPart)
+          inlining.println(i"adding receiver passing inline accessor for $tree -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
+
+          // Need to dealias in order to cagtch all possible references to abstracted over types in
+          // substitutions
+          val dealiasMap = new TypeMap {
+            def apply(t: Type) = mapOver(t.dealias)
+          }
+          val qualType = dealiasMap(qual.tpe.widen)
+
+          // The types that are local to the inlined method, and that therefore have
+          // to be abstracted out in the accessor, which is external to the inlined method
+          val localRefs = qualType.namedPartsWith(ref =>
+            ref.isType && ref.symbol.isContainedIn(inlineSym)).toList
+
+          // Add qualifier type as leading method argument to argument `tp`
+          def addQualType(tp: Type): Type = tp match {
+            case tp: PolyType => tp.derivedLambdaType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
+            case tp: ExprType => addQualType(tp.resultType)
+            case tp => MethodType(qualType :: Nil, tp)
+          }
+
+          // Abstract accessed type over local refs
+          def abstractQualType(mtpe: Type): Type =
+            if (localRefs.isEmpty) mtpe
+            else PolyType.fromParams(localRefs.map(_.symbol.asType), mtpe)
+              .asInstanceOf[PolyType].flatten
+
+          val accessed = refPart.symbol.asTerm
+          val accessedType = refPart.tpe.widen
+          val accessor = accessorSymbol(
+            owner = inlineSym.owner,
+            accessorName = InlineAccessorName(UniqueInlineName.fresh(accessed.name)),
+            accessorInfo = abstractQualType(addQualType(dealiasMap(accessedType))),
+            accessed = accessed)
+
+          ref(accessor)
+            .appliedToTypeTrees(localRefs.map(TypeTree(_)) ++ targs)
+            .appliedToArgss((qual :: Nil) :: argss)
+            .withPos(tree.pos)
+
+            // TODO: Handle references to non-public types.
+            // This is quite tricky, as such types can appear anywhere, including as parts
+            // of types of other things. For the moment we do nothing and complain
+            // at the implicit expansion site if there's a reference to an inaccessible type.
+            // Draft code (incomplete):
+            //
+            //  val accessor = accessorSymbol(tree, TypeAlias(tree.tpe)).asType
+            //  myAccessors += TypeDef(accessor).withPos(tree.pos.focus)
+            //  ref(accessor).withPos(tree.pos)
+            //
+        case _ => tree
+      }
     }
 
     /** Adds accessors for all non-public term members accessed
@@ -76,7 +192,9 @@ object Inliner {
         // Inline methods in local scopes can only be called in the scope they are defined,
         // so no accessors are needed for them.
         tree
-      else new MakeInlineable(inlineSym).transform(tree)
+      else
+        new MakeInlineablePassing(inlineSym).transform(
+          new MakeInlineableDirect(inlineSym).transform(tree))
     }
   }
 

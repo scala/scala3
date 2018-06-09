@@ -10,12 +10,14 @@ object Test {
 
     val o = new Outer
     val i = new o.Inner
+    val p = new TestPassing
     println(i.m)
     println(i.g)
     println(i.h)
     println(o.inner.m)
     println(o.inner.g)
     println(o.inner.h)
+    println(p.foo("hi"))
+    println(p.bar(true))
   }
-
 }
