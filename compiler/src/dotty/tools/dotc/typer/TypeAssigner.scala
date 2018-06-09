@@ -546,8 +546,10 @@ trait TypeAssigner {
   def assignType(tree: untpd.Import, sym: Symbol)(implicit ctx: Context) =
     tree.withType(sym.termRef)
 
-  def assignType(tree: untpd.Annotated, arg: Tree, annot: Tree)(implicit ctx: Context) =
+  def assignType(tree: untpd.Annotated, arg: Tree, annot: Tree)(implicit ctx: Context) = {
+    assert(tree.isType) // annotating a term is done via a Typed node, can't use Annotate directly
     tree.withType(AnnotatedType(arg.tpe, Annotation(annot)))
+  }
 
   def assignType(tree: untpd.PackageDef, pid: Tree)(implicit ctx: Context) =
     tree.withType(pid.symbol.termRef)
