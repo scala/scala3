@@ -30,18 +30,30 @@ object definitions {
 
   // Does DefDef need a `def tpe: MethodType | PolyType`?
   case class ValDef(name: String, tpt: TypeTree, rhs: Option[Term]) extends Definition {
-    def mods: List[Modifier] = ???
+    def flags: FlagSet = ???
+    def privateWithin: Option[Type] = ???
+    def protectedWithin: Option[Type] = ???
+    def annots: List[Term] = ???
   }
   case class DefDef(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]],
                     returnTpt: TypeTree, rhs: Option[Term]) extends Definition {
-    def mods: List[Modifier] = ???
+    def flags: FlagSet = ???
+    def privateWithin: Option[Type] = ???
+    def protectedWithin: Option[Type] = ???
+    def annots: List[Term] = ???
   }
   case class TypeDef(name: String, rhs: TypeTree | TypeBoundsTree) extends Definition {
-    def mods: List[Modifier] = ???
+    def flags: FlagSet = ???
+    def privateWithin: Option[Type] = ???
+    def protectedWithin: Option[Type] = ???
+    def annots: List[Term] = ???
   }
   case class ClassDef(name: String, constructor: DefDef, parents: List[Term | TypeTree],
                       self: Option[ValDef], body: List[Statement]) extends Definition {
-    def mods: List[Modifier] = ???
+    def flags: FlagSet = ???
+    def privateWithin: Option[Type] = ???
+    def protectedWithin: Option[Type] = ???
+    def annots: List[Term] = ???
   }
   case class PackageDef(name: String, override val owner: PackageDef) extends Definition {
     def members: List[Statement] = ???
