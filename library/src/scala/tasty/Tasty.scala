@@ -116,7 +116,9 @@ abstract class Tasty { tasty =>
 
   trait DefinitionAPI {
     def flags(implicit ctx: Context): FlagSet
-    def mods(implicit ctx: Context): List[Modifier]
+    def privateWithin(implicit ctx: Context): Option[Type]
+    def protectedWithin(implicit ctx: Context): Option[Type]
+    def annots(implicit ctx: Context): List[Term]
     def owner(implicit ctx: Context): Definition
     def localContext(implicit ctx: Context): Context
   }
@@ -679,38 +681,6 @@ abstract class Tasty { tasty =>
     }
 
   }
-
-  // ===== Modifiers ================================================
-
-  type Modifier
-
-  implicit def modifierClassTag: ClassTag[Modifier]
-
-  val Modifier: ModifierModule
-  abstract class ModifierModule {
-
-    val Annotation: AnnotationExtractor
-    abstract class AnnotationExtractor {
-      def unapply(x: Modifier)(implicit ctx: Context): Option[Term]
-    }
-
-    val Flags: FlagsExtractor
-    abstract class FlagsExtractor {
-      def unapply(x: Modifier)(implicit ctx: Context): Option[FlagSet]
-    }
-
-    val QualifiedPrivate: QualifiedPrivateExtractor
-    abstract class QualifiedPrivateExtractor {
-      def unapply(x: Modifier)(implicit ctx: Context): Option[Type]
-    }
-
-    val QualifiedProtected: QualifiedProtectedExtractor
-    abstract class QualifiedProtectedExtractor {
-      def unapply(x: Modifier)(implicit ctx: Context): Option[Type]
-    }
-
-  }
-
 
   // ===== Signature ================================================
 

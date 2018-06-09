@@ -137,16 +137,23 @@ object TastyImpl extends scala.tasty.Tasty {
 
     def owner(implicit ctx: Context): Definition = FromSymbol.definition(x.symbol.owner)
 
-    def flags(implicit ctx: Contexts.Context): FlagSet =
+    def flags(implicit ctx: Context): FlagSet =
       new FlagSet(x.symbol.flags)
 
-    def mods(implicit ctx: Context): List[Modifier] = {
-      val privateWithin = x.symbol.privateWithin
-      val isProtected = x.symbol.is(core.Flags.Protected)
-      ModFlags(new FlagSet(x.symbol.flags)) ::
-      (if (privateWithin.exists) List(ModQual(privateWithin.typeRef, isProtected)) else Nil) :::
-      x.symbol.annotations.map(t => ModAnnot(t.tree))
+    def privateWithin(implicit ctx: Context): Option[Type] = {
+      val within = x.symbol.privateWithin
+      if (within.exists && !x.symbol.is(core.Flags.Protected)) Some(within.typeRef)
+      else None
     }
+
+    def protectedWithin(implicit ctx: Context): Option[Type] = {
+      val within = x.symbol.privateWithin
+      if (within.exists && x.symbol.is(core.Flags.Protected)) Some(within.typeRef)
+      else None
+    }
+
+    def annots(implicit ctx: Context): List[Term] =
+      x.symbol.annotations.map(_.tree)
 
     def localContext(implicit ctx: Context): Context =
       if (x.hasType && x.symbol.exists) ctx.withOwner(x.symbol)
@@ -903,51 +910,6 @@ object TastyImpl extends scala.tasty.Tasty {
     object String extends StringExtractor {
       def unapply(x: Constant): Option[String] = x match {
         case x: Constants.Constant if x.tag == Constants.StringTag => Some(x.stringValue)
-        case _ => None
-      }
-    }
-
-  }
-
-
-  // ===== Modifier =================================================
-
-  type Modifier = ModImpl
-
-  trait ModImpl
-  case class ModAnnot(tree: Term) extends ModImpl
-  case class ModFlags(flags: FlagSet) extends ModImpl
-  case class ModQual(tp: Type, protect: Boolean) extends ModImpl
-
-  def modifierClassTag: ClassTag[Modifier] = implicitly[ClassTag[Modifier]]
-
-
-  object Modifier extends ModifierModule {
-
-    object Annotation extends AnnotationExtractor {
-      def unapply(x: Modifier)(implicit ctx: Context): Option[Term] = x match {
-        case ModAnnot(tree) => Some(tree)
-        case _ => None
-      }
-    }
-
-    object Flags extends FlagsExtractor {
-      def unapply(x: Modifier)(implicit ctx: Context): Option[FlagSet] = x match {
-        case ModFlags(flags) => Some(flags)
-        case _ => None
-      }
-    }
-
-    object QualifiedPrivate extends QualifiedPrivateExtractor {
-      def unapply(x: Modifier)(implicit ctx: Context): Option[Type] = x match {
-        case ModQual(tp, false) => Some(tp)
-        case _ => None
-      }
-    }
-
-    object QualifiedProtected extends QualifiedProtectedExtractor {
-      def unapply(x: Modifier)(implicit ctx: Context): Option[Type] = x match {
-        case ModQual(tp, true) => Some(tp)
         case _ => None
       }
     }

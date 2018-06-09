@@ -195,13 +195,6 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "NoPrefix()"
     }
 
-    def visitModifier(x: Modifier): Buffer = x match {
-      case Modifier.Flags(flags) => this += "Modifier.Flags(" += flags.toString += ")"
-      case Modifier.QualifiedPrivate(tp) => this += "Modifier.QualifiedPrivate(" += tp += ")"
-      case Modifier.QualifiedProtected(tp) => this += "Modifier.QualifiedProtected(" += tp += ")"
-      case Modifier.Annotation(tree) => this += "Modifier.Annotation(" += tree += ")"
-    }
-
     def visitId(x: Id): Buffer = {
       val Id(name) = x
       this += "Id(\"" += name += "\")"
