@@ -271,31 +271,31 @@ object definitions {
 abstract class Tasty {
 
   type Type
-  trait AbstractType {
+  trait TypeAPI {
     // exported type fields
   }
-  implicit def TypeDeco(x: Type): AbstractType
+  implicit def TypeDeco(x: Type): TypeAPI
 
   type Symbol
-  trait AbstractSymbol {
+  trait SymbolAPI {
     // exported symbol fields
   }
-  implicit def SymbolDeco(s: Symbol): AbstractSymbol
+  implicit def SymbolDeco(s: Symbol): SymbolAPI
 
   type Context
-  trait AbstractContext {
+  trait ContextAPI {
     val owner: Symbol
     // more exported fields
   }
-  implicit def ContextDeco(x: Context): AbstractContext
+  implicit def ContextDeco(x: Context): ContextAPI
 
   type Position
-  trait AbstractPosition {
+  trait PositionAPI {
     val start: Int
     val end: Int
     // more fields
   }
-  implicit def PositionDeco(p: Position): AbstractPosition
+  implicit def PositionDeco(p: Position): PositionAPI
 
   trait TypedPositioned {
     val pos: Position
@@ -328,18 +328,18 @@ object TastyImpl extends Tasty {
   import util.{Positions}
 
   type Type = Types.Type
-  implicit class TypeDeco(x: Type) extends AbstractType {}
+  implicit class TypeDeco(x: Type) extends TypeAPI {}
 
   type Symbol = Symbols.Symbol
-  implicit class SymbolDeco(s: Symbol) extends AbstractSymbol {}
+  implicit class SymbolDeco(s: Symbol) extends SymbolAPI {}
 
   type Context = Contexts.Context
-  implicit class ContextDeco(c: Context) extends AbstractContext {
+  implicit class ContextDeco(c: Context) extends ContextAPI {
     val owner = c.owner
   }
 
   type Position = Positions.Position
-  implicit class PositionDeco(p: Position) extends AbstractPosition {
+  implicit class PositionDeco(p: Position) extends PositionAPI {
     val start = p.start
     val end = p.end
   }
@@ -382,8 +382,8 @@ object TastyImpl extends Tasty {
 */
 
 
-/* If the dotty implementations all inherit the ...Abstract traits,
-   and the Abstract traits inherit thmeselves from ProductN, we can
+/* If the dotty implementations all inherit the ...API traits,
+   and the API traits inherit thmeselves from ProductN, we can
    also do the following, faster implementation.
    This still does full information hiding, but should be almost
    as fast as native access.
@@ -419,7 +419,7 @@ object TastyImpl extends TastyAST {
   object CaseDef extends CaseDefExtractor {
     def apply(pat: Pattern, guard: Term, rhs: Term)(implicit ctx: Context): CaseDef =
       tpd.CaseDef(pat, guard, rhs)
-    def unapply(x: CaseDef): AbstractCaseDef = x
+    def unapply(x: CaseDef): CaseDefAPI = x
   }
 }
 
