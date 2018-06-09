@@ -339,6 +339,17 @@ abstract class Tasty { tasty =>
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Int, Type)]
     }
 
+    val While: WhileExtractor
+    abstract class WhileExtractor {
+      /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term)]
+    }
+
+    val DoWhile: DoWhileExtractor
+    abstract class DoWhileExtractor {
+      /** Extractor for do while loops. Matches `do <body> while (<cond>)` and returns (<body>, <cond>) */
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term)]
+    }
   }
 
   // ----- CaseDef --------------------------------------------------

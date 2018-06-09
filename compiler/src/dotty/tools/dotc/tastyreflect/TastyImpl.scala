@@ -374,9 +374,31 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
     }
 
     object Block extends BlockExtractor {
-      def unapply(x: Term)(implicit ctx: Context): Option[(List[Statement], Term)] = x match {
-        case x: tpd.Block @unchecked => Some((x.stats, x.expr))
+      def unapply(x: Term)(implicit ctx: Context): Option[(List[Statement], Term)] = normalizedLoops(x) match {
+        case Trees.Block(_, expr) if expr.symbol.is(Flags.Label) => None // while or doWhile loops
+        case Trees.Block(stats, expr) => Some((stats, expr))
         case _ => None
+      }
+      /** Normilizes non Blocks.
+       *  i) Put `while` and `doWhile` loops in thier own blocks: `{ def while$() = ...; while$() }`
+       */
+      private def normalizedLoops(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+        case block: tpd.Block if block.stats.size > 1 =>
+          def normalizeInnerLoops(stats: List[tpd.Tree]): List[tpd.Tree] = stats match {
+            case (x: tpd.DefDef) :: y :: xs if y.symbol.is(Flags.Label) =>
+              tpd.Block(x :: Nil, y) :: normalizeInnerLoops(xs)
+            case x :: xs => x :: normalizeInnerLoops(xs)
+            case Nil => Nil
+          }
+          if (block.expr.symbol.is(Flags.Label)) {
+            val stats1 = normalizeInnerLoops(block.stats.init)
+            val normalLoop = tpd.Block(block.stats.last :: Nil, block.expr)
+            tpd.Block(stats1, normalLoop)
+          } else {
+            val stats1 = normalizeInnerLoops(block.stats)
+            tpd.cpy.Block(block)(stats1, block.expr)
+          }
+        case _ => tree
       }
     }
 
@@ -441,6 +463,28 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
       }
     }
 
+    object While extends WhileExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term)] = x match {
+        case Trees.Block((ddef: tpd.DefDef) :: Nil, expr) if expr.symbol.is(Flags.Label) && expr.symbol.name == nme.WHILE_PREFIX =>
+          val Trees.If(cond, Trees.Block(bodyStats, _), _) = ddef.rhs
+          Some((cond, loopBody(bodyStats)))
+        case _ => None
+      }
+    }
+
+    object DoWhile extends DoWhileExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term)] = x match {
+        case Trees.Block((ddef: tpd.DefDef) :: Nil, expr) if expr.symbol.is(Flags.Label) && expr.symbol.name == nme.DO_WHILE_PREFIX =>
+          val Trees.Block(bodyStats, Trees.If(cond, _, _)) = ddef.rhs
+          Some((loopBody(bodyStats), cond))
+        case _ => None
+      }
+    }
+
+    private def loopBody(stats: List[tpd.Tree])(implicit ctx: Context): tpd.Tree = stats match {
+      case body :: Nil => body
+      case stats => tpd.Block(stats.init, stats.last)
+    }
   }
 
   // ----- CaseDef --------------------------------------------------

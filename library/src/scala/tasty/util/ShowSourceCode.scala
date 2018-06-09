@@ -204,33 +204,15 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this
         }
 
-      case While(cond, stats) =>
+      case Term.While(cond, body) =>
         this += "while ("
         printTree(cond)
         this += ") "
-        stats match {
-          case stat :: Nil =>
-            printTree(stat)
-          case stats =>
-            this += "{"
-            indented {
-              printStats(stats.init, stats.last)
-            }
-            this += lineBreak() += "}"
-        }
+        printTree(body)
 
-      case DoWhile(stats, cond) =>
+      case Term.DoWhile(body, cond) =>
         this += "do "
-        stats match {
-          case stat :: Nil =>
-            printTree(stat)
-          case stats =>
-            this += "{"
-            indented {
-              printStats(stats.init, stats.last)
-            }
-            this += lineBreak() += "}"
-        }
+        printTree(body)
         this += " while ("
         printTree(cond)
         this += ")"
@@ -349,13 +331,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printTree(rhs)
 
       case Term.Block(stats0, expr) =>
-        def shouldNotBePrinted(tree: Tree): Boolean = tree match {
-          case Term.Apply(Term.Ident("while$" | "doWhile$"), _) => true
-          case tree @ ValDef(_, _, _) => tree.flags.isObject
-          case _ => false
+        val stats = stats0.filter {
+          case tree @ ValDef(_, _, _) => !tree.flags.isObject
+          case _ => true
         }
-
-        val stats = stats0.filterNot(shouldNotBePrinted)
 
         expr match {
           case Term.Lambda(_, _) =>
@@ -368,11 +347,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this += ")"
           case _ =>
             this += "{"
-            val (stats1, expr1) =
-              if (shouldNotBePrinted(expr)) (stats.init, stats.last)
-              else (stats, expr)
             indented {
-              printStats(stats1, expr1)
+              printStats(stats, expr)
             }
             this += lineBreak() += "}"
         }
@@ -441,7 +417,6 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         // Avoid accidental application of opening `{` on next line with a double break
         val next = if (nextStats.isEmpty) expr else nextStats.head
         next match {
-          case Term.Block(DefDef("while$" | "doWhile$", _, _, _, _) :: Nil, _) => this += lineBreak()
           case Term.Block(_, _) => this += doubleLineBreak()
           case Term.Inlined(_, _, _) => this += doubleLineBreak()
           case _ => this += lineBreak()
@@ -1073,7 +1048,6 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     private def escapedString(str: String): String = str flatMap escapedChar
   }
 
-
   private object SpecialOp {
     def unapply(arg: Term)(implicit ctx: Context): Option[(String, List[Term])] = arg match {
       case arg@Term.Apply(fn, args) =>
@@ -1082,22 +1056,6 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             Some((op, args))
           case _ => None
         }
-      case _ => None
-    }
-  }
-
-  private object While {
-    def unapply(arg: Tree)(implicit ctx: Context): Option[(Term, List[Statement])] = arg match {
-      case DefDef("while$", _, _, _, Some(Term.If(cond, Term.Block(bodyStats, _), _))) => Some((cond, bodyStats))
-      case Term.Block(List(tree), _) => unapply(tree)
-      case _ => None
-    }
-  }
-
-  private object DoWhile {
-    def unapply(arg: Tree)(implicit ctx: Context): Option[(List[Statement], Term)] = arg match {
-      case DefDef("doWhile$", _, _, _, Some(Term.Block(body, Term.If(cond, _, _)))) => Some((body, cond))
-      case Term.Block(List(tree), _) => unapply(tree)
       case _ => None
     }
   }
