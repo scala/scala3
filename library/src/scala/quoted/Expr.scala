@@ -1,6 +1,5 @@
 package scala.quoted
 
-import scala.runtime.quoted.Toolbox
 import scala.runtime.quoted.Unpickler.Pickled
 
 sealed abstract class Expr[T] {
@@ -10,10 +9,10 @@ sealed abstract class Expr[T] {
    *
    *  May throw a FreeVariableError on expressions that came from an inline macro.
    */
-  final def run(implicit toolbox: Toolbox[T]): T = toolbox.run(this)
+  final def run(implicit toolbox: Toolbox): T = toolbox.run(this)
 
   /** Show a source code like representation of this expression */
-  final def show(implicit toolbox: Toolbox[T]): String = toolbox.show(this)
+  final def show(implicit toolbox: Toolbox): String = toolbox.show(this)
 }
 
 object Expr {

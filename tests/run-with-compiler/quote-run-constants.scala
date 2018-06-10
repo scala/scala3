@@ -5,6 +5,8 @@ import scala.quoted._
 
 object Test {
   def main(args: Array[String]): Unit = {
+    implicit val toolbox: scala.quoted.Toolbox = dotty.tools.dotc.quoted.Toolbox.make
+
     def run[T](expr: Expr[T]): Unit = println(expr.run)
     def show[T](expr: Expr[T]): Unit = println(expr.show)
 

@@ -8,6 +8,7 @@ class Foo[T: Type] {
 
 object Test {
   def main(args: Array[String]): Unit = {
+    implicit val toolbox: scala.quoted.Toolbox = dotty.tools.dotc.quoted.Toolbox.make
     println((new Foo[Object]).q.show)
     println((new Foo[String]).q.show)
   }

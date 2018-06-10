@@ -2,11 +2,13 @@
 import java.nio.file.{Files, Paths}
 
 import dotty.tools.dotc.quoted.Toolbox._
+import dotty.tools.dotc.quoted.ToolboxSettings
 
 import scala.quoted._
 
 object Test {
   def main(args: Array[String]): Unit = {
+    implicit val toolbox: scala.quoted.Toolbox = dotty.tools.dotc.quoted.Toolbox.make
     val expr = '{
       val a = 3
       println("foo")
@@ -22,7 +24,8 @@ object Test {
     Files.deleteIfExists(classFile)
 
     {
-      implicit val settings = Settings.run(optimise = true, outDir = Some(outDir.toString))
+      implicit val settings = ToolboxSettings.make(optimise = true, outDir = Some(outDir.toString))
+      implicit val toolbox2: scala.quoted.Toolbox = dotty.tools.dotc.quoted.Toolbox.make
       println(expr.run)
       assert(Files.exists(classFile))
     }

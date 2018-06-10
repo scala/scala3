@@ -2,20 +2,21 @@ package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ContextBase}
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.quoted.{Expr, Type}
 import java.net.URLClassLoader
 
-import Toolbox.{Run, Settings, Show}
 import dotty.tools.dotc.tastyreflect.TastyImpl
 
 class QuoteDriver extends Driver {
   import tpd._
 
-  def run[T](expr: Expr[T], settings: Settings[Run]): T = {
+  private[this] val contextBase: ContextBase = new ContextBase
+
+  def run[T](expr: Expr[T], settings: ToolboxSettings): T = {
     val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
 
     val outDir: AbstractFile = settings.outDir match {
@@ -39,7 +40,7 @@ class QuoteDriver extends Driver {
     method.invoke(instance).asInstanceOf[T]
   }
 
-  def show(expr: Expr[_], settings: Settings[Show]): String = {
+  def show(expr: Expr[_], settings: ToolboxSettings): String = {
     def show(tree: Tree, ctx: Context): String = {
       val tree1 = if (settings.rawTree) tree else (new TreeCleaner).transform(tree)(ctx)
       TastyImpl.showSourceCode.showTree(tree1)(ctx)
@@ -47,7 +48,7 @@ class QuoteDriver extends Driver {
     withTree(expr, show, settings)
   }
 
-  def withTree[T](expr: Expr[_], f: (Tree, Context) => T, settings: Settings[_]): T = {
+  def withTree[T](expr: Expr[_], f: (Tree, Context) => T, settings: ToolboxSettings): T = {
     val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
 
     var output: Option[T] = None
@@ -59,7 +60,7 @@ class QuoteDriver extends Driver {
     output.getOrElse(throw new Exception("Could not extract " + expr))
   }
 
-  def withTypeTree[T](tpe: Type[_], f: (TypTree, Context) => T, settings: Settings[_]): T = {
+  def withTypeTree[T](tpe: Type[_], f: (TypTree, Context) => T, settings: ToolboxSettings): T = {
     val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
 
     var output: Option[T] = None
@@ -72,7 +73,7 @@ class QuoteDriver extends Driver {
   }
 
   override def initCtx: Context = {
-    val ictx = super.initCtx.fresh
+    val ictx = contextBase.initialCtx
     var classpath = System.getProperty("java.class.path")
     this.getClass.getClassLoader match {
       case cl: URLClassLoader =>
