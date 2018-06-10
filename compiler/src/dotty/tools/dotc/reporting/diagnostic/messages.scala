@@ -2117,38 +2117,10 @@ object messages {
     val explanation: String = ""
   }
 
-  case class PatternMatchAlwaysSucceeds(foundCls: Symbol, testCls: Symbol)(implicit ctx: Context) extends Message(PatternMatchAlwaysSucceedsID) {
+  case class TypeTestAlwaysSucceeds(foundCls: Symbol, testCls: Symbol)(implicit ctx: Context) extends Message(TypeTestAlwaysSucceedsID) {
     val kind = "Syntax"
-    val msg: String =
-      hl"""
-         |The type check in the highlighted part of the pattern match case statement will always succeed,
-         |since `$foundCls` is a subclass of `$testCls`.
-       """
-    val codeExampleValidWarning = "def foo(a: Int) = a match { case x: Int => x }"
-    val codeExampleDisregardWarning =
-      hl"""
-        |object Foo {
-        |  def unapply(x: Int): Option[Int] = if (x % 2 == 0) Some(x) else None
-        |}
-        |
-        |class Test {
-        |  def foo(a: Int) = a match { case Foo(x: Int) => x }
-        |}
-      """
-    val explanation: String =
-      hl"""
-          |The highlighted typecheck will always match.
-          |For example:
-          |
-          |$codeExampleValidWarning
-          |
-          |The type of the scrutinee 'a' will always be 'Int', so a the 'case x: Int'
-          |match will always be successful. Maybe a guard clause was forgotten.
-          |
-          |In the following counter-example, because of the unapply method, the
-          |whole match will not be always successful, only the type check.
-          |$codeExampleDisregardWarning
-          |
-        """
+    val msg =
+      s"The highlighted type test will always succeed since the scrutinee type ($foundCls) is a subtype of ${testCls}"
+    val explanation = ""
   }
 }

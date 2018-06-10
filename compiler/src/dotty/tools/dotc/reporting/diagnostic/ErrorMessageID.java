@@ -130,7 +130,7 @@ public enum ErrorMessageID {
     DoubleDeclarationID,
     MatchCaseOnlyNullWarningID,
     ImportRenamedTwiceID,
-    PatternMatchAlwaysSucceedsID,
+    TypeTestAlwaysSucceedsID,
     ;
 
     public int errorNumber() {
