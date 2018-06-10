@@ -540,7 +540,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printTypeTree(tpt)
 
       case Pattern.Bind(name, pattern) =>
-        this += name += "@ "
+        this += name += " @ "
         printPattern(pattern)
 
       case Pattern.Unapply(fun, implicits, patterns) =>

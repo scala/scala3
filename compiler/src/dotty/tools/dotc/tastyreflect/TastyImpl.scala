@@ -488,7 +488,8 @@ object TastyImpl extends scala.tasty.Tasty {
 
     object Unapply extends UnapplyExtractor {
       def unapply(x: Pattern)(implicit ctx: Context): Option[(Term, List[Term], List[Pattern])] = x match {
-        case x: tpd.UnApply @unchecked => Some(x.fun, x.implicits, x.patterns)
+        case Trees.UnApply(fun, implicits, patterns) => Some((fun, implicits, patterns))
+        case Trees.Typed(Trees.UnApply(fun, implicits, patterns), _) => Some((fun, implicits, patterns))
         case _ => None
       }
     }
@@ -502,7 +503,8 @@ object TastyImpl extends scala.tasty.Tasty {
 
     object TypeTest extends TypeTestExtractor {
       def unapply(x: Pattern)(implicit ctx: Context): Option[TypeTree] = x match {
-        case x: tpd.Typed @unchecked => Some(x.tpt)
+        case Trees.Typed(Trees.UnApply(_, _, _), _) => None
+        case Trees.Typed(_, tpt) => Some(tpt)
         case _ => None
       }
     }
