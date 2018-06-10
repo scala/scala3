@@ -126,7 +126,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
               case _ => false
             })
           }
-          !flags.isParam && !flags.isParamAccessor && !isCaseClassUnOverridableMethod
+          def isInnerModuleObject = d.flags.isLazy && d.flags.isObject
+          !flags.isParam && !flags.isParamAccessor && !isCaseClassUnOverridableMethod && !isInnerModuleObject
         }
         val stats1 = stats.collect {
           case stat@Definition() if keepDefinition(stat) => stat
