@@ -1491,7 +1491,8 @@ class Typer extends Namer
     def typedParent(tree: untpd.Tree): Tree = {
       var result = if (tree.isType) typedType(tree)(superCtx) else typedExpr(tree)(superCtx)
       val psym = result.tpe.typeSymbol
-      if (seenParents.contains(psym)) ctx.error(i"$psym is extended twice", tree.pos)
+      if (seenParents.contains(psym) && !cls.isRefinementClass)
+        ctx.error(i"$psym is extended twice", tree.pos)
       seenParents += psym
       if (tree.isType) {
         if (psym.is(Trait) && !cls.is(Trait) && !cls.superClass.isSubClass(psym))
