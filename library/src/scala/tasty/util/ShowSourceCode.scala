@@ -114,8 +114,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
         def keepDefinition(d: Definition): Boolean = {
           val flags = d.flags
-          import flags._
-          def isCaseUnOverridableMethod: Boolean = {
+          def isCaseClassUnOverridableMethod: Boolean = {
+            // Currently the compiler does not allow overriding some of the methods generated for case classes
             d.flags.isSynthetic &&
             (d match {
               case DefDef("apply" | "unapply", _, _, _, _) if d.owner.flags.isObject => true
@@ -126,7 +126,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
               case _ => false
             })
           }
-          !isParam && !isParamAccessor && !isCaseUnOverridableMethod
+          !flags.isParam && !flags.isParamAccessor && !isCaseClassUnOverridableMethod
         }
         val stats1 = stats.collect {
           case stat@Definition() if keepDefinition(stat) => stat
