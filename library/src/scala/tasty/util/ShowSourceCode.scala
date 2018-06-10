@@ -1,6 +1,8 @@
 package scala.tasty
 package util
 
+import scala.annotation.switch
+
 class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty0) {
   import tasty._
 
@@ -591,8 +593,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Constant.Long(v) => this += v += "L"
       case Constant.Float(v) => this += v
       case Constant.Double(v) => this += v
-      case Constant.Char(v) => this += '\'' += v.toString += '\'' // TODO escape char
-      case Constant.String(v) => this += '"' += v.toString += '"' // TODO escape string
+      case Constant.Char(v) => this += '\'' += escapedChar(v) += '\''
+      case Constant.String(v) => this += '"' += escapedString(v) += '"'
     }
 
     def printTypeOrBoundsTree(tpt: TypeOrBoundsTree): Buffer = tpt match {
@@ -770,6 +772,19 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def +=(x: Char): this.type = { sb.append(x); this }
     def +=(x: String): this.type = { sb.append(x); this }
 
+    @switch private def escapedChar(ch: Char): String = ch match {
+      case '\b' => "\\b"
+      case '\t' => "\\t"
+      case '\n' => "\\n"
+      case '\f' => "\\f"
+      case '\r' => "\\r"
+      case '"' => "\\\""
+      case '\'' => "\\\'"
+      case '\\' => "\\\\"
+      case _ => if (ch.isControl) "\\0" + Integer.toOctalString(ch) else String.valueOf(ch)
+    }
+
+    private def escapedString(str: String): String = str flatMap escapedChar
   }
 
 
