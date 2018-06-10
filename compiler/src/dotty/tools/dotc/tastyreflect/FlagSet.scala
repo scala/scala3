@@ -48,7 +48,7 @@ class FlagSet(flags: Flags.FlagSet) extends scala.tasty.FlagSet {
     if (isInline) flags += "inline"
     if (isMacro) flags += "macro"
     if (isStatic) flags += "javaStatic"
-    if (isObject) flags += "module"
+    if (isObject) flags += "object"
     if (isTrait) flags += "trait"
     if (isLocal) flags += "local"
     if (isSynthetic) flags += "synthetic"

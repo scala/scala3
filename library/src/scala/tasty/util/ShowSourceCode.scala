@@ -112,8 +112,24 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           }
         }
 
+        def keepDefinition(d: Definition): Boolean = {
+          val flags = d.flags
+          def isCaseClassUnOverridableMethod: Boolean = {
+            // Currently the compiler does not allow overriding some of the methods generated for case classes
+            d.flags.isSynthetic &&
+            (d match {
+              case DefDef("apply" | "unapply", _, _, _, _) if d.owner.flags.isObject => true
+              case DefDef(n, _, _, _, _) if d.owner.flags.isCase =>
+                n == "copy" ||
+                n.matches("copy\\$default\\$[1-9][0-9]*") || // default parameters for the copy method
+                n.matches("_[1-9][0-9]*") // Getters from Product
+              case _ => false
+            })
+          }
+          !flags.isParam && !flags.isParamAccessor && !isCaseClassUnOverridableMethod
+        }
         val stats1 = stats.collect {
-          case stat@Definition() if !stat.flags.isParam && !stat.flags.isParamAccessor => stat
+          case stat@Definition() if keepDefinition(stat) => stat
           case stat@Import(_, _) => stat
           case stat@Term() => stat
         }
@@ -721,6 +737,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Type.ThisType(tp) =>
         printType(tp)
+        tp match {
+          case Type.SymRef(cdef @ ClassDef(_, _, _, _, _), _) if !cdef.flags.isObject => this += ".this"
+          case _ => this
+        }
 
       case _ =>
         throw new MatchError(tpe.show)
