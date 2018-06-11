@@ -854,6 +854,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else Assign(tree, rhs)
     }
 
+    /** tree @annot
+     *
+     *  works differently for type trees and term trees
+     */
+    def annotated(annot: Tree)(implicit ctx: Context): Tree =
+      if (tree.isTerm)
+        Typed(tree, TypeTree(AnnotatedType(tree.tpe.widenIfUnstable, Annotation(annot))))
+      else
+        Annotated(tree, annot)
+
     /** A synthetic select with that will be turned into an outer path by ExplicitOuter.
      *  @param levels  How many outer levels to select
      *  @param tp      The type of the destination of the outer path.

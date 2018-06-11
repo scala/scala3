@@ -88,7 +88,7 @@ class ExpandSAMs extends MiniPhase {
               Bind(defaultSym, Underscore(selectorTpe)),
               EmptyTree,
               defaultValue)
-          val unchecked = Annotated(selector, New(ref(defn.UncheckedAnnotType)))
+          val unchecked = selector.annotated(New(ref(defn.UncheckedAnnotType)))
           cpy.Match(tree)(unchecked, cases :+ defaultCase)
             .subst(param.symbol :: Nil, pfParam :: Nil)
               // Needed because  a partial function can be written as:
