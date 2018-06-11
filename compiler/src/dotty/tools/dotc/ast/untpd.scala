@@ -280,7 +280,14 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Try(expr: Tree, cases: List[CaseDef], finalizer: Tree): Try = new Try(expr, cases, finalizer)
   def SeqLiteral(elems: List[Tree], elemtpt: Tree): SeqLiteral = new SeqLiteral(elems, elemtpt)
   def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree): JavaSeqLiteral = new JavaSeqLiteral(elems, elemtpt)
-  def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree): Inlined = new Inlined(call, bindings, expansion)
+  def Inlined(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree): Inlined = {
+    val tree = new Inlined(call, bindings, expansion)
+    // `expansion.pos` is a position inside the file in which the inline method
+    // is defined (see `TreeCopier#inlineContext` and `Decorators#sourcePos`),
+    // so it must not be taken into account when setting a position for the
+    // Inlined tree.
+    tree.withPos(call.pos)
+  }
   def TypeTree() = new TypeTree()
   def SingletonTypeTree(ref: Tree): SingletonTypeTree = new SingletonTypeTree(ref)
   def AndTypeTree(left: Tree, right: Tree): AndTypeTree = new AndTypeTree(left, right)

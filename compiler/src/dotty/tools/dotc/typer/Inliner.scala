@@ -495,7 +495,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     // the owner from the inlined method to the current owner.
     val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)(inlineCtx)
 
-    val expansion = inliner(rhsToInline.withPos(call.pos))
+    val expansion = inliner(rhsToInline)
     trace(i"inlining $call\n, BINDINGS =\n${bindingsBuf.toList}%\n%\nEXPANSION =\n$expansion", inlining, show = true) {
 
       // The final expansion runs a typing pass over the inlined tree. See InlineTyper for details.
