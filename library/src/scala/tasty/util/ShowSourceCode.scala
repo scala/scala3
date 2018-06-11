@@ -622,7 +622,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case TypeTree.Singleton(ref) =>
         printTree(ref)
-        this += ".type"
+        ref match {
+          case Term.Literal(_) => this
+          case _ => this += ".type"
+        }
 
       case TypeTree.Refined(tpt, refinements) =>
         printTypeTree(tpt)
