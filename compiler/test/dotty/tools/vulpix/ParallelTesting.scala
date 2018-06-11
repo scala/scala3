@@ -1125,9 +1125,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   }
 
   /** Separates directories from files and returns them as `(dirs, files)` */
-  private def compilationTargets(sourceDir: JFile, blacklist: Set[String] = Set.empty): (List[JFile], List[JFile]) =
+  private def compilationTargets(sourceDir: JFile, blacklisted: String => Boolean = _ => false): (List[JFile], List[JFile]) =
     sourceDir.listFiles.foldLeft((List.empty[JFile], List.empty[JFile])) { case ((dirs, files), f) =>
-      if (blacklist(f.getName)) (dirs, files)
+      if (blacklisted(f.getName)) (dirs, files)
       else if (f.isDirectory) (f :: dirs, files)
       else if (isSourceFile(f)) (dirs, f :: files)
       else (dirs, files)
@@ -1225,12 +1225,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  - Directories can have an associated check-file, where the check file has
    *    the same name as the directory (with the file extension `.check`)
    */
-  def compileFilesInDir(f: String, flags: TestFlags, blacklist: Set[String] = Set.empty)(implicit testGroup: TestGroup): CompilationTest = {
+  def compileFilesInDir(f: String, flags: TestFlags, blacklisted: String => Boolean = _ => false)(implicit testGroup: TestGroup): CompilationTest = {
     val outDir = defaultOutputDir + testGroup + "/"
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
 
-    val (dirs, files) = compilationTargets(sourceDir, blacklist)
+    val (dirs, files) = compilationTargets(sourceDir, blacklisted)
 
     val targets =
       files.map(f => JointCompilationSource(testGroup.name, Array(f), flags, createOutputDirsForFile(f, sourceDir, outDir))) ++
@@ -1260,7 +1260,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  Tests in the first part of the tuple must be executed before the second.
    *  Both testsRequires explicit delete().
    */
-  def compileTastyInDir(f: String, flags0: TestFlags, blacklist: Set[String], recompilationBlacklist: Set[String])(
+  def compileTastyInDir(f: String, flags0: TestFlags, blacklist: Set[String], decompilationBlacklist: Set[String], recompilationWhitelist: Set[String])(
       implicit testGroup: TestGroup): TastyCompilationTest = {
     val outDir = defaultOutputDir + testGroup + "/"
     val flags = flags0 and "-Yretain-trees"
@@ -1282,7 +1282,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     val targets2 =
       filteredFiles
-        .filter(f => dotty.tools.io.File(f.toPath).changeExtension("decompiled").exists)
+        .filter(f => !decompilationBlacklist(f.getName))
         .map { f =>
           val classpath = createOutputDirsForFile(f, sourceDir, outDir)
           JointCompilationSource(testGroup.name, Array(f), flags.withClasspath(classpath.getPath), classpath, decompilation = true)
@@ -1296,28 +1296,31 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     if (targets2.isEmpty)
       new JFile(decompilationDir).mkdirs()
 
+    val recompilationBlacklisted =
+      (f: String) => !recompilationWhitelist(f)
+
     new TastyCompilationTest(
       generateClassFiles.keepOutput,
       new CompilationTest(targets).keepOutput,
       new CompilationTest(targets2).keepOutput,
-      recompilationBlacklist,
+      recompilationBlacklisted,
       decompilationDir,
       shouldDelete = true
     )
   }
 
   class TastyCompilationTest(step1: CompilationTest, step2: CompilationTest, step3: CompilationTest,
-      recompilationBlacklist: Set[String], decompilationDir: String, shouldDelete: Boolean)(implicit testGroup: TestGroup) {
+      recompilationBlacklisted: String => Boolean, decompilationDir: String, shouldDelete: Boolean)(implicit testGroup: TestGroup) {
 
     def keepOutput: TastyCompilationTest =
-      new TastyCompilationTest(step1, step2, step3, recompilationBlacklist, decompilationDir, shouldDelete)
+      new TastyCompilationTest(step1, step2, step3, recompilationBlacklisted, decompilationDir, shouldDelete)
 
     def checkCompile()(implicit summaryReport: SummaryReporting): this.type = {
       step1.checkCompile() // Compile all files to generate the class files with tasty
       step2.checkCompile() // Compile from tasty
       step3.checkCompile() // Decompile from tasty
 
-      val step4 = compileFilesInDir(decompilationDir, defaultOptions, recompilationBlacklist).keepOutput
+      val step4 = compileFilesInDir(decompilationDir, defaultOptions, recompilationBlacklisted).keepOutput
       step4.checkCompile() // Recompile decompiled code
 
       if (shouldDelete)
@@ -1331,7 +1334,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       step2.checkRuns() // Compile from tasty
       step3.checkCompile() // Decompile from tasty
 
-      val step4 = compileFilesInDir(decompilationDir, defaultOptions, recompilationBlacklist).keepOutput
+      val step4 = compileFilesInDir(decompilationDir, defaultOptions, recompilationBlacklisted).keepOutput
       step4.checkRuns() // Recompile decompiled code
 
       if (shouldDelete)

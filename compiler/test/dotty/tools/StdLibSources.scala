@@ -1,9 +1,8 @@
 package dotty.tools
 
 import java.io.File
-import scala.io.Source
-import org.junit.Test
-import org.junit.Assert._
+
+import dotty.tools.ListOfSources.loadList
 
 object StdLibSources {
 
@@ -12,7 +11,7 @@ object StdLibSources {
   def blacklistFile: String = "compiler/test/dotc/scala-collections.blacklist"
 
   def whitelisted: List[String] = all.diff(blacklisted)
-  def blacklisted: List[String] = loadList(blacklistFile)
+  def blacklisted: List[String] = loadList(blacklistFile).map(stdLibPath + _)
 
   def all: List[String] = {
     def collectAllFilesInDir(dir: File, acc: List[String]): List[String] = {
@@ -22,13 +21,5 @@ object StdLibSources {
     }
     collectAllFilesInDir(new File(stdLibPath), Nil)
   }
-
-  private def loadList(path: String): List[String] = Source.fromFile(path, "UTF8").getLines()
-    .map(_.trim) // allow identation
-    .filter(!_.startsWith("#")) // allow comment lines prefixed by #
-    .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
-    .filter(_.nonEmpty)
-    .map(stdLibPath + _)
-    .toList
 
 }
