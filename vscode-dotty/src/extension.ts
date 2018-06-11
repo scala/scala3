@@ -16,7 +16,7 @@ export function activate(context: ExtensionContext) {
   extensionContext = context
   outputChannel = vscode.window.createOutputChannel('Dotty Language Client');
 
-  const sbtArtifact = "org.scala-sbt:sbt-launch:1.1.4"
+  const sbtArtifact = "org.scala-sbt:sbt-launch:1.1.5"
   const loadPluginArtifact = "ch.epfl.scala:load-plugin_2.12:0.1.0+2-496ac670"
   const languageServerArtifactFile = `${vscode.workspace.rootPath}/.dotty-ide-artifact`
   const languageServerDefaultConfigFile = path.join(extensionContext.extensionPath, './out/default-dotty-ide-config')
