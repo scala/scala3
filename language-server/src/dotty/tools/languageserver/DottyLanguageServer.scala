@@ -328,7 +328,9 @@ class DottyLanguageServer extends LanguageServer
     if (sym == NoSymbol) Nil.asJava
     else {
       val refs = Interactive.namedTrees(uriTrees, Include.references | Include.overriding, sym)
-      refs.map(ref => new DocumentHighlight(range(ref.namePos), DocumentHighlightKind.Read)).asJava
+      ( for (ref <- refs if ref.namePos.exists)
+        yield new DocumentHighlight(range(ref.namePos), DocumentHighlightKind.Read)
+      ).asJava
     }
   }
 
