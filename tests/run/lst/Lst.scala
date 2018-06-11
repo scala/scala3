@@ -347,7 +347,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
       Lst(x, elem)
   }
 
-  def +: [U >: T](x: U): Lst[U] = elems match {
+  def :+ [U >: T](x: U): Lst[U] = elems match {
     case null => Lst(x)
     case elems: Arr =>
       val newElems = new Arr(elems.length + 1)
