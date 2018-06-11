@@ -18,6 +18,7 @@ export function activate(context: ExtensionContext) {
 
   const sbtArtifact = "org.scala-sbt:sbt-launch:1.1.5"
   const loadPluginArtifact = "ch.epfl.scala:load-plugin_2.12:0.1.0+2-496ac670"
+  const buildSbtFile = `${vscode.workspace.rootPath}/build.sbt`
   const languageServerArtifactFile = `${vscode.workspace.rootPath}/.dotty-ide-artifact`
   const languageServerDefaultConfigFile = path.join(extensionContext.extensionPath, './out/default-dotty-ide-config')
   const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
@@ -37,21 +38,20 @@ export function activate(context: ExtensionContext) {
     })
 
   } else {
-
-    // Check whether `.dotty-ide-artifact` exists to know whether the IDE has been already
-    // configured (via `configureIDE` for instance). If not, start sbt and run `configureIDE`.
-    if (!fs.existsSync(languageServerArtifactFile)) {
+    // Check whether `.dotty-ide-artifact` exists. If it does, start the language server,
+    // otherwise, try to auto-configure it if there's no build.sbt
+    if (fs.existsSync(languageServerArtifactFile)) {
+      runLanguageServer(coursierPath, languageServerArtifactFile)
+    } else if (!fs.existsSync(buildSbtFile)) {
       fs.readFile(languageServerDefaultConfigFile, (err, data) => {
         if (err) throw err
         else {
           const [languageServerScalaVersion, sbtDottyVersion] = data.toString().trim().split(/\r?\n/)
-            fetchAndConfigure(coursierPath, sbtArtifact, languageServerScalaVersion, sbtDottyVersion, loadPluginArtifact).then(() => {
-              runLanguageServer(coursierPath, languageServerArtifactFile)
-            })
+          fetchAndConfigure(coursierPath, sbtArtifact, languageServerScalaVersion, sbtDottyVersion, loadPluginArtifact).then(() => {
+            runLanguageServer(coursierPath, languageServerArtifactFile)
+          })
         }
       })
-    } else {
-        runLanguageServer(coursierPath, languageServerArtifactFile)
     }
   }
 }
