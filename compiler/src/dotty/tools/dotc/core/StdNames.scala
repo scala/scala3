@@ -688,7 +688,7 @@ object StdNames {
   class ScalaTermNames extends ScalaNames[TermName] {
     protected implicit def fromString(s: String): TermName = termName(s)
 
-    @switch def syntheticParamName(i: Int): TermName = i match {
+    def syntheticParamName(i: Int): TermName = (i: @switch) match {
       case 0  => x_0
       case 1  => x_1
       case 2  => x_2
@@ -702,7 +702,7 @@ object StdNames {
       case _  => termName("x$" + i)
     }
 
-    @switch def productAccessorName(j: Int): TermName = j match {
+    def productAccessorName(j: Int): TermName = (j: @switch) match {
       case 1  => nme._1
       case 2  => nme._2
       case 3  => nme._3

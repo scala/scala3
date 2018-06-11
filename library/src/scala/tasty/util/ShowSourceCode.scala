@@ -772,7 +772,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def +=(x: Char): this.type = { sb.append(x); this }
     def +=(x: String): this.type = { sb.append(x); this }
 
-    @switch private def escapedChar(ch: Char): String = ch match {
+    private def escapedChar(ch: Char): String = (ch: @switch) match {
       case '\b' => "\\b"
       case '\t' => "\\t"
       case '\n' => "\\n"
