@@ -443,7 +443,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(denot: Denotation): Text = toText(denot.symbol) ~ "/D"
 
-  @switch private def escapedChar(ch: Char): String = ch match {
+  private def escapedChar(ch: Char): String = (ch: @switch) match {
     case '\b' => "\\b"
     case '\t' => "\\t"
     case '\n' => "\\n"

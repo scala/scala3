@@ -1,13 +1,8 @@
 package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Constants._
-import dotty.tools.dotc.core.quoted.PickledQuotes
-import dotty.tools.dotc.printing.RefinedPrinter
 
 import scala.quoted.Expr
-import scala.runtime.BoxedUnit
 import scala.quoted.Exprs.{LiftedExpr, TastyTreeExpr}
 import scala.runtime.quoted._
 
@@ -32,20 +27,7 @@ object Toolbox {
         new QuoteDriver().run(expr, runSettings)
     }
 
-    def show(expr: Expr[T]): String = expr match {
-      case expr: LiftedExpr[T] =>
-        expr.value match {
-          case value: Class[_] => s"classOf[${value.getCanonicalName}]"
-          case value if value == BoxedUnit.UNIT => "()"
-          case value =>
-            implicit val ctx = new QuoteDriver().initCtx
-            if (showSettings.compilerArgs.contains("-color:never"))
-              ctx.settings.color.update("never")
-            val printer = new RefinedPrinter(ctx)
-            printer.toText(Literal(Constant(value))).mkString(Int.MaxValue, false)
-        }
-      case _ => new QuoteDriver().show(expr, showSettings)
-    }
+    def show(expr: Expr[T]): String = new QuoteDriver().show(expr, showSettings)
 
   }
 
