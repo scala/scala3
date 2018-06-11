@@ -39,16 +39,23 @@ export function activate(context: ExtensionContext) {
 
   } else {
     // Check whether `.dotty-ide-artifact` exists. If it does, start the language server,
-    // otherwise, try to auto-configure it if there's no build.sbt
+    // otherwise, try propose to start it if there's no build.sbt
     if (fs.existsSync(languageServerArtifactFile)) {
       runLanguageServer(coursierPath, languageServerArtifactFile)
     } else if (!fs.existsSync(buildSbtFile)) {
-      fs.readFile(languageServerDefaultConfigFile, (err, data) => {
-        if (err) throw err
-        else {
-          const [languageServerScalaVersion, sbtDottyVersion] = data.toString().trim().split(/\r?\n/)
-          fetchAndConfigure(coursierPath, sbtArtifact, languageServerScalaVersion, sbtDottyVersion, loadPluginArtifact).then(() => {
-            runLanguageServer(coursierPath, languageServerArtifactFile)
+      vscode.window.showInformationMessage(
+          "This looks like an unconfigured project. Would you like to start Dotty IDE?",
+          "Yes", "No"
+      ).then(choice => {
+        if (choice == "Yes") {
+          fs.readFile(languageServerDefaultConfigFile, (err, data) => {
+            if (err) throw err
+            else {
+              const [languageServerScalaVersion, sbtDottyVersion] = data.toString().trim().split(/\r?\n/)
+              fetchAndConfigure(coursierPath, sbtArtifact, languageServerScalaVersion, sbtDottyVersion, loadPluginArtifact).then(() => {
+                runLanguageServer(coursierPath, languageServerArtifactFile)
+              })
+            }
           })
         }
       })
