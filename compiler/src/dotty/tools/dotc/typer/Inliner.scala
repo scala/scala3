@@ -124,7 +124,7 @@ object Inliner {
         if needsAccessor(tree.symbol) && tree.isTerm && !tree.symbol.isConstructor =>
           val (refPart, targs, argss) = decomposeCall(tree)
           val qual = qualifier(refPart)
-          println(i"adding receiver passing inline accessor for $tree/$refPart -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
+          inlining.println(i"adding receiver passing inline accessor for $tree/$refPart -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
 
           // Need to dealias in order to cagtch all possible references to abstracted over types in
           // substitutions
