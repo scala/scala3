@@ -46,7 +46,7 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with t
   private val commentUnpicklerOpt = unpickler.unpickle(new CommentsSectionUnpickler)
   private val treeUnpickler = unpickler.unpickle(treeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)).get
 
-  protected def mode: TreeUnpickler.UnpickleMode = TreeUnpickler.UnpickleMode.TopLevel
+  protected val mode: TreeUnpickler.UnpickleMode = TreeUnpickler.UnpickleMode.TopLevel
 
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling

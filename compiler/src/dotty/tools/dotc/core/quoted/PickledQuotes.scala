@@ -104,7 +104,7 @@ object PickledQuotes {
       new TastyPrinter(bytes).printContents()
     }
 
-    val unpickler = new TastyUnpickler(bytes, splices, isType)
+    val unpickler = new QuoteUnpickler(bytes, splices, isType)
     unpickler.enter(Set.empty)
     val tree = unpickler.tree
 
