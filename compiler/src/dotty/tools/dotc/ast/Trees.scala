@@ -227,8 +227,9 @@ object Trees {
                 case y: List[_] => x.corresponds(y)(isSame)
                 case _ => false
               }
+            case x: Constant => x == y
             case _ =>
-              false
+              throw new AssertionError(s"Unexpected Tree in Tree comparison $x (comparing to $y)")
           }
         }
       this.getClass == that.getClass && {
