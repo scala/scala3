@@ -9,6 +9,13 @@ class HoverTest {
   @Test def hoverOnWhiteSpace0: Unit =
     code"$m1 $m2".withSource.hover(m1 to m2, "")
 
+  @Test def hoverOnClassShowsDoc: Unit = {
+    code"""$m1 /** foo */ ${m2}class Foo $m3 $m4""".withSource
+      .hover(m1 to m2, "")
+      .hover(m2 to m3, "/** foo */ / Foo")
+      .hover(m3 to m4, "")
+  }
+
   @Test def hoverOnClass0: Unit = {
     code"""$m1 ${m2}class Foo $m3 $m4""".withSource
       .hover(m1 to m2, "")

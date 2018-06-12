@@ -340,13 +340,17 @@ class DottyLanguageServer extends LanguageServer
     implicit val ctx = driver.currentCtx
 
     val pos = sourcePosition(driver, uri, params.getPosition)
-    val tp = Interactive.enclosingType(driver.openedTrees(uri), pos)
+    val trees = driver.openedTrees(uri)
+    val tp = Interactive.enclosingType(trees, pos)
     val tpw = tp.widenTermRefExpr
 
     if (tpw == NoType) new Hover
     else {
+      import dotty.tools.dotc.core.Comments._
+      val symbol = Interactive.enclosingSourceSymbol(trees, pos)
+      val doc = ctx.docCtx.flatMap(_.docstring(symbol)).map(_.raw + " / ").getOrElse("")
       val str = tpw.show.toString
-      new Hover(List(JEither.forLeft(str)).asJava, null)
+      new Hover(List(JEither.forLeft(doc + str)).asJava, null)
     }
   }
 
