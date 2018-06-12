@@ -264,4 +264,27 @@ class TestBCode extends DottyBytecodeTest {
       }
     }
   }
+
+  // See #4430
+  @Test def javaBridgesAreNotVisible = {
+    val source =
+      """
+        |class Test {
+        |  def test = (new java.lang.StringBuilder()).append(Array[Char](), 0, 0)
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      // We check the method call signature to make sure we don't call a Java bridge
+      val clsIn = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val testMethod = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(testMethod)
+      val containsExpectedCall = instructions.exists {
+        case Invoke(_, "java/lang/StringBuilder", "append", "([CII)Ljava/lang/StringBuilder;", _) => true
+        case _ => false
+      }
+      assertTrue(containsExpectedCall)
+    }
+  }
 }

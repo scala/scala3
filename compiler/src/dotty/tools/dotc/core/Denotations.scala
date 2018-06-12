@@ -488,6 +488,7 @@ object Denotations {
               (!sym2.isAsConcrete(sym1) ||
                 precedes(sym1.owner, sym2.owner) ||
                 accessBoundary(sym2).isProperlyContainedIn(accessBoundary(sym1)) ||
+                sym2.is(Bridge) && !sym1.is(Bridge) ||
                 sym1.is(Method) && !sym2.is(Method)) ||
               sym1.info.isErroneous)
 
