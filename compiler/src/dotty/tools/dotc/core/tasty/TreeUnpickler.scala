@@ -1298,10 +1298,18 @@ class TreeUnpickler(reader: TastyReader,
 
 object TreeUnpickler {
 
+  /** Define the expected format of the tasty bytes
+   *   - TopLevel: Tasty that contains a full class nested in its package
+   *   - Term: Tasty that contains only a term tree
+   *   - TypeTree: Tasty that contains only a type tree or a reference to a type
+   */
   sealed trait UnpickleMode
   object UnpickleMode {
+    /** Unpickle a full class in some package */
     object TopLevel extends UnpickleMode
+    /** Unpickle as a TermTree */
     object Term extends UnpickleMode
+    /** Unpickle as a TypeTree */
     object TypeTree extends UnpickleMode
   }
 
