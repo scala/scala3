@@ -349,8 +349,8 @@ class DottyLanguageServer extends LanguageServer
       import dotty.tools.dotc.core.Comments._
       val symbol = Interactive.enclosingSourceSymbol(trees, pos)
       val docComment = ctx.docCtx.flatMap(_.docstring(symbol))
-      val markedString = docMarkedString(docComment, tpw.show.toString)
-      new Hover(List(JEither.forRight(markedString)).asJava, null)
+      val markedStrings = docMarkedStrings(docComment, tpw.show.toString)
+      new Hover(markedStrings.map(JEither.forRight(_)).asJava, null)
     }
   }
 
@@ -467,18 +467,16 @@ object DottyLanguageServer {
     item
   }
 
-  private def docMarkedString(comment: Option[Comment], info: String): lsp4j.MarkedString = {
+  private def docMarkedStrings(comment: Option[Comment], typeInfo: String): List[lsp4j.MarkedString] = {
 
-    val formattedComment = comment.map { comment =>
-      s"""```scala
-         |${comment.raw}
-         |```
-         |""".stripMargin
-    }.getOrElse("")
+    val docHover = comment.map { comment =>
+      new lsp4j.MarkedString("scala", comment.raw)
+    }
 
-    val markedString = new lsp4j.MarkedString()
-    markedString.setValue(formattedComment + info)
-    markedString
+    val typeInfoHover = new lsp4j.MarkedString()
+    typeInfoHover.setValue(typeInfo)
+
+    docHover.toList :+ typeInfoHover
   }
 
 
