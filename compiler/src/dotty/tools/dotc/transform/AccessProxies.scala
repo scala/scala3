@@ -47,7 +47,8 @@ abstract class AccessProxies {
           if (passReceiverAsArg(accessor.name))
             (argss.head.head.select(accessed), tps.takeRight(numTypeParams), argss.tail)
           else
-            (ref(TermRef(cls.thisType, accessed)), tps, argss)
+            (if (accessed.isStatic) ref(accessed) else ref(TermRef(cls.thisType, accessed)),
+             tps, argss)
         val rhs =
           if (accessor.name.isSetterName &&
               forwardedArgss.nonEmpty && forwardedArgss.head.nonEmpty) // defensive conditions
@@ -69,6 +70,11 @@ abstract class AccessProxies {
 
     def accessorNameKind: ClassifiedNameKind
     def needsAccessor(sym: Symbol)(implicit ctx: Context): Boolean
+
+    def ifNoHost(reference: RefTree)(implicit ctx: Context): Tree = {
+      assert(false, "no host found for $reference with ${reference.symbol.showLocated} from ${ctx.owner}")
+      reference
+    }
 
     /** A fresh accessor symbol */
     private def newAccessorSymbol(owner: Symbol, name: TermName, info: Type, pos: Position)(implicit ctx: Context): TermSymbol = {
@@ -125,18 +131,14 @@ abstract class AccessProxies {
     def useAccessor(reference: RefTree)(implicit ctx: Context): Tree = {
       val accessed = reference.symbol.asTerm
       var accessorClass = hostForAccessorOf(accessed: Symbol)
-      if (!accessorClass.exists) {
-        val curCls = ctx.owner.enclosingClass
-        transforms.println(i"${curCls.ownersIterator.toList}%, %")
-        ctx.error(i"illegal access to protected ${accessed.showLocated} from $curCls",
-          reference.pos)
-        accessorClass = curCls
+      if (accessorClass.exists) {
+        val accessorName = accessorNameKind(accessed.name)
+        val accessorInfo =
+          accessed.info.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
+        val accessor = accessorSymbol(accessorClass, accessorName, accessorInfo, accessed)
+        rewire(reference, accessor)
       }
-      val accessorName = accessorNameKind(accessed.name)
-      val accessorInfo =
-        accessed.info.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
-      val accessor = accessorSymbol(accessorClass, accessorName, accessorInfo, accessed)
-      rewire(reference, accessor)
+      else ifNoHost(reference)
     }
 
     /** Replace tree with a reference to an accessor if needed */
@@ -156,6 +158,12 @@ object AccessProxies {
   /** Where an accessor for the `accessed` symbol should be placed.
    *  This is the closest enclosing class that has `accessed` as a member.
    */
-  def hostForAccessorOf(accessed: Symbol)(implicit ctx: Context): Symbol =
-    ctx.owner.ownersIterator.findSymbol(_.derivesFrom(accessed.owner))
+  def hostForAccessorOf(accessed: Symbol)(implicit ctx: Context): Symbol = {
+    def recur(cls: Symbol): Symbol =
+      if (!cls.exists) NoSymbol
+      else if (cls.derivesFrom(accessed.owner)) cls
+      else if (cls.companionModule.moduleClass == accessed.owner) accessed.owner
+      else recur(cls.owner)
+    recur(ctx.owner)
+  }
 }

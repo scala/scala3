@@ -8,6 +8,7 @@ import core.Flags._
 import core.Decorators._
 import MegaPhase.MiniPhase
 import ast.Trees._
+import config.Printers.transforms
 
 /** Add accessors for all protected accesses. An accessor is needed if
  *  according to the rules of the JVM a protected class member is not accesissible
@@ -56,6 +57,14 @@ class ProtectedAccessors extends MiniPhase {
     val insert = new Insert {
       def accessorNameKind = ProtectedAccessorName
       def needsAccessor(sym: Symbol)(implicit ctx: Context) = ProtectedAccessors.needsAccessor(sym)
+
+      override def ifNoHost(reference: RefTree)(implicit ctx: Context): Tree = {
+        val curCls = ctx.owner.enclosingClass
+        transforms.println(i"${curCls.ownersIterator.toList}%, %")
+        ctx.error(i"illegal access to protected ${reference.symbol.showLocated} from $curCls",
+          reference.pos)
+        reference
+      }
     }
   }
 
