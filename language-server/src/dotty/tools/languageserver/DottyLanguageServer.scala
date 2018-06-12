@@ -476,7 +476,7 @@ object DottyLanguageServer {
     val typeInfoHover = new lsp4j.MarkedString()
     typeInfoHover.setValue(typeInfo)
 
-    docHover.toList :+ typeInfoHover
+    typeInfoHover :: docHover.toList
   }
 
 
