@@ -19,7 +19,7 @@ import scala.io.Codec
 import dotc._
 import ast.{Trees, tpd}
 import core._, core.Decorators.{sourcePos => _, _}
-import Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import Comments.Comment, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.MessageContainer
 import util._
@@ -348,9 +348,9 @@ class DottyLanguageServer extends LanguageServer
     else {
       import dotty.tools.dotc.core.Comments._
       val symbol = Interactive.enclosingSourceSymbol(trees, pos)
-      val doc = ctx.docCtx.flatMap(_.docstring(symbol)).map(_.raw + " / ").getOrElse("")
-      val str = tpw.show.toString
-      new Hover(List(JEither.forLeft(doc + str)).asJava, null)
+      val docComment = ctx.docCtx.flatMap(_.docstring(symbol))
+      val markedString = docMarkedString(docComment, tpw.show.toString)
+      new Hover(List(JEither.forRight(markedString)).asJava, null)
     }
   }
 
@@ -466,6 +466,21 @@ object DottyLanguageServer {
     item.setKind(completionItemKind(sym))
     item
   }
+
+  private def docMarkedString(comment: Option[Comment], info: String): lsp4j.MarkedString = {
+
+    val formattedComment = comment.map { comment =>
+      s"""```scala
+         |${comment.raw}
+         |```
+         |""".stripMargin
+    }.getOrElse("")
+
+    val markedString = new lsp4j.MarkedString()
+    markedString.setValue(formattedComment + info)
+    markedString
+  }
+
 
   /** Create an lsp4j.SymbolInfo from a Symbol and a SourcePosition */
   def symbolInfo(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): lsp4j.SymbolInformation = {

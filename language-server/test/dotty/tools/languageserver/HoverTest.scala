@@ -12,7 +12,10 @@ class HoverTest {
   @Test def hoverOnClassShowsDoc: Unit = {
     code"""$m1 /** foo */ ${m2}class Foo $m3 $m4""".withSource
       .hover(m1 to m2, "")
-      .hover(m2 to m3, "/** foo */ / Foo")
+      .hover(m2 to m3, """```scala
+                         |/** foo */
+                         |```
+                         |Foo""".stripMargin)
       .hover(m3 to m4, "")
   }
 

@@ -21,8 +21,9 @@ class CodeHover(override val range: CodeRange, expected: String) extends ActionO
     else {
       assertEquals(1, result.getContents.size)
       val content = result.getContents.get(0)
-      assertTrue(content.isLeft)
-      assertEquals(expected, content.getLeft)
+      assertTrue(content.isRight)
+      val markedString = content.getRight.getValue
+      assertEquals(expected, markedString)
     }
   }
 
