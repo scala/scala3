@@ -287,4 +287,27 @@ class TestBCode extends DottyBytecodeTest {
       assertTrue(containsExpectedCall)
     }
   }
+
+  @Test def partialFunctions = {
+    val source =
+      """object Foo {
+        |  def magic(x: Int) = x
+        |  val foo: PartialFunction[Int, Int] = { case x => magic(x) }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      // We test that the anonymous class generated for the partial function
+      // holds the method implementations and does not use forwarders
+      val clsIn = dir.lookupName("Foo$$anon$1.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val applyOrElse = getMethod(clsNode, "applyOrElse")
+      val instructions = instructionsFromMethod(applyOrElse)
+      val callMagic = instructions.exists {
+        case Invoke(_, _, "magic", _, _) => true
+        case _ => false
+      }
+      assertTrue(callMagic)
+    }
+  }
 }
