@@ -785,6 +785,10 @@ object SymDenotations {
     def isTransparentMethod(implicit ctx: Context): Boolean =
       is(TransparentMethod, butNot = Accessor)
 
+    /** Does this symbol have a transparent owner, itself included? */
+    def isTransitivelyTransparent(implicit ctx: Context): Boolean =
+      ownersIterator.exists(_.isTransparentMethod)
+
     def isInlineableMethod(implicit ctx: Context) = isInlinedMethod || isTransparentMethod
 
     /** ()T and => T types should be treated as equivalent for this symbol.

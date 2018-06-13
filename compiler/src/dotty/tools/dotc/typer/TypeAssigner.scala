@@ -459,8 +459,13 @@ trait TypeAssigner {
   def assignType(tree: untpd.Inlined, bindings: List[Tree], expansion: Tree)(implicit ctx: Context) =
     tree.withType(avoidingType(expansion, bindings))
 
-  def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) =
-    tree.withType(thenp.tpe | elsep.tpe)
+  def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) = {
+    val underlying = thenp.tpe | elsep.tpe
+    if (ctx.owner.isTransitivelyTransparent)
+      tree.withType(TypeOf.fromUntyped(tree, underlying))
+    else
+      tree.withType(underlying)
+  }
 
   def assignType(tree: untpd.Closure, meth: Tree, target: Tree)(implicit ctx: Context) =
     tree.withType(
@@ -470,8 +475,13 @@ trait TypeAssigner {
   def assignType(tree: untpd.CaseDef, body: Tree)(implicit ctx: Context) =
     tree.withType(body.tpe)
 
-  def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) =
-    tree.withType(ctx.typeComparer.lub(cases.tpes))
+  def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) = {
+    val underlying = ctx.typeComparer.lub(cases.tpes)
+    if (ctx.owner.isTransitivelyTransparent)
+      tree.withType(TypeOf.fromUntyped(tree, underlying))
+    else
+      tree.withType(underlying)
+  }
 
   def assignType(tree: untpd.Return)(implicit ctx: Context) =
     tree.withType(defn.NothingType)
