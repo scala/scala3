@@ -490,9 +490,13 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.SingletonTypeTree, ref: Tree)(implicit ctx: Context) = {
     val tp = ref match {
-      case _: TypeApply | _: Apply | _: If | _: Match => TypeOf(ref, ref.tpe)
       case _: Literal | _: Ident | _: Select | _: Block => ref.tpe
-      case _ => throw new AssertionError(i"Tree $ref is not a valid reference for a singleton type tree.")
+      case _ =>
+        if (TypeOf.isLegalTopLevelTree(ref))
+          if (ref.tpe.isInstanceOf[TypeOf]) ref.tpe
+          else TypeOf(ref, ref.tpe)
+        else
+          throw new AssertionError(i"Tree $ref is not a valid reference for a singleton type tree.")
     }
     tree.withType(tp)
   }

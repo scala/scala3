@@ -238,6 +238,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         !tp2.evaluating && recur(tp1, tp2.ref)
       case tp2: AnnotatedType if !tp2.isRefining =>
         recur(tp1, tp2.parent)
+      case tp2: TypeOf =>
+        tp1 == tp2 || secondTry
       case tp2: ThisType =>
         def compareThis = {
           val cls2 = tp2.cls
