@@ -46,6 +46,12 @@ object Match {
     b match { case true => 1; case false => 2 }
 }
 
+object Applied {
+  transparent def foo1(b: Boolean) = ???
+  transparent def foo2(b: Boolean): { foo1(b) } = foo1(b)
+  val a: { foo2(true) } = foo2(true)
+}
+
 // object AvoidLocalRefs {
 //   type Id[T] = T
 

@@ -3932,8 +3932,7 @@ object Types {
   // ----- TypeOf -------------------------------------------------------------------------
 
   class TypeOf(val underlyingTp: Type, val tree: Tree)(implicit ctx: Context) extends AnnotatedType(underlyingTp, Annotation(defn.TypeOfAnnot, tree)) {
-    assert(TypeOf.isLegalTopLevelTree(tree), s"Illegal top-level tree: $tree")
-    assert(!underlyingTp.isInstanceOf[TypeOf])
+    assert(TypeOf.isLegalTopLevelTree(tree), i"Illegal top-level tree in TypeOf: $tree")
 
     override def equals(that: Any): Boolean = {
       that match {
@@ -4149,19 +4148,40 @@ object Types {
             val tp1 = this(tree.tpe)
             if (tp eq tp1) tree else tree.withTypeUnchecked(tp1).asInstanceOf[ThisTree]
           }
+          val ta = ctx.typeAssigner
+          import ta.assignType
           val tree1 = tp.tree match {
             case tree: TypeApply =>
-              cpy.TypeApply(tree)(copyMapped(tree.fun), tree.args.mapConserve(copyMapped))
+              val fun = copyMapped(tree.fun)
+              val args = tree.args.mapConserve(copyMapped)
+              assignType(cpy.TypeApply(tree)(fun, args), fun, args)
             case tree: Apply =>
-              cpy.Apply(tree)(copyMapped(tree.fun), tree.args.mapConserve(copyMapped))
+              val fun = copyMapped(tree.fun)
+              val args = tree.args.mapConserve(copyMapped)
+              assignType(cpy.Apply(tree)(fun, args), fun, args)
             case tree: If =>
-              cpy.If(tree)(copyMapped(tree.cond), copyMapped(tree.thenp), copyMapped(tree.elsep))
+              val thenp = copyMapped(tree.thenp)
+              val elsep = copyMapped(tree.elsep)
+              assignType(cpy.If(tree)(copyMapped(tree.cond), thenp, elsep), thenp, elsep)
             case tree: Match =>
-              cpy.Match(tree)(copyMapped(tree.selector), tree.cases.mapConserve(copyMapped))
+              val cases = tree.cases.mapConserve(copyMapped)
+              assignType(cpy.Match(tree)(copyMapped(tree.selector), cases), cases)
             case tree =>
               throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
           }
-          derivedTypeOf(tp, this(tp.underlyingTp), tree1)
+          val result = derivedTypeOf(tp, tree1.tpe, tree1)
+          // Restore the invariant that the type of the TypeOf tree is the
+          // TypeOf type itself. Here is an example showing what would go wrong
+          // if we didn't do that. Suppose we have
+          //   def f(x: Int) = x
+          //   def g(x: Int) = 2 * x
+          //   def h(f: Int => Int) = f(1)
+          //   h(g): { 2 * 1 }
+          // Given a type map substituting f for g in f(1), the underlying
+          // type should be substituted to the result type of g(1), that is,
+          // 2 * 1.
+          tree1.overwriteType(result)
+          result
 
         case tp @ AnnotatedType(underlying, annot) =>
           val underlying1 = this(underlying)
