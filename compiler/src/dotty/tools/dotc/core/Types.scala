@@ -3944,6 +3944,15 @@ object Types {
       else TypeOf(tree, underlyingTp)
   }
 
+  object TypeOf {
+    /** To be used from type assigner. The assumption is that tree is currently
+     *  being type assigned, and will be typed by the time it reaches the
+     *  outside world.
+     */
+    private[dotc] def fromUntyped(tree: untpd.Tree, tpe: Type): TypeOf =
+      TypeOf(tree.asInstanceOf[Tree], tpe)
+  }
+
   // ----- TypeMaps --------------------------------------------------------------------
 
   /** Common base class of TypeMap and TypeAccumulator */
