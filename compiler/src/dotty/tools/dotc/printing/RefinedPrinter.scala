@@ -541,23 +541,24 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     if (ctx.settings.XprintTypes.value && tree.hasType) {
       // add type to term nodes; replace type nodes with their types unless -Yprint-pos is also set.
-      def tp = tree.typeOpt match {
-        case tp: TermRef if tree.isInstanceOf[RefTree] && !tp.denot.isOverloaded => tp.underlying
+      def tpText: Text = tree.typeOpt match {
+        case tp: TermRef if tree.isInstanceOf[RefTree] && !tp.denot.isOverloaded => toText(tp.underlying)
         case tp: ConstantType if homogenizedView =>
           // constant folded types are forgotten in Tasty, are reconstituted subsequently in FirstTransform.
           // Therefore we have to gloss over this when comparing before/after pickling by widening to
           // underlying type `T`, or, if expression is a unary primitive operation, to `=> T`.
-          tree match {
+          toText(tree match {
             case Select(qual, _) if qual.typeOpt.widen.typeSymbol.isPrimitiveValueClass =>
               ExprType(tp.widen)
             case _ => tp.widen
-          }
-        case tp => tp
+          })
+        case _: TypeOf => "<idem>"
+        case tp => toText(tp)
       }
       if (!suppressTypes)
-        txt = ("<" ~ txt ~ ":" ~ toText(tp) ~ ">").close
+        txt = ("<" ~ txt ~ ":" ~ tpText ~ ">").close
       else if (tree.isType && !homogenizedView)
-        txt = toText(tp)
+        txt = tpText
     }
     if (!suppressPositions) {
       if (printPos) {

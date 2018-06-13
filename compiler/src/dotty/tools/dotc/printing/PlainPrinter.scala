@@ -485,9 +485,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
     val nodeName = tree.productPrefix
     val elems =
       Text(tree.productIterator.map(toTextElem).toList, ", ")
-    val tpSuffix =
+    val tpSuffix: Text =
       if (ctx.settings.XprintTypes.value && tree.hasType)
-        " | " ~ toText(tree.typeOpt)
+        tree.typeOpt match {
+          case tp: TypeOf if tp.tree.tpe eq tp => " | <idem>"
+          case tp => " | " ~ toText(tree.typeOpt)
+        }
       else
         Text()
 
