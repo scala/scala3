@@ -605,16 +605,10 @@ object Trees {
    */
   class TypeVarBinder[-T >: Untyped] extends TypeTree[T]
 
-  /** ref.type */
+  /** ref.type  or  { ref } */
   case class SingletonTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = SingletonTypeTree[T]
-  }
-
-  /** { expr1 }, aka TypeOf type */
-  case class TypeOfTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])
-    extends DenotingTree[T] with TypTree[T] {
-    type ThisTree[-T >: Untyped] = TypeOfTypeTree[T]
   }
 
   /** left & right */
@@ -894,7 +888,6 @@ object Trees {
     type Inlined = Trees.Inlined[T]
     type TypeTree = Trees.TypeTree[T]
     type SingletonTypeTree = Trees.SingletonTypeTree[T]
-    type TypeOfTypeTree = Trees.TypeOfTypeTree[T]
     type AndTypeTree = Trees.AndTypeTree[T]
     type OrTypeTree = Trees.OrTypeTree[T]
     type RefinedTypeTree = Trees.RefinedTypeTree[T]
@@ -1047,10 +1040,6 @@ object Trees {
       def SingletonTypeTree(tree: Tree)(ref: Tree): SingletonTypeTree = tree match {
         case tree: SingletonTypeTree if ref eq tree.ref => tree
         case _ => finalize(tree, untpd.SingletonTypeTree(ref))
-      }
-      def TypeOfTypeTree(tree: Tree)(ref: Tree): TypeOfTypeTree = tree match {
-        case tree: TypeOfTypeTree if ref eq tree.ref => tree
-        case _ => finalize(tree, untpd.TypeOfTypeTree(ref))
       }
       def AndTypeTree(tree: Tree)(left: Tree, right: Tree): AndTypeTree = tree match {
         case tree: AndTypeTree if (left eq tree.left) && (right eq tree.right) => tree
@@ -1211,8 +1200,6 @@ object Trees {
             tree
           case SingletonTypeTree(ref) =>
             cpy.SingletonTypeTree(tree)(transform(ref))
-          case TypeOfTypeTree(ref) =>
-            cpy.TypeOfTypeTree(tree)(transform(ref))
           case AndTypeTree(left, right) =>
             cpy.AndTypeTree(tree)(transform(left), transform(right))
           case OrTypeTree(left, right) =>
@@ -1327,8 +1314,6 @@ object Trees {
           case TypeTree() =>
             x
           case SingletonTypeTree(ref) =>
-            this(x, ref)
-          case TypeOfTypeTree(ref) =>
             this(x, ref)
           case AndTypeTree(left, right) =>
             this(this(x, left), right)

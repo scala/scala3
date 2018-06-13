@@ -481,13 +481,13 @@ trait TypeAssigner {
     tree.withType(ownType)
   }
 
-  def assignType(tree: untpd.SingletonTypeTree, ref: Tree)(implicit ctx: Context) =
-    tree.withType(ref.tpe)
-
-  def assignType(tree: untpd.TypeOfTypeTree, ref: Tree)(implicit ctx: Context) = {
-    val typeOf = TypeOf(ref, ref.tpe)
-    ref.withTypeUnchecked(typeOf)
-    tree.withType(typeOf)
+  def assignType(tree: untpd.SingletonTypeTree, ref: Tree)(implicit ctx: Context) = {
+    val tp = ref match {
+      case _: TypeApply | _: Apply | _: If | _: Match => TypeOf(ref, ref.tpe)
+      case _: Literal | _: Ident | _: Select | _: Block => ref.tpe
+      case _ => throw new AssertionError(i"Tree $ref is not a valid reference for a singleton type tree.")
+    }
+    tree.withType(tp)
   }
 
   def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =

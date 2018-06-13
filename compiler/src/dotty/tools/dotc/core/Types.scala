@@ -3931,7 +3931,7 @@ object Types {
 
   // ----- TypeOf -------------------------------------------------------------------------
 
-  case class TypeOf(tree: Tree, underlyingTp: Type) extends UncachedProxyType /* with SingletonType */ {
+  case class TypeOf(tree: Tree, underlyingTp: Type) extends UncachedProxyType with SingletonType {
     def underlying(implicit ctx: Context) = underlyingTp
 
     def equals(that: Type): Boolean = that match {
@@ -4092,24 +4092,21 @@ object Types {
           else derivedAnnotatedType(tp, underlying1, mapOver(annot))
 
         case tp: TypeOf =>
-          // TODO: Don't clone if type is unchanged
-          def copyMapped(tree: Tree): Tree = tree.clone.withTypeUnchecked(this(tree.tpe))
+          def copyMapped[ThisTree <: Tree](tree: ThisTree): ThisTree = {
+            val tp1 = this(tree.tpe)
+            if (tp eq tp1) tree else tree.withTypeUnchecked(tp1).asInstanceOf[ThisTree]
+          }
           val tree1 = tp.tree match {
+            case tree: TypeApply =>
+              cpy.TypeApply(tree)(copyMapped(tree.fun), tree.args.mapConserve(copyMapped))
             case tree: Apply =>
               cpy.Apply(tree)(copyMapped(tree.fun), tree.args.mapConserve(copyMapped))
             case tree: If =>
               cpy.If(tree)(copyMapped(tree.cond), copyMapped(tree.thenp), copyMapped(tree.elsep))
-            case tree: Ident =>
-              copyMapped(tree)
-            case tree: Select =>
-              cpy.Select(tree)(copyMapped(tree.qualifier), tree.name)
-            case tree: Literal =>
-              copyMapped(tree)
-            case tree: Block =>
-              copyMapped(tree)
             case tree: Match =>
-              ???
-            case tree => throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
+              cpy.Match(tree)(copyMapped(tree.selector), tree.cases.mapConserve(copyMapped))
+            case tree =>
+              throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
           }
           derivedTypeOf(tp, tree1, this(tp.underlyingTp))
 

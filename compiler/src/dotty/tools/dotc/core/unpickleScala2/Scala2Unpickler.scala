@@ -1198,8 +1198,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case SINGLETONTYPEtree =>
         SingletonTypeTree(readTreeRef())
 
-      // TODO case TypeOfTypeTree =>
-
       case SELECTFROMTYPEtree =>
         val qualifier = readTreeRef()
         val selector = readTypeNameRef()
