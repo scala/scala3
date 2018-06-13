@@ -4426,6 +4426,16 @@ object Types {
           if (underlying.isBottomType) underlying
           else tp.derivedAnnotatedType(underlying, annot)
       }
+
+    override protected def derivedTypeOf(tp: TypeOf, underlying: Type, tree: Tree) =
+      underlying match {
+        case Range(lo, hi) =>
+          range(tp.derivedTypeOf(lo, tree), tp.derivedTypeOf(hi, tree))
+        case _ =>
+          if (underlying.isBottomType) underlying
+          else tp.derivedTypeOf(underlying, tree)
+      }
+
     override protected def derivedWildcardType(tp: WildcardType, bounds: Type) = {
       tp.derivedWildcardType(rangeToBounds(bounds))
     }
@@ -4444,10 +4454,6 @@ object Types {
         case _ =>
           tp.derivedLambdaType(tp.paramNames, formals, restpe)
       }
-
-    // TODO: Implement derivedTypeOf in ApproximatingTypeMap
-//    override protected def derivedTypeOf(tp: TypeOf, tree: Tree, underlyingTp: Type): Type =
-//      tp.derivedTypeOf(tree, underlyingTp)
 
     protected def reapply(tp: Type): Type = apply(tp)
   }
