@@ -10,6 +10,7 @@ import ValueClasses._
 import SymUtils._
 import core.Flags._
 import util.Positions._
+import reporting.diagnostic.messages.TypeTestAlwaysSucceeds
 import reporting.trace
 
 
@@ -90,9 +91,7 @@ object TypeTestsCasts {
 
           if (expr.tpe <:< testType)
             if (expr.tpe.isNotNull) {
-              ctx.warning(
-                em"this will always yield true, since `$foundCls` is a subclass of `$testCls`",
-                expr.pos)
+              ctx.warning(TypeTestAlwaysSucceeds(foundCls, testCls), tree.pos)
               constant(expr, Literal(Constant(true)))
             }
             else expr.testNotNull
