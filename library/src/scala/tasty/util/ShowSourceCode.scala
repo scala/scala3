@@ -536,6 +536,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         body match {
           case Term.Block(stats, expr) =>
             printTrees(stats, lineBreak())
+            if (stats.nonEmpty)
+              this += lineBreak()
             printTree(expr)
           case body =>
             printTree(body)
