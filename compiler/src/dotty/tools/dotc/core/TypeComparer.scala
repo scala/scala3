@@ -569,7 +569,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             false
         }
         compareTypeBounds
-      case tp2: AnnotatedType if tp2.isRefining =>
+      case tp2: AnnotatedType if tp2.isRefining && !tp2.isInstanceOf[TypeOf] =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || defn.isBottomType(tp1)) &&
         recur(tp1, tp2.parent)
       case ClassInfo(pre2, cls2, _, _, _) =>
