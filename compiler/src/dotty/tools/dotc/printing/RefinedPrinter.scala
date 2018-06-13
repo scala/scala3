@@ -790,6 +790,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else "some " ~ toText(denot.info)
   }
 
+  override def toText(annot: Annotation): Text = annotText(annot.tree)
+
   override def plain = new PlainPrinter(_ctx)
 
   private def withPos(txt: Text, pos: SourcePosition): Text = {

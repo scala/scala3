@@ -8,6 +8,7 @@ import MegaPhase._
 import SymUtils._
 import ast.untpd
 import ast.Trees._
+import Annotations._
 import dotty.tools.dotc.reporting.diagnostic.messages.TypeMismatch
 import dotty.tools.dotc.util.Positions.Position
 
@@ -88,7 +89,7 @@ class ExpandSAMs extends MiniPhase {
               Bind(defaultSym, Underscore(selectorTpe)),
               EmptyTree,
               defaultValue)
-          val unchecked = selector.annotated(New(ref(defn.UncheckedAnnotType)))
+          val unchecked = selector.annotated(Annotation(defn.UncheckedAnnot))
           cpy.Match(tree)(unchecked, cases :+ defaultCase)
             .subst(param.symbol :: Nil, pfParam :: Nil)
               // Needed because  a partial function can be written as:
