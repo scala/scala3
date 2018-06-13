@@ -224,7 +224,9 @@ Standard Section: "Positions" Assoc*
 
 Standard Section: "Comments" Comment*
 
-  Comment       = Length Bytes              // Raw comment's bytes encoded as UTF-8
+  Comment       = Length Bytes Byte         // Raw comment's bytes encoded as UTF-8, plus a byte indicating
+                                            // whether the comment is expanded (1) or not expanded (0)
+
 
 **************************************************************************************/
 

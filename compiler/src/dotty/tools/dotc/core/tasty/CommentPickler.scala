@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.tasty.TastyBuffer.Addr
 import java.nio.charset.Charset
 
 class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr])(implicit ctx: Context) {
-  val buf = new TastyBuffer(5000)
+  private[this] val buf = new TastyBuffer(5000)
   pickler.newSection("Comments", buf)
 
   def pickleComment(root: tpd.Tree): Unit =
@@ -21,7 +21,7 @@ class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr]
       buf.writeAddr(addr)
       buf.writeNat(length)
       buf.writeBytes(bytes, length)
-      buf.writeBoolean(cmt.isExpanded)
+      buf.writeByte(if (cmt.isExpanded) 1 else 0)
     case other =>
       ()
   }
