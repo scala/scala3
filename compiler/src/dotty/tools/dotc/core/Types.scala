@@ -3962,6 +3962,10 @@ object Types {
     def derivedTypeOf(tree: Tree, underlyingTp: Type)(implicit ctx: Context): TypeOf =
       if ((this.tree eq tree) && (this.underlyingTp eq underlyingTp)) this
       else TypeOf(tree, underlyingTp)
+
+    override def derivedAnnotatedType(parent: Type, annot: Annotation): AnnotatedType =
+      if ((parent eq this.parent) && (annot eq this.annot)) this
+      else TypeOf(annot.arguments.head, parent)
   }
 
   object TypeOf {
