@@ -752,6 +752,8 @@ class Definitions {
   def ThrowsAnnot(implicit ctx: Context) = ThrowsAnnotType.symbol.asClass
   lazy val TransientAnnotType                = ctx.requiredClassRef("scala.transient")
   def TransientAnnot(implicit ctx: Context) = TransientAnnotType.symbol.asClass
+  lazy val TypeOfAnnotType               = ctx.requiredClassRef("scala.annotation.internal.TypeOf")
+  def TypeOfAnnot(implicit ctx: Context) = TypeOfAnnotType.symbol.asClass
   lazy val UncheckedAnnotType = ctx.requiredClassRef("scala.unchecked")
   def UncheckedAnnot(implicit ctx: Context) = UncheckedAnnotType.symbol.asClass
   lazy val UncheckedStableAnnotType = ctx.requiredClassRef("scala.annotation.unchecked.uncheckedStable")

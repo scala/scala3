@@ -3931,11 +3931,9 @@ object Types {
 
   // ----- TypeOf -------------------------------------------------------------------------
 
-  case class TypeOf(tree: Tree, underlyingTp: Type) extends UncachedProxyType with SingletonType {
+  class TypeOf(val tree: Tree, val underlyingTp: Type)(implicit ctx: Context) extends AnnotatedType(underlyingTp, Annotation(defn.TypeOfAnnot, tree)) {
     assert(TypeOf.isLegalTopLevelTree(tree), s"Illegal top-level tree: $tree")
     assert(!underlyingTp.isInstanceOf[TypeOf])
-
-    def underlying(implicit ctx: Context) = underlyingTp
 
     override def equals(that: Any): Boolean = {
       that match {
@@ -3967,11 +3965,13 @@ object Types {
   }
 
   object TypeOf {
+    def apply(tree: Tree, underlyingTp: Type)(implicit ctx: Context): TypeOf = new TypeOf(tree, underlyingTp)
+
     /** To be used from type assigner. The assumption is that tree is currently
      *  being type assigned, and will be typed by the time it reaches the
      *  outside world.
      */
-    private[dotc] def fromUntyped(tree: untpd.Tree, tpe: Type): TypeOf =
+    private[dotc] def fromUntyped(tree: untpd.Tree, tpe: Type)(implicit ctx: Context): TypeOf =
       TypeOf(tree.asInstanceOf[Tree], tpe)
 
     private[dotc] def isLegalTopLevelTree(tree: Tree): Boolean = tree match {
@@ -4122,11 +4122,6 @@ object Types {
         case tp: SkolemType =>
           tp
 
-        case tp @ AnnotatedType(underlying, annot) =>
-          val underlying1 = this(underlying)
-          if (underlying1 eq underlying) tp
-          else derivedAnnotatedType(tp, underlying1, mapOver(annot))
-
         case tp: TypeOf =>
           def copyMapped[ThisTree <: Tree](tree: ThisTree): ThisTree = {
             val tp1 = this(tree.tpe)
@@ -4145,6 +4140,11 @@ object Types {
               throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
           }
           derivedTypeOf(tp, tree1, this(tp.underlyingTp))
+
+        case tp @ AnnotatedType(underlying, annot) =>
+          val underlying1 = this(underlying)
+          if (underlying1 eq underlying) tp
+          else derivedAnnotatedType(tp, underlying1, mapOver(annot))
 
         case tp: WildcardType =>
           derivedWildcardType(tp, mapOver(tp.optBounds))
