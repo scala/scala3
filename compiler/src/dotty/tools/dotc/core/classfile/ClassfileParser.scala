@@ -798,8 +798,9 @@ class ClassfileParser(
               Array.empty[Byte]
             case Some(jar: ZipArchive) => // We are in a jar
               val jarFile = JarArchive.open(io.File(jar.jpath))
-              try readTastyForClass(jarFile.jpath.resolve(classfile.path))
-              finally jarFile.close()
+              readTastyForClass(jarFile.jpath.resolve(classfile.path))
+              // Do not close the file system as some else might use it later. Once closed it cannot be re-opened.
+              // TODO find a way to safly close the file system or ose some other abstraction
             case _ =>
               readTastyForClass(classfile.jpath)
           }

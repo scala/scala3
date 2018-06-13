@@ -1,6 +1,6 @@
 package dotty.tools.io
 
-import java.nio.file.{Files, FileSystem, FileSystems}
+import java.nio.file.{FileSystemAlreadyExistsException, FileSystems}
 
 import scala.collection.JavaConverters._
 
@@ -9,7 +9,7 @@ import scala.collection.JavaConverters._
  * that be can used as the compiler's output directory.
  */
 class JarArchive private (root: Directory) extends PlainDirectory(root) {
-  def close() = jpath.getFileSystem().close()
+  def close(): Unit = jpath.getFileSystem().close()
 }
 
 object JarArchive {
@@ -28,8 +28,12 @@ object JarArchive {
     // https://docs.oracle.com/javase/7/docs/technotes/guides/io/fsp/zipfilesystemprovider.html
     val env = Map("create" -> create.toString).asJava
     val uri = java.net.URI.create("jar:file:" + path.toAbsolute.path)
-    val fs = FileSystems.newFileSystem(uri, env)
-
+    val fs = {
+      try FileSystems.newFileSystem(uri, env)
+      catch {
+        case _: FileSystemAlreadyExistsException => FileSystems.getFileSystem(uri)
+      }
+    }
     val root = fs.getRootDirectories().iterator.next()
     new JarArchive(Directory(root))
   }
