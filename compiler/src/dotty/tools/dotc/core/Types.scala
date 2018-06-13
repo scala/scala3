@@ -3989,6 +3989,16 @@ object Types {
         case _ => None
       }
     }
+
+    object Match {
+      def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
+        case Trees.Match(cond, cases) =>
+          // TODO: We only look at .body.tpe for now, eventually we should
+          // also take the guard and the pattern into account.
+          Some((cond.tpe, cases.map(_.body.tpe)))
+        case _ => None
+      }
+    }
   }
 
   // ----- TypeMaps --------------------------------------------------------------------

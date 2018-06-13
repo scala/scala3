@@ -978,6 +978,11 @@ class Typer extends Namer
         val unchecked = pt.isRef(defn.PartialFunctionClass)
         typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
       case _ =>
+        val selectProto = pt match {
+          case TypeOf.Match(s, _) => s
+          case _ => WildcardType
+        }
+
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
 
@@ -987,7 +992,7 @@ class Typer extends Namer
     }
   }
 
-  def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context) = {
+  def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context): List[CaseDef] = {
 
     /** gadtSyms = "all type parameters of enclosing methods that appear
      *              non-variantly in the selector type" todo: should typevars
@@ -1009,7 +1014,12 @@ class Typer extends Namer
       accu(Set.empty, selType)
     }
 
-    cases mapconserve (typedCase(_, pt, selType, gadtSyms))
+    pt match {
+      case TypeOf.Match(_, cs) if cs.length == cases.length =>
+        cases.zip(cs).mapconserve { case (c, p) => typedCase(c, p, selType, gadtSyms) }
+      case _ =>
+        cases.mapconserve(typedCase(_, pt, selType, gadtSyms))
+    }
   }
 
   /** Type a case. */
