@@ -56,8 +56,47 @@ class ExpandSAMs extends MiniPhase {
       tree
   }
 
+  /** A partial function literal:
+   *
+   *  ```
+   *  val x: PartialFunction[A, B] = { case C1 => E1; ...; case Cn => En }
+   *  ```
+   *
+   *  which desugars to:
+   *
+   *  ```
+   *  val x: PartialFunction[A, B] = {
+   *    def $anonfun(x: A): B = x match { case C1 => E1; ...; case Cn => En }
+   *    closure($anonfun: PartialFunction[A, B])
+   *  }
+   *  ```
+   *
+   *  is expanded to an anomymous class:
+   *
+   *  ```
+   *  val x: PartialFunction[A, B] = {
+   *    class $anon extends AbstractPartialFunction[A, B] {
+   *      final def isDefinedAt(x: A): Boolean = x match {
+   *        case C1 => true
+   *        ...
+   *        case Cn => true
+   *        case _  => false
+   *      }
+   *
+   *      final def applyOrElse[A1 <: A, B1 >: B](x: A1, default: A1 => B1): B1 = x match {
+   *        case C1 => E1
+   *        ...
+   *        case Cn => En
+   *        case _  => default(x)
+   *      }
+   *    }
+   *
+   *    new $anon
+   *  }
+   *  ```
+   */
   private def toPartialFunction(tree: Block, tpe: Type)(implicit ctx: Context): Tree = {
-    // /** An extractor for match, either contained in a block or standalone. */
+    /** An extractor for match, either contained in a block or standalone. */
     object PartialFunctionRHS {
       def unapply(tree: Tree): Option[Match] = tree match {
         case Block(Nil, expr) => unapply(expr)
