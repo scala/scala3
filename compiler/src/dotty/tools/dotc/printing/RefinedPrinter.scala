@@ -38,6 +38,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   /** A stack of enclosing DefDef, TypeDef, or ClassDef, or ModuleDefs nodes */
   private[this] var enclosingDef: untpd.Tree = untpd.EmptyTree
   private[this] var myCtx: Context = super.ctx
+  private[this] var printTypeOfTree: Boolean = true
   private[this] var printPos = ctx.settings.YprintPos.value
   private[this] val printLines = ctx.settings.printLines.value
 
@@ -552,7 +553,16 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
               ExprType(tp.widen)
             case _ => tp.widen
           })
-        case _: TypeOf => "<idem>"
+        case TypeOf(tpe, tree) =>
+          if (printTypeOfTree)
+            try {
+              // Only print 1 level of TypeOf; breaks the type→tree→type loop
+              printTypeOfTree = false
+              toText(tree)
+            } finally {
+              printTypeOfTree = true
+            }
+          else toText(tpe)
         case tp => toText(tp)
       }
       if (!suppressTypes)
