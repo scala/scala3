@@ -707,10 +707,16 @@ class Typer extends Namer
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
-    val cond1 = typed(tree.cond, defn.BooleanType)
+    val (condProto, thenProto, elseProto) =
+      pt match {
+        case TypeOf.If(c, t ,e) => (c, t, e)
+        case _ => (defn.BooleanType, pt.notApplied, pt.notApplied)
+      }
+
+    val cond1 = typed(tree.cond, condProto)
     val thenp2 :: elsep2 :: Nil = harmonic(harmonize) {
-      val thenp1 = typed(tree.thenp, pt.notApplied)
-      val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
+      val thenp1 = typed(tree.thenp, thenProto)
+      val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), elseProto)
       thenp1 :: elsep1 :: Nil
     }
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)

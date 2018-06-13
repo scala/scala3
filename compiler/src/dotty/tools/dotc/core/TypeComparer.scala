@@ -236,10 +236,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         compareWild
       case tp2: LazyRef =>
         !tp2.evaluating && recur(tp1, tp2.ref)
+      case tp2: TypeOf =>
+        tp2 == tp1 || secondTry
       case tp2: AnnotatedType if !tp2.isRefining =>
         recur(tp1, tp2.parent)
-      case tp2: TypeOf =>
-        tp1 == tp2 || secondTry
       case tp2: ThisType =>
         def compareThis = {
           val cls2 = tp2.cls

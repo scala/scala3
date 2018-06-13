@@ -21,7 +21,7 @@ import util.Stats._
 import util.{DotClass, SimpleIdentitySet}
 import reporting.diagnostic.Message
 import ast.tpd._
-import ast.TreeTypeMap
+import ast.{Trees, TreeTypeMap}
 import printing.Texts._
 import ast.untpd
 import dotty.tools.dotc.transform.Erasure
@@ -3981,6 +3981,13 @@ object Types {
     private[dotc] def isLegalTopLevelTree(tree: Tree): Boolean = tree match {
       case _: TypeApply | _: Apply | _: If | _: Match => true
       case _ => false
+    }
+
+    object If {
+      def unapply(to: TypeOf): Option[(Type, Type, Type)] = to.tree match {
+        case Trees.If(cond, thenb, elseb) => Some((cond.tpe, thenb.tpe, elseb.tpe))
+        case _ => None
+      }
     }
   }
 

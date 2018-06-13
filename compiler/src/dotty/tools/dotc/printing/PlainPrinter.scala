@@ -141,8 +141,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
         ParamRefNameString(tp) ~ ".type"
       case tp: TypeParamRef =>
         ParamRefNameString(tp) ~ lambdaHash(tp.binder)
-      case tp: TypeOf =>
-        "{ " ~ toTextLocal(tp.tree) ~ " }"
       case tp: SingletonType =>
         toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
       case AppliedType(tycon, args) =>
@@ -185,6 +183,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           (Str(" => ") provided !tp.resultType.isInstanceOf[MethodType]) ~
           toTextGlobal(tp.resultType)
         }
+      case tp: TypeOf =>
+        "{ " ~ toTextLocal(tp.tree) ~ " }"
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
