@@ -21,6 +21,7 @@ import printing.Printer
 import io.AbstractFile
 import config.Config
 import util.common._
+import util.Stats
 import collection.mutable.ListBuffer
 import Decorators.SymbolIteratorDecorator
 
@@ -174,6 +175,7 @@ object Denotations {
   abstract class Denotation(val symbol: Symbol) extends PreDenotation with printing.Showable {
 
     type AsSeenFromResult <: Denotation
+    Stats.record("Denotation")
 
     /** The type info of the denotation, exists only for non-overloaded denotations */
     def info(implicit ctx: Context): Type
@@ -286,35 +288,6 @@ object Denotations {
         case denot =>
           denot.symbol
       }
-
-    def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol =
-      info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
-    def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef =
-      requiredMethod(name).termRef
-
-    def requiredMethod(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = {
-      info.member(name.toTermName).requiredSymbol { x =>
-        (x is Method) && {
-          x.info.paramInfoss match {
-            case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)
-            case _ => false
-          }
-        }
-      }.asTerm
-    }
-    def requiredMethodRef(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermRef =
-      requiredMethod(name, argTypes).termRef
-
-    def requiredValue(name: PreName)(implicit ctx: Context): TermSymbol =
-      info.member(name.toTermName).requiredSymbol(_.info.isParameterless).asTerm
-    def requiredValueRef(name: PreName)(implicit ctx: Context): TermRef =
-      requiredValue(name).termRef
-
-    def requiredClass(name: PreName)(implicit ctx: Context): ClassSymbol =
-      info.member(name.toTypeName).requiredSymbol(_.isClass).asClass
-
-    def requiredType(name: PreName)(implicit ctx: Context): TypeSymbol =
-      info.member(name.toTypeName).requiredSymbol(_.isType).asType
 
     /** The alternative of this denotation that has a type matching `targetType` when seen
      *  as a member of type `site`, `NoDenotation` if none exists.
@@ -1140,6 +1113,8 @@ object Denotations {
     def denot1: PreDenotation
     def denot2: PreDenotation
 
+    Stats.record("MultiPreDenotation")
+
     assert(denot1.exists && denot2.exists, s"Union of non-existing denotations ($denot1) and ($denot2)")
     def first = denot1.first
     def last = denot2.last
@@ -1291,7 +1266,7 @@ object Denotations {
 
   /** An exception for accessing symbols that are no longer valid in current run */
   class StaleSymbol(msg: => String) extends Exception {
-    util.Stats.record("stale symbol")
+    Stats.record("stale symbol")
     override def getMessage() = msg
   }
 }

@@ -625,7 +625,7 @@ class Definitions {
     lazy val Product_productPrefixR = ProductClass.requiredMethodRef(nme.productPrefix)
     def Product_productPrefix(implicit ctx: Context) = Product_productPrefixR.symbol
   lazy val LanguageModuleRef = ctx.requiredModule("scala.language")
-  def LanguageModuleClass(implicit ctx: Context) = LanguageModuleRef.symbol.moduleClass.asClass
+  def LanguageModuleClass(implicit ctx: Context) = LanguageModuleRef.moduleClass.asClass
   lazy val NonLocalReturnControlType: TypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
   lazy val SelectableType: TypeRef              = ctx.requiredClassRef("scala.Selectable")
 
@@ -638,16 +638,12 @@ class Definitions {
 
   lazy val QuotedExprModuleType = ctx.requiredModuleRef("scala.quoted.Expr")
   def QuotedExprModule(implicit ctx: Context) = QuotedExprModuleType.symbol
-    lazy val QuotedExpr_applyR = QuotedExprModule.requiredMethodRef(nme.apply)
-    def QuotedExpr_apply(implicit ctx: Context) = QuotedExpr_applyR.symbol
-
-    lazy val QuotedExpr_spliceR = QuotedExprClass.requiredMethod(nme.UNARY_~)
-    def QuotedExpr_~(implicit ctx: Context) = QuotedExpr_spliceR.symbol
-    lazy val QuotedExpr_runR = QuotedExprClass.requiredMethodRef(nme.run)
-    def QuotedExpr_run(implicit ctx: Context) = QuotedExpr_runR.symbol
+    def QuotedExpr_apply(implicit ctx: Context) = QuotedExprModule.requiredMethod(nme.apply)
+    def QuotedExpr_~(implicit ctx: Context) = QuotedExprClass.requiredMethod(nme.UNARY_~)
+    def QuotedExpr_run(implicit ctx: Context) =QuotedExprClass.requiredMethodRef(nme.run)
 
   lazy val QuotedExprsModule = ctx.requiredModule("scala.quoted.Exprs")
-  def QuotedExprsClass(implicit ctx: Context) = QuotedExprsModule.symbol.asClass
+  def QuotedExprsClass(implicit ctx: Context) = QuotedExprsModule.asClass
 
   lazy val QuotedTypeType = ctx.requiredClassRef("scala.quoted.Type")
   def QuotedTypeClass(implicit ctx: Context) = QuotedTypeType.symbol.asClass
@@ -668,10 +664,9 @@ class Definitions {
   def Unpickler_unpickleType = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
 
   lazy val TastyUniverseModule = ctx.requiredModule("scala.tasty.Universe")
-  def TastyUniverseModuleClass(implicit ctx: Context) = TastyUniverseModule.symbol.asClass
+  def TastyUniverseModuleClass(implicit ctx: Context) = TastyUniverseModule.moduleClass.asClass
 
-    lazy val TastyUniverse_compilationUniverseR = TastyUniverseModule.requiredMethod("compilationUniverse")
-    def TastyUniverse_compilationUniverse(implicit ctx: Context) = TastyUniverse_compilationUniverseR.symbol
+    lazy val TastyUniverse_compilationUniverse = TastyUniverseModule.requiredMethod("compilationUniverse")
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass

@@ -190,7 +190,7 @@ object LambdaLift {
       def traverse(tree: Tree)(implicit ctx: Context) = try { //debug
         val sym = tree.symbol
 
-        def enclosure = ctx.owner.enclosingMethod.symbol
+        def enclosure = ctx.owner.enclosingMethod
 
         def narrowTo(thisClass: ClassSymbol) = {
           val enclMethod = enclosure

@@ -231,8 +231,8 @@ object Interactive {
         val boundaryCtx = ctx.withOwner(boundary)
         def exclude(sym: Symbol) = sym.isAbsent || sym.is(Synthetic) || sym.is(Artifact)
         def addMember(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
-          buf ++= prefix.member(name).altsWith(d =>
-            !exclude(d) && d.symbol.isAccessibleFrom(prefix)(boundaryCtx))
+          buf ++= prefix.member(name).altsWith(sym =>
+            !exclude(sym) && sym.isAccessibleFrom(prefix)(boundaryCtx))
           prefix.memberDenots(completionsFilter, addMember).map(_.symbol).toList
       }
       else Nil

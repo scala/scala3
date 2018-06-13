@@ -1094,9 +1094,9 @@ object desugar {
         Literal(Constant(scala.Symbol(str)))
       case Quote(expr) =>
         if (expr.isType)
-          TypeApply(ref(defn.QuotedType_applyR), List(expr))
+          TypeApply(ref(defn.QuotedType_apply.termRef), List(expr))
         else
-          Apply(ref(defn.QuotedExpr_applyR), expr)
+          Apply(ref(defn.QuotedExpr_apply.termRef), expr)
       case InterpolatedString(id, segments) =>
         val strs = segments map {
           case ts: Thicket => ts.trees.head

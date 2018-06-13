@@ -29,7 +29,7 @@ import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
-import util.{NoSource, DotClass, Property}
+import util.{NoSource, DotClass, Property, Stats}
 import scala.collection.JavaConverters._
 import config.Printers.typr
 
@@ -416,6 +416,8 @@ object Symbols {
 
     //assert(id != 723)
 
+    Stats.record("Symbol")
+
     def coord: Coord = myCoord
     /** Set the coordinate of this class, this is only useful when the coordinate is
      *  not known at symbol creation. This is the case for root symbols
@@ -432,22 +434,43 @@ object Symbols {
     private[this] var lastDenot: SymDenotation = _
     private[this] var checkedPeriod: Period = Nowhere
 
+    private[this] var cachedName: Name = _
+    private[this] var cachedOwner: Symbol = _
+    private[this] var cachedInfo: Type = _
+    private[this] var cachedFlags: FlagSet = _
+
     private[core] def invalidateDenotCache() = { checkedPeriod = Nowhere }
+
+    private[core] def updateInfoCache(d: SymDenotation, info: Type) =
+      if (lastDenot `eq` d) cachedInfo = info
+
+    private[core] def updateFlagsCache(d: SymDenotation, flags: FlagSet) =
+      if (lastDenot `eq` d) cachedFlags = flags
+
+    private[this] def setLastDenot(d: SymDenotation) = {
+      lastDenot = d
+      cachedName = d.name
+      cachedOwner = d.maybeOwner
+      cachedInfo = d.infoOrCompleter
+      cachedFlags = d.flagsUNSAFE
+    }
 
     /** Set the denotation of this symbol */
     private[core] def denot_=(d: SymDenotation) = {
-      lastDenot = d
+      setLastDenot(d)
       checkedPeriod = Nowhere
     }
 
     /** The current denotation of this symbol */
     final def denot(implicit ctx: Context): SymDenotation = {
+      Stats.record("Symbol.denot")
       val lastd = lastDenot
       if (checkedPeriod == ctx.period) lastd
       else computeDenot(lastd)
     }
 
     private def computeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = {
+      Stats.record("Symbol.computeDenot")
       val now = ctx.period
       checkedPeriod = now
       if (lastd.validFor contains now) lastd else recomputeDenot(lastd)
@@ -455,8 +478,9 @@ object Symbols {
 
     /** Overridden in NoSymbol */
     protected def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context) = {
+      Stats.record("Symbol.recomputeDenot")
       val newd = lastd.current.asInstanceOf[SymDenotation]
-      lastDenot = newd
+      setLastDenot(newd)
       newd
     }
 
@@ -556,21 +580,26 @@ object Symbols {
     /** If this symbol satisfies predicate `p` this symbol, otherwise `NoSymbol` */
     def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
 
-    /** The current name of this symbol */
-    final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]
-
     /** The source or class file from which this class or
      *  the class containing this symbol was generated, null if not applicable.
      *  Overridden in ClassSymbol
      */
     def associatedFile(implicit ctx: Context): AbstractFile =
-      if (lastDenot == null) null else lastDenot.topLevelClass.symbol.associatedFile
+      if (lastDenot == null) null else lastDenot.topLevelClass.associatedFile
 
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(implicit ctx: Context): AbstractFile = {
       val file = associatedFile
       if (file != null && file.extension == "class") file else null
     }
+
+    /** A trap to avoid calling x.symbol on something that is already a symbol.
+     *  This would be expanded to `toDenot(x).symbol` which is guaraneteed to be
+     *  the same as `x`.
+     *  With the given setup, all such calls will give implicit-not found errors
+     */
+    final def symbol(implicit ev: DontUseSymbolOnSymbol): Nothing = unsupported("symbol")
+    type DontUseSymbolOnSymbol
 
     /** The source file from which this class was generated, null if not applicable. */
     final def sourceFile(implicit ctx: Context): AbstractFile = {
@@ -598,13 +627,167 @@ object Symbols {
     def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
 
     // ParamInfo types and methods
-    def isTypeParam(implicit ctx: Context) = denot.is(TypeParam)
-    def paramName(implicit ctx: Context) = name.asInstanceOf[ThisName]
-    def paramInfo(implicit ctx: Context) = denot.info
+    def isTypeParam(implicit ctx: Context) = is(TypeParam)
+    def paramName(implicit ctx: Context) = name
+    def paramInfo(implicit ctx: Context) = info
     def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = pre.memberInfo(this)
-    def paramInfoOrCompleter(implicit ctx: Context): Type = denot.infoOrCompleter
+    def paramInfoOrCompleter(implicit ctx: Context): Type = infoOrCompleter
     def paramVariance(implicit ctx: Context) = denot.variance
     def paramRef(implicit ctx: Context) = denot.typeRef
+
+// -------- Cached SymDenotation facades -----------------------------------------------
+
+    private def ensureUpToDate()(implicit ctx: Context) =
+      if (checkedPeriod != ctx.period) computeDenot(lastDenot)
+
+    /** The current name of this symbol */
+    final def name(implicit ctx: Context): ThisName = {
+      Stats.record("Symbol.name")
+      ensureUpToDate()
+      cachedName.asInstanceOf[ThisName]
+    }
+
+    /** The current name of this symbol */
+    final def maybeOwner(implicit ctx: Context): Symbol = {
+      Stats.record("Symbol.owner")
+      ensureUpToDate()
+      cachedOwner
+    }
+
+    def owner(implicit ctx: Context): Symbol = maybeOwner
+
+    /** The symbol is completed: info is not a lazy type and attributes have defined values */
+    final def isCompleted(implicit ctx: Context): Boolean = {
+      ensureUpToDate()
+      !cachedInfo.isInstanceOf[LazyType]
+    }
+
+    /** The denotation is in train of being completed */
+    final def isCompleting(implicit ctx: Context): Boolean = {
+      ensureUpToDate()
+      cachedInfo.isInstanceOf[LazyType] && cachedFlags.is(Touched)
+    }
+
+    /** Make sure this denotation of this symbol is completed */
+    final def ensureCompleted()(implicit ctx: Context): Unit = {
+      ensureUpToDate()
+      if (cachedInfo.isInstanceOf[LazyType]) denot.ensureCompleted()
+    }
+
+    final def infoOrCompleter(implicit ctx: Context): Type = {
+      Stats.record("Symbol.info")
+      ensureUpToDate()
+      cachedInfo
+    }
+
+    final def info(implicit ctx: Context): Type = {
+      val tp = infoOrCompleter
+      if (tp.isInstanceOf[LazyType]) denot.info else tp
+    }
+
+    final private[dotc] def info_=(tp: Type)(implicit ctx: Context) = denot.info_=(tp)
+
+    final def flags(implicit ctx: Context): FlagSet = {
+      ensureCompleted()
+      val res = cachedFlags
+      assert(res == denot.flags, i"was: ${denot.flags}, now: $res")
+      res
+    }
+
+    final def flags_=(flags: FlagSet)(implicit ctx: Context): Unit = denot.flags_=(flags)
+
+    private def isCurrent(fs: FlagSet) =
+      fs <= (
+        if (cachedInfo.isInstanceOf[SymbolLoader]) FromStartFlags
+        else AfterLoadFlags)
+
+    final def is(fs: FlagSet)(implicit ctx: Context) = {
+      Stats.record("Symbol.is")
+      ensureUpToDate()
+      (if (isCurrent(fs)) cachedFlags else flags).is(fs)
+    }
+
+    /** Has this denotation one of the flags in `fs` set, whereas none of the flags
+     *  in `butNot` are set?
+     */
+    final def is(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context) = {
+      Stats.record("Symbol.is")
+      ensureUpToDate()
+      (if (isCurrent(fs) && isCurrent(butNot)) cachedFlags else flags).is(fs, butNot)
+    }
+
+    /** Has this denotation all of the flags in `fs` set? */
+    final def is(fs: FlagConjunction)(implicit ctx: Context) = {
+      Stats.record("Symbol.is")
+      ensureUpToDate()
+      (if (isCurrent(fs)) cachedFlags else flags).is(fs)
+    }
+
+    /** Has this denotation all of the flags in `fs` set, whereas none of the flags
+     *  in `butNot` are set?
+     */
+    final def is(fs: FlagConjunction, butNot: FlagSet)(implicit ctx: Context) = {
+      Stats.record("Symbol.is")
+      ensureUpToDate()
+      (if (isCurrent(fs) && isCurrent(butNot)) cachedFlags else flags).is(fs, butNot)
+    }
+
+    final def exists(implicit ctx: Context): Boolean = lastDenot.exists  // updating necessary, any denot will do
+
+    final def isRoot(implicit ctx: Context): Boolean = {
+      ensureUpToDate()
+      (maybeOwner eq NoSymbol) && (name.toTermName == nme.ROOT || name == nme.ROOTPKG)
+    }
+
+    final def isEmptyPackage(implicit ctx: Context): Boolean = {
+      ensureUpToDate()
+      name.toTermName == nme.EMPTY_PACKAGE && owner.isRoot
+    }
+
+    def isPrimitiveValueClass(implicit ctx: Context) = {
+      ensureUpToDate()
+      maybeOwner == defn.ScalaPackageClass && defn.ScalaValueClasses().contains(this)
+    }
+
+    /** Is this symbol a package object or its module class? */
+    def isPackageObject(implicit ctx: Context): Boolean = {
+      ensureUpToDate()
+      val nameMatches =
+        if (isType) name == tpnme.PACKAGE.moduleClassName
+        else name == nme.PACKAGE
+      nameMatches && (owner is Package) && (this is Module)
+    }
+
+// -------- Loading nested predefined symbols -----------------------------
+
+    def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol =
+      info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
+    def requiredMethodRef(name: PreName)(implicit ctx: Context): TermRef =
+      requiredMethod(name).termRef
+
+    def requiredMethod(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermSymbol = {
+      info.member(name.toTermName).requiredSymbol { x =>
+        (x is Method) && {
+          x.info.paramInfoss match {
+            case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)
+            case _ => false
+          }
+        }
+      }.asTerm
+    }
+    def requiredMethodRef(name: PreName, argTypes: List[Type])(implicit ctx: Context): TermRef =
+      requiredMethod(name, argTypes).termRef
+
+    def requiredValue(name: PreName)(implicit ctx: Context): TermSymbol =
+      info.member(name.toTermName).requiredSymbol(_.info.isParameterless).asTerm
+    def requiredValueRef(name: PreName)(implicit ctx: Context): TermRef =
+      requiredValue(name).termRef
+
+    def requiredClass(name: PreName)(implicit ctx: Context): ClassSymbol =
+      info.member(name.toTypeName).requiredSymbol(_.isClass).asClass
+
+    def requiredType(name: PreName)(implicit ctx: Context): TypeSymbol =
+      info.member(name.toTypeName).requiredSymbol(_.isType).asType
 
 // -------- Printing --------------------------------------------------------
 
@@ -708,6 +891,7 @@ object Symbols {
   }
 
   @sharable object NoSymbol extends Symbol(NoCoord, 0) {
+    override def owner(implicit ctx: Context): Symbol = throw new AssertionError("NoSymbol.owner")
     override def associatedFile(implicit ctx: Context): AbstractFile = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = NoDenotation
   }
@@ -797,5 +981,4 @@ object Symbols {
 
   @inline def newMutableSymbolMap[T]: MutableSymbolMap[T] =
     new MutableSymbolMap(new java.util.IdentityHashMap[Symbol, T]())
-
 }

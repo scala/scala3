@@ -127,6 +127,8 @@ object SymDenotations {
 
     //assert(symbol.id != 4940, name)
 
+    Stats.record("SymDenotation")
+
     override def hasUniqueSym: Boolean = exists
 
     /** Debug only
@@ -158,14 +160,22 @@ object SymDenotations {
     private def adaptFlags(flags: FlagSet) = if (isType) flags.toTypeFlags else flags.toTermFlags
 
     /** Update the flag set */
-    final def flags_=(flags: FlagSet): Unit =
+    final def flags_=(flags: FlagSet): Unit = {
       myFlags = adaptFlags(flags)
+      symbol.updateFlagsCache(this, myFlags)
+    }
 
     /** Set given flags(s) of this denotation */
-    final def setFlag(flags: FlagSet): Unit = { myFlags |= flags }
+    final def setFlag(flags: FlagSet): Unit = {
+      myFlags |= flags
+      symbol.updateFlagsCache(this, myFlags)
+    }
 
     /** Unset given flags(s) of this denotation */
-    final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
+    final def resetFlag(flags: FlagSet): Unit = {
+      myFlags &~= flags
+      symbol.updateFlagsCache(this, myFlags)
+    }
 
     /** Set applicable flags from `flags` which is a subset of {NoInits, PureInterface} */
     final def setNoInitsFlags(flags: FlagSet): Unit = {
@@ -224,7 +234,7 @@ object SymDenotations {
         indent += 1
 
         if (myFlags is Touched) throw CyclicReference(this)
-        myFlags |= Touched
+        setFlag(Touched)
 
         // completions.println(s"completing ${this.debugString}")
         try completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
@@ -240,7 +250,7 @@ object SymDenotations {
       }
       else {
         if (myFlags is Touched) throw CyclicReference(this)
-        myFlags |= Touched
+        setFlag(Touched)
         completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
       }
 
@@ -257,6 +267,7 @@ object SymDenotations {
         */
       if (Config.checkNoSkolemsInInfo) assertNoSkolems(tp)
       myInfo = tp
+      symbol.updateInfoCache(this, tp)
     }
 
     /** The name, except
@@ -447,8 +458,10 @@ object SymDenotations {
     def isError: Boolean = false
 
     /** Make denotation not exist */
-    final def markAbsent(): Unit =
+    final def markAbsent(): Unit = {
       myInfo = NoType
+      symbol.updateInfoCache(this, NoType)
+    }
 
     /** Is symbol known to not exist, or potentially not completed yet? */
     final def unforcedIsAbsent(implicit ctx: Context): Boolean =
@@ -580,13 +593,13 @@ object SymDenotations {
       myFlags.is(ModuleClass) && (myFlags.is(PackageClass) || isStatic)
 
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
-    final def isCoDefinedWith(that: Symbol)(implicit ctx: Context) =
-      (this.effectiveOwner == that.effectiveOwner) &&
+    final def isCoDefinedWith(other: Symbol)(implicit ctx: Context) =
+      (this.effectiveOwner == other.effectiveOwner) &&
       (  !(this.effectiveOwner is PackageClass)
-        || this.unforcedIsAbsent || that.unforcedIsAbsent
+        || this.unforcedIsAbsent || other.unforcedIsAbsent
         || { // check if they are defined in the same file(or a jar)
            val thisFile = this.symbol.associatedFile
-           val thatFile = that.symbol.associatedFile
+           val thatFile = other.associatedFile
            (  thisFile == null
            || thatFile == null
            || thisFile.path == thatFile.path // Cheap possibly wrong check, then expensive normalization
@@ -1162,11 +1175,31 @@ object SymDenotations {
     /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(implicit ctx: Context): Type = NoPrefix
 
-    override def typeRef(implicit ctx: Context): TypeRef =
-      TypeRef(owner.thisType, symbol)
+    private[this] var cachedRef: NamedType = null
 
-    override def termRef(implicit ctx: Context): TermRef =
-      TermRef(owner.thisType, symbol)
+    def namedRef(implicit ctx: Context): NamedType = {
+      if (cachedRef == null) {
+        val initl = initial
+        val thistpe = maybeOwner.thisType
+        if ((initl `ne` this) && (thistpe `eq` initl.maybeOwner.thisType))
+          cachedRef = initial.namedRef
+        else {
+          Stats.record("namedRef create")
+          cachedRef = ctx.uniqueNamedTypes.newType(thistpe, symbol, isTerm)
+        }
+      }
+      cachedRef
+    }
+
+    override def typeRef(implicit ctx: Context): TypeRef = namedRef match {
+      case ref: TypeRef => ref
+      case _ => defn.AnyClass.typeRef // case arises when compiling parser-stabiility-1.scala
+    }
+
+    override def termRef(implicit ctx: Context): TermRef = namedRef match {
+      case ref: TermRef => ref
+      case _ => defn.EmptyPackageVal.termRef
+    }
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
