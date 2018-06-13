@@ -199,74 +199,94 @@ abstract class Tasty { tasty =>
 
   implicit def termClassTag: ClassTag[Term]
 
+  /** Scala term. Any tree that can go in expression position. */
   val Term: TermModule
   abstract class TermModule {
 
+    /** Matches any term */
     def unapply(x: Term)(implicit ctx: Context): Boolean
 
+    /** Scala term identifier */
     val Ident: IdentExtractor
     abstract class IdentExtractor {
+      /** Matches a term identifier and returns its name */
       def unapply(x: Term)(implicit ctx: Context): Option[String]
     }
 
+    /** Scala term selection */
     val Select: SelectExtractor
     abstract class SelectExtractor {
+      /** Matches `<qual: Term>.<name: String>: <sig: Signature>` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, String, Option[Signature])]
     }
 
+    /** Scala literal constant */
     val Literal: LiteralExtractor
     abstract class LiteralExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[Constant]
     }
 
+    /** Scala `this` or `this[id]` */
     val This: ThisExtractor
     abstract class ThisExtractor {
+      /** Matches new `this[<id: Option[Id]>` */
       def unapply(x: Term)(implicit ctx: Context): Option[Option[Id]]
     }
 
+    /** Scala `new` */
     val New: NewExtractor
     abstract class NewExtractor {
+      /** Matches new `new <tpt: TypeTree>` */
       def unapply(x: Term)(implicit ctx: Context): Option[TypeTree]
     }
 
+    /** Scala named argument `x = y` in argument position */
     val NamedArg: NamedArgExtractor
     abstract class NamedArgExtractor {
+      /** Matches `<name: String> = <value: Term>` */
       def unapply(x: Term)(implicit ctx: Context): Option[(String, Term)]
     }
 
+    /** Scala parameter application */
     val Apply: ApplyExtractor
     abstract class ApplyExtractor {
+      /** Matches function application `<fun: Term>(<args: List[Term]>)` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[Term])]
     }
 
+    /** Scala type parameter application */
     val TypeApply: TypeApplyExtractor
     abstract class TypeApplyExtractor {
+      /** Matches function type application `<fun: Term>[<args: List[TypeTree]>]` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[TypeTree])]
     }
 
+    /** Scala `x.super` or `x.super[id]` */
     val Super: SuperExtractor
     abstract class SuperExtractor {
+      /** Matches new `<qualifier: Term>.super[<id: Option[Id]>` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Option[Id])]
     }
 
+    /** Scala ascription `x: T` */
     val Typed: TypedExtractor
     abstract class TypedExtractor {
+      /** Matches `<x: Term>: <tpt: Term>` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, TypeTree)]
     }
 
+    /** Scala assign `x = y` */
     val Assign: AssignExtractor
     abstract class AssignExtractor {
+      /** Matches `<lhs: Term> = <rhs: Term>` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term)]
     }
 
+    /** Scala code block `{ stat0; ...; statN; expr }` term */
     val Block: BlockExtractor
     abstract class BlockExtractor {
+      /** Matches `{ <statements: List[Statement]>; <expr: Term> }` */
       def unapply(x: Term)(implicit ctx: Context): Option[(List[Statement], Term)]
-    }
-
-    val Inlined: InlinedExtractor
-    abstract class InlinedExtractor {
-      def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[Definition], Term)]
     }
 
     val Lambda: LambdaExtractor
@@ -274,29 +294,42 @@ abstract class Tasty { tasty =>
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Option[TypeTree])]
     }
 
+    /** Scala `if`/`else` term */
     val If: IfExtractor
     abstract class IfExtractor {
+      /** Matches `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term, Term)]
     }
 
+    /** Scala `match` term */
     val Match: MatchExtractor
     abstract class MatchExtractor {
+      /** Matches `<scrutinee: Trem> match { <cases: List[CaseDef]> }` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[CaseDef])]
     }
 
+    /** Scala `try`/`catch`/`finally` term */
     val Try: TryExtractor
     abstract class TryExtractor {
+      /** Matches `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[CaseDef], Option[Term])]
     }
 
+    /** Scala local `return` */
     val Return: ReturnExtractor
     abstract class ReturnExtractor {
+      /** Matches `return <expr: Term>` */
       def unapply(x: Term)(implicit ctx: Context): Option[Term]
     }
 
     val Repeated: RepeatedExtractor
     abstract class RepeatedExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[List[Term]]
+    }
+
+    val Inlined: InlinedExtractor
+    abstract class InlinedExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[Definition], Term)]
     }
 
     val SelectOuter: SelectOuterExtractor
