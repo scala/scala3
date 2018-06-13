@@ -3970,6 +3970,7 @@ object Types {
 
   object TypeOf {
     def apply(underlyingTp: Type, tree: Tree)(implicit ctx: Context): TypeOf = new TypeOf(underlyingTp, tree)
+    def unapply(to: TypeOf): Option[(Type, Tree)] = Some((to.underlyingTp, to.tree))
 
     /** To be used from type assigner. The assumption is that tree is currently
      *  being type assigned, and will be typed by the time it reaches the
