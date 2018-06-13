@@ -325,7 +325,7 @@ class TreeUnpickler(reader: TastyReader,
             case ANNOTATEDtype =>
               AnnotatedType(readType(), Annotation(readTerm()))
             case TYPEOF =>
-              TypeOf(readTerm(), readType())
+              TypeOf(readType(), readTerm())
             case ANDtype =>
               AndType(readType(), readType())
             case ORtype =>

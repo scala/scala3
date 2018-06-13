@@ -3931,7 +3931,7 @@ object Types {
 
   // ----- TypeOf -------------------------------------------------------------------------
 
-  class TypeOf(val tree: Tree, val underlyingTp: Type)(implicit ctx: Context) extends AnnotatedType(underlyingTp, Annotation(defn.TypeOfAnnot, tree)) {
+  class TypeOf(val underlyingTp: Type, val tree: Tree)(implicit ctx: Context) extends AnnotatedType(underlyingTp, Annotation(defn.TypeOfAnnot, tree)) {
     assert(TypeOf.isLegalTopLevelTree(tree), s"Illegal top-level tree: $tree")
     assert(!underlyingTp.isInstanceOf[TypeOf])
 
@@ -3959,24 +3959,24 @@ object Types {
       }
     }
 
-    def derivedTypeOf(tree: Tree, underlyingTp: Type)(implicit ctx: Context): TypeOf =
+    def derivedTypeOf(underlyingTp: Type, tree: Tree)(implicit ctx: Context): TypeOf =
       if ((this.tree eq tree) && (this.underlyingTp eq underlyingTp)) this
-      else TypeOf(tree, underlyingTp)
+      else TypeOf(underlyingTp, tree)
 
     override def derivedAnnotatedType(parent: Type, annot: Annotation): AnnotatedType =
       if ((parent eq this.parent) && (annot eq this.annot)) this
-      else TypeOf(annot.arguments.head, parent)
+      else TypeOf(parent, annot.arguments.head)
   }
 
   object TypeOf {
-    def apply(tree: Tree, underlyingTp: Type)(implicit ctx: Context): TypeOf = new TypeOf(tree, underlyingTp)
+    def apply(underlyingTp: Type, tree: Tree)(implicit ctx: Context): TypeOf = new TypeOf(underlyingTp, tree)
 
     /** To be used from type assigner. The assumption is that tree is currently
      *  being type assigned, and will be typed by the time it reaches the
      *  outside world.
      */
-    private[dotc] def fromUntyped(tree: untpd.Tree, tpe: Type)(implicit ctx: Context): TypeOf =
-      TypeOf(tree.asInstanceOf[Tree], tpe)
+    private[dotc] def fromUntyped(tpe: Type, tree: untpd.Tree)(implicit ctx: Context): TypeOf =
+      TypeOf(tpe, tree.asInstanceOf[Tree])
 
     private[dotc] def isLegalTopLevelTree(tree: Tree): Boolean = tree match {
       case _: TypeApply | _: Apply | _: If | _: Match => true
@@ -4037,8 +4037,8 @@ object Types {
     // note: currying needed  because Scala2 does not support param-dependencies
     protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
       tp.derivedLambdaType(tp.paramNames, formals, restpe)
-    protected def derivedTypeOf(tp: TypeOf, tree: Tree, underlyingTp: Type): Type =
-      tp.derivedTypeOf(tree, underlyingTp)
+    protected def derivedTypeOf(tp: TypeOf, underlyingTp: Type, tree: Tree): Type =
+      tp.derivedTypeOf(underlyingTp, tree)
 
     /** Map this function over given type */
     def mapOver(tp: Type): Type = {
@@ -4143,7 +4143,7 @@ object Types {
             case tree =>
               throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
           }
-          derivedTypeOf(tp, tree1, this(tp.underlyingTp))
+          derivedTypeOf(tp, this(tp.underlyingTp), tree1)
 
         case tp @ AnnotatedType(underlying, annot) =>
           val underlying1 = this(underlying)
