@@ -1186,7 +1186,7 @@ class Typer extends Namer
   }
 
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(implicit ctx: Context): SingletonTypeTree = track("typedSingletonTypeTree") {
-    val ref1 = typedExpr(tree.ref)
+    val ref1 = typedExpr(tree.ref)(ctx.fresh.setTree(tree))
     // TODO: Discuss stability requirements of singleton type trees and potentially reenable check
     // checkStable(ref1.tpe, tree.pos)
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)

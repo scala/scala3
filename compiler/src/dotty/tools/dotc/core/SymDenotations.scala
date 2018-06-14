@@ -787,7 +787,7 @@ object SymDenotations {
 
     /** Does this symbol have a transparent owner, itself included? */
     def isTransitivelyTransparent(implicit ctx: Context): Boolean =
-      ownersIterator.exists(_.isTransparentMethod)
+      ownersIterator.exists(_.isTransparentMethod) || ctx.outersIterator.exists(_.tree.isInstanceOf[SingletonTypeTree[_]])
 
     def isInlineableMethod(implicit ctx: Context) = isInlinedMethod || isTransparentMethod
 

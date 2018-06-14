@@ -1,9 +1,9 @@
-object SimpleEqs {
+/*object SimpleEqs {
   val x = 1
   val y: {x} = x
   // val z: {y + 1} = y + 1
 
-  type YPlusOne = {y + 1}
+  // type YPlusOne = {y + 1}
 }
 
 object Call {
@@ -44,12 +44,13 @@ object Match {
 
   transparent def foo(b: Boolean): { b match { case true => 1; case false => 2 } } =
     b match { case true => 1; case false => 2 }
-}
+}*/
 
 object Applied {
   transparent def foo1(b: Boolean) = ???
-  transparent def foo2(b: Boolean): { foo1(b) } = foo1(b)
-  val a: { foo2(true) } = foo2(true)
+  // transparent def foo2(b: Boolean): { foo1(b) } = foo1(b)
+  transparent def foo2(b: Boolean) = foo1(b)
+  // val a: { foo2(true) } = foo2(true)
 }
 
 // object AvoidLocalRefs {

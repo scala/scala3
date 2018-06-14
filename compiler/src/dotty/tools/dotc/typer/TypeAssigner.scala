@@ -503,8 +503,10 @@ trait TypeAssigner {
       case _: Literal | _: Ident | _: Select | _: Block => ref.tpe
       case _ =>
         if (TypeOf.isLegalTopLevelTree(ref))
-          if (ref.tpe.isInstanceOf[TypeOf]) ref.tpe
-          else TypeOf(ref.tpe, ref)
+          if (ref.tpe.isInstanceOf[TypeOf])
+            ref.tpe
+          else
+            errorType(i"Non-sensical singleton-type expression: $ref", ref.pos)
         else
           throw new AssertionError(i"Tree $ref is not a valid reference for a singleton type tree.")
     }
