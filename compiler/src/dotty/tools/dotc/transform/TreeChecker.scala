@@ -499,6 +499,9 @@ object TreeChecker {
         case tp: TypeVar =>
           assert(tp.isInstantiated, s"Uninstantiated type variable: ${tp.show}, tree = ${tree.show}")
           apply(tp.underlying)
+        case tp: TypeOf =>
+          apply(tp.underlyingTp)
+          mapOver(tp)
         case _ =>
           mapOver(tp)
       }
