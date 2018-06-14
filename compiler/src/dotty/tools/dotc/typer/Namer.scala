@@ -745,10 +745,11 @@ class Namer { typer: Typer =>
       while (c.owner != target) c = c.outer
       c
     }
+
     for (annotTree <- untpd.modsDeco(stat).mods.annotations) {
-      val cls = typedAheadAnnotation(annotTree)(annotCtx)
+      val cls = typedAheadAnnotationClass(annotTree)(annotCtx)
       if (sym.unforcedAnnotation(cls).isEmpty) {
-        val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
+        val ann = Annotation.deferred(cls, implicit ctx => typedAheadAnnotation(annotTree))
         sym.addAnnotation(ann)
         if (cls == defn.InlineAnnot && sym.is(Method, butNot = Accessor))
           sym.setFlag(Inline)
@@ -1012,10 +1013,13 @@ class Namer { typer: Typer =>
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
     typedAheadImpl(tree, typer.typed(_, pt)(ctx retractMode Mode.PatternOrTypeBits))
 
-  def typedAheadAnnotation(tree: Tree)(implicit ctx: Context): Symbol = tree match {
-    case Apply(fn, _) => typedAheadAnnotation(fn)
-    case TypeApply(fn, _) => typedAheadAnnotation(fn)
-    case Select(qual, nme.CONSTRUCTOR) => typedAheadAnnotation(qual)
+  def typedAheadAnnotation(tree: Tree)(implicit ctx: Context): tpd.Tree =
+    typedAheadExpr(tree, defn.AnnotationType)
+
+  def typedAheadAnnotationClass(tree: Tree)(implicit ctx: Context): Symbol = tree match {
+    case Apply(fn, _) => typedAheadAnnotationClass(fn)
+    case TypeApply(fn, _) => typedAheadAnnotationClass(fn)
+    case Select(qual, nme.CONSTRUCTOR) => typedAheadAnnotationClass(qual)
     case New(tpt) => typedAheadType(tpt).tpe.classSymbol
   }
 
