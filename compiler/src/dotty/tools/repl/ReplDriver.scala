@@ -89,16 +89,13 @@ class ReplDriver(settings: Array[String],
    */
   override def sourcesRequired = false
 
-  /** Create a fresh and initialized context with IDE mode enabled */
-  private[this] def initialCtx = {
-    val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
-    val ictx = setup(settings, rootCtx)._2.fresh
-    ictx.base.initialize()(ictx)
-    ictx
-  }
+  private[this] var myInitCtx: Context = _
+  protected[this] var compiler: ReplCompiler = _
+  protected[this] var rendering: Rendering = _
 
-  /** the initial, empty state of the REPL session */
-  protected[this] def initState = State(0, 0, Nil, Nil, compiler.newRun(rootCtx, 0))
+  // initialize the REPL session as part of the constructor so that once `run`
+  // is called, we're in business
+  resetToInitial()
 
   /** Reset state of repl to the initial state
    *
@@ -107,27 +104,30 @@ class ReplDriver(settings: Array[String],
    *  everything properly
    */
   protected[this] def resetToInitial(): Unit = {
-    rootCtx = initialCtx
+    val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
+    implicit val ctx = setup(settings, rootCtx)._2
+    ctx.initialize()
+
     val outDir: AbstractFile = {
-      if (rootCtx.settings.outputDir.isDefault(rootCtx))
+      if (ctx.settings.outputDir.isDefault)
         new VirtualDirectory("(memory)", None)
       else {
-        val path = Directory(rootCtx.settings.outputDir.value(rootCtx))
+        val path = Directory(ctx.settings.outputDir.value(ctx))
         assert(path.isDirectory)
         new PlainDirectory(path)
       }
     }
+
+    myInitCtx = ctx
     compiler = new ReplCompiler(outDir)
     rendering = new Rendering(compiler, classLoader)
   }
 
-  protected[this] var rootCtx: Context = _
-  protected[this] var compiler: ReplCompiler = _
-  protected[this] var rendering: Rendering = _
+  /** Create a fresh and initialized context with IDE mode enabled */
+  protected[this] def initialCtx: Context = myInitCtx.fresh
 
-  // initialize the REPL session as part of the constructor so that once `run`
-  // is called, we're in business
-  resetToInitial()
+  /** the initial, empty state of the REPL session */
+  protected[this] def initState = State(0, 0, Nil, Nil, compiler.newRun(initialCtx, 0))
 
   /** Run REPL with `state` until `:quit` command found
    *
@@ -146,7 +146,7 @@ class ReplDriver(settings: Array[String],
       else {
         // readLine potentially destroys the run, so a new one is needed for the
         // rest of the interpretation:
-        implicit val freshState = state.newRun(compiler, rootCtx)
+        implicit val freshState = state.newRun(compiler, initialCtx)
         loop(interpret(res))
       }
     }
@@ -156,7 +156,7 @@ class ReplDriver(settings: Array[String],
 
   final def run(input: String)(implicit state: State): State = withRedirectedOutput {
     val parsed = ParseResult(input)(state.run.runContext)
-    interpret(parsed)(state.newRun(compiler, rootCtx))
+    interpret(parsed)(state.newRun(compiler, initialCtx))
   }
 
   private def withRedirectedOutput(op: => State): State =
@@ -165,7 +165,7 @@ class ReplDriver(settings: Array[String],
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected[this] final def completions(cursor: Int, expr: String, state0: State): Completions = {
     // TODO move some of this logic to `Interactive`
-    implicit val state = state0.newRun(compiler, rootCtx)
+    implicit val state = state0.newRun(compiler, initialCtx)
     compiler
       .typeCheck(expr, errorsAllowed = true)
       .map { tree =>
@@ -202,7 +202,7 @@ class ReplDriver(settings: Array[String],
       case parsed: Parsed if parsed.trees.nonEmpty =>
         compile(parsed)
           .withHistory(parsed.sourceCode :: state.history)
-          .newRun(compiler, rootCtx)
+          .newRun(compiler, initialCtx)
 
       case SyntaxErrors(src, errs, _) =>
         displayErrors(errs)

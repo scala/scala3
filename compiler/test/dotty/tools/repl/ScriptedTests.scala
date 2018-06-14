@@ -63,7 +63,6 @@ class ScriptedTests extends ReplTest with MessageRendering {
       Source.fromFile(f).getLines().flatMap(filterEmpties).mkString("\n")
     val actualOutput = {
       resetToInitial()
-      init()
       val inputRes = extractInputs(prompt)
       val buf = new ArrayBuffer[String]
       inputRes.foldLeft(initState) { (state, input) =>
