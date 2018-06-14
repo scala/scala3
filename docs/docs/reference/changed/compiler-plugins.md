@@ -15,7 +15,7 @@ production usage, a predictable and consistent type checker is more important.
 
 For experiments and researches that rely on analyzer plugins in Scalac,
 _research plugin_ can be used for the same purpose in Dotty. Research plugins
-are more powerful than Scalac analyzers as it enables plugin authors to
+are more powerful than Scalac analyzer plugins as they enable plugin authors to
 customize the whole compiler pipeline. That means, you can easily use your
 customized typer to replace the standard typer, or roll your own parser for
 your domain-specific language. Research plugins are only enabled for nightly or
