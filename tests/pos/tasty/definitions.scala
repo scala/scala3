@@ -102,8 +102,13 @@ object definitions {
     case ByName(tpt: TypeTree)
   }
 
-  /** Trees denoting type bounds*/
+  /** Trees denoting type bounds */
   case class TypeBoundsTree(loBound: TypeTree, hiBound: TypeTree) extends Tree {
+    def tpe: Type.TypeBounds = ???
+  }
+
+  /** Trees denoting type infered bounds */
+  case class SyntheticBounds() extends Tree {
     def tpe: Type.TypeBounds = ???
   }
 

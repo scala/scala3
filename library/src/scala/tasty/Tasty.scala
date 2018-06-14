@@ -388,8 +388,10 @@ abstract class Tasty { tasty =>
 
     def unapply(x: TypeTree)(implicit ctx: Context): Boolean
 
+    /** TypeTree containing an inferred type */
     val Synthetic: SyntheticExtractor
     abstract class SyntheticExtractor {
+      /** Matches a TypeTree containing an inferred type */
       def unapply(x: TypeTree)(implicit ctx: Context): Boolean
     }
 
@@ -454,6 +456,13 @@ abstract class Tasty { tasty =>
   val TypeBoundsTree: TypeBoundsTreeExtractor
   abstract class TypeBoundsTreeExtractor {
     def unapply(x: TypeBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)]
+  }
+
+  /** TypeBoundsTree containing an inferred type bounds */
+  val SyntheticBounds: SyntheticBoundsExtractor
+  abstract class SyntheticBoundsExtractor {
+    /** Matches a TypeBoundsTree containing inferred type bounds */
+    def unapply(x: TypeBoundsTree)(implicit ctx: Context): Boolean
   }
 
   // ===== Types ====================================================
