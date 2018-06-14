@@ -10,7 +10,7 @@ import Symbols.Symbol
 import Constants.Constant
 import StdNames._
 
-class DivideZero extends PluginPhase with ResearchPlugin {
+class DivideZero extends MiniPhase with ResearchPlugin {
   val name: String = "divideZero"
   override val description: String = "divide zero check"
 
