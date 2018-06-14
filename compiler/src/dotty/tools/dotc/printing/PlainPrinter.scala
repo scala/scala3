@@ -18,11 +18,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected[this] implicit def ctx: Context = _ctx.addMode(Mode.Printing)
 
   private[this] var openRecs: List[RecType] = Nil
-  protected[this] var isInTypeOf: Boolean = true
+  protected[this] var isInTypeOf: Boolean = false
 
   protected final def inTypeOf(op: => Text): Text = {
     val saved = isInTypeOf
-    isInTypeOf = false
+    isInTypeOf = true
     try { op } finally { isInTypeOf = saved }
   }
 
