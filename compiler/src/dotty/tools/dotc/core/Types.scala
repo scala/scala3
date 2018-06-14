@@ -3965,6 +3965,8 @@ object Types {
     override def derivedAnnotatedType(parent: Type, annot: Annotation): AnnotatedType =
       if ((parent eq this.parent) && (annot eq this.annot)) this
       else TypeOf(parent, annot.arguments.head)
+
+    override def toString(): String = s"TypeOf($underlyingTp, $tree)"
   }
 
   object TypeOf {

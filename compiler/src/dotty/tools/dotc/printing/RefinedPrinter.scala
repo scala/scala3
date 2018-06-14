@@ -527,7 +527,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     var txt = toTextCore(tree)
 
     def suppressTypes =
-      tree.isType || tree.isDef || // don't print types of types or defs
+      tree.isType || isInTypeOf || tree.isDef || // don't print types of types or defs
       homogenizedView && ctx.mode.is(Mode.Pattern)
         // When comparing pickled info, disregard types of patterns.
         // The reason is that GADT matching can rewrite types of pattern trees
@@ -553,16 +553,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
               ExprType(tp.widen)
             case _ => tp.widen
           })
-        case TypeOf(tpe, tree) =>
-          if (printTypeOfTree)
-            try {
-              // Only print 1 level of TypeOf; breaks the type→tree→type loop
-              printTypeOfTree = false
-              toText(tree)
-            } finally {
-              printTypeOfTree = true
-            }
-          else toText(tpe)
+        case tp: TypeOf if tp.tree eq tree => "<idem>"
         case tp => toText(tp)
       }
       if (!suppressTypes)
