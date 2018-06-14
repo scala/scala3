@@ -196,6 +196,27 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         return toTextParents(tp.parents) ~ "{...}"
       case JavaArrayType(elemtp) =>
         return toText(elemtp) ~ "[]"
+      case TypeOf(underlyingTp, tree) =>
+        import tpd._
+        val underlying: Text = " <: " ~ toText(underlyingTp) provided ctx.settings.XprintTypes.value
+        def treeText = tree match {
+          case TypeApply(fun, args)   => toTextLocal(fun.tpe) ~ "[" ~ toTextGlobal(args.tpes, ", ") ~ "]"
+          case Apply(fun, args)       => toTextLocal(fun.tpe) ~ "(" ~ toTextGlobal(args.tpes, ", ") ~ ")"
+          case If(cond, thenp, elsep) =>
+            changePrec(GlobalPrec) {
+              keywordStr("if ") ~ toText(cond.tpe) ~ keywordText(" then ") ~ toText(thenp.tpe) ~
+                (keywordStr(" else ") ~ toText(elsep.tpe) provided !elsep.isEmpty)
+            }
+          case Match(sel, cases) =>
+            val blockTexts = cases map { case CaseDef(pat, guard, body) =>
+              keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ " => " ~
+                toText(List(body.tpe), "\n")
+            }
+            val blockText = ("{" ~ Text(blockTexts, "\n") ~ "}").close
+            if (sel.isEmpty) blockText
+            else changePrec(GlobalPrec) { toText(sel) ~ keywordStr(" match ") ~ blockText }
+        }
+        return typeText("{ ") ~ inTypeOf { treeText } ~ underlying ~ typeText(" }")
       case tp: AnnotatedType if homogenizedView =>
         // Positions of annotations in types are not serialized
         // (they don't need to because we keep the original type tree with
@@ -372,7 +393,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case TypeTree() =>
         typeText(toText(tree.typeOpt))
       case SingletonTypeTree(ref) =>
-        "{ " ~ toTextLocal(ref) ~ " }"
+        typeText("{") ~~ toTextLocal(ref) ~~ typeText("}")
       case AndTypeTree(l, r) =>
         changePrec(AndPrec) { toText(l) ~ " & " ~ toText(r) }
       case OrTypeTree(l, r) =>
@@ -727,8 +748,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   def optText[T >: Untyped](tree: Tree[T])(encl: Text => Text): Text =
     if (tree.isEmpty) "" else encl(toText(tree))
 
-  def optText[T >: Untyped](tree: List[Tree[T]])(encl: Text => Text): Text =
-    if (tree.exists(!_.isEmpty)) encl(blockText(tree)) else ""
+  def optText[T >: Untyped](trees: List[Tree[T]])(encl: Text => Text): Text =
+    if (trees.exists(!_.isEmpty)) encl(blockText(trees)) else ""
 
   override protected def ParamRefNameString(name: Name): String =
     name.invariantName.toString
