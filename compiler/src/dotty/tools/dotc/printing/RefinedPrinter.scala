@@ -573,7 +573,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
               ExprType(tp.widen)
             case _ => tp.widen
           })
-        case tp: TypeOf if tp.tree eq tree => "<idem>"
+        case tp: TypeOf => "<idem>"
         case tp => toText(tp)
       }
       if (!suppressTypes)

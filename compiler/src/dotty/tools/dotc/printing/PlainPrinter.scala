@@ -498,7 +498,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     val tpSuffix: Text =
       if (ctx.settings.XprintTypes.value && tree.hasType && !isInTypeOf)
         tree.typeOpt match {
-          case tp: TypeOf if tp.tree eq tree => " | <idem>"
+          case tp: TypeOf => " | <idem>"
           case tp => " | " ~ toText(tree.typeOpt)
         }
       else

@@ -500,7 +500,7 @@ object TreeChecker {
           assert(tp.isInstantiated, s"Uninstantiated type variable: ${tp.show}")
           apply(tp.underlying)
         case tp: TypeOf =>
-          assert(tp.tree.tpe eq tp, s"A TypeOf's tree's type should point back to the TypeOf: $tp\n\tshow: ${tp.show}")
+          assert(tp.tree.tpe eq NoType, s"A TypeOf's tree's type should point back to the TypeOf: $tp")
           apply(tp.underlyingTp)
           mapOver(tp)
         case _ =>

@@ -3934,8 +3934,6 @@ object Types {
   // TODO: Move Annotation construction to TypeOf.apply(...)
   class TypeOf(val underlyingTp: Type, val tree: Tree)(implicit ctx: Context) extends AnnotatedType(underlyingTp, Annotation(defn.TypeOfAnnot, tree)) {
     assert(TypeOf.isLegalTopLevelTree(tree), i"Illegal top-level tree in TypeOf: $tree")
-    if (uniqId == 5705)
-      new Throwable().printStackTrace()
 
     override def equals(that: Any): Boolean = {
       that match {
@@ -3973,7 +3971,14 @@ object Types {
   }
 
   object TypeOf {
-    def apply(underlyingTp: Type, tree: Tree)(implicit ctx: Context): TypeOf = new TypeOf(underlyingTp, tree)
+    def apply(underlyingTp: Type, tree: untpd.Tree)(implicit ctx: Context): TypeOf = {
+      val tree1 = tree.clone.asInstanceOf[Tree]
+      // TODO: This is a safety net to keep us from touching a TypeOf's tree's type.
+      // Assuming we never look at this type, it would be safe to simply reuse tree without cloning.
+      // The invariant is currently enforced by TreeChecker.
+      tree1.overwriteType(NoType)
+      new TypeOf(underlyingTp, tree1)
+    }
     def unapply(to: TypeOf): Option[(Type, Tree)] = Some((to.underlyingTp, to.tree))
 
     /** To be used from type assigner. The assumption is that tree is currently
@@ -3981,7 +3986,7 @@ object Types {
      *  outside world.
      */
     private[dotc] def fromUntyped(tpe: Type, tree: untpd.Tree)(implicit ctx: Context): TypeOf =
-      TypeOf(tpe, tree.asInstanceOf[Tree])
+      TypeOf(tpe, tree)
 
     private[dotc] def isLegalTopLevelTree(tree: Tree): Boolean = tree match {
       case _: TypeApply | _: Apply | _: If | _: Match => true
@@ -4151,7 +4156,7 @@ object Types {
         case tp: TypeOf =>
           def copyMapped[ThisTree <: Tree](tree: ThisTree): ThisTree = {
             val tp1 = this(tree.tpe)
-            if (tp eq tp1) tree else tree.withTypeUnchecked(tp1).asInstanceOf[ThisTree]
+            if (tree.tpe eq tp1) tree else tree.withTypeUnchecked(tp1).asInstanceOf[ThisTree]
           }
           val tree1 = tp.tree match {
             case tree: TypeApply =>
@@ -4166,11 +4171,8 @@ object Types {
               throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
           }
           if (tp.tree ne tree1) {
-            val result = derivedTypeOf(tp, tree1.tpe, tree1)
-            assert(tp ne result)
-            // Restore the invariant that the type of the TypeOf tree is the
-            // TypeOf type itself. Here is an example showing what would go wrong
-            // if we didn't do that. Suppose we have
+            // Here is an example showing what would go wrong if we didn't re-assign types:
+            // Suppose we have
             //   def f(x: Int) = x
             //   def g(x: Int) = 2 * x
             //   def h(f: Int => Int) = f(1)
@@ -4178,8 +4180,8 @@ object Types {
             // Given a type map substituting f for g in f(1), the underlying
             // type should be substituted to the result type of g(1), that is,
             // 2 * 1.
-            tree1.overwriteType(result)
-            result
+            assert(!tp.underlyingTp.exists || tree1.tpe.exists, i"Derived TypeOf's type became NoType")
+            tree1.tpe
           } else {
             tp
           }
