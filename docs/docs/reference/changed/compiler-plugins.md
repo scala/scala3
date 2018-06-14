@@ -13,7 +13,7 @@ two notable changes:
 normal type checking. This is a nice feature for doing research, but for
 production usage, a predictable and consistent type checker is more important.
 
-For experiments and researches that depend on analyzer plugins in Scalac,
+For experiments and researches that rely on analyzer plugins in Scalac,
 _research plugin_ can be used for the same purpose in Dotty. Research plugins
 are more powerful than Scalac analyzers as it enables plugin authors to
 customize the whole compiler pipeline. That means, you can easily use your
@@ -21,7 +21,7 @@ customized typer to replace the standard typer, or roll your own parser for
 your domain-specific language. Research plugins are only enabled for nightly or
 snaphot releases of Dotty.
 
-The common plugins that add a new phase to the compiler pipeline are called
+The common plugins that add new phases to the compiler pipeline are called
 _standard plugins_ in Dotty. In terms of features, they are similar to
 Scalac plugins, despite minor changes in the API.
 
@@ -44,7 +44,7 @@ pluginClass=dividezero.DivideZero
 ```
 
 The above is a change from Scalac, which depends on an XML file
-`scalac-plugin.xml`. Since SBT 1.1.5, SBT also supports Dotty compiler plugins:
+`scalac-plugin.xml`. Starting from 1.1.5, SBT also supports Dotty compiler plugins:
 
 ```Scala
 addCompilerPlugin("org.divbyzero" % "divbyzero" % "1.0")
