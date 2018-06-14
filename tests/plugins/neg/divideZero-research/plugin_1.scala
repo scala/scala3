@@ -10,13 +10,13 @@ import Symbols.Symbol
 import Constants.Constant
 import StdNames._
 
-class DivideZero extends MiniPhase with ResearchPlugin {
+class DivideZero extends PluginPhase with ResearchPlugin {
   val name: String = "divideZero"
   override val description: String = "divide zero check"
 
   val phaseName = name
 
-  override def init(options: List[String], phases: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = {
+  def init(options: List[String], phases: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = {
     val (before, after) = phases.span(ps => !ps.exists(_.phaseName == "pickler"))
     before ++ (List(this) :: after)
   }
