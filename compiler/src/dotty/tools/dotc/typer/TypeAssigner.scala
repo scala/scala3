@@ -368,7 +368,7 @@ trait TypeAssigner {
           val tpe =
             if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
             else fntpe.resultType
-          if (fn.symbol.isTransparentMethod) TypeOf.fromUntyped(tpe, tree)
+          if (fn.symbol.isTransparentMethod) TypeOf(tpe, tree)
           else tpe
         } else
           errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
@@ -429,7 +429,7 @@ trait TypeAssigner {
           val argTypes = args.tpes
           if (sameLength(argTypes, paramNames)) {
             val tpe = pt.instantiate(argTypes)
-            if (fn.symbol.isTransparentMethod) TypeOf.fromUntyped(tpe, tree)
+            if (fn.symbol.isTransparentMethod) TypeOf(tpe, tree)
             else tpe
           }
           else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
@@ -462,7 +462,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) = {
     val underlying = thenp.tpe | elsep.tpe
     if (ctx.owner.isTransitivelyTransparent)
-      tree.withType(TypeOf.fromUntyped(underlying, tree))
+      tree.withType(TypeOf(underlying, tree))
     else
       tree.withType(underlying)
   }
@@ -478,7 +478,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) = {
     val underlying = ctx.typeComparer.lub(cases.tpes)
     if (ctx.owner.isTransitivelyTransparent)
-      tree.withType(TypeOf.fromUntyped(underlying, tree))
+      tree.withType(TypeOf(underlying, tree))
     else
       tree.withType(underlying)
   }

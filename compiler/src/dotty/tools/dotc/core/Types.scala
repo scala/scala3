@@ -3981,13 +3981,6 @@ object Types {
     }
     def unapply(to: TypeOf): Option[(Type, Tree)] = Some((to.underlyingTp, to.tree))
 
-    /** To be used from type assigner. The assumption is that tree is currently
-     *  being type assigned, and will be typed by the time it reaches the
-     *  outside world.
-     */
-    private[dotc] def fromUntyped(tpe: Type, tree: untpd.Tree)(implicit ctx: Context): TypeOf =
-      TypeOf(tpe, tree)
-
     private[dotc] def isLegalTopLevelTree(tree: Tree): Boolean = tree match {
       case _: TypeApply | _: Apply | _: If | _: Match => true
       case _ => false
