@@ -1271,7 +1271,9 @@ class Typer extends Namer
       typr.println(s"adding refinement $refinement")
       checkRefinementNonCyclic(refinement, refineCls, seen)
       val rsym = refinement.symbol
-      if (rsym.info.isInstanceOf[PolyType] && rsym.allOverriddenSymbols.isEmpty)
+      val polymorphicRefinementAllowed =
+        tpt1.tpe.typeSymbol == defn.PolyFunctionClass && rsym.name == nme.apply
+      if (!polymorphicRefinementAllowed && rsym.info.isInstanceOf[PolyType] && rsym.allOverriddenSymbols.isEmpty)
         ctx.error(PolymorphicMethodMissingTypeInParent(rsym, tpt1.symbol), refinement.sourcePos)
 
       val member = refineCls.info.member(rsym.name)
