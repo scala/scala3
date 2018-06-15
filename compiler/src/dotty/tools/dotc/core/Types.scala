@@ -87,12 +87,12 @@ object Types {
 // ----- Tests -----------------------------------------------------
 
 //    // debug only: a unique identifier for a type
-    val uniqId = {
-      nextId = nextId + 1
+//    val uniqId = {
+//      nextId = nextId + 1
 //      if (nextId == 19555)
 //        println("foo")
-      nextId
-    }
+//      nextId
+//    }
 
     /** A cache indicating whether the type was still provisional, last time we checked */
     @sharable private var mightBeProvisional = true
@@ -3932,7 +3932,7 @@ object Types {
   // ----- TypeOf -------------------------------------------------------------------------
 
   /** */
-  class TypeOf(val underlyingTp: Type, val tree: Tree, annot: Annotation) extends AnnotatedType(underlyingTp, annot) {
+  class TypeOf private (val underlyingTp: Type, val tree: Tree, annot: Annotation) extends AnnotatedType(underlyingTp, annot) {
     assert(TypeOf.isLegalTopLevelTree(tree), s"Illegal top-level tree in TypeOf: $tree")
 
     override def equals(that: Any): Boolean = {
@@ -3967,7 +3967,7 @@ object Types {
       if ((parent eq this.parent) && (annot eq this.annot)) this
       else TypeOf(parent, annot.arguments.head)
 
-    override def toString(): String = s"TypeOf($underlyingTp, $tree)#$uniqId"
+    override def toString(): String = s"TypeOf($underlyingTp, $tree)"
   }
 
   object TypeOf {

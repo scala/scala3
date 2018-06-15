@@ -4,7 +4,7 @@ object Invalid {
   f(1): {0}  // error
 
   val y: Int = ???
-  type YPlusOne = {y + 1}  // error
+  type YPlusOne = {y + 1}  // error: Non-sensical singleton-type expression: ...
 }
 
 // object SimpleEqs {
