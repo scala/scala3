@@ -169,12 +169,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
   def docOf(expr: String)(implicit state: State): Result[String] = {
     implicit val ctx: Context = state.context
 
-    def pickSymbol(symbol: Symbol): Symbol = {
-      if (symbol.is(Module, butNot = ModuleClass)) symbol.moduleClass
-      if (symbol.isConstructor) symbol.owner
-      else symbol
-    }
-
+    /** Extract the (possibly) documented symbol from `tree` */
     def extractSymbol(tree: tpd.Tree): Symbol = {
       tree match {
         case tpd.closureDef(defdef) => defdef.rhs.symbol
@@ -182,17 +177,35 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
       }
     }
 
+    /**
+     * Adapt `symbol` so that we get the one that holds the documentation.
+     * Return also the symbols that `symbol` overrides`.
+     */
+    def pickSymbols(symbol: Symbol): Iterator[Symbol] = {
+      val selectedSymbol = {
+        if (symbol.is(Module, butNot = ModuleClass)) symbol.moduleClass
+        if (symbol.isConstructor) symbol.owner
+        else symbol
+      }
+
+      Iterator(selectedSymbol) ++ selectedSymbol.allOverriddenSymbols
+    }
+
     typeCheck(expr).map {
       case v @ ValDef(_, _, Block(stats, _)) if stats.nonEmpty =>
         val stat = stats.last.asInstanceOf[tpd.Tree]
         if (stat.tpe.isError) stat.tpe.show
         else {
-          val symbol = pickSymbol(extractSymbol(stat))
           val doc =
-            for { docCtx <- ctx.docCtx
-            doc <- docCtx.docstrings.get(symbol) } yield doc.raw
+            ctx.docCtx.flatMap { docCtx =>
+              val symbols = pickSymbols(extractSymbol(stat))
+              symbols.collectFirst {
+                case sym if docCtx.docstrings.contains(sym) =>
+                  docCtx.docstrings(sym).raw
+              }
+            }
 
-            doc.getOrElse(s"// No doc for ${symbol.show}")
+            doc.getOrElse(s"// No doc for `${expr}`")
         }
 
       case _ =>

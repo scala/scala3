@@ -157,4 +157,53 @@ class DocTests extends ReplTest {
       assertEquals("/** doc */", storedOutput().trim)
     }
 
+  @Test def docOfOverride =
+    fromInitialState { implicit s =>
+      run("""abstract class A {
+            |/** doc0 */ def foo(x: Int): Int = x + 1
+            |/** doc1 */ def foo(x: String): String = x + "foo"
+            |}""".stripMargin)
+    }
+    .andThen { implicit s =>
+      run("""object O extends A {
+            |  override def foo(x: Int): Int = x
+            |  /** overridden doc */ override def foo(x: String): String = x
+            |}""".stripMargin)
+    }
+    .andThen { implicit s =>
+      storedOutput()
+      run(":doc O.foo(_: Int)")
+      assertEquals("/** doc0 */", storedOutput().trim)
+      s
+    }
+    .andThen { implicit s =>
+      run(":doc O.foo(_: String)")
+      assertEquals("/** overridden doc */", storedOutput().trim)
+    }
+
+  @Test def docOfOverrideObject =
+    fromInitialState { implicit s =>
+      run("""abstract class A {
+            |  abstract class Companion { /** doc0 */ def bar: Int }
+            |  /** companion */ def foo: Companion
+            |}""".stripMargin)
+      .andThen { implicit s =>
+        run("""object O extends A {
+              |  override object foo extends Companion {
+              |    override def bar: Int = 0
+              |  }
+              |}""".stripMargin)
+      }
+      .andThen { implicit s =>
+        storedOutput()
+        run(":doc O.foo")
+        assertEquals("/** companion */", storedOutput().trim)
+        s
+      }
+      .andThen { implicit s =>
+        run(":doc O.foo.bar")
+        assertEquals("/** doc0 */", storedOutput().trim)
+      }
+    }
+
 }
