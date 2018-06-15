@@ -3,6 +3,7 @@ package dotty.tools.repl
 import dotty.tools.backend.jvm.GenBCode
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.core.Comments.CommentsContext
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
@@ -10,6 +11,7 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.reporting.diagnostic.messages
 import dotty.tools.dotc.typer.{FrontEnd, ImportInfo}
 import dotty.tools.dotc.util.Positions._
@@ -163,6 +165,43 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
           """.stripMargin
       }
     }
+
+  def docOf(expr: String)(implicit state: State): Result[String] = {
+    implicit val ctx: Context = state.context
+
+    def pickSymbol(symbol: Symbol): Symbol = {
+      if (symbol.is(Module, butNot = ModuleClass)) symbol.moduleClass
+      if (symbol.isConstructor) symbol.owner
+      else symbol
+    }
+
+    def extractSymbol(tree: tpd.Tree): Symbol = {
+      tree match {
+        case tpd.closureDef(defdef) => defdef.rhs.symbol
+        case _ => tree.symbol
+      }
+    }
+
+    typeCheck(expr).map {
+      case v @ ValDef(_, _, Block(stats, _)) if stats.nonEmpty =>
+        val stat = stats.last.asInstanceOf[tpd.Tree]
+        if (stat.tpe.isError) stat.tpe.show
+        else {
+          val symbol = pickSymbol(extractSymbol(stat))
+          val doc =
+            for { docCtx <- ctx.docCtx
+            doc <- docCtx.docstrings.get(symbol) } yield doc.raw
+
+            doc.getOrElse(s"// No doc for ${symbol.show}")
+        }
+
+      case _ =>
+        """Couldn't display the documentation for your expression, so sorry :(
+          |
+          |Please report this to my masters at github.com/lampepfl/dotty
+          """.stripMargin
+    }
+  }
 
   final def typeCheck(expr: String, errorsAllowed: Boolean = false)(implicit state: State): Result[tpd.ValDef] = {
 

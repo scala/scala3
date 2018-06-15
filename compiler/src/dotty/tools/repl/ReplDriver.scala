@@ -63,7 +63,7 @@ class ReplDriver(settings: Array[String],
 
   /** Create a fresh and initialized context with IDE mode enabled */
   private[this] def initialCtx = {
-    val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
+    val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive).addMode(Mode.ReadComments)
     val ictx = setup(settings, rootCtx)._2
     ictx.base.initialize()(ictx)
     ictx
@@ -333,6 +333,13 @@ class ReplDriver(settings: Array[String],
 
     case TypeOf(expr) =>
       compiler.typeOf(expr)(newRun(state)).fold(
+        displayErrors,
+        res => out.println(SyntaxHighlighting(res))
+      )
+      state
+
+    case DocOf(expr) =>
+      compiler.docOf(expr)(newRun(state)).fold(
         displayErrors,
         res => out.println(SyntaxHighlighting(res))
       )
