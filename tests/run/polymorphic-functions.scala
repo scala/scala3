@@ -1,5 +1,5 @@
 object Test {
-  def test1(f: PolyFunction { def apply[T <: AnyVal](x: List[T]): List[(T, T)] }) = {
+  def test1(f: [T <: AnyVal] -> List[T] => List[(T, T)]) = {
     f(List(1, 2, 3))
   }
 
