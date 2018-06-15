@@ -200,21 +200,15 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         import tpd._
         val underlying: Text = " <: " ~ toText(underlyingTp) provided ctx.settings.XprintTypes.value
         def treeText = tree match {
-          case TypeApply(fun, args)   => toTextLocal(fun.tpe) ~ "[" ~ toTextGlobal(args.tpes, ", ") ~ "]"
-          case Apply(fun, args)       => toTextLocal(fun.tpe) ~ "(" ~ toTextGlobal(args.tpes, ", ") ~ ")"
+          case TypeApply(fun, args) =>
+            typeApplyText(fun.tpe, args.tpes)
+          case Apply(fun, args) =>
+            applyText(fun.tpe, args.tpes)
           case If(cond, thenp, elsep) =>
-            changePrec(GlobalPrec) {
-              keywordStr("if ") ~ toText(cond.tpe) ~ keywordText(" then ") ~ toText(thenp.tpe) ~
-                (keywordStr(" else ") ~ toText(elsep.tpe) provided !elsep.isEmpty)
-            }
+            val elze = if (elsep.isEmpty) None else Some(elsep.tpe)
+            ifText(cond.tpe, thenp.tpe, elze)
           case Match(sel, cases) =>
-            val blockTexts = cases map { case CaseDef(pat, guard, body) =>
-              keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ " => " ~
-                toText(List(body.tpe), "\n")
-            }
-            val blockText = ("{" ~ Text(blockTexts, "\n") ~ "}").close
-            if (sel.isEmpty) blockText
-            else changePrec(GlobalPrec) { toText(sel) ~ keywordStr(" match ") ~ blockText }
+            matchText(sel, cases, showType = true)
         }
         return typeText("{ ") ~ inTypeOf { treeText } ~ underlying ~ typeText(" }")
       case tp: AnnotatedType if homogenizedView =>
@@ -254,7 +248,40 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     ("{" ~ toText(trees, "\n") ~ "}").close
 
   protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text =
-    toTextLocal(tree.fun) ~ "[" ~ toTextGlobal(tree.args, ", ") ~ "]"
+    typeApplyText(tree.fun, tree.args)
+
+  protected def typeApplyText(fun: Showable, args: List[Showable]): Text =
+    toTextLocal(fun) ~ "[" ~ toTextGlobal(args, ", ") ~ "]"
+
+  protected def applyText(fun: Showable, args: List[Showable]): Text =
+    toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
+
+  protected def ifText(cond: Showable, thenp: Showable, elsep: Option[Showable]): Text =
+    changePrec(GlobalPrec) (
+      keywordStr("if ")
+        ~ cond.toText(this)
+        ~ (keywordText(" then") provided !cond.isInstanceOf[untpd.Parens])
+        ~~ thenp.toText(this)
+        ~ elsep.map(keywordStr(" else ") ~ _.toText(this)).getOrElse("")
+    )
+
+  protected def caseDefText[T >: Untyped](cd: CaseDef[T], showType: Boolean): Text = {
+    val CaseDef(pat, guard, body) = cd
+    val bodyText = body match {
+      case body if showType => toText(List(body.asInstanceOf[tpd.Tree].tpe), "\n")
+      case Block(stats, expr) => toText(stats :+ expr, "\n")
+      case expr => toText(expr)
+    }
+    keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ " => " ~ bodyText
+  }
+
+  protected def matchText[T >: Untyped](sel: Tree[T], cases: List[CaseDef[T]], showType: Boolean): Text = {
+    val selText = if (showType) toText(sel.asInstanceOf[tpd.Tree].tpe) else toText(sel)
+    if (sel.isEmpty) blockText(cases)
+    else changePrec(GlobalPrec) { selText ~ keywordStr(" match ") ~
+      ("{" ~ Text(cases.map(c => caseDefText(c, showType)), "\n") ~ "}").close
+    }
+  }
 
   protected def toTextCore[T >: Untyped](tree: Tree[T]): Text = {
     import untpd.{modsDeco => _, _}
@@ -265,11 +292,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     def optDotPrefix(tree: This) = optText(tree.qual)(_ ~ ".") provided !isLocalThis(tree)
-
-    def caseBlockText(tree: Tree): Text = tree match {
-      case Block(stats, expr) => toText(stats :+ expr, "\n")
-      case expr => toText(expr)
-    }
 
     // Dotty deviation: called with an untpd.Tree, so cannot be a untpd.Tree[T] (seems to be a Scala2 problem to allow this)
     // More deviations marked below as // DD
@@ -334,7 +356,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             keywordStr("throw ") ~ toText(args.head)
           }
         else
-          toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
+          applyText(fun, args)
       case tree: TypeApply =>
         typeApplyText(tree)
       case Literal(c) =>
@@ -362,17 +384,15 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case block: Block =>
         blockToText(block)
       case If(cond, thenp, elsep) =>
-        changePrec(GlobalPrec) {
-          keywordStr("if ") ~ toText(cond) ~ (keywordText(" then") provided !cond.isInstanceOf[Parens]) ~~ toText(thenp) ~ optText(elsep)(keywordStr(" else ") ~ _)
-        }
+        val elze = if (elsep.isEmpty) None else Some(elsep)
+        ifText(cond, thenp, elze)
       case Closure(env, ref, target) =>
         "closure(" ~ (toTextGlobal(env, ", ") ~ " | " provided env.nonEmpty) ~
         toTextGlobal(ref) ~ (":" ~ toText(target) provided !target.isEmpty) ~ ")"
       case Match(sel, cases) =>
-        if (sel.isEmpty) blockText(cases)
-        else changePrec(GlobalPrec) { toText(sel) ~ keywordStr(" match ") ~ blockText(cases) }
-      case CaseDef(pat, guard, body) =>
-        keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ " => " ~ caseBlockText(body)
+        matchText(sel, cases, showType = false)
+      case cd: CaseDef =>
+        caseDefText(cd, showType = false)
       case Return(expr, from) =>
         changePrec(GlobalPrec) { keywordStr("return") ~ optText(expr)(" " ~ _) }
       case Try(expr, cases, finalizer) =>
