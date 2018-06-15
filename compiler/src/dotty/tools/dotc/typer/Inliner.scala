@@ -341,7 +341,7 @@ object Inliner {
       for (iref <- referenced.implicitRefs.toList) yield {
         val localImplicit = iref.symbol.asTerm.copy(
           owner = inlineMethod,
-          name = UniqueName.fresh(iref.symbol.name.asTermName),
+          name = UniqueInlineName.fresh(iref.symbol.name.asTermName),
           flags = Implicit | Method | Stable,
           info = iref.symbol.info.ensureMethodic,
           coord = inlineMethod.pos).asTerm
