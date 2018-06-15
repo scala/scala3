@@ -3931,7 +3931,28 @@ object Types {
 
   // ----- TypeOf -------------------------------------------------------------------------
 
-  /** */
+  /** Type that represents the precise type of a given term.
+   *  Precision is only kept for Apply, TypeApply, If and Match trees.
+   *
+   *  The idea behind this type is to be able to compute more precise types
+   *  when more information is available.
+   *
+   *  TypeOfs are represented by an underlying type and a tree. The top level
+   *  node of the tree must be one of the nodes mentioned above, and is only
+   *  used as a "marker" node, meaning that we will never look at its type.
+   *
+   *  In a sense, TypeOf types are isomorphic to the following 4 types:
+   *
+   *  TypeOf(u, Apply(fun, args))       ~ SuspendedApply(u, fun, args)
+   *  TypeOf(u, TypeApply(fun, args))   ~ SuspendedTypeApply(u, fun, args)
+   *  TypeOf(u, If(cond, thenp, elsep)) ~ SuspendedIf(u, cond, thenp, elsep)
+   *  TypeOf(u, Match(selector, cases)) ~ SuspendedMatch(u, selector, cases)
+   *
+   *  Where u is the type that the tree would have had otherwise.
+   *
+   *  It should be the case that whenever two TypeOfs are equal, so are their
+   *  underlying types.
+   */
   class TypeOf private (val underlyingTp: Type, val tree: Tree, annot: Annotation) extends AnnotatedType(underlyingTp, annot) {
     assert(TypeOf.isLegalTopLevelTree(tree), s"Illegal top-level tree in TypeOf: $tree")
 
