@@ -500,7 +500,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.SingletonTypeTree, ref: Tree)(implicit ctx: Context) = {
     val tp = ref match {
-      case _: Literal | _: Ident | _: Select | _: Block => ref.tpe
+      case _: Literal | _: Ident | _: Select | _: Block | _: This | _: Super => ref.tpe
       case _ =>
         if (TypeOf.isLegalTopLevelTree(ref))
           if (ref.tpe.isInstanceOf[TypeOf])
