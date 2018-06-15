@@ -3954,14 +3954,10 @@ object Types {
                 false
             }
           }
-          compareTree(this.tree, that.tree) && { assert(this.underlyingTp == that.underlyingTp, s"UTP:\n\t${this.underlyingTp}\n\t${that.underlyingTp}"); true }
+          compareTree(this.tree, that.tree)
         case _ => false
       }
     }
-
-    def derivedTypeOf(underlyingTp: Type, tree: Tree)(implicit ctx: Context): TypeOf =
-      if ((this.tree eq tree) && (this.underlyingTp eq underlyingTp)) this
-      else TypeOf(underlyingTp, tree)
 
     override def derivedAnnotatedType(parent: Type, annot: Annotation)(implicit ctx: Context): AnnotatedType =
       if ((parent eq this.parent) && (annot eq this.annot)) this
@@ -4059,8 +4055,6 @@ object Types {
     // note: currying needed  because Scala2 does not support param-dependencies
     protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
       tp.derivedLambdaType(tp.paramNames, formals, restpe)
-    protected def derivedTypeOf(tp: TypeOf, underlyingTp: Type, tree: Tree): Type =
-      tp.derivedTypeOf(underlyingTp, tree)
 
     /** Map this function over given type */
     def mapOver(tp: Type): Type = {
@@ -4444,15 +4438,6 @@ object Types {
         case _ =>
           if (underlying.isBottomType) underlying
           else tp.derivedAnnotatedType(underlying, annot)
-      }
-
-    override protected def derivedTypeOf(tp: TypeOf, underlying: Type, tree: Tree) =
-      underlying match {
-        case Range(lo, hi) =>
-          range(tp.derivedTypeOf(lo, tree), tp.derivedTypeOf(hi, tree))
-        case _ =>
-          if (underlying.isBottomType) underlying
-          else tp.derivedTypeOf(underlying, tree)
       }
 
     override protected def derivedWildcardType(tp: WildcardType, bounds: Type) = {

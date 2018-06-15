@@ -50,6 +50,34 @@ object Applied {
   val a: { foo2(true) } = foo2(true)
 }
 
+object Approx1 {
+  transparent def foo(x: Any): { x } = x
+  class A {
+    transparent def bar(i: Int): Int = i + 1
+    val v: { bar(foo(1)) } = bar(foo(1))
+  }
+
+  val a = new A {}
+  val b: { a.bar(foo(1)) } = a.v
+
+  var c = new A {}
+  val d: { c.bar(foo(1)) } = c.v
+}
+
+object Approx2 {
+  transparent def foo(x: Any): { x } = x
+  class A {
+    transparent def bar(i: Int): Int = i + 1
+    val v: { foo(bar(1)) } = foo(bar(1))
+  }
+
+  val a = new A {}
+  val b: { foo(a.bar(1)) }= a.v
+
+  val c = new A {}
+  val d: { foo(c.bar(1)) }= c.v
+}
+
 // object AvoidLocalRefs {
 //   type Id[T] = T
 

@@ -7,6 +7,15 @@ object Invalid {
   type YPlusOne = {y + 1}  // error: Non-sensical singleton-type expression: ...
 }
 
+object PrivateLeaks {
+  transparent def foo(x: Any): { x } = x
+  class A {
+    private transparent def bar(i: Int): Int = i + 1
+    val a: { foo(bar(1)) } = foo(bar(1)) // error: non-private value a refers to private method bar
+                                         // in its type signature { PrivateLeaks.foo({ A.this.bar(1) }) }
+  }
+}
+
 // object SimpleEqs {
 //   val x = 1
 //   val y: {x} = x
