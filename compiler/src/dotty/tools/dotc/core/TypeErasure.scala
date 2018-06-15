@@ -196,10 +196,24 @@ object TypeErasure {
           MethodType(Nil, defn.BoxedUnitType)
         else if (sym.isAnonymousFunction && einfo.paramInfos.length > MaxImplementedFunctionArity)
           MethodType(nme.ALLARGS :: Nil, JavaArrayType(defn.ObjectType) :: Nil, einfo.resultType)
+        else if (sym.name == nme.apply && sym.owner.derivesFrom(defn.PolyFunctionClass)) {
+          // The erasure of `apply` in subclasses of PolyFunction has to match
+          // the erasure of FunctionN#apply, since after `ElimPolyFunction` we replace
+          // a `PolyFunction` parent by a `FunctionN` parent.
+          einfo.derivedLambdaType(
+            paramInfos = einfo.paramInfos.map(_ => defn.ObjectType),
+            resType = defn.ObjectType
+          )
+        }
         else
           einfo
       case einfo =>
-        einfo
+        // Erase the parameters of `apply` in subclasses of PolyFunction
+        if (sym.is(TermParam) && sym.owner.name == nme.apply
+            && sym.owner.owner.derivesFrom(defn.PolyFunctionClass))
+          defn.ObjectType
+        else
+          einfo
     }
   }
 

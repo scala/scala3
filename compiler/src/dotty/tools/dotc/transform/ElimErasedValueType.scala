@@ -87,7 +87,10 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
       val site = root.thisType
       val info1 = site.memberInfo(sym1)
       val info2 = site.memberInfo(sym2)
-      if (!info1.matchesLoosely(info2))
+      if (!info1.matchesLoosely(info2) &&
+          !(sym1.name == nme.apply &&
+            (sym1.owner.derivesFrom(defn.PolyFunctionClass) ||
+             sym2.owner.derivesFrom(defn.PolyFunctionClass))))
         ctx.error(DoubleDefinition(sym1, sym2, root), root.sourcePos)
     }
     val earlyCtx = ctx.withPhase(ctx.elimRepeatedPhase.next)
