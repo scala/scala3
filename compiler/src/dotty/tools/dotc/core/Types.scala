@@ -4181,15 +4181,6 @@ object Types {
               throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
           }
           if (tp.tree ne tree1) {
-            // Here is an example showing what would go wrong if we don't re-assign types:
-            // Suppose we have
-            //   def f(x: Int) = x
-            //   def g(x: Int) = 2 * x
-            //   def h(f: Int => Int) = f(1)
-            //   h(g): { 2 * 1 }
-            // Given a type map substituting f for g in f(1), the underlying
-            // type should be substituted to the result type of g(1), that is,
-            // 2 * 1.
             assert(!tp.underlyingTp.exists || tree1.tpe.exists, i"Derived TypeOf's type became NoType")
             tree1.tpe
           } else {
