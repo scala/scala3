@@ -3707,7 +3707,7 @@ object Types {
 
     override def underlying(implicit ctx: Context): Type = parent
 
-    def derivedAnnotatedType(parent: Type, annot: Annotation) =
+    def derivedAnnotatedType(parent: Type, annot: Annotation)(implicit ctx: Context) =
       if ((parent eq this.parent) && (annot eq this.annot)) this
       else AnnotatedType(parent, annot)
 
@@ -3931,9 +3931,9 @@ object Types {
 
   // ----- TypeOf -------------------------------------------------------------------------
 
-  // TODO: Move Annotation construction to TypeOf.apply(...)
-  class TypeOf(val underlyingTp: Type, val tree: Tree)(implicit ctx: Context) extends AnnotatedType(underlyingTp, Annotation(defn.TypeOfAnnot, tree)) {
-    assert(TypeOf.isLegalTopLevelTree(tree), i"Illegal top-level tree in TypeOf: $tree")
+  /** */
+  class TypeOf(val underlyingTp: Type, val tree: Tree, annot: Annotation) extends AnnotatedType(underlyingTp, annot) {
+    assert(TypeOf.isLegalTopLevelTree(tree), s"Illegal top-level tree in TypeOf: $tree")
 
     override def equals(that: Any): Boolean = {
       that match {
@@ -3963,7 +3963,7 @@ object Types {
       if ((this.tree eq tree) && (this.underlyingTp eq underlyingTp)) this
       else TypeOf(underlyingTp, tree)
 
-    override def derivedAnnotatedType(parent: Type, annot: Annotation): AnnotatedType =
+    override def derivedAnnotatedType(parent: Type, annot: Annotation)(implicit ctx: Context): AnnotatedType =
       if ((parent eq this.parent) && (annot eq this.annot)) this
       else TypeOf(parent, annot.arguments.head)
 
@@ -3973,15 +3973,17 @@ object Types {
   object TypeOf {
     def apply(underlyingTp: Type, tree: untpd.Tree)(implicit ctx: Context): TypeOf = {
       val tree1 = tree.clone.asInstanceOf[Tree]
-      // TODO: This is a safety net to keep us from touching a TypeOf's tree's type.
-      // Assuming we never look at this type, it would be safe to simply reuse tree without cloning.
-      // The invariant is currently enforced by TreeChecker.
+      // This is a safety net to keep us from touching a TypeOf's tree's type.
+      // Assuming we never look at this type, it would be safe to simply reuse
+      // tree without cloning. The invariant is currently enforced in Ycheck.
+      // To disable this safety net we will also have to update the pickler
+      // to ignore the type of the TypeOf tree's.
       tree1.overwriteType(NoType)
-      new TypeOf(underlyingTp, tree1)
+      new TypeOf(underlyingTp, tree1, Annotation(defn.TypeOfAnnot, tree1))
     }
     def unapply(to: TypeOf): Option[(Type, Tree)] = Some((to.underlyingTp, to.tree))
 
-    private[dotc] def isLegalTopLevelTree(tree: Tree): Boolean = tree match {
+    def isLegalTopLevelTree(tree: Tree): Boolean = tree match {
       case _: TypeApply | _: Apply | _: If | _: Match => true
       case _ => false
     }
@@ -4164,7 +4166,7 @@ object Types {
               throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
           }
           if (tp.tree ne tree1) {
-            // Here is an example showing what would go wrong if we didn't re-assign types:
+            // Here is an example showing what would go wrong if we don't re-assign types:
             // Suppose we have
             //   def f(x: Int) = x
             //   def g(x: Int) = 2 * x
