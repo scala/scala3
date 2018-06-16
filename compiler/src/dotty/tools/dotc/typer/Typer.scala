@@ -2356,12 +2356,14 @@ class Typer extends Namer
       else if (tree.tpe <:< pt) {
         if (pt.hasAnnotation(defn.InlineParamAnnot))
           checkInlineConformant(tree, isFinal = false, "argument to inline parameter")
-        if (Inliner.hasBodyToInline(tree.symbol) &&
-            !ctx.owner.ownersIterator.exists(_.isInlineableMethod) &&
-            !ctx.settings.YnoInline.value &&
-            !ctx.isAfterTyper &&
-            !ctx.reporter.hasErrors)
-          readaptSimplified(Inliner.inlineCall(tree, pt))
+        def suppressInline =
+          ctx.owner.ownersIterator.exists(_.isInlineableMethod) ||
+          tree.symbol.isTransparentMethod && ctx.mode.is(Mode.NoInlineTransparent) ||
+          ctx.settings.YnoInline.value ||
+          ctx.isAfterTyper ||
+          ctx.reporter.hasErrors
+        if (Inliner.hasBodyToInline(tree.symbol) && !suppressInline)
+           readaptSimplified(Inliner.inlineCall(tree, pt))
         else if (ctx.typeComparer.GADTused && pt.isValueType)
           // Insert an explicit cast, so that -Ycheck in later phases succeeds.
           // I suspect, but am not 100% sure that this might affect inferred types,
