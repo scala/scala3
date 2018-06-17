@@ -42,7 +42,7 @@ class QuoteDriver extends Driver {
   def show(expr: Expr[_], settings: Settings[Show]): String = {
     def show(tree: Tree, ctx: Context): String = {
       val tree1 = if (settings.rawTree) tree else (new TreeCleaner).transform(tree)(ctx)
-      TastyImpl.showSourceCode.showTree(tree1)(ctx)
+      new TastyImpl(ctx).showSourceCode.showTree(tree1)(ctx)
     }
     withTree(expr, show, settings)
   }

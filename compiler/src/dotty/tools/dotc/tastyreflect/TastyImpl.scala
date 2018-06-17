@@ -11,11 +11,11 @@ import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.reporting.diagnostic.MessageContainer
 import dotty.tools.dotc.util.SourcePosition
 
-import scala.{quoted, tasty}
+import scala.quoted
 import scala.reflect.ClassTag
 import scala.tasty.util.{Show, ShowExtractors, ShowSourceCode}
 
-object TastyImpl extends scala.tasty.Tasty {
+class TastyImpl(rootContext: Contexts.Context) extends scala.tasty.Tasty { self =>
 
   // ===== Quotes ===================================================
 
@@ -41,6 +41,10 @@ object TastyImpl extends scala.tasty.Tasty {
 
   def ContextDeco(ctx: Context): ContextAPI = new ContextAPI {
     def owner: Definition = FromSymbol.definition(ctx.owner)(ctx)
+  }
+
+  object Context extends ContextProvider {
+    def rootContext: Context = self.rootContext
   }
 
   // ===== Id =======================================================
