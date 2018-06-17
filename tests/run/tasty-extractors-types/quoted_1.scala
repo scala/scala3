@@ -11,7 +11,6 @@ object Macros {
 
   def impl[T](x: Type[T])(implicit tasty: Tasty): Expr[Unit] = {
     import tasty._
-    import Context._
 
     val tree = x.toTasty
     '{

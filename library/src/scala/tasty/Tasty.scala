@@ -34,10 +34,7 @@ abstract class Tasty { tasty =>
   }
   implicit def ContextDeco(ctx: Context): ContextAPI
 
-  val Context: ContextProvider
-  abstract class ContextProvider {
-    implicit def rootContext: Context
-  }
+  implicit def rootContext: Context
 
   // ===== Id =======================================================
 

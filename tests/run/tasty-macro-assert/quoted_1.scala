@@ -16,7 +16,6 @@ object Asserts {
 
   def impl(cond: Expr[Boolean])(implicit tasty: Tasty): Expr[Unit] = {
     import tasty._
-    import Context._
 
     val tree = cond.toTasty
 

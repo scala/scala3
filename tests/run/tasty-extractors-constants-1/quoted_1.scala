@@ -11,7 +11,6 @@ object Macros {
 
   def impl(implicit tasty: Tasty): Expr[Unit] = {
     import tasty._
-    import Context._
 
     val buff = new StringBuilder
     def stagedPrintln(x: Any): Unit = buff append java.util.Objects.toString(x) append "\n"

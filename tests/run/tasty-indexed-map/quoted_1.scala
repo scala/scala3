@@ -28,7 +28,6 @@ object Index {
 
   def succImpl[K, H, T](tasty: Tasty)(implicit k: Type[K], h: Type[H], t: Type[T]): Expr[Index[K, (H, T)]] = {
     import tasty._
-    import Context._
 
     def name(tp: TypeOrBounds): String = tp match {
       case Type.ConstantType(Constant.String(str)) => str

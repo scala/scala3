@@ -12,7 +12,6 @@ object Macros {
 
   def impl[T](x: Expr[T])(implicit tasty: Tasty): Expr[Unit] = {
     import tasty._
-    import Context._
 
     val buff = new StringBuilder
     val traverser = new TreeTraverser(tasty) {

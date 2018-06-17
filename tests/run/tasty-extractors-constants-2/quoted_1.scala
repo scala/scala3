@@ -46,7 +46,6 @@ object Macros {
 
   def power(n: Expr[Int], x: Expr[Double])(implicit tasty: Tasty): Expr[Double] = {
     import tasty._
-    import Context._
 
     val Constant = new ConstantExtractor(tasty)
     n match {

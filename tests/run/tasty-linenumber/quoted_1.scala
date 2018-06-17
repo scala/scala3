@@ -15,7 +15,6 @@ object LineNumber {
 
   def lineImpl(x: Type[Unit])(implicit tasty: Tasty): Expr[LineNumber] = {
     import tasty._
-    import Context._
 
     '(new LineNumber(~x.toTasty.pos.startLine.toExpr))
   }

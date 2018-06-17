@@ -16,7 +16,6 @@ object Positioned {
 
   def impl[T](x: Expr[T])(implicit ev: Type[T], tasty: Tasty): Expr[Positioned[T]] = {
     import tasty.{Position => _, _}
-    import Context._
 
     val pos = x.toTasty.pos
 

@@ -15,7 +15,7 @@ import scala.quoted
 import scala.reflect.ClassTag
 import scala.tasty.util.{Show, ShowExtractors, ShowSourceCode}
 
-class TastyImpl(rootContext: Contexts.Context) extends scala.tasty.Tasty { self =>
+class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { self =>
 
   // ===== Quotes ===================================================
 
@@ -41,10 +41,6 @@ class TastyImpl(rootContext: Contexts.Context) extends scala.tasty.Tasty { self 
 
   def ContextDeco(ctx: Context): ContextAPI = new ContextAPI {
     def owner: Definition = FromSymbol.definition(ctx.owner)(ctx)
-  }
-
-  object Context extends ContextProvider {
-    def rootContext: Context = self.rootContext
   }
 
   // ===== Id =======================================================

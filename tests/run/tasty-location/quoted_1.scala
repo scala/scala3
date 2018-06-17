@@ -13,7 +13,6 @@ object Location {
 
   def impl(implicit tasty: Tasty): Expr[Location] = {
     import tasty._
-    import Context._
 
     def listOwnerNames(definition: Definition, acc: List[String]): List[String] = definition match {
       case ValDef(name, _, _) => listOwnerNames(definition.owner, name :: acc)

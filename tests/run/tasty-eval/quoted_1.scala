@@ -21,7 +21,6 @@ object Macros {
   implicit def intIsEvalable: Valuable[Int] = new Valuable[Int] {
     override def value(e: Expr[Int])(implicit tasty: Tasty): Option[Int] = {
       import tasty._
-      import Context._
 
       e.toTasty.tpe match {
         case Type.SymRef(ValDef(_, tpt, _), pre) =>
