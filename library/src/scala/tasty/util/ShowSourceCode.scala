@@ -65,6 +65,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printImportSelectors(selectors)
 
       case cdef @ ClassDef(name, DefDef(_, targs, argss, _, _), parents, self, stats) =>
+        printDefAnnotations(cdef)
+
         val flags = cdef.flags
         if (flags.isFinal && !flags.isObject) this += "final "
         if (flags.isCase) this += "case "
@@ -146,11 +148,14 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
         this
 
-      case tdef@TypeDef(name, rhs) =>
+      case tdef @ TypeDef(name, rhs) =>
+        printDefAnnotations(tdef)
         this += "type "
         printTargDef(tdef)
 
-      case vdef@ValDef(name, tpt, rhs) =>
+      case vdef @ ValDef(name, tpt, rhs) =>
+        printDefAnnotations(vdef)
+
         val flags = vdef.flags
         if (flags.isOverride) this += "override "
 
@@ -201,7 +206,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printTree(cond)
         this += ")"
 
-      case ddef@DefDef(name, targs, argss, tpt, rhs) =>
+      case ddef @ DefDef(name, targs, argss, tpt, rhs) =>
+        printDefAnnotations(ddef)
+
         val flags = ddef.flags
         if (flags.isOverride) sb.append("override ")
 
@@ -220,8 +227,16 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
         this
 
-      case tree@Term.Ident(name) =>
-        printType(tree.tpe)
+      case tree @ Term.Ident(name) =>
+        tree.tpe match {
+          case Type.SymRef(_, Types.EmptyPrefix()) | Type.TermRef(_, Types.EmptyPrefix()) => this += name
+          case Type.SymRef(_, prefix) =>
+            printTypeOrBound(prefix)
+            this += "." += name
+          case Type.TermRef(_, prefix) =>
+            printTypeOrBound(prefix)
+            this += "." += name
+        }
 
       case Term.Select(qual, name, sig) =>
         printTree(qual)
@@ -272,7 +287,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this += "("
             printTree(term)
             this += ": "
-            printTypeTree(tpt)
+            printTypeTree(tpt, isFullType = true)
             this += ")"
         }
 
@@ -516,6 +531,19 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       this += ")"
     }
 
+    def printAnnotations(trees: List[Term]): Buffer = {
+      def printSeparated(list: List[Term]): Unit = list match {
+        case Nil =>
+        case x :: Nil => printAnnotation(x)
+        case x :: xs =>
+          printAnnotation(x)
+          this += " "
+          printSeparated(xs)
+      }
+      printSeparated(trees)
+      this
+    }
+
     def printArgDef(arg: ValDef): Unit = {
       val ValDef(name, tpt, rhs) = arg
       this += name += ": "
@@ -614,20 +642,20 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printTypeTree(tpt)
     }
 
-    def printTypeTree(tree: TypeTree): Buffer = tree match {
+    def printTypeTree(tree: TypeTree, isFullType: Boolean = true): Buffer = tree match {
       case TypeTree.Synthetic() =>
-        printType(tree.tpe)
+        printType(tree.tpe, isFullType)
         tree.tpe match {
           case tpe @ Type.TypeRef(name, _) if name.endsWith("$") => this += ".type"
           case tpe => this
         }
 
       case TypeTree.TypeIdent(name) =>
-        printType(tree.tpe)
+        printType(tree.tpe, isFullType)
 
       case TypeTree.TypeSelect(qual, name) =>
         (qual: Any) match {
-          case qual @ TypeTree.TypeIdent(_) => printTypeTree(qual) // FIXME: qual is of type Tree buy we are getting a TypeTree qualifier
+          case qual @ TypeTree.TypeIdent(_) => printTypeTree(qual, isFullType = false) // FIXME: qual is of type Tree buy we are getting a TypeTree qualifier
           case _ => printTree(qual)
         }
         this += "." += name
@@ -654,9 +682,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printTypeTrees(args, ", ")
         this += "]"
 
-      case TypeTree.Annotated(tpt, annots) =>
+      case TypeTree.Annotated(tpt, annot) =>
+        val Annotation(ref, args) = annot
         printTypeTree(tpt)
-        // TODO print annots
+        this += " "
+        printAnnotation(annot)
 
       case TypeTree.And(left, right) =>
         printTypeTree(left)
@@ -686,29 +716,28 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case tpe@Type() => printType(tpe)
     }
 
-    def printType(tpe: Type): Buffer = tpe match {
+    def printType(tpe: Type, isFullType: Boolean = true): Buffer = tpe match {
       case Type.ConstantType(const) =>
         printConstant(const)
 
       case Type.SymRef(sym, prefix) =>
         prefix match {
-          case Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) =>
+          case Types.EmptyPrefix() =>
           case prefix@Type.SymRef(ClassDef(_, _, _, _, _), _) =>
-            printType(prefix)
+            printType(prefix, isFullType = false)
             this += "#"
           case prefix@Type() =>
-            printType(prefix)
+            printType(prefix, isFullType = false)
             this += "."
-          case prefix@NoPrefix() =>
         }
-        printDefinitionName(sym)
+        printDefinitionName(sym, isFullType)
 
       case Type.TermRef(name, prefix) =>
         prefix match {
           case Type.ThisType(Types.EmptyPackage()) =>
             this += name
           case prefix @ Type() =>
-            printType(prefix)
+            printType(prefix, isFullType = false)
             if (name != "package")
               this += "." += name
             this
@@ -719,7 +748,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Type.TypeRef(name, prefix) =>
         prefix match {
           case NoPrefix() | Type.ThisType(Types.EmptyPackage()) =>
-          case prefix@Type() => printType(prefix) += "."
+          case prefix@Type() => printType(prefix, isFullType = false) += "."
         }
         this += name.stripSuffix("$")
 
@@ -734,7 +763,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "]"
 
       case Type.AnnotatedType(tp, annot) =>
+        val Annotation(ref, args) = annot
         printType(tp)
+        this += " "
+        printAnnotation(annot)
 
       case Type.AndType(left, right) =>
         printType(left)
@@ -767,12 +799,36 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case RenameSelector(Id(name), Id(newName)) => this += name += " => " += newName
     }
 
-    def printDefinitionName(sym: Definition): Buffer = sym match {
-      case ValDef(name, _, _) => this += name
+    def printDefinitionName(sym: Definition, isFullType: Boolean): Buffer = sym match {
+      case ValDef(name, _, _) =>
+        if (isFullType) this += name += ".type"
+        else this += name
       case DefDef(name, _, _, _, _) => this += name
       case ClassDef(name, _, _, _, _) => this += name.stripSuffix("$")
       case TypeDef(name, _) => this += name
       case PackageDef(name, _) => this += name
+    }
+
+    def printAnnotation(annot: Term): Buffer = {
+      val Annotation(ref, args) = annot
+      this += "@"
+      printTypeTree(ref)
+      this += "("
+      printTrees(args, ", ")
+      this += ")"
+    }
+
+    def printDefAnnotations(definition: Definition): Buffer = {
+      val annots = definition.annots.filter {
+        case Annotation(annot, _) =>
+          annot.tpe match {
+            case Type.TypeRef(_, Type.SymRef(PackageDef("internal", _), Type.ThisType(Type.SymRef(PackageDef("annotation", _), NoPrefix())))) => false
+            case _ => true
+          }
+      }
+      printAnnotations(annots)
+      if (annots.nonEmpty) this += " "
+      else this
     }
 
     def +=(x: Boolean): this.type = { sb.append(x); this }
@@ -829,6 +885,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
   }
 
+  private object Annotation {
+    def unapply(arg: Tree)(implicit ctx: Context): Option[(TypeTree, List[Term])] = arg match {
+      case Term.Apply(Term.Select(Term.New(annot), "<init>", _), args) => Some((annot, args))
+      case _ => None
+    }
+  }
+
   // TODO Provide some of these in scala.tasty.Tasty.scala and implement them using checks on symbols for performance
   private object Types {
 
@@ -863,6 +926,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     object EmptyPackage {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
         case Type.SymRef(PackageDef("<empty>", _), NoPrefix() | Type.ThisType(RootPackage())) => true
+        case _ => false
+      }
+    }
+
+    object EmptyPrefix {
+      def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
+        case NoPrefix() | Type.ThisType(Types.EmptyPackage() | Types.RootPackage()) => true
         case _ => false
       }
     }
