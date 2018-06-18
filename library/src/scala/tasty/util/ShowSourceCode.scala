@@ -68,6 +68,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printDefAnnotations(cdef)
 
         val flags = cdef.flags
+        if (flags.isImplicit) this += "implicit "
         if (flags.isFinal && !flags.isObject) this += "final "
         if (flags.isCase) this += "case "
 
@@ -157,6 +158,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printDefAnnotations(vdef)
 
         val flags = vdef.flags
+        if (flags.isImplicit) this += "implicit "
         if (flags.isOverride) this += "override "
 
         if (flags.isLazy) this += "lazy "
@@ -210,7 +212,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printDefAnnotations(ddef)
 
         val flags = ddef.flags
-        if (flags.isOverride) sb.append("override ")
+        if (flags.isImplicit) this += "implicit "
+        if (flags.isOverride) this += "override "
 
         this += "def " += name
         printTargsDefs(targs)
