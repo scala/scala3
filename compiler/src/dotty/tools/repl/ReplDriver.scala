@@ -156,7 +156,7 @@ class ReplDriver(settings: Array[String],
     compiler
       .typeCheck(expr, errorsAllowed = true)
       .map { tree =>
-        val file = new SourceFile("<completions>", expr.toCharArray)
+        val file = new SourceFile("<completions>", expr)
         val unit = new CompilationUnit(file)
         unit.tpdTree = tree
         implicit val ctx = state.run.runContext.fresh.setCompilationUnit(unit)

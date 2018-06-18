@@ -37,7 +37,7 @@ object CompilationUnit {
 
   /** Make a compilation unit for top class `clsd` with the contends of the `unpickled` */
   def mkCompilationUnit(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit =
-    mkCompilationUnit(new SourceFile(clsd.symbol.associatedFile, Seq()), unpickled, forceTrees)
+    mkCompilationUnit(SourceFile(clsd.symbol.associatedFile, Array.empty), unpickled, forceTrees)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
   def mkCompilationUnit(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit = {

@@ -95,7 +95,7 @@ final class JLineTerminal {
 
         case ParseContext.COMPLETE =>
           // Parse to find completions (typically after a Tab).
-          val source = new SourceFile("<completions>", line.toCharArray)
+          val source = new SourceFile("<completions>", line)
           val scanner = new Scanner(source)(ctx.fresh.setReporter(Reporter.NoReporter))
 
           // Looking for the current word being completed
