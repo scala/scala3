@@ -231,16 +231,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
         this
 
-      case tree @ Term.Ident(name) =>
-        tree.tpe match {
-          case Type.SymRef(_, Types.EmptyPrefix()) | Type.TermRef(_, Types.EmptyPrefix()) => this += name
-          case Type.SymRef(_, prefix) =>
-            printTypeOrBound(prefix)
-            this += "." += name
-          case Type.TermRef(_, prefix) =>
-            printTypeOrBound(prefix)
-            this += "." += name
-        }
+      case tree @ Term.Ident(_) =>
+        printType(tree.tpe)
 
       case Term.Select(qual, name, sig) =>
         printTree(qual)
