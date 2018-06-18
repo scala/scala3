@@ -2231,7 +2231,6 @@ class Typer extends Namer
         }
         val args = eraseErasedArgs(implicitArgs(wtp.paramInfos))
 
-
         def propagatedFailure(args: List[Tree]): Type = args match {
           case arg :: args1 =>
             arg.tpe match {
