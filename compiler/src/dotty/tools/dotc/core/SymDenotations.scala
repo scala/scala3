@@ -599,6 +599,12 @@ object SymDenotations {
     final def isStable(implicit ctx: Context) =
       isType || !is(Erased) && (is(Stable) || !(is(UnstableValue) || info.isInstanceOf[ExprType]))
 
+    /** Is this a denotation of a class that does not have - either direct or inherited -
+     *  initaliazion code?
+     */
+    def isNoInitsClass(implicit ctx: Context) =
+      isClass && asClass.baseClasses.forall(_.is(NoInits))
+
     /** Is this a "real" method? A real method is a method which is:
      *  - not an accessor
      *  - not a label

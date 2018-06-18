@@ -1534,8 +1534,6 @@ class Typer extends Namer
       val dummy = localDummy(cls, impl)
       val body1 = addAccessorDefs(cls,
         typedStats(impl.body, dummy)(ctx.inClassContext(self1.symbol)))
-      if (!ctx.isAfterTyper)
-        cls.setNoInitsFlags((NoInitsInterface /: body1) ((fs, stat) => fs & defKind(stat)))
 
       // Expand comments and type usecases if `-Ycook-comments` is set.
       if (ctx.settings.YcookComments.value) {

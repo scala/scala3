@@ -55,10 +55,10 @@ class Definitions {
     ctx.newSymbol(owner, name, flags | Permanent, info)
 
   private def newClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, infoFn: ClassSymbol => Type) =
-    ctx.newClassSymbol(owner, name, flags | Permanent, infoFn)
+    ctx.newClassSymbol(owner, name, flags | Permanent | NoInits, infoFn)
 
   private def enterCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef], decls: Scope = newScope) =
-    ctx.newCompleteClassSymbol(owner, name, flags | Permanent, parents, decls).entered
+    ctx.newCompleteClassSymbol(owner, name, flags | Permanent | NoInits, parents, decls).entered
 
   private def enterTypeField(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
     scope.enter(newSymbol(cls, name, flags, TypeBounds.empty))
@@ -275,6 +275,7 @@ class Definitions {
     val cls = ctx.requiredClass("java.lang.Object")
     assert(!cls.isCompleted, "race for completing java.lang.Object")
     cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
+    cls.setFlag(NoInits)
 
     // The companion object doesn't really exist, `NoType` is the general
     // technique to do that. Here we need to set it before completing
