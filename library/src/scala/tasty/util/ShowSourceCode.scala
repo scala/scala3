@@ -287,7 +287,17 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this += "("
             printTree(term)
             this += ": "
-            printTypeTree(tpt, isFullType = true)
+            def printTypeOrAnnots(tpe: Type): Unit = tpe match {
+              case Type.AnnotatedType(tp, annot) if tp == term.tpe =>
+                printAnnotation(annot)
+              case Type.AnnotatedType(tp, annot) =>
+                printTypeOrAnnots(tp)
+                this += " "
+                printAnnotation(annot)
+              case tpe =>
+                printType(tpe)
+            }
+            printTypeOrAnnots(tpt.tpe)
             this += ")"
         }
 
@@ -642,20 +652,20 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printTypeTree(tpt)
     }
 
-    def printTypeTree(tree: TypeTree, isFullType: Boolean = true): Buffer = tree match {
+    def printTypeTree(tree: TypeTree): Buffer = tree match {
       case TypeTree.Synthetic() =>
-        printType(tree.tpe, isFullType)
+        printType(tree.tpe)
         tree.tpe match {
           case tpe @ Type.TypeRef(name, _) if name.endsWith("$") => this += ".type"
           case tpe => this
         }
 
       case TypeTree.TypeIdent(name) =>
-        printType(tree.tpe, isFullType)
+        printType(tree.tpe)
 
       case TypeTree.TypeSelect(qual, name) =>
         (qual: Any) match {
-          case qual @ TypeTree.TypeIdent(_) => printTypeTree(qual, isFullType = false) // FIXME: qual is of type Tree buy we are getting a TypeTree qualifier
+          case qual @ TypeTree.TypeIdent(_) => printTypeTree(qual) // FIXME: qual is of type Tree buy we are getting a TypeTree qualifier
           case _ => printTree(qual)
         }
         this += "." += name
@@ -716,7 +726,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case tpe@Type() => printType(tpe)
     }
 
-    def printType(tpe: Type, isFullType: Boolean = true): Buffer = tpe match {
+    def printType(tpe: Type): Buffer = tpe match {
       case Type.ConstantType(const) =>
         printConstant(const)
 
@@ -724,20 +734,20 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         prefix match {
           case Types.EmptyPrefix() =>
           case prefix@Type.SymRef(ClassDef(_, _, _, _, _), _) =>
-            printType(prefix, isFullType = false)
+            printType(prefix)
             this += "#"
           case prefix@Type() =>
-            printType(prefix, isFullType = false)
+            printType(prefix)
             this += "."
         }
-        printDefinitionName(sym, isFullType)
+        printDefinitionName(sym)
 
       case Type.TermRef(name, prefix) =>
         prefix match {
           case Type.ThisType(Types.EmptyPackage()) =>
             this += name
           case prefix @ Type() =>
-            printType(prefix, isFullType = false)
+            printType(prefix)
             if (name != "package")
               this += "." += name
             this
@@ -748,7 +758,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Type.TypeRef(name, prefix) =>
         prefix match {
           case NoPrefix() | Type.ThisType(Types.EmptyPackage()) =>
-          case prefix@Type() => printType(prefix, isFullType = false) += "."
+          case prefix@Type() => printType(prefix) += "."
         }
         this += name.stripSuffix("$")
 
@@ -799,10 +809,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case RenameSelector(Id(name), Id(newName)) => this += name += " => " += newName
     }
 
-    def printDefinitionName(sym: Definition, isFullType: Boolean): Buffer = sym match {
-      case ValDef(name, _, _) =>
-        if (isFullType) this += name += ".type"
-        else this += name
+    def printDefinitionName(sym: Definition): Buffer = sym match {
+      case ValDef(name, _, _) => this += name
       case DefDef(name, _, _, _, _) => this += name
       case ClassDef(name, _, _, _, _) => this += name.stripSuffix("$")
       case TypeDef(name, _) => this += name
