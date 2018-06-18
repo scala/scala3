@@ -253,8 +253,8 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     private implicit class TypeTreeOps(buff: Buffer) {
       def +=(x: TypeOrBoundsTree): Buffer = { visitTypeTree(x); buff }
-      def +=(x: Option[TypeTree]): Buffer = { visitOption(x, visitTypeTree); buff }
-      def ++=(x: List[TypeTree]): Buffer = { visitList(x, visitTypeTree); buff }
+      def +=(x: Option[TypeOrBoundsTree]): Buffer = { visitOption(x, visitTypeTree); buff }
+      def ++=(x: List[TypeOrBoundsTree]): Buffer = { visitList(x, visitTypeTree); buff }
     }
 
     private implicit class TypeOps(buff: Buffer) {

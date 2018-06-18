@@ -94,7 +94,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
               this += " "
               printTypeTree(tpt)
               this += "["
-              printTypeTrees(targs, ", ")
+              printTypeOrBoundsTrees(targs, ", ")
               this += "]"
               if (args.nonEmpty) {
                 this += "("
@@ -274,7 +274,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Term.TypeApply(fn, args) =>
         printTree(fn)
         this += "["
-        printTypeTrees(args, ", ")
+        printTypeOrBoundsTrees(args, ", ")
         this += "]"
 
       case Term.Super(qual, tptOpt) =>
@@ -454,12 +454,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       this
     }
 
-    def printTypeTrees(typesTrees: List[TypeTree], sep: String): Buffer = {
-      def printSeparated(list: List[TypeTree]): Unit = list match {
+    def printTypeOrBoundsTrees(typesTrees: List[TypeOrBoundsTree], sep: String): Buffer = {
+      def printSeparated(list: List[TypeOrBoundsTree]): Unit = list match {
         case Nil =>
-        case x :: Nil => printTypeTree(x)
+        case x :: Nil => printTypeOrBoundsTree(x)
         case x :: xs =>
-          printTypeTree(x)
+          printTypeOrBoundsTree(x)
           this += sep
           printSeparated(xs)
       }
@@ -667,7 +667,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printTypeOrBoundsTree(tpt: TypeOrBoundsTree): Buffer = tpt match {
       case TypeBoundsTree(lo, hi) =>
-        this += " >: "
+        this += "_ >: "
         printTypeTree(lo)
         this += " <: "
         printTypeTree(hi)
@@ -726,7 +726,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case TypeTree.Applied(tpt, args) =>
         printTypeTree(tpt)
         this += "["
-        printTypeTrees(args, ", ")
+        printTypeOrBoundsTrees(args, ", ")
         this += "]"
 
       case TypeTree.Annotated(tpt, annot) =>
