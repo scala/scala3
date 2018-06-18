@@ -95,7 +95,7 @@ object definitions {
     case Select(prefix: Term, name: String)
     case Singleton(ref: Term)
     case Refined(underlying: TypeTree, refinements: List[Definition])
-    case Applied(tycon: TypeTree, args: List[TypeTree])
+    case Applied(tycon: TypeTree, args: List[TypeTree | TypeBoundsTree])
     case Annotated(tpt: TypeTree, annotation: Term)
     case And(left: TypeTree, right: TypeTree)
     case Or(left: TypeTree, right: TypeTree)

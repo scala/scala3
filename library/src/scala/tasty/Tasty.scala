@@ -417,7 +417,7 @@ abstract class Tasty { tasty =>
 
     val Applied: AppliedExtractor
     abstract class AppliedExtractor {
-      def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, List[TypeTree])]
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, List[TypeOrBoundsTree])]
     }
 
     val Annotated: AnnotatedExtractor

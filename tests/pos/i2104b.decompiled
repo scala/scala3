@@ -1,5 +1,5 @@
 /** Decompiled from out/posTestFromTasty/pos/i2104b/Cons.class */
-class Cons[H, T]() extends java.lang.Object
+trait Cons[H, T]() extends java.lang.Object
 object Cons {
   def apply[H, T](h: H, t: T): Cons[H, T] = scala.Predef.???
   def unapply[H, T](t: Cons[H, T]): scala.Option[Pair[H, T]] = scala.Predef.???
