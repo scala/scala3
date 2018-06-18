@@ -724,7 +724,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     if (meth.isTransparentMethod) {
       if (ctx.debug) inlining.println(i"try reduce projection $tree")
       tree match {
-        case Select(NewInstance(cls, args), field) if cls.is(NoInits) =>
+        case Select(NewInstance(cls, args), field) if cls.isNoInitsClass =>
           val idx = cls.asClass.paramAccessors.indexOf(tree.symbol)
           if (idx >= 0 && idx < args.length) {
             inlining.println(i"projecting $tree -> ${args(idx)}")
