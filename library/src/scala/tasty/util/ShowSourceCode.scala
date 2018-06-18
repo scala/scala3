@@ -500,34 +500,41 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printTargDef(arg: TypeDef, isMember: Boolean = false): Buffer = {
       val TypeDef(name, rhs) = arg
+      def printBounds(bounds: TypeBoundsTree): Buffer = {
+        val TypeBoundsTree(lo, hi) = bounds
+        lo match {
+          case TypeTree.Synthetic() =>
+          case _ =>
+            this += " >: "
+            printTypeTree(lo)
+        }
+        hi match {
+          case TypeTree.Synthetic() => this
+          case _ =>
+            this += " <: "
+            printTypeTree(hi)
+        }
+      }
       this += name
       rhs match {
-        case TypeBoundsTree(lo, hi) =>
-          lo match {
-            case TypeTree.Synthetic() => this
-            case _ =>
-              this += " >: "
-              printTypeTree(lo)
-          }
-          hi match {
-            case TypeTree.Synthetic() => this
-            case _ =>
-              this += " <: "
-              printTypeTree(hi)
-          }
+        case rhs @ TypeBoundsTree(lo, hi) => printBounds(rhs)
         case rhs @ SyntheticBounds() =>
           printTypeOrBound(rhs.tpe)
         case rhs @ TypeTree.TypeLambdaTree(tparams, body) =>
+          def printParam(t: TypeOrBoundsTree): Unit = t match {
+            case t @ TypeBoundsTree(_, _) => printBounds(t)
+            case t @ TypeTree() => printTypeTree(t)
+          }
           def printSeparated(list: List[TypeDef]): Unit = list match {
             case Nil =>
             case x :: Nil =>
               val TypeDef(name, trhs) = x
               this += name
-              printTypeOrBoundsTree(trhs)
+              printParam(trhs)
             case x :: xs =>
               val TypeDef(name, trhs) = x
               this += name
-              printTypeOrBoundsTree(trhs)
+              printParam(trhs)
               this += ", "
               printSeparated(xs)
           }
