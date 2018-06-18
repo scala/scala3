@@ -654,11 +654,23 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printTypeTree(tree: TypeTree): Buffer = tree match {
       case TypeTree.Synthetic() =>
-        printType(tree.tpe)
-        tree.tpe match {
-          case tpe @ Type.TypeRef(name, _) if name.endsWith("$") => this += ".type"
-          case tpe => this
+        def printTypeAndAnnots(tpe: Type): Buffer = tpe match {
+          case Type.AnnotatedType(tp, annot) =>
+            printTypeAndAnnots(tp)
+            this += " "
+            printAnnotation(annot)
+          case tpe @ Type.TypeRef(name, _) if name.endsWith("$") =>
+            printType(tpe)
+            this += ".type"
+          case Type.SymRef(ClassDef("Null$" | "Nothing$", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("runtime", _), NoPrefix()))) =>
+            // scala.runtime.Null$ and scala.runtime.Nothing$ are not modules, those are their actual names
+            printType(tpe)
+          case tpe @ Type.SymRef(ClassDef(name, _, _, _, _), _) if name.endsWith("$") =>
+            printType(tpe)
+            this += ".type"
+          case tpe => printType(tpe)
         }
+        printTypeAndAnnots(tree.tpe)
 
       case TypeTree.TypeIdent(name) =>
         printType(tree.tpe)

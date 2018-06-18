@@ -38,7 +38,6 @@ class FromTastyTests extends ParallelTesting {
         "t3612.scala",
       ),
       recompilationBlacklist = Set(
-        "simpleCaseObject",
         "annot-bootstrap.scala",
       )
     ).checkCompile()
