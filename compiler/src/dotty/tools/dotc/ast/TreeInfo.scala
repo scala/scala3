@@ -240,6 +240,17 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case y          => y
   }
 
+  /**  The largest subset of {NoInits, PureInterface} that a
+   *   trait enclosing this statement can have as flags.
+   */
+  def defKind(tree: Tree): FlagSet = unsplice(tree) match {
+    case EmptyTree | _: Import => NoInitsInterface
+    case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
+    case tree: DefDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else NoInits
+    case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
+    case _ => EmptyFlags
+  }
+
   /** Checks whether predicate `p` is true for all result parts of this expression,
    *  where we zoom into Ifs, Matches, and Blocks.
    */
@@ -621,17 +632,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       }
     }
     accum(Nil, root)
-  }
-
-  /**  The largest subset of {NoInits, PureInterface} that a
-   *   trait enclosing this statement can have as flags.
-   */
-  def defKind(tree: Tree): FlagSet = unsplice(tree) match {
-    case EmptyTree | _: Import => NoInitsInterface
-    case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
-    case tree: DefDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else NoInits
-    case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
-    case _ => EmptyFlags
   }
 
   /** The top level classes in this tree, including only those module classes that
