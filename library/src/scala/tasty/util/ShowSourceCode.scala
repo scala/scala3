@@ -73,6 +73,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         if (flags.isCase) this += "case "
 
         if (flags.isObject) this += "object " += name.stripSuffix("$")
+        else if (flags.isTrait) this += "trait " += name
         else this += "class " += name
 
         if (!flags.isObject) {
