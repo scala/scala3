@@ -32,6 +32,7 @@ object Annotations {
       for (ConstantType(c) <- argument(i) map (_.tpe)) yield c
 
     def isEvaluated: Boolean = true
+    def isEvaluating: Boolean = false
 
     def ensureCompleted(implicit ctx: Context): Unit = tree
 
@@ -85,6 +86,7 @@ object Annotations {
       myBody
     }
     override def isEvaluated = evaluated
+    override def isEvaluating = evaluated && myBody == null
   }
 
   object Annotation {

@@ -113,6 +113,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     def apply(tp: Type) = simplify(tp, this)
   }
 
+  /** Normalize */
+  final def normalize(tp: Type): Type =
+    new NormalizeMap().apply(tp)
+
   /** Approximate union type by intersection of its dominators.
    *  That is, replace a union type Tn | ... | Tn
    *  by the smallest intersection type of base-class instances of T1,...,Tn.

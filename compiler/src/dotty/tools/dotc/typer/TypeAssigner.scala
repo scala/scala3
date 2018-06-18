@@ -156,6 +156,17 @@ trait TypeAssigner {
   def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree =
     Typed(tree, TypeTree(tree.tpe.widen.translateParameterized(defn.SeqClass, defn.RepeatedParamClass)))
 
+  /** Normalize the type as far as possible. */
+  protected def normalizedType(tp: Type)(implicit ctx: Context): Type = {
+    def skipNormalization = {
+      ctx.isAfterTyper || ctx.mode.is(Mode.Type) || ctx.mode.is(Mode.InferringReturnType) ||
+        ctx.owner.isTransitivelyTransparent
+    }
+    // TODO(gsps): Make sure prototypes make it here and don't normalize if the proto matches syntactically
+    if (!skipNormalization && ctx.isNormalizationEntrypoint(tp)) ctx.normalize(tp)
+    else tp
+  }
+
   /** A denotation exists really if it exists and does not point to a stale symbol. */
   final def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean = try
     denot match {
@@ -269,7 +280,7 @@ trait TypeAssigner {
    *   - any further information it needs to access to compute that type.
    */
   def assignType(tree: untpd.Ident, tp: Type)(implicit ctx: Context) =
-    tree.withType(tp)
+    tree.withType(normalizedType(tp))
 
   def assignType(tree: untpd.Select, qual: Tree)(implicit ctx: Context): Select = {
     def qualType = qual.tpe.widen
@@ -289,7 +300,7 @@ trait TypeAssigner {
       // is casted to T[] by javac. Since the return type of Array[T]#clone() is Array[T],
       // this is exactly what Erasure will do.
 
-      case _ => accessibleSelectionType(tree, qual)
+      case _ => normalizedType(accessibleSelectionType(tree, qual))
     }
     tree.withType(tp)
   }
@@ -368,8 +379,10 @@ trait TypeAssigner {
           val tpe =
             if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
             else fntpe.resultType
-          if (fn.symbol.isTransparentMethod) TypeOf(tpe, tree)
-          else tpe
+          val tpe1 =
+            if (fn.symbol.isTransparentMethod) TypeOf(tpe, tree)
+            else tpe
+          normalizedType(tpe1)
         } else
           errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
       case t =>
@@ -429,8 +442,10 @@ trait TypeAssigner {
           val argTypes = args.tpes
           if (sameLength(argTypes, paramNames)) {
             val tpe = pt.instantiate(argTypes)
-            if (fn.symbol.isTransparentMethod) TypeOf(tpe, tree)
-            else tpe
+            val tpe1 =
+              if (fn.symbol.isTransparentMethod) TypeOf(tpe, tree)
+              else tpe
+            normalizedType(tpe1)
           }
           else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
         }

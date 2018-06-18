@@ -114,7 +114,7 @@ object Inliner {
    *  from Scala2x class files might be `@inline`, but still lack that body.
    */
   def hasBodyToInline(sym: SymDenotation)(implicit ctx: Context): Boolean =
-    sym.isInlinedMethod && sym.hasAnnotation(defn.BodyAnnot) // TODO: Open this up for transparent methods as well
+    sym.isInlinedMethod && sym.hasAnnotation(defn.BodyAnnot)
 
   /** The body to inline for method `sym`.
    *  @pre  hasBodyToInline(sym)
