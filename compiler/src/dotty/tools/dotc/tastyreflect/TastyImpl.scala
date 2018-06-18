@@ -474,7 +474,7 @@ object TastyImpl extends scala.tasty.Tasty {
     object Value extends ValueExtractor {
       def unapply(x: Pattern)(implicit ctx: Context): Option[Term] = x match {
         case lit: tpd.Literal @unchecked => Some(lit)
-        case ident: tpd.Ident @unchecked if ident.isTerm => Some(ident)
+        case ref: tpd.RefTree @unchecked if ref.isTerm => Some(ref)
         case _ => None
       }
     }
