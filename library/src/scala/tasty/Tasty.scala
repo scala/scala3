@@ -440,6 +440,10 @@ abstract class Tasty { tasty =>
       def unapply(x: TypeTree)(implicit ctx: Context): Option[TypeTree]
     }
 
+    val TypeLambdaTree: TypeLambdaTreeExtractor
+    abstract class TypeLambdaTreeExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(List[TypeDef], TypeOrBoundsTree)]
+    }
   }
 
   // ----- TypeBoundsTrees ------------------------------------------------

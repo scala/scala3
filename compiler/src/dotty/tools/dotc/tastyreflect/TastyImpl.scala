@@ -606,6 +606,12 @@ object TastyImpl extends scala.tasty.Tasty {
       }
     }
 
+    object TypeLambdaTree extends TypeLambdaTreeExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(List[TypeDef], TypeOrBoundsTree)] = x match {
+        case Trees.LambdaTypeTree(tparams, body) => Some((tparams, body))
+        case _ => None
+      }
+    }
   }
 
   // ----- TypeBoundsTrees ------------------------------------------------

@@ -110,6 +110,8 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "TypeTree.ByName(" += result += ")"
       case TypeTree.Annotated(arg, annot) =>
         this += "TypeTree.Annotated(" += arg += ", " += annot += ")"
+      case TypeTree.TypeLambdaTree(tparams, body) =>
+        this += "LambdaTypeTree(" ++= tparams += ", " += body += ")"
       case TypeBoundsTree(lo, hi) =>
         this += "TypeBoundsTree(" += lo += ", " += hi += ")"
       case SyntheticBounds() =>
@@ -185,6 +187,8 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "Type.ThisType(" += tp += ")"
       case Type.RecursiveThis(binder) =>
         this += "Type.RecursiveThis(" += binder += ")"
+      case Type.RecursiveType(underlying) =>
+        this += "Type.RecursiveType(" += underlying += ")"
       case Type.MethodType(argNames, argTypes, resType) =>
         this += "Type.MethodType(" ++= argNames += ", " ++= argTypes += ", " += resType += ")"
       case Type.PolyType(argNames, argBounds, resType) =>
