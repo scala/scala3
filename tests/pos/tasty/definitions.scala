@@ -100,6 +100,7 @@ object definitions {
     case And(left: TypeTree, right: TypeTree)
     case Or(left: TypeTree, right: TypeTree)
     case ByName(tpt: TypeTree)
+    case TypeLambda(tparams: List[TypeDef], body: Type | TypeBoundsTree)
   }
 
   /** Trees denoting type bounds */

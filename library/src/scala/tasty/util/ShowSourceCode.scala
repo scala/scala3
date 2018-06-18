@@ -148,7 +148,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case tdef@TypeDef(name, rhs) =>
         this += "type "
-        printTargDef(tdef)
+        printTargDef(tdef, isMember = true)
 
       case vdef@ValDef(name, tpt, rhs) =>
         val flags = vdef.flags
@@ -469,7 +469,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       }
     }
 
-    def printTargDef(arg: TypeDef): Buffer = {
+    def printTargDef(arg: TypeDef, isMember: Boolean = false): Buffer = {
       val TypeDef(name, rhs) = arg
       this += name
       rhs match {
@@ -488,6 +488,28 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           }
         case rhs @ SyntheticBounds() =>
           printTypeOrBound(rhs.tpe)
+        case rhs @ TypeTree.TypeLambdaTree(tparams, body) =>
+          def printSeparated(list: List[TypeDef]): Unit = list match {
+            case Nil =>
+            case x :: Nil =>
+              val TypeDef(name, trhs) = x
+              this += name
+              printTypeOrBoundsTree(trhs)
+            case x :: xs =>
+              val TypeDef(name, trhs) = x
+              this += name
+              printTypeOrBoundsTree(trhs)
+              this += ", "
+              printSeparated(xs)
+          }
+          this += "["
+          printSeparated(tparams)
+          this += "]"
+          if (isMember) {
+            this += " = "
+            printTypeOrBoundsTree(body)
+          }
+          else this
         case rhs @ TypeTree() =>
           this += " = "
           printTypeTree(rhs)
@@ -672,6 +694,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "=> "
         printTypeTree(result)
 
+      case TypeTree.TypeLambdaTree(tparams, body) =>
+        printTargsDefs(tparams)
+        this += " => "
+        printTypeOrBoundsTree(body)
+
       case _ =>
         throw new MatchError(tree.show)
 
@@ -755,6 +782,30 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         tp match {
           case Type.SymRef(cdef @ ClassDef(_, _, _, _, _), _) if !cdef.flags.isObject => this += ".this"
           case _ => this
+        }
+
+      case Type.TypeLambda(paramNames, tparams, body) =>
+        this += "["
+        def printSeparated(list: List[(String, TypeBounds)]): Unit = list match {
+          case Nil =>
+          case (name, bounds) :: Nil =>
+            this += name
+            printTypeOrBound(bounds)
+          case (name, bounds) :: xs =>
+            this += name
+            printTypeOrBound(bounds)
+            this += ", "
+            printSeparated(xs)
+        }
+        printSeparated(paramNames.zip(tparams))
+        this += "] => "
+        printTypeOrBound(body)
+
+      case Type.ParamRef(lambda, idx) =>
+        lambda match {
+          case Type.MethodType(params, _, _) => this += params(idx)
+          case Type.PolyType(params, _, _) => this += params(idx)
+          case Type.TypeLambda(params, _, _) => this += params(idx)
         }
 
       case _ =>
