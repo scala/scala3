@@ -87,8 +87,8 @@ final class JLineTerminal {
 
       context match {
         case ParseContext.ACCEPT_LINE =>
-          // TODO: take into account cursor position
-          if (ParseResult.isIncomplete(line)) incomplete()
+          val lastLineOffset = line.lastIndexOfSlice(System.lineSeparator)
+          if (cursor <= lastLineOffset || ParseResult.isIncomplete(line)) incomplete()
           else parsedLine("", 0)
             // using dummy values,
             // resulting parsed line is probably unused
