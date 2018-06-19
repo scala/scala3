@@ -2097,7 +2097,12 @@ object messages {
 
   case class TypeTestAlwaysSucceeds(foundCls: Symbol, testCls: Symbol)(implicit ctx: Context) extends Message(TypeTestAlwaysSucceedsID) {
     val kind = "Syntax"
-    val msg = s"The highlighted type test will always succeed since the scrutinee type ($foundCls) is a subtype of ${testCls}"
+    val msg = {
+      val addendum =
+        if (foundCls != testCls) s" is a subtype of $testCls"
+        else " is the same as the tested type"
+      s"The highlighted type test will always succeed since the scrutinee type ($foundCls)" + addendum
+    }
     val explanation = ""
   }
 }
