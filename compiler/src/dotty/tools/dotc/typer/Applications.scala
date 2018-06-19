@@ -939,7 +939,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  whereas overloaded variants need to have a conforming variant.
      */
     def trySelectUnapply(qual: untpd.Tree)(fallBack: Tree => Tree): Tree = {
-      // try first for non-overloaded, then for overloaded ocurrences
+      // try first for non-overloaded, then for overloaded occurrences
       def tryWithName(name: TermName)(fallBack: Tree => Tree)(implicit ctx: Context): Tree = {
         def tryWithProto(pt: Type)(implicit ctx: Context) = {
           val result = typedExpr(untpd.Select(qual, name), new UnapplyFunProto(pt, this))

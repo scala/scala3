@@ -109,6 +109,24 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context) = {
+    if (ddef.name == nme.unapply && !ddef.symbol.is(Synthetic)) {
+      ddef.tpe.widen match {
+        case mt: MethodType if !mt.resType.widen.isInstanceOf[MethodicType] =>
+          val resultType = mt.resType.substParam(mt.paramRefs.head, mt.paramRefs.head)
+          val refinedType = resultType.select(nme.refinedScrutinee).widen.resultType
+          if (refinedType.exists && !(refinedType <:< mt.paramRefs.head)) {
+            val paramName = mt.paramNames.head
+            val paramTpe = mt.paramRefs.head
+            val paramInfo = mt.paramInfos.head
+            ctx.error(
+              i"""Extractor with ${nme.refinedScrutinee} should refine the result type of that member.
+                 |The result type of ${nme.refinedScrutinee} should be a subtype of $paramTpe:
+                 |  def unapply($paramName: $paramInfo): ${resultType.widenDealias.classSymbol.name} { def ${nme.refinedScrutinee}: $refinedType & $paramTpe }
+               """.stripMargin, ddef.tpt.pos)
+          }
+        case _ =>
+      }
+    }
     val meth = ddef.symbol.asTerm
     if (meth.hasAnnotation(defn.NativeAnnot)) {
       meth.resetFlag(Deferred)
