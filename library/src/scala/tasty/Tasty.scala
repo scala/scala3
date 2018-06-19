@@ -433,9 +433,14 @@ abstract class Tasty { tasty =>
       def unapply(x: TypeTree)(implicit ctx: Context): Option[String]
     }
 
+    val TermSelect: TermSelectExtractor
+    abstract class TermSelectExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(Term, String)]
+    }
+
     val TypeSelect: TypeSelectExtractor
     abstract class TypeSelectExtractor {
-      def unapply(x: TypeTree)(implicit ctx: Context): Option[(Parent, String)]
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, String)]
     }
 
     val Singleton: SingletonExtractor

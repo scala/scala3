@@ -85,7 +85,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
         val parents1 = parents.filter {
           case Term.Apply(Term.Select(Term.New(tpt), _, _), _) => !Types.JavaLangObject.unapply(tpt.tpe)
-          case TypeTree.TypeSelect(Term.Select(Term.Ident("_root_"), "scala", _), "Product") => false
+          case TypeTree.TermSelect(Term.Select(Term.Ident("_root_"), "scala", _), "Product") => false
           case _ => true
         }
         if (parents1.nonEmpty) {
@@ -701,11 +701,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case TypeTree.TypeIdent(name) =>
         printType(tree.tpe)
 
+      case TypeTree.TermSelect(qual, name) =>
+        printTree(qual) += "." += name
+
       case TypeTree.TypeSelect(qual, name) =>
-        qual match {
-          case qual @ Term() => printTree(qual) += "." += name
-          case qual @ TypeTree() => printTypeTree(qual) += "#" += name
-        }
+        printTypeTree(qual) += "#" += name
 
       case TypeTree.Singleton(ref) =>
         printTree(ref)
