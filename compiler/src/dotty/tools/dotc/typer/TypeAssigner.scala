@@ -163,7 +163,7 @@ trait TypeAssigner {
         ctx.owner.isTransitivelyTransparent
     }
     // TODO(gsps): Make sure prototypes make it here and don't normalize if the proto matches syntactically
-    if (!skipNormalization && ctx.isNormalizationEntrypoint(tp)) ctx.normalize(tp)
+    if (!skipNormalization && Normalize.isNormalizationEntrypoint(tp)) ctx.normalize(tp)
     else tp
   }
 

@@ -4005,21 +4005,105 @@ object Types {
       case _ => false
     }
 
+    private def treeWithTpe[ThisTree <: Tree](tree: ThisTree, tp: Type): ThisTree =
+      if (tree.tpe eq tp) tree else tree.withTypeUnchecked(tp).asInstanceOf[ThisTree]
+
+    private def finalizeDerived(tree1: Tree, tp: TypeOf)(implicit ctx: Context): Type =
+      if (tp.tree ne tree1) {
+        assert(!tp.underlyingTp.exists || tree1.tpe.exists, i"Derived TypeOf's type became NoType")
+        tree1.tpe
+      } else
+        tp
+
     object If {
       def unapply(to: TypeOf): Option[(Type, Type, Type)] = to.tree match {
         case Trees.If(cond, thenb, elseb) => Some((cond.tpe, thenb.tpe, elseb.tpe))
         case _ => None
       }
+
+      def derived(to: TypeOf)(condTp: Type, thenTp: Type, elseTp: Type)(implicit ctx: Context): Type =
+        finalizeDerived(to.tree match {
+          case Trees.If(cond, thenp, elsep) =>
+            cpy.If(to.tree)(
+              treeWithTpe(cond, condTp),
+              treeWithTpe(thenp, thenTp),
+              treeWithTpe(elsep, elseTp)
+            )
+          case tree =>
+            throw new IllegalArgumentException(s"Expected If tree, got $tree instead")
+        }, to)
     }
 
     object Match {
       def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
-        case Trees.Match(cond, cases) =>
+        case Trees.Match(selector, cases) =>
           // TODO: We only look at .body.tpe for now, eventually we should
           // also take the guard and the pattern into account.
-          Some((cond.tpe, cases.map(_.body.tpe)))
+          Some((selector.tpe, cases.map(_.body.tpe)))
         case _ => None
       }
+
+      def derived(to: TypeOf)(selectorTp: Type, caseTps: List[Type])(implicit ctx: Context): Type =
+        finalizeDerived(to.tree match {
+          case Trees.Match(selector, cases) =>
+            assert(cases.length == caseTps.length)
+            cpy.Match(to.tree)(
+              treeWithTpe(selector, selectorTp),
+              cases.zip(caseTps).map((treeWithTpe[CaseDef] _).tupled)
+            )
+          case tree =>
+            throw new IllegalArgumentException(s"Expected Match tree, got $tree instead")
+        }, to)
+    }
+
+    object Call {
+      @tailrec private [this] def loop(tp: Type, argss: List[List[Type]]): (TermRef, List[List[Type]]) =
+        tp match {
+          case TypeOf(_, tree) =>
+            tree match {
+              case Trees.Apply(fn, args) =>
+                loop(fn.tpe, args.tpes :: argss)
+              case Trees.TypeApply(fn, targs) =>
+                loop(fn.tpe, targs.tpes :: argss)
+              case _ => ???
+            }
+          case tp: TermRef =>
+            (tp, argss)
+          case _ => ???
+        }
+
+      def unapply(to: TypeOf): Option[(TermRef, List[List[Type]])] = to.tree match {
+        case _: Apply | _: TypeApply => Some(loop(to, Nil))
+        case _ => None
+      }
+    }
+
+    object Apply {
+      def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
+        finalizeDerived(to.tree match {
+          case Trees.Apply(fun, args) =>
+            assert(args.length == argTps.length)
+            cpy.Apply(to.tree)(
+              treeWithTpe(fun, funTp),
+              args.zip(argTps).map((treeWithTpe[Tree] _).tupled)
+            )
+          case tree =>
+            throw new IllegalArgumentException(s"Expected Apply tree, got $tree instead")
+        }, to)
+    }
+
+    object TypeApply {
+      def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
+        finalizeDerived(to.tree match {
+          case Trees.TypeApply(fun, args) =>
+            assert(args.length == argTps.length)
+            cpy.TypeApply(to.tree)(
+              treeWithTpe(fun, funTp),
+              args.zip(argTps).map((treeWithTpe[Tree] _).tupled)
+            )
+          case tree =>
+            throw new IllegalArgumentException(s"Expected TypeApply tree, got $tree instead")
+        }, to)
     }
   }
 
@@ -4164,27 +4248,17 @@ object Types {
           tp
 
         case tp: TypeOf =>
-          def copyMapped[ThisTree <: Tree](tree: ThisTree): ThisTree = {
-            val tp1 = this(tree.tpe)
-            if (tree.tpe eq tp1) tree else tree.withTypeUnchecked(tp1).asInstanceOf[ThisTree]
-          }
-          val tree1 = tp.tree match {
+          tp.tree match {
             case tree: TypeApply =>
-              cpy.TypeApply(tree)(copyMapped(tree.fun), tree.args.mapConserve(copyMapped))
+              TypeOf.TypeApply.derived(tp)(this(tree.fun.tpe), tree.args.map(t => this(t.tpe)))
             case tree: Apply =>
-              cpy.Apply(tree)(copyMapped(tree.fun), tree.args.mapConserve(copyMapped))
+              TypeOf.Apply.derived(tp)(this(tree.fun.tpe), tree.args.map(t => this(t.tpe)))
             case tree: If =>
-              cpy.If(tree)(copyMapped(tree.cond), copyMapped(tree.thenp), copyMapped(tree.elsep))
+              TypeOf.If.derived(tp)(this(tree.cond.tpe), this(tree.thenp.tpe), this(tree.elsep.tpe))
             case tree: Match =>
-              cpy.Match(tree)(copyMapped(tree.selector), tree.cases.mapConserve(copyMapped))
+              TypeOf.Match.derived(tp)(this(tree.selector.tpe), tree.cases.map(t => this(t.tpe)))
             case tree =>
               throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
-          }
-          if (tp.tree ne tree1) {
-            assert(!tp.underlyingTp.exists || tree1.tpe.exists, i"Derived TypeOf's type became NoType")
-            tree1.tpe
-          } else {
-            tp
           }
 
         case tp @ AnnotatedType(underlying, annot) =>

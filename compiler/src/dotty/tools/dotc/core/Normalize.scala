@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package core
 
+import Contexts._
 import Decorators._
 import Denotations._
 import Flags._
@@ -10,14 +11,13 @@ import Symbols._
 import Types._
 import reporting.trace
 import reporting.diagnostic.Message
-
+import typer.ErrorReporting.errorType
 import ast.tpd._
-
 
 object Normalize {
   @sharable var track = false
 
-  def isNormalizationEntrypoint(tp: Type): Boolean =
+  def isNormalizationEntrypoint(tp: Type)(implicit ctx: Context): Boolean =
     tp match {
       case TypeOf.Call(fn, _) => fn.symbol.is(Transparent)
       case tp: TermRef        => tp.symbol.is(Transparent)
@@ -25,7 +25,7 @@ object Normalize {
     }
 }
 
-private final class NormalizeMap extends TypeMap {
+private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
   final val NORMALIZE_FUEL = 50  // TODO: Make this configurable via ScalaSettings
   private[this] var fuel: Int = NORMALIZE_FUEL
   private[this] var canReduce: Boolean = true
@@ -37,10 +37,10 @@ private final class NormalizeMap extends TypeMap {
     private[this] val paramPos = mutable.ArrayBuffer[Name]()
     private[this] var params: Array[Symbol] = _
 
-    private def computeParamPositions(tp: Type, len: Int): Int = tp match {
+    private def computeParamPositions(tp: Type): Unit = tp match {
       case tp: MethodOrPoly =>
         paramPos ++= tp.paramNames
-        computeParamBindings(tp.resultType)
+        computeParamPositions(tp.resultType)
       case _ =>
     }
 
@@ -51,7 +51,7 @@ private final class NormalizeMap extends TypeMap {
         case _ =>
       }
 
-      params = Array.fill[Symbol](paramPos.silengthze)(NoSymbol)
+      params = Array.fill[Symbol](paramPos.length)(NoSymbol)
       body.tpe.foreachPart(registerType, stopAtStatic = true)
     }
 
@@ -119,7 +119,7 @@ private final class NormalizeMap extends TypeMap {
         // TODO(gsps): Also reduce if fnSym's finalResultType is singleton (or do this in TypeAssigner?)
         val unfolder = defUnfolder(fnSym)
         if (realApplication || unfolder.isParameterless)
-          unfolder.unfold(fn.prefix, args.flatten)
+          unfolder.unfold(fn.prefix, argss.flatten)
         else
           NoType
       }
@@ -183,7 +183,7 @@ private final class NormalizeMap extends TypeMap {
           else                               apply(elseb)
         case cond1 =>
           canReduce = false
-          TypeOf.derivedIf(tp, cond1, thenb, elseb)
+          TypeOf.If.derived(tp)(cond1, thenb, elseb)
       }
 
     case tp @ TypeOf.Match(selector, cases) =>
