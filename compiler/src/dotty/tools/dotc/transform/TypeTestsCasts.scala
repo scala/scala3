@@ -91,8 +91,7 @@ object TypeTestsCasts {
 
           if (expr.tpe <:< testType)
             if (expr.tpe.isNotNull) {
-              if (foundCls != testCls)
-                ctx.warning(TypeTestAlwaysSucceeds(foundCls, testCls), tree.pos)
+              ctx.warning(TypeTestAlwaysSucceeds(foundCls, testCls), tree.pos)
               constant(expr, Literal(Constant(true)))
             }
             else expr.testNotNull
