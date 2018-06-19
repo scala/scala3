@@ -678,21 +678,22 @@ object Test {
     println
     println(test2().run)
     println
-    println(test3().run)
-    println
-    println(test4().run)
-    println
-    println(test5().run)
-    println
-    println(test6().run)
-    println
-    println(test7().run)
-    println
-    println(test8().run)
-    println
-    println(test9().run)
-    println
-    println(test10().run)
+    // FIXME re-enable in #4643 when we can cache the compiler context
+//    println(test3().run)
+//    println
+//    println(test4().run)
+//    println
+//    println(test5().run)
+//    println
+//    println(test6().run)
+//    println
+//    println(test7().run)
+//    println
+//    println(test8().run)
+//    println
+//    println(test9().run)
+//    println
+//    println(test10().run)
   }
 }
 
