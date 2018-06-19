@@ -6,4 +6,4 @@ class Foo() {
   def c(x: scala.Int): scala.Int = (x: @annot())
 }
 /** Decompiled from out/posTestFromTasty/pos/simpleAnnot/annot.class */
-class annot() extends scala.annotation.Annotation
+class annot() extends scala.annotation.Annotation()

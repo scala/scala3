@@ -88,35 +88,40 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case TypeTree.TermSelect(Term.Select(Term.Ident("_root_"), "scala", _), "Product") => false
           case _ => true
         }
-        if (parents1.nonEmpty) {
-          sb.append(" extends")
-          parents1.foreach {
-            case parent@Term.Apply(Term.TypeApply(Term.Select(Term.New(tpt), _, _), targs), args) =>
-              this += " "
-              printTypeTree(tpt)
-              this += "["
-              printTypeOrBoundsTrees(targs, ", ")
-              this += "]"
-              if (args.nonEmpty) {
-                this += "("
-                printTrees(args, ", ")
-                this += ")"
-              }
+        if (parents1.nonEmpty)
+          this += " extends "
 
-            case parent@Term.Apply(Term.Select(Term.New(tpt), _, _), args) =>
-              this += " "
-              printTypeTree(tpt)
-              if (args.nonEmpty) {
-                this += "("
-                printTrees(args, ", ")
-                this += ")"
-              }
+        def printParent(parent: Parent): Unit = parent match {
+          case parent @ Term.TypeApply(fun, targs) =>
+            printParent(fun)
+            this += "["
+            printTypeOrBoundsTrees(targs, ", ")
+            this += "]"
 
-            case parent@TypeTree() =>
-              sb.append(" ")
-              printTypeTree(parent)
-          }
+          case parent @ Term.Apply(fun, args) =>
+            printParent(fun)
+            this += "("
+            printTrees(args, ", ")
+            this += ")"
+
+          case parent @ Term.Select(Term.New(tpt), _, _) =>
+            printTypeTree(tpt)
+
+          case parent @ TypeTree() =>
+            printTypeTree(parent)
+
+          case parent @ Term() => throw new MatchError(parent.show)
         }
+
+        def printSeparated(list: List[Parent]): Unit = list match {
+          case Nil =>
+          case x :: Nil => printParent(x)
+          case x :: xs =>
+            printParent(x)
+            this += " with "
+            printSeparated(xs)
+        }
+        printSeparated(parents1)
 
         def keepDefinition(d: Definition): Boolean = {
           val flags = d.flags
