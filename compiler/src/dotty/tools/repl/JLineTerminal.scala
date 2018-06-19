@@ -14,7 +14,10 @@ import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
 import org.jline.utils.AttributedString
 
-final class JLineTerminal {
+final class JLineTerminal extends java.io.Closeable {
+  // import java.util.logging.{Logger, Level}
+  // Logger.getLogger("org.jline").setLevel(Level.FINEST)
+
   private val terminal = TerminalBuilder.terminal()
   private val history = new DefaultHistory
 
@@ -51,6 +54,8 @@ final class JLineTerminal {
 
     lineReader.readLine(prompt)
   }
+
+  def close() = terminal.close()
 
   /** Provide syntax highlighting */
   private class Highlighter extends reader.Highlighter {

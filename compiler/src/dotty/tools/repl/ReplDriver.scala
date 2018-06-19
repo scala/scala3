@@ -114,19 +114,39 @@ class ReplDriver(settings: Array[String],
    *  `protected final` to facilitate testing.
    */
   final def runUntilQuit(): State = {
+    val terminal = new JLineTerminal()
+
+    /** Blockingly read a line, getting back a parse result */
+    def readLine(state: State): ParseResult = {
+      val completer: Completer = { (_, line, candidates) =>
+        val comps = completions(line.cursor, line.line, state)
+        candidates.addAll(comps.asJava)
+      }
+      implicit val ctx = state.run.runContext
+      try {
+        val line = terminal.readLine(completer)
+        ParseResult(line)
+      }
+      catch {
+        case _: EndOfFileException => // Ctrl+D
+          Quit
+      }
+    }
+
     @tailrec def loop(state: State): State = {
-      val res = readLine()(state)
+      val res = readLine(state)
 
       if (res == Quit) state
       else {
         // readLine potentially destroys the run, so a new one is needed for the
         // rest of the interpretation:
-        implicit val freshState = state.newRun(compiler, rootCtx)
-        loop(interpret(res))
+        val freshState = state.newRun(compiler, rootCtx)
+        loop(interpret(res)(freshState))
       }
     }
 
-    withRedirectedOutput { loop(initState) }
+    try withRedirectedOutput { loop(initState) }
+    finally terminal.close()
   }
 
   final def run(input: String)(implicit state: State): State = withRedirectedOutput {
@@ -165,26 +185,6 @@ class ReplDriver(settings: Array[String],
         completions.map(makeCandidate)
       }
       .getOrElse(Nil)
-  }
-
-  // lazy because the REPL tests do not rely on the JLine reader
-  private lazy val terminal = new JLineTerminal()
-
-  /** Blockingly read a line, getting back a parse result */
-  private def readLine()(implicit state: State): ParseResult = {
-    implicit val ctx = state.run.runContext
-    val completer: Completer = { (_, line, candidates) =>
-      val comps = completions(line.cursor, line.line, state)
-      candidates.addAll(comps.asJava)
-    }
-    try {
-      val line = terminal.readLine(completer)
-      ParseResult(line)
-    }
-    catch {
-      case _: EndOfFileException => // Ctrl+D
-        Quit
-    }
   }
 
   private def extractImports(trees: List[untpd.Tree]): List[untpd.Import] =
