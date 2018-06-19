@@ -1,4 +1,3 @@
-import dotty.tools.dotc.quoted.Toolbox._
 import scala.quoted._
 
 /**
@@ -674,6 +673,8 @@ object Test {
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ ~a + ~b }))
 
   def main(args: Array[String]): Unit = {
+    implicit val toolbox: scala.quoted.Toolbox = dotty.tools.dotc.quoted.Toolbox.make
+
     println(test1().run)
     println
     println(test2().run)
