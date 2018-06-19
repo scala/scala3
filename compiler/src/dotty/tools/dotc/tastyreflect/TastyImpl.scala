@@ -623,6 +623,13 @@ object TastyImpl extends scala.tasty.Tasty {
         case _ => None
       }
     }
+
+    object Bind extends BindExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(String, TypeBoundsTree)] = x match {
+        case x: tpd.Bind @unchecked if x.name.isInstanceOf[Names.TypeName] => Some((x.name.toString, x.body))
+        case _ => None
+      }
+    }
   }
 
   // ----- TypeBoundsTrees ------------------------------------------------
@@ -645,6 +652,7 @@ object TastyImpl extends scala.tasty.Tasty {
   object SyntheticBounds extends SyntheticBoundsExtractor {
     def unapply(x: TypeBoundsTree)(implicit ctx: Context): Boolean = x match {
       case x @ Trees.TypeTree() => x.tpe.isInstanceOf[Types.TypeBounds]
+      case Trees.Ident(nme.WILDCARD) => x.tpe.isInstanceOf[Types.TypeBounds]
       case _ => false
     }
   }

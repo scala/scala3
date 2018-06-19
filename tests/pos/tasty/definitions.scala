@@ -102,6 +102,7 @@ object definitions {
     case Or(left: TypeTree, right: TypeTree)
     case ByName(tpt: TypeTree)
     case TypeLambda(tparams: List[TypeDef], body: Type | TypeBoundsTree)
+    case Bind(name: String, bounds: TypeBoundsTree)
   }
 
   /** Trees denoting type bounds */

@@ -482,6 +482,11 @@ abstract class Tasty { tasty =>
     abstract class TypeLambdaTreeExtractor {
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(List[TypeDef], TypeOrBoundsTree)]
     }
+
+    val Bind: BindExtractor
+    abstract class BindExtractor{
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(String, TypeBoundsTree)]
+    }
   }
 
   // ----- TypeBoundsTrees ------------------------------------------------
