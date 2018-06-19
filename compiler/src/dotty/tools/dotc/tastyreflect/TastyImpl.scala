@@ -152,8 +152,12 @@ object TastyImpl extends scala.tasty.Tasty {
       else None
     }
 
-    def annots(implicit ctx: Context): List[Term] =
-      x.symbol.annotations.map(_.tree)
+    def annots(implicit ctx: Context): List[Term] = {
+      x.symbol.annotations.flatMap {
+        case _: core.Annotations.LazyBodyAnnotation => Nil
+        case annot => annot.tree :: Nil
+      }
+    }
 
     def localContext(implicit ctx: Context): Context =
       if (x.hasType && x.symbol.exists) ctx.withOwner(x.symbol)

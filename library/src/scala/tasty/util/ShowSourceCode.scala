@@ -214,6 +214,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
         val flags = ddef.flags
         if (flags.isImplicit) this += "implicit "
+        if (flags.isInline) this += "inline "
         if (flags.isOverride) this += "override "
 
         this += "def " += name
@@ -231,16 +232,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
         this
 
-      case tree @ Term.Ident(name) =>
-        tree.tpe match {
-          case Type.SymRef(_, Types.EmptyPrefix()) | Type.TermRef(_, Types.EmptyPrefix()) => this += name
-          case Type.SymRef(_, prefix) =>
-            printTypeOrBound(prefix)
-            this += "." += name
-          case Type.TermRef(_, prefix) =>
-            printTypeOrBound(prefix)
-            this += "." += name
-        }
+      case tree @ Term.Ident(_) =>
+        printType(tree.tpe)
 
       case Term.Select(qual, name, sig) =>
         printTree(qual)
@@ -907,6 +900,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             case Type.TypeRef(_, Type.SymRef(PackageDef("internal", _), Type.ThisType(Type.SymRef(PackageDef("annotation", _), NoPrefix())))) => false
             case _ => true
           }
+        case x => throw new MatchError(x.show)
       }
       printAnnotations(annots)
       if (annots.nonEmpty) this += " "
@@ -969,7 +963,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
   private object Annotation {
     def unapply(arg: Tree)(implicit ctx: Context): Option[(TypeTree, List[Term])] = arg match {
+      case Term.New(annot) => Some((annot, Nil))
       case Term.Apply(Term.Select(Term.New(annot), "<init>", _), args) => Some((annot, args))
+      case Term.Apply(Term.TypeApply(Term.Select(Term.New(annot), "<init>", _), targs), args) => Some((annot, args))
       case _ => None
     }
   }
