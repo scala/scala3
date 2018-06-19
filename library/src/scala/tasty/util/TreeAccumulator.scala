@@ -81,7 +81,8 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
   def foldOverTypeTree(x: X, tree: TypeOrBoundsTree)(implicit ctx: Context): X = tree match {
     case TypeTree.Synthetic() => x
     case TypeTree.TypeIdent(_) => x
-    case TypeTree.TypeSelect(qualifier, _) => foldTree(x, qualifier)
+    case TypeTree.TermSelect(qualifier, _) => foldTree(x, qualifier)
+    case TypeTree.TypeSelect(qualifier, _) => foldTypeTree(x, qualifier)
     case TypeTree.Singleton(ref) => foldTree(x, ref)
     case TypeTree.And(left, right) => foldTypeTree(foldTypeTree(x, left), right)
     case TypeTree.Or(left, right) => foldTypeTree(foldTypeTree(x, left), right)
