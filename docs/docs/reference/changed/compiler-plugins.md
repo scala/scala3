@@ -25,10 +25,10 @@ The common plugins that add new phases to the compiler pipeline are called
 _standard plugins_ in Dotty. In terms of features, they are similar to
 Scalac plugins, despite minor changes in the API.
 
-## Physical Interface
+## Artifact Interface
 
 Both research plugins and standard plugins share the same command line options
-as Scalac plugins. You may manually specify a plugin as a compiler option as follows:
+as Scalac plugins. You may integrate a plugin in the Dotty compiler as follows:
 
 ```shell
 dotc -Xplugin:pluginA.jar -Xplugin:pluginB.jar Test.scala
@@ -44,11 +44,15 @@ pluginClass=dividezero.DivideZero
 ```
 
 The above is a change from Scalac, which depends on an XML file
-`scalac-plugin.xml`. Starting from 1.1.5, SBT also supports Dotty compiler plugins:
+`scalac-plugin.xml`.
+
+Starting from 1.1.5, SBT also supports Dotty compiler plugins:
 
 ```Scala
 addCompilerPlugin("org.divbyzero" % "divbyzero" % "1.0")
 ```
+
+With the code above, SBT will prepare the correct options to the compiler.
 
 ## Standard Plugin
 
