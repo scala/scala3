@@ -42,21 +42,14 @@ class Driver extends DotClass {
 
   protected def sourcesRequired = true
 
-  /**
-   * Should the `ContextDocstrings` be set for this context? The `ContextDocstrings` is used
-   * to store doc comments unless `-Ydrop-comments` is set, or when TASTY is configured to
-   * unpickle the doc comments.
-   */
-  protected def shouldAddDocContext(implicit ctx: Context): Boolean = {
-    !ctx.settings.YdropComments.value || ctx.mode.is(Mode.ReadComments)
-  }
-
   def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
     val ctx = rootCtx.fresh
     val summary = CompilerCommand.distill(args)(ctx)
     ctx.setSettings(summary.sstate)
 
-    if (shouldAddDocContext(ctx)) ctx.setProperty(ContextDoc, new ContextDocstrings)
+    if (!ctx.settings.YdropComments.value(ctx) || ctx.mode.is(Mode.ReadComments)) {
+      ctx.setProperty(ContextDoc, new ContextDocstrings)
+    }
 
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
     (fileNames, ctx)

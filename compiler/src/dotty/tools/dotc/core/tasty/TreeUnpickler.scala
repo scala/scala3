@@ -825,10 +825,10 @@ class TreeUnpickler(reader: TastyReader,
         sym.registerIfChild(late = true)
 
       if (ctx.mode.is(Mode.ReadComments)) {
-        for { docCtx <- ctx.docCtx
-              commentUnpickler <- commentUnpicklerOpt } {
+        assert(ctx.docCtx.isDefined, "Mode is `ReadComments`, but no `docCtx` is set.")
+        commentUnpicklerOpt.foreach { commentUnpickler =>
           val comment = commentUnpickler.commentAt(start)
-          docCtx.addDocstring(tree.symbol, comment)
+          ctx.docCtx.get.addDocstring(tree.symbol, comment)
           tree.setComment(comment)
         }
       }

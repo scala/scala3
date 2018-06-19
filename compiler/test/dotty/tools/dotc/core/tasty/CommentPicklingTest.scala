@@ -2,7 +2,7 @@ package dotty.tools.dotc.core.tasty
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.TreeOps
-import dotty.tools.dotc.Driver
+import dotty.tools.dotc.{Driver, Main}
 import dotty.tools.dotc.core.Comments.CommentsContext
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators.PreNamedString
@@ -78,16 +78,11 @@ class CommentPicklingTest {
     }
   }
 
-  private def findTreeNamed(name: Name)(trees: List[tpd.Tree], ctx: Context): Option[tpd.NameTree] = {
-    val acc = new tpd.TreeAccumulator[Option[tpd.NameTree]] {
-      override def apply(x: Option[tpd.NameTree], tree: tpd.Tree)(implicit ctx: Context): Option[tpd.NameTree] = {
-        x.orElse(tree match {
-          case md: tpd.NameTree if md.name == name => Some(md)
-          case other => foldOver(None, other)
-        })
-      }
-    }
-    acc(None, trees)(ctx)
+  private def findTreeNamed(name: Name)(trees: List[tpd.Tree], ctx: Context): Option[tpd.MemberDef] = {
+    implicit val _ctx: Context = ctx
+    trees.flatMap { _.find { case md: tpd.MemberDef => md.name == name; case _ => false }
+      .map(_.asInstanceOf[tpd.MemberDef]).toList
+    }.headOption
   }
 
   private def compileAndUnpickle[T](sources: List[String])(fn: (List[tpd.Tree], Context) => T) = {
@@ -103,9 +98,8 @@ class CommentPicklingTest {
       Files.createDirectories(out)
 
       val options = compileOptions.and("-d", out.toAbsolutePath.toString).and(sourceFiles: _*)
-      val driver = new Driver
       val reporter = TestReporter.reporter(System.out, logLevel = ERROR)
-      driver.process(options.all, reporter)
+      Main.process(options.all, reporter)
       assertFalse("Compilation failed.", reporter.hasErrors)
 
       val tastyFiles = getAll(tmp, "glob:**.tasty")
