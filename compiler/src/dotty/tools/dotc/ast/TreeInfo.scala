@@ -369,6 +369,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       refPurity(tree)
     case Select(qual, _) =>
       refPurity(tree).min(exprPurity(qual))
+    case New(_) =>
+      SimplyPure
     case TypeApply(fn, _) =>
       exprPurity(fn)
 /*
@@ -380,13 +382,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case Apply(fn, args) =>
       def isKnownPureOp(sym: Symbol) =
         sym.owner.isPrimitiveValueClass || sym.owner == defn.StringClass
-      // Note: After uncurry, field accesses are represented as Apply(getter, Nil),
-      // so an Apply can also be pure.
-      if (args.isEmpty && fn.symbol.is(Stable)) exprPurity(fn)
-      else if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol))
-        // A constant expression with pure arguments is pure.
+      if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol)
+             // A constant expression with pure arguments is pure.
+          || fn.symbol.isStable)
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Pure
-      else Impure
+      else
+        Impure
     case Typed(expr, _) =>
       exprPurity(expr)
     case Block(stats, expr) =>
@@ -413,11 +414,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  @DarkDimius: need to make sure that lazy accessor methods have Lazy and Stable
    *               flags set.
    */
-  def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel =
-    if (!tree.tpe.widen.isParameterless || tree.symbol.is(Erased)) SimplyPure
-    else if (!tree.symbol.isStable) Impure
-    else if (tree.symbol.is(Lazy)) Idempotent // TODO add Module flag, sinxce Module vals or not Lazy from the start.
+  def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel = {
+    val sym = tree.symbol
+    if (!tree.tpe.widen.isParameterless || sym.is(Erased)) SimplyPure
+    else if (!sym.isStable) Impure
+    else if (sym.is(Module))
+      if (sym.moduleClass.isNoInitsClass) Pure else Idempotent
+    else if (sym.is(Lazy)) Idempotent
     else SimplyPure
+  }
 
   def isPureRef(tree: Tree)(implicit ctx: Context) =
     refPurity(tree) == SimplyPure
