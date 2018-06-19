@@ -92,7 +92,7 @@ object definitions {
     def tpe: Type = ???
     case Synthetic()
     case Ident(name: String, override val tpe: Type)
-    case Select(prefix: Term, name: String)
+    case Select(prefix: Term | TypeTree, name: String)
     case Singleton(ref: Term)
     case Refined(underlying: TypeTree, refinements: List[Definition])
     case Applied(tycon: TypeTree, args: List[TypeTree | TypeBoundsTree])

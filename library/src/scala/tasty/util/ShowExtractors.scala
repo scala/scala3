@@ -95,7 +95,12 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case TypeTree.TypeIdent(name) =>
         this += "TypeTree.TypeIdent(\"" += name += "\")"
       case TypeTree.TypeSelect(qualifier, name) =>
-        this += "TypeTree.TypeSelect(" += qualifier += ", \"" += name += "\")"
+        this += "TypeTree.TypeSelect("
+        qualifier match {
+          case qualifier @ Term() => this += qualifier
+          case qualifier @ TypeTree() => this += qualifier
+        }
+        this += ", \"" += name += "\")"
       case TypeTree.Singleton(ref) =>
         this += "TypeTree.Singleton(" += ref += ")"
       case TypeTree.And(left, right) =>

@@ -702,11 +702,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printType(tree.tpe)
 
       case TypeTree.TypeSelect(qual, name) =>
-        (qual: Any) match {
-          case qual @ TypeTree.TypeIdent(_) => printTypeTree(qual) // FIXME: qual is of type Tree buy we are getting a TypeTree qualifier
-          case _ => printTree(qual)
+        qual match {
+          case qual @ Term() => printTree(qual) += "." += name
+          case qual @ TypeTree() => printTypeTree(qual) += "#" += name
         }
-        this += "." += name
 
       case TypeTree.Singleton(ref) =>
         printTree(ref)

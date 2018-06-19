@@ -555,7 +555,7 @@ object TastyImpl extends scala.tasty.Tasty {
     }
 
     object TypeSelect extends TypeSelectExtractor {
-      def unapply(x: TypeTree)(implicit ctx: Context): Option[(Term, String)] = x match {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(Parent, String)] = x match {
         case x: tpd.Select @unchecked if x.isType => Some(x.qualifier, x.name.toString)
         case _ => None
       }
