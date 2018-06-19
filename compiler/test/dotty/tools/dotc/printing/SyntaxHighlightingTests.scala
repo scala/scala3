@@ -65,7 +65,9 @@ class SyntaxHighlightingTests extends DottyTest {
   @Test
   def annotations = {
     test("@deprecated class Foo", "<T|@deprecated> <K|class> <T|Foo>")
-    // test("@Test(\"Hello\") class Foo", "<T|@Test(\"Hello\")> <K|class> <T|Foo>") // FIXME
+    test("@Test() class Foo", "<T|@Test()> <K|class> <T|Foo>")
+    test("@Test(\"Hello\") class Foo", "<T|@Test(\"Hello\")> <K|class> <T|Foo>")
+    test("@Test(\"Hello\")(\"World\") class Foo", "<T|@Test(\"Hello\")(\"World\")> <K|class> <T|Foo>")
     test("@annotation.tailrec def foo = 1", "<T|@annotation.tailrec> <K|def> <V|foo> = <L|1>")
   }
 
