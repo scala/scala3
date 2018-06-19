@@ -25,7 +25,7 @@ object Reporter {
     }
 
   /** A reporter that ignores reports */
-  object NoReporter extends Reporter {
+  @sharable object NoReporter extends Reporter {
     def doReport(m: MessageContainer)(implicit ctx: Context) = ()
     override def report(m: MessageContainer)(implicit ctx: Context): Unit = ()
   }

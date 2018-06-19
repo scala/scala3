@@ -255,7 +255,8 @@ class CompilationTests extends ParallelTesting {
       defaultOutputDir + libGroup + "/src/:" +
       // as well as bootstrapped compiler:
       defaultOutputDir + dotty1Group + "/dotty/:" +
-      Jars.dottyInterfaces,
+      // and the other compiler dependecies:
+      Jars.dottyInterfaces + ":" + Jars.jline,
       Array("-Ycheck-reentrant")
     )
 
