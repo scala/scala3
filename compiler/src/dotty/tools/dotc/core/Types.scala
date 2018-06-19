@@ -4008,9 +4008,20 @@ object Types {
     private def treeWithTpe[ThisTree <: Tree](tree: ThisTree, tp: Type): ThisTree =
       if (tree.tpe eq tp) tree else tree.withTypeUnchecked(tp).asInstanceOf[ThisTree]
 
-    private def finalizeDerived(tree1: Tree, tp: TypeOf)(implicit ctx: Context): Type =
+    private def treesWithTpes[ThisTree <: Tree](trees: List[ThisTree], tps: List[Type]): List[ThisTree] = {
+      assert(tps.length == trees.length)
+      var currentType = tps
+      trees.mapConserve[ThisTree] { tree =>
+        val tp      = currentType.head
+        currentType = currentType.tail
+        if (tree.tpe eq tp) tree else tree.withTypeUnchecked(tp).asInstanceOf[ThisTree]
+      }
+    }
+
+    private def finalizeDerived(tp: TypeOf, tree1: Tree)(implicit ctx: Context): Type =
       if (tp.tree ne tree1) {
         assert(!tp.underlyingTp.exists || tree1.tpe.exists, i"Derived TypeOf's type became NoType")
+        assert(tree1.tpe.isInstanceOf[TypeOf])
         tree1.tpe
       } else
         tp
@@ -4022,16 +4033,14 @@ object Types {
       }
 
       def derived(to: TypeOf)(condTp: Type, thenTp: Type, elseTp: Type)(implicit ctx: Context): Type =
-        finalizeDerived(to.tree match {
+        finalizeDerived(to, to.tree match {
           case Trees.If(cond, thenp, elsep) =>
             cpy.If(to.tree)(
               treeWithTpe(cond, condTp),
               treeWithTpe(thenp, thenTp),
               treeWithTpe(elsep, elseTp)
             )
-          case tree =>
-            throw new IllegalArgumentException(s"Expected If tree, got $tree instead")
-        }, to)
+        })
     }
 
     object Match {
@@ -4044,16 +4053,10 @@ object Types {
       }
 
       def derived(to: TypeOf)(selectorTp: Type, caseTps: List[Type])(implicit ctx: Context): Type =
-        finalizeDerived(to.tree match {
+        finalizeDerived(to, to.tree match {
           case Trees.Match(selector, cases) =>
-            assert(cases.length == caseTps.length)
-            cpy.Match(to.tree)(
-              treeWithTpe(selector, selectorTp),
-              cases.zip(caseTps).map((treeWithTpe[CaseDef] _).tupled)
-            )
-          case tree =>
-            throw new IllegalArgumentException(s"Expected Match tree, got $tree instead")
-        }, to)
+            cpy.Match(to.tree)(treeWithTpe(selector, selectorTp), treesWithTpes(cases, caseTps))
+        })
     }
 
     object Call {
@@ -4072,6 +4075,11 @@ object Types {
           case _ => ???
         }
 
+      /** Decompose a call fn[targs](vargs_1)...(vargs_n)
+       *  into its constituents (fn, targs ::: vargss).
+       *
+       *  Type-level counter part of TypedTreeInfo.decomposeCall.
+       */
       def unapply(to: TypeOf): Option[(TermRef, List[List[Type]])] = to.tree match {
         case _: Apply | _: TypeApply => Some(loop(to, Nil))
         case _ => None
@@ -4080,30 +4088,18 @@ object Types {
 
     object Apply {
       def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
-        finalizeDerived(to.tree match {
+        finalizeDerived(to, to.tree match {
           case Trees.Apply(fun, args) =>
-            assert(args.length == argTps.length)
-            cpy.Apply(to.tree)(
-              treeWithTpe(fun, funTp),
-              args.zip(argTps).map((treeWithTpe[Tree] _).tupled)
-            )
-          case tree =>
-            throw new IllegalArgumentException(s"Expected Apply tree, got $tree instead")
-        }, to)
+            cpy.Apply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))
+        })
     }
 
     object TypeApply {
       def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
-        finalizeDerived(to.tree match {
+        finalizeDerived(to, to.tree match {
           case Trees.TypeApply(fun, args) =>
-            assert(args.length == argTps.length)
-            cpy.TypeApply(to.tree)(
-              treeWithTpe(fun, funTp),
-              args.zip(argTps).map((treeWithTpe[Tree] _).tupled)
-            )
-          case tree =>
-            throw new IllegalArgumentException(s"Expected TypeApply tree, got $tree instead")
-        }, to)
+            cpy.TypeApply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))
+        })
     }
   }
 
