@@ -853,10 +853,18 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printType(tp)
 
       case Type.ThisType(tp) =>
-        printType(tp)
         tp match {
-          case Type.SymRef(cdef @ ClassDef(_, _, _, _, _), _) if !cdef.flags.isObject => this += ".this"
-          case _ => this
+          case Type.SymRef(cdef @ ClassDef(name, _, _, _, _), prefix) if !cdef.flags.isObject =>
+            def printPrefix(prefix: TypeOrBounds): Unit = prefix match {
+              case Type.SymRef(ClassDef(name, _, _, _, _), prefix2) =>
+                printPrefix(prefix2)
+                this += name += "."
+              case _ =>
+            }
+            printPrefix(prefix)
+            this += name
+            this += ".this"
+          case _ => printType(tp)
         }
 
       case Type.TypeLambda(paramNames, tparams, body) =>
