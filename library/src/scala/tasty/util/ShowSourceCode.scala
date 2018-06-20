@@ -74,6 +74,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
         if (flags.isObject) this += "object " += name.stripSuffix("$")
         else if (flags.isTrait) this += "trait " += name
+        else if (flags.isAbstract) this += "abstract class " += name
         else this += "class " += name
 
         if (!flags.isObject) {
@@ -504,29 +505,14 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printTargDef(arg: TypeDef, isMember: Boolean = false): Buffer = {
       val TypeDef(name, rhs) = arg
-      def printBounds(bounds: TypeBoundsTree): Buffer = {
-        val TypeBoundsTree(lo, hi) = bounds
-        lo match {
-          case TypeTree.Synthetic() =>
-          case _ =>
-            this += " >: "
-            printTypeTree(lo)
-        }
-        hi match {
-          case TypeTree.Synthetic() => this
-          case _ =>
-            this += " <: "
-            printTypeTree(hi)
-        }
-      }
       this += name
       rhs match {
-        case rhs @ TypeBoundsTree(lo, hi) => printBounds(rhs)
+        case rhs @ TypeBoundsTree(lo, hi) => printBoundsTree(rhs)
         case rhs @ SyntheticBounds() =>
           printTypeOrBound(rhs.tpe)
         case rhs @ TypeTree.TypeLambdaTree(tparams, body) =>
           def printParam(t: TypeOrBoundsTree): Unit = t match {
-            case t @ TypeBoundsTree(_, _) => printBounds(t)
+            case t @ TypeBoundsTree(_, _) => printBoundsTree(t)
             case t @ TypeTree() => printTypeTree(t)
           }
           def printSeparated(list: List[TypeDef]): Unit = list match {
@@ -824,9 +810,50 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
         this += name.stripSuffix("$")
 
-      case Type.Refinement(parent, name, info) =>
-        printType(parent)
-        // TODO add refinements
+      case tpe @ Type.Refinement(_, _, _) =>
+        def rec(tp: Type): Unit = tp match {
+          case Type.Refinement(parent, name, info) =>
+            rec(parent)
+            indented {
+              this += lineBreak()
+              info match {
+                case info @ TypeBounds(_, _) =>
+                  this += "type " += name
+                  printBounds(info)
+                case info @ Type() =>
+                  info match {
+                    case Type.ByNameType(_) | Type.MethodType(_, _, _) | Type.TypeLambda(_, _, _) =>
+                      this += "def " += name
+                    case _ =>
+                      this += "val " += name
+                  }
+                  def printMethodicType(tp: Type): Unit = tp match {
+                    case tp @ Type.MethodType(paramNames, params, res) =>
+                      this += "("
+                      printMethodicTypeParams(paramNames, params)
+                      this += ")"
+                      printMethodicType(res)
+                    case tp @ Type.TypeLambda(paramNames, params, res) =>
+                      this += "["
+                      printMethodicTypeParams(paramNames, params)
+                      this += "]"
+                      printMethodicType(res)
+                    case Type.ByNameType(t) =>
+                      this += ": "
+                      printType(t)
+                    case tp @ Type() =>
+                      this += ": "
+                      printType(tp)
+                  }
+                  printMethodicType(info)
+              }
+            }
+          case tp =>
+            printType(tp)
+            this += " {"
+        }
+        rec(tpe)
+        this += lineBreak() += "}"
 
       case Type.AppliedType(tp, args) =>
         printType(tp)
@@ -861,27 +888,15 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case _ => this
         }
 
+      case Type.MethodType(paramNames, params, body) =>
+        this += "("
+        printMethodicTypeParams(paramNames, params)
+        this += ") => "
+        printTypeOrBound(body)
+
       case Type.TypeLambda(paramNames, tparams, body) =>
         this += "["
-        def printBounds(bounds: TypeBounds): Buffer = {
-          val TypeBounds(lo, hi) = bounds
-          this += " >: "
-          printType(lo)
-          this += " <: "
-          printType(hi)
-        }
-        def printSeparated(list: List[(String, TypeBounds)]): Unit = list match {
-          case Nil =>
-          case (name, bounds) :: Nil =>
-            this += name
-            printBounds(bounds)
-          case (name, bounds) :: xs =>
-            this += name
-            printBounds(bounds)
-            this += ", "
-            printSeparated(xs)
-        }
-        printSeparated(paramNames.zip(tparams))
+        printMethodicTypeParams(paramNames, tparams)
         this += "] => "
         printTypeOrBound(body)
 
@@ -932,6 +947,51 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       printAnnotations(annots)
       if (annots.nonEmpty) this += " "
       else this
+    }
+
+    def printMethodicTypeParams(paramNames: List[String], params: List[TypeOrBounds]): Unit = {
+      def printInfo(info: TypeOrBounds) = info match {
+        case info @ TypeBounds(_, _) => printBounds(info)
+        case info @ Type() =>
+          this += ": "
+          printType(info)
+      }
+      def printSeparated(list: List[(String, TypeOrBounds)]): Unit = list match {
+        case Nil =>
+        case (name, info) :: Nil =>
+          this += name
+          printInfo(info)
+        case (name, info) :: xs =>
+          this += name
+          printInfo(info)
+          this += ", "
+          printSeparated(xs)
+      }
+      printSeparated(paramNames.zip(params))
+    }
+
+    def printBoundsTree(bounds: TypeBoundsTree): Buffer = {
+      val TypeBoundsTree(lo, hi) = bounds
+      lo match {
+        case TypeTree.Synthetic() =>
+        case _ =>
+          this += " >: "
+          printTypeTree(lo)
+      }
+      hi match {
+        case TypeTree.Synthetic() => this
+        case _ =>
+          this += " <: "
+          printTypeTree(hi)
+      }
+    }
+
+    def printBounds(bounds: TypeBounds): Buffer = {
+      val TypeBounds(lo, hi) = bounds
+      this += " >: "
+      printType(lo)
+      this += " <: "
+      printType(hi)
     }
 
     def +=(x: Boolean): this.type = { sb.append(x); this }
