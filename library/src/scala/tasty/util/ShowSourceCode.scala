@@ -750,9 +750,6 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             printTypeAndAnnots(tp)
             this += " "
             printAnnotation(annot)
-          case tpe @ Type.TypeRef(name, _) if name.endsWith("$") =>
-            printType(tpe)
-            this += ".type"
           case Type.SymRef(ClassDef("Null$" | "Nothing$", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("runtime", _), NoPrefix()))) =>
             // scala.runtime.Null$ and scala.runtime.Nothing$ are not modules, those are their actual names
             printType(tpe)
@@ -865,7 +862,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case NoPrefix() | Type.ThisType(Types.EmptyPackage()) =>
           case prefix@Type() => printType(prefix) += "."
         }
-        this += name.stripSuffix("$")
+        if (name.endsWith("$")) this += name.stripSuffix("$") += ".type"
+        else this += name
 
       case tpe @ Type.Refinement(_, _, _) =>
         printRefinement(tpe)
@@ -904,7 +902,15 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case Type.SymRef(cdef @ ClassDef(_, _, _, _, _), _) if !cdef.flags.isObject =>
             printFullClassName(tp)
             this += ".this"
-          case _ => printType(tp)
+          case Type.TypeRef(name, prefix) if name.endsWith("$") =>
+            prefix match {
+              case Types.EmptyPrefix() =>
+              case _ =>
+                printTypeOrBound(prefix) += "."
+            }
+            this += name.stripSuffix("$")
+          case _ =>
+            printType(tp)
         }
 
       case Type.TypeLambda(paramNames, tparams, body) =>
