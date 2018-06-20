@@ -48,7 +48,11 @@ class SyntaxHighlightingTests extends DottyTest {
     test("1", "<L|1>")
     test("1.1", "<L|1.1>")
     test("1.1.toString", "<L|1.1>.toString")
-    // test("1L", "<L|1L>")
+    test("1L", "<L|1L>")
+    test("1Lx", "1Lx")
+    test("1f", "<L|1f>")
+    test("1.1f", "<L|1.1f>")
+    test("1.1fx", "1.1fx")
   }
 
   @Test
