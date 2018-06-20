@@ -191,8 +191,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case stats =>
             this += "{"
             indented {
-              this += lineBreak()
-              printTrees(stats, lineBreak())
+              printStats(stats.init, stats.last)
             }
             this += lineBreak() += "}"
         }
@@ -205,8 +204,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case stats =>
             this += "{"
             indented {
-              this += lineBreak()
-              printTrees(stats, lineBreak())
+              printStats(stats.init, stats.last)
             }
             this += lineBreak() += "}"
         }
@@ -327,28 +325,19 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this += ")"
           case _ =>
             this += "{"
+            val (stats1, expr1) =
+              if (isLoopEntryPoint(expr)) (stats.init, stats.last)
+              else (stats, expr)
             indented {
-              if (!stats.isEmpty) {
-                this += lineBreak()
-                printTrees(stats, lineBreak())
-              }
-              if (!isLoopEntryPoint(expr)) {
-                this += lineBreak()
-                printTree(expr)
-              }
+              printStats(stats1, expr1)
             }
             this += lineBreak() += "}"
         }
 
       case Term.Inlined(call, bindings, expansion) =>
-        sb.append("{ // inlined")
+        this += "{ // inlined"
         indented {
-          if (!bindings.isEmpty) {
-            this += lineBreak()
-            printTrees(bindings, lineBreak())
-          }
-          this += lineBreak()
-          printTree(expansion)
+          printStats(bindings, expansion)
         }
         this += lineBreak() += "}"
 
@@ -398,6 +387,31 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case _ =>
         throw new MatchError(tree.show)
 
+    }
+
+    def printStats(stats: List[Tree], expr: Tree): Unit = {
+      def printSeparator(nextStats: List[Tree]) = {
+        this += lineBreak()
+        // Avoid accidental application of opening `{` on next line with a double break
+        val next = if (nextStats.isEmpty) expr else nextStats.head
+        next match {
+          case Term.Block(DefDef("while$" | "doWhile$", _, _, _, _) :: Nil, _) =>
+          case Term.Block(_, _) => this += lineBreak()
+          case Term.Inlined(_, _, _) => this += lineBreak()
+          case _ =>
+        }
+      }
+      def printSeparated(list: List[Tree]): Unit = list match {
+        case Nil =>
+          printTree(expr)
+        case x :: xs =>
+          printTree(x)
+          printSeparator(xs)
+          printSeparated(xs)
+      }
+
+      this += lineBreak()
+      printSeparated(stats)
     }
 
     def printTrees(trees: List[Tree], sep: String): Buffer = {
@@ -603,14 +617,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       }
       this += " =>"
       indented {
-        this += lineBreak()
         body match {
           case Term.Block(stats, expr) =>
-            printTrees(stats, lineBreak())
-            if (stats.nonEmpty)
-              this += lineBreak()
-            printTree(expr)
+            printStats(stats, expr)
           case body =>
+            this += lineBreak()
             printTree(body)
         }
       }
