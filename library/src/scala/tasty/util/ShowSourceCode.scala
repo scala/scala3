@@ -793,12 +793,14 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Type.SymRef(sym, prefix) =>
         prefix match {
           case Types.EmptyPrefix() =>
-          case prefix@Type.SymRef(ClassDef(_, _, _, _, _), _) =>
+          case prefix @ Type.SymRef(ClassDef(_, _, _, _, _), _) =>
             printType(prefix)
             this += "#"
-          case prefix@Type() =>
-            printType(prefix)
-            this += "."
+          case prefix @ Type() =>
+            if (!sym.flags.isLocal) {
+              printType(prefix)
+              this += "."
+            }
         }
         printDefinitionName(sym)
 
