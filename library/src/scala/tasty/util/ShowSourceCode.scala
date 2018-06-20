@@ -145,13 +145,29 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case stat@Import(_, _) => stat
           case stat@Term() => stat
         }
-        if (stats1.nonEmpty) {
+
+        def printBody(printSelf: Boolean) = {
           this += " {"
           indented {
+            if (printSelf) {
+              val Some(ValDef(name, tpt, _)) = self
+              indented {
+                val name1 = if (name == "_") "this" else name
+                this += " " += name1 += ": "
+                printTypeTree(tpt)
+                this += " =>"
+              }
+            }
             this += lineBreak()
             printTrees(stats1, lineBreak())
           }
           this += lineBreak() += "}"
+        }
+        self match {
+          case Some(ValDef(_, TypeTree.Singleton(_), _)) =>
+            if (stats1.nonEmpty) printBody(printSelf = false)
+          case Some(ValDef(_, _, _)) => printBody(printSelf = true)
+          case _ => if (stats1.nonEmpty) printBody(printSelf = false)
         }
         this
 
