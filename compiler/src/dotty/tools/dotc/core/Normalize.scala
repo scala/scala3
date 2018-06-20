@@ -13,6 +13,8 @@ import reporting.trace
 import reporting.diagnostic.Message
 import typer.ErrorReporting.errorType
 import ast.tpd._
+import scala.annotation.tailrec
+import scala.collection.mutable
 
 object Normalize {
   @sharable var track = false
@@ -26,14 +28,11 @@ object Normalize {
 }
 
 private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
-  final val NORMALIZE_FUEL = 50  // TODO: Make this configurable via ScalaSettings
-  private[this] var fuel: Int = NORMALIZE_FUEL
+  private[this] var fuel: Int = ctx.settings.XmaxTypeEvaluationSteps.value
   private[this] var canReduce: Boolean = true
 
+  /** Infrastructure for beta-reduction at the type-level, to be cached per transparent method. */
   class Unfolder(fnSym: Symbol, body: Tree) {
-    import scala.annotation.tailrec
-    import scala.collection.mutable
-
     private[this] val paramPos = mutable.ArrayBuffer[Name]()
     private[this] var params: Array[Symbol] = _
 
@@ -57,6 +56,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
 
     def isParameterless: Boolean = paramPos.isEmpty
 
+    /** Performs beta-reduction for a given list of arguments, as seen from the given prefix. */
     def unfold(pre: Type, args: List[Type]): Type = {
       @tailrec def substPairs(paramPos: Int, args: List[Type],
                               from: List[Symbol], to: List[Type]): (List[Symbol], List[Type]) =
@@ -67,7 +67,6 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
       val (from, to) = substPairs(0, args, Nil, Nil)
       body.tpe.subst(from, to).asSeenFrom(pre, fnSym.enclosingClass)  // TODO: Check whether enclosingClass makes sense
     }
-
 
     // TODO: Cache this per transparent method
     computeParamPositions(fnSym.info)
@@ -215,7 +214,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
 
   def apply(tp: Type): Type = trace.conditionally(Normalize.track, i"normalize($tp)", show = true) {
     if (fuel == 0)
-      errorType(i"Diverged while normalizing $tp ($NORMALIZE_FUEL steps)", ctx.tree.pos)
+      errorType(i"Diverged while normalizing $tp (${ctx.settings.XmaxTypeEvaluationSteps.value} steps)", ctx.tree.pos)
     else {
       fuel -= 1
       bigStep(tp)
