@@ -36,6 +36,8 @@ class SyntaxHighlightingTests extends DottyTest {
 
   @Test
   def types = {
+    test("type Foo", "<K|type> <T|Foo>")
+    test("type Foo =", "<K|type> <T|Foo> =")
     test("type Foo = Int", "<K|type> <T|Foo> = <T|Int>")
     test("type A = String | Int", "<K|type> <T|A> = <T|String | Int>")
     test("type B = String & Int", "<K|type> <T|B> = <T|String & Int>")
@@ -74,15 +76,35 @@ class SyntaxHighlightingTests extends DottyTest {
   @Test
   def expressions = {
     test("if (true) 1 else 2", "<K|if> (<L|true>) <L|1> <K|else> <L|2>")
-    test("val x = 1 + 2 + 3", "<K|val> <V|x> = <L|1> + <L|2> + <L|3>")
-    test("if (true) 3 else 1", "<K|if> (<K|true>) <L|3> <K|else> <L|1>")
+    test("1 + 2 + 3", "<L|1> + <L|2> + <L|3>")
   }
 
   @Test
   def valOrDefDef = {
-    test("val a = 123", "<K|val> <V|a> = <L|123>")
-    test("var e: Int = 123", "<K|var> <V|e>: <T|Int> = <L|123>")
-    test("def f = 123", "<K|def> <V|f> = <L|123>")
+    test("val",           "<K|val>")
+    test("val foo",       "<K|val> <V|foo>")
+    test("val foo =",     "<K|val> <V|foo> =")
+    test("val foo = 123", "<K|val> <V|foo> = <L|123>")
+
+    test("var",                "<K|var>")
+    test("var foo",            "<K|var> <V|foo>")
+    test("var foo:",           "<K|var> <V|foo>:")
+    test("var foo: Int",       "<K|var> <V|foo>: <T|int>")
+    test("var foo: Int =",     "<K|var> <V|foo>: <T|int> =")
+    test("var foo: Int = 123", "<K|var> <V|foo>: <T|int> = <L|123>")
+
+    test("def",                          "<K|def>")
+    test("def foo",                      "<K|def> <V|foo>")
+    test("def foo(",                     "<K|def> <V|foo>(")
+    test("def foo(bar",                  "<K|def> <V|foo>(<V|bar>")
+    test("def foo(bar:",                 "<K|def> <V|foo>(<V|bar>:")
+    test("def foo(bar: Int",             "<K|def> <V|foo>(<V|bar>: <T|Int>")
+    test("def foo(bar: Int)",            "<K|def> <V|foo>(<V|bar>: <T|Int>)")
+    test("def foo(bar: Int):",           "<K|def> <V|foo>(<V|bar>: <T|Int>):")
+    test("def foo(bar: Int): Int",       "<K|def> <V|foo>(<V|bar>: <T|Int>): <T|Int>")
+    test("def foo(bar: Int): Int =",     "<K|def> <V|foo>(<V|bar>: <T|Int>): <T|Int> =")
+    test("def foo(bar: Int): Int = 123", "<K|def> <V|foo>(<V|bar>: <T|Int>): <T|Int> = <L|123>")
+
     test("def f1(x: Int) = 123", "<K|def> <V|f1>(<V|x>: <T|Int>) = <L|123>")
     test("def f2[T](x: T) = { 123 }", "<K|def> <V|f2>[<T|T>](<V|x>: <T|T>) = { <L|123> }")
   }
