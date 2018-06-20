@@ -22,4 +22,4 @@ case class A[T](x: T) {
       throw new java.lang.IndexOutOfBoundsException(n.toString())
   }
 }
-object A extends scala.AnyRef
+object A extends scala.AnyRef()
