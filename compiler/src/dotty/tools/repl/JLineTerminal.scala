@@ -92,11 +92,13 @@ final class JLineTerminal extends java.io.Closeable {
 
       context match {
         case ParseContext.ACCEPT_LINE =>
-          val lastLineOffset = line.lastIndexOfSlice(System.lineSeparator)
-          if (cursor <= lastLineOffset || ParseResult.isIncomplete(line)) incomplete()
+          // ENTER means SUBMIT when
+          //   - cursor is at end (discarding whitespaces)
+          //   - and, input line is complete
+          val cursorIsAtEnd = line.indexWhere(!_.isWhitespace, from = cursor) >= 0
+          if (cursorIsAtEnd || ParseResult.isIncomplete(line)) incomplete()
           else parsedLine("", 0)
-            // using dummy values,
-            // resulting parsed line is probably unused
+            // using dummy values, resulting parsed line is probably unused
 
         case ParseContext.COMPLETE =>
           // Parse to find completions (typically after a Tab).
