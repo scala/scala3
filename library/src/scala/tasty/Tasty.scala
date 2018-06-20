@@ -731,6 +731,10 @@ abstract class Tasty { tasty =>
       def unapply(x: Constant): Option[String]
     }
 
+    val ClassTag: ClassTagExtractor
+    abstract class ClassTagExtractor {
+      def unapply(x: Constant): Option[Type]
+    }
   }
 
   // ===== Signature ================================================

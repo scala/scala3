@@ -237,7 +237,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Term.Select(qual, name, sig) =>
         printTree(qual)
-        if (name != "<init>")
+        if (name != "<init>" && name != "package")
           this += "." += name
         this
 
@@ -664,6 +664,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Constant.Double(v) => this += v
       case Constant.Char(v) => this += '\'' += escapedChar(v) += '\''
       case Constant.String(v) => this += '"' += escapedString(v) += '"'
+      case Constant.ClassTag(v) =>
+        this += "classOf["
+        printType(v)
+        this += "]"
     }
 
     def printTypeOrBoundsTree(tpt: TypeOrBoundsTree): Buffer = tpt match {

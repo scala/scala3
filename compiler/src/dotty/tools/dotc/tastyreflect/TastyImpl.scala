@@ -940,6 +940,13 @@ object TastyImpl extends scala.tasty.Tasty {
       }
     }
 
+    object ClassTag extends ClassTagExtractor {
+      def unapply(x: Constant): Option[Type] = x match {
+        case x: Constants.Constant if x.tag == Constants.ClazzTag => Some(x.typeValue)
+        case _ => None
+      }
+    }
+
   }
 
   // ===== Signature ================================================
