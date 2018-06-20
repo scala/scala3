@@ -114,6 +114,8 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "TypeTree.Annotated(" += arg += ", " += annot += ")"
       case TypeTree.TypeLambdaTree(tparams, body) =>
         this += "LambdaTypeTree(" ++= tparams += ", " += body += ")"
+      case TypeTree.Bind(name, bounds) =>
+        this += "Bind(" += name += ", " += bounds += ")"
       case TypeBoundsTree(lo, hi) =>
         this += "TypeBoundsTree(" += lo += ", " += hi += ")"
       case SyntheticBounds() =>

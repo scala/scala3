@@ -758,6 +758,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += " => "
         printTypeOrBoundsTree(body)
 
+      case TypeTree.Bind(name, _) =>
+        this += name
+
       case _ =>
         throw new MatchError(tree.show)
 
@@ -765,7 +768,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printTypeOrBound(tpe: TypeOrBounds): Buffer = tpe match {
       case tpe@TypeBounds(lo, hi) =>
-        this += " >: "
+        this += "_ >: "
         printType(lo)
         this += " <: "
         printType(hi)
@@ -847,14 +850,21 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Type.TypeLambda(paramNames, tparams, body) =>
         this += "["
+        def printBounds(bounds: TypeBounds): Buffer = {
+          val TypeBounds(lo, hi) = bounds
+          this += " >: "
+          printType(lo)
+          this += " <: "
+          printType(hi)
+        }
         def printSeparated(list: List[(String, TypeBounds)]): Unit = list match {
           case Nil =>
           case (name, bounds) :: Nil =>
             this += name
-            printTypeOrBound(bounds)
+            printBounds(bounds)
           case (name, bounds) :: xs =>
             this += name
-            printTypeOrBound(bounds)
+            printBounds(bounds)
             this += ", "
             printSeparated(xs)
         }
