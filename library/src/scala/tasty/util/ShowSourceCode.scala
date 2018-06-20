@@ -272,9 +272,15 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Term.TypeApply(fn, args) =>
         printTree(fn)
-        this += "["
-        printTypeOrBoundsTrees(args, ", ")
-        this += "]"
+        fn match {
+          case Term.Select(Term.New(TypeTree.Applied(_, _)), "<init>", _) =>
+            // type bounds already printed in `fn`
+            this
+          case _ =>
+            this += "["
+            printTypeOrBoundsTrees(args, ", ")
+            this += "]"
+        }
 
       case Term.Super(qual, tptOpt) =>
         printTree(qual)
