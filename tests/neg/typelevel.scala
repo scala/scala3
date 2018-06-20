@@ -25,7 +25,7 @@ object Test {
     if xs.isEmpty then ys
     else HCons(xs.head, concat(xs.tail, ys))
 
-  class Deco(val as: HList) {
+  class Deco(private val as: HList) {
     transparent def ++ (bs: HList) = concat(as, bs)
   }
 

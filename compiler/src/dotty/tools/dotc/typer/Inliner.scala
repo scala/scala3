@@ -702,17 +702,23 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    *  follow a reference to an inline value binding to its right hand side.
    */
   object NewInstance {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Symbol, List[Tree])] = tree match {
-      case Apply(Select(New(tpt), nme.CONSTRUCTOR), args) =>
-        Some((tpt.tpe.classSymbol, args))
-      case Ident(_) =>
-        inlineBindings.get(tree.symbol).flatMap(unapply)
-      case Inlined(_, _, expansion) =>
-        unapply(expansion)
-      case Block(stats, expr) if isPureExpr(tree) =>
-        unapply(expr)
-      case _ =>
-        None
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(Symbol, List[Tree], List[Tree])] = {
+      def unapplyLet(bindings: List[Tree], expr: Tree) =
+        unapply(expr) map {
+          case (cls, reduced, prefix) => (cls, reduced, bindings ::: prefix)
+        }
+      tree match {
+        case Apply(Select(New(tpt), nme.CONSTRUCTOR), args) =>
+          Some((tpt.tpe.classSymbol, args, Nil))
+        case Ident(_) =>
+          inlineBindings.get(tree.symbol).flatMap(unapply)
+        case Inlined(_, bindings, expansion) =>
+          unapplyLet(bindings, expansion)
+        case Block(stats, expr) if isPureExpr(tree) =>
+          unapplyLet(stats, expr)
+        case _ =>
+          None
+      }
     }
   }
 
@@ -724,7 +730,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     if (meth.isTransparentMethod) {
       if (ctx.debug) inlining.println(i"try reduce projection $tree")
       tree match {
-        case Select(NewInstance(cls, args), field) if cls.isNoInitsClass =>
+        case Select(NewInstance(cls, args, prefix), field) if cls.isNoInitsClass =>
           def matches(param: Symbol, selection: Symbol): Boolean =
             param == selection || {
               selection.name match {
@@ -737,7 +743,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           val idx = cls.asClass.paramAccessors.indexWhere(matches(_, tree.symbol))
           if (idx >= 0 && idx < args.length) {
             inlining.println(i"projecting $tree -> ${args(idx)}")
-            return args(idx)
+            return seq(prefix, args(idx))
           }
         case _ =>
       }
