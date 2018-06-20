@@ -389,7 +389,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
 
       case Term.Return(expr) =>
-        this += "}"
+        this += "return "
         printTree(expr)
 
       case Term.Repeated(elems) =>
