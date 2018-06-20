@@ -485,7 +485,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
     object Bind extends BindExtractor {
       def unapply(x: Pattern)(implicit ctx: Context): Option[(String, Pattern)] = x match {
-        case x: tpd.Bind @unchecked if x.name.isInstanceOf[Names.TermName] => Some(x.name.toString, x.body)
+        case x: tpd.Bind @unchecked if x.name.isTermName => Some(x.name.toString, x.body)
         case _ => None
       }
     }
@@ -626,7 +626,7 @@ object TastyImpl extends scala.tasty.Tasty {
 
     object Bind extends BindExtractor {
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(String, TypeBoundsTree)] = x match {
-        case x: tpd.Bind @unchecked if x.name.isInstanceOf[Names.TypeName] => Some((x.name.toString, x.body))
+        case x: tpd.Bind @unchecked if x.name.isTypeName => Some((x.name.toString, x.body))
         case _ => None
       }
     }
