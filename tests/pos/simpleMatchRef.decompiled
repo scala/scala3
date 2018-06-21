@@ -2,7 +2,7 @@
 class Foo() {
   val X: scala.Int = scala.Predef.???
   def foo(x: scala.Any): scala.Unit = x match {
-    case this.X =>
+    case Foo.this.X =>
       scala.Predef.println("a")
     case Y =>
       scala.Predef.println("b")

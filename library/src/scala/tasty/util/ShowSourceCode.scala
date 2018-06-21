@@ -275,7 +275,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printConstant(const)
 
       case Term.This(id) =>
-        this += "this" // TODO add id
+        id match {
+          case Some(x) =>
+            val Id(name) = x
+            this += name.stripSuffix("$") += "."
+          case None =>
+        }
+        this += "this"
 
       case Term.New(tpt) =>
         this += "new "
@@ -343,12 +349,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printTree(rhs)
 
       case Term.Block(stats0, expr) =>
-        def isLoopEntryPoint(tree: Tree): Boolean = tree match {
+        def shouldNotBePrinted(tree: Tree): Boolean = tree match {
           case Term.Apply(Term.Ident("while$" | "doWhile$"), _) => true
+          case tree @ ValDef(_, _, _) => tree.flags.isObject
           case _ => false
         }
 
-        val stats = stats0.filterNot(isLoopEntryPoint)
+        val stats = stats0.filterNot(shouldNotBePrinted)
 
         expr match {
           case Term.Lambda(_, _) =>
@@ -362,7 +369,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case _ =>
             this += "{"
             val (stats1, expr1) =
-              if (isLoopEntryPoint(expr)) (stats.init, stats.last)
+              if (shouldNotBePrinted(expr)) (stats.init, stats.last)
               else (stats, expr)
             indented {
               printStats(stats1, expr1)
