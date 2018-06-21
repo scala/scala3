@@ -146,13 +146,33 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case stat@Import(_, _) => stat
           case stat@Term() => stat
         }
-        if (stats1.nonEmpty) {
+
+        def printBody(printSelf: Boolean) = {
           this += " {"
           indented {
+            if (printSelf) {
+              val Some(ValDef(name, tpt, _)) = self
+              indented {
+                val name1 = if (name == "_") "this" else name
+                this += " " += name1 += ": "
+                printTypeTree(tpt)
+                this += " =>"
+              }
+            }
             this += lineBreak()
             printTrees(stats1, lineBreak())
           }
           this += lineBreak() += "}"
+        }
+        self match {
+          case Some(ValDef(_, TypeTree.Singleton(_), _)) =>
+            if (stats1.nonEmpty)
+              printBody(printSelf = false)
+          case Some(ValDef(_, _, _)) =>
+            printBody(printSelf = true)
+          case _ =>
+            if (stats1.nonEmpty)
+              printBody(printSelf = false)
         }
         this
 
@@ -875,10 +895,18 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printType(tp)
 
       case Type.ThisType(tp) =>
-        printType(tp)
         tp match {
-          case Type.SymRef(cdef @ ClassDef(_, _, _, _, _), _) if !cdef.flags.isObject => this += ".this"
-          case _ => this
+          case Type.SymRef(cdef @ ClassDef(name, _, _, _, _), prefix) if !cdef.flags.isObject =>
+            def printPrefix(prefix: TypeOrBounds): Unit = prefix match {
+              case Type.SymRef(ClassDef(name, _, _, _, _), prefix2) =>
+                printPrefix(prefix2)
+                this += name += "."
+              case _ =>
+            }
+            printPrefix(prefix)
+            this += name
+            this += ".this"
+          case _ => printType(tp)
         }
 
       case Type.TypeLambda(paramNames, tparams, body) =>
