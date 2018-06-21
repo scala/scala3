@@ -373,8 +373,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "try "
         printTree(body)
         if (cases.nonEmpty) {
-          this += " catch "
-          printCases(cases, lineBreak())
+          this += " catch {"
+          indented {
+            this += lineBreak()
+            printCases(cases, lineBreak())
+          }
+          this += lineBreak() += "}"
         }
         finallyOpt match {
           case Some(t) =>
