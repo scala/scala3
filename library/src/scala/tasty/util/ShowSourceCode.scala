@@ -69,6 +69,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
         val flags = cdef.flags
         if (flags.isImplicit) this += "implicit "
+        if (flags.isSealed) this += "sealed "
         if (flags.isFinal && !flags.isObject) this += "final "
         if (flags.isCase) this += "case "
 
