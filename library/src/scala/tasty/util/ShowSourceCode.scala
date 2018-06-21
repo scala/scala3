@@ -847,12 +847,6 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case _ => this
         }
 
-      case Type.MethodType(paramNames, params, body) =>
-        this += "("
-        printMethodicTypeParams(paramNames, params)
-        this += ") => "
-        printTypeOrBound(body)
-
       case Type.TypeLambda(paramNames, tparams, body) =>
         this += "["
         printMethodicTypeParams(paramNames, tparams)
