@@ -141,12 +141,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             })
           }
           def isInnerModuleObject = d.flags.isLazy && d.flags.isObject
-          !flags.isParam && !flags.isParamAccessor && !isCaseClassUnOverridableMethod && !isInnerModuleObject
+          !flags.isParam && !flags.isParamAccessor && !flags.isFieldAccessor && !isCaseClassUnOverridableMethod && !isInnerModuleObject
         }
         val stats1 = stats.collect {
-          case stat@Definition() if keepDefinition(stat) => stat
-          case stat@Import(_, _) => stat
-          case stat@Term() => stat
+          case stat @ Definition() if keepDefinition(stat) => stat
+          case stat @ Import(_, _) => stat
+          case stat @ Term() => stat
         }
 
         def printBody(printSelf: Boolean) = {
