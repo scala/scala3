@@ -243,7 +243,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case methType: MethodType =>
         // apply the result type constraint, unless method type is dependent
         val resultApprox = resultTypeApprox(methType)
-        if (!constrainResult(resultApprox, resultType))
+        if (!constrainResult(methRef.symbol, resultApprox, resultType))
           if (ctx.typerState.isCommittable)
             // defer the problem until after the application;
             // it might be healed by an implicit conversion
@@ -708,7 +708,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       // help sharpen the inferred parameter types for the argument function literal(s).
       // This tweak is needed to make i1378 compile.
       if (tree.args.exists(untpd.isFunctionWithUnknownParamType(_)))
-        if (!constrainResult(fun1.tpe.widen, proto.derivedFunProto(resultType = pt)))
+        if (!constrainResult(tree.symbol, fun1.tpe.widen, proto.derivedFunProto(resultType = pt)))
           typr.println(i"result failure for $tree with type ${fun1.tpe.widen}, expected = $pt")
 
       /** Type application where arguments come from prototype, and no implicits are inserted */
@@ -1280,12 +1280,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  section conforms to the expected type `resultType`? If `resultType`
      *  is a `IgnoredProto`, pick the underlying type instead.
      */
-    def resultConforms(alt: Type, resultType: Type)(implicit ctx: Context): Boolean = resultType match {
-      case IgnoredProto(ignored) => resultConforms(alt, ignored)
+    def resultConforms(altSym: Symbol, altType: Type, resultType: Type)(implicit ctx: Context): Boolean = resultType match {
+      case IgnoredProto(ignored) => resultConforms(altSym, altType, ignored)
       case _: ValueType =>
-        alt.widen match {
-          case tp: PolyType => resultConforms(constrained(tp).resultType, resultType)
-          case tp: MethodType => constrainResult(tp.resultType, resultType)
+        altType.widen match {
+          case tp: PolyType => resultConforms(altSym, constrained(tp).resultType, resultType)
+          case tp: MethodType => constrainResult(altSym, tp.resultType, resultType)
           case _ => true
         }
       case _ => true
@@ -1304,9 +1304,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  do they prune much, on average.
      */
     def adaptByResult(chosen: TermRef) = pt match {
-      case pt: FunProto if !ctx.test(implicit ctx => resultConforms(chosen, pt.resultType)) =>
+      case pt: FunProto if !ctx.test(implicit ctx => resultConforms(chosen.symbol, chosen, pt.resultType)) =>
         val conformingAlts = alts.filter(alt =>
-          (alt ne chosen) && ctx.test(implicit ctx => resultConforms(alt, pt.resultType)))
+          (alt ne chosen) && ctx.test(implicit ctx => resultConforms(alt.symbol, alt, pt.resultType)))
         conformingAlts match {
           case Nil => chosen
           case alt2 :: Nil => alt2

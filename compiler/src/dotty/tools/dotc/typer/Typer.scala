@@ -2350,7 +2350,8 @@ class Typer extends Namer
         checkEqualityEvidence(tree, pt)
         tree
       }
-      else if (Inliner.isInlineable(tree.symbol))
+      else if (Inliner.isInlineable(tree.symbol) &&
+               (tree.symbol.isTransparentMethod || tree.tpe <:< pt))
         readaptSimplified(Inliner.inlineCall(tree, pt))
       else if (tree.tpe <:< pt) {
         if (pt.hasAnnotation(defn.InlineParamAnnot))
@@ -2387,7 +2388,7 @@ class Typer extends Namer
     def adaptNoArgs(wtp: Type): Tree = {
       val ptNorm = underlyingApplied(pt)
       lazy val functionExpected = defn.isFunctionType(ptNorm)
-      lazy val resultMatch = constrainResult(wtp, followAlias(pt))
+      lazy val resultMatch = constrainResult(tree.symbol, wtp, followAlias(pt))
       wtp match {
         case wtp: ExprType =>
           readaptSimplified(tree.withType(wtp.resultType))

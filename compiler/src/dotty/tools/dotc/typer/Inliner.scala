@@ -373,6 +373,23 @@ object Inliner {
   def bodyToInline(sym: SymDenotation)(implicit ctx: Context): Tree =
     sym.unforcedAnnotation(defn.BodyAnnot).get.tree
 
+  /** Should call with method `meth` be inlined in this context? */
+  def isInlineable(meth: Symbol)(implicit ctx: Context): Boolean = {
+
+    def suppressInline =
+      ctx.owner.ownersIterator.exists(_.isInlineableMethod) ||
+      meth.isTransparentMethod && ctx.mode.is(Mode.NoInlineTransparent) ||
+      ctx.settings.YnoInline.value ||
+      ctx.isAfterTyper ||
+      ctx.reporter.hasErrors
+
+    hasBodyToInline(meth.symbol) && !suppressInline
+  }
+
+  /** Is `meth` a transparent method that should be inlined in this context? */
+  def isTransparentInlineable(meth: Symbol)(implicit ctx: Context): Boolean =
+    meth.isTransparentMethod && isInlineable(meth)
+
   /** Try to inline a call to a `@inline` method. Fail with error if the maximal
    *  inline depth is exceeded.
    *
@@ -868,17 +885,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context) =
       constToLiteral(reduceProjection(super.typedSelect(tree, pt)))
-
-    /** Pre-type any nested calls to transparent methods. Otherwise the declared result type
-     *  of these methods can influence constraints
-     */
-    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) = {
-      def typeTransparent(tree: untpd.Tree): untpd.Tree =
-        if (tree.symbol.isTransparentMethod) untpd.TypedSplice(typed(tree))
-        else tree
-      val tree1 = tree.args.mapConserve(typeTransparent)
-      super.typedApply(untpd.cpy.Apply(tree)(tree.fun, tree1), pt)
-    }
 
     override def typedValDef(tree: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = {
       import untpd.modsDeco

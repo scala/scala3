@@ -408,7 +408,7 @@ trait Inferencing { this: Typer =>
       val resultAlreadyConstrained =
         tree.isInstanceOf[Apply] || tree.tpe.isInstanceOf[MethodOrPoly]
       if (!resultAlreadyConstrained)
-        constrainResult(tree.tpe, pt)
+        constrainResult(tree.symbol, tree.tpe, pt)
           // This is needed because it could establish singleton type upper bounds. See i2998.scala.
 
       val tp = tree.tpe.widen
