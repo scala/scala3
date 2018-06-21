@@ -221,13 +221,17 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         if (flags.isInline) this += "inline "
         if (flags.isOverride) this += "override "
 
-        this += "def " += name
+        val isConstructor = name == "<init>"
+
+        this += "def " += (if (isConstructor) "this" else name)
         printTargsDefs(targs)
         val it = argss.iterator
         while (it.hasNext)
           printArgsDefs(it.next())
-        this += ": "
-        printTypeTree(tpt)
+        if (!isConstructor) {
+          this += ": "
+          printTypeTree(tpt)
+        }
         rhs match {
           case Some(tree) =>
             this += " = "
@@ -264,7 +268,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printTree(expr)
 
       case Term.Apply(fn, args) =>
-        printTree(fn)
+        fn match {
+          case Term.Select(Term.This(_), "<init>", _) => this += "this" // call to constructor inside a constructor
+          case _ => printTree(fn)
+        }
         this += "("
         printTrees(args, ", ")
         this += ")"
