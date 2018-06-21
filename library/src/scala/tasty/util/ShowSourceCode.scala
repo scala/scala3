@@ -864,10 +864,15 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printRefinement(tpe)
 
       case Type.AppliedType(tp, args) =>
-        printType(tp)
-        this += "["
-        printTypesOrBounds(args, ", ")
-        this += "]"
+        tp match {
+          case Type.TypeRef("<repeated>", Types.ScalaPackage()) =>
+            this += "_*"
+          case _ =>
+            printType(tp)
+            this += "["
+            printTypesOrBounds(args, ", ")
+            this += "]"
+        }
 
       case Type.AnnotatedType(tp, annot) =>
         val Annotation(ref, args) = annot
