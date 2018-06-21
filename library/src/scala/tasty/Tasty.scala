@@ -34,6 +34,8 @@ abstract class Tasty { tasty =>
   }
   implicit def ContextDeco(ctx: Context): ContextAPI
 
+  implicit def rootContext: Context
+
   // ===== Id =======================================================
 
   type Id

@@ -2,7 +2,7 @@ import scala.quoted._
 
 import dotty.tools.dotc.quoted.Toolbox._
 
-import scala.tasty.Universe
+import scala.tasty._
 
 case class Position(path: String, start: Int, end: Int,
     startLine: Int, startColumn: Int, endLine: Int, endColumn: Int)
@@ -12,11 +12,10 @@ case class Positioned[T](value: T, position: Position)
 object Positioned {
 
   implicit inline def apply[T](x: T): Positioned[T] =
-    ~impl('(x))('[T], Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
+    ~impl('(x))('[T], TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
 
-  def impl[T](x: Expr[T])(implicit ev: Type[T], u: Universe): Expr[Positioned[T]] = {
-    import u._
-    import u.tasty.{Position => _, _}
+  def impl[T](x: Expr[T])(implicit ev: Type[T], tasty: Tasty): Expr[Positioned[T]] = {
+    import tasty.{Position => _, _}
 
     val pos = x.toTasty.pos
 

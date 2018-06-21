@@ -15,7 +15,7 @@ import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.TypeErasure
-import dotty.tools.dotc.tastyreflect.CompilationUniverse
+import dotty.tools.dotc.tastyreflect.TastyImpl
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.Positions.Position
@@ -38,7 +38,7 @@ object Splicer {
       val liftedArgs = getLiftedArgs(call, bindings)
       val interpreter = new Interpreter(pos, classLoader)
       val interpreted = interpreter.interpretCallToSymbol[Seq[Any] => Object](call.symbol)
-      val tctx = new CompilationUniverse(ctx)
+      val tctx = new TastyImpl(ctx)
       evaluateMacro(pos) {
         // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
         val evaluated = interpreted.map(lambda => lambda(tctx :: liftedArgs).asInstanceOf[scala.quoted.Expr[Nothing]])

@@ -516,9 +516,9 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
       outer.enteredSyms.foreach(registerCapturer)
 
       if (ctx.owner.owner.is(Macro)) {
-        registerCapturer(defn.TastyUniverse_compilationUniverse)
+        registerCapturer(defn.TastyTopLevelSplice_compilationTopLevelSplice)
         // Force a macro to have the context in first position
-        forceCapture(defn.TastyUniverse_compilationUniverse)
+        forceCapture(defn.TastyTopLevelSplice_compilationTopLevelSplice)
         // Force all parameters of the macro to be created in the definition order
         outer.enteredSyms.reverse.foreach(forceCapture)
       }
@@ -649,7 +649,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
 
     private def isStage0Value(sym: Symbol)(implicit ctx: Context): Boolean =
       (sym.is(Inline) && sym.owner.is(Macro) && !defn.isFunctionType(sym.info)) ||
-      sym == defn.TastyUniverse_compilationUniverse // intrinsic value at stage 0
+      sym == defn.TastyTopLevelSplice_compilationTopLevelSplice // intrinsic value at stage 0
 
     private def liftList(list: List[Tree], tpe: Type)(implicit ctx: Context): Tree = {
       list.foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>

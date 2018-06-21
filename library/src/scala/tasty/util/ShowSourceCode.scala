@@ -4,7 +4,7 @@ package util
 import scala.annotation.switch
 
 class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty0) {
-  import tasty._
+  import tasty.{rootContext => _, _}
 
   def showTree(tree: Tree)(implicit ctx: Context): String =
     (new Buffer).printTree(tree).result()

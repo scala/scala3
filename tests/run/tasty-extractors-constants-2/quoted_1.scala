@@ -1,27 +1,27 @@
 import scala.quoted._
 import dotty.tools.dotc.quoted.Toolbox._
 
-import scala.tasty.Universe
+import scala.tasty._
 import scala.tasty.util._
 
 object Macros {
 
   inline def testMacro: Unit =
-    ~impl(Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
+    ~impl(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
 
-  def impl(implicit u: Universe): Expr[Unit] = {
+  def impl(implicit tasty: Tasty): Expr[Unit] = {
     // 2 is a lifted constant
-    val show1 = power(2.toExpr, 3.0.toExpr)(u).show
-    val run1  = power(2.toExpr, 3.0.toExpr)(u).run
+    val show1 = power(2.toExpr, 3.0.toExpr).show
+    val run1  = power(2.toExpr, 3.0.toExpr).run
 
     // n is a lifted constant
     val n = 2
-    val show2 = power(n.toExpr, 4.0.toExpr)(u).show
-    val run2  = power(n.toExpr, 4.0.toExpr)(u).run
+    val show2 = power(n.toExpr, 4.0.toExpr).show
+    val run2  = power(n.toExpr, 4.0.toExpr).run
 
     // n is a constant in a quote
-    val show3 = power('(2), 5.0.toExpr)(u).show
-    val run3 =  power('(2), 5.0.toExpr)(u).run
+    val show3 = power('(2), 5.0.toExpr).show
+    val run3 =  power('(2), 5.0.toExpr).run
 
     // n2 is clearly not a constant
     // FIXME
@@ -44,10 +44,10 @@ object Macros {
     }
   }
 
-  def power(n: Expr[Int], x: Expr[Double])(implicit u: Universe): Expr[Double] = {
-    import u._
-    import u.tasty._
-    val Constant = new ConstantExtractor(u.tasty)
+  def power(n: Expr[Int], x: Expr[Double])(implicit tasty: Tasty): Expr[Double] = {
+    import tasty._
+
+    val Constant = new ConstantExtractor(tasty)
     n match {
       case Constant(n1) => powerCode(n1, x)
       case _ => '{ dynamicPower(~n, ~x) }

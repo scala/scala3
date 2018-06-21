@@ -41,7 +41,7 @@ class DecompilationPrinter extends Phase {
       new TastyPrinter(unit.pickled.head._2).printContents()
     } else {
       out.println(s"/** Decompiled from $unit */")
-      out.println(TastyImpl.showSourceCode.showTree(unit.tpdTree)(ctx))
+      out.println(new TastyImpl(ctx).showSourceCode.showTree(unit.tpdTree)(ctx))
     }
   }
 }

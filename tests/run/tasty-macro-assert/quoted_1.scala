@@ -1,6 +1,6 @@
 import scala.quoted._
 
-import scala.tasty.Universe
+import scala.tasty._
 
 object Asserts {
 
@@ -12,11 +12,10 @@ object Asserts {
   object Ops
 
   inline def macroAssert(cond: Boolean): Unit =
-    ~impl('(cond))(Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
+    ~impl('(cond))(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
 
-  def impl(cond: Expr[Boolean])(implicit u: Universe): Expr[Unit] = {
-    import u._
-    import u.tasty._
+  def impl(cond: Expr[Boolean])(implicit tasty: Tasty): Expr[Unit] = {
+    import tasty._
 
     val tree = cond.toTasty
 

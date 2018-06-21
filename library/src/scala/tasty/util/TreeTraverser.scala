@@ -3,7 +3,7 @@ package scala.tasty.util
 import scala.tasty.Tasty
 
 abstract class TreeTraverser[T <: Tasty with Singleton](tasty0: T) extends TreeAccumulator[Unit, T](tasty0) {
-  import tasty._
+  import tasty.{rootContext => _, _}
 
   def traverseTree(tree: Tree)(implicit ctx: Context): Unit = traverseTreeChildren(tree)
   def traverseTypeTree(tree: TypeOrBoundsTree)(implicit ctx: Context): Unit = traverseTypeTreeChildren(tree)
