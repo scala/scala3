@@ -812,49 +812,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += name.stripSuffix("$")
 
       case tpe @ Type.Refinement(_, _, _) =>
-        def rec(tp: Type): Unit = tp match {
-          case Type.Refinement(parent, name, info) =>
-            rec(parent)
-            indented {
-              this += lineBreak()
-              info match {
-                case info @ TypeBounds(_, _) =>
-                  this += "type " += name
-                  printBounds(info)
-                case info @ Type() =>
-                  info match {
-                    case Type.ByNameType(_) | Type.MethodType(_, _, _) | Type.TypeLambda(_, _, _) =>
-                      this += "def " += name
-                    case _ =>
-                      this += "val " += name
-                  }
-                  def printMethodicType(tp: Type): Unit = tp match {
-                    case tp @ Type.MethodType(paramNames, params, res) =>
-                      this += "("
-                      printMethodicTypeParams(paramNames, params)
-                      this += ")"
-                      printMethodicType(res)
-                    case tp @ Type.TypeLambda(paramNames, params, res) =>
-                      this += "["
-                      printMethodicTypeParams(paramNames, params)
-                      this += "]"
-                      printMethodicType(res)
-                    case Type.ByNameType(t) =>
-                      this += ": "
-                      printType(t)
-                    case tp @ Type() =>
-                      this += ": "
-                      printType(tp)
-                  }
-                  printMethodicType(info)
-              }
-            }
-          case tp =>
-            printType(tp)
-            this += " {"
-        }
-        rec(tpe)
-        this += lineBreak() += "}"
+        printRefinement(tpe)
 
       case Type.AppliedType(tp, args) =>
         printType(tp)
@@ -948,6 +906,50 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       printAnnotations(annots)
       if (annots.nonEmpty) this += " "
       else this
+    }
+
+    def printRefinement(tpe: Type): Buffer = {
+      def printMethodicType(tp: TypeOrBounds): Unit = tp match {
+        case tp @ Type.MethodType(paramNames, params, res) =>
+          this += "("
+          printMethodicTypeParams(paramNames, params)
+          this += ")"
+          printMethodicType(res)
+        case tp @ Type.TypeLambda(paramNames, params, res) =>
+          this += "["
+          printMethodicTypeParams(paramNames, params)
+          this += "]"
+          printMethodicType(res)
+        case Type.ByNameType(t) =>
+          this += ": "
+          printType(t)
+        case tp @ Type() =>
+          this += ": "
+          printType(tp)
+      }
+      def rec(tp: Type): Unit = tp match {
+        case Type.Refinement(parent, name, info) =>
+          rec(parent)
+          indented {
+            this += lineBreak()
+            info match {
+              case info @ TypeBounds(_, _) =>
+                this += "type " += name
+                printBounds(info)
+              case Type.ByNameType(_) | Type.MethodType(_, _, _) | Type.TypeLambda(_, _, _) =>
+                this += "def " += name
+                printMethodicType(info)
+              case info @ Type() =>
+                this += "val " += name
+                printMethodicType(info)
+            }
+          }
+        case tp =>
+          printType(tp)
+          this += " {"
+      }
+      rec(tpe)
+      this += lineBreak() += "}"
     }
 
     def printMethodicTypeParams(paramNames: List[String], params: List[TypeOrBounds]): Unit = {
