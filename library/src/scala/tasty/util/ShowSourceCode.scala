@@ -165,9 +165,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
         self match {
           case Some(ValDef(_, TypeTree.Singleton(_), _)) =>
-            if (stats1.nonEmpty) printBody(printSelf = false)
-          case Some(ValDef(_, _, _)) => printBody(printSelf = true)
-          case _ => if (stats1.nonEmpty) printBody(printSelf = false)
+            if (stats1.nonEmpty)
+              printBody(printSelf = false)
+          case Some(ValDef(_, _, _)) =>
+            printBody(printSelf = true)
+          case _ =>
+            if (stats1.nonEmpty)
+              printBody(printSelf = false)
         }
         this
 
