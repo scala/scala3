@@ -125,6 +125,14 @@ object Test extends App {
   val rr3 = xs ++ xs
   val rr3a: HCons[Int, HCons[String, HCons[Int, HCons[String, HNil]]]] = rr3
 
+  transparent def f(c: Boolean): Nat = {
+    def g[X <: Nat](x: X): X = x
+    g(if (c) Z else S(Z))
+  }
+
+  val f1: Z = f(true)
+  val f2: S[Z] = f(false)
+
 /*
   transparent def toInt1[T]: Int = type T match {
     case Z => 0
@@ -132,7 +140,7 @@ object Test extends App {
   }
 
   transparent def toInt1[T]: Nat = implicit match {
-    case C[type T, type U], T =:= U => 0
+    case C[type T, type U], T =:= U =>
     case T <:< S[type N] => toInt[N] + 1
   }
 */

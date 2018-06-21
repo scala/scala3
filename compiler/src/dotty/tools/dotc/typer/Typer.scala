@@ -2093,12 +2093,10 @@ class Typer extends Namer
    *  If all this fails, error
    *  Parameters as for `typedUnadapted`.
    */
-  def adapt(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree = /*>|>*/ track("adapt") /*<|<*/ {
-    def showWithType(x: Any) = x match {
-      case tree: tpd.Tree @unchecked => i"$tree of type ${tree.tpe}"
-      case _ => String.valueOf(x)
+  def adapt(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree = track("adapt") {
+    trace(i"adapting $tree to $pt", typr, show = true) {
+      adapt1(tree, pt, locked)
     }
-    adapt1(tree, pt, locked)
   }
 
   final def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
@@ -2338,7 +2336,7 @@ class Typer extends Namer
         missingArgs(wtp)
     }
 
-    def adaptNoArgsOther(wtp: Type) = {
+    def adaptNoArgsOther(wtp: Type): Tree = {
       ctx.typeComparer.GADTused = false
       if (defn.isImplicitFunctionClass(wtp.underlyingClassRef(refinementOK = false).classSymbol) &&
           !untpd.isImplicitClosure(tree) &&
@@ -2352,18 +2350,12 @@ class Typer extends Namer
         checkEqualityEvidence(tree, pt)
         tree
       }
+      else if (Inliner.isInlineable(tree.symbol))
+        readaptSimplified(Inliner.inlineCall(tree, pt))
       else if (tree.tpe <:< pt) {
         if (pt.hasAnnotation(defn.InlineParamAnnot))
           checkInlineConformant(tree, isFinal = false, "argument to inline parameter")
-        def suppressInline =
-          ctx.owner.ownersIterator.exists(_.isInlineableMethod) ||
-          tree.symbol.isTransparentMethod && ctx.mode.is(Mode.NoInlineTransparent) ||
-          ctx.settings.YnoInline.value ||
-          ctx.isAfterTyper ||
-          ctx.reporter.hasErrors
-        if (Inliner.hasBodyToInline(tree.symbol) && !suppressInline)
-           readaptSimplified(Inliner.inlineCall(tree, pt))
-        else if (ctx.typeComparer.GADTused && pt.isValueType)
+        if (ctx.typeComparer.GADTused && pt.isValueType)
           // Insert an explicit cast, so that -Ycheck in later phases succeeds.
           // I suspect, but am not 100% sure that this might affect inferred types,
           // if the expected type is a supertype of the GADT bound. It would be good to come
