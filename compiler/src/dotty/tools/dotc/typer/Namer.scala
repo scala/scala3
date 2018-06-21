@@ -780,7 +780,13 @@ class Namer { typer: Typer =>
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
   class Completer(val original: Tree)(implicit ctx: Context) extends LazyType with SymbolLoaders.SecondCompleter {
 
-    protected def localContext(owner: Symbol) = ctx.fresh.setOwner(owner).setTree(original)
+    protected def localContext(owner: Symbol) = ctx.fresh.setOwner(owner, {
+      // TODO: clean this up
+      original match {
+        case md: MemberDef => md.mods.is(Transparent)
+        case _ => false
+      }
+    }).setTree(original)
 
     /** The context with which this completer was created */
     def creationContext = ctx

@@ -785,16 +785,6 @@ object SymDenotations {
     def isTransparentMethod(implicit ctx: Context): Boolean =
       is(TransparentMethod, butNot = Accessor)
 
-    /** Are we in a transparent context?
-     *  Either  - this symbol has a transparent owner, itself included
-     *  Or      - we are inside a SingletonTypeTree
-     */
-    // FIXME: The second clause really doesn't have anything to do with the SymDenotation we're in.
-    def isTransitivelyTransparent(implicit ctx: Context): Boolean = {
-      // Note: Should we use a mode instead?
-      ownersIterator.exists(_.isTransparentMethod) || ctx.outersIterator.exists(_.tree.isInstanceOf[SingletonTypeTree[_]])
-    }
-
     def isInlineableMethod(implicit ctx: Context) = isInlinedMethod || isTransparentMethod
 
     /** ()T and => T types should be treated as equivalent for this symbol.

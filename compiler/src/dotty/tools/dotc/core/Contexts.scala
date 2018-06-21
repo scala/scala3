@@ -442,7 +442,15 @@ object Contexts {
   abstract class FreshContext extends Context {
     def setPeriod(period: Period): this.type = { this.period = period; this }
     def setMode(mode: Mode): this.type = { this.mode = mode; this }
-    def setOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
+    def setOwner(owner: Symbol): this.type =
+      setOwner(owner, owner.flags.is(Flags.Transparent))
+    def setOwner(owner: Symbol, addTransparent: Boolean): this.type = {
+      assert(owner != NoSymbol)
+      this.owner = owner
+      if (addTransparent)
+        this.addMode(Mode.Transparent)
+      this
+    }
     def setTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
     def setScope(scope: Scope): this.type = { this.scope = scope; this }
     def setNewScope: this.type = { this.scope = newScope; this }

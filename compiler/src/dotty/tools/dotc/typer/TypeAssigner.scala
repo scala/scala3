@@ -160,7 +160,7 @@ trait TypeAssigner {
   protected def normalizedType(tp: Type)(implicit ctx: Context): Type = {
     def skipNormalization = {
       ctx.isAfterTyper || ctx.mode.is(Mode.Type) || ctx.mode.is(Mode.InferringReturnType) ||
-        ctx.owner.isTransitivelyTransparent
+        ctx.mode.is(Mode.Transparent)
     }
     // TODO(gsps): Make sure prototypes make it here and don't normalize if the proto matches syntactically
     if (!skipNormalization && Normalize.isNormalizationEntrypoint(tp)) ctx.normalize(tp)
@@ -380,7 +380,7 @@ trait TypeAssigner {
             if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
             else fntpe.resultType
           val tpe1 =
-            if (fn.symbol.isTransparentMethod) TypeOf(tpe, tree)
+            if (!ctx.erasedTypes && (fn.symbol.isTransparentMethod || ctx.mode.is(Mode.Transparent))) TypeOf(tpe, tree)
             else tpe
           normalizedType(tpe1)
         } else
@@ -443,7 +443,7 @@ trait TypeAssigner {
           if (sameLength(argTypes, paramNames)) {
             val tpe = pt.instantiate(argTypes)
             val tpe1 =
-              if (fn.symbol.isTransparentMethod) TypeOf(tpe, tree)
+              if (!ctx.erasedTypes && (fn.symbol.isTransparentMethod || ctx.mode.is(Mode.Transparent))) TypeOf(tpe, tree)
               else tpe
             normalizedType(tpe1)
           }
@@ -476,7 +476,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) = {
     val underlying = thenp.tpe | elsep.tpe
-    if (ctx.owner.isTransitivelyTransparent)
+    if (!ctx.erasedTypes && ctx.mode.is(Mode.Transparent))
       tree.withType(TypeOf(underlying, tree))
     else
       tree.withType(underlying)
@@ -492,7 +492,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) = {
     val underlying = ctx.typeComparer.lub(cases.tpes)
-    if (ctx.owner.isTransitivelyTransparent)
+    if (!ctx.erasedTypes && ctx.mode.is(Mode.Transparent))
       tree.withType(TypeOf(underlying, tree))
     else
       tree.withType(underlying)
@@ -518,10 +518,11 @@ trait TypeAssigner {
       case _: Literal | _: Ident | _: Select | _: Block | _: This | _: Super => ref.tpe
       case _ =>
         if (TypeOf.isLegalTopLevelTree(ref))
-          if (ref.tpe.isInstanceOf[TypeOf])
+          if (ref.tpe.isInstanceOf[TypeOf] ||
+              ref.tpe.isInstanceOf[ConstantType]) // Can happend because of typer's contant folding
             ref.tpe
           else
-            errorType(i"Non-sensical singleton-type expression: $ref", ref.pos)
+            errorType(i"Non-sensical singleton-type expression: $ref: ${ref.tpe}", ref.pos)
         else
           throw new AssertionError(i"Tree $ref is not a valid reference for a singleton type tree.")
     }

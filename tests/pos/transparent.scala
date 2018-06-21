@@ -40,7 +40,7 @@ object Match {
     res
   }
 
-  transparent def foo(b: Boolean): { b match { case true => 1; case false => 2 } } =
+  transparent def foo(b: Boolean): Int =
     b match { case true => 1; case false => 2 }
 }
 
@@ -76,6 +76,26 @@ object Approx2 {
 
   val c = new A {}
   val d: { foo(c.bar(1)) }= c.v
+}
+
+object SimpleType {
+  type A = { 2 * 2 }
+}
+
+
+object Ignored {
+  val a = 1
+  transparent def plus(a: Int, b: Int) = a + b
+
+  type Foo = {{
+    case class Bar(i: Int)
+    println(Bar(1))
+    plus(a, a)
+  }}
+
+  type Bar = { plus(a, a) }
+
+  implicitly[Foo =:= Bar]
 }
 
 // object AvoidLocalRefs {

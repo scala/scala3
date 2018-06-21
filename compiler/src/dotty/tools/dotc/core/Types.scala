@@ -3989,6 +3989,7 @@ object Types {
 
   object TypeOf {
     def apply(underlyingTp: Type, tree: untpd.Tree)(implicit ctx: Context): TypeOf = {
+      assert(!ctx.erasedTypes)
       val tree1 = tree.clone.asInstanceOf[Tree]
       // This is a safety net to keep us from touching a TypeOf's tree's type.
       // Assuming we never look at this type, it would be safe to simply reuse
@@ -3996,7 +3997,8 @@ object Types {
       // To disable this safety net we will also have to update the pickler
       // to ignore the type of the TypeOf tree's.
       tree1.overwriteType(NoType)
-      new TypeOf(underlyingTp, tree1, Annotation(defn.TypeOfAnnot, tree1))
+      val annot = Annotation(defn.TypeOfAnnot, tree1)(ctx.retractMode(Mode.Transparent))
+      new TypeOf(underlyingTp, tree1, annot)
     }
     def unapply(to: TypeOf): Option[(Type, Tree)] = Some((to.underlyingTp, to.tree))
 
@@ -4020,11 +4022,17 @@ object Types {
 
     private def finalizeDerived(tp: TypeOf, tree1: Tree)(implicit ctx: Context): Type =
       if (tp.tree ne tree1) {
-        assert(!tp.underlyingTp.exists || tree1.tpe.exists, i"Derived TypeOf's type became NoType")
-        assert(tree1.tpe.isInstanceOf[TypeOf])
+        assert(tp.underlyingTp.exists || tree1.tpe.exists,
+          i"Derived TypeOf's type of $tree1: ${tree1.tpe} became NoType")
+        assert(tree1.tpe.isError || tree1.tpe.isInstanceOf[TypeOf],
+          i"Derived TypeOf's type of $tree1: ${tree1.tpe} is not a TypeOf")
         tree1.tpe
       } else
         tp
+
+    private def transparently(implicit ctx: Context): Context =
+      if (ctx.mode.is(Mode.Transparent)) ctx
+      else ctx.fresh.addMode(Mode.Transparent)
 
     object If {
       def unapply(to: TypeOf): Option[(Type, Type, Type)] = to.tree match {
@@ -4039,7 +4047,7 @@ object Types {
               treeWithTpe(cond, condTp),
               treeWithTpe(thenp, thenTp),
               treeWithTpe(elsep, elseTp)
-            )
+            )(transparently)
         })
     }
 
@@ -4055,7 +4063,7 @@ object Types {
       def derived(to: TypeOf)(selectorTp: Type, caseTps: List[Type])(implicit ctx: Context): Type =
         finalizeDerived(to, to.tree match {
           case Trees.Match(selector, cases) =>
-            cpy.Match(to.tree)(treeWithTpe(selector, selectorTp), treesWithTpes(cases, caseTps))
+            cpy.Match(to.tree)(treeWithTpe(selector, selectorTp), treesWithTpes(cases, caseTps))(transparently)
         })
     }
 
@@ -4068,11 +4076,11 @@ object Types {
                 loop(fn.tpe, args.tpes :: argss)
               case Trees.TypeApply(fn, targs) =>
                 loop(fn.tpe, targs.tpes :: argss)
-              case _ => ???
+              case _ => throw new AssertionError(s"Unexpected tree in method call $tree")
             }
           case tp: TermRef =>
             (tp, argss)
-          case _ => ???
+          case _ => throw new AssertionError(s"Unexpected type in method call $tp")
         }
 
       /** Decompose a call fn[targs](vargs_1)...(vargs_n)
@@ -4090,7 +4098,7 @@ object Types {
       def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
         finalizeDerived(to, to.tree match {
           case Trees.Apply(fun, args) =>
-            cpy.Apply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))
+            cpy.Apply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(transparently)
         })
     }
 
@@ -4098,7 +4106,7 @@ object Types {
       def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
         finalizeDerived(to, to.tree match {
           case Trees.TypeApply(fun, args) =>
-            cpy.TypeApply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))
+            cpy.TypeApply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(transparently)
         })
     }
   }

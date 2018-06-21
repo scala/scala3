@@ -3,8 +3,8 @@ object Invalid {
   f(1): String  // error
   f(1): {0}  // error
 
-  val y: Int = ???
-  type YPlusOne = {y + 1}  // error: Non-sensical singleton-type expression: ...
+  // val y: Int = ???
+  // type YPlusOne = {while}  // TODO: errror: Non-sensical singleton-type expression: ...
 }
 
 object PrivateLeaks {
@@ -15,6 +15,15 @@ object PrivateLeaks {
                                          // in its type signature { PrivateLeaks.foo({ A.this.bar(1) }) }
   }
 }
+
+// object CyclicTransparenType {
+//   transparent def trans(j: Int): Int = {
+//     println(opaque(j))
+//     2 * j
+//   }
+
+//   def opaque(i: Int) = {trans(2): { 2 * 2 }} + i
+// }
 
 // object SimpleEqs {
 //   val x = 1
