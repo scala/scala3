@@ -707,7 +707,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Constant.Short(v) => this += v
       case Constant.Int(v) => this += v
       case Constant.Long(v) => this += v += "L"
-      case Constant.Float(v) => this += v
+      case Constant.Float(v) => this += v += "f"
       case Constant.Double(v) => this += v
       case Constant.Char(v) => this += '\'' += escapedChar(v) += '\''
       case Constant.String(v) => this += '"' += escapedString(v) += '"'
