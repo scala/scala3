@@ -38,6 +38,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def result(): String = sb.result()
 
     def lineBreak(): String = "\n" + ("  " * indent)
+    def doubleLineBreak(): String = "\n\n" + ("  " * indent)
 
     def printTree(tree: Tree): Buffer = tree match {
       case tree @ PackageClause(Term.Ident(name), stats) =>
@@ -391,14 +392,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printStats(stats: List[Tree], expr: Tree): Unit = {
       def printSeparator(nextStats: List[Tree]) = {
-        this += lineBreak()
         // Avoid accidental application of opening `{` on next line with a double break
         val next = if (nextStats.isEmpty) expr else nextStats.head
         next match {
-          case Term.Block(DefDef("while$" | "doWhile$", _, _, _, _) :: Nil, _) =>
-          case Term.Block(_, _) => this += lineBreak()
-          case Term.Inlined(_, _, _) => this += lineBreak()
-          case _ =>
+          case Term.Block(DefDef("while$" | "doWhile$", _, _, _, _) :: Nil, _) => this += lineBreak()
+          case Term.Block(_, _) => this += doubleLineBreak()
+          case Term.Inlined(_, _, _) => this += doubleLineBreak()
+          case _ => this += lineBreak()
         }
       }
       def printSeparated(list: List[Tree]): Unit = list match {
