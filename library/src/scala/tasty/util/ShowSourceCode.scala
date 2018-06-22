@@ -677,7 +677,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += ")"
 
       case Pattern.Alternative(trees) =>
+        this += "("
         printPatterns(trees, " | ")
+        this += ")"
 
       case Pattern.TypeTest(tpt) =>
         this += "_: "
