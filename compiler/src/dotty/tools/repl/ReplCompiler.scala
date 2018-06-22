@@ -218,7 +218,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
 
 
     val src = new SourceFile("<typecheck>", expr)
-    implicit val ctx = state.context.fresh
+    implicit val ctx: Context = state.context.fresh
       .setReporter(newStoreReporter)
       .setSetting(state.context.settings.YstopAfter, List("frontend"))
 
