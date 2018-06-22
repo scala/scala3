@@ -100,8 +100,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         if (flags.isCase) this += "case "
 
         if (name == "package$") {
-          this += "package object "
-          printDefinitionName(cdef.owner)
+          this += "package object " += cdef.owner.name.stripSuffix("$")
         }
         else if (flags.isObject) this += "object " += name.stripSuffix("$")
         else if (flags.isTrait) this += "trait " += name
@@ -285,8 +284,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Term.This(id) =>
         id match {
           case Some(x) =>
-            val Id(name) = x
-            this += name.stripSuffix("$") += "."
+            this += x.name.stripSuffix("$") += "."
           case None =>
         }
         this += "this"
@@ -331,10 +329,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case Term.This(None) =>
         }
         this += "super"
-        for (id <- idOpt) {
-          val Id(name) = id
-          inSquare(this += name)
-        }
+        for (id <- idOpt)
+          inSquare(this += id.name)
         this
 
       case Term.Typed(term, tpt) =>
@@ -558,9 +554,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
 
     def printTargDef(arg: TypeDef, isMember: Boolean = false): Buffer = {
-      val TypeDef(name, rhs) = arg
-      this += name
-      rhs match {
+      this += arg.name
+      arg.rhs match {
         case rhs @ TypeBoundsTree(lo, hi) => printBoundsTree(rhs)
         case rhs @ SyntheticBounds() =>
           printTypeOrBound(rhs.tpe)
@@ -572,13 +567,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           def printSeparated(list: List[TypeDef]): Unit = list match {
             case Nil =>
             case x :: Nil =>
-              val TypeDef(name, trhs) = x
-              this += name
-              printParam(trhs)
+              this += x.name
+              printParam(x.rhs)
             case x :: xs =>
-              val TypeDef(name, trhs) = x
-              this += name
-              printParam(trhs)
+              this += x.name
+              printParam(x.rhs)
               this += ", "
               printSeparated(xs)
           }
@@ -628,7 +621,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
 
     def printParamDef(arg: ValDef): Unit = {
-      val ValDef(name, tpt, rhs) = arg
+      val name = arg.name
       arg.owner match {
         case DefDef("<init>", _, _, _, _) =>
           val ClassDef(_, _, _, _, body) = arg.owner.owner
@@ -650,14 +643,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       }
 
       this += name += ": "
-      printTypeTree(tpt)
+      printTypeTree(arg.tpt)
     }
 
     def printCaseDef(caseDef: CaseDef): Buffer = {
-      val CaseDef(pat, guard, body) = caseDef
       this += "case "
-      printPattern(pat)
-      guard match {
+      printPattern(caseDef.pattern)
+      caseDef.guard match {
         case Some(t) =>
           this += " if "
           printTree(t)
@@ -665,7 +657,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       }
       this += " =>"
       indented {
-        body match {
+        caseDef.rhs match {
           case Term.Block(stats, expr) =>
             printStats(stats, expr)
           case body =>
@@ -845,7 +837,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
               this += "."
             }
         }
-        printDefinitionName(sym)
+        this += sym.name.stripSuffix("$")
 
       case Type.TermRef(name, prefix) =>
         prefix match {
@@ -1021,27 +1013,25 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
 
     def printBoundsTree(bounds: TypeBoundsTree): Buffer = {
-      val TypeBoundsTree(lo, hi) = bounds
-      lo match {
+      bounds.low match {
         case TypeTree.Synthetic() =>
-        case _ =>
+        case low =>
           this += " >: "
-          printTypeTree(lo)
+          printTypeTree(low)
       }
-      hi match {
+      bounds.hi match {
         case TypeTree.Synthetic() => this
-        case _ =>
+        case hi =>
           this += " <: "
           printTypeTree(hi)
       }
     }
 
     def printBounds(bounds: TypeBounds): Buffer = {
-      val TypeBounds(lo, hi) = bounds
       this += " >: "
-      printType(lo)
+      printType(bounds.low)
       this += " <: "
-      printType(hi)
+      printType(bounds.hi)
     }
 
     def printProtectedOrPrivate(definition: Definition): Boolean = {

@@ -49,8 +49,9 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
   type Id = untpd.Ident
 
-  def IdDeco(x: Id): IdAPI = new IdAPI {
-    def pos(implicit ctx: Context): Position = x.pos
+  def IdDeco(id: Id): IdAPI = new IdAPI {
+    def pos(implicit ctx: Context): Position = id.pos
+    def name(implicit ctx: Context): String = id.name.toString
   }
 
   def idClassTag: ClassTag[Id] = implicitly[ClassTag[Id]]
@@ -82,8 +83,8 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
     }
   }
 
-  def PackageClauseDeco(x: PackageClause): PackageClauseAPI = new PackageClauseAPI {
-    def definition(implicit ctx: Context): Definition = FromSymbol.packageDef(x.symbol)
+  def PackageClauseDeco(pack: PackageClause): PackageClauseAPI = new PackageClauseAPI {
+    def definition(implicit ctx: Context): Definition = FromSymbol.packageDef(pack.symbol)
   }
 
   // ----- Statements -----------------------------------------------
@@ -99,6 +100,11 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
       case x: tpd.Import @unchecked => Some((x.expr, x.selectors))
       case _ => None
     }
+  }
+
+  def ImportDeco(imp: Import): ImportAPI = new ImportAPI {
+    def expr(implicit ctx: Context): Tree = imp.expr
+    def selector(implicit ctx: Context): List[ImportSelector] = imp.selectors
   }
 
   type ImportSelector = untpd.Tree
@@ -135,34 +141,36 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
       x.isInstanceOf[Trees.MemberDef[_]]
   }
 
-  def DefinitionDeco(x: Definition): DefinitionAPI = new DefinitionAPI {
+  def DefinitionDeco(definition: Definition): DefinitionAPI = new DefinitionAPI {
 
-    def owner(implicit ctx: Context): Definition = FromSymbol.definition(x.symbol.owner)
+    def name(implicit ctx: Context): String = definition.symbol.name.toString
+
+    def owner(implicit ctx: Context): Definition = FromSymbol.definition(definition.symbol.owner)
 
     def flags(implicit ctx: Context): FlagSet =
-      new FlagSet(x.symbol.flags)
+      new FlagSet(definition.symbol.flags)
 
     def privateWithin(implicit ctx: Context): Option[Type] = {
-      val within = x.symbol.privateWithin
-      if (within.exists && !x.symbol.is(core.Flags.Protected)) Some(within.typeRef)
+      val within = definition.symbol.privateWithin
+      if (within.exists && !definition.symbol.is(core.Flags.Protected)) Some(within.typeRef)
       else None
     }
 
     def protectedWithin(implicit ctx: Context): Option[Type] = {
-      val within = x.symbol.privateWithin
-      if (within.exists && x.symbol.is(core.Flags.Protected)) Some(within.typeRef)
+      val within = definition.symbol.privateWithin
+      if (within.exists && definition.symbol.is(core.Flags.Protected)) Some(within.typeRef)
       else None
     }
 
     def annots(implicit ctx: Context): List[Term] = {
-      x.symbol.annotations.flatMap {
+      definition.symbol.annotations.flatMap {
         case _: core.Annotations.LazyBodyAnnotation => Nil
         case annot => annot.tree :: Nil
       }
     }
 
     def localContext(implicit ctx: Context): Context =
-      if (x.hasType && x.symbol.exists) ctx.withOwner(x.symbol)
+      if (definition.hasType && definition.symbol.exists) ctx.withOwner(definition.symbol)
       else ctx
   }
 
@@ -177,11 +185,18 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
   object ClassDef extends ClassDefExtractor {
     def unapply(x: ClassDef)(implicit ctx: Context): Option[(String, DefDef, List[Parent],  Option[ValDef], List[Statement])] = x match {
       case x: tpd.TypeDef @unchecked if x.isClassDef =>
-        val temp @ Trees.Template(constr, parents, self, _) = x.rhs
-        val selfVal = if (self.isEmpty) None else Some(self)
-        Some((x.name.toString, constr, parents, selfVal, temp.body))
+        val deco = ClassDefDeco(x)
+        Some((x.name.toString, deco.constructor, deco.parents, deco.self, deco.body))
       case _ => None
     }
+  }
+
+  def ClassDefDeco(cdef: ClassDef): ClassDefAPI = new ClassDefAPI {
+    private[this] val rhs = cdef.rhs.asInstanceOf[tpd.Template]
+    def constructor(implicit ctx: Context): DefDef = rhs.constr
+    def parents(implicit ctx: Context): List[tpd.Tree] = rhs.parents
+    def self(implicit ctx: Context): Option[tpd.ValDef] = optional(rhs.self)
+    def body(implicit ctx: Context): List[tpd.Tree] = rhs.body
   }
 
   // DefDef
@@ -193,9 +208,16 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
   object DefDef extends DefDefExtractor {
     def unapply(x: DefDef)(implicit ctx: Context): Option[(String, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])] = x match {
       case x: tpd.DefDef @unchecked =>
-        Some((x.name.toString, x.tparams, x.vparamss, x.tpt, if (x.rhs.isEmpty) None else Some(x.rhs)))
+        Some((x.name.toString, x.tparams, x.vparamss, x.tpt, optional(x.rhs)))
       case _ => None
     }
+  }
+
+  def DefDefDeco(ddef: DefDef): DefDefAPI = new DefDefAPI {
+    def typeParams(implicit ctx: Context): List[TypeDef] = ddef.tparams
+    def paramss(implicit ctx: Context): List[List[ValDef]] = ddef.vparamss
+    def returnTpt(implicit ctx: Context): TypeTree = ddef.tpt
+    def rhs(implicit ctx: Context): Option[Tree] = optional(ddef.rhs)
   }
 
   // ValDef
@@ -207,9 +229,14 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
   object ValDef extends ValDefExtractor {
     def unapply(x: ValDef)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])] = x match {
       case x: tpd.ValDef @unchecked =>
-        Some((x.name.toString, x.tpt, if (x.rhs.isEmpty) None else Some(x.rhs)))
+        Some((x.name.toString, x.tpt, optional(x.rhs)))
       case _ => None
     }
+  }
+
+  def ValDefDeco(vdef: ValDef): ValDefAPI = new ValDefAPI {
+    def tpt(implicit ctx: Context): TypeTree = vdef.tpt
+    def rhs(implicit ctx: Context): Option[Tree] = optional(vdef.rhs)
   }
 
   // TypeDef
@@ -225,12 +252,21 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
     }
   }
 
+  def TypeDefDeco(tdef: TypeDef): TypeDefAPI = new TypeDefAPI {
+    def rhs(implicit ctx: Context): TypeOrBoundsTree = tdef.rhs
+  }
+
+  // PackageDef
+
   type PackageDef = PackageDefinition
 
-  def PackageDefDeco(t: PackageDef): PackageDefAPI = new PackageDefAPI {
+  def PackageDefDeco(pdef: PackageDef): PackageDefAPI = new PackageDefAPI {
+
+    def owner(implicit ctx: Context): PackageDefinition = FromSymbol.packageDef(pdef.symbol.owner)
+
     def members(implicit ctx: Context): List[Statement] = {
-      if (t.symbol.is(core.Flags.JavaDefined)) Nil // FIXME should also support java packages
-      else t.symbol.info.decls.iterator.map(FromSymbol.definition).toList
+      if (pdef.symbol.is(core.Flags.JavaDefined)) Nil // FIXME should also support java packages
+      else pdef.symbol.info.decls.iterator.map(FromSymbol.definition).toList
     }
   }
 
@@ -252,15 +288,15 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
   type Term = tpd.Tree
 
-  def TermDeco(tree: Term): TermAPI = new TermAPI {
+  def TermDeco(term: Term): TermAPI = new TermAPI {
 
-    def pos(implicit ctx: Context): Position = tree.pos
+    def pos(implicit ctx: Context): Position = term.pos
 
-    def tpe(implicit ctx: Context): Types.Type = tree.tpe
+    def tpe(implicit ctx: Context): Types.Type = term.tpe
 
     def toExpr[T: quoted.Type](implicit ctx: Context): quoted.Expr[T] = {
       typecheck(ctx)
-      new quoted.Exprs.TastyTreeExpr(tree).asInstanceOf[quoted.Expr[T]]
+      new quoted.Exprs.TastyTreeExpr(term).asInstanceOf[quoted.Expr[T]]
     }
 
     private def typecheck[T: quoted.Type](ctx: Contexts.Context): Unit = {
@@ -270,7 +306,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         def doReport(m: MessageContainer)(implicit ctx: Contexts.Context): Unit = ()
       })
       val tp = QuotedTypeDeco(implicitly[quoted.Type[T]]).toTasty
-      ctx0.typer.typed(tree, tp.tpe)
+      ctx0.typer.typed(term, tp.tpe)
       if (ctx0.reporter.hasErrors) {
         val stack = new Exception().getStackTrace
         def filter(elem: StackTraceElement) =
@@ -278,7 +314,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
           !elem.getClassName.startsWith("dotty.tools.dotc")
         throw new scala.tasty.TastyTypecheckError(
           s"""Error during tasty reflection while typing term
-             |term: ${tree.show}
+             |term: ${term.show}
              |with expected type: ${tp.tpe.show}
              |
              |  ${stack.takeWhile(filter).mkString("\n  ")}
@@ -321,7 +357,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
     object This extends ThisExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[Option[Id]] = x match {
-        case Trees.This(qual) => Some(if (qual.isEmpty) None else Some(qual))
+        case Trees.This(qual) => Some(optional(qual))
         case _ => None
       }
     }
@@ -414,7 +450,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
     object Lambda extends LambdaExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Option[TypeTree])] = x match {
-        case x: tpd.Closure @unchecked => Some((x.meth, if (x.tpt.isEmpty) None else Some(x.tpt)))
+        case x: tpd.Closure @unchecked => Some((x.meth, optional(x.tpt)))
         case _ => None
       }
     }
@@ -435,7 +471,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
     object Try extends TryExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[CaseDef], Option[Term])] = x match {
-        case x: tpd.Try @unchecked => Some((x.expr, x.cases, if (x.finalizer.isEmpty) None else Some(x.finalizer)))
+        case x: tpd.Try @unchecked => Some((x.expr, x.cases, optional(x.finalizer)))
         case _ => None
       }
     }
@@ -497,12 +533,15 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
   def CaseDefDeco(caseDef: CaseDef): CaseDefAPI = new CaseDefAPI {
     def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showCaseDef(caseDef)
+    def pattern(implicit ctx: Context): Pattern = caseDef.pat
+    def guard(implicit ctx: Context): Option[Term] = optional(caseDef.guard)
+    def rhs(implicit ctx: Context): Term = caseDef.body
   }
 
   object CaseDef extends CaseDefExtractor {
     def unapply(x: CaseDef): Option[(Pattern, Option[Term], Term)] = x match {
       case x: tpd.CaseDef @unchecked =>
-        Some(x.pat, if (x.guard.isEmpty) None else Some(x.guard), x.body)
+        Some(x.pat, optional(x.guard), x.body)
       case _ => None
     }
   }
@@ -575,9 +614,9 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
   type TypeTree = tpd.Tree
 
-  def TypeTreeDeco(x: TypeTree): TypeTreeAPI = new TypeTreeAPI {
-    def pos(implicit ctx: Context): Position = x.pos
-    def tpe(implicit ctx: Context): Types.Type = x.tpe.stripTypeVar
+  def TypeTreeDeco(tpt: TypeTree): TypeTreeAPI = new TypeTreeAPI {
+    def pos(implicit ctx: Context): Position = tpt.pos
+    def tpe(implicit ctx: Context): Types.Type = tpt.tpe.stripTypeVar
   }
 
   def typeTreeClassTag: ClassTag[TypeTree] = implicitly[ClassTag[TypeTree]]
@@ -682,8 +721,10 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
   type TypeBoundsTree = tpd.Tree
 
-  def TypeBoundsTreeDeco(x: TypeBoundsTree): TypeBoundsTreeAPI = new TypeBoundsTreeAPI {
-    def tpe(implicit ctx: Context): TypeBounds = x.tpe.asInstanceOf[Types.TypeBounds]
+  def TypeBoundsTreeDeco(bounds: TypeBoundsTree): TypeBoundsTreeAPI = new TypeBoundsTreeAPI {
+    def tpe(implicit ctx: Context): TypeBounds = bounds.tpe.asInstanceOf[Types.TypeBounds]
+    def low(implicit ctx: Context): TypeTree = bounds.asInstanceOf[tpd.TypeBoundsTree].lo
+    def hi(implicit ctx: Context): TypeTree = bounds.asInstanceOf[tpd.TypeBoundsTree].hi
   }
 
   def typeBoundsTreeClassTag: ClassTag[TypeBoundsTree] = implicitly[ClassTag[TypeBoundsTree]]
@@ -726,9 +767,24 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
   def polyTypeClassTag: ClassTag[PolyType] = implicitly[ClassTag[PolyType]]
   def typeLambdaClassTag: ClassTag[TypeLambda] = implicitly[ClassTag[TypeLambda]]
 
-  def MethodTypeDeco(x: MethodType): MethodTypeAPI = new MethodTypeAPI {
-    def isErased: Boolean = x.isErasedMethod
-    def isImplicit: Boolean = x.isImplicitMethod
+  def MethodTypeDeco(tpe: MethodType): MethodTypeAPI = new MethodTypeAPI {
+    def isErased: Boolean = tpe.isErasedMethod
+    def isImplicit: Boolean = tpe.isImplicitMethod
+    def paramNames(implicit ctx: Context): List[String] = tpe.paramNames.map(_.toString)
+    def paramTypes(implicit ctx: Context): List[Type] = tpe.paramInfos
+    def resultTpe(implicit ctx: Context): Type = tpe.resType
+  }
+
+  def PolyTypeDeco(tpe: Types.PolyType): PolyTypeAPI = new PolyTypeAPI {
+    def paramNames(implicit ctx: Context): List[String] = tpe.paramNames.map(_.toString)
+    def paramTypes(implicit ctx: Context): List[TypeBounds] = tpe.paramInfos
+    def resultTpe(implicit ctx: Context): Type = tpe.resType
+  }
+
+  def TypeLambdaDeco(tpe: Types.TypeLambda): TypeLambdaAPI = new TypeLambdaAPI {
+    def paramNames(implicit ctx: Context): List[String] = tpe.paramNames.map(_.toString)
+    def paramTypes(implicit ctx: Context): List[TypeBounds] = tpe.paramInfos
+    def resultTpe(implicit ctx: Context): Type = tpe.resType
   }
 
   object Type extends TypeModule {
@@ -894,6 +950,11 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
     }
   }
 
+  def TypeBoundsDeco(tpe: TypeBounds): TypeBoundsAPI = new TypeBoundsAPI {
+    def low(implicit ctx: Context): Type = tpe.lo
+    def hi(implicit ctx: Context): Type = tpe.hi
+  }
+
   // ----- NoPrefix --------------------------------------------------
 
   type NoPrefix = Types.NoPrefix.type
@@ -1015,6 +1076,11 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
     }
   }
 
+  def SignatureDeco(sig: Signature): SignatureAPI = new SignatureAPI {
+    def paramSigs: List[String] = sig.paramsSig.map(_.toString)
+    def resultSig: String = sig.resSig.toString
+  }
+
   // ===== Positions ================================================
 
   type Position = SourcePosition
@@ -1031,5 +1097,10 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
     def startColumn = pos.startColumn
     def endColumn = pos.endColumn
   }
+
+  // ===== Helpers ==================================================
+
+  private def optional[T <: Trees.Tree[_]](tree: T): Option[tree.type] =
+    if (tree.isEmpty) None else Some(tree)
 
 }
