@@ -35,6 +35,27 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       indent -= 1
     }
 
+    def inParens(body: => Unit): Buffer = {
+      this += "("
+      body
+      this += ")"
+    }
+
+    def inSquareParens(body: => Unit): Buffer = {
+      this += "["
+      body
+      this += "]"
+    }
+
+    def inBlock(body: => Unit): Buffer = {
+      this += " {"
+      indented {
+        this += lineBreak()
+        body
+      }
+      this += lineBreak() += "}"
+    }
+
     def result(): String = sb.result()
 
     def lineBreak(): String = "\n" + ("  " * indent)
@@ -60,12 +81,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case _ =>
             this += "package "
             printType(name.tpe)
-            this += " {"
-            indented {
-              this += lineBreak()
-              printTrees(stats1, lineBreak())
-            }
-            this += lineBreak() += "}"
+            inBlock(printTrees(stats1, lineBreak()))
         }
 
       case Import(expr, selectors) =>
@@ -110,15 +126,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         def printParent(parent: Parent): Unit = parent match {
           case parent @ Term.TypeApply(fun, targs) =>
             printParent(fun)
-            this += "["
-            printTypeOrBoundsTrees(targs, ", ")
-            this += "]"
+            inSquareParens(printTypeOrBoundsTrees(targs, ", "))
 
           case parent @ Term.Apply(fun, args) =>
             printParent(fun)
-            this += "("
-            printTrees(args, ", ")
-            this += ")"
+            inParens(printTrees(args, ", "))
 
           case parent @ Term.Select(Term.New(tpt), _, _) =>
             printTypeTree(tpt)
@@ -218,17 +230,14 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
 
       case Term.While(cond, body) =>
-        this += "while ("
-        printTree(cond)
-        this += ") "
+        this += "while "
+        inParens(printTree(cond)) += " "
         printTree(body)
 
       case Term.DoWhile(body, cond) =>
         this += "do "
-        printTree(body)
-        this += " while ("
-        printTree(cond)
-        this += ")"
+        printTree(body) += " while "
+        inParens(printTree(cond))
 
       case ddef @ DefDef(name, targs, argss, tpt, rhs) =>
         printDefAnnotations(ddef)
@@ -300,9 +309,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case _ => args
         }
 
-        this += "("
-        printTrees(args1, ", ")
-        this += ")"
+        inParens(printTrees(args1, ", "))
 
       case Term.TypeApply(fn, args) =>
         printTree(fn)
@@ -311,9 +318,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             // type bounds already printed in `fn`
             this
           case _ =>
-            this += "["
-            printTypeOrBoundsTrees(args, ", ")
-            this += "]"
+            inSquareParens(printTypeOrBoundsTrees(args, ", "))
         }
 
       case Term.Super(qual, idOpt) =>
@@ -324,7 +329,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "super"
         for (id <- idOpt) {
           val Id(name) = id
-          this += "[" += name += "]"
+          inSquareParens(this += name)
         }
         this
 
@@ -333,21 +338,21 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case Types.Repeated(_) =>
             printTree(term)
           case _ =>
-            this += "("
-            printTree(term)
-            this += ": "
-            def printTypeOrAnnots(tpe: Type): Unit = tpe match {
-              case Type.AnnotatedType(tp, annot) if tp == term.tpe =>
-                printAnnotation(annot)
-              case Type.AnnotatedType(tp, annot) =>
-                printTypeOrAnnots(tp)
-                this += " "
-                printAnnotation(annot)
-              case tpe =>
-                printType(tpe)
+            inParens {
+              printTree(term)
+              this += ": "
+              def printTypeOrAnnots(tpe: Type): Unit = tpe match {
+                case Type.AnnotatedType(tp, annot) if tp == term.tpe =>
+                  printAnnotation(annot)
+                case Type.AnnotatedType(tp, annot) =>
+                  printTypeOrAnnots(tp)
+                  this += " "
+                  printAnnotation(annot)
+                case tpe =>
+                  printType(tpe)
+              }
+              printTypeOrAnnots(tpt.tpe)
             }
-            printTypeOrAnnots(tpt.tpe)
-            this += ")"
         }
 
       case Term.Assign(lhs, rhs) =>
@@ -365,11 +370,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case Term.Lambda(_, _) =>
             // Decompile lambda from { def annon$(...) = ...; closure(annon$, ...)}
             val DefDef(_, _, args :: Nil, _, Some(rhs)) :: Nil = stats
-            this += "("
-            printArgsDefs(args)
-            this += " => "
-            printTree(rhs)
-            this += ")"
+            inParens {
+              printArgsDefs(args)
+              this += " => "
+              printTree(rhs)
+            }
           case _ =>
             this += "{"
             indented {
@@ -390,32 +395,24 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this
 
       case Term.If(cond, thenp, elsep) =>
-        this += "if ("
-        printTree(cond)
-        this += ") "
+        this += "if "
+        inParens(printTree(cond))
+        this += " "
         printTree(thenp)
         this+= " else "
         printTree(elsep)
 
       case Term.Match(selector, cases) =>
         printTree(selector)
-        this += " match {"
-        indented {
-          this += lineBreak()
-          printCases(cases, lineBreak())
-        }
-        this += lineBreak() += "}"
+        this += " match"
+        inBlock(printCases(cases, lineBreak()))
 
       case Term.Try(body, cases, finallyOpt) =>
         this += "try "
         printTree(body)
         if (cases.nonEmpty) {
-          this += " catch {"
-          indented {
-            this += lineBreak()
-            printCases(cases, lineBreak())
-          }
-          this += lineBreak() += "}"
+          this += " catch"
+          inBlock(printCases(cases, lineBreak()))
         }
         finallyOpt match {
           case Some(t) =>
@@ -552,9 +549,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             printSeparated(xs)
         }
 
-        this += "["
-        printSeparated(targs)
-        this += "]"
+        inSquareParens(printSeparated(targs))
       }
     }
 
@@ -583,9 +578,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
               this += ", "
               printSeparated(xs)
           }
-          this += "["
-          printSeparated(tparams)
-          this += "]"
+          inSquareParens(printSeparated(tparams))
           if (isMember) {
             this += " = "
             printTypeOrBoundsTree(body)
@@ -597,8 +590,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       }
     }
 
-    def printArgsDefs(args: List[ValDef]): Unit = {
-      this += "("
+    def printArgsDefs(args: List[ValDef]): Unit = inParens {
       args match {
         case Nil =>
         case arg :: _ =>
@@ -616,7 +608,6 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       }
 
       printSeparated(args)
-      this += ")"
     }
 
     def printAnnotations(trees: List[Term]): Buffer = {
@@ -685,14 +676,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case Term.TypeApply(Term.Select(extractor, "unapply" | "unapplySeq", _), _) => printTree(extractor)
           case _ => throw new MatchError(fun.show)
         }
-        this += "("
-        printPatterns(patterns, ", ")
-        this += ")"
+        inParens(printPatterns(patterns, ", "))
 
       case Pattern.Alternative(trees) =>
-        this += "("
-        printPatterns(trees, " | ")
-        this += ")"
+        inParens(printPatterns(trees, " | "))
 
       case Pattern.TypeTest(tpt) =>
         this += "_: "
@@ -716,9 +703,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Constant.Char(v) => this += '\'' += escapedChar(v) += '\''
       case Constant.String(v) => this += '"' += escapedString(v) += '"'
       case Constant.ClassTag(v) =>
-        this += "classOf["
-        printType(v)
-        this += "]"
+        this += "classOf"
+        inSquareParens(printType(v))
     }
 
     def printTypeOrBoundsTree(tpt: TypeOrBoundsTree): Buffer = tpt match {
@@ -771,18 +757,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case TypeTree.Refined(tpt, refinements) =>
         printTypeTree(tpt)
-        this += " {"
-        indented {
-          this += lineBreak()
-          printTrees(refinements, "; ")
-        }
-        this += lineBreak() += "}"
+        inBlock(printTrees(refinements, "; "))
 
       case TypeTree.Applied(tpt, args) =>
         printTypeTree(tpt)
-        this += "["
-        printTypeOrBoundsTrees(args, ", ")
-        this += "]"
+        inSquareParens(printTypeOrBoundsTrees(args, ", "))
 
       case TypeTree.Annotated(tpt, annot) =>
         val Annotation(ref, args) = annot
@@ -873,9 +852,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this += "_*"
           case _ =>
             printType(tp)
-            this += "["
-            printTypesOrBounds(args, ", ")
-            this += "]"
+            inSquareParens(printTypesOrBounds(args, ", "))
         }
 
       case Type.AnnotatedType(tp, annot) =>
@@ -914,9 +891,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
 
       case Type.TypeLambda(paramNames, tparams, body) =>
-        this += "["
-        printMethodicTypeParams(paramNames, tparams)
-        this += "] => "
+        inSquareParens(printMethodicTypeParams(paramNames, tparams))
+        this += " => "
         printTypeOrBound(body)
 
       case Type.ParamRef(lambda, idx) =>
@@ -948,9 +924,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       val Annotation(ref, args) = annot
       this += "@"
       printTypeTree(ref)
-      this += "("
-      printTrees(args, ", ")
-      this += ")"
+      inParens(printTrees(args, ", "))
     }
 
     def printDefAnnotations(definition: Definition): Buffer = {
@@ -971,14 +945,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def printRefinement(tpe: Type): Buffer = {
       def printMethodicType(tp: TypeOrBounds): Unit = tp match {
         case tp @ Type.MethodType(paramNames, params, res) =>
-          this += "("
-          printMethodicTypeParams(paramNames, params)
-          this += ")"
+          inParens(printMethodicTypeParams(paramNames, params))
           printMethodicType(res)
         case tp @ Type.TypeLambda(paramNames, params, res) =>
-          this += "["
-          printMethodicTypeParams(paramNames, params)
-          this += "]"
+          inSquareParens(printMethodicTypeParams(paramNames, params))
           printMethodicType(res)
         case Type.ByNameType(t) =>
           this += ": "
