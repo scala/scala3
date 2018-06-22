@@ -41,7 +41,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       this += ")"
     }
 
-    def inSquareParens(body: => Unit): Buffer = {
+    def inSquare(body: => Unit): Buffer = {
       this += "["
       body
       this += "]"
@@ -126,7 +126,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         def printParent(parent: Parent): Unit = parent match {
           case parent @ Term.TypeApply(fun, targs) =>
             printParent(fun)
-            inSquareParens(printTypeOrBoundsTrees(targs, ", "))
+            inSquare(printTypeOrBoundsTrees(targs, ", "))
 
           case parent @ Term.Apply(fun, args) =>
             printParent(fun)
@@ -215,6 +215,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         if (flags.isImplicit) this += "implicit "
         if (flags.isOverride) this += "override "
 
+        printProtectedOrPrivate(vdef)
+
         if (flags.isLazy) this += "lazy "
         if (vdef.flags.isMutable) this += "var "
         else this += "val "
@@ -242,12 +244,14 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case ddef @ DefDef(name, targs, argss, tpt, rhs) =>
         printDefAnnotations(ddef)
 
+        val isConstructor = name == "<init>"
+
         val flags = ddef.flags
         if (flags.isImplicit) this += "implicit "
         if (flags.isInline) this += "inline "
         if (flags.isOverride) this += "override "
 
-        val isConstructor = name == "<init>"
+        printProtectedOrPrivate(ddef)
 
         this += "def " += (if (isConstructor) "this" else name)
         printTargsDefs(targs)
@@ -318,7 +322,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             // type bounds already printed in `fn`
             this
           case _ =>
-            inSquareParens(printTypeOrBoundsTrees(args, ", "))
+            inSquare(printTypeOrBoundsTrees(args, ", "))
         }
 
       case Term.Super(qual, idOpt) =>
@@ -329,7 +333,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "super"
         for (id <- idOpt) {
           val Id(name) = id
-          inSquareParens(this += name)
+          inSquare(this += name)
         }
         this
 
@@ -549,7 +553,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             printSeparated(xs)
         }
 
-        inSquareParens(printSeparated(targs))
+        inSquare(printSeparated(targs))
       }
     }
 
@@ -578,7 +582,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
               this += ", "
               printSeparated(xs)
           }
-          inSquareParens(printSeparated(tparams))
+          inSquare(printSeparated(tparams))
           if (isMember) {
             this += " = "
             printTypeOrBoundsTree(body)
@@ -600,9 +604,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       def printSeparated(list: List[ValDef]): Unit = list match {
         case Nil =>
-        case x :: Nil => printArgDef(x)
+        case x :: Nil => printParamDef(x)
         case x :: xs =>
-          printArgDef(x)
+          printParamDef(x)
           this += ", "
           printSeparated(xs)
       }
@@ -623,8 +627,28 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       this
     }
 
-    def printArgDef(arg: ValDef): Unit = {
+    def printParamDef(arg: ValDef): Unit = {
       val ValDef(name, tpt, rhs) = arg
+      arg.owner match {
+        case DefDef("<init>", _, _, _, _) =>
+          val ClassDef(_, _, _, _, body) = arg.owner.owner
+          body.collectFirst {
+            case vdef @ ValDef(`name`, _, _) if vdef.flags.isParamAccessor =>
+              if (!vdef.flags.isLocal) {
+                var printedPrefix = false
+                if (vdef.flags.isOverride) {
+                  this += "override "
+                  printedPrefix = true
+                }
+                printedPrefix  |= printProtectedOrPrivate(vdef)
+                if (vdef.flags.isMutable) this += "var "
+                else if (printedPrefix || !vdef.flags.isCaseAcessor) this += "val "
+                else this // val not explicitly needed
+              }
+          }
+        case _ =>
+      }
+
       this += name += ": "
       printTypeTree(tpt)
     }
@@ -704,7 +728,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Constant.String(v) => this += '"' += escapedString(v) += '"'
       case Constant.ClassTag(v) =>
         this += "classOf"
-        inSquareParens(printType(v))
+        inSquare(printType(v))
     }
 
     def printTypeOrBoundsTree(tpt: TypeOrBoundsTree): Buffer = tpt match {
@@ -761,7 +785,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case TypeTree.Applied(tpt, args) =>
         printTypeTree(tpt)
-        inSquareParens(printTypeOrBoundsTrees(args, ", "))
+        inSquare(printTypeOrBoundsTrees(args, ", "))
 
       case TypeTree.Annotated(tpt, annot) =>
         val Annotation(ref, args) = annot
@@ -852,7 +876,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this += "_*"
           case _ =>
             printType(tp)
-            inSquareParens(printTypesOrBounds(args, ", "))
+            inSquare(printTypesOrBounds(args, ", "))
         }
 
       case Type.AnnotatedType(tp, annot) =>
@@ -877,21 +901,14 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Type.ThisType(tp) =>
         tp match {
-          case Type.SymRef(cdef @ ClassDef(name, _, _, _, _), prefix) if !cdef.flags.isObject =>
-            def printPrefix(prefix: TypeOrBounds): Unit = prefix match {
-              case Type.SymRef(ClassDef(name, _, _, _, _), prefix2) =>
-                printPrefix(prefix2)
-                this += name += "."
-              case _ =>
-            }
-            printPrefix(prefix)
-            this += name
+          case Type.SymRef(cdef @ ClassDef(_, _, _, _, _), _) if !cdef.flags.isObject =>
+            printFullClassName(tp)
             this += ".this"
           case _ => printType(tp)
         }
 
       case Type.TypeLambda(paramNames, tparams, body) =>
-        inSquareParens(printMethodicTypeParams(paramNames, tparams))
+        inSquare(printMethodicTypeParams(paramNames, tparams))
         this += " => "
         printTypeOrBound(body)
 
@@ -948,7 +965,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           inParens(printMethodicTypeParams(paramNames, params))
           printMethodicType(res)
         case tp @ Type.TypeLambda(paramNames, params, res) =>
-          inSquareParens(printMethodicTypeParams(paramNames, params))
+          inSquare(printMethodicTypeParams(paramNames, params))
           printMethodicType(res)
         case Type.ByNameType(t) =>
           this += ": "
@@ -1025,6 +1042,46 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       printType(lo)
       this += " <: "
       printType(hi)
+    }
+
+    def printProtectedOrPrivate(definition: Definition): Boolean = {
+      var prefixWasPrinted = false
+      def printWithin(within: Type) = within match {
+        case Type.SymRef(PackageDef(name, _), _) => this += name
+        case _ => printFullClassName(within)
+      }
+      if (definition.flags.isProtected) {
+        this += "protected"
+        definition.protectedWithin match {
+          case Some(within) =>
+            inSquare(printWithin(within))
+          case _ =>
+        }
+        prefixWasPrinted = true
+      } else {
+        definition.privateWithin match {
+          case Some(within) =>
+            this += "private"
+            inSquare(printWithin(within))
+            prefixWasPrinted = true
+          case _ =>
+        }
+      }
+      if (prefixWasPrinted)
+        this += " "
+      prefixWasPrinted
+    }
+
+    def printFullClassName(tp: TypeOrBounds): Unit = {
+      def printClassPrefix(prefix: TypeOrBounds): Unit = prefix match {
+        case Type.SymRef(ClassDef(name, _, _, _, _), prefix2) =>
+          printClassPrefix(prefix2)
+          this += name += "."
+        case _ =>
+      }
+      val Type.SymRef(ClassDef(name, _, _, _, _), prefix) = tp
+      printClassPrefix(prefix)
+      this += name
     }
 
     def +=(x: Boolean): this.type = { sb.append(x); this }
