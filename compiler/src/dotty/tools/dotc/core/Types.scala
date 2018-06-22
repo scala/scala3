@@ -4031,8 +4031,7 @@ object Types {
         tp
 
     private def transparently(implicit ctx: Context): Context =
-      if (ctx.mode.is(Mode.Transparent)) ctx
-      else ctx.fresh.addMode(Mode.Transparent)
+      ctx.addMode(Mode.Transparent)
 
     object If {
       def unapply(to: TypeOf): Option[(Type, Type, Type)] = to.tree match {
