@@ -41,6 +41,8 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
   def ContextDeco(ctx: Context): ContextAPI = new ContextAPI {
     def owner: Definition = FromSymbol.definition(ctx.owner)(ctx)
+
+    def source: java.nio.file.Path = ctx.compilationUnit.source.file.jpath
   }
 
   // ===== Id =======================================================
