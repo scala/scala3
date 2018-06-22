@@ -41,22 +41,31 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def doubleLineBreak(): String = "\n\n" + ("  " * indent)
 
     def printTree(tree: Tree): Buffer = tree match {
-      case tree @ PackageClause(Term.Ident(name), stats) =>
+      case PackageObject(body)=>
+        printTree(body) // Print package object
+
+      case PackageClause(Term.Ident(name), (inner @ PackageClause(_, _)) :: Nil) if name != "<empty>" && PackageObject.unapply(inner).isEmpty =>
+        // print inner package as `package outer.inner { ... }`
+        printTree(inner)
+
+      case tree @ PackageClause(name, stats) =>
         val stats1 = stats.collect {
           case stat @ PackageClause(_, _) => stat
           case stat @ Definition() if !(stat.flags.isObject && stat.flags.isLazy) => stat
           case stat @ Import(_, _) => stat
         }
-
-        if (name == "<empty>") {
-          printTrees(stats1, lineBreak())
-        } else {
-          this += "package " += name += " {"
-          indented {
-            this += lineBreak()
+        name match {
+          case Term.Ident("<empty>") =>
             printTrees(stats1, lineBreak())
-          }
-          this += lineBreak() += "}"
+          case _ =>
+            this += "package "
+            printType(name.tpe)
+            this += " {"
+            indented {
+              this += lineBreak()
+              printTrees(stats1, lineBreak())
+            }
+            this += lineBreak() += "}"
         }
 
       case Import(expr, selectors) =>
@@ -74,7 +83,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         if (flags.isFinal && !flags.isObject) this += "final "
         if (flags.isCase) this += "case "
 
-        if (flags.isObject) this += "object " += name.stripSuffix("$")
+        if (name == "package$") {
+          this += "package object "
+          printDefinitionName(cdef.owner)
+        }
+        else if (flags.isObject) this += "object " += name.stripSuffix("$")
         else if (flags.isTrait) this += "trait " += name
         else if (flags.isAbstract) this += "abstract class " += name
         else this += "class " += name
@@ -1134,5 +1147,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
   }
 
+  object PackageObject {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
+      case PackageClause(_, ValDef("package", _, _) :: body :: Nil) => Some(body)
+      case _ => None
+    }
+  }
 
 }

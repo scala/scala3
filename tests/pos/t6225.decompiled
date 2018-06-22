@@ -1,0 +1,21 @@
+/** Decompiled from out/posTestFromTasty/pos/t6225/ko.class */
+object ko {
+  import library.y.{Foo, foo}
+  dotty.DottyPredef.implicitly[library.y.Foo](library.y.foo)
+}
+/** Decompiled from out/posTestFromTasty/pos/t6225/ko2.class */
+object ko2 {
+  import library.y.{_}
+  dotty.DottyPredef.implicitly[library.y.Foo](library.y.foo)
+}
+/** Decompiled from out/posTestFromTasty/pos/t6225/library/x/X.class */
+package library.x {
+  class X() {
+    class Foo()
+    implicit val foo: X.this.Foo = new X.this.Foo()
+  }
+}
+/** Decompiled from out/posTestFromTasty/pos/t6225/library/y/package.class */
+package library {
+  package object y extends library.x.X()
+}
