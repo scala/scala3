@@ -625,6 +625,17 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printArgDef(arg: ValDef): Unit = {
       val ValDef(name, tpt, rhs) = arg
+      arg.owner match {
+        case DefDef("<init>", _, _, _, _) =>
+          val ClassDef(_, _, _, _, body) = arg.owner.owner
+          body.collectFirst {
+            case vdef @ ValDef(`name`, _, _) if vdef.flags.isParamAccessor =>
+              if (!vdef.flags.isLocal && !vdef.flags.isCaseAcessor)
+                this += "val " // TODO `var`s
+          }
+        case _ =>
+      }
+
       this += name += ": "
       printTypeTree(tpt)
     }
