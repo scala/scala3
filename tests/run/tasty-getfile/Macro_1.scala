@@ -1,15 +1,14 @@
 import scala.quoted._
-
-import scala.tasty.Universe
+import scala.tasty.{Tasty, TopLevelSplice}
 
 object SourceFiles {
 
   implicit inline def getThisFile: String =
-    ~getThisFileImpl(Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
+    ~getThisFileImpl(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
 
-  private def getThisFileImpl(implicit u: Universe): Expr[String] = {
-    import u.tasty._
-    u.context.source.getFileName.toString.toExpr
+  private def getThisFileImpl(implicit tasty: Tasty): Expr[String] = {
+    import tasty._
+    rootContext.source.getFileName.toString.toExpr
   }
 
 }
