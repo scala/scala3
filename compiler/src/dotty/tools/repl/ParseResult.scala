@@ -119,17 +119,17 @@ object ParseResult {
         case TypeOf.command => TypeOf(arg)
         case _ => UnknownCommand(cmd)
       }
-      case _ => {
-        val stats = parseStats(sourceCode)
+      case _ =>
+        val reporter = newStoreReporter
+        val stats = parseStats(sourceCode)(ctx.fresh.setReporter(reporter))
 
-        if (ctx.reporter.hasErrors) {
-          SyntaxErrors(sourceCode,
-                       ctx.flushBufferedMessages(),
-                       stats)
-        }
+        if (reporter.hasErrors)
+          SyntaxErrors(
+            sourceCode,
+            reporter.removeBufferedMessages,
+            stats)
         else
           Parsed(sourceCode, stats)
-      }
     }
 
   /** Check if the input is incomplete

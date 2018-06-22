@@ -42,7 +42,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
 
   def newRun(initCtx: Context, objectIndex: Int) = new Run(this, initCtx) {
     override protected[this] def rootContext(implicit ctx: Context) =
-      addMagicImports(super.rootContext.fresh.setReporter(newStoreReporter))
+      addMagicImports(super.rootContext)
 
     private def addMagicImports(initCtx: Context): Context = {
       def addImport(path: TermName)(implicit ctx: Context) = {
@@ -145,13 +145,13 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     else run.runContext.flushBufferedMessages().errors
   }
 
-  def compile(parsed: Parsed)(implicit state: State): Result[(CompilationUnit, State)] = {
+  final def compile(parsed: Parsed)(implicit state: State): Result[(CompilationUnit, State)] = {
     val defs = definitions(parsed.trees, state)
     val unit = createUnit(defs, parsed.sourceCode)
     runCompilationUnit(unit, defs.state)
   }
 
-  def typeOf(expr: String)(implicit state: State): Result[String] =
+  final def typeOf(expr: String)(implicit state: State): Result[String] =
     typeCheck(expr).map { tree =>
       import dotc.ast.Trees._
       implicit val ctx = state.run.runContext
@@ -165,7 +165,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
       }
     }
 
-  def typeCheck(expr: String, errorsAllowed: Boolean = false)(implicit state: State): Result[tpd.ValDef] = {
+  final def typeCheck(expr: String, errorsAllowed: Boolean = false)(implicit state: State): Result[tpd.ValDef] = {
 
     def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: Context): Result[untpd.PackageDef] = {
       def wrap(trees: Seq[untpd.Tree]): untpd.PackageDef = {
@@ -219,16 +219,17 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
 
 
     val run = state.run
-    val reporter = state.run.runContext.reporter
+    val reporter = newStoreReporter
     val src = new SourceFile(s"EvaluateExpr", expr)
     val runCtx =
       run.runContext.fresh
+         .setReporter(reporter)
          .setSetting(run.runContext.settings.YstopAfter, List("frontend"))
 
     wrapped(expr, src, state)(runCtx).flatMap { pkg =>
       val unit = new CompilationUnit(src)
       unit.untpdTree = pkg
-      run.compileUnits(unit :: Nil, runCtx.fresh.setReporter(newStoreReporter))
+      run.compileUnits(unit :: Nil, runCtx)
 
       if (errorsAllowed || !reporter.hasErrors)
         unwrapped(unit.tpdTree, src)(runCtx)

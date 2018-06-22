@@ -51,11 +51,7 @@ import scala.collection.JavaConverters._
 case class State(objectIndex: Int,
                  valIndex: Int,
                  imports: List[untpd.Import],
-                 run: Run) {
-
-  def newRun(comp: ReplCompiler, rootCtx: Context): State =
-    copy(run = comp.newRun(rootCtx, objectIndex))
-}
+                 run: Run)
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
@@ -99,9 +95,9 @@ class ReplDriver(settings: Array[String],
     rendering = new Rendering(compiler, classLoader)
   }
 
-  protected[this] var rootCtx: Context = _
-  protected[this] var compiler: ReplCompiler = _
-  protected[this] var rendering: Rendering = _
+  private[this] var rootCtx: Context = _
+  private[this] var compiler: ReplCompiler = _
+  private[this] var rendering: Rendering = _
 
   // initialize the REPL session as part of the constructor so that once `run`
   // is called, we're in business
@@ -135,14 +131,8 @@ class ReplDriver(settings: Array[String],
 
     @tailrec def loop(state: State): State = {
       val res = readLine(state)
-
       if (res == Quit) state
-      else {
-        // readLine potentially destroys the run, so a new one is needed for the
-        // rest of the interpretation:
-        val freshState = state.newRun(compiler, rootCtx)
-        loop(interpret(res)(freshState))
-      }
+      else loop(interpret(res)(state))
     }
 
     try withRedirectedOutput { loop(initState) }
@@ -151,12 +141,16 @@ class ReplDriver(settings: Array[String],
 
   final def run(input: String)(implicit state: State): State = withRedirectedOutput {
     val parsed = ParseResult(input)(state.run.runContext)
-    interpret(parsed)(state.newRun(compiler, rootCtx))
+    interpret(parsed)
   }
 
   private def withRedirectedOutput(op: => State): State =
     Console.withOut(out) { Console.withErr(out) { op } }
 
+  private def newRun(state: State) = {
+    val newRun = compiler.newRun(rootCtx.fresh.setReporter(newStoreReporter), state.objectIndex)
+    state.copy(run = newRun)
+  }
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected[this] final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
@@ -172,7 +166,7 @@ class ReplDriver(settings: Array[String],
         /* complete = */ false  // if true adds space when completing
       )
     }
-    implicit val state = state0.newRun(compiler, rootCtx)
+    implicit val state = newRun(state0)
     compiler
       .typeCheck(expr, errorsAllowed = true)
       .map { tree =>
@@ -193,7 +187,7 @@ class ReplDriver(settings: Array[String],
   private def interpret(res: ParseResult)(implicit state: State): State = {
     val newState = res match {
       case parsed: Parsed if parsed.trees.nonEmpty =>
-        compile(parsed).newRun(compiler, rootCtx)
+        compile(parsed, state)
 
       case SyntaxErrors(src, errs, _) =>
         displayErrors(errs)
@@ -213,12 +207,13 @@ class ReplDriver(settings: Array[String],
   }
 
   /** Compile `parsed` trees and evolve `state` in accordance */
-  protected[this] final def compile(parsed: Parsed)(implicit state: State): State = {
+  private def compile(parsed: Parsed, istate: State): State = {
     def extractNewestWrapper(tree: untpd.Tree): Name = tree match {
       case PackageDef(_, (obj: untpd.ModuleDef) :: Nil) => obj.name.moduleClassName
       case _ => nme.NO_NAME
     }
 
+    implicit val state = newRun(istate)
     compiler
       .compile(parsed)
       .fold(
@@ -331,14 +326,7 @@ class ReplDriver(settings: Array[String],
       val file = new java.io.File(path)
       if (file.exists) {
         val contents = scala.io.Source.fromFile(file).mkString
-        ParseResult(contents)(state.run.runContext) match {
-          case parsed: Parsed =>
-            compile(parsed)
-          case SyntaxErrors(_, errors, _) =>
-            displayErrors(errors)
-          case _ =>
-            state
-        }
+        run(contents)
       }
       else {
         out.println(s"""Couldn't find file "${file.getCanonicalPath}"""")
@@ -346,7 +334,7 @@ class ReplDriver(settings: Array[String],
       }
 
     case TypeOf(expr) =>
-      compiler.typeOf(expr).fold(
+      compiler.typeOf(expr)(newRun(state)).fold(
         displayErrors,
         res => out.println(SyntaxHighlighting(res))
       )
