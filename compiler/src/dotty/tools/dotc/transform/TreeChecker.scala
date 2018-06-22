@@ -460,7 +460,11 @@ class TreeChecker extends Phase with SymTransformer {
       tree
     }
 
-    override def simplify(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type = tree
+    override def simplify(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type =
+      if (ctx.phase.prev.phaseName == "frontend" || ctx.phase.prev.phaseName == "sbt-deps")
+        super.simplify(tree, pt, locked)
+      else
+        tree
   }
 
   /**
