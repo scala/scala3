@@ -72,7 +72,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
   private def definitions(trees: List[untpd.Tree], state: State): Definitions = {
     import untpd._
 
-    implicit val ctx: Context = state.run.runContext
+    implicit val ctx: Context = state.context
 
     var valIdx = state.valIndex
 
@@ -120,7 +120,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
 
     assert(defs.stats.nonEmpty)
 
-    implicit val ctx: Context = defs.state.run.runContext
+    implicit val ctx: Context = defs.state.context
 
     val tmpl = Template(emptyConstructor, Nil, EmptyValDef, defs.stats)
     val module = ModuleDef(objectName(defs.state), tmpl)
@@ -137,12 +137,11 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
   }
 
   private def runCompilationUnit(unit: CompilationUnit, state: State): Result[(CompilationUnit, State)] = {
-    val run = state.run
-    val reporter = state.run.runContext.reporter
-    run.compileUnits(unit :: Nil)
+    val ctx = state.context
+    ctx.run.compileUnits(unit :: Nil)
 
-    if (!reporter.hasErrors) (unit, state).result
-    else run.runContext.flushBufferedMessages().errors
+    if (!ctx.reporter.hasErrors) (unit, state).result
+    else ctx.reporter.removeBufferedMessages(ctx).errors
   }
 
   final def compile(parsed: Parsed)(implicit state: State): Result[(CompilationUnit, State)] = {
@@ -154,7 +153,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
   final def typeOf(expr: String)(implicit state: State): Result[String] =
     typeCheck(expr).map { tree =>
       import dotc.ast.Trees._
-      implicit val ctx = state.run.runContext
+      implicit val ctx = state.context
       tree.rhs match {
         case Block(xs, _) => xs.last.tpe.widen.show
         case _ =>
@@ -218,23 +217,20 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     }
 
 
-    val run = state.run
-    val reporter = newStoreReporter
-    val src = new SourceFile(s"EvaluateExpr", expr)
-    val runCtx =
-      run.runContext.fresh
-         .setReporter(reporter)
-         .setSetting(run.runContext.settings.YstopAfter, List("frontend"))
+    val src = new SourceFile("<typecheck>", expr)
+    implicit val ctx = state.context.fresh
+      .setReporter(newStoreReporter)
+      .setSetting(state.context.settings.YstopAfter, List("frontend"))
 
-    wrapped(expr, src, state)(runCtx).flatMap { pkg =>
+    wrapped(expr, src, state).flatMap { pkg =>
       val unit = new CompilationUnit(src)
       unit.untpdTree = pkg
-      run.compileUnits(unit :: Nil, runCtx)
+      ctx.run.compileUnits(unit :: Nil, ctx)
 
-      if (errorsAllowed || !reporter.hasErrors)
-        unwrapped(unit.tpdTree, src)(runCtx)
+      if (errorsAllowed || !ctx.reporter.hasErrors)
+        unwrapped(unit.tpdTree, src)
       else {
-        reporter.removeBufferedMessages(runCtx).errors
+        ctx.reporter.removeBufferedMessages.errors
       }
     }
   }

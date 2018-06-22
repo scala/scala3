@@ -19,12 +19,4 @@ package object repl {
       text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
     }
   }
-
-  private[repl] implicit class StoreReporterContext(val ctx: Context) extends AnyVal {
-    def flushBufferedMessages(): List[MessageContainer] =
-      ctx.reporter match {
-        case rep: StoreReporter => rep.removeBufferedMessages(ctx)
-        case _ => Nil
-      }
-  }
 }

@@ -51,7 +51,7 @@ import scala.collection.JavaConverters._
 case class State(objectIndex: Int,
                  valIndex: Int,
                  imports: List[untpd.Import],
-                 run: Run)
+                 context: Context)
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
@@ -72,7 +72,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** the initial, empty state of the REPL session */
-  protected[this] def initState = State(0, 0, Nil, compiler.newRun(rootCtx, 0))
+  protected[this] def initState = State(0, 0, Nil, rootCtx)
 
   /** Reset state of repl to the initial state
    *
@@ -118,7 +118,7 @@ class ReplDriver(settings: Array[String],
         val comps = completions(line.cursor, line.line, state)
         candidates.addAll(comps.asJava)
       }
-      implicit val ctx = state.run.runContext
+      implicit val ctx = state.context
       try {
         val line = terminal.readLine(completer)
         ParseResult(line)
@@ -140,7 +140,7 @@ class ReplDriver(settings: Array[String],
   }
 
   final def run(input: String)(implicit state: State): State = withRedirectedOutput {
-    val parsed = ParseResult(input)(state.run.runContext)
+    val parsed = ParseResult(input)(state.context)
     interpret(parsed)
   }
 
@@ -148,8 +148,8 @@ class ReplDriver(settings: Array[String],
     Console.withOut(out) { Console.withErr(out) { op } }
 
   private def newRun(state: State) = {
-    val newRun = compiler.newRun(rootCtx.fresh.setReporter(newStoreReporter), state.objectIndex)
-    state.copy(run = newRun)
+    val run = compiler.newRun(rootCtx.fresh.setReporter(newStoreReporter), state.objectIndex)
+    state.copy(context = run.runContext)
   }
 
   /** Extract possible completions at the index of `cursor` in `expr` */
@@ -173,7 +173,7 @@ class ReplDriver(settings: Array[String],
         val file = new SourceFile("<completions>", expr)
         val unit = new CompilationUnit(file)
         unit.tpdTree = tree
-        implicit val ctx = state.run.runContext.fresh.setCompilationUnit(unit)
+        implicit val ctx = state.context.fresh.setCompilationUnit(unit)
         val srcPos = SourcePosition(file, Position(cursor))
         val (_, completions) = Interactive.completions(srcPos)
         completions.map(makeCandidate)
@@ -224,8 +224,8 @@ class ReplDriver(settings: Array[String],
             val newImports = newState.imports ++ extractImports(parsed.trees)
             val newStateWithImports = newState.copy(imports = newImports)
 
-            // display warnings
-            displayErrors(newState.run.runContext.flushBufferedMessages())(newState)
+            val warnings = newState.context.reporter.removeBufferedMessages(newState.context)
+            displayErrors(warnings)(newState) // display warnings
             displayDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
         }
       )
@@ -233,7 +233,7 @@ class ReplDriver(settings: Array[String],
 
   /** Display definitions from `tree` */
   private def displayDefinitions(tree: tpd.Tree, newestWrapper: Name)(implicit state: State): State = {
-    implicit val ctx = state.run.runContext
+    implicit val ctx = state.context
 
     def resAndUnit(denot: Denotation) = {
       import scala.util.{Success, Try}
@@ -319,7 +319,7 @@ class ReplDriver(settings: Array[String],
       initState
 
     case Imports =>
-      state.imports.foreach(i => out.println(SyntaxHighlighting(i.show(state.run.runContext))))
+      state.imports.foreach(i => out.println(SyntaxHighlighting(i.show(state.context))))
       state
 
     case Load(path) =>
@@ -356,7 +356,7 @@ class ReplDriver(settings: Array[String],
 
   /** Output errors to `out` */
   private def displayErrors(errs: Seq[MessageContainer])(implicit state: State): State = {
-    errs.map(renderMessage(_)(state.run.runContext)).foreach(out.println)
+    errs.map(renderMessage(_)(state.context)).foreach(out.println)
     state
   }
 }
