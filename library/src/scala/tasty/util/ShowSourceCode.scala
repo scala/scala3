@@ -317,6 +317,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
 
       case Term.Super(qual, idOpt) =>
+        qual match {
+          case Term.This(Some(Id(name))) => this += name += "."
+          case Term.This(None) =>
+        }
         this += "super"
         for (id <- idOpt) {
           val Id(name) = id
