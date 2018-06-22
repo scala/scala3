@@ -321,10 +321,17 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this += "]"
         }
 
-      case Term.Super(qual, tptOpt) =>
-        printTree(qual)
-        this += ".super"
-        // TODO use tptOpt?
+      case Term.Super(qual, idOpt) =>
+        qual match {
+          case Term.This(Some(Id(name))) => this += name += "."
+          case Term.This(None) =>
+        }
+        this += "super"
+        for (id <- idOpt) {
+          val Id(name) = id
+          this += "[" += name += "]"
+        }
+        this
 
       case Term.Typed(term, tpt) =>
         tpt.tpe match {
@@ -442,13 +449,15 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
 
     def printStats(stats: List[Tree], expr: Tree): Unit = {
-      def printSeparator(nextStats: List[Tree]) = {
+      def printSeparator(next: Tree): Unit = {
         // Avoid accidental application of opening `{` on next line with a double break
-        val next = if (nextStats.isEmpty) expr else nextStats.head
         next match {
           case Term.Block(DefDef("while$" | "doWhile$", _, _, _, _) :: Nil, _) => this += lineBreak()
           case Term.Block(_, _) => this += doubleLineBreak()
           case Term.Inlined(_, _, _) => this += doubleLineBreak()
+          case Term.Select(qual, _, _) => printSeparator(qual)
+          case Term.Apply(fn, _) => printSeparator(fn)
+          case Term.TypeApply(fn, _) => printSeparator(fn)
           case _ => this += lineBreak()
         }
       }
@@ -457,7 +466,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           printTree(expr)
         case x :: xs =>
           printTree(x)
-          printSeparator(xs)
+          printSeparator(if (xs.isEmpty) expr else xs.head)
           printSeparated(xs)
       }
 
