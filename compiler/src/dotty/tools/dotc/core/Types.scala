@@ -938,6 +938,7 @@ object Types {
 
     /** Strip PolyType prefix */
     def stripPoly(implicit ctx: Context): Type = this match {
+      case tp: TypeOf => tp.underlyingTp.stripPoly
       case tp: PolyType => tp.resType.stripPoly
       case _ => this
     }
@@ -953,6 +954,7 @@ object Types {
      */
     final def widen(implicit ctx: Context): Type = widenSingleton match {
       case tp: ExprType => tp.resultType.widen
+      case tp: TypeOf => tp.underlyingTp
       case tp => tp
     }
 
