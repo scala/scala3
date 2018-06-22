@@ -1,8 +1,7 @@
-package dotty.tools
-package repl
+package dotty.tools.repl
 
-import org.junit.Test
 import org.junit.Assert._
+import org.junit.Test
 
 class TypeTests extends ReplTest {
   @Test def typeOf1 = fromInitialState { implicit s =>

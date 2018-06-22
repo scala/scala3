@@ -20,7 +20,7 @@ import dotty.tools.dotc.reporting.MessageRendering
 import dotty.tools.dotc.reporting.diagnostic.{Message, MessageContainer}
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
-import dotty.tools.dotc.{CompilationUnit, Driver, Run}
+import dotty.tools.dotc.{CompilationUnit, Driver}
 import dotty.tools.io._
 import org.jline.reader._
 
@@ -42,11 +42,9 @@ import scala.collection.JavaConverters._
  *  `valIndex`.
  *
  *  @param objectIndex the index of the next wrapper
- *  @param valIndex the index of next value binding for free expressions
- *  @param imports a list of tuples of imports on tree form and shown form
- *  @param run the latest run initiated at the start of interpretation. This
- *             run and its context should be used in order to perform any
- *             manipulation on `Tree`s and `Symbol`s.
+ *  @param valIndex    the index of next value binding for free expressions
+ *  @param imports     the list of user defined imports
+ *  @param context     the latest compiler context
  */
 case class State(objectIndex: Int,
                  valIndex: Int,
@@ -189,7 +187,7 @@ class ReplDriver(settings: Array[String],
       case parsed: Parsed if parsed.trees.nonEmpty =>
         compile(parsed, state)
 
-      case SyntaxErrors(src, errs, _) =>
+      case SyntaxErrors(_, errs, _) =>
         displayErrors(errs)
         state
 

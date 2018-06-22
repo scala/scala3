@@ -1,5 +1,4 @@
-package dotty.tools
-package repl
+package dotty.tools.repl
 
 import org.junit.Assert._
 import org.junit.Test
@@ -11,27 +10,27 @@ class TabcompleteTests extends ReplTest {
   private[this] def tabComplete(src: String)(implicit state: State): List[String] =
     completions(src.length, src, state).map(_.value)
 
-  @Test def tabCompleteList: Unit = fromInitialState { implicit s =>
+  @Test def tabCompleteList = fromInitialState { implicit s =>
     val comp = tabComplete("List.r")
     assertEquals(List("range"), comp.distinct)
   }
 
-  @Test def tabCompleteListInstance: Unit = fromInitialState { implicit s =>
+  @Test def tabCompleteListInstance = fromInitialState { implicit s =>
     val comp = tabComplete("(null: List[Int]).sli")
     assertEquals(List("slice", "sliding"), comp.distinct.sorted)
   }
 
-  @Test def tabCompleteModule: Unit = fromInitialState{ implicit s =>
+  @Test def tabCompleteModule = fromInitialState{ implicit s =>
     val comp = tabComplete("scala.Pred")
     assertEquals(List("Predef"), comp)
   }
 
-  @Test def tabCompleteInClass: Unit = fromInitialState { implicit s =>
+  @Test def tabCompleteInClass = fromInitialState { implicit s =>
     val comp = tabComplete("class Foo { def bar: List[Int] = List.ap")
     assertEquals(List("apply"), comp)
   }
 
-  @Test def tabCompleteTwiceIn: Unit = {
+  @Test def tabCompleteTwiceIn = {
     val src1 = "class Foo { def bar(xs: List[Int]) = xs.map"
     val src2 = "class Foo { def bar(xs: List[Int]) = xs.mapC"
 
@@ -46,13 +45,13 @@ class TabcompleteTests extends ReplTest {
     }
   }
 
-  @Test def i3309: Unit = fromInitialState { implicit s =>
+  @Test def i3309 = fromInitialState { implicit s =>
     // We make sure we do not crash
     List("\"", ")", "'", "¨", "£", ":", ",", ";", "@", "}", "[", "]", ".")
       .foreach(tabComplete(_))
   }
 
-  @Test def completeFromPreviousState: Unit =
+  @Test def completeFromPreviousState =
     fromInitialState { implicit state  =>
       val src = "class Foo { def comp3 = 3; def comp1 = 1; def comp2 = 2 }"
       run(src)

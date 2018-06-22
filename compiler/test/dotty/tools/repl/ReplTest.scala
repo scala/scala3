@@ -1,13 +1,10 @@
-package dotty.tools
-package repl
+package dotty.tools.repl
+
+import java.io.{ByteArrayOutputStream, PrintStream}
 
 import dotty.Jars
-import java.io.{ PrintStream, ByteArrayOutputStream }
-import org.junit.{ Before, After }
-import dotc.reporting.MessageRendering
-import org.junit.Assert.fail
-
-import results._
+import dotty.tools.dotc.reporting.MessageRendering
+import org.junit.{After, Before}
 
 
 class ReplTest private (out: ByteArrayOutputStream) extends ReplDriver(

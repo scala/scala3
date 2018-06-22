@@ -1,12 +1,7 @@
-package dotty.tools
-package repl
+package dotty.tools.repl
 
 import org.junit.Assert._
-import org.junit.{Test, Ignore}
-
-import dotc.core.Contexts.Context
-import dotc.ast.Trees._
-import dotc.ast.untpd
+import org.junit.{Ignore, Test}
 
 class ReplCompilerTests extends ReplTest {
 
