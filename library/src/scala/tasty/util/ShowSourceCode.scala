@@ -300,8 +300,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case Term.Select(Term.This(_), "<init>", _) => this += "this" // call to constructor inside a constructor
           case _ => printTree(fn)
         }
+        val args1 = args match {
+          case init :+ Term.Typed(Term.Repeated(Nil), _) => init // drop empty var args at the end
+          case _ => args
+        }
+
         this += "("
-        printTrees(args, ", ")
+        printTrees(args1, ", ")
         this += ")"
 
       case Term.TypeApply(fn, args) =>
