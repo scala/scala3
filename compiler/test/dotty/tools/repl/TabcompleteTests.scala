@@ -1,7 +1,6 @@
 package dotty.tools
 package repl
 
-import dotty.tools.repl.ReplTest._
 import org.junit.Assert._
 import org.junit.Test
 
@@ -56,7 +55,7 @@ class TabcompleteTests extends ReplTest {
   @Test def completeFromPreviousState: Unit =
     fromInitialState { implicit state  =>
       val src = "class Foo { def comp3 = 3; def comp1 = 1; def comp2 = 2 }"
-      compiler.compile(src).stateOrFail
+      run(src)
     }
     .andThen { implicit state =>
       val expected = List("comp1", "comp2", "comp3")
