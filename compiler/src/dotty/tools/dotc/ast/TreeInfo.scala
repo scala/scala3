@@ -243,10 +243,13 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   /**  The largest subset of {NoInits, PureInterface} that a
    *   trait enclosing this statement can have as flags.
    */
-  def defKind(tree: Tree): FlagSet = unsplice(tree) match {
+  def defKind(tree: Tree)(implicit ctx: Context): FlagSet = unsplice(tree) match {
     case EmptyTree | _: Import => NoInitsInterface
     case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
-    case tree: DefDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else NoInits
+    case tree: DefDef =>
+      if (tree.unforcedRhs == EmptyTree &&
+          tree.vparamss.forall(_.forall(_.rhs.isEmpty))) NoInitsInterface
+      else NoInits
     case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
     case _ => EmptyFlags
   }
@@ -416,7 +419,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel = {
     val sym = tree.symbol
-    if (!tree.tpe.widen.isParameterless || sym.is(Erased)) SimplyPure
+    if (!tree.hasType) Impure
+    else if (!tree.tpe.widen.isParameterless || sym.is(Erased)) SimplyPure
     else if (!sym.isStable) Impure
     else if (sym.is(Module))
       if (sym.moduleClass.isNoInitsClass) Pure else Idempotent
