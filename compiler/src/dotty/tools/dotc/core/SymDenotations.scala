@@ -167,11 +167,14 @@ object SymDenotations {
     /** Unset given flags(s) of this denotation */
     final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
 
-    /** Set applicable flags from `flags` which is a subset of {NoInits, PureInterface} */
-    final def setNoInitsFlags(flags: FlagSet): Unit = {
-      val mask = if (myFlags.is(Trait)) NoInitsInterface else NoInits
-      setFlag(flags & mask)
-    }
+    /** Set applicable flags in {NoInits, PureInterface}
+     *  @param  parentFlags  The flags that match the class or trait's parents
+     *  @param  bodyFlags    The flags that match the class or trait's body
+     */
+    final def setNoInitsFlags(parentFlags: FlagSet, bodyFlags: FlagSet): Unit =
+      setFlag(
+        if (myFlags.is(Trait)) NoInitsInterface & bodyFlags // no parents are initialized from a trait
+        else NoInits & bodyFlags & parentFlags)
 
     private def isCurrent(fs: FlagSet) =
       fs <= (

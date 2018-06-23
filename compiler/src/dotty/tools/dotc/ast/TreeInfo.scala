@@ -241,7 +241,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   /**  The largest subset of {NoInits, PureInterface} that a
-   *   trait enclosing this statement can have as flags.
+   *   trait or class enclosing this statement can have as flags.
    */
   def defKind(tree: Tree)(implicit ctx: Context): FlagSet = unsplice(tree) match {
     case EmptyTree | _: Import => NoInitsInterface
@@ -253,6 +253,21 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
     case _ => EmptyFlags
   }
+
+  /**  The largest subset of {NoInits, PureInterface} that a
+   *   trait or class with these parents can have as flags.
+   */
+  def parentsKind(parents: List[Tree])(implicit ctx: Context): FlagSet = parents match {
+    case Nil => NoInitsInterface
+    case Apply(_, _ :: _) :: _ => EmptyFlags
+    case _ :: parents1 => parentsKind(parents1)
+  }
+
+  /**  The largest subset of {NoInits, PureInterface} that a
+   *   trait or class with this body can have as flags.
+   */
+  def bodyKind(body: List[Tree])(implicit ctx: Context): FlagSet =
+    (NoInitsInterface /: body)((fs, stat) => fs & defKind(stat))
 
   /** Checks whether predicate `p` is true for all result parts of this expression,
    *  where we zoom into Ifs, Matches, and Blocks.
