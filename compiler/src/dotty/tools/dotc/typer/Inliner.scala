@@ -28,6 +28,7 @@ import transform.TypeUtils._
 import reporting.trace
 import util.Positions.Position
 import util.Property
+import ast.TreeInfo
 
 object Inliner {
   import tpd._
@@ -765,7 +766,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             val leading = collectImpure(0, idx)
             val trailing = collectImpure(idx + 1, args.length)
             val arg = args(idx)
-            val argInPlace = if (trailing.isEmpty) arg else evalOnce(arg)(seq(trailing, _))
+            val argInPlace =
+              if (trailing.isEmpty) arg
+              else letBindUnless(TreeInfo.Pure, arg)(seq(trailing, _))
             val reduced = seq(prefix, seq(leading, argInPlace))
             inlining.println(i"projecting $tree -> ${reduced}")
             return reduced
