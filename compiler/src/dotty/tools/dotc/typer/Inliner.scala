@@ -40,7 +40,8 @@ object Inliner {
   private val ContextualImplicit = new Property.StickyKey[Unit]
 
   def markContextualImplicit(tree: Tree)(implicit ctx: Context): Unit =
-    methPart(tree).putAttachment(ContextualImplicit, ())
+    if (!defn.ScalaPredefModule.moduleClass.derivesFrom(tree.symbol.maybeOwner))
+      methPart(tree).putAttachment(ContextualImplicit, ())
 
   /** A key to be used in a context property that provides a map from enclosing implicit
    *  value bindings to their right hand sides.

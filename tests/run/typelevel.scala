@@ -133,6 +133,20 @@ object Test extends App {
   val f1: Z = f(true)
   val f2: S[Z] = f(false)
 
+  transparent def mapHead[T, R](t: T)(implicit fh: T => R): R = fh(t)
+  transparent def map(xs: HList): HList = {
+
+    if (xs.isEmpty) HNil
+    else HCons(mapHead(xs.head), map(xs.tail))
+  }
+
+  implicit def mapInt: Int => Boolean = (i: Int) => i < 23
+  implicit val mapString: String => Int = (s: String) => s.length
+  implicit val mapBoolean: Boolean => String = (b: Boolean) => if(b) "yes" else "no"
+
+  val res = map(HCons(23, HCons("foo", HCons(true, HNil))))
+  val res1: Boolean `HCons` (Int `HCons` (String `HCons` HNil)) = res
+
 /*
   transparent def toInt1[T]: Int = type T match {
     case Z => 0
