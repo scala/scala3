@@ -43,8 +43,10 @@ abstract class Tasty { tasty =>
 
   type Id
 
-  trait IdAPI extends Positioned
-  implicit def IdDeco(x: Id): IdAPI
+  trait IdAPI extends Positioned {
+    def name(implicit ctx: Context): String
+  }
+  implicit def IdDeco(id: Id): IdAPI
 
   implicit def idClassTag: ClassTag[Id]
 
@@ -74,7 +76,7 @@ abstract class Tasty { tasty =>
   trait PackageClauseAPI {
     def definition(implicit ctx: Context): Definition
   }
-  implicit def PackageClauseDeco(x: PackageClause): PackageClauseAPI
+  implicit def PackageClauseDeco(pack: PackageClause): PackageClauseAPI
 
   // ----- Statements -----------------------------------------------
 
@@ -88,6 +90,12 @@ abstract class Tasty { tasty =>
   abstract class ImportExtractor {
     def unapply(x: Import)(implicit ctx: Context): Option[(Term, List[ImportSelector])]
   }
+
+  trait ImportAPI {
+    def expr(implicit ctx: Context): Term
+    def selector(implicit ctx: Context): List[ImportSelector]
+  }
+  implicit def ImportDeco(imp: Import): ImportAPI
 
   type ImportSelector
 
@@ -120,6 +128,7 @@ abstract class Tasty { tasty =>
   implicit def definitionClassTag: ClassTag[Definition]
 
   trait DefinitionAPI {
+    def name(implicit ctx: Context): String
     def flags(implicit ctx: Context): FlagSet
     def privateWithin(implicit ctx: Context): Option[Type]
     def protectedWithin(implicit ctx: Context): Option[Type]
@@ -127,7 +136,7 @@ abstract class Tasty { tasty =>
     def owner(implicit ctx: Context): Definition
     def localContext(implicit ctx: Context): Context
   }
-  implicit def DefinitionDeco(x: Definition): DefinitionAPI
+  implicit def DefinitionDeco(definition: Definition): DefinitionAPI
 
   // ClassDef
 
@@ -140,6 +149,14 @@ abstract class Tasty { tasty =>
     def unapply(x: ClassDef)(implicit ctx: Context): Option[(String, DefDef, List[Parent], Option[ValDef], List[Statement])]
   }
 
+  trait ClassDefAPI {
+    def constructor(implicit ctx: Context): DefDef
+    def parents(implicit ctx: Context): List[Parent]
+    def self(implicit ctx: Context): Option[ValDef]
+    def body(implicit ctx: Context): List[Statement]
+  }
+  implicit def ClassDefDeco(cdef: ClassDef): ClassDefAPI
+
   // DefDef
 
   type DefDef <: Definition
@@ -150,6 +167,14 @@ abstract class Tasty { tasty =>
   abstract class DefDefExtractor {
     def unapply(x: DefDef)(implicit ctx: Context): Option[(String, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])]
   }
+
+  trait DefDefAPI {
+    def typeParams(implicit ctx: Context): List[TypeDef]
+    def paramss(implicit ctx: Context): List[List[ValDef]]
+    def returnTpt(implicit ctx: Context): TypeTree
+    def rhs(implicit ctx: Context): Option[Term]
+  }
+  implicit def DefDefDeco(ddef: DefDef): DefDefAPI
 
   // ValDef
 
@@ -162,6 +187,12 @@ abstract class Tasty { tasty =>
     def unapply(x: ValDef)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])]
   }
 
+  trait ValDefAPI {
+    def tpt(implicit ctx: Context): TypeTree
+    def rhs(implicit ctx: Context): Option[Term]
+  }
+  implicit def ValDefDeco(vdef: ValDef): ValDefAPI
+
   // TypeDef
 
   type TypeDef <: Definition
@@ -173,14 +204,20 @@ abstract class Tasty { tasty =>
     def unapply(x: TypeDef)(implicit ctx: Context): Option[(String, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)]
   }
 
+  trait TypeDefAPI {
+    def rhs(implicit ctx: Context): TypeOrBoundsTree
+  }
+  implicit def TypeDefDeco(tdef: TypeDef): TypeDefAPI
+
   // PackageDef
 
   type PackageDef <: Definition
 
   trait PackageDefAPI {
+    def owner(implicit ctx: Context): PackageDef
     def members(implicit ctx: Context): List[Statement]
   }
-  implicit def PackageDefDeco(t: PackageDef): PackageDefAPI
+  implicit def PackageDefDeco(pdef: PackageDef): PackageDefAPI
 
   implicit def packageDefClassTag: ClassTag[PackageDef]
 
@@ -200,7 +237,7 @@ abstract class Tasty { tasty =>
   trait TermAPI extends Typed with Positioned {
     def toExpr[T: quoted.Type](implicit ctx: Context): quoted.Expr[T]
   }
-  implicit def TermDeco(t: Term): TermAPI
+  implicit def TermDeco(term: Term): TermAPI
 
   implicit def termClassTag: ClassTag[Term]
 
@@ -363,6 +400,9 @@ abstract class Tasty { tasty =>
 
   trait CaseDefAPI {
     def show(implicit ctx: Context, s: Show[tasty.type]): String
+    def pattern(implicit ctx: Context): Pattern
+    def guard(implicit ctx: Context): Option[Term]
+    def rhs(implicit ctx: Context): Term
   }
   implicit def CaseDefDeco(caseDef: CaseDef): CaseDefAPI
 
@@ -377,8 +417,9 @@ abstract class Tasty { tasty =>
 
   trait PatternAPI extends Typed with Positioned {
     def show(implicit ctx: Context, s: Show[tasty.type]): String
+
   }
-  implicit def PatternDeco(x: Pattern): PatternAPI
+  implicit def PatternDeco(pattern: Pattern): PatternAPI
 
   implicit def patternClassTag: ClassTag[Pattern]
 
@@ -428,7 +469,7 @@ abstract class Tasty { tasty =>
   type TypeTree <: TypeOrBoundsTree with Parent
 
   trait TypeTreeAPI extends Typed with Positioned
-  implicit def TypeTreeDeco(x: TypeTree): TypeTreeAPI
+  implicit def TypeTreeDeco(tpt: TypeTree): TypeTreeAPI
 
   implicit def typeTreeClassTag: ClassTag[TypeTree]
 
@@ -511,8 +552,10 @@ abstract class Tasty { tasty =>
 
   trait TypeBoundsTreeAPI {
     def tpe(implicit ctx: Context): TypeBounds
+    def low(implicit ctx: Context): TypeTree
+    def hi(implicit ctx: Context): TypeTree
   }
-  implicit def TypeBoundsTreeDeco(x: TypeBoundsTree): TypeBoundsTreeAPI
+  implicit def TypeBoundsTreeDeco(tpt: TypeBoundsTree): TypeBoundsTreeAPI
 
   implicit def typeBoundsTreeClassTag: ClassTag[TypeBoundsTree]
 
@@ -561,8 +604,25 @@ abstract class Tasty { tasty =>
   trait MethodTypeAPI {
     def isImplicit: Boolean
     def isErased: Boolean
+    def paramNames(implicit ctx: Context): List[String]
+    def paramTypes(implicit ctx: Context): List[Type]
+    def resultTpe(implicit ctx: Context): Type
   }
-  implicit def MethodTypeDeco(x: MethodType): MethodTypeAPI
+  implicit def MethodTypeDeco(tpt: MethodType): MethodTypeAPI
+
+  trait PolyTypeAPI {
+    def paramNames(implicit ctx: Context): List[String]
+    def paramTypes(implicit ctx: Context): List[TypeBounds]
+    def resultTpe(implicit ctx: Context): Type
+  }
+  implicit def PolyTypeDeco(tpt: PolyType): PolyTypeAPI
+
+  trait TypeLambdaAPI {
+    def paramNames(implicit ctx: Context): List[String]
+    def paramTypes(implicit ctx: Context): List[TypeBounds]
+    def resultTpe(implicit ctx: Context): Type
+  }
+  implicit def TypeLambdaDeco(tpt: TypeLambda): TypeLambdaAPI
 
   val Type: TypeModule
   abstract class TypeModule {
@@ -672,6 +732,12 @@ abstract class Tasty { tasty =>
     def unapply(x: TypeBounds)(implicit ctx: Context): Option[(Type, Type)]
   }
 
+  trait TypeBoundsAPI {
+    def low(implicit ctx: Context): Type
+    def hi(implicit ctx: Context): Type
+  }
+  implicit def TypeBoundsDeco(bounds: TypeBounds): TypeBoundsAPI
+
   // ----- NoPrefix -------------------------------------------------
 
   type NoPrefix <: TypeOrBounds
@@ -768,6 +834,12 @@ abstract class Tasty { tasty =>
   abstract class SignatureExtractor {
     def unapply(x: Signature)(implicit ctx: Context): Option[(List[String], String)]
   }
+
+  trait SignatureAPI {
+    def paramSigs: List[String]
+    def resultSig: String
+  }
+  implicit def SignatureDeco(sig: Signature): SignatureAPI
 
   // ===== Positions ================================================
 

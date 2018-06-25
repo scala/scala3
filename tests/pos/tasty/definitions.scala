@@ -25,6 +25,7 @@ object definitions {
 // ------ Definitions ---------------------------------
 
   trait Definition {
+    def name: String
     def owner: Definition = ???
   }
 
