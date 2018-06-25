@@ -7,7 +7,8 @@ import dotty.tools.dotc.printing.SyntaxHighlighting
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.util.SourceFile
 import org.jline.reader
-import org.jline.reader.LineReader.Option
+import org.jline.reader.LineReader.Option._
+import org.jline.reader.LineReader._
 import org.jline.reader.Parser.ParseContext
 import org.jline.reader._
 import org.jline.reader.impl.history.DefaultHistory
@@ -49,9 +50,10 @@ final class JLineTerminal extends java.io.Closeable {
       .completer(completer)
       .highlighter(new Highlighter)
       .parser(new Parser)
-      .variable(LineReader.SECONDARY_PROMPT_PATTERN, "%M")
-      .option(Option.INSERT_TAB, true)      // at the beginning of the line, insert tab instead of completing
-      .option(Option.AUTO_FRESH_LINE, true) // if not at start of line before prompt, move to new line
+      .variable(SECONDARY_PROMPT_PATTERN, "%M")
+      .variable(LIST_MAX, 400)       // ask user when number of completions exceed this limit (default is 100)
+      .option(INSERT_TAB, true)      // at the beginning of the line, insert tab instead of completing
+      .option(AUTO_FRESH_LINE, true) // if not at start of line before prompt, move to new line
       .build()
 
     lineReader.readLine(prompt)
@@ -70,11 +72,14 @@ final class JLineTerminal extends java.io.Closeable {
   /** Provide multi-line editing support */
   private class Parser(implicit ctx: Context) extends reader.Parser {
 
+    /**
+     * @param cursor     The cursor position within the line
+     * @param line       The unparsed line
+     * @param word       The current word being completed
+     * @param wordCursor The cursor position within the current word
+     */
     private class ParsedLine(
-      val cursor: Int,    // The cursor position within the line
-      val line: String,   // The unparsed line
-      val word: String,   // The current word being completed
-      val wordCursor: Int // The cursor position within the current word
+      val cursor: Int, val line: String, val word: String, val wordCursor: Int
     ) extends reader.ParsedLine {
       // Using dummy values, not sure what they are used for
       def wordIndex = -1
