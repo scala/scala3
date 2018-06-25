@@ -7,8 +7,6 @@ import dotty.tools.dotc.printing.SyntaxHighlighting
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.util.SourceFile
 import org.jline.reader
-import org.jline.reader.LineReader.Option._
-import org.jline.reader.LineReader._
 import org.jline.reader.Parser.ParseContext
 import org.jline.reader._
 import org.jline.reader.impl.history.DefaultHistory
@@ -44,6 +42,8 @@ final class JLineTerminal extends java.io.Closeable {
   def readLine(
     completer: Completer // provide auto-completions
   )(implicit ctx: Context): String = {
+    import LineReader.Option._
+    import LineReader._
     val lineReader = LineReaderBuilder.builder()
       .terminal(terminal)
       .history(history)
@@ -89,6 +89,8 @@ final class JLineTerminal extends java.io.Closeable {
     def parse(line: String, cursor: Int, context: ParseContext): reader.ParsedLine = {
       def parsedLine(word: String, wordCursor: Int) =
         new ParsedLine(cursor, line, word, wordCursor)
+      // Used when no word is being completed
+      def defaultParsedLine = parsedLine("", 0)
 
       def incomplete(): Nothing = throw new EOFError(
         // Using dummy values, not sure what they are used for
@@ -97,6 +99,23 @@ final class JLineTerminal extends java.io.Closeable {
         /* message = */ "",
         /* missing = */ newLinePrompt)
 
+      case class TokenData(token: Token, start: Int, end: Int)
+      def currentToken: TokenData /* | Null */ = {
+        val source = new SourceFile("<completions>", line)
+        val scanner = new Scanner(source)(ctx.fresh.setReporter(Reporter.NoReporter))
+        while (scanner.token != EOF) {
+          val start = scanner.offset
+          val token = scanner.token
+          scanner.nextToken()
+          val end = scanner.lastOffset
+
+          val isCurrentToken = cursor >= start && cursor <= end
+          if (isCurrentToken)
+            return TokenData(token, start, end)
+        }
+        null
+      }
+
       context match {
         case ParseContext.ACCEPT_LINE =>
           // ENTER means SUBMIT when
@@ -104,32 +123,20 @@ final class JLineTerminal extends java.io.Closeable {
           //   - and, input line is complete
           val cursorIsAtEnd = line.indexWhere(!_.isWhitespace, from = cursor) >= 0
           if (cursorIsAtEnd || ParseResult.isIncomplete(line)) incomplete()
-          else parsedLine("", 0)
+          else defaultParsedLine
             // using dummy values, resulting parsed line is probably unused
 
         case ParseContext.COMPLETE =>
           // Parse to find completions (typically after a Tab).
-          val source = new SourceFile("<completions>", line)
-          val scanner = new Scanner(source)(ctx.fresh.setReporter(Reporter.NoReporter))
-
-          // Looking for the current word being completed
-          // and the cursor position within this word
-          while (scanner.token != EOF) {
-            val start = scanner.offset
-            val token = scanner.token
-            scanner.nextToken()
-            val end = scanner.lastOffset
-
-            val isCompletable =
-              isIdentifier(token) || isKeyword(token) // keywords can start identifiers
-            def isCurrentWord = cursor >= start && cursor <= end
-            if (isCompletable && isCurrentWord) {
+          def isCompletable(token: Token) = isIdentifier(token) || isKeyword(token)
+          currentToken match {
+            case TokenData(token, start, end) if isCompletable(token) =>
               val word = line.substring(start, end)
               val wordCursor = cursor - start
-              return parsedLine(word, wordCursor)
-            }
+              parsedLine(word, wordCursor)
+            case _ =>
+              defaultParsedLine
           }
-          parsedLine("", 0) // no word being completed
 
         case _ =>
           incomplete()
