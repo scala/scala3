@@ -783,7 +783,8 @@ object Parsers {
                 refinedTypeRest(
                   withTypeRest(
                     annotTypeRest(
-                      simpleTypeRest(tuple)))))
+                      appliedTypeRest(
+                        simpleTypeRest(tuple))))))
             }
           }
         }
@@ -846,13 +847,19 @@ object Parsers {
       }
       else t
 
-    /** AnnotType ::= SimpleType {Annotation}
+    /** AnnotType ::= AppliedType {Annotation}
      */
-    def annotType(): Tree = annotTypeRest(simpleType())
+    def annotType(): Tree = annotTypeRest(appliedType())
 
     def annotTypeRest(t: Tree): Tree =
       if (in.token == AT) annotTypeRest(atPos(startOffset(t)) { Annotated(t, annot()) })
       else t
+
+    /** AppiedType ::= SimpleType {ParArgumentExprs}
+     */
+    def appliedType(): Tree = appliedTypeRest(simpleType())
+
+    def appliedTypeRest(t: Tree) = parArgumentExprss(t)
 
     /** SimpleType       ::=  SimpleType TypeArgs
      *                     |  SimpleType `#' id
@@ -2312,11 +2319,11 @@ object Parsers {
 
 /* -------- TEMPLATES ------------------------------------------- */
 
-    /** ConstrApp         ::=  SimpleType {ParArgumentExprs}
+    /** ConstrApp         ::=  SimpleType {Annotation} {ParArgumentExprs}
      */
     val constrApp = () => {
       // Using Ident(nme.ERROR) to avoid causing cascade errors on non-user-written code
-      val t = checkWildcard(annotType(), fallbackTree = Ident(nme.ERROR))
+      val t = checkWildcard(annotTypeRest(simpleType()), fallbackTree = Ident(nme.ERROR))
       if (in.token == LPAREN) parArgumentExprss(wrapNew(t))
       else t
     }

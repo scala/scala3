@@ -128,7 +128,8 @@ TypedFunParam     ::=  id ‘:’ Type
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
 RefinedType       ::=  WithType {[nl] Refinement}                               RefinedTypeTree(t, ds)
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
-AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
+AnnotType         ::=  AppliedType {Annotation}                                 Annotated(t, annot)
+AppliedType       ::=  SimpleType {ParArgumentExprs}                            Apply(t, args)
 SimpleType        ::=  SimpleType TypeArgs                                      AppliedTypeTree(t, args)
                     |  SimpleType ‘#’ id                                        Select(t, name)
                     |  StableId
@@ -337,7 +338,7 @@ EnumDef           ::=  id ClassConstr [‘extends’ [ConstrApps]] EnumBody     
 TemplateOpt       ::=  [‘extends’ Template | [nl] TemplateBody]
 Template          ::=  ConstrApps [TemplateBody] | TemplateBody                 Template(constr, parents, self, stats)
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
-ConstrApp         ::=  AnnotType {ArgumentExprs}                                Apply(tp, args)
+ConstrApp         ::=  SimpleType {Annotation} {ParArgumentExprs}               Apply(tp, args)
 ConstrExpr        ::=  SelfInvocation
                     |  ConstrBlock
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
