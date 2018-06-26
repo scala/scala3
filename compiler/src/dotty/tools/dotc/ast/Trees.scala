@@ -492,8 +492,10 @@ object Trees {
 
   /** if cond then thenp else elsep */
   case class If[-T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])
-    extends TermTree[T] {
+    extends Tree[T] {
     type ThisTree[-T >: Untyped] = If[T]
+    override def isTerm = thenp.isTerm
+    override def isType = thenp.isType
   }
 
   /** A closure with an environment and a reference to a method.
@@ -697,8 +699,11 @@ object Trees {
     protected def force(x: AnyRef) = preRhs = x
   }
 
-  /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
-  case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]],
+  /**     mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs
+   *  or
+   *      mods type[tparams](vparams_1)...(vparams_n): tpt = rhs
+   */
+  case class DefDef[-T >: Untyped] private[ast] (name: Name, tparams: List[TypeDef[T]],
       vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
@@ -1085,7 +1090,7 @@ object Trees {
         case tree: ValDef if (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.ValDef(name, tpt, rhs))
       }
-      def DefDef(tree: Tree)(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree): DefDef = tree match {
+      def DefDef(tree: Tree)(name: Name, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree): DefDef = tree match {
         case tree: DefDef if (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.DefDef(name, tparams, vparamss, tpt, rhs))
       }
@@ -1132,7 +1137,7 @@ object Trees {
         UnApply(tree: Tree)(fun, implicits, patterns)
       def ValDef(tree: ValDef)(name: TermName = tree.name, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs): ValDef =
         ValDef(tree: Tree)(name, tpt, rhs)
-      def DefDef(tree: DefDef)(name: TermName = tree.name, tparams: List[TypeDef] = tree.tparams, vparamss: List[List[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs): DefDef =
+      def DefDef(tree: DefDef)(name: Name = tree.name, tparams: List[TypeDef] = tree.tparams, vparamss: List[List[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs): DefDef =
         DefDef(tree: Tree)(name, tparams, vparamss, tpt, rhs)
       def TypeDef(tree: TypeDef)(name: TypeName = tree.name, rhs: Tree = tree.rhs): TypeDef =
         TypeDef(tree: Tree)(name, rhs)

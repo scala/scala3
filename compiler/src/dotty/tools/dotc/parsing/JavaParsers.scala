@@ -784,7 +784,7 @@ object JavaParsers {
           // If the annotation has a default value we don't need to parse it, providing
           // any value at all is enough to typecheck usages of annotations correctly.
           val defaultParam = if (hasDefault) unimplementedExpr else EmptyTree
-          makeParam(dd.name, dd.tpt, defaultParam)
+          makeParam(dd.name.asTermName, dd.tpt, defaultParam)
       }
       val constr = DefDef(nme.CONSTRUCTOR,
         List(), List(constructorParams), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined))

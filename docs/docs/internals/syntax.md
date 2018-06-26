@@ -151,6 +151,9 @@ NamedTypeArgs     ::=  ‘[’ NamedTypeArg {‘,’ NamedTypeArg} ‘]’      
 Refinement        ::=  ‘{’ [RefineDcl] {semi [RefineDcl]} ‘}’                   ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type] | INT                            TypeBoundsTree(lo, hi)
 TypeParamBounds   ::=  TypeBounds {‘<%’ Type} {‘:’ Type}                        ContextBounds(typeBounds, tps)
+
+TypeRHS           ::=  ‘if’ Expr ‘then’ TypeRHS ‘else’ TypeRHS                  If(cond, thenp, elsep)
+                    |  Type
 ```
 
 ### Expressions
@@ -310,7 +313,8 @@ ValDcl            ::=  ids ‘:’ Type                                         
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 DefDcl            ::=  DefSig [‘:’ Type]                                        DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
 DefSig            ::=  id [DefTypeParamClause] DefParamClauses
-TypeDcl           ::=  id [TypTypeParamClause] [‘=’ Type]                       TypeDefTree(_, name, tparams, tpt)
+TypeDcl           ::=  id [TypTypeParamClause] {DefParamClause} [‘:’ Type]      TypeDefTree(_, name, tparams, tpt)
+                       ‘=’ TypeRHS
                     |  id [HkTypeParamClause] TypeBounds                        TypeDefTree(_, name, tparams, bounds)
 
 Def               ::=  ‘val’ PatDef

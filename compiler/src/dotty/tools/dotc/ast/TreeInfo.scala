@@ -339,6 +339,12 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case _ => false
   }
 
+  /** Is this the RHS of a transparnt type def, which needs to be represented as a DefDef? */
+  def isTypeDefRHS(tree: Tree): Boolean = tree match {
+    case tree: If => true
+    case _ => false
+  }
+
   // todo: fill with other methods from TreeInfo that only apply to untpd.Tree's
 }
 

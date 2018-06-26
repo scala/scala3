@@ -294,7 +294,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Alternative(trees: List[Tree]): Alternative = new Alternative(trees)
   def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree]): UnApply = new UnApply(fun, implicits, patterns)
   def ValDef(name: TermName, tpt: Tree, rhs: LazyTree): ValDef = new ValDef(name, tpt, rhs)
-  def DefDef(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree): DefDef = new DefDef(name, tparams, vparamss, tpt, rhs)
+  def DefDef(name: Name, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree): DefDef = new DefDef(name, tparams, vparamss, tpt, rhs)
   def TypeDef(name: TypeName, rhs: Tree): TypeDef = new TypeDef(name, rhs)
   def Template(constr: DefDef, parents: List[Tree], self: ValDef, body: LazyTreeList): Template = new Template(constr, parents, self, body)
   def Import(expr: Tree, selectors: List[untpd.Tree]): Import = new Import(expr, selectors)

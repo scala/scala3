@@ -201,7 +201,7 @@ object desugar {
       case (vparam :: vparams) :: vparamss1 =>
         def defaultGetter: DefDef =
           DefDef(
-            name = DefaultGetterName(meth.name, n),
+            name = DefaultGetterName(meth.name.asTermName, n),
             tparams = meth.tparams.map(tparam => dropContextBound(toDefParam(tparam))),
             vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam), n),
             tpt = TypeTree(),
