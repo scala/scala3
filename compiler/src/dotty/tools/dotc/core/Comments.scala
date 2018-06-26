@@ -99,7 +99,7 @@ object Comments {
   }
 
   object Comment {
-    def apply(pos: Position, raw: String, expanded: Boolean = false, usc: List[UseCase] = Nil)(implicit ctx: Context): Comment =
+    def apply(pos: Position, raw: String, expanded: Boolean = false, usc: List[UseCase] = Nil): Comment =
       new Comment(pos, raw) {
         val isExpanded = expanded
         val usecases = usc

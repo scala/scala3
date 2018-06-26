@@ -17,15 +17,20 @@ object DottyUnpickler {
   /** Exception thrown if classfile is corrupted */
   class BadSignature(msg: String) extends RuntimeException(msg)
 
-  class TreeSectionUnpickler(posUnpickler: Option[PositionUnpickler])
+  class TreeSectionUnpickler(posUnpickler: Option[PositionUnpickler], commentUnpickler: Option[CommentUnpickler])
   extends SectionUnpickler[TreeUnpickler]("ASTs") {
     def unpickle(reader: TastyReader, nameAtRef: NameTable) =
-      new TreeUnpickler(reader, nameAtRef, posUnpickler, Seq.empty)
+      new TreeUnpickler(reader, nameAtRef, posUnpickler, commentUnpickler, Seq.empty)
   }
 
   class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler]("Positions") {
     def unpickle(reader: TastyReader, nameAtRef: NameTable) =
       new PositionUnpickler(reader)
+  }
+
+  class CommentsSectionUnpickler extends SectionUnpickler[CommentUnpickler]("Comments") {
+    def unpickle(reader: TastyReader, nameAtRef: NameTable): CommentUnpickler =
+      new CommentUnpickler(reader)
   }
 }
 
@@ -38,7 +43,8 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with t
 
   val unpickler = new TastyUnpickler(bytes)
   private val posUnpicklerOpt = unpickler.unpickle(new PositionsSectionUnpickler)
-  private val treeUnpickler = unpickler.unpickle(treeSectionUnpickler(posUnpicklerOpt)).get
+  private val commentUnpicklerOpt = unpickler.unpickle(new CommentsSectionUnpickler)
+  private val treeUnpickler = unpickler.unpickle(treeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)).get
 
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling
@@ -52,8 +58,8 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with t
   def unpickleTypeTree()(implicit ctx: Context): Tree =
     treeUnpickler.unpickleTypeTree()
 
-  protected def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler]): TreeSectionUnpickler = {
-    new TreeSectionUnpickler(posUnpicklerOpt)
+  protected def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler], commentUnpicklerOpt: Option[CommentUnpickler]): TreeSectionUnpickler = {
+    new TreeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)
   }
 
   protected def computeTrees(implicit ctx: Context) = treeUnpickler.unpickle()

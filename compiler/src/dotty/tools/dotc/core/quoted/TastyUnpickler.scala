@@ -5,13 +5,13 @@ import dotty.tools.dotc.core.tasty.TastyUnpickler.NameTable
 
 object TastyUnpickler {
   class QuotedTreeSectionUnpickler(posUnpickler: Option[PositionUnpickler], splices: Seq[Any])
-    extends DottyUnpickler.TreeSectionUnpickler(posUnpickler) {
+    extends DottyUnpickler.TreeSectionUnpickler(posUnpickler, None) {
     override def unpickle(reader: TastyReader, nameAtRef: NameTable) =
-      new TreeUnpickler(reader, nameAtRef, posUnpickler, splices)
+      new TreeUnpickler(reader, nameAtRef, posUnpickler, None, splices)
   }
 }
 
-/** A class for unpickling quoted Tasty trees and symbols.
+/** A class for unpickling quoted Tasty trees and symbols. Comments are never unpickled.
  *  @param bytes         the bytearray containing the Tasty file from which we unpickle
  *  @param splices       splices that will fill the holes in the quote
  */
@@ -19,6 +19,6 @@ class TastyUnpickler(bytes: Array[Byte], splices: Seq[Any]) extends DottyUnpickl
   import DottyUnpickler._
   import TastyUnpickler._
 
-  protected override def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler]): TreeSectionUnpickler =
+  protected override def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler], commentUnpicklerOpt: Option[CommentUnpickler]): TreeSectionUnpickler =
     new QuotedTreeSectionUnpickler(posUnpicklerOpt, splices)
 }
