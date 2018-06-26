@@ -64,14 +64,12 @@ class IdempotencyTests extends ParallelTesting {
     }
     val allChecks = {
       check("CheckOrderIdempotency") +
-      // Disabled until strawman is fixed
-      // check("CheckStrawmanIdempotency") +
+      check("CheckStrawmanIdempotency") +
       check("CheckPosIdempotency")
     }
 
     val allTests = {
-      // Disabled until strawman is fixed
-      // strawmanIdempotency +
+      strawmanIdempotency +
       orderIdempotency +
       posIdempotency
     }
