@@ -217,12 +217,8 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
             val store = if (mirrorC ne null) mirrorC else plainC
             val tasty =
               if (!ctx.settings.YemitTastyInClass.value) {
-                val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
-                val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
-                try outstream.write(binary)
-                finally outstream.close()
                 // TASTY attribute is created but 0 bytes are stored in it.
-                // A TASTY attribute has length 0 if and only if the .tasty file exists.
+                // A TASTY attribute has length 0 if and only if the .tasty file exists (created in the Pickler phase).
                 Array.empty[Byte]
               } else {
                 // Create an empty file to signal that a tasty section exist in the corresponding .class
