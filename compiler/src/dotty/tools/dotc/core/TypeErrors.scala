@@ -98,13 +98,28 @@ object handleRecursive {
   }
 }
 
+/**
+ * This TypeError signals that completing denot encountered a cycle: it asked for denot.info (or similar),
+ * so it requires knowing denot already.
+ * @param denot
+ */
 class CyclicReference private (val denot: SymDenotation) extends TypeError {
+  var inImplicitSearch: Boolean = false
 
-  override def toMessage(implicit ctx: Context) = {
+  override def toMessage(implicit ctx: Context): Message = {
+    val cycleSym = denot.symbol
 
-    def errorMsg(cx: Context): Message =
+    /* This CyclicReference might have arisen from asking for `m`'s type while trying to infer it.
+     * To try to diagnose this, walk the context chain searching for context in
+     * Mode.InferringReturnType for the innermost member without type
+     * annotations (!tree.tpt.typeOpt.exists).
+     */
+    def errorMsg(cx: Context): Message = {
       if (cx.mode is Mode.InferringReturnType) {
         cx.tree match {
+          case tree: untpd.ValOrDefDef if inImplicitSearch && !tree.tpt.typeOpt.exists =>
+            // Can happen in implicit defs (#4709) or outside (#3253).
+            TermMemberNeedsResultTypeForImplicitSearch(cycleSym)
           case tree: untpd.DefDef if !tree.tpt.typeOpt.exists =>
             OverloadedOrRecursiveMethodNeedsResultType(tree.name)
           case tree: untpd.ValDef if !tree.tpt.typeOpt.exists =>
@@ -113,13 +128,14 @@ class CyclicReference private (val denot: SymDenotation) extends TypeError {
             errorMsg(cx.outer)
         }
       }
-      else CyclicReferenceInvolving(denot)
+      // Give up and give generic errors.
+      else if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
+        CyclicReferenceInvolvingImplicit(cycleSym)
+      else
+        CyclicReferenceInvolving(denot)
+    }
 
-    val cycleSym = denot.symbol
-    if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
-      CyclicReferenceInvolvingImplicit(cycleSym)
-    else
-      errorMsg(ctx)
+    errorMsg(ctx)
   }
 }
 
