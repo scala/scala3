@@ -373,6 +373,7 @@ object Trees {
 
   /** A ValDef or DefDef tree */
   trait ValOrDefDef[-T >: Untyped] extends MemberDef[T] with WithLazyField[Tree[T]] {
+    def name: TermName
     def tpt: Tree[T]
     def unforcedRhs: LazyTree = unforced
     def rhs(implicit ctx: Context): Tree[T] = forceIfLazy
