@@ -1291,6 +1291,7 @@ object messages {
     val explanation =
       hl"""|$denot is declared as part of a cycle which makes it impossible for the
            |compiler to decide upon ${denot.name}'s type.
+           |To avoid this error, try giving `${denot.name}` an explicit type.
            |""".stripMargin
   }
 
