@@ -417,18 +417,19 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
         case Trees.Block(stats, expr) => Some((stats, expr))
         case _ => None
       }
-      /** Normilizes non Blocks.
-       *  i) Put `while` and `doWhile` loops in thier own blocks: `{ def while$() = ...; while$() }`
+      /** Normalizes non Blocks.
+       *  i) Put `while` and `doWhile` loops in their own blocks: `{ def while$() = ...; while$() }`
+       *  ii) Put closures in their own blocks: `{ def anon$() = ...; closure(anon$, ...) }`
        */
       private def normalizedLoops(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
         case block: tpd.Block if block.stats.size > 1 =>
           def normalizeInnerLoops(stats: List[tpd.Tree]): List[tpd.Tree] = stats match {
-            case (x: tpd.DefDef) :: y :: xs if y.symbol.is(Flags.Label) =>
+            case (x: tpd.DefDef) :: y :: xs if needsNormalization(y) =>
               tpd.Block(x :: Nil, y) :: normalizeInnerLoops(xs)
             case x :: xs => x :: normalizeInnerLoops(xs)
             case Nil => Nil
           }
-          if (block.expr.symbol.is(Flags.Label)) {
+          if (needsNormalization(block.expr)) {
             val stats1 = normalizeInnerLoops(block.stats.init)
             val normalLoop = tpd.Block(block.stats.last :: Nil, block.expr)
             tpd.Block(stats1, normalLoop)
@@ -437,6 +438,12 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
             tpd.cpy.Block(block)(stats1, block.expr)
           }
         case _ => tree
+      }
+
+      /** If it is the second statement of a loop or a closure. See: `normalizedLoops` */
+      private def needsNormalization(tree: tpd.Tree)(implicit ctx: Context): Boolean = tree match {
+        case _: tpd.Closure => true
+        case _ => tree.symbol.is(Flags.Label)
       }
     }
 
