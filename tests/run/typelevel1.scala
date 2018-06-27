@@ -48,5 +48,6 @@ object Test extends App {
   val zs1 = zs(1)
   val zs2 = zs(2)
   val zs3 = zs(3)
-  def zs4 = zs(4)
+  val zs4 = zs(4)
+  def zs5 = zs(5)
 }

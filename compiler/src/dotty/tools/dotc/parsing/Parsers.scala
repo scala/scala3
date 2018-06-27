@@ -1062,11 +1062,11 @@ object Parsers {
     def typeRHS(): Tree =
       if (in.token == IF)
         atPos(in.skipToken()) {
-          val cond = typeRHS()
+          val cond = expr()
           accept(THEN)
           val thenp = typeRHS()
           accept(ELSE)
-          val elsep = expr()
+          val elsep = typeRHS()
           If(cond, thenp, elsep)
         }
       else toplevelTyp()
@@ -2200,7 +2200,7 @@ object Parsers {
         Block(stats, Literal(Constant(())))
       }
 
-    /** TypeDcl  ::=  id [TypTypeParamClause] {DefParamClause} [‘:’ Type] ‘=’ TypeRHS
+    /** TypeDcl  ::=  id [TypTypeParamClause] {DefParamClause} TypeBounds ‘=’ TypeRHS
      *             |  id [HkTypeParamClause] TypeBounds
      */
     def typeDefOrDcl(start: Offset, mods: Modifiers): Tree = {
@@ -2209,23 +2209,22 @@ object Parsers {
         val name = ident().toTypeName
         val tparams = typeParamClauseOpt(ParamOwner.Type)
         val vparamss = paramClauses(ParamOwner.Type)
-        val tpt = typedOpt()
-        val isDef = !vparamss.isEmpty || !tpt.isEmpty
-        in.token match {
-          case EQUALS =>
+        val isBounded = in.token == SUPERTYPE || in.token == SUBTYPE
+        val bounds = typeBounds()
+        val res =
+          if (in.token == EQUALS) {
             in.nextToken()
             val rhs = typeRHS()
-            val res =
-              if (isTypeDefRHS(rhs) || isDef) DefDef(name, tparams, vparamss, tpt, rhs)
-              else TypeDef(name, lambdaAbstract(tparams, rhs))
-            res.withMods(mods).setComment(in.getDocComment(start))
-          case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
-            if (isDef) syntaxError("`=' expected")
-            TypeDef(name, lambdaAbstract(tparams, typeBounds())).withMods(mods).setComment(in.getDocComment(start))
-          case _ =>
-            syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))
-            EmptyTree
-        }
+            if (isTypeDefRHS(rhs) || isBounded || vparamss.nonEmpty)
+              DefDef(name, tparams, vparamss, bounds, rhs)
+            else
+              TypeDef(name, lambdaAbstract(tparams, rhs))
+          }
+          else {
+            if (vparamss.nonEmpty) syntaxError("`=' expected")
+            TypeDef(name, lambdaAbstract(tparams, bounds))
+          }
+        res.withMods(mods).setComment(in.getDocComment(start))
       }
     }
 
