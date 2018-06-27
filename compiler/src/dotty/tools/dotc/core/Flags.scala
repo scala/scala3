@@ -223,7 +223,7 @@ object Flags {
 
   /** A method symbol. */
   final val Method = termFlag(7, "<method>")
-  final val HigherKinded = typeFlag(7, "<higher kinded>")
+  final val TypeMethod = typeFlag(7, "<type method>")
 
   /** A (term or type) parameter to a class or method */
   final val Param     = commonFlag(8, "<param>")
@@ -456,7 +456,7 @@ object Flags {
   /** Flags that are not (re)set when completing the denotation */
   final val FromStartFlags =
     Module | Package | Deferred | Method.toCommonFlags |
-    HigherKinded.toCommonFlags | Param | ParamAccessor.toCommonFlags |
+    Param | ParamAccessor.toCommonFlags |
     Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
     NonMember | ImplicitCommon | Permanent | Synthetic |

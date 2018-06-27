@@ -342,10 +342,6 @@ class Namer { typer: Typer =>
         val isDeferred = lacksDefinition(tree)
         val deferred = if (isDeferred) Deferred else EmptyFlags
         val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
-        val higherKinded = tree match {
-          case TypeDef(_, LambdaTypeTree(_, _)) if isDeferred => HigherKinded
-          case _ => EmptyFlags
-        }
 
         // to complete a constructor, move one context further out -- this
         // is the context enclosing the class. Note that the context in which a
@@ -363,7 +359,7 @@ class Namer { typer: Typer =>
           case _ => new Completer(tree)(cctx)
         }
         val info = adjustIfModule(completer, tree)
-        createOrRefine[Symbol](tree, name, flags | deferred | method | higherKinded,
+        createOrRefine[Symbol](tree, name, flags | deferred | method,
           _ => info,
           (fs, _, pwithin) => ctx.newSymbol(ctx.owner, name, fs, info, pwithin, tree.namePos))
       case tree: Import =>
