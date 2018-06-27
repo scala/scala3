@@ -13,6 +13,7 @@ import Symbols._
 import Flags.Module
 import reporting.ThrowingReporter
 import collection.mutable
+import NameOps._
 
 object Pickler {
   val name = "pickler"
@@ -66,6 +67,16 @@ class Pickler extends Phase {
       // other pickle sections go here.
       val pickled = pickler.assembleParts()
       unit.pickled += (cls -> pickled)
+
+      if (!ctx.settings.YemitTastyInClass.value) {
+        val parts = cls.fullName.stripModuleClassSuffix.mangledString.split('.')
+        val name = parts.last
+        val tastyDirectory = parts.init.foldLeft(ctx.settings.outputDir.value)((dir, part) => dir.subdirectoryNamed(part))
+        val tastyFile = tastyDirectory.fileNamed(s"${name}.tasty")
+        val tastyOutput = tastyFile.output
+        try tastyOutput.write(pickled)
+        finally tastyOutput.close()
+      }
 
       def rawBytes = // not needed right now, but useful to print raw format.
         pickled.iterator.grouped(10).toList.zipWithIndex.map {

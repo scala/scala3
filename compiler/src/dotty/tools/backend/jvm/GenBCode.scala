@@ -218,11 +218,6 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
             val store = if (mirrorC ne null) mirrorC else plainC
             val tasty =
               if (!ctx.settings.YemitTastyInClass.value) {
-                val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
-                val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
-                try outstream.write(binary)
-                finally outstream.close()
-
                 val uuid = new TastyHeaderUnpickler(binary).readHeader()
                 val lo = uuid.getMostSignificantBits
                 val hi = uuid.getLeastSignificantBits
