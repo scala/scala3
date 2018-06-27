@@ -17,14 +17,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 object Normalize {
-  @sharable var track = false
-
-  def isNormalizationEntrypoint(tp: Type)(implicit ctx: Context): Boolean =
-    tp match {
-      case TypeOf.Call(fn, _) => fn.symbol.is(Transparent)
-      case tp: TermRef        => tp.symbol.is(Transparent)
-      case _                  => false
-    }
+  @sharable var track = true
 }
 
 private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
@@ -60,8 +53,11 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
     def unfold(pre: Type, args: List[Type]): Type = {
       @tailrec def substPairs(paramPos: Int, args: List[Type],
                               from: List[Symbol], to: List[Type]): (List[Symbol], List[Type]) =
-        if (params(paramPos).exists) substPairs(paramPos + 1, args.tail, from, to)
-        else                         substPairs(paramPos + 1, args.tail, params(paramPos) :: from, args.head :: to)
+        if (paramPos == params.length)
+          (from, to)
+        else
+          if (params(paramPos).exists) substPairs(paramPos + 1, args.tail, params(paramPos) :: from, args.head :: to)
+          else                         substPairs(paramPos + 1, args.tail, from, to)
 
       assert(args.length == params.length)
       val (from, to) = substPairs(0, args, Nil, Nil)
@@ -104,7 +100,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
 
     val fnSym = fn.symbol
     // TODO: Replace `Stable` requirement by some other special case
-    if (fnSym.is(allOf(Method, Stable))) {
+    if (fnSym.is(Method)) {
       if (defn.ScalaValueClasses().contains(fnSym.owner)) {
         argss match {
           // TODO: Retrofit Type-entrypoint into ConstFold
@@ -118,7 +114,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
         // TODO(gsps): Also reduce if fnSym's finalResultType is singleton (or do this in TypeAssigner?)
         val unfolder = defUnfolder(fnSym)
         if (realApplication || unfolder.isParameterless)
-          unfolder.unfold(fn.prefix, argss.flatten)
+          apply(unfolder.unfold(fn.prefix, argss.flatten))
         else
           NoType
       }
@@ -186,7 +182,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
       }
 
     case tp @ TypeOf.Match(selector, cases) =>
-      ???
+      tp  // TODO
 
     case tp =>
       mapOver(tp) match {
@@ -202,7 +198,6 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
           }
 
         case tp @ TypeOf.Call(fn, argss) =>
-//          val (fn, argss) = tp.underlyingFnAndArgss
           normalizeApp(fn, argss, realApplication = true) orElse tp
 
         case tp =>

@@ -93,7 +93,7 @@ trait TypeAssigner {
       def apply(tp: Type): Type = tp match {
         case tp: TermRef
         if toAvoid(tp.symbol) || partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
-          tp.info.widenExpr.dealias match {
+          tp.info.widenExpr.dealiasKeepRefiningAnnots match {
             case info: SingletonType => apply(info)
             case info => range(defn.NothingType, apply(info))
           }
@@ -156,14 +156,9 @@ trait TypeAssigner {
   def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree =
     Typed(tree, TypeTree(tree.tpe.widen.translateParameterized(defn.SeqClass, defn.RepeatedParamClass)))
 
-  /** Normalize the type as far as possible. */
-  protected def normalizedType(tp: Type)(implicit ctx: Context): Type = {
-    def skipNormalization =
-      ctx.isAfterTyper || ctx.mode.is(Mode.Type) || ctx.mode.is(Mode.InferringReturnType) || ctx.isTransparentContext
-    // TODO(gsps): Make sure prototypes make it here and don't normalize if the proto matches syntactically
-    if (!skipNormalization && Normalize.isNormalizationEntrypoint(tp)) ctx.normalize(tp)
-    else tp
-  }
+  /** Normalize the type as far as possible, if we are in an opaque context before erasure. */
+  protected def normalizedType(tp: Type)(implicit ctx: Context): Type =
+    if (ctx.erasedTypes || ctx.isTransparentContext) tp else ctx.normalize(tp)
 
   /** A denotation exists really if it exists and does not point to a stale symbol. */
   final def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean = try
@@ -517,14 +512,14 @@ trait TypeAssigner {
       case _ =>
         if (TypeOf.isLegalTopLevelTree(ref))
           if (ref.tpe.isInstanceOf[TypeOf] ||
-              ref.tpe.isInstanceOf[ConstantType]) // Can happend because of typer's contant folding
+              ref.tpe.isInstanceOf[ConstantType]) // Can happen because of typer's constant folding
             ref.tpe
           else
             errorType(i"Non-sensical singleton-type expression: $ref: ${ref.tpe}", ref.pos)
         else
           throw new AssertionError(i"Tree $ref is not a valid reference for a singleton type tree.")
     }
-    tree.withType(tp)
+    tree.withType(normalizedType(tp))
   }
 
   def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =

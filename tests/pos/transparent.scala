@@ -23,11 +23,19 @@ object ITE {
   transparent def foo2(b: Boolean): { if (b) 1 else 2 } =
     if (b) 1 else 2
 
-  // Postponed until we can beta reduce
-  // foo(true):  { if(true) 1 else 2 }
-  // foo(false): { if(false) 1 else 2 }
-  // var b: Boolean = true
-  // foo(b): { if(b) 1 else 2 }
+  var b: Boolean = true
+
+  // Beta-reduce
+  foo1(true):  { if(true) 1 else 2 }
+  foo1(false): { if(false) 1 else 2 }
+  foo1(b):     { if (b) 1 else 2 }
+
+  foo1(true):  { 1 }
+  foo1(false): { 2 }
+
+  foo2(true):  { if(true) 1 else 2 }
+  foo2(false): { if(false) 1 else 2 }
+  foo2(b):     { if (b) 1 else 2 }
 }
 
 object Match {
@@ -94,6 +102,9 @@ object Ignored {
   }}
 
   type Bar = { plus(a, a) }
+
+  val foo: Foo = ???
+  identity[Foo](identity[Bar](foo))
 
   implicitly[Foo =:= Bar]
 }

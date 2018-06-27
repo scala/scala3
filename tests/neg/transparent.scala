@@ -7,13 +7,15 @@ object Invalid {
   // type YPlusOne = {while}  // TODO: errror: Non-sensical singleton-type expression: ...
 }
 
-object PrivateLeaks {
-  transparent def foo(x: Any): { x } = x
-  class A {
-    private transparent def bar(i: Int): Int = i + 1
-    val a: { foo(bar(1)) } = foo(bar(1)) // error: non-private value a refers to private method bar
-                                         // in its type signature { PrivateLeaks.foo({ A.this.bar(1) }) }
-  }
+object Foo {
+  transparent def foo(b: Boolean): { if (b) 1 else 2 } =
+    if (b) 1 else 2
+
+  foo(true):  { if(true) 2 else 1 }  // error
+  foo(false): { if(false) 2 else 1 }  // error
+
+  var b: Boolean = true
+  foo(b): { 1 }  // error
 }
 
 // object CyclicTransparenType {
