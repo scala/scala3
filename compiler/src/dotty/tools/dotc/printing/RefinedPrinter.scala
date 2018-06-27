@@ -745,8 +745,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         case info: ImportType => return s"import $info.expr.show"
         case _ =>
       }
-    if (sym.is(ModuleClass))
-      kindString(sym) ~~ (nameString(sym.name.stripModuleClassSuffix) + idString(sym))
+    if (sym.is(ModuleClass)) {
+      val name =
+        if (sym.isPackageObject) sym.owner.name
+        else sym.name.stripModuleClassSuffix
+      kindString(sym) ~~ (nameString(name) + idString(sym))
+    }
     else
       super.toText(sym)
   }
