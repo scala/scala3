@@ -564,13 +564,21 @@ object Symbols {
      *  Overridden in ClassSymbol
      */
     def associatedFile(implicit ctx: Context): AbstractFile =
-      if (lastDenot == null) null else lastDenot.topLevelClass.symbol.associatedFile
+      if (lastDenot == null) null else lastDenot.topLevelClass.associatedFile
 
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(implicit ctx: Context): AbstractFile = {
       val file = associatedFile
       if (file != null && file.extension == "class") file else null
     }
+
+    /** A trap to avoid calling x.symbol on something that is already a symbol.
+     *  This would be expanded to `toDenot(x).symbol` which is guaraneteed to be
+     *  the same as `x`.
+     *  With the given setup, all such calls will give implicit-not found errors
+     */
+    final def symbol(implicit ev: DontUseSymbolOnSymbol): Nothing = unsupported("symbol")
+    type DontUseSymbolOnSymbol
 
     /** The source file from which this class was generated, null if not applicable. */
     final def sourceFile(implicit ctx: Context): AbstractFile = {
@@ -797,5 +805,4 @@ object Symbols {
 
   @inline def newMutableSymbolMap[T]: MutableSymbolMap[T] =
     new MutableSymbolMap(new java.util.IdentityHashMap[Symbol, T]())
-
 }

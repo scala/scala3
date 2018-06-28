@@ -580,13 +580,13 @@ object SymDenotations {
       myFlags.is(ModuleClass) && (myFlags.is(PackageClass) || isStatic)
 
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
-    final def isCoDefinedWith(that: Symbol)(implicit ctx: Context) =
-      (this.effectiveOwner == that.effectiveOwner) &&
+    final def isCoDefinedWith(other: Symbol)(implicit ctx: Context) =
+      (this.effectiveOwner == other.effectiveOwner) &&
       (  !(this.effectiveOwner is PackageClass)
-        || this.unforcedIsAbsent || that.unforcedIsAbsent
+        || this.unforcedIsAbsent || other.unforcedIsAbsent
         || { // check if they are defined in the same file(or a jar)
            val thisFile = this.symbol.associatedFile
-           val thatFile = that.symbol.associatedFile
+           val thatFile = other.associatedFile
            (  thisFile == null
            || thatFile == null
            || thisFile.path == thatFile.path // Cheap possibly wrong check, then expensive normalization

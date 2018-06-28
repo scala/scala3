@@ -36,8 +36,8 @@ object TreeExtractors {
   object ValueClassUnbox {
     def unapply(t: Tree)(implicit ctx: Context): Option[Tree] = t match {
       case Apply(sel @ Select(ref, _), Nil) =>
-        val d = ref.tpe.widenDealias.typeSymbol.denot
-        if (isDerivedValueClass(d) && (sel.symbol eq valueClassUnbox(d.asClass))) {
+        val sym = ref.tpe.widenDealias.typeSymbol
+        if (isDerivedValueClass(sym) && (sel.symbol eq valueClassUnbox(sym.asClass))) {
           Some(ref)
         } else
           None
