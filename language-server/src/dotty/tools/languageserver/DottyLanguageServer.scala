@@ -19,7 +19,7 @@ import scala.io.Codec
 import dotc._
 import ast.{Trees, tpd}
 import core._, core.Decorators.{sourcePos => _, _}
-import Comments.Comment, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import Comments._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.MessageContainer
 import util._
@@ -346,7 +346,6 @@ class DottyLanguageServer extends LanguageServer
 
     if (tpw == NoType) new Hover
     else {
-      import dotty.tools.dotc.core.Comments._
       val symbol = Interactive.enclosingSourceSymbol(trees, pos)
       val docComment = ctx.docCtx.flatMap(_.docstring(symbol))
       val markedStrings = docMarkedStrings(docComment, tpw.show.toString)
