@@ -81,11 +81,11 @@ object Inliner {
             ctx.error("Implementation restriction: cannot use private constructors in inline methods", tree.pos)
             tree // TODO: create a proper accessor for the private constructor
           }
-          else if (AccessProxies.hostForAccessorOf(tree.symbol).exists) useAccessor(tree)
-          else tree
+          else useAccessor(tree)
         case _ =>
           tree
       }
+      override def ifNoHost(reference: RefTree)(implicit ctx: Context): Tree = reference
     }
 
     /** Fallback approach if the direct approach does not work: Place the accessor method
@@ -124,7 +124,7 @@ object Inliner {
         if needsAccessor(tree.symbol) && tree.isTerm && !tree.symbol.isConstructor =>
           val (refPart, targs, argss) = decomposeCall(tree)
           val qual = qualifier(refPart)
-          inlining.println(i"adding receiver passing inline accessor for $tree -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
+          println(i"adding receiver passing inline accessor for $tree/$refPart -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
 
           // Need to dealias in order to cagtch all possible references to abstracted over types in
           // substitutions
@@ -142,7 +142,7 @@ object Inliner {
           def addQualType(tp: Type): Type = tp match {
             case tp: PolyType => tp.derivedLambdaType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
             case tp: ExprType => addQualType(tp.resultType)
-            case tp => MethodType(qualType :: Nil, tp)
+            case tp => MethodType(qualType.simplified :: Nil, tp)
           }
 
           // Abstract accessed type over local refs
