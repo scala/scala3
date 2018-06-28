@@ -32,4 +32,9 @@ List(1, 2, 3)
   }.::[scala.Int](x$1)
 }
 
-
+((m: scala.Int) => {
+  val n2: scala.Int = 3
+  scala.quoted.Expr.apply[scala.Int](scala.quoted.Liftable.IntIsLiftable.toExpr(n2).unary_~.+(scala.quoted.Liftable.IntIsLiftable.toExpr(m).unary_~))
+})
+12
+3.+(9)
