@@ -19,7 +19,7 @@ import scala.io.Codec
 import dotc._
 import ast.{Trees, tpd}
 import core._, core.Decorators.{sourcePos => _, _}
-import Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import Comments._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.MessageContainer
 import util._
@@ -340,13 +340,16 @@ class DottyLanguageServer extends LanguageServer
     implicit val ctx = driver.currentCtx
 
     val pos = sourcePosition(driver, uri, params.getPosition)
-    val tp = Interactive.enclosingType(driver.openedTrees(uri), pos)
+    val trees = driver.openedTrees(uri)
+    val tp = Interactive.enclosingType(trees, pos)
     val tpw = tp.widenTermRefExpr
 
     if (tpw == NoType) new Hover
     else {
-      val str = tpw.show.toString
-      new Hover(List(JEither.forLeft(str)).asJava, null)
+      val symbol = Interactive.enclosingSourceSymbol(trees, pos)
+      val docComment = ctx.docCtx.flatMap(_.docstring(symbol))
+      val markedStrings = docMarkedStrings(docComment, tpw.show.toString)
+      new Hover(markedStrings.map(JEither.forRight(_)).asJava, null)
     }
   }
 
@@ -462,6 +465,19 @@ object DottyLanguageServer {
     item.setKind(completionItemKind(sym))
     item
   }
+
+  private def docMarkedStrings(comment: Option[Comment], typeInfo: String): List[lsp4j.MarkedString] = {
+
+    val docHover = comment.map { comment =>
+      new lsp4j.MarkedString("scala", comment.raw)
+    }
+
+    val typeInfoHover = new lsp4j.MarkedString()
+    typeInfoHover.setValue(typeInfo)
+
+    typeInfoHover :: docHover.toList
+  }
+
 
   /** Create an lsp4j.SymbolInfo from a Symbol and a SourcePosition */
   def symbolInfo(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): lsp4j.SymbolInformation = {
