@@ -19,8 +19,61 @@ object Macro {
         }
       }
       i += ~unrollSize.toExpr
+
+
     }
 
+  }
+
+
+  def foreach1(arrRef: Expr[Array[Int]], f: Expr[Int => Unit]): Expr[Unit] = '{
+    val size = (~arrRef).length
+    var i = 0
+    while (i < size) {
+      val element = (~arrRef)(i)
+      (~f)(element)
+      i += 1
+    }
+  }
+
+  def foreach2(arrRef: Expr[Array[Int]], f: Expr[Int => Unit]): Expr[Unit] = '{
+    val size = (~arrRef).length
+    var i = 0
+    while (i < size) {
+      val element = (~arrRef)(i)
+      ~f('(element)) // Use AppliedFuntion
+      i += 1
+    }
+  }
+
+  def foreach3(arrRef: Expr[Array[Int]], f: Expr[Int => Unit]): Expr[Unit] = '{
+    val size = (~arrRef).length
+    var i = 0
+    assert(size % 3 == 0) // for simplicity of the implementation
+    while (i < size) {
+      val element1 = (~arrRef)(i)
+      ~f('(element1))
+      val element2 = (~arrRef)(i + 1)
+      ~f('(element2))
+      val element3 = (~arrRef)(i + 3)
+      ~f('(element3))
+      i += 3
+    }
+  }
+
+  def foreach4(arrRef: Expr[Array[Int]], f: Expr[Int => Unit], unrollSize: Int): Expr[Unit] = '{
+    val size = (~arrRef).length
+    var i = 0
+    assert(size % ~unrollSize.toExpr == 0) // for simplicity of the implementation
+    while (i < size) {
+      ~{
+        @tailrec def loop(j: Int, acc: Expr[Unit]): Expr[Unit] =
+          if (j >= 0) loop(j - 1, '{ (~f)(i + ~j.toExpr); ~acc })
+          else acc
+        loop(unrollSize - 1, '())
+      }
+      i += ~unrollSize.toExpr
+    }
   }
 
   private class UnrolledRange(start: Int, end: Int) {
