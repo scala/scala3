@@ -97,9 +97,9 @@ object Config {
    */
   final val checkHKApplications = false
 
-  /** If this flag is set, method types are checked for valid parameter references
+  /** If this flag is set, term lambda types are checked for valid parameter references
    */
-  final val checkMethodTypes = false
+  final val checkTermLambdas = false
 
   /** If this flag is set, it is checked that TypeRefs don't refer directly
    *  to themselves.

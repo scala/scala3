@@ -3131,7 +3131,29 @@ object Types {
     protected def prefixString = "PolyType"
   }
 
-  object HKTypeLambda extends TypeLambdaCompanion[HKTypeLambda] {
+  trait HKCompanion[N <: Name, PInfo <: Type, LT <: LambdaType] extends LambdaTypeCompanion[N, PInfo, LT] {
+
+    /** Distributes Lambda inside type bounds. Examples:
+  	 *
+   	 *      type T[X] = U        becomes    type T = [X] -> U
+   	 *      type T[X] <: U       becomes    type T >: Nothign <: ([X] -> U)
+     *      type T[X] >: L <: U  becomes    type T >: ([X] -> L) <: ([X] -> U)
+     */
+    override def fromParams[PI <: ParamInfo.Of[N]](params: List[PI], resultType: Type)(implicit ctx: Context): Type = {
+      def expand(tp: Type) = super.fromParams(params, tp)
+      resultType match {
+        case rt: TypeAlias =>
+          rt.derivedTypeAlias(expand(rt.alias))
+        case rt @ TypeBounds(lo, hi) =>
+          rt.derivedTypeBounds(
+            if (lo.isRef(defn.NothingClass)) lo else expand(lo), expand(hi))
+        case rt =>
+          expand(rt)
+      }
+    }
+  }
+
+  object HKTypeLambda extends TypeLambdaCompanion[HKTypeLambda] with HKCompanion[TypeName, TypeBounds, HKTypeLambda] {
     def apply(paramNames: List[TypeName])(
         paramInfosExp: HKTypeLambda => List[TypeBounds],
         resultTypeExp: HKTypeLambda => Type)(implicit ctx: Context): HKTypeLambda = {
@@ -3147,28 +3169,9 @@ object Types {
 
     override def paramName(param: ParamInfo.Of[TypeName])(implicit ctx: Context): TypeName =
       param.paramName.withVariance(param.paramVariance)
-
-    /** Distributes Lambda inside type bounds. Examples:
-  	 *
-   	 *      type T[X] = U        becomes    type T = [X] -> U
-   	 *      type T[X] <: U       becomes    type T >: Nothign <: ([X] -> U)
-     *      type T[X] >: L <: U  becomes    type T >: ([X] -> L) <: ([X] -> U)
-     */
-    override def fromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], resultType: Type)(implicit ctx: Context): Type = {
-      def expand(tp: Type) = super.fromParams(params, tp)
-      resultType match {
-        case rt: TypeAlias =>
-          rt.derivedTypeAlias(expand(rt.alias))
-        case rt @ TypeBounds(lo, hi) =>
-          rt.derivedTypeBounds(
-            if (lo.isRef(defn.NothingClass)) lo else expand(lo), expand(hi))
-        case rt =>
-          expand(rt)
-      }
-    }
   }
 
-  object HKTermLambda extends TermLambdaCompanion[HKTermLambda] {
+  object HKTermLambda extends TermLambdaCompanion[HKTermLambda] with HKCompanion[TermName, Type, HKTermLambda] {
     def apply(paramNames: List[TermName])(
         paramInfosExp: HKTermLambda => List[Type],
         resultTypeExp: HKTermLambda => Type)(implicit ctx: Context): HKTermLambda = {
