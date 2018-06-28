@@ -707,10 +707,16 @@ class Typer extends Namer
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
-    val cond1 = typed(tree.cond, defn.BooleanType)
+    val (condProto, thenProto, elseProto) =
+      pt match {
+        case TypeOf.If(c, t ,e) => (c, t, e)
+        case _ => (defn.BooleanType, pt.notApplied, pt.notApplied)
+      }
+
+    val cond1 = typed(tree.cond, condProto)
     val thenp2 :: elsep2 :: Nil = harmonic(harmonize) {
-      val thenp1 = typed(tree.thenp, pt.notApplied)
-      val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
+      val thenp1 = typed(tree.thenp, thenProto)
+      val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), elseProto)
       thenp1 :: elsep1 :: Nil
     }
     assignType(cpy.If(tree)(cond1, thenp2, elsep2), thenp2, elsep2)
@@ -972,6 +978,11 @@ class Typer extends Namer
         val unchecked = pt.isRef(defn.PartialFunctionClass)
         typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
       case _ =>
+        val selectProto = pt match {
+          case TypeOf.Match(s, _) => s
+          case _ => WildcardType
+        }
+
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
 
@@ -981,7 +992,7 @@ class Typer extends Namer
     }
   }
 
-  def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context) = {
+  def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context): List[CaseDef] = {
 
     /** gadtSyms = "all type parameters of enclosing methods that appear
      *              non-variantly in the selector type" todo: should typevars
@@ -1003,7 +1014,12 @@ class Typer extends Namer
       accu(Set.empty, selType)
     }
 
-    cases mapconserve (typedCase(_, pt, selType, gadtSyms))
+    pt match {
+      case TypeOf.Match(_, cs) if cs.length == cases.length =>
+        cases.zip(cs).mapconserve { case (c, p) => typedCase(c, p, selType, gadtSyms) }
+      case _ =>
+        cases.mapconserve(typedCase(_, pt, selType, gadtSyms))
+    }
   }
 
   /** Type a case. */
@@ -1170,8 +1186,9 @@ class Typer extends Namer
   }
 
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(implicit ctx: Context): SingletonTypeTree = track("typedSingletonTypeTree") {
-    val ref1 = typedExpr(tree.ref)
-    checkStable(ref1.tpe, tree.pos)
+    val ref1 = typedExpr(tree.ref)(ctx.fresh.setTree(tree))
+    // TODO: Discuss stability requirements of singleton type trees and potentially reenable check
+    // checkStable(ref1.tpe, tree.pos)
     assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
   }
 

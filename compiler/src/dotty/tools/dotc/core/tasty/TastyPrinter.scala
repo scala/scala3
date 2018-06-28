@@ -75,6 +75,8 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
               until(end) { printName(); printTree() }
             case PARAMtype =>
               printNat(); printNat()
+            case TYPEOF =>
+              printTree(); printTree()
             case _ =>
               printTrees()
           }

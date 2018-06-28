@@ -14,7 +14,7 @@ import dotc.core.Contexts.Context
 import dotc.{ CompilationUnit, Run }
 import dotc.core.Mode
 import dotc.core.Flags._
-import dotc.core.Types._
+import dotc.core.Types.{TypeOf => _, _}
 import dotc.core.StdNames._
 import dotc.core.Names.Name
 import dotc.core.NameOps._

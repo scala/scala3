@@ -196,6 +196,21 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         return toTextParents(tp.parents) ~ "{...}"
       case JavaArrayType(elemtp) =>
         return toText(elemtp) ~ "[]"
+      case TypeOf(underlyingTp, tree) =>
+        import tpd._
+        val underlying: Text = " <: " ~ toText(underlyingTp) provided ctx.settings.XprintTypes.value
+        def treeText = tree match {
+          case TypeApply(fun, args) =>
+            typeApplyText(fun.tpe, args.tpes)
+          case Apply(fun, args) =>
+            applyText(fun.tpe, args.tpes)
+          case If(cond, thenp, elsep) =>
+            val elze = if (elsep.isEmpty) None else Some(elsep.tpe)
+            ifText(cond.tpe, thenp.tpe, elze)
+          case Match(sel, cases) =>
+            matchText(sel, cases, showType = true)
+        }
+        return typeText("{ ") ~ inTypeOf { treeText } ~ underlying ~ typeText(" }")
       case tp: AnnotatedType if homogenizedView =>
         // Positions of annotations in types are not serialized
         // (they don't need to because we keep the original type tree with
@@ -233,7 +248,40 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     ("{" ~ toText(trees, "\n") ~ "}").close
 
   protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text =
-    toTextLocal(tree.fun) ~ "[" ~ toTextGlobal(tree.args, ", ") ~ "]"
+    typeApplyText(tree.fun, tree.args)
+
+  protected def typeApplyText(fun: Showable, args: List[Showable]): Text =
+    toTextLocal(fun) ~ "[" ~ toTextGlobal(args, ", ") ~ "]"
+
+  protected def applyText(fun: Showable, args: List[Showable]): Text =
+    toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
+
+  protected def ifText(cond: Showable, thenp: Showable, elsep: Option[Showable]): Text =
+    changePrec(GlobalPrec) (
+      keywordStr("if ")
+        ~ cond.toText(this)
+        ~ (keywordText(" then") provided !cond.isInstanceOf[untpd.Parens])
+        ~~ thenp.toText(this)
+        ~ elsep.map(keywordStr(" else ") ~ _.toText(this)).getOrElse("")
+    )
+
+  protected def caseDefText[T >: Untyped](cd: CaseDef[T], showType: Boolean): Text = {
+    val CaseDef(pat, guard, body) = cd
+    val bodyText = body match {
+      case body if showType => toText(List(body.asInstanceOf[tpd.Tree].tpe), "\n")
+      case Block(stats, expr) => toText(stats :+ expr, "\n")
+      case expr => toText(expr)
+    }
+    keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ " => " ~ bodyText
+  }
+
+  protected def matchText[T >: Untyped](sel: Tree[T], cases: List[CaseDef[T]], showType: Boolean): Text = {
+    val selText = if (showType) toText(sel.asInstanceOf[tpd.Tree].tpe) else toText(sel)
+    if (sel.isEmpty) blockText(cases)
+    else changePrec(GlobalPrec) { selText ~ keywordStr(" match ") ~
+      ("{" ~ Text(cases.map(c => caseDefText(c, showType)), "\n") ~ "}").close
+    }
+  }
 
   protected def toTextCore[T >: Untyped](tree: Tree[T]): Text = {
     import untpd.{modsDeco => _, _}
@@ -244,11 +292,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     def optDotPrefix(tree: This) = optText(tree.qual)(_ ~ ".") provided !isLocalThis(tree)
-
-    def caseBlockText(tree: Tree): Text = tree match {
-      case Block(stats, expr) => toText(stats :+ expr, "\n")
-      case expr => toText(expr)
-    }
 
     // Dotty deviation: called with an untpd.Tree, so cannot be a untpd.Tree[T] (seems to be a Scala2 problem to allow this)
     // More deviations marked below as // DD
@@ -313,7 +356,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             keywordStr("throw ") ~ toText(args.head)
           }
         else
-          toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
+          applyText(fun, args)
       case tree: TypeApply =>
         typeApplyText(tree)
       case Literal(c) =>
@@ -341,17 +384,15 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case block: Block =>
         blockToText(block)
       case If(cond, thenp, elsep) =>
-        changePrec(GlobalPrec) {
-          keywordStr("if ") ~ toText(cond) ~ (keywordText(" then") provided !cond.isInstanceOf[Parens]) ~~ toText(thenp) ~ optText(elsep)(keywordStr(" else ") ~ _)
-        }
+        val elze = if (elsep.isEmpty) None else Some(elsep)
+        ifText(cond, thenp, elze)
       case Closure(env, ref, target) =>
         "closure(" ~ (toTextGlobal(env, ", ") ~ " | " provided env.nonEmpty) ~
         toTextGlobal(ref) ~ (":" ~ toText(target) provided !target.isEmpty) ~ ")"
       case Match(sel, cases) =>
-        if (sel.isEmpty) blockText(cases)
-        else changePrec(GlobalPrec) { toText(sel) ~ keywordStr(" match ") ~ blockText(cases) }
-      case CaseDef(pat, guard, body) =>
-        keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ " => " ~ caseBlockText(body)
+        matchText(sel, cases, showType = false)
+      case cd: CaseDef =>
+        caseDefText(cd, showType = false)
       case Return(expr, from) =>
         changePrec(GlobalPrec) { keywordStr("return") ~ optText(expr)(" " ~ _) }
       case Try(expr, cases, finalizer) =>
@@ -372,7 +413,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case TypeTree() =>
         typeText(toText(tree.typeOpt))
       case SingletonTypeTree(ref) =>
-        toTextLocal(ref) ~ "." ~ keywordStr("type")
+        typeText("{") ~~ toTextLocal(ref) ~~ typeText("}")
       case AndTypeTree(l, r) =>
         changePrec(AndPrec) { toText(l) ~ " & " ~ toText(r) }
       case OrTypeTree(l, r) =>
@@ -526,7 +567,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     var txt = toTextCore(tree)
 
     def suppressTypes =
-      tree.isType || tree.isDef || // don't print types of types or defs
+      tree.isType || isInTypeOf || tree.isDef || // don't print types of types or defs
       homogenizedView && ctx.mode.is(Mode.Pattern)
         // When comparing pickled info, disregard types of patterns.
         // The reason is that GADT matching can rewrite types of pattern trees
@@ -541,23 +582,24 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     if (ctx.settings.XprintTypes.value && tree.hasType) {
       // add type to term nodes; replace type nodes with their types unless -Yprint-pos is also set.
-      def tp = tree.typeOpt match {
-        case tp: TermRef if tree.isInstanceOf[RefTree] && !tp.denot.isOverloaded => tp.underlying
+      def tpText: Text = tree.typeOpt match {
+        case tp: TermRef if tree.isInstanceOf[RefTree] && !tp.denot.isOverloaded => toText(tp.underlying)
         case tp: ConstantType if homogenizedView =>
           // constant folded types are forgotten in Tasty, are reconstituted subsequently in FirstTransform.
           // Therefore we have to gloss over this when comparing before/after pickling by widening to
           // underlying type `T`, or, if expression is a unary primitive operation, to `=> T`.
-          tree match {
+          toText(tree match {
             case Select(qual, _) if qual.typeOpt.widen.typeSymbol.isPrimitiveValueClass =>
               ExprType(tp.widen)
             case _ => tp.widen
-          }
-        case tp => tp
+          })
+        case tp: TypeOf => "<idem>"
+        case tp => toText(tp)
       }
       if (!suppressTypes)
-        txt = ("<" ~ txt ~ ":" ~ toText(tp) ~ ">").close
+        txt = ("<" ~ txt ~ ":" ~ tpText ~ ">").close
       else if (tree.isType && !homogenizedView)
-        txt = toText(tp)
+        txt = tpText
     }
     if (!suppressPositions) {
       if (printPos) {
@@ -726,8 +768,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   def optText[T >: Untyped](tree: Tree[T])(encl: Text => Text): Text =
     if (tree.isEmpty) "" else encl(toText(tree))
 
-  def optText[T >: Untyped](tree: List[Tree[T]])(encl: Text => Text): Text =
-    if (tree.exists(!_.isEmpty)) encl(blockText(tree)) else ""
+  def optText[T >: Untyped](trees: List[Tree[T]])(encl: Text => Text): Text =
+    if (trees.exists(!_.isEmpty)) encl(blockText(trees)) else ""
 
   override protected def ParamRefNameString(name: Name): String =
     name.invariantName.toString

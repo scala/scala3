@@ -364,10 +364,13 @@ trait TypeAssigner {
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
-        if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping)
-          if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
-          else fntpe.resultType
-        else
+        if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping) {
+          val tpe =
+            if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
+            else fntpe.resultType
+          if (fn.symbol.isTransparentMethod) TypeOf(tpe, tree)
+          else tpe
+        } else
           errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
       case t =>
         errorType(err.takesNoParamsStr(fn, ""), tree.pos)
@@ -424,7 +427,11 @@ trait TypeAssigner {
         }
         else {
           val argTypes = args.tpes
-          if (sameLength(argTypes, paramNames)) pt.instantiate(argTypes)
+          if (sameLength(argTypes, paramNames)) {
+            val tpe = pt.instantiate(argTypes)
+            if (fn.symbol.isTransparentMethod) TypeOf(tpe, tree)
+            else tpe
+          }
           else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
         }
       case err: ErrorType =>
@@ -452,8 +459,13 @@ trait TypeAssigner {
   def assignType(tree: untpd.Inlined, bindings: List[Tree], expansion: Tree)(implicit ctx: Context) =
     tree.withType(avoidingType(expansion, bindings))
 
-  def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) =
-    tree.withType(thenp.tpe | elsep.tpe)
+  def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) = {
+    val underlying = thenp.tpe | elsep.tpe
+    if (ctx.owner.isTransitivelyTransparent)
+      tree.withType(TypeOf(underlying, tree))
+    else
+      tree.withType(underlying)
+  }
 
   def assignType(tree: untpd.Closure, meth: Tree, target: Tree)(implicit ctx: Context) =
     tree.withType(
@@ -463,8 +475,13 @@ trait TypeAssigner {
   def assignType(tree: untpd.CaseDef, body: Tree)(implicit ctx: Context) =
     tree.withType(body.tpe)
 
-  def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) =
-    tree.withType(ctx.typeComparer.lub(cases.tpes))
+  def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) = {
+    val underlying = ctx.typeComparer.lub(cases.tpes)
+    if (ctx.owner.isTransitivelyTransparent)
+      tree.withType(TypeOf(underlying, tree))
+    else
+      tree.withType(underlying)
+  }
 
   def assignType(tree: untpd.Return)(implicit ctx: Context) =
     tree.withType(defn.NothingType)
@@ -481,8 +498,20 @@ trait TypeAssigner {
     tree.withType(ownType)
   }
 
-  def assignType(tree: untpd.SingletonTypeTree, ref: Tree)(implicit ctx: Context) =
-    tree.withType(ref.tpe)
+  def assignType(tree: untpd.SingletonTypeTree, ref: Tree)(implicit ctx: Context) = {
+    val tp = ref match {
+      case _: Literal | _: Ident | _: Select | _: Block | _: This | _: Super => ref.tpe
+      case _ =>
+        if (TypeOf.isLegalTopLevelTree(ref))
+          if (ref.tpe.isInstanceOf[TypeOf])
+            ref.tpe
+          else
+            errorType(i"Non-sensical singleton-type expression: $ref", ref.pos)
+        else
+          throw new AssertionError(i"Tree $ref is not a valid reference for a singleton type tree.")
+    }
+    tree.withType(tp)
+  }
 
   def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
     tree.withType(AndType(left.tpe, right.tpe))

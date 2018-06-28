@@ -236,6 +236,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         compareWild
       case tp2: LazyRef =>
         !tp2.evaluating && recur(tp1, tp2.ref)
+      case tp2: TypeOf =>
+        tp2 == tp1 || secondTry
       case tp2: AnnotatedType if !tp2.isRefining =>
         recur(tp1, tp2.parent)
       case tp2: ThisType =>
@@ -567,7 +569,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             false
         }
         compareTypeBounds
-      case tp2: AnnotatedType if tp2.isRefining =>
+      case tp2: AnnotatedType if tp2.isRefining && !tp2.isInstanceOf[TypeOf] =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || defn.isBottomType(tp1)) &&
         recur(tp1, tp2.parent)
       case ClassInfo(pre2, cls2, _, _, _) =>

@@ -18,6 +18,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected[this] implicit def ctx: Context = _ctx.addMode(Mode.Printing)
 
   private[this] var openRecs: List[RecType] = Nil
+  protected[this] var isInTypeOf: Boolean = false
+
+  protected final def inTypeOf(op: => Text): Text = {
+    val saved = isInTypeOf
+    isInTypeOf = true
+    try { op } finally { isInTypeOf = saved }
+  }
 
   protected def maxToTextRecursions = 100
 
@@ -142,7 +149,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TypeParamRef =>
         ParamRefNameString(tp) ~ lambdaHash(tp.binder)
       case tp: SingletonType =>
-        toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
+        if (isInTypeOf)
+          toTextRef(tp)
+        else
+          toTextLocal(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
       case AppliedType(tycon, args) =>
         (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
       case tp: RefinedType =>
@@ -183,6 +193,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           (Str(" => ") provided !tp.resultType.isInstanceOf[MethodType]) ~
           toTextGlobal(tp.resultType)
         }
+      case TypeOf(underlyingTp, _) =>
+        "{ ... <: " ~ toText(underlyingTp) ~ " }"
       case AnnotatedType(tpe, annot) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
@@ -483,9 +495,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
     val nodeName = tree.productPrefix
     val elems =
       Text(tree.productIterator.map(toTextElem).toList, ", ")
-    val tpSuffix =
-      if (ctx.settings.XprintTypes.value && tree.hasType)
-        " | " ~ toText(tree.typeOpt)
+    val tpSuffix: Text =
+      if (ctx.settings.XprintTypes.value && tree.hasType && !isInTypeOf)
+        tree.typeOpt match {
+          case tp: TypeOf => " | <idem>"
+          case tp => " | " ~ toText(tree.typeOpt)
+        }
       else
         Text()
 

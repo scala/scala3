@@ -21,7 +21,7 @@ import util.Stats._
 import util.{DotClass, SimpleIdentitySet}
 import reporting.diagnostic.Message
 import ast.tpd._
-import ast.TreeTypeMap
+import ast.{Trees, TreeTypeMap}
 import printing.Texts._
 import ast.untpd
 import dotty.tools.dotc.transform.Erasure
@@ -3707,7 +3707,7 @@ object Types {
 
     override def underlying(implicit ctx: Context): Type = parent
 
-    def derivedAnnotatedType(parent: Type, annot: Annotation) =
+    def derivedAnnotatedType(parent: Type, annot: Annotation)(implicit ctx: Context) =
       if ((parent eq this.parent) && (annot eq this.annot)) this
       else AnnotatedType(parent, annot)
 
@@ -3929,6 +3929,100 @@ object Types {
       else None
   }
 
+  // ----- TypeOf -------------------------------------------------------------------------
+
+  /** Type that represents the precise type of a given term.
+   *  Precision is only kept for Apply, TypeApply, If and Match trees.
+   *
+   *  The idea behind this type is to be able to compute more precise types
+   *  when more information is available.
+   *
+   *  TypeOfs are represented by an underlying type and a tree. The top level
+   *  node of the tree must be one of the nodes mentioned above, and is only
+   *  used as a "marker" node, meaning that we will never look at its type.
+   *
+   *  In a sense, TypeOf types are isomorphic to the following 4 types:
+   *
+   *  TypeOf(u, Apply(fun, args))       ~ SuspendedApply(u, fun, args)
+   *  TypeOf(u, TypeApply(fun, args))   ~ SuspendedTypeApply(u, fun, args)
+   *  TypeOf(u, If(cond, thenp, elsep)) ~ SuspendedIf(u, cond, thenp, elsep)
+   *  TypeOf(u, Match(selector, cases)) ~ SuspendedMatch(u, selector, cases)
+   *
+   *  Where u is the type that the tree would have had otherwise.
+   *
+   *  It should be the case that whenever two TypeOfs are equal, so are their
+   *  underlying types.
+   */
+  class TypeOf private (val underlyingTp: Type, val tree: Tree, annot: Annotation) extends AnnotatedType(underlyingTp, annot) {
+    assert(TypeOf.isLegalTopLevelTree(tree), s"Illegal top-level tree in TypeOf: $tree")
+
+    override def equals(that: Any): Boolean = {
+      that match {
+        case that: TypeOf =>
+          def compareTree(tree1: Tree, tree2: Tree): Boolean = {
+            def compareArgs[T <: Tree](args1: List[T], args2: List[T]): Boolean =
+              args1.zip(args2).forall { case (a,b) => a.tpe == b.tpe }
+            (tree1, tree2) match {
+              case (t1: Apply, t2: Apply) =>
+                t1.fun.tpe == t2.fun.tpe && compareArgs(t1.args, t2.args)
+              case (t1: TypeApply, t2: TypeApply) =>
+                t1.fun.tpe == t2.fun.tpe && compareArgs(t1.args, t2.args)
+              case (t1: If, t2: If) =>
+                t1.cond.tpe == t2.cond.tpe && t1.thenp.tpe == t2.thenp.tpe && t1.elsep.tpe == t2.elsep.tpe
+              case (t1: Match, t2: Match) =>
+                t1.selector.tpe == t2.selector.tpe && compareArgs(t1.cases, t2.cases)
+              case (t1, t2) =>
+                false
+            }
+          }
+          compareTree(this.tree, that.tree)
+        case _ => false
+      }
+    }
+
+    override def derivedAnnotatedType(parent: Type, annot: Annotation)(implicit ctx: Context): AnnotatedType =
+      if ((parent eq this.parent) && (annot eq this.annot)) this
+      else TypeOf(parent, annot.arguments.head)
+
+    override def toString(): String = s"TypeOf($underlyingTp, $tree)"
+  }
+
+  object TypeOf {
+    def apply(underlyingTp: Type, tree: untpd.Tree)(implicit ctx: Context): TypeOf = {
+      val tree1 = tree.clone.asInstanceOf[Tree]
+      // This is a safety net to keep us from touching a TypeOf's tree's type.
+      // Assuming we never look at this type, it would be safe to simply reuse
+      // tree without cloning. The invariant is currently enforced in Ycheck.
+      // To disable this safety net we will also have to update the pickler
+      // to ignore the type of the TypeOf tree's.
+      tree1.overwriteType(NoType)
+      new TypeOf(underlyingTp, tree1, Annotation(defn.TypeOfAnnot, tree1))
+    }
+    def unapply(to: TypeOf): Option[(Type, Tree)] = Some((to.underlyingTp, to.tree))
+
+    def isLegalTopLevelTree(tree: Tree): Boolean = tree match {
+      case _: TypeApply | _: Apply | _: If | _: Match => true
+      case _ => false
+    }
+
+    object If {
+      def unapply(to: TypeOf): Option[(Type, Type, Type)] = to.tree match {
+        case Trees.If(cond, thenb, elseb) => Some((cond.tpe, thenb.tpe, elseb.tpe))
+        case _ => None
+      }
+    }
+
+    object Match {
+      def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
+        case Trees.Match(cond, cases) =>
+          // TODO: We only look at .body.tpe for now, eventually we should
+          // also take the guard and the pattern into account.
+          Some((cond.tpe, cases.map(_.body.tpe)))
+        case _ => None
+      }
+    }
+  }
+
   // ----- TypeMaps --------------------------------------------------------------------
 
   /** Common base class of TypeMap and TypeAccumulator */
@@ -4068,6 +4162,30 @@ object Types {
 
         case tp: SkolemType =>
           tp
+
+        case tp: TypeOf =>
+          def copyMapped[ThisTree <: Tree](tree: ThisTree): ThisTree = {
+            val tp1 = this(tree.tpe)
+            if (tree.tpe eq tp1) tree else tree.withTypeUnchecked(tp1).asInstanceOf[ThisTree]
+          }
+          val tree1 = tp.tree match {
+            case tree: TypeApply =>
+              cpy.TypeApply(tree)(copyMapped(tree.fun), tree.args.mapConserve(copyMapped))
+            case tree: Apply =>
+              cpy.Apply(tree)(copyMapped(tree.fun), tree.args.mapConserve(copyMapped))
+            case tree: If =>
+              cpy.If(tree)(copyMapped(tree.cond), copyMapped(tree.thenp), copyMapped(tree.elsep))
+            case tree: Match =>
+              cpy.Match(tree)(copyMapped(tree.selector), tree.cases.mapConserve(copyMapped))
+            case tree =>
+              throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
+          }
+          if (tp.tree ne tree1) {
+            assert(!tp.underlyingTp.exists || tree1.tpe.exists, i"Derived TypeOf's type became NoType")
+            tree1.tpe
+          } else {
+            tp
+          }
 
         case tp @ AnnotatedType(underlying, annot) =>
           val underlying1 = this(underlying)
@@ -4333,6 +4451,7 @@ object Types {
           if (underlying.isBottomType) underlying
           else tp.derivedAnnotatedType(underlying, annot)
       }
+
     override protected def derivedWildcardType(tp: WildcardType, bounds: Type) = {
       tp.derivedWildcardType(rangeToBounds(bounds))
     }
@@ -4439,6 +4558,25 @@ object Types {
 
       case tp: OrType =>
         this(this(x, tp.tp1), tp.tp2)
+
+      case tp: TypeOf =>
+        @tailrec def foldTrees(x: T, ts: List[Tree]): T = ts match {
+          case t :: ts1 => foldTrees(apply(x, t.tpe), ts1)
+          case nil => x
+        }
+
+        tp.tree match {
+          case tree: TypeApply =>
+            foldTrees(this(x, tree.fun.tpe), tree.args)
+          case tree: Apply =>
+            foldTrees(this(x, tree.fun.tpe), tree.args)
+          case tree: If =>
+            this(this(this(x, tree.cond.tpe), tree.thenp.tpe), tree.elsep.tpe)
+          case tree: Match =>
+            foldTrees(this(x, tree.selector.tpe), tree.cases)
+          case tree =>
+            throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
+        }
 
       case AnnotatedType(underlying, annot) =>
         this(applyToAnnot(x, annot), underlying)

@@ -227,8 +227,9 @@ object Trees {
                 case y: List[_] => x.corresponds(y)(isSame)
                 case _ => false
               }
+            case x: Constant => x == y
             case _ =>
-              false
+              throw new AssertionError(s"Unexpected Tree in Tree comparison $x (comparing to $y)")
           }
         }
       this.getClass == that.getClass && {
@@ -605,7 +606,7 @@ object Trees {
    */
   class TypeVarBinder[-T >: Untyped] extends TypeTree[T]
 
-  /** ref.type */
+  /** ref.type  or  { ref } */
   case class SingletonTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = SingletonTypeTree[T]

@@ -159,6 +159,9 @@ class TreePickler(pickler: TastyPickler) {
       withLength { pickleType(tycon); args.foreach(pickleType(_)) }
     case ConstantType(value) =>
       pickleConstant(value)
+    case tpe: TypeOf =>
+      writeByte(TYPEOF)
+      withLength { pickleType(tpe.underlyingTp, richTypes); pickleTree(tpe.tree) }
     case tpe: NamedType =>
       val sym = tpe.symbol
       def pickleExternalRef(sym: Symbol) = {

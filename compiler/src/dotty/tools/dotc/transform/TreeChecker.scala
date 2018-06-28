@@ -486,7 +486,7 @@ object TreeChecker {
   /** - Check that TypeParamRefs and MethodParams refer to an enclosing type.
    *  - Check that all type variables are instantiated.
    */
-  def checkNoOrphans(tp0: Type, tree: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = new TypeMap() {
+  def checkNoOrphans(tp0: Type)(implicit ctx: Context) = new TypeMap() {
     val definedBinders = new java.util.IdentityHashMap[Type, Any]
     def apply(tp: Type): Type = {
       tp match {
@@ -495,10 +495,14 @@ object TreeChecker {
           mapOver(tp)
           definedBinders.remove(tp)
         case tp: ParamRef =>
-          assert(definedBinders.get(tp.binder) != null, s"orphan param: ${tp.show}, hash of binder = ${System.identityHashCode(tp.binder)}, tree = ${tree.show}, type = $tp0")
+          assert(definedBinders.get(tp.binder) != null, s"orphan param: ${tp.show}, hash of binder = ${System.identityHashCode(tp.binder)}, type = $tp0")
         case tp: TypeVar =>
-          assert(tp.isInstantiated, s"Uninstantiated type variable: ${tp.show}, tree = ${tree.show}")
+          assert(tp.isInstantiated, s"Uninstantiated type variable: ${tp.show}")
           apply(tp.underlying)
+        case tp: TypeOf =>
+          assert(tp.tree.tpe eq NoType, s"See note in TypeOf.apply")
+          apply(tp.underlyingTp)
+          mapOver(tp)
         case _ =>
           mapOver(tp)
       }
