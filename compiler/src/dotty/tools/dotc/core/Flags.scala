@@ -364,7 +364,7 @@ object Flags {
   final val DefaultMethod = termFlag(38, "<defaultmethod>")
 
   /** Labelled with `transparent` modifier */
-  final val Transparent = termFlag(39, "transparent")
+  final val Transparent = commonFlag(39, "transparent")
 
   /** Symbol is an enum class or enum case (if used with case) */
   final val Enum = commonFlag(40, "<enum>")
