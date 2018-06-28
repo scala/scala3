@@ -8,3 +8,15 @@ object Test extends App {
   assert(s == "hello")
   assert(l == 5)
 }
+
+object Test3781 {
+  class Foo[T](val value : T)
+  object Foo {
+    implicit def fromXInt[T <: Int with Singleton](i : T): Foo[T] = new Foo[T](i)
+  }
+  class FooUser[T] {
+    def op[T2](that : Foo[T2]) : FooUser[T2] = new FooUser[T2]
+  }
+  val f = new FooUser[1]
+  val f2 = f op 2
+}

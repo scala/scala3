@@ -76,12 +76,18 @@ object Implicits {
 
       def refMatches(ref: TermRef)(implicit ctx: Context) = /*trace(i"refMatches $ref $pt")*/ {
 
+      	/** Widen type so that it is neither a singleton type nor it inherits from scala.Singleton. */
+        def widenSingleton(tp: Type): Type = {
+          val wtp = tp.widenSingleton
+          if (wtp.derivesFrom(defn.SingletonClass)) defn.AnyType else wtp
+        }
+
         def discardForView(tpw: Type, argType: Type): Boolean = tpw match {
           case mt: MethodType =>
             mt.isImplicitMethod ||
             mt.paramInfos.lengthCompare(1) != 0 ||
             !ctx.test(implicit ctx =>
-              argType relaxed_<:< mt.paramInfos.head.widenSingleton)
+              argType relaxed_<:< widenSingleton(mt.paramInfos.head))
           case poly: PolyType =>
             // We do not need to call ProtoTypes#constrained on `poly` because
             // `refMatches` is always called with mode TypevarsMissContext enabled.
@@ -90,7 +96,7 @@ object Implicits {
                 mt.isImplicitMethod ||
                 mt.paramInfos.length != 1 ||
                 !ctx.test(implicit ctx =>
-                  argType relaxed_<:< wildApprox(mt.paramInfos.head.widenSingleton, null, Set.empty))
+                  argType relaxed_<:< wildApprox(widenSingleton(mt.paramInfos.head), null, Set.empty))
               case rtp =>
                 discardForView(wildApprox(rtp, null, Set.empty), argType)
             }
@@ -144,12 +150,7 @@ object Implicits {
             val res = adjustSingletonArg(tp.resType)
             if (res `eq` tp.resType) tp else tp.derivedLambdaType(resType = res)
           case tp: MethodType =>
-            tp.paramInfos match {
-              case (single: SingletonType) :: Nil =>
-                tp.derivedLambdaType(paramInfos = single.widenSingleton :: Nil)
-              case _ =>
-                tp
-            }
+            tp.derivedLambdaType(paramInfos = tp.paramInfos.map(widenSingleton))
           case _ => tp
         }
 
