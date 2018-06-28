@@ -90,11 +90,8 @@ object Comments {
       val codeEnd      = skipToEol(raw, codeStart)
       val code         = raw.substring(codeStart, codeEnd) + " = ???"
       val codePos      = subPos(codeStart, codeEnd)
-      val commentStart = skipLineLead(raw, codeEnd + 1) min end
-      val commentStr   = "/** " + raw.substring(commentStart, end) + "*/"
-      val commentPos   = subPos(commentStart, end)
 
-      UseCase(Comment(commentPos, commentStr), code, codePos)
+      UseCase(code, codePos)
     }
   }
 
@@ -106,7 +103,7 @@ object Comments {
       }
   }
 
-  abstract case class UseCase(comment: Comment, code: String, codePos: Position) {
+  abstract case class UseCase(code: String, codePos: Position) {
     /** Set by typer */
     var tpdCode: tpd.DefDef = _
 
@@ -114,8 +111,8 @@ object Comments {
   }
 
   object UseCase {
-    def apply(comment: Comment, code: String, codePos: Position)(implicit ctx: Context) =
-      new UseCase(comment, code, codePos) {
+    def apply(code: String, codePos: Position)(implicit ctx: Context) =
+      new UseCase(code, codePos) {
         val untpdCode = {
           val tree = new Parser(new SourceFile("<usecase>", code)).localDef(codePos.start)
 
