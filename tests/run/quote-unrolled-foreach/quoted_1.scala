@@ -30,7 +30,27 @@ object Macro {
     val size = (~arrRef).length
     var i = 0
     while (i < size) {
-      val element = (~arrRef)(i)
+      val element: Int = (~arrRef)(i)
+      (~f)(element)
+      i += 1
+    }
+  }
+
+  def foreach1Tpe1[T](arrRef: Expr[Array[T]], f: Expr[T => Unit])(implicit t: Type[T]): Expr[Unit] = '{
+    val size = (~arrRef).length
+    var i = 0
+    while (i < size) {
+      val element: ~t = (~arrRef)(i)
+      (~f)(element)
+      i += 1
+    }
+  }
+
+  def foreach1Tpe2[T: Type](arrRef: Expr[Array[T]], f: Expr[T => Unit]): Expr[Unit] = '{
+    val size = (~arrRef).length
+    var i = 0
+    while (i < size) {
+      val element: T = (~arrRef)(i)
       (~f)(element)
       i += 1
     }
