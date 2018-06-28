@@ -663,7 +663,7 @@ class Typer extends Namer
 
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) = track("typedBlock") {
     val (exprCtx, stats1) = typedBlockStats(tree.stats)
-    val expr1 = typedExpr(tree.expr, pt.notApplied)(exprCtx)
+    val expr1 = typed(tree.expr, pt.notApplied)(exprCtx)
     ensureNoLocalRefs(
       cpy.Block(tree)(stats1, expr1).withType(expr1.tpe), pt, localSyms(stats1))
   }
@@ -707,7 +707,7 @@ class Typer extends Namer
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
-    val cond1 = typed(tree.cond, defn.BooleanType)
+    val cond1 = typedExpr(tree.cond, defn.BooleanType)
     val thenp2 :: elsep2 :: Nil = harmonic(harmonize) {
       val thenp1 = typed(tree.thenp, pt.notApplied)
       val elsep1 = typed(tree.elsep orElse (untpd.unitLiteral withPos tree.pos), pt.notApplied)
@@ -1407,7 +1407,7 @@ class Typer extends Namer
     }
   }
 
-  def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = track("typedDefDef") {
+  def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedDefDef") {
     val DefDef(name, tparams, vparamss, tpt, _) = ddef
     completeAnnotations(ddef, sym)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
@@ -1429,7 +1429,9 @@ class Typer extends Namer
         rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
     }
     if (sym.isTransparentMethod) rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
-    val rhs1 = normalizeErasedRhs(typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx), sym)
+    val rhs1 =
+      if (sym.isTerm) normalizeErasedRhs(typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx), sym)
+      else typedType(ddef.rhs, tpt1.tpe)(rhsCtx)
 
     // Overwrite inline body to make sure it is not evaluated twice
     if (sym.isInlineableMethod) Inliner.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
@@ -2029,8 +2031,9 @@ class Typer extends Namer
       tryInsertImplicitOnQualifier(tree, pt, locked).getOrElse(fallBack)
 
     pt match {
-      case pt @ FunProto(Nil, _, _)
-      if tree.symbol.allOverriddenSymbols.exists(_.info.isNullaryMethod) &&
+      case pt: FunProto
+      if pt.args.isEmpty &&
+        tree.symbol.allOverriddenSymbols.exists(_.info.isNullaryMethod) &&
          tree.getAttachment(DroppedEmptyArgs).isEmpty =>
         tree.putAttachment(DroppedEmptyArgs, ())
         pt.markAsDropped()
@@ -2161,6 +2164,8 @@ class Typer extends Namer
             adapt(tree, pt.tupled, locked)
           else
             tree
+        case wtp: TypeRef if wtp.underlying.hiBound.isInstanceOf[HKLambda] =>
+          tree
         case _ => tryInsertApplyOrImplicit(tree, pt, locked) {
           errorTree(tree, MethodDoesNotTakeParameters(tree))
         }
@@ -2496,7 +2501,20 @@ class Typer extends Namer
               tree.tpe.EtaExpand(tp.typeParamSymbols)
           tree.withType(tp1)
         }
-      if ((ctx.mode is Mode.Pattern) || tree1.tpe <:< pt) tree1
+      val isCompatible =
+        if (ctx.mode `is` Mode.Pattern) true
+        else pt match {
+          case pt: TypeBounds if ctx.mode `is` Mode.Type => pt `contains` tree1.tpe
+          case _ => tree1.tpe <:< pt
+        }
+      if (Inliner.isInlineable(tree.symbol))
+        readaptSimplified {
+          Inliner.inlineCall(tree, pt) match {
+            case inlined: Inlined => TypeTree(inlined.tpe).withPos(tree.pos)
+            case err => err
+          }
+        }
+      else if (isCompatible) tree1
       else err.typeMismatch(tree1, pt)
     }
 

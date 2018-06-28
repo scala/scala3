@@ -540,35 +540,37 @@ object Erasure {
      *  with more than `MaxImplementedFunctionArity` parameters to ise a single
      *  parameter of type `[]Object`.
      */
-    override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
-      val restpe =
-        if (sym.isConstructor) defn.UnitType
-        else sym.info.resultType
-      var vparamss1 = (outer.paramDefs(sym) ::: ddef.vparamss.flatten) :: Nil
-      var rhs1 = ddef.rhs match {
-        case id @ Ident(nme.WILDCARD) => untpd.TypedSplice(id.withType(restpe))
-        case _ => ddef.rhs
-      }
-      if (sym.isAnonymousFunction && vparamss1.head.length > MaxImplementedFunctionArity) {
-        val bunchedParam = ctx.newSymbol(sym, nme.ALLARGS, Flags.TermParam, JavaArrayType(defn.ObjectType))
-        def selector(n: Int) = ref(bunchedParam)
-          .select(defn.Array_apply)
-          .appliedTo(Literal(Constant(n)))
-        val paramDefs = vparamss1.head.zipWithIndex.map {
-          case (paramDef, idx) =>
-            assignType(untpd.cpy.ValDef(paramDef)(rhs = selector(idx)), paramDef.symbol)
+    override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) =
+      if (sym.isType) EmptyTree
+      else {
+        val restpe =
+          if (sym.isConstructor) defn.UnitType
+          else sym.info.resultType
+        var vparamss1 = (outer.paramDefs(sym) ::: ddef.vparamss.flatten) :: Nil
+        var rhs1 = ddef.rhs match {
+          case id @ Ident(nme.WILDCARD) => untpd.TypedSplice(id.withType(restpe))
+          case _ => ddef.rhs
         }
-        vparamss1 = (tpd.ValDef(bunchedParam) :: Nil) :: Nil
-        rhs1 = untpd.Block(paramDefs, rhs1)
+        if (sym.isAnonymousFunction && vparamss1.head.length > MaxImplementedFunctionArity) {
+          val bunchedParam = ctx.newSymbol(sym, nme.ALLARGS, Flags.TermParam, JavaArrayType(defn.ObjectType))
+          def selector(n: Int) = ref(bunchedParam)
+            .select(defn.Array_apply)
+            .appliedTo(Literal(Constant(n)))
+          val paramDefs = vparamss1.head.zipWithIndex.map {
+            case (paramDef, idx) =>
+              assignType(untpd.cpy.ValDef(paramDef)(rhs = selector(idx)), paramDef.symbol)
+          }
+          vparamss1 = (tpd.ValDef(bunchedParam) :: Nil) :: Nil
+          rhs1 = untpd.Block(paramDefs, rhs1)
+        }
+        vparamss1 = vparamss1.mapConserve(_.filterConserve(!_.symbol.is(Flags.Erased)))
+        val ddef1 = untpd.cpy.DefDef(ddef)(
+          tparams = Nil,
+          vparamss = vparamss1,
+          tpt = untpd.TypedSplice(TypeTree(restpe).withPos(ddef.tpt.pos)),
+          rhs = rhs1)
+        super.typedDefDef(ddef1, sym)
       }
-      vparamss1 = vparamss1.mapConserve(_.filterConserve(!_.symbol.is(Flags.Erased)))
-      val ddef1 = untpd.cpy.DefDef(ddef)(
-        tparams = Nil,
-        vparamss = vparamss1,
-        tpt = untpd.TypedSplice(TypeTree(restpe).withPos(ddef.tpt.pos)),
-        rhs = rhs1)
-      super.typedDefDef(ddef1, sym)
-    }
 
     override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = {
       val xxl = defn.isXXLFunctionClass(tree.typeOpt.typeSymbol)

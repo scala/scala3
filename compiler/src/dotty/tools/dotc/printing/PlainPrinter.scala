@@ -167,7 +167,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         "<notype>"
       case NoPrefix =>
         "<noprefix>"
-      case tp: MethodType =>
+      case tp: TermLambda =>
         changePrec(GlobalPrec) {
           ("(" + (if (tp.isErasedMethod)   "erased "   else "")
                + (if (tp.isImplicitMethod) "implicit " else "")

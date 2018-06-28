@@ -106,7 +106,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Closure(Nil, call, targetTpt))
   }
 
-  /** A closure whole anonymous function has the given method type */
+  /** A closure whose anonymous function has the given method type */
   def Lambda(tpe: MethodType, rhsFn: List[Tree] => Tree)(implicit ctx: Context): Block = {
     val meth = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, tpe)
     Closure(meth, tss => rhsFn(tss.head).changeOwner(ctx.owner, meth))

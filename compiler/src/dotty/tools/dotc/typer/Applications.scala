@@ -143,7 +143,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  @param args       the arguments of the application
    *  @param resultType the expected result type of the application
    */
-  abstract class Application[Arg](methRef: TermRef, funType: Type, args: List[Arg], resultType: Type)(implicit ctx: Context) {
+  abstract class Application[Arg](methRef: NamedType, funType: Type, args: List[Arg], resultType: Type)(implicit ctx: Context) {
 
     /** The type of typed arguments: either tpd.Tree or Type */
     type TypedArg
@@ -211,15 +211,15 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     /** The function's type after widening and instantiating polytypes
      *  with TypeParamRefs in constraint set
      */
-    lazy val methType: Type = liftedFunType.widen match {
-      case funType: MethodType => funType
-      case funType: PolyType => constrained(funType).resultType
+    lazy val methType: Type = liftedFunType.widen.toLambda match {
+      case funType: TermLambda => funType
+      case funType: TypeLambda => constrained(funType).resultType
       case tp => tp //was: funType
     }
 
     def reqiredArgNum(tp: Type): Int = tp.widen match {
-      case funType: MethodType => funType.paramInfos.size
-      case funType: PolyType => reqiredArgNum(funType.resultType)
+      case funType: TermLambda => funType.paramInfos.size
+      case funType: TypeLambda => reqiredArgNum(funType.resultType)
       case tp => args.size
     }
 
@@ -240,7 +240,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         args
 
     protected def init() = methType match {
-      case methType: MethodType =>
+      case methType: TermLambda =>
         // apply the result type constraint, unless method type is dependent
         val resultApprox = resultTypeApprox(methType)
         if (!constrainResult(methRef.symbol, resultApprox, resultType))
@@ -255,13 +255,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         matchArgs(orderedArgs, methType.paramInfos, 0)
       case _ =>
         if (methType.isError) ok = false
-        else fail(s"$methString does not take parameters")
+        else fail(s"$methString does not take parameters?")
     }
 
     /** The application was successful */
     def success = ok
 
-    protected def methodType = methType.asInstanceOf[MethodType]
+    protected def lambda = methType.asInstanceOf[TermLambda]
     private def methString: String = i"${methRef.symbol}: ${methType.show}"
 
     /** Re-order arguments to correctly align named arguments */
@@ -292,7 +292,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
                 genericEmptyTree :: handleNamed(pnames.tail, args, nameToArg, toDrop)
               else { // name not (or no longer) available for named arg
                 def msg =
-                  if (methodType.paramNames contains aname)
+                  if (lambda.paramNames contains aname)
                     s"parameter $aname of $methString is already instantiated"
                   else
                     s"$methString does not have a parameter $aname"
@@ -317,7 +317,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case Nil => Nil
         }
 
-      handlePositional(methodType.paramNames, args)
+      handlePositional(lambda.paramNames, args)
     }
 
     /** Splice new method reference into existing application */
@@ -432,13 +432,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
            */
           def addTyped(arg: Arg, formal: Type): Type => Type = {
             addArg(typedArg(arg, formal), formal)
-            if (methodType.isParamDependent)
-              safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg))
+            if (lambda.isParamDependent)
+              safeSubstParam(_, lambda.paramRefs(n), typeOfArg(arg))
             else identity
           }
 
           def missingArg(n: Int): Unit = {
-            val pname = methodType.paramNames(n)
+            val pname = lambda.paramNames(n)
             fail(
               if (pname.firstPart contains '$') s"not enough arguments for $methString"
               else s"missing argument for parameter $pname of $methString")
@@ -488,7 +488,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  in a "can/cannot apply" answer, without needing to construct trees or
    *  issue error messages.
    */
-  abstract class TestApplication[Arg](methRef: TermRef, funType: Type, args: List[Arg], resultType: Type)(implicit ctx: Context)
+  abstract class TestApplication[Arg](methRef: NamedType, funType: Type, args: List[Arg], resultType: Type)(implicit ctx: Context)
   extends Application[Arg](methRef, funType, args, resultType) {
     type TypedArg = Arg
     type Result = Unit
@@ -524,7 +524,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   /** Subclass of Application for applicability tests with type arguments and value
    *  argument trees.
    */
-  class ApplicableToTrees(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context)
+  class ApplicableToTrees(methRef: NamedType, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context)
   extends TestApplication(methRef, methRef.widen.appliedTo(targs), args, resultType) {
     def argType(arg: Tree, formal: Type): Type = normalize(arg.tpe, formal)
     def treeToArg(arg: Tree): Tree = arg
@@ -536,12 +536,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   /** Subclass of Application for applicability tests with type arguments and value
    * argument trees.
    */
-  class ApplicableToTreesDirectly(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context) extends ApplicableToTrees(methRef, targs, args, resultType)(ctx) {
+  class ApplicableToTreesDirectly(methRef: NamedType, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context) extends ApplicableToTrees(methRef, targs, args, resultType)(ctx) {
     override def argOK(arg: TypedArg, formal: Type) = argType(arg, formal) <:< formal
   }
 
   /** Subclass of Application for applicability tests with value argument types. */
-  class ApplicableToTypes(methRef: TermRef, args: List[Type], resultType: Type)(implicit ctx: Context)
+  class ApplicableToTypes(methRef: NamedType, args: List[Type], resultType: Type)(implicit ctx: Context)
   extends TestApplication(methRef, methRef, args, resultType) {
     def argType(arg: Type, formal: Type): Type = arg
     def treeToArg(arg: Tree): Type = arg.tpe
@@ -554,7 +554,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  types of arguments are either known or unknown.
    */
   abstract class TypedApply[T >: Untyped](
-    app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Trees.Tree[T]], resultType: Type)(implicit ctx: Context)
+    app: untpd.Apply, fun: Tree, methRef: NamedType, args: List[Trees.Tree[T]], resultType: Type)(implicit ctx: Context)
   extends Application(methRef, fun.tpe, args, resultType) {
     type TypedArg = Tree
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
@@ -658,7 +658,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   }
 
   /** Subclass of Application for type checking an Apply node with untyped arguments. */
-  class ApplyToUntyped(app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto, resultType: Type)(implicit ctx: Context)
+  class ApplyToUntyped(app: untpd.Apply, fun: Tree, methRef: NamedType, proto: FunProto, resultType: Type)(implicit ctx: Context)
   extends TypedApply(app, fun, methRef, proto.args, resultType) {
     def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal.widenExpr)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
@@ -666,7 +666,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   }
 
   /** Subclass of Application for type checking an Apply node with typed arguments. */
-  class ApplyToTyped(app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context)
+  class ApplyToTyped(app: untpd.Apply, fun: Tree, methRef: NamedType, args: List[Tree], resultType: Type)(implicit ctx: Context)
   extends TypedApply[Type](app, fun, methRef, args, resultType) {
       // Dotty deviation: Dotc infers Untyped for the supercall. This seems to be according to the rules
       // (of both Scala and Dotty). Untyped is legal, and a subtype of Typed, whereas TypeApply
@@ -681,7 +681,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  otherwise the current context.
    */
   def argCtx(app: untpd.Tree)(implicit ctx: Context): Context =
-    if (untpd.isSelfConstrCall(app)) ctx.thisCallArgContext else ctx
+    (if (untpd.isSelfConstrCall(app)) ctx.thisCallArgContext else ctx).retractMode(Mode.Type)
 
   /** Typecheck application. Result could be an `Apply` node,
    *  or, if application is an operator assignment, also an `Assign` or
@@ -714,7 +714,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       /** Type application where arguments come from prototype, and no implicits are inserted */
       def simpleApply(fun1: Tree, proto: FunProto)(implicit ctx: Context): Tree =
         methPart(fun1).tpe match {
-          case funRef: TermRef =>
+          case funRef: NamedType =>
             val app =
               if (proto.allArgTypesAreCurrent())
                 new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
@@ -1362,9 +1362,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       alts filter (isApplicable(_, argTypes, resultType))
 
     val candidates = pt match {
-      case pt @ FunProto(args, resultType, _) =>
-        val numArgs = args.length
-        val normArgs = args.mapConserve {
+      case pt: FunProto =>
+        val numArgs = pt.args.length
+        val normArgs = pt.args.mapConserve {
           case Block(Nil, expr) => expr
           case x => x
         }
@@ -1388,8 +1388,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
         def narrowByShapes(alts: List[TermRef]): List[TermRef] = {
           if (normArgs exists untpd.isFunctionWithUnknownParamType)
-            if (hasNamedArg(args)) narrowByTrees(alts, args map treeShape, resultType)
-            else narrowByTypes(alts, normArgs map typeShape, resultType)
+            if (hasNamedArg(normArgs)) narrowByTrees(alts, normArgs map treeShape, pt.resultType)
+            else narrowByTypes(alts, normArgs map typeShape, pt.resultType)
           else
             alts
         }
@@ -1415,7 +1415,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           if (isDetermined(alts2)) alts2
           else {
             pretypeArgs(alts2, pt)
-            narrowByTrees(alts2, pt.typedArgs, resultType)
+            narrowByTrees(alts2, pt.typedArgs, pt.resultType)
           }
         }
 

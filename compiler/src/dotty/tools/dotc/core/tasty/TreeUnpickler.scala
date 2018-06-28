@@ -770,11 +770,11 @@ class TreeUnpickler(reader: TastyReader,
           val tparams = readParams[TypeDef](TYPEPARAM)(localCtx)
           val vparamss = readParamss(localCtx)
           val tpt = readTpt()(localCtx)
-          val typeParams = tparams.map(_.symbol)
+          val typeParams = tparams.map(_.symbol.asType)
           val valueParamss = ctx.normalizeIfConstructor(
-              vparamss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
+              vparamss.nestedMap(_.symbol.asTerm), name == nme.CONSTRUCTOR)
           val resType = ctx.effectiveResultType(sym, typeParams, tpt.tpe)
-          sym.info = ctx.methodType(typeParams, valueParamss, resType)
+          sym.info = ctx.termLambda(typeParams, valueParamss, resType, sym)
           DefDef(tparams, vparamss, tpt)
         case VALDEF =>
           val tpt = readTpt()(localCtx)

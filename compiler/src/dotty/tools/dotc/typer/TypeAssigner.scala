@@ -362,8 +362,8 @@ trait TypeAssigner {
     }
 
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
-    val ownType = fn.tpe.widen match {
-      case fntpe: MethodType =>
+    val ownType = fn.tpe.widen.toLambda match {
+      case fntpe: TermLambda =>
         if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping)
           if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
           else fntpe.resultType

@@ -993,6 +993,12 @@ object Types {
       case _ => this
     }
 
+    /** If this type is a typeref with a type lambda as alias or upper bound, widen to the lambda */
+    final def toLambda(implicit ctx: Context): Type = widen match {
+      case tp: TypeRef if tp.info.hiBound.isInstanceOf[LambdaType] => tp.info.hiBound
+      case tp => tp
+    }
+
     /** If this type contains embedded union types, replace them by their joins.
      *  "Embedded" means: inside intersectons or recursive types, or in prefixes of refined types.
      *  If an embedded union is found, we first try to simplify or eliminate it by

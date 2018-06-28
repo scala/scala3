@@ -205,8 +205,9 @@ object ProtoTypes {
    *
    *  [](args): resultType
    */
-  case class FunProto(args: List[untpd.Tree], resType: Type, typer: Typer)(implicit ctx: Context)
+  class FunProto(val args: List[untpd.Tree], val resType: Type, val typer: Typer)(implicit ctx: Context)
   extends UncachedGroundType with ApplyingProto {
+
     private[this] var myTypedArgs: List[Tree] = Nil
 
     override def resultType(implicit ctx: Context) = resType
@@ -306,7 +307,7 @@ object ProtoTypes {
       case pt: FunProto =>
         pt
       case _ =>
-        myTupled = new FunProto(untpd.Tuple(args) :: Nil, resultType, typer)
+        myTupled = FunProto(untpd.Tuple(args) :: Nil, resultType, typer)
         tupled
     }
 
@@ -338,6 +339,11 @@ object ProtoTypes {
       ta(ta.foldOver(x, typedArgs.tpes), resultType)
 
     override def deepenProto(implicit ctx: Context) = derivedFunProto(args, resultType.deepenProto, typer)
+  }
+
+  object FunProto {
+    def apply(args: List[untpd.Tree], resType: Type, typer: Typer)(implicit ctx: Context) =
+      new FunProto(args, resType, typer)(ctx.retractMode(Mode.Type))
   }
 
 
@@ -383,7 +389,7 @@ object ProtoTypes {
   }
 
   class UnapplyFunProto(argType: Type, typer: Typer)(implicit ctx: Context) extends FunProto(
-    untpd.TypedSplice(dummyTreeOfType(argType))(ctx) :: Nil, WildcardType, typer)
+    untpd.TypedSplice(dummyTreeOfType(argType))(ctx) :: Nil, WildcardType, typer)(ctx)
 
   /** A prototype for expressions [] that are type-parameterized:
    *
@@ -484,7 +490,7 @@ object ProtoTypes {
   /** The result type of `mt`, where all references to parameters of `mt` are
    *  replaced by either wildcards (if typevarsMissContext) or TypeParamRefs.
    */
-  def resultTypeApprox(mt: MethodType)(implicit ctx: Context): Type =
+  def resultTypeApprox(mt: TermLambda)(implicit ctx: Context): Type =
     if (mt.isResultDependent) {
       def replacement(tp: Type) =
         if (ctx.mode.is(Mode.TypevarsMissContext) ||

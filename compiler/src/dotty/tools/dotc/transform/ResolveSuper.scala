@@ -80,13 +80,13 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
   }
 
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context) = {
-    val meth = ddef.symbol.asTerm
+    val meth = ddef.symbol
     if (meth.isSuperAccessor && !meth.is(Deferred)) {
       assert(ddef.rhs.isEmpty)
       val cls = meth.owner.asClass
       val ops = new MixinOps(cls, thisPhase)
       import ops._
-      polyDefDef(meth, forwarder(rebindSuper(cls, meth)))
+      polyDefDef(meth.asTerm, forwarder(rebindSuper(cls, meth)))
     }
     else ddef
   }

@@ -385,7 +385,7 @@ object Inliner {
       ctx.isAfterTyper ||
       ctx.reporter.hasErrors
 
-    hasBodyToInline(meth.symbol) && !suppressInline
+    hasBodyToInline(meth) && !suppressInline
   }
 
   /** Is `meth` a transparent method that should be inlined in this context? */
@@ -485,7 +485,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** A buffer for bindings that define proxies for actual arguments */
   val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
 
-  computeParamBindings(meth.info, targs, argss)
+  computeParamBindings(meth.info.hiBound, targs, argss)
 
   private def newSym(name: Name, flags: FlagSet, info: Type): Symbol =
     ctx.newSymbol(ctx.owner, name, flags, info, coord = call.pos)
@@ -520,12 +520,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    *  proxies to this-references.
    */
   private def computeParamBindings(tp: Type, targs: List[Tree], argss: List[List[Tree]]): Unit = tp match {
-    case tp: PolyType =>
+    case tp: TypeLambda =>
       (tp.paramNames, targs).zipped.foreach { (name, arg) =>
         paramBinding(name) = arg.tpe.stripTypeVar
       }
       computeParamBindings(tp.resultType, Nil, argss)
-    case tp: MethodType =>
+    case tp: TermLambda =>
       (tp.paramNames, tp.paramInfos, argss.head).zipped.foreach { (name, paramtp, arg) =>
         paramBinding(name) = arg.tpe.dealias match {
           case _: SingletonType if isIdempotentExpr(arg) => arg.tpe
@@ -834,7 +834,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
 
     override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = {
-      val cond1 = typed(tree.cond, defn.BooleanType)
+      val cond1 = typedExpr(tree.cond, defn.BooleanType)
       cond1.tpe.widenTermRefExpr match {
         case ConstantType(Constant(condVal: Boolean)) =>
           var selected = typed(if (condVal) tree.thenp else tree.elsep, pt)
@@ -862,8 +862,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
        */
       def betaReduce(tree: Tree) = tree match {
         case Apply(Select(cl @ closureDef(ddef), nme.apply), args) if defn.isFunctionType(cl.tpe) =>
-          ddef.tpe.widen match {
-            case mt: MethodType if ddef.vparamss.head.length == args.length =>
+          ddef.tpe.widen.toLambda match {
+            case mt: TermLambda if ddef.vparamss.head.length == args.length =>
               val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
               val argSyms = (mt.paramNames, mt.paramInfos, args).zipped.map { (name, paramtp, arg) =>
                 arg.tpe.dealias match {
