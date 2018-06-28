@@ -7,7 +7,10 @@ import org.junit.Assert._
 import dotc.util.SourceFile
 import model.internal._
 
-class PackageStructure extends DottyDocTest {
+class PackageStructureFromSourceTest extends PackageStructureBase with CheckFromSource
+class PackageStructureFromTastyTest extends PackageStructureBase with CheckFromTasty
+
+abstract class PackageStructureBase extends DottyDocTest {
   @Test def multipleCompilationUnits = {
     val source1 = new SourceFile(
       "TraitA.scala",
@@ -27,7 +30,9 @@ class PackageStructure extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source1 :: source2 :: Nil) { packages =>
+    val classNames = "scala.A" :: "scala.B" :: Nil
+
+    check(classNames, source1 :: source2 :: Nil) { packages =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(tA, tB), _, _, _, _) =>
           assert(
@@ -59,7 +64,9 @@ class PackageStructure extends DottyDocTest {
       |trait B
       """.stripMargin)
 
-    checkSources(source1 :: source2 :: Nil) { packages =>
+    val classNames = "scala.collection.A" :: "scala.collection.B" :: Nil
+
+    check(classNames, source1 :: source2 :: Nil) { packages =>
       packages("scala.collection") match {
         case PackageImpl(_, _, "scala.collection", List(tA, tB), _, _, _, _) =>
           assert(

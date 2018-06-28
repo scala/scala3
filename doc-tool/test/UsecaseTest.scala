@@ -10,7 +10,12 @@ import model.internal._
 import model.references._
 import util.syntax._
 
-class UsecaseTest extends DottyDocTest {
+class UsecaseFromSourceTest extends UsecaseBase with CheckFromSource
+
+// Use case from TASTY do not work at the moment
+// class UsecaseFromTastyTest extends UsecaseBase with CheckFromTasty
+
+abstract class UsecaseBase extends DottyDocTest {
   @Test def simpleUsecase = {
     val source = new SourceFile(
       "DefWithUseCase.scala",
@@ -27,7 +32,9 @@ class UsecaseTest extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Test"
+
+    check(className :: Nil, source :: Nil) { packages =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
@@ -71,7 +78,9 @@ class UsecaseTest extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Test"
+
+    check(className :: Nil, source :: Nil) { packages =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
@@ -116,7 +125,9 @@ class UsecaseTest extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Test"
+
+    check(className :: Nil, source :: Nil) { packages =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
@@ -164,7 +175,9 @@ class UsecaseTest extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Iterable"
+
+    check(className :: Nil, source :: Nil) { packages =>
       packages("scala") match {
       case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
         val List(map: Def) = trt.members
@@ -207,7 +220,9 @@ class UsecaseTest extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Iterable"
+
+    check(className :: Nil, source :: Nil) { packages =>
       packages("scala") match {
       case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
         val List(map: Def) = trt.members

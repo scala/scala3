@@ -10,7 +10,7 @@ import dotc.core.Contexts.{ Context, ContextBase, FreshContext }
 import dotc.core.Comments.{ ContextDoc, ContextDocstrings }
 import dottydoc.core.ContextDottydoc
 
-class MarkdownTests extends DottyDocTest {
+class MarkdownTests extends DottyDocTest with CheckFromSource {
   override implicit val ctx: FreshContext = {
     // TODO: check if can reuse parent instead of copy-paste
     val base = new ContextBase

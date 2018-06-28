@@ -2,11 +2,15 @@ package dotty.tools
 package dottydoc
 
 import model.internal._
+import dotc.util.SourceFile
 
 import org.junit.Test
 import org.junit.Assert._
 
-class TestSimpleComments extends DottyDocTest {
+class SimpleCommentsFromSourceTest extends SimpleCommentsBase with CheckFromSource
+class SimpleCommentsFromTastyTest extends SimpleCommentsBase with CheckFromTasty
+
+abstract class SimpleCommentsBase extends DottyDocTest {
 
   @Test def cookCommentEmptyClass = {
     val source =
@@ -31,15 +35,19 @@ class TestSimpleComments extends DottyDocTest {
   }
 
   @Test def simpleComment = {
-    val source =
+    val source = new SourceFile(
+      "HelloWorld.scala",
       """
       |package scala
       |
       |/** Hello, world! */
       |trait HelloWorld
       """.stripMargin
+    )
 
-    checkSource(source) { packages =>
+    val className = "scala.HelloWorld"
+
+    check(className :: Nil, source :: Nil) { packages =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")

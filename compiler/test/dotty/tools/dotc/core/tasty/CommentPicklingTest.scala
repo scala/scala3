@@ -10,16 +10,11 @@ import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
+import dotty.tools.IOUtils
 
-import dotty.tools.vulpix.{TestConfiguration, ParallelTesting}
+import dotty.tools.vulpix.TestConfiguration
 
-import java.io.IOException
-import java.nio.file.{FileSystems, FileVisitOption, FileVisitResult, FileVisitor, Files, Path}
-import java.nio.file.attribute.BasicFileAttributes
-import java.util.EnumSet
-
-import scala.collection.JavaConverters.asScalaIteratorConverter
-import scala.concurrent.duration.{Duration, DurationInt}
+import java.nio.file.{Files, Path}
 
 import org.junit.Test
 import org.junit.Assert.{assertEquals, assertFalse, fail}
@@ -86,7 +81,7 @@ class CommentPicklingTest {
   }
 
   private def compileAndUnpickle[T](sources: List[String])(fn: (List[tpd.Tree], Context) => T) = {
-    inTempDirectory { tmp =>
+    IOUtils.inTempDirectory { tmp =>
       val sourceFiles = sources.zipWithIndex.map {
         case (src, id) =>
           val path = tmp.resolve(s"Src$id.scala").toAbsolutePath
@@ -102,7 +97,7 @@ class CommentPicklingTest {
       Main.process(options.all, reporter)
       assertFalse("Compilation failed.", reporter.hasErrors)
 
-      val tastyFiles = getAll(tmp, "glob:**.tasty")
+      val tastyFiles = IOUtils.getAll(tmp, "glob:**.tasty")
       val unpicklingOptions = unpickleOptions
         .withClasspath(out.toAbsolutePath.toString)
         .and("dummy") // Need to pass a dummy source file name
@@ -124,22 +119,6 @@ class CommentPicklingTest {
       }
       fn(trees, ctx)
     }
-  }
-
-  private def inTempDirectory[T](fn: Path => T): T = {
-    val temp = Files.createTempDirectory("temp")
-    try fn(temp)
-    finally {
-      val allFiles = getAll(temp, "glob:**").sortBy(_.toAbsolutePath.toString).reverse
-      allFiles.foreach(Files.delete(_))
-    }
-  }
-
-  private def getAll(base: Path, pattern: String): List[Path] = {
-    val paths = Files.walk(base)
-    val matcher = FileSystems.getDefault.getPathMatcher(pattern)
-    try paths.filter(matcher.matches).iterator().asScala.toList
-    finally paths.close()
   }
 
 }

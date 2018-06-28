@@ -9,7 +9,10 @@ import model._
 import model.internal._
 import model.references._
 
-class Constructors extends DottyDocTest {
+class ConstructorsFromSourceTest extends ConstructorsBase with CheckFromSource
+class ConstructorsFromTastyTest extends ConstructorsBase with CheckFromTasty
+
+abstract class ConstructorsBase extends DottyDocTest {
   @Test def singleClassConstructor = {
     val source = new SourceFile (
       "Class.scala",
@@ -20,7 +23,9 @@ class Constructors extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Class"
+
+    check(className :: Nil, source :: Nil) { packages =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(cls: Class), _, _, _, _) =>
           cls.constructors.headOption match {
@@ -42,7 +47,9 @@ class Constructors extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Class"
+
+    check(className :: Nil, source :: Nil) { packages =>
       packages("scala") match {
         case PackageImpl(_, _,  _, List(cls: Class), _, _, _, _) =>
           cls.constructors match {
@@ -67,7 +74,9 @@ class Constructors extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Class"
+
+    check(className :: Nil, source :: Nil) { packages =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(cls: Class), _, _, _, _) =>
           cls.constructors match {
@@ -99,7 +108,9 @@ class Constructors extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Class"
+
+    check(className :: Nil, source :: Nil) { packages =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(cls: Class), _, _, _, _) =>
           cls.constructors match {
@@ -137,7 +148,9 @@ class Constructors extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Class"
+
+    check(className :: Nil, source :: Nil) { packages =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(cls: CaseClass, obj: Object), _, _, _, _) =>
           cls.constructors match {
@@ -170,7 +183,9 @@ class Constructors extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Trait"
+
+    check(className :: Nil, source :: Nil) { packages =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           trt.traitParams match {
