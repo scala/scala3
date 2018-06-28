@@ -3,8 +3,12 @@ package dottydoc
 
 import core._
 import core.transform._
+import dotc.core.Contexts.Context
 import dotc.core.Phases.Phase
-import dotc.Compiler
+import dotc.core.Mode
+import dotc.{Compiler, Run}
+
+import dotty.tools.dotc.fromtasty.{ReadTastyTreesFromClasses, TASTYRun}
 
 /** Custom Compiler with phases for the documentation tool
  *
@@ -19,6 +23,15 @@ import dotc.Compiler
  *  3. Serialize to JS object
  */
 class DocCompiler extends Compiler {
+
+  override def newRun(implicit ctx: Context): Run = {
+    if (ctx.settings.fromTasty.value) {
+      reset()
+      new TASTYRun(this, ctx.addMode(Mode.ReadPositions).addMode(Mode.ReadComments))
+    } else {
+      super.newRun
+    }
+  }
 
   override protected def frontendPhases: List[List[Phase]] =
     List(new DocFrontEnd) :: Nil

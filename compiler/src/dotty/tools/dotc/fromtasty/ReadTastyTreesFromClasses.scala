@@ -33,7 +33,7 @@ class ReadTastyTreesFromClasses extends FrontEnd {
       }
 
       def alreadyLoaded(): None.type = {
-        ctx.warning(s"sclass $className cannot be unpickled because it is already loaded")
+        ctx.warning(s"class $className cannot be unpickled because it is already loaded")
         None
       }
 
