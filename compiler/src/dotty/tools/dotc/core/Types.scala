@@ -2955,6 +2955,16 @@ object Types {
   extends LambdaTypeCompanion[TermName, Type, LT] {
     def toPInfo(tp: Type)(implicit ctx: Context): Type = tp
     def syntheticParamName(n: Int) = nme.syntheticParamName(n)
+
+    def checkValid(mt: TermLambda)(implicit ctx: Context): mt.type = {
+      if (Config.checkTermLambdas)
+        for ((paramInfo, idx) <- mt.paramInfos.zipWithIndex)
+          paramInfo.foreachPart {
+            case TermParamRef(`mt`, j) => assert(j < idx, mt)
+            case _ =>
+          }
+      mt
+    }
   }
 
   abstract class TypeLambdaCompanion[LT <: TypeLambda]
@@ -2967,6 +2977,8 @@ object Types {
   }
 
   abstract class MethodTypeCompanion extends TermLambdaCompanion[MethodType] { self =>
+    final def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
+      checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
 
     /** Produce method type from parameter symbols, with special mappings for repeated
      *  and inline parameters:
@@ -2986,19 +2998,6 @@ object Types {
       apply(params.map(_.name.asTermName))(
          tl => params.map(p => tl.integrate(params, paramInfo(p))),
          tl => tl.integrate(params, resultType))
-    }
-
-    final def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
-      checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
-
-    def checkValid(mt: MethodType)(implicit ctx: Context): mt.type = {
-      if (Config.checkMethodTypes)
-        for ((paramInfo, idx) <- mt.paramInfos.zipWithIndex)
-          paramInfo.foreachPart {
-            case TermParamRef(`mt`, j) => assert(j < idx, mt)
-            case _ =>
-          }
-      mt
     }
   }
 
@@ -3079,6 +3078,20 @@ object Types {
     protected def prefixString = "HKTypeLambda"
   }
 
+  class HKTermLambda(val paramNames: List[TermName])(
+      paramInfosExp: HKTermLambda => List[Type], resultTypeExp: HKTermLambda => Type)
+  extends HKLambda with TermLambda {
+    type This = HKTermLambda
+    def companion = HKTermLambda
+
+    val paramInfos: List[Type] = paramInfosExp(this)
+    val resType: Type = resultTypeExp(this)
+
+    assert(resType.isInstanceOf[TermType], this)
+
+    protected def prefixString = "HKTermLambda"
+  }
+
   /** The type of a polymorphic method. It has the same form as HKTypeLambda,
    *  except it applies to terms and parameters do not have variances.
    */
@@ -3152,6 +3165,14 @@ object Types {
         case rt =>
           expand(rt)
       }
+    }
+  }
+
+  object HKTermLambda extends TermLambdaCompanion[HKTermLambda] {
+    def apply(paramNames: List[TermName])(
+        paramInfosExp: HKTermLambda => List[Type],
+        resultTypeExp: HKTermLambda => Type)(implicit ctx: Context): HKTermLambda = {
+      checkValid(unique(new HKTermLambda(paramNames)(paramInfosExp, resultTypeExp)))
     }
   }
 
