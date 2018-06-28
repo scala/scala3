@@ -29,7 +29,8 @@ class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner
 
   private def parsedComment(ent: Entity)(implicit ctx: Context): Option[Comment] =
     getComment(ent.symbol).map { cmt =>
-      val parsed = parse(ent, ctx.docbase.packages, clean(cmt.raw), cmt.raw, cmt.pos)
+      val text = cmt.body
+      val parsed = parse(ent, ctx.docbase.packages, clean(text), text, cmt.pos)
 
       if (ctx.settings.wikiSyntax.value)
         WikiComment(ent, parsed, cmt.pos).comment

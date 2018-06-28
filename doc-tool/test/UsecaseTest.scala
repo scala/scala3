@@ -228,7 +228,7 @@ abstract class UsecaseBase extends DottyDocTest {
         val List(map: Def) = trt.members
         assert(map.comment.isDefined, "Lost comment in transformations")
 
-        val docstr = ctx.docbase.docstring(map.symbol).get.raw
+        val docstr = ctx.docbase.docstring(map.symbol).get.body
         assert(
           !docstr.contains("@usecase"),
           s"Comment should not contain usecase after stripping, but was:\n$docstr"

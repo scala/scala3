@@ -42,8 +42,17 @@ object Comments {
     * `@usecase` sections as well as functionality to map the `raw` docstring
     */
   abstract case class Comment(pos: Position, raw: String) { self =>
+    /** Has this comment been cooked or expanded? */
     def isExpanded: Boolean
 
+    /** The body of this comment, without the `@usecase` and `@define` sections. */
+    lazy val body: String =
+      removeSections(raw, "@usecase", "@define")
+
+    /**
+     * The `@usecase` sections of this comment.
+     * This is populated by calling `withUsecases` on this object.
+     */
     def usecases: List[UseCase]
 
     val isDocComment = raw.startsWith("/**")
@@ -53,21 +62,19 @@ object Comments {
       val usecases = self.usecases
     }
 
-    def withUsecases(implicit ctx: Context): Comment = new Comment(pos, stripUsecases) {
+    def withUsecases(implicit ctx: Context): Comment = new Comment(pos, raw) {
       val isExpanded = self.isExpanded
       val usecases = parseUsecases
     }
 
-    private[this] lazy val stripUsecases: String =
-      removeSections(raw, "@usecase", "@define")
-
     private[this] def parseUsecases(implicit ctx: Context): List[UseCase] =
-      if (!raw.startsWith("/**"))
-        List.empty[UseCase]
-      else
+      if (!isDocComment) {
+        Nil
+      } else {
         tagIndex(raw)
-        .filter { startsWithTag(raw, _, "@usecase") }
-        .map { case (start, end) => decomposeUseCase(start, end) }
+          .filter { startsWithTag(raw, _, "@usecase") }
+          .map { case (start, end) => decomposeUseCase(start, end) }
+      }
 
     /** Turns a usecase section into a UseCase, with code changed to:
      *  {{{
