@@ -393,6 +393,11 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
             // in '{ x } to '{ x$1.unary_~ } and go directly to `x$1`
             capturers(body.symbol)(body)
           }
+        case body: RefTree if !isType && !body.symbol.is(Method) && levelOf.get(body.symbol).contains(level) =>
+          // Optimization: avoid the full conversion when lifting automatically `x` of type `X`
+          // in '{ x } to '{ implicitly[quoted.Liftable[X]].toExpr(x$1).unary_~ } and go
+          // directly to `implicitly[quoted.Liftable[X]].toExpr(x$1)`
+          transform(liftValue(body))
         case _=>
           val (body1, splices) = nested(isQuote = true).split(body)
           pickledQuote(body1, splices, body.tpe, isType).withPos(quote.pos)
@@ -578,6 +583,8 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
             if (!isStage0Value(tree.symbol)) captureAndSplice(capturer(tree))
             else if (level == 0) capturer(tree)
             else captureAndSplice(liftValue(capturer(tree)))
+          case tree: RefTree if tree.isTerm && !tree.symbol.is(Method) && levelOf.get(tree.symbol).contains(level - 1) =>
+            transform(liftValue(tree).select(nme.UNARY_~))
           case Block(stats, _) =>
             val last = enteredSyms
             stats.foreach(markDef)
@@ -640,7 +647,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
           ctx.error(i"""
                   |
                   | The access would be accepted with the right Liftable, but
-                  | ${ctx.typer.missingArgMsg(liftable, reqType, "")}""")
+                  | ${ctx.typer.missingArgMsg(liftable, reqType, "")}""", tree.pos)
           EmptyTree
         case _ =>
           liftable.select("toExpr".toTermName).appliedTo(tree)
