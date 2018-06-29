@@ -400,7 +400,15 @@ class Definitions {
       List(AnyClass.typeRef), EmptyScope)
   lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
-  lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
+  lazy val SeqType: TypeRef = {
+    // We load SeqType from the alias in scala package object
+    //  - in 2.12: scala.collection.Seq
+    //  - in 2.13: scala.collection.immutable.Seq
+    val alias = ctx.base.staticRef("scala.Seq".toTypeName).requiredSymbol(_.isAliasType)
+    alias.info.classSymbol.typeRef
+  }
+
+  // lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
   def SeqClass(implicit ctx: Context) = SeqType.symbol.asClass
     lazy val Seq_applyR = SeqClass.requiredMethodRef(nme.apply)
     def Seq_apply(implicit ctx: Context) = Seq_applyR.symbol
