@@ -49,7 +49,7 @@ object NameOps {
     }
   }
 
-  implicit class NameDecorator[N <: Name](val name: N) extends AnyVal {
+  implicit class NameDecorator[N <: Name](private val name: N) extends AnyVal {
     import nme._
 
     def testSimple(f: SimpleName => Boolean): Boolean = name match {
@@ -271,7 +271,7 @@ object NameOps {
     }
   }
 
-  implicit class TermNameDecorator(val name: TermName) extends AnyVal {
+  implicit class TermNameDecorator(private val name: TermName) extends AnyVal {
     import nme._
 
     def setterName: TermName = name.exclude(FieldName) ++ str.SETTER_SUFFIX
