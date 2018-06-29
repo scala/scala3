@@ -1,0 +1,66 @@
+((arr: scala.Array[scala.Int], f: scala.Function1[scala.Int, scala.Unit]) => {
+  val size: scala.Int = arr.length
+  var i: scala.Int = 0
+  while (i.<(size)) {
+    val element: scala.Int = arr.apply(i)
+    f.apply(element)
+    i = i.+(1)
+  }
+})
+
+((arr: scala.Array[scala.Predef.String], f: scala.Function1[scala.Predef.String, scala.Unit]) => {
+  val size: scala.Int = arr.length
+  var i: scala.Int = 0
+  while (i.<(size)) {
+    val element: java.lang.String = arr.apply(i)
+    f.apply(element)
+    i = i.+(1)
+  }
+})
+
+((arr: scala.Array[scala.Predef.String], f: scala.Function1[scala.Predef.String, scala.Unit]) => {
+  val size: scala.Int = arr.length
+  var i: scala.Int = 0
+  while (i.<(size)) {
+    val element: java.lang.String = arr.apply(i)
+    f.apply(element)
+    i = i.+(1)
+  }
+})
+
+((arr: scala.Array[scala.Int]) => {
+  val size: scala.Int = arr.length
+  var i: scala.Int = 0
+  while (i.<(size)) {
+    val element: scala.Int = arr.apply(i)
+
+    ((i: scala.Int) => java.lang.System.out.println(i)).apply(element)
+    i = i.+(1)
+  }
+})
+
+((arr: scala.Array[scala.Int], f: scala.Function1[scala.Int, scala.Unit]) => {
+  val size: scala.Int = arr.length
+  var i: scala.Int = 0
+  if (size.%(3).!=(0)) throw new scala.Exception("...") else ()
+  while (i.<(size)) {
+    f.apply(arr.apply(i))
+    f.apply(arr.apply(i.+(1)))
+    f.apply(arr.apply(i.+(2)))
+    i = i.+(3)
+  }
+})
+
+((arr: scala.Array[scala.Int], f: scala.Function1[scala.Int, scala.Unit]) => {
+  val size: scala.Int = arr.length
+  var i: scala.Int = 0
+  if (size.%(4).!=(0)) throw new scala.Exception("...") else ()
+  while (i.<(size)) {
+    f.apply(arr.apply(i.+(0)))
+    f.apply(arr.apply(i.+(1)))
+    f.apply(arr.apply(i.+(2)))
+    f.apply(arr.apply(i.+(3)))
+    ()
+    i = i.+(4)
+  }
+})
