@@ -29,16 +29,12 @@ object SyntaxHighlighting {
   val TypeColor       = Console.MAGENTA
   val AnnotationColor = Console.MAGENTA
 
-  private class NoReporter extends Reporter {
-    override def doReport(m: MessageContainer)(implicit ctx: Context): Unit = ()
-  }
-
   def highlight(in: String)(implicit ctx: Context): String = {
-    def freshCtx = ctx.fresh.setReporter(new NoReporter)
+    def freshCtx = ctx.fresh.setReporter(Reporter.NoReporter)
     if (in.isEmpty || ctx.settings.color.value == "never") in
     else {
       implicit val ctx = freshCtx
-      val source = new SourceFile("<highlighting>", in.toCharArray)
+      val source = new SourceFile("<highlighting>", in)
       val colorAt = Array.fill(in.length)(NoColor)
 
       def highlightRange(from: Int, to: Int, color: String) =
