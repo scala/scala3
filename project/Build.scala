@@ -1138,13 +1138,21 @@ object Build {
     publishArtifact := false,
     packGenerateMakefile := false,
     packExpandedClasspath := true,
-    packResourceDir += (baseDirectory.value / "bin" -> "bin"),
     packArchiveName := "dotty-" + dottyVersion
   )
 
   lazy val dist = project.asDist(NonBootstrapped)
+    .settings(
+      packResourceDir += (baseDirectory.value / "bin" -> "bin"),
+    )
   lazy val `dist-bootstrapped` = project.asDist(Bootstrapped)
+    .settings(
+      packResourceDir += ((baseDirectory in dist).value / "bin" -> "bin"),
+    )
   lazy val `dist-optimised` = project.asDist(BootstrappedOptimised)
+    .settings(
+      packResourceDir += ((baseDirectory in dist).value / "bin" -> "bin"),
+    )
 
   // /** A sandbox to play with the Scala.js back-end of dotty.
   //  *
@@ -1237,7 +1245,9 @@ object Build {
       withCommonSettings.
       dependsOn(`dotty-interfaces`, dottyCompiler, dottyLibrary, dottyDoc).
       settings(commonDistSettings).
-      bootstrappedSettings(target := baseDirectory.value / "target") // override setting in commonBootstrappedSettings
+      bootstrappedSettings(
+        target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings 
+      )
 
     def withCommonSettings(implicit mode: Mode): Project = project.settings(mode match {
       case NonBootstrapped => commonNonBootstrappedSettings
