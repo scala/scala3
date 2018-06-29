@@ -73,7 +73,7 @@ object Implicits {
 
     private var SingletonClass: ClassSymbol = null
 
-    /** Widen type so that it is neither a singleton type nor it inherits from scala.Singleton. */
+    /** Widen type so that it is neither a singleton type nor a type that inherits from scala.Singleton. */
     private def widenSingleton(tp: Type)(implicit ctx: Context): Type = {
       if (SingletonClass == null) SingletonClass = defn.SingletonClass
       val wtp = tp.widenSingleton
