@@ -58,7 +58,11 @@ Standard-Section: "ASTs" TopLevelStat*
                   VALDEF         Length NameRef type_Term rhs_Term? Modifier*
                   DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
                                         Modifier*
-                  TYPEDEF        Length NameRef (type_Term | Template) Modifier*
+                  TYPEDEF        Length NameRef
+                                        ( type_Term
+                                        | Template
+                                        | TypeParam* Params* returnType_Term rhs_Term
+                                        ) Modifier*
                   OBJECTDEF      Length NameRef Template Modifier*
                   IMPORT         Length qual_Term Selector*
   Selector      = IMPORTED              name_NameRef
@@ -510,7 +514,8 @@ object TastyFormat {
        | ANDtpt
        | ORtpt
        | BYNAMEtpt
-       | BIND => true
+       | BIND
+       | APPLY => true
     case _ => false
   }
 

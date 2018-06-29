@@ -438,6 +438,7 @@ class TreeUnpickler(reader: TastyReader,
       var flags = givenFlags
       if (lacksDefinition && tag != PARAM) flags |= Deferred
       if (tag == DEFDEF) flags |= Method
+      if (tag == TYPEDEF && givenFlags.is(Transparent)) flags |= TypeMethod
       if (givenFlags is Module)
         flags = flags | (if (tag == VALDEF) ModuleValCreationFlags else ModuleClassCreationFlags)
       if (ctx.owner.isClass) {
@@ -754,9 +755,9 @@ class TreeUnpickler(reader: TastyReader,
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(localCtx)), sym)
 
       def DefDef(tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree) =
-         ta.assignType(
-            untpd.DefDef(sym.name.asTermName, tparams, vparamss, tpt, readRhs(localCtx)),
-            sym)
+        ta.assignType(
+          untpd.DefDef(sym.name, tparams, vparamss, tpt, readRhs(localCtx)),
+          sym)
 
       def TypeDef(rhs: Tree) =
         ta.assignType(untpd.TypeDef(sym.name.asTypeName, rhs), sym)
@@ -764,18 +765,23 @@ class TreeUnpickler(reader: TastyReader,
       def ta =  ctx.typeAssigner
 
       val name = readName()
+
+      def readDefDef() = {
+        val tparams = readParams[TypeDef](TYPEPARAM)(localCtx)
+        val vparamss = readParamss(localCtx)
+        val tpt = readTpt()(localCtx)
+        val typeParams = tparams.map(_.symbol.asType)
+        val valueParamss = ctx.normalizeIfConstructor(
+            vparamss.nestedMap(_.symbol.asTerm), name == nme.CONSTRUCTOR)
+        val resType = ctx.effectiveResultType(sym, typeParams, tpt.tpe)
+        sym.info = ctx.lambdaType(typeParams, valueParamss, resType, sym)
+        DefDef(tparams, vparamss, tpt)
+      }
+
       pickling.println(s"reading def of $name at $start")
       val tree: MemberDef = tag match {
         case DEFDEF =>
-          val tparams = readParams[TypeDef](TYPEPARAM)(localCtx)
-          val vparamss = readParamss(localCtx)
-          val tpt = readTpt()(localCtx)
-          val typeParams = tparams.map(_.symbol.asType)
-          val valueParamss = ctx.normalizeIfConstructor(
-              vparamss.nestedMap(_.symbol.asTerm), name == nme.CONSTRUCTOR)
-          val resType = ctx.effectiveResultType(sym, typeParams, tpt.tpe)
-          sym.info = ctx.termLambda(typeParams, valueParamss, resType, sym)
-          DefDef(tparams, vparamss, tpt)
+          readDefDef()
         case VALDEF =>
           val tpt = readTpt()(localCtx)
           sym.info = tpt.tpe
@@ -795,7 +801,10 @@ class TreeUnpickler(reader: TastyReader,
               else sym.registerCompanionMethod(nme.COMPANION_MODULE_METHOD, companion)
             }
             TypeDef(readTemplate(localCtx))
-          } else {
+          }
+          else if (sym.is(Transparent))
+            readDefDef()
+          else {
             sym.info = TypeBounds.empty // needed to avoid cyclic references when unpicklin rhs, see i3816.scala
             sym.setFlag(Provisional)
             val rhs = readTpt()(localCtx)
@@ -1337,8 +1346,13 @@ class TreeUnpickler(reader: TastyReader,
           case ALTERNATIVE =>
             untpd.Alternative(until(end)(readUntyped()))
           case DEFDEF =>
-            untpd.DefDef(readName(), readParams[TypeDef](TYPEPARAM), readParamss(), readUntyped(), readRhs())
-              .withMods(readMods())
+            var name = readName()
+            val tparams = readParams[TypeDef](TYPEPARAM)
+            val vparamss = readParamss()
+            val tpt = readUntyped()
+            untpd.DefDef(
+              if (untpd.isBounds(tpt)) name.toTypeName else name,
+              tparams, vparamss, tpt, readRhs()).withMods(readMods())
           case VALDEF | PARAM =>
             untpd.ValDef(readName(), readUntyped(), readRhs())
               .withMods(readMods())

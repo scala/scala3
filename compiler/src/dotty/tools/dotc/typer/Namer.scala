@@ -131,7 +131,7 @@ trait NamerContextOps { this: Context =>
       termParamss
 
   /** The method type corresponding to given parameters and result type */
-  def termLambda(typeParams: List[TypeSymbol], valueParamss: List[List[TermSymbol]], resultType: Type, sym: Symbol)(implicit ctx: Context): Type = {
+  def lambdaType(typeParams: List[TypeSymbol], valueParamss: List[List[TermSymbol]], resultType: Type, sym: Symbol)(implicit ctx: Context): Type = {
     val monotpe =
       (valueParamss :\ resultType) { (params, resultType) =>
         if (sym.isTerm) {
@@ -1247,7 +1247,7 @@ class Namer { typer: Typer =>
     def wrapMethType(restpe: Type): Type = {
       if (sym.isType) assert(restpe.isInstanceOf[TypeBounds], restpe)
       instantiateDependent(restpe, typeParams, termParamss)
-      ctx.termLambda(typeParams, termParamss, restpe, sym)
+      ctx.lambdaType(typeParams, termParamss, restpe, sym)
     }
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol

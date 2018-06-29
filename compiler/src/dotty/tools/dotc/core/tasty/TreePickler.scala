@@ -469,7 +469,8 @@ class TreePickler(pickler: TastyPickler) {
               withLength { pickleParams(vparams) }
             }
           }
-          pickleDef(DEFDEF, tree.symbol, tree.tpt, tree.rhs, pickleAllParams)
+          val tag = if (tree.symbol.isTerm) DEFDEF else TYPEDEF
+          pickleDef(tag, tree.symbol, tree.tpt, tree.rhs, pickleAllParams)
         case tree: TypeDef =>
           pickleDef(TYPEDEF, tree.symbol, tree.rhs)
         case tree: Template =>

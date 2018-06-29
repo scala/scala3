@@ -291,6 +291,12 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case _ => tree
   }
 
+  def isBounds(tree: Tree)(implicit ctx: Context) = tree match {
+    case tree: TypeBoundsTree => true
+    case TypedSplice(tree1) => tree1.tpe.isInstanceOf[TypeBounds]
+    case _ => false
+  }
+
   /** True iff definition is a val or def with no right-hand-side, or it
    *  is an abstract typoe declaration
    */
