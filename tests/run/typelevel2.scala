@@ -34,4 +34,15 @@ object Test extends App {
   def ii: Int = 2
   def nn: ToNat(ii) = S(S(Z)) // no expansion possible, since `ii` is of type `Int`.
   val ii1: Int = nn.toInt
+
+  type nth[F[_], T](n: Int) =
+    if n == 0 then T
+    else F[nth[F, T](n - 1)]
+
+  val nth0: nth[List, Int](0) = 2
+  val nth1: nth[Option, String](1) = Some("hi")
+  val nth3: nth[Seq, Boolean](3) = Seq(Seq(Seq(true, false)))
+  val nth0a: Int = nth0
+  val nth1a: Option[String] = nth1
+  val nth3a: Seq[Seq[Seq[Boolean]]] = nth3
 }

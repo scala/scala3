@@ -995,7 +995,7 @@ object Types {
 
     /** If this type is a typeref with a type lambda as alias or upper bound, widen to the lambda */
     final def toLambda(implicit ctx: Context): Type = widen match {
-      case tp: TypeRef if tp.info.hiBound.isInstanceOf[LambdaType] => tp.info.hiBound
+      case tp: TypeProxy if tp.superType.isInstanceOf[LambdaType] => tp.superType
       case tp => tp
     }
 

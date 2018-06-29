@@ -2158,14 +2158,12 @@ class Typer extends Namer
           false
       }
 
-      def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
-        case _: MethodOrPoly =>
+      def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp.toLambda match {
+        case _: LambdaType =>
           if (pt.args.lengthCompare(1) > 0 && isUnary(wtp) && ctx.canAutoTuple)
             adapt(tree, pt.tupled, locked)
           else
             tree
-        case wtp: TypeRef if wtp.underlying.hiBound.isInstanceOf[HKLambda] =>
-          tree
         case _ => tryInsertApplyOrImplicit(tree, pt, locked) {
           errorTree(tree, MethodDoesNotTakeParameters(tree))
         }
@@ -2489,8 +2487,9 @@ class Typer extends Namer
     }
 
     def adaptType(tp: Type): Tree = {
+      val isApplied = pt `eq` AnyTypeConstructorProto
       val tree1 =
-        if ((pt eq AnyTypeConstructorProto) || tp.typeParamSymbols.isEmpty) tree
+        if (isApplied || tp.typeParamSymbols.isEmpty) tree
         else {
           val tp1 =
             if (ctx.compilationUnit.isJava)
@@ -2507,7 +2506,7 @@ class Typer extends Namer
           case pt: TypeBounds if ctx.mode `is` Mode.Type => pt `contains` tree1.tpe
           case _ => tree1.tpe <:< pt
         }
-      if (Inliner.isInlineable(tree.symbol))
+      if (!isApplied && Inliner.isInlineable(tree.symbol))
         readaptSimplified {
           Inliner.inlineCall(tree, pt) match {
             case inlined: Inlined => TypeTree(inlined.tpe).withPos(tree.pos)

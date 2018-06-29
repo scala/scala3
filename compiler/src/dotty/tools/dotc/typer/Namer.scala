@@ -147,9 +147,13 @@ trait NamerContextOps { this: Context =>
         }
         else HKTermLambda.fromParams(params, resultType)
       }
-    if (typeParams.nonEmpty) PolyType.fromParams(typeParams, monotpe)
-    else if (valueParamss.isEmpty) ExprType(monotpe)
-    else monotpe
+    if (sym.isTerm)
+      if (typeParams.nonEmpty) PolyType.fromParams(typeParams, monotpe)
+      else if (valueParamss.isEmpty) ExprType(monotpe)
+      else monotpe
+    else
+      if (typeParams.nonEmpty) HKTypeLambda.fromParams(typeParams, monotpe)
+      else monotpe
   }
 
   /** Add moduleClass or sourceModule functionality to completer

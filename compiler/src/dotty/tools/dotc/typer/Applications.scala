@@ -255,7 +255,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         matchArgs(orderedArgs, methType.paramInfos, 0)
       case _ =>
         if (methType.isError) ok = false
-        else fail(s"$methString does not take parameters?")
+        else fail(s"$methString does not take parameters")
     }
 
     /** The application was successful */
@@ -691,7 +691,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
       val originalProto = new FunProto(tree.args, IgnoredProto(pt), this)(argCtx(tree))
-      val fun1 = typedExpr(tree.fun, originalProto)
+      val fun1 = typed(tree.fun, originalProto)(ctx.retractMode(Mode.Pattern))
 
       // Warning: The following lines are dirty and fragile. We record that auto-tupling was demanded as
       // a side effect in adapt. If it was, we assume the tupled proto-type in the rest of the application,

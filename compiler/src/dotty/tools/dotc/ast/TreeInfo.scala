@@ -578,6 +578,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           loop(fn, targss, args :: argss)
         case TypeApply(fn, targs) =>
           loop(fn, targs ::: targss, argss)
+        case AppliedTypeTree(fn, targs) =>
+          loop(fn, targs ::: targss, argss)
         case _ =>
           (tree, targss, argss)
       }
