@@ -1260,26 +1260,26 @@ object messages {
            |""".stripMargin
   }
 
-  case class OverloadedOrRecursiveMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  case class OverloadedOrRecursiveMethodNeedsResultType(method: Names.TermName)(implicit ctx: Context)
   extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
     val kind = "Syntax"
-    val msg = hl"""overloaded or recursive method ${tree} needs return type"""
+    val msg = hl"""overloaded or recursive method ${method} needs return type"""
     val explanation =
-      hl"""Case 1: ${tree} is overloaded
-          |If there are multiple methods named `${tree}` and at least one definition of
+      hl"""Case 1: ${method} is overloaded
+          |If there are multiple methods named `${method}` and at least one definition of
           |it calls another, you need to specify the calling method's return type.
           |
-          |Case 2: ${tree} is recursive
-          |If `${tree}` calls itself on any path, you need to specify its return type.
+          |Case 2: ${method} is recursive
+          |If `${method}` calls itself on any path, you need to specify its return type.
           |""".stripMargin
   }
 
-  case class RecursiveValueNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  case class RecursiveValueNeedsResultType(value: Names.TermName)(implicit ctx: Context)
   extends Message(RecursiveValueNeedsResultTypeID) {
     val kind = "Syntax"
-    val msg = hl"""recursive value ${tree} needs type"""
+    val msg = hl"""recursive value ${value} needs type"""
     val explanation =
-      hl"""The definition of `${tree}` is recursive and you need to specify its type.
+      hl"""The definition of `${value}` is recursive and you need to specify its type.
           |""".stripMargin
   }
 
