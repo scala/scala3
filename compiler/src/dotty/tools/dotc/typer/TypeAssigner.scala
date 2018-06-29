@@ -273,7 +273,7 @@ trait TypeAssigner {
    *   - any further information it needs to access to compute that type.
    */
   def assignType(tree: untpd.Ident, tp: Type)(implicit ctx: Context) =
-    tree.withType(normalizedType(tp))
+    tree.withType(tp)
 
   def assignType(tree: untpd.Select, qual: Tree)(implicit ctx: Context): Select = {
     def qualType = qual.tpe.widen
@@ -293,7 +293,7 @@ trait TypeAssigner {
       // is casted to T[] by javac. Since the return type of Array[T]#clone() is Array[T],
       // this is exactly what Erasure will do.
 
-      case _ => normalizedType(accessibleSelectionType(tree, qual))
+      case _ => accessibleSelectionType(tree, qual)
     }
     tree.withType(tp)
   }
