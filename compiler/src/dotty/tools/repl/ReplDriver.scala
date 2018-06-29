@@ -320,7 +320,7 @@ class ReplDriver(settings: Array[String],
 
     case Imports =>
       implicit val ctx = state.context
-      state.imports.foreach(i => out.println(SyntaxHighlighting.highlight(i.show))
+      state.imports.foreach(i => out.println(SyntaxHighlighting.highlight(i.show)))
       state
 
     case Load(path) =>
@@ -337,7 +337,7 @@ class ReplDriver(settings: Array[String],
     case TypeOf(expr) =>
       compiler.typeOf(expr)(newRun(state)).fold(
         displayErrors,
-        res => out.println(SyntaxHighlighting.highlight(res)(state.run.runContext))
+        res => out.println(SyntaxHighlighting.highlight(res)(state.context))
       )
       state
 
