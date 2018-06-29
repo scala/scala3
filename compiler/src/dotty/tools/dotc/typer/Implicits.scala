@@ -71,16 +71,19 @@ object Implicits {
     /** The implicit references */
     def refs: List[ImplicitRef]
 
+    private var SingletonClass: ClassSymbol = null
+
+    /** Widen type so that it is neither a singleton type nor it inherits from scala.Singleton. */
+    private def widenSingleton(tp: Type)(implicit ctx: Context): Type = {
+      if (SingletonClass == null) SingletonClass = defn.SingletonClass
+      val wtp = tp.widenSingleton
+      if (wtp.derivesFrom(SingletonClass)) defn.AnyType else wtp
+    }
+
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[Candidate] = track("filterMatching") {
 
       def refMatches(ref: TermRef)(implicit ctx: Context) = /*trace(i"refMatches $ref $pt")*/ {
-
-      	/** Widen type so that it is neither a singleton type nor it inherits from scala.Singleton. */
-        def widenSingleton(tp: Type): Type = {
-          val wtp = tp.widenSingleton
-          if (wtp.derivesFrom(defn.SingletonClass)) defn.AnyType else wtp
-        }
 
         def discardForView(tpw: Type, argType: Type): Boolean = tpw match {
           case mt: MethodType =>
@@ -150,7 +153,7 @@ object Implicits {
             val res = adjustSingletonArg(tp.resType)
             if (res `eq` tp.resType) tp else tp.derivedLambdaType(resType = res)
           case tp: MethodType =>
-            tp.derivedLambdaType(paramInfos = tp.paramInfos.map(widenSingleton))
+            tp.derivedLambdaType(paramInfos = tp.paramInfos.mapConserve(widenSingleton))
           case _ => tp
         }
 

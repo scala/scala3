@@ -37,6 +37,7 @@ object Mode {
    *  that TypeParamRefs can be sub- and supertypes of anything. See TypeComparer.
    */
   val TypevarsMissContext = newMode(4, "TypevarsMissContext")
+
   val CheckCyclic = newMode(5, "CheckCyclic")
 
   /** We are looking at the arguments of a supercall */
