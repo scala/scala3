@@ -17,18 +17,19 @@ class QuoteDriver extends Driver {
   private[this] val contextBase: ContextBase = new ContextBase
 
   def run[T](expr: Expr[T], settings: ToolboxSettings): T = {
-    val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
-
     val outDir: AbstractFile = settings.outDir match {
       case Some(out) =>
         val dir = Directory(out)
         dir.createDirectory()
         new PlainDirectory(Directory(out))
       case None =>
-        new VirtualDirectory("(memory)", None)
+        new VirtualDirectory("<quote compilation output>")
     }
 
-    val driver = new QuoteCompiler(outDir)
+    val (_, ctx0: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
+    val ctx = ctx0.fresh.setSetting(ctx0.settings.outputDir, outDir)
+
+    val driver = new QuoteCompiler
     driver.newRun(ctx).compileExpr(expr)
 
     val classLoader = new AbstractFileClassLoader(outDir, this.getClass.getClassLoader)

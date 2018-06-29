@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package config
 
 import java.io.File
-import dotty.tools.io.{ Directory, Path }
+import dotty.tools.io.{ Directory, PlainDirectory }
 
 import PathResolver.Defaults
 import rewrite.Rewrites
@@ -20,7 +20,8 @@ class ScalaSettings extends Settings.SettingGroup {
   val scansource = BooleanSetting("-scansource", "Scan source files to locate classes for which class-name != file-name")
 
   val classpath = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp"
-  val outputDir = PathSetting("-d", "directory|jar", "destination for generated classfiles.", ".")
+  val outputDir = OutputSetting("-d", "directory|jar", "destination for generated classfiles.",
+    new PlainDirectory(Directory(".")))
   val priorityclasspath = PathSetting("-priorityclasspath", "class path that takes precedence over all other paths (or testing only)", "")
 
   /** Other settings */
