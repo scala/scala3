@@ -350,7 +350,7 @@ class TreeUnpickler(reader: TastyReader,
                 case binder: LambdaType => binder.paramRefs(readNat())
               }
             case HOLE =>
-              readHole(end, isType = true).tpe
+              readHole(end).tpe
           }
         assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
         result
@@ -1148,7 +1148,7 @@ class TreeUnpickler(reader: TastyReader,
               val hi = if (currentAddr == end) lo else readTpt()
               TypeBoundsTree(lo, hi)
             case HOLE =>
-              readHole(end, isType = false)
+              readHole(end)
             case UNTYPEDSPLICE =>
               tpd.UntypedSplice(readUntyped()).withType(readType())
             case _ =>
@@ -1204,7 +1204,7 @@ class TreeUnpickler(reader: TastyReader,
       owner => new LazyReader(localReader, owner, ctx.mode, op)
     }
 
-    def readHole(end: Addr, isType: Boolean)(implicit ctx: Context): Tree = {
+    def readHole(end: Addr)(implicit ctx: Context): Tree = {
       val idx = readNat()
       val args = until(end)(readTerm())
       val splice = splices(idx)
@@ -1212,12 +1212,9 @@ class TreeUnpickler(reader: TastyReader,
         if (arg.isTerm) new TastyTreeExpr(arg)
         else new TreeType(arg)
       val reifiedArgs = args.map(wrap)
-      if (isType) {
-        val quotedType = splice.asInstanceOf[Seq[Any] => quoted.Type[_]](reifiedArgs)
-        PickledQuotes.quotedTypeToTree(quotedType)
-      } else {
-        val quotedExpr = splice.asInstanceOf[Seq[Any] => quoted.Expr[_]](reifiedArgs)
-        PickledQuotes.quotedExprToTree(quotedExpr)
+      splice.asInstanceOf[Seq[Any] => Any](reifiedArgs) match {
+        case spliced: quoted.Type[_] => PickledQuotes.quotedTypeToTree(spliced)
+        case spliced: quoted.Expr[_] => PickledQuotes.quotedExprToTree(spliced)
       }
     }
 // ------ Reading untyped trees --------------------------------------------
