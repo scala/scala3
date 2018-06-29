@@ -1413,10 +1413,7 @@ class Typer extends Namer
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
     vparamss1.foreach(checkNoForwardDependencies)
-    if (sym is Implicit) {
-      checkImplicitParamsNotSingletons(vparamss1)
-      checkImplicitConversionDefOK(sym)
-    }
+    if (sym is Implicit) checkImplicitConversionDefOK(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
 
     var rhsCtx = ctx

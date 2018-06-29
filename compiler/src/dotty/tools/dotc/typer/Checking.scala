@@ -598,15 +598,6 @@ trait Checking {
         defn.ObjectType
     }
 
-  /** Check that a non-implicit parameter making up the first parameter section of an
-   *  implicit conversion is not a singleton type.
-   */
-  def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = vparamss match {
-    case (vparam :: Nil) :: _ if !(vparam.symbol is Implicit) =>
-      checkNotSingleton(vparam.tpt, " to be parameter type of an implicit conversion")
-    case _ =>
-  }
-
   /** If `sym` is an implicit conversion, check that implicit conversions are enabled.
    *  @pre  sym.is(Implicit)
    */
@@ -948,7 +939,6 @@ trait NoChecking extends ReChecking {
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassType(tp: Type, pos: Position, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
-  override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = ()
   override def checkImplicitConversionUseOK(sym: Symbol, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
