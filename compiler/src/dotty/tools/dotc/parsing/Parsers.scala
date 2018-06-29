@@ -1448,7 +1448,7 @@ object Parsers {
       }
       if (in.token == LPAREN && (!inClassConstrAnnots || isLegalAnnotArg))
         parArgumentExprss(
-          atPos(in.offset) { Apply(fn, parArgumentExprs()) }
+          atPos(startOffset(fn)) { Apply(fn, parArgumentExprs()) }
         )
       else fn
     }
