@@ -988,20 +988,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals(method.show, "method foo")
     }
 
-    @Test def expectedTypeBoundOrEquals =
-      checkMessagesAfter(FrontEnd.name) {
-        """object typedef {
-          |  type asd > Seq
-          |}
-        """.stripMargin
-      }.expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-
-        assertMessageCount(1, messages)
-        val ExpectedTypeBoundOrEquals(found) :: Nil = messages
-        assertEquals(Tokens.IDENTIFIER, found)
-      }
-
   @Test def classAndCompanionNameClash =
     checkMessagesAfter(RefChecks.name) {
       """
