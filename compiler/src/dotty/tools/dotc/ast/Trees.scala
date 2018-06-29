@@ -434,11 +434,13 @@ object Trees {
     def forwardTo = qual
   }
 
-  abstract class GenericApply[-T >: Untyped] extends ProxyTree[T] with TermTree[T] {
+  abstract class GenericApply[-T >: Untyped] extends ProxyTree[T] {
     type ThisTree[-T >: Untyped] <: GenericApply[T]
     val fun: Tree[T]
     val args: List[Tree[T]]
     def forwardTo = fun
+    override def isTerm = fun.isTerm
+    override def isType = fun.isType
   }
 
   /** fun(args) */
