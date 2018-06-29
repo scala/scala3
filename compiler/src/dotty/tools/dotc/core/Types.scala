@@ -954,7 +954,7 @@ object Types {
      */
     final def widen(implicit ctx: Context): Type = widenSingleton match {
       case tp: ExprType => tp.resultType.widen
-      case tp: TypeOf => tp.underlyingTp
+      case tp: TypeOf => tp.underlyingTp.widen
       case tp => tp
     }
 
