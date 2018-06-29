@@ -14,7 +14,7 @@ class UntpdTreeMapTest extends DottyTest {
   import untpd._
 
   def parse(code: String): Tree = {
-    val (_, stats) = new Parser(new SourceFile("<meta>", code.toCharArray)).templateStatSeq()
+    val (_, stats) = new Parser(new SourceFile("<meta>", code)).templateStatSeq()
     stats match { case List(stat) => stat; case stats => untpd.Thicket(stats) }
   }
 

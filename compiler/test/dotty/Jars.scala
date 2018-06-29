@@ -18,16 +18,17 @@ object Jars {
   lazy val scalaAsm: String =
     findJarFromRuntime("scala-asm-6.0.0-scala-1")
 
+  /** JLine Jar */
+  lazy val jline: String =
+    findJarFromRuntime("jline-3.7.0")
+
   /** Dotty extras classpath from env or properties */
   val dottyExtras: List[String] = sys.env.get("DOTTY_EXTRAS")
     .map(_.split(":").toList).getOrElse(Properties.dottyExtras)
 
-  /** Dotty REPL dependencies */
-  val dottyReplDeps: List[String] = dottyLib :: dottyExtras
-
   /** Dotty test dependencies */
   val dottyTestDeps: List[String] =
-    dottyLib :: dottyCompiler :: dottyInterfaces :: dottyExtras
+    dottyLib :: dottyCompiler :: dottyInterfaces :: jline :: dottyExtras
 
   /** Dotty runtime with compiler dependencies, used for quoted.Expr.run */
   lazy val dottyRunWithCompiler: List[String] =
