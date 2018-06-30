@@ -122,10 +122,11 @@ final class JLineTerminal extends java.io.Closeable {
           // ENTER means SUBMIT when
           //   - cursor is at end (discarding whitespaces)
           //   - and, input line is complete
-          val cursorIsAtEnd = line.indexWhere(!_.isWhitespace, from = cursor) >= 0
-          if (cursorIsAtEnd || ParseResult.isIncomplete(line)) incomplete()
-          else defaultParsedLine
-            // using dummy values, resulting parsed line is probably unused
+          val cursorIsAtEnd = line.indexWhere(!_.isWhitespace, from = cursor) < 0
+          if (cursorIsAtEnd && !ParseResult.isIncomplete(line))
+            defaultParsedLine // using dummy values, resulting parsed line is probably unused
+          else
+            incomplete()
 
         case ParseContext.COMPLETE =>
           // Parse to find completions (typically after a Tab).
