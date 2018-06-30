@@ -41,13 +41,9 @@ class GenBCode extends Phase {
 
   private[this] var myOutput: AbstractFile = _
 
-  protected def outputDir(implicit ctx: Context): AbstractFile = {
-    if (myOutput eq null) {
-      val path = Directory(ctx.settings.outputDir.value)
-      myOutput =
-        if (path.extension == "jar") JarArchive.create(path)
-        else new PlainDirectory(path)
-    }
+  private def outputDir(implicit ctx: Context): AbstractFile = {
+    if (myOutput eq null)
+      myOutput = ctx.settings.outputDir.value
     myOutput
   }
 

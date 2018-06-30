@@ -28,20 +28,9 @@ import scala.collection.mutable
  *  in conjunction with a specialized class loader in order to load virtual
  *  classfiles.
  */
-class ReplCompiler(val directory: AbstractFile) extends Compiler {
-
-
-  /** A GenBCode phase that outputs to a virtual directory */
-  private class REPLGenBCode extends GenBCode {
-    override def phaseName = "genBCode"
-    override def outputDir(implicit ctx: Context) = directory
-  }
-
+class ReplCompiler extends Compiler {
   override protected def frontendPhases: List[List[Phase]] =
     Phases.replace(classOf[FrontEnd], _ => new REPLFrontEnd :: Nil, super.frontendPhases)
-
-  override protected def backendPhases: List[List[Phase]] =
-    List(new REPLGenBCode) :: Nil
 
   def newRun(initCtx: Context, objectIndex: Int) = new Run(this, initCtx) {
     override protected[this] def rootContext(implicit ctx: Context) =

@@ -6,7 +6,7 @@ import scala.util.{ Try, Success, Failure }
 import reflect.ClassTag
 import core.Contexts._
 import scala.annotation.tailrec
-import dotty.tools.io.{ Directory, File, Path }
+import dotty.tools.io.{ AbstractFile, Directory, JarArchive, PlainDirectory, File, Path }
 
 // import annotation.unchecked
   // Dotty deviation: Imports take precedence over definitions in enclosing package
@@ -22,6 +22,7 @@ object Settings {
   val ListTag = ClassTag(classOf[List[_]])
   val VersionTag = ClassTag(classOf[ScalaVersion])
   val OptionTag = ClassTag(classOf[Option[_]])
+  val OutputTag = ClassTag(classOf[AbstractFile])
 
   class SettingsState(initialValues: Seq[Any]) {
     private[this] var values = ArrayBuffer(initialValues: _*)
@@ -140,14 +141,14 @@ object Settings {
           else if (!choices.contains(argRest))
             fail(s"$arg is not a valid choice for $name", args)
           else update(argRest, args)
-        case (StringTag, arg :: args) if name == "-d" =>
-          Path(arg) match {
-            case _: Directory =>
-              update(arg, args)
-            case p if p.extension == "jar" =>
-              update(arg, args)
-            case _ =>
-              fail(s"'$arg' does not exist or is not a directory", args)
+        case (OutputTag, arg :: args) =>
+          val path = Directory(arg)
+          val isJar = path.extension == "jar"
+          if (!isJar && !path.isDirectory)
+            fail(s"'$arg' does not exist or is not a directory or .jar file", args)
+          else {
+            val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
+            update(output, args)
           }
         case (StringTag, arg2 :: args2) =>
           update(arg2, args2)
@@ -275,11 +276,14 @@ object Settings {
     def MultiStringSetting(name: String, helpArg: String, descr: String): Setting[List[String]] =
       publish(Setting(name, descr, Nil, helpArg))
 
+    def OutputSetting(name: String, helpArg: String, descr: String, default: AbstractFile): Setting[AbstractFile] =
+      publish(Setting(name, descr, default, helpArg))
+
     def PathSetting(name: String, descr: String, default: String): Setting[String] =
       publish(Setting(name, descr, default))
 
     def PathSetting(name: String, helpArg: String, descr: String, default: String): Setting[String] =
-        publish(Setting(name, descr, default, helpArg))
+      publish(Setting(name, descr, default, helpArg))
 
     def PhasesSetting(name: String, descr: String, default: String = ""): Setting[List[String]] =
       publish(Setting(name, descr, if (default.isEmpty) Nil else List(default)))

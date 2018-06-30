@@ -80,17 +80,11 @@ class ReplDriver(settings: Array[String],
    */
   protected[this] def resetToInitial(): Unit = {
     rootCtx = initialCtx
-    val outDir: AbstractFile = {
-      if (rootCtx.settings.outputDir.isDefault(rootCtx))
-        new VirtualDirectory("(memory)", None)
-      else {
-        val path = Directory(rootCtx.settings.outputDir.value(rootCtx))
-        assert(path.isDirectory)
-        new PlainDirectory(path)
-      }
-    }
-    compiler = new ReplCompiler(outDir)
-    rendering = new Rendering(compiler, classLoader)
+    if (rootCtx.settings.outputDir.isDefault(rootCtx))
+      rootCtx = rootCtx.fresh
+        .setSetting(rootCtx.settings.outputDir, new VirtualDirectory("<REPL compilation output>"))
+    compiler = new ReplCompiler
+    rendering = new Rendering(classLoader)
   }
 
   private[this] var rootCtx: Context = _
