@@ -104,7 +104,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   SELECTtpt             NameRef qual_Term
                   SINGLETONtpt          ref_Term
                   REFINEDtpt     Length underlying_Term refinement_Stat*
-                  APPLIEDtpt     Length tycon_Term arg_Term*
+                  APPLYtpt       Length tycon_Term arg_Term*
+                  TYPEAPPLYtpt   Length tycon_Term arg_Term*
                   POLYtpt        Length TypeParam* body_Term
                   TYPEBOUNDStpt  Length low_Term high_Term?
                   ANNOTATEDtpt   Length underlying_Term fullAnnotation_Term
@@ -247,7 +248,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion = 9
+  val MajorVersion = 10
   val MinorVersion = 0
 
   /** Tags used to serialize names */
@@ -409,7 +410,7 @@ object TastyFormat {
   final val REFINEDtype = 158
   final val REFINEDtpt = 159
   final val APPLIEDtype = 160
-  final val APPLIEDtpt = 161
+  final val TYPEAPPLYtpt = 161
   final val TYPEBOUNDS = 162
   final val TYPEBOUNDStpt = 163
   final val ANDtype = 164
@@ -423,7 +424,7 @@ object TastyFormat {
   final val ANNOTATION = 172
   final val TERMREFin = 173
   final val TYPEREFin = 174
-  final val OBJECTDEF = 175
+  final val APPLYtpt = 175
 
   // In binary: 101100EI
   // I = implicit method type
@@ -432,6 +433,7 @@ object TastyFormat {
   final val IMPLICITMETHODtype = 177
   final val ERASEDMETHODtype = 178
   final val ERASEDIMPLICITMETHODtype = 179
+  final val OBJECTDEF = 180
 
   final val UNTYPEDSPLICE = 199
 
@@ -507,15 +509,15 @@ object TastyFormat {
        | SELECTtpt
        | SINGLETONtpt
        | REFINEDtpt
-       | APPLIEDtpt
+       | APPLYtpt
+       | TYPEAPPLYtpt
        | LAMBDAtpt
        | TYPEBOUNDStpt
        | ANNOTATEDtpt
        | ANDtpt
        | ORtpt
        | BYNAMEtpt
-       | BIND
-       | APPLY => true
+       | BIND => true
     case _ => false
   }
 
@@ -632,7 +634,8 @@ object TastyFormat {
     case REFINEDtype => "REFINEDtype"
     case REFINEDtpt => "REFINEDtpt"
     case APPLIEDtype => "APPLIEDtype"
-    case APPLIEDtpt => "APPLIEDtpt"
+    case APPLYtpt => "APPLYtpt"
+    case TYPEAPPLYtpt => "TYPEAPPLYtpt"
     case TYPEBOUNDS => "TYPEBOUNDS"
     case TYPEBOUNDStpt => "TYPEBOUNDStpt"
     case TYPEALIAS => "TYPEALIAS"

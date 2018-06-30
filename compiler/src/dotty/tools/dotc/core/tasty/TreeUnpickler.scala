@@ -1123,7 +1123,9 @@ class TreeUnpickler(reader: TastyReader,
               val parent = readTpt()
               val refinements = readStats(refineCls, end)(localContext(refineCls))
               RefinedTypeTree(parent, refinements, refineCls)
-            case APPLIEDtpt =>
+            case APPLYtpt =>
+              tpd.Apply(readTpt(), until(end)(readTerm()))
+            case TYPEAPPLYtpt =>
               // If we do directly a tpd.AppliedType tree we might get a
               // wrong number of arguments in some scenarios reading F-bounded
               // types. This came up in #137 of collection strawman.
@@ -1374,7 +1376,7 @@ class TreeUnpickler(reader: TastyReader,
             untpd.Import(readUntyped(), readSelectors())
           case REFINEDtpt =>
             untpd.RefinedTypeTree(readUntyped(), until(end)(readUntyped()))
-          case APPLIEDtpt =>
+          case TYPEAPPLYtpt =>
             untpd.AppliedTypeTree(readUntyped(), until(end)(readUntyped()))
           case ANDtpt =>
             untpd.AndTypeTree(readUntyped(), readUntyped())
