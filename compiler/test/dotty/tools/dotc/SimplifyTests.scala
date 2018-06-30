@@ -11,13 +11,9 @@ class SimplifyPosTests extends SimplifyTests(optimise = true)
 class SimplifyNegTests extends SimplifyTests(optimise = false)
 
 abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
-  override protected def initializeCtx(c: FreshContext): Unit = {
-    super.initializeCtx(c)
-    if (optimise) {
-      val flags = Array("-optimise") // :+ "-Xprint:simplify"
-      val summary = CompilerCommand.distill(flags)(c)
-      c.setSettings(summary.sstate)
-    }
+  override def initCtx = {
+    val ctx0 = super.initCtx
+    ctx0.setSetting(ctx0.settings.optimise, optimise)
   }
 
   def check(source: String, expected: String, shared: String = ""): Unit = {

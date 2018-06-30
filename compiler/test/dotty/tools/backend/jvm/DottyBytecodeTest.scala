@@ -1,7 +1,9 @@
-package dotty.tools
+package dotty
+package tools
 package backend.jvm
 
 import dotc.core.Contexts.{Context, ContextBase}
+import dotc.core.Comments.{ContextDoc, ContextDocstrings}
 import dotc.core.Phases.Phase
 import dotc.Compiler
 
@@ -11,19 +13,13 @@ import asm._
 import asm.tree._
 import scala.collection.JavaConverters._
 
-import io.JavaClassPath
+import io.{AbstractFile, JavaClassPath, VirtualDirectory}
 import scala.collection.JavaConverters._
 import scala.tools.asm.{ClassWriter, ClassReader}
 import scala.tools.asm.tree._
 import java.io.{File => JFile, InputStream}
 
-class TestGenBCode(val outDir: String) extends GenBCode {
-  override def phaseName: String = "testGenBCode"
-  val virtualDir = new Directory(outDir, None)
-  override def outputDir(implicit ctx: Context) = virtualDir
-}
-
-trait DottyBytecodeTest extends DottyTest {
+trait DottyBytecodeTest {
   import AsmNode._
   import ASMConverters._
 
@@ -45,32 +41,23 @@ trait DottyBytecodeTest extends DottyTest {
     val javaString     = "java/lang/String"
   }
 
-  private def bCodeCheckingComp(testPhase: TestGenBCode)(check: Directory => Unit) = {
-    class AssertionChecker extends Phase {
-      def phaseName = "assertionChecker"
-      def run(implicit ctx: Context): Unit = check(testPhase.virtualDir)
-    }
-    new Compiler {
-      override protected def backendPhases: List[List[Phase]] =
-        List(testPhase) ::
-        List(new AssertionChecker) ::
-        Nil
-    }
+  def initCtx = {
+    val ctx0 = (new ContextBase).initialCtx.fresh
+    val outputDir = new VirtualDirectory("<DottyBytecodeTest output>")
+    ctx0.setSetting(ctx0.settings.classpath, Jars.dottyLib)
+    ctx0.setProperty(ContextDoc, new ContextDocstrings)
+    ctx0.setSetting(ctx0.settings.outputDir, outputDir)
   }
-
-  private def outPath(obj: Any) =
-      "/genBCodeTest" + math.abs(obj.hashCode) + System.currentTimeMillis
 
   /** Checks source code from raw string */
-  def checkBCode(source: String)(assertion: Directory => Unit) = {
-    val comp = bCodeCheckingComp(new TestGenBCode(outPath(source)))(assertion)
-    comp.newRun.compile(source)
-  }
+  def checkBCode(source: String)(checkOutput: AbstractFile => Unit): Unit = {
+    implicit val ctx: Context = initCtx
 
-  /** Checks actual _files_ referenced in `sources` list */
-  def checkBCode(sources: List[String])(assertion: Directory => Unit) = {
-    val comp = bCodeCheckingComp(new TestGenBCode(outPath(sources)))(assertion)
-    comp.newRun.compile(sources)
+    val compiler = new Compiler
+    val run = compiler.newRun
+    compiler.newRun.compile(source)
+
+    checkOutput(ctx.settings.outputDir.value)
   }
 
   protected def loadClassNode(input: InputStream, skipDebugInfo: Boolean = true): ClassNode = {
