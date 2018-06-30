@@ -17,4 +17,9 @@ object Test extends App {
     else S[ToNat(n - 1)]
 
   type ToNat = Int  // error: double definition
+
+  type Foo[T](n: Int)(m: Int) = Int // error: cannot be curried
+
+  type Bar(implicit m: Int) = Int // error: cannot be implicit
+  type Baz(erased m: Int) = Int // error: cannot be erased
 }

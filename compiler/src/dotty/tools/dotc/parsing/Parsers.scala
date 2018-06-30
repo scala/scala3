@@ -2200,7 +2200,7 @@ object Parsers {
         Block(stats, Literal(Constant(())))
       }
 
-    /** TypeDcl  ::=  id [TypTypeParamClause] {DefParamClause} TypeBounds ‘=’ TypeRHS
+    /** TypeDcl  ::=  id [TypTypeParamClause] [DefParamClause] TypeBounds ‘=’ TypeRHS
      *             |  id [HkTypeParamClause] TypeBounds
      */
     def typeDefOrDcl(start: Offset, mods: Modifiers): Tree = {
@@ -2209,6 +2209,7 @@ object Parsers {
         val name = ident().toTypeName
         val tparams = typeParamClauseOpt(ParamOwner.Type)
         val vparamss = paramClauses(ParamOwner.Type)
+        if (vparamss.length > 1) syntaxError(i"type definitions cannot have multiple parameter clauses")
         val isBounded = in.token == SUPERTYPE || in.token == SUBTYPE
         val bounds = typeBounds()
         val res =

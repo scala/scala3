@@ -313,7 +313,7 @@ ValDcl            ::=  ids ‘:’ Type                                         
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 DefDcl            ::=  DefSig [‘:’ Type]                                        DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
 DefSig            ::=  id [DefTypeParamClause] DefParamClauses
-TypeDcl           ::=  id [TypTypeParamClause] {DefParamClause} TypeBounds      DefDef(name, tparams, vparamss, bounds, rhs)
+TypeDcl           ::=  id [TypTypeParamClause] [DefParamClause] TypeBounds      DefDef(name, tparams, vparamss, bounds, rhs)
                        ‘=’ TypeRHS
                     |  id [HkTypeParamClause] TypeBounds                        TypeDef(name, tparams, bounds)
 
