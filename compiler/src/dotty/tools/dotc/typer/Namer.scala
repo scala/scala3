@@ -284,10 +284,14 @@ class Namer { typer: Typer =>
     def checkFlags(flags: FlagSet) =
       if (flags.isEmpty) flags
       else {
-        val (ok, adapted, kind) = tree match {
-          case tree: TypeDef => (flags.isTypeFlags, flags.toTypeFlags, "type")
-          case _ => (flags.isTermFlags, flags.toTermFlags, "value")
+        val isType = tree match {
+          case tree: TypeDef => true
+          case tree: DefDef => tree.name.isTypeName
+          case _ => false
         }
+        val (ok, adapted, kind) =
+          if (isType) (flags.isTypeFlags, flags.toTypeFlags, "type")
+          else (flags.isTermFlags, flags.toTermFlags, "value")
         if (!ok)
           ctx.error(i"modifier(s) `$flags' incompatible with $kind definition", tree.pos)
         adapted
