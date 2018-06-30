@@ -593,11 +593,13 @@ abstract class Tasty { tasty =>
   type LambdaType[ParamInfo <: TypeOrBounds] <: Type
   type MethodType <: LambdaType[Type]
   type PolyType <: LambdaType[TypeBounds]
+  type TermLambda <: LambdaType[Type]
   type TypeLambda <: LambdaType[TypeBounds]
 
   implicit def typeClassTag: ClassTag[Type]
   implicit def methodTypeClassTag: ClassTag[MethodType]
   implicit def polyTypeClassTag: ClassTag[PolyType]
+  implicit def termLambdaClassTag: ClassTag[TermLambda]
   implicit def typeLambdaClassTag: ClassTag[TypeLambda]
   implicit def recursiveTypeClassTag: ClassTag[RecursiveType]
 
@@ -616,6 +618,13 @@ abstract class Tasty { tasty =>
     def resultTpe(implicit ctx: Context): Type
   }
   implicit def PolyTypeDeco(tpt: PolyType): PolyTypeAPI
+
+  trait TermLambdaAPI {
+    def paramNames(implicit ctx: Context): List[String]
+    def paramTypes(implicit ctx: Context): List[Type]
+    def resultTpe(implicit ctx: Context): Type
+  }
+  implicit def TermLambdaDeco(tpt: TermLambda): TermLambdaAPI
 
   trait TypeLambdaAPI {
     def paramNames(implicit ctx: Context): List[String]
@@ -712,6 +721,11 @@ abstract class Tasty { tasty =>
     val PolyType: PolyTypeExtractor
     abstract class PolyTypeExtractor {
       def unapply(x: PolyType)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)]
+    }
+
+    val TermLambda: TermLambdaExtractor
+    abstract class TermLambdaExtractor {
+      def unapply(x: TermLambda)(implicit ctx: Context): Option[(List[String], List[Type], Type)]
     }
 
     val TypeLambda: TypeLambdaExtractor

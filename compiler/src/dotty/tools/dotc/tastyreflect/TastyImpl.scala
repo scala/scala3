@@ -759,12 +759,14 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
   type LambdaType[ParamInfo <: TypeOrBounds] = Types.LambdaType { type PInfo = ParamInfo }
   type MethodType = Types.MethodType
   type PolyType = Types.PolyType
+  type TermLambda = Types.TermLambda
   type TypeLambda = Types.TypeLambda
 
   def typeClassTag: ClassTag[Type] = implicitly[ClassTag[Type]]
   def recursiveTypeClassTag: ClassTag[RecursiveType] = implicitly[ClassTag[RecursiveType]]
   def methodTypeClassTag: ClassTag[MethodType] = implicitly[ClassTag[MethodType]]
   def polyTypeClassTag: ClassTag[PolyType] = implicitly[ClassTag[PolyType]]
+  def termLambdaClassTag: ClassTag[TermLambda] = implicitly[ClassTag[TermLambda]]
   def typeLambdaClassTag: ClassTag[TypeLambda] = implicitly[ClassTag[TypeLambda]]
 
   def MethodTypeDeco(tpe: MethodType): MethodTypeAPI = new MethodTypeAPI {
@@ -778,6 +780,12 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
   def PolyTypeDeco(tpe: Types.PolyType): PolyTypeAPI = new PolyTypeAPI {
     def paramNames(implicit ctx: Context): List[String] = tpe.paramNames.map(_.toString)
     def paramTypes(implicit ctx: Context): List[TypeBounds] = tpe.paramInfos
+    def resultTpe(implicit ctx: Context): Type = tpe.resType
+  }
+
+  def TermLambdaDeco(tpe: Types.TermLambda): TermLambdaAPI = new TermLambdaAPI {
+    def paramNames(implicit ctx: Context): List[String] = tpe.paramNames.map(_.toString)
+    def paramTypes(implicit ctx: Context): List[Type] = tpe.paramInfos
     def resultTpe(implicit ctx: Context): Type = tpe.resType
   }
 
@@ -924,6 +932,13 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
     object PolyType extends PolyTypeExtractor {
       def unapply(x: PolyType)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] = x match {
         case x: PolyType => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
+        case _ => None
+      }
+    }
+
+    object TermLambda extends TermLambdaExtractor {
+      def unapply(x: TermLambda)(implicit ctx: Context): Option[(List[String], List[Type], Type)] = x match {
+        case x: TermLambda => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
         case _ => None
       }
     }
