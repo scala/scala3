@@ -446,8 +446,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
                 // of an `AndType` can lead to a cascade of subtyping checks
                 // This twist is needed to make collection/generic/ParFactory.scala compile
                 fourthTry || compareRefinedSlow
-              case tp1: HKTypeLambda =>
-                // HKTypeLambdas do not have members.
+              case tp1: HKLambda =>
+                // HKLambdas do not have members.
                 fourthTry
               case _ =>
                 compareRefinedSlow || fourthTry
@@ -534,16 +534,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         either(recur(tp1, tp21), recur(tp1, tp22)) || fourthTry
       case tp2: MethodType =>
         def compareMethod = tp1 match {
-          case tp1: MethodType => compareMethodOrPoly(tp1, tp2)
+          case tp1: MethodType => compareLambdaTypes(tp1, tp2)
           case _ => false
         }
         compareMethod
-      case tp2: PolyType =>
-        def comparePoly = tp1 match {
-          case tp1: PolyType => compareMethodOrPoly(tp1, tp2)
+      case tp2: LambdaType => // either HKTermLambda or PolyType
+        def compareLambda = tp1 match {
+          case tp1: LambdaType if tp1.companion `eq` tp2.companion => compareLambdaTypes(tp1, tp2)
           case _ => false
         }
-        comparePoly
+        compareLambda
       case tp2 @ ExprType(restpe2) =>
         def compareExpr = tp1 match {
           // We allow ()T to be a subtype of => T.
@@ -582,7 +582,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         fourthTry
     }
 
-    def compareMethodOrPoly(tp1: MethodOrPoly, tp2: MethodOrPoly) =
+    def compareLambdaTypes(tp1: LambdaType, tp2: LambdaType) =
       (tp1.signature consistentParams tp2.signature) &&
       matchingParams(tp1, tp2) &&
       (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
@@ -1177,7 +1177,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
   /** Do lambda types `lam1` and `lam2` have parameters that have the same types
    *  and the same implicit status? (after renaming one set to the other)
    */
-  def matchingParams(lam1: MethodOrPoly, lam2: MethodOrPoly): Boolean = {
+  def matchingParams(lam1: LambdaType, lam2: LambdaType): Boolean = {
     /** Are `syms1` and `syms2` parameter lists with pairwise equivalent types? */
     def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
       case formal1 :: rest1 =>
