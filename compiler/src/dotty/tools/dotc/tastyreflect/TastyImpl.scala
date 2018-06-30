@@ -669,7 +669,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
     object Applied extends AppliedExtractor {
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, List[TypeOrBoundsTree])] = x match {
-        case x: tpd.AppliedTypeTree @unchecked => Some(x.tpt, x.args)
+        case x: tpd.TypeApply @unchecked => Some(x.fun, x.args)
         case _ => None
       }
     }

@@ -130,7 +130,7 @@ RefinedType       ::=  WithType {[nl] Refinement}                               
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
 AnnotType         ::=  AppliedType {Annotation}                                 Annotated(t, annot)
 AppliedType       ::=  SimpleType {ParArgumentExprs}                            Apply(t, args)
-SimpleType        ::=  SimpleType TypeArgs                                      AppliedTypeTree(t, args)
+SimpleType        ::=  SimpleType TypeArgs                                      TypeApply(t, args)
                     |  SimpleType ‘#’ id                                        Select(t, name)
                     |  StableId
                     |  [‘-’ | ‘+’ | ‘~’ | ‘!’] StableId                         PrefixOp(expr, op)

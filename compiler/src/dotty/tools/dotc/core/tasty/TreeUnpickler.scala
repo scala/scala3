@@ -1131,7 +1131,7 @@ class TreeUnpickler(reader: TastyReader,
               // types. This came up in #137 of collection strawman.
               val tycon = readTpt()
               val args = until(end)(readTpt())
-              untpd.AppliedTypeTree(tycon, args).withType(tycon.tpe.safeAppliedTo(args.tpes))
+              untpd.TypeApply(tycon, args).withType(tycon.tpe.safeAppliedTo(args.tpes))
             case ANDtpt =>
               val tpt1 = readTpt()
               val tpt2 = readTpt()
@@ -1376,8 +1376,6 @@ class TreeUnpickler(reader: TastyReader,
             untpd.Import(readUntyped(), readSelectors())
           case REFINEDtpt =>
             untpd.RefinedTypeTree(readUntyped(), until(end)(readUntyped()))
-          case TYPEAPPLYtpt =>
-            untpd.AppliedTypeTree(readUntyped(), until(end)(readUntyped()))
           case ANDtpt =>
             untpd.AndTypeTree(readUntyped(), readUntyped())
           case ORtpt =>

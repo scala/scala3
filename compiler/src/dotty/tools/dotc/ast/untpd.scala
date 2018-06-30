@@ -286,7 +286,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def AndTypeTree(left: Tree, right: Tree): AndTypeTree = new AndTypeTree(left, right)
   def OrTypeTree(left: Tree, right: Tree): OrTypeTree = new OrTypeTree(left, right)
   def RefinedTypeTree(tpt: Tree, refinements: List[Tree]): RefinedTypeTree = new RefinedTypeTree(tpt, refinements)
-  def AppliedTypeTree(tpt: Tree, args: List[Tree]): AppliedTypeTree = new AppliedTypeTree(tpt, args)
   def LambdaTypeTree(tparams: List[TypeDef], body: Tree): LambdaTypeTree = new LambdaTypeTree(tparams, body)
   def ByNameTypeTree(result: Tree): ByNameTypeTree = new ByNameTypeTree(result)
   def TypeBoundsTree(lo: Tree, hi: Tree): TypeBoundsTree = new TypeBoundsTree(lo, hi)
@@ -309,9 +308,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    */
   def New(tpt: Tree, argss: List[List[Tree]])(implicit ctx: Context): Tree = {
     val (tycon, targs) = tpt match {
-      case AppliedTypeTree(tycon, targs) =>
+      case TypeApply(tycon, targs) =>
         (tycon, targs)
-      case TypedSplice(AppliedTypeTree(tycon, targs)) =>
+      case TypedSplice(TypeApply(tycon, targs)) =>
         (TypedSplice(tycon), targs map (TypedSplice(_)))
       case TypedSplice(tpt1: tpd.Tree) =>
         val tycon = tpt1.tpe.typeConstructor
@@ -336,9 +335,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case _: Apply => tpt
     case _ => Apply(tpt, Nil)
   }
-
-  def AppliedTypeTree(tpt: Tree, arg: Tree): AppliedTypeTree =
-    AppliedTypeTree(tpt, arg :: Nil)
 
   def TypeTree(tpe: Type)(implicit ctx: Context): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
 

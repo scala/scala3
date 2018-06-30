@@ -105,7 +105,7 @@ object JavaParsers {
     def javaLangObject(): Tree = javaLangDot(tpnme.Object)
 
     def arrayOf(tpt: Tree) =
-      AppliedTypeTree(Ident(nme.Array.toTypeName), List(tpt))
+      TypeApply(Ident(nme.Array.toTypeName), List(tpt))
 
     def unimplementedExpr(implicit ctx: Context) =
       Select(Select(rootDot(nme.scala_), nme.Predef), nme.???)
@@ -230,7 +230,7 @@ object JavaParsers {
     def convertToTypeId(tree: Tree): Tree = convertToTypeName(tree) match {
       case Some(t)  => t withPos tree.pos
       case _        => tree match {
-        case AppliedTypeTree(_, _) | Select(_, _) =>
+        case TypeApply(_, _) | Select(_, _) =>
           tree
         case _ =>
           syntaxError(IdentifierExpected(tree.show), tree.pos)
@@ -327,7 +327,7 @@ object JavaParsers {
         val args = repsep(() => typeArg(), COMMA)
         acceptClosingAngle()
         atPos(t1.pos.start) {
-          AppliedTypeTree(t1, args)
+          TypeApply(t1, args)
         }
       } else t
     }
@@ -835,7 +835,7 @@ object JavaParsers {
       accept(RBRACE)
       /*
       val superclazz =
-        AppliedTypeTree(javaLangDot(tpnme.Enum), List(enumType))
+        TypeApply(javaLangDot(tpnme.Enum), List(enumType))
         */
       val superclazz = Apply(TypeApply(
         Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), List(enumType)),

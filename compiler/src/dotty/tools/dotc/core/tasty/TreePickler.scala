@@ -373,10 +373,7 @@ class TreePickler(pickler: TastyPickler) {
           }
         case TypeApply(fun, args) =>
           writeByte(if (tree.isType) TYPEAPPLYtpt else TYPEAPPLY)
-          withLength {
-            pickleTree(fun)
-            args.foreach(pickleTpt)
-          }
+          withLength { pickleTree(fun); args.foreach(pickleTpt) }
         case Literal(const1) =>
           pickleConstant {
             tree.tpe match {
@@ -523,9 +520,6 @@ class TreePickler(pickler: TastyPickler) {
             refinements.foreach(preRegister)
             withLength { pickleTree(parent); refinements.foreach(pickleTree) }
           }
-        case AppliedTypeTree(tycon, args) =>
-          writeByte(TYPEAPPLYtpt)
-          withLength { pickleTree(tycon); args.foreach(pickleTree) }
         case AndTypeTree(tp1, tp2) =>
           writeByte(ANDtpt)
           withLength { pickleTree(tp1); pickleTree(tp2) }
@@ -818,9 +812,6 @@ class TreePickler(pickler: TastyPickler) {
       case RefinedTypeTree(parent, refinements) =>
         writeByte(REFINEDtpt)
         withLength { pickleTpt(parent); refinements.foreach(pickleTerm) }
-      case AppliedTypeTree(tycon, args) =>
-        writeByte(TYPEAPPLYtpt)
-        withLength { pickleTpt(tycon); args.foreach(pickleTpt) }
       case AndTypeTree(tp1, tp2) =>
         writeByte(ANDtpt)
         withLength { pickleTpt(tp1); pickleTpt(tp2) }

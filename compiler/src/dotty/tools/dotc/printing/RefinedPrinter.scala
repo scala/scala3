@@ -261,7 +261,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       changePrec(GlobalPrec) { keywordStr("for ") ~ Text(enums map enumText, "; ") ~ sep ~ toText(expr) }
 
     def cxBoundToText(bound: untpd.Tree): Text = bound match { // DD
-      case AppliedTypeTree(tpt, _) => " : " ~ toText(tpt)
+      case TypeApply(tpt, _) => " : " ~ toText(tpt)
       case untpd.Function(_, tpt) => " <% " ~ toText(tpt)
     }
 
@@ -379,8 +379,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         changePrec(OrPrec) { toText(l) ~ " | " ~ toText(r) }
       case RefinedTypeTree(tpt, refines) =>
         toTextLocal(tpt) ~ " " ~ blockText(refines)
-      case AppliedTypeTree(tpt, args) =>
-        toTextLocal(tpt) ~ "[" ~ Text(args map argText, ", ") ~ "]"
       case LambdaTypeTree(tparams, body) =>
         changePrec(GlobalPrec) {
           tparamsText(tparams) ~ " -> " ~ toText(body)

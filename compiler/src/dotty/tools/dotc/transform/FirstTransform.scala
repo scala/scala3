@@ -153,10 +153,10 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     if (tree.isType) toTypeTree(tree) else constToLiteral(tree)
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context) =
-    constToLiteral(tree)
+    if (tree.isType) toTypeTree(tree) else constToLiteral(tree)
 
   override def transformApply(tree: Apply)(implicit ctx: Context) =
-    constToLiteral(foldCondition(tree))
+    if (tree.isType) toTypeTree(tree) else constToLiteral(foldCondition(tree))
 
   override def transformTyped(tree: Typed)(implicit ctx: Context) =
     constToLiteral(tree)

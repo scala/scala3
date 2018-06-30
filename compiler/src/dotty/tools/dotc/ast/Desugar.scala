@@ -357,7 +357,7 @@ object desugar {
     val classTycon: Tree = new TypeRefTree // watching is set at end of method
 
     def appliedTypeTree(tycon: Tree, args: List[Tree]) =
-      (if (args.isEmpty) tycon else AppliedTypeTree(tycon, args))
+      (if (args.isEmpty) tycon else TypeApply(tycon, args))
         .withPos(cdef.pos.startPos)
 
     def isHK(tparam: Tree): Boolean = tparam match {
@@ -371,7 +371,7 @@ object desugar {
         val targ = refOfDef(tparam)
         def fullyApplied(tparam: Tree): Tree = tparam match {
           case TypeDef(_, LambdaTypeTree(tparams, body)) =>
-            AppliedTypeTree(targ, tparams.map(_ => TypeBoundsTree(EmptyTree, EmptyTree)))
+            TypeApply(targ, tparams.map(_ => TypeBoundsTree(EmptyTree, EmptyTree)))
           case TypeDef(_, rhs: DerivedTypeTree) =>
             fullyApplied(rhs.watched)
           case _ =>
@@ -1113,7 +1113,7 @@ object desugar {
         Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
       case InfixOp(l, op, r) =>
         if (ctx.mode is Mode.Type)
-          AppliedTypeTree(op, l :: r :: Nil) // op[l, r]
+          TypeApply(op, l :: r :: Nil) // op[l, r]
         else {
           assert(ctx.mode is Mode.Pattern) // expressions are handled separately by `binop`
           Apply(op, l :: r :: Nil) // op(l, r)
@@ -1122,7 +1122,7 @@ object desugar {
         if ((ctx.mode is Mode.Type) && !op.isBackquoted && op.name == tpnme.raw.STAR) {
           val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType
           Annotated(
-            AppliedTypeTree(ref(seqType), t),
+            TypeApply(ref(seqType), t :: Nil),
             New(ref(defn.RepeatedAnnotType), Nil :: Nil))
         } else {
           assert(ctx.mode.isExpr || ctx.reporter.hasErrors || ctx.mode.is(Mode.Interactive), ctx.mode)
@@ -1138,7 +1138,7 @@ object desugar {
           ctx.error(TupleTooLong(ts), tree.pos)
           unitLiteral
         } else if (arity == 1) ts.head
-        else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
+        else if (ctx.mode is Mode.Type) TypeApply(ref(tupleTypeRef), ts)
         else if (arity == 0) unitLiteral
         else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
       case WhileDo(cond, body) =>

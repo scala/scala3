@@ -127,7 +127,7 @@ object ScriptParsers {
       )
 
       // def main
-      def mainParamType = AppliedTypeTree(Ident(tpnme.Array), List(Ident(tpnme.String)))
+      def mainParamType = TypeApply(Ident(tpnme.Array), List(Ident(tpnme.String)))
       def mainParameter = List(ValDef(Modifiers(Param), "argv", mainParamType, EmptyTree))
       def mainSetArgv   = List(ValDef(Modifiers(), "args", TypeTree(), Ident("argv")))
       def mainNew       = makeNew(Nil, emptyValDef, stmts, List(Nil), NoPosition, NoPosition)

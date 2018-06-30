@@ -33,9 +33,8 @@ import dotty.tools.dotc.transform.ValueClasses._
 object Checking {
   import tpd._
 
-  /** A general checkBounds method that can be used for TypeApply nodes as
-   *  well as for AppliedTypeTree nodes. Also checks that type arguments to
-   *  *-type parameters are fully applied.
+  /** A general checkBounds method that can be used for TypeApply nodes in term and type form.
+   *  Also checks that type arguments to *-type parameters are fully applied.
    */
   def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context): Unit = {
     (args, boundss).zipped.foreach { (arg, bound) =>
@@ -51,8 +50,6 @@ object Checking {
   }
 
   /** Check that type arguments `args` conform to corresponding bounds in `tl`
-   *  Note: This does not check the bounds of AppliedTypeTrees. These
-   *  are handled by method checkBounds in FirstTransform
    */
   def checkBounds(args: List[tpd.Tree], tl: TypeLambda)(implicit ctx: Context): Unit =
     checkBounds(args, tl.paramInfos, _.substParams(tl, _))
@@ -64,8 +61,8 @@ object Checking {
    *     Unreducible applications correspond to general existentials, and we
    *     cannot handle those.
    */
-  def checkAppliedType(tree: AppliedTypeTree, boundsCheck: Boolean)(implicit ctx: Context) = {
-    val AppliedTypeTree(tycon, args) = tree
+  def checkAppliedType(tree: TypeApply, boundsCheck: Boolean)(implicit ctx: Context) = {
+    val TypeApply(tycon, args) = tree
     // If `args` is a list of named arguments, return corresponding type parameters,
     // otherwise return type parameters unchanged
     val tparams = tycon.tpe.typeParams

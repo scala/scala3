@@ -72,7 +72,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
    */
   def methPart(tree: Tree): Tree = stripApply(tree) match {
     case TypeApply(fn, _) => methPart(fn)
-    case AppliedTypeTree(fn, _) => methPart(fn) // !!! should not be needed
     case Block(stats, expr) => methPart(expr)
     case mp => mp
   }
@@ -152,7 +151,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   def isRepeatedParamType(tpt: Tree)(implicit ctx: Context): Boolean = tpt match {
     case ByNameTypeTree(tpt1) => isRepeatedParamType(tpt1)
     case tpt: TypeTree => tpt.typeOpt.isRepeatedParam
-    case AppliedTypeTree(Select(_, tpnme.REPEATED_PARAM_CLASS), _) => true
+    case TypeApply(Select(_, tpnme.REPEATED_PARAM_CLASS), _) => true
     case _ => false
   }
 
@@ -164,7 +163,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case AndTypeTree(tpt1, tpt2) => mayBeTypePat(tpt1) || mayBeTypePat(tpt2)
     case OrTypeTree(tpt1, tpt2) => mayBeTypePat(tpt1) || mayBeTypePat(tpt2)
     case RefinedTypeTree(tpt, refinements) => mayBeTypePat(tpt) || refinements.exists(_.isInstanceOf[Bind])
-    case AppliedTypeTree(tpt, args) => mayBeTypePat(tpt) || args.exists(_.isInstanceOf[Bind])
+    case TypeApply(tpt, args) => mayBeTypePat(tpt) || args.exists(_.isInstanceOf[Bind])
     case Select(tpt, _) => mayBeTypePat(tpt)
     case Annotated(tpt, _) => mayBeTypePat(tpt)
     case _ => false
@@ -577,8 +576,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         case Apply(fn, args) =>
           loop(fn, targss, args :: argss)
         case TypeApply(fn, targs) =>
-          loop(fn, targs ::: targss, argss)
-        case AppliedTypeTree(fn, targs) =>
           loop(fn, targs ::: targss, argss)
         case _ =>
           (tree, targss, argss)

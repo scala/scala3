@@ -519,7 +519,7 @@ class Typer extends Namer
         checkClassType(tpt1.tpe, tpt1.pos, traitReq = false, stablePrefixReq = true)
 
         tpt1 match {
-          case AppliedTypeTree(_, targs) =>
+          case TypeApply(_, targs) =>
             for (targ @ TypeBoundsTree(_, _) <- targs)
               ctx.error(WildcardOnTypeArgumentNotAllowedOnNew(), targ.pos)
           case _ =>
@@ -783,7 +783,7 @@ class Typer extends Namer
       val resTpt = TypeTree(mt.nonDependentResultApprox).withPos(body.pos)
       val typeArgs = params1.map(_.tpt) :+ resTpt
       val tycon = TypeTree(funCls.typeRef)
-      val core = assignType(cpy.AppliedTypeTree(tree)(tycon, typeArgs), tycon, typeArgs)
+      val core = assignType(cpy.TypeApply(tree)(tycon, typeArgs), tycon, typeArgs)
       val appMeth = ctx.newSymbol(ctx.owner, nme.apply, Synthetic | Deferred, mt)
       val appDef = assignType(
         untpd.DefDef(appMeth.name, Nil, List(params1), resultTpt, EmptyTree),
@@ -796,7 +796,7 @@ class Typer extends Namer
         typedDependent(args.asInstanceOf[List[ValDef]])(
           ctx.fresh.setOwner(ctx.newRefinedClassSymbol(tree.pos)).setNewScope)
       case _ =>
-        typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt)
+        typed(cpy.TypeApply(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt)
     }
   }
 
@@ -1206,18 +1206,18 @@ class Typer extends Namer
     assignType(cpy.RefinedTypeTree(tree)(tpt1, refinements1), tpt1, refinements1, refineCls)
   }
 
-  def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): Tree = track("typedAppliedTypeTree") {
-    val tpt1 = typed(tree.tpt, AnyTypeConstructorProto)(ctx.retractMode(Mode.Pattern))
-    val tparams = tpt1.tpe.typeParams
+  def typedAppliedTypeTree(tree: untpd.TypeApply)(implicit ctx: Context): Tree = track("typedAppliedTypeTree") {
+    val tycon = typed(tree.fun, AnyTypeConstructorProto)(ctx.retractMode(Mode.Pattern))
+    val tparams = tycon.tpe.typeParams
     if (tparams.isEmpty) {
-      ctx.error(TypeDoesNotTakeParameters(tpt1.tpe, tree.args), tree.pos)
-      tpt1
+      ctx.error(TypeDoesNotTakeParameters(tycon.tpe, tree.args), tree.pos)
+      tycon
     }
     else {
       var args = tree.args
       val args1 = {
         if (args.length != tparams.length) {
-          wrongNumberOfTypeArgs(tpt1.tpe, tparams, args, tree.pos)
+          wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.pos)
           args = args.take(tparams.length)
         }
         def typedArg(arg: untpd.Tree, tparam: ParamInfo) = {
@@ -1226,7 +1226,7 @@ class Typer extends Namer
               (if (untpd.isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.paramInfo)
             else
               (arg, WildcardType)
-          if (tpt1.symbol.isClass)
+          if (tycon.symbol.isClass)
             tparam match {
               case tparam: Symbol =>
                 tparam.ensureCompleted() // This is needed to get the test `compileParSetSubset` to work
@@ -1237,7 +1237,7 @@ class Typer extends Namer
             arg match {
               case TypeBoundsTree(EmptyTree, EmptyTree)
               if tparam.paramInfo.isLambdaSub &&
-                 tpt1.tpe.typeParamSymbols.nonEmpty &&
+                 tycon.tpe.typeParamSymbols.nonEmpty &&
                  !ctx.mode.is(Mode.Pattern) =>
                 // An unbounded `_` automatically adapts to type parameter bounds. This means:
                 // If we have wildcard application C[_], where `C` is a class replace
@@ -1245,7 +1245,7 @@ class Typer extends Namer
                 // type parameter in `C`, avoiding any referemces to parameters of `C`.
                 // The transform does not apply for patters, where empty bounds translate to
                 // wildcard identifiers `_` instead.
-                res = res.withType(avoid(tparam.paramInfo, tpt1.tpe.typeParamSymbols))
+                res = res.withType(avoid(tparam.paramInfo, tycon.tpe.typeParamSymbols))
               case _ =>
             }
             res
@@ -1264,7 +1264,7 @@ class Typer extends Namer
       }
       val args2 = preCheckKinds(args1, paramBounds)
       // check that arguments conform to bounds is done in phase PostTyper
-      assignType(cpy.AppliedTypeTree(tree)(tpt1, args2), tpt1, args2)
+      assignType(cpy.TypeApply(tree)(tycon, args2), tycon, args2)
     }
   }
 
@@ -1805,7 +1805,8 @@ class Typer extends Namer
           case tree: untpd.Return => typedReturn(tree)
           case tree: untpd.Try => typedTry(tree, pt)
           case tree: untpd.Throw => typedThrow(tree)
-          case tree: untpd.TypeApply => typedTypeApply(tree, pt)
+          case tree: untpd.TypeApply =>
+            if (tree.isTerm) typedTypeApply(tree, pt) else typedAppliedTypeTree(tree)
           case tree: untpd.Super => typedSuper(tree, pt)
           case tree: untpd.SeqLiteral => typedSeqLiteral(tree, pt)
           case tree: untpd.Inlined => typedInlined(tree, pt)
@@ -1814,7 +1815,6 @@ class Typer extends Namer
           case tree: untpd.AndTypeTree => typedAndTypeTree(tree)
           case tree: untpd.OrTypeTree => typedOrTypeTree(tree)
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)
-          case tree: untpd.AppliedTypeTree => typedAppliedTypeTree(tree)
           case tree: untpd.LambdaTypeTree => typedLambdaTypeTree(tree)(ctx.localContext(tree, NoSymbol).setNewScope)
           case tree: untpd.ByNameTypeTree => typedByNameTypeTree(tree)
           case tree: untpd.TypeBoundsTree => typedTypeBoundsTree(tree, pt)

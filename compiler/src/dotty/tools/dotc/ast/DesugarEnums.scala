@@ -143,7 +143,7 @@ object DesugarEnums {
 
     def extractType(t: Tree): Tree = t match {
       case Apply(t1, _) => extractType(t1)
-      case TypeApply(t1, ts) => AppliedTypeTree(extractType(t1), ts)
+      case TypeApply(t1, ts) => TypeApply(extractType(t1), ts)
       case Select(t1, nme.CONSTRUCTOR) => extractType(t1)
       case New(t1) => t1
       case t1 => t1

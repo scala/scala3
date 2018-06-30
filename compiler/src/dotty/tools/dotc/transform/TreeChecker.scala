@@ -249,7 +249,6 @@ class TreeChecker extends Phase with SymTransformer {
       // case tree: AndTypeTree =>
       // case tree: OrTypeTree =>
       // case tree: RefinedTypeTree =>
-      // case tree: AppliedTypeTree =>
       // case tree: ByNameTypeTree =>
       // case tree: TypeBoundsTree =>
       // case tree: Alternative =>

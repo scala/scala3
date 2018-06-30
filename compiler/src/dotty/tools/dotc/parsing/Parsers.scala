@@ -901,7 +901,7 @@ object Parsers {
     private def simpleTypeRest(t: Tree): Tree = in.token match {
       case HASH => simpleTypeRest(typeProjection(t))
       case LBRACKET => simpleTypeRest(atPos(startOffset(t)) {
-        AppliedTypeTree(checkWildcard(t), typeArgs(namedOK = false, wildOK = true)) })
+        TypeApply(checkWildcard(t), typeArgs(namedOK = false, wildOK = true)) })
       case _ => t
     }
 
@@ -996,7 +996,7 @@ object Parsers {
     def contextBounds(pname: TypeName): List[Tree] = in.token match {
       case COLON =>
         atPos(in.skipToken()) {
-          AppliedTypeTree(toplevelTyp(), Ident(pname))
+          TypeApply(toplevelTyp(), Ident(pname) :: Nil)
         } :: contextBounds(pname)
       case VIEWBOUND =>
         deprecationWarning("view bounds `<%' are deprecated, use a context bound `:' instead")
