@@ -172,7 +172,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           ("(" + (if (tp.isErasedMethod)   "erased "   else "")
                + (if (tp.isImplicitMethod) "implicit " else "")
           ) ~ paramsText(tp) ~
-          (if (tp.resultType.isInstanceOf[MethodType]) ")" else "): ") ~
+          (if (tp.isInstanceOf[TermLambda] ||
+               tp.resultType.isInstanceOf[MethodType]) ")" else "): ") ~
           toText(tp.resultType)
         }
       case tp: ExprType =>
@@ -326,7 +327,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           else dclsText(trueDecls)
         tparamsText ~ " extends " ~ toTextParents(tp.parents) ~ "{" ~ selfText ~ declsText ~
           "} at " ~ preText
-      case mt: MethodType =>
+      case mt: LambdaType =>
         toTextGlobal(mt)
       case tp: ExprType =>
         ": => " ~ toTextGlobal(tp.widenExpr)
