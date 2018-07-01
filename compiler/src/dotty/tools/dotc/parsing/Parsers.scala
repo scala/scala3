@@ -2018,7 +2018,16 @@ object Parsers {
       val from = termIdentOrWildcard()
       if (from.name != nme.WILDCARD && in.token == ARROW)
         atPos(startOffset(from), in.skipToken()) {
-          Thicket(from, termIdentOrWildcard())
+          val start = in.offset
+          val to = termIdentOrWildcard()
+          val toWithPos =
+            if (to.name == nme.ERROR)
+              // error identifiers don't consume any characters, so atPos(start)(id) wouldn't set a position.
+              // Some testcases would then fail in Positioned.checkPos. Set a position anyway!
+              atPos(start, start, in.lastOffset)(to)
+            else
+              to
+          Thicket(from, toWithPos)
         }
       else from
     }
