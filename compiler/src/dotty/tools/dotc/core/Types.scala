@@ -993,10 +993,19 @@ object Types {
       case _ => this
     }
 
-    /** If this type is a typeref with a type lambda as alias or upper bound, widen to the lambda */
-    final def toLambda(implicit ctx: Context): Type = widen match {
-      case tp: TypeProxy if tp.superType.isInstanceOf[LambdaType] => tp.superType
-      case tp => tp
+    /** If this type is a typeref or applied type referring to a TypeMethid with a type
+     *  lambda as alias or upper bound, widen to the lambda.
+     */
+    final def toLambda(implicit ctx: Context): Type = {
+      def isLambda(tp: Type): Boolean = tp match {
+        case tp: TypeRef => tp.symbol.is(TypeMethod)
+        case tp: AppliedType => isLambda(tp.tycon)
+        case _ => false
+      }
+      this match {
+        case tp: TypeProxy if isLambda(tp) && tp.superType.isInstanceOf[LambdaType] => tp.superType
+        case _ => this
+      }
     }
 
     /** If this type contains embedded union types, replace them by their joins.
