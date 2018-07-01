@@ -17,7 +17,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.io
-import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive}
+import dotty.tools.io.{AbstractFile, PlainFile, VirtualFile, ZipArchive}
 import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext._
@@ -107,6 +107,11 @@ class ExtractDependencies extends Phase {
     val fromClassName = classNameAsString(dep.from)
     val sourceFile = ctx.compilationUnit.source.file.file
 
+    def classDependency() = {
+      val toClassName = classNameAsString(dep.to)
+      ctx.sbtCallback.classDependency(toClassName, fromClassName, dep.context)
+    }
+
     def binaryDependency(file: File, binaryClassName: String) =
       ctx.sbtCallback.binaryDependency(file, binaryClassName, fromClassName, sourceFile, dep.context)
 
@@ -129,6 +134,12 @@ class ExtractDependencies extends Phase {
           val classSegments = pf.givenPath.segments.takeRight(packages + 1)
           binaryDependency(pf.file, binaryClassName(classSegments))
 
+        case vf: VirtualFile =>
+          // We cannot record a dependency on a virtual file. Assume it's a
+          // temporary file (e.g., used for -parallelism) and depend on the class
+          // instead.
+          classDependency()
+
         case _ =>
           ctx.warning(s"sbt-deps: Ignoring dependency $depFile of class ${depFile.getClass}}")
       }
@@ -144,8 +155,7 @@ class ExtractDependencies extends Phase {
       } else if (allowLocal || depFile.file != sourceFile) {
         // We cannot ignore dependencies coming from the same source file because
         // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
-        val toClassName = classNameAsString(dep.to)
-        ctx.sbtCallback.classDependency(toClassName, fromClassName, dep.context)
+        classDependency()
       }
     }
   }

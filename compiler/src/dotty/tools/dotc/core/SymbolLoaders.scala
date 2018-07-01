@@ -191,7 +191,7 @@ object SymbolLoaders {
   }
 
   def needCompile(bin: AbstractFile, src: AbstractFile) =
-    src.lastModified >= bin.lastModified
+    src.lastModified >= bin.lastModified && !bin.isVirtual
 
   /** Load contents of a package
    */

@@ -741,8 +741,8 @@ class ClassfileParser(
     }
     val tastyBytes = classfile.underlyingSource match { // TODO: simplify when #3552 is fixed
       case None =>
-        ctx.error("Could not load TASTY from .tasty for virtual file " + classfile)
-        Array.empty[Byte]
+        val tastyFile = s"${classfile.name.stripSuffix(".class")}.tasty"
+        classfile.container.lookupName(tastyFile, directory = false).toByteArray
       case Some(jar: ZipArchive) => // We are in a jar
         val jarFile = JarArchive.open(io.File(jar.jpath))
         readTastyForClass(jarFile.jpath.resolve(classfile.path))
