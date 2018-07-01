@@ -22,7 +22,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val classpath = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp"
   val outputDir = OutputSetting("-d", "directory|jar", "destination for generated classfiles.",
     new PlainDirectory(Directory(".")))
-  val priorityclasspath = PathSetting("-priorityclasspath", "class path that takes precedence over all other paths (or testing only)", "")
+  val priorityclasspath = OutputSetting("-priorityclasspath", "directory|jar", "class path that takes precedence over all other paths (for testing only)", null)
 
   /** Other settings */
   val deprecation = BooleanSetting("-deprecation", "Emit warning and location for usages of deprecated APIs.")
