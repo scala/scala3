@@ -172,7 +172,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           ("(" + (if (tp.isErasedMethod)   "erased "   else "")
                + (if (tp.isImplicitMethod) "implicit " else "")
           ) ~ paramsText(tp) ~
-          (if (tp.isInstanceOf[TermLambda] ||
+          (if (tp.isInstanceOf[HKTermLambda] ||
                tp.resultType.isInstanceOf[MethodType]) ")" else "): ") ~
           toText(tp.resultType)
         }
