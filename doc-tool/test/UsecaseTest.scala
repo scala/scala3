@@ -235,6 +235,34 @@ abstract class UsecaseBase extends DottyDocTest {
     }
   }
 
+  @Test def multipleUseCases: Unit = {
+    val source = new SourceFile(
+      name = "MultipleUseCases.scala",
+      """
+        |package scala
+        |
+        |trait Test {
+        |  /** A first method
+        |   *  @usecase def foo(x: Int): Int
+        |   *  @usecase def foo(x: Double): Double
+        |   */
+        |   def foo(x: String): Unit
+        |}
+      """.stripMargin
+    )
+
+    val className = "scala.Test"
+
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+      packages("scala") match {
+        case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
+          val List(foo0: Def, foo1: Def) = trt.members
+          assertEquals(TypeReference("Int", NoLink("Int", "scala.Int"), Nil), foo0.returnValue)
+          assertEquals(TypeReference("Double", NoLink("Double", "scala.Double"), Nil), foo1.returnValue)
+      }
+    }
+  }
+
   @Test def checkIterator =
     checkFiles("../scala2-library/src/library/scala/collection/Iterator.scala" :: Nil) { case _ =>
       // success if typer throws no errors! :)
