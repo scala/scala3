@@ -98,4 +98,7 @@ object Mode {
   /** Read comments from definitions when unpickling from TASTY */
   val ReadComments = newMode(21, "ReadComments")
 
+  /** We are in the rhs of an inline definition */
+  val InlineRHS = newMode(22, "InlineRHS")
+
 }

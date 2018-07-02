@@ -349,6 +349,11 @@ class Definitions {
       val methodNames = ScalaValueTypes.map(TreeGen.wrapArrayMethodName) + nme.wrapRefArray
       methodNames.map(ScalaPredefModule.requiredMethodRef(_).symbol)
     })
+    // A cache for the tree `Predef.???`
+    // TODO: Check if this actually matters for performance
+    val Predef_undefinedTree = new PerRun[ast.tpd.Tree]({ implicit ctx =>
+      ast.tpd.ref(defn.Predef_undefinedR)
+    })
 
   lazy val ScalaRuntimeModuleRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
   def ScalaRuntimeModule(implicit ctx: Context) = ScalaRuntimeModuleRef.symbol

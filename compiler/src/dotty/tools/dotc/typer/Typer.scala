@@ -1361,13 +1361,48 @@ class Typer extends Namer
     typed(annot, defn.AnnotationType)
   }
 
+  /** Can the body of this method be dropped and replaced by `Predef.???` without
+   *  breaking separate compilation ? This is used to generate tasty outlines. */
+  private def canDropBody(definition: untpd.ValOrDefDef, sym: Symbol)(implicit ctx: Context): Boolean = {
+    def mayNeedSuperAccessor = {
+      val inTrait = sym.enclosingClass.is(Trait)
+      val acc = new untpd.UntypedTreeAccumulator[Boolean] {
+        override def apply(x: Boolean, tree: untpd.Tree)(implicit ctx: Context) = x || (tree match {
+          case Super(qual, mix) =>
+            // Super accessors are needed for all super calls that either
+            // appear in a trait or have as a target a member of some outer class,
+            // this is an approximation since the super call is untyped at this point.
+            inTrait || !mix.name.isEmpty
+          case _ =>
+            foldOver(x, tree)
+        })
+      }
+      acc(false, definition.rhs)
+    }
+    val bodyNeededFlags = definition match {
+      case _: untpd.ValDef => Inline | Final
+      case _ => Inline
+    }
+    !(definition.rhs.isEmpty ||
+      // Lambdas cannot be skipped, because typechecking them may constrain type variables.
+      definition.name == nme.ANON_FUN ||
+      // The body of inline defs, and inline/final vals are part of the public API.
+      sym.is(bodyNeededFlags) || ctx.mode.is(Mode.InlineRHS) ||
+      // Super accessors are part of the public API (subclasses need to implement them).
+      mayNeedSuperAccessor)
+  }
+
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = track("typedValDef") {
     val ValDef(name, tpt, _) = vdef
     completeAnnotations(vdef, sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
     val rhs1 = vdef.rhs match {
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
-      case rhs => normalizeErasedRhs(typedExpr(rhs, tpt1.tpe), sym)
+      case rhs =>
+        if (ctx.settings.YemitTastyOutline.value && canDropBody(vdef, sym))
+          defn.Predef_undefinedTree()
+        else
+          normalizeErasedRhs(typedExpr(rhs, tpt1.tpe), sym)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     if (sym.is(Inline, butNot = DeferredOrTermParamOrAccessor))
@@ -1425,7 +1460,14 @@ class Typer extends Namer
       (tparams1, sym.owner.typeParams).zipped.foreach ((tdef, tparam) =>
         rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
     }
-    val rhs1 = normalizeErasedRhs(typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx), sym)
+    val isInline = sym.is(Inline)
+    val rhs1 =
+      if (ctx.settings.YemitTastyOutline.value && canDropBody(ddef, sym))
+        defn.Predef_undefinedTree()
+      else {
+        val rhsCtx1 = if (isInline) rhsCtx.addMode(Mode.InlineRHS) else rhsCtx
+        normalizeErasedRhs(typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx1), sym)
+      }
 
     // Overwrite inline body to make sure it is not evaluated twice
     if (sym.isInlineableMethod) Inliner.registerInlineInfo(sym, _ => rhs1)
@@ -1915,10 +1957,13 @@ class Typer extends Namer
       case Thicket(stats) :: rest =>
         traverse(stats ++ rest)
       case stat :: rest =>
-        val stat1 = typed(stat)(ctx.exprContext(stat, exprOwner))
-        if (!ctx.isAfterTyper && isPureExpr(stat1) && !stat1.tpe.isRef(defn.UnitClass))
-          ctx.warning(em"a pure expression does nothing in statement position", stat.pos)
-        buf += stat1
+        // With -Yemit-tasty-outline, we skip the statements in a class that are not definitions.
+        if (!(ctx.settings.YemitTastyOutline.value && exprOwner.isLocalDummy) || ctx.mode.is(Mode.InlineRHS)) {
+          val stat1 = typed(stat)(ctx.exprContext(stat, exprOwner))
+          if (!ctx.isAfterTyper && isPureExpr(stat1) && !stat1.tpe.isRef(defn.UnitClass))
+            ctx.warning(em"a pure expression does nothing in statement position", stat.pos)
+          buf += stat1
+        }
         traverse(rest)
       case nil =>
         buf.toList

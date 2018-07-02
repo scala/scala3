@@ -152,9 +152,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
     compiling = true
 
-    // If testing pickler, make sure to stop after pickling phase:
+    // If testing pickler or generating tasty outlines, make sure to stop after pickling phase:
     val stopAfter =
-      if (ctx.settings.YtestPickler.value) List("pickler")
+      if (ctx.settings.YtestPickler.value || ctx.settings.YemitTastyOutline.value) List("pickler")
       else ctx.settings.YstopAfter.value
 
     val pluginPlan = ctx.addPluginPhases(ctx.phasePlan)

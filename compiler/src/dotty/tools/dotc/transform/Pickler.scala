@@ -76,6 +76,16 @@ class Pickler extends Phase {
         val tastyOutput = tastyFile.output
         try tastyOutput.write(pickled)
         finally tastyOutput.close()
+        if (ctx.settings.YemitTastyOutline.value) {
+          // Generate empty classfiles because our classpath resolver does not
+          // know how to handle .tasty files currently, and compilation is
+          // stopped before we generate real classfiles when
+          // using -Yemit-tasty-outline.
+          val classFile = tastyDirectory.fileNamed(s"$name.class")
+          val classOutput = classFile.output
+          try classOutput.write(Array[Byte]())
+          finally classOutput.close()
+        }
       }
 
       def rawBytes = // not needed right now, but useful to print raw format.
