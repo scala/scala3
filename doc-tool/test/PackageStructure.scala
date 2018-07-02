@@ -3,14 +3,35 @@ package dottydoc
 
 import org.junit.Test
 import org.junit.Assert._
-
 import dotc.util.SourceFile
+import model.Trait
 import model.internal._
 
 class PackageStructureFromSourceTest extends PackageStructureBase with CheckFromSource
 class PackageStructureFromTastyTest extends PackageStructureBase with CheckFromTasty
 
 abstract class PackageStructureBase extends DottyDocTest {
+
+  @Test def sourceFileAnnotIsStripped = {
+    val source = new SourceFile(
+      "A.scala",
+      """package scala
+        |
+        |/** Some doc */
+        |trait A
+      """.stripMargin
+    )
+
+    val className = "scala.A"
+
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+      packages("scala") match {
+        case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
+          assert(trt.annotations.isEmpty)
+      }
+    }
+  }
+
   @Test def multipleCompilationUnits = {
     val source1 = new SourceFile(
       "TraitA.scala",
