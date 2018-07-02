@@ -3,6 +3,7 @@ package dotty.tools.repl
 import dotty.tools.backend.jvm.GenBCode
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.ast.tpd.TreeOps
 import dotty.tools.dotc.core.Comments.CommentsContext
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
@@ -169,26 +170,27 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
   def docOf(expr: String)(implicit state: State): Result[String] = {
     implicit val ctx: Context = state.context
 
-    /** Extract the (possibly) documented symbol from `tree` */
-    def extractSymbol(tree: tpd.Tree): Symbol = {
-      tree match {
+    /**
+     * Extract the "selected" symbol from `tree`.
+     *
+     * Because the REPL typechecks an expression, special syntax is needed to get the documentation
+     * of certain symbols:
+     *
+     * - To select the documentation of classes, the user needs to pass a call to the class' constructor
+     *   (e.g. `new Foo` to select `class Foo`)
+     * - When methods are overloaded, the user needs to enter a lambda to specify which functions he wants
+     *   (e.g. `foo(_: Int)` to select `def foo(x: Int)` instead of `def foo(x: String)`
+     *
+     * This function returns the right symbol for the received expression, and all the symbols that are
+     * overridden.
+     */
+    def extractSymbols(tree: tpd.Tree): Iterator[Symbol] = {
+      val sym = tree match {
+        case tree if tree.isInstantiation => tree.symbol.owner
         case tpd.closureDef(defdef) => defdef.rhs.symbol
         case _ => tree.symbol
       }
-    }
-
-    /**
-     * Adapt `symbol` so that we get the one that holds the documentation.
-     * Return also the symbols that `symbol` overrides`.
-     */
-    def pickSymbols(symbol: Symbol): Iterator[Symbol] = {
-      val selectedSymbol = {
-        if (symbol.is(Module, butNot = ModuleClass)) symbol.moduleClass
-        if (symbol.isConstructor) symbol.owner
-        else symbol
-      }
-
-      Iterator(selectedSymbol) ++ selectedSymbol.allOverriddenSymbols
+      Iterator(sym) ++ sym.allOverriddenSymbols
     }
 
     typeCheck(expr).map {
@@ -198,7 +200,7 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
         else {
           val doc =
             ctx.docCtx.flatMap { docCtx =>
-              val symbols = pickSymbols(extractSymbol(stat))
+              val symbols = extractSymbols(stat)
               symbols.collectFirst {
                 case sym if docCtx.docstrings.contains(sym) =>
                   docCtx.docstrings(sym).raw
