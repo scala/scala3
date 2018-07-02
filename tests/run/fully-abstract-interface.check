@@ -1,0 +1,29 @@
+CaseClassImplementation
+underlying rep: class CaseClassImplementation$Const
+1
+test1 OK
+1 = 1
+test2 OK
+1 = 1
+
+underlying rep: class CaseClassImplementation$App
+7
+test3 OK
+AppliedOp(PlusOp, Const(1), App(MultOp,Const(2),Const(3))) = 7
+test4 OK
+AppliedOp(PlusOp, Const(1), App(MultOp,Const(2),Const(3))) = 7
+
+ListImplementation
+underlying rep: class scala.collection.immutable.$colon$colon
+1
+test1 OK
+1 = 1
+test2 OK
+1 = 1
+
+underlying rep: class scala.collection.immutable.$colon$colon
+7
+test3 OK
+AppliedOp(List(+), List(1), List(List(*), List(2), List(3))) = 7
+test4 OK
+AppliedOp(List(+), List(1), List(List(*), List(2), List(3))) = 7
