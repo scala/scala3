@@ -27,6 +27,20 @@ object Test {
 
     val code4 = '{ (arr: Array[Int], f: Int => Unit) => ~foreach4('(arr), '(f), 4) }
     println(code4.show)
+    println()
+
+    val liftedArray = Array(1, 2, 3, 4).toExpr
+    println(liftedArray.show)
+    println()
+
+
+    def printAll(arr: Array[Int]) = '{
+      val arr1 = ~arr.toExpr
+      ~foreach1('(arr1), '(x => println(x)))
+    }
+
+    println(printAll(Array(1, 3, 4, 5)).show)
+
   }
 
   def foreach1(arrRef: Expr[Array[Int]], f: Expr[Int => Unit]): Expr[Unit] = '{
@@ -81,19 +95,40 @@ object Test {
     }
   }
 
+  def foreach3_2(arrRef: Expr[Array[Int]], f: Expr[Int => Unit]): Expr[Unit] = '{
+    val size = (~arrRef).length
+    var i = 0
+    if (size % 3 != 0) throw new Exception("...")// for simplicity of the implementation
+    while (i < size) {
+      (~f)((~arrRef)(i))
+      (~f)((~arrRef)(i + 1))
+      (~f)((~arrRef)(i + 2))
+      i += 3
+    }
+  }
+
   def foreach4(arrRef: Expr[Array[Int]], f: Expr[Int => Unit], unrollSize: Int): Expr[Unit] = '{
     val size = (~arrRef).length
     var i = 0
     if (size % ~unrollSize.toExpr != 0) throw new Exception("...") // for simplicity of the implementation
     while (i < size) {
-      ~{
-        @tailrec def loop(j: Int, acc: Expr[Unit]): Expr[Unit] =
-          if (j >= 0) loop(j - 1, '{ (~f)((~arrRef)(i + ~j.toExpr)); ~acc })
-        else acc
-        loop(unrollSize - 1, '())
-      }
+      ~foreachInRange(0, unrollSize)(j => '{ (~f)((~arrRef)(i + ~j.toExpr)) })
       i += ~unrollSize.toExpr
     }
+  }
+
+  implicit object ArrayIntIsLiftable extends Liftable[Array[Int]] {
+    override def toExpr(x: Array[Int]): Expr[Array[Int]] = '{
+      val array = new Array[Int](~x.length.toExpr)
+      ~foreachInRange(0, x.length)(i => '{ array(~i.toExpr) = ~x(i).toExpr})
+      array
+    }
+  }
+
+  def foreachInRange(start: Int, end: Int)(f: Int => Expr[Unit]): Expr[Unit] = {
+    @tailrec def unroll(i: Int, acc: Expr[Unit]): Expr[Unit] =
+      if (i < end) unroll(i + 1, '{ ~acc; ~f(i) }) else acc
+    if (start < end) unroll(start + 1, f(start)) else '()
   }
 
 }
