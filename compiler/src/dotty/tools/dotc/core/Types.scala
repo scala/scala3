@@ -3935,7 +3935,7 @@ object Types {
   abstract class VariantTraversal {
     protected[core] var variance = 1
 
-    @inline protected def atVariance[T](v: Int)(op: => T): T = {
+    @forceInline protected def atVariance[T](v: Int)(op: => T): T = {
       val saved = variance
       variance = v
       val res = op

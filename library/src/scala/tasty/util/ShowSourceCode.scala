@@ -949,7 +949,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         case Annotation(annot, _) =>
           annot.tpe match {
             case Type.TypeRef(_, Type.SymRef(PackageDef("internal", _), Type.ThisType(Type.SymRef(PackageDef("annotation", _), NoPrefix())))) => false
-            case Type.TypeRef("inline", Types.ScalaPackage()) => false
+            case Type.TypeRef("forceInline", Types.ScalaPackage()) => false
             case _ => true
           }
         case x => throw new MatchError(x.show)

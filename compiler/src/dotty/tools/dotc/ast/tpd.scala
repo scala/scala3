@@ -1052,7 +1052,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def enclosingInlineds(implicit ctx: Context): List[Tree] =
     ctx.property(InlinedCalls).getOrElse(Nil)
 
-  /** The source file where the symbol of the `@inline` method referred to by `call`
+  /** The source file where the symbol of the `inline` method referred to by `call`
    *  is defined
    */
   def sourceFile(call: Tree)(implicit ctx: Context) = {

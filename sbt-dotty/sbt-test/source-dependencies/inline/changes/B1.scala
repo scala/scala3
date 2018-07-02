@@ -1,4 +1,4 @@
 object B {
-  @inline def getInline: Int =
+  inline def getInline: Int =
     A.get
 }

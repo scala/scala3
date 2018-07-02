@@ -229,7 +229,7 @@ object Inliner {
   }
 
   /** `sym` has an inline method with a known body to inline (note: definitions coming
-   *  from Scala2x class files might be `@inline`, but still lack that body.
+   *  from Scala2x class files might be `@forceInline`, but still lack that body.
    */
   def hasBodyToInline(sym: SymDenotation)(implicit ctx: Context): Boolean =
     sym.isInlinedMethod && sym.hasAnnotation(defn.BodyAnnot) // TODO: Open this up for transparent methods as well
@@ -240,7 +240,7 @@ object Inliner {
   def bodyToInline(sym: SymDenotation)(implicit ctx: Context): Tree =
     sym.unforcedAnnotation(defn.BodyAnnot).get.tree
 
-  /** Try to inline a call to a `@inline` method. Fail with error if the maximal
+  /** Try to inline a call to a `inline` method. Fail with error if the maximal
    *  inline depth is exceeded.
    *
    *  @param tree   The call to inline
@@ -281,7 +281,7 @@ object Inliner {
 
 /** Produces an inlined version of `call` via its `inlined` method.
  *
- *  @param  call         the original call to a `@inline` method
+ *  @param  call         the original call to an `inline` method
  *  @param  rhsToInline  the body of the inline method that replaces the call.
  */
 class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {

@@ -1748,7 +1748,7 @@ object messages {
     val kind = "Syntax"
     val msg = hl"no explicit ${"return"} allowed from inline $owner"
     val explanation =
-      hl"""Methods marked with ${"@inline"} may not use ${"return"} statements.
+      hl"""Methods marked with ${"inline"} modifier may not use ${"return"} statements.
           |Instead, you should rely on the last expression's value being
           |returned from a method.
           |"""

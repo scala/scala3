@@ -125,6 +125,12 @@ it in backticks, i.e.
 
     @`inline` def ...
 
+The Dotty compiler ignores `@inline` annotated definitions. To cross
+compile between both Dotty and Scalac, we introduce a new `@forceInline`
+annotation which is equivalent to the new `inline` modifier. Note that
+Scala 2 ignores the `@forceInLine` annotation, and one must use both
+annotations to inline across the two compilers (i.e. `@forceInline @inline`).
+
 ### The definition of constant expression
 
 Right-hand sides of inline values and of arguments for inline parameters

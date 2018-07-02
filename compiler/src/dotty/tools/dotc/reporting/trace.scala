@@ -9,11 +9,11 @@ import core.Mode
 
 object trace {
 
-  @inline
+  @forceInline
   def onDebug[TD](question: => String)(op: => TD)(implicit ctx: Context): TD =
     conditionally(ctx.settings.YdebugTrace.value, question, false)(op)
 
-  @inline
+  @forceInline
   def conditionally[TC](cond: Boolean, question: => String, show: Boolean)(op: => TC)(implicit ctx: Context): TC =
     if (Config.tracingEnabled) {
       def op1 = op
@@ -21,7 +21,7 @@ object trace {
       else op1
     } else op
 
-  @inline
+  @forceInline
   def apply[T](question: => String, printer: Printers.Printer, showOp: Any => String)(op: => T)(implicit ctx: Context): T =
     if (Config.tracingEnabled) {
       def op1 = op
@@ -30,7 +30,7 @@ object trace {
     }
     else op
 
-  @inline
+  @forceInline
   def apply[T](question: => String, printer: Printers.Printer, show: Boolean)(op: => T)(implicit ctx: Context): T =
     if (Config.tracingEnabled) {
       def op1 = op
@@ -39,15 +39,15 @@ object trace {
     }
     else op
 
-  @inline
+  @forceInline
   def apply[T](question: => String, printer: Printers.Printer)(op: => T)(implicit ctx: Context): T =
     apply[T](question, printer, false)(op)
 
-  @inline
+  @forceInline
   def apply[T](question: => String, show: Boolean)(op: => T)(implicit ctx: Context): T =
     apply[T](question, Printers.default, show)(op)
 
-  @inline
+  @forceInline
   def apply[T](question: => String)(op: => T)(implicit ctx: Context): T =
     apply[T](question, Printers.default, false)(op)
 
