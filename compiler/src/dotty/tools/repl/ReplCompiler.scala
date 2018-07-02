@@ -194,20 +194,17 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     }
 
     typeCheck(expr).map {
-      case v @ ValDef(_, _, Block(stats, _)) if stats.nonEmpty =>
+      case ValDef(_, _, Block(stats, _)) if stats.nonEmpty =>
         val stat = stats.last.asInstanceOf[tpd.Tree]
         if (stat.tpe.isError) stat.tpe.show
         else {
-          val doc =
-            ctx.docCtx.flatMap { docCtx =>
-              val symbols = extractSymbols(stat)
-              symbols.collectFirst {
-                case sym if docCtx.docstrings.contains(sym) =>
-                  docCtx.docstrings(sym).raw
-              }
-            }
-
-            doc.getOrElse(s"// No doc for `${expr}`")
+          val docCtx = ctx.docCtx.get
+          val symbols = extractSymbols(stat)
+          val doc = symbols.collectFirst {
+            case sym if docCtx.docstrings.contains(sym) =>
+              docCtx.docstrings(sym).raw
+          }
+          doc.getOrElse(s"// No doc for `${expr}`")
         }
 
       case _ =>

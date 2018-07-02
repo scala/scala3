@@ -5,205 +5,154 @@ import org.junit.Test
 import org.junit.Assert.assertEquals
 
 class DocTests extends ReplTest {
+
   @Test def docOfDef =
-    fromInitialState { implicit s => run("/** doc */ def foo = 0") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc foo")
-      assertEquals("/** doc */", storedOutput().trim)
+    eval("/** doc */ def foo = 0").andThen { implicit s =>
+      assertEquals("/** doc */", doc("foo"))
     }
 
   @Test def docOfVal =
-    fromInitialState { implicit s => run("/** doc */ val foo = 0") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc foo")
-      assertEquals("/** doc */", storedOutput().trim)
+    eval("/** doc */ val foo = 0").andThen { implicit s =>
+      assertEquals("/** doc */", doc("foo"))
     }
 
   @Test def docOfObject =
-    fromInitialState { implicit s => run("/** doc */ object Foo") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc Foo")
-      assertEquals("/** doc */", storedOutput().trim)
+    eval("/** doc */ object Foo").andThen { implicit s =>
+      assertEquals("/** doc */", doc("Foo"))
     }
 
   @Test def docOfClass =
-    fromInitialState { implicit s => run("/** doc */ class Foo") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc new Foo")
-      assertEquals("/** doc */", storedOutput().trim)
+    eval("/** doc */ class Foo").andThen { implicit s =>
+      assertEquals("/** doc */", doc("new Foo"))
     }
 
   @Test def docOfTrait =
-    fromInitialState { implicit s => run("/** doc */ trait Foo") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc new Foo")
-      assertEquals("/** doc */", storedOutput().trim)
+    eval("/** doc */ trait Foo").andThen { implicit s =>
+      assertEquals("/** doc */", doc("new Foo"))
     }
 
   @Test def docOfDefInObject =
-    fromInitialState { implicit s => run("object O { /** doc */ def foo = 0 }") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc O.foo")
-      assertEquals("/** doc */", storedOutput().trim)
+    eval("object O { /** doc */ def foo = 0 }").andThen { implicit s =>
+      assertEquals("/** doc */", doc("O.foo"))
     }
 
   @Test def docOfValInObject =
-    fromInitialState { implicit s => run("object O { /** doc */ val foo = 0 }") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc O.foo")
-      assertEquals("/** doc */", storedOutput().trim)
+    eval("object O { /** doc */ val foo = 0 }").andThen { implicit s =>
+      assertEquals("/** doc */", doc("O.foo"))
     }
 
   @Test def docOfObjectInObject =
-    fromInitialState { implicit s => run("object O { /** doc */ object Foo }") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc O.Foo")
-      assertEquals("/** doc */", storedOutput().trim)
+    eval("object O { /** doc */ object Foo }").andThen { implicit s =>
+      assertEquals("/** doc */", doc("O.Foo"))
     }
 
   @Test def docOfClassInObject =
-    fromInitialState { implicit s => run("object O { /** doc */ class Foo }") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc new O.Foo")
-      assertEquals("/** doc */", storedOutput().trim)
+    eval("object O { /** doc */ class Foo }").andThen { implicit s =>
+      assertEquals("/** doc */", doc("new O.Foo"))
     }
 
   @Test def docOfTraitInObject =
-    fromInitialState { implicit s => run("object O { /** doc */ trait Foo }") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc new O.Foo")
-      assertEquals("/** doc */", storedOutput().trim)
+    eval("object O { /** doc */ trait Foo }").andThen { implicit s =>
+      assertEquals("/** doc */", doc("new O.Foo"))
     }
 
-  @Test def docOfDetInClass =
-    fromInitialState { implicit s => run("class C { /** doc */ def foo = 0 }") }
-    .andThen { implicit s => run("val c = new C") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc c.foo")
-      assertEquals("/** doc */", storedOutput().trim)
+  @Test def docOfDefInClass =
+    eval(
+      """class C { /** doc */ def foo = 0 }
+        |val c = new C
+      """.stripMargin).andThen { implicit s =>
+      assertEquals("/** doc */", doc("c.foo"))
     }
 
-  @Test def docOfVatInClass =
-    fromInitialState { implicit s => run("class C { /** doc */ val foo = 0 }") }
-    .andThen { implicit s => run("val c = new C") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc c.foo")
-      assertEquals("/** doc */", storedOutput().trim)
+  @Test def docOfValInClass =
+    eval(
+      """class C { /** doc */ val foo = 0 }
+        |val c = new C
+      """.stripMargin).andThen { implicit s =>
+      assertEquals("/** doc */", doc("c.foo"))
     }
 
   @Test def docOfObjectInClass =
-    fromInitialState { implicit s => run("class C { /** doc */ object Foo }") }
-    .andThen { implicit s => run("val c = new C") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc c.Foo")
-      assertEquals("/** doc */", storedOutput().trim)
+    eval(
+      """class C { /** doc */ object Foo }
+        |val c = new C
+      """.stripMargin).andThen { implicit s =>
+      assertEquals("/** doc */", doc("c.Foo"))
     }
 
   @Test def docOfClassInClass =
-    fromInitialState { implicit s => run("class C { /** doc */ class Foo }") }
-    .andThen { implicit s => run("val c = new C") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc new c.Foo")
-      assertEquals("/** doc */", storedOutput().trim)
+    eval(
+      """class C { /** doc */ class Foo }
+        |val c = new C
+      """.stripMargin).andThen { implicit s =>
+      assertEquals("/** doc */", doc("new c.Foo"))
     }
 
   @Test def docOfTraitInClass =
-    fromInitialState { implicit s => run("class C { /** doc */ trait Foo }") }
-    .andThen { implicit s => run("val c = new C") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc new c.Foo")
-      assertEquals("/** doc */", storedOutput().trim)
+    eval(
+      """class C { /** doc */ trait Foo }
+        |val c = new C
+      """.stripMargin).andThen { implicit s =>
+      assertEquals("/** doc */", doc("new c.Foo"))
     }
 
   @Test def docOfOverloadedDef =
-    fromInitialState { implicit s =>
-      run("""object O {
-            |/** doc0 */ def foo(x: Int) = x
-            |/** doc1 */ def foo(x: String) = x
-            |}""".stripMargin)
-    }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc O.foo(_: Int)")
-      assertEquals("/** doc0 */", storedOutput().trim)
-      s
-    }
-    .andThen { implicit s =>
-      run(":doc O.foo(_: String)")
-      assertEquals("/** doc1 */", storedOutput().trim)
+    eval(
+      """object O {
+        |  /** doc0 */ def foo(x: Int) = x
+        |  /** doc1 */ def foo(x: String) = x
+        |}
+      """.stripMargin).andThen { implicit s =>
+      assertEquals("/** doc0 */", doc("O.foo(_: Int)"))
+      assertEquals("/** doc1 */", doc("O.foo(_: String)"))
     }
 
   @Test def docOfInherited =
-    fromInitialState { implicit s => run("class C { /** doc */ def foo = 0 }") }
-    .andThen { implicit s => run("object O extends C") }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc O.foo")
-      assertEquals("/** doc */", storedOutput().trim)
+    eval(
+      """class C { /** doc */ def foo = 0 }
+        |object O extends C
+      """.stripMargin).andThen { implicit s =>
+      assertEquals("/** doc */", doc("O.foo"))
     }
 
   @Test def docOfOverride =
-    fromInitialState { implicit s =>
-      run("""abstract class A {
-            |/** doc0 */ def foo(x: Int): Int = x + 1
-            |/** doc1 */ def foo(x: String): String = x + "foo"
-            |}""".stripMargin)
-    }
-    .andThen { implicit s =>
-      run("""object O extends A {
-            |  override def foo(x: Int): Int = x
-            |  /** overridden doc */ override def foo(x: String): String = x
-            |}""".stripMargin)
-    }
-    .andThen { implicit s =>
-      storedOutput()
-      run(":doc O.foo(_: Int)")
-      assertEquals("/** doc0 */", storedOutput().trim)
-      s
-    }
-    .andThen { implicit s =>
-      run(":doc O.foo(_: String)")
-      assertEquals("/** overridden doc */", storedOutput().trim)
+    eval(
+      """abstract class A {
+        |  /** doc0 */ def foo(x: Int): Int = x + 1
+        |  /** doc1 */ def foo(x: String): String = x + "foo"
+        |}
+        |object O extends A {
+        |  override def foo(x: Int): Int = x
+        |  /** overridden doc */ override def foo(x: String): String = x
+        |}
+      """.stripMargin).andThen { implicit s =>
+      assertEquals("/** doc0 */", doc("O.foo(_: Int)"))
+      assertEquals("/** overridden doc */", doc("O.foo(_: String)"))
     }
 
   @Test def docOfOverrideObject =
-    fromInitialState { implicit s =>
-      run("""abstract class A {
-            |  abstract class Companion { /** doc0 */ def bar: Int }
-            |  /** companion */ def foo: Companion
-            |}""".stripMargin)
-      .andThen { implicit s =>
-        run("""object O extends A {
-              |  override object foo extends Companion {
-              |    override def bar: Int = 0
-              |  }
-              |}""".stripMargin)
-      }
-      .andThen { implicit s =>
-        storedOutput()
-        run(":doc O.foo")
-        assertEquals("/** companion */", storedOutput().trim)
-        s
-      }
-      .andThen { implicit s =>
-        run(":doc O.foo.bar")
-        assertEquals("/** doc0 */", storedOutput().trim)
-      }
+    eval(
+      """abstract class A {
+        |  abstract class Companion { /** doc0 */ def bar: Int }
+        |  /** companion */ def foo: Companion
+        |}
+        |object O extends A {
+        |  override object foo extends Companion {
+        |    override def bar: Int = 0
+        |  }
+        |}
+      """.stripMargin).andThen { implicit s =>
+      assertEquals("/** companion */", doc("O.foo"))
+      assertEquals("/** doc0 */", doc("O.foo.bar"))
     }
+
+  private def eval(code: String): State =
+    fromInitialState { implicit s => run(code) }
+
+  private def doc(expr: String)(implicit s: State): String = {
+    storedOutput()
+    run(s":doc $expr")
+    storedOutput().trim
+  }
 
 }
