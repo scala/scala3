@@ -17,6 +17,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
     import base.settings._
     val ctx = base.initialCtx.fresh
     ctx.setSetting(ctx.settings.language, List("Scala2"))
+    ctx.setSetting(ctx.settings.YcookComments, true)
     ctx.setSetting(ctx.settings.YnoInline, true)
     ctx.setSetting(ctx.settings.Ycheck, "all" :: Nil)
     // No wiki syntax!
@@ -39,7 +40,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
       |trait HelloWorld
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -60,7 +61,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
       |trait HelloWorld
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -83,7 +84,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
       |trait None
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -106,7 +107,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
       |trait None
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -132,7 +133,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
       |trait None
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -165,7 +166,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
       |trait None
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -201,7 +202,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
       |trait None
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -232,7 +233,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
       |trait None
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -261,7 +262,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
       |trait HelloWorld
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -291,7 +292,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
       |trait HelloWorld
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")

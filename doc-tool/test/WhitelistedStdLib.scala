@@ -7,7 +7,7 @@ import org.junit.Assert._
 class TestWhitelistedCollections extends DottyDocTest with CheckFromSource {
 
   @Test def arrayAndImmutableHasDocumentation =
-    checkFiles(TestWhitelistedCollections.files) { packages =>
+    checkFiles(TestWhitelistedCollections.files) { (ctx, packages) =>
       val array =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.Array")

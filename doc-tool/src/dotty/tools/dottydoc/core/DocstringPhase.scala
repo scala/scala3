@@ -15,7 +15,7 @@ import util.syntax._
 /** Phase to add docstrings to the Dottydoc AST */
 class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner {
 
-  private def getComment(sym: Symbol)(implicit ctx: Context): Option[CompilerComment] =
+  private def getComment(sym: Symbol)(implicit ctx: Context): Option[CompilerComment] = {
     ctx.docbase.docstring(sym)
     .orElse {
       // If the symbol doesn't have a docstring, look for an overridden
@@ -26,17 +26,20 @@ class DocstringPhase extends DocMiniPhase with CommentParser with CommentCleaner
       }
       .flatMap(ctx.docbase.docstring)
     }
+  }
 
-  private def parsedComment(ent: Entity)(implicit ctx: Context): Option[Comment] =
-    getComment(ent.symbol).map { cmt =>
-      val text = cmt.body
-      val parsed = parse(ent, ctx.docbase.packages, clean(text), text, cmt.pos)
-
+  private def parsedComment(ent: Entity)(implicit ctx: Context): Option[Comment] = {
+    for {
+      comment <- getComment(ent.symbol)
+      text <- comment.expandedBody
+    } yield {
+      val parsed = parse(ent, ctx.docbase.packages, clean(text), text, comment.pos)
       if (ctx.settings.wikiSyntax.value)
-        WikiComment(ent, parsed, cmt.pos).comment
+        WikiComment(ent, parsed, comment.pos).comment
       else
-        MarkdownComment(ent, parsed, cmt.pos).comment
+        MarkdownComment(ent, parsed, comment.pos).comment
     }
+  }
 
   override def transformPackage(implicit ctx: Context) = { case ent: PackageImpl =>
     ent.copy(comment = parsedComment(ent))

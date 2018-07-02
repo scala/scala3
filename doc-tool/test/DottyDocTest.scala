@@ -13,6 +13,7 @@ import dotc.typer.FrontEnd
 import dottydoc.core.{ DocASTPhase, ContextDottydoc }
 import model.Package
 import dotty.tools.dottydoc.util.syntax._
+import dotty.tools.io.AbstractFile
 import dotc.reporting.{ StoreReporter, MessageRendering }
 import dotc.interfaces.Diagnostic.ERROR
 import org.junit.Assert.fail
@@ -43,12 +44,12 @@ trait DottyDocTest extends MessageRendering {
   }
   implicit val ctx: FreshContext = freshCtx(Nil)
 
-  private def compilerWithChecker(assertion: Map[String, Package] => Unit) = new DocCompiler {
+  private def compilerWithChecker(assertion: (Context, Map[String, Package]) => Unit) = new DocCompiler {
     private[this] val assertionPhase: List[List[Phase]] =
       List(new Phase {
         def phaseName = "assertionPhase"
         override def run(implicit ctx: Context): Unit =
-          assertion(ctx.docbase.packages)
+          assertion(ctx, ctx.docbase.packages)
           if (ctx.reporter.hasErrors) {
             System.err.println("reporter had errors:")
             ctx.reporter.removeBufferedMessages.foreach { msg =>
@@ -85,25 +86,25 @@ trait DottyDocTest extends MessageRendering {
     new SourceFile(virtualFile, scala.io.Codec.UTF8)
   }
 
-  def checkSource(source: String)(assertion: Map[String, Package] => Unit): Unit = {
+  def checkSource(source: String)(assertion: (Context, Map[String, Package]) => Unit): Unit = {
     val c = compilerWithChecker(assertion)
     val run = c.newRun
     run.compileSources(sourceFileFromString(callingMethod, source) :: Nil)
   }
 
-  def checkFiles(sources: List[String])(assertion: Map[String, Package] => Unit): Unit = {
+  def checkFiles(sources: List[String])(assertion: (Context, Map[String, Package]) => Unit): Unit = {
     val c = compilerWithChecker(assertion)
     val run = c.newRun
     run.compile(sources)
   }
 
-  def checkFromSource(sourceFiles: List[SourceFile])(assertion: Map[String, Package] => Unit): Unit = {
+  def checkFromSource(sourceFiles: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit = {
     val c = compilerWithChecker(assertion)
     val run = c.newRun
     run.compileSources(sourceFiles)
   }
 
-  def checkFromTasty(classNames: List[String], sources: List[SourceFile])(assertion: Map[String, Package] => Unit): Unit = {
+  def checkFromTasty(classNames: List[String], sources: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit = {
     IOUtils.inTempDirectory { tmp =>
       val ctx = "shadow ctx"
       val out = tmp.resolve("out")
@@ -129,18 +130,18 @@ trait DottyDocTest extends MessageRendering {
     }
   }
 
-  def check(classNames: List[String], sources: List[SourceFile])(assertion: Map[String, Package] => Unit): Unit
+  def check(classNames: List[String], sources: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit
 
 }
 
 trait CheckFromSource extends DottyDocTest {
-  override def check(classNames: List[String], sources: List[SourceFile])(assertion: Map[String, Package] => Unit): Unit = {
+  override def check(classNames: List[String], sources: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit = {
     checkFromSource(sources)(assertion)
   }
 }
 
 trait CheckFromTasty extends DottyDocTest {
-  override def check(classNames: List[String], sources: List[SourceFile])(assertion: Map[String, Package] => Unit): Unit = {
+  override def check(classNames: List[String], sources: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit = {
     checkFromTasty(classNames, sources)(assertion)
   }
 }

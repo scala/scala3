@@ -235,8 +235,7 @@ Standard Section: "Positions" Assoc*
 
 Standard Section: "Comments" Comment*
 
-  Comment       = Length Bytes LongInt Byte // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates,
-                                            // plus a byte indicating whether the comment is expanded (1) or not expanded (0)
+  Comment       = Length Bytes LongInt      // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
 
 
 **************************************************************************************/

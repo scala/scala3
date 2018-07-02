@@ -11,9 +11,7 @@ import model.references._
 import util.syntax._
 
 class UsecaseFromSourceTest extends UsecaseBase with CheckFromSource
-
-// Use case from TASTY do not work at the moment
-// class UsecaseFromTastyTest extends UsecaseBase with CheckFromTasty
+class UsecaseFromTastyTest extends UsecaseBase with CheckFromTasty
 
 abstract class UsecaseBase extends DottyDocTest {
   @Test def simpleUsecase = {
@@ -34,7 +32,7 @@ abstract class UsecaseBase extends DottyDocTest {
 
     val className = "scala.Test"
 
-    check(className :: Nil, source :: Nil) { packages =>
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
@@ -80,7 +78,7 @@ abstract class UsecaseBase extends DottyDocTest {
 
     val className = "scala.Test"
 
-    check(className :: Nil, source :: Nil) { packages =>
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
@@ -127,7 +125,7 @@ abstract class UsecaseBase extends DottyDocTest {
 
     val className = "scala.Test"
 
-    check(className :: Nil, source :: Nil) { packages =>
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
@@ -177,7 +175,7 @@ abstract class UsecaseBase extends DottyDocTest {
 
     val className = "scala.Iterable"
 
-    check(className :: Nil, source :: Nil) { packages =>
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
       case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
         val List(map: Def) = trt.members
@@ -222,13 +220,13 @@ abstract class UsecaseBase extends DottyDocTest {
 
     val className = "scala.Iterable"
 
-    check(className :: Nil, source :: Nil) { packages =>
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
       case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
         val List(map: Def) = trt.members
         assert(map.comment.isDefined, "Lost comment in transformations")
 
-        val docstr = ctx.docbase.docstring(map.symbol).get.body
+        val docstr = ctx.docbase.docstring(map.symbol).get.expandedBody.get
         assert(
           !docstr.contains("@usecase"),
           s"Comment should not contain usecase after stripping, but was:\n$docstr"
@@ -238,12 +236,12 @@ abstract class UsecaseBase extends DottyDocTest {
   }
 
   @Test def checkIterator =
-    checkFiles("../scala2-library/src/library/scala/collection/Iterator.scala" :: Nil) { _ =>
+    checkFiles("../scala2-library/src/library/scala/collection/Iterator.scala" :: Nil) { case _ =>
       // success if typer throws no errors! :)
     }
 
   @Test def checkIterableLike =
-    checkFiles("../scala2-library/src/library/scala/collection/IterableLike.scala" :: Nil) { _ =>
+    checkFiles("../scala2-library/src/library/scala/collection/IterableLike.scala" :: Nil) { case _ =>
       // success if typer throws no errors! :)
     }
 }

@@ -25,7 +25,7 @@ abstract class ConstructorsBase extends DottyDocTest {
 
     val className = "scala.Class"
 
-    check(className :: Nil, source :: Nil) { packages =>
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(cls: Class), _, _, _, _) =>
           cls.constructors.headOption match {
@@ -49,7 +49,7 @@ abstract class ConstructorsBase extends DottyDocTest {
 
     val className = "scala.Class"
 
-    check(className :: Nil, source :: Nil) { packages =>
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _,  _, List(cls: Class), _, _, _, _) =>
           cls.constructors match {
@@ -76,7 +76,7 @@ abstract class ConstructorsBase extends DottyDocTest {
 
     val className = "scala.Class"
 
-    check(className :: Nil, source :: Nil) { packages =>
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(cls: Class), _, _, _, _) =>
           cls.constructors match {
@@ -110,7 +110,7 @@ abstract class ConstructorsBase extends DottyDocTest {
 
     val className = "scala.Class"
 
-    check(className :: Nil, source :: Nil) { packages =>
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(cls: Class), _, _, _, _) =>
           cls.constructors match {
@@ -150,7 +150,7 @@ abstract class ConstructorsBase extends DottyDocTest {
 
     val className = "scala.Class"
 
-    check(className :: Nil, source :: Nil) { packages =>
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(cls: CaseClass, obj: Object), _, _, _, _) =>
           cls.constructors match {
@@ -185,7 +185,7 @@ abstract class ConstructorsBase extends DottyDocTest {
 
     val className = "scala.Trait"
 
-    check(className :: Nil, source :: Nil) { packages =>
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           trt.traitParams match {

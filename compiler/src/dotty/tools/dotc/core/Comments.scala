@@ -40,14 +40,21 @@ object Comments {
     *
     * The `Comment` contains functionality to create versions of itself without
     * `@usecase` sections as well as functionality to map the `raw` docstring
+    *
+    * @param pos The position of this `Comment`.
+    * @param raw The raw comment, as seen in the source code, without any expansion.
     */
   abstract case class Comment(pos: Position, raw: String) { self =>
-    /** Has this comment been cooked or expanded? */
-    def isExpanded: Boolean
 
-    /** The body of this comment, without the `@usecase` and `@define` sections. */
-    lazy val body: String =
-      removeSections(raw, "@usecase", "@define")
+    /** The expansion of this comment */
+    def expanded: Option[String]
+
+    /** Has this comment been cooked or expanded? */
+    final def isExpanded: Boolean = expanded.isDefined
+
+    /** The body of this comment, without the `@usecase` and `@define` sections, after expansion. */
+    lazy val expandedBody: Option[String] =
+      expanded.map(removeSections(_, "@usecase", "@define"))
 
     /**
      * The `@usecase` sections of this comment.
@@ -57,13 +64,14 @@ object Comments {
 
     val isDocComment = raw.startsWith("/**")
 
-    def expand(f: String => String): Comment = new Comment(pos, f(raw)) {
-      val isExpanded = true
+    def expand(f: String => String): Comment = new Comment(pos, raw) {
+      val expanded = Some(f(raw))
       val usecases = self.usecases
     }
 
     def withUsecases(implicit ctx: Context): Comment = new Comment(pos, raw) {
-      val isExpanded = self.isExpanded
+      assert(self.isExpanded)
+      val expanded = self.expanded
       val usecases = parseUsecases
     }
 
@@ -71,9 +79,11 @@ object Comments {
       if (!isDocComment) {
         Nil
       } else {
-        tagIndex(raw)
-          .filter { startsWithTag(raw, _, "@usecase") }
-          .map { case (start, end) => decomposeUseCase(start, end) }
+        expanded.map { body =>
+          tagIndex(body)
+            .filter { startsWithTag(body, _, "@usecase") }
+            .map { case (start, end) => decomposeUseCase(body, start, end) }
+        }.getOrElse(Nil)
       }
 
     /** Turns a usecase section into a UseCase, with code changed to:
@@ -84,7 +94,7 @@ object Comments {
      *  def foo: A = ???
      *  }}}
      */
-    private[this] def decomposeUseCase(start: Int, end: Int)(implicit ctx: Context): UseCase = {
+    private[this] def decomposeUseCase(body: String, start: Int, end: Int)(implicit ctx: Context): UseCase = {
       def subPos(start: Int, end: Int) =
         if (pos == NoPosition) NoPosition
         else {
@@ -93,19 +103,19 @@ object Comments {
           pos withStart start1 withPoint start1 withEnd end1
         }
 
-      val codeStart    = skipWhitespace(raw, start + "@usecase".length)
-      val codeEnd      = skipToEol(raw, codeStart)
-      val code         = raw.substring(codeStart, codeEnd) + " = ???"
-      val codePos      = subPos(codeStart, codeEnd)
+      val codeStart = skipWhitespace(body, start + "@usecase".length)
+      val codeEnd   = skipToEol(body, codeStart)
+      val code      = body.substring(codeStart, codeEnd) + " = ???"
+      val codePos   = subPos(codeStart, codeEnd)
 
       UseCase(code, codePos)
     }
   }
 
   object Comment {
-    def apply(pos: Position, raw: String, expanded: Boolean = false, usc: List[UseCase] = Nil): Comment =
+    def apply(pos: Position, raw: String, expandedComment: Option[String] = None, usc: List[UseCase] = Nil): Comment =
       new Comment(pos, raw) {
-        val isExpanded = expanded
+        val expanded = expandedComment
         val usecases = usc
       }
   }

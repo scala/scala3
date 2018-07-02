@@ -1570,7 +1570,11 @@ class Typer extends Namer
 
       // Expand comments and type usecases if `-Ycook-comments` is set.
       if (ctx.settings.YcookComments.value) {
-        cookComments(cls :: body1.map(_.symbol), self1.symbol)(ctx.localContext(cdef, cls).setNewScope)
+        val cookingCtx = ctx.localContext(cdef, cls).setNewScope
+        body1.foreach { stat =>
+          cookComment(stat.symbol, self1.symbol)(cookingCtx)
+        }
+        cookComment(cls, cls)(cookingCtx)
       }
 
       checkNoDoubleDeclaration(cls)

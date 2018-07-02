@@ -24,7 +24,7 @@ abstract class SimpleCommentsBase extends DottyDocTest {
       | */
       |trait Test""".stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (_, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt), _, _, _, _) =>
           assert(trt.comment.isDefined, "Lost comment in transformations")
@@ -47,7 +47,7 @@ abstract class SimpleCommentsBase extends DottyDocTest {
 
     val className = "scala.HelloWorld"
 
-    check(className :: Nil, source :: Nil) { packages =>
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       val traitCmt =
         packages("scala")
         .children.find(_.path.mkString(".") == "scala.HelloWorld")
@@ -65,7 +65,7 @@ abstract class SimpleCommentsBase extends DottyDocTest {
       |package object foobar { class A }
       """.stripMargin
 
-    checkSource(source) { packages =>
+    checkSource(source) { (_, packages) =>
       val packageCmt = packages("foobar").comment.get.body
       assertEquals("<p>Hello, world!</p>", packageCmt)
     }

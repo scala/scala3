@@ -9,29 +9,33 @@ import ast.tpd
 
 trait Docstrings { self: Typer =>
 
-  /** The Docstrings typer will handle the expansion of `@define` and
-    * `@inheritdoc` if there is a `DocContext` present as a property in the
-    * supplied `ctx`.
-    *
-    * It will also type any `@usecase` available in function definitions.
-    */
-  def cookComments(syms: List[Symbol], owner: Symbol)(implicit ctx: Context): Unit =
-    ctx.docCtx.foreach { docbase =>
-      val relevantSyms = syms.filter(docbase.docstring(_).exists(!_.isExpanded))
-      relevantSyms.foreach { sym =>
-        expandParentDocs(sym)
-        val usecases = docbase.docstring(sym).map(_.usecases).getOrElse(Nil)
-
-        usecases.foreach { usecase =>
-          enterSymbol(createSymbol(usecase.untpdCode))
-
-          typedStats(usecase.untpdCode :: Nil, owner) match {
-            case List(df: tpd.DefDef) => usecase.tpdCode = df
-            case _ => ctx.error("`@usecase` was not a valid definition", usecase.codePos)
-          }
+  /**
+   * Expands or cooks the documentation for `sym` in class `owner`.
+   * The expanded comment will directly replace the original comment in the doc context.
+   *
+   * The expansion registers `@define` sections, and will replace `@inheritdoc` and variable
+   * occurrences in the comments.
+   *
+   * If the doc comments contain `@usecase` sections, they will be typed.
+   *
+   * @param sym   The symbol for which the comment is being cooked.
+   * @param owner The class for which comments are being cooked.
+   */
+  def cookComment(sym: Symbol, owner: Symbol)(implicit ctx: Context): Unit = {
+    for {
+      docbase <- ctx.docCtx
+      comment <- docbase.docstring(sym).filter(!_.isExpanded)
+    } {
+      expandParentDocs(sym)
+      docbase.docstring(sym).get.usecases.foreach { usecase =>
+        enterSymbol(createSymbol(usecase.untpdCode))
+        typedStats(usecase.untpdCode :: Nil, owner) match {
+          case List(df: tpd.DefDef) => usecase.tpdCode = df
+          case _ => ctx.error("`@usecase` was not a valid definition", usecase.codePos)
         }
       }
     }
+  }
 
   private def expandParentDocs(sym: Symbol)(implicit ctx: Context): Unit =
     ctx.docCtx.foreach { docCtx =>

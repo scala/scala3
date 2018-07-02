@@ -20,9 +20,8 @@ class CommentUnpickler(reader: TastyReader) {
       if (length > 0) {
         val bytes = readBytes(length)
         val position = new Position(readLongInt())
-        val expanded = readByte() == 1
         val rawComment = new String(bytes, Charset.forName("UTF-8"))
-        comments(addr) = Comment(position, rawComment, expanded = expanded)
+        comments(addr) = Comment(position, rawComment)
       }
     }
     comments.toMap

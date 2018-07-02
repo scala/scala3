@@ -32,7 +32,7 @@ abstract class PackageStructureBase extends DottyDocTest {
 
     val classNames = "scala.A" :: "scala.B" :: Nil
 
-    check(classNames, source1 :: source2 :: Nil) { packages =>
+    check(classNames, source1 :: source2 :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(tA, tB), _, _, _, _) =>
           assert(
@@ -66,7 +66,7 @@ abstract class PackageStructureBase extends DottyDocTest {
 
     val classNames = "scala.collection.A" :: "scala.collection.B" :: Nil
 
-    check(classNames, source1 :: source2 :: Nil) { packages =>
+    check(classNames, source1 :: source2 :: Nil) { (ctx, packages) =>
       packages("scala.collection") match {
         case PackageImpl(_, _, "scala.collection", List(tA, tB), _, _, _, _) =>
           assert(
