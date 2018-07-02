@@ -3,7 +3,6 @@ package dottydoc
 package core
 
 import dotc.core.Contexts.Context
-import dotc.util.Positions.NoPosition
 
 import transform.DocMiniPhase
 import model._
@@ -12,27 +11,25 @@ import model.comment._
 import model.references._
 import HtmlParsers._
 import util.MemberLookup
-import util.traversing._
-import util.internal.setters._
 import util.syntax._
 
 class LinkReturnTypes extends DocMiniPhase with TypeLinker {
   override def transformDef(implicit ctx: Context) = { case df: DefImpl =>
     val returnValue = linkReference(df, df.returnValue, ctx.docbase.packages)
-    df.copy(returnValue = returnValue)
+    df.copy(returnValue = returnValue) :: Nil
   }
 
   override def transformVal(implicit ctx: Context) = { case vl: ValImpl =>
     val returnValue = linkReference(vl, vl.returnValue, ctx.docbase.packages)
-    vl.copy(returnValue = returnValue)
+    vl.copy(returnValue = returnValue) :: Nil
   }
 
   override def transformTypeAlias(implicit ctx: Context) = { case ta: TypeAliasImpl =>
     ta.alias.map { alias =>
       val linkedAlias = linkReference(ta, alias, ctx.docbase.packages)
-      ta.copy(alias = Some(linkedAlias))
+      ta.copy(alias = Some(linkedAlias)) :: Nil
     }
-    .getOrElse(ta)
+    .getOrElse(ta :: Nil)
   }
 }
 
@@ -43,7 +40,7 @@ class LinkParamListTypes extends DocMiniPhase with TypeLinker {
       newList = list.map(linkReference(df, _, ctx.docbase.packages))
     } yield ParamListImpl(newList.asInstanceOf[List[NamedReference]], isImplicit)
 
-    df.copy(paramLists = newParamLists)
+    df.copy(paramLists = newParamLists) :: Nil
   }
 }
 
@@ -51,23 +48,23 @@ class LinkSuperTypes extends DocMiniPhase with TypeLinker {
   def linkSuperTypes(ent: Entity with SuperTypes)(implicit ctx: Context): List[MaterializableLink] =
     ent.superTypes.collect {
       case UnsetLink(title, query) =>
-        handleEntityLink(title, lookup(ent, ctx.docbase.packages, query), ent)
+        handleEntityLink(title, lookup(Some(ent), ctx.docbase.packages, query), ent)
     }
 
   override def transformClass(implicit ctx: Context) = { case cls: ClassImpl =>
-    cls.copy(superTypes = linkSuperTypes(cls))
+    cls.copy(superTypes = linkSuperTypes(cls)) :: Nil
   }
 
   override def transformCaseClass(implicit ctx: Context) = { case cc: CaseClassImpl =>
-    cc.copy(superTypes = linkSuperTypes(cc))
+    cc.copy(superTypes = linkSuperTypes(cc)) :: Nil
   }
 
   override def transformTrait(implicit ctx: Context) = { case trt: TraitImpl =>
-    trt.copy(superTypes = linkSuperTypes(trt))
+    trt.copy(superTypes = linkSuperTypes(trt)) :: Nil
   }
 
   override def transformObject(implicit ctx: Context) = { case obj: ObjectImpl =>
-    obj.copy(superTypes = linkSuperTypes(obj))
+    obj.copy(superTypes = linkSuperTypes(obj)) :: Nil
   }
 }
 
@@ -75,13 +72,13 @@ class LinkImplicitlyAddedTypes extends DocMiniPhase with TypeLinker {
   override def transformDef(implicit ctx: Context) = {
     case df: DefImpl if df.implicitlyAddedFrom.isDefined =>
       val implicitlyAddedFrom = linkReference(df, df.implicitlyAddedFrom.get, ctx.docbase.packages)
-      df.copy(implicitlyAddedFrom = Some(implicitlyAddedFrom))
+      df.copy(implicitlyAddedFrom = Some(implicitlyAddedFrom)) :: Nil
   }
 
   override def transformVal(implicit ctx: Context) = {
     case vl: ValImpl if vl.implicitlyAddedFrom.isDefined =>
       val implicitlyAddedFrom = linkReference(vl, vl.implicitlyAddedFrom.get, ctx.docbase.packages)
-      vl.copy(implicitlyAddedFrom = Some(implicitlyAddedFrom))
+      vl.copy(implicitlyAddedFrom = Some(implicitlyAddedFrom)) :: Nil
   }
 }
 
@@ -100,7 +97,7 @@ trait TypeLinker extends MemberLookup {
         val inlineToHtml = InlineToHtml(ent)
         val title = t
 
-        val target = handleEntityLink(title, lookup(ent, packs, query), ent, query)
+        val target = handleEntityLink(title, lookup(Some(ent), packs, query), ent, query)
         val tpTargets = tps.map(linkReference(ent, _, packs))
         ref.copy(tpeLink = target, paramLinks = tpTargets)
       case ref @ OrTypeReference(left, right) =>

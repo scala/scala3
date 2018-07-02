@@ -9,7 +9,7 @@ import model._
 
 class RemoveEmptyPackages extends DocMiniPhase {
   override def transformPackage(implicit ctx: Context) = { case p: Package =>
-    if (p.members.exists(_.kind != "package")) p
-    else NonEntity
+    if (p.members.exists(_.kind != "package")) p :: Nil
+    else Nil
   }
 }

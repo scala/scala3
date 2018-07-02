@@ -22,14 +22,12 @@ import model.{
   Trait,
   Package,
   Def,
-  NonEntity,
   ParamList
 }
 import model.references._
-import model.internal.{ParamListImpl}
-import model.comment.Comment
+import model.internal.ParamListImpl
 import dotty.tools.dotc.core.Symbols.NoSymbol
-import java.util.{Optional => JOptional, Map => JMap, List => JList}
+import java.util.{Map => JMap, List => JList}
 
 class JavaConverterTest {
   import model.JavaConverters._
@@ -43,7 +41,7 @@ class JavaConverterTest {
       def path = "path" :: "to" :: "def" :: Nil
       def comment = None
       def annotations = List("test")
-      def parent = NonEntity
+      def parent = None
       def modifiers = "private" :: Nil
       def typeParams = "String" :: "String" :: Nil
       def implicitlyAddedFrom = Some(
@@ -58,7 +56,7 @@ class JavaConverterTest {
       def path = "path" :: "to" :: "trait" :: Nil
       def comment = None
       def annotations = List("test")
-      def parent = NonEntity
+      def parent = None
       def modifiers = "protected" :: Nil
       def typeParams = "String" :: "String" :: Nil
       def superTypes = new NoLink("title", "query") :: Nil
@@ -74,7 +72,7 @@ class JavaConverterTest {
       def path = "path" :: "to" :: "test" :: Nil
       def comment = None
       def annotations = List("test")
-      def parent = NonEntity
+      def parent = None
       def modifiers = "private" :: Nil
       def typeParams = "String" :: "String" :: Nil
       def superTypes = new NoLink("title", "query") :: Nil
@@ -90,7 +88,7 @@ class JavaConverterTest {
       def path = "path" :: "to" :: "test" :: Nil
       def comment = None
       def annotations = List("test")
-      def parent = NonEntity
+      def parent = None
       def modifiers = "private" :: Nil
       def typeParams = "String" :: "String" :: Nil
       def constructors = List(List(paramList))
@@ -106,7 +104,7 @@ class JavaConverterTest {
       def path = "path" :: "to" :: "object" :: Nil
       def comment = None
       def annotations = List("test")
-      def parent = NonEntity
+      def parent = None
       def modifiers = "protected" :: Nil
       def typeParams = "String" :: "String" :: Nil
       def superTypes = new NoLink("title", "query") :: Nil
@@ -121,7 +119,7 @@ class JavaConverterTest {
       def path = "path" :: "to" :: "typeAlias" :: Nil
       def comment = None
       def annotations = List("test")
-      def parent = NonEntity
+      def parent = None
       def modifiers = "private" :: Nil
       def typeParams = "String" :: "String" :: Nil
       def alias = Some(new TypeReference("String", new NoLink("title", "target"), List()))
@@ -134,7 +132,7 @@ class JavaConverterTest {
       def path = "path" :: "to" :: "val" :: Nil
       def comment = None
       def annotations = List("test")
-      def parent = NonEntity
+      def parent = None
       def modifiers = "private" :: Nil
       def returnValue = new TypeReference("String", new NoLink("title", "target"), List())
       def implicitlyAddedFrom = Some(
@@ -147,7 +145,7 @@ class JavaConverterTest {
       def path = "path" :: "to" :: "test" :: Nil
       def comment = None
       def annotations = List("test")
-      def parent = NonEntity
+      def parent = None
       def members = trt :: typeAlias :: Nil
       def superTypes = new NoLink("title", "query") :: Nil
     }

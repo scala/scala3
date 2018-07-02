@@ -31,6 +31,6 @@ class UsecasePhase extends DocMiniPhase {
       .docstring(df.symbol)
       .flatMap(_.usecases.headOption.map(_.tpdCode))
       .map(defdefToDef(_, df.symbol))
-      .getOrElse(df)
+      .getOrElse(df) :: Nil
   }
 }

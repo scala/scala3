@@ -24,11 +24,11 @@ class AlternateConstructors extends DocMiniPhase {
 
   override def transformClass(implicit ctx: Context) = { case cls: ClassImpl =>
     val (constructors, members) = partitionMembers(cls)
-    cls.copy(members = members, constructors = constructors)
+    cls.copy(members = members, constructors = constructors) :: Nil
   }
 
   override def transformCaseClass(implicit ctx: Context) = { case cc: CaseClassImpl =>
     val (constructors, members) = partitionMembers(cc)
-    cc.copy(members = members, constructors = constructors)
+    cc.copy(members = members, constructors = constructors) :: Nil
   }
 }

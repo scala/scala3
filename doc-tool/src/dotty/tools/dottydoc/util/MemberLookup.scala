@@ -2,14 +2,6 @@ package dotty.tools
 package dottydoc
 package util
 
-import dotc.config.Printers.dottydoc
-import dotc.core.Contexts.Context
-import dotc.core.Flags
-import dotc.core.Names._
-import dotc.core.Symbols._
-import dotc.core.Names._
-import dotc.util.Positions._
-import model.internal._
 import model.comment._
 import model._
 
@@ -19,7 +11,7 @@ trait MemberLookup {
    *  Will return a `Tooltip` if unsuccessful, otherwise a LinkToEntity or
    *  LinkToExternal
    */
-  def lookup(entity: Entity, packages: Map[String, Package], query: String): Option[Entity] = {
+  def lookup(entity: Option[Entity], packages: Map[String, Package], query: String): Option[Entity] = {
     val notFound: Option[Entity] = None
     val querys = query.split("\\.").toList
 
@@ -42,11 +34,10 @@ trait MemberLookup {
         case x :: xs  =>
           ent
             .members
-            .collect {
+            .collectFirst {
               case e: Entity with Members if e.name == x => e
               case e: Entity with Members if e.name == x.init && x.last == '$' => e
             }
-            .headOption
             .fold(notFound)(e => downwardLookup(e, xs))
       }
 
@@ -69,10 +60,10 @@ trait MemberLookup {
     }
 
     (querys, entity) match {
-      case (xs, NonEntity) => globalLookup
-      case (x :: Nil, e: Entity with Members) =>
+      case (xs, None) => globalLookup
+      case (x :: Nil, Some(e: Entity with Members)) =>
         localLookup(e, x)
-      case (x :: _, e: Entity with Members) if x == entity.name =>
+      case (x :: _, Some(e: Entity with Members)) if x == e.name =>
         downwardLookup(e, querys)
       case (x :: xs, _) =>
         if (xs.nonEmpty) globalLookup
@@ -89,7 +80,7 @@ trait MemberLookup {
     query: String
   ): EntityLink = {
     val link =
-      lookup(entity, packages, query)
+      lookup(Some(entity), packages, query)
       .map(LinkToEntity)
       .getOrElse(Tooltip(query))
 
