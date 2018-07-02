@@ -78,9 +78,13 @@ class ClassfileParser(
 
   def run()(implicit ctx: Context): Option[Embedded] = try {
     ctx.debuglog("[class] >> " + classRoot.fullName)
-    parseHeader()
-    this.pool = new ConstantPool
-    parseClass()
+    if (in.buf.isEmpty) // An empty .class file is used to signal that a corresponding .tasty file exists
+      unpickleTastyFile()
+    else {
+      parseHeader()
+      this.pool = new ConstantPool
+      parseClass()
+    }
   } catch {
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
@@ -726,6 +730,39 @@ class ClassfileParser(
   // instead of ScalaSignature before 2.13.0-M2, see https://github.com/scala/scala/pull/5952
   private[this] val scalaUnpickleWhitelist = List(tpnme.nothingClass, tpnme.nullClass)
 
+  def unpickleTastyFile()(implicit ctx: Context): Option[Embedded] = {
+    def readTastyForClass(jpath: nio.file.Path): Array[Byte] = {
+      val plainFile = new PlainFile(io.File(jpath).changeExtension("tasty"))
+      if (plainFile.exists) plainFile.toByteArray
+      else {
+        ctx.error("Could not find " + plainFile)
+        Array.empty
+      }
+    }
+    val tastyBytes = classfile.underlyingSource match { // TODO: simplify when #3552 is fixed
+      case None =>
+        ctx.error("Could not load TASTY from .tasty for virtual file " + classfile)
+        Array.empty[Byte]
+      case Some(jar: ZipArchive) => // We are in a jar
+        val jarFile = JarArchive.open(io.File(jar.jpath))
+        readTastyForClass(jarFile.jpath.resolve(classfile.path))
+      // Do not close the file system as some else might use it later. Once closed it cannot be re-opened.
+      // TODO find a way to safly close the file system or use some other abstraction
+      case _ =>
+        readTastyForClass(classfile.jpath)
+    }
+    if (tastyBytes.nonEmpty)
+      unpickleTastyBytes(tastyBytes)
+    else
+      None
+  }
+
+  def unpickleTastyBytes(bytes: Array[Byte])(implicit ctx: Context): Some[Embedded]  = {
+    val unpickler = new tasty.DottyUnpickler(bytes)
+    unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))
+    Some(unpickler)
+  }
+
   /** Parse inner classes. Expects `in.bp` to point to the superclass entry.
    *  Restores the old `bp`.
    *  @return true iff classfile is from Scala, so no Java info needs to be read.
@@ -756,12 +793,6 @@ class ClassfileParser(
         Some(unpickler)
       }
 
-      def unpickleTASTY(bytes: Array[Byte]): Some[Embedded]  = {
-        val unpickler = new tasty.DottyUnpickler(bytes)
-        unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))
-        Some(unpickler)
-      }
-
       def parseScalaSigBytes: Array[Byte] = {
         val tag = in.nextByte.toChar
         assert(tag == STRING_TAG, tag)
@@ -784,30 +815,9 @@ class ClassfileParser(
       if (scan(tpnme.TASTYATTR)) {
         val attrLen = in.nextInt
         if (attrLen == 0) { // A tasty attribute implies the existence of the .tasty file
-          def readTastyForClass(jpath: nio.file.Path): Array[Byte] = {
-            val plainFile = new PlainFile(io.File(jpath).changeExtension("tasty"))
-            if (plainFile.exists) plainFile.toByteArray
-            else {
-              ctx.error("Could not find " + plainFile)
-              Array.empty
-            }
-          }
-          val tastyBytes = classfile.underlyingSource match { // TODO: simplify when #3552 is fixed
-            case None =>
-              ctx.error("Could not load TASTY from .tasty for virtual file " + classfile)
-              Array.empty[Byte]
-            case Some(jar: ZipArchive) => // We are in a jar
-              val jarFile = JarArchive.open(io.File(jar.jpath))
-              readTastyForClass(jarFile.jpath.resolve(classfile.path))
-              // Do not close the file system as some else might use it later. Once closed it cannot be re-opened.
-              // TODO find a way to safly close the file system or ose some other abstraction
-            case _ =>
-              readTastyForClass(classfile.jpath)
-          }
-          if (tastyBytes.nonEmpty)
-            return unpickleTASTY(tastyBytes)
+          return unpickleTastyFile()
         }
-        else return unpickleTASTY(in.nextBytes(attrLen))
+        else return unpickleTastyBytes(in.nextBytes(attrLen))
       }
 
       if (scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)) {
@@ -838,9 +848,9 @@ class ClassfileParser(
               else if (attrClass == defn.ScalaLongSignatureAnnot)
                 return unpickleScala(parseScalaLongSigBytes)
               else if (attrClass == defn.TASTYSignatureAnnot)
-                return unpickleTASTY(parseScalaSigBytes)
+                return unpickleTastyBytes(parseScalaSigBytes)
               else if (attrClass == defn.TASTYLongSignatureAnnot)
-                return unpickleTASTY(parseScalaLongSigBytes)
+                return unpickleTastyBytes(parseScalaLongSigBytes)
             parseAnnotArg(skip = true)
             j += 1
           }
