@@ -400,7 +400,7 @@ as follows:
    function) of type Boolean, Byte, Short, Int, Long, Float, Double,
    Char or String, it can be accessed in all contexts where the number
    of splices minus the number of quotes between use and definition
-   is 0.
+   is 1.
 
 ### Relationship with Staging
 
