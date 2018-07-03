@@ -131,13 +131,15 @@ object JavaParsers {
       Template(constr1.asInstanceOf[DefDef], parents, EmptyValDef, stats1)
     }
 
-    def makeSyntheticParam(count: Int, tpt: Tree): ValDef =
-      makeParam(nme.syntheticParamName(count), tpt)
+    def makeSyntheticConstructorParam(count: Int, tpt: Tree): ValDef = {
+      val name = nme.syntheticParamName(count)
+      ValDef(name, tpt, EmptyTree).withMods(Modifiers(Flags.JavaDefined | Flags.ParamAccessor | Flags.PrivateLocal))
+    }
     def makeParam(name: TermName, tpt: Tree, defaultValue: Tree = EmptyTree): ValDef =
       ValDef(name, tpt, defaultValue).withMods(Modifiers(Flags.JavaDefined | Flags.Param))
 
     def makeConstructor(formals: List[Tree], tparams: List[TypeDef], flags: FlagSet = Flags.JavaDefined) = {
-      val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticParam(i + 1, p) }
+      val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticConstructorParam(i + 1, p) }
       DefDef(nme.CONSTRUCTOR, tparams, List(vparams), TypeTree(), EmptyTree).withMods(Modifiers(flags))
     }
 
