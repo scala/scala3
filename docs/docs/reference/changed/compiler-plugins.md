@@ -4,28 +4,28 @@ title: "Changes in Compiler Plugins"
 ---
 
 Compiler plugins are supported by Dotty since 0.9. There are two notable changes
-compared to scalac:
+compared to `scalac`:
 
 - No support for analyzer plugins
 - Added support for research plugins
 
-[Analyzer plugins][1] in scalac run during type checking and may influence
+[Analyzer plugins][1] in `scalac` run during type checking and may influence
 normal type checking. This is a very powerful feature but for production usages,
 a predictable and consistent type checker is more important.
 
 For experimentation and research, Dotty introduces _research plugin_. Research plugins
-are more powerful than scalac analyzer plugins as they let plugin authors customize
+are more powerful than `scalac` analyzer plugins as they let plugin authors customize
 the whole compiler pipeline. One can easily replace the standard typer by a custom one or
 create a parser for a domain-specific language. However, research plugins are only
 enabled for nightly or snaphot releases of Dotty.
 
 Common plugins that add new phases to the compiler pipeline are called
 _standard plugins_ in Dotty. In terms of features, they are similar to
-Scalac plugins, despite minor changes in the API.
+`scalac` plugins, despite minor changes in the API.
 
 ## Using Compiler Plugins
 
-Both standard and research plugins can be used with dotc by adding the `-Xplugin:` option:
+Both standard and research plugins can be used with `dotc` by adding the `-Xplugin:` option:
 
 ```shell
 dotc -Xplugin:pluginA.jar -Xplugin:pluginB.jar Test.scala
