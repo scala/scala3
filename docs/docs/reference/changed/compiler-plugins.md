@@ -4,19 +4,19 @@ title: "Changes in Compiler Plugins"
 ---
 
 Compiler plugins are supported by Dotty since 0.9. There are two notable changes
-compared to `scalac`:
+compared to scalac:
 
 - No support for analyzer plugins
 - Added support for research plugins
 
-[Analyzer plugins][1] in `scalac` run during type checking and may influence
+[Analyzer plugins][1] in scalac run during type checking and may influence
 normal type checking. This is a very powerful feature but for production usages,
 a predictable and consistent type checker is more important.
 
 For experimentation and research, Dotty introduces _research plugin_. Research plugins
-are more powerful than `scalac` analyzer plugins as they let plugin authors customize
+are more powerful than scalac analyzer plugins as they let plugin authors customize
 the whole compiler pipeline. One can easily replace the standard typer by a custom one or
-roll its own parser for domain-specific language. However, research plugins are only
+create a parser for a domain-specific language. However, research plugins are only
 enabled for nightly or snaphot releases of Dotty.
 
 Common plugins that add new phases to the compiler pipeline are called
@@ -25,7 +25,7 @@ Scalac plugins, despite minor changes in the API.
 
 ## Using Compiler Plugins
 
-Both standard and research plugins can be used with `dotc` by adding the `-Xplugin:` option:
+Both standard and research plugins can be used with dotc by adding the `-Xplugin:` option:
 
 ```shell
 dotc -Xplugin:pluginA.jar -Xplugin:pluginB.jar Test.scala
@@ -90,9 +90,9 @@ class DivideZeroPhase extends PluginPhase {
 }
 ```
 
-The plugin main class (`DivideZero`) must extends the `StandardPlugin` trait
+The plugin main class (`DivideZero`) must extend the trait `StandardPlugin` 
 and implement the method `init` that takes the plugin's options as argument
-and return a list of `PluginPhase`s to be inserted into the compilation pipeline.
+and returns a list of `PluginPhase`s to be inserted into the compilation pipeline.
 
 Our plugin adds one compiler phase to the pipeline. A compiler phase must extend
 the `PluginPhase` trait. In order to specify when the phase is executed, we also
@@ -119,10 +119,10 @@ class DummyResearchPlugin extends ResearchPlugin {
 }
 ```
 
-A research plugins must extend the `ResearchPlugin` trait and implements the
-method `init` that takes the plugin's options as argument as well as the list of
-default compiler phases. We can return an updated version of this list that may
-replace, remove or add any phases to the pipeline.
+A research plugin must extend the trait `ResearchPlugin`  and implement the
+method `init` that takes the plugin's options as argument as well as the compiler
+pipeline in the form of a list of compiler phases. The method can replace, remove
+or add any phases to the pipeline and return the updated pipeline.
 
 
 [1]: https://github.com/scala/scala/blob/2.13.x/src/compiler/scala/tools/nsc/typechecker/AnalyzerPlugins.scala
