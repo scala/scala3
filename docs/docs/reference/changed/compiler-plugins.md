@@ -3,71 +3,64 @@ layout: doc-page
 title: "Changes in Compiler Plugins"
 ---
 
-Compiler plugins are supported by Dotty since 0.9. Compared to Scalac, there are
-two notable changes:
+Compiler plugins are supported by Dotty since 0.9. There are two notable changes
+compared to `scalac`:
 
-- No more support for analyzer plugins
+- No support for analyzer plugins
 - Added support for research plugins
 
-[Analyzer plugins][1] in Scalac are executed during type checking to change the
-normal type checking. This is a nice feature for doing research, but for
-production usage, a predictable and consistent type checker is more important.
+[Analyzer plugins][1] in `scalac` run during type checking and may influence
+normal type checking. This is a very powerful feature but for production usages,
+a predictable and consistent type checker is more important.
 
-For experiments and researches that rely on analyzer plugins in Scalac,
-_research plugin_ can be used for the same purpose in Dotty. Research plugins
-are more powerful than Scalac analyzer plugins as they enable plugin authors to
-customize the whole compiler pipeline. That means, you can easily use your
-customized typer to replace the standard typer, or roll your own parser for
-your domain-specific language. Research plugins are only enabled for nightly or
-snaphot releases of Dotty.
+For experimentation and research, Dotty introduces _research plugin_. Research plugins
+are more powerful than `scalac` analyzer plugins as they let plugin authors customize
+the whole compiler pipeline. One can easily replace the standard typer by a custom one or
+roll its own parser for domain-specific language. However, research plugins are only
+enabled for nightly or snaphot releases of Dotty.
 
-The common plugins that add new phases to the compiler pipeline are called
+Common plugins that add new phases to the compiler pipeline are called
 _standard plugins_ in Dotty. In terms of features, they are similar to
 Scalac plugins, despite minor changes in the API.
 
-## Artifact Interface
+## Using Compiler Plugins
 
-Both research plugins and standard plugins share the same command line options
-as Scalac plugins. You may integrate a plugin in the Dotty compiler as follows:
+Both standard and research plugins can be used with `dotc` by adding the `-Xplugin:` option:
 
 ```shell
 dotc -Xplugin:pluginA.jar -Xplugin:pluginB.jar Test.scala
 ```
 
-The compiler will examine the jar provided, and look for a property file
-`plugin.properties` in the root directory of the jar. The property file
-specifies the fully qualified plugin class name. The format of a property file
-looks like the following:
+The compiler will examine the jar provided, and look for a property file named
+`plugin.properties` in the root directory of the jar. The property file specifies
+the fully qualified plugin class name. The format of a property file is as follow:
 
-```
+```properties
 pluginClass=dividezero.DivideZero
 ```
 
-The above is a change from Scalac, which depends on an XML file
-`scalac-plugin.xml`.
+This is different from `scalac` plugins that required a `scalac-plugin.xml` file.
 
-Starting from 1.1.5, SBT also supports Dotty compiler plugins:
+Starting from 1.1.5, `sbt` also supports Dotty compiler plugins. Please refer to the
+`sbt` [documentation][2] for more information.
 
-```Scala
-addCompilerPlugin("org.divbyzero" % "divbyzero" % "1.0")
-```
+## Writing a Standard Compiler Plugin
 
-With the code above, SBT will prepare the correct options to the compiler.
+Here is the source code for a simple compiler plugin that reports integer divisions by
+zero as errors.
 
-## Standard Plugin
-
-The following code example shows the template for a standard plugin:
-
-```Scala
+```scala
 package dividezero
 
-import dotty.tools.dotc._
-import core._
-import Contexts.Context
-import plugins._
-import Phases.Phase
-import ast.tpd
-import transform.{LinkAll, Pickler}
+import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Constants.Constant
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.plugins.{PluginPhase, StandardPlugin}
+import dotty.tools.dotc.transform.{LinkAll, Pickler}
 
 class DivideZero extends StandardPlugin {
   val name: String = "divideZero"
@@ -77,44 +70,45 @@ class DivideZero extends StandardPlugin {
 }
 
 class DivideZeroPhase extends PluginPhase {
+  import tpd._
+
   val phaseName = "divideZero"
 
   override val runsAfter = Set(Pickler.name)
   override val runsBefore = Set(LinkAll.name)
 
-  override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = {
-    // check whether divide by zero here
+  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
+    tree match {
+      case Apply(Select(rcvr, nme.DIV), List(Literal(Constant(0))))
+          if rcvr.tpe <:< defn.IntType =>
+        ctx.error("dividing by zero", tree.pos)
+      case _ =>
+        ()
+    }
     tree
   }
 }
 ```
 
-As you can see from the code above, the plugin main class `DivideZero`
-extends the trait `StandardPlugin`. It implements the method `init` which
-takes the options for the plugin and return a list of `PluginPhase`s to be
-inserted into the compilation pipeline.
+The plugin main class (`DivideZero`) must extends the `StandardPlugin` trait
+and implement the method `init` that takes the plugin's options as argument
+and return a list of `PluginPhase`s to be inserted into the compilation pipeline.
 
-The plugin `DivideZero` only adds one compiler phase, `DivideZeroPhase`,
-to the compiler pipeline. The compiler phase has to extend the trait
-`PluginPhase`. It also needs to tell the compiler the place where it wants to be
-in the pipeline by specifying `runsAfter` and `runsBefore` relative to standard
-compiler phases. Finally, it can transform the trees of interest by overriding
-methods like `transformXXX`.
+Our plugin adds one compiler phase to the pipeline. A compiler phase must extend
+the `PluginPhase` trait. In order to specify when the phase is executed, we also
+need to specify a `runsBefore` and `runsAfter` constraints that are list of phase
+names.
 
-Usually a compiler plugin requires significant compiler knowledge in order to
-maintain invariants of the compiler. It is a good practice to enable
-the compiler option `-Ycheck:all` in the test set of your plugin.
+We can now transform trees by by overriding methods like `transformXXX`.
 
-## Research Plugin
+## Writing a Research Compiler Plugin
 
-Research plugins extend the trait `ResearchPlugin` as the following code shows:
+Here is a template for research plugins.
 
-```Scala
-import dotty.tools.dotc._
-import core._
-import Contexts.Context
-import plugins._
-import Phases.Phase
+```scala
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Phases.Phase
+import dotty.tools.dotc.plugins.ResearchPlugin
 
 class DummyResearchPlugin extends ResearchPlugin {
   val name: String = "dummy"
@@ -125,13 +119,11 @@ class DummyResearchPlugin extends ResearchPlugin {
 }
 ```
 
-Research plugins also define a method `init`, but the signature is different.
-Research plugins receive options for the plugin and the whole compiler pipeline as parameters.
-Usually, the `init` method replaces some standard phase of the compiler pipeline
-with a custom phase, e.g. use a custom frontend. Finally, `init` returns the
-updated compiler pipeline.
-
-Note that research plugins are only enabled for nightly or snaphot release of Dotty.
+A research plugins must extend the `ResearchPlugin` trait and implements the
+method `init` that takes the plugin's options as argument as well as the list of
+default compiler phases. We can return an updated version of this list that may
+replace, remove or add any phases to the pipeline.
 
 
 [1]: https://github.com/scala/scala/blob/2.13.x/src/compiler/scala/tools/nsc/typechecker/AnalyzerPlugins.scala
+[2]: https://www.scala-sbt.org/1.x/docs/Compiler-Plugins.html
