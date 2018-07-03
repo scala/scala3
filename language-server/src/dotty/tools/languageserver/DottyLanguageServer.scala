@@ -22,6 +22,7 @@ import core._, core.Decorators.{sourcePos => _, _}
 import Comments._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.MessageContainer
+import typer.Typer
 import util._
 import interactive._, interactive.InteractiveDriver._
 import Interactive.Include
@@ -367,7 +368,16 @@ class DottyLanguageServer extends LanguageServer
     if (tpw == NoType) null // null here indicates that no response should be sent
     else {
       val symbol = Interactive.enclosingSourceSymbol(trees, pos)
-      val docComment = ctx.docCtx.flatMap(_.docstring(symbol))
+      val docComment = ctx.docCtx.flatMap(_.docstring(symbol)).map {
+        case comment if !comment.isExpanded =>
+          val typer = new Typer()
+          val owner = symbol.owner
+          val cookingCtx = ctx.withOwner(owner)
+          typer.cookComment(symbol, owner)(cookingCtx)
+          ctx.docCtx.get.docstring(symbol).get
+        case comment =>
+          comment
+      }
       val content = hoverContent(tpw.show, docComment)
       new Hover(content, null)
     }
@@ -490,7 +500,7 @@ object DottyLanguageServer {
     val markup = new lsp4j.MarkupContent
     markup.setKind("markdown")
     markup.setValue((
-      comment.map(_.raw) match {
+      comment.flatMap(_.expandedBody) match {
         case Some(comment) =>
           s"""```scala
              |$typeInfo
