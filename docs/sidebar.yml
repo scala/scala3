@@ -79,6 +79,8 @@ sidebar:
               url: docs/reference/changed/pattern-matching.html
             - title: Eta Expansion
               url: docs/reference/changed/eta-expansion.html
+            - title: Compiler Plugins
+              url: docs/reference/changed/compiler-plugins.html
         - title: Dropped Features
           subsection:
             - title: DelayedInit
