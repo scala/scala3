@@ -50,11 +50,12 @@ final class JLineTerminal extends java.io.Closeable {
       .completer(completer)
       .highlighter(new Highlighter)
       .parser(new Parser)
-      .variable(SECONDARY_PROMPT_PATTERN, "%M") // A short word explaining what is "missing".
-                                                // This is supplied from the EOFError.getMissing() method
-      .variable(LIST_MAX, 400)       // ask user when number of completions exceed this limit (default is 100)
-      .option(INSERT_TAB, true)      // at the beginning of the line, insert tab instead of completing
-      .option(AUTO_FRESH_LINE, true) // if not at start of line before prompt, move to new line
+      .variable(SECONDARY_PROMPT_PATTERN, "%M") // A short word explaining what is "missing",
+                                                // this is supplied from the EOFError.getMissing() method
+      .variable(LIST_MAX, 400)                  // Ask user when number of completions exceed this limit (default is 100).
+      .variable(BLINK_MATCHING_PAREN, 0L)       // Don't blink the opening paren after typing a closing paren.
+      .option(INSERT_TAB, true)                 // At the beginning of the line, insert tab instead of completing.
+      .option(AUTO_FRESH_LINE, true)            // if not at start of line before prompt, move to new line.
       .build()
 
     lineReader.readLine(prompt)
