@@ -130,17 +130,25 @@ trait TypeAssigner {
        *   3. Finally, we need to handle the case where the prefix type does not have a member
        *      named `tp.name` anymmore. In that case, we need to fall back to Bot..Top.
        */
-      override def derivedSelect(tp: NamedType, pre: Type) =
-        if (pre eq tp.prefix)
-          tp
-        else tryWiden(tp, tp.prefix).orElse {
-          if (tp.isTerm && variance > 0 && !pre.isSingleton)
-          	apply(tp.info.widenExpr)
-          else if (upper(pre).member(tp.name).exists)
+      override def derivedSelect(tp: NamedType, pre: Type) = {
+        def default =
+          if (upper(pre).member(tp.name).exists)
             super.derivedSelect(tp, pre)
           else
             range(defn.NothingType, defn.AnyType)
-        }
+
+        if (pre eq tp.prefix)
+          tp
+        else if (ctx.isTransparentContext)
+          default
+        else
+          tryWiden(tp, tp.prefix).orElse {
+            if (tp.isTerm && variance > 0 && !pre.isSingleton)
+              apply(tp.info.widenExpr)
+            else
+              default
+          }
+      }
     }
 
     widenMap(tp)
