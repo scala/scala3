@@ -1115,15 +1115,11 @@ class Namer { typer: Typer =>
             WildcardType
       } getOrElse WildcardType
 
-      // println(s"final inherited for $sym: ${inherited.toString}") !!!
-      // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      def isInline = sym.is(FinalOrInlineOrTransparent, butNot = Method | Mutable)
-
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types
       // instead of widening to the underlying module class types.
       def widenRhs(tp: Type): Type = tp.widenTermRefExpr match {
-        case ctp: ConstantType if isInline => ctp
+        case ctp: ConstantType if !sym.is(Method | Mutable) => ctp
         case ref: TypeRef if ref.symbol.is(ModuleClass) => tp
         case _ => tp.widen.widenUnion
       }

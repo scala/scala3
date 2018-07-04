@@ -1,6 +1,6 @@
 trait A {
   println(s"super[A] init")
-  lazy val x = { println("super[A].x()"); 123 }
+  lazy val x: Int = { println("super[A].x()"); 123 }
 }
 
 class B extends A {
