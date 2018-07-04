@@ -52,6 +52,8 @@ object CheckRealizable {
 
   def boundsRealizability(tp: Type)(implicit ctx: Context) =
     new CheckRealizable().boundsRealizability(tp)
+
+  private val LateInitialized = Lazy | Erased,
 }
 
 /** Compute realizability status */
@@ -66,7 +68,7 @@ class CheckRealizable(implicit ctx: Context) {
   /** Is symbol's definitition a lazy or erased val?
    *  (note we exclude modules here, because their realizability is ensured separately)
    */
-  private def isLateInitialized(sym: Symbol) = sym.is(Lazy | Erased, butNot = Module)
+  private def isLateInitialized(sym: Symbol) = sym.is(LateInitialized, butNot = Module)
 
   /** The realizability status of given type `tp`*/
   def realizability(tp: Type): Realizability = tp.dealias match {
