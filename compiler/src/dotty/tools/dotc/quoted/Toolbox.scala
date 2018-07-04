@@ -19,10 +19,10 @@ object Toolbox {
       case expr: TastyTreeExpr[Tree] @unchecked =>
         throw new Exception("Cannot call `Expr.run` on an `Expr` that comes from an inline macro argument.")
       case _ =>
-        driver.run(expr, settings)
+        synchronized(driver.run(expr, settings))
     }
 
-    def show[T](expr: Expr[T]): String = driver.show(expr, settings)
+    def show[T](expr: Expr[T]): String = synchronized(driver.show(expr, settings))
 
   }
 }
