@@ -1,5 +1,5 @@
 class X { type R }
-class T(erased val a: X)(val value: a.R) // error
+class T(erased val a: X)(val value: a.R)
 
 object App {
   def coerce[U, V](u: U): V = {
@@ -8,7 +8,7 @@ object App {
 
     class T[A <: X](erased val a: A)(val value: a.R) // error
 
-    object O { lazy val x : Y & X = ??? } // warning
+    object O { lazy val x : Y & X = ??? }
 
     val a = new T[Y & X](O.x)(u)
     a.value
