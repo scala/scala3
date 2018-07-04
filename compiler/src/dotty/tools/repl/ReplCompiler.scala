@@ -114,7 +114,6 @@ class ReplCompiler extends Compiler {
 
     val tmpl = Template(emptyConstructor, Nil, EmptyValDef, defs.stats)
     val module = ModuleDef(objectName(defs.state), tmpl)
-      .withMods(Modifiers(Module | Final))
       .withPos(Position(0, defs.stats.last.pos.end))
 
     PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
@@ -156,22 +155,15 @@ class ReplCompiler extends Compiler {
   final def typeCheck(expr: String, errorsAllowed: Boolean = false)(implicit state: State): Result[tpd.ValDef] = {
 
     def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: Context): Result[untpd.PackageDef] = {
-      def wrap(trees: Seq[untpd.Tree]): untpd.PackageDef = {
+      def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
         import untpd._
 
-        val valdef =
-          ValDef("expr".toTermName, TypeTree(), Block(trees.toList, untpd.unitLiteral))
-
-        val tmpl = Template(emptyConstructor,
-                            List(Ident(tpnme.Any)),
-                            EmptyValDef,
-                            state.imports :+ valdef)
-
-        PackageDef(Ident(nme.EMPTY_PACKAGE),
-          TypeDef("EvaluateExpr".toTypeName, tmpl)
-            .withMods(Modifiers(Final))
-            .withPos(Position(0, expr.length)) :: Nil
-        )
+        val valdef = ValDef("expr".toTermName, TypeTree(), Block(trees, unitLiteral))
+        val tmpl = Template(emptyConstructor, Nil, EmptyValDef, state.imports :+ valdef)
+        val wrapper = TypeDef("$wrapper".toTypeName, tmpl)
+          .withMods(Modifiers(Final))
+          .withPos(Position(0, expr.length))
+        PackageDef(Ident(nme.EMPTY_PACKAGE), List(wrapper))
       }
 
       ParseResult(expr) match {
