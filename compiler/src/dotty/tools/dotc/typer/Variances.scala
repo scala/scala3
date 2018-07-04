@@ -94,6 +94,8 @@ object Variances {
             v
         }
       varianceInArgs(varianceInType(tycon)(tparam), args, tycon.typeParams)
+    case TypeOf.Generic(args) =>
+      varianceInTypes(args)(tparam)
     case AnnotatedType(tp, annot) =>
       varianceInType(tp)(tparam) & varianceInAnnot(annot)(tparam)
     case AndType(tp1, tp2) =>

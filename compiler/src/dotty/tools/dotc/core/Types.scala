@@ -1106,6 +1106,8 @@ object Types {
         else NoType
       case tp: AppliedType =>
         tp.superType.underlyingClassRef(refinementOK)
+      case tp: TypeOf =>
+        tp.underlying.underlyingClassRef(refinementOK)
       case tp: AnnotatedType =>
         tp.underlying.underlyingClassRef(refinementOK)
       case tp: RefinedType =>
@@ -3955,36 +3957,33 @@ object Types {
    *  It should be the case that whenever two TypeOfs are equal, so are their
    *  underlying types.
    */
-  class TypeOf private (val underlyingTp: Type, val tree: Tree, annot: Annotation) extends AnnotatedType(underlyingTp, annot) {
+  class TypeOf private (val underlyingTp: Type, val tree: Tree) extends CachedProxyType with ValueType {
     assert(TypeOf.isLegalTopLevelTree(tree), s"Illegal top-level tree in TypeOf: $tree")
+
+    override def underlying(implicit ctx: Context): Type = underlyingTp
+
+    override def iso(that: Any, bs: BinderPairs): Boolean = false  // TODO?
 
     override def equals(that: Any): Boolean = {
       that match {
         case that: TypeOf =>
-          def compareTree(tree1: Tree, tree2: Tree): Boolean = {
-            def compareArgs[T <: Tree](args1: List[T], args2: List[T]): Boolean =
-              args1.zip(args2).forall { case (a,b) => a.tpe == b.tpe }
-            (tree1, tree2) match {
-              case (t1: Apply, t2: Apply) =>
-                t1.fun.tpe == t2.fun.tpe && compareArgs(t1.args, t2.args)
-              case (t1: TypeApply, t2: TypeApply) =>
-                t1.fun.tpe == t2.fun.tpe && compareArgs(t1.args, t2.args)
-              case (t1: If, t2: If) =>
-                t1.cond.tpe == t2.cond.tpe && t1.thenp.tpe == t2.thenp.tpe && t1.elsep.tpe == t2.elsep.tpe
-              case (t1: Match, t2: Match) =>
-                t1.selector.tpe == t2.selector.tpe && compareArgs(t1.cases, t2.cases)
-              case (t1, t2) =>
-                false
-            }
+          def compareArgs[T <: Tree](args1: List[T], args2: List[T]): Boolean =
+            args1.zip(args2).forall { case (a,b) => a.tpe == b.tpe }
+          (this.tree, that.tree) match {
+            case (t1: Apply, t2: Apply) =>
+              t1.fun.tpe == t2.fun.tpe && compareArgs(t1.args, t2.args)
+            case (t1: TypeApply, t2: TypeApply) =>
+              t1.fun.tpe == t2.fun.tpe && compareArgs(t1.args, t2.args)
+            case (t1: If, t2: If) =>
+              t1.cond.tpe == t2.cond.tpe && t1.thenp.tpe == t2.thenp.tpe && t1.elsep.tpe == t2.elsep.tpe
+            case (t1: Match, t2: Match) =>
+              t1.selector.tpe == t2.selector.tpe && compareArgs(t1.cases, t2.cases)
+            case (t1, t2) =>
+              false
           }
-          compareTree(this.tree, that.tree)
         case _ => false
       }
     }
-
-    override def derivedAnnotatedType(parent: Type, annot: Annotation)(implicit ctx: Context): AnnotatedType =
-      if ((parent eq this.parent) && (annot eq this.annot)) this
-      else TypeOf(parent, annot.arguments.head)
 
     override def toString(): String = s"TypeOf($underlyingTp, $tree)"
   }
@@ -3999,8 +3998,7 @@ object Types {
       // To disable this safety net we will also have to update the pickler
       // to ignore the type of the TypeOf tree's.
       tree1.overwriteType(NoType)
-      val annot = Annotation(defn.TypeOfAnnot, tree1)(ctx.retractMode(Mode.Transparent))
-      new TypeOf(underlyingTp, tree1, annot)
+      new TypeOf(underlyingTp, tree1)
     }
     def unapply(to: TypeOf): Option[(Type, Tree)] = Some((to.underlyingTp, to.tree))
 
@@ -4056,7 +4054,7 @@ object Types {
       def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
         case Trees.Match(selector, cases) =>
           // TODO: We only look at .body.tpe for now, eventually we should
-          // also take the guard and the pattern into account.
+          // also take the guard and the pattern into account. (see also Generic.unapply below)
           Some((selector.tpe, cases.map(_.body.tpe)))
         case _ => None
       }
@@ -4096,6 +4094,11 @@ object Types {
     }
 
     object Apply {
+      def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
+        case Trees.Apply(fn, args) => Some((fn.tpe, args.map(_.tpe)))
+        case _ => None
+      }
+
       def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
         finalizeDerived(to, to.tree match {
           case Trees.Apply(fun, args) =>
@@ -4104,11 +4107,25 @@ object Types {
     }
 
     object TypeApply {
+      def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
+        case Trees.TypeApply(fn, args) => Some((fn.tpe, args.map(_.tpe)))
+        case _ => None
+      }
+
       def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
         finalizeDerived(to, to.tree match {
           case Trees.TypeApply(fun, args) =>
             cpy.TypeApply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(transparently)
         })
+    }
+
+    object Generic {
+      def unapply(to: TypeOf): Option[List[Type]] = to.tree match {
+        case Trees.If(cond, thenb, elseb) => Some(cond.tpe :: thenb.tpe :: elseb.tpe :: Nil)
+        case Trees.Match(selector, cases) => Some(selector.tpe :: cases.map(_.body.tpe))
+        case Trees.Apply(fn, args)        => Some(fn.tpe :: args.map(_.tpe))
+        case Trees.TypeApply(fn, args)    => Some(fn.tpe :: args.map(_.tpe))
+      }
     }
   }
 

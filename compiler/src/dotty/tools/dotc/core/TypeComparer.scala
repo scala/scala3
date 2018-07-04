@@ -569,7 +569,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             false
         }
         compareTypeBounds
-      case tp2: AnnotatedType if tp2.isRefining && !tp2.isInstanceOf[TypeOf] =>
+      case tp2: AnnotatedType if tp2.isRefining =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || defn.isBottomType(tp1)) &&
         recur(tp1, tp2.parent)
       case ClassInfo(pre2, cls2, _, _, _) =>
@@ -666,6 +666,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
           case _ =>
         }
         either(recur(tp11, tp2), recur(tp12, tp2))
+      case tp1: TypeOf =>
+        isNewSubType(tp1.underlyingTp)
       case tp1: AnnotatedType if tp1.isRefining =>
         isNewSubType(tp1.parent)
       case JavaArrayType(elem1) =>

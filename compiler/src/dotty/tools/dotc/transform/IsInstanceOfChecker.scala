@@ -139,6 +139,7 @@ object Checkable {
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
       case AnnotatedType(t, _)  => recur(X, t)
       case _: RefinedType       => false
+      case _: TypeOf            => false
       case _                    => true
     })
 

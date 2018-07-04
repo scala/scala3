@@ -95,6 +95,9 @@ object factories {
       case t: ThisType =>
         expandTpe(t.underlying)
 
+      case t: TypeOf =>
+        expandTpe(t.underlying)
+
       case AnnotatedType(t, _) =>
         expandTpe(t)
 
@@ -181,6 +184,9 @@ object factories {
 
     case mp: TermParamRef =>
       paramLists(mp.underlying)
+
+    case to: TypeOf =>
+      paramLists(to.underlying)
 
     case annot: AnnotatedType =>
       paramLists(annot.parent)

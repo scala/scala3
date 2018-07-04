@@ -162,10 +162,14 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
    */
   private def withMarker(tp: api.Type, marker: api.Annotation) =
     api.Annotated.of(tp, Array(marker))
-  private def marker(name: String) =
+  private def marker(name: String): api.Annotation =
     api.Annotation.of(api.Constant.of(Constants.emptyType, name), Array())
   val orMarker = marker("Or")
   val byNameMarker = marker("ByName")
+  val typeOfIfMarker = marker("If")
+  val typeOfMatchMarker = marker("Match")
+  val typeOfTypeApplyMarker = marker("TypeApply")
+  val typeOfApplyMarker = marker("Apply")
 
 
   /** Extract the API representation of a source file */
@@ -509,6 +513,16 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         withMarker(apiType(resultType), byNameMarker)
       case ConstantType(constant) =>
         api.Constant.of(apiType(constant.tpe), constant.stringValue)
+      case to @ TypeOf(_, tree) =>
+        val marker = to.tree match {
+          case _: If        => typeOfIfMarker
+          case _: Match     => typeOfMatchMarker
+          case _: TypeApply => typeOfTypeApplyMarker
+          case _: Apply     => typeOfApplyMarker
+        }
+        to match {
+          case TypeOf.Generic(args) => withMarker(combineApiTypes(args.map(apiType): _*), marker)
+        }
       case AnnotatedType(tpe, annot) =>
         api.Annotated.of(apiType(tpe), Array(apiAnnotation(annot)))
       case tp: ThisType =>
