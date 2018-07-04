@@ -799,7 +799,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       }
       app match {
         case Apply(fun, args) if fun.tpe.widen.isErasedMethod =>
-          tpd.cpy.Apply(app)(fun = fun, args = args.map(arg => normalizeErasedExpr(arg, "This argument is given to an erased parameter. ")))
+          tpd.cpy.Apply(app)(fun = fun, args = args.map(arg => defaultValue(arg.tpe)))
         case _ => app
       }
     }
@@ -1567,22 +1567,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     harmonizedElems
   }
 
-  /** Transforms the tree into a its default tree.
-   *  Performed to shrink the tree that is known to be erased later.
-   */
-  protected def normalizeErasedExpr(tree: Tree, msg: String)(implicit ctx: Context): Tree = {
-    if (!isPureExpr(tree))
-      ctx.warning(msg + "This expression will not be evaluated.", tree.pos)
-    defaultValue(tree.tpe)
-  }
-
   /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
    *  Performed to shrink the tree that is known to be erased later.
    */
-  protected def normalizeErasedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) = {
-    if (sym.is(Erased) && rhs.tpe.exists) normalizeErasedExpr(rhs, "Expression is on the RHS of an `erased` " + sym.showKind + ". ")
-    else rhs
-  }
+  protected def normalizeErasedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) =
+    if (sym.is(Erased) && rhs.tpe.exists) defaultValue(rhs.tpe) else rhs
 
   /** If all `types` are numeric value types, and they are not all the same type,
    *  pick a common numeric supertype and widen any constant types in `tpes` to it.
