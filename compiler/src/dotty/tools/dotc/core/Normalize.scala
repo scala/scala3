@@ -11,7 +11,9 @@ import Symbols._
 import Types._
 import reporting.trace
 import reporting.diagnostic.Message
+import typer.Inferencing._
 import typer.ErrorReporting.errorType
+import typer.ForceDegree
 import ast.tpd._
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -74,10 +76,13 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
 
   private def asType(b: Boolean) = ConstantType(Constants.Constant(b))
 
-  private def typeTest(actualTp: Type, testedTp: Type): Option[Boolean] =
-    if (ctx.typeComparer.isSubTypeWhenFrozen(actualTp, testedTp))      Some(true)
+  private def typeTest(actualTp: Type, testedTp: Type): Option[Boolean] = {
+    if (!isFullyDefined(actualTp, ForceDegree.none))      None // Approximating for now...
+    else if (!isFullyDefined(testedTp, ForceDegree.none)) None
+    else if (ctx.typeComparer.isSubTypeWhenFrozen(actualTp, testedTp)) Some(true)
     else if (ctx.typeComparer.isSubTypeWhenFrozen(testedTp, actualTp)) None
     else                                                               Some(false)
+  }
 
   /** The body type of transparent method `sym` if the body itself is not currently being type-checked,
     * error otherwise.
@@ -196,8 +201,13 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
             }
           }
 
-        case tp @ TypeOf.Call(fn, argss) =>
-          normalizeApp(fn, argss, realApplication = true) orElse tp
+        // Defer unfolding until all type and term arguments are known
+        case tp if !tp.widen.isInstanceOf[MethodOrPoly] =>
+          tp match {
+            case tp @ TypeOf.Call(fn, argss) =>
+              normalizeApp(fn, argss, realApplication = true) orElse tp
+            case tp => tp
+          }
 
         case tp =>
 //          val tp1 = tp.stripTypeVar.dealias.widenExpr
