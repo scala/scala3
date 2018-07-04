@@ -319,6 +319,7 @@ object Types {
     final def isAlias: Boolean = this.isInstanceOf[TypeAlias]
 
     /** Is this a MethodType which is from Java */
+    // FIXME: Why is this needed? Can't we just check is(JavaDefined) ?
     def isJavaMethod: Boolean = false
 
     /** Is this a MethodType which has implicit parameters */

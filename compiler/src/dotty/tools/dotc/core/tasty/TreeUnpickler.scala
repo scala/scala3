@@ -610,6 +610,8 @@ class TreeUnpickler(reader: TastyReader,
           case STABLE => addFlag(Stable)
           case PARAMsetter =>
             addFlag(ParamAccessor)
+          case JAVAdefined =>
+            addFlag(JavaDefined)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readType().typeSymbol
@@ -766,7 +768,7 @@ class TreeUnpickler(reader: TastyReader,
           val valueParamss = ctx.normalizeIfConstructor(
               vparamss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
           val resType = ctx.effectiveResultType(sym, typeParams, tpt.tpe)
-          sym.info = ctx.methodType(typeParams, valueParamss, resType)
+          sym.info = ctx.methodType(typeParams, valueParamss, resType, ctx.owner.enclosingClass.is(JavaDefined))
           DefDef(tparams, vparamss, tpt)
         case VALDEF =>
           val tpt = readTpt()(localCtx)

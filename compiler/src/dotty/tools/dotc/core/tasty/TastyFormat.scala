@@ -199,6 +199,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   DEFAULTparameterized                // Method with default parameters
                   STABLE                              // Method that is assumed to be stable
                   PARAMsetter                         // A setter without a body named `x_=` where `x` is pickled as a PARAM
+                  JAVAdefined                         // TODO: replace this by one or more flag or tag with precisely defined semantics
                   Annotation
 
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term
@@ -234,7 +235,7 @@ object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
   val MajorVersion = 9
-  val MinorVersion = 0
+  val MinorVersion = 1
 
   /** Tags used to serialize names */
   class NameTags {
@@ -307,6 +308,7 @@ object TastyFormat {
   final val MACRO = 34
   final val ERASED = 35
   final val PARAMsetter = 36
+  final val JAVAdefined = 37
 
   // Cat. 2:    tag Nat
 
@@ -432,7 +434,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= PARAMsetter ||
+    firstSimpleTreeTag <= tag && tag <= JAVAdefined ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -472,6 +474,7 @@ object TastyFormat {
        | DEFAULTparameterized
        | STABLE
        | PARAMsetter
+       | JAVAdefined
        | ANNOTATION
        | PRIVATEqualified
        | PROTECTEDqualified => true
@@ -529,6 +532,7 @@ object TastyFormat {
     case DEFAULTparameterized => "DEFAULTparameterized"
     case STABLE => "STABLE"
     case PARAMsetter => "PARAMsetter"
+    case JAVAdefined => "JAVAdefined"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"
