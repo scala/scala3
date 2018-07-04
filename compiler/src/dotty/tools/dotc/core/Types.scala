@@ -3957,7 +3957,7 @@ object Types {
    *  It should be the case that whenever two TypeOfs are equal, so are their
    *  underlying types.
    */
-  class TypeOf private (val underlyingTp: Type, val tree: Tree) extends CachedProxyType with ValueType {
+  abstract class TypeOf protected (val underlyingTp: Type, val tree: Tree) extends CachedProxyType with ValueType {
     assert(TypeOf.isLegalTopLevelTree(tree), s"Illegal top-level tree in TypeOf: $tree")
 
     override def underlying(implicit ctx: Context): Type = underlyingTp
@@ -3986,7 +3986,22 @@ object Types {
     }
 
     override def toString(): String = s"TypeOf($underlyingTp, $tree)"
+
+    override def computeHash(bs: Hashable.Binders) = {
+      val delta = tree match {
+        case _: If        => 11
+        case _: Match     => 17
+        case _: Apply     => 23
+        case _: TypeApply => 29
+      }
+      this match {
+        case TypeOf.Generic(tp :: tps) =>
+          addDelta(doHash(bs, tp, tps), delta)
+      }
+    }
   }
+
+  final class CachedTypeOf(underlyingTp: Type, tree: Tree) extends TypeOf(underlyingTp, tree)
 
   object TypeOf {
     def apply(underlyingTp: Type, tree: untpd.Tree)(implicit ctx: Context): TypeOf = {
@@ -3998,8 +4013,9 @@ object Types {
       // To disable this safety net we will also have to update the pickler
       // to ignore the type of the TypeOf tree's.
       tree1.overwriteType(NoType)
-      new TypeOf(underlyingTp, tree1)
+      unique(new CachedTypeOf(underlyingTp, tree1))
     }
+
     def unapply(to: TypeOf): Option[(Type, Tree)] = Some((to.underlyingTp, to.tree))
 
     def isLegalTopLevelTree(tree: Tree): Boolean = tree match {
