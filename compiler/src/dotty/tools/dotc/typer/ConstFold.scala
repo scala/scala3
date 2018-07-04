@@ -59,6 +59,30 @@ object ConstFold {
                                             // compiler itself crashing
     }
 
+
+  def apply(fn: TermRef)(implicit ctx: Context): Type = finish {
+    fn.prefix.widenTermRefExpr match {
+      case ConstantType(x) => foldUnop(fn.name, x)
+      case _               => null
+    }
+  }
+
+  def apply(fn: TermRef, arg: Type)(implicit ctx: Context): Type = finish {
+    (fn.prefix.widenTermRefExpr, arg.widenTermRefExpr) match {
+      case (ConstantType(x), ConstantType(y)) => foldBinop(fn.name, x, y)
+      case _                                  => null
+    }
+  }
+
+  private def finish(compX: => Constant)(implicit ctx: Context): Type =
+    try {
+      val x = compX
+      if (x ne null) ConstantType(x) else NoType
+    } catch {
+      case _: ArithmeticException => NoType
+    }
+
+
   private def foldUnop(op: Name, x: Constant): Constant = (op, x.tag) match {
     case (nme.UNARY_!, BooleanTag) => Constant(!x.booleanValue)
 

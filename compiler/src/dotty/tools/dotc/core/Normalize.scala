@@ -103,10 +103,9 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
     if (fnSym.is(Method)) {
       if (defn.ScalaValueClasses().contains(fnSym.owner)) {
         argss match {
-          // TODO: Retrofit Type-entrypoint into ConstFold
-          /*case List()          => ConstFold(fn)
-          case List(List(arg)) => ConstFold(fn, arg)*/
-          case _               => NoType
+          case List() if realApplication => ConstFold(fn)
+          case List(List(arg))           => ConstFold(fn, arg)
+          case _                         => NoType
         }
       }
       else if (fnSym is Transparent) {
