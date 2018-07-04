@@ -90,6 +90,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
       }
 
       assert(d.symbol.sourceFile != null &&
+             ctx.owner.sourceFile != null &&
              isSimilar(d.symbol.sourceFile.path, ctx.owner.sourceFile.path),
           s"private ${d.symbol.showLocated} in ${d.symbol.sourceFile} accessed from ${ctx.owner.showLocated} in ${ctx.owner.sourceFile}")
       d.ensureNotPrivate.installAfter(thisPhase)
