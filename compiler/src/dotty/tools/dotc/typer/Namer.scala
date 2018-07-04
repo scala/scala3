@@ -1115,9 +1115,8 @@ class Namer { typer: Typer =>
             WildcardType
       } getOrElse WildcardType
 
-      // Widen rhs type and eliminate `|' but keep ConstantTypes if
-      // definition is inline (i.e. final in Scala2) and keep module singleton types
-      // instead of widening to the underlying module class types.
+      // Widen rhs type and eliminate `|' but keep ConstantTypes and module singleton
+      // types instead of widening to the underlying module class types.
       def widenRhs(tp: Type): Type = tp.widenTermRefExpr match {
         case ctp: ConstantType if !sym.is(Method | Mutable) => ctp
         case ref: TypeRef if ref.symbol.is(ModuleClass) => tp
