@@ -48,13 +48,16 @@ object Inliner {
       def accessorNameKind = InlineAccessorName
 
       /** A definition needs an accessor if it is private, protected, or qualified private
-        *  and it is not part of the tree that gets inlined. The latter test is implemented
-        *  by excluding all symbols properly contained in the inlined method.
-        */
+       *  and it is not part of the tree that gets inlined. The latter test is implemented
+       *  by excluding all symbols properly contained in the inlined method.
+       *
+       *  Constant vals don't need accessors since they are inlined in FirstTransform.
+       */
       def needsAccessor(sym: Symbol)(implicit ctx: Context) =
         sym.isTerm &&
         (sym.is(AccessFlags) || sym.privateWithin.exists) &&
-        !sym.isContainedIn(inlineSym)
+        !sym.isContainedIn(inlineSym) &&
+        !(sym.isStable && sym.info.widenTermRefExpr.isInstanceOf[ConstantType])
 
       def preTransform(tree: Tree)(implicit ctx: Context): Tree
 
