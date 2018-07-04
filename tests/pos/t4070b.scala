@@ -1,3 +1,4 @@
+// FIXME: changes to workaround type avoidance bugs
 package a {
   abstract class DeliteOp[B]
   abstract class DeliteCollection[A]
@@ -11,7 +12,7 @@ package a {
 
   object Test {
     def f(x: DeliteOp[_]) = x match {
-      case map: DeliteOpMap[_,_,_] => map.alloc.Type
+      case map: DeliteOpMap[a,b,c] => map.alloc.Type
     }
   }
 }
@@ -19,7 +20,7 @@ package a {
 package b {
   object Test {
     def f(x: DeliteOp[_]) = x match {
-      case map: DeliteOpMap[_,_,_] => map.alloc.Type
+      case map: DeliteOpMap[a,b,c] => map.alloc.Type
     }
   }
 
