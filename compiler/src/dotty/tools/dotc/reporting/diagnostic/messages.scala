@@ -1270,7 +1270,8 @@ object messages {
           |it calls another, you need to specify the calling method's return type.
           |
           |Case 2: ${method} is recursive
-          |If `${method}` calls itself on any path, you need to specify its return type.
+          |If `${method}` calls itself on any path (even through mutual recursion), you need to specify the return type
+          |of `${method}` or of a definition it's mutually recursive with.
           |""".stripMargin
   }
 
