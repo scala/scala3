@@ -334,7 +334,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals(namedImport, prevPrec)
     }
 
-  @Test def methodDoesNotTakePrameters =
+  @Test def methodDoesNotTakeParameters =
     checkMessagesAfter(FrontEnd.name) {
       """
         |object Scope {
@@ -353,7 +353,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("method foo", msg.methodSymbol.show)
     }
 
-  @Test def methodDoesNotTakeMorePrameters =
+  @Test def methodDoesNotTakeMoreParameters =
     checkMessagesAfter(FrontEnd.name) {
       """
         |object Scope{
