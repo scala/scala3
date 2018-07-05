@@ -803,6 +803,6 @@ object Symbols {
     override def toString: String = value.asScala.toString()
   }
 
-  @inline def newMutableSymbolMap[T]: MutableSymbolMap[T] =
+  @forceInline def newMutableSymbolMap[T]: MutableSymbolMap[T] =
     new MutableSymbolMap(new java.util.IdentityHashMap[Symbol, T]())
 }

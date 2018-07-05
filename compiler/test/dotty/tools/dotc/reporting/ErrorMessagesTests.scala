@@ -935,7 +935,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
   @Test def noReturnInInline =
     checkMessagesAfter(FrontEnd.name) {
       """class BadFunction {
-        |  @inline def usesReturn: Int = { return 42 }
+        |  inline def usesReturn: Int = { return 42 }
         |}
       """.stripMargin
     }.expect { (ictx, messages) =>

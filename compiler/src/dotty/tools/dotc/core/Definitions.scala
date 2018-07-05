@@ -707,8 +707,8 @@ class Definitions {
   def ImplicitAmbiguousAnnot(implicit ctx: Context) = ImplicitAmbiguousAnnotType.symbol.asClass
   lazy val ImplicitNotFoundAnnotType = ctx.requiredClassRef("scala.annotation.implicitNotFound")
   def ImplicitNotFoundAnnot(implicit ctx: Context) = ImplicitNotFoundAnnotType.symbol.asClass
-  lazy val InlineAnnotType = ctx.requiredClassRef("scala.inline")
-  def InlineAnnot(implicit ctx: Context) = InlineAnnotType.symbol.asClass
+  lazy val ForceInlineAnnotType = ctx.requiredClassRef("scala.forceInline")
+  def ForceInlineAnnot(implicit ctx: Context) = ForceInlineAnnotType.symbol.asClass
   lazy val InlineParamAnnotType = ctx.requiredClassRef("scala.annotation.internal.InlineParam")
   def InlineParamAnnot(implicit ctx: Context) = InlineParamAnnotType.symbol.asClass
   lazy val InvariantBetweenAnnotType = ctx.requiredClassRef("scala.annotation.internal.InvariantBetween")
