@@ -814,13 +814,6 @@ class TreeUnpickler(reader: TastyReader,
             DefDef(Nil, Nil, tpt)
           }
       }
-      val mods =
-        if (sym.annotations.isEmpty) untpd.EmptyModifiers
-        else untpd.Modifiers(annotations = sym.annotations.map(_.tree))
-      tree.withMods(mods)
-        // record annotations in tree so that tree positions can be filled in.
-        // Note: Once the inline PR with its changes to positions is in, this should be
-        // no longer necessary.
       goto(end)
       setPos(start, tree)
       if (!sym.isType) { // Only terms might have leaky aliases, see the documentation of `checkNoPrivateLeaks`

@@ -42,7 +42,7 @@ class Pickler extends Phase {
     clss.filterNot(companionModuleClasses.contains)
   }
 
-  override def run(implicit ctx: Context): Unit = {
+  override def run(implicit ctx: Context): Unit = if (!ctx.settings.fromTasty.value) { // No need to repickle
     val unit = ctx.compilationUnit
     pickling.println(i"unpickling in run ${ctx.runId}")
 
