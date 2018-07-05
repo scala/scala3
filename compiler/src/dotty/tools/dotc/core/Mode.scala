@@ -98,4 +98,9 @@ object Mode {
   /** Read comments from definitions when unpickling from TASTY */
   val ReadComments = newMode(21, "ReadComments")
 
+  /** We are typing the body of a transparent method */
+  val TransparentBody = newMode(22, "TransparentBody")
+
+  /** Suppress inlining transparent method applications */
+  val NoInlineTransparent = newMode(23, "NoInlineTransparent")
 }

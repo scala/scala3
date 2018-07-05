@@ -324,7 +324,6 @@ object StdNames {
     // Compiler utilized names
 
     val AnnotatedType: N        = "AnnotatedType"
-    val AppliedTypeTree: N      = "AppliedTypeTree"
     val ArrayAnnotArg: N        = "ArrayAnnotArg"
     val Constant: N             = "Constant"
     val ConstantType: N         = "ConstantType"

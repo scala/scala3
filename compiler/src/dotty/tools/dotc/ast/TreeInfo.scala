@@ -72,7 +72,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
    */
   def methPart(tree: Tree): Tree = stripApply(tree) match {
     case TypeApply(fn, _) => methPart(fn)
-    case AppliedTypeTree(fn, _) => methPart(fn) // !!! should not be needed
     case Block(stats, expr) => methPart(expr)
     case mp => mp
   }
@@ -152,7 +151,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   def isRepeatedParamType(tpt: Tree)(implicit ctx: Context): Boolean = tpt match {
     case ByNameTypeTree(tpt1) => isRepeatedParamType(tpt1)
     case tpt: TypeTree => tpt.typeOpt.isRepeatedParam
-    case AppliedTypeTree(Select(_, tpnme.REPEATED_PARAM_CLASS), _) => true
+    case TypeApply(Select(_, tpnme.REPEATED_PARAM_CLASS), _) => true
     case _ => false
   }
 
@@ -164,7 +163,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case AndTypeTree(tpt1, tpt2) => mayBeTypePat(tpt1) || mayBeTypePat(tpt2)
     case OrTypeTree(tpt1, tpt2) => mayBeTypePat(tpt1) || mayBeTypePat(tpt2)
     case RefinedTypeTree(tpt, refinements) => mayBeTypePat(tpt) || refinements.exists(_.isInstanceOf[Bind])
-    case AppliedTypeTree(tpt, args) => mayBeTypePat(tpt) || args.exists(_.isInstanceOf[Bind])
+    case TypeApply(tpt, args) => mayBeTypePat(tpt) || args.exists(_.isInstanceOf[Bind])
     case Select(tpt, _) => mayBeTypePat(tpt)
     case Annotated(tpt, _) => mayBeTypePat(tpt)
     case _ => false
@@ -240,6 +239,35 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case y          => y
   }
 
+  /**  The largest subset of {NoInits, PureInterface} that a
+   *   trait or class enclosing this statement can have as flags.
+   */
+  def defKind(tree: Tree)(implicit ctx: Context): FlagSet = unsplice(tree) match {
+    case EmptyTree | _: Import => NoInitsInterface
+    case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
+    case tree: DefDef =>
+      if (tree.unforcedRhs == EmptyTree &&
+          tree.vparamss.forall(_.forall(_.rhs.isEmpty))) NoInitsInterface
+      else NoInits
+    case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
+    case _ => EmptyFlags
+  }
+
+  /**  The largest subset of {NoInits, PureInterface} that a
+   *   trait or class with these parents can have as flags.
+   */
+  def parentsKind(parents: List[Tree])(implicit ctx: Context): FlagSet = parents match {
+    case Nil => NoInitsInterface
+    case Apply(_, _ :: _) :: _ => EmptyFlags
+    case _ :: parents1 => parentsKind(parents1)
+  }
+
+  /**  The largest subset of {NoInits, PureInterface} that a
+   *   trait or class with this body can have as flags.
+   */
+  def bodyKind(body: List[Tree])(implicit ctx: Context): FlagSet =
+    (NoInitsInterface /: body)((fs, stat) => fs & defKind(stat))
+
   /** Checks whether predicate `p` is true for all result parts of this expression,
    *  where we zoom into Ifs, Matches, and Blocks.
    */
@@ -260,6 +288,12 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case TypedSplice(tree1) => tree1
     case Parens(tree1) => unsplice(tree1)
     case _ => tree
+  }
+
+  def isBounds(tree: Tree)(implicit ctx: Context) = tree match {
+    case tree: TypeBoundsTree => true
+    case TypedSplice(tree1) => tree1.tpe.isInstanceOf[TypeBounds]
+    case _ => false
   }
 
   /** True iff definition is a val or def with no right-hand-side, or it
@@ -307,6 +341,12 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
         case param :: _ => param.mods.is(Implicit)
         case Nil => cl.tpt.eq(untpd.ImplicitEmptyTree) || defn.isImplicitFunctionType(cl.tpt.typeOpt)
       }
+    case _ => false
+  }
+
+  /** Is this the RHS of a transparnt type def, which needs to be represented as a DefDef? */
+  def isTypeDefRHS(tree: Tree): Boolean = tree match {
+    case tree: If => true
     case _ => false
   }
 
@@ -358,6 +398,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       refPurity(tree)
     case Select(qual, _) =>
       refPurity(tree).min(exprPurity(qual))
+    case New(_) =>
+      SimplyPure
     case TypeApply(fn, _) =>
       exprPurity(fn)
 /*
@@ -369,13 +411,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case Apply(fn, args) =>
       def isKnownPureOp(sym: Symbol) =
         sym.owner.isPrimitiveValueClass || sym.owner == defn.StringClass
-      // Note: After uncurry, field accesses are represented as Apply(getter, Nil),
-      // so an Apply can also be pure.
-      if (args.isEmpty && fn.symbol.is(Stable)) exprPurity(fn)
-      else if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol))
-        // A constant expression with pure arguments is pure.
+      if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol)
+             // A constant expression with pure arguments is pure.
+          || fn.symbol.isStable)
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Pure
-      else Impure
+      else
+        Impure
     case Typed(expr, _) =>
       exprPurity(expr)
     case Block(stats, expr) =>
@@ -402,11 +443,16 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  @DarkDimius: need to make sure that lazy accessor methods have Lazy and Stable
    *               flags set.
    */
-  def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel =
-    if (!tree.tpe.widen.isParameterless || tree.symbol.is(Erased)) SimplyPure
-    else if (!tree.symbol.isStable) Impure
-    else if (tree.symbol.is(Lazy)) Idempotent // TODO add Module flag, sinxce Module vals or not Lazy from the start.
+  def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel = {
+    val sym = tree.symbol
+    if (!tree.hasType) Impure
+    else if (!tree.tpe.widen.isParameterless || sym.is(Erased)) SimplyPure
+    else if (!sym.isStable) Impure
+    else if (sym.is(Module))
+      if (sym.moduleClass.isNoInitsClass) Pure else Idempotent
+    else if (sym.is(Lazy)) Idempotent
     else SimplyPure
+  }
 
   def isPureRef(tree: Tree)(implicit ctx: Context) =
     refPurity(tree) == SimplyPure
@@ -621,17 +667,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       }
     }
     accum(Nil, root)
-  }
-
-  /**  The largest subset of {NoInits, PureInterface} that a
-   *   trait enclosing this statement can have as flags.
-   */
-  def defKind(tree: Tree): FlagSet = unsplice(tree) match {
-    case EmptyTree | _: Import => NoInitsInterface
-    case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
-    case tree: DefDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else NoInits
-    case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
-    case _ => EmptyFlags
   }
 
   /** The top level classes in this tree, including only those module classes that

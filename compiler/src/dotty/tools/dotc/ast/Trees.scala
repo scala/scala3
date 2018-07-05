@@ -434,11 +434,13 @@ object Trees {
     def forwardTo = qual
   }
 
-  abstract class GenericApply[-T >: Untyped] extends ProxyTree[T] with TermTree[T] {
+  abstract class GenericApply[-T >: Untyped] extends ProxyTree[T] {
     type ThisTree[-T >: Untyped] <: GenericApply[T]
     val fun: Tree[T]
     val args: List[Tree[T]]
     def forwardTo = fun
+    override def isTerm = fun.isTerm
+    override def isType = fun.isType
   }
 
   /** fun(args) */
@@ -492,8 +494,10 @@ object Trees {
 
   /** if cond then thenp else elsep */
   case class If[-T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])
-    extends TermTree[T] {
+    extends Tree[T] {
     type ThisTree[-T >: Untyped] = If[T]
+    override def isTerm = thenp.isTerm
+    override def isType = thenp.isType
   }
 
   /** A closure with an environment and a reference to a method.
@@ -630,13 +634,6 @@ object Trees {
     def forwardTo = tpt
   }
 
-  /** tpt[args] */
-  case class AppliedTypeTree[-T >: Untyped] private[ast] (tpt: Tree[T], args: List[Tree[T]])
-    extends ProxyTree[T] with TypTree[T] {
-    type ThisTree[-T >: Untyped] = AppliedTypeTree[T]
-    def forwardTo = tpt
-  }
-
   /** [typeparams] -> tpt */
   case class LambdaTypeTree[-T >: Untyped] private[ast] (tparams: List[TypeDef[T]], body: Tree[T])
     extends TypTree[T] {
@@ -697,8 +694,11 @@ object Trees {
     protected def force(x: AnyRef) = preRhs = x
   }
 
-  /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
-  case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]],
+  /**     mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs
+   *  or
+   *      mods type[tparams](vparams_1)...(vparams_n): tpt = rhs
+   */
+  case class DefDef[-T >: Untyped] private[ast] (name: Name, tparams: List[TypeDef[T]],
       vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
@@ -891,7 +891,6 @@ object Trees {
     type AndTypeTree = Trees.AndTypeTree[T]
     type OrTypeTree = Trees.OrTypeTree[T]
     type RefinedTypeTree = Trees.RefinedTypeTree[T]
-    type AppliedTypeTree = Trees.AppliedTypeTree[T]
     type LambdaTypeTree = Trees.LambdaTypeTree[T]
     type ByNameTypeTree = Trees.ByNameTypeTree[T]
     type TypeBoundsTree = Trees.TypeBoundsTree[T]
@@ -1053,10 +1052,6 @@ object Trees {
         case tree: RefinedTypeTree if (tpt eq tree.tpt) && (refinements eq tree.refinements) => tree
         case _ => finalize(tree, untpd.RefinedTypeTree(tpt, refinements))
       }
-      def AppliedTypeTree(tree: Tree)(tpt: Tree, args: List[Tree]): AppliedTypeTree = tree match {
-        case tree: AppliedTypeTree if (tpt eq tree.tpt) && (args eq tree.args) => tree
-        case _ => finalize(tree, untpd.AppliedTypeTree(tpt, args))
-      }
       def LambdaTypeTree(tree: Tree)(tparams: List[TypeDef], body: Tree): LambdaTypeTree = tree match {
         case tree: LambdaTypeTree if (tparams eq tree.tparams) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.LambdaTypeTree(tparams, body))
@@ -1085,7 +1080,7 @@ object Trees {
         case tree: ValDef if (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.ValDef(name, tpt, rhs))
       }
-      def DefDef(tree: Tree)(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree): DefDef = tree match {
+      def DefDef(tree: Tree)(name: Name, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree): DefDef = tree match {
         case tree: DefDef if (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.DefDef(name, tparams, vparamss, tpt, rhs))
       }
@@ -1109,6 +1104,10 @@ object Trees {
         case tree: Annotated if (arg eq tree.arg) && (annot eq tree.annot) => tree
         case _ => finalize(tree, untpd.Annotated(arg, annot))
       }
+      def UntypedSplice(tree: Tree)(splice: untpd.Tree) = tree match {
+        case tree: tpd.UntypedSplice if tree.splice `eq` splice => tree
+        case _ => finalize(tree, tpd.UntypedSplice(splice))
+      }
       def Thicket(tree: Tree)(trees: List[Tree]): Thicket = tree match {
         case tree: Thicket if trees eq tree.trees => tree
         case _ => finalize(tree, untpd.Thicket(trees))
@@ -1128,7 +1127,7 @@ object Trees {
         UnApply(tree: Tree)(fun, implicits, patterns)
       def ValDef(tree: ValDef)(name: TermName = tree.name, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs): ValDef =
         ValDef(tree: Tree)(name, tpt, rhs)
-      def DefDef(tree: DefDef)(name: TermName = tree.name, tparams: List[TypeDef] = tree.tparams, vparamss: List[List[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs): DefDef =
+      def DefDef(tree: DefDef)(name: Name = tree.name, tparams: List[TypeDef] = tree.tparams, vparamss: List[List[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs): DefDef =
         DefDef(tree: Tree)(name, tparams, vparamss, tpt, rhs)
       def TypeDef(tree: TypeDef)(name: TypeName = tree.name, rhs: Tree = tree.rhs): TypeDef =
         TypeDef(tree: Tree)(name, rhs)
@@ -1146,7 +1145,7 @@ object Trees {
      */
     protected def inlineContext(call: Tree)(implicit ctx: Context): Context = ctx
 
-    abstract class TreeMap(val cpy: TreeCopier = inst.cpy) {
+    abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self =>
 
       def transform(tree: Tree)(implicit ctx: Context): Tree = {
         Stats.record(s"TreeMap.transform $getClass")
@@ -1206,8 +1205,6 @@ object Trees {
             cpy.OrTypeTree(tree)(transform(left), transform(right))
           case RefinedTypeTree(tpt, refinements) =>
             cpy.RefinedTypeTree(tree)(transform(tpt), transformSub(refinements))
-          case AppliedTypeTree(tpt, args) =>
-            cpy.AppliedTypeTree(tree)(transform(tpt), transform(args))
           case LambdaTypeTree(tparams, body) =>
             implicit val ctx = localCtx
             cpy.LambdaTypeTree(tree)(transformSub(tparams), transform(body))
@@ -1245,8 +1242,8 @@ object Trees {
           case Thicket(trees) =>
             val trees1 = transform(trees)
             if (trees1 eq trees) tree else Thicket(trees1)
-          case _ if ctx.reporter.errorsReported =>
-            tree
+          case _ =>
+            transformMoreCases(tree)
         }
       }
 
@@ -1258,9 +1255,26 @@ object Trees {
         transform(tree).asInstanceOf[Tr]
       def transformSub[Tr <: Tree](trees: List[Tr])(implicit ctx: Context): List[Tr] =
         transform(trees).asInstanceOf[List[Tr]]
+
+      protected def transformMoreCases(tree: Tree)(implicit ctx: Context): Tree = tree match {
+        case tpd.UntypedSplice(usplice) =>
+          // For a typed tree map: homomorphism on the untyped part with
+          // recursive mapping of typed splices.
+          // The case is overridden in UntypedTreeMap.##
+          val untpdMap = new untpd.UntypedTreeMap {
+            override def transform(tree: untpd.Tree)(implicit ctx: Context): untpd.Tree = tree match {
+              case untpd.TypedSplice(tsplice) =>
+                untpd.cpy.TypedSplice(tree)(self.transform(tsplice).asInstanceOf[tpd.Tree])
+                  // the cast is safe, since the UntypedSplice case is overridden in UntypedTreeMap.
+              case _ => super.transform(tree)
+            }
+          }
+          cpy.UntypedSplice(tree)(untpdMap.transform(usplice))
+        case _ if ctx.reporter.errorsReported => tree
+      }
     }
 
-    abstract class TreeAccumulator[X] {
+    abstract class TreeAccumulator[X] { self =>
       // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
       def apply(x: X, tree: Tree)(implicit ctx: Context): X
 
@@ -1321,8 +1335,6 @@ object Trees {
             this(this(x, left), right)
           case RefinedTypeTree(tpt, refinements) =>
             this(this(x, tpt), refinements)
-          case AppliedTypeTree(tpt, args) =>
-            this(this(x, tpt), args)
           case LambdaTypeTree(tparams, body) =>
             implicit val ctx = localCtx
             this(this(x, tparams), body)
@@ -1355,13 +1367,28 @@ object Trees {
             this(this(x, arg), annot)
           case Thicket(ts) =>
             this(x, ts)
-          case _ if ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive) =>
-            // In interactive mode, errors might come from previous runs.
-            // In case of errors it may be that typed trees point to untyped ones.
-            // The IDE can still traverse inside such trees, either in the run where errors
-            // are reported, or in subsequent ones.
-            x
+          case _ =>
+            foldMoreCases(x, tree)
         }
+      }
+
+      def foldMoreCases(x: X, tree: Tree)(implicit ctx: Context): X = tree match {
+        case tpd.UntypedSplice(usplice) =>
+          // For a typed tree accumulator: skip the untyped part and fold all typed splices.
+          // The case is overridden in UntypedTreeAccumulator.
+          val untpdAcc = new untpd.UntypedTreeAccumulator[X] {
+            override def apply(x: X, tree: untpd.Tree)(implicit ctx: Context): X = tree match {
+              case untpd.TypedSplice(tsplice) => self(x, tsplice)
+              case _ => foldOver(x, tree)
+            }
+          }
+          untpdAcc(x, usplice)
+        case _ if ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive) =>
+          // In interactive mode, errors might come from previous runs.
+          // In case of errors it may be that typed trees point to untyped ones.
+          // The IDE can still traverse inside such trees, either in the run where errors
+          // are reported, or in subsequent ones.
+          x
       }
     }
 

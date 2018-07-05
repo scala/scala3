@@ -46,7 +46,7 @@ object Parsers {
   }
 
   @sharable object ParamOwner extends Enumeration {
-    val Class, Type, TypeParam, Def = Value
+    val Class, Type, TypeParam, Def, Constructor = Value
   }
 
   private implicit class AddDeco(val buf: ListBuffer[Tree]) extends AnyVal {
@@ -714,6 +714,7 @@ object Parsers {
     }
 
 /* ------------- TYPES ------------------------------------------------------ */
+
     /** Same as [[typ]], but if this results in a wildcard it emits a syntax error and
      *  returns a tree for type `Any` instead.
      */
@@ -783,7 +784,8 @@ object Parsers {
                 refinedTypeRest(
                   withTypeRest(
                     annotTypeRest(
-                      simpleTypeRest(tuple)))))
+                      appliedTypeRest(
+                        simpleTypeRest(tuple))))))
             }
           }
         }
@@ -846,13 +848,19 @@ object Parsers {
       }
       else t
 
-    /** AnnotType ::= SimpleType {Annotation}
+    /** AnnotType ::= AppliedType {Annotation}
      */
-    def annotType(): Tree = annotTypeRest(simpleType())
+    def annotType(): Tree = annotTypeRest(appliedType())
 
     def annotTypeRest(t: Tree): Tree =
       if (in.token == AT) annotTypeRest(atPos(startOffset(t)) { Annotated(t, annot()) })
       else t
+
+    /** AppiedType ::= SimpleType {ParArgumentExprs}
+     */
+    def appliedType(): Tree = appliedTypeRest(simpleType())
+
+    def appliedTypeRest(t: Tree) = parArgumentExprss(t)
 
     /** SimpleType       ::=  SimpleType TypeArgs
      *                     |  SimpleType `#' id
@@ -893,7 +901,7 @@ object Parsers {
     private def simpleTypeRest(t: Tree): Tree = in.token match {
       case HASH => simpleTypeRest(typeProjection(t))
       case LBRACKET => simpleTypeRest(atPos(startOffset(t)) {
-        AppliedTypeTree(checkWildcard(t), typeArgs(namedOK = false, wildOK = true)) })
+        TypeApply(checkWildcard(t), typeArgs(namedOK = false, wildOK = true)) })
       case _ => t
     }
 
@@ -988,7 +996,7 @@ object Parsers {
     def contextBounds(pname: TypeName): List[Tree] = in.token match {
       case COLON =>
         atPos(in.skipToken()) {
-          AppliedTypeTree(toplevelTyp(), Ident(pname))
+          TypeApply(toplevelTyp(), Ident(pname) :: Nil)
         } :: contextBounds(pname)
       case VIEWBOUND =>
         deprecationWarning("view bounds `<%' are deprecated, use a context bound `:' instead")
@@ -1047,6 +1055,21 @@ object Parsers {
           scalaAny
         case None => t
       }
+
+    /** TypeRHS   ::=  ‘if’ Expr ‘then’ TypeRHS ‘else’ TypeRHS
+     *              |  Type
+     */
+    def typeRHS(): Tree =
+      if (in.token == IF)
+        atPos(in.skipToken()) {
+          val cond = expr()
+          accept(THEN)
+          val thenp = typeRHS()
+          accept(ELSE)
+          val elsep = typeRHS()
+          If(cond, thenp, elsep)
+        }
+      else toplevelTyp()
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
 
@@ -1824,14 +1847,15 @@ object Parsers {
      */
     def typeParamClause(ownerKind: ParamOwner.Value): List[TypeDef] = inBrackets {
       def typeParam(): TypeDef = {
-        val isConcreteOwner = ownerKind == ParamOwner.Class || ownerKind == ParamOwner.Def
+        val isDefOwner = ownerKind == ParamOwner.Def || ownerKind == ParamOwner.Constructor
+        val isConcreteOwner = isDefOwner || ownerKind == ParamOwner.Class
         val start = in.offset
         val mods = atPos(start) {
           annotsAsMods() | {
             if (ownerKind == ParamOwner.Class) Param | PrivateLocal
             else Param
           } | {
-            if (ownerKind != ParamOwner.Def)
+            if (!isDefOwner)
               if (isIdent(nme.raw.PLUS)) { in.nextToken(); Covariant }
               else if (isIdent(nme.raw.MINUS)) { in.nextToken(); Contravariant }
               else EmptyFlags
@@ -1868,14 +1892,14 @@ object Parsers {
      *  DefParam          ::=  {Annotation} [`inline'] Param
      *  Param             ::=  id `:' ParamType [`=' Expr]
      */
-    def paramClauses(owner: Name, ofCaseClass: Boolean = false): List[List[ValDef]] = {
+    def paramClauses(ownerKind: ParamOwner.Value, ofCaseClass: Boolean = false): List[List[ValDef]] = {
       var imods: Modifiers = EmptyModifiers
       var implicitOffset = -1 // use once
       var firstClauseOfCaseClass = ofCaseClass
       def param(): ValDef = {
         val start = in.offset
         var mods = annotsAsMods()
-        if (owner.isTypeName) {
+        if (ownerKind == ParamOwner.Class) {
           mods = addFlag(modifiers(start = mods), ParamAccessor)
           mods =
             atPos(start, in.offset) {
@@ -1902,7 +1926,7 @@ object Parsers {
         atPos(start, nameStart) {
           val name = ident()
           accept(COLON)
-          if (in.token == ARROW && owner.isTypeName && !(mods is Local))
+          if (in.token == ARROW && ownerKind == ParamOwner.Class && !(mods is Local))
             syntaxError(VarValParametersMayNotBeCallByName(name, mods is Mutable))
           val tpt = paramType()
           val default =
@@ -1929,7 +1953,7 @@ object Parsers {
               funArgMods()
             }
           }
-          funArgMods()
+          if (ownerKind != ParamOwner.Type) funArgMods()
 
           commaSeparated(() => param())
         }
@@ -1946,7 +1970,7 @@ object Parsers {
       }
       val start = in.offset
       val result = clauses()
-      if (owner == nme.CONSTRUCTOR && (result.isEmpty || (result.head take 1 exists (_.mods is Implicit)))) {
+      if (ownerKind == ParamOwner.Constructor && (result.isEmpty || (result.head take 1 exists (_.mods is Implicit)))) {
         in.token match {
           case LBRACKET   => syntaxError("no type parameters allowed here")
           case EOF        => incompleteInputError(AuxConstructorNeedsNonImplicitParameter())
@@ -2123,7 +2147,7 @@ object Parsers {
       }
       if (in.token == THIS) {
         in.nextToken()
-        val vparamss = paramClauses(nme.CONSTRUCTOR)
+        val vparamss = paramClauses(ParamOwner.Constructor)
         if (in.isScala2Mode) newLineOptWhenFollowedBy(LBRACE)
         val rhs = {
           if (!(in.token == LBRACE && scala2ProcedureSyntax(""))) accept(EQUALS)
@@ -2134,7 +2158,7 @@ object Parsers {
         val mods1 = addFlag(mods, Method)
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val vparamss = paramClauses(name)
+        val vparamss = paramClauses(ParamOwner.Def)
         var tpt = fromWithinReturnType(typedOpt())
         if (in.isScala2Mode) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
@@ -2185,24 +2209,32 @@ object Parsers {
         Block(stats, Literal(Constant(())))
       }
 
-    /** TypeDef ::= type id [TypeParamClause] `=' Type
-     *  TypeDcl ::= type id [TypeParamClause] TypeBounds
+    /** TypeDcl  ::=  id [TypTypeParamClause] [DefParamClause] TypeBounds ‘=’ TypeRHS
+     *             |  id [HkTypeParamClause] TypeBounds
      */
     def typeDefOrDcl(start: Offset, mods: Modifiers): Tree = {
       newLinesOpt()
       atPos(start, nameStart) {
         val name = ident().toTypeName
         val tparams = typeParamClauseOpt(ParamOwner.Type)
-        in.token match {
-          case EQUALS =>
+        val vparamss = paramClauses(ParamOwner.Type)
+        if (vparamss.length > 1) syntaxError(i"type definitions cannot have multiple parameter clauses")
+        val isBounded = in.token == SUPERTYPE || in.token == SUBTYPE
+        val bounds = typeBounds()
+        val res =
+          if (in.token == EQUALS) {
             in.nextToken()
-            TypeDef(name, lambdaAbstract(tparams, toplevelTyp())).withMods(mods).setComment(in.getDocComment(start))
-          case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
-            TypeDef(name, lambdaAbstract(tparams, typeBounds())).withMods(mods).setComment(in.getDocComment(start))
-          case _ =>
-            syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))
-            EmptyTree
-        }
+            val rhs = typeRHS()
+            if (isTypeDefRHS(rhs) || isBounded || vparamss.nonEmpty)
+              DefDef(name, tparams, vparamss, bounds, rhs)
+            else
+              TypeDef(name, lambdaAbstract(tparams, rhs))
+          }
+          else {
+            if (vparamss.nonEmpty) syntaxError("`=' expected")
+            TypeDef(name, lambdaAbstract(tparams, bounds))
+          }
+        res.withMods(mods).setComment(in.getDocComment(start))
       }
     }
 
@@ -2247,7 +2279,7 @@ object Parsers {
     def classConstr(owner: Name, isCaseClass: Boolean = false): DefDef = atPos(in.lastOffset) {
       val tparams = typeParamClauseOpt(ParamOwner.Class)
       val cmods = fromWithinClassConstr(constrModsOpt(owner))
-      val vparamss = paramClauses(owner, isCaseClass)
+      val vparamss = paramClauses(ParamOwner.Class, isCaseClass)
       makeConstructor(tparams, vparamss).withMods(cmods)
     }
 
@@ -2321,11 +2353,11 @@ object Parsers {
 
 /* -------- TEMPLATES ------------------------------------------- */
 
-    /** ConstrApp         ::=  SimpleType {ParArgumentExprs}
+    /** ConstrApp         ::=  SimpleType {Annotation} {ParArgumentExprs}
      */
     val constrApp = () => {
       // Using Ident(nme.ERROR) to avoid causing cascade errors on non-user-written code
-      val t = checkWildcard(annotType(), fallbackTree = Ident(nme.ERROR))
+      val t = checkWildcard(annotTypeRest(simpleType()), fallbackTree = Ident(nme.ERROR))
       if (in.token == LPAREN) parArgumentExprss(wrapNew(t))
       else t
     }

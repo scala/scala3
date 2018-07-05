@@ -163,7 +163,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       """
         |object Scope {
         |  abstract class Concept
-        |  new Concept()
+        |  val x = new Concept()
         |}
       """.stripMargin
     }
@@ -181,7 +181,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       """
         |object Scope {
         |  trait Concept
-        |  new Concept()
+        |  val x = new Concept()
         |}
       """.stripMargin
     }
@@ -508,7 +508,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       """class Base
         |class RequiresBase { self: Base => }
         |object Scope {
-        |  new RequiresBase
+        |  val x = new RequiresBase
         |}
         |""".stripMargin
     }
@@ -987,20 +987,6 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val TailrecNotApplicable(method) :: Nil = messages
       assertEquals(method.show, "method foo")
     }
-
-    @Test def expectedTypeBoundOrEquals =
-      checkMessagesAfter(FrontEnd.name) {
-        """object typedef {
-          |  type asd > Seq
-          |}
-        """.stripMargin
-      }.expect { (ictx, messages) =>
-        implicit val ctx: Context = ictx
-
-        assertMessageCount(1, messages)
-        val ExpectedTypeBoundOrEquals(found) :: Nil = messages
-        assertEquals(Tokens.IDENTIFIER, found)
-      }
 
   @Test def classAndCompanionNameClash =
     checkMessagesAfter(RefChecks.name) {

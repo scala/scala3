@@ -1260,7 +1260,7 @@ object messages {
            |""".stripMargin
   }
 
-  case class OverloadedOrRecursiveMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  case class OverloadedOrRecursiveMethodNeedsResultType(tree: Names.Name)(implicit ctx: Context)
   extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
     val kind = "Syntax"
     val msg = hl"""overloaded or recursive method ${tree} needs return type"""

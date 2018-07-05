@@ -20,6 +20,8 @@ import scala.io.Codec
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
+  case class UntypedSplice(splice: untpd.Tree) extends Tree
+
   private def ta(implicit ctx: Context) = ctx.typeAssigner
 
   def Ident(tp: NamedType)(implicit ctx: Context): Ident =
@@ -104,7 +106,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Closure(Nil, call, targetTpt))
   }
 
-  /** A closure whole anonymous function has the given method type */
+  /** A closure whose anonymous function has the given method type */
   def Lambda(tpe: MethodType, rhsFn: List[Tree] => Tree)(implicit ctx: Context): Block = {
     val meth = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, tpe)
     Closure(meth, tss => rhsFn(tss.head).changeOwner(ctx.owner, meth))
@@ -145,9 +147,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def RefinedTypeTree(parent: Tree, refinements: List[Tree], refineCls: ClassSymbol)(implicit ctx: Context): Tree =
     ta.assignType(untpd.RefinedTypeTree(parent, refinements), parent, refinements, refineCls)
-
-  def AppliedTypeTree(tycon: Tree, args: List[Tree])(implicit ctx: Context): AppliedTypeTree =
-    ta.assignType(untpd.AppliedTypeTree(tycon, args), tycon, args)
 
   def ByNameTypeTree(result: Tree)(implicit ctx: Context): ByNameTypeTree =
     ta.assignType(untpd.ByNameTypeTree(result), result)
@@ -324,7 +323,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case pre: ThisType =>
         tp.isType ||
         pre.cls.isStaticOwner ||
-          tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
+        tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
           // was ctx.owner.enclosingClass.derivesFrom(pre.cls) which was not tight enough
           // and was spuriously triggered in case inner class would inherit from outer one
           // eg anonymous TypeMap inside TypeMap.andThen
@@ -640,7 +639,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   override def skipTransform(tree: Tree)(implicit ctx: Context) = tree.tpe.isError
 
-  implicit class TreeOps[ThisTree <: tpd.Tree](val tree: ThisTree) extends AnyVal {
+  implicit class TreeOps[ThisTree <: tpd.Tree](private val tree: ThisTree) extends AnyVal {
 
     def isValue(implicit ctx: Context): Boolean =
       tree.isTerm && tree.tpe.widen.isValueType
@@ -1022,13 +1021,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else (trees.head.tpe eq trees1.head.tpe) && sameTypes(trees.tail, trees1.tail)
   }
 
-  def evalOnce(tree: Tree)(within: Tree => Tree)(implicit ctx: Context) = {
-    if (isIdempotentExpr(tree)) within(tree)
+  def letBindUnless(level: TreeInfo.PurityLevel, tree: Tree)(within: Tree => Tree)(implicit ctx: Context) = {
+    if (exprPurity(tree) >= level) within(tree)
     else {
       val vdef = SyntheticValDef(TempResultName.fresh(), tree)
       Block(vdef :: Nil, within(Ident(vdef.namedType)))
     }
   }
+
+  def evalOnce(tree: Tree)(within: Tree => Tree)(implicit ctx: Context) =
+    letBindUnless(TreeInfo.Idempotent, tree)(within)
 
   def runtimeCall(name: TermName, args: List[Tree])(implicit ctx: Context): Tree = {
     Ident(defn.ScalaRuntimeModule.requiredMethod(name).termRef).appliedToArgs(args)

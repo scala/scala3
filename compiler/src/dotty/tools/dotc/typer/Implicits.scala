@@ -1132,19 +1132,24 @@ trait Implicits { self: Typer =>
       val eligible =
         if (contextual) ctx.implicits.eligible(wildProto)
         else implicitScope(wildProto).eligible
-      searchImplicits(eligible, contextual).recoverWith {
-        failure => failure.reason match {
-          case _: AmbiguousImplicits => failure
-          case reason =>
-            if (contextual)
-              bestImplicit(contextual = false).recoverWith {
-                failure2 => reason match {
-                  case (_: DivergingImplicit) | (_: ShadowedImplicit) => failure
-                  case _ => failure2
+      searchImplicits(eligible, contextual) match {
+        case result: SearchSuccess =>
+          if (contextual && ctx.mode.is(Mode.TransparentBody))
+            Inliner.markContextualImplicit(result.tree)
+          result
+        case failure: SearchFailure =>
+          failure.reason match {
+            case _: AmbiguousImplicits => failure
+            case reason =>
+              if (contextual)
+                bestImplicit(contextual = false).recoverWith {
+                  failure2 => reason match {
+                    case (_: DivergingImplicit) | (_: ShadowedImplicit) => failure
+                    case _ => failure2
+                  }
                 }
-              }
-            else failure
-        }
+              else failure
+          }
       }
     }
 

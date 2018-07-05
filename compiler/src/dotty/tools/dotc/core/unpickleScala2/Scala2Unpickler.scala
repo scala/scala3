@@ -1210,7 +1210,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case APPLIEDTYPEtree =>
         val tpt = readTreeRef()
         val args = until(end, () => readTreeRef())
-        AppliedTypeTree(tpt, args)
+        TypeApply(tpt, args)
 
       case TYPEBOUNDStree =>
         val lo = readTreeRef()

@@ -350,7 +350,7 @@ class TreeUnpickler(reader: TastyReader,
                 case binder: LambdaType => binder.paramRefs(readNat())
               }
             case HOLE =>
-              readHole(end, isType = true).tpe
+              readHole(end).tpe
           }
         assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
         result
@@ -438,6 +438,7 @@ class TreeUnpickler(reader: TastyReader,
       var flags = givenFlags
       if (lacksDefinition && tag != PARAM) flags |= Deferred
       if (tag == DEFDEF) flags |= Method
+      if (tag == TYPEDEF && givenFlags.is(Transparent)) flags |= TypeMethod
       if (givenFlags is Module)
         flags = flags | (if (tag == VALDEF) ModuleValCreationFlags else ModuleClassCreationFlags)
       if (ctx.owner.isClass) {
@@ -516,7 +517,7 @@ class TreeUnpickler(reader: TastyReader,
       val rhsStart = currentAddr
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
-      val (givenFlags, annotFns, privateWithin) = readModifiers(end)
+      val (givenFlags, annotFns, privateWithin) = readModifiers(end, readAnnot, readWithin, NoSymbol)
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
@@ -550,7 +551,7 @@ class TreeUnpickler(reader: TastyReader,
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
-      else if (sym.isInlineableMethod)
+      else if (sym.isInlinedMethod)
         sym.addAnnotation(LazyBodyAnnotation { ctx0 =>
           implicit val ctx: Context = localContext(sym)(ctx0).addMode(Mode.ReadPositions)
             // avoids space leaks by not capturing the current context
@@ -563,10 +564,12 @@ class TreeUnpickler(reader: TastyReader,
     /** Read modifier list into triplet of flags, annotations and a privateWithin
      *  boundary symbol.
      */
-    def readModifiers(end: Addr)(implicit ctx: Context): (FlagSet, List[Symbol => Annotation], Symbol) = {
+    def readModifiers[WithinType, AnnotType]
+        (end: Addr, readAnnot: Context => Symbol => AnnotType, readWithin: Context => WithinType, defaultWithin: WithinType)
+        (implicit ctx: Context): (FlagSet, List[Symbol => AnnotType], WithinType) = {
       var flags: FlagSet = EmptyFlags
-      var annotFns: List[Symbol => Annotation] = Nil
-      var privateWithin: Symbol = NoSymbol
+      var annotFns: List[Symbol => AnnotType] = Nil
+      var privateWithin = defaultWithin
       while (currentAddr.index != end.index) {
         def addFlag(flag: FlagSet) = {
           flags |= flag
@@ -612,10 +615,10 @@ class TreeUnpickler(reader: TastyReader,
             addFlag(ParamAccessor)
           case PRIVATEqualified =>
             readByte()
-            privateWithin = readType().typeSymbol
+            privateWithin = readWithin(ctx)
           case PROTECTEDqualified =>
             addFlag(Protected)
-            privateWithin = readType().typeSymbol
+            privateWithin = readWithin(ctx)
           case ANNOTATION =>
             annotFns = readAnnot(ctx) :: annotFns
           case tag =>
@@ -625,6 +628,9 @@ class TreeUnpickler(reader: TastyReader,
       (flags, annotFns.reverse, privateWithin)
     }
 
+    private val readWithin: Context => Symbol =
+      implicit ctx => readType().typeSymbol
+
     private val readAnnot: Context => Symbol => Annotation = {
       implicit ctx =>
         readByte()
@@ -633,9 +639,12 @@ class TreeUnpickler(reader: TastyReader,
         val lazyAnnotTree = readLaterWithOwner(end, rdr => ctx => rdr.readTerm()(ctx))
 
         owner =>
-          Annotation.deferredSymAndTree(
-            implicit ctx => tp.typeSymbol,
-            implicit ctx => lazyAnnotTree(owner).complete)
+          if (tp.isRef(defn.BodyAnnot))
+            LazyBodyAnnotation(implicit ctx => lazyAnnotTree(owner).complete)
+          else
+            Annotation.deferredSymAndTree(
+              implicit ctx => tp.typeSymbol,
+              implicit ctx => lazyAnnotTree(owner).complete)
     }
 
     /** Create symbols for the definitions in the statement sequence between
@@ -746,9 +755,9 @@ class TreeUnpickler(reader: TastyReader,
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(localCtx)), sym)
 
       def DefDef(tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree) =
-         ta.assignType(
-            untpd.DefDef(sym.name.asTermName, tparams, vparamss, tpt, readRhs(localCtx)),
-            sym)
+        ta.assignType(
+          untpd.DefDef(sym.name, tparams, vparamss, tpt, readRhs(localCtx)),
+          sym)
 
       def TypeDef(rhs: Tree) =
         ta.assignType(untpd.TypeDef(sym.name.asTypeName, rhs), sym)
@@ -756,18 +765,23 @@ class TreeUnpickler(reader: TastyReader,
       def ta =  ctx.typeAssigner
 
       val name = readName()
+
+      def readDefDef() = {
+        val tparams = readParams[TypeDef](TYPEPARAM)(localCtx)
+        val vparamss = readParamss(localCtx)
+        val tpt = readTpt()(localCtx)
+        val typeParams = tparams.map(_.symbol.asType)
+        val valueParamss = ctx.normalizeIfConstructor(
+            vparamss.nestedMap(_.symbol.asTerm), name == nme.CONSTRUCTOR)
+        val resType = ctx.effectiveResultType(sym, typeParams, tpt.tpe)
+        sym.info = ctx.lambdaType(typeParams, valueParamss, resType, sym)
+        DefDef(tparams, vparamss, tpt)
+      }
+
       pickling.println(s"reading def of $name at $start")
       val tree: MemberDef = tag match {
         case DEFDEF =>
-          val tparams = readParams[TypeDef](TYPEPARAM)(localCtx)
-          val vparamss = readParamss(localCtx)
-          val tpt = readTpt()(localCtx)
-          val typeParams = tparams.map(_.symbol)
-          val valueParamss = ctx.normalizeIfConstructor(
-              vparamss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
-          val resType = ctx.effectiveResultType(sym, typeParams, tpt.tpe)
-          sym.info = ctx.methodType(typeParams, valueParamss, resType)
-          DefDef(tparams, vparamss, tpt)
+          readDefDef()
         case VALDEF =>
           val tpt = readTpt()(localCtx)
           sym.info = tpt.tpe
@@ -787,7 +801,10 @@ class TreeUnpickler(reader: TastyReader,
               else sym.registerCompanionMethod(nme.COMPANION_MODULE_METHOD, companion)
             }
             TypeDef(readTemplate(localCtx))
-          } else {
+          }
+          else if (sym.is(Transparent))
+            readDefDef()
+          else {
             sym.info = TypeBounds.empty // needed to avoid cyclic references when unpicklin rhs, see i3816.scala
             sym.setFlag(Provisional)
             val rhs = readTpt()(localCtx)
@@ -871,7 +888,7 @@ class TreeUnpickler(reader: TastyReader,
         else EmptyValDef
       cls.info = ClassInfo(cls.owner.thisType, cls, parentTypes, cls.unforcedDecls,
         if (self.isEmpty) NoType else self.tpt.tpe)
-      cls.setNoInitsFlags(fork.indexStats(end))
+      cls.setNoInitsFlags(parentsKind(parents), fork.indexStats(end))
       val constr = readIndexedDef().asInstanceOf[DefDef]
       val mappedParents = parents.map(_.changeOwner(localDummy, constr.symbol))
 
@@ -924,24 +941,25 @@ class TreeUnpickler(reader: TastyReader,
       readByte()
       readEnd()
       val expr = readTerm()
-      def readSelectors(): List[untpd.Tree] = nextByte match {
-        case IMPORTED =>
-          val start = currentAddr
-          readByte()
-          val from = setPos(start, untpd.Ident(readName()))
-          nextByte match {
-            case RENAMED =>
-              val start2 = currentAddr
-              readByte()
-              val to = setPos(start2, untpd.Ident(readName()))
-              untpd.Thicket(from, to) :: readSelectors()
-            case _ =>
-              from :: readSelectors()
-          }
-          case _ =>
-            Nil
-      }
       setPos(start, Import(expr, readSelectors()))
+    }
+
+    def readSelectors()(implicit ctx: Context): List[untpd.Tree] = nextByte match {
+      case IMPORTED =>
+        val start = currentAddr
+        readByte()
+        val from = setPos(start, untpd.Ident(readName()))
+        nextByte match {
+          case RENAMED =>
+            val start2 = currentAddr
+            readByte()
+            val to = setPos(start2, untpd.Ident(readName()))
+            untpd.Thicket(from, to) :: readSelectors()
+          case _ =>
+            from :: readSelectors()
+        }
+      case _ =>
+        Nil
     }
 
     def readIndexedStats(exprOwner: Symbol, end: Addr)(implicit ctx: Context): List[Tree] =
@@ -1105,13 +1123,15 @@ class TreeUnpickler(reader: TastyReader,
               val parent = readTpt()
               val refinements = readStats(refineCls, end)(localContext(refineCls))
               RefinedTypeTree(parent, refinements, refineCls)
-            case APPLIEDtpt =>
+            case APPLYtpt =>
+              tpd.Apply(readTpt(), until(end)(readTerm()))
+            case TYPEAPPLYtpt =>
               // If we do directly a tpd.AppliedType tree we might get a
               // wrong number of arguments in some scenarios reading F-bounded
               // types. This came up in #137 of collection strawman.
               val tycon = readTpt()
               val args = until(end)(readTpt())
-              untpd.AppliedTypeTree(tycon, args).withType(tycon.tpe.safeAppliedTo(args.tpes))
+              untpd.TypeApply(tycon, args).withType(tycon.tpe.safeAppliedTo(args.tpes))
             case ANDtpt =>
               val tpt1 = readTpt()
               val tpt2 = readTpt()
@@ -1130,7 +1150,9 @@ class TreeUnpickler(reader: TastyReader,
               val hi = if (currentAddr == end) lo else readTpt()
               TypeBoundsTree(lo, hi)
             case HOLE =>
-              readHole(end, isType = false)
+              readHole(end)
+            case UNTYPEDSPLICE =>
+              tpd.UntypedSplice(readUntyped()).withType(readType())
             case _ =>
               readPathTerm()
           }
@@ -1184,7 +1206,7 @@ class TreeUnpickler(reader: TastyReader,
       owner => new LazyReader(localReader, owner, ctx.mode, op)
     }
 
-    def readHole(end: Addr, isType: Boolean)(implicit ctx: Context): Tree = {
+    def readHole(end: Addr)(implicit ctx: Context): Tree = {
       val idx = readNat()
       val args = until(end)(readTerm())
       val splice = splices(idx)
@@ -1192,14 +1214,213 @@ class TreeUnpickler(reader: TastyReader,
         if (arg.isTerm) new TastyTreeExpr(arg)
         else new TreeType(arg)
       val reifiedArgs = args.map(wrap)
-      if (isType) {
-        val quotedType = splice.asInstanceOf[Seq[Any] => quoted.Type[_]](reifiedArgs)
-        PickledQuotes.quotedTypeToTree(quotedType)
-      } else {
-        val quotedExpr = splice.asInstanceOf[Seq[Any] => quoted.Expr[_]](reifiedArgs)
-        PickledQuotes.quotedExprToTree(quotedExpr)
+      splice.asInstanceOf[Seq[Any] => Any](reifiedArgs) match {
+        case spliced: quoted.Type[_] => PickledQuotes.quotedTypeToTree(spliced)
+        case spliced: quoted.Expr[_] => PickledQuotes.quotedExprToTree(spliced)
       }
     }
+// ------ Reading untyped trees --------------------------------------------
+
+    def readUntyped()(implicit ctx: Context): untpd.Tree = {
+      val start = currentAddr
+      val tag = readByte()
+      pickling.println(s"reading term ${astTagToString(tag)} at $start")
+
+      def readDummyType(): Unit = {
+        assert(readByte() == SHAREDtype)
+        assert(readNat() == 0)
+      }
+
+      def readIdent(): untpd.Ident = readUntyped().asInstanceOf[untpd.Ident]
+
+      def readParams[T <: untpd.MemberDef](tag: Int): List[T] =
+        collectWhile(nextByte == tag) {
+          import untpd.modsDeco
+          val m: T = readUntyped().asInstanceOf[T]
+          m.withMods(m.mods | Param).asInstanceOf[T]
+        }
+
+      def readParamss(): List[List[untpd.ValDef]] =
+        collectWhile(nextByte == PARAMS) {
+          readByte()
+          readEnd()
+          readParams[untpd.ValDef](PARAM)
+        }
+
+      def readCases(end: Addr): List[untpd.CaseDef] =
+        collectWhile((nextUnsharedTag == CASEDEF) && currentAddr != end) {
+          readUntyped().asInstanceOf[untpd.CaseDef]
+        }
+
+      def readSimpleTerm(): untpd.Tree = (tag: @switch) match {
+        case TERMREF =>
+          val name = readName()
+          readDummyType()
+          untpd.Ident(name)
+        case TYPEREF =>
+          val name = readName().toTypeName
+          readDummyType()
+          untpd.Ident(name)
+        case SELECT =>
+          val name = readName()
+          val qual = readUntyped()
+          untpd.Select(qual, name)
+        case SELECTtpt =>
+          val name = readName().toTypeName
+          val qual = readUntyped()
+          untpd.Select(qual, name)
+        case QUALTHIS =>
+          untpd.This(readIdent())
+        case NEW =>
+          untpd.New(readUntyped())
+        case THROW =>
+          untpd.Throw(readUntyped())
+        case SINGLETONtpt =>
+          untpd.SingletonTypeTree(readUntyped())
+        case BYNAMEtpt =>
+          untpd.ByNameTypeTree(readUntyped())
+        case NAMEDARG =>
+          untpd.NamedArg(readName(), readUntyped())
+        case EMPTYTREE =>
+          untpd.EmptyTree
+        case SHAREDtype =>
+          val b = readNat()
+          assert(b == 0, i"bad shared type $b at $currentAddr when reading ${ctx.owner.ownersIterator.toList}%, %")
+          untpd.TypeTree()
+        case _ =>
+          untpd.Literal(readConstant(tag))
+      }
+
+      def readLengthTerm(): untpd.Tree = {
+        val end = readEnd()
+
+        def readMods(): untpd.Modifiers = {
+          val (flags, annots, privateWithin) =
+            readModifiers(end, readUntypedAnnot, readUntypedWithin, EmptyTypeName)
+          untpd.Modifiers(flags, privateWithin, annots.map(_(NoSymbol)))
+        }
+
+        def readRhs(): untpd.Tree =
+          if (nothingButMods(end)) untpd.EmptyTree else readUntyped()
+
+        val result = (tag: @switch) match {
+          case SUPER =>
+            val qual = readUntyped()
+            val mixId = ifBefore(end)(readIdent(), untpd.EmptyTypeIdent)
+            untpd.Super(qual, mixId)
+          case APPLY =>
+            val fn = readUntyped()
+            untpd.Apply(fn, until(end)(readUntyped()))
+          case TYPEAPPLY =>
+            untpd.TypeApply(readUntyped(), until(end)(readUntyped()))
+          case TYPED =>
+            val expr = readUntyped()
+            val tpt = readUntyped()
+            untpd.Typed(expr, tpt)
+          case ASSIGN =>
+            untpd.Assign(readUntyped(), readUntyped())
+          case BLOCK =>
+            val expr = readUntyped()
+            val stats = until(end)(readUntyped())
+            untpd.Block(stats, expr)
+          case IF =>
+            untpd.If(readUntyped(), readUntyped(), readUntyped())
+          case MATCH =>
+            untpd.Match(readUntyped(), readCases(end))
+          case CASEDEF =>
+            val pat = readUntyped()
+            val rhs = readUntyped()
+            val guard = ifBefore(end)(readUntyped(), untpd.EmptyTree)
+            untpd.CaseDef(pat, guard, rhs)
+          case RETURN =>
+            readNat()
+            val expr = ifBefore(end)(readUntyped(), untpd.EmptyTree)
+            untpd.Return(expr, untpd.EmptyTree)
+          case TRY =>
+            untpd.Try(readUntyped(), readCases(end), ifBefore(end)(readUntyped(), untpd.EmptyTree))
+          case BIND =>
+            val name = readName()
+            readDummyType()
+            untpd.Bind(name, readUntyped())
+          case ALTERNATIVE =>
+            untpd.Alternative(until(end)(readUntyped()))
+          case DEFDEF =>
+            var name = readName()
+            val tparams = readParams[TypeDef](TYPEPARAM)
+            val vparamss = readParamss()
+            val tpt = readUntyped()
+            untpd.DefDef(
+              if (untpd.isBounds(tpt)) name.toTypeName else name,
+              tparams, vparamss, tpt, readRhs()).withMods(readMods())
+          case VALDEF | PARAM =>
+            untpd.ValDef(readName(), readUntyped(), readRhs())
+              .withMods(readMods())
+          case TYPEDEF | TYPEPARAM =>
+            untpd.TypeDef(readName().toTypeName, readUntyped())
+              .withMods(readMods())
+          case OBJECTDEF =>
+            untpd.ModuleDef(readName(), readUntyped().asInstanceOf[untpd.Template])
+              .withMods(readMods())
+          case TEMPLATE =>
+            val parents = collectWhile(nextByte != SELFDEF && nextByte != DEFDEF)(readUntyped())
+            val self =
+              if (nextByte == SELFDEF) {
+                readByte()
+                untpd.ValDef(readName(), readUntyped(), untpd.EmptyTree)
+              }
+              else untpd.EmptyValDef
+            val constr = readUntyped().asInstanceOf[untpd.DefDef]
+            val body = until(end)(readUntyped())
+            untpd.Template(constr, parents, self, body)
+          case IMPORT =>
+            untpd.Import(readUntyped(), readSelectors())
+          case REFINEDtpt =>
+            untpd.RefinedTypeTree(readUntyped(), until(end)(readUntyped()))
+          case ANDtpt =>
+            untpd.AndTypeTree(readUntyped(), readUntyped())
+          case ORtpt =>
+            untpd.OrTypeTree(readUntyped(), readUntyped())
+          case ANNOTATEDtpt =>
+            untpd.Annotated(readUntyped(), readUntyped())
+          case LAMBDAtpt =>
+            val tparams = readParams[TypeDef](TYPEPARAM)
+            val body = readUntyped()
+            untpd.LambdaTypeTree(tparams, body)
+          case TYPEBOUNDStpt =>
+            val lo = readUntyped()
+            val hi = ifBefore(end)(lo, readUntyped())
+            untpd.TypeBoundsTree(lo, hi)
+          case TYPEDSPLICE =>
+            untpd.TypedSplice(readTerm())
+          case FUNCTION =>
+            val body = readUntyped()
+            import untpd.modsDeco
+            val params = until(end)(readUntyped()).map {
+              case param: untpd.ValDef => param.withMods(param.mods | Param)
+              case param => param
+            }
+            untpd.Function(params, body)
+          case INFIXOP =>
+            untpd.InfixOp(readUntyped(), readIdent(), readUntyped())
+          case PATDEF =>
+            val tpt = readUntyped()
+            val rhs = readUntyped()
+            val pats = collectWhile(!nothingButMods(end))(readUntyped())
+            untpd.PatDef(readMods(), pats, tpt, rhs)
+        }
+        assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
+        result
+      }
+
+      val tree = if (tag < firstLengthTreeTag) readSimpleTerm() else readLengthTerm()
+      setPos(start, tree)
+    }
+
+    private val readUntypedWithin: Context => TypeName =
+      implicit ctx => readName().toTypeName
+
+    private val readUntypedAnnot: Context => Symbol => untpd.Tree =
+      implicit ctx => _ => readUntyped()
 
 // ------ Setting positions ------------------------------------------------
 

@@ -249,7 +249,6 @@ class TreeChecker extends Phase with SymTransformer {
       // case tree: AndTypeTree =>
       // case tree: OrTypeTree =>
       // case tree: RefinedTypeTree =>
-      // case tree: AppliedTypeTree =>
       // case tree: ByNameTypeTree =>
       // case tree: TypeBoundsTree =>
       // case tree: Alternative =>
@@ -300,10 +299,11 @@ class TreeChecker extends Phase with SymTransformer {
       tree
     }
 
-    /** Check that all methods have MethodicType */
-    def isMethodType(pt: Type)(implicit ctx: Context): Boolean = pt match {
-      case at: AnnotatedType => isMethodType(at.parent)
-      case _: MethodicType => true  // MethodType, ExprType, PolyType
+    /** Check that all methods have LambdaType or ExprType */
+    def isDefType(tp: Type)(implicit ctx: Context): Boolean = tp match {
+      case _: LambdaType | _: ExprType => true
+      case tp: TypeBounds => isDefType(tp.hi)
+      case tp: AnnotatedType => isDefType(tp.parent)
       case _ => false
     }
 
@@ -406,7 +406,7 @@ class TreeChecker extends Phase with SymTransformer {
           })
 
           val tpdTree = super.typedDefDef(ddef, sym)
-          assert(isMethodType(sym.info), i"wrong type, expect a method type for ${sym.fullName}, but found: ${sym.info}")
+          assert(isDefType(sym.info), i"wrong type, expect a method type for ${sym.fullName}, but found: ${sym.info}")
           tpdTree
         }
       }

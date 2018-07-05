@@ -44,7 +44,7 @@ class LinkAll extends Phase {
     private[this] var inParents = false
     override def apply(acc: Set[ClassDenotation], tree: tpd.Tree)(implicit ctx: Context): Set[ClassDenotation] = tree match {
       case New(tpt) => accum(acc, tpt.tpe.classSymbol)
-      case AppliedTypeTree(tpt, _) if inParents => accum(acc, tpt.symbol)
+      case TypeApply(tpt, _) if tpt.isType && inParents => accum(acc, tpt.symbol)
       case tree: RefTree if inParents || tree.symbol.is(Module) =>
         foldOver(accum(acc, tree.symbol), tree)
       case tree @ Template(constr, parents, self, _) =>

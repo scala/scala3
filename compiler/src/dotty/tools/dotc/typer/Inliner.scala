@@ -27,9 +27,30 @@ import collection.mutable
 import transform.TypeUtils._
 import reporting.trace
 import util.Positions.Position
+import util.Property
+import ast.TreeInfo
 
 object Inliner {
   import tpd._
+
+  /** Marks an implicit reference found in the context (as opposed to the implicit scope)
+   *  from an inlineable body. Such references will be carried along with the body to
+   *  the expansion site.
+   */
+  private val ContextualImplicit = new Property.StickyKey[Unit]
+
+  def markContextualImplicit(tree: Tree)(implicit ctx: Context): Unit =
+    if (!defn.ScalaPredefModule.moduleClass.derivesFrom(tree.symbol.maybeOwner))
+      methPart(tree).putAttachment(ContextualImplicit, ())
+
+  /** A key to be used in a context property that provides a map from enclosing implicit
+   *  value bindings to their right hand sides.
+   */
+  private val InlineBindings = new Property.Key[MutableSymbolMap[Tree]]
+
+  /** A map from the symbols of all enclosing inline value bindings to their right hand sides */
+  def inlineBindings(implicit ctx: Context): MutableSymbolMap[Tree] =
+    ctx.property(InlineBindings).get
 
   class InlineAccessors extends AccessProxies {
 
@@ -60,7 +81,9 @@ object Inliner {
 
       def postTransform(tree: Tree)(implicit ctx: Context) = tree match {
         case Assign(lhs, rhs) if lhs.symbol.name.is(InlineAccessorName) =>
-          cpy.Apply(tree)(useSetter(lhs), rhs :: Nil)
+          val setter = useSetter(lhs)
+          if (inlineSym.isTransparentMethod) tree // just generate a setter, but don't integrate it in the tree
+          else cpy.Apply(tree)(setter, rhs :: Nil)
         case _ =>
           tree
       }
@@ -212,7 +235,7 @@ object Inliner {
    *                     to have the inlined method as owner.
    */
   def registerInlineInfo(
-      inlined: Symbol, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
+      inlined: Symbol, originalBody: untpd.Tree, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
     inlined.unforcedAnnotation(defn.BodyAnnot) match {
       case Some(ann: ConcreteBodyAnnotation) =>
       case Some(ann: LazyBodyAnnotation) if ann.isEvaluated =>
@@ -221,24 +244,153 @@ object Inliner {
           val inlineCtx = ctx
           inlined.updateAnnotation(LazyBodyAnnotation { _ =>
             implicit val ctx = inlineCtx
-            val body = treeExpr(ctx)
-            if (ctx.reporter.hasErrors) body else ctx.compilationUnit.inlineAccessors.makeInlineable(body)
+            val rawBody = treeExpr(ctx)
+            val typedBody =
+              if (ctx.reporter.hasErrors) rawBody
+              else ctx.compilationUnit.inlineAccessors.makeInlineable(rawBody)
+            val inlineableBody =
+              if (inlined.isInlinedMethod) typedBody
+              else addReferences(inlined, originalBody, typedBody)
+            inlining.println(i"Body to inline for $inlined: $inlineableBody")
+            inlineableBody
           })
         }
     }
+  }
+
+  /** Tweak untyped tree `original` so that all external references are typed
+   *  and it reflects the changes in the corresponding typed tree `typed` that
+   *  make `typed` inlineable. Concretely:
+   *
+   *   - all external references via identifiers or this-references are converted
+   *     to typed splices,
+   *   - if X gets an inline accessor in `typed`, references to X in `original`
+   *     are converted to the inline accessor name.
+   */
+  def addReferences(inlineMethod: Symbol,
+      original: untpd.Tree, typed: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
+
+    def isExternal(sym: Symbol) = sym.exists && !isLocal(sym, inlineMethod)
+
+    // Maps from positions to external reference types and inline selector names.
+    object referenced extends TreeTraverser {
+      val typeAtPos = mutable.Map[Position, Type]()
+      val nameAtPos = mutable.Map[Position, Name]()
+      val implicitSyms = mutable.Set[Symbol]()
+      val implicitRefs = new mutable.ListBuffer[Tree]
+      def registerIfContextualImplicit(tree: Tree) = tree match {
+        case tree: RefTree
+        if tree.removeAttachment(ContextualImplicit).isDefined &&
+           isExternal(tree.symbol) &&
+           !implicitSyms.contains(tree.symbol) =>
+          if (tree.existsSubTree(t => isLocal(tree.symbol, inlineMethod)))
+            ctx.warning("implicit reference $tree is dropped at inline site because it refers to local symbol(s)", tree.pos)
+          else {
+            implicitSyms += tree.symbol
+            implicitRefs += tree
+          }
+        case _ =>
+      }
+      def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+        tree match {
+          case _: Ident | _: This =>
+            //println(i"leaf: $tree at ${tree.pos}")
+            if (isExternal(tree.symbol)) {
+              if (ctx.debug) inlining.println(i"type at pos ${tree.pos.toSynthetic} = ${tree.tpe}")
+              typeAtPos(tree.pos.toSynthetic) = tree.tpe
+            }
+          case _: Select if tree.symbol.name.is(InlineAccessorName) =>
+            inlining.println(i"accessor: $tree at ${tree.pos}")
+            nameAtPos(tree.pos.toSynthetic) = tree.symbol.name
+          case _ =>
+        }
+        registerIfContextualImplicit(tree)
+        traverseChildren(tree)
+      }
+    }
+    referenced.traverse(typed)
+
+    // The untyped tree transform that applies the tweaks
+    object addRefs extends untpd.UntypedTreeMap {
+      override def transform(tree: untpd.Tree)(implicit ctx: Context): untpd.Tree = {
+        def adjustLeaf(tree: untpd.Tree): untpd.Tree = referenced.typeAtPos.get(tree.pos.toSynthetic) match {
+          case Some(tpe) => untpd.TypedSplice(tree.withType(tpe))
+          case none => tree
+        }
+        def adjustName(name: Name) = referenced.nameAtPos.get(tree.pos.toSynthetic) match {
+          case Some(n) => n
+          case none => name
+        }
+        def adjustQualifier(tree: untpd.Tree): untpd.Tree = tree match {
+          case tree @ Ident(name1) =>
+            referenced.typeAtPos.get(tree.pos.startPos) match {
+              case Some(tp: ThisType) =>
+                val qual = untpd.TypedSplice(This(tp.cls).withPos(tree.pos.startPos))
+                cpy.Select(tree)(qual, name1)
+              case none =>
+                tree
+            }
+          case tree => tree
+        }
+        val tree1 = super.transform(tree)
+        tree1 match {
+          case This(_) =>
+            adjustLeaf(tree1)
+          case Ident(name) =>
+            adjustQualifier(adjustLeaf(cpy.Ident(tree1)(adjustName(name))))
+          case Select(pre, name) =>
+            cpy.Select(tree1)(pre, adjustName(name))
+          case tree: untpd.DerivedTypeTree =>
+            inlining.println(i"inlining derived $tree --> ${ctx.typer.typed(tree)}")
+            untpd.TypedSplice(ctx.typer.typed(tree))
+          case _ =>
+            tree1
+        }
+      }
+    }
+    val implicitBindings =
+      for (iref <- referenced.implicitRefs.toList) yield {
+        val localImplicit = iref.symbol.asTerm.copy(
+          owner = inlineMethod,
+          name = UniqueInlineName.fresh(iref.symbol.name.asTermName),
+          flags = Implicit | Method | Stable,
+          info = iref.symbol.info.ensureMethodic,
+          coord = inlineMethod.pos).asTerm
+        polyDefDef(localImplicit, tps => vrefss =>
+            iref.appliedToTypes(tps).appliedToArgss(vrefss))
+      }
+    val untpdSplice = tpd.UntypedSplice(addRefs.transform(original)).withType(typed.tpe)
+    seq(implicitBindings, untpdSplice)
   }
 
   /** `sym` has an inline method with a known body to inline (note: definitions coming
    *  from Scala2x class files might be `@inline`, but still lack that body.
    */
   def hasBodyToInline(sym: SymDenotation)(implicit ctx: Context): Boolean =
-    sym.isInlinedMethod && sym.hasAnnotation(defn.BodyAnnot) // TODO: Open this up for transparent methods as well
+    sym.isInlineableMethod && sym.hasAnnotation(defn.BodyAnnot)
 
   /** The body to inline for method `sym`.
    *  @pre  hasBodyToInline(sym)
    */
   def bodyToInline(sym: SymDenotation)(implicit ctx: Context): Tree =
     sym.unforcedAnnotation(defn.BodyAnnot).get.tree
+
+  /** Should call with method `meth` be inlined in this context? */
+  def isInlineable(meth: Symbol)(implicit ctx: Context): Boolean = {
+
+    def suppressInline =
+      ctx.owner.ownersIterator.exists(_.isInlineableMethod) ||
+      meth.isTransparentMethod && ctx.mode.is(Mode.NoInlineTransparent) ||
+      ctx.settings.YnoInline.value ||
+      ctx.isAfterTyper ||
+      ctx.reporter.hasErrors
+
+    hasBodyToInline(meth) && !suppressInline
+  }
+
+  /** Is `meth` a transparent method that should be inlined in this context? */
+  def isTransparentInlineable(meth: Symbol)(implicit ctx: Context): Boolean =
+    meth.isTransparentMethod && isInlineable(meth)
 
   /** Try to inline a call to a `@inline` method. Fail with error if the maximal
    *  inline depth is exceeded.
@@ -251,13 +403,20 @@ object Inliner {
   def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
     if (enclosingInlineds.length < ctx.settings.XmaxInlines.value) {
       val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
-      if (ctx.reporter.hasErrors) tree else new Inliner(tree, body).inlined(pt)
+      if (ctx.reporter.hasErrors) tree
+      else {
+        val inlinerCtx =
+          if (ctx.property(InlineBindings).isDefined) ctx
+          else ctx.fresh.setProperty(InlineBindings, newMutableSymbolMap[Tree])
+        new Inliner(tree, body)(inlinerCtx).inlined(pt)
+      }
     }
     else errorTree(
       tree,
       i"""|Maximal number of successive inlines (${ctx.settings.XmaxInlines.value}) exceeded,
           |Maybe this is caused by a recursive inline method?
-          |You can use -Xmax:inlines to change the limit."""
+          |You can use -Xmax:inlines to change the limit.""",
+      (tree :: enclosingInlineds).last.pos
     )
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
@@ -326,7 +485,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** A buffer for bindings that define proxies for actual arguments */
   val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
 
-  computeParamBindings(meth.info, targs, argss)
+  computeParamBindings(meth.info.hiBound, targs, argss)
 
   private def newSym(name: Name, flags: FlagSet, info: Type): Symbol =
     ctx.newSymbol(ctx.owner, name, flags, info, coord = call.pos)
@@ -361,12 +520,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    *  proxies to this-references.
    */
   private def computeParamBindings(tp: Type, targs: List[Tree], argss: List[List[Tree]]): Unit = tp match {
-    case tp: PolyType =>
+    case tp: TypeLambda =>
       (tp.paramNames, targs).zipped.foreach { (name, arg) =>
         paramBinding(name) = arg.tpe.stripTypeVar
       }
       computeParamBindings(tp.resultType, Nil, argss)
-    case tp: MethodType =>
+    case tp: TermLambda =>
       (tp.paramNames, tp.paramInfos, argss.head).zipped.foreach { (name, paramtp, arg) =>
         paramBinding(name) = arg.tpe.dealias match {
           case _: SingletonType if isIdempotentExpr(arg) => arg.tpe
@@ -489,28 +648,136 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       case _ => tree
     }}
 
-    val inlineCtx = inlineContext(call)
+    val inlineTyper = if (meth.isTransparentMethod) new TransparentTyper else new InlineReTyper
+    val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
+
     // The complete translation maps references to `this` and parameters to
     // corresponding arguments or proxies on the type and term level. It also changes
     // the owner from the inlined method to the current owner.
     val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)(inlineCtx)
 
-    val expansion = inliner(rhsToInline.withPos(call.pos))
-    trace(i"inlining $call\n, BINDINGS =\n${bindingsBuf.toList}%\n%\nEXPANSION =\n$expansion", inlining, show = true) {
+    val expansion = inliner.transform(rhsToInline.withPos(call.pos)) match {
+      case Block(implicits, tpd.UntypedSplice(expansion)) =>
+        val prevOwners = implicits.map(_.symbol.owner).distinct
+        val localizer = new TreeTypeMap(oldOwners = prevOwners, newOwners = prevOwners.map(_ => ctx.owner))
+        val (_, implicits1) = localizer.transformDefs(implicits)
+        for (idef <- implicits1) {
+          bindingsBuf += idef.withType(idef.symbol.typeRef).asInstanceOf[ValOrDefDef]
+            // Note: Substituting new symbols does not automatically lead to good prefixes
+            // if the previous symbol was owned by a class. That's why we need to set the type
+            // of `idef` explicitly. It would be nice if substituters were smarter, but
+            // it seems non-trivial to come up with rules that work in all cases.
+          inlineCtx.enter(idef.symbol)
+        }
+        expansion
+      case tpd.UntypedSplice(expansion) =>
+        expansion
+      case expansion =>
+        expansion
+    }
+
+    /** If this is a value binding:
+     *   - reduce its rhs if it is a projection and adjust its type accordingly,
+     *   - record symbol -> rhs in the InlineBindings context propery.
+     *  Also, set position to the one of the inline call.
+     */
+    def normalizeBinding(binding: ValOrDefDef)(implicit ctx: Context) = {
+      val binding1 = binding match {
+        case binding: ValDef =>
+          val rhs1 = reduceProjection(binding.rhs)
+          inlineBindings(inlineCtx).put(binding.symbol, rhs1)
+          if (rhs1 `eq` binding.rhs) binding
+          else {
+            binding.symbol.info = rhs1.tpe
+            cpy.ValDef(binding)(tpt = TypeTree(rhs1.tpe), rhs = rhs1)
+          }
+        case _ =>
+          binding
+      }
+      binding1.withPos(call.pos)
+    }
+
+    trace(i"inlining $call", inlining, show = true) {
+
+      /** All bindings in `bindingsBuf` */
+      val bindings = bindingsBuf.toList.map(normalizeBinding)
 
       // The final expansion runs a typing pass over the inlined tree. See InlineTyper for details.
-      val expansion1 = InlineTyper.typed(expansion, pt)(inlineCtx)
+      val expansion1 = inlineTyper.typed(expansion, pt)(inlineCtx)
 
-      /** All bindings in `bindingsBuf` except bindings of inlineable closures */
-      val bindings = bindingsBuf.toList.map(_.withPos(call.pos))
-
-      inlining.println(i"original bindings = $bindings%\n%")
-      inlining.println(i"original expansion = $expansion1")
+      if (ctx.settings.verbose.value) {
+        inlining.println(i"original bindings = $bindings%\n%")
+        inlining.println(i"original expansion = $expansion1")
+      }
 
       val (finalBindings, finalExpansion) = dropUnusedDefs(bindings, expansion1)
 
       tpd.Inlined(call, finalBindings, finalExpansion)
     }
+  }
+
+  /** An extractor for terms equivalent to `new C(args)`, returning the class `C`
+   *  and the arguments `args`. Can see inside blocks and Inlined nodes and can
+   *  follow a reference to an inline value binding to its right hand side.
+   */
+  object NewInstance {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(Symbol, List[Tree], List[Tree])] = {
+      def unapplyLet(bindings: List[Tree], expr: Tree) =
+        unapply(expr) map {
+          case (cls, reduced, prefix) => (cls, reduced, bindings ::: prefix)
+        }
+      tree match {
+        case Apply(Select(New(tpt), nme.CONSTRUCTOR), args) =>
+          Some((tpt.tpe.classSymbol, args, Nil))
+        case Ident(_) =>
+          inlineBindings.get(tree.symbol).flatMap(unapply)
+        case Inlined(_, bindings, expansion) =>
+          unapplyLet(bindings, expansion)
+        case Block(stats, expr) if isPureExpr(tree) =>
+          unapplyLet(stats, expr)
+        case _ =>
+          None
+      }
+    }
+  }
+
+  /** If we are inlining a transparent method and `tree` is equivalent to `new C(args).x`
+   *  where class `C` does not have initialization code and `x` is a parameter corresponding
+   *  to one of the arguments `args`, the corresponding argument, prefixed by the evaluation
+   *  of impure arguments, otherwise `tree` itself.
+   */
+  def reduceProjection(tree: Tree)(implicit ctx: Context): Tree = {
+    if (meth.isTransparentMethod) {
+      if (ctx.debug) inlining.println(i"try reduce projection $tree")
+      tree match {
+        case Select(NewInstance(cls, args, prefix), field) if cls.isNoInitsClass =>
+          def matches(param: Symbol, selection: Symbol): Boolean =
+            param == selection || {
+              selection.name match {
+                case InlineAccessorName(underlying) =>
+                  param.name == underlying && selection.info.isInstanceOf[ExprType]
+                case _ =>
+                  false
+              }
+            }
+          val idx = cls.asClass.paramAccessors.indexWhere(matches(_, tree.symbol))
+          if (idx >= 0 && idx < args.length) {
+            def collectImpure(from: Int, end: Int) =
+              (from until end).filterNot(i => isPureExpr(args(i))).toList.map(args)
+            val leading = collectImpure(0, idx)
+            val trailing = collectImpure(idx + 1, args.length)
+            val arg = args(idx)
+            val argInPlace =
+              if (trailing.isEmpty) arg
+              else letBindUnless(TreeInfo.Pure, arg)(seq(trailing, _))
+            val reduced = seq(prefix, seq(leading, argInPlace))
+            inlining.println(i"projecting $tree -> ${reduced}")
+            return reduced
+          }
+        case _ =>
+      }
+    }
+    tree
   }
 
   /** An extractor for references to inlineable arguments. These are :
@@ -519,8 +786,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    */
   private object InlineableArg {
     lazy val paramProxies = paramProxy.values.toSet
-    def unapply(tree: Ident)(implicit ctx: Context): Option[Tree] =
-      if (paramProxies.contains(tree.tpe))
+    def unapply(tree: Trees.Ident[_])(implicit ctx: Context): Option[Tree] =
+      if (paramProxies.contains(tree.typeOpt))
         bindingsBuf.find(_.name == tree.name) match {
           case Some(vdef: ValDef) if vdef.symbol.is(Inline) =>
             Some(vdef.rhs.changeOwner(vdef.symbol, ctx.owner))
@@ -531,14 +798,28 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       else None
   }
 
-  /** A typer for inlined code. Its purpose is:
+  /** A base trait of InlineTyper and InlineReTyper containing operations that
+   *  work the same way for both. Beyond typing or retyping, an inline typer performs
+   *  the following functions:
+   *
    *  1. Implement constant folding over inlined code
    *  2. Selectively expand ifs with constant conditions
    *  3. Inline arguments that are by-name closures
    *  4. Make sure inlined code is type-correct.
    *  5. Make sure that the tree's typing is idempotent (so that future -Ycheck passes succeed)
    */
-  private object InlineTyper extends ReTyper {
+  trait InlineTyping extends Typer {
+
+    protected def tryInline(tree: tpd.Tree)(implicit ctx: Context) = tree match {
+      case InlineableArg(rhs) =>
+        inlining.println(i"inline arg $tree -> $rhs")
+        rhs
+      case _ =>
+        EmptyTree
+    }
+
+    /** The context to be used for sub-expressions that are not in redex position. */
+    protected def noRedexCtx(implicit ctx: Context): Context
 
     override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
       tpe match {
@@ -552,30 +833,17 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       super.ensureAccessible(tpe, superAccess, pos)
     }
 
-    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context) =
-      tree.asInstanceOf[tpd.Tree] match {
-        case InlineableArg(rhs) => inlining.println(i"inline arg $tree -> $rhs"); rhs
-        case _ => super.typedIdent(tree, pt)
-      }
-
-    override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
-      assert(tree.hasType, tree)
-      val qual1 = typed(tree.qualifier, selectionProto(tree.name, pt, this))
-      val res = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
-      ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.pos)
-      res
-    }
-
     override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = {
-      val cond1 = typed(tree.cond, defn.BooleanType)
+      val cond1 = typedExpr(tree.cond, defn.BooleanType)
       cond1.tpe.widenTermRefExpr match {
         case ConstantType(Constant(condVal: Boolean)) =>
-          val selected = typed(if (condVal) tree.thenp else tree.elsep, pt)
+          var selected = typed(if (condVal) tree.thenp else tree.elsep, pt)
+          if (selected.isEmpty) selected = tpd.Literal(Constant(()))
           if (isIdempotentExpr(cond1)) selected
           else Block(cond1 :: Nil, selected)
         case _ =>
           val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
-          super.typedIf(if1, pt)
+          super.typedIf(if1, pt)(noRedexCtx)
       }
     }
 
@@ -594,8 +862,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
        */
       def betaReduce(tree: Tree) = tree match {
         case Apply(Select(cl @ closureDef(ddef), nme.apply), args) if defn.isFunctionType(cl.tpe) =>
-          ddef.tpe.widen match {
-            case mt: MethodType if ddef.vparamss.head.length == args.length =>
+          ddef.tpe.widen.toLambda match {
+            case mt: TermLambda if ddef.vparamss.head.length == args.length =>
               val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
               val argSyms = (mt.paramNames, mt.paramInfos, args).zipped.map { (name, paramtp, arg) =>
                 arg.tpe.dealias match {
@@ -614,8 +882,57 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case _ => tree
       }
 
-      betaReduce(super.typedApply(tree, pt))
+      constToLiteral(betaReduce(super.typedApply(tree, pt)))
     }
+  }
+
+  /** A full typer used for transparent methods */
+  private class TransparentTyper extends Typer with InlineTyping {
+
+    /** Transparent methods don't inline recursively unless in redex position */
+    def noRedexCtx(implicit ctx: Context) = ctx.addMode(Mode.NoInlineTransparent)
+
+    override def typedTypedSplice(tree: untpd.TypedSplice)(implicit ctx: Context): Tree =
+      reduceProjection(tryInline(tree.splice) `orElse` super.typedTypedSplice(tree))
+
+    override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context) =
+      constToLiteral(reduceProjection(super.typedSelect(tree, pt)))
+
+    override def typedValDef(tree: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = {
+      import untpd.modsDeco
+      super.typedValDef(tree, sym)(if (tree.mods.is(Lazy)) noRedexCtx else ctx)
+    }
+
+    override def typedDefDef(tree: untpd.DefDef, sym: Symbol)(implicit ctx: Context) =
+      super.typedDefDef(tree, sym)(noRedexCtx)
+
+    override def typedTypeDef(tree: untpd.TypeDef, sym: Symbol)(implicit ctx: Context) =
+      super.typedTypeDef(tree, sym)(noRedexCtx)
+
+    override def typedClassDef(tree: untpd.TypeDef, sym: ClassSymbol)(implicit ctx: Context) =
+      super.typedClassDef(tree, sym)(noRedexCtx)
+  }
+
+  /** A re-typer used for inlined methods */
+  private class InlineReTyper extends ReTyper with InlineTyping {
+
+    /** Inline methods always expand all recursive inline calls, whether in redex
+     *  position or not.
+     */
+    def noRedexCtx(implicit ctx: Context) = ctx
+
+    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context) =
+      tryInline(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt)
+
+    override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
+      assert(tree.hasType, tree)
+      val qual1 = typed(tree.qualifier, selectionProto(tree.name, pt, this))
+      val res = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
+      ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.pos)
+      res
+    }
+
+    override def newLikeThis: Typer = new InlineReTyper
   }
 
   /** Drop any side-effect-free bindings that are unused in expansion or other reachable bindings.

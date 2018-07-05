@@ -123,7 +123,7 @@ trait NamerContextOps { this: Context =>
     else given
 
   /** if isConstructor, make sure it has one non-implicit parameter list */
-  def normalizeIfConstructor(termParamss: List[List[Symbol]], isConstructor: Boolean) =
+  def normalizeIfConstructor(termParamss: List[List[TermSymbol]], isConstructor: Boolean) =
     if (isConstructor &&
       (termParamss.isEmpty || termParamss.head.nonEmpty && (termParamss.head.head is Implicit)))
       Nil :: termParamss
@@ -131,21 +131,29 @@ trait NamerContextOps { this: Context =>
       termParamss
 
   /** The method type corresponding to given parameters and result type */
-  def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(implicit ctx: Context): Type = {
+  def lambdaType(typeParams: List[TypeSymbol], valueParamss: List[List[TermSymbol]], resultType: Type, sym: Symbol)(implicit ctx: Context): Type = {
     val monotpe =
       (valueParamss :\ resultType) { (params, resultType) =>
-        val (isImplicit, isErased) =
-          if (params.isEmpty) (false, false)
-          else (params.head is Implicit, params.head is Erased)
-        val make = MethodType.maker(isJava, isImplicit, isErased)
-        if (isJava)
-          for (param <- params)
-            if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
-        make.fromSymbols(params.asInstanceOf[List[TermSymbol]], resultType)
+        if (sym.isTerm) {
+          val isJava = sym.flagsUNSAFE.is(JavaDefined)
+          val (isImplicit, isErased) =
+            if (params.isEmpty) (false, false)
+            else (params.head is Implicit, params.head is Erased)
+          val make = MethodType.maker(isJava, isImplicit, isErased)
+          if (isJava)
+            for (param <- params)
+              if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
+          make.fromSymbols(params, resultType)
+        }
+        else HKTermLambda.fromParams(params, resultType)
       }
-    if (typeParams.nonEmpty) PolyType.fromParams(typeParams.asInstanceOf[List[TypeSymbol]], monotpe)
-    else if (valueParamss.isEmpty) ExprType(monotpe)
-    else monotpe
+    if (sym.isTerm)
+      if (typeParams.nonEmpty) PolyType.fromParams(typeParams, monotpe)
+      else if (valueParamss.isEmpty) ExprType(monotpe)
+      else monotpe
+    else
+      if (typeParams.nonEmpty) HKTypeLambda.fromParams(typeParams, monotpe)
+      else monotpe
   }
 
   /** Add moduleClass or sourceModule functionality to completer
@@ -276,10 +284,14 @@ class Namer { typer: Typer =>
     def checkFlags(flags: FlagSet) =
       if (flags.isEmpty) flags
       else {
-        val (ok, adapted, kind) = tree match {
-          case tree: TypeDef => (flags.isTypeFlags, flags.toTypeFlags, "type")
-          case _ => (flags.isTermFlags, flags.toTermFlags, "value")
+        val isType = tree match {
+          case tree: TypeDef => true
+          case tree: DefDef => tree.name.isTypeName
+          case _ => false
         }
+        val (ok, adapted, kind) =
+          if (isType) (flags.isTypeFlags, flags.toTypeFlags, "type")
+          else (flags.isTermFlags, flags.toTermFlags, "value")
         if (!ok)
           ctx.error(i"modifier(s) `$flags' incompatible with $kind definition", tree.pos)
         adapted
@@ -341,11 +353,10 @@ class Namer { typer: Typer =>
         val flags = checkFlags(tree.mods.flags)
         val isDeferred = lacksDefinition(tree)
         val deferred = if (isDeferred) Deferred else EmptyFlags
-        val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
-        val higherKinded = tree match {
-          case TypeDef(_, LambdaTypeTree(_, _)) if isDeferred => HigherKinded
-          case _ => EmptyFlags
-        }
+        val method =
+          if (!tree.isInstanceOf[DefDef]) EmptyFlags
+          else if (name.isTypeName) TypeMethod | Transparent
+          else Method
 
         // to complete a constructor, move one context further out -- this
         // is the context enclosing the class. Note that the context in which a
@@ -363,7 +374,7 @@ class Namer { typer: Typer =>
           case _ => new Completer(tree)(cctx)
         }
         val info = adjustIfModule(completer, tree)
-        createOrRefine[Symbol](tree, name, flags | deferred | method | higherKinded,
+        createOrRefine[Symbol](tree, name, flags | deferred | method,
           _ => info,
           (fs, _, pwithin) => ctx.newSymbol(ctx.owner, name, fs, info, pwithin, tree.namePos))
       case tree: Import =>
@@ -826,6 +837,7 @@ class Namer { typer: Typer =>
       case original: untpd.DefDef if sym.isInlineableMethod =>
         Inliner.registerInlineInfo(
             sym,
+            original.rhs,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
           )(localContext(sym))
       case _ =>
@@ -992,6 +1004,8 @@ class Namer { typer: Typer =>
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.info = avoidPrivateLeaks(cls, cls.pos)
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
+      cls.setNoInitsFlags(parentsKind(parents), bodyKind(rest))
+      if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(Stable)
     }
   }
 
@@ -1012,6 +1026,9 @@ class Namer { typer: Typer =>
 
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
     typedAheadImpl(tree, typer.typed(_, pt)(ctx retractMode Mode.PatternOrTypeBits))
+
+  def typedAheadRHS(rhs: Tree, pt: Type = WildcardType, sym: Symbol)(implicit ctx: Context): tpd.Tree =
+    if (sym.isTerm) typedAheadExpr(rhs, pt) else typedAheadType(rhs, pt)
 
   def typedAheadAnnotation(tree: Tree)(implicit ctx: Context): tpd.Tree =
     typedAheadExpr(tree, defn.AnnotationType)
@@ -1057,7 +1074,7 @@ class Namer { typer: Typer =>
        *  NoType if neither case holds.
        */
       val inherited =
-        if (sym.owner.isTerm) NoType
+        if (sym.owner.isTerm || sym.isType) NoType
         else {
           // TODO: Look only at member of supertype instead?
           lazy val schema = paramFn(WildcardType)
@@ -1094,7 +1111,7 @@ class Namer { typer: Typer =>
        *  the corresponding parameter where bound parameters are replaced by
        *  Wildcards.
        */
-      def rhsProto = sym.asTerm.name collect {
+      def rhsProto = sym.name collect {
         case DefaultGetterName(original, idx) =>
           val meth: Denotation =
             if (original.isConstructorName && (sym.owner is ModuleClass))
@@ -1117,13 +1134,14 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      def isInline = sym.is(FinalOrInlineOrTransparent, butNot = Method | Mutable)
+      def isInlineVal =
+        sym.isTerm && sym.is(FinalOrInlineOrTransparent, butNot = Method | Mutable)
 
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types
       // instead of widening to the underlying module class types.
       def widenRhs(tp: Type): Type = tp.widenTermRefExpr match {
-        case ctp: ConstantType if isInline => ctp
+        case ctp: ConstantType if isInlineVal => ctp
         case ref: TypeRef if ref.symbol.is(ModuleClass) => tp
         case _ => tp.widen.widenUnion
       }
@@ -1132,8 +1150,11 @@ class Namer { typer: Typer =>
       // it would be erased to BoxedUnit.
       def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
-      val rhsCtx = ctx.addMode(Mode.InferringReturnType)
-      def rhsType = typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
+      var rhsCtx = ctx.addMode(Mode.InferringReturnType)
+      if (sym.isTransparentMethod) rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
+      def rhsType =
+        if (sym.isTerm) typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
+        else typedAheadType(mdef.rhs)(rhsCtx).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.
       val deskolemize = new ApproximatingTypeMap {
@@ -1172,7 +1193,8 @@ class Namer { typer: Typer =>
       case _: untpd.DerivedTypeTree =>
         WildcardType
       case TypeTree() =>
-        checkMembersOK(inferredType, mdef.pos)
+        if (sym.isType) TypeBounds.empty
+        else checkMembersOK(inferredType, mdef.pos)
       case DependentTypeTree(tpFun) =>
         tpFun(paramss.head)
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
@@ -1227,11 +1249,13 @@ class Namer { typer: Typer =>
     for (tparam <- tparams) typedAheadExpr(tparam)
 
     vparamss foreach completeParams
-    def typeParams = tparams map symbolOfTree
-    val termParamss = ctx.normalizeIfConstructor(vparamss.nestedMap(symbolOfTree), isConstructor)
+    def typeParams = tparams.map(symbolOfTree(_).asType)
+    val termParamss = ctx.normalizeIfConstructor(
+      vparamss.nestedMap(symbolOfTree(_).asTerm), isConstructor)
     def wrapMethType(restpe: Type): Type = {
+      if (sym.isType) assert(restpe.isInstanceOf[TypeBounds], restpe)
       instantiateDependent(restpe, typeParams, termParamss)
-      ctx.methodType(tparams map symbolOfTree, termParamss, restpe, isJava = ddef.mods is JavaDefined)
+      ctx.lambdaType(typeParams, termParamss, restpe, sym)
     }
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol

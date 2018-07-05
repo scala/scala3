@@ -30,7 +30,7 @@ object PostTyper {
  *
  *  (5) Convert all trees representing types to TypeTrees.
  *
- *  (6) Check the bounds of AppliedTypeTrees
+ *  (6) Check the bounds of TypeApply type trees
  *
  *  (7) Insert `.package` for selections of package object members
  *
@@ -203,18 +203,25 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               super.transform(tree)
           }
         case tree: TypeApply =>
-          val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
-          if (fn.symbol != defn.ChildAnnot.primaryConstructor) {
-            // Make an exception for ChildAnnot, which should really have AnyKind bounds
-            Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
+          // TODO simplify the following
+          if (tree.isType) {
+            Checking.checkAppliedType(tree, boundsCheck = !ctx.mode.is(Mode.Pattern))
+            super.transform(tree)
           }
-          fn match {
-            case sel: Select =>
-              val args1 = transform(args)
-              val sel1 = transformSelect(sel, args1)
-              cpy.TypeApply(tree1)(sel1, args1)
-            case _ =>
-              super.transform(tree1)
+          else {
+            val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
+            if (fn.symbol != defn.ChildAnnot.primaryConstructor) {
+              // Make an exception for ChildAnnot, which should really have AnyKind bounds
+              Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
+            }
+            fn match {
+              case sel: Select =>
+                val args1 = transform(args)
+                val sel1 = transformSelect(sel, args1)
+                cpy.TypeApply(tree1)(sel1, args1)
+              case _ =>
+                super.transform(tree1)
+            }
           }
         case Inlined(call, bindings, expansion) =>
           // Leave only a call trace consisting of
@@ -264,9 +271,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           super.transform(tree)
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
-        case tree: AppliedTypeTree =>
-          Checking.checkAppliedType(tree, boundsCheck = !ctx.mode.is(Mode.Pattern))
-          super.transform(tree)
         case SingletonTypeTree(ref) =>
           Checking.checkRealizable(ref.tpe, ref.pos.focus)
           super.transform(tree)

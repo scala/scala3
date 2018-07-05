@@ -24,8 +24,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** A typed subtree of an untyped tree needs to be wrapped in a TypedSlice
    *  @param owner  The current owner at the time the tree was defined
    */
-  abstract case class TypedSplice(tree: tpd.Tree)(val owner: Symbol) extends ProxyTree {
-    def forwardTo = tree
+  abstract case class TypedSplice(splice: tpd.Tree)(val owner: Symbol) extends ProxyTree {
+    def forwardTo = splice
   }
 
   object TypedSplice {
@@ -286,7 +286,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def AndTypeTree(left: Tree, right: Tree): AndTypeTree = new AndTypeTree(left, right)
   def OrTypeTree(left: Tree, right: Tree): OrTypeTree = new OrTypeTree(left, right)
   def RefinedTypeTree(tpt: Tree, refinements: List[Tree]): RefinedTypeTree = new RefinedTypeTree(tpt, refinements)
-  def AppliedTypeTree(tpt: Tree, args: List[Tree]): AppliedTypeTree = new AppliedTypeTree(tpt, args)
   def LambdaTypeTree(tparams: List[TypeDef], body: Tree): LambdaTypeTree = new LambdaTypeTree(tparams, body)
   def ByNameTypeTree(result: Tree): ByNameTypeTree = new ByNameTypeTree(result)
   def TypeBoundsTree(lo: Tree, hi: Tree): TypeBoundsTree = new TypeBoundsTree(lo, hi)
@@ -294,7 +293,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Alternative(trees: List[Tree]): Alternative = new Alternative(trees)
   def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree]): UnApply = new UnApply(fun, implicits, patterns)
   def ValDef(name: TermName, tpt: Tree, rhs: LazyTree): ValDef = new ValDef(name, tpt, rhs)
-  def DefDef(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree): DefDef = new DefDef(name, tparams, vparamss, tpt, rhs)
+  def DefDef(name: Name, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree): DefDef = new DefDef(name, tparams, vparamss, tpt, rhs)
   def TypeDef(name: TypeName, rhs: Tree): TypeDef = new TypeDef(name, rhs)
   def Template(constr: DefDef, parents: List[Tree], self: ValDef, body: LazyTreeList): Template = new Template(constr, parents, self, body)
   def Import(expr: Tree, selectors: List[untpd.Tree]): Import = new Import(expr, selectors)
@@ -309,9 +308,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    */
   def New(tpt: Tree, argss: List[List[Tree]])(implicit ctx: Context): Tree = {
     val (tycon, targs) = tpt match {
-      case AppliedTypeTree(tycon, targs) =>
+      case TypeApply(tycon, targs) =>
         (tycon, targs)
-      case TypedSplice(AppliedTypeTree(tycon, targs)) =>
+      case TypedSplice(TypeApply(tycon, targs)) =>
         (TypedSplice(tycon), targs map (TypedSplice(_)))
       case TypedSplice(tpt1: tpd.Tree) =>
         val tycon = tpt1.tpe.typeConstructor
@@ -336,9 +335,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case _: Apply => tpt
     case _ => Apply(tpt, Nil)
   }
-
-  def AppliedTypeTree(tpt: Tree, arg: Tree): AppliedTypeTree =
-    AppliedTypeTree(tpt, arg :: Nil)
 
   def TypeTree(tpe: Type)(implicit ctx: Context): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
 
@@ -496,10 +492,14 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: PatDef if (mods eq tree.mods) && (pats eq tree.pats) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
       case _ => finalize(tree, untpd.PatDef(mods, pats, tpt, rhs))
     }
+    def TypedSplice(tree: Tree)(splice: tpd.Tree)(implicit ctx: Context) = tree match {
+      case tree: TypedSplice if splice `eq` tree.splice => tree
+      case _ => finalize(tree, untpd.TypedSplice(splice))
+    }
   }
 
   abstract class UntypedTreeMap(cpy: UntypedTreeCopier = untpd.cpy) extends TreeMap(cpy) {
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+    override def transformMoreCases(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case ModuleDef(name, impl) =>
         cpy.ModuleDef(tree)(name, transformSub(impl))
       case ParsedTry(expr, handler, finalizer) =>
@@ -540,15 +540,17 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.ContextBounds(tree)(transformSub(bounds), transform(cxBounds))
       case PatDef(mods, pats, tpt, rhs) =>
         cpy.PatDef(tree)(mods, transform(pats), transform(tpt), transform(rhs))
+      case tpd.UntypedSplice(splice) =>
+        cpy.UntypedSplice(tree)(transform(splice))
       case TypedSplice(_) =>
         tree
       case _ =>
-        super.transform(tree)
+        super.transformMoreCases(tree)
     }
   }
 
-  abstract class UntypedTreeAccumulator[X] extends TreeAccumulator[X] {
-    override def foldOver(x: X, tree: Tree)(implicit ctx: Context): X = tree match {
+  abstract class UntypedTreeAccumulator[X] extends TreeAccumulator[X] { self =>
+    override def foldMoreCases(x: X, tree: Tree)(implicit ctx: Context): X = tree match {
       case ModuleDef(name, impl) =>
         this(x, impl)
       case ParsedTry(expr, handler, finalizer) =>
@@ -589,10 +591,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(this(x, bounds), cxBounds)
       case PatDef(mods, pats, tpt, rhs) =>
         this(this(this(x, pats), tpt), rhs)
-      case TypedSplice(tree) =>
-        this(x, tree)
+      case TypedSplice(splice) =>
+        this(x, splice)
+      case tpd.UntypedSplice(splice) =>
+        this(x, splice)
       case _ =>
-        super.foldOver(x, tree)
+        super.foldMoreCases(x, tree)
     }
   }
 

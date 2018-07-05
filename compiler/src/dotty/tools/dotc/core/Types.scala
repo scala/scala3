@@ -993,6 +993,21 @@ object Types {
       case _ => this
     }
 
+    /** If this type is a typeref or applied type referring to a TypeMethid with a type
+     *  lambda as alias or upper bound, widen to the lambda.
+     */
+    final def toLambda(implicit ctx: Context): Type = {
+      def isLambda(tp: Type): Boolean = tp match {
+        case tp: TypeRef => tp.symbol.is(TypeMethod)
+        case tp: AppliedType => isLambda(tp.tycon)
+        case _ => false
+      }
+      this match {
+        case tp: TypeProxy if isLambda(tp) && tp.superType.isInstanceOf[LambdaType] => tp.superType
+        case _ => this
+      }
+    }
+
     /** If this type contains embedded union types, replace them by their joins.
      *  "Embedded" means: inside intersectons or recursive types, or in prefixes of refined types.
      *  If an embedded union is found, we first try to simplify or eliminate it by
@@ -2955,6 +2970,16 @@ object Types {
   extends LambdaTypeCompanion[TermName, Type, LT] {
     def toPInfo(tp: Type)(implicit ctx: Context): Type = tp
     def syntheticParamName(n: Int) = nme.syntheticParamName(n)
+
+    def checkValid(mt: TermLambda)(implicit ctx: Context): mt.type = {
+      if (Config.checkTermLambdas)
+        for ((paramInfo, idx) <- mt.paramInfos.zipWithIndex)
+          paramInfo.foreachPart {
+            case TermParamRef(`mt`, j) => assert(j < idx, mt)
+            case _ =>
+          }
+      mt
+    }
   }
 
   abstract class TypeLambdaCompanion[LT <: TypeLambda]
@@ -2967,6 +2992,8 @@ object Types {
   }
 
   abstract class MethodTypeCompanion extends TermLambdaCompanion[MethodType] { self =>
+    final def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
+      checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
 
     /** Produce method type from parameter symbols, with special mappings for repeated
      *  and inline parameters:
@@ -2986,19 +3013,6 @@ object Types {
       apply(params.map(_.name.asTermName))(
          tl => params.map(p => tl.integrate(params, paramInfo(p))),
          tl => tl.integrate(params, resultType))
-    }
-
-    final def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
-      checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
-
-    def checkValid(mt: MethodType)(implicit ctx: Context): mt.type = {
-      if (Config.checkMethodTypes)
-        for ((paramInfo, idx) <- mt.paramInfos.zipWithIndex)
-          paramInfo.foreachPart {
-            case TermParamRef(`mt`, j) => assert(j < idx, mt)
-            case _ =>
-          }
-      mt
     }
   }
 
@@ -3079,6 +3093,20 @@ object Types {
     protected def prefixString = "HKTypeLambda"
   }
 
+  class HKTermLambda(val paramNames: List[TermName])(
+      paramInfosExp: HKTermLambda => List[Type], resultTypeExp: HKTermLambda => Type)
+  extends HKLambda with TermLambda {
+    type This = HKTermLambda
+    def companion = HKTermLambda
+
+    val paramInfos: List[Type] = paramInfosExp(this)
+    val resType: Type = resultTypeExp(this)
+
+    assert(resType.isInstanceOf[TermType], this)
+
+    protected def prefixString = "HKTermLambda"
+  }
+
   /** The type of a polymorphic method. It has the same form as HKTypeLambda,
    *  except it applies to terms and parameters do not have variances.
    */
@@ -3118,7 +3146,29 @@ object Types {
     protected def prefixString = "PolyType"
   }
 
-  object HKTypeLambda extends TypeLambdaCompanion[HKTypeLambda] {
+  trait HKCompanion[N <: Name, PInfo <: Type, LT <: LambdaType] extends LambdaTypeCompanion[N, PInfo, LT] {
+
+    /** Distributes Lambda inside type bounds. Examples:
+  	 *
+   	 *      type T[X] = U        becomes    type T = [X] -> U
+   	 *      type T[X] <: U       becomes    type T >: Nothign <: ([X] -> U)
+     *      type T[X] >: L <: U  becomes    type T >: ([X] -> L) <: ([X] -> U)
+     */
+    override def fromParams[PI <: ParamInfo.Of[N]](params: List[PI], resultType: Type)(implicit ctx: Context): Type = {
+      def expand(tp: Type) = super.fromParams(params, tp)
+      resultType match {
+        case rt: TypeAlias =>
+          rt.derivedTypeAlias(expand(rt.alias))
+        case rt @ TypeBounds(lo, hi) =>
+          rt.derivedTypeBounds(
+            if (lo.isRef(defn.NothingClass)) lo else expand(lo), expand(hi))
+        case rt =>
+          expand(rt)
+      }
+    }
+  }
+
+  object HKTypeLambda extends TypeLambdaCompanion[HKTypeLambda] with HKCompanion[TypeName, TypeBounds, HKTypeLambda] {
     def apply(paramNames: List[TypeName])(
         paramInfosExp: HKTypeLambda => List[TypeBounds],
         resultTypeExp: HKTypeLambda => Type)(implicit ctx: Context): HKTypeLambda = {
@@ -3134,24 +3184,13 @@ object Types {
 
     override def paramName(param: ParamInfo.Of[TypeName])(implicit ctx: Context): TypeName =
       param.paramName.withVariance(param.paramVariance)
+  }
 
-    /** Distributes Lambda inside type bounds. Examples:
-  	 *
-   	 *      type T[X] = U        becomes    type T = [X] -> U
-   	 *      type T[X] <: U       becomes    type T >: Nothign <: ([X] -> U)
-     *      type T[X] >: L <: U  becomes    type T >: ([X] -> L) <: ([X] -> U)
-     */
-    override def fromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], resultType: Type)(implicit ctx: Context): Type = {
-      def expand(tp: Type) = super.fromParams(params, tp)
-      resultType match {
-        case rt: TypeAlias =>
-          rt.derivedTypeAlias(expand(rt.alias))
-        case rt @ TypeBounds(lo, hi) =>
-          rt.derivedTypeBounds(
-            if (lo.isRef(defn.NothingClass)) lo else expand(lo), expand(hi))
-        case rt =>
-          expand(rt)
-      }
+  object HKTermLambda extends TermLambdaCompanion[HKTermLambda] with HKCompanion[TermName, Type, HKTermLambda] {
+    def apply(paramNames: List[TermName])(
+        paramInfosExp: HKTermLambda => List[Type],
+        resultTypeExp: HKTermLambda => Type)(implicit ctx: Context): HKTermLambda = {
+      checkValid(unique(new HKTermLambda(paramNames)(paramInfosExp, resultTypeExp)))
     }
   }
 

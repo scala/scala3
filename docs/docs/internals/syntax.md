@@ -128,8 +128,9 @@ TypedFunParam     ::=  id ‘:’ Type
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
 RefinedType       ::=  WithType {[nl] Refinement}                               RefinedTypeTree(t, ds)
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
-AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
-SimpleType        ::=  SimpleType TypeArgs                                      AppliedTypeTree(t, args)
+AnnotType         ::=  AppliedType {Annotation}                                 Annotated(t, annot)
+AppliedType       ::=  SimpleType {ParArgumentExprs}                            Apply(t, args)
+SimpleType        ::=  SimpleType TypeArgs                                      TypeApply(t, args)
                     |  SimpleType ‘#’ id                                        Select(t, name)
                     |  StableId
                     |  [‘-’ | ‘+’ | ‘~’ | ‘!’] StableId                         PrefixOp(expr, op)
@@ -150,6 +151,9 @@ NamedTypeArgs     ::=  ‘[’ NamedTypeArg {‘,’ NamedTypeArg} ‘]’      
 Refinement        ::=  ‘{’ [RefineDcl] {semi [RefineDcl]} ‘}’                   ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type] | INT                            TypeBoundsTree(lo, hi)
 TypeParamBounds   ::=  TypeBounds {‘<%’ Type} {‘:’ Type}                        ContextBounds(typeBounds, tps)
+
+TypeRHS           ::=  ‘if’ Expr ‘then’ TypeRHS ‘else’ TypeRHS                  If(cond, thenp, elsep)
+                    |  Type
 ```
 
 ### Expressions
@@ -309,8 +313,9 @@ ValDcl            ::=  ids ‘:’ Type                                         
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 DefDcl            ::=  DefSig [‘:’ Type]                                        DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
 DefSig            ::=  id [DefTypeParamClause] DefParamClauses
-TypeDcl           ::=  id [TypTypeParamClause] [‘=’ Type]                       TypeDefTree(_, name, tparams, tpt)
-                    |  id [HkTypeParamClause] TypeBounds                        TypeDefTree(_, name, tparams, bounds)
+TypeDcl           ::=  id [TypTypeParamClause] [DefParamClause] TypeBounds      DefDef(name, tparams, vparamss, bounds, rhs)
+                       ‘=’ TypeRHS
+                    |  id [HkTypeParamClause] TypeBounds                        TypeDef(name, tparams, bounds)
 
 Def               ::=  ‘val’ PatDef
                     |  ‘var’ VarDef
@@ -337,7 +342,7 @@ EnumDef           ::=  id ClassConstr [‘extends’ [ConstrApps]] EnumBody     
 TemplateOpt       ::=  [‘extends’ Template | [nl] TemplateBody]
 Template          ::=  ConstrApps [TemplateBody] | TemplateBody                 Template(constr, parents, self, stats)
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
-ConstrApp         ::=  AnnotType {ArgumentExprs}                                Apply(tp, args)
+ConstrApp         ::=  SimpleType {Annotation} {ParArgumentExprs}               Apply(tp, args)
 ConstrExpr        ::=  SelfInvocation
                     |  ConstrBlock
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
