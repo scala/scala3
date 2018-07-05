@@ -61,7 +61,7 @@ class InterfaceEntryPointTest {
     private val pathsBuffer = new ListBuffer[String]
     def paths = pathsBuffer.toList
 
-    override def onSourceCompiled(source: SourceFile): Unit = {
+    override def onSourceCompiled(source: SourceFile): Unit = synchronized {
       if (source.jfile.isPresent)
         pathsBuffer += source.jfile.get.getPath
     }

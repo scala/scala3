@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 
 import dotty.tools.FatalError
 import config.CompilerCommand
@@ -9,6 +10,12 @@ import util.DotClass
 import reporting._
 import scala.util.control.NonFatal
 import fromtasty.TASTYCompiler
+import io.VirtualDirectory
+
+import java.util.concurrent.Executors
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.duration.Duration
+import scala.util.{Success, Failure}
 
 /** Run the Dotty compiler.
  *
@@ -130,8 +137,86 @@ class Driver extends DotClass {
    *                    if compilation succeeded.
    */
   def process(args: Array[String], rootCtx: Context): Reporter = {
+    def compile(files: List[String], ctx: Context) = doCompile(newCompiler(ctx), files)(ctx)
+
     val (fileNames, ctx) = setup(args, rootCtx)
-    doCompile(newCompiler(ctx), fileNames)(ctx)
+    val parallelism = {
+      val p = ctx.settings.parallelism.value(ctx)
+      if (p != 1 && (
+          ctx.settings.YemitTastyInClass.value(ctx) ||
+          ctx.settings.YtestPickler.value(ctx) ||
+          ctx.settings.fromTasty.value(ctx))) {
+        ctx.warning("Parallel compilation disabled due to incompatible setting.")
+        1
+      }
+      else if (p == 0)
+        Runtime.getRuntime().availableProcessors
+      else
+        p
+    }
+    if (parallelism == 1)
+      compile(fileNames, ctx)
+    else {
+      val tastyOutlinePath = new VirtualDirectory("<tasty outline>")
+
+      // First pass: generate .tasty outline files
+      val firstPassCtx = ctx.fresh
+        .setSetting(ctx.settings.outputDir, tastyOutlinePath)
+        .setSetting(ctx.settings.YemitTastyOutline, true)
+        .setSbtCallback(null) // Do not run the sbt-specific phases in this pass
+        .setCompilerCallback(null) // TODO: Change the CompilerCallback API to handle two-pass compilation?
+
+      compile(fileNames, firstPassCtx)
+
+      val scalaFileNames = fileNames.filterNot(_.endsWith(".java"))
+      if (!firstPassCtx.reporter.hasErrors && scalaFileNames.nonEmpty) {
+        // Second pass: split the list of files into $parallelism groups,
+        // compile each group independently.
+
+
+        val maxGroupSize = Math.ceil(scalaFileNames.length.toDouble / parallelism).toInt
+        val fileGroups = scalaFileNames.grouped(maxGroupSize).toList
+        val compilers = fileGroups.length
+
+        // Needed until https://github.com/sbt/zinc/pull/410 is merged.
+        val synchronizedSbtCallback =
+          if (rootCtx.sbtCallback != null)
+            new sbt.SynchronizedAnalysisCallback(rootCtx.sbtCallback)
+          else
+            null
+
+        def secondPassCtx = {
+          // TODO: figure out which parts of rootCtx we can safely reuse exactly.
+          val baseCtx = initCtx.fresh
+            .setSettings(rootCtx.settingsState)
+            .setReporter(new StoreReporter(rootCtx.reporter))
+            .setSbtCallback(synchronizedSbtCallback)
+            .setCompilerCallback(rootCtx.compilerCallback)
+
+          val (_, ctx) = setup(args, baseCtx)
+          ctx.fresh.setSetting(ctx.settings.priorityclasspath, tastyOutlinePath)
+        }
+
+        val executor = Executors.newFixedThreadPool(compilers)
+        implicit val ec = ExecutionContext.fromExecutor(executor)
+
+        val futureReporters = Future.sequence(fileGroups.map(fileGroup => Future {
+          // println("#Compiling: " + fileGroup.mkString(" "))
+          val reporter = compile(fileGroup, secondPassCtx)
+          // println("#Done: " + fileGroup.mkString(" "))
+          reporter
+        })).andThen {
+          case Success(reporters) =>
+            reporters.foreach(_.flush()(firstPassCtx))
+          case Failure(ex) =>
+            ex.printStackTrace
+            firstPassCtx.error(s"Exception during parallel compilation: ${ex.getMessage}")
+        }
+        Await.ready(futureReporters, Duration.Inf)
+        executor.shutdown()
+      }
+      firstPassCtx.reporter
+    }
   }
 
   def main(args: Array[String]): Unit = {

@@ -22,6 +22,10 @@ object Jars {
   lazy val jline: String =
     findJarFromRuntime("jline-3.7.0")
 
+  /** sbt compiler-interface jar */
+  lazy val sbtCompilerInterface: String =
+    findJarFromRuntime("compiler-interface")
+
   /** Dotty extras classpath from env or properties */
   val dottyExtras: List[String] = sys.env.get("DOTTY_EXTRAS")
     .map(_.split(":").toList).getOrElse(Properties.dottyExtras)
@@ -32,7 +36,7 @@ object Jars {
 
   /** Dotty runtime with compiler dependencies, used for quoted.Expr.run */
   lazy val dottyRunWithCompiler: List[String] =
-    dottyLib :: dottyCompiler :: dottyInterfaces :: scalaAsm :: Nil
+    dottyLib :: dottyCompiler :: dottyInterfaces :: sbtCompilerInterface :: scalaAsm :: Nil
 
   def scalaLibrary: String = sys.env.get("DOTTY_SCALA_LIBRARY")
     .getOrElse(findJarFromRuntime("scala-library"))

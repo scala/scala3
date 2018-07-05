@@ -172,25 +172,25 @@ class CompilationTests extends ParallelTesting {
 
   @Test def compileNeg: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNeg")
-    compileFilesInDir("tests/neg", defaultOptions) +
-    compileFilesInDir("tests/neg-tailcall", defaultOptions) +
-    compileFilesInDir("tests/neg-no-optimise", defaultOptions) +
-    compileFilesInDir("tests/neg-kind-polymorphism", defaultOptions and "-Ykind-polymorphism") +
-    compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")) +
-    compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings) +
-    compileDir("tests/neg-custom-args/impl-conv", defaultOptions.and("-Xfatal-warnings", "-feature")) +
+    compileFilesInDir("tests/neg", negOptions) +
+    compileFilesInDir("tests/neg-tailcall", negOptions) +
+    compileFilesInDir("tests/neg-no-optimise", negOptions) +
+    compileFilesInDir("tests/neg-kind-polymorphism", negOptions and "-Ykind-polymorphism") +
+    compileFilesInDir("tests/neg-custom-args/fatal-warnings", negOptions.and("-Xfatal-warnings")) +
+    compileFilesInDir("tests/neg-custom-args/allow-double-bindings", negAllowDoubleBindings) +
+    compileDir("tests/neg-custom-args/impl-conv", negOptions.and("-Xfatal-warnings", "-feature")) +
     compileFile("tests/neg-custom-args/i3246.scala", scala2Mode) +
     compileFile("tests/neg-custom-args/overrideClass.scala", scala2Mode) +
-    compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.and("-language:noAutoTupling")) +
-    compileFile("tests/neg-custom-args/i1050.scala", defaultOptions.and("-strict")) +
-    compileFile("tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")) +
-    compileFile("tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")) +
-    compileFile("tests/neg-custom-args/noimports2.scala", defaultOptions.and("-Yno-imports")) +
-    compileFile("tests/neg-custom-args/i3882.scala", allowDeepSubtypes) +
-    compileFile("tests/neg-custom-args/i4372.scala", allowDeepSubtypes) +
-    compileFile("tests/neg-custom-args/i1754.scala", allowDeepSubtypes) +
-    compileFilesInDir("tests/neg-custom-args/isInstanceOf", allowDeepSubtypes and "-Xfatal-warnings") +
-    compileFile("tests/neg-custom-args/i3627.scala", allowDeepSubtypes)
+    compileFile("tests/neg-custom-args/autoTuplingTest.scala", negOptions.and("-language:noAutoTupling")) +
+    compileFile("tests/neg-custom-args/i1050.scala", negOptions.and("-strict")) +
+    compileFile("tests/neg-custom-args/nopredef.scala", negOptions.and("-Yno-predef")) +
+    compileFile("tests/neg-custom-args/noimports.scala", negOptions.and("-Yno-imports")) +
+    compileFile("tests/neg-custom-args/noimports2.scala", negOptions.and("-Yno-imports")) +
+    compileFile("tests/neg-custom-args/i3882.scala", negAllowDeepSubtypes) +
+    compileFile("tests/neg-custom-args/i4372.scala", negAllowDeepSubtypes) +
+    compileFile("tests/neg-custom-args/i1754.scala", negAllowDeepSubtypes) +
+    compileFilesInDir("tests/neg-custom-args/isInstanceOf", negAllowDeepSubtypes and "-Xfatal-warnings") +
+    compileFile("tests/neg-custom-args/i3627.scala", negAllowDeepSubtypes)
   }.checkExpectedErrors()
 
   // Run tests -----------------------------------------------------------------
@@ -316,7 +316,7 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("optimised/testOptimised")
     compileFilesInDir("tests/pos", defaultOptimised).checkCompile()
     compileFilesInDir("tests/run", defaultOptimised).checkRuns()
-    compileFilesInDir("tests/neg", defaultOptimised).checkExpectedErrors()
+    compileFilesInDir("tests/neg", negOptimised).checkExpectedErrors()
   }
 
   @Test def testPlugins: Unit = {

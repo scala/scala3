@@ -49,11 +49,21 @@ object TestConfiguration {
 
   val basicDefaultOptions = checkOptions ++ noCheckOptions ++ yCheckOptions
   val defaultUnoptimised = TestFlags(classPath, runClassPath, basicDefaultOptions)
+
+  // When parallelism is enabled and errors are encountered in the first pass,
+  // the second pass is not run. This means that less errors are reported at once.
+  val negUnoptimised = defaultUnoptimised and ("-parallelism", "1")
+
   val defaultOptimised = defaultUnoptimised and "-optimise"
+  val negOptimised = negUnoptimised and "-optimise"
   val defaultOptions = defaultUnoptimised
+  val negOptions = negUnoptimised
   val defaultRunWithCompilerOptions = defaultOptions.withRunClasspath(Jars.dottyRunWithCompiler.mkString(":"))
+
   val allowDeepSubtypes = defaultOptions without "-Yno-deep-subtypes"
+  val negAllowDeepSubtypes = negOptions without "-Yno-deep-subtypes"
   val allowDoubleBindings = defaultOptions without "-Yno-double-bindings"
+  val negAllowDoubleBindings = negOptions without "-Yno-double-bindings"
   val picklingOptions = defaultUnoptimised and (
     "-Xprint-types",
     "-Ytest-pickler",

@@ -5,6 +5,8 @@ package dotty.tools.dotc.interfaces;
  *  You should implement this interface if you want to react to one or more of
  *  these events.
  *
+ *  NOTE: These callbacks must be thread-safe.
+ *
  *  See the method `process` of `dotty.tools.dotc.Driver` for more information.
  */
 public interface CompilerCallback {
