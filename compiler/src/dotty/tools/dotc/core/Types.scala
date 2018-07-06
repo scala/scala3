@@ -4084,6 +4084,32 @@ object Types {
         })
     }
 
+    object Apply {
+      def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
+        case Trees.Apply(fn, args) => Some((fn.tpe, args.map(_.tpe)))
+        case _ => None
+      }
+
+      def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
+        finalizeDerived(to, to.tree match {
+          case Trees.Apply(fun, args) =>
+            cpy.Apply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(transparently)
+        })
+    }
+
+    object TypeApply {
+      def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
+        case Trees.TypeApply(fn, args) => Some((fn.tpe, args.map(_.tpe)))
+        case _ => None
+      }
+
+      def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
+        finalizeDerived(to, to.tree match {
+          case Trees.TypeApply(fun, args) =>
+            cpy.TypeApply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(transparently)
+        })
+    }
+
     object Call {
       @tailrec private [this] def loop(tp: Type, argss: List[List[Type]]): (TermRef, List[List[Type]]) =
         tp match {
@@ -4109,32 +4135,6 @@ object Types {
         case _: Apply | _: TypeApply => Some(loop(to, Nil))
         case _ => None
       }
-    }
-
-    object Apply {
-      def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
-        case Trees.Apply(fn, args) => Some((fn.tpe, args.map(_.tpe)))
-        case _ => None
-      }
-
-      def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
-        finalizeDerived(to, to.tree match {
-          case Trees.Apply(fun, args) =>
-            cpy.Apply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(transparently)
-        })
-    }
-
-    object TypeApply {
-      def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
-        case Trees.TypeApply(fn, args) => Some((fn.tpe, args.map(_.tpe)))
-        case _ => None
-      }
-
-      def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
-        finalizeDerived(to, to.tree match {
-          case Trees.TypeApply(fun, args) =>
-            cpy.TypeApply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(transparently)
-        })
     }
 
     object Generic {
