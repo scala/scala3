@@ -65,9 +65,10 @@ classpathArgs () {
   toolchain+="$DOTTY_LIB$PSEP"
   toolchain+="$DOTTY_COMP$PSEP"
 
-  # JLine is mutiple jars
-  local all_jline=$(echo "$JLINE" | tr " " "$PSEP")
-  toolchain+="$all_jline"
+  # jine
+  toolchain+="$JLINE$PSEP"
+  toolchain+="$JLINE_TERMINAL$PSEP"
+  toolchain+="$JLINE_TERMINAL_JNA$PSEP"
 
   if [[ -n "$bootcp" ]]; then
     jvm_cp_args="-Xbootclasspath/a:\"$toolchain\""
