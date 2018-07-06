@@ -48,13 +48,16 @@ object Inliner {
       def accessorNameKind = InlineAccessorName
 
       /** A definition needs an accessor if it is private, protected, or qualified private
-        *  and it is not part of the tree that gets inlined. The latter test is implemented
-        *  by excluding all symbols properly contained in the inlined method.
-        */
+       *  and it is not part of the tree that gets inlined. The latter test is implemented
+       *  by excluding all symbols properly contained in the inlined method.
+       *
+       *  Constant vals don't need accessors since they are inlined in FirstTransform.
+       */
       def needsAccessor(sym: Symbol)(implicit ctx: Context) =
         sym.isTerm &&
         (sym.is(AccessFlags) || sym.privateWithin.exists) &&
-        !sym.isContainedIn(inlineSym)
+        !sym.isContainedIn(inlineSym) &&
+        !(sym.isStable && sym.info.widenTermRefExpr.isInstanceOf[ConstantType])
 
       def preTransform(tree: Tree)(implicit ctx: Context): Tree
 
@@ -124,7 +127,7 @@ object Inliner {
         if needsAccessor(tree.symbol) && tree.isTerm && !tree.symbol.isConstructor =>
           val (refPart, targs, argss) = decomposeCall(tree)
           val qual = qualifier(refPart)
-          println(i"adding receiver passing inline accessor for $tree/$refPart -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
+          inlining.println(i"adding receiver passing inline accessor for $tree/$refPart -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
 
           // Need to dealias in order to cagtch all possible references to abstracted over types in
           // substitutions
@@ -542,9 +545,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
       tpe match {
-        case tpe @ TypeRef(pre, _) if !tpe.symbol.isAccessibleFrom(pre, superAccess) =>
+        case tpe: NamedType if !tpe.symbol.isAccessibleFrom(tpe.prefix, superAccess) =>
           tpe.info match {
             case TypeAlias(alias) => return ensureAccessible(alias, superAccess, pos)
+            case info: ConstantType if tpe.symbol.isStable => return info
             case _ =>
           }
         case _ =>

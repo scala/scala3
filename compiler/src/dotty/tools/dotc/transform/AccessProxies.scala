@@ -96,8 +96,8 @@ abstract class AccessProxies {
     /** Rewire reference to refer to `accessor` symbol */
     private def rewire(reference: RefTree, accessor: Symbol)(implicit ctx: Context): Tree = {
       reference match {
-        case Select(qual, _) => qual.select(accessor)
-        case Ident(name) => ref(accessor)
+        case Select(qual, _) if qual.tpe.derivesFrom(accessor.owner) => qual.select(accessor)
+        case _ => ref(accessor)
       }
     }.withPos(reference.pos)
 
@@ -161,8 +161,8 @@ object AccessProxies {
   def hostForAccessorOf(accessed: Symbol)(implicit ctx: Context): Symbol = {
     def recur(cls: Symbol): Symbol =
       if (!cls.exists) NoSymbol
-      else if (cls.derivesFrom(accessed.owner)) cls
-      else if (cls.companionModule.moduleClass == accessed.owner) accessed.owner
+      else if (cls.derivesFrom(accessed.owner) ||
+               cls.companionModule.moduleClass == accessed.owner) cls 
       else recur(cls.owner)
     recur(ctx.owner)
   }

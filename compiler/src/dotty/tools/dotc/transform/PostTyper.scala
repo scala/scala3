@@ -17,7 +17,7 @@ object PostTyper {
 
 /** A macro transform that runs immediately after typer and that performs the following functions:
  *
- *  (1) Add super accessors and protected accessors (@see SuperAccessors)
+ *  (1) Add super accessors (@see SuperAccessors)
  *
  *  (2) Convert parameter fields that have the same name as a corresponding
  *      public parameter field in a superclass to a forwarder to the superclass
