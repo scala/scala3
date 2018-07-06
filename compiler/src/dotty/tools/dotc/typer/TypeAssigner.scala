@@ -164,10 +164,6 @@ trait TypeAssigner {
   def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree =
     Typed(tree, TypeTree(tree.tpe.widen.translateParameterized(defn.SeqClass, defn.RepeatedParamClass)))
 
-  /** Normalize the type as far as possible, if we are in an opaque context before erasure. */
-  protected def normalizedType(tp: Type)(implicit ctx: Context): Type =
-    if (ctx.erasedTypes || ctx.isTransparentContext) tp else ctx.normalize(tp)
-
   /** A denotation exists really if it exists and does not point to a stale symbol. */
   final def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean = try
     denot match {
@@ -383,7 +379,7 @@ trait TypeAssigner {
           val tpe1 =
             if (!ctx.erasedTypes && (fn.symbol.isTransparentMethod || ctx.isTransparentContext)) TypeOf(tpe, tree)
             else tpe
-          normalizedType(tpe1)
+          ctx.normalizedType(tpe1)
         } else
           errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
       case t =>
@@ -446,7 +442,7 @@ trait TypeAssigner {
             val tpe1 =
               if (!ctx.erasedTypes && (fn.symbol.isTransparentMethod || ctx.isTransparentContext)) TypeOf(tpe, tree)
               else tpe
-            normalizedType(tpe1)
+            ctx.normalizedType(tpe1)
           }
           else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
         }
@@ -527,7 +523,7 @@ trait TypeAssigner {
         else
           throw new AssertionError(i"Tree $ref is not a valid reference for a singleton type tree.")
     }
-    tree.withType(normalizedType(tp))
+    tree.withType(ctx.normalizedType(tp))
   }
 
   def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =

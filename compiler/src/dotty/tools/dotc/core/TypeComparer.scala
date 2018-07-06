@@ -130,7 +130,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
 
   protected def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, NoApprox)
 
-  protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} $approx", subtyping) {
+  protected def recur(tp1Unnorm: Type, tp2Unnorm: Type): Boolean = trace(s"isSubType ${traceInfo(tp1Unnorm, tp2Unnorm)} $approx", subtyping) {
+    // TODO: Cache normalized forms
+    def normalize(tp: Type): Type = tp match {
+      case _: TermRef | _: TypeOf => ctx.normalizedType(tp)
+      case _ => tp
+    }
+    val tp1 = normalize(tp1Unnorm)
+    val tp2 = normalize(tp2Unnorm)
 
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
@@ -237,13 +244,17 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case tp2: LazyRef =>
         !tp2.evaluating && recur(tp1, tp2.ref)
       case tp2: TypeOf =>
-        tp1 match {
-          case tp1: TypeOf if tp1.tree.getClass eq tp2.tree.getClass =>
-            (tp1, tp2) match {
+        def comparePointwise(tp1norm: TypeOf) =
+          if (tp1norm.tree.getClass eq tp2.tree.getClass)
+            (tp1norm, tp2) match {
               case (TypeOf.Generic(args1), TypeOf.Generic(args2)) =>
-                args1.zip(args2).forall { case (arg1, arg2) => recur(arg1, arg2) } || secondTry
-              case _ => secondTry
+                args1.zip(args2).forall { case (arg1, arg2) => recur(arg1, arg2) }
+              case _ => false
             }
+          else
+            false
+        tp1 match {
+          case tp1: TypeOf => comparePointwise(tp1) || secondTry
           case _ => secondTry
         }
       case tp2: AnnotatedType if !tp2.isRefining =>
@@ -675,7 +686,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         }
         either(recur(tp11, tp2), recur(tp12, tp2))
       case tp1: TypeOf =>
-        isNewSubType(tp1.underlyingTp)
+        recur(tp1.underlyingTp, tp2)
       case tp1: AnnotatedType if tp1.isRefining =>
         isNewSubType(tp1.parent)
       case JavaArrayType(elem1) =>

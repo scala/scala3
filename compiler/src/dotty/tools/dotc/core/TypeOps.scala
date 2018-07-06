@@ -117,6 +117,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   final def normalize(tp: Type): Type =
     new NormalizeMap().apply(tp)
 
+  /** Normalize the type as far as possible, if we are in an opaque context before erasure. */
+  final def normalizedType(tp: Type): Type =
+    if (erasedTypes || isTransparentContext) tp else normalize(tp)
+
   /** Approximate union type by intersection of its dominators.
    *  That is, replace a union type Tn | ... | Tn
    *  by the smallest intersection type of base-class instances of T1,...,Tn.
