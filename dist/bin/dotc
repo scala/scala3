@@ -68,7 +68,7 @@ classpathArgs () {
   # jine
   toolchain+="$JLINE$PSEP"
   toolchain+="$JLINE_TERMINAL$PSEP"
-  toolchain+="$JLINE_TERMINAL_JNA$PSEP"
+  toolchain+="$JLINE_TERMINAL_JNA"
 
   if [[ -n "$bootcp" ]]; then
     jvm_cp_args="-Xbootclasspath/a:\"$toolchain\""

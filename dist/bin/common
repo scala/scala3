@@ -121,7 +121,7 @@ SCALA_XML=$(find_lib "*scala-xml*")
 SBT_INTF=$(find_lib "*compiler-interface*")
 JLINE=$(find_lib "*jline-3*")
 JLINE_TERMINAL=$(find_lib "*jline-terminal-3*")
-JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna*")
+JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna-3*")
 
 # debug
 DEBUG_STR=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005
