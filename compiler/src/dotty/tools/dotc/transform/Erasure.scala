@@ -91,7 +91,7 @@ class Erasure extends Phase with DenotTransformer {
       ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.symbol.info))
   }
 
-  val eraser = new Erasure.Typer
+  val eraser = new Erasure.Typer(this)
 
   def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
@@ -314,7 +314,7 @@ object Erasure {
       }
   }
 
-  class Typer extends typer.ReTyper with NoChecking {
+  class Typer(erasurePhase: DenotTransformer) extends typer.ReTyper with NoChecking {
     import Boxing._
 
     def erasedType(tree: untpd.Tree)(implicit ctx: Context): Type = {
@@ -672,7 +672,7 @@ object Erasure {
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
       val stats1 =
-        if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass).add(stats)
+        if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass, erasurePhase).add(stats)
         else stats
       super.typedStats(stats1, exprOwner).filter(!_.isEmpty)
     }

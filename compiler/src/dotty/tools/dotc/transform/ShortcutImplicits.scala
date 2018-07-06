@@ -73,29 +73,10 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
   override def initContext(ctx: FreshContext) =
     DirectMeth = ctx.addLocation[MutableSymbolMap[Symbol]]()
 
-  /** If this option is true, we don't specialize symbols that are known to be only
-   *  targets of monomorphic calls.
-   *  The reason for this option is that benchmarks show that on the JVM for monomorphic dispatch
-   *  scenarios inlining and escape analysis can often remove all calling overhead, so we might as
-   *  well not duplicate the code. We need more experience to decide on the best setting of this option.
-   */
-  final val specializeMonoTargets = true
 
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) =
     ctx.fresh.updateStore(DirectMeth, newMutableSymbolMap[Symbol])
 
-  /** Should `sym` get a ..$direct companion?
-    *  This is the case if `sym` is a method with a non-nullary implicit function type as final result type.
-    *  However if `specializeMonoTargets` is false, we exclude symbols that are known
-    *  to be only targets of monomorphic calls because they are effectively
-    *  final and don't override anything.
-    */
-  private def shouldBeSpecialized(sym: Symbol)(implicit ctx: Context) =
-    sym.is(Method, butNot = Accessor) &&
-    defn.isImplicitFunctionType(sym.info.finalResultType) &&
-    defn.functionArity(sym.info.finalResultType) > 0 &&
-    !sym.isAnonymousFunction &&
-    (specializeMonoTargets || !sym.isEffectivelyFinal || sym.allOverriddenSymbols.nonEmpty)
 
   /** The direct method `m$direct` that accompanies the given method `m`.
     *  Create one if it does not exist already.
@@ -108,7 +89,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
   override def transformSelect(tree: Select)(implicit ctx: Context) =
     if (tree.name == nme.apply &&
         defn.isImplicitFunctionType(tree.qualifier.tpe.widen) &&
-        shouldBeSpecialized(tree.qualifier.symbol)) {
+        needsImplicitShortcut(tree.qualifier.symbol)) {
       def directQual(tree: Tree): Tree = tree match {
         case Apply(fn, args)     => cpy.Apply(tree)(directQual(fn), args)
         case TypeApply(fn, args) => cpy.TypeApply(tree)(directQual(fn), args)
@@ -127,7 +108,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
   /** Transform methods with implicit function type result according to rewrite rule (1) above */
   override def transformDefDef(mdef: DefDef)(implicit ctx: Context): Tree = {
     val original = mdef.symbol
-    if (shouldBeSpecialized(original)) {
+    if (needsImplicitShortcut(original)) {
       val direct = directMethod(original)
 
       // Move @tailrec to the direct method
@@ -171,6 +152,27 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
 object ShortcutImplicits {
   val name = "shortcutImplicits"
 
+  /** If this option is true, we don't specialize symbols that are known to be only
+   *  targets of monomorphic calls.
+   *  The reason for this option is that benchmarks show that on the JVM for monomorphic dispatch
+   *  scenarios inlining and escape analysis can often remove all calling overhead, so we might as
+   *  well not duplicate the code. We need more experience to decide on the best setting of this option.
+   */
+  final val specializeMonoTargets = true
+
+  /** Should `sym` get a ..$direct companion?
+    *  This is the case if `sym` is a method with a non-nullary implicit function type as final result type.
+    *  However if `specializeMonoTargets` is false, we exclude symbols that are known
+    *  to be only targets of monomorphic calls because they are effectively
+    *  final and don't override anything.
+    */
+  def needsImplicitShortcut(sym: Symbol)(implicit ctx: Context) =
+    sym.is(Method, butNot = Accessor) &&
+    defn.isImplicitFunctionType(sym.info.finalResultType) &&
+    defn.functionArity(sym.info.finalResultType) > 0 &&
+    !sym.isAnonymousFunction &&
+    (specializeMonoTargets || !sym.isEffectivelyFinal || sym.allOverriddenSymbols.nonEmpty)
+
   /** @pre    The type's final result type is an implicit function type `implicit Ts => R`.
     *  @return The type of the `apply` member of `implicit Ts => R`.
     */
@@ -180,8 +182,6 @@ object ShortcutImplicits {
     case info: ExprType   => directInfo(info.resultType)
     case info             => info.member(nme.apply).info
   }
-
-  def isImplicitShortcut(sym: Symbol)(implicit ctx: Context) = sym.name.is(DirectMethodName)
 
   /** A new `m$direct` method to accompany the given method `m` */
   private def newShortcutMethod(sym: Symbol)(implicit ctx: Context): Symbol =
@@ -195,6 +195,8 @@ object ShortcutImplicits {
     sym.owner.info.decl(DirectMethodName(sym.name.asTermName))
       .suchThat(_.info matches directInfo(sym.info)).symbol
       .orElse(newShortcutMethod(sym).enteredAfter(phase))
+
+  def isImplicitShortcut(sym: Symbol)(implicit ctx: Context) = sym.name.is(DirectMethodName)
 }
 
 
