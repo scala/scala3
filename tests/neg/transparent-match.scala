@@ -10,6 +10,6 @@ object Test {
 
   // def f1[T <: Foo](t: T): "a" = test(t) // Do we want this?
   //def f1[T <: Foo](t: T): Any = test(t)
-  def f2(x: Foo): "a"  = test(x)
+  def f2(x: Foo): "a"  = test(x)  // error: matches are not supported yet
   // def f3(x: String): 1 = test(x)
 }
