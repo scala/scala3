@@ -440,8 +440,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(implicit ctx: Context): Tree =
-      if (ctx.erasedTypes) tree
-      else super.ensureNoLocalRefs(tree, pt, localSyms)
+      tree
 
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context) = {
@@ -460,11 +459,7 @@ class TreeChecker extends Phase with SymTransformer {
       tree
     }
 
-    override def simplify(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type =
-      if (ctx.phase.prev.phaseName == "frontend" || ctx.phase.prev.phaseName == "sbt-deps")
-        super.simplify(tree, pt, locked)
-      else
-        tree
+    override def simplify(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): tree.type = tree
   }
 
   /**
