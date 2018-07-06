@@ -237,7 +237,15 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case tp2: LazyRef =>
         !tp2.evaluating && recur(tp1, tp2.ref)
       case tp2: TypeOf =>
-        tp2 == tp1 || secondTry
+        tp1 match {
+          case tp1: TypeOf if tp1.tree.getClass eq tp2.tree.getClass =>
+            (tp1, tp2) match {
+              case (TypeOf.Generic(args1), TypeOf.Generic(args2)) =>
+                args1.zip(args2).forall { case (arg1, arg2) => recur(arg1, arg2) } || secondTry
+              case _ => secondTry
+            }
+          case _ => secondTry
+        }
       case tp2: AnnotatedType if !tp2.isRefining =>
         recur(tp1, tp2.parent)
       case tp2: ThisType =>
