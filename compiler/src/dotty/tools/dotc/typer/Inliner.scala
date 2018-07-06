@@ -127,7 +127,7 @@ object Inliner {
         if needsAccessor(tree.symbol) && tree.isTerm && !tree.symbol.isConstructor =>
           val (refPart, targs, argss) = decomposeCall(tree)
           val qual = qualifier(refPart)
-          println(i"adding receiver passing inline accessor for $tree/$refPart -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
+          inlining.println(i"adding receiver passing inline accessor for $tree/$refPart -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
 
           // Need to dealias in order to cagtch all possible references to abstracted over types in
           // substitutions
@@ -545,9 +545,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
       tpe match {
-        case tpe @ TypeRef(pre, _) if !tpe.symbol.isAccessibleFrom(pre, superAccess) =>
+        case tpe: NamedType if !tpe.symbol.isAccessibleFrom(tpe.prefix, superAccess) =>
           tpe.info match {
             case TypeAlias(alias) => return ensureAccessible(alias, superAccess, pos)
+            case info: ConstantType if tpe.symbol.isStable => return info
             case _ =>
           }
         case _ =>
