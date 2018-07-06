@@ -52,7 +52,7 @@ import collection.mutable
  *        Adding such an info transformer is impractical because it would mean
  *        that we have to force the types of all members of classes that are referenced.
  *        But not adding an info transformer can lead to inconsistencies in RefChecks.
- *        We solve that by ignoring direct methods in Refhecks.
+ *        We solve that by ignoring direct methods in Refchecks.
  *        Another, related issue is bridge generation, where we also generate
  *        shortcut methods on the fly.
  */
