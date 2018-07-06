@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import MegaPhase._
-import core.DenotTransformers.IdentityDenotTransformer
+import core.DenotTransformers.{DenotTransformer, IdentityDenotTransformer}
 import core.Symbols._
 import core.Contexts._
 import core.Types._
@@ -44,8 +44,20 @@ import collection.mutable
  *  (2) A reference `qual.apply` where `qual` has implicit function type and
  *  `qual` refers to a method `m` is rewritten to a reference to `m$direct`,
  *  keeping the same type and value arguments as they are found in `qual`.
+ *
+ *  Note: The phase adds direct methods for all defined methods with IFT results,
+ *        as well as for all methods that are referenced. It does NOT do an
+ *        info transformer that adds these methods everywhere where an IFT returning
+ *        method exists.
+ *        Adding such an info transformer is impractical because it would mean
+ *        that we have to force the types of all members of classes that are referenced.
+ *        But not adding an info transformer can lead to inconsistencies in RefChecks.
+ *        We solve that by ignoring direct methods in Refhecks.
+ *        Another, related issue is bridge generation, where we also generate
+ *        shortcut methods on the fly.
  */
 class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPhase =>
+  import ShortcutImplicits._
   import tpd._
 
   override def phaseName: String = ShortcutImplicits.name
@@ -85,37 +97,12 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
     !sym.isAnonymousFunction &&
     (specializeMonoTargets || !sym.isEffectivelyFinal || sym.allOverriddenSymbols.nonEmpty)
 
-  /** @pre    The type's final result type is an implicit function type `implicit Ts => R`.
-    *  @return The type of the `apply` member of `implicit Ts => R`.
-    */
-  private def directInfo(info: Type)(implicit ctx: Context): Type = info match {
-    case info: PolyType   => info.derivedLambdaType(resType = directInfo(info.resultType))
-    case info: MethodType => info.derivedLambdaType(resType = directInfo(info.resultType))
-    case info: ExprType   => directInfo(info.resultType)
-    case info             => info.member(nme.apply).info
-  }
-
-  /** A new `m$direct` method to accompany the given method `m` */
-  private def newDirectMethod(sym: Symbol)(implicit ctx: Context): Symbol = {
-    val direct = sym.copy(
-      name = DirectMethodName(sym.name.asTermName).asInstanceOf[sym.ThisName],
-      flags = sym.flags | Synthetic,
-      info = directInfo(sym.info))
-    if (direct.allOverriddenSymbols.isEmpty) direct.resetFlag(Override)
-    direct
-  }
-
   /** The direct method `m$direct` that accompanies the given method `m`.
     *  Create one if it does not exist already.
     */
   private def directMethod(sym: Symbol)(implicit ctx: Context): Symbol =
-    if (sym.owner.isClass) {
-      val direct = sym.owner.info.member(DirectMethodName(sym.name.asTermName))
-        .suchThat(_.info matches directInfo(sym.info)).symbol
-      if (direct.maybeOwner == sym.owner) direct
-      else newDirectMethod(sym).enteredAfter(thisPhase)
-    }
-    else directMeth.getOrElseUpdate(sym, newDirectMethod(sym))
+    if (sym.owner.isClass) shortcutMethod(sym, thisPhase)
+    else directMeth.getOrElseUpdate(sym, newShortcutMethod(sym))
 
   /** Transform `qual.apply` occurrences according to rewrite rule (2) above */
   override def transformSelect(tree: Select)(implicit ctx: Context) =
@@ -127,8 +114,12 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
         case TypeApply(fn, args) => cpy.TypeApply(tree)(directQual(fn), args)
         case Block(stats, expr)  => cpy.Block(tree)(stats, directQual(expr))
         case tree: RefTree =>
+          def rewire(tp: Type, sym: Symbol) = tp match {
+            case tp: NamedType => tp.prefix.select(sym)
+            case _ => sym.termRef
+          }
           cpy.Ref(tree)(DirectMethodName(tree.name.asTermName))
-            .withType(directMethod(tree.symbol).termRef)
+            .withType(rewire(tree.tpe, directMethod(tree.symbol)))
       }
       directQual(tree.qualifier)
     } else tree
@@ -179,4 +170,31 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
 
 object ShortcutImplicits {
   val name = "shortcutImplicits"
+
+  /** @pre    The type's final result type is an implicit function type `implicit Ts => R`.
+    *  @return The type of the `apply` member of `implicit Ts => R`.
+    */
+  private def directInfo(info: Type)(implicit ctx: Context): Type = info match {
+    case info: PolyType   => info.derivedLambdaType(resType = directInfo(info.resultType))
+    case info: MethodType => info.derivedLambdaType(resType = directInfo(info.resultType))
+    case info: ExprType   => directInfo(info.resultType)
+    case info             => info.member(nme.apply).info
+  }
+
+  def isImplicitShortcut(sym: Symbol)(implicit ctx: Context) = sym.name.is(DirectMethodName)
+
+  /** A new `m$direct` method to accompany the given method `m` */
+  private def newShortcutMethod(sym: Symbol)(implicit ctx: Context): Symbol =
+    sym.copy(
+      name = DirectMethodName(sym.name.asTermName).asInstanceOf[sym.ThisName],
+      flags = sym.flags &~ Override | Synthetic,
+      info = directInfo(sym.info))
+      .reporting(res => i"added shortcut ${sym.owner}.$res: ${res.info}")
+
+  def shortcutMethod(sym: Symbol, phase: DenotTransformer)(implicit ctx: Context) =
+    sym.owner.info.decl(DirectMethodName(sym.name.asTermName))
+      .suchThat(_.info matches directInfo(sym.info)).symbol
+      .orElse(newShortcutMethod(sym).enteredAfter(phase))
 }
+
+
