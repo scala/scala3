@@ -175,6 +175,10 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
   }
 
   private def bigStep(tp: Type): Type = tp match {
+    case tp if tp eq defn.NullType =>
+      canReduce = false
+      tp
+
     case tp @ TypeOf.If(cond, thenb, elseb) =>
       apply(cond) match {
         case ConstantType(c) if c.tag == Constants.BooleanTag =>

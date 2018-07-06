@@ -18,6 +18,29 @@ object Foo {
   foo(b): { 1 }  // error
 }
 
+object NullTests {
+  transparent def f(x: String): Boolean = x == null
+  val a1: false = f("aa")  // error: can't reduce in the presence of null
+  val a2: true  = f(null)  // error: can't reduce in the presence of null
+  val a3: true  = f("aa")  // error: can't reduce in the presence of null
+  val a4: false = f(null)  // error: can't reduce in the presence of null
+  val a5: { "aa" == null } = f("aa")
+
+  transparent def g(x: String): Boolean = x.isInstanceOf[String]
+  val b1: true  = g("aa")
+  val b2: true  = g(null)  // error: can't reduce in the presence of null
+  val b3: false = g(null)  // error: can't reduce in the presence of null
+
+  transparent def h(x: String): String = x + "A"
+  val x: { h(null) } = h(null)
+  val y = h(null)
+
+  transparent def hTest: Unit = {
+    val y = h(null)
+    val z: { h(null) } = y
+  }
+}
+
 // object CyclicTransparenType {
 //   transparent def trans(j: Int): Int = {
 //     println(opaque(j))
