@@ -34,7 +34,7 @@ case object Z extends Nat
 case class S[N <: Nat](n: N) extends Nat
 ```
 
-A function that maps positive integers to Peano numbers can be defined as follows:
+A function that maps non-negative integers to Peano numbers can be defined as follows:
 
 ```scala
 transparent def toNat(n: Int): Nat = n match {
@@ -142,7 +142,7 @@ It's possible to add more cases to a toplevel match, thereby moving an error fro
 ```scala
 transparent def nthDynamic(xs: Tuple, n: Int): Any = xs match {
   case (x, _)   if n == 0 => x
-  case (_, xs1) if n > 0  => nthDynamic(xs1, n - 1)
+  case (_, xs1) => nthDynamic(xs1, n - 1)
   case () => throw new IndexOutOfBoundsException
 }
 ```
@@ -372,7 +372,7 @@ The right hand side of a  `transparent` value definition must have singleton typ
 
 Transparent values are effectively final; they may not be overridden. In Scala-2, constant values had to be expressed using `final`, which gave an unfortunate double meaning to the modifier. The `final` syntax is still supported in Scala 3 for a limited time to support cross-building.
 
-Transparent values are more general than the old meaning of `final` since they also work on paths. For instance, the `field` definition above establishes at typing time the knowlegde that `field` is an alias of `outer.field`. The same effect can be achieved with an explicit singleton type ascription:
+Transparent values are more general than the old meaning of `final` since they also work on paths. For instance, the `field` definition above establishes at typing time the knowledge that `field` is an alias of `outer.field`. The same effect can be achieved with an explicit singleton type ascription:
 ```scala
 final val field: outer.field.type = outer.field
 ```
@@ -446,4 +446,4 @@ One important difference between the two schemes is that the reflective call imp
 
 ## Acknowledgments
 
-Many of the ideas in this proposal resulted from discussions with @gsps and @OlivierBlanvillain, the authors of the "TypeOf" approach (PR #4671). @gsps suggested the use of the `transparent` keyword. @OlivierBlanvillain suggested techniques like `anyValue` and `Typed` utto lift term compations to types. The present proposal also benefited from feedback from @milessabin, @adriaanm, @sjrd, Andrei Alexandrescu, John Hughes, Conor McBride and Stephanie Weirich on earlier designs. The relationship with meta programming has a lot in common with the original inline and meta proposals in SIP 28 and SIP 29.
+Many of the ideas in this proposal resulted from discussions with @gsps and @OlivierBlanvillain, the authors of the "TypeOf" approach (PR #4671). @gsps suggested the use of the `transparent` keyword. @OlivierBlanvillain suggested techniques like `anyValue` and `Typed` to lift term computations to types. The present proposal also benefited from feedback from @milessabin, @adriaanm, @sjrd, Andrei Alexandrescu, John Hughes, Conor McBride and Stephanie Weirich on earlier designs. The relationship with meta programming has a lot in common with the original inline and meta proposals in SIP 28 and SIP 29.
