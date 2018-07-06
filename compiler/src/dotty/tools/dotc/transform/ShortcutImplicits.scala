@@ -189,7 +189,6 @@ object ShortcutImplicits {
       name = DirectMethodName(sym.name.asTermName).asInstanceOf[sym.ThisName],
       flags = sym.flags &~ Override | Synthetic,
       info = directInfo(sym.info))
-      .reporting(res => i"added shortcut ${sym.owner}.$res: ${res.info}")
 
   def shortcutMethod(sym: Symbol, phase: DenotTransformer)(implicit ctx: Context) =
     sym.owner.info.decl(DirectMethodName(sym.name.asTermName))
