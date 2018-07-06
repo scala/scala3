@@ -1,0 +1,449 @@
+# Functional Typelevel Programming in Scala
+
+This is a working draft document for discussing language constructs in
+support of typelevel programming in Scala 3.
+
+## State of the Art
+
+Currently, typelevel programming in Scala is mainly done using implicits.
+Proof search for finding implicit arguments can be used to compute new, interesting types.
+This results in a programming style much like Prolog. Amazing feats have
+been achieved using this scheme, but things are certainly far from
+ideal. In particular:
+
+ - The logic programming style requires a shift of mindset compared to the
+   usual functional programming style in Scala.
+ - The ways to control implicit search are underdeveloped,
+   leading to complicated schemes, requiring rule prioritization or other hacks.
+ - Because of their conceptual complexity the resulting typelevel programs are often
+   fragile.
+ - Error diagnostics are usually very bad, making programming with implicits somewhat
+   of a black art. Dotty has greatly improved error dignostics for recursive implicits,
+   but the fundamental problem remains.
+
+## The Core Idea
+
+A simple principle underlies the new design: Typelevel programming in Scala 3 means reducing terms and taking their types afterwards. Specifically, if `f` is a _transparent_ function applied to some arguments `es` then the type of the application `f(es)` is the type of the term to which `f(es)` reduces. Since reduction can specialize types, that type can be more specific than `f`'s declared result type. Type-level programming in Scala 3 is thus a form of partial evaluation or [type specialization](http://www.cse.chalmers.se/~rjmh/Papers/typed-pe.html).
+
+## Transparent Functions
+
+Consider the standard definition of typelevel Peano numbers:
+```scala
+trait Nat
+case object Z extends Nat
+case class S[N <: Nat](n: N) extends Nat
+```
+
+A function that maps positive integers to Peano numbers can be defined as follows:
+
+```scala
+transparent def toNat(n: Int): Nat = n match {
+  case 0 => Z
+  case n if n > 0 => S(toNat(n - 1))
+}
+```
+Without the `transparent` modifier, an application of `toNat(3)` would have type `Nat`, as this
+is the method's declared return type. But with `transparent`, the call to `toNat(3)` gets reduced _at compile time_ as follows:
+
+        toNat(3)
+    ->
+        3 match {
+          case 0 => Z
+          case n if n > 0 => S(toNat(n - 1))
+        }
+    ->
+        S(toNat(2))
+    ->
+        S(2 match {
+            case 0 => Z
+            case n if n > 0 => S(toNat(n - 1))
+          })
+    ->
+        S(S(toNat(1)))
+    -> ->
+        S(S(S(toNat(0))))
+    ->
+        S(S(S(0 match {
+                case 0 => Z
+                case n if n > 0 => S(toNat(n - 1))
+              })))
+    ->
+        S(S(S(Z)))
+
+The type of `toNat(3)` is the type of its result, `S[S[S[Z]]]`, which is a subtype of the declared result type `Nat`.
+
+A `transparent` modifier on a method definition indicates that any application of the defined method outside a transparent method definition will be expanded to its right hand side, where formal parameters get bound to actual arguments. The right side will be further simplified using a set of rewrite rules given below.
+
+Top-level `match` expressions in transparent methods are treated specially. An expression is considered top-level if it appears
+
+ - as the right hand side of the `transparent` function, or
+ - as the final expression of a top-level block, or
+ - as a branch of a top-level match expression.
+
+A top-level match expression in a transparent _must_ be rewritten at compile-time. That is, if there is enough static information to unambiguously pick one of its branches, the expression
+is rewritten to that branch. Otherwise a compile-time error is signalled indicating that the match is ambiguous. If one wants to have a transparent function expand to a match expression that cannot be evaluated statically in this fashion, one can always enclose the expression in a
+```scala
+locally { ... }
+```
+block, which de-classifies it as a top-level expression. (`locally` is a function in `Predef` which simply returns its argument.)
+
+Transparent methods are effectively final; they may not be overwritten. If a transparent
+method has a top-level match expression then it can itself override no other method and it must always be fully applied.
+
+As another example, consider the following two functions over tuples:
+
+```scala
+transparent def concat(xs: Tuple, ys: Tuple): Tuple = xs match {
+  case ()       => ys
+  case (x, xs1) => (x, concat(xs1, ys))
+}
+
+transparent def nth(xs: Tuple, n: Int): Any = xs match {
+  case (x, _)   if n == 0 => x
+  case (_, xs1) if n > 0  => nth(xs1, n - 1)
+}
+```
+Assume
+```scala
+as: (Int, String)
+bs: (Boolean, List[Int])
+tp: Tuple
+```
+
+Then we get the following typings:
+```scala
+concat(as, bs) : (Int, String, Boolean, List[Int])
+concat(as, ()) : (Int, String)
+concat((), as) : (Int, String)
+concat(as, tp) : (Int, (String, Tuple))
+
+nth(as, 0)     : Int
+nth(as, 1)     : String
+nth(as, 2)     : Nothing
+nth(as, -1)    : Nothing
+nth(concat(as, bs), 3) : List[Int]
+```
+
+In each of these cases, the result is obtained by expanding the transparent function(s), simplifying (reducing) their right hand sides, and taking the type of the result. As an example, the applications `concat(as, bs)` and `nth(as, 1)` would produce expressions like these:
+```scala
+concat(as, bs)  -->  (as._1, { val a$1 = as._2; (a$1._1, bs) }
+nth(as, 1)      -->  { val a$1 = as._2; a$1._1 }
+```
+If tuples get large, so do the expansions. For instance, the size of the expansion of a valid selection `nth(xs, n)` is proportional to `n`. We will show later a scheme to avoid this code blowup using `erased` values.
+
+The following expressions would all give compile-time errors since a toplevel `match` could not be reduced:
+```scala
+concat(tp, bs)
+nth(tp, 0)
+nth(as, 2)
+nth(as -1)
+```
+It's possible to add more cases to a toplevel match, thereby moving an error from compile-time to runtime. For instance, here is a version of `nth` that throws a runtime error in case the index is out of bounds:
+```scala
+transparent def nthDynamic(xs: Tuple, n: Int): Any = xs match {
+  case (x, _)   if n == 0 => x
+  case (_, xs1) if n > 0  => nthDynamic(xs1, n - 1)
+  case () => throw new IndexOutOfBoundsException
+}
+```
+Here is an expansion of `nthDynamic` applied to a tuple `as: (Int, String)` and a negative index. For clarity we have added the computed types of the intermediate values `as$i`.
+```
+        nthDynamic(as, -1)
+    ->
+        { val as$0: (String, ()) = as._1
+          nthDynamic(as$0, -2)
+        }
+    ->
+        { val as$0: (String, ()) = as._1
+          { val as$1: () = as$0._1
+            nthDynamic(as$1, -3)
+          }
+        }
+    ->
+        throw new IndexOutOfBoundsException
+```
+So the end result of the expansion is the expression `throw new IndexOutOfBoundsException`, which has type `Nothing`. It is important to note that programs are treated as _data_ in this process, so the exception will not be thrown at compile time, but only if the program is run after it compiles without errors.
+
+**Rewrite Rules** The following rewrite rules are performed when simplifying inlined bodies:
+
+ - constant folding
+ - evaluation of pattern matches in toplevel match expressions
+ - reduction of projections
+ - evaluation of if-then-else with constant expressions
+
+(to be expanded)
+
+## Matching on Types
+
+We have seen so far transparent functions that take terms (tuples and integers) as parameters. What if we want to base case distinctions on types instead? For instance, one would like to be able to write a function `defaultValue`, that, given a type `T`
+returns optionally the default value of `T`, if it exists. In fact, we can already express
+this using ordinary match expressions and a simple helper function, `scala.typelevel.anyValue`, which is defined as follows:
+```scala
+def anyValue[T]: T = ???
+```
+The `anyValue` function _pretends_ to return a value of its type argument `T`. In fact, it will always raise a `NotImplementedError` exception instead.
+This is OK, since the function is intended to be used only on the type-level; it should never be executed at run-time.
+
+Using `anyValue`, we can then define `defaultValue` as follows:
+```scala
+transparent def defaultValue[T]: Option[T] = anyValue[T] match {
+  case _: Byte => Some(0: Byte)
+  case _: Char => Some(0: Char)
+  case _: Short => Some(0: Short)
+  case _: Int => Some(0)
+  case _: Long => Some(0L)
+  case _: Float => Some(0.0f)
+  case _: Double => Some(0.0d)
+  case _: Boolean => Some(false)
+  case _: Unit => Some(())
+  case _: t >: Null => Some(null)
+  case _ => None
+}
+```
+Then:
+```scala
+defaultValue[Int] = Some(0)
+defaultValue[Boolean] = Some(false)
+defaultValue[String | Null] = Some(null)
+defaultValue[AnyVal] = None
+```
+
+As another example, consider the type-level inverse of `toNat`: given a _type_ representing a Peano number, return the integer _value_ corresponding to it. Here's how this can be defined:
+```scala
+transparent def toInt[N <: Nat]: Int = anyValue[N] match {
+  case _: Z => 0
+  case _: S[n] => toInt[n] + 1
+}
+```
+
+## Computing New Types
+
+The examples so far all computed _terms_ that have interesting new types. Since in Scala terms can contain types it is equally easy to compute the types of these terms directly as well. To this purpose, it is helpful
+to base oneself on the helper class `scala.typelevel.Typed`, defined as follows:
+```scala
+class Typed[T](val value: T) { type Type = T }
+```
+Here is a version of `concat` that computes at the same time a result and its type:
+```scala
+transparent def concatTyped(xs: Tuple, ys: Tuple): Typed[_ <: Tuple] = xs match {
+  case ()       => Typed(ys)
+  case (x, xs1) => Typed((x, concatTyped(xs1, ys).value))
+}
+```
+
+## Avoiding Code Explosion
+
+Recursive transparent functions implement a form of loop unrolling through inlining. This can lead to very large generated expressions. The code explosion can be avoided by calling typed versions of the transparent functions to define erased values, of which  just the typed part is used afterwards. Here is how this can be done for `concat`:
+
+```scala
+def concatImpl(xs: Tuple, ys: Tuple): Tuple = xs match {
+  case ()       => ys
+  case (x, xs1) => (x, concatImpl(xs1, ys))
+}
+
+transparent def concat(xs: Tuple, ys: Tuple): Tuple = {
+  erased val r = concatTyped(xs, ys)
+  concatImpl(xs, ys).asInstanceOf[r.Type]
+}
+```
+The transparent `concat` method makes use of two helper functions, `concatTyped` (described in the last section) and `concatImpl`. `concatTyped` is called as the right hand side of an `erased` value `r`. Since `r` is `erased`, no code is generated for its definition.
+`concatImpl` is a regular, non-transparent function that implements `concat` on generic tuples. It is not inlineable, and its result type is always `Tuple`. The actual code for `concat` calls `concatImpl` and casts its result to type `r.Type`, the computed result type of the concatenation. This gives the best of both worlds: Compact code and expressive types.
+
+One might criticize that this scheme involves code duplication. In the example above, the recursive `concat` algorithm had to be implemented twice, once as a regular function, the other time as a transparent function. However, in practice it is is quite likely that the regular function would use optimized data representatons and algortihms that do not lend themselves easily to a typelevel interpretation. In these cases a dual implementation is required anyway.
+
+## Code Specialization
+
+Transparent functions are a convenient means to achieve code specialization. As an example, consider implementing a math library that implements (among others) a `dotProduct` method. Here is a possible implementation of `MathLib` with some user code.
+```scala
+abstract class MathLib[N : Numeric] {
+  def dotProduct(xs: Array[N], ys: Array[N]): N
+}
+object MathLib {
+
+  transparent def apply[N](implicit n: Numeric[N]) = new MathLib[N] {
+    import n._
+    def dotProduct(xs: Array[N], ys: Array[N]): N = {
+      require(xs.length == ys.length)
+      var i = 0
+      var s: N = n.zero
+      while (i < xs.length) {
+        s = s + xs(i) * ys(i)
+        i += 1
+      }
+      s
+    }
+  }
+}
+```
+`MathLib` is intentionally kept very abstract - it works for any element type `N` for which a `math.Numeric` implementation exists.
+Here is some code that uses `MathLib`:
+```scala
+val mlib = MathLib[Double]
+
+val xs = Array(1.0, 1.0)
+val ys = Array(2.0, -3.0)
+mlib.dotProduct(xs, ys)
+```
+The implementation code for a given numeric type `N` is produced by the `apply` method of `MathLib`.
+Even though the `dotProduct` code looks simple, there is a lot of hidden complexity in the generic code:
+
+ - It uses unbounded generic arrays, which means code on the JVM needs reflection to access their elements
+ - All operations on array elements forward to generic operations in class `Numeric`.
+
+It would be quite hard for even a good optimizer to undo the generic abstractions and replace them with something simpler if `N` is specialized to a primitive type like `Double`. But since `apply` is marked `transparent`, the specialization happens automatically as a result of inlining the body of `apply` with the new types. Indeed, the specialized version of `dotProduct` looks like this:
+```
+def dotProduct(xs: Array[Double], ys: Array[Double]): Double = {
+  require(xs.length == ys.length)
+  var i = 0
+  var s: Double = n.zero
+  while (i < xs.length) {
+    s = s + xs(i) * ys(i)
+    i += 1
+  }
+  s
+}
+```
+In other words, specialization with transparent functions allows "abstraction without regret". The price to pay for this
+is the increase of code size through inlining. That price is often worth paying, but inlining decisions need to be considered carefully.
+
+## Implicit Matches
+
+It is foreseen that many areas of typelevel programming can be done with transparent functions instead of implicits. But sometimes implicits are unavoidable. The problem so far was that the Prolog-like programming style of implicit search becomes viral: Once some construct depends on implicit search it has to be written as a logic program itself. Consider for instance the problem
+of creating a `TreeSet[T]` or a `HashSet[T]` depending on whether `T` has an `Ordering` or not. We can create a set of implicit definitions like this:
+```scala
+trait SetFor[T, S <: Set[T]]
+class LowPriority {
+  implicit def hashSetFor[T]: SetFor[T, HashSet[T]] = ...
+}
+object SetsFor extends LowPriority {
+  implicit def treeSetFor[T: Ordering]: SetFor[T, TreeSet[T]] = ...
+}
+```
+Clearly, this is not pretty. Besides all the usual indirection of implicit search,
+we face the problem of rule prioritization where
+we have to ensure that `treeSetFor` takes priority over `hashSetFor` if the element type has an ordering. This is solved
+(clumsily) by putting `hashSetFor` in a superclass `LowPriority` of the object `SetsFor` where `treeSetFor` is defined.
+Maybe the boilerplate would still be acceptable if the crufty code could be contained. However, this is not the case. Every user of
+the abstraction has to be parameterized itself with a `SetFor` implicit. Considering the simple task _"I want a `TreeSet[T]` if
+`T` has an ordering and a `HashSet[T]` otherwise"_, this seems like a lot of ceremony.
+
+There are some proposals to improve the situation in specific areas, for instance by allowing more elaborate schemes to specify priorities. But they all keep the viral nature of implicit search programs based on logic programming.
+
+By contrast, the new `implicit match` construct makes implicit search available in a functional context. To solve
+the problem of creating the right set, one would use it as follows:
+```scala
+transparent def setFor[T]: Set[T] = implicit match {
+  case Ordering[T] => new TreeSet[T]
+  case _           => new HashSet[T]
+}
+```
+An implicit match uses the `implicit` keyword in the place of the scrutinee. Its patterns are types.
+Patterns are tried in sequence. The first case with a pattern for which an implicit can be summoned is chosen.
+
+Implicit matches can only occur as toplevel match expressions of transparent methods. This ensures that
+all implicit searches are done at compile-time.
+
+There may be several patterns in a case of an implicit match, separated by commas. Patterns may bind type variables.
+For instance the case
+```scala
+  case Convertible[T, u], Printable[`u`] => ...
+```
+matches any type `T` that is `Convertible` to another type `u` such that `u` is `Printable`.
+
+## New Syntax for Type Variables in Patterns
+
+This last example exhibits some awkwardness in the way type variables are currently handled in patterns. To _bind_ a type variable,
+it needs to start with a lower case letter, then to refer to the bound variable itself, the variable has to be
+put in backticks. This is doable, but feels a bit unnatural. To improve on the syntax, we
+allow an alternative syntax that prefixes type variables by `type`:
+```scala
+  case Convertible[T, type U], Printable[U] => ...
+```
+
+## Transparent Values
+
+Value definitions can also be marked `transparent`. Examples:
+```scala
+transparent val label      = "url"
+transparent val pi: Double = 3.14159265359
+transparent val field      = outer.field
+```
+The right hand side of a  `transparent` value definition must have singleton type. The type of the value is then the singleton type of its right hand side, without any widenings. For instance, the type of `label` above is the singleton type `"url"` instead of `String` and the type of `pi` is `3.14159265359` instead of `Double`.
+
+Transparent values are effectively final; they may not be overridden. In Scala-2, constant values had to be expressed using `final`, which gave an unfortunate double meaning to the modifier. The `final` syntax is still supported in Scala 3 for a limited time to support cross-building.
+
+Transparent values are more general than the old meaning of `final` since they also work on paths. For instance, the `field` definition above establishes at typing time the knowlegde that `field` is an alias of `outer.field`. The same effect can be achieved with an explicit singleton type ascription:
+```scala
+final val field: outer.field.type = outer.field
+```
+The transparent definition of `field` is equivalent but arguably easier to read.
+
+It is currently open whether we want to support `transparent` on parameters, with the semantics that corresponding arguments are required to have singleton types. It does not seem to be needed for expressiveness, but might help with better error messages.
+
+## Transparent and Inline
+
+Dotty up to version 0.9 also supports an `inline` modifier. `inline` is similar to `transparent` in that inlining happens during type-checking. However, `inline` does not change the types of the inlined expressions. The expressions are instead inlined in the form of trees that are already typed.
+
+Since there is very large overlap between `transparent` and `inline`, we propose to drop `inline` as a separate modifier. The current `@inline` annotation, which represents a hint to the optimizer that inlining might be advisable, will remain unaffected.
+
+## Relationship to "TypeOf"
+
+This document describes one particular way to conceptualize and implement transparent methods. An implementation is under way in #4616. An alternative approach is explored in #4671. The main difference is that the present proposal uses the machinery of partial evaluation (PE) whereas #4671 uses the machinery of (term-) dependent types (DT).
+
+The PE approach reduces the original right-hand side of a transparent function via term rewriting. The right hand side is conceptually the term as it is written down, closed over the environment where the transparent function was defined. This is implemented by rewriting and then re-type-checking the original untyped tree, but with typed leaves that refer to the tree's free variables. The re-type-checking with more specific argument types can lead to a type derivation that is quite different
+than the original typing of the transparent method's right hand side. Types might be inferred to be more specific, overloading resolution could pick different alternatives, and implicit searches might yield different results or might be elided altogether.
+This flexibility is what makes code specialization work smoothly.
+
+By constrast, the DT approach typechecks the right hand side of a transparent function in a special way. Instead of
+computing types as usual, it "lifts" every term into a type that mirrors it. To do this, it needs to create type equivalents
+of all relevant term forms including applications, conditionals, match expressions, and the various forms of pattern matches.
+The end result of the DT approach is then a type `{t}` that represents essentially the right-hand side term `t` itself, or at least all portions that might contribute to that type.  The type has to be constructed in such a way that the result type of every application
+of a transparent function can be read off from it.
+An application of a transparent function then needs to just instantiate that type, whereas the term is not affected at all, and the function is called as usual. This means there is a guarantee that the
+semantics of a transparent call is the same as a normal call, only the type is better. On the other hand, one cannot play
+tricks such as code specialization, since there is nothing to specialize.
+Also, implicit matches would not fit into this scheme, as they require term rewritings. Another concern is how much additional complexity would be caused by mirroring the necessary term forms in types and tweaking type inference to work with the new types.
+
+To summarize, here are some advantages of DT over PE:
+
+ + It avoids code explosion by design (can be solved in PE but requires extra work).
+ + Expansion only works on types, so this might well be faster at compile-time than PE's term rewriting.
+ + It gives a guarantee that `transparent` is semantics preserving.
+ + The typeof `{t}` operator is interesting in its own right.
+
+By contrast, here are some advantages of PE over DT:
+
+ + It uses the standard type checker and typing rules with no need to go to full dependent types
+   (only path dependent types instead of full term-dependencies).
+ + It can do code specialization.
+ + It can do implicit matches.
+ + It can also serve as the inlining mechanism for implementing macros with staging (see next section).
+
+## Relationship To Meta Programming
+
+Transparent functions are a safer alternative to the whitebox macros in Scala 2. Both share the principle that some function applications get expanded such that the types of these applications are the types of their expansions. But the way the expansions are performed is completely different: For transparent functions, expansions are simply beta reduction (_aka_ inlining) and a set of rewrite rules that are sound wrt the language semantics. All rewritings are performed by the compiler itself. It is really as if some parts of the program reduction are performed early, which is the essence of partial evaluation.
+
+By contrast, Scala 2 macros mean that user-defined code is invoked to process program fragments as data. The result of this computation is then embedded instead of the macro call. Macros are thus a lot more powerful than transparent functions, but also a lot less safe.
+
+Functionality analogous to blackbox macros in Scala-2 is available in Scala-3 through its [principled meta programming](https://dotty.epfl.ch/docs/reference/principled-meta-programming.html) system: Code can be turned into data using quotes `(')`. Code-returning computations can be inserted into quotes using splices `(~)`. A splice outside quotes means that the spliced computation is _run_, which is the analogue of
+invoking a macro. Quoted code can be inspected using reflection on Tasty trees.
+
+To compare: here's the scheme used in Scala-2 to define a macro:
+```scala
+def m(x: T) = macro mImpl
+...
+def mImpl(x: Tree) = ...
+```
+Here's analogous functionality in Scala-3:
+```scala
+transparent def m(x: T) = ~mImpl('x)
+...
+def mImpl(x: Expr[T]) = ...
+```
+The new scheme is more explicit and orthogonal: The usual way to define a macro is as a transparent function that invokes with `~` a macro library method, passing it quoted arguments as data. The role of the transparent function is simply to avoid to have to write the splices and quotes in user code.
+
+One important difference between the two schemes is that the reflective call implied by `~` is performed _after_ the program is typechecked. Besides a better separation of concerns, this also provides a more predictable environment for macro code to run in.
+
+## Acknowledgments
+
+Many of the ideas in this proposal resulted from discussions with @gsps and @OlivierBlanvillain, the authors of the "TypeOf" approach (PR #4671). @gsps suggested the use of the `transparent` keyword. @OlivierBlanvillain suggested techniques like `anyValue` and `Typed` to lift term computations to types. The present proposal also benefited from feedback on earlier designs from @milessabin, @adriaanm, @sjrd, Andrei Alexandrescu, John Hughes, Conor McBride and Stephanie Weirich. The relationship with meta origramming has a lot in common with the original inline and meta proposals in SIP 28 and SIP 29.
