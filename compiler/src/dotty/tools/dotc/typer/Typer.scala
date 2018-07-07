@@ -1339,20 +1339,26 @@ class Typer extends Namer
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
 
+  /** The context to be used for an annotation of `mdef`.
+   *  This should be the context enclosing `mdef`, or if `mdef` defines a parameter
+   *  the context enclosing the owner of `mdef`.
+   *  Furthermore, we need to evaluate annotation arguments in an expression context,
+   *  since classes defined in a such arguments should not be entered into the
+   *  enclosing class.
+   */
+  def annotContext(mdef: untpd.Tree, sym: Symbol)(implicit ctx: Context): Context = {
+    def isInner(owner: Symbol) = owner == sym || sym.is(Param) && owner == sym.owner
+    val c = ctx.outersIterator.dropWhile(c => isInner(c.owner)).next()
+    c.property(ExprOwner) match {
+      case Some(exprOwner) if c.owner.isClass => c.exprContext(mdef, exprOwner)
+      case _ => c
+    }
+  }
+
   def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit = {
     // necessary to force annotation trees to be computed.
     sym.annotations.foreach(_.ensureCompleted)
-    lazy val annotCtx = {
-      val c = ctx.outersIterator.dropWhile(_.owner == sym).next()
-      c.property(ExprOwner) match {
-        case Some(exprOwner) if c.owner.isClass =>
-          // We need to evaluate annotation arguments in an expression context, since
-          // classes defined in a such arguments should not be entered into the
-          // enclosing class.
-          c.exprContext(mdef, exprOwner)
-        case _ => c
-      }
-    }
+    lazy val annotCtx = annotContext(mdef, sym)
     // necessary in order to mark the typed ahead annotations as definitely typed:
     untpd.modsDeco(mdef).mods.annotations.foreach(typedAnnotation(_)(annotCtx))
   }

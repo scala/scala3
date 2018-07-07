@@ -748,10 +748,7 @@ class Namer { typer: Typer =>
 
     protected def addAnnotations(sym: Symbol): Unit = original match {
       case original: untpd.MemberDef =>
-        var hasInlineAnnot = false
-        lazy val annotCtx =
-          if (sym.is(Param)) ctx.outersIterator.dropWhile(_.owner == sym.owner).next
-          else ctx
+        lazy val annotCtx = annotContext(original, sym)
         for (annotTree <- untpd.modsDeco(original).mods.annotations) {
           val cls = typedAheadAnnotationClass(annotTree)(annotCtx)
           val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
