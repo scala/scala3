@@ -336,8 +336,9 @@ object RefChecks {
       } else if (!other.is(Deferred) &&
                  !other.name.is(DefaultGetterName) &&
                  !member.isAnyOverride) {
-        // (*) Exclusion for default getters, fixes SI-5178. We cannot assign the Override flag to
+        // Exclusion for default getters, fixes SI-5178. We cannot assign the Override flag to
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.
+        // Also exclusion for implicit shortcut methods
         // Also excluded under Scala2 mode are overrides of default methods of Java traits.
         if (autoOverride(member) ||
             other.owner.is(JavaTrait) && ctx.testScala2Mode("`override' modifier required when a Java 8 default method is re-implemented", member.pos))
@@ -446,9 +447,12 @@ object RefChecks {
           }
 
       def ignoreDeferred(member: SingleDenotation) =
-        member.isType ||
-          member.symbol.isSuperAccessor || // not yet synthesized
-          member.symbol.is(JavaDefined) && hasJavaErasedOverriding(member.symbol)
+        member.isType || {
+          val mbr = member.symbol
+          mbr.isSuperAccessor || // not yet synthesized
+          ShortcutImplicits.isImplicitShortcut(mbr) || // only synthesized when referenced, see Note in ShortcutImplicits
+          mbr.is(JavaDefined) && hasJavaErasedOverriding(mbr)
+        }
 
       // 2. Check that only abstract classes have deferred members
       def checkNoAbstractMembers(): Unit = {
