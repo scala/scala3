@@ -423,7 +423,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** The Inlined node representing the inlined call */
   def inlined(pt: Type) = {
     // make sure prefix is executed if it is impure
-    if (!isIdempotentExpr(prefix)) registerType(meth.owner.thisType)
+    if (!isPureExpr(prefix)) registerType(meth.owner.thisType)
 
     // Register types of all leaves of inlined body so that the `paramProxy` and `thisProxy` maps are defined.
     rhsToInline.foreachSubTree(registerLeaf)
