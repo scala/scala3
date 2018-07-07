@@ -45,10 +45,11 @@ import collection.mutable
  *  `qual` refers to a method `m` is rewritten to a reference to `m$direct`,
  *  keeping the same type and value arguments as they are found in `qual`.
  *
- *  Note: The phase adds direct methods for all defined methods with IFT results,
- *        as well as for all methods that are referenced. It does NOT do an
+ *  Note: The phase adds direct methods for all methods with IFT results that
+ *        are defined in the transformed compilation unit, as well as for all
+ *        methods that are referenced from inside the unit. It does NOT do an
  *        info transformer that adds these methods everywhere where an IFT returning
- *        method exists.
+ *        method exists (including in separately compiled classes).
  *        Adding such an info transformer is impractical because it would mean
  *        that we have to force the types of all members of classes that are referenced.
  *        But not adding an info transformer can lead to inconsistencies in RefChecks.
@@ -95,12 +96,8 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
         case TypeApply(fn, args) => cpy.TypeApply(tree)(directQual(fn), args)
         case Block(stats, expr)  => cpy.Block(tree)(stats, directQual(expr))
         case tree: RefTree =>
-          def rewire(tp: Type, sym: Symbol) = tp match {
-            case tp: NamedType => tp.prefix.select(sym)
-            case _ => sym.termRef
-          }
           cpy.Ref(tree)(DirectMethodName(tree.name.asTermName))
-            .withType(rewire(tree.tpe, directMethod(tree.symbol)))
+            .withType(tree.tpe.asInstanceOf[NamedType].prefix.select(directMethod(tree.symbol)))
       }
       directQual(tree.qualifier)
     } else tree

@@ -450,7 +450,7 @@ object RefChecks {
         member.isType || {
           val mbr = member.symbol
           mbr.isSuperAccessor || // not yet synthesized
-          ShortcutImplicits.isImplicitShortcut(mbr) || // only synthesized when referenced
+          ShortcutImplicits.isImplicitShortcut(mbr) || // only synthesized when referenced, see Note in ShortcutImplicits
           mbr.is(JavaDefined) && hasJavaErasedOverriding(mbr)
         }
 
