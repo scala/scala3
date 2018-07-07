@@ -55,12 +55,6 @@ class FrontEnd extends Phase {
     typr.println("entered: " + unit.source)
   }
 
-  def enterAnnotations(implicit ctx: Context) = monitor("annotating") {
-    val unit = ctx.compilationUnit
-    ctx.typer.annotate(unit.untpdTree :: Nil)
-    typr.println("annotated: " + unit.source)
-  }
-
   def typeCheck(implicit ctx: Context) = monitor("typechecking") {
     val unit = ctx.compilationUnit
     unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
@@ -91,7 +85,6 @@ class FrontEnd extends Phase {
       enterSyms(remaining.head)
       remaining = remaining.tail
     }
-    unitContexts.foreach(enterAnnotations(_))
     unitContexts.foreach(typeCheck(_))
     record("total trees after typer", ast.Trees.ntrees)
     unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)

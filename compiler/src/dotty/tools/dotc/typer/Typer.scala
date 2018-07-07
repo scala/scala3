@@ -659,7 +659,7 @@ class Typer extends Namer
   }
 
   def typedBlockStats(stats: List[untpd.Tree])(implicit ctx: Context): (Context, List[tpd.Tree]) =
-    (indexAndAnnotate(stats), typedStats(stats, ctx.owner))
+    (index(stats), typedStats(stats, ctx.owner))
 
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) = track("typedBlock") {
     val (exprCtx, stats1) = typedBlockStats(tree.stats)
@@ -1270,7 +1270,7 @@ class Typer extends Namer
 
   def typedLambdaTypeTree(tree: untpd.LambdaTypeTree)(implicit ctx: Context): Tree = track("typedLambdaTypeTree") {
     val LambdaTypeTree(tparams, body) = tree
-    indexAndAnnotate(tparams)
+    index(tparams)
     val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
     val body1 = typedType(tree.body)
     assignType(cpy.LambdaTypeTree(tree)(tparams1, body1), tparams1, body1)

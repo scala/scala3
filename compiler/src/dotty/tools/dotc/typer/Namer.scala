@@ -687,90 +687,14 @@ class Namer { typer: Typer =>
     ctxWithStats
   }
 
-  /** Add all annotations of definitions in `stats` to the defined symbols */
-  def annotate(stats: List[Tree])(implicit ctx: Context): Unit = {
-    def recur(stat: Tree): Unit = stat match {
-      case pcl: PackageDef =>
-        annotate(pcl.stats)
-      case stat: untpd.MemberDef =>
-        stat.getAttachment(SymOfTree) match {
-          case Some(sym) =>
-            sym.infoOrCompleter match {
-              case info: Completer if !defn.isPredefClass(sym.owner) =>
-                // Annotate Predef methods only when they are completed;
-                // This is necessary to break a cyclic dependence between `Predef`
-                // and `deprecated` in test `compileStdLib`.
-                addAnnotations(sym, stat)(info.creationContext)
-              case _ =>
-                // Annotations were already added as part of the symbol's completion
-            }
-          case none =>
-            assert(stat.typeOpt.exists, i"no symbol for $stat")
-        }
-      case stat: untpd.Thicket =>
-        stat.trees.foreach(recur)
-      case _ =>
-    }
-
-    for (stat <- stats) recur(expanded(stat))
-  }
-
-  /** Add annotations of `stat` to `sym`.
-   *  This method can be called twice on a symbol (e.g. once
-   *  during the `annotate` phase and then again during completion).
-   *  Therefore, care needs to be taken not to add annotations again
-   *  that are already added to the symbol.
-   */
-  def addAnnotations(sym: Symbol, stat: MemberDef)(implicit ctx: Context) = {
-    // (1) The context in which an annotation of a top-level class or module is evaluated
-    // is the closest enclosing context which has the enclosing package as owner.
-    // (2) The context in which an annotation for any other symbol is evaluated is the
-    // closest enclosing context which has the owner of the class enclosing the symbol as owner.
-    // E.g in
-    //
-    //     package p
-    //     import a.b
-    //     class C {
-    //       import d.e
-    //       @ann m() ...
-    //     }
-    //
-    // `@ann` is evaluated in the context just outside `C`, where the `a.b`
-    // import is visible but the `d.e` import is forgotten. This measure is necessary
-    // in order to avoid cycles.
-    lazy val annotCtx = {
-      var target = sym.owner.lexicallyEnclosingClass
-      if (!target.is(PackageClass)) target = target.owner
-      var c = ctx
-      while (c.owner != target) c = c.outer
-      c
-    }
-
-    for (annotTree <- untpd.modsDeco(stat).mods.annotations) {
-      val cls = typedAheadAnnotationClass(annotTree)(annotCtx)
-      if (sym.unforcedAnnotation(cls).isEmpty) {
-        val ann = Annotation.deferred(cls, implicit ctx => typedAheadAnnotation(annotTree))
-        sym.addAnnotation(ann)
-        if (cls == defn.ForceInlineAnnot && sym.is(Method, butNot = Accessor))
-          sym.setFlag(Inline)
-      }
-    }
-  }
-
-  def indexAndAnnotate(stats: List[Tree])(implicit ctx: Context): Context = {
-    val localCtx = index(stats)
-    annotate(stats)
-    localCtx
-  }
-
-  /** Index and annotate symbols in `tree` while asserting the `lateCompile` flag.
+  /** Index symbols in `tree` while asserting the `lateCompile` flag.
    *  This will cause any old top-level symbol with the same fully qualified
    *  name as a newly created symbol to be replaced.
    */
   def lateEnter(tree: Tree)(implicit ctx: Context) = {
     val saved = lateCompile
     lateCompile = true
-    try indexAndAnnotate(tree :: Nil) finally lateCompile = saved
+    try index(tree :: Nil) finally lateCompile = saved
   }
 
   def missingType(sym: Symbol, modifier: String)(implicit ctx: Context) = {
@@ -822,6 +746,22 @@ class Namer { typer: Typer =>
       else completeInCreationContext(denot)
     }
 
+    protected def addAnnotations(sym: Symbol): Unit = original match {
+      case original: untpd.MemberDef =>
+        var hasInlineAnnot = false
+        lazy val annotCtx =
+          if (sym.is(Param)) ctx.outersIterator.dropWhile(_.owner == sym.owner).next
+          else ctx
+        for (annotTree <- untpd.modsDeco(original).mods.annotations) {
+          val cls = typedAheadAnnotationClass(annotTree)(annotCtx)
+          val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
+          sym.addAnnotation(ann)
+          if (cls == defn.ForceInlineAnnot && sym.is(Method, butNot = Accessor))
+            sym.setFlag(Inline)
+        }
+      case _ =>
+    }
+
     private def addInlineInfo(sym: Symbol) = original match {
       case original: untpd.DefDef if sym.isInlineableMethod =>
         Inliner.registerInlineInfo(
@@ -836,10 +776,7 @@ class Namer { typer: Typer =>
      */
     def completeInCreationContext(denot: SymDenotation): Unit = {
       val sym = denot.symbol
-      original match {
-        case original: MemberDef => addAnnotations(sym, original)
-        case _ =>
-      }
+      addAnnotations(sym)
       addInlineInfo(sym)
       denot.info = typeSig(sym)
       Checking.checkWellFormed(sym)
@@ -955,7 +892,7 @@ class Namer { typer: Typer =>
         }
       }
 
-      addAnnotations(denot.symbol, original)
+      addAnnotations(denot.symbol)
 
       val selfInfo =
         if (self.isEmpty) NoType
@@ -978,9 +915,7 @@ class Namer { typer: Typer =>
       // accessors, that's why the constructor needs to be completed before
       // the parent types are elaborated.
       index(constr)
-      annotate(constr :: params)
-
-      indexAndAnnotate(rest)(ctx.inClassContext(selfInfo))
+      index(rest)(ctx.inClassContext(selfInfo))
       symbolOfTree(constr).ensureCompleted()
 
       val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_)), cls.pos)
@@ -1025,7 +960,7 @@ class Namer { typer: Typer =>
 
   /** Enter and typecheck parameter list */
   def completeParams(params: List[MemberDef])(implicit ctx: Context) = {
-    indexAndAnnotate(params)
+    index(params)
     for (param <- params) typedAheadExpr(param)
   }
 
@@ -1222,7 +1157,7 @@ class Namer { typer: Typer =>
     //   3. Info of CP is computed (to be copied to DP).
     //   4. CP is completed.
     //   5. Info of CP is copied to DP and DP is completed.
-    indexAndAnnotate(tparams)
+    index(tparams)
     if (isConstructor) sym.owner.typeParams.foreach(_.ensureCompleted())
     for (tparam <- tparams) typedAheadExpr(tparam)
 
