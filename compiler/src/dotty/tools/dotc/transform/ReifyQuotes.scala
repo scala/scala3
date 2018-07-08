@@ -567,8 +567,9 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
           case Quoted(quotedTree) =>
             quotation(quotedTree, tree)
           case tree: TypeTree if tree.tpe.typeSymbol.isSplice =>
-            val splicedType = tree.tpe.asInstanceOf[TypeRef].prefix.termSymbol
-            splice(ref(splicedType).select(tpnme.UNARY_~))
+            val splicedType = tree.tpe.stripTypeVar.asInstanceOf[TypeRef].prefix.termSymbol
+            if (levelOf.get(splicedType).contains(level)) tree
+            else splice(ref(splicedType).select(tpnme.UNARY_~))
           case tree: Select if tree.symbol.isSplice =>
             splice(tree)
           case tree: RefTree if isCaptured(tree.symbol, level) =>
