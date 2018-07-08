@@ -21,7 +21,6 @@ private[repl] class REPLFrontEnd extends FrontEnd {
 
     val unitContext = ctx.fresh.setCompilationUnit(units.head)
     enterSyms(unitContext)
-    enterAnnotations(unitContext)
     typeCheck(unitContext)
     List(unitContext.compilationUnit)
   }
