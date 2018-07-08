@@ -871,7 +871,7 @@ class TreeUnpickler(reader: TastyReader,
         else EmptyValDef
       cls.info = ClassInfo(cls.owner.thisType, cls, parentTypes, cls.unforcedDecls,
         if (self.isEmpty) NoType else self.tpt.tpe)
-      cls.setNoInitsFlags(fork.indexStats(end))
+      cls.setNoInitsFlags(parentsKind(parents), fork.indexStats(end))
       val constr = readIndexedDef().asInstanceOf[DefDef]
       val mappedParents = parents.map(_.changeOwner(localDummy, constr.symbol))
 

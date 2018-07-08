@@ -1537,8 +1537,6 @@ class Typer extends Namer
       val dummy = localDummy(cls, impl)
       val body1 = addAccessorDefs(cls,
         typedStats(impl.body, dummy)(ctx.inClassContext(self1.symbol)))
-      if (!ctx.isAfterTyper)
-        cls.setNoInitsFlags((NoInitsInterface /: body1) ((fs, stat) => fs & defKind(stat)))
 
       // Expand comments and type usecases if `-Ycook-comments` is set.
       if (ctx.settings.YcookComments.value) {
@@ -1922,7 +1920,8 @@ class Typer extends Namer
         traverse(stats ++ rest)
       case stat :: rest =>
         val stat1 = typed(stat)(ctx.exprContext(stat, exprOwner))
-        if (!ctx.isAfterTyper && isPureExpr(stat1) && !stat1.tpe.isRef(defn.UnitClass))
+        if (!ctx.isAfterTyper && isPureExpr(stat1) &&
+            !stat1.tpe.isRef(defn.UnitClass) && !isSelfOrSuperConstrCall(stat1))
           ctx.warning(em"a pure expression does nothing in statement position", stat.pos)
         buf += stat1
         traverse(rest)
