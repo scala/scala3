@@ -36,7 +36,7 @@ class StringInterpolatorOpt extends MiniPhase {
     def unapply(tree: Select)(implicit ctx: Context): Boolean = {
       tree.symbol.eq(defn.StringContextModule_apply) && {
         val qualifier = tree.qualifier
-        qualifier.isInstanceOf[Ident] && qualifier.symbol.eq(defn.StringContextModule)
+        qualifier.isInstanceOf[Select] && qualifier.symbol.eq(defn.StringContextModule)
       }
     }
   }
