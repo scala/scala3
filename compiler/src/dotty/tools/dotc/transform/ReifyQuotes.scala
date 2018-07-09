@@ -638,7 +638,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
 
       val lifter =
         if (tpSym eq defn.BooleanClass) defn.QuotedLiftable_BooleanIsLiftable
-        else if (tpSym eq defn.ByteClass) defn.QuotedLiftable_ByteLiftable
+        else if (tpSym eq defn.ByteClass) defn.QuotedLiftable_ByteIsLiftable
         else if (tpSym eq defn.CharClass) defn.QuotedLiftable_CharIsLiftable
         else if (tpSym eq defn.ShortClass) defn.QuotedLiftable_ShortIsLiftable
         else if (tpSym eq defn.IntClass) defn.QuotedLiftable_IntIsLiftable

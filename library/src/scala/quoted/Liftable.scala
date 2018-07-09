@@ -16,7 +16,7 @@ abstract class Liftable[T] {
  */
 object Liftable {
   implicit def BooleanIsLiftable: Liftable[Boolean] = (x: Boolean) => liftedExpr(x)
-  implicit def ByteLiftable: Liftable[Byte] = (x: Byte) => liftedExpr(x)
+  implicit def ByteIsLiftable: Liftable[Byte] = (x: Byte) => liftedExpr(x)
   implicit def CharIsLiftable: Liftable[Char] = (x: Char) => liftedExpr(x)
   implicit def ShortIsLiftable: Liftable[Short] = (x: Short) => liftedExpr(x)
   implicit def IntIsLiftable: Liftable[Int] = (x: Int) => liftedExpr(x)

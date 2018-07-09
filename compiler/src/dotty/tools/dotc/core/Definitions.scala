@@ -658,7 +658,7 @@ class Definitions {
   def QuotedLiftableModuleClass(implicit ctx: Context) = QuotedLiftableModule.asClass
 
     def QuotedLiftable_BooleanIsLiftable = QuotedLiftableModule.requiredMethodRef("BooleanIsLiftable")
-    def QuotedLiftable_ByteLiftable = QuotedLiftableModule.requiredMethodRef("ByteLiftable")
+    def QuotedLiftable_ByteIsLiftable = QuotedLiftableModule.requiredMethodRef("ByteIsLiftable")
     def QuotedLiftable_CharIsLiftable = QuotedLiftableModule.requiredMethodRef("CharIsLiftable")
     def QuotedLiftable_ShortIsLiftable = QuotedLiftableModule.requiredMethodRef("ShortIsLiftable")
     def QuotedLiftable_IntIsLiftable = QuotedLiftableModule.requiredMethodRef("IntIsLiftable")
