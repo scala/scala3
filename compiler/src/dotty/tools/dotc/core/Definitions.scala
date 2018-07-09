@@ -655,6 +655,19 @@ class Definitions {
     lazy val QuotedType_applyR = QuotedTypeModule.requiredMethodRef(nme.apply)
     def QuotedType_apply(implicit ctx: Context) = QuotedType_applyR.symbol
 
+  lazy val QuotedLiftableModule = ctx.requiredModule("scala.quoted.Liftable")
+  def QuotedLiftableModuleClass(implicit ctx: Context) = QuotedLiftableModule.asClass
+
+    def QuotedLiftable_BooleanIsLiftable = QuotedLiftableModule.requiredMethodRef("BooleanIsLiftable")
+    def QuotedLiftable_ByteIsLiftable = QuotedLiftableModule.requiredMethodRef("ByteIsLiftable")
+    def QuotedLiftable_CharIsLiftable = QuotedLiftableModule.requiredMethodRef("CharIsLiftable")
+    def QuotedLiftable_ShortIsLiftable = QuotedLiftableModule.requiredMethodRef("ShortIsLiftable")
+    def QuotedLiftable_IntIsLiftable = QuotedLiftableModule.requiredMethodRef("IntIsLiftable")
+    def QuotedLiftable_LongIsLiftable = QuotedLiftableModule.requiredMethodRef("LongIsLiftable")
+    def QuotedLiftable_FloatIsLiftable = QuotedLiftableModule.requiredMethodRef("FloatIsLiftable")
+    def QuotedLiftable_DoubleIsLiftable = QuotedLiftableModule.requiredMethodRef("DoubleIsLiftable")
+    def QuotedLiftable_StringIsLiftable = QuotedLiftableModule.requiredMethodRef("StringIsLiftable")
+
   lazy val QuotedLiftableType = ctx.requiredClassRef("scala.quoted.Liftable")
   def QuotedLiftableClass(implicit ctx: Context) = QuotedLiftableType.symbol.asClass
 
