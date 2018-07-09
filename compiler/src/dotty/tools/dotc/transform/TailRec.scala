@@ -110,50 +110,53 @@ class TailRec extends MiniPhase with FullParameterization {
 
           var rewrote = false
 
-          // Note: this can be split in two separate transforms(in different groups),
-          // than first one will collect info about which transformations and rewritings should be applied
-          // and second one will actually apply,
-          // now this speculatively transforms tree and throws away result in many cases
-          val rhsSemiTransformed = {
-            val transformer = new TailRecElimination(origMeth, dd.tparams, owner, thisTpe, mandatory, label, abstractOverClass = defIsTopLevel)
-            val rhs = transformer.transform(dd.rhs)
-            rewrote = transformer.rewrote
-            rhs
-          }
+          def finish(implicit ctx: Context) = {
+            // Note: this can be split in two separate transforms(in different groups),
+            // than first one will collect info about which transformations and rewritings should be applied
+            // and second one will actually apply,
+            // now this speculatively transforms tree and throws away result in many cases
+            val rhsSemiTransformed = {
+              val transformer = new TailRecElimination(origMeth, dd.tparams, owner, thisTpe, mandatory, label, abstractOverClass = defIsTopLevel)
+              val rhs = transformer.transform(dd.rhs)
+              rewrote = transformer.rewrote
+              rhs
+            }
 
-          if (rewrote) {
-            val dummyDefDef = cpy.DefDef(tree)(rhs = rhsSemiTransformed)
-            if (tree.symbol.owner.isClass) {
-              val labelDef = fullyParameterizedDef(label, dummyDefDef, abstractOverClass = defIsTopLevel)
-              val call = forwarder(label, dd, abstractOverClass = defIsTopLevel, liftThisType = true)
-              Block(List(labelDef), call)
-            } else { // inner method. Tail recursion does not change `this`
-              val labelDef = polyDefDef(label, trefs => vrefss => {
-                val origMeth = tree.symbol
-                val origTParams = tree.tparams.map(_.symbol)
-                val origVParams = tree.vparamss.flatten map (_.symbol)
-                new TreeTypeMap(
-                  typeMap = identity(_)
-                    .subst(origTParams ++ origVParams, trefs ++ vrefss.flatten.map(_.tpe)),
-                  oldOwners = origMeth :: Nil,
-                  newOwners = label :: Nil
-                ).transform(rhsSemiTransformed)
-              })
-              val callIntoLabel = (
-                  if (dd.tparams.isEmpty) ref(label)
-                  else ref(label).appliedToTypes(dd.tparams.map(_.tpe))
-                ).appliedToArgss(vparamss0.map(_.map(x=> ref(x.symbol))))
-              Block(List(labelDef), callIntoLabel)
-          }} else {
-            if (mandatory) ctx.error(
-              "TailRec optimisation not applicable, method not tail recursive",
-              // FIXME: want to report this error on `dd.namePos`, but
-              // because of extension method getting a weird pos, it is
-              // better to report on symbol so there's no overlap
-              sym.pos
-            )
-            dd.rhs
+            if (rewrote) {
+              val dummyDefDef = cpy.DefDef(tree)(rhs = rhsSemiTransformed)
+              if (tree.symbol.owner.isClass) {
+                val labelDef = fullyParameterizedDef(label, dummyDefDef, abstractOverClass = defIsTopLevel)
+                val call = forwarder(label, dd, abstractOverClass = defIsTopLevel, liftThisType = true)
+                Block(List(labelDef), call)
+              } else { // inner method. Tail recursion does not change `this`
+                val labelDef = polyDefDef(label, trefs => vrefss => {
+                  val origMeth = tree.symbol
+                  val origTParams = tree.tparams.map(_.symbol)
+                  val origVParams = tree.vparamss.flatten map (_.symbol)
+                  new TreeTypeMap(
+                    typeMap = identity(_)
+                      .subst(origTParams ++ origVParams, trefs ++ vrefss.flatten.map(_.tpe)),
+                    oldOwners = origMeth :: Nil,
+                    newOwners = label :: Nil
+                  ).transform(rhsSemiTransformed)
+                })
+                val callIntoLabel = (
+                    if (dd.tparams.isEmpty) ref(label)
+                    else ref(label).appliedToTypes(dd.tparams.map(_.tpe))
+                  ).appliedToArgss(vparamss0.map(_.map(x=> ref(x.symbol))))
+                Block(List(labelDef), callIntoLabel)
+            }} else {
+              if (mandatory) ctx.error(
+                "TailRec optimisation not applicable, method not tail recursive",
+                // FIXME: want to report this error on `dd.namePos`, but
+                // because of extension method getting a weird pos, it is
+                // better to report on symbol so there's no overlap
+                sym.pos
+              )
+              dd.rhs
+            }
           }
+          finish(ctx.withOwner(sym))
         })
       case d: DefDef if d.symbol.hasAnnotation(defn.TailrecAnnot) || methodsWithInnerAnnots.contains(d.symbol) =>
         ctx.error(TailrecNotApplicable(sym), sym.pos)
