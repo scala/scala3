@@ -60,6 +60,15 @@ object TypeOf {
   val command = ":type"
 }
 
+/**
+ * A command that is used to display the documentation associated with
+ * the given expression.
+ */
+case class DocOf(expr: String) extends Command
+object DocOf {
+  val command = ":doc"
+}
+
 /** `:imports` lists the imports that have been explicitly imported during the
  *  session
  */
@@ -89,6 +98,7 @@ case object Help extends Command {
       |:load <path>             interpret lines in a file
       |:quit                    exit the interpreter
       |:type <expression>       evaluate the type of the given expression
+      |:doc <expression>        print the documentation for the given expresssion
       |:imports                 show import history
       |:reset                   reset the repl to its initial state, forgetting all session entries
     """.stripMargin
@@ -117,6 +127,7 @@ object ParseResult {
         case Imports.command => Imports
         case Load.command => Load(arg)
         case TypeOf.command => TypeOf(arg)
+        case DocOf.command => DocOf(arg)
         case _ => UnknownCommand(cmd)
       }
       case _ =>

@@ -3,6 +3,8 @@ package dotty.tools.repl
 import dotty.tools.backend.jvm.GenBCode
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.ast.tpd.TreeOps
+import dotty.tools.dotc.core.Comments.CommentsContext
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
@@ -10,6 +12,7 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.reporting.diagnostic.messages
 import dotty.tools.dotc.typer.{FrontEnd, ImportInfo}
 import dotty.tools.dotc.util.Positions._
@@ -151,6 +154,54 @@ class ReplCompiler extends Compiler {
           """.stripMargin
       }
     }
+
+  def docOf(expr: String)(implicit state: State): Result[String] = {
+    implicit val ctx: Context = state.context
+
+    /**
+     * Extract the "selected" symbol from `tree`.
+     *
+     * Because the REPL typechecks an expression, special syntax is needed to get the documentation
+     * of certain symbols:
+     *
+     * - To select the documentation of classes, the user needs to pass a call to the class' constructor
+     *   (e.g. `new Foo` to select `class Foo`)
+     * - When methods are overloaded, the user needs to enter a lambda to specify which functions he wants
+     *   (e.g. `foo(_: Int)` to select `def foo(x: Int)` instead of `def foo(x: String)`
+     *
+     * This function returns the right symbol for the received expression, and all the symbols that are
+     * overridden.
+     */
+    def extractSymbols(tree: tpd.Tree): Iterator[Symbol] = {
+      val sym = tree match {
+        case tree if tree.isInstantiation => tree.symbol.owner
+        case tpd.closureDef(defdef) => defdef.rhs.symbol
+        case _ => tree.symbol
+      }
+      Iterator(sym) ++ sym.allOverriddenSymbols
+    }
+
+    typeCheck(expr).map {
+      case ValDef(_, _, Block(stats, _)) if stats.nonEmpty =>
+        val stat = stats.last.asInstanceOf[tpd.Tree]
+        if (stat.tpe.isError) stat.tpe.show
+        else {
+          val docCtx = ctx.docCtx.get
+          val symbols = extractSymbols(stat)
+          val doc = symbols.collectFirst {
+            case sym if docCtx.docstrings.contains(sym) =>
+              docCtx.docstrings(sym).raw
+          }
+          doc.getOrElse(s"// No doc for `${expr}`")
+        }
+
+      case _ =>
+        """Couldn't display the documentation for your expression, so sorry :(
+          |
+          |Please report this to my masters at github.com/lampepfl/dotty
+          """.stripMargin
+    }
+  }
 
   final def typeCheck(expr: String, errorsAllowed: Boolean = false)(implicit state: State): Result[tpd.ValDef] = {
 
