@@ -610,7 +610,7 @@ trait Checking {
   /** If `sym` is an implicit conversion, check that implicit conversions are enabled.
    *  @pre  sym.is(Implicit)
    */
-  def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = sym.info.stripPoly match {
+  def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = sym.info.stripMethodPrefix match {
     case mt @ MethodType(_ :: Nil)
     if !mt.isImplicitMethod && !sym.is(Synthetic) => // it's a conversion
       checkFeature(

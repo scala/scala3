@@ -303,14 +303,14 @@ object Types {
     /** Is this the type of a method that has a repeated parameter type as
      *  last parameter type?
      */
-    def isVarArgsMethod(implicit ctx: Context): Boolean = stripPoly match {
+    def isVarArgsMethod(implicit ctx: Context): Boolean = stripMethodPrefix match {
       case mt: MethodType => mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam
       case _ => false
     }
 
     /** Is this the type of a method with a leading empty parameter list?
      */
-    def isNullaryMethod(implicit ctx: Context): Boolean = stripPoly match {
+    def isNullaryMethod(implicit ctx: Context): Boolean = stripMethodPrefix match {
       case MethodType(Nil) => true
       case _ => false
     }
@@ -936,10 +936,10 @@ object Types {
       case _ => this
     }
 
-    /** Strip PolyType prefix */
-    def stripPoly(implicit ctx: Context): Type = this match {
-      case tp: TypeOf => tp.underlyingTp.stripPoly
-      case tp: PolyType => tp.resType.stripPoly
+    /** Strip PolyType and TypeOf prefix */
+    def stripMethodPrefix(implicit ctx: Context): Type = this match {
+      case tp: TypeOf => tp.underlyingTp.stripMethodPrefix
+      case tp: PolyType => tp.resType.stripMethodPrefix
       case _ => this
     }
 
@@ -1262,26 +1262,26 @@ object Types {
     }
 
     /** The parameter types of a PolyType or MethodType, Empty list for others */
-    final def paramInfoss(implicit ctx: Context): List[List[Type]] = stripPoly match {
+    final def paramInfoss(implicit ctx: Context): List[List[Type]] = stripMethodPrefix match {
       case mt: MethodType => mt.paramInfos :: mt.resultType.paramInfoss
       case _ => Nil
     }
 
     /** The parameter names of a PolyType or MethodType, Empty list for others */
-    final def paramNamess(implicit ctx: Context): List[List[TermName]] = stripPoly match {
+    final def paramNamess(implicit ctx: Context): List[List[TermName]] = stripMethodPrefix match {
       case mt: MethodType => mt.paramNames :: mt.resultType.paramNamess
       case _ => Nil
     }
 
 
     /** The parameter types in the first parameter section of a generic type or MethodType, Empty list for others */
-    final def firstParamTypes(implicit ctx: Context): List[Type] = stripPoly match {
+    final def firstParamTypes(implicit ctx: Context): List[Type] = stripMethodPrefix match {
       case mt: MethodType => mt.paramInfos
       case _ => Nil
     }
 
     /** Is this either not a method at all, or a parameterless method? */
-    final def isParameterless(implicit ctx: Context): Boolean = stripPoly match {
+    final def isParameterless(implicit ctx: Context): Boolean = stripMethodPrefix match {
       case mt: MethodType => false
       case _ => true
     }
@@ -1292,7 +1292,7 @@ object Types {
     /** The final result type of a PolyType, MethodType, or ExprType, after skipping
      *  all parameter sections, the type itself for all others.
      */
-    def finalResultType(implicit ctx: Context): Type = resultType.stripPoly match {
+    def finalResultType(implicit ctx: Context): Type = resultType.stripMethodPrefix match {
       case mt: MethodType => mt.resultType.finalResultType
       case _ => resultType
     }
@@ -3848,7 +3848,7 @@ object Types {
   object SAMType {
     def zeroParamClass(tp: Type)(implicit ctx: Context): Type = tp match {
       case tp: ClassInfo =>
-        def zeroParams(tp: Type): Boolean = tp.stripPoly match {
+        def zeroParams(tp: Type): Boolean = tp.stripMethodPrefix match {
           case mt: MethodType => mt.paramInfos.isEmpty && !mt.resultType.isInstanceOf[MethodType]
           case et: ExprType => true
           case _ => false
