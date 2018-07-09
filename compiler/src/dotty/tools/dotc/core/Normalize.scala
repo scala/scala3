@@ -26,6 +26,22 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
   private[this] var fuel: Int = ctx.settings.XmaxTypeEvaluationSteps.value
   private[this] var canReduce: Boolean = true
 
+  /** To be called in branches that correspond to the evaluation context in which evaluation gets stuck.
+    * For instance, if after applying the congruence rule of `if` we have not reduced the conditional to either
+    * true or false, we cannot apply any further rules, i.e., we get stuck.
+    * //In auxiliary methods (i.e. outside `apply`) we may return `NoType` to indicate that the type has remained
+    * //unchanged.
+    */
+  private def Stuck(at: Type): Type = {
+    canReduce = false
+    at
+  }
+
+  /** To be called in branches that did not match any rule. The returned value will be caught in the calling
+    * context (i.e. `NormalizeMap#apply`) and allow others rules to be tried.
+    */
+  private def NotApplicable: Type = NoType
+
   /** Infrastructure for beta-reduction at the type-level, to be cached per transparent method. */
   class Unfolder(fnSym: Symbol, body: Tree) {
     private[this] val paramPos = mutable.ArrayBuffer[Name]()
@@ -81,7 +97,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
     else if (!isFullyDefined(testedTp, ForceDegree.none)) None
     else if (ctx.typeComparer.isSubTypeWhenFrozen(actualTp, testedTp)) Some(true)
     else if (ctx.typeComparer.isSubTypeWhenFrozen(testedTp, actualTp)) None
-    else                                                               Some(false)
+    else                                                               Some(false)  // FIXME: This case mysteriously applies in the Succ(Zero).length example upon the second unfolding of length.
   }
 
   /** The body type of transparent method `sym` if the body itself is not currently being type-checked,
@@ -100,9 +116,22 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
     new Unfolder(fnSym, body)
   }
 
-  private def normalizeApp(fn: TermRef, argss: List[List[Type]], realApplication: Boolean): Type = {
+  /** Normalizes applications of various kinds:
+    *  - If `fn` is a unary or binary method of a value class, perform constant-folding.
+    *  - If `fn` is a transparent method, beta-reduce.
+    *  - If `tp` is `pre.isInstanceOf[T]` and `pre: S`, evaluate to the outcome of `erased(S) <: erased(T)`.
+    *    In case the result is not yet determined, get stuck.
+    *  - If `tp` is `pre.asInstanceOf[T]` and `pre: S`, evaluate to `pre` if `erased(S) <: erased(T)`.
+    *    In case the result is not yet determined or the subtype-relation simply doesn't hold, get stuck.
+    * @param tp  The original application type before decomposition into `fn` and `argss`.
+    * @param fn  The method referred to by `tp`.
+    * @param argss  The list of arguments lists of `tp`.
+    * @return The reduced application, if applicable, NoType otherwise.
+    */
+  private def normalizeApp(tp: Type, fn: TermRef, argss: List[List[Type]]): Type = {
     import dotc.typer.ConstFold
 
+    val realApplication = tp ne fn
     val fnSym = fn.symbol
     // TODO: Replace `Stable` requirement by some other special case
     if (fnSym.is(Method)) {
@@ -110,7 +139,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
         argss match {
           case List() if realApplication => ConstFold(fn)
           case List(List(arg))           => ConstFold(fn, arg)
-          case _                         => NoType
+          case _                         => NoType  // TODO: error/stuck/impossible?
         }
       }
       else if (fnSym is Transparent) {
@@ -120,64 +149,55 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
         if (realApplication || unfolder.isParameterless)
           apply(unfolder.unfold(fn.prefix, argss.flatten))
         else
-          NoType
+          NotApplicable
       }
       else if (realApplication && ((fnSym eq defn.Any_isInstanceOf) || (fnSym eq defn.Any_asInstanceOf))) {
         import TypeErasure.erasure
         assertOneArg(argss)
         val isSubTypeOpt = typeTest(erasure(fn.prefix), erasure(argss.head.head))
         if (fnSym eq defn.Any_isInstanceOf)
-          isSubTypeOpt map asType getOrElse NoType
+          isSubTypeOpt map asType getOrElse Stuck(tp)
         else
           isSubTypeOpt match {
             case Some(true) => apply(fn.prefix)
-            case _          => NoType
+            case _          => Stuck(tp)
           }
       }
-      else NoType
+      else NotApplicable
     }
-    else NoType
+    else NotApplicable
   }
 
-  def normalizeTermParamSel(tp: TermRef): Type = {
-    /*def argForParam(param: Symbol, vparams0: List[Symbol], argss0: List[List[Type]]): Type = {
-      var vparams = vparams0
-      var argss = argss0
-      var args = argss.head
-      argss = argss.tail
-      while (vparams.nonEmpty && args.nonEmpty) {
-        if (vparams.head.eq(param))
-          return args.head
-        vparams = vparams.tail
-        args = args.tail
-        if (args.isEmpty && argss.nonEmpty) {
-          args = argss.head
-          argss = argss.tail
-        }
+  private def normalizeTermParamSel(tp: TermRef): Type = {
+    def selectTermParam(cnstrSym: Symbol, args: List[Type]): Type =
+      cnstrSym.info.widen match {
+        case MethodType(paramNames) =>
+          paramNames.indexOf(tp.name) match {
+            case -1    => NoType  // TODO: error?
+            case index => args(index)
+          }
+        case _ => NoType  // TODO: error?
       }
-      NoType
+
+    @tailrec def revealNewAndSelect(pre: Type): Type = pre match {
+      case TypeOf.New(cnstrSym, args) =>
+        selectTermParam(cnstrSym, args)
+      case pre: TypeProxy =>
+        revealNewAndSelect(pre.underlying)
+      case _ =>
+        NoType  // TODO: stuck?
     }
 
-    val param = tp.symbol
-    val cls = param.owner
-    if (cls.flagsUNSAFE.is(Transparent)) {
-      val termParams = cls.termParams
-      if (termParams.exists(_.name eq param.name))
-        tp.prefix.baseType(cls) match {
-          case base: AppliedTermRef => argForParam(param, termParams, base.underlyingFnAndArgss._2)
-          case base => NoType
-        }
-      else NoType
-    }
-    else NoType*/
-    // TODO: Add termParams infra to ClassDenotations
-    NoType
+    val sym = tp.symbol
+    if (sym.is(ParamAccessor) && sym.isStable)
+      revealNewAndSelect(tp.prefix)
+    else
+      NotApplicable
   }
 
   private def bigStep(tp: Type): Type = tp match {
     case tp if tp eq defn.NullType =>
-      canReduce = false
-      tp
+      Stuck(tp)
 
     case tp @ TypeOf.If(cond, thenb, elseb) =>
       apply(cond) match {
@@ -185,8 +205,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
           if (c.value.asInstanceOf[Boolean]) apply(thenb)
           else                               apply(elseb)
         case cond1 =>
-          canReduce = false
-          TypeOf.If.derived(tp)(cond1, thenb, elseb)
+          Stuck( TypeOf.If.derived(tp)(cond1, thenb, elseb) )
       }
 
     case tp @ TypeOf.Match(selector, cases) =>
@@ -198,10 +217,10 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
           tp
 
         case tp: TermRef =>
-          normalizeApp(tp, Nil, realApplication = false) orElse normalizeTermParamSel(tp) orElse {
+          normalizeApp(tp, tp, Nil) orElse normalizeTermParamSel(tp) orElse {
             tp.underlying match {
               case underTp: SingletonType => apply(underTp)
-              case underTp => tp
+              case underTp => tp  // TODO: stuck?
             }
           }
 
@@ -209,14 +228,14 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
         case tp if !tp.widen.isInstanceOf[MethodOrPoly] =>
           tp match {
             case tp @ TypeOf.Call(fn, argss) =>
-              normalizeApp(fn, argss, realApplication = true) orElse tp
-            case tp => tp
+              normalizeApp(tp, fn, argss) orElse tp
+            case tp => tp  // TODO: stuck?
           }
 
         case tp =>
 //          val tp1 = tp.stripTypeVar.dealias.widenExpr
 //          if (tp eq tp1) tp else apply(tp1)
-          tp
+          tp  // TODO: stuck?
       }
   }
 

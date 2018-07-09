@@ -4137,6 +4137,23 @@ object Types {
       }
     }
 
+    object New {
+      // Apply(Select(New(TypeTree[C[A,B]]), "<init>"), List(1, 2, 3))
+      def unapply(tp: TypeOf)(implicit ctx: Context): Option[(Symbol, List[Type])] = {
+        def loop(tree: Tree, argsAcc: List[Type]): Option[(Symbol, List[Type])] = tree match {
+          case Trees.Apply(fn, args) =>
+            fn.tpe.stripMethodPrefix match {
+              case fnTpe: TermRef if fn.symbol.isPrimaryConstructor =>
+                Some((fn.symbol, args.tpes ::: argsAcc))
+              case fnTpe: MethodType =>
+                loop(fn, args.tpes ::: argsAcc)
+            }
+          case _ => None
+        }
+        loop(tp.tree, List())
+      }
+    }
+
     object Generic {
       def unapply(to: TypeOf): Option[List[Type]] = to.tree match {
         case Trees.If(cond, thenb, elseb) => Some(cond.tpe :: thenb.tpe :: elseb.tpe :: Nil)
