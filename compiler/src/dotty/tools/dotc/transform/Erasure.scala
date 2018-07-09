@@ -492,7 +492,7 @@ object Erasure {
             case mt: MethodType =>
               val outers = outer.args(fun.asInstanceOf[tpd.Tree]) // can't use fun1 here because its type is already erased
               val ownArgs = if (mt.paramNames.nonEmpty && !mt.isErasedMethod) args else Nil
-              var args0 = outers ::: ownArgs ::: protoArgs(pt, tree.typeOpt)
+              var args0 = outers ::: ownArgs ::: protoArgs(pt, tree.typeOpt.stripMethodPrefix)
 
               if (args0.length > MaxImplementedFunctionArity && mt.paramInfos.length == 1) {
                 val bunchedArgs = untpd.JavaSeqLiteral(args0, TypeTree(defn.ObjectType))
