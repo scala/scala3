@@ -49,4 +49,17 @@ class TestSimpleComments extends DottyDocTest {
       assertEquals(traitCmt, "<p>Hello, world!</p>")
     }
   }
+
+  @Test def commentOnPackageObject = {
+    val source =
+      """
+      |/** Hello, world! */
+      |package object foobar { class A }
+      """.stripMargin
+
+    checkSource(source) { packages =>
+      val packageCmt = packages("foobar").comment.get.body
+      assertEquals("<p>Hello, world!</p>", packageCmt)
+    }
+  }
 }
