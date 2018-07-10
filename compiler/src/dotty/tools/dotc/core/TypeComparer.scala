@@ -534,13 +534,20 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
         either(recur(tp1, tp21), recur(tp1, tp22)) || fourthTry
       case tp2: MethodType =>
         def compareMethod = tp1 match {
-          case tp1: MethodType => compareMethodOrPoly(tp1, tp2)
+          case tp1: MethodType =>
+            (tp1.signature consistentParams tp2.signature) &&
+            matchingMethodParams(tp1, tp2) &&
+            (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
+            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
           case _ => false
         }
         compareMethod
       case tp2: PolyType =>
         def comparePoly = tp1 match {
-          case tp1: PolyType => compareMethodOrPoly(tp1, tp2)
+          case tp1: PolyType =>
+            (tp1.signature consistentParams tp2.signature) &&
+            matchingPolyParams(tp1, tp2) &&
+            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
           case _ => false
         }
         comparePoly
@@ -581,12 +588,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case _ =>
         fourthTry
     }
-
-    def compareMethodOrPoly(tp1: MethodOrPoly, tp2: MethodOrPoly) =
-      (tp1.signature consistentParams tp2.signature) &&
-      matchingParams(tp1, tp2) &&
-      (!tp2.isImplicitMethod || tp1.isImplicitMethod) &&
-      isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
 
     def fourthTry: Boolean = tp1 match {
       case tp1: TypeRef =>
@@ -1148,7 +1149,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       tp2.widen match {
         case tp2: MethodType =>
           // implicitness is ignored when matching
-          matchingParams(tp1, tp2) &&
+          matchingMethodParams(tp1, tp2) &&
           matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
         case tp2 =>
           relaxed && tp1.paramNames.isEmpty &&
@@ -1174,19 +1175,19 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       }
   }
 
-  /** Do lambda types `lam1` and `lam2` have parameters that have the same types
-   *  and the same implicit status? (after renaming one set to the other)
+  /** Do the parameter types of `tp1` and `tp2` match in a way that allows `tp1`
+   *  to override `tp2` ? This is the case if they're pairwise =:=, as a special
+   *  case, we allow `Any` in Java methods to match `Object`.
    */
-  def matchingParams(lam1: MethodOrPoly, lam2: MethodOrPoly): Boolean = {
-    /** Are `syms1` and `syms2` parameter lists with pairwise equivalent types? */
+  def matchingMethodParams(tp1: MethodType, tp2: MethodType): Boolean = {
     def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
       case formal1 :: rest1 =>
         formals2 match {
           case formal2 :: rest2 =>
-            val formal2a = if (lam2.isParamDependent) formal2.subst(lam2, lam1) else formal2
+            val formal2a = if (tp2.isParamDependent) formal2.subst(tp2, tp1) else formal2
             (isSameTypeWhenFrozen(formal1, formal2a)
-            || lam1.isJavaMethod && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
-            || lam2.isJavaMethod && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
+            || tp1.isJavaMethod && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
+            || tp2.isJavaMethod && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
             loop(rest1, rest2)
           case nil =>
             false
@@ -1194,7 +1195,27 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
       case nil =>
         formals2.isEmpty
     }
-    loop(lam1.paramInfos, lam2.paramInfos)
+    loop(tp1.paramInfos, tp2.paramInfos)
+  }
+
+  /** Do the parameter types of `tp1` and `tp2` match in a way that allows `tp1`
+   *  to override `tp2` ? This is the case if they're pairwise >:>.
+   */
+  def matchingPolyParams(tp1: PolyType, tp2: PolyType): Boolean = {
+    def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
+      case formal1 :: rest1 =>
+        formals2 match {
+          case formal2 :: rest2 =>
+            val formal2a = formal2.subst(tp2, tp1)
+            isSubTypeWhenFrozen(formal2a, formal1) &&
+            loop(rest1, rest2)
+          case nil =>
+            false
+        }
+      case nil =>
+        formals2.isEmpty
+    }
+    loop(tp1.paramInfos, tp2.paramInfos)
   }
 
   // Type equality =:=
