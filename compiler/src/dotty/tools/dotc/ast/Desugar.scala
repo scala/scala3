@@ -62,7 +62,7 @@ object desugar {
 
     def derivedTree(sym: Symbol)(implicit ctx: Context) = sym.info match {
       case mt : MethodType =>
-        if (mt.isResultDependent || mt.isParamDependent)
+        if (mt.isParamDependent)
           tpd.TypeTree(defn.AnyRefAlias.typeRef)
         else {
           val funTp @ AppliedType(tycon, tparams) = mt.toFunctionType(dropLast = 0)
