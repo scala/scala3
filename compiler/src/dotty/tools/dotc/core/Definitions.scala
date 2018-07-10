@@ -405,8 +405,21 @@ class Definitions {
     // We load SeqType from the alias in scala package object
     //  - in 2.12: scala.collection.Seq
     //  - in 2.13: scala.collection.immutable.Seq
-    val alias = ctx.base.staticRef("scala.Seq".toTypeName).requiredSymbol(_.isAliasType)
-    alias.info.classSymbol.typeRef
+
+    // force to avoid cycles
+    // ctx.requiredClassRef("scala.collection.Seq").symbol.ensureCompleted()
+    // ctx.requiredClassRef("scala.collection.immutable.Seq").symbol.ensureCompleted()
+
+    // // Using type Seq[+A] = ...
+    // val alias = ctx.base.staticRef("scala.Seq".toTypeName).requiredSymbol(_.isAliasType)
+    // alias.info.classSymbol.typeRef
+
+    // Using val Seq = ...
+    val scalaSeq = ctx.base.staticRef("scala.Seq".toTermName)
+    val seqName = scalaSeq.info.resultType.termSymbol.fullName
+    ctx.requiredClassRef(seqName.toTypeName)
+
+    // ctx.requiredClassRef("scala.collection.Seq")
   }
 
   def SeqClass(implicit ctx: Context) = SeqType.symbol.asClass
