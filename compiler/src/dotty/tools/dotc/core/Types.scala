@@ -4139,8 +4139,9 @@ object Types {
 
     object New {
       // Apply(Select(New(TypeTree[C[A,B]]), "<init>"), List(1, 2, 3))
+      // TypeOf(AppliedType(TypeRef(G.CONS),List(Boolean)), Apply(TypeApply(Select(New(TypeTree[G.Cons]),<init>),List(Ident(T))),List(Ident(head), Ident(tail))))
       def unapply(tp: TypeOf)(implicit ctx: Context): Option[(Symbol, List[Type])] = {
-        def loop(tree: Tree, argsAcc: List[Type]): Option[(Symbol, List[Type])] = tree match {
+        @tailrec def loop(tree: Tree, argsAcc: List[Type]): Option[(Symbol, List[Type])] = tree match {
           case Trees.Apply(fn, args) =>
             fn.tpe.stripMethodPrefix match {
               case fnTpe: TermRef if fn.symbol.isPrimaryConstructor =>
@@ -4148,6 +4149,14 @@ object Types {
               case fnTpe: MethodType =>
                 loop(fn, args.tpes ::: argsAcc)
             }
+
+          case Trees.TypeApply(fn, _) =>
+            fn.tpe match {
+              case fnTpe: TermRef if fn.symbol.isPrimaryConstructor =>
+                Some((fn.symbol, argsAcc))
+              case _ => loop(fn, argsAcc)
+            }
+
           case _ => None
         }
         loop(tp.tree, List())

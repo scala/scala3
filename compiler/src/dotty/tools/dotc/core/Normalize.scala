@@ -92,12 +92,16 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
 
   private def asType(b: Boolean) = ConstantType(Constants.Constant(b))
 
+  // actual.isInstanceOf[testedTp], where actualTp and testedTp are erased
   private def typeTest(actualTp: Type, testedTp: Type): Option[Boolean] = {
-    if (!isFullyDefined(actualTp, ForceDegree.none))      None // Approximating for now...
+    val actualCls = actualTp.classSymbol
+    val testedCls = testedTp.classSymbol
+    if (!actualCls.isClass || !testedCls.isClass)         None
+    else if (!isFullyDefined(actualTp, ForceDegree.none)) None // Approximating for now... // TODO: does this even make sense on erased types?
     else if (!isFullyDefined(testedTp, ForceDegree.none)) None
-    else if (ctx.typeComparer.isSubTypeWhenFrozen(actualTp, testedTp)) Some(true)
-    else if (ctx.typeComparer.isSubTypeWhenFrozen(testedTp, actualTp)) None
-    else                                                               Some(false)  // FIXME: This case mysteriously applies in the Succ(Zero).length example upon the second unfolding of length.
+    else if (actualTp.derivesFrom(testedCls))             Some(true)
+    else if (testedTp.derivesFrom(actualCls))             None
+    else                                                  Some(false)
   }
 
   /** The body type of transparent method `sym` if the body itself is not currently being type-checked,
@@ -170,13 +174,14 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
 
   private def normalizeTermParamSel(tp: TermRef): Type = {
     def selectTermParam(cnstrSym: Symbol, args: List[Type]): Type =
-      cnstrSym.info.widen match {
-        case MethodType(paramNames) =>
-          paramNames.indexOf(tp.name) match {
-            case -1    => NoType  // TODO: error?
+      cnstrSym.info.widen.stripMethodPrefix match {
+        case m: MethodType =>
+          m.paramNamess.flatten.indexOf(tp.name) match {
+            case -1 => throw new AssertionError(s"Cannot find parameter ${tp.name} in constructor $m")
             case index => args(index)
           }
-        case _ => NoType  // TODO: error?
+        case x =>
+          throw new AssertionError("Unexpected constructor type $x")
       }
 
     @tailrec def revealNewAndSelect(pre: Type): Type = pre match {

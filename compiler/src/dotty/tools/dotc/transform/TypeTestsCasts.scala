@@ -44,7 +44,10 @@ object TypeTestsCasts {
           fun.symbol == defn.Any_typeTest ||  // new scheme
           expr.symbol.is(Case)                // old scheme
 
-        def transformIsInstanceOf(expr:Tree, testType: Type, flagUnrelated: Boolean): Tree = {
+
+        // `expr` is a typed unerased tree
+        // `testType` is erased
+        def transformIsInstanceOf(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = {
           def testCls = testType.classSymbol
 
           def unreachable(why: => String) =
