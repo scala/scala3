@@ -1109,8 +1109,8 @@ object desugar {
           case Block(Nil, expr) => expr // important for interpolated string as patterns, see i1773.scala
           case t => t
         }
-
-        Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
+        // This is a deliberate departure from scalac, where StringContext is not rooted (See #4732)
+        Apply(Select(Apply(scalaDot(nme.StringContext), strs), id), elems)
       case InfixOp(l, op, r) =>
         if (ctx.mode is Mode.Type)
           AppliedTypeTree(op, l :: r :: Nil) // op[l, r]
