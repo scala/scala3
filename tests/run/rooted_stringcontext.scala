@@ -5,6 +5,6 @@ object StringContext {
 
 object Test {
   def main(args: Array[String]): Unit = {
-    println(StringContext.s)
+    assert(StringContext.s == "Answer: 42")
   }
 }

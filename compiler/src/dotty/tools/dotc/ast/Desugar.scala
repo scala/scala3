@@ -1110,12 +1110,7 @@ object desugar {
           case t => t
         }
         // This is a deliberate departure from scalac, where StringContext is not rooted (See #4732)
-        val rootedStringContext = {
-          val rootPkg = Ident(nme.ROOTPKG)
-          val scalaPkg = Select(rootPkg, nme.scala_)
-          Select(scalaPkg, nme.StringContext)
-        }
-        Apply(Select(Apply(rootedStringContext, strs), id), elems)
+        Apply(Select(Apply(scalaDot(nme.StringContext), strs), id), elems)
       case InfixOp(l, op, r) =>
         if (ctx.mode is Mode.Type)
           AppliedTypeTree(op, l :: r :: Nil) // op[l, r]
