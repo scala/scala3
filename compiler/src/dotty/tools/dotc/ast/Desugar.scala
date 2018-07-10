@@ -77,11 +77,11 @@ object desugar {
     }
   }
 
-  /** Widen inferred type of `_1`, `_2`, `_N`
+  /** Widen inferred type of `_1`, `_2`, `_N` and default getters for `copy`
    *
-   *  If the param is not dependently used, further widen the inferred type.
+   *  If the param is not dependently used, widen the inferred type.
    */
-  def widenSelectorType(sym: Symbol, tp: Type, index: Int)(implicit ctx: Context): Type = {
+  def widenDependentCaseClass(sym: Symbol, tp: Type, index: Int)(implicit ctx: Context): Type = {
     val mt: MethodType = sym.owner.asClass.primaryConstructor.info match {
       case tp: PolyType   => tp.resType.asInstanceOf[MethodType]
       case tp: MethodType => tp
@@ -486,7 +486,7 @@ object desugar {
         val ddef = DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic)
         ddef.pushAttachment(
           WidenLogic,
-          (sym: Symbol, tp: Type, ctx: Context) => widenSelectorType(sym, tp, index)(ctx)
+          (sym: Symbol, tp: Type, ctx: Context) => widenDependentCaseClass(sym, tp, index)(ctx)
         )
         ddef
       }
@@ -509,12 +509,29 @@ object desugar {
         else {
           def copyDefault(vparam: ValDef) =
             makeAnnotated("scala.annotation.unchecked.uncheckedVariance", refOfDef(vparam))
-          val copyFirstParams = derivedVparamss.head.map(vparam =>
-            cpy.ValDef(vparam)(rhs = copyDefault(vparam)))
+          val copyFirstParams = derivedVparamss.head.map { vparam =>
+            cpy.ValDef(vparam)(rhs = EmptyTree)
+          }
+          val copyDefaults = derivedVparamss.head.zipWithIndex.map { case (vparam, n) =>
+            val ddef = DefDef(
+              name = DefaultGetterName(nme.copy, n),
+              tparams = Nil,
+              vparamss = Nil,
+              tpt = TypeTree(),
+              rhs = copyDefault(vparam)
+            )
+            .withMods(Modifiers(Synthetic))
+
+            ddef.pushAttachment(
+              WidenLogic,
+              (sym: Symbol, tp: Type, ctx: Context) => widenDependentCaseClass(sym, tp, n)(ctx)
+            )
+            ddef
+          }
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
           DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr)
-            .withMods(synthetic) :: Nil
+            .withMods(synthetic | HasDefaultParams) :: copyDefaults
         }
       }
 
