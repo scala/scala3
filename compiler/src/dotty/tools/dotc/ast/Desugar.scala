@@ -3,7 +3,8 @@ package dotc
 package ast
 
 import core._
-import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
+import util.Positions._, util.Property
+import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
@@ -16,6 +17,9 @@ import reporting.trace
 object desugar {
   import untpd._
   import DesugarEnums._
+
+  /** How to widen an inferred type */
+  val WidenLogic = new Property.Key[(Symbol, Type, Context) => Type]
 
   /** Info of a variable in a pattern: The named tree and its type */
   private type VarInfo = (NameTree, Tree)
@@ -45,7 +49,8 @@ object desugar {
    *    object Data extends FunctionX[Ts, Data]
    *
    *  Syntactic desugaring cannot handle dependent parameters, thus we introduce a semantic
-   *  dependence of `FunctionX[Ts, Data]` on the primary constructor of `Data`.
+   *  dependence of `FunctionX[Ts, Data]` on the primary constructor of `Data`. If the
+   *  constructor is dependent, use `AnyRef` instead of `Ts => Data`.
    *
    *  See tests/pos/i4273.scala
    *
@@ -70,6 +75,37 @@ object desugar {
           tpd.TypeTree(tp)
         }
     }
+  }
+
+  /** Widen inferred type of `_1`, `_2`, `_N`
+   *
+   *  If the param is not dependently used, further widen the inferred type.
+   */
+  def widenSelectorType(sym: Symbol, tp: Type, index: Int)(implicit ctx: Context): Type = {
+    val mt: MethodType = sym.owner.asClass.primaryConstructor.info match {
+      case tp: PolyType   => tp.resType.asInstanceOf[MethodType]
+      case tp: MethodType => tp
+    }
+
+    val paramInfos = mt.paramInfos
+
+    // the last param cannot be used in types
+    if (index == paramInfos.size - 1) return tp.widen
+
+    val paramRef = mt.paramRefs(index)
+    val dependentOnParam = new TypeAccumulator[Boolean] {
+      def apply(res: Boolean, tp: Type) = res || (tp match {
+        case `paramRef` => true
+        case _ => foldOver(false, tp)
+      })
+    }
+
+    // return without widen if dependent
+    (index until paramInfos.size).foreach { i =>
+      if (dependentOnParam(false, paramInfos(i))) return tp
+    }
+
+    tp.widen
   }
 
   /** A type tree that computes its type from an existing parameter.
@@ -446,12 +482,18 @@ object desugar {
     // neg/t1843-variances.scala for a test case. The test would give
     // two errors without @uncheckedVariance, one of them spurious.
     val caseClassMeths = {
-      def syntheticProperty(name: TermName, rhs: Tree) =
-        DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic)
+      def syntheticProperty(name: TermName, rhs: Tree, index: Int) = {
+        val ddef = DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic)
+        ddef.pushAttachment(
+          WidenLogic,
+          (sym: Symbol, tp: Type, ctx: Context) => widenSelectorType(sym, tp, index)(ctx)
+        )
+        ddef
+      }
       def productElemMeths = {
         val caseParams = constrVparamss.head.toArray
         for (i <- 0 until arity if nme.selectorName(i) `ne` caseParams(i).name)
-        yield syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeIdent), caseParams(i).name))
+        yield syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeIdent), caseParams(i).name), i)
       }
       def enumTagMeths = if (isEnumCase) enumTagMeth(CaseKind.Class)._1 :: Nil else Nil
       def copyMeths = {

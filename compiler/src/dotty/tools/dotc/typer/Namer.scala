@@ -1062,6 +1062,11 @@ class Namer { typer: Typer =>
         case _ => tp.widen.widenUnion
       }
 
+      def customWiden(tp: Type): Type = mdef.removeAttachment(WidenLogic) match {
+        case Some(widen) => widen(sym, tp, ctx)
+        case None        => widenRhs(tp)
+      }
+
       // Replace aliases to Unit by Unit itself. If we leave the alias in
       // it would be erased to BoxedUnit.
       def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
@@ -1079,7 +1084,7 @@ class Namer { typer: Typer =>
         }
       }
 
-      def cookedRhsType = deskolemize(dealiasIfUnit(widenRhs(rhsType)))
+      def cookedRhsType = deskolemize(dealiasIfUnit(customWiden(rhsType)))
       def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.pos)
       //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
       if (inherited.exists) {
