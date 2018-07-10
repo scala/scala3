@@ -507,18 +507,16 @@ object desugar {
         })
         if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
         else {
-          def copyDefault(vparam: ValDef) =
-            makeAnnotated("scala.annotation.unchecked.uncheckedVariance", refOfDef(vparam))
           val copyFirstParams = derivedVparamss.head.map { vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree)
           }
           val copyDefaults = derivedVparamss.head.zipWithIndex.map { case (vparam, n) =>
             val ddef = DefDef(
               name = DefaultGetterName(nme.copy, n),
-              tparams = Nil,
+              tparams = derivedTparams,
               vparamss = Nil,
               tpt = TypeTree(),
-              rhs = copyDefault(vparam)
+              rhs = makeAnnotated("scala.annotation.unchecked.uncheckedVariance", refOfDef(vparam))
             )
             .withMods(Modifiers(Synthetic))
 
