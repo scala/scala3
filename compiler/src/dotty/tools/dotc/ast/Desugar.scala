@@ -94,10 +94,7 @@ object desugar {
 
     val paramRef = mt.paramRefs(index)
     val dependentOnParam = new TypeAccumulator[Boolean] {
-      def apply(res: Boolean, tp: Type) = res || (tp match {
-        case `paramRef` => true
-        case _ => foldOver(false, tp)
-      })
+      def apply(res: Boolean, tp: Type) = res || tp.eq(paramRef) || foldOver(false, tp)
     }
 
     // return without widen if dependent
