@@ -20,7 +20,7 @@ import Trees._
 import config.Config
 import Names._
 import StdNames._
-import NameKinds.DefaultGetterName
+import NameKinds.{ DefaultGetterName, PatMatStdBinderName }
 import ProtoTypes._
 import Inferencing._
 
@@ -85,7 +85,7 @@ object Applications {
       else tp :: Nil
     } else tp :: Nil
 
-  def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
+  def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: Position = NoPosition)(implicit ctx: Context): (List[Type], Symbol) = {
 
     val unapplyName = unapplyFn.symbol.name
     def seqSelector = defn.RepeatedParamType.appliedTo(unapplyResult.elemType :: Nil)
@@ -96,28 +96,30 @@ object Applications {
         if (ctx.scala2Mode && unapplyName == nme.unapplySeq)
           "\nYou might want to try to rewrite the extractor to use `unapply` instead."
       ctx.error(em"$unapplyResult is not a valid result type of an $unapplyName method of an extractor$addendum", pos)
-      Nil
+      (Nil, NoSymbol)
     }
 
     if (unapplyName == nme.unapplySeq) {
-      if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
+      if (unapplyResult derivesFrom defn.SeqClass) (seqSelector :: Nil, NoSymbol)
       else if (isGetMatch(unapplyResult, pos)) {
         val seqArg = getTp.elemType.hiBound
-        if (seqArg.exists) args.map(Function.const(seqArg))
+        if (seqArg.exists) (args.map(Function.const(seqArg)), NoSymbol)
         else fail
       }
       else fail
     }
     else {
       assert(unapplyName == nme.unapply)
-      if (isProductMatch(unapplyResult, args.length))
-        productSelectorTypes(unapplyResult)
+      if (isProductMatch(unapplyResult, args.length)) {
+        val sym = ctx.newPatternBoundSymbol(PatMatStdBinderName.fresh(), unapplyResult, pos)
+        (productSelectorTypes(TermRef(NoPrefix, sym)), sym)
+      }
       else if (isGetMatch(unapplyResult, pos))
-        getUnapplySelectors(getTp, args, pos)
+        (getUnapplySelectors(getTp, args, pos), NoSymbol)
       else if (unapplyResult.widenSingleton isRef defn.BooleanClass)
-        Nil
+        (Nil, NoSymbol)
       else if (defn.isProductSubType(unapplyResult))
-        productSelectorTypes(unapplyResult)
+        (productSelectorTypes(unapplyResult), NoSymbol)
           // this will cause a "wrong number of arguments in pattern" error later on,
           // which is better than the message in `fail`.
       else fail
@@ -994,7 +996,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           case _ => Nil.assertingErrorsReported
         }
 
-        var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.pos)
+        var (argTypes, sym) = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.pos)
+
+        for (argType <- argTypes)
+          println("arg.tp = " + argType.show)
+
         for (argType <- argTypes) assert(!argType.isInstanceOf[TypeBounds], unapplyApp.tpe.show)
         val bunchedArgs =
           if (argTypes.nonEmpty && argTypes.last.isRepeatedParam)
@@ -1015,7 +1021,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
             List.fill(argTypes.length - args.length)(WildcardType)
         }
         val unapplyPatterns = (bunchedArgs, argTypes).zipped map (typed(_, _))
-        val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
+        var result: tpd.Tree = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
+        if (sym.exists) result = tpd.Bind(sym, result)
         unapp.println(s"unapply patterns = $unapplyPatterns")
         if ((ownType eq selType) || ownType.isError) result
         else tryWithClassTag(Typed(result, TypeTree(ownType)), selType)
