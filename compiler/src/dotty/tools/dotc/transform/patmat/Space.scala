@@ -339,6 +339,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       else
         Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
     case Typed(pat @ UnApply(_, _, _), _) => project(pat)
+    case Typed(Bind(_, pat), _) => project(pat)
     case Typed(expr, tpt) =>
       Typ(erase(expr.tpe.stripAnnots), true)
     case This(_) =>
