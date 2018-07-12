@@ -36,54 +36,54 @@ object Comments {
       doc.map(d => _docstrings.update(sym, d))
   }
 
-  /** A `Comment` contains the unformatted docstring as well as a position
-    *
-    * The `Comment` contains functionality to create versions of itself without
-    * `@usecase` sections as well as functionality to map the `raw` docstring
-    *
-    * @param pos The position of this `Comment`.
-    * @param raw The raw comment, as seen in the source code, without any expansion.
-    */
-  abstract case class Comment(pos: Position, raw: String) { self =>
-
-    /** The expansion of this comment */
-    def expanded: Option[String]
+  /**
+   * A `Comment` contains the unformatted docstring, it's position and potentially more
+   * information that is populated when the comment is "cooked".
+   *
+   * @param pos      The position of this `Comment`.
+   * @param raw      The raw comment, as seen in the source code, without any expansion.
+   * @param expanded If this comment has been expanded, it's expansion, otherwise `None`.
+   * @param usecases The usecases for this comment.
+   */
+  final case class Comment(pos: Position, raw: String, expanded: Option[String], usecases: List[UseCase]) {
 
     /** Has this comment been cooked or expanded? */
-    final def isExpanded: Boolean = expanded.isDefined
+    def isExpanded: Boolean = expanded.isDefined
 
     /** The body of this comment, without the `@usecase` and `@define` sections, after expansion. */
     lazy val expandedBody: Option[String] =
       expanded.map(removeSections(_, "@usecase", "@define"))
 
+    val isDocComment = Comment.isDocComment(raw)
+
     /**
-     * The `@usecase` sections of this comment.
-     * This is populated by calling `withUsecases` on this object.
+     * Expands this comment by giving its content to `f`, and then parsing the `@usecase` sections.
+     * Typically, `f` will take care of expanding the variables.
+     *
+     * @param f The expansion function.
+     * @return The expanded comment, with the `usecases` populated.
      */
-    def usecases: List[UseCase]
-
-    val isDocComment = raw.startsWith("/**")
-
-    def expand(f: String => String): Comment = new Comment(pos, raw) {
-      val expanded = Some(f(raw))
-      val usecases = self.usecases
+    def expand(f: String => String)(implicit ctx: Context): Comment = {
+      val expandedComment = f(raw)
+      val useCases = Comment.parseUsecases(expandedComment, pos)
+      Comment(pos, raw, Some(expandedComment), useCases)
     }
+  }
 
-    def withUsecases(implicit ctx: Context): Comment = new Comment(pos, raw) {
-      assert(self.isExpanded)
-      val expanded = self.expanded
-      val usecases = parseUsecases
-    }
+  object Comment {
 
-    private[this] def parseUsecases(implicit ctx: Context): List[UseCase] =
-      if (!isDocComment) {
+    def isDocComment(comment: String): Boolean = comment.startsWith("/**")
+
+    def apply(pos: Position, raw: String): Comment =
+      Comment(pos, raw, None, Nil)
+
+    private def parseUsecases(expandedComment: String, pos: Position)(implicit ctx: Context): List[UseCase] =
+      if (!isDocComment(expandedComment)) {
         Nil
       } else {
-        expanded.map { body =>
-          tagIndex(body)
-            .filter { startsWithTag(body, _, "@usecase") }
-            .map { case (start, end) => decomposeUseCase(body, start, end) }
-        }.getOrElse(Nil)
+        tagIndex(expandedComment)
+          .filter { startsWithTag(expandedComment, _, "@usecase") }
+          .map { case (start, end) => decomposeUseCase(expandedComment, pos, start, end) }
       }
 
     /** Turns a usecase section into a UseCase, with code changed to:
@@ -94,7 +94,7 @@ object Comments {
      *  def foo: A = ???
      *  }}}
      */
-    private[this] def decomposeUseCase(body: String, start: Int, end: Int)(implicit ctx: Context): UseCase = {
+    private[this] def decomposeUseCase(body: String, pos: Position, start: Int, end: Int)(implicit ctx: Context): UseCase = {
       def subPos(start: Int, end: Int) =
         if (pos == NoPosition) NoPosition
         else {
@@ -110,14 +110,6 @@ object Comments {
 
       UseCase(code, codePos)
     }
-  }
-
-  object Comment {
-    def apply(pos: Position, raw: String, expandedComment: Option[String] = None, usc: List[UseCase] = Nil): Comment =
-      new Comment(pos, raw) {
-        val expanded = expandedComment
-        val usecases = usc
-      }
   }
 
   abstract case class UseCase(code: String, codePos: Position) {

@@ -46,7 +46,6 @@ trait Docstrings { self: Typer =>
 
           val newCmt = cmt
             .expand(tplExp.expandedDocComment(sym, owner, _))
-            .withUsecases
 
           docCtx.addDocstring(sym, Some(newCmt))
         }
