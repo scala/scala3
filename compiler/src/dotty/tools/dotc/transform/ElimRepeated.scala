@@ -85,9 +85,14 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     val args1 = tree.args.zipWithConserve(formals) { (arg, formal) =>
       arg match {
         case arg: Typed if isWildcardStarArg(arg) =>
-          if (tree.fun.symbol.is(JavaDefined) && arg.expr.tpe.derivesFrom(defn.SeqClass))
-            seqToArray(arg.expr, formal.underlyingIfRepeated(isJava = true))
-          else arg.expr
+          val isJavaDefined = tree.fun.symbol.is(JavaDefined)
+          val expr = arg.expr
+          if (isJavaDefined && expr.tpe.derivesFrom(defn.SeqClass))
+            seqToArray(expr, formal.underlyingIfRepeated(isJava = true))
+          else if (!isJavaDefined && expr.tpe.derivesFrom(defn.ArrayClass))
+            arrayToSeq(expr)
+          else
+            expr
         case arg => arg
       }
     }
@@ -98,12 +103,10 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   private def seqToArray(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree match {
     case SeqLiteral(elems, elemtpt) =>
       JavaSeqLiteral(elems, elemtpt)
-    case app@Apply(fun, args) if defn.Predef_wrapArray().contains(fun.symbol) => // rewrite a call to `wrapXArray(arr)` to `arr`
-      args.head
     case _ =>
       val elemType = tree.tpe.elemType
       var elemClass = elemType.classSymbol
-      if (defn.NotRuntimeClasses contains elemClass) elemClass = defn.ObjectClass
+      if (defn.NotRuntimeClasses.contains(elemClass)) elemClass = defn.ObjectClass
       ref(defn.DottyArraysModule)
         .select(nme.seqToArray)
         .appliedToType(elemType)
@@ -111,6 +114,10 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         .ensureConforms(pt)
           // Because of phantomclasses, the Java array's type might not conform to the return type
   }
+
+  /** Convert Java array argument to Scala Seq of type `pt` */
+  private def arrayToSeq(tree: Tree)(implicit ctx: Context): Tree =
+    TreeGen.wrapArray(tree, tree.tpe.elemType)
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
     transformTypeOfTree(tree)

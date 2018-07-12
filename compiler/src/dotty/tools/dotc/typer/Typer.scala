@@ -557,11 +557,25 @@ class Typer extends Namer
         else typed(tree.expr, tpt.tpe.widenSkolem)
       assignType(cpy.Typed(tree)(expr1, tpt), underlyingTreeTpe)
     }
-    if (untpd.isWildcardStarArg(tree))
+    if (untpd.isWildcardStarArg(tree)) {
+      /** If tree is of the form `expr: _*`, try to type `expr` as an `Array`
+       *  and as a `Seq` if there are errors.
+       */
+      def typedWildcardStarArgExpr = {
+        def asSeq(implicit ctx: Context) =
+          seqToRepeated(typedExpr(tree.expr, defn.SeqType.appliedTo(defn.AnyType)))
+        def asArray(implicit ctx: Context) =
+          arrayToRepeated(typedExpr(tree.expr, defn.ArrayType.appliedTo(WildcardType)))
+
+        // we try asArray first because asSeq will succeed if the former succeeds due
+        // to the implicit conversion from Array to WrappedArray defined in Predef
+        tryAlternatively[Tree](asArray(_))(asSeq(_))
+      }
       cases(
         ifPat = ascription(TypeTree(defn.RepeatedParamType.appliedTo(pt)), isWildcard = true),
-        ifExpr = seqToRepeated(typedExpr(tree.expr, defn.SeqType.appliedTo(defn.AnyType))),
+        ifExpr = typedWildcardStarArgExpr,
         wildName = nme.WILDCARD_STAR)
+    }
     else {
       def typedTpt = checkSimpleKinded(typedType(tree.tpt))
       def handlePattern: Tree = {
