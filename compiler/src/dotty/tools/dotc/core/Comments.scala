@@ -3,7 +3,7 @@ package dotc
 package core
 
 import ast.{ untpd, tpd }
-import Decorators._, Symbols._, Contexts._, Flags.EmptyFlags
+import Decorators._, Symbols._, Contexts._
 import util.SourceFile
 import util.Positions._
 import util.CommentParsing._
@@ -33,7 +33,7 @@ object Comments {
     def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
 
     def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
-      doc.map(d => _docstrings.update(sym, d))
+      doc.foreach(d => _docstrings.update(sym, d))
   }
 
   /**
@@ -112,29 +112,25 @@ object Comments {
     }
   }
 
-  abstract case class UseCase(code: String, codePos: Position) {
-    /** Set by typer */
-    var tpdCode: tpd.DefDef = _
-
-    def untpdCode: untpd.Tree
+  final case class UseCase(code: String, codePos: Position, untpdCode: untpd.Tree, tpdCode: Option[tpd.DefDef]) {
+    def typed(tpdCode: tpd.DefDef): UseCase = copy(tpdCode = Some(tpdCode))
   }
 
   object UseCase {
-    def apply(code: String, codePos: Position)(implicit ctx: Context) =
-      new UseCase(code, codePos) {
-        val untpdCode = {
-          val tree = new Parser(new SourceFile("<usecase>", code)).localDef(codePos.start)
-
-          tree match {
-            case tree: untpd.DefDef =>
-              val newName = ctx.freshNames.newName(tree.name, NameKinds.DocArtifactName)
-              untpd.DefDef(newName, tree.tparams, tree.vparamss, tree.tpt, tree.rhs)
-            case _ =>
-              ctx.error(ProperDefinitionNotFound(), codePos)
-              tree
-          }
+    def apply(code: String, codePos: Position)(implicit ctx: Context): UseCase = {
+      val tree = {
+        val tree = new Parser(new SourceFile("<usecase>", code)).localDef(codePos.start)
+        tree match {
+          case tree: untpd.DefDef =>
+            val newName = ctx.freshNames.newName(tree.name, NameKinds.DocArtifactName)
+            tree.copy(name = newName)
+          case _ =>
+            ctx.error(ProperDefinitionNotFound(), codePos)
+            tree
         }
       }
+      UseCase(code, codePos, tree, None)
+    }
   }
 
   /**

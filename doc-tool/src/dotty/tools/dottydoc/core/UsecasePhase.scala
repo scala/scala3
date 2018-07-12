@@ -29,7 +29,7 @@ class UsecasePhase extends DocMiniPhase {
   override def transformDef(implicit ctx: Context) = { case df: DefImpl =>
     val defdefs =
       ctx.docbase.docstring(df.symbol)
-        .map(_.usecases.map(_.tpdCode))
+        .map(_.usecases.flatMap(_.tpdCode))
         .getOrElse(Nil)
 
     if (defdefs.isEmpty) df :: Nil

@@ -4,7 +4,6 @@ package typer
 
 import core._
 import Contexts._, Symbols._, Decorators._, Comments._
-import util.Positions._
 import ast.tpd
 
 trait Docstrings { self: Typer =>
@@ -21,39 +20,51 @@ trait Docstrings { self: Typer =>
    * @param sym   The symbol for which the comment is being cooked.
    * @param owner The class for which comments are being cooked.
    */
-  def cookComment(sym: Symbol, owner: Symbol)(implicit ctx: Context): Unit = {
-    for {
-      docbase <- ctx.docCtx
-      comment <- docbase.docstring(sym).filter(!_.isExpanded)
-    } {
-      expandParentDocs(sym)
-      docbase.docstring(sym).get.usecases.foreach { usecase =>
-        enterSymbol(createSymbol(usecase.untpdCode))
-        typedStats(usecase.untpdCode :: Nil, owner) match {
-          case List(df: tpd.DefDef) => usecase.tpdCode = df
-          case _ => ctx.error("`@usecase` was not a valid definition", usecase.codePos)
-        }
-      }
+  def cookComment(sym: Symbol, owner: Symbol)(implicit ctx: Context): Option[Comment] = {
+    ctx.docCtx.flatMap { docCtx =>
+      expand(sym, owner)(ctx, docCtx)
     }
   }
 
-  private def expandParentDocs(sym: Symbol)(implicit ctx: Context): Unit =
-    ctx.docCtx.foreach { docCtx =>
-      docCtx.docstring(sym).foreach { cmt =>
-        def expandDoc(owner: Symbol): Unit = if (!cmt.isExpanded) {
-          val tplExp = docCtx.templateExpander
-          tplExp.defineVariables(sym)
+  private def expand(sym: Symbol, owner: Symbol)(implicit ctx: Context, docCtx: ContextDocstrings): Option[Comment] = {
+    docCtx.docstring(sym).flatMap {
+      case cmt if cmt.isExpanded =>
+        Some(cmt)
+      case _ =>
+        expandComment(sym).map { expanded =>
+          val typedUsecases = expanded.usecases.map { usecase =>
+            enterSymbol(createSymbol(usecase.untpdCode))
+            typedStats(usecase.untpdCode :: Nil, owner) match {
+              case List(df: tpd.DefDef) =>
+                usecase.typed(df)
+              case _ =>
+                ctx.error("`@usecase` was not a valid definition", usecase.codePos)
+                usecase
+            }
+          }
 
-          val newCmt = cmt
-            .expand(tplExp.expandedDocComment(sym, owner, _))
-
-          docCtx.addDocstring(sym, Some(newCmt))
+          val commentWithUsecases = expanded.copy(usecases = typedUsecases)
+          docCtx.addDocstring(sym, Some(commentWithUsecases))
+          commentWithUsecases
         }
-
-        if (sym ne NoSymbol) {
-          expandParentDocs(sym.owner)
-          expandDoc(sym.owner)
-        }
-      }
     }
+  }
+
+  private def expandComment(sym: Symbol, owner: Symbol, comment: Comment)(implicit ctx: Context, docCtx: ContextDocstrings): Comment = {
+    val tplExp = docCtx.templateExpander
+    tplExp.defineVariables(sym)
+    val newComment = comment.expand(tplExp.expandedDocComment(sym, owner, _))
+    docCtx.addDocstring(sym, Some(newComment))
+    newComment
+  }
+
+  private def expandComment(sym: Symbol)(implicit ctx: Context, docCtx: ContextDocstrings): Option[Comment] = {
+    if (sym eq NoSymbol) None
+    else {
+      for {
+        cmt <- docCtx.docstring(sym) if !cmt.isExpanded
+        _ = expandComment(sym.owner)
+      } yield expandComment(sym, sym.owner, cmt)
+    }
+  }
 }
