@@ -75,7 +75,7 @@ import ast.Trees._
     //    isBool(ift.tpe) && !elsep.const.booleanValue =>
     //       cond.select(defn.Boolean_&&).appliedTo(elsep)
     //   the other case ins't handled intentionally. See previous case for explanation
-    
+
     case If(t @ Select(recv, _), thenp, elsep) if t.symbol eq defn.Boolean_! =>
       If(recv, elsep, thenp)
 
@@ -98,11 +98,6 @@ import ast.Trees._
         case (lhs, Literal(_)) if !lhs.isInstanceOf[Literal] && simplifyPhase.CommutativePrimitiveOperations.contains(sym) =>
           rhs.select(sym).appliedTo(lhs)
 
-        case (l, _) if (sym == defn.Boolean_&&) && isConst(l.tpe) =>
-          val const = asConst(l.tpe).value.booleanValue
-          if (const) Block(lhs :: Nil, rhs)
-          else l
-
         case (l, x: Literal) if sym == defn.Boolean_== && isBool(l.tpe) && isBool(x.tpe) =>
           if (x.const.booleanValue) l
           else l.select(defn.Boolean_!).ensureApplied
@@ -118,11 +113,6 @@ import ast.Trees._
         case (x: Literal, l) if sym == defn.Boolean_!= && isBool(l.tpe) && isBool(x.tpe) =>
           if (!x.const.booleanValue) l
           else l.select(defn.Boolean_!).ensureApplied
-
-        case (l: Literal, _) if (sym == defn.Boolean_||) && isConst(l.tpe)   =>
-          val const = asConst(l.tpe).value.booleanValue
-          if (l.const.booleanValue) l
-          else Block(lhs :: Nil, rhs)
 
         // case (Literal(Constant(1)), _)    if sym == defn.Int_*  => rhs
         // case (Literal(Constant(0)), _)    if sym == defn.Int_+  => rhs
@@ -143,7 +133,7 @@ import ast.Trees._
 
         case (l: Literal, r: Literal)  =>
           (l.tpe.widenTermRefExpr, r.tpe.widenTermRefExpr) match {
-            case (ConstantType(_), ConstantType(_)) => 
+            case (ConstantType(_), ConstantType(_)) =>
               val s = ConstFold.apply(t)
               if ((s ne null) && s.tpe.isInstanceOf[ConstantType]) Literal(s.tpe.asInstanceOf[ConstantType].value)
               else t
@@ -168,8 +158,6 @@ import ast.Trees._
     case t: CaseDef => t
     case t => t
   }
-
-
 
   def isSimilar(t1: Tree, t2: Tree)(implicit ctx: Context): Boolean = t1 match {
     case t1: Apply =>
@@ -207,6 +195,4 @@ import ast.Trees._
   }
 
   def isBool(tpe: Type)(implicit ctx: Context): Boolean       = tpe.derivesFrom(defn.BooleanClass)
-  def isConst(tpe: Type)(implicit ctx: Context): Boolean      = tpe.isInstanceOf[ConstantType]
-  def asConst(tpe: Type)(implicit ctx: Context): ConstantType = tpe.asInstanceOf[ConstantType]
 }

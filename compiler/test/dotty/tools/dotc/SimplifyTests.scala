@@ -7,16 +7,16 @@ import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.dotc.core.Contexts.FreshContext
 import scala.tools.asm.tree.MethodNode
 
-class SimplifyPosTests extends SimplifyTests(optimise = true)
-class SimplifyNegTests extends SimplifyTests(optimise = false)
+class SimplifyPosTests extends SimplifyTests(pos = true)
+class SimplifyNegTests extends SimplifyTests(pos = false)
 
-abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
+abstract class SimplifyTests(val pos: Boolean) extends DottyBytecodeTest {
   override def initCtx = {
     val ctx0 = super.initCtx
-    ctx0.setSetting(ctx0.settings.optimise, optimise)
+    ctx0.setSetting(ctx0.settings.optimise, pos)
   }
 
-  def check(source: String, expected: String, shared: String = ""): Unit = {
+  def check(source: String, expected: String, shared: String = "", checkEqual: Boolean = pos): Unit = {
     import ASMConverters._
     val src =
       s"""
@@ -41,7 +41,7 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
       val A = instructions("A")
       val B = instructions("B")
       val diff = diffInstructions(A, B)
-      if (optimise)
+      if (checkEqual)
         assert(A == B, s"Bytecode doesn't match: (lhs = source, rhs = expected) \n$diff")
       else
         assert(A != B, s"Same Bytecodes without -optimise: you are testing the wrong thing!")
@@ -141,7 +141,7 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
       """
         |val i = 3
         |val j = i + 4
-        |if(j - i >= (i + 1) / 2) 
+        |if(j - i >= (i + 1) / 2)
         |  print(i + 1)
       """,
       """
@@ -188,6 +188,10 @@ abstract class SimplifyTests(val optimise: Boolean) extends DottyBytecodeTest {
         |}
       """)
 
+  @Test def test4784 =
+    check(
+      """{ println(1); false } || true""",
+      """true""", checkEqual = false)
 
   // @Test def listPatmapExample =
   //   check(
