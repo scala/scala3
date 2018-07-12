@@ -196,19 +196,24 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         return toTextParents(tp.parents) ~ "{...}"
       case JavaArrayType(elemtp) =>
         return toText(elemtp) ~ "[]"
-      case TypeOf(underlyingTp, tree) =>
+      case tp @ TypeOf(underlyingTp, tree) =>
         import tpd._
         val underlying: Text = " <: " ~ toText(underlyingTp) provided ctx.settings.XprintTypes.value
-        def treeText = tree match {
-          case TypeApply(fun, args) =>
-            typeApplyText(fun.tpe, args.tpes)
-          case Apply(fun, args) =>
-            applyText(fun.tpe, args.tpes)
-          case If(cond, thenp, elsep) =>
-            val elze = if (elsep.isEmpty) None else Some(elsep.tpe)
-            ifText(cond.tpe, thenp.tpe, elze)
-          case Match(sel, cases) =>
-            matchText(sel, cases, showType = true)
+        def treeText = tp match {
+          case TypeOf.New(cnstrSym, argss) =>
+            "new " ~ nameString(cnstrSym.owner) ~ "(" ~ Text(argss.map(toText), ", ") ~ ")"
+          case _ =>
+            tree match {
+              case TypeApply(fun, args) =>
+                typeApplyText(fun.tpe, args.tpes)
+              case Apply(fun, args) =>
+                applyText(fun.tpe, args.tpes)
+              case If(cond, thenp, elsep) =>
+                val elze = if (elsep.isEmpty) None else Some(elsep.tpe)
+                ifText(cond.tpe, thenp.tpe, elze)
+              case Match(sel, cases) =>
+                matchText(sel, cases, showType = true)
+            }
         }
         return typeText("{ ") ~ inTypeOf { treeText } ~ underlying ~ typeText(" }")
       case tp: AnnotatedType if homogenizedView =>
