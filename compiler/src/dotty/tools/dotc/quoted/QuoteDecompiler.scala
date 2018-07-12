@@ -8,6 +8,7 @@ import dotty.tools.dotc.core.Phases.Phase
 class QuoteDecompiler(output: tpd.Tree => Context => Unit) extends QuoteCompiler {
   override def phases: List[List[Phase]] = List(
     List(new QuotedFrontend(putInClass = false)), // Create class from Expr
+    List(new RefreshNames),
     List(new QuoteTreeOutput(output))
   )
 
