@@ -83,7 +83,7 @@ object Applications {
       val sels = productSelectorTypes(tp, pos)
       if (sels.length == args.length) sels
       else tp :: Nil
-    } else tp.widen :: Nil
+    } else tp :: Nil
 
   def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: Position = NoPosition)(implicit ctx: Context): (List[Type], Symbol) = {
 
@@ -118,8 +118,14 @@ object Applications {
         (productSelectorTypes(TermRef(NoPrefix, sym)), sym)
       }
       else if (isGetMatch(unapplyResult, pos)) {
-        val sym = resultBindSym(getTp)
-        (getUnapplySelectors(TermRef(NoPrefix, sym), args, pos), sym)
+        if (unapplyFn.symbol.owner == defn.ClassTagClass) // avoid problems with classtag rewrite
+          (getUnapplySelectors(getTp, args, pos), NoSymbol)
+        else if (args.length == 1) // optimise: not a dependent pattern
+          (getTp :: Nil, NoSymbol)
+        else {
+          val sym = resultBindSym(getTp)
+          (getUnapplySelectors(TermRef(NoPrefix, sym), args, pos), sym)
+        }
       }
       else if (unapplyResult.widenSingleton isRef defn.BooleanClass)
         (Nil, NoSymbol)

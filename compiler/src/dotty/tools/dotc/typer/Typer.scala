@@ -1309,22 +1309,28 @@ class Typer extends Namer
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Tree = track("typedBind") {
     val pt1 = fullyDefinedType(pt, "pattern variable", tree.pos)
     val body1 = typed(tree.body, pt1)
-    body1 match {
-      case UnApply(fn, Nil, arg :: Nil)
+
+    def ignoreResultBind(body: Tree): Tree = body match {
+      case Bind(name, body) if name.is(PatMatResultBindName) => body
+      case _ => body
+    }
+
+    ignoreResultBind(body1) match {
+      case body @ UnApply(fn, Nil, arg :: Nil)
       if fn.symbol.exists && fn.symbol.owner == defn.ClassTagClass && !body1.tpe.isError =>
         // A typed pattern `x @ (e: T)` with an implicit `ctag: ClassTag[T]`
         // was rewritten to `x @ ctag(e)` by `tryWithClassTag`.
         // Rewrite further to `ctag(x @ e)`
-        tpd.cpy.UnApply(body1)(fn, Nil,
+        tpd.cpy.UnApply(body)(fn, Nil,
             typed(untpd.Bind(tree.name, untpd.TypedSplice(arg)).withPos(tree.pos), arg.tpe) :: Nil)
-      case _ =>
+      case body =>
         if (tree.name == nme.WILDCARD) body1
         else {
           // for a singleton pattern like `x @ Nil`, `x` should get the type from the scrutinee
           // see tests/neg/i3200b.scala and SI-1503
           val symTp =
-            if (body1.tpe.isInstanceOf[TermRef]) pt1
-            else body1.tpe.underlyingIfRepeated(isJava = false)
+            if (body.tpe.isInstanceOf[TermRef]) pt1
+            else body.tpe.underlyingIfRepeated(isJava = false)
           val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.pos)
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.pos)
