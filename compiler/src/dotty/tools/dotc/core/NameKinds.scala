@@ -316,6 +316,7 @@ object NameKinds {
   val PatMatCaseName          = new UniqueNameKind("case")
   val PatMatMatchFailName     = new UniqueNameKind("matchFail")
   val PatMatSelectorName      = new UniqueNameKind("selector")
+  val PatMatResultBindName    = new UniqueNameKind("resultBind")
 
   val LocalOptInlineLocalObj  = new UniqueNameKind("ilo")
 

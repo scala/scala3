@@ -20,7 +20,7 @@ import Trees._
 import config.Config
 import Names._
 import StdNames._
-import NameKinds.{ DefaultGetterName, PatMatStdBinderName }
+import NameKinds.{ DefaultGetterName, PatMatResultBindName }
 import ProtoTypes._
 import Inferencing._
 
@@ -83,7 +83,7 @@ object Applications {
       val sels = productSelectorTypes(tp, pos)
       if (sels.length == args.length) sels
       else tp :: Nil
-    } else tp :: Nil
+    } else tp.widen :: Nil
 
   def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: Position = NoPosition)(implicit ctx: Context): (List[Type], Symbol) = {
 
@@ -109,13 +109,18 @@ object Applications {
       else fail
     }
     else {
+      def resultBindSym(resType: Type): Symbol =
+        ctx.newPatternBoundSymbol(PatMatResultBindName.fresh(), resType, pos)
+
       assert(unapplyName == nme.unapply)
       if (isProductMatch(unapplyResult, args.length)) {
-        val sym = ctx.newPatternBoundSymbol(PatMatStdBinderName.fresh(), unapplyResult, pos)
+        val sym = resultBindSym(unapplyResult)
         (productSelectorTypes(TermRef(NoPrefix, sym)), sym)
       }
-      else if (isGetMatch(unapplyResult, pos))
-        (getUnapplySelectors(getTp, args, pos), NoSymbol)
+      else if (isGetMatch(unapplyResult, pos)) {
+        val sym = resultBindSym(getTp)
+        (getUnapplySelectors(TermRef(NoPrefix, sym), args, pos), sym)
+      }
       else if (unapplyResult.widenSingleton isRef defn.BooleanClass)
         (Nil, NoSymbol)
       else if (defn.isProductSubType(unapplyResult))

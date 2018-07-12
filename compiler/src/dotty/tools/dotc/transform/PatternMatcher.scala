@@ -12,7 +12,7 @@ import SymUtils._
 import Flags._, Constants._
 import Decorators._
 import patmat.Space
-import NameKinds.{UniqueNameKind, PatMatStdBinderName, PatMatCaseName}
+import NameKinds.{UniqueNameKind, PatMatStdBinderName, PatMatCaseName, PatMatResultBindName }
 import config.Printers.patmatch
 import reporting.diagnostic.messages._
 
@@ -280,12 +280,23 @@ object PatternMatcher {
       }
 
       /** Plan for matching the result of an unapply against argument patterns `args` */
-      def unapplyPlan(unapp: Tree, args: List[Tree]): Plan = {
+      def unapplyPlan(extractor: Tree, implicits: List[Tree], args: List[Tree], resultSym: TermSymbol = null): Plan = {
+        val mt @ MethodType(_) = extractor.tpe.widen
+        var unapp = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))
+        if (implicits.nonEmpty) unapp = unapp.appliedToArgs(implicits)
+
         def caseClass = unapp.symbol.owner.linkedClass
         lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
 
         def isSyntheticScala2Unapply(sym: Symbol) =
           sym.is(SyntheticCase) && sym.owner.is(Scala2x)
+
+        def addResultBind(plan: Plan, result: Symbol): Plan =
+          if (resultSym != null) {
+            initializer(resultSym) = ref(result)
+            LetPlan(resultSym, plan)
+          }
+          else plan
 
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
           matchArgsPlan(caseAccessors.map(ref(scrutinee).select(_)), args, onSuccess)
@@ -297,7 +308,7 @@ object PatternMatcher {
             if (isProductMatch(unapp.tpe.widen, args.length) && !isUnapplySeq) {
               val selectors = productSelectors(unapp.tpe).take(args.length)
                 .map(ref(unappResult).select(_))
-              matchArgsPlan(selectors, args, onSuccess)
+              addResultBind(matchArgsPlan(selectors, args, onSuccess), unappResult)
             }
             else {
               assert(isGetMatch(unapp.tpe))
@@ -310,7 +321,7 @@ object PatternMatcher {
                     val selectors =
                       if (args.tail.isEmpty) ref(getResult) :: Nil
                       else productSelectors(get.tpe).map(ref(getResult).select(_))
-                    matchArgsPlan(selectors, args, onSuccess)
+                    addResultBind(matchArgsPlan(selectors, args, onSuccess), getResult)
                   }
               }
               TestPlan(NonEmptyTest, unappResult, unapp.pos, argsPlan, onFailure)
@@ -329,10 +340,12 @@ object PatternMatcher {
             },
             onFailure)
         case UnApply(extractor, implicits, args) =>
-          val mt @ MethodType(_) = extractor.tpe.widen
-          var unapp = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))
-          if (implicits.nonEmpty) unapp = unapp.appliedToArgs(implicits)
-          val unappPlan = unapplyPlan(unapp, args)
+          val unappPlan = unapplyPlan(extractor, implicits, args)
+          if (scrutinee.info.isNotNull || nonNull(scrutinee)) unappPlan
+          else TestPlan(NonNullTest, scrutinee, tree.pos, unappPlan, onFailure)
+        case Bind(name, UnApply(extractor, implicits, args)) if name.is(PatMatResultBindName) => // result bind
+          val resultSym = tree.symbol.asTerm
+          val unappPlan = unapplyPlan(extractor, implicits, args, resultSym)
           if (scrutinee.info.isNotNull || nonNull(scrutinee)) unappPlan
           else TestPlan(NonNullTest, scrutinee, tree.pos, unappPlan, onFailure)
         case Bind(name, body) =>
