@@ -4144,16 +4144,22 @@ object Types {
         @tailrec def loop(tree: Tree, argsAcc: List[Type]): Option[(Symbol, List[Type])] = tree match {
           case Trees.Apply(fn, args) =>
             fn.tpe.stripMethodPrefix match {
-              case fnTpe: TermRef if fn.symbol.isPrimaryConstructor =>
-                Some((fn.symbol, args.tpes ::: argsAcc))
+              case fnTpe: TermRef =>
+                if (fn.symbol.isPrimaryConstructor)
+                  Some((fn.symbol, args.tpes ::: argsAcc))
+                else
+                  None
               case fnTpe: MethodType =>
                 loop(fn, args.tpes ::: argsAcc)
             }
 
           case Trees.TypeApply(fn, _) =>
             fn.tpe match {
-              case fnTpe: TermRef if fn.symbol.isPrimaryConstructor =>
-                Some((fn.symbol, argsAcc))
+              case fnTpe: TermRef =>
+                if (fn.symbol.isPrimaryConstructor)
+                  Some((fn.symbol, argsAcc))
+                else
+                  None
               case _ => loop(fn, argsAcc)
             }
 
