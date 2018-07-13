@@ -1029,7 +1029,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
         val unapplyPatterns = (bunchedArgs, argTypes).zipped map (typed(_, _))
         var result: tpd.Tree = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
-        if (sym.exists) result = tpd.Bind(sym, result)
+        if (sym.exists) result = tpd.Bind(sym, result).withPos(sym.pos)
         unapp.println(s"unapply patterns = $unapplyPatterns")
         if ((ownType eq selType) || ownType.isError) result
         else tryWithClassTag(Typed(result, TypeTree(ownType)), selType)
