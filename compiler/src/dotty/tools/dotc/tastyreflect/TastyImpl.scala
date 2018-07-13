@@ -5,6 +5,7 @@ import dotty.tools.dotc.core
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.NameKinds.PatMatResultBindName
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.reporting.Reporter
@@ -577,15 +578,18 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
     object Bind extends BindExtractor {
       def unapply(x: Pattern)(implicit ctx: Context): Option[(String, Pattern)] = x match {
+        case x: tpd.Bind @unchecked if x.name.is(PatMatResultBindName) => unapply(x.body)
         case x: tpd.Bind @unchecked if x.name.isTermName => Some(x.name.toString, x.body)
+        case Trees.Typed(x, _) => unapply(x)
         case _ => None
       }
     }
 
     object Unapply extends UnapplyExtractor {
       def unapply(x: Pattern)(implicit ctx: Context): Option[(Term, List[Term], List[Pattern])] = x match {
+        case x: tpd.Bind @unchecked if x.name.is(PatMatResultBindName) => unapply(x.body)
         case Trees.UnApply(fun, implicits, patterns) => Some((fun, implicits, patterns))
-        case Trees.Typed(Trees.UnApply(fun, implicits, patterns), _) => Some((fun, implicits, patterns))
+        case Trees.Typed(x, _) => unapply(x)
         case _ => None
       }
     }
