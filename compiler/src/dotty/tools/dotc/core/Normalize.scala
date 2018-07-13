@@ -147,6 +147,12 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
         }
       }
       else if (fnSym is Transparent) {
+        // Semantically, this is what we want to do:
+        // if (fnSym.isCompleting)
+        //   if (ctx.isTransparentContext) Stuck(tp)
+        //   else throw CyclicReference(fnSym)
+        // else { ... }
+
         // Reduction step
         // TODO(gsps): Also reduce if fnSym's finalResultType is singleton (or do this in TypeAssigner?)
         val unfolder = defUnfolder(fnSym)
