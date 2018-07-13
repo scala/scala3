@@ -1,6 +1,5 @@
 package dotty.tools.repl
 
-import dotty.tools.backend.jvm.GenBCode
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.ast.tpd.TreeOps
@@ -15,11 +14,10 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.reporting.diagnostic.messages
 import dotty.tools.dotc.transform.PostTyper
-import dotty.tools.dotc.typer.{FrontEnd, ImportInfo}
+import dotty.tools.dotc.typer.{FrontEnd, ImportInfo, Typer}
 import dotty.tools.dotc.util.Positions._
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
-import dotty.tools.io._
 import dotty.tools.repl.results._
 
 import scala.collection.mutable
@@ -196,13 +194,18 @@ class ReplCompiler extends Compiler {
         val stat = stats.last.asInstanceOf[tpd.Tree]
         if (stat.tpe.isError) stat.tpe.show
         else {
-          val docCtx = ctx.docCtx.get
           val symbols = extractSymbols(stat)
-          val doc = symbols.collectFirst {
-            case sym if docCtx.docstrings.contains(sym) =>
-              docCtx.docstrings(sym).raw
-          }
-          doc.getOrElse(s"// No doc for `${expr}`")
+          val typer = new Typer()
+          val doc = for {
+            sym <- symbols
+            owner = sym.owner
+            cookingCtx = ctx.withOwner(owner)
+            cooked <- typer.cookComment(sym, owner)(cookingCtx)
+            body <- cooked.expandedBody
+          } yield body
+
+          if (doc.hasNext) doc.next()
+          else s"// No doc for `$expr`"
         }
 
       case _ =>
