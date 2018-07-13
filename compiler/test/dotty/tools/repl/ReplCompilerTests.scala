@@ -110,4 +110,18 @@ class ReplCompilerTests extends ReplTest {
     run("def f(g: => Int): Int = g")
     assertTrue(storedOutput().startsWith("def f(g: => Int): Int"))
   }
+
+  @Test def i4051 = fromInitialState { implicit state =>
+    val source =
+      """val x: PartialFunction[Int, Int] = { case x => x }
+        |val y = Map(("A", 1), ("B", 2), ("X", 3)).collect { case (k, v) => v }.toList""".stripMargin
+
+    val expected = List(
+      "val x: PartialFunction[Int, Int] = <function1>",
+      "val y: List[Int] = List(1, 2, 3)"
+    )
+
+    run(source)
+    assertEquals(expected, storedOutput().split("\n").toList)
+  }
 }
