@@ -181,11 +181,14 @@ object ShortcutImplicits {
   }
 
   /** A new `m$direct` method to accompany the given method `m` */
-  private def newShortcutMethod(sym: Symbol)(implicit ctx: Context): Symbol =
-    sym.copy(
+  private def newShortcutMethod(sym: Symbol)(implicit ctx: Context): Symbol = {
+    val direct = sym.copy(
       name = DirectMethodName(sym.name.asTermName).asInstanceOf[sym.ThisName],
-      flags = sym.flags &~ Override | Synthetic,
+      flags = sym.flags | Synthetic,
       info = directInfo(sym.info))
+    if (direct.allOverriddenSymbols.isEmpty) direct.resetFlag(Override)
+    direct
+  }
 
   def shortcutMethod(sym: Symbol, phase: DenotTransformer)(implicit ctx: Context) =
     sym.owner.info.decl(DirectMethodName(sym.name.asTermName))
