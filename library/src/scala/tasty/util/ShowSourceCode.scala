@@ -369,6 +369,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         expr match {
           case Term.Lambda(_, _) =>
             // Decompile lambda from { def annon$(...) = ...; closure(annon$, ...)}
+            assert(stats.size == 1)
             val DefDef(_, _, args :: Nil, _, Some(rhs)) :: Nil = stats
             inParens {
               printArgsDefs(args)
