@@ -1,7 +1,5 @@
 import scala.quoted._
 
-import dotty.tools.dotc.quoted.Toolbox._
-
 import scala.tasty._
 
 case class Position(path: String, start: Int, end: Int,

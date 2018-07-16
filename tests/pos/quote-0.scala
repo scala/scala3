@@ -2,7 +2,6 @@ import scala.quoted._
 
 import dotty.tools.dotc.quoted.Toolbox._
 
-
 object Macros {
 
   inline def assert(expr: => Boolean): Unit =
