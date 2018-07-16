@@ -2,6 +2,7 @@ package dotty.tools.dotc.core.quoted
 
 import dotty.tools.dotc.core.tasty._
 import dotty.tools.dotc.core.tasty.TastyUnpickler.NameTable
+import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 
 object QuoteUnpickler {
   class QuotedTreeSectionUnpickler(posUnpickler: Option[PositionUnpickler], splices: Seq[Any])
@@ -15,12 +16,9 @@ object QuoteUnpickler {
  *  @param bytes         the bytearray containing the Tasty file from which we unpickle
  *  @param splices       splices that will fill the holes in the quote
  */
-class QuoteUnpickler(bytes: Array[Byte], splices: Seq[Any], isTypeTree: Boolean) extends DottyUnpickler(bytes) {
+class QuoteUnpickler(bytes: Array[Byte], splices: Seq[Any], mode: UnpickleMode) extends DottyUnpickler(bytes, mode) {
   import DottyUnpickler._
   import QuoteUnpickler._
-
-  protected override val mode: TreeUnpickler.UnpickleMode =
-    if (isTypeTree) TreeUnpickler.UnpickleMode.TypeTree else TreeUnpickler.UnpickleMode.Term
 
   protected override def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler], commentUnpicklerOpt: Option[CommentUnpickler]): TreeSectionUnpickler =
     new QuotedTreeSectionUnpickler(posUnpicklerOpt, splices)

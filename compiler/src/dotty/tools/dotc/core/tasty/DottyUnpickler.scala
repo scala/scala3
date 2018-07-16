@@ -11,6 +11,7 @@ import util.{SourceFile, NoSource}
 import Annotations.Annotation
 import classfile.ClassfileParser
 import Names.SimpleName
+import TreeUnpickler.UnpickleMode
 
 object DottyUnpickler {
 
@@ -37,7 +38,7 @@ object DottyUnpickler {
 /** A class for unpickling Tasty trees and symbols.
  *  @param bytes         the bytearray containing the Tasty file from which we unpickle
  */
-class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with tpd.TreeProvider {
+class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLevel) extends ClassfileParser.Embedded with tpd.TreeProvider {
   import tpd._
   import DottyUnpickler._
 
@@ -45,8 +46,6 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with t
   private val posUnpicklerOpt = unpickler.unpickle(new PositionsSectionUnpickler)
   private val commentUnpicklerOpt = unpickler.unpickle(new CommentsSectionUnpickler)
   private val treeUnpickler = unpickler.unpickle(treeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)).get
-
-  protected val mode: TreeUnpickler.UnpickleMode = TreeUnpickler.UnpickleMode.TopLevel
 
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling

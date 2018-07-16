@@ -6,13 +6,13 @@ import dotty.tools.dotc.config.Printers._
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.tasty.{TastyPickler, TastyPrinter, TastyString}
+import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 
 import scala.quoted.Types._
 import scala.quoted.Exprs._
@@ -104,7 +104,8 @@ object PickledQuotes {
       new TastyPrinter(bytes).printContents()
     }
 
-    val unpickler = new QuoteUnpickler(bytes, splices, isType)
+    val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
+    val unpickler = new QuoteUnpickler(bytes, splices, mode)
     unpickler.enter(Set.empty)
     val tree = unpickler.tree
 
