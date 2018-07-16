@@ -46,7 +46,8 @@ object Applications {
     val ref = extractorMember(tp, name)
     if (ref.isOverloaded)
       errorType(i"Overloaded reference to $ref is not allowed in extractor", errorPos)
-    ref.info.widenExpr.annotatedToRepeated.dealiasKeepAnnots
+    // ref.info.widenExpr.annotatedToRepeated.dealiasKeepAnnots
+    if (ref.exists && ctx.isDependent) tp.select(name) else ref.info.widenExpr.annotatedToRepeated.dealiasKeepAnnots
   }
 
   /** Does `tp` fit the "product match" conditions as an unapply result type
@@ -101,9 +102,11 @@ object Applications {
     }
 
     if (unapplyName == nme.unapplySeq) {
-      if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
-      else if (isGetMatch(unapplyResult, pos) && getTp.derivesFrom(defn.SeqClass)) {
-        val seqArg = getTp.elemType.hiBound
+      if (unapplyResult derivesFrom defn.SeqClass)
+        seqSelector :: Nil
+      else if (isGetMatch(unapplyResult, pos)) {
+        val seqArg = (if (ctx.isDependent) getTp.widenTermRefExpr.annotatedToRepeated.dealiasKeepAnnots else getTp)
+          .elemType.hiBound
         if (seqArg.exists) args.map(Function.const(seqArg))
         else fail
       }
@@ -989,7 +992,11 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
               ex"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $selType",
               tree.pos)
           }
-        val dummyArg = dummyTreeOfType(ownType)
+        val dummyArgTp =
+          if (selType eq ownType) ownType
+          else if (ctx.isDependent) TypeOf.TypeApply(selType.select(defn.Any_asInstanceOf), ownType)
+          else ownType
+        val dummyArg = dummyTreeOfType(dummyArgTp)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
         def unapplyImplicits(unapp: Tree): List[Tree] = unapp match {
           case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2

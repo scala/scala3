@@ -1034,7 +1034,7 @@ class Typer extends Namer
   }
 
   def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context) = {
-    val gadts = gadtSyms(selType)
+    val gadts = gadtSyms(selType.widen)
     pt match {
       case TypeOf.Match(_, cs) if cs.length == cases.length =>
         cases.zip(cs).mapconserve { case (c, p) => typedCase(c, selType, p, gadts) }
@@ -1350,7 +1350,7 @@ class Typer extends Namer
 
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Tree = track("typedBind") {
     val pt1 = fullyDefinedType(pt, "pattern variable", tree.pos)
-    val body1 = typed(tree.body, pt1)
+    val body1 = typed(tree.body, pt1.widen)
     body1 match {
       case UnApply(fn, Nil, arg :: Nil)
       if fn.symbol.exists && fn.symbol.owner == defn.ClassTagClass && !body1.tpe.isError =>
@@ -1364,9 +1364,12 @@ class Typer extends Namer
         else {
           // for a singleton pattern like `x @ Nil`, `x` should get the type from the scrutinee
           // see tests/neg/i3200b.scala and SI-1503
-          val symTp =
+          val bindTp =
             if (body1.tpe.isInstanceOf[TermRef]) pt1
             else body1.tpe.underlyingIfRepeated(isJava = false)
+          val symTp =
+            if (ctx.isDependent) TypeOf.TypeApply(pt1.select(defn.Any_asInstanceOf), bindTp)
+            else bindTp
           val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.pos)
           if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Implicit)
           if (ctx.mode.is(Mode.InPatternAlternative))

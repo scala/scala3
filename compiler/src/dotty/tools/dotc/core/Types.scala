@@ -4165,6 +4165,18 @@ object Types {
           argTps.map(x => dummyTreeOfType(x))
         ))
 
+      def apply(funTp: Type, argTps: List[Type])(implicit ctx: Context): TypeOf = {
+        val underlyingTp =
+          ast.tpd.TypeApply(dummyTreeOfType(funTp), argTps.map(x => dummyTreeOfType(x))).tpe match {
+            case tpe: TypeOf => tpe.underlying
+            case tpe         => tpe
+          }
+        apply(underlyingTp, funTp, argTps)
+      }
+
+      def apply(fn: Type, arg1: Type)(implicit ctx: Context): TypeOf =
+        apply(fn, List(arg1))
+
       def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
         case Trees.TypeApply(fn, args) => Some((fn.tpe, args.map(_.tpe)))
         case _ => None
