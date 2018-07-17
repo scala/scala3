@@ -780,13 +780,7 @@ class Namer { typer: Typer =>
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
   class Completer(val original: Tree)(implicit ctx: Context) extends LazyType with SymbolLoaders.SecondCompleter {
 
-    protected def localContext(owner: Symbol) = ctx.fresh.setOwner(owner, {
-      // TODO: clean this up
-      original match {
-        case md: MemberDef => md.mods.is(Transparent)
-        case _ => false
-      }
-    }).setTree(original)
+    protected def localContext(owner: Symbol) = ctx.fresh.setOwner(owner).setTree(original)
 
     /** The context with which this completer was created */
     def creationContext = ctx
@@ -1125,7 +1119,7 @@ class Namer { typer: Typer =>
       // definition is inline (i.e. final in Scala2) and keep module singleton types
       // instead of widening to the underlying module class types.
       def widenRhs(tp: Type): Type =
-        if (ctx.isTransparentContext)
+        if (ctx.isTransparent)
           tp
         else
           tp.widenTermRefExpr match {

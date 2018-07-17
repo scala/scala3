@@ -149,7 +149,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
       else if (fnSym is Transparent) {
         // Semantically, this is what we want to do:
         // if (fnSym.isCompleting)
-        //   if (ctx.isTransparentContext) Stuck(tp)
+        //   if (ctx.isTransparent) Stuck(tp)
         //   else throw CyclicReference(fnSym)
         // else { ... }
 

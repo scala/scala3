@@ -160,6 +160,28 @@ object Contexts {
       _typeComparer
     }
 
+    /** Is this context transparent? */
+    private[this] var _transparentInit: Boolean = true // NOTE: This initial value only applies to InitialContext
+    private[this] var _transparent: Boolean = false
+    final def isTransparent: Boolean = {
+      /** NOTE: The initialization of `_transparent` is rather tricky: We do need to make sure that any
+        *       enclosing context's `_transparent` has been computed, since the property is inherited. In case the
+        *       outer's `transparent` has been accessed before, we inherit the value by way of clone() in fresh(),
+        *       (and as a result `_transparentInit` will be true as well).
+        *       Otherwise we force the enclosing context's `_transparent` here, and, if the outer turns out not to be
+        *       transparent, we finally also compute `_transparent` based on this context.
+        */
+      if (!_transparentInit) {
+        val S = this.base.settings
+        _transparent = if (owner eq NoSymbol) false else
+          outer.isTransparent ||
+            this.owner.flagsUNSAFE.is(Flags.Transparent) ||
+            this.mode.is(Mode.InTypeOf)
+        _transparentInit = true
+      }
+      _transparent
+    }
+
     /** A map in which more contextual properties can be stored
      *  Typically used for attributes that are read and written only in special situations.
      */
@@ -305,10 +327,6 @@ object Contexts {
     def isNonEmptyScopeContext: Boolean =
       (this.scope ne outer.scope) && !this.scope.isEmpty
 
-    /** Is this a transparent context? */
-    def isTransparentContext: Boolean =
-      this.ctx.mode.is(Mode.Transparent)
-
     /** The next outer context whose tree is a template or package definition
      *  Note: Currently unused
     def enclTemplate: Context = {
@@ -409,6 +427,9 @@ object Contexts {
       this.phasedCtxs = null
       // See comment related to `creationTrace` in this file
       // setCreationTrace()
+      // The _transparent member was cloned, but is monotonic anyways, so we *could* only recompute in case
+      // _transparentInit is false, but it turns out that branching here is very costly.
+      this._transparentInit = false
       this
     }
 
@@ -446,15 +467,7 @@ object Contexts {
   abstract class FreshContext extends Context {
     def setPeriod(period: Period): this.type = { this.period = period; this }
     def setMode(mode: Mode): this.type = { this.mode = mode; this }
-    def setOwner(owner: Symbol): this.type =
-      setOwner(owner, owner.flags.is(Flags.Transparent))
-    def setOwner(owner: Symbol, addTransparent: Boolean): this.type = {
-      assert(owner != NoSymbol)
-      this.owner = owner
-      if (addTransparent)
-        this.addMode(Mode.Transparent)
-      this
-    }
+    def setOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
     def setTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
     def setScope(scope: Scope): this.type = { this.scope = scope; this }
     def setNewScope: this.type = { this.scope = newScope; this }

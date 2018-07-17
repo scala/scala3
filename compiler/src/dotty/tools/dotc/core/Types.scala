@@ -4049,7 +4049,7 @@ object Types {
         tp
 
     private def transparently(implicit ctx: Context): Context =
-      ctx.addMode(Mode.Transparent)
+      ctx.addMode(Mode.InTypeOf)
 
     object If {
       def unapply(to: TypeOf): Option[(Type, Type, Type)] = to.tree match {

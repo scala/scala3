@@ -139,7 +139,7 @@ trait TypeAssigner {
 
         if (pre eq tp.prefix)
           tp
-        else if (ctx.isTransparentContext)
+        else if (ctx.isTransparent)
           default
         else
           tryWiden(tp, tp.prefix).orElse {
@@ -377,7 +377,7 @@ trait TypeAssigner {
             if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
             else fntpe.resultType
           val tpe1 =
-            if (!ctx.erasedTypes && (fn.symbol.isTransparentMethod || ctx.isTransparentContext)) TypeOf(tpe, tree)
+            if (!ctx.erasedTypes && (fn.symbol.isTransparentMethod || ctx.isTransparent)) TypeOf(tpe, tree)
             else tpe
           ctx.normalizedType(tpe1)
         } else
@@ -440,7 +440,7 @@ trait TypeAssigner {
           if (sameLength(argTypes, paramNames)) {
             val tpe = pt.instantiate(argTypes)
             val tpe1 =
-              if (!ctx.erasedTypes && (fn.symbol.isTransparentMethod || ctx.isTransparentContext)) TypeOf(tpe, tree)
+              if (!ctx.erasedTypes && (fn.symbol.isTransparentMethod || ctx.isTransparent)) TypeOf(tpe, tree)
               else tpe
             ctx.normalizedType(tpe1)
           }
@@ -473,7 +473,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) = {
     val underlying = thenp.tpe | elsep.tpe
-    if (!ctx.erasedTypes && ctx.isTransparentContext)
+    if (!ctx.erasedTypes && ctx.isTransparent)
       tree.withType(TypeOf(underlying, tree))
     else
       tree.withType(underlying)
@@ -489,7 +489,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) = {
     val underlying = ctx.typeComparer.lub(cases.tpes)
-    if (!ctx.erasedTypes && ctx.isTransparentContext)
+    if (!ctx.erasedTypes && ctx.isTransparent)
       tree.withType(TypeOf(underlying, tree))
     else
       tree.withType(underlying)

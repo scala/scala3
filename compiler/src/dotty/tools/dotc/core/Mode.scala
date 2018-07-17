@@ -94,6 +94,6 @@ object Mode {
   /** We are in the IDE */
   val Interactive = newMode(20, "Interactive")
 
-  /** We are in a transparent context */
-  val Transparent = newMode(21, "Transparent")
+  /** We are in TypeOf, e.g. to type a SingletonTypeTree or to compute a derived TypeOf */
+  val InTypeOf = newMode(21, "InTypeOf")
 }
