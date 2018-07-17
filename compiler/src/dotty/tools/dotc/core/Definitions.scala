@@ -9,7 +9,6 @@ import scala.collection.{ mutable, immutable }
 import PartialFunction._
 import collection.mutable
 import util.common.alwaysZero
-import dotty.tools.dotc.transform.TreeGen
 
 object Definitions {
 
@@ -347,7 +346,7 @@ class Definitions {
     def Predef_undefined(implicit ctx: Context) = Predef_undefinedR.symbol
     // The set of all wrap{X, Ref}Array methods, where X is a value type
     val Predef_wrapArray = new PerRun[collection.Set[Symbol]]({ implicit ctx =>
-      val methodNames = ScalaValueTypes.map(TreeGen.wrapArrayMethodName) + nme.wrapRefArray
+      val methodNames = ScalaValueTypes.map(ast.tpd.wrapArrayMethodName) + nme.wrapRefArray
       methodNames.map(ScalaPredefModule.requiredMethodRef(_).symbol)
     })
 
@@ -401,7 +400,12 @@ class Definitions {
       List(AnyClass.typeRef), EmptyScope)
   lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
-  lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
+  lazy val SeqType: TypeRef = {
+    val fullName =
+      if (ctx.settings.YimmutableSeq.value) "scala.collection.immutable.Seq"
+      else "scala.collection.Seq"
+    ctx.requiredClassRef(fullName)
+  }
   def SeqClass(implicit ctx: Context) = SeqType.symbol.asClass
     lazy val Seq_applyR = SeqClass.requiredMethodRef(nme.apply)
     def Seq_apply(implicit ctx: Context) = Seq_applyR.symbol

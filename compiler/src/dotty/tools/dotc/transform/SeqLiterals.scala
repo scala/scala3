@@ -35,14 +35,6 @@ class SeqLiterals extends MiniPhase {
       val arr = JavaSeqLiteral(tree.elems, tree.elemtpt)
       //println(i"trans seq $tree, arr = $arr: ${arr.tpe} ${arr.tpe.elemType}")
       val elemtp = tree.elemtpt.tpe
-      val elemCls = elemtp.classSymbol
-      val (wrapMethStr, targs) =
-        if (elemCls.isPrimitiveValueClass) (s"wrap${elemCls.name}Array", Nil)
-        else if (elemtp derivesFrom defn.ObjectClass) ("wrapRefArray", elemtp :: Nil)
-        else ("genericWrapArray", elemtp :: Nil)
-      ref(defn.ScalaPredefModule)
-        .select(wrapMethStr.toTermName)
-        .appliedToTypes(targs)
-        .appliedTo(arr)
+      wrapArray(arr, elemtp)
   }
 }
