@@ -36,13 +36,6 @@ pipeline:
       - cp -R . /tmp/2/ && cd /tmp/2/
       - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
 
-  test_optimised:
-    group: test
-    image: lampepfl/dotty:2018-06-29
-    commands:
-      - cp -R . /tmp/3/ && cd /tmp/3/
-      - ./project/scripts/sbt dotty-optimised/test
-
   test_sbt:
     group: test
     image: lampepfl/dotty:2018-06-29

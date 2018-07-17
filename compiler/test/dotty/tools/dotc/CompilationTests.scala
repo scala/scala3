@@ -311,14 +311,6 @@ class CompilationTests extends ParallelTesting {
     tests.foreach(_.delete())
   }
 
-  @Category(Array(classOf[SlowTests]))
-  @Test def testOptimised: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("optimised/testOptimised")
-    compileFilesInDir("tests/pos", defaultOptimised).checkCompile()
-    compileFilesInDir("tests/run", defaultOptimised).checkRuns()
-    compileFilesInDir("tests/neg", defaultOptimised).checkExpectedErrors()
-  }
-
   @Test def testPlugins: Unit = {
     val pluginFile = "plugin.properties"
 

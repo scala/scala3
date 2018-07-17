@@ -143,10 +143,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YshowNoInline = BooleanSetting("-Yshow-no-inline", "Show inlined code without the 'inlined from' info")
 
   /** Linker specific flags */
-  val optimise = BooleanSetting("-optimise", "Generates faster bytecode by applying local optimisations to the .program") withAbbreviation "-optimize"
   val Xlink = BooleanSetting("-Xlink", "Recompile library code with the application.")
-  val YoptPhases = PhasesSetting("-Yopt-phases", "Restrict the optimisation phases to execute under -optimise.")
-  val YoptFuel = IntSetting("-Yopt-fuel", "Maximum number of optimisations performed under -optimise.", -1)
   val YnoDecodeStacktraces = BooleanSetting("-Yno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.")
 
   /** Dottydoc specific settings */

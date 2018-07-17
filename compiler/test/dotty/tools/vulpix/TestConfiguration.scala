@@ -49,7 +49,6 @@ object TestConfiguration {
 
   val basicDefaultOptions = checkOptions ++ noCheckOptions ++ yCheckOptions
   val defaultUnoptimised = TestFlags(classPath, runClassPath, basicDefaultOptions)
-  val defaultOptimised = defaultUnoptimised and "-optimise"
   val defaultOptions = defaultUnoptimised
   val defaultRunWithCompilerOptions = defaultOptions.withRunClasspath(Jars.dottyRunWithCompiler.mkString(":"))
   val allowDeepSubtypes = defaultOptions without "-Yno-deep-subtypes"
