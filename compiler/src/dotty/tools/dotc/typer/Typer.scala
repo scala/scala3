@@ -516,7 +516,8 @@ class Typer extends Namer
           case TypeApplications.EtaExpansion(tycon) => tpt1 = tpt1.withType(tycon)
           case _ =>
         }
-        checkClassType(tpt1.tpe, tpt1.pos, traitReq = false, stablePrefixReq = true)
+        if (checkClassType(tpt1.tpe, tpt1.pos, traitReq = false, stablePrefixReq = true) eq defn.ObjectType)
+          tpt1 = TypeTree(defn.ObjectType).withPos(tpt1.pos)
 
         tpt1 match {
           case AppliedTypeTree(_, targs) =>
