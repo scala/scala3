@@ -4006,6 +4006,8 @@ object Types {
   final class CachedTypeOf(underlyingTp: Type, tree: Tree) extends TypeOf(underlyingTp, tree)
 
   object TypeOf {
+    import typer.ProtoTypes.dummyTreeOfType
+
     def apply(underlyingTp: Type, tree: untpd.Tree)(implicit ctx: Context): TypeOf = {
       assert(!ctx.erasedTypes)
       val tree1 = tree.clone.asInstanceOf[Tree]
@@ -4052,6 +4054,13 @@ object Types {
       ctx.addMode(Mode.InTypeOf)
 
     object If {
+      def apply(condTp: Type, thenTp: Type, elseTp: Type)(implicit ctx: Context): Type =
+        ast.tpd.If(
+          dummyTreeOfType(condTp),
+          dummyTreeOfType(thenTp),
+          dummyTreeOfType(elseTp)
+        )(transparently).tpe.asInstanceOf[TypeOf]
+
       def unapply(to: TypeOf): Option[(Type, Type, Type)] = to.tree match {
         case Trees.If(cond, thenb, elseb) => Some((cond.tpe, thenb.tpe, elseb.tpe))
         case _ => None
@@ -4069,6 +4078,9 @@ object Types {
     }
 
     object Match {
+      def apply(selectorTp: Type, caseTps: List[Type])(implicit ctx: Context): TypeOf =
+        ???.asInstanceOf[TypeOf] // TODO
+
       def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
         case Trees.Match(selector, cases) =>
           // TODO: We only look at .body.tpe for now, eventually we should
@@ -4085,6 +4097,10 @@ object Types {
     }
 
     object Apply {
+      def apply(funTp: Type, argTps: List[Type])(implicit ctx: Context): TypeOf =
+        dummyTreeOfType(funTp).appliedToArgs(argTps.map(x => dummyTreeOfType(x)))(transparently)
+          .tpe.asInstanceOf[TypeOf]
+
       def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
         case Trees.Apply(fn, args) => Some((fn.tpe, args.map(_.tpe)))
         case _ => None
@@ -4098,6 +4114,10 @@ object Types {
     }
 
     object TypeApply {
+      def apply(funTp: Type, argTps: List[Type])(implicit ctx: Context): TypeOf =
+        dummyTreeOfType(funTp).appliedToTypes(argTps)(transparently)
+          .tpe.asInstanceOf[TypeOf]
+
       def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
         case Trees.TypeApply(fn, args) => Some((fn.tpe, args.map(_.tpe)))
         case _ => None

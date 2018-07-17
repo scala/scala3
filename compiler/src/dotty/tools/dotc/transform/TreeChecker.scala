@@ -440,8 +440,8 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     // NOTE: Disabled since tailRec introduces local methods that leak, otherwise (and make Ycheck fail)
-//    override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(implicit ctx: Context): Tree =
-//      tree
+   // override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(implicit ctx: Context): Tree =
+   //   tree
 
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context) = {

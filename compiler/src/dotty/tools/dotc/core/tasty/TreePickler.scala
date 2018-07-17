@@ -153,15 +153,30 @@ class TreePickler(pickler: TastyPickler) {
     }
   }
 
+  private def pickleTypeOf(to: TypeOf, richTypes: Boolean)(implicit ctx: Context): Unit = {
+    writeByte(TYPEOF)
+    withLength {
+      val treeKind = to.tree match {
+        case _: If        => TypeOfTags.If
+        case _: Match     => TypeOfTags.Match
+        case _: Apply     => TypeOfTags.Apply
+        case _: TypeApply => TypeOfTags.TypeApply
+      }
+      writeByte(treeKind)
+      to match {
+        case TypeOf.Generic(types) =>
+          types.foreach(tp => pickleType(tp, richTypes))
+      }
+    }
+  }
+
   private def pickleNewType(tpe: Type, richTypes: Boolean)(implicit ctx: Context): Unit = tpe match {
     case AppliedType(tycon, args) =>
       writeByte(APPLIEDtype)
       withLength { pickleType(tycon); args.foreach(pickleType(_)) }
     case ConstantType(value) =>
       pickleConstant(value)
-    case tpe: TypeOf =>
-      writeByte(TYPEOF)
-      withLength { pickleType(tpe.underlyingTp, richTypes); pickleTree(tpe.tree) }
+    case tpe: TypeOf => pickleTypeOf(tpe, richTypes)
     case tpe: NamedType =>
       val sym = tpe.symbol
       def pickleExternalRef(sym: Symbol) = {

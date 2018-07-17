@@ -290,6 +290,17 @@ class TreeUnpickler(reader: TastyReader,
           result.asInstanceOf[LT]
         }
 
+        def readTypeOf(): Type = {
+          val treeKind = readByte()
+          val types = until(end)(readType())
+          (treeKind, types) match {
+            case (TypeOfTags.If, List(cond, thenb, elseb)) => TypeOf.If(cond, thenb, elseb)
+            case (TypeOfTags.Match, sel :: cases)          => TypeOf.Match(sel, cases)
+            case (TypeOfTags.Apply, fn :: args)            => TypeOf.Apply(fn, args)
+            case (TypeOfTags.TypeApply, fn :: args)        => TypeOf.TypeApply(fn, args)
+          }
+        }
+
         val result =
           (tag: @switch) match {
             case TERMREFin =>
@@ -325,7 +336,7 @@ class TreeUnpickler(reader: TastyReader,
             case ANNOTATEDtype =>
               AnnotatedType(readType(), Annotation(readTerm()))
             case TYPEOF =>
-              TypeOf(readType(), readTerm())
+              readTypeOf()
             case ANDtype =>
               AndType(readType(), readType())
             case ORtype =>
