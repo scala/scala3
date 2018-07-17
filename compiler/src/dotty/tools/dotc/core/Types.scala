@@ -1280,7 +1280,7 @@ object Types {
       case _ => Nil
     }
 
-    /** Is this either not a method at all, or a parameterless method? */
+    /** Is this either not a method at all, or a method without value parameters? */
     final def isParameterless(implicit ctx: Context): Boolean = stripMethodPrefix match {
       case mt: MethodType => false
       case _ => true

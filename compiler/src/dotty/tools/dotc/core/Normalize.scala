@@ -65,8 +65,6 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
       body.tpe.foreachPart(registerType, stopAtStatic = true)
     }
 
-    def isParameterless: Boolean = paramPos.isEmpty
-
     /** Performs beta-reduction for a given list of arguments, as seen from the given prefix. */
     def unfold(pre: Type, args: List[Type]): Type = {
       @tailrec def substPairs(paramPos: Int, args: List[Type],
@@ -156,7 +154,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
         // Reduction step
         // TODO(gsps): Also reduce if fnSym's finalResultType is singleton (or do this in TypeAssigner?)
         val unfolder = defUnfolder(fnSym)
-        if (realApplication || unfolder.isParameterless)
+        if (realApplication || fnSym.info.isInstanceOf[ExprType])
           apply(unfolder.unfold(fn.prefix, argss.flatten))
         else
           NotApplicable
