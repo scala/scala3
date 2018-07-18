@@ -19,7 +19,6 @@ import NameKinds.{ClassifiedNameKind, InlineAccessorName, UniqueInlineName, Tran
 import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
 import Annotations._
-import PrepareTransparent.foreachTopLevelMatch
 import transform.{ExplicitOuter, AccessProxies}
 import Inferencing.fullyDefinedType
 import config.Printers.inlining
@@ -34,9 +33,6 @@ import ast.TreeInfo
 
 object Inliner {
   import tpd._
-
-  /** An attachment labeling a toplevel match node of a transparent function */
-  private val TopLevelMatch = new Property.Key[Unit]
 
   /** A key to be used in a context property that provides a map from enclosing implicit
    *  value bindings to their right hand sides.
@@ -360,9 +356,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       // The normalized bindings collected in `bindingsBuf`
       bindingsBuf.transform(reducer.normalizeBinding(_)(inlineCtx))
 
-      // Identifiy all toplevel matches
-      inlineTyper.prepare(expansion)
-
       // Run a typing pass over the inlined tree. See InlineTyper for details.
       val expansion1 = inlineTyper.typed(expansion, pt)(inlineCtx)
 
@@ -650,10 +643,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   class InlineTyper extends Typer {
     import reducer._
 
-    /** Mark all toplevel matches with the `TopLevelMatch` attachment */
-    def prepare(tree: untpd.Tree): Unit =
-      foreachTopLevelMatch(tree, _.pushAttachment(TopLevelMatch, ()))
-
     override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
       tpe match {
         case tpe: NamedType if tpe.symbol.exists && !tpe.symbol.isAccessibleFrom(tpe.prefix, superAccess) =>
@@ -686,7 +675,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
 
     override def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context) =
-      tree.removeAttachment(TopLevelMatch) match {
+      tree.getAttachment(PrepareTransparent.TopLevelMatch) match {
         case Some(_) =>
           reduceTopLevelMatch(sel, selType, tree.cases, this) match {
             case Some((caseBindings, rhs)) =>

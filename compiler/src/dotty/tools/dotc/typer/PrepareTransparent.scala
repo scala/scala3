@@ -39,20 +39,21 @@ object PrepareTransparent {
    */
   private val ContextualImplicit = new Property.StickyKey[Unit]
 
+  /** An attachment labeling a toplevel match node of a transparent function */
+  val TopLevelMatch = new Property.StickyKey[Unit]
+
   def markContextualImplicit(tree: Tree)(implicit ctx: Context): Unit =
     if (!defn.ScalaPredefModule.moduleClass.derivesFrom(tree.symbol.maybeOwner))
       methPart(tree).putAttachment(ContextualImplicit, ())
 
-  def foreachTopLevelMatch(tree: untpd.Tree, op: untpd.Tree => Unit) = {
-    def recur(tree: untpd.Tree): Unit = tree match {
-      case tree: untpd.Match =>
-        op(tree)
-        tree.cases.foreach(recur)
-      case tree: untpd.Block =>
-        recur(tree.expr)
-      case _ =>
-    }
-    recur(tree)
+  def markTopLevelMatches(meth: Symbol, tree: untpd.Tree)(implicit ctx: Context): Unit = tree match {
+    case tree: untpd.Match =>
+      meth.setFlag(TypeLevel)
+      tree.putAttachment(TopLevelMatch, ())
+      tree.cases.foreach(markTopLevelMatches(meth, _))
+    case tree: untpd.Block =>
+      markTopLevelMatches(meth, tree.expr)
+    case _ =>
   }
 
   class InlineAccessors extends AccessProxies {
@@ -253,7 +254,6 @@ object PrepareTransparent {
             val typedBody =
               if (ctx.reporter.hasErrors) rawBody
               else ctx.compilationUnit.inlineAccessors.makeInlineable(rawBody)
-            foreachTopLevelMatch(originalBody, _ => inlined.setFlag(TypeLevel))
             val inlineableBody = addReferences(inlined, originalBody, typedBody)
             inlining.println(i"Body to inline for $inlined: $inlineableBody")
             inlineableBody

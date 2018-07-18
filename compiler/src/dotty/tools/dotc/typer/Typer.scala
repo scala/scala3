@@ -1447,7 +1447,10 @@ class Typer extends Namer
       (tparams1, sym.owner.typeParams).zipped.foreach ((tdef, tparam) =>
         rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
     }
-    if (sym.isTransparentMethod) rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
+    if (sym.isTransparentMethod) {
+      rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
+      PrepareTransparent.markTopLevelMatches(sym, ddef.rhs)
+    }
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)
 
     if (sym.isTransparentMethod) PrepareTransparent.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
