@@ -24,7 +24,7 @@ object Test {
     Files.deleteIfExists(classFile)
 
     {
-      implicit val settings = ToolboxSettings.make(optimise = true, outDir = Some(outDir.toString))
+      implicit val settings = ToolboxSettings.make(outDir = Some(outDir.toString))
       implicit val toolbox2: scala.quoted.Toolbox = dotty.tools.dotc.quoted.Toolbox.make
       println(expr.run)
       assert(Files.exists(classFile))

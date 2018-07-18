@@ -293,18 +293,6 @@ object Build {
     }
   )
 
-
-  // Bootstrap with -optimise
-  lazy val commonOptimisedSettings = commonBootstrappedSettings ++ Seq(
-    scalacOptions ++= Seq("-optimise"),
-
-    // The *-bootstrapped and *-optimised projects contain the same sources, so
-    // we only need to import one set in the IDE. We prefer to import the
-    // non-optimized projects because optimize is slower to compile and we do
-    // not trust its output yet.
-    excludeFromIDE := true
-  )
-
   lazy val commonBenchmarkSettings = Seq(
     outputStrategy := Some(StdoutOutput),
     mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
@@ -343,7 +331,6 @@ object Build {
   //   this is only necessary for compatibility with sbt which currently hardcodes the "dotty" artifact name
   lazy val dotty = project.in(file(".")).asDottyRoot(NonBootstrapped)
   lazy val `dotty-bootstrapped` = project.asDottyRoot(Bootstrapped)
-  lazy val `dotty-optimised` = project.asDottyRoot(BootstrappedOptimised)
 
   lazy val `dotty-interfaces` = project.in(file("interfaces")).
     disablePlugins(ScriptedPlugin).
@@ -425,12 +412,10 @@ object Build {
 
   lazy val `dotty-doc` = project.in(file("doc-tool")).asDottyDoc(NonBootstrapped)
   lazy val `dotty-doc-bootstrapped` = project.in(file("doc-tool")).asDottyDoc(Bootstrapped)
-  lazy val `dotty-doc-optimised` = project.in(file("doc-tool")).asDottyDoc(BootstrappedOptimised)
 
   def dottyDoc(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `dotty-doc`
     case Bootstrapped => `dotty-doc-bootstrapped`
-    case BootstrappedOptimised => `dotty-doc-optimised`
   }
 
   def testOnlyFiltered(test: String, options: String) = Def.inputTaskDyn {
@@ -718,12 +703,10 @@ object Build {
 
   lazy val `dotty-compiler` = project.in(file("compiler")).asDottyCompiler(NonBootstrapped)
   lazy val `dotty-compiler-bootstrapped` = project.in(file("compiler")).asDottyCompiler(Bootstrapped)
-  lazy val `dotty-compiler-optimised` = project.in(file("compiler")).asDottyCompiler(BootstrappedOptimised)
 
   def dottyCompiler(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `dotty-compiler`
     case Bootstrapped => `dotty-compiler-bootstrapped`
-    case BootstrappedOptimised => `dotty-compiler-optimised`
   }
 
   // Settings shared between dotty-library and dotty-library-bootstrapped
@@ -733,12 +716,10 @@ object Build {
 
   lazy val `dotty-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
   lazy val `dotty-library-bootstrapped`: Project = project.in(file("library")).asDottyLibrary(Bootstrapped)
-  lazy val `dotty-library-optimised`: Project = project.in(file("library")).asDottyLibrary(BootstrappedOptimised)
 
   def dottyLibrary(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `dotty-library`
     case Bootstrapped => `dotty-library-bootstrapped`
-    case BootstrappedOptimised => `dotty-library-optimised`
   }
 
   // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
@@ -840,7 +821,6 @@ object Build {
 
   lazy val `dotty-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
   lazy val `dotty-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
-  lazy val `dotty-bench-optimised` = project.in(file("bench")).asDottyBench(BootstrappedOptimised)
 
   // Depend on dotty-library so that sbt projects using dotty automatically
   // depend on the dotty-library
@@ -1149,10 +1129,6 @@ object Build {
     .settings(
       packResourceDir += ((baseDirectory in dist).value / "bin" -> "bin"),
     )
-  lazy val `dist-optimised` = project.asDist(BootstrappedOptimised)
-    .settings(
-      packResourceDir += ((baseDirectory in dist).value / "bin" -> "bin"),
-    )
 
   // /** A sandbox to play with the Scala.js back-end of dotty.
   //  *
@@ -1246,13 +1222,12 @@ object Build {
       dependsOn(`dotty-interfaces`, dottyCompiler, dottyLibrary, dottyDoc).
       settings(commonDistSettings).
       bootstrappedSettings(
-        target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings 
+        target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings
       )
 
     def withCommonSettings(implicit mode: Mode): Project = project.settings(mode match {
       case NonBootstrapped => commonNonBootstrappedSettings
       case Bootstrapped => commonBootstrappedSettings
-      case BootstrappedOptimised => commonOptimisedSettings
     })
   }
 }

@@ -57,8 +57,6 @@ sidebar:
               url: docs/reference/erased-terms.html
             - title: Kind Polymorphism
               url: docs/reference/kind-polymorphism.html
-            - title: Local Optimisations
-              url: docs/reference/optimisations.html
         - title: Changed Features
           subsection:
             - title: Volatile Lazy Vals

@@ -43,17 +43,6 @@ object Test {
     { "a"; "b"; ??? }
       .toString.subSequence(0, 1).toString.subSequence(0, 1).toString
 
-  // run -optimise -Xprint:simplify
-  // def test1(): String = ???(): String
-  // def test2(): String = ???(): String
-  // def test3(): String = ???(): String
-  // def test4(): String = ???(): String
-  // def test5(): String = ???(): String
-  // def test6(): String = ???(): String
-  // def test7(): String = ???(): String
-  // def test8(): String = ???(): String
-  // def test9(): String = ???(): String
-
   def test10: Unit = {
     def fail = throw new IllegalArgumentException("")
   }
