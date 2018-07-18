@@ -1365,7 +1365,7 @@ class TreeUnpickler(reader: TastyReader,
             untpd.LambdaTypeTree(tparams, body)
           case TYPEBOUNDStpt =>
             val lo = readUntyped()
-            val hi = ifBefore(end)(lo, readUntyped())
+            val hi = ifBefore(end)(readUntyped(), lo)
             untpd.TypeBoundsTree(lo, hi)
           case TYPEDSPLICE =>
             untpd.TypedSplice(readTerm())

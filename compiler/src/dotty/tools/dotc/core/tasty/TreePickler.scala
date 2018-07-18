@@ -798,12 +798,14 @@ class TreePickler(pickler: TastyPickler) {
         pickleDef(OBJECTDEF, tree, tree.impl)
       case tree: untpd.Template =>
         writeByte(TEMPLATE)
-        tree.parents.foreach(pickleParent)
-        if (!tree.self.isEmpty) {
-          writeByte(SELFDEF); pickleName(tree.self.name); pickleTpt(tree.self.tpt)
+        withLength {
+          tree.parents.foreach(pickleParent)
+          if (!tree.self.isEmpty) {
+            writeByte(SELFDEF); pickleName(tree.self.name); pickleTpt(tree.self.tpt)
+          }
+          pickleUntyped(tree.constr)
+          tree.body.foreach(pickleUntyped)
         }
-        pickleUntyped(tree.constr)
-        tree.body.foreach(pickleUntyped)
       case Import(expr, selectors) =>
         writeByte(IMPORT)
         withLength { pickleUntyped(expr); pickleSelectors(selectors) }
