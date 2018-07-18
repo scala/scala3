@@ -84,7 +84,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     if (ctx.compilationUnit.containsQuotesOrSplices) super.run
 
   protected def newTransformer(implicit ctx: Context): Transformer =
-    new Reifier(inQuote = false, null, 0, new LevelInfo, new mutable.ListBuffer[Tree])
+    new Reifier(inQuote = false, inlined = false, null, 0, new LevelInfo, new mutable.ListBuffer[Tree])
 
   protected class LevelInfo {
     /** A map from locally defined symbols to the staging levels of their definitions */
@@ -113,7 +113,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
    *  @param  levels     a stacked map from symbols to the levels in which they were defined
    *  @param  embedded   a list of embedded quotes (if `inSplice = true`) or splices (if `inQuote = true`
    */
-  protected class Reifier(inQuote: Boolean, val outer: Reifier, val level: Int, levels: LevelInfo,
+  protected class Reifier(inQuote: Boolean, inlined: Boolean, val outer: Reifier, val level: Int, levels: LevelInfo,
       val embedded: mutable.ListBuffer[Tree]) extends ImplicitsTransformer {
     import levels._
     assert(level >= 0)
@@ -121,8 +121,11 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
     def nested(isQuote: Boolean): Reifier = {
       val nestedEmbedded = if (level > 1 || (level == 1 && isQuote)) embedded else new mutable.ListBuffer[Tree]
-      new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, levels, nestedEmbedded)
+      new Reifier(isQuote, inlined, this, if (isQuote) level + 1 else level - 1, levels, nestedEmbedded)
     }
+
+    def inlinedReifier: Reifier =
+      new Reifier(inQuote, inlined = true, this, level, levels, embedded)
 
     /** We are in a `~(...)` context that is not shadowed by a nested `'(...)` */
     def inSplice: Boolean = outer != null && !inQuote
@@ -418,6 +421,11 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         val body1 = nested(isQuote = false).transform(splice.qualifier)
         body1.select(splice.name)
       }
+      else if (inlined && level == 0) {
+        val spliced = Splicer.splice(splice.qualifier, splice.pos, macroClassLoader).withPos(splice.pos)
+        if (ctx.reporter.hasErrors) EmptyTree
+        else transform(spliced)
+      }
       else if (!inQuote && level == 0) {
         spliceOutsideQuotes(splice.pos)
         splice
@@ -561,16 +569,12 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             val last = enteredSyms
             stats.foreach(markDef)
             mapOverTree(last)
-          case Inlined(call, bindings, InlineSplice(expansion @ Select(body, name))) =>
-            assert(call.symbol.is(Inline))
+          case Inlined(call, bindings, expansion) if !inlined =>
             val tree2 =
               if (level == 0) {
-                // Simplification of the call done in PostTyper for non-macros can also be performed now
-                // see PostTyper `case Inlined(...) =>` for description of the simplification
-                val call2 = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
-                val spliced = Splicer.splice(body, call, bindings, tree.pos, macroClassLoader).withPos(tree.pos)
+                val spliced = inlinedReifier.transform(expansion)
                 if (ctx.reporter.hasErrors) EmptyTree
-                else transform(cpy.Inlined(tree)(call2, bindings, spliced))
+                else cpy.Inlined(tree)(call, bindings, spliced)
               }
               else super.transform(tree)
 

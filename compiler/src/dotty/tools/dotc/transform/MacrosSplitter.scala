@@ -57,53 +57,38 @@ class MacrosSplitter extends ReifyQuotes {
         case tree: Template => super.transform(tree)
         case macroDefTree: DefDef if macroDefTree.symbol.is(Inline) =>
 
-          val reifier = new Reifier(true, null, 1, new LevelInfo, new mutable.ListBuffer[Tree])
+          val reifier = new Reifier(true, false, null, 1, new LevelInfo, new mutable.ListBuffer[Tree])
 
           val transformedTree = reifier.transform(macroDefTree) // Ignore output, we only need the its embedding
 
           if (reifier.embedded.isEmpty) macroDefTree // Not a macro
-          else {
-            if (!macroDefTree.symbol.isStatic) // TODO remove restriction (issue #4803)
-              ctx.error("Inline macro method must be a static method.", macroDefTree.pos)
-            if (InlineSplice.unapply(macroDefTree.rhs).isEmpty) { // TODO allow multiple splices (issue #4801)
-              ctx.error(
-                """Malformed inline macro.
-                  |
-                  |Expected the ~ to be at the top of the RHS:
-                  |  inline def foo(...): Int = ~impl(...)
-                  |or
-                  |  inline def foo(...): Int = ~{
-                  |    val x = 1
-                  |    impl(... x ...)
-                  |  }
-                """.stripMargin, macroDefTree.rhs.pos)
-              EmptyTree
-            }
-            else {
-              val splicers = List.newBuilder[DefDef]
-              val transformer = new TreeMap() {
-                override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-                  case Hole(idx, args) =>
-                    val targs = args.filter(_.isType).map(_.tpe)
+          else if (!macroDefTree.symbol.isStatic) { // TODO remove restriction (issue #4803)
+            ctx.error("Inline macro method must be a static method.", macroDefTree.pos)
+            EmptyTree
+          } else {
+            val splicers = List.newBuilder[DefDef]
+            val transformer = new TreeMap() {
+              override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+                case Hole(idx, args) =>
+                  val targs = args.filter(_.isType).map(_.tpe)
 
-                    val Block((lambdaDef: tpd.DefDef) :: Nil, _) = reifier.embedded(idx)
+                  val Block((lambdaDef: tpd.DefDef) :: Nil, _) = reifier.embedded(idx)
 
-                    val splicer = genSplicer(macroDefTree, lambdaDef, targs)
-                    splicers += splicer
+                  val splicer = genSplicer(macroDefTree, lambdaDef, targs)
+                  splicers += splicer
 
-                    val liftedArgs = args.map { arg =>
-                      if (arg.symbol.is(Inline) || arg.symbol == defn.TastyTopLevelSplice_tastyContext) arg
-                      else if (arg.isType) ref(defn.QuotedType_apply).appliedToType(arg.tpe)
-                      else ref(defn.QuotedExpr_apply).appliedToType(arg.tpe.widen).appliedTo(arg)
-                    }
-                    ref(splicer.symbol).appliedToTypes(targs).appliedToArgs(liftedArgs).select(nme.UNARY_~)
-                  case _ => super.transform(tree)
-                }
+                  val liftedArgs = args.map { arg =>
+                    if (arg.symbol.is(Inline) || arg.symbol == defn.TastyTopLevelSplice_tastyContext) arg
+                    else if (arg.isType) ref(defn.QuotedType_apply).appliedToType(arg.tpe)
+                    else ref(defn.QuotedExpr_apply).appliedToType(arg.tpe.widen).appliedTo(arg)
+                  }
+                  ref(splicer.symbol).appliedToTypes(targs).appliedToArgs(liftedArgs).select(nme.UNARY_~)
+                case _ => super.transform(tree)
               }
-              val newRhs = transformer.transform(transformedTree.asInstanceOf[DefDef].rhs)
-              val newDef = cpy.DefDef(macroDefTree)(rhs = newRhs)
-              Thicket(newDef :: splicers.result())
             }
+            val newRhs = transformer.transform(transformedTree.asInstanceOf[DefDef].rhs)
+            val newDef = cpy.DefDef(macroDefTree)(rhs = newRhs)
+            Thicket(newDef :: splicers.result())
           }
         case _ =>
           tree
@@ -169,20 +154,6 @@ class MacrosSplitter extends ReifyQuotes {
     }
 
     polyDefDef(splicerSym, tparams => vparamss => treeTypeMap(tparams, vparamss.head).transform(body))
-  }
-
-  /** InlineSplice is used to detect cases where the expansion
-   *  consists of a (possibly multiple & nested) block or a sole expression.
-   */
-  object InlineSplice {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[Select] = {
-      tree match {
-        case expansion: Select if expansion.symbol.isSplice => Some(expansion)
-        case Block(List(stat), Literal(Constant(()))) => unapply(stat)
-        case Block(Nil, expr) => unapply(expr)
-        case _ => None
-      }
-    }
   }
 
 }
