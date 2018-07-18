@@ -579,19 +579,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
     val countRefs = new TreeTraverser {
       override def traverse(t: Tree)(implicit ctx: Context) = {
+        def updateRefCount(sym: Symbol, inc: Int) =
+          for (x <- refCount.get(sym)) refCount(sym) = x + inc
         t match {
-          case t: RefTree =>
-            refCount.get(t.symbol) match {
-              case Some(x) => refCount(t.symbol) = x + 1
-              case none =>
-            }
+          case t: RefTree => updateRefCount(t.symbol, 1)
           case _: New | _: TypeTree =>
             t.tpe.foreachPart {
-              case ref: TermRef =>
-                refCount.get(ref.symbol) match {
-                  case Some(x) => refCount(ref.symbol) = x + 2
-                  case none =>
-                }
+              case ref: TermRef => updateRefCount(ref.symbol, 2) // can't be inlined, so make sure refCount is at least 2
               case _ =>
             }
           case _ =>
@@ -600,7 +594,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
     }
     countRefs.traverse(tree)
-    for (binding <- bindings) countRefs.traverse(binding.rhs)
+    for (binding <- bindings) countRefs.traverse(binding)
     val inlineBindings = new TreeMap {
       override def transform(t: Tree)(implicit ctx: Context) =
         super.transform {
