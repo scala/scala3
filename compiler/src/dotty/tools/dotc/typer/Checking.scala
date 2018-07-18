@@ -369,7 +369,10 @@ object Checking {
       if (!ok && !sym.is(Synthetic))
         fail(i"modifier `$flag` is not allowed for this definition")
 
-    if (sym.is(Transparent) && ((sym.is(ParamAccessor) && sym.owner.isClass) || sym.is(TermParam) && sym.owner.isClassConstructor))
+    if (sym.is(Transparent) &&
+          (  sym.is(ParamAccessor) && sym.owner.isClass
+          || sym.is(TermParam) && !sym.owner.isTransparentMethod
+          ))
       fail(ParamsNoTransparent(sym.owner))
 
     if (sym.is(ImplicitCommon)) {
@@ -669,14 +672,11 @@ trait Checking {
   def checkTransparentConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context): Unit = {
     // final vals can be marked transparent even if they're not pure, see Typer#patchFinalVals
     val purityLevel = if (isFinal) Idempotent else Pure
-    tree.tpe match {
-      case tp: TermRef if tp.symbol.is(TransparentParam) => // ok
-      case tp => tp.widenTermRefExpr match {
-        case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
-        case _ =>
-          val allow = ctx.erasedTypes || ctx.owner.ownersIterator.exists(_.isTransparentMethod)
-          if (!allow) ctx.error(em"$what must be a constant expression", tree.pos)
-      }
+    tree.tpe.widenTermRefExpr match {
+      case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
+      case _ =>
+        val allow = ctx.erasedTypes || ctx.owner.ownersIterator.exists(_.isTransparentMethod)
+        if (!allow) ctx.error(em"$what must be a constant expression", tree.pos)
     }
   }
 

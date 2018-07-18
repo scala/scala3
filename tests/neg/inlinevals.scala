@@ -1,6 +1,8 @@
 object Test {
 
-  def power(x: Double, transparent n: Int): Double = ???
+  def power0(x: Double, transparent n: Int): Double = ???  // error
+
+  transparent def power(x: Double, transparent n: Int): Double = ???  // ok
 
   transparent val N = 10
   def X = 20
@@ -19,12 +21,15 @@ object Test {
 
   transparent val xs = List(1, 2, 3) // error: must be a constant expression
 
-  def f(transparent xs: List[Int]) = xs
+  transparent def foo(x: Int) = {
 
-  f(List(1, 2, 3)) // error: must be a constant expression
+    def f(transparent xs: List[Int]) = xs // error
 
-  def byname(transparent f: => String): Int = ??? // ok
+    transparent val y = { println("hi"); 1 }  // ok
+    transparent val z = x // ok
 
-  byname("hello" ++ " world")
+  }
+
+  transparent def byname(transparent f: => String): Int = ??? // ok
 
 }

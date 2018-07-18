@@ -1748,7 +1748,7 @@ object messages {
     val kind = "Syntax"
     val msg = hl"no explicit ${"return"} allowed from transparent $owner"
     val explanation =
-      hl"""Methods marked with ${"inline"} modifier may not use ${"return"} statements.
+      hl"""Methods marked with ${"transparent"} modifier may not use ${"return"} statements.
           |Instead, you should rely on the last expression's value being
           |returned from a method.
           |"""
@@ -2057,7 +2057,7 @@ object messages {
   case class ParamsNoTransparent(owner: Symbol)(implicit ctx: Context)
     extends Message(ParamsNoTransparentID) {
     val kind = "Syntax"
-    val msg = hl"""${"transparent"} modifier cannot be used for a ${owner.showKind} parameter"""
+    val msg = hl"""${"transparent"} modifier cannot be used for a parameter of a non-transparent method"""
     val explanation = ""
   }
 
