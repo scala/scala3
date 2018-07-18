@@ -41,6 +41,15 @@ object Inliner {
   def markContextualImplicit(tree: Tree)(implicit ctx: Context): Unit =
     methPart(tree).putAttachment(ContextualImplicit, ())
 
+  /** A key to be used in a context property that provides a map from enclosing implicit
+   *  value bindings to their right hand sides.
+   */
+  private val InlineBindings = new Property.Key[MutableSymbolMap[Tree]]
+
+  /** A map from the symbols of all enclosing inline value bindings to their right hand sides */
+  def inlineBindings(implicit ctx: Context): MutableSymbolMap[Tree] =
+    ctx.property(InlineBindings).get
+
   class InlineAccessors extends AccessProxies {
 
     /** If an inline accessor name wraps a unique inline name, this is taken as indication
@@ -288,7 +297,7 @@ object Inliner {
           case _: Ident | _: This =>
             //println(i"leaf: $tree at ${tree.pos}")
             if (isExternal(tree.symbol)) {
-              inlining.println(i"type at pos ${tree.pos.toSynthetic} = ${tree.tpe}")
+              if (ctx.debug) inlining.println(i"type at pos ${tree.pos.toSynthetic} = ${tree.tpe}")
               typeAtPos(tree.pos.toSynthetic) = tree.tpe
             }
           case _: Select if tree.symbol.name.is(InlineAccessorName) =>
@@ -378,7 +387,13 @@ object Inliner {
   def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
     if (enclosingInlineds.length < ctx.settings.XmaxInlines.value) {
       val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
-      if (ctx.reporter.hasErrors) tree else new Inliner(tree, body).inlined(pt)
+      if (ctx.reporter.hasErrors) tree
+      else {
+        val inlinerCtx =
+          if (ctx.property(InlineBindings).isDefined) ctx
+          else ctx.fresh.setProperty(InlineBindings, newMutableSymbolMap[Tree])
+        new Inliner(tree, body)(inlinerCtx).inlined(pt)
+      }
     }
     else errorTree(
       tree,
@@ -645,13 +660,34 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         expansion
     }
 
+    /** If this is a value binding:
+     *   - reduce its rhs if it is a projection and adjust its type accordingly,
+     *   - record symbol -> rhs in the InlineBindings context propery.
+     *  Also, set position to the one of the inline call.
+     */
+    def normalizeBinding(binding: ValOrDefDef)(implicit ctx: Context) = {
+      val binding1 = binding match {
+        case binding: ValDef =>
+          val rhs1 = reduceProjection(binding.rhs)
+          inlineBindings(inlineCtx).put(binding.symbol, rhs1)
+          if (rhs1 `eq` binding.rhs) binding
+          else {
+            binding.symbol.info = rhs1.tpe
+            cpy.ValDef(binding)(tpt = TypeTree(rhs1.tpe), rhs = rhs1)
+          }
+        case _ =>
+          binding
+      }
+      binding1.withPos(call.pos)
+    }
+
     trace(i"inlining $call", inlining, show = true) {
+
+      /** All bindings in `bindingsBuf` */
+      val bindings = bindingsBuf.toList.map(normalizeBinding)
 
       // The final expansion runs a typing pass over the inlined tree. See InlineTyper for details.
       val expansion1 = inlineTyper.typed(expansion, pt)(inlineCtx)
-
-      /** All bindings in `bindingsBuf` except bindings of inlineable closures */
-      val bindings = bindingsBuf.toList.map(_.withPos(call.pos))
 
       if (ctx.settings.verbose.value) {
         inlining.println(i"original bindings = $bindings%\n%")
@@ -662,6 +698,60 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
       tpd.Inlined(call, finalBindings, finalExpansion)
     }
+  }
+
+  /** An extractor for terms equivalent to `new C(args)`, returning the class `C`
+   *  and the arguments `args`. Can see inside blocks and Inlined nodes and can
+   *  follow a reference to an inline value binding to its right hand side.
+   */
+  object NewInstance {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(Symbol, List[Tree], List[Tree])] = {
+      def unapplyLet(bindings: List[Tree], expr: Tree) =
+        unapply(expr) map {
+          case (cls, reduced, prefix) => (cls, reduced, bindings ::: prefix)
+        }
+      tree match {
+        case Apply(Select(New(tpt), nme.CONSTRUCTOR), args) =>
+          Some((tpt.tpe.classSymbol, args, Nil))
+        case Ident(_) =>
+          inlineBindings.get(tree.symbol).flatMap(unapply)
+        case Inlined(_, bindings, expansion) =>
+          unapplyLet(bindings, expansion)
+        case Block(stats, expr) if isPureExpr(tree) =>
+          unapplyLet(stats, expr)
+        case _ =>
+          None
+      }
+    }
+  }
+
+  /** If we are inlining a transparent method and `tree` is equivalent to `new C(args).x`
+   *  where class `C` does not have initialization code and `x` is a parameter corresponding
+   *  to one of the arguments `args`, the corresponding argument, otherwise `tree` itself.
+   */
+  def reduceProjection(tree: Tree)(implicit ctx: Context): Tree = {
+    if (meth.isTransparentMethod) {
+      if (ctx.debug) inlining.println(i"try reduce projection $tree")
+      tree match {
+        case Select(NewInstance(cls, args, prefix), field) if cls.isNoInitsClass =>
+          def matches(param: Symbol, selection: Symbol): Boolean =
+            param == selection || {
+              selection.name match {
+                case InlineAccessorName(underlying) =>
+                  param.name == underlying && selection.info.isInstanceOf[ExprType]
+                case _ =>
+                  false
+              }
+            }
+          val idx = cls.asClass.paramAccessors.indexWhere(matches(_, tree.symbol))
+          if (idx >= 0 && idx < args.length) {
+            inlining.println(i"projecting $tree -> ${args(idx)}")
+            return seq(prefix, args(idx))
+          }
+        case _ =>
+      }
+    }
+    tree
   }
 
   /** An extractor for references to inlineable arguments. These are :
@@ -759,7 +849,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private class TransparentTyper extends Typer with InlineTyping {
 
     override def typedTypedSplice(tree: untpd.TypedSplice)(implicit ctx: Context): Tree =
-      tryInline(tree.splice) `orElse` super.typedTypedSplice(tree)
+      reduceProjection(tryInline(tree.splice) `orElse` super.typedTypedSplice(tree))
+
+    override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context) =
+      reduceProjection(super.typedSelect(tree, pt))
 
     /** Pre-type any nested calls to transparent methods. Otherwise the declared result type
      *  of these methods can influence constraints

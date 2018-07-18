@@ -27,7 +27,8 @@ case object HNil extends HList {
 }
 
 // (H, T)
-case class HCons[H, T <: HList](hd: H, tl: T) extends HList {
+@annotation.showAsInfix(true)
+case class HCons [H, T <: HList](hd: H, tl: T) extends HList {
   transparent def length = 1 + tl.length
   def head: H = this.hd
   def tail: T = this.tl
@@ -65,6 +66,10 @@ object Test extends App {
   transparent val i2 = y2.toInt
   val j2: 2 = i2
 
+  class HListDeco(private val as: HList) extends AnyVal {
+    transparent def :: [H] (a: H) = HCons(a, as)
+    transparent def ++ (bs: HList) = concat(as, bs)
+  }
   transparent def concat(xs: HList, ys: HList): HList =
     if xs.isEmpty then ys
     else HCons(xs.head, concat(xs.tail, ys))
@@ -108,6 +113,18 @@ object Test extends App {
   def ss4: Nothing = s4
   val s5 = index(xs, xs.length - 1)
   val ss5: String = s5
+
+
+  //val ys = 1 :: "a" :: HNil
+
+  transparent implicit def hlistDeco(xs: HList): HListDeco = new HListDeco(xs)
+
+  val rr0 = new HListDeco(HNil).++(HNil)
+  val rr1 = HNil ++ xs
+  val rr2 = xs ++ HNil
+  val rr3 = xs ++ xs
+  val rr3a: HCons[Int, HCons[String, HCons[Int, HCons[String, HNil]]]] = rr3
+
 /*
   transparent def toInt1[T]: Int = type T match {
     case Z => 0
@@ -118,18 +135,5 @@ object Test extends App {
     case C[type T, type U], T =:= U => 0
     case T <:< S[type N] => toInt[N] + 1
   }
-*/
-/** Does not work yet:
-
-  implicit class HListDeco(transparent val xs: HList) {
-    transparent def ++ (ys: HList) = concat(xs, ys)
-  }
-
-  val rr0 = HNil ++ HNil
-  val rr1 = HNil ++ xs
-  val rr2 = xs ++ HNil
-  val rr3 = xs ++ xs
-  val rr3a: HCons[Int, HCons[String, HCons[Int, HCons[String, HNil]]]] = rr3
-
 */
 }
