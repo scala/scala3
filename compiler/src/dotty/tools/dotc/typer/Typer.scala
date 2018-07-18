@@ -986,39 +986,45 @@ class Typer extends Namer
     assignType(cpy.Match(tree)(sel, cases1), cases1)
   }
 
-  def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context) = {
-
-    /** gadtSyms = "all type parameters of enclosing methods that appear
-     *              non-variantly in the selector type" todo: should typevars
-     *              which appear with variances +1 and -1 (in different
-     *              places) be considered as well?
-     */
-    val gadtSyms: Set[Symbol] = trace(i"GADT syms of $selType", gadts) {
-      val accu = new TypeAccumulator[Set[Symbol]] {
-        def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
-          val tsyms1 = t match {
-            case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm && variance == 0 =>
-              tsyms + tr.symbol
-            case _ =>
-              tsyms
-          }
-          foldOver(tsyms1, t)
+  /** gadtSyms = "all type parameters of enclosing methods that appear
+    *              non-variantly in the selector type" todo: should typevars
+    *              which appear with variances +1 and -1 (in different
+    *              places) be considered as well?
+    */
+  def gadtSyms(selType: Type)(implicit ctx: Context): Set[Symbol] = trace(i"GADT syms of $selType", gadts) {
+    val accu = new TypeAccumulator[Set[Symbol]] {
+      def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
+        val tsyms1 = t match {
+          case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm && variance == 0 =>
+            tsyms + tr.symbol
+          case _ =>
+            tsyms
         }
+        foldOver(tsyms1, t)
       }
-      accu(Set.empty, selType)
     }
-
-    cases.mapconserve(typedCase(_, pt, selType, gadtSyms))
+    accu(Set.empty, selType)
   }
 
-  /** Type a case. */
-  def typedCase(tree: untpd.CaseDef, pt: Type, selType: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = track("typedCase") {
-    val originalCtx = ctx
-
+  /** Context with fresh GADT bounds for all gadtSyms */
+  def gadtContext(gadtSyms: Set[Symbol])(implicit ctx: Context) = {
     val gadtCtx = ctx.fresh.setFreshGADTBounds
     for (sym <- gadtSyms)
       if (!gadtCtx.gadt.bounds.contains(sym))
         gadtCtx.gadt.setBounds(sym, TypeBounds.empty)
+    gadtCtx
+  }
+
+  def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context) = {
+    val gadts = gadtSyms(selType)
+    cases.mapconserve(typedCase(_, selType, pt, gadts))
+  }
+
+  /** Type a case. */
+  def typedCase(tree: untpd.CaseDef, selType: Type, pt: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = track("typedCase") {
+    val originalCtx = ctx
+
+    val gadtCtx = gadtContext(gadtSyms)
 
     /** - strip all instantiated TypeVars from pattern types.
      *    run/reducable.scala is a test case that shows stripping typevars is necessary.
