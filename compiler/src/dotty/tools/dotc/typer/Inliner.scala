@@ -28,6 +28,7 @@ import transform.TypeUtils._
 import reporting.trace
 import util.Positions.Position
 import util.Property
+import ast.TreeInfo
 
 object Inliner {
   import tpd._
@@ -743,7 +744,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
   /** If we are inlining a transparent method and `tree` is equivalent to `new C(args).x`
    *  where class `C` does not have initialization code and `x` is a parameter corresponding
-   *  to one of the arguments `args`, the corresponding argument, otherwise `tree` itself.
+   *  to one of the arguments `args`, the corresponding argument, prefixed by the evaluation
+   *  of impure arguments, otherwise `tree` itself.
    */
   def reduceProjection(tree: Tree)(implicit ctx: Context): Tree = {
     if (meth.isTransparentMethod) {
@@ -761,8 +763,17 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             }
           val idx = cls.asClass.paramAccessors.indexWhere(matches(_, tree.symbol))
           if (idx >= 0 && idx < args.length) {
-            inlining.println(i"projecting $tree -> ${args(idx)}")
-            return seq(prefix, args(idx))
+            def collectImpure(from: Int, end: Int) =
+              (from until end).filterNot(i => isPureExpr(args(i))).toList.map(args)
+            val leading = collectImpure(0, idx)
+            val trailing = collectImpure(idx + 1, args.length)
+            val arg = args(idx)
+            val argInPlace =
+              if (trailing.isEmpty) arg
+              else letBindUnless(TreeInfo.Pure, arg)(seq(trailing, _))
+            val reduced = seq(prefix, seq(leading, argInPlace))
+            inlining.println(i"projecting $tree -> ${reduced}")
+            return reduced
           }
         case _ =>
       }
