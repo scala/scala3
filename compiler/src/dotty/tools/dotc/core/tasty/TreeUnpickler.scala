@@ -1023,6 +1023,8 @@ class TreeUnpickler(reader: TastyReader,
           ByNameTypeTree(readTpt())
         case NAMEDARG =>
           NamedArg(readName(), readTerm())
+        case EMPTYTREE =>
+          EmptyTree
         case _ =>
           readPathTerm()
       }

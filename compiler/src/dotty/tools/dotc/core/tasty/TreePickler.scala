@@ -546,6 +546,8 @@ class TreePickler(pickler: TastyPickler) {
             pickleTree(lo);
             if (hi ne lo) pickleTree(hi)
           }
+        case EmptyTree =>
+          writeByte(EMPTYTREE)
         case tpd.UntypedSplice(splice) =>
           writeByte(UNTYPEDSPLICE)
           withLength { pickleUntyped(splice); pickleType(tree.tpe) }

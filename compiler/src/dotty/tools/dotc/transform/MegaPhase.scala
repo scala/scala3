@@ -360,7 +360,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       case tree: Inlined =>
         implicit val ctx = prepInlined(tree, start)(outerCtx)
         val bindings = transformSpecificTrees(tree.bindings, start)
-        val expansion = transformTree(tree.expansion, start)
+        val expansion = transformTree(tree.expansion, start)(inlineContext(tree.call))
         goInlined(cpy.Inlined(tree)(tree.call, bindings, expansion), start)
       case tree: Return =>
         implicit val ctx = prepReturn(tree, start)(outerCtx)

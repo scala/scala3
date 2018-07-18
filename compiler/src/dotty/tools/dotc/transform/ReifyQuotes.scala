@@ -582,7 +582,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
             val last = enteredSyms
             stats.foreach(markDef)
             mapOverTree(last)
-          case Inlined(call, bindings, InlineSplice(expansion @ Select(body, name))) =>
+          case Inlined(call, bindings, InlineSplice(expansion @ Select(body, name))) if !call.isEmpty =>
             assert(call.symbol.is(Macro))
             val tree2 =
               if (level == 0) {

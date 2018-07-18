@@ -1072,9 +1072,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   override def inlineContext(call: Tree)(implicit ctx: Context): Context =
     ctx.fresh.setProperty(InlinedCalls, call :: enclosingInlineds)
 
-  /** All enclosing calls that are currently inlined, from innermost to outermost */
-  def enclosingInlineds(implicit ctx: Context): List[Tree] =
-    ctx.property(InlinedCalls).getOrElse(Nil)
+  /** All enclosing calls that are currently inlined, from innermost to outermost.
+   *  EmptyTree calls cancel the next-enclosing non-empty call in the list
+   */
+  def enclosingInlineds(implicit ctx: Context): List[Tree] = {
+    def normalize(ts: List[Tree]): List[Tree] = ts match {
+      case t :: (ts1 @ (t1 :: ts2)) if t.isEmpty => normalize(if (t1.isEmpty) ts1 else ts2)
+      case t :: ts1 => t :: normalize(ts1)
+      case Nil => Nil
+    }
+    normalize(ctx.property(InlinedCalls).getOrElse(Nil))
+  }
 
   /** The source file where the symbol of the `inline` method referred to by `call`
    *  is defined

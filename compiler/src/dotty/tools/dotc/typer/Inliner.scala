@@ -275,6 +275,16 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     case _ =>
   }
 
+  /** Make `tree` part of inlined expansion. This means its owner has to be changed
+   *  from its `originalOwner`, and, if it comes from outside the inlined method
+   *  itself, it has to be marked as an inlined argument.
+   */
+  def integrate(tree: Tree, originalOwner: Symbol)(implicit ctx: Context) = {
+    val result = tree.changeOwner(originalOwner, ctx.owner)
+    if (!originalOwner.isContainedIn(inlinedMethod)) Inlined(EmptyTree, Nil, result)
+    else result
+  }
+
   /** The Inlined node representing the inlined call */
   def inlined(pt: Type) = {
     // Compute bindings for all parameters, appending them to bindingsBuf
@@ -485,9 +495,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         if (paramProxies.contains(tree.typeOpt))
           search(bindingsBuf).orElse(search(matchBindingsBuf)) match {
             case Some(vdef: ValDef) if vdef.symbol.is(Transparent) =>
-              Some(vdef.rhs.changeOwner(vdef.symbol, ctx.owner))
+              Some(integrate(vdef.rhs, vdef.symbol))
             case Some(ddef: DefDef) =>
-              Some(ddef.rhs.changeOwner(ddef.symbol, ctx.owner))
+              Some(integrate(ddef.rhs, ddef.symbol))
             case _ => None
           }
         else None
@@ -767,7 +777,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
               refCount.get(sym) match {
                 case Some(1) if sym.is(Method) =>
                   bindingOfSym(sym) match {
-                    case binding: ValOrDefDef => binding.rhs.changeOwner(sym, ctx.owner)
+                    case binding: ValOrDefDef => integrate(binding.rhs, sym)
                   }
                 case none => t
               }

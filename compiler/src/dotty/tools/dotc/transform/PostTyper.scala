@@ -222,7 +222,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case _ =>
               super.transform(tree1)
           }
-        case Inlined(call, bindings, expansion) =>
+        case Inlined(call, bindings, expansion) if !call.isEmpty =>
           // Leave only a call trace consisting of
           //  - a reference to the top-level class from which the call was inlined,
           //  - the call's position

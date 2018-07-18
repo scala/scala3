@@ -384,7 +384,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this += lineBreak() += "}"
         }
 
-      case Term.Inlined(call, bindings, expansion) =>
+      case Term.Inlined(call, bindings, expansion) => // FIXME: Don't print Inlined with empty calls?
         this += "{ // inlined"
         indented {
           printStats(bindings, expansion)
