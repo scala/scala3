@@ -207,8 +207,9 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val OverloadedOrRecursiveMethodNeedsResultType(tree) :: Nil = messages
-      assertEquals("foo", tree.show)
+      val OverloadedOrRecursiveMethodNeedsResultType(methodName, cycleSym) :: Nil = messages
+      assertEquals("foo", methodName.show)
+      assertEquals("foo", cycleSym.name.show)
     }
 
   @Test def recursiveMethodNeedsReturnType =
@@ -223,8 +224,9 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val OverloadedOrRecursiveMethodNeedsResultType(tree) :: Nil = messages
-      assertEquals("i", tree.show)
+      val OverloadedOrRecursiveMethodNeedsResultType(methodName, cycleSym) :: Nil = messages
+      assertEquals("i", methodName.show)
+      assertEquals("i", cycleSym.name.show)
     }
 
   @Test def recursiveValueNeedsReturnType =
@@ -239,9 +241,28 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val RecursiveValueNeedsResultType(tree) :: Nil = messages
-      assertEquals("i", tree.show)
+      val RecursiveValueNeedsResultType(valName, cycleSym) :: Nil = messages
+      assertEquals("i", valName.show)
+      assertEquals("i", cycleSym.name.show)
     }
+
+  @Test def recursiveValueNeedsReturnType2 =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        |class Scope() {
+        |  lazy val i = j + 5
+        |  lazy val j = i
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+
+        assertMessageCount(1, messages)
+        val RecursiveValueNeedsResultType(valName, cycleSym) :: Nil = messages
+        assertEquals("j", valName.show)
+        assertEquals("i", cycleSym.name.show)
+      }
 
   @Test def cyclicReferenceInvolving =
     checkMessagesAfter(FrontEnd.name) {
@@ -290,8 +311,9 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
 
         assertMessageCount(1, messages)
-        val OverloadedOrRecursiveMethodNeedsResultType(name) :: Nil = messages
-        assertEquals("even", name.show)
+        val OverloadedOrRecursiveMethodNeedsResultType(methodName, cycleSym) :: Nil = messages
+        assertEquals("even", methodName.show)
+        assertEquals("odd", cycleSym.name.show)
       }
 
   @Test def mutualRecursion_i2001a =
@@ -312,13 +334,37 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
 
         assertMessageCount(1, messages)
-        val OverloadedOrRecursiveMethodNeedsResultType(denot) :: Nil = messages
+        val OverloadedOrRecursiveMethodNeedsResultType(methodName, cycleSym) :: Nil = messages
         // Not ideal behavior
-        assertEquals("foo", denot.show)
+        assertEquals("foo", methodName.show)
+        assertEquals("odd", cycleSym.name.show)
       }
 
+  @Test def mutualRecursion_i2001b =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        |class A {
+        |  def odd(x: Int) = if (x == 0) false else !even(x-1)
+        |  def even(x: Int) = {
+        |    val foo = {
+        |      if (x == 0) true else !odd(x-1) // error: overloaded or recursive method needs result type
+        |    }
+        |    false
+        |  }
+        |}
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
 
-  @Test def termMemberNeedsNeedsResultTypeForImplicitSearch =
+        assertMessageCount(1, messages)
+        val OverloadedOrRecursiveMethodNeedsResultType(methodName, cycleSym) :: Nil = messages
+        // Not ideal behavior
+        assertEquals("foo", methodName.show)
+        assertEquals("odd", cycleSym.name.show)
+      }
+
+  @Test def termMemberNeedsResultTypeForImplicitSearch =
     checkMessagesAfter(FrontEnd.name) {
       """
         |object implicitDefs {
@@ -334,8 +380,9 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val TermMemberNeedsResultTypeForImplicitSearch(tree) :: Nil = messages
-      assertEquals("x", tree.name.show)
+      val TermMemberNeedsResultTypeForImplicitSearch(memberName, cycleSym) :: Nil = messages
+      assertEquals("x", cycleSym.name.show)
+      assertEquals("x", memberName.show)
     }
 
   @Test def implicitSearchForcesImplicitRetType_i4709 =
@@ -359,8 +406,9 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val TermMemberNeedsResultTypeForImplicitSearch(tree) :: Nil = messages
-      assertEquals("ctx", tree.name.show)
+      val TermMemberNeedsResultTypeForImplicitSearch(memberName, cycleSym) :: Nil = messages
+      assertEquals("ctx", memberName.show)
+      assertEquals("ctx", cycleSym.name.show)
     }
 
   @Test def implicitSearchForcesNonImplicitRetTypeOnExplicitImport_i3253 =
@@ -377,8 +425,9 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
 
         assertMessageCount(1, messages)
-        val TermMemberNeedsResultTypeForImplicitSearch(tree) :: Nil = messages
-        assertEquals("test", tree.name.show)
+        val TermMemberNeedsResultTypeForImplicitSearch(memberName, cycleSym) :: Nil = messages
+        assertEquals("test", memberName.show)
+        assertEquals("test", cycleSym.name.show)
       }
 
   @Test def superQualMustBeParent =

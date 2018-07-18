@@ -1260,27 +1260,27 @@ object messages {
            |""".stripMargin
   }
 
-  case class OverloadedOrRecursiveMethodNeedsResultType(method: Names.Name)(implicit ctx: Context)
+  case class OverloadedOrRecursiveMethodNeedsResultType(methodName: Names.TermName, cycleSym: Symbol)(implicit ctx: Context)
   extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
     val kind = "Syntax"
-    val msg = hl"""overloaded or recursive method ${method} needs return type"""
+    val msg = hl"""overloaded or recursive ${cycleSym} needs return type"""
     val explanation =
-      hl"""Case 1: ${method} is overloaded
-          |If there are multiple methods named `${method}` and at least one definition of
+      hl"""Case 1: ${cycleSym} is overloaded
+          |If there are multiple methods named `${cycleSym}` and at least one definition of
           |it calls another, you need to specify the calling method's return type.
           |
-          |Case 2: ${method} is recursive
-          |If `${method}` calls itself on any path (even through mutual recursion), you need to specify the return type
-          |of `${method}` or of a definition it's mutually recursive with.
+          |Case 2: ${cycleSym} is recursive
+          |If `${cycleSym}` calls itself on any path (even through mutual recursion), you need to specify the return type
+          |of `${cycleSym}` or of a definition it's mutually recursive with.
           |""".stripMargin
   }
 
-  case class RecursiveValueNeedsResultType(value: Names.TermName)(implicit ctx: Context)
+  case class RecursiveValueNeedsResultType(valName: Names.TermName, cycleSym: Symbol)(implicit ctx: Context)
   extends Message(RecursiveValueNeedsResultTypeID) {
     val kind = "Syntax"
-    val msg = hl"""recursive value ${value} needs type"""
+    val msg = hl"""recursive ${cycleSym} needs type"""
     val explanation =
-      hl"""The definition of `${value}` is recursive and you need to specify its type.
+      hl"""The definition of `${cycleSym}` is recursive and you need to specify its type.
           |""".stripMargin
   }
 
@@ -2111,13 +2111,13 @@ object messages {
   }
 
   // Relative of CyclicReferenceInvolvingImplicit and RecursiveValueNeedsResultType
-  case class TermMemberNeedsResultTypeForImplicitSearch(cycleSym: Symbol)(implicit ctx: Context)
+  case class TermMemberNeedsResultTypeForImplicitSearch(memberName: Names.TermName, cycleSym: Symbol)(implicit ctx: Context)
     extends Message(TermMemberNeedsNeedsResultTypeForImplicitSearchID) {
     val kind = "Syntax"
     val msg = hl"""$cycleSym needs result type because its right-hand side attempts implicit search"""
     val explanation =
       hl"""|The right hand-side of $cycleSym's definition requires an implicit search at the highlighted position.
-           |To avoid this error, give `${cycleSym.name}` an explicit type.
+           |To avoid this error, give `$cycleSym` an explicit type.
            |""".stripMargin
   }
 }

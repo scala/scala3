@@ -109,6 +109,12 @@ class CyclicReference private (val denot: SymDenotation) extends TypeError {
   override def toMessage(implicit ctx: Context): Message = {
     val cycleSym = denot.symbol
 
+    // cycleSym.flags would try completing denot and would fail, but here we can use flagsUNSAFE to detect flags
+    // set by the parser.
+    val unsafeFlags = cycleSym.flagsUNSAFE
+    val isMethod = unsafeFlags.is(Method)
+    val isVal = !isMethod && cycleSym.isTerm
+
     /* This CyclicReference might have arisen from asking for `m`'s type while trying to infer it.
      * To try to diagnose this, walk the context chain searching for context in
      * Mode.InferringReturnType for the innermost member without type
@@ -117,13 +123,15 @@ class CyclicReference private (val denot: SymDenotation) extends TypeError {
     def errorMsg(cx: Context): Message = {
       if (cx.mode is Mode.InferringReturnType) {
         cx.tree match {
-          case tree: untpd.ValOrDefDef if inImplicitSearch && !tree.tpt.typeOpt.exists =>
-            // Can happen in implicit defs (#4709) or outside (#3253).
-            TermMemberNeedsResultTypeForImplicitSearch(cycleSym)
-          case tree: untpd.DefDef if !tree.tpt.typeOpt.exists =>
-            OverloadedOrRecursiveMethodNeedsResultType(tree.name)
-          case tree: untpd.ValDef if !tree.tpt.typeOpt.exists =>
-            RecursiveValueNeedsResultType(tree.name)
+          case tree: untpd.ValOrDefDef if !tree.tpt.typeOpt.exists =>
+            if (inImplicitSearch)
+              TermMemberNeedsResultTypeForImplicitSearch(tree.name, cycleSym)
+            else if (isMethod)
+              OverloadedOrRecursiveMethodNeedsResultType(tree.name, cycleSym)
+            else if (isVal)
+              RecursiveValueNeedsResultType(tree.name, cycleSym)
+            else
+              errorMsg(cx.outer)
           case _ =>
             errorMsg(cx.outer)
         }
