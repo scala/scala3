@@ -1,8 +1,11 @@
 
-object Test extends App {
-  def anyValue[T]: T = ???
+object typelevel {
+  erased def erasedValue[T]: T = ???
+}
 
-  transparent def defaultValue[T]: Option[Any] = anyValue[T] match {
+object Test extends App {
+
+  transparent def defaultValue[T]: Option[Any] = typelevel.erasedValue[T] match {
     case _: Byte => Some(0: Byte)
     case c: Char => Some(0: Char)
     case d @ (_: Short) => Some(0: Short)

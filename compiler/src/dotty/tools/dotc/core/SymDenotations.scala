@@ -600,7 +600,7 @@ object SymDenotations {
 
     /** Is this a denotation of a stable term (or an arbitrary type)? */
     final def isStable(implicit ctx: Context) =
-      isType || is(Stable) || !is(UnstableValue) && !info.isInstanceOf[ExprType]
+      isType || is(StableOrErased) || !is(UnstableValue) && !info.isInstanceOf[ExprType]
 
     /** Is this a denotation of a class that does not have - either direct or inherited -
      *  initaliazion code?

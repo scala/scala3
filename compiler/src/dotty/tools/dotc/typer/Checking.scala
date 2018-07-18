@@ -675,7 +675,7 @@ trait Checking {
     tree.tpe.widenTermRefExpr match {
       case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
       case _ =>
-        val allow = ctx.erasedTypes || ctx.owner.ownersIterator.exists(_.isTransparentMethod)
+        val allow = ctx.erasedTypes || ctx.inTransparentMethod
         if (!allow) ctx.error(em"$what must be a constant expression", tree.pos)
     }
   }

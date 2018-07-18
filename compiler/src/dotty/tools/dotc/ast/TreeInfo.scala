@@ -391,12 +391,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       SimplyPure
     case TypeApply(fn, _) =>
       exprPurity(fn)
-/*
- * Not sure we'll need that. Comment out until we find out
-    case Apply(Select(free @ Ident(_), nme.apply), _) if free.symbol.name endsWith nme.REIFY_FREE_VALUE_SUFFIX =>
-      // see a detailed explanation of this trick in `GenSymbols.reifyFreeTerm`
-      free.symbol.hasStableFlag && isIdempotentExpr(free)
-*/
     case Apply(fn, args) =>
       def isKnownPureOp(sym: Symbol) =
         sym.owner.isPrimitiveValueClass || sym.owner == defn.StringClass

@@ -177,16 +177,15 @@ So the end result of the expansion is the expression `throw new IndexOutOfBounds
 
 We have seen so far transparent functions that take terms (tuples and integers) as parameters. What if we want to base case distinctions on types instead? For instance, one would like to be able to write a function `defaultValue`, that, given a type `T`
 returns optionally the default value of `T`, if it exists. In fact, we can already express
-this using ordinary match expressions and a simple helper function, `scala.typelevel.anyValue`, which is defined as follows:
+this using ordinary match expressions and a simple helper function, `scala.typelevel.erasedValue`, which is defined as follows:
 ```scala
-def anyValue[T]: T = ???
+erased def erasedValue[T]: T = ???
 ```
-The `anyValue` function _pretends_ to return a value of its type argument `T`. In fact, it will always raise a `NotImplementedError` exception instead.
-This is OK, since the function is intended to be used only on the type-level; it should never be executed at run-time.
+The `erasedValue` function _pretends_ to return a value of its type argument `T`. In fact, it would always raise a `NotImplementedError` exception when called. But the function can in fact never be called, since it is declared `erased`, so can be only used a compile-time during type checking.
 
-Using `anyValue`, we can then define `defaultValue` as follows:
+Using `erasedValue`, we can then define `defaultValue` as follows:
 ```scala
-transparent def defaultValue[T]: Option[T] = anyValue[T] match {
+transparent def defaultValue[T]: Option[T] = erasedValue[T] match {
   case _: Byte => Some(0: Byte)
   case _: Char => Some(0: Char)
   case _: Short => Some(0: Short)
@@ -207,7 +206,6 @@ defaultValue[Boolean] = Some(false)
 defaultValue[String | Null] = Some(null)
 defaultValue[AnyVal] = None
 ```
-
 As another example, consider the type-level inverse of `toNat`: given a _type_ representing a Peano number, return the integer _value_ corresponding to it. Here's how this can be defined:
 ```scala
 transparent def toInt[N <: Nat]: Int = anyValue[N] match {

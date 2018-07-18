@@ -63,7 +63,7 @@ object Inliner {
   def isInlineable(meth: Symbol)(implicit ctx: Context): Boolean = {
 
     def suppressInline =
-      ctx.owner.ownersIterator.exists(_.isTransparentMethod) ||
+      ctx.inTransparentMethod ||
       ctx.settings.YnoInline.value ||
       ctx.isAfterTyper ||
       ctx.reporter.hasErrors
@@ -720,8 +720,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     val bindingOfSym = newMutableSymbolMap[MemberDef]
     def isInlineable(binding: MemberDef) = binding match {
       case DefDef(_, Nil, Nil, _, _) => true
-      case vdef @ ValDef(_, _, _) =>
-        vdef.name.is(TransparentScrutineeName) || isPureExpr(vdef.rhs)
+      case vdef @ ValDef(_, _, _) => isPureExpr(vdef.rhs)
       case _ => false
     }
     for (binding <- bindings if isInlineable(binding)) {

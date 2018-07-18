@@ -212,6 +212,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case sel: Select =>
               val args1 = transform(args)
               val sel1 = transformSelect(sel, args1)
+              checkNotErased(sel)
               cpy.TypeApply(tree1)(sel1, args1)
             case _ =>
               super.transform(tree1)
@@ -233,7 +234,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val callTrace =
             if (call.symbol.is(Macro)) call
             else Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
-          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion))
+          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {
             val templ1 = paramFwd.forwardParamAccessors(tree)
@@ -318,7 +319,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       }
 
     private def checkNotErased(tree: RefTree)(implicit ctx: Context): Unit = {
-      if (tree.symbol.is(Erased) && !ctx.mode.is(Mode.Type)) {
+      if (tree.symbol.is(Erased) && !ctx.mode.is(Mode.Type) && !ctx.inTransparentMethod) {
         val msg =
           if (tree.symbol.is(CaseAccessor)) "First parameter list of case class may not contain `erased` parameters"
           else i"${tree.symbol} is declared as erased, but is in fact used"

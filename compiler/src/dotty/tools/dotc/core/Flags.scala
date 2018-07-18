@@ -548,6 +548,9 @@ object Flags {
   /** Either method or lazy or deferred */
   final val MethodOrLazyOrDeferred = Method | Lazy | Deferred
 
+  /** Assumed to be pure */
+  final val StableOrErased = Stable | Erased
+
   /** Labeled `private`, `final`, or `transparent` */
   final val EffectivelyFinal = Private | Final | Transparent
 
