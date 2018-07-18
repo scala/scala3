@@ -158,7 +158,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private val thisProxy = new mutable.HashMap[ClassSymbol, TermRef]
 
   /** A buffer for bindings that define proxies for actual arguments */
-  val bindingsBuf = new mutable.ListBuffer[MemberDef]
+  private val bindingsBuf = new mutable.ListBuffer[MemberDef]
 
   private def newSym(name: Name, flags: FlagSet, info: Type): Symbol =
     ctx.newSymbol(ctx.owner, name, flags, info, coord = call.pos)
@@ -357,10 +357,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     trace(i"inlining $call", inlining, show = true) {
 
-      // Normalize all bindings in `bindingsBuf`
-      val rawBindings = bindingsBuf.toList
-      bindingsBuf.clear()
-      for (binding <- rawBindings) bindingsBuf += reducer.normalizeBinding(binding)(inlineCtx)
+      // The normalized bindings collected in `bindingsBuf`
+      bindingsBuf.transform(reducer.normalizeBinding(_)(inlineCtx))
 
       // Identifiy all toplevel matches
       inlineTyper.prepare(expansion)
@@ -375,14 +373,21 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
 
       // Drop unused bindings
-      val (finalBindings, finalExpansion) = dropUnusedDefs(bindingsBuf.toList, expansion1)
+      val matchBindings = reducer.matchBindingsBuf.toList
+      val (finalBindings, finalExpansion) = dropUnusedDefs(bindingsBuf.toList ++ matchBindings, expansion1)
+      val (finalMatchBindings, finalArgBindings) = finalBindings.partition(matchBindings.contains(_))
 
-      tpd.Inlined(call, finalBindings, finalExpansion)
+      // Take care that only argument bindings go into `bindings`, since positions are
+      // different for bindings from arguments and bindings from body.
+      tpd.Inlined(call, finalArgBindings, seq(finalMatchBindings, finalExpansion))
     }
   }
 
   /** A utility object offering methods for rewriting inlined code */
   object reducer {
+
+    /** A dditional bidnings established by reducing match expressions */
+    val matchBindingsBuf = new mutable.ListBuffer[MemberDef]
 
     /** An extractor for terms equivalent to `new C(args)`, returning the class `C`
      *  and the arguments `args`. Can see inside blocks and Inlined nodes and can
@@ -482,9 +487,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
      */
     private object InlineableArg {
       lazy val paramProxies = paramProxy.values.toSet
-      def unapply(tree: Trees.Ident[_])(implicit ctx: Context): Option[Tree] =
+      def unapply(tree: Trees.Ident[_])(implicit ctx: Context): Option[Tree] = {
+        def search(buf: mutable.ListBuffer[MemberDef]) = buf.find(_.name == tree.name)
         if (paramProxies.contains(tree.typeOpt))
-          bindingsBuf.find(_.name == tree.name) match {
+          search(bindingsBuf).orElse(search(matchBindingsBuf)) match {
             case Some(vdef: ValDef) if vdef.symbol.is(Transparent) =>
               Some(vdef.rhs.changeOwner(vdef.symbol, ctx.owner))
             case Some(ddef: DefDef) =>
@@ -492,6 +498,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             case _ => None
           }
         else None
+      }
     }
 
     object ConstantValue {
@@ -682,7 +689,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           reduceTopLevelMatch(sel, selType, tree.cases, this) match {
             case Some((caseBindings, rhs)) =>
               for (binding <- caseBindings) {
-                bindingsBuf += binding
+                matchBindingsBuf += binding
                 ctx.enter(binding.symbol)
               }
               typedExpr(rhs, pt)
