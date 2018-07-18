@@ -688,7 +688,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       case _ => tree
     }}
 
-    val inlineTyper = if (meth.isTransparentMethod) new TransparentTyper else new InlineReTyper
+    val inlineTyper = new InlineTyper
     val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
 
     // The complete translation maps references to `this` and parameters to
@@ -839,9 +839,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       else None
   }
 
-  /** A base trait of InlineTyper and InlineReTyper containing operations that
-   *  work the same way for both. Beyond typing or retyping, an inline typer performs
-   *  the following functions:
+  /** A typer for inlined bodies of transparent methods. Beyond standard typing
+   *  an inline typer performs the following functions:
    *
    *  1. Implement constant folding over inlined code
    *  2. Selectively expand ifs with constant conditions
@@ -849,7 +848,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    *  4. Make sure inlined code is type-correct.
    *  5. Make sure that the tree's typing is idempotent (so that future -Ycheck passes succeed)
    */
-  trait InlineTyping extends Typer {
+  class InlineTyper extends Typer {
 
     protected def tryInline(tree: tpd.Tree)(implicit ctx: Context) = tree match {
       case InlineableArg(rhs) =>
@@ -871,6 +870,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
       super.ensureAccessible(tpe, superAccess, pos)
     }
+
+    override def typedTypedSplice(tree: untpd.TypedSplice)(implicit ctx: Context): Tree =
+      reduceProjection(tryInline(tree.splice) `orElse` super.typedTypedSplice(tree))
+
+    override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context) =
+      constToLiteral(reduceProjection(super.typedSelect(tree, pt)))
 
     override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = {
       val cond1 = typed(tree.cond, defn.BooleanType)
@@ -923,33 +928,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
       constToLiteral(betaReduce(super.typedApply(tree, pt)))
     }
-  }
 
-  /** A full typer used for transparent methods */
-  private class TransparentTyper extends Typer with InlineTyping {
-
-    override def typedTypedSplice(tree: untpd.TypedSplice)(implicit ctx: Context): Tree =
-      reduceProjection(tryInline(tree.splice) `orElse` super.typedTypedSplice(tree))
-
-    override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context) =
-      constToLiteral(reduceProjection(super.typedSelect(tree, pt)))
-  }
-
-  /** A re-typer used for inlined methods */
-  private class InlineReTyper extends ReTyper with InlineTyping {
-
-    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context) =
-      tryInline(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt)
-
-    override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
-      assert(tree.hasType, tree)
-      val qual1 = typed(tree.qualifier, selectionProto(tree.name, pt, this))
-      val res = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
-      ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.pos)
-      res
-    }
-
-    override def newLikeThis: Typer = new InlineReTyper
+    override def newLikeThis: Typer = new InlineTyper
   }
 
   /** Drop any side-effect-free bindings that are unused in expansion or other reachable bindings.
