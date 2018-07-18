@@ -39,6 +39,9 @@ class FromTastyTests extends ParallelTesting {
 
         // Fails on MacOS
         "annot-bootstrap.scala",
+
+        // ScalaRunTime cannot be unpickled because it is already loaded
+        "repeatedArgs213.scala",
       ),
       recompilationBlacklist = Set(
       )
