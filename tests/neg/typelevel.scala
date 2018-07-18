@@ -47,7 +47,7 @@ object Test {
   val rra: HCons[Int, HNil.type] = rr   // ok
   val rr2 = new Deco2(HCons(1, HNil)) ++ HNil
   val rr2a: HCons[Int, HNil.type] = rr2   // ok
-  val rr0 = new Deco0(HCons(1, HNil)) ++ HNil
+  val rr0 = new Deco0(HCons(1, HNil)) ++ HNil // error Maximal number of successive inlines (32) exceeded
   val rr0a: HCons[Int, HNil.type] = rr0   // error (type error because no inline)
   val rr1 = new Deco1(HCons(1, HNil)) ++ HNil
   val rr1a: HCons[Int, HNil.type] = rr1   // error (type error because no inline)
