@@ -9,7 +9,6 @@ import scala.collection.{ mutable, immutable }
 import PartialFunction._
 import collection.mutable
 import util.common.alwaysZero
-import dotty.tools.dotc.transform.TreeGen
 
 object Definitions {
 
@@ -345,11 +344,6 @@ class Definitions {
     def Predef_classOf(implicit ctx: Context) = Predef_classOfR.symbol
     lazy val Predef_undefinedR = ScalaPredefModule.requiredMethodRef("???")
     def Predef_undefined(implicit ctx: Context) = Predef_undefinedR.symbol
-    // The set of all wrap{X, Ref}Array methods, where X is a value type
-    val Predef_wrapArray = new PerRun[collection.Set[Symbol]]({ implicit ctx =>
-      val methodNames = ScalaValueTypes.map(TreeGen.wrapArrayMethodName) + nme.wrapRefArray
-      methodNames.map(ScalaPredefModule.requiredMethodRef(_).symbol)
-    })
 
   lazy val ScalaRuntimeModuleRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
   def ScalaRuntimeModule(implicit ctx: Context) = ScalaRuntimeModuleRef.symbol
@@ -390,6 +384,17 @@ class Definitions {
     def newGenericArrayMethod(implicit ctx: Context) = DottyArraysModule.requiredMethod("newGenericArray")
     def newArrayMethod(implicit ctx: Context) = DottyArraysModule.requiredMethod("newArray")
 
+  // TODO: Remove once we drop support for 2.12 standard library
+  private[this] lazy val isNewCollections = ctx.base.staticRef("scala.collection.IterableOnce".toTypeName).exists
+
+  def getWrapVarargsArrayModule = if (isNewCollections) ScalaRuntimeModule else ScalaPredefModule
+
+  // The set of all wrap{X, Ref}Array methods, where X is a value type
+  val WrapArrayMethods = new PerRun[collection.Set[Symbol]]({ implicit ctx =>
+    val methodNames = ScalaValueTypes.map(ast.tpd.wrapArrayMethodName) + nme.wrapRefArray
+    methodNames.map(getWrapVarargsArrayModule.requiredMethodRef(_).symbol)
+  })
+
   lazy val NilModuleRef = ctx.requiredModuleRef("scala.collection.immutable.Nil")
   def NilModule(implicit ctx: Context) = NilModuleRef.symbol
 
@@ -401,7 +406,9 @@ class Definitions {
       List(AnyClass.typeRef), EmptyScope)
   lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
-  lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
+  lazy val SeqType: TypeRef =
+    if (isNewCollections) ctx.requiredClassRef("scala.collection.immutable.Seq")
+    else ctx.requiredClassRef("scala.collection.Seq")
   def SeqClass(implicit ctx: Context) = SeqType.symbol.asClass
     lazy val Seq_applyR = SeqClass.requiredMethodRef(nme.apply)
     def Seq_apply(implicit ctx: Context) = Seq_applyR.symbol
@@ -1210,12 +1217,11 @@ class Definitions {
 
   lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 
-  private[this] var _isInitialized = false
-  private def isInitialized = _isInitialized
+  private[this] var isInitialized = false
 
   def init()(implicit ctx: Context) = {
     this.ctx = ctx
-    if (!_isInitialized) {
+    if (!isInitialized) {
       // Enter all symbols from the scalaShadowing package in the scala package
       for (m <- ScalaShadowingPackageClass.info.decls)
         ScalaPackageClass.enter(m)
@@ -1230,7 +1236,7 @@ class Definitions {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
 
-      _isInitialized = true
+      isInitialized = true
     }
   }
 

@@ -5,6 +5,7 @@ package ast
 import dotty.tools.dotc.transform.{ExplicitOuter, Erasure}
 import dotty.tools.dotc.typer.ProtoTypes.FunProtoTyped
 import transform.SymUtils._
+import transform.TypeUtils._
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Symbols._
@@ -377,7 +378,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   /** A tree representing a `newXYZArray` operation of the right
-   *  kind for the given element type in `typeArg`. No type arguments or
+   *  kind for the given element type in `elemTpe`. No type arguments or
    *  `length` arguments are given.
    */
   def newArray(elemTpe: Type, returnTpe: Type, pos: Position, dims: JavaSeqLiteral)(implicit ctx: Context): Tree = {
@@ -390,6 +391,24 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
     } else  // after erasure
       newArr.appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withPos(pos)
+  }
+
+  /** The wrapped array method name for an array of type elemtp */
+  def wrapArrayMethodName(elemtp: Type)(implicit ctx: Context): TermName = {
+    val elemCls = elemtp.classSymbol
+    if (elemCls.isPrimitiveValueClass) nme.wrapXArray(elemCls.name)
+    else if (elemCls.derivesFrom(defn.ObjectClass) && !elemCls.isNotRuntimeClass) nme.wrapRefArray
+    else nme.genericWrapArray
+  }
+
+  /** A tree representing a `wrapXYZArray(tree)` operation of the right
+   *  kind for the given element type in `elemTpe`.
+   */
+  def wrapArray(tree: Tree, elemtp: Type)(implicit ctx: Context): Tree = {
+    ref(defn.getWrapVarargsArrayModule)
+      .select(wrapArrayMethodName(elemtp))
+      .appliedToTypes(if (elemtp.isPrimitiveValueType) Nil else elemtp :: Nil)
+      .appliedTo(tree)
   }
 
   // ------ Creating typed equivalents of trees that exist only in untyped form -------
