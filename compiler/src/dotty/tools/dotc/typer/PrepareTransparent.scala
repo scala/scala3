@@ -213,10 +213,11 @@ object PrepareTransparent {
     }
   }
 
+  def isLocalOrParam(sym: Symbol, inlineMethod: Symbol)(implicit ctx: Context) =
+    sym.isContainedIn(inlineMethod) && sym != inlineMethod
+
   def isLocal(sym: Symbol, inlineMethod: Symbol)(implicit ctx: Context) =
-    sym.isContainedIn(inlineMethod) &&
-    sym != inlineMethod &&
-    (!sym.is(Param) || sym.owner != inlineMethod)
+    isLocalOrParam(sym, inlineMethod) && !(sym.is(Param) && sym.owner == inlineMethod)
 
   /** Register inline info for given transparent method `sym`.
    *
@@ -260,8 +261,6 @@ object PrepareTransparent {
   private def addReferences(inlineMethod: Symbol,
       original: untpd.Tree, typed: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
 
-    def isExternal(sym: Symbol) = sym.exists && !isLocal(sym, inlineMethod)
-
     // Maps from positions to external reference types and inline selector names.
     object referenced extends TreeTraverser {
       val typeAtPos = mutable.Map[Position, Type]()
@@ -272,7 +271,8 @@ object PrepareTransparent {
       def registerIfContextualImplicit(tree: Tree) = tree match {
         case tree: RefTree
         if tree.removeAttachment(ContextualImplicit).isDefined &&
-           isExternal(tree.symbol) &&
+           tree.symbol.exists &&
+           !isLocalOrParam(tree.symbol, inlineMethod) &&
            !implicitSyms.contains(tree.symbol) =>
           if (tree.existsSubTree(t => isLocal(tree.symbol, inlineMethod)))
             ctx.warning("implicit reference $tree is dropped at inline site because it refers to local symbol(s)", tree.pos)
@@ -292,8 +292,8 @@ object PrepareTransparent {
         tree match {
           case _: Ident | _: This =>
             //println(i"leaf: $tree at ${tree.pos}")
-            if (isExternal(tree.symbol)) {
-              if (ctx.debug) inlining.println(i"type at pos ${tree.pos.toSynthetic} = ${tree.tpe}")
+            if (tree.symbol.exists && !isLocal(tree.symbol, inlineMethod)) {
+              if (ctx.debug) inlining.println(i"type at $tree @ ${tree.pos.toSynthetic} = ${tree.tpe}")
               typeAtPos(tree.pos.toSynthetic) = tree.tpe
             }
           case _: Select =>
