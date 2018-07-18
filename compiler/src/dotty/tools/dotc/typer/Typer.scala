@@ -476,9 +476,9 @@ class Typer extends Namer
       case pt: SelectionProto if pt.name == nme.CONSTRUCTOR => true
       case _ => false
     }
-    val enclosingInlineable = ctx.owner.ownersIterator.findSymbol(_.isInlineableMethod)
-    if (enclosingInlineable.exists && !Inliner.isLocal(qual1.symbol, enclosingInlineable))
-      ctx.error(SuperCallsNotAllowedInline(enclosingInlineable), tree.pos)
+    val enclosingTransparent = ctx.owner.ownersIterator.findSymbol(_.isTransparentMethod)
+    if (enclosingTransparent.exists && !Inliner.isLocal(qual1.symbol, enclosingTransparent))
+      ctx.error(SuperCallsNotAllowedTransparent(enclosingTransparent), tree.pos)
     pt match {
       case pt: SelectionProto if pt.name.isTypeName =>
         qual1 // don't do super references for types; they are meaningless anyway
@@ -1072,8 +1072,8 @@ class Typer extends Namer
         (EmptyTree, WildcardType)
       }
       else if (owner != cx.outer.owner && owner.isRealMethod) {
-        if (owner.isInlineableMethod)
-          (EmptyTree, errorType(NoReturnFromInline(owner), tree.pos))
+        if (owner.isTransparentMethod)
+          (EmptyTree, errorType(NoReturnFromTransparent(owner), tree.pos))
         else if (!owner.isCompleted)
           (EmptyTree, errorType(MissingReturnTypeWithReturnStatement(owner), tree.pos))
         else {
@@ -1377,8 +1377,8 @@ class Typer extends Namer
       case rhs => normalizeErasedRhs(typedExpr(rhs, tpt1.tpe), sym)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
-    if (sym.is(Inline, butNot = DeferredOrTermParamOrAccessor))
-      checkInlineConformant(rhs1, isFinal = sym.is(Final), em"right-hand side of inline $sym")
+    if (sym.is(Transparent, butNot = DeferredOrTermParamOrAccessor))
+      checkTransparentConformant(rhs1, isFinal = sym.is(Final), em"right-hand side of transparent $sym")
     patchIfLazy(vdef1)
     patchFinalVals(vdef1)
     vdef1
@@ -1393,7 +1393,7 @@ class Typer extends Namer
       patch(Position(toUntyped(vdef).pos.start), "@volatile ")
   }
 
-  /** Adds inline to final vals with idempotent rhs
+  /** Adds transparent to final vals with idempotent rhs
    *
    *  duplicating scalac behavior: for final vals that have rhs as constant, we do not create a field
    *  and instead return the value. This seemingly minor optimization has huge effect on initialization
@@ -1409,7 +1409,7 @@ class Typer extends Namer
     }
     val sym = vdef.symbol
     sym.info match {
-      case info: ConstantType if isFinalInlinableVal(sym) && !ctx.settings.YnoInline.value => sym.setFlag(Inline)
+      case info: ConstantType if isFinalInlinableVal(sym) && !ctx.settings.YnoInline.value => sym.setFlag(Transparent)
       case _ =>
     }
   }
@@ -1440,8 +1440,7 @@ class Typer extends Namer
     if (sym.isTransparentMethod) rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
     val rhs1 = normalizeErasedRhs(typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx), sym)
 
-    // Overwrite inline body to make sure it is not evaluated twice
-    if (sym.isInlineableMethod) Inliner.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
+    if (sym.isTransparentMethod) Inliner.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
 
     if (sym.isConstructor && !sym.isPrimaryConstructor)
       for (param <- tparams1 ::: vparamss1.flatten)
@@ -1910,17 +1909,10 @@ class Typer extends Namer
           case none =>
             typed(mdef) match {
               case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
-                if (mdef1.symbol.isInlinedMethod) {
-                  buf += inlineExpansion(mdef1)
-                    // replace body with expansion, because it will be used as inlined body
-                    // from separately compiled files - the original BodyAnnotation is not kept.
-                }
-                else {
-                  assert(mdef1.symbol.isTransparentMethod, mdef.symbol)
-                  Inliner.bodyToInline(mdef1.symbol) // just make sure accessors are computed,
-                  buf += mdef1                       // but keep original definition, since inline-expanded code
-                                                     // is pickled in this case.
-                }
+                assert(mdef1.symbol.isTransparentMethod, mdef.symbol)
+                Inliner.bodyToInline(mdef1.symbol) // just make sure accessors are computed,
+                buf += mdef1                       // but keep original definition, since inline-expanded code
+                                                   // is pickled in this case.
               case mdef1 =>
                 import untpd.modsDeco
                 mdef match {
@@ -1952,7 +1944,7 @@ class Typer extends Namer
     checkEnumCompanions(traverse(stats)(localCtx), enumContexts)
   }
 
-  /** Given an inline method `mdef`, the method rewritten so that its body
+  /** Given a transparent method `mdef`, the method rewritten so that its body
    *  uses accessors to access non-public members.
    *  Overwritten in Retyper to return `mdef` unchanged.
    */
@@ -2372,12 +2364,13 @@ class Typer extends Namer
         checkEqualityEvidence(tree, pt)
         tree
       }
-      else if (Inliner.isInlineable(tree.symbol) &&
-               (tree.symbol.isTransparentMethod || tree.tpe <:< pt))
+      else if (Inliner.isInlineable(tree.symbol)) {
+        tree.tpe <:< wildApprox(pt)
         readaptSimplified(Inliner.inlineCall(tree, pt))
+      }
       else if (tree.tpe <:< pt) {
-        if (pt.hasAnnotation(defn.InlineParamAnnot))
-          checkInlineConformant(tree, isFinal = false, "argument to inline parameter")
+        if (pt.hasAnnotation(defn.TransparentParamAnnot))
+          checkTransparentConformant(tree, isFinal = false, "argument to transparent parameter")
         if (ctx.typeComparer.GADTused && pt.isValueType)
           // Insert an explicit cast, so that -Ycheck in later phases succeeds.
           // I suspect, but am not 100% sure that this might affect inferred types,

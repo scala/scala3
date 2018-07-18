@@ -59,14 +59,14 @@ import dotty.tools.dotc.core.quoted._
  *  and then performs the same transformation on `'{ ... x1$1.unary_~ ... x2$1.unary_~ ...}`.
  *
  *
- *  For inline macro definitions we assume that we have a single ~ directly as the RHS.
+ *  For transparent macro definitions we assume that we have a single ~ directly as the RHS.
  *  We will transform the definition from
  *    ```
- *    inline def foo[T1, ...](inline x1: X, ..., y1: Y, ....): Z = ~{ ... T1 ... x ... '(y) ... }
+ *    transparent def foo[T1, ...] (transparent x1: X, ..., y1: Y, ....): Z = ~{ ... T1 ... x ... '(y) ... }
  *    ```
  *  to
  *    ```
- *    inline def foo[T1, ...](inline x1: X, ..., y1: Y, ....): Seq[Any] => Object = { (args: Seq[Any]) => {
+ *    transparent def foo[T1, ...] (transparent x1: X, ..., y1: Y, ....): Seq[Any] => Object = { (args: Seq[Any]) => {
  *      val T1$1 = args(0).asInstanceOf[Type[T1]]
  *      ...
  *      val x1$1 = args(0).asInstanceOf[X]
@@ -76,8 +76,8 @@ import dotty.tools.dotc.core.quoted._
  *      { ... x1$1 .... '{ ... T1$1.unary_~ ... x1$1.toExpr.unary_~ ... y1$1.unary_~ ... } ... }
  *    }
  *    ```
- *  Where `inline` parameters with type Boolean, Byte, Short, Int, Long, Float, Double, Char and String are
- *  passed as their actual runtime value. See `isStage0Value`. Other `inline` arguments such as functions are handled
+ *  Where `transparent` parameters with type Boolean, Byte, Short, Int, Long, Float, Double, Char and String are
+ *  passed as their actual runtime value. See `isStage0Value`. Other `transparent` arguments such as functions are handled
  *  like `y1: Y`.
  *
  *  Note: the parameters of `foo` are kept for simple overloading resolution but they are not used in the body of `foo`.
@@ -243,7 +243,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
     }
 
     /** Does the level of `sym` match the current level?
-     *  An exception is made for inline vals in macros. These are also OK if their level
+     *  An exception is made for transparent vals in macros. These are also OK if their level
      *  is one higher than the current level, because on execution such values
      *  are constant expression trees and we can pull out the constant from the tree.
      */
@@ -255,7 +255,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
         !sym.is(Param) || levelOK(sym.owner)
     }
 
-    /** Issue a "splice outside quote" error unless we ar in the body of an inline method */
+    /** Issue a "splice outside quote" error unless we ar in the body of a transparent method */
     def spliceOutsideQuotes(pos: Position)(implicit ctx: Context): Unit =
       ctx.error(i"splice outside quotes", pos)
 
@@ -432,7 +432,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
 
     /** If inside a quote, split the body of the splice into a core and a list of embedded quotes
      *  and make a hole from these parts. Otherwise issue an error, unless we
-     *  are in the body of an inline method.
+     *  are in the body of a transparent method.
      */
     private def splice(splice: Select)(implicit ctx: Context): Tree = {
       if (level > 1) {
@@ -604,7 +604,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
             tree.rhs match {
               case InlineSplice(_) =>
                 if (!tree.symbol.isStatic)
-                  ctx.error("Inline macro method must be a static method.", tree.pos)
+                  ctx.error("Transparent macro method must be a static method.", tree.pos)
                 markDef(tree)
                 val reifier = nested(isQuote = true)
                 reifier.transform(tree) // Ignore output, we only need the its embedding
@@ -614,12 +614,12 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
                 cpy.DefDef(tree)(tpt = TypeTree(macroReturnType), rhs = lambda)
               case _ =>
                 ctx.error(
-                  """Malformed inline macro.
+                  """Malformed transparent macro.
                     |
                     |Expected the ~ to be at the top of the RHS:
-                    |  inline def foo(...): Int = ~impl(...)
+                    |  transparent def foo(...): Int = ~impl(...)
                     |or
-                    |  inline def foo(...): Int = ~{
+                    |  transparent def foo(...): Int = ~{
                     |    val x = 1
                     |    impl(... x ...)
                     |  }
@@ -632,7 +632,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
         }
       }
 
-    /** Takes a reference to an inline parameter `tree` and lifts it to an Expr */
+    /** Takes a reference to an transparent parameter `tree` and lifts it to an Expr */
     private def liftInlineParamValue(tree: Tree)(implicit ctx: Context): Tree = {
       val tpSym = tree.tpe.widenDealias.classSymbol
 
@@ -651,7 +651,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
     }
 
     private def isStage0Value(sym: Symbol)(implicit ctx: Context): Boolean =
-      (sym.is(Inline) && sym.owner.is(Macro) && !defn.isFunctionType(sym.info)) ||
+      (sym.is(Transparent) && sym.owner.is(Macro) && !defn.isFunctionType(sym.info)) ||
       sym == defn.TastyTopLevelSplice_tastyContext // intrinsic value at stage 0
 
     private def liftList(list: List[Tree], tpe: Type)(implicit ctx: Context): Tree = {
@@ -677,9 +677,9 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = {
     /** Transforms the return type of
-     *    inline def foo(...): X = ~(...)
+     *    transparent def foo(...): X = ~(...)
      *  to
-     *    inline def foo(...): Seq[Any] => Expr[Any] = (args: Seq[Any]) => ...
+     *    transparent def foo(...): Seq[Any] => Expr[Any] = (args: Seq[Any]) => ...
      */
     def transform(tp: Type): Type = tp match {
       case tp: MethodType => MethodType(tp.paramNames, tp.paramInfos, transform(tp.resType))

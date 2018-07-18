@@ -63,9 +63,9 @@ object Splicer {
     def liftArgs(tpe: Type, args: List[List[Tree]]): List[Any] = tpe match {
       case tp: MethodType =>
         val args1 = args.head.zip(tp.paramInfos).map {
-          case (arg: Literal, tp) if tp.hasAnnotation(defn.InlineParamAnnot) => arg.const.value
+          case (arg: Literal, tp) if tp.hasAnnotation(defn.TransparentParamAnnot) => arg.const.value
           case (arg, tp) =>
-            assert(!tp.hasAnnotation(defn.InlineParamAnnot))
+            assert(!tp.hasAnnotation(defn.TransparentParamAnnot))
             // Replace argument by its binding
             val arg1 = bindMap.getOrElse(arg, arg)
             new scala.quoted.Exprs.TastyTreeExpr(arg1)
@@ -154,12 +154,12 @@ object Splicer {
       try clazz.getMethod(name.toString, paramClasses: _*)
       catch {
         case _: NoSuchMethodException =>
-          val msg = s"Could not find inline macro method ${clazz.getCanonicalName}.$name with parameters $paramClasses$extraMsg"
+          val msg = s"Could not find transparent macro method ${clazz.getCanonicalName}.$name with parameters $paramClasses$extraMsg"
           throw new StopInterpretation(msg, pos)
       }
     }
 
-    private def extraMsg = ". The most common reason for that is that you cannot use inline macro implementations in the same compilation run that defines them"
+    private def extraMsg = ". The most common reason for that is that you cannot use transparent macro implementations in the same compilation run that defines them"
 
     private def stopIfRuntimeException[T](thunk: => T): T = {
       try thunk

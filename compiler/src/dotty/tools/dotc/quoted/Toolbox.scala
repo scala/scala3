@@ -17,7 +17,7 @@ object Toolbox {
       case expr: LiftedExpr[T] =>
         expr.value
       case expr: TastyTreeExpr[Tree] @unchecked =>
-        throw new Exception("Cannot call `Expr.run` on an `Expr` that comes from an inline macro argument.")
+        throw new Exception("Cannot call `Expr.run` on an `Expr` that comes from a transparent macro argument.")
       case _ =>
         synchronized(driver.run(expr, settings))
     }

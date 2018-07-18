@@ -788,13 +788,8 @@ object SymDenotations {
 
     def isSkolem: Boolean = name == nme.SKOLEM
 
-    def isInlinedMethod(implicit ctx: Context): Boolean =
-      is(InlineMethod, butNot = Accessor)
-
     def isTransparentMethod(implicit ctx: Context): Boolean =
       is(TransparentMethod, butNot = AccessorOrSynthetic)
-
-    def isInlineableMethod(implicit ctx: Context) = isInlinedMethod || isTransparentMethod
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,

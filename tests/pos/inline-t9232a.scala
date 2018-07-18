@@ -1,7 +1,7 @@
 final class Foo(val value: Int)
 
 object Foo {
-  inline def unapply(foo: Foo): Some[Int] = Some(foo.value)
+  transparent def unapply(foo: Foo): Some[Int] = Some(foo.value)
 }
 
 object Test {

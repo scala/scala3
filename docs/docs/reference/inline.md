@@ -1,20 +1,20 @@
 ---
 layout: doc-page
-title: Inline
+title: Transparent
 ---
 
-`inline` is a new modifier that guarantees that a definition will be
+`transparent` is a new modifier that guarantees that a definition will be
 inlined at the point of use. Example:
 
     object Config {
-      inline val logging = false
+      transparent val logging = false
     }
 
     object Logger {
 
       private var indent = 0
 
-      inline def log[T](msg: => String)(op: => T): T =
+      transparent def log[T](msg: => String)(op: => T): T =
         if (Config.logging) {
           println(s"${"  " * indent}start $msg")
           indent += 1
@@ -26,15 +26,15 @@ inlined at the point of use. Example:
         else op
     }
 
-The `Config` object contains a definition of an `inline` value
+The `Config` object contains a definition of an `transparent` value
 `logging`. This means that `logging` is treated as a constant value,
 equivalent to its right-hand side `false`. The right-hand side of such
-an inline val must itself be a [constant
+an transparent val must itself be a [constant
 expression](#the-definition-of-constant-expression). Used in this way,
-`inline` is equivalent to Java and Scala 2's `final`. `final` meaning
+`transparent` is equivalent to Java and Scala 2's `final`. `final` meaning
 "constant" is still supported in Dotty, but will be phased out.
 
-The `Logger` object contains a definition of an `inline` method `log`.
+The `Logger` object contains a definition of an `transparent` method `log`.
 This method will always be inlined at the point of call.
 
 In the inlined code, an if-then-else with a constant condition will be
@@ -57,29 +57,43 @@ If `Config.logging == false`, this will be rewritten to
   }
 
 Note that the arguments corresponding to the parameters `msg` and `op`
-of the inline method `log` are defined before the inlined body (which
+of the transparent method `log` are defined before the inlined body (which
 is in this case simply `op`). By-name parameters of the inlined method
 correspond to `def` bindings whereas by-value parameters correspond to
 `val` bindings. So if `log` was defined like this:
 
-    inline def log[T](msg: String)(op: => T): T = ...
+    transparent def log[T](msg: String)(op: => T): T = ...
 
 we'd get
 
     val msg = s"factorial($n)"
 
-instead. This behavior is designed so that calling an inline method is
+instead. This behavior is designed so that calling a transparent method is
 semantically the same as calling a normal method: By-value arguments
 are evaluated before the call whereas by-name arguments are evaluated
 each time they are referenced. As a consequence, it is often
-preferable to make arguments of inline methods by-name in order to
+preferable to make arguments of transparent methods by-name in order to
 avoid unnecessary evaluations.
 
-Inline methods can be recursive. For instance, when called with a constant
-exponent `n`, the following method for `power` will be implemented by
-straight inline code without any loop or recursion.
+For instance, here is how we can define a zero-overhead `foreach` method
+that translates into a straightforward while loop without any indirection or
+overhead:
 
-    inline def power(x: Double, n: Int): Double =
+    transparent def foreach(op: => Int => Unit): Unit = {
+      var i = from
+      while (i < end) {
+        op(i)
+        i += 1
+      }
+    }
+
+By contrast, if `op` is a call-by-value parameter, it would be evaluated separately as a closure.
+
+Transparent methods can be recursive. For instance, when called with a constant
+exponent `n`, the following method for `power` will be implemented by
+straight transparent code without any loop or recursion.
+
+    transparent def power(x: Double, n: Int): Double =
       if (n == 0) 1.0
       else if (n == 1) x
       else {
@@ -96,44 +110,26 @@ straight inline code without any loop or recursion.
         //    val y3 = y2 * x  // ^5
         //    y3 * y3          // ^10
 
-Parameters of inline methods can themselves be marked `inline`. This means
-that the argument of an inline method is itself inlined in the inlined body of
-the method. Using this scheme, we can define a zero-overhead `foreach` method
-that translates into a straightforward while loop without any indirection or
-overhead:
-
-    inline def foreach(inline op: Int => Unit): Unit = {
-      var i = from
-      while (i < end) {
-        op(i)
-        i += 1
-      }
-    }
+Parameters of transparent methods can themselves be marked `transparent`. This means
+that actual arguments to these parameters must be constant expressions.
 
 ### Relationship to `@inline`.
 
-Existing Scala defines a `@inline` annotation which is used as a hint
-for the backend to inline. For most purposes, this annotation is
-superseded by the `inline` modifier. The modifier is more powerful
-than the annotation: Expansion is guaranteed instead of best effort,
+Scala also defines a `@inline` annotation which is used as a hint
+for the backend to inline. The `transparent` modifier is a more powerful
+option: Expansion is guaranteed instead of best effort,
 it happens in the frontend instead of in the backend, and it also applies
-to method arguments and recursive methods.
+to recursive methods.
 
-Since `inline` is now a keyword, it would be a syntax error to write
-`@inline`. However, one can still refer to the annotation by putting
-it in backticks, i.e.
-
-    @`inline` def ...
-
-The Dotty compiler ignores `@inline` annotated definitions. To cross
-compile between both Dotty and Scalac, we introduce a new `@forceInline`
-annotation which is equivalent to the new `inline` modifier. Note that
-Scala 2 ignores the `@forceInLine` annotation, and one must use both
-annotations to inline across the two compilers (i.e. `@forceInline @inline`).
+To cross compile between both Dotty and Scalac, we introduce a new `@forceInline`
+annotation which is equivalent to the new `transparent` modifier. Note that
+Scala 2 ignores the `@forceInline` annotation, so one must use both
+annotations to guarantee inlining for Dotty and at the same time hint inlining
+for Scala 2 (i.e. `@forceInline @inline`).
 
 ### The definition of constant expression
 
-Right-hand sides of inline values and of arguments for inline parameters
+Right-hand sides of transparent values and of arguments for transparent parameters
 must be constant expressions in the sense defined by the [SLS §
 6.24](https://www.scala-lang.org/files/archive/spec/2.12/06-expressions.html#constant-expressions),
 including "platform-specific" extensions such as constant folding of
@@ -141,5 +137,5 @@ pure numeric computations.
 
 ### Reference
 
-For more info, see [PR #1492](https://github.com/lampepfl/dotty/pull/1492) and
-[Scala SIP 28](http://docs.scala-lang.org/sips/pending/inline-meta.html).
+For more info, see [PR #4768](https://github.com/lampepfl/dotty/pull/4768), which explains how
+transparent methods can be used for typelevel programming and code specialization.

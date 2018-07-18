@@ -247,7 +247,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
         val flags = ddef.flags
         if (flags.isImplicit) this += "implicit "
-        if (flags.isInline) this += "inline "
+        if (flags.isTransparent) this += "transparent "
         if (flags.isOverride) this += "override "
 
         printProtectedOrPrivate(ddef)

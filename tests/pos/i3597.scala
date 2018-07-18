@@ -1,3 +1,3 @@
 object Test {
-  def bar(inline n: Int) = n
+  def bar(transparent n: Int) = n
 }

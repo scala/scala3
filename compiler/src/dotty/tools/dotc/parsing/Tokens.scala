@@ -91,8 +91,9 @@ abstract class TokensCommon {
   //final val LAZY = 59;             enter(LAZY, "lazy")
   //final val THEN = 60;             enter(THEN, "then")
   //final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
-  //final val INLINE = 62;           enter(INLINE, "inline")
-  //final val ENUM = 63;            enter(ENUM, "enum")
+  //final val TRANSPARENT = 62;      enter(TRANSPARENT, "transparent")
+  //final val ENUM = 63;             enter(ENUM, "enum")
+  //final val ERASED = 64;           enter(ERASED, "erased")
 
   /** special symbols */
   final val COMMA = 70;            enter(COMMA, "','")
@@ -175,10 +176,9 @@ object Tokens extends TokensCommon {
   final val LAZY = 59;             enter(LAZY, "lazy")
   final val THEN = 60;             enter(THEN, "then")
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
-  final val INLINE = 62;           enter(INLINE, "inline")
-  final val TRANSPARENT = 63;      enter(TRANSPARENT, "transparent")
-  final val ENUM = 64;             enter(ENUM, "enum")
-  final val ERASED = 65;           enter(ERASED, "erased")
+  final val TRANSPARENT = 62;      enter(TRANSPARENT, "transparent")
+  final val ENUM = 63;             enter(ENUM, "enum")
+  final val ERASED = 64;           enter(ERASED, "erased")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -227,7 +227,7 @@ object Tokens extends TokensCommon {
   final val defIntroTokens = templateIntroTokens | dclIntroTokens
 
   final val localModifierTokens = BitSet(
-    ABSTRACT, FINAL, SEALED, IMPLICIT, INLINE, TRANSPARENT, LAZY, ERASED)
+    ABSTRACT, FINAL, SEALED, IMPLICIT, TRANSPARENT, LAZY, ERASED)
 
   final val accessModifierTokens = BitSet(
     PRIVATE, PROTECTED)

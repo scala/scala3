@@ -3,7 +3,7 @@ trait Foo {
 }
 
 object Foo {
-  inline def foo: Foo = new Foo {
+  transparent def foo: Foo = new Foo {
     def apply[~>[_,_]](x: Int ~> Int): Int ~> Int = x
   }
 

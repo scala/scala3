@@ -3,12 +3,12 @@ import scala.language.implicitConversions
 
 object Test extends dotty.runtime.LegacyApp {
   class ArrowAssocClass[A](val __leftOfArrow: A) extends AnyVal {
-    inline def -> [B](y: B): Tuple2[A, B] = Tuple2(__leftOfArrow, y)
+    transparent def -> [B](y: B): Tuple2[A, B] = Tuple2(__leftOfArrow, y)
     def →[B](y: B): Tuple2[A, B] = ->(y)
   }
 
   {
-  inline implicit def ArrowAssoc[A](x: A): ArrowAssocClass[A] = new ArrowAssocClass(x)
+  transparent implicit def ArrowAssoc[A](x: A): ArrowAssocClass[A] = new ArrowAssocClass(x)
   val x = 1 -> "abc"
   println(x)
   }

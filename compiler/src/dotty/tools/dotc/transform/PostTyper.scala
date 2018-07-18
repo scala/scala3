@@ -9,7 +9,7 @@ import Types._, Contexts._, Names._, Flags._, DenotTransformers._
 import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
 import Decorators._
 import Symbols._, SymUtils._
-import reporting.diagnostic.messages.{ImportRenamedTwice, NotAMember, SuperCallsNotAllowedInline}
+import reporting.diagnostic.messages._
 
 object PostTyper {
   val name = "posttyper"
@@ -40,7 +40,7 @@ object PostTyper {
  *
  *  (10) Adds Child annotations to all sealed classes
  *
- *  (11) Minimizes `call` fields of `Inline` nodes to just point to the toplevel
+ *  (11) Minimizes `call` fields of `Inlined` nodes to just point to the toplevel
  *       class from which code was inlined.
  *
  *  The reason for making this a macro transform is that some functions (in particular
@@ -156,7 +156,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         }
     }
 
-    /** 1. If we are an an inline method but not in a nested quote, mark the inline method
+    /** 1. If we are in a transparent method but not in a nested quote, mark the transparent method
      *  as a macro.
      *
      *  2. If selection is a quote or splice node, record that fact in the current compilation unit.
@@ -165,7 +165,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
       def markAsMacro(c: Context): Unit =
         if (c.owner eq c.outer.owner) markAsMacro(c.outer)
-        else if (c.owner.isInlineableMethod) c.owner.setFlag(Macro)
+        else if (c.owner.isTransparentMethod) c.owner.setFlag(Macro)
         else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
 
       if (sym.isSplice || sym.isQuote) {

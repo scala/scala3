@@ -1,14 +1,14 @@
 package inlines
 
 object Config {
-  inline val logging = false
+  transparent val logging = false
 }
 
 object Logger {
 
   private var indent = 0
 
-  inline def log[T](msg: String)(op: => T): T =
+  transparent def log[T](msg: String)(op: => T): T =
     if (Config.logging) {
       println(s"${"  " * indent}start $msg")
       indent += 1
@@ -22,7 +22,6 @@ object Logger {
 
 object Test {
   import Logger._
-
   def factorial(n: BigInt): BigInt =
     log(s"factorial($n)") {
       if (n == 0) 1

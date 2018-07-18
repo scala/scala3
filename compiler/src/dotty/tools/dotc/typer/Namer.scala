@@ -754,13 +754,13 @@ class Namer { typer: Typer =>
           val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
           sym.addAnnotation(ann)
           if (cls == defn.ForceInlineAnnot && sym.is(Method, butNot = Accessor))
-            sym.setFlag(Inline)
+            sym.setFlag(Transparent)
         }
       case _ =>
     }
 
     private def addInlineInfo(sym: Symbol) = original match {
-      case original: untpd.DefDef if sym.isInlineableMethod =>
+      case original: untpd.DefDef if sym.isTransparentMethod =>
         Inliner.registerInlineInfo(
             sym,
             original.rhs,
@@ -1061,7 +1061,7 @@ class Namer { typer: Typer =>
               ctx.defContext(sym).denotNamed(original)
           def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
             case params :: paramss1 =>
-              if (idx < params.length) wildApprox(params(idx), null, Set.empty)
+              if (idx < params.length) wildApprox(params(idx))
               else paramProto(paramss1, idx - params.length)
             case nil =>
               WildcardType
@@ -1075,7 +1075,7 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      def isInline = sym.is(FinalOrInlineOrTransparent, butNot = Method | Mutable)
+      def isInline = sym.is(FinalOrTransparent, butNot = Method | Mutable)
 
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types
@@ -1111,7 +1111,7 @@ class Namer { typer: Typer =>
         if (sym.is(Final, butNot = Method)) {
           val tp = lhsType
           if (tp.isInstanceOf[ConstantType])
-            tp // keep constant types that fill in for a non-constant (to be revised when inline has landed).
+            tp // keep constant types that fill in for a non-constant (to be revised when transparent has landed).
           else inherited
         }
         else inherited

@@ -99,9 +99,9 @@ object Implicits {
                 mt.isImplicitMethod ||
                 mt.paramInfos.length != 1 ||
                 !ctx.test(implicit ctx =>
-                  argType relaxed_<:< wildApprox(widenSingleton(mt.paramInfos.head), null, Set.empty))
+                  argType relaxed_<:< wildApprox(widenSingleton(mt.paramInfos.head)))
               case rtp =>
-                discardForView(wildApprox(rtp, null, Set.empty), argType)
+                discardForView(wildApprox(rtp), argType)
             }
           case tpw: TermRef =>
             false // can't discard overloaded refs
@@ -900,7 +900,7 @@ trait Implicits { self: Typer =>
     }
 
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
-    val wildProto = implicitProto(pt, wildApprox(_, null, Set.empty))
+    val wildProto = implicitProto(pt, wildApprox(_))
 
     val isNot = wildProto.classSymbol == defn.NotClass
 

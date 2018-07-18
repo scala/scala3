@@ -16,6 +16,11 @@ object Test {
     println(o.inner.m)
     println(o.inner.g)
     println(o.inner.h)
-  }
 
+    val p = new TestPassing
+
+    println(p.foo("hi"))
+    println(p.bar(true))
+
+  }
 }

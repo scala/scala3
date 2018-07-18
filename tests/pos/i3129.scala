@@ -1,5 +1,5 @@
 object companions2 {
-  inline def foo() = {
+  transparent def foo() = {
     class C {
       println(C.p)
     }
@@ -15,7 +15,7 @@ class A {
 
   class B {
     private def getAncestor2(p: A): A = p
-    private inline def getAncestor(p: A): A = {
+    private transparent def getAncestor(p: A): A = {
       p.b.getAncestor(p)
     }
   }

@@ -1,4 +1,4 @@
 object B {
-  inline def getInline: Double =
+  transparent def getInline: Double =
     A.get
 }

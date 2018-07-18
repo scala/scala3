@@ -1,5 +1,5 @@
 /** Decompiled from out/posTestFromTasty/pos/i1570/Test.class */
 object Test {
-  inline def foo(n: scala.Int): scala.Int = Test.bar(n)
-  inline def bar(n: scala.Int): scala.Int = n
+  transparent def foo(n: scala.Int): scala.Int = Test.bar(n)
+  transparent def bar(n: scala.Int): scala.Int = n
 }

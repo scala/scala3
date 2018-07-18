@@ -2,7 +2,6 @@ package p
 import collection.mutable
 
 object transparents {
-
   final val monitored = false
 
   transparent def f(x: Int): Int = x * x
@@ -37,5 +36,23 @@ object transparents {
       transparent def h = f ++ m
     }
     val inner = new Inner
+  }
+
+  class C[T](private[transparents] val x: T) {
+    private[transparents] def next[U](y: U): (T, U) = (xx, y)
+    private[transparents] var xx: T =  _
+  }
+
+  class TestPassing {
+    transparent def foo[A](x: A): (A, Int) = {
+      val c = new C[A](x)
+      c.xx = c.x
+      c.next(1)
+    }
+    transparent def bar[A](x: A): (A, String) = {
+      val c = new C[A](x)
+      c.xx = c.x
+      c.next("")
+    }
   }
 }

@@ -600,7 +600,6 @@ class TreePickler(pickler: TastyPickler) {
     if (flags.is(Final, butNot = Module)) writeByte(FINAL)
     if (flags is Case) writeByte(CASE)
     if (flags is Override) writeByte(OVERRIDE)
-    if (flags is Inline) writeByte(INLINE)
     if (flags is Transparent) writeByte(TRANSPARENT)
     if (flags is Macro) writeByte(MACRO)
     if (flags is JavaStatic) writeByte(STATIC)
@@ -637,8 +636,7 @@ class TreePickler(pickler: TastyPickler) {
       // a different toplevel class, it is impossible to pickle a reference to it.
       // Such annotations will be reconstituted when unpickling the child class.
       // See tests/pickling/i3149.scala
-    case _ => ann.symbol == defn.BodyAnnot && owner.isInlinedMethod
-      // bodies of inlined (but not transparent) methods are reconstituted automatically when unpickling
+    case _ => false
   }
 
   def pickleAnnotation(owner: Symbol, ann: Annotation)(implicit ctx: Context) =

@@ -1,7 +1,7 @@
 final class Foo(val value: Int)
 
 object Foo {
-  inline def unapplySeq(foo: Foo): Some[Seq[Int]] = Some(List(foo.value))
+  transparent def unapplySeq(foo: Foo): Some[Seq[Int]] = Some(List(foo.value))
 }
 
 sealed trait Tree

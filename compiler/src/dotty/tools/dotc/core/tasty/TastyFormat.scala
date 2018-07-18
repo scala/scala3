@@ -181,9 +181,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   ERASED
                   LAZY
                   OVERRIDE
-                  INLINE
                   TRANSPARENT
-                  MACRO                               // inline method containing toplevel splices
+                  MACRO                               // transparent method containing toplevel splices
                   STATIC                              // mapped to static Java member
                   OBJECT                              // an object or its class
                   TRAIT                               // a trait
@@ -296,7 +295,7 @@ object TastyFormat {
   final val IMPLICIT = 13
   final val LAZY = 14
   final val OVERRIDE = 15
-  final val INLINE = 16
+
   final val TRANSPARENT = 17
   final val STATIC = 18
   final val OBJECT = 19
@@ -473,7 +472,6 @@ object TastyFormat {
        | ERASED
        | LAZY
        | OVERRIDE
-       | INLINE
        | TRANSPARENT
        | MACRO
        | STATIC
@@ -530,7 +528,6 @@ object TastyFormat {
     case ERASED => "ERASED"
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
-    case INLINE => "INLINE"
     case TRANSPARENT => "TRANSPARENT"
     case MACRO => "MACRO"
     case STATIC => "STATIC"

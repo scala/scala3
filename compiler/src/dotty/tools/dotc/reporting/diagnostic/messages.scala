@@ -1692,10 +1692,10 @@ object messages {
     val explanation = ""
   }
 
-  case class SuperCallsNotAllowedInline(symbol: Symbol)(implicit ctx: Context)
-    extends Message(SuperCallsNotAllowedInlineID) {
+  case class SuperCallsNotAllowedTransparent(symbol: Symbol)(implicit ctx: Context)
+    extends Message(SuperCallsNotAllowedTransparentID) {
     val kind = "Syntax"
-    val msg = s"super call not allowed in inline $symbol"
+    val msg = s"super call not allowed in transparent $symbol"
     val explanation = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called."
   }
 
@@ -1743,10 +1743,10 @@ object messages {
       hl"you have to provide either ${"class"}, ${"trait"}, ${"object"}, or ${"enum"} definitions after qualifiers"
   }
 
-  case class NoReturnFromInline(owner: Symbol)(implicit ctx: Context)
-    extends Message(NoReturnFromInlineID) {
+  case class NoReturnFromTransparent(owner: Symbol)(implicit ctx: Context)
+    extends Message(NoReturnFromTransparentID) {
     val kind = "Syntax"
-    val msg = hl"no explicit ${"return"} allowed from inline $owner"
+    val msg = hl"no explicit ${"return"} allowed from transparent $owner"
     val explanation =
       hl"""Methods marked with ${"inline"} modifier may not use ${"return"} statements.
           |Instead, you should rely on the last expression's value being
@@ -2054,10 +2054,10 @@ object messages {
           |polymorphic methods."""
   }
 
-  case class ParamsNoInline(owner: Symbol)(implicit ctx: Context)
-    extends Message(ParamsNoInlineID) {
+  case class ParamsNoTransparent(owner: Symbol)(implicit ctx: Context)
+    extends Message(ParamsNoTransparentID) {
     val kind = "Syntax"
-    val msg = hl"""${"inline"} modifier cannot be used for a ${owner.showKind} parameter"""
+    val msg = hl"""${"transparent"} modifier cannot be used for a ${owner.showKind} parameter"""
     val explanation = ""
   }
 

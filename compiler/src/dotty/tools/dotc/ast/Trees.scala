@@ -589,6 +589,7 @@ object Trees {
   case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = Inlined[T]
+    override def initialPos = call.pos
   }
 
   /** A type tree that represents an existing or inferred type */

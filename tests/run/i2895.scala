@@ -1,5 +1,5 @@
 object Foo extends (Int => Int) {
-  inline def apply(x: Int): Int = impl(x)
+  transparent def apply(x: Int): Int = impl(x)
   def impl(x: Int): Int = x + 1
 }
 

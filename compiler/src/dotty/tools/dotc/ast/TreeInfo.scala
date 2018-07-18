@@ -464,7 +464,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  Singleton type bounds (see SIP 23). Presumably
    *
    *     object O1 { val x: Singleton = 42; println("43") }
-   *     object O2 { inline val x = 42; println("43") }
+   *     object O2 { transparent val x = 42; println("43") }
    *
    *  should behave differently.
    *
@@ -475,7 +475,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *     O2.x = 42
    *
    *  Revisit this issue once we have implemented `inline`. Then we can demand
-   *  purity of the prefix unless the selection goes to an inline val.
+   *  purity of the prefix unless the selection goes to a transparent val.
    *
    *  Note: This method should be applied to all term tree nodes that are not literals,
    *        that can be idempotent, and that can have constant types. So far, only nodes

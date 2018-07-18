@@ -263,14 +263,14 @@ ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [FunArgMods] ClsParams ‘
 ClsParamClause    ::=  [nl] ‘(’ [ClsParams] ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
-                       [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
+                       [{Modifier} (‘val’ | ‘var’) | ‘transparent’] Param
 Param             ::=  id ‘:’ ParamType [‘=’ Expr]
                     |  INT
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [FunArgMods] DefParams ‘)’]
 DefParamClause    ::=  [nl] ‘(’ [DefParams] ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
-DefParam          ::=  {Annotation} [‘inline’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
+DefParam          ::=  {Annotation} [‘transparent’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
 ```
 
 ### Bindings and Imports
