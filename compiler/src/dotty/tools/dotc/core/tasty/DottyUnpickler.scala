@@ -11,6 +11,7 @@ import util.{SourceFile, NoSource}
 import Annotations.Annotation
 import classfile.ClassfileParser
 import Names.SimpleName
+import TreeUnpickler.UnpickleMode
 
 object DottyUnpickler {
 
@@ -36,8 +37,9 @@ object DottyUnpickler {
 
 /** A class for unpickling Tasty trees and symbols.
  *  @param bytes         the bytearray containing the Tasty file from which we unpickle
+ *  @param mode          the tasty file contains package (TopLevel), an expression (Term) or a type (TypeTree)
  */
-class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with tpd.TreeProvider {
+class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLevel) extends ClassfileParser.Embedded with tpd.TreeProvider {
   import tpd._
   import DottyUnpickler._
 
@@ -50,10 +52,7 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with t
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling
    */
   def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit =
-    treeUnpickler.enterTopLevel(roots)
-
-  def unpickleExpr()(implicit ctx: Context): Tree =
-    treeUnpickler.unpickleExpr()
+    treeUnpickler.enter(roots)
 
   def unpickleTypeTree()(implicit ctx: Context): Tree =
     treeUnpickler.unpickleTypeTree()
@@ -62,7 +61,7 @@ class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with t
     new TreeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)
   }
 
-  protected def computeTrees(implicit ctx: Context) = treeUnpickler.unpickle()
+  protected def computeTrees(implicit ctx: Context) = treeUnpickler.unpickle(mode)
 
   private[this] var ids: Array[String] = null
 
