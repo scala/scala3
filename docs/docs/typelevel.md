@@ -185,7 +185,7 @@ The `erasedValue` function _pretends_ to return a value of its type argument `T`
 
 Using `erasedValue`, we can then define `defaultValue` as follows:
 ```scala
-transparent def defaultValue[T]: Option[T] = erasedValue[T] match {
+transparent def defaultValue[T] = erasedValue[T] match {
   case _: Byte => Some(0: Byte)
   case _: Char => Some(0: Char)
   case _: Short => Some(0: Short)
