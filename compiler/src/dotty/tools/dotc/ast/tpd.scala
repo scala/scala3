@@ -325,7 +325,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case pre: ThisType =>
         tp.isType ||
         pre.cls.isStaticOwner ||
-          tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
+        tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
           // was ctx.owner.enclosingClass.derivesFrom(pre.cls) which was not tight enough
           // and was spuriously triggered in case inner class would inherit from outer one
           // eg anonymous TypeMap inside TypeMap.andThen
@@ -489,6 +489,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         else sym
       } else foldOver(sym, tree)
   }
+
+  case class UntypedSplice(splice: untpd.Tree) extends Tree
 
   override val cpy: TypedTreeCopier = // Type ascription needed to pick up any new members in TreeCopier (currently there are none)
     new TypedTreeCopier

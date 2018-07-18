@@ -11,7 +11,7 @@ import core.tasty.TreePickler.Hole
 
 /** A map that applies three functions and a substitution together to a tree and
  *  makes sure they are coordinated so that the result is well-typed. The functions are
- *  @param  typeMap  A function from Type to Type that gets applied to the
+ *  @param typeMap   A function from Type to Type that gets applied to the
  *                   type of every tree node and to all locally defined symbols,
  *                   followed by the substitution [substFrom := substTo].
  *  @param treeMap   A transformer that translates all encountered subtrees in
