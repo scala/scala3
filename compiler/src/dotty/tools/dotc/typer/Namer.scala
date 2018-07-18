@@ -1091,7 +1091,10 @@ class Namer { typer: Typer =>
       def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
       var rhsCtx = ctx.addMode(Mode.InferringReturnType)
-      if (sym.isTransparentMethod) rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
+      if (sym.isTransparentMethod) {
+        rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
+        PrepareTransparent.markTopLevelMatches(sym, mdef.rhs)
+      }
       def rhsType = typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.
