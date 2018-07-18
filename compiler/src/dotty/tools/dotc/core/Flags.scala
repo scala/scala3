@@ -351,8 +351,8 @@ object Flags {
   /** A bridge method. Set by Erasure */
   final val Bridge = termFlag(34, "<bridge>")
 
-  /** Symbol is a Java varargs bridge */ // (needed?)
-  final val VBridge = termFlag(35, "<vbridge>") // TODO remove
+  /** Symbol is a typelevel method, cannot be used in normal code */
+  final val TypeLevel = termFlag(35, "<type-level>")
 
   /** Symbol is a method which should be marked ACC_SYNCHRONIZED */
   final val Synchronized = termFlag(36, "<synchronized>")

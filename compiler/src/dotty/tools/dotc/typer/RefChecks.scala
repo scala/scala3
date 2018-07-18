@@ -143,7 +143,7 @@ object RefChecks {
    *    1.8.1  M's type is a subtype of O's type, or
    *    1.8.2  M is of type []S, O is of type ()T and S <: T, or
    *    1.8.3  M is of type ()S, O is of type []T and S <: T, or
-   *    1.9    M must not be a Dotty macro def
+   *    1.9    M must not be a typelevel def or a Dotty macro def
    *    1.10.  If M is a 2.x macro def, O cannot be deferred unless there's a concrete method overriding O.
    *    1.11.  If M is not a macro def, O cannot be a macro def.
    *  2. Check that only abstract classes have deferred members
@@ -376,6 +376,8 @@ object RefChecks {
         overrideError("may not override a non-lazy value")
       } else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy)) {
         overrideError("must be declared lazy to override a lazy value")
+      } else if (member.is(TypeLevel)) { // (1.9)
+        overrideError("is a type-level method, may not override anything")
       } else if (member.is(Macro, butNot = Scala2x)) { // (1.9)
         overrideError("is a macro, may not override anything")
       } else if (other.is(Deferred) && member.is(Scala2Macro) && member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.10)

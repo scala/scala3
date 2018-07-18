@@ -43,6 +43,18 @@ object PrepareTransparent {
     if (!defn.ScalaPredefModule.moduleClass.derivesFrom(tree.symbol.maybeOwner))
       methPart(tree).putAttachment(ContextualImplicit, ())
 
+  def foreachTopLevelMatch(tree: untpd.Tree, op: untpd.Tree => Unit) = {
+    def recur(tree: untpd.Tree): Unit = tree match {
+      case tree: untpd.Match =>
+        op(tree)
+        tree.cases.foreach(recur)
+      case tree: untpd.Block =>
+        recur(tree.expr)
+      case _ =>
+    }
+    recur(tree)
+  }
+
   class InlineAccessors extends AccessProxies {
 
     /** If an inline accessor name wraps a unique inline name, this is taken as indication
@@ -241,6 +253,7 @@ object PrepareTransparent {
             val typedBody =
               if (ctx.reporter.hasErrors) rawBody
               else ctx.compilationUnit.inlineAccessors.makeInlineable(rawBody)
+            foreachTopLevelMatch(originalBody, _ => inlined.setFlag(TypeLevel))
             val inlineableBody = addReferences(inlined, originalBody, typedBody)
             inlining.println(i"Body to inline for $inlined: $inlineableBody")
             inlineableBody

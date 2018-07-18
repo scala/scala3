@@ -55,13 +55,4 @@ object Test {
   class Deco2(val as: HList) extends java.lang.Cloneable with java.lang.Comparable[Deco2] {
     transparent def ++ (bs: HList) = concat(as, bs)
   }
-
-  def anyValue[T]: T = ???
-
-  transparent def test[T] = anyValue[T] match {
-    case _: Byte =>
-    case _: Char =>
-  }
-
-  test[String]
 }

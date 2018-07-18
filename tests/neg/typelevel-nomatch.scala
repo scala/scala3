@@ -8,4 +8,6 @@ object Test {
   }
 
   test[String]
+
+  test
 }

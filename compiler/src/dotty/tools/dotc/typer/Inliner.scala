@@ -19,6 +19,7 @@ import NameKinds.{ClassifiedNameKind, InlineAccessorName, UniqueInlineName, Tran
 import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
 import Annotations._
+import PrepareTransparent.foreachTopLevelMatch
 import transform.{ExplicitOuter, AccessProxies}
 import Inferencing.fullyDefinedType
 import config.Printers.inlining
@@ -641,14 +642,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     import reducer._
 
     /** Mark all toplevel matches with the `TopLevelMatch` attachment */
-    def prepare(tree: untpd.Tree): Unit = tree match {
-      case tree: untpd.Match =>
-        tree.pushAttachment(TopLevelMatch, ())
-        tree.cases.foreach(prepare)
-      case tree: untpd.Block =>
-        prepare(tree.expr)
-      case _ =>
-    }
+    def prepare(tree: untpd.Tree): Unit =
+      foreachTopLevelMatch(tree, _.pushAttachment(TopLevelMatch, ()))
 
     override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
       tpe match {
