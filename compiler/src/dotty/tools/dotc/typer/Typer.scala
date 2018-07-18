@@ -2122,7 +2122,7 @@ class Typer extends Namer
     adapt1(tree, pt, locked)
   }
 
-  def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
+  final def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
     adapt(tree, pt, ctx.typerState.ownedVars)
   }
 

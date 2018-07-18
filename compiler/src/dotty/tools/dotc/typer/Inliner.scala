@@ -841,7 +841,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case _ => tree
       }
 
-      betaReduce(super.typedApply(tree, pt))
+      constToLiteral(betaReduce(super.typedApply(tree, pt)))
     }
   }
 
@@ -852,7 +852,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       reduceProjection(tryInline(tree.splice) `orElse` super.typedTypedSplice(tree))
 
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context) =
-      reduceProjection(super.typedSelect(tree, pt))
+      constToLiteral(reduceProjection(super.typedSelect(tree, pt)))
 
     /** Pre-type any nested calls to transparent methods. Otherwise the declared result type
      *  of these methods can influence constraints
