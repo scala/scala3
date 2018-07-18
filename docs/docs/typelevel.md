@@ -366,19 +366,20 @@ Value definitions can also be marked `transparent`. Examples:
 ```scala
 transparent val label      = "url"
 transparent val pi: Double = 3.14159265359
-transparent val field      = outer.field
 ```
-The right hand side of a  `transparent` value definition must have singleton type. The type of the value is then the singleton type of its right hand side, without any widenings. For instance, the type of `label` above is the singleton type `"url"` instead of `String` and the type of `pi` is `3.14159265359` instead of `Double`.
+The right hand side of a  `transparent` value definition must be a pure expression of constant type. The type of the value is then the type of its right hand side, without any widenings. For instance, the type of `label` above is the singleton type `"url"` instead of `String` and the type of `pi` is `3.14159265359` instead of `Double`.
 
 Transparent values are effectively final; they may not be overridden. In Scala-2, constant values had to be expressed using `final`, which gave an unfortunate double meaning to the modifier. The `final` syntax is still supported in Scala 3 for a limited time to support cross-building.
 
-Transparent values are more general than the old meaning of `final` since they also work on paths. For instance, the `field` definition above establishes at typing time the knowledge that `field` is an alias of `outer.field`. The same effect can be achieved with an explicit singleton type ascription:
+The `transparent` modifier can also be used for value parameters of `transparent` methods. Example
 ```scala
-final val field: outer.field.type = outer.field
+transparent def power(x: Double, transparent n: Int) = ...
 ```
-The transparent definition of `field` is equivalent but arguably easier to read.
+If a `transparent` modifier is given, corresponding arguments must be pure expressions of constant type.
 
-It is currently open whether we want to support `transparent` on parameters, with the semantics that corresponding arguments are required to have singleton types. It does not seem to be needed for expressiveness, but might help with better error messages.
+However, the restrictions on right-hand sides or arguments mentioned in this section do not apply in code that is
+itself in a `transparent` method. In other words, constantness checking is performed only when a `transparent` method
+is expanded, not when it is defined.
 
 ## Transparent and Inline
 
