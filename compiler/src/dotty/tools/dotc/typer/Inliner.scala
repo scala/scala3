@@ -635,7 +635,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             // Note: Substituting new symbols does not automatically lead to good prefixes
             // if the previous symbol was owned by a class. That's why we need to set the type
             // of `idef` explicitly. It would be nice if substituters were smarter, but
-            // it seems non-trivial to come up with rules that work in
+            // it seems non-trivial to come up with rules that work in all cases.
           inlineCtx.enter(idef.symbol)
         }
         expansion
@@ -694,6 +694,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    */
   trait InlineTyping extends Typer {
 
+    protected def tryInline(tree: tpd.Tree)(implicit ctx: Context) = tree match {
+      case InlineableArg(rhs) =>
+        inlining.println(i"inline arg $tree -> $rhs")
+        rhs
+      case _ =>
+        EmptyTree
+    }
+
     override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = {
       val cond1 = typed(tree.cond, defn.BooleanType)
       cond1.tpe.widenTermRefExpr match {
@@ -751,10 +759,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private class TransparentTyper extends Typer with InlineTyping {
 
     override def typedTypedSplice(tree: untpd.TypedSplice)(implicit ctx: Context): Tree =
-      tree.splice match {
-        case InlineableArg(rhs) => inlining.println(i"inline arg $tree -> $rhs"); rhs
-        case _ => super.typedTypedSplice(tree)
-      }
+      tryInline(tree.splice) `orElse` super.typedTypedSplice(tree)
 
     /** Pre-type any nested calls to transparent methods. Otherwise the declared result type
      *  of these methods can influence constraints
@@ -785,10 +790,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context) =
-      tree.asInstanceOf[tpd.Tree] match {
-        case InlineableArg(rhs) => inlining.println(i"inline arg $tree -> $rhs"); rhs
-        case _ => super.typedIdent(tree, pt)
-      }
+      tryInline(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt)
 
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.hasType, tree)
