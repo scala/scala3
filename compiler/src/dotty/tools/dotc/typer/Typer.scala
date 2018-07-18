@@ -966,7 +966,7 @@ class Typer extends Namer
     assignType(cpy.Closure(tree)(env1, meth1, target), meth1, target)
   }
 
-  def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context) = track("typedMatch") {
+  def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context): Tree = track("typedMatch") {
     tree.selector match {
       case EmptyTree =>
         val (protoFormals, _) = decomposeProtoFunction(pt, 1)
@@ -975,11 +975,15 @@ class Typer extends Namer
       case _ =>
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
-
-        val cases1 = harmonic(harmonize)(typedCases(tree.cases, selType, pt.notApplied))
-          .asInstanceOf[List[CaseDef]]
-        assignType(cpy.Match(tree)(sel1, cases1), cases1)
+        typedMatchFinish(tree, sel1, selType, pt)
     }
+  }
+
+  // Overridden in InlineTyper for transparent matches
+  def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context): Tree = {
+    val cases1 = harmonic(harmonize)(typedCases(tree.cases, selType, pt.notApplied))
+      .asInstanceOf[List[CaseDef]]
+    assignType(cpy.Match(tree)(sel, cases1), cases1)
   }
 
   def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context) = {
@@ -1004,7 +1008,7 @@ class Typer extends Namer
       accu(Set.empty, selType)
     }
 
-    cases mapconserve (typedCase(_, pt, selType, gadtSyms))
+    cases.mapconserve(typedCase(_, pt, selType, gadtSyms))
   }
 
   /** Type a case. */

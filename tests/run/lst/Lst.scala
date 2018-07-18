@@ -18,6 +18,8 @@ import reflect.ClassTag
 class Lst[+T](val elems: Any) extends AnyVal { self =>
   import Lst._
 
+  transparent def locally[T](body: => T): T = body
+
   def length: Int = elems match {
     case null => 0
     case elems: Arr => elems.length
@@ -27,7 +29,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
   def isEmpty = elems == null
   def nonEmpty = elems != null
 
-  transparent def foreach(op: => T => Unit): Unit = {
+  transparent def foreach(op: => T => Unit): Unit = locally {
     def sharedOp(x: T) = op(x)
     elems match {
       case null =>
@@ -38,7 +40,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
     }
   }
 
-  transparent def foreachReversed(transparent op: T => Unit): Unit = {
+  transparent def foreachReversed(transparent op: T => Unit): Unit = locally {
     def sharedOp(x: T) = op(x)
     elems match {
       case null =>
@@ -52,12 +54,14 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
   /** Like `foreach`, but completely inlines `op`, at the price of generating the code twice.
    *  Should be used only of `op` is small
    */
-  transparent def foreachInlined(op: => T => Unit): Unit = elems match {
-    case null =>
-    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      var i = 0
-      while (i < elems.length) { op(elem(i)); i += 1 }
-    case elem: T @unchecked => op(elem)
+  transparent def foreachInlined(op: => T => Unit): Unit = locally {
+    elems match {
+      case null =>
+      case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
+        var i = 0
+        while (i < elems.length) { op(elem(i)); i += 1 }
+      case elem: T @unchecked => op(elem)
+    }
   }
 
   def iterator(): Iterator[T] = elems match {
@@ -101,7 +105,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
   }
 
   /** `f` is pulled out, not duplicated */
-  transparent def map[U](f: => T => U): Lst[U] = {
+  transparent def map[U](f: => T => U): Lst[U] = locally {
     def op(x: T) = f(x)
     elems match {
       case null => Empty
@@ -193,7 +197,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
     buf.toLst
   }
 
-  transparent def exists(p: => T => Boolean): Boolean = {
+  transparent def exists(p: => T => Boolean): Boolean = locally {
     def op(x: T) = p(x)
     elems match {
       case null => false
@@ -206,7 +210,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
     }
   }
 
-  transparent def forall(p: => T => Boolean): Boolean = {
+  transparent def forall(p: => T => Boolean): Boolean = locally {
     def op(x: T) = p(x)
     elems match {
       case null => true
@@ -229,7 +233,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
       elem == x
   }
 
-  transparent def foldLeft[U](z: U)(f: => (U, T) => U) = {
+  transparent def foldLeft[U](z: U)(f: => (U, T) => U) = locally {
     def op(x: U, y: T) = f(x, y)
     elems match {
       case null => z

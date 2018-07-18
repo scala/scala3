@@ -185,6 +185,8 @@ object Inferencing {
    *
    *  Invariant refinement can be assumed if `PatternType`'s class(es) are final or
    *  case classes (because of `RefChecks#checkCaseClassInheritanceInvariant`).
+   *
+   *  TODO: Update so that GADT symbols can be variant, and we special case final class types in patterns
    */
   def constrainPatternType(tp: Type, pt: Type)(implicit ctx: Context): Boolean = {
     def refinementIsInvariant(tp: Type): Boolean = tp match {

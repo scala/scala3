@@ -290,6 +290,7 @@ object PrepareTransparent {
 
       def traverse(tree: Tree)(implicit ctx: Context): Unit = {
         tree match {
+          case Ident(nme.WILDCARD) =>
           case _: Ident | _: This =>
             //println(i"leaf: $tree at ${tree.pos}")
             if (tree.symbol.exists && !isLocal(tree.symbol, inlineMethod)) {
