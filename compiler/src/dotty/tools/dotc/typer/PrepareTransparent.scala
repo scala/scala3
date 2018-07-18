@@ -265,7 +265,7 @@ object PrepareTransparent {
     object referenced extends TreeTraverser {
       val typeAtPos = mutable.Map[Position, Type]()
       val accessorAtPos = mutable.Map[Position, Symbol]()
-      val implicitSyms = mutable.Set[Symbol]()
+      val implicitRefTypes = mutable.Set[Type]()
       val implicitRefs = new mutable.ListBuffer[Tree]
 
       def registerIfContextualImplicit(tree: Tree) = tree match {
@@ -273,11 +273,11 @@ object PrepareTransparent {
         if tree.removeAttachment(ContextualImplicit).isDefined &&
            tree.symbol.exists &&
            !isLocalOrParam(tree.symbol, inlineMethod) &&
-           !implicitSyms.contains(tree.symbol) =>
+           !implicitRefTypes.contains(tree.tpe) =>
           if (tree.existsSubTree(t => isLocal(tree.symbol, inlineMethod)))
             ctx.warning("implicit reference $tree is dropped at inline site because it refers to local symbol(s)", tree.pos)
           else {
-            implicitSyms += tree.symbol
+            implicitRefTypes += tree.tpe
             implicitRefs += tree
           }
         case _ =>
@@ -386,7 +386,7 @@ object PrepareTransparent {
           owner = inlineMethod,
           name = UniqueInlineName.fresh(iref.symbol.name.asTermName),
           flags = Implicit | Method | Stable,
-          info = iref.symbol.info.ensureMethodic,
+          info = iref.tpe.widen.ensureMethodic,
           coord = inlineMethod.pos).asTerm
         polyDefDef(localImplicit, tps => vrefss =>
             iref.appliedToTypes(tps).appliedToArgss(vrefss))
