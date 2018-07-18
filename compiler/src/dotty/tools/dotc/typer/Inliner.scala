@@ -616,7 +616,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       case _ => tree
     }}
 
-    val inlineTyper = if (meth.isTransparentMethod) new InlineTyper else new InlineReTyper
+    val inlineTyper = if (meth.isTransparentMethod) new TransparentTyper else new InlineReTyper
     val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
 
     // The complete translation maps references to `this` and parameters to
@@ -644,7 +644,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         expansion
     }
 
-    trace(i"inlining $call\n, BINDINGS =\n${bindingsBuf.toList}%\n%\nEXPANSION =\n$expansion", inlining, show = true) {
+    trace(i"inlining $call", inlining, show = true) {
 
       // The final expansion runs a typing pass over the inlined tree. See InlineTyper for details.
       val expansion1 = inlineTyper.typed(expansion, pt)(inlineCtx)
@@ -652,8 +652,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       /** All bindings in `bindingsBuf` except bindings of inlineable closures */
       val bindings = bindingsBuf.toList.map(_.withPos(call.pos))
 
-      inlining.println(i"original bindings = $bindings%\n%")
-      inlining.println(i"original expansion = $expansion1")
+      if (ctx.settings.verbose.value) {
+        inlining.println(i"original bindings = $bindings%\n%")
+        inlining.println(i"original expansion = $expansion1")
+      }
 
       val (finalBindings, finalExpansion) = dropUnusedDefs(bindings, expansion1)
 
@@ -745,13 +747,24 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   }
 
   /** A full typer used for transparent methods */
-  private class InlineTyper extends Typer with InlineTyping {
+  private class TransparentTyper extends Typer with InlineTyping {
 
     override def typedTypedSplice(tree: untpd.TypedSplice)(implicit ctx: Context): Tree =
       tree.splice match {
         case InlineableArg(rhs) => inlining.println(i"inline arg $tree -> $rhs"); rhs
         case _ => super.typedTypedSplice(tree)
       }
+
+    /** Pre-type any nested calls to transparent methods. Otherwise the declared result type
+     *  of these methods can influence constraints
+     */
+    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) = {
+      def typeTransparent(tree: untpd.Tree): untpd.Tree =
+        if (tree.symbol.isTransparentMethod) untpd.TypedSplice(typed(tree))
+        else tree
+      val tree1 = tree.args.mapConserve(typeTransparent)
+      super.typedApply(untpd.cpy.Apply(tree)(tree.fun, tree1), pt)
+    }
   }
 
   /** A re-typer used for inlined methods */
