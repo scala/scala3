@@ -23,4 +23,11 @@ object Test {
     case x :: xs => ??? // error: not a legal pattern
   }
 
+  transparent def f5[T] = locally { implicit match { // error: implicit match cannot be used here
+    case _ => new HashSet[T]
+  }}
+
+  def f6[T] = implicit match { // error: implicit match cannot be used here
+    case _ => new HashSet[T]
+  }
 }
