@@ -71,6 +71,12 @@ object ProtoTypes {
       if (!res) ctx.typerState.resetConstraintTo(savedConstraint)
       res
     }
+
+    /** Constrain result unless `meth` is a transparent method in an inlineable context.
+     *  In the latter case we should inline before constraining the result.
+     */
+    def constrainResult(meth: Symbol, mt: Type, pt: Type)(implicit ctx: Context): Boolean =
+      Inliner.isTransparentInlineable(meth) || constrainResult(mt, pt)
   }
 
   object NoViewsAllowed extends Compatibility {
