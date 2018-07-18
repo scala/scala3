@@ -124,7 +124,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val YcheckAllPatmat = BooleanSetting("-Ycheck-all-patmat", "Check exhaustivity and redundancy of all pattern matching (used for testing the algorithm)")
   val YretainTrees = BooleanSetting("-Yretain-trees", "Retain trees for top-level classes, accessible from ClassSymbol#tree")
   val YshowTreeIds = BooleanSetting("-Yshow-tree-ids", "Uniquely tag all tree nodes in debugging output.")
-  val YimmutableSeq = BooleanSetting("-Yimmutable-seq", "Use collection.immutable.Seq as the default Seq type")
 
   val YprofileEnabled = BooleanSetting("-Yprofile-enabled", "Enable profiling.")
   val YprofileDestination = StringSetting("-Yprofile-destination", "file", "where to send profiling output - specify a file, default is to the console.", "")
