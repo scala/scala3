@@ -189,7 +189,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
       }
 
     @tailrec def revealNewAndSelect(pre: Type): Type = pre match {
-      case TypeOf.New(cnstrSym, args) =>
+      case TypeOf.New(cnstrSym, _, args) =>
         selectTermParam(cnstrSym, args)
       case pre: TypeProxy =>
         revealNewAndSelect(pre.underlying)

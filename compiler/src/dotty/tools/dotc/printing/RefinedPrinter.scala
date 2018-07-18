@@ -200,8 +200,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         import tpd._
         val underlying: Text = " <: " ~ toText(underlyingTp) provided ctx.settings.XprintTypes.value
         def treeText = tp match {
-          case TypeOf.New(cnstrSym, argss) =>
-            "new " ~ nameString(cnstrSym.owner) ~ "(" ~ Text(argss.map(toText), ", ") ~ ")"
+          case TypeOf.New(cnstrSym, targs, args) =>
+            (keywordStr("new ")
+              ~ nameString(cnstrSym.owner)
+              ~ ("[" ~ Text(targs.map(argText), ", ") ~ "]").provided(targs.nonEmpty)
+              ~ "(" ~ Text(args.map(toText), ", ") ~ ")"
+            )
           case _ =>
             tree match {
               case TypeApply(fun, args) =>

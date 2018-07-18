@@ -4158,35 +4158,38 @@ object Types {
     }
 
     object New {
-      // Apply(Select(New(TypeTree[C[A,B]]), "<init>"), List(1, 2, 3))
-      // TypeOf(AppliedType(TypeRef(G.CONS),List(Boolean)), Apply(TypeApply(Select(New(TypeTree[G.Cons]),<init>),List(Ident(T))),List(Ident(head), Ident(tail))))
-      def unapply(tp: TypeOf)(implicit ctx: Context): Option[(Symbol, List[Type])] = {
-        @tailrec def loop(tree: Tree, argsAcc: List[Type]): Option[(Symbol, List[Type])] = tree match {
-          case Trees.Apply(fn, args) =>
-            fn.tpe.stripMethodPrefix match {
-              case fnTpe: TermRef =>
-                if (fn.symbol.isPrimaryConstructor)
-                  Some((fn.symbol, args.tpes ::: argsAcc))
-                else
-                  None
-              case fnTpe: MethodType =>
-                loop(fn, args.tpes ::: argsAcc)
-            }
+      /** Extracts the class symbol, list of type parameters and value
+       *  parameters and list of from the TypeOf a new.
+       */
+      def unapply(tp: TypeOf)(implicit ctx: Context): Option[(Symbol, List[Type], List[Type])] = {
+        @tailrec
+        def loop(tree: Tree, targsAcc: List[Type], argsAcc: List[Type]): Option[(Symbol, List[Type], List[Type])] =
+          tree match {
+            case Trees.Apply(fn, args) =>
+              fn.tpe.stripMethodPrefix match {
+                case fnTpe: TermRef =>
+                  if (fn.symbol.isPrimaryConstructor)
+                    Some((fn.symbol, targsAcc, args.tpes ::: argsAcc))
+                  else
+                    None
+                case fnTpe: MethodType =>
+                  loop(fn, targsAcc, args.tpes ::: argsAcc)
+              }
 
-          case Trees.TypeApply(fn, _) =>
-            fn.tpe match {
-              case fnTpe: TermRef =>
-                if (fn.symbol.isPrimaryConstructor)
-                  Some((fn.symbol, argsAcc))
-                else
-                  None
-              case _ => loop(fn, argsAcc)
-            }
+            case Trees.TypeApply(fn, targs) =>
+              fn.tpe match {
+                case fnTpe: TermRef =>
+                  if (fn.symbol.isPrimaryConstructor)
+                    Some((fn.symbol, targs.tpes ::: targsAcc, argsAcc))
+                  else
+                    None
+                case _ => loop(fn, targsAcc, argsAcc)
+              }
 
-          case _ => None
+            case _ => None
+          }
+          loop(tp.tree, Nil, Nil)
         }
-        loop(tp.tree, List())
-      }
     }
 
     object Generic {
