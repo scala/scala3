@@ -384,7 +384,8 @@ object Inliner {
       tree,
       i"""|Maximal number of successive inlines (${ctx.settings.XmaxInlines.value}) exceeded,
           |Maybe this is caused by a recursive inline method?
-          |You can use -Xmax:inlines to change the limit."""
+          |You can use -Xmax:inlines to change the limit.""",
+      (tree :: enclosingInlineds).last.pos
     )
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */

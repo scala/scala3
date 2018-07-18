@@ -4,11 +4,11 @@ object Test {
     if (n == 0) 1.0
     else if (n == 1) x
     else {
-      val y = power(x, n / 2) // error: maximal number of inlines exceeded
+      val y = power(x, n / 2)
       if (n % 2 == 0) y * y else y * y * x
     }
 
   def main(args: Array[String]): Unit = {
-    println(power(2.0, args.length))
+    println(power(2.0, args.length))  // error: maximal number of inlines exceeded
   }
 }
