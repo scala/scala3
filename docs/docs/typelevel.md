@@ -331,32 +331,18 @@ By contrast, the new `implicit match` construct makes implicit search available 
 the problem of creating the right set, one would use it as follows:
 ```scala
 transparent def setFor[T]: Set[T] = implicit match {
-  case Ordering[T] => new TreeSet[T]
-  case _           => new HashSet[T]
+  case ord: Ordering[T] => new TreeSet[T]
+  case _                => new HashSet[T]
 }
 ```
-An implicit match uses the `implicit` keyword in the place of the scrutinee. Its patterns are types.
-Patterns are tried in sequence. The first case with a pattern for which an implicit can be summoned is chosen.
+An implicit match uses the `implicit` keyword in the place of the scrutinee. Its patterns are type ascriptions of the form `identifier : Type`.
+
+Patterns are tried in sequence. The first case with a pattern `x: T` such that an implicit value
+of type `T` can be summoned is chosen. The variable `x` is then bound to the implicit value for the remainder of the case. It can in turn be used as an implicit in the right hand side of the case.
+It is an error if one of the tested patterns gives rise to an ambiguous implicit search.
 
 Implicit matches can only occur as toplevel match expressions of transparent methods. This ensures that
 all implicit searches are done at compile-time.
-
-There may be several patterns in a case of an implicit match, separated by commas. Patterns may bind type variables.
-For instance the case
-```scala
-  case Convertible[T, u], Printable[`u`] => ...
-```
-matches any type `T` that is `Convertible` to another type `u` such that `u` is `Printable`.
-
-## New Syntax for Type Variables in Patterns
-
-This last example exhibits some awkwardness in the way type variables are currently handled in patterns. To _bind_ a type variable,
-it needs to start with a lower case letter, then to refer to the bound variable itself, the variable has to be
-put in backticks. This is doable, but feels a bit unnatural. To improve on the syntax, we
-allow an alternative syntax that prefixes type variables by `type`:
-```scala
-  case Convertible[T, type U], Printable[U] => ...
-```
 
 ## Transparent Values
 

@@ -333,6 +333,10 @@ class Definitions {
   def NullType = NullClass.typeRef
   lazy val RuntimeNullModuleRef = ctx.requiredModuleRef("scala.runtime.Null")
 
+  lazy val ImplicitScrutineeTypeSym =
+    newSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty)
+  def ImplicitScrutineeTypeRef: TypeRef = ImplicitScrutineeTypeSym.typeRef
+
   lazy val ScalaPredefModuleRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context) = ScalaPredefModuleRef.symbol
 

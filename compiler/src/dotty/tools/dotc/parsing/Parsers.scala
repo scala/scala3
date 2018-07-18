@@ -801,10 +801,13 @@ object Parsers {
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
           if (imods.is(Implicit) && !t.isInstanceOf[FunctionWithMods])
-            syntaxError("Types with implicit keyword can only be function types", Position(start, start + nme.IMPLICITkw.asSimpleName.length))
+            syntaxError("Types with implicit keyword can only be function types", implicitKwPos(start))
           t
       }
     }
+
+    private def implicitKwPos(start: Int): Position =
+      Position(start, start + nme.IMPLICITkw.asSimpleName.length)
 
     /** TypedFunParam   ::= id ':' Type */
     def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): Tree = atPos(start) {
@@ -1092,6 +1095,7 @@ object Parsers {
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  PostfixExpr [Ascription]
      *                      |  PostfixExpr `match' `{' CaseClauses `}'
+     *                      |  `implicit' `match' `{' ImplicitCaseClauses `}'
      *  Bindings          ::= `(' [Binding {`,' Binding}] `)'
      *  Binding           ::= (id | `_') [`:' Type]
      *  Ascription        ::= `:' CompoundType
@@ -1106,7 +1110,8 @@ object Parsers {
       val start = in.offset
       if (in.token == IMPLICIT || in.token == ERASED) {
         val imods = modifiers(funArgMods)
-        implicitClosure(start, location, imods)
+        if (in.token == MATCH) implicitMatch(start, imods)
+        else implicitClosure(start, location, imods)
       } else {
         val saved = placeholderParams
         placeholderParams = Nil
@@ -1207,9 +1212,7 @@ object Parsers {
       case COLON =>
         ascription(t, location)
       case MATCH =>
-        atPos(startOffset(t), in.skipToken()) {
-          inBraces(Match(t, caseClauses()))
-        }
+        matchExpr(t)
       case _ =>
         t
     }
@@ -1238,6 +1241,37 @@ object Parsers {
           }
           Typed(t, tpt)
       }
+    }
+
+    /**    `match' { CaseClauses }
+     *     `match' { ImplicitCaseClauses }
+     */
+    def matchExpr(t: Tree) =
+      atPos(startOffset(t), in.skipToken()) {
+        inBraces(Match(t, caseClauses()))
+      }
+
+    /**    `match' { ImplicitCaseClauses }
+     */
+    def implicitMatch(start: Int, imods: Modifiers) = {
+      def markFirstIllegal(mods: List[Mod]) = mods match {
+        case mod :: _ => syntaxError(em"illegal modifier for implicit match", mod.pos)
+        case _ =>
+      }
+      imods.mods match {
+        case Mod.Implicit() :: mods => markFirstIllegal(mods)
+        case mods => markFirstIllegal(mods)
+      }
+      val result @ Match(t, cases) = matchExpr(ImplicitScrutinee().withPos(implicitKwPos(start)))
+      for (CaseDef(pat, _, _) <- cases) {
+        def isImplicitPattern(pat: Tree) = pat match {
+          case Typed(pat1, _) => isVarPattern(pat1)
+          case pat => isVarPattern(pat)
+        }
+        if (!isImplicitPattern(pat))
+          syntaxError(em"not a legal pattern for an implicit match", pat.pos)
+      }
+      result
     }
 
     /** FunParams         ::=  Bindings
@@ -1544,8 +1578,9 @@ object Parsers {
       }
     }
 
-    /** CaseClauses ::= CaseClause {CaseClause}
-    */
+    /** CaseClauses         ::= CaseClause {CaseClause}
+     *  ImplicitCaseClauses ::= ImplicitCaseClause {ImplicitCaseClause}
+     */
     def caseClauses(): List[CaseDef] = {
       val buf = new ListBuffer[CaseDef]
       buf += caseClause()
@@ -1553,7 +1588,8 @@ object Parsers {
       buf.toList
     }
 
-   /** CaseClause ::= case Pattern [Guard] `=>' Block
+   /** CaseClause         ::= case Pattern [Guard] `=>' Block
+    *  ImplicitCaseClause ::= case PatVar [Ascription] [Guard] `=>' Block
     */
     def caseClause(): CaseDef = atPos(in.offset) {
       accept(CASE)
@@ -2532,8 +2568,12 @@ object Parsers {
           if (in.token == IMPLICIT || in.token == ERASED) {
             val start = in.offset
             var imods = modifiers(funArgMods)
-            if (isBindingIntro) stats += implicitClosure(start, Location.InBlock, imods)
-            else stats +++= localDef(start, imods)
+            if (isBindingIntro)
+              stats += implicitClosure(start, Location.InBlock, imods)
+            else if (in.token == MATCH)
+              stats += implicitMatch(start, imods)
+            else
+              stats +++= localDef(start, imods)
           } else {
             stats +++= localDef(in.offset)
           }

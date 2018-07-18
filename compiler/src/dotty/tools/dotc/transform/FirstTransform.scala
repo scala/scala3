@@ -30,7 +30,7 @@ object FirstTransform {
 
 /** The first tree transform
  *   - eliminates some kinds of trees: Imports, NamedArgs
- *   - stubs out native methods
+ *   - stubs out native and typelevel methods
  *   - eliminates self tree in Template and self symbol in ClassInfo
  *   - collapses all type trees to trees of class TypeTree
  *   - converts idempotent expressions with constant types
@@ -109,12 +109,15 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context) = {
-    if (ddef.symbol.hasAnnotation(defn.NativeAnnot)) {
+    def disable(stubKind: String) = {
       ddef.symbol.resetFlag(Deferred)
       DefDef(ddef.symbol.asTerm,
         _ => ref(defn.Sys_errorR).withPos(ddef.pos)
-          .appliedTo(Literal(Constant("native method stub"))))
-    } else ddef
+          .appliedTo(Literal(Constant(s"$stubKind method stub"))))
+    }
+    if (ddef.symbol.hasAnnotation(defn.NativeAnnot)) disable("native")
+    else if (ddef.symbol.is(TypeLevel)) disable("type level")
+    else ddef
   }
 
   override def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] =

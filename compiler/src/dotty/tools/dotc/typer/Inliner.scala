@@ -560,15 +560,35 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
        *  bindings for variables bound in this pattern to `bindingsBuf`.
        */
       def reducePattern(bindingsBuf: mutable.ListBuffer[MemberDef], scrut: TermRef, pat: Tree): Boolean = {
+        val isImplicit = scrut.info == defn.ImplicitScrutineeTypeRef
+
         def newBinding(name: TermName, flags: FlagSet, rhs: Tree): Symbol = {
-          val sym = newSym(name, flags, rhs.tpe.widenTermRefExpr).asTerm
+          val info = if (flags `is` Implicit) rhs.tpe.widen else rhs.tpe.widenTermRefExpr
+          val sym = newSym(name, flags, info).asTerm
           bindingsBuf += ValDef(sym, constToLiteral(rhs))
           sym
         }
+
+        def searchImplicit(name: TermName, tpt: Tree) = {
+          val evidence = typer.inferImplicitArg(tpt.tpe, tpt.pos)
+          evidence.tpe match {
+            case fail: Implicits.AmbiguousImplicits =>
+              ctx.error(typer.missingArgMsg(evidence, tpt.tpe, ""), tpt.pos)
+              true // hard error: return true to stop implicit search here
+            case fail: Implicits.SearchFailureType =>
+              false
+            case _ =>
+              if (name != nme.WILDCARD) newBinding(name, Implicit, evidence)
+              true
+          }
+        }
+
         pat match {
           case Typed(pat1, tpt) =>
-            scrut <:< tpt.tpe &&
-            reducePattern(bindingsBuf, scrut, pat1)
+            if (isImplicit) searchImplicit(nme.WILDCARD, tpt)
+            else scrut <:< tpt.tpe && reducePattern(bindingsBuf, scrut, pat1)
+          case pat @ Bind(name: TermName, Typed(_, tpt)) if isImplicit =>
+            searchImplicit(name, tpt)
           case pat @ Bind(name: TermName, body) =>
             reducePattern(bindingsBuf, scrut, body) && {
               if (name != nme.WILDCARD) newBinding(name, EmptyFlags, ref(scrut))
@@ -614,7 +634,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             case _ => false
           }
         }
-        val caseBindingsBuf = new mutable.ListBuffer[MemberDef]() += scrutineeBinding
+        val caseBindingsBuf = new mutable.ListBuffer[MemberDef]()
+        if (scrutType != defn.ImplicitScrutineeTypeRef) caseBindingsBuf += scrutineeBinding
         val pat1 = typer.typedPattern(cdef.pat, scrutType)(typer.gadtContext(gadtSyms))
         if (reducePattern(caseBindingsBuf, scrutineeSym.termRef, pat1) && guardOK)
           Some((caseBindingsBuf.toList, cdef.body))
@@ -679,11 +700,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case Some(_) =>
           reduceTopLevelMatch(sel, selType, tree.cases, this) match {
             case Some((caseBindings, rhs)) =>
+              var rhsCtx = ctx.fresh.setNewScope
               for (binding <- caseBindings) {
                 matchBindingsBuf += binding
-                ctx.enter(binding.symbol)
+                rhsCtx.enter(binding.symbol)
               }
-              typedExpr(rhs, pt)
+              typedExpr(rhs, pt)(rhsCtx)
             case None =>
               def guardStr(guard: untpd.Tree) = if (guard.isEmpty) "" else i" if $guard"
               def patStr(cdef: untpd.CaseDef) = i"case ${cdef.pat}${guardStr(cdef.guard)}"

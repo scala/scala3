@@ -365,7 +365,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case SeqLiteral(elems, elemtpt) =>
         "[" ~ toTextGlobal(elems, ",") ~ " : " ~ toText(elemtpt) ~ "]"
       case tree @ Inlined(call, bindings, body) =>
-        (("/* inlined from " ~ toText(call) ~ "*/ ") provided !homogenizedView && !ctx.settings.YshowNoInline.value) ~
+        (("/* inlined from " ~ toText(call) ~ " */ ") provided !homogenizedView && !ctx.settings.YshowNoInline.value) ~
         blockText(bindings :+ body)
       case tpt: untpd.DerivedTypeTree =>
         "<derived typetree watching " ~ summarized(toText(tpt.watched)) ~ ">"
