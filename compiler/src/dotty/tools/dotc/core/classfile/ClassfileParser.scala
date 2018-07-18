@@ -7,7 +7,7 @@ import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._,
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Positions._
 import NameKinds.{ModuleClassName, DefaultGetterName}
 import ast.tpd._
-import java.io.{ ByteArrayInputStream, DataInputStream, File, IOException }
+import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, File, IOException }
 import java.nio
 import java.lang.Integer.toHexString
 import java.net.URLClassLoader
@@ -795,11 +795,15 @@ class ClassfileParser(
               val path = classfile.path.stripSuffix(".class") + ".tasty"
               val stream = cl.getResourceAsStream(path)
               if (stream != null) {
-                val tasty = Array.newBuilder[Byte]
-                tasty.sizeHint(stream.available())
-                while (stream.available() > 0) // TODO improve performance
-                  tasty += stream.read().toByte
-                tasty.result()
+                val tastyOutStream = new ByteArrayOutputStream()
+                val buffer = new Array[Byte](1024)
+                var read = stream.read(buffer, 0, buffer.length)
+                while (read != -1) {
+                  tastyOutStream.write(buffer, 0, read)
+                  read = stream.read(buffer, 0, buffer.length)
+                }
+                tastyOutStream.flush()
+                tastyOutStream.toByteArray
               } else {
                 ctx.error(s"Could not find $path in $jar")
                 Array.empty
