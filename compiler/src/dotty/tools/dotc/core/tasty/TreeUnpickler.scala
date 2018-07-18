@@ -549,7 +549,7 @@ class TreeUnpickler(reader: TastyReader,
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
-      else if (sym.isInlineableMethod)
+      else if (sym.isInlinedMethod)
         sym.addAnnotation(LazyBodyAnnotation { ctx0 =>
           implicit val ctx: Context = localContext(sym)(ctx0).addMode(Mode.ReadPositions)
             // avoids space leaks by not capturing the current context
@@ -637,9 +637,12 @@ class TreeUnpickler(reader: TastyReader,
         val lazyAnnotTree = readLaterWithOwner(end, rdr => ctx => rdr.readTerm()(ctx))
 
         owner =>
-          Annotation.deferredSymAndTree(
-            implicit ctx => tp.typeSymbol,
-            implicit ctx => lazyAnnotTree(owner).complete)
+          if (tp.isRef(defn.BodyAnnot))
+            LazyBodyAnnotation(implicit ctx => lazyAnnotTree(owner).complete)
+          else
+            Annotation.deferredSymAndTree(
+              implicit ctx => tp.typeSymbol,
+              implicit ctx => lazyAnnotTree(owner).complete)
     }
 
     /** Create symbols for the definitions in the statement sequence between

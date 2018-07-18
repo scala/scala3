@@ -763,6 +763,7 @@ class Namer { typer: Typer =>
       case original: untpd.DefDef if sym.isInlineableMethod =>
         Inliner.registerInlineInfo(
             sym,
+            original.rhs,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
           )(localContext(sym))
       case _ =>
@@ -1089,7 +1090,8 @@ class Namer { typer: Typer =>
       // it would be erased to BoxedUnit.
       def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
-      val rhsCtx = ctx.addMode(Mode.InferringReturnType)
+      var rhsCtx = ctx.addMode(Mode.InferringReturnType)
+      if (sym.isTransparentMethod) rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
       def rhsType = typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.

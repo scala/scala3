@@ -1437,10 +1437,11 @@ class Typer extends Namer
       (tparams1, sym.owner.typeParams).zipped.foreach ((tdef, tparam) =>
         rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
     }
+    if (sym.isTransparentMethod) rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
     val rhs1 = normalizeErasedRhs(typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx), sym)
 
     // Overwrite inline body to make sure it is not evaluated twice
-    if (sym.isInlineableMethod) Inliner.registerInlineInfo(sym, _ => rhs1)
+    if (sym.isInlineableMethod) Inliner.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
 
     if (sym.isConstructor && !sym.isPrimaryConstructor)
       for (param <- tparams1 ::: vparamss1.flatten)
@@ -1909,7 +1910,17 @@ class Typer extends Namer
           case none =>
             typed(mdef) match {
               case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
-                buf += inlineExpansion(mdef1)
+                if (mdef1.symbol.isInlinedMethod) {
+                  buf += inlineExpansion(mdef1)
+                    // replace body with expansion, because it will be used as inlined body
+                    // from separately compiled files - the original BodyAnnotation is not kept.
+                }
+                else {
+                  assert(mdef1.symbol.isTransparentMethod, mdef.symbol)
+                  Inliner.bodyToInline(mdef1.symbol) // just make sure accessors are computed,
+                  buf += mdef1                       // but keep original definition, since inline-expanded code
+                                                     // is pickled in this case.
+                }
               case mdef1 =>
                 import untpd.modsDeco
                 mdef match {

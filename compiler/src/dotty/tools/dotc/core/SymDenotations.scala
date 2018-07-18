@@ -792,7 +792,7 @@ object SymDenotations {
       is(InlineMethod, butNot = Accessor)
 
     def isTransparentMethod(implicit ctx: Context): Boolean =
-      is(TransparentMethod, butNot = Accessor)
+      is(TransparentMethod, butNot = AccessorOrSynthetic)
 
     def isInlineableMethod(implicit ctx: Context) = isInlinedMethod || isTransparentMethod
 

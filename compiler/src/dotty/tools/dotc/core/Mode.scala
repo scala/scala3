@@ -95,7 +95,9 @@ object Mode {
   /** We are in the IDE */
   val Interactive = newMode(20, "Interactive")
 
-  /** Read comments from definitions when unpickling from TASTY */
-  val ReadComments = newMode(21, "ReadComments")
+  /** We are typing the body of a transparent method */
+  val TransparentBody = newMode(21, "TransparentBody")
 
+  /** Read comments from definitions when unpickling from TASTY */
+  val ReadComments = newMode(22, "ReadComments")
 }
