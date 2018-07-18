@@ -293,7 +293,7 @@ It would be quite hard for even a good optimizer to undo the generic abstraction
 def dotProduct(xs: Array[Double], ys: Array[Double]): Double = {
   require(xs.length == ys.length)
   var i = 0
-  var s: Double = n.zero
+  var s: Double = math.Numeric.DoubleIsFractional.zero
   while (i < xs.length) {
     s = s + xs(i) * ys(i)
     i += 1

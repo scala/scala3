@@ -21,7 +21,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def isType = op.name.isTypeName
   }
 
-  /** A typed subtree of an untyped tree needs to be wrapped in a TypedSlice
+  /** A typed subtree of an untyped tree needs to be wrapped in a TypedSplice
    *  @param owner  The current owner at the time the tree was defined
    */
   abstract case class TypedSplice(splice: tpd.Tree)(val owner: Symbol) extends ProxyTree {
