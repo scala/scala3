@@ -1135,7 +1135,7 @@ trait Implicits { self: Typer =>
       searchImplicits(eligible, contextual) match {
         case result: SearchSuccess =>
           if (contextual && ctx.mode.is(Mode.TransparentBody))
-            Inliner.markContextualImplicit(result.tree)
+            PrepareTransparent.markContextualImplicit(result.tree)
           result
         case failure: SearchFailure =>
           failure.reason match {

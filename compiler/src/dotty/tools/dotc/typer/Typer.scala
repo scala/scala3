@@ -477,7 +477,7 @@ class Typer extends Namer
       case _ => false
     }
     val enclosingTransparent = ctx.owner.ownersIterator.findSymbol(_.isTransparentMethod)
-    if (enclosingTransparent.exists && !Inliner.isLocal(qual1.symbol, enclosingTransparent))
+    if (enclosingTransparent.exists && !PrepareTransparent.isLocal(qual1.symbol, enclosingTransparent))
       ctx.error(SuperCallsNotAllowedTransparent(enclosingTransparent), tree.pos)
     pt match {
       case pt: SelectionProto if pt.name.isTypeName =>
@@ -1440,7 +1440,7 @@ class Typer extends Namer
     if (sym.isTransparentMethod) rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
     val rhs1 = normalizeErasedRhs(typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx), sym)
 
-    if (sym.isTransparentMethod) Inliner.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
+    if (sym.isTransparentMethod) PrepareTransparent.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
 
     if (sym.isConstructor && !sym.isPrimaryConstructor)
       for (param <- tparams1 ::: vparamss1.flatten)

@@ -761,7 +761,7 @@ class Namer { typer: Typer =>
 
     private def addInlineInfo(sym: Symbol) = original match {
       case original: untpd.DefDef if sym.isTransparentMethod =>
-        Inliner.registerInlineInfo(
+        PrepareTransparent.registerInlineInfo(
             sym,
             original.rhs,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs

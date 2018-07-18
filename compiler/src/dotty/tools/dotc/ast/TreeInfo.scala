@@ -460,7 +460,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  Strictly speaking we can't replace `O.x` with `42`.  But this would make
    *  most expressions non-constant. Maybe we can change the spec to accept this
    *  kind of eliding behavior. Or else enforce true purity in the compiler.
-   *  The choice will be affected by what we will do with `inline` and with
+   *  The choice will be affected by what we will do with `transparent` and with
    *  Singleton type bounds (see SIP 23). Presumably
    *
    *     object O1 { val x: Singleton = 42; println("43") }
@@ -474,7 +474,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *
    *     O2.x = 42
    *
-   *  Revisit this issue once we have implemented `inline`. Then we can demand
+   *  Revisit this issue once we have standardized on `transparent`. Then we can demand
    *  purity of the prefix unless the selection goes to a transparent val.
    *
    *  Note: This method should be applied to all term tree nodes that are not literals,
@@ -709,6 +709,14 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case nil =>
         Nil
     }
+
+  /** The qualifier part of a Select or Ident.
+   *  For an Ident, this is the `This` of the current class.
+   */
+  def qualifier(tree: Tree)(implicit ctx: Context) = tree match {
+    case Select(qual, _) => qual
+    case _ => This(ctx.owner.enclosingClass.asClass)
+  }
 
   /** Is this a selection of a member of a structural type that is not a member
    *  of an underlying class or trait?
