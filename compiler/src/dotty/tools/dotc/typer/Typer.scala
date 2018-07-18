@@ -1384,7 +1384,7 @@ class Typer extends Namer
     val tpt1 = checkSimpleKinded(typedType(tpt))
     val rhs1 = vdef.rhs match {
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
-      case rhs => normalizeErasedRhs(typedExpr(rhs, tpt1.tpe), sym)
+      case rhs => typedExpr(rhs, tpt1.tpe)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     if (sym.is(Transparent, butNot = DeferredOrTermParamOrAccessor))
@@ -1448,7 +1448,7 @@ class Typer extends Namer
         rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
     }
     if (sym.isTransparentMethod) rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
-    val rhs1 = normalizeErasedRhs(typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx), sym)
+    val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)
 
     if (sym.isTransparentMethod) PrepareTransparent.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
 
@@ -2242,16 +2242,7 @@ class Typer extends Namer
                 arg :: implicitArgs(formals1)
             }
         }
-        def eraseErasedArgs(args: List[Tree]): List[Tree] = {
-          if (!wtp.isErasedMethod) args
-          else args.map { arg =>
-            arg.tpe match {
-              case _: AmbiguousImplicits => arg
-              case tpe => defaultValue(tpe)
-            }
-          }
-        }
-        val args = eraseErasedArgs(implicitArgs(wtp.paramInfos))
+        val args = implicitArgs(wtp.paramInfos)
 
         def propagatedFailure(args: List[Tree]): Type = args match {
           case arg :: args1 =>

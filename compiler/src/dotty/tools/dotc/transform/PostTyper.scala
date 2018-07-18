@@ -193,14 +193,19 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           else
             transformSelect(tree, Nil)
         case tree: Apply =>
-          methPart(tree) match {
+          val app =
+            if (tree.fun.tpe.widen.isErasedMethod)
+              tpd.cpy.Apply(tree)(tree.fun, tree.args.map(arg => defaultValue(arg.tpe)))
+            else
+              tree
+          methPart(app) match {
             case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
               // need to check instantiability here, because the type of the New itself
               // might be a type constructor.
               Checking.checkInstantiable(tree.tpe, nu.pos)
-              withNoCheckNews(nu :: Nil)(super.transform(tree))
+              withNoCheckNews(nu :: Nil)(super.transform(app))
             case _ =>
-              super.transform(tree)
+              super.transform(app)
           }
         case tree: TypeApply =>
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
@@ -242,9 +247,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 superAcc.wrapTemplate(templ1)(
                   super.transform(_).asInstanceOf[Template]))
           }
+        case tree: ValDef =>
+          val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
+          transformMemberDef(tree1)
+          super.transform(tree1)
         case tree: DefDef =>
-          transformMemberDef(tree)
-          superAcc.wrapDefDef(tree)(super.transform(tree).asInstanceOf[DefDef])
+          val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
+          transformMemberDef(tree1)
+          superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef])
         case tree: TypeDef =>
           transformMemberDef(tree)
           val sym = tree.symbol
@@ -256,9 +266,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
             tree
           }
-          super.transform(tree)
-        case tree: MemberDef =>
-          transformMemberDef(tree)
           super.transform(tree)
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.pos)
@@ -317,6 +324,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           println(i"error while transforming $tree")
           throw ex
       }
+
+    /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
+    *  Performed to shrink the tree that is known to be erased later.
+    */
+    private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) =
+      if (sym.is(Erased) && rhs.tpe.exists) defaultValue(rhs.tpe) else rhs
 
     private def checkNotErased(tree: RefTree)(implicit ctx: Context): Unit = {
       if (tree.symbol.is(Erased) && !ctx.mode.is(Mode.Type) && !ctx.inTransparentMethod) {
