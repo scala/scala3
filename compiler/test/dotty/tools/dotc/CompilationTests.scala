@@ -58,6 +58,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/pos-special/completeFromSource/Test.scala", defaultOptions.and("-sourcepath", "tests/pos-special")) +
     compileFile("tests/pos-special/completeFromSource/Test2.scala", defaultOptions.and("-sourcepath", "tests/pos-special")) +
     compileFile("tests/pos-special/completeFromSource/Test3.scala", defaultOptions.and("-sourcepath", "tests/pos-special", "-scansource")) +
+    compileFile("tests/pos-special/repeatedArgs.scala", defaultOptions.and("-Yimmutable-seq")) +
     compileFilesInDir("tests/pos-special/fatal-warnings", defaultOptions.and("-Xfatal-warnings")) +
     compileList(
       "compileMixed",
@@ -187,8 +188,9 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/neg-custom-args/i3882.scala", allowDeepSubtypes) +
     compileFile("tests/neg-custom-args/i4372.scala", allowDeepSubtypes) +
     compileFile("tests/neg-custom-args/i1754.scala", allowDeepSubtypes) +
-    compileFilesInDir("tests/neg-custom-args/isInstanceOf", allowDeepSubtypes and "-Xfatal-warnings") +
-    compileFile("tests/neg-custom-args/i3627.scala", allowDeepSubtypes)
+    compileFile("tests/neg-custom-args/i3627.scala", allowDeepSubtypes) +
+    compileFile("tests/neg-custom-args/repeatedArgs.scala", defaultOptions.and("-Yimmutable-seq")) +
+    compileFilesInDir("tests/neg-custom-args/isInstanceOf", allowDeepSubtypes and "-Xfatal-warnings")
   }.checkExpectedErrors()
 
   // Run tests -----------------------------------------------------------------

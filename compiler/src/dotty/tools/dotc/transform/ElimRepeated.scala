@@ -143,7 +143,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       val elemtp = varArgRef.tpe.widen.argTypes.head
       ref(original.termRef)
         .appliedToTypes(trefs)
-        .appliedToArgs(vrefs :+ TreeGen.wrapArray(varArgRef, elemtp))
+        .appliedToArgs(vrefs :+ tpd.wrapArray(varArgRef, elemtp))
         .appliedToArgss(vrefss1)
     })
 

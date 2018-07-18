@@ -71,7 +71,7 @@ object Implicits {
     /** The implicit references */
     def refs: List[ImplicitRef]
 
-    private var SingletonClass: ClassSymbol = null
+    private[this] var SingletonClass: ClassSymbol = null
 
     /** Widen type so that it is neither a singleton type nor a type that inherits from scala.Singleton. */
     private def widenSingleton(tp: Type)(implicit ctx: Context): Type = {
