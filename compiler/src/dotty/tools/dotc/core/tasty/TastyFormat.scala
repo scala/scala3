@@ -59,6 +59,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
                                         Modifier*
                   TYPEDEF        Length NameRef (type_Term | Template) Modifier*
+                  OBJECTDEF      Length NameRef Template Modifier*
                   IMPORT         Length qual_Term Selector*
   Selector      = IMPORTED              name_NameRef
                   RENAMED               to_NameRef
@@ -109,6 +110,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   EMPTYTREE
                   SHAREDterm            term_ASTRef
                   HOLE           Length idx_Nat arg_Tree*
+                  UNTYPEDSPLICE  Length splice_TermUntyped splice_Type
 
   CaseDef       = CASEDEF        Length pat_Term rhs_Tree guard_Tree?
   ImplicitArg   = IMPLICITARG           arg_Term
@@ -202,6 +204,14 @@ Standard-Section: "ASTs" TopLevelStat*
                   Annotation
 
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term
+
+// --------------- untyped additions ------------------------------------------
+
+  TermUntyped   = Term
+                  TYPEDSPLICE Length splice_Term
+                  FUNCTION    Length body_Term arg_Term*
+                  INFIXOP     Length op_NameRef left_Term right_Term
+                  PATDEF      Length type_Term rhs_Term pattern_Term* Modifier*
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 
@@ -307,6 +317,7 @@ object TastyFormat {
   final val MACRO = 34
   final val ERASED = 35
   final val PARAMsetter = 36
+  final val EMPTYTREE = 37
 
   // Cat. 2:    tag Nat
 
@@ -408,6 +419,7 @@ object TastyFormat {
   final val ANNOTATION = 172
   final val TERMREFin = 173
   final val TYPEREFin = 174
+  final val OBJECTDEF = 175
 
   // In binary: 101100EI
   // I = implicit method type
@@ -416,6 +428,14 @@ object TastyFormat {
   final val IMPLICITMETHODtype = 177
   final val ERASEDMETHODtype = 178
   final val ERASEDIMPLICITMETHODtype = 179
+
+  final val UNTYPEDSPLICE = 199
+
+  // Tags for untyped trees only:
+  final val TYPEDSPLICE = 200
+  final val FUNCTION = 201
+  final val INFIXOP = 202
+  final val PATDEF = 203
 
   def methodType(isImplicit: Boolean = false, isErased: Boolean = false) = {
     val implicitOffset = if (isImplicit) 1 else 0
@@ -432,7 +452,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= PARAMsetter ||
+    firstSimpleTreeTag <= tag && tag <= EMPTYTREE ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -529,6 +549,7 @@ object TastyFormat {
     case DEFAULTparameterized => "DEFAULTparameterized"
     case STABLE => "STABLE"
     case PARAMsetter => "PARAMsetter"
+    case EMPTYTREE => "EMPTYTREE"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"
@@ -560,6 +581,7 @@ object TastyFormat {
     case VALDEF => "VALDEF"
     case DEFDEF => "DEFDEF"
     case TYPEDEF => "TYPEDEF"
+    case OBJECTDEF => "OBJECTDEF"
     case IMPORT => "IMPORT"
     case TYPEPARAM => "TYPEPARAM"
     case PARAMS => "PARAMS"
@@ -627,13 +649,19 @@ object TastyFormat {
     case PRIVATEqualified => "PRIVATEqualified"
     case PROTECTEDqualified => "PROTECTEDqualified"
     case HOLE => "HOLE"
+
+    case UNTYPEDSPLICE => "UNTYPEDSPLICE"
+    case TYPEDSPLICE => "TYPEDSPLICE"
+    case FUNCTION => "FUNCTION"
+    case INFIXOP => "INFIXOP"
+    case PATDEF => "PATDEF"
   }
 
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.
    *          If negative, minus the number of leading non-reference trees.
    */
   def numRefs(tag: Int) = tag match {
-    case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
+    case VALDEF | DEFDEF | TYPEDEF | OBJECTDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
          SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | HOLE => 1
     case RENAMED | PARAMtype => 2
     case POLYtype | METHODtype | TYPELAMBDAtype => -1
