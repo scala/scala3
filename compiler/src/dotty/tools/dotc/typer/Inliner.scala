@@ -117,12 +117,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   import tpd._
   import Inliner._
 
-  private val (methPart, targs, argss) = decomposeCall(call)
-  private val meth = methPart.symbol
-  private val prefix = qualifier(methPart)
+  private val (methPart, callTypeArgs, callValueArgss) = decomposeCall(call)
+  private val inlinedMethod = methPart.symbol
+  private val inlineCallPrefix = qualifier(methPart)
 
   // Make sure all type arguments to the call are fully determined
-  for (targ <- targs) fullyDefinedType(targ.tpe, "inlined type argument", targ.pos)
+  for (targ <- callTypeArgs) fullyDefinedType(targ.tpe, "inlined type argument", targ.pos)
 
   /** A map from parameter names of the transparent method to references of the actual arguments.
    *  For a type argument this is the full argument type.
@@ -154,8 +154,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
   /** A buffer for bindings that define proxies for actual arguments */
   val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
-
-  computeParamBindings(meth.info, targs, argss)
 
   private def newSym(name: Name, flags: FlagSet, info: Type): Symbol =
     ctx.newSymbol(ctx.owner, name, flags, info, coord = call.pos)
@@ -208,9 +206,40 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       assert(argss.isEmpty)
   }
 
+  // Compute val-definitions for all this-proxies and append them to `bindingsBuf`
+  private def computeThisBindings() = {
+    // All needed this-proxies, paired-with and sorted-by nesting depth of
+    // the classes they represent (innermost first)
+    val sortedProxies = thisProxy.toList.map {
+      case (cls, proxy) =>
+        // The class that the this-proxy `selfSym` represents
+        def classOf(selfSym: Symbol) = selfSym.info.widen.classSymbol
+        // The total nesting depth of the class represented by `selfSym`.
+        def outerLevel(selfSym: Symbol): Int = classOf(selfSym).ownersIterator.length
+        (outerLevel(cls), proxy.symbol)
+    }.sortBy(-_._1)
+
+    var lastSelf: Symbol = NoSymbol
+    var lastLevel: Int = 0
+    for ((level, selfSym) <- sortedProxies) {
+      lazy val rhsClsSym = selfSym.info.widenDealias.classSymbol
+      val rhs =
+        if (lastSelf.exists)
+          ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
+        else if (rhsClsSym.is(Module) && rhsClsSym.isStatic)
+          ref(rhsClsSym.sourceModule)
+        else
+          inlineCallPrefix
+      bindingsBuf += ValDef(selfSym.asTerm, rhs)
+      inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
+      lastSelf = selfSym
+      lastLevel = level
+    }
+  }
+
   private def canElideThis(tpe: ThisType): Boolean =
-    prefix.tpe == tpe && ctx.owner.isContainedIn(tpe.cls) ||
-    tpe.cls.isContainedIn(meth) ||
+    inlineCallPrefix.tpe == tpe && ctx.owner.isContainedIn(tpe.cls) ||
+    tpe.cls.isContainedIn(inlinedMethod) ||
     tpe.cls.is(Package)
 
   /** Populate `thisProxy` and `paramProxy` as follows:
@@ -228,13 +257,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private def registerType(tpe: Type): Unit = tpe match {
     case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) =>
       val proxyName = s"${tpe.cls.name}_this".toTermName
-      val proxyType = tpe.asSeenFrom(prefix.tpe, meth.owner)
+      val proxyType = tpe.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner)
       thisProxy(tpe.cls) = newSym(proxyName, Synthetic, proxyType).termRef
       if (!tpe.cls.isStaticOwner)
-        registerType(meth.owner.thisType) // make sure we have a base from which to outer-select
+        registerType(inlinedMethod.owner.thisType) // make sure we have a base from which to outer-select
     case tpe: NamedType
-    if tpe.symbol.is(Param) && tpe.symbol.owner == meth &&
-       !paramProxy.contains(tpe) =>
+    if tpe.symbol.is(Param) && tpe.symbol.owner == inlinedMethod && !paramProxy.contains(tpe) =>
       paramProxy(tpe) = paramBinding(tpe.name)
     case _ =>
   }
@@ -248,84 +276,60 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
   /** The Inlined node representing the inlined call */
   def inlined(pt: Type) = {
+    // Compute bindings for all parameters, appending them to bindingsBuf
+    computeParamBindings(inlinedMethod.info, callTypeArgs, callValueArgss)
+
     // make sure prefix is executed if it is impure
-    if (!isIdempotentExpr(prefix)) registerType(meth.owner.thisType)
+    if (!isIdempotentExpr(inlineCallPrefix)) registerType(inlinedMethod.owner.thisType)
 
     // Register types of all leaves of inlined body so that the `paramProxy` and `thisProxy` maps are defined.
     rhsToInline.foreachSubTree(registerLeaf)
 
-    // The class that the this-proxy `selfSym` represents
-    def classOf(selfSym: Symbol) = selfSym.info.widen.classSymbol
-
-    // The total nesting depth of the class represented by `selfSym`.
-    def outerLevel(selfSym: Symbol): Int = classOf(selfSym).ownersIterator.length
-
-    // All needed this-proxies, paired-with and sorted-by nesting depth of
-    // the classes they represent (innermost first)
-    val sortedProxies = thisProxy.toList.map {
-      case (cls, proxy) => (outerLevel(cls), proxy.symbol)
-    } sortBy (-_._1)
-
-    // Compute val-definitions for all this-proxies and append them to `bindingsBuf`
-    var lastSelf: Symbol = NoSymbol
-    var lastLevel: Int = 0
-    for ((level, selfSym) <- sortedProxies) {
-      lazy val rhsClsSym = selfSym.info.widenDealias.classSymbol
-      val rhs =
-        if (lastSelf.exists)
-          ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
-        else if (rhsClsSym.is(Module) && rhsClsSym.isStatic)
-          ref(rhsClsSym.sourceModule)
-        else
-          prefix
-      bindingsBuf += ValDef(selfSym.asTerm, rhs)
-      inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
-      lastSelf = selfSym
-      lastLevel = level
-    }
-
-    // The type map to apply to the inlined tree. This maps references to this-types
-    // and parameters to type references of their arguments or proxies.
-    val typeMap = new TypeMap {
-      def apply(t: Type) = t match {
-        case t: ThisType => thisProxy.getOrElse(t.cls, t)
-        case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
-        case t: SingletonType => paramProxy.getOrElse(t, mapOver(t))
-        case t => mapOver(t)
-      }
-      override def mapClassInfo(tp: ClassInfo) = mapFullClassInfo(tp)
-    }
-
-    // The tree map to apply to the inlined tree. This maps references to this-types
-    // and parameters to references of their arguments or their proxies.
-    def treeMap(tree: Tree) = {
-      tree match {
-      case _: This =>
-        tree.tpe match {
-          case thistpe: ThisType =>
-            thisProxy.get(thistpe.cls) match {
-              case Some(t) => ref(t).withPos(tree.pos)
-              case None => tree
-            }
-          case _ => tree
-        }
-      case _: Ident =>
-        paramProxy.get(tree.tpe) match {
-          case Some(t) if tree.isTerm && t.isSingleton => singleton(t).withPos(tree.pos)
-          case Some(t) if tree.isType => TypeTree(t).withPos(tree.pos)
-          case _ => tree
-        }
-      case _ => tree
-    }}
+    // Compute bindings for all this-proxies, appending them to bindingsBuf
+    computeThisBindings()
 
     val inlineTyper = new InlineTyper
     val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
 
-    // The complete translation maps references to `this` and parameters to
+    // A tree type map to prepare the inlined body for typechecked.
+    // The translation maps references to `this` and parameters to
     // corresponding arguments or proxies on the type and term level. It also changes
     // the owner from the inlined method to the current owner.
-    val inliner = new TreeTypeMap(typeMap, treeMap, meth :: Nil, ctx.owner :: Nil)(inlineCtx)
+    val inliner = new TreeTypeMap(
+      typeMap =
+        new TypeMap {
+          def apply(t: Type) = t match {
+            case t: ThisType => thisProxy.getOrElse(t.cls, t)
+            case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
+            case t: SingletonType => paramProxy.getOrElse(t, mapOver(t))
+            case t => mapOver(t)
+          }
+          override def mapClassInfo(tp: ClassInfo) = mapFullClassInfo(tp)
+        },
+      treeMap = {
+        case tree: This =>
+          tree.tpe match {
+            case thistpe: ThisType =>
+              thisProxy.get(thistpe.cls) match {
+                case Some(t) => ref(t).withPos(tree.pos)
+                case None => tree
+              }
+            case _ => tree
+          }
+        case tree: Ident =>
+          paramProxy.get(tree.tpe) match {
+            case Some(t) if tree.isTerm && t.isSingleton => singleton(t).withPos(tree.pos)
+            case Some(t) if tree.isType => TypeTree(t).withPos(tree.pos)
+            case _ => tree
+          }
+        case tree => tree
+      },
+      oldOwners = inlinedMethod :: Nil,
+      newOwners = ctx.owner :: Nil
+    )(inlineCtx)
 
+    // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
+    // make them part of `bindingsBuf`. The expansion is then the untyped tree that remains.
     val expansion = inliner.transform(rhsToInline.withPos(call.pos)) match {
       case Block(implicits, tpd.UntypedSplice(expansion)) =>
         val prevOwners = implicits.map(_.symbol.owner).distinct
@@ -346,31 +350,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         expansion
     }
 
-    /** If this is a value binding:
-     *   - reduce its rhs if it is a projection and adjust its type accordingly,
-     *   - record symbol -> rhs in the InlineBindings context propery.
-     *  Also, set position to the one of the inline call.
-     */
-    def normalizeBinding(binding: ValOrDefDef)(implicit ctx: Context) = {
-      val binding1 = binding match {
-        case binding: ValDef =>
-          val rhs1 = reduceProjection(binding.rhs)
-          inlineBindings(inlineCtx).put(binding.symbol, rhs1)
-          if (rhs1 `eq` binding.rhs) binding
-          else {
-            binding.symbol.info = rhs1.tpe
-            cpy.ValDef(binding)(tpt = TypeTree(rhs1.tpe), rhs = rhs1)
-          }
-        case _ =>
-          binding
-      }
-      binding1.withPos(call.pos)
-    }
-
     trace(i"inlining $call", inlining, show = true) {
 
       /** All bindings in `bindingsBuf` */
-      val bindings = bindingsBuf.toList.map(normalizeBinding)
+      val bindings = bindingsBuf.toList.map(reducer.normalizeBinding(_)(inlineCtx))
 
       // The final expansion runs a typing pass over the inlined tree. See InlineTyper for details.
       val expansion1 = inlineTyper.typed(expansion, pt)(inlineCtx)
@@ -387,38 +370,40 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
   }
 
-  /** An extractor for terms equivalent to `new C(args)`, returning the class `C`
-   *  and the arguments `args`. Can see inside blocks and Inlined nodes and can
-   *  follow a reference to an inline value binding to its right hand side.
-   */
-  object NewInstance {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(Symbol, List[Tree], List[Tree])] = {
-      def unapplyLet(bindings: List[Tree], expr: Tree) =
-        unapply(expr) map {
-          case (cls, reduced, prefix) => (cls, reduced, bindings ::: prefix)
+  /** A utility object offering methods for rewriting inlined code */
+  object reducer {
+
+    /** An extractor for terms equivalent to `new C(args)`, returning the class `C`
+    *  and the arguments `args`. Can see inside blocks and Inlined nodes and can
+    *  follow a reference to an inline value binding to its right hand side.
+    */
+    private object NewInstance {
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Symbol, List[Tree], List[Tree])] = {
+        def unapplyLet(bindings: List[Tree], expr: Tree) =
+          unapply(expr) map {
+            case (cls, reduced, prefix) => (cls, reduced, bindings ::: prefix)
+          }
+        tree match {
+          case Apply(Select(New(tpt), nme.CONSTRUCTOR), args) =>
+            Some((tpt.tpe.classSymbol, args, Nil))
+          case Ident(_) =>
+            inlineBindings.get(tree.symbol).flatMap(unapply)
+          case Inlined(_, bindings, expansion) =>
+            unapplyLet(bindings, expansion)
+          case Block(stats, expr) if isPureExpr(tree) =>
+            unapplyLet(stats, expr)
+          case _ =>
+            None
         }
-      tree match {
-        case Apply(Select(New(tpt), nme.CONSTRUCTOR), args) =>
-          Some((tpt.tpe.classSymbol, args, Nil))
-        case Ident(_) =>
-          inlineBindings.get(tree.symbol).flatMap(unapply)
-        case Inlined(_, bindings, expansion) =>
-          unapplyLet(bindings, expansion)
-        case Block(stats, expr) if isPureExpr(tree) =>
-          unapplyLet(stats, expr)
-        case _ =>
-          None
       }
     }
-  }
 
-  /** If we are inlining a transparent method and `tree` is equivalent to `new C(args).x`
-   *  where class `C` does not have initialization code and `x` is a parameter corresponding
-   *  to one of the arguments `args`, the corresponding argument, prefixed by the evaluation
-   *  of impure arguments, otherwise `tree` itself.
-   */
-  def reduceProjection(tree: Tree)(implicit ctx: Context): Tree = {
-    if (meth.isTransparentMethod) {
+    /** If we are inlining a transparent method and `tree` is equivalent to `new C(args).x`
+    *  where class `C` does not have initialization code and `x` is a parameter corresponding
+    *  to one of the arguments `args`, the corresponding argument, prefixed by the evaluation
+    *  of impure arguments, otherwise `tree` itself.
+    */
+    def reduceProjection(tree: Tree)(implicit ctx: Context): Tree = {
       if (ctx.debug) inlining.println(i"try reduce projection $tree")
       tree match {
         case Select(NewInstance(cls, args, prefix), field) if cls.isNoInitsClass =>
@@ -441,32 +426,91 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             val argInPlace =
               if (trailing.isEmpty) arg
               else letBindUnless(TreeInfo.Pure, arg)(seq(trailing, _))
-            val reduced = seq(prefix, seq(leading, argInPlace))
-            inlining.println(i"projecting $tree -> ${reduced}")
-            return reduced
+            seq(prefix, seq(leading, argInPlace))
+              .reporting(res => i"projecting $tree -> $res", inlining)
           }
-        case _ =>
+          else tree
+        case _ => tree
       }
     }
-    tree
-  }
 
-  /** An extractor for references to inlineable arguments. These are :
-   *   - by-value arguments marked with `inline`
-   *   - all by-name arguments
-   */
-  private object InlineableArg {
-    lazy val paramProxies = paramProxy.values.toSet
-    def unapply(tree: Trees.Ident[_])(implicit ctx: Context): Option[Tree] =
-      if (paramProxies.contains(tree.typeOpt))
-        bindingsBuf.find(_.name == tree.name) match {
-          case Some(vdef: ValDef) if vdef.symbol.is(Transparent) =>
-            Some(vdef.rhs.changeOwner(vdef.symbol, ctx.owner))
-          case Some(ddef: DefDef) =>
-            Some(ddef.rhs.changeOwner(ddef.symbol, ctx.owner))
-          case _ => None
+    /** If this is a value binding:
+     *   - reduce its rhs if it is a projection and adjust its type accordingly,
+     *   - record symbol -> rhs in the InlineBindings context propery.
+     */
+    def normalizeBinding(binding: ValOrDefDef)(implicit ctx: Context) = {
+      val binding1 = binding match {
+        case binding: ValDef =>
+          val rhs1 = reduceProjection(binding.rhs)
+          inlineBindings(ctx).put(binding.symbol, rhs1)
+          if (rhs1 `eq` binding.rhs) binding
+          else {
+            binding.symbol.info = rhs1.tpe
+            cpy.ValDef(binding)(tpt = TypeTree(rhs1.tpe), rhs = rhs1)
+          }
+        case _ =>
+          binding
+      }
+      binding1.withPos(call.pos)
+    }
+    /** An extractor for references to inlineable arguments. These are :
+    *   - by-value arguments marked with `inline`
+    *   - all by-name arguments
+    */
+    private object InlineableArg {
+      lazy val paramProxies = paramProxy.values.toSet
+      def unapply(tree: Trees.Ident[_])(implicit ctx: Context): Option[Tree] =
+        if (paramProxies.contains(tree.typeOpt))
+          bindingsBuf.find(_.name == tree.name) match {
+            case Some(vdef: ValDef) if vdef.symbol.is(Transparent) =>
+              Some(vdef.rhs.changeOwner(vdef.symbol, ctx.owner))
+            case Some(ddef: DefDef) =>
+              Some(ddef.rhs.changeOwner(ddef.symbol, ctx.owner))
+            case _ => None
+          }
+        else None
+    }
+
+    def tryInline(tree: tpd.Tree)(implicit ctx: Context) = tree match {
+      case InlineableArg(rhs) =>
+        inlining.println(i"inline arg $tree -> $rhs")
+        rhs
+      case _ =>
+        EmptyTree
+    }
+
+    /** Rewrite an application
+      *
+      *    ((x1, ..., sn) => b)(e1, ..., en)
+      *
+      *  to
+      *
+      *    val/def x1 = e1; ...; val/def xn = en; b
+      *
+      *  where `def` is used for call-by-name parameters. However, we shortcut any NoPrefix
+      *  refs among the ei's directly without creating an intermediate binding.
+      */
+    def betaReduce(tree: Tree)(implicit ctx: Context) = tree match {
+      case Apply(Select(cl @ closureDef(ddef), nme.apply), args) if defn.isFunctionType(cl.tpe) =>
+        ddef.tpe.widen match {
+          case mt: MethodType if ddef.vparamss.head.length == args.length =>
+            val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
+            val argSyms = (mt.paramNames, mt.paramInfos, args).zipped.map { (name, paramtp, arg) =>
+              arg.tpe.dealias match {
+                case ref @ TermRef(NoPrefix, _) => ref.symbol
+                case _ => paramBindingDef(name, paramtp, arg, bindingsBuf).symbol
+              }
+            }
+            val expander = new TreeTypeMap(
+              oldOwners = ddef.symbol :: Nil,
+              newOwners = ctx.owner :: Nil,
+              substFrom = ddef.vparamss.head.map(_.symbol),
+              substTo = argSyms)
+            Block(bindingsBuf.toList, expander.transform(ddef.rhs))
+          case _ => tree
         }
-      else None
+      case _ => tree
+    }
   }
 
   /** A typer for inlined bodies of transparent methods. Beyond standard typing
@@ -479,14 +523,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    *  5. Make sure that the tree's typing is idempotent (so that future -Ycheck passes succeed)
    */
   class InlineTyper extends Typer {
-
-    protected def tryInline(tree: tpd.Tree)(implicit ctx: Context) = tree match {
-      case InlineableArg(rhs) =>
-        inlining.println(i"inline arg $tree -> $rhs")
-        rhs
-      case _ =>
-        EmptyTree
-    }
+    import reducer._
 
     override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
       tpe match {
@@ -521,43 +558,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
     }
 
-    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) = {
-
-      /** Rewrite an application
-       *
-       *    ((x1, ..., sn) => b)(e1, ..., en)
-       *
-       *  to
-       *
-       *    val/def x1 = e1; ...; val/def xn = en; b
-       *
-       *  where `def` is used for call-by-name parameters. However, we shortcut any NoPrefix
-       *  refs among the ei's directly without creating an intermediate binding.
-       */
-      def betaReduce(tree: Tree) = tree match {
-        case Apply(Select(cl @ closureDef(ddef), nme.apply), args) if defn.isFunctionType(cl.tpe) =>
-          ddef.tpe.widen match {
-            case mt: MethodType if ddef.vparamss.head.length == args.length =>
-              val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
-              val argSyms = (mt.paramNames, mt.paramInfos, args).zipped.map { (name, paramtp, arg) =>
-                arg.tpe.dealias match {
-                  case ref @ TermRef(NoPrefix, _) => ref.symbol
-                  case _ => paramBindingDef(name, paramtp, arg, bindingsBuf).symbol
-                }
-              }
-              val expander = new TreeTypeMap(
-                oldOwners = ddef.symbol :: Nil,
-                newOwners = ctx.owner :: Nil,
-                substFrom = ddef.vparamss.head.map(_.symbol),
-                substTo = argSyms)
-              Block(bindingsBuf.toList, expander.transform(ddef.rhs))
-            case _ => tree
-          }
-        case _ => tree
-      }
-
+    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) =
       constToLiteral(betaReduce(super.typedApply(tree, pt)))
-    }
 
     override def newLikeThis: Typer = new InlineTyper
   }
