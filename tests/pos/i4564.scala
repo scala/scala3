@@ -14,7 +14,6 @@ object ClashNoSig { // ok
   }
 }
 case class ClashNoSig private (x: Int) {
-  def _1: Int = x
   def copy(y: Int) = ClashNoSig(y)
 }
 

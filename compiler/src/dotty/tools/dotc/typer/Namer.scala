@@ -780,7 +780,7 @@ class Namer { typer: Typer =>
         }
       val isClashingSynthetic =
         denot.is(Synthetic) &&
-        desugar.isDesugaredCaseClassMethodName(denot.name) &&
+        desugar.isRetractableCaseClassMethodName(denot.name) &&
         isCaseClass(denot.owner) &&
         denot.owner.info.decls.lookupAll(denot.name).exists(alt =>
           alt != denot.symbol && alt.info.matchesLoosely(denot.info))
