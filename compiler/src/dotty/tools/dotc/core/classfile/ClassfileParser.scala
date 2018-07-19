@@ -6,6 +6,7 @@ package classfile
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Positions._
 import NameKinds.{ModuleClassName, DefaultGetterName}
+import dotty.tools.dotc.core.tasty.{TastyHeaderUnpickler, TastyPickler}
 import ast.tpd._
 import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, File, IOException }
 import java.nio
@@ -785,7 +786,10 @@ class ClassfileParser(
 
       if (scan(tpnme.TASTYATTR)) {
         val attrLen = in.nextInt
-        if (attrLen == 0) { // A tasty attribute implies the existence of the .tasty file
+        val bytes = in.nextBytes(attrLen)
+        val headerUnpickler = new TastyHeaderUnpickler(bytes)
+        headerUnpickler.readHeader()
+        if (headerUnpickler.isAtEnd) { // A tasty attribute with that has only a header implies the existence of the .tasty file
           val tastyBytes: Array[Byte] = classfile.underlyingSource match { // TODO: simplify when #3552 is fixed
             case None =>
               ctx.error("Could not load TASTY from .tasty for virtual file " + classfile)
@@ -816,10 +820,13 @@ class ClassfileParser(
                 Array.empty
               }
           }
-          if (tastyBytes.nonEmpty)
+          if (tastyBytes.nonEmpty) {
+            if (!tastyBytes.startsWith(bytes))
+              ctx.error("Header of TASTY file did not correspond to header in classfile. One of the files might be outdated or corrupted.")
             return unpickleTASTY(tastyBytes)
+          }
         }
-        else return unpickleTASTY(in.nextBytes(attrLen))
+        else return unpickleTASTY(bytes)
       }
 
       if (scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)) {
