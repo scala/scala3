@@ -7,9 +7,11 @@ import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._,
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Positions._
 import NameKinds.{ModuleClassName, DefaultGetterName}
 import ast.tpd._
-import java.io.{ ByteArrayInputStream, DataInputStream, File, IOException }
+import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, File, IOException }
 import java.nio
 import java.lang.Integer.toHexString
+import java.net.URLClassLoader
+
 import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
@@ -784,24 +786,35 @@ class ClassfileParser(
       if (scan(tpnme.TASTYATTR)) {
         val attrLen = in.nextInt
         if (attrLen == 0) { // A tasty attribute implies the existence of the .tasty file
-          def readTastyForClass(jpath: nio.file.Path): Array[Byte] = {
-            val plainFile = new PlainFile(io.File(jpath).changeExtension("tasty"))
-            if (plainFile.exists) plainFile.toByteArray
-            else {
-              ctx.error("Could not find " + plainFile)
-              Array.empty
-            }
-          }
-          val tastyBytes = classfile.underlyingSource match { // TODO: simplify when #3552 is fixed
+          val tastyBytes: Array[Byte] = classfile.underlyingSource match { // TODO: simplify when #3552 is fixed
             case None =>
               ctx.error("Could not load TASTY from .tasty for virtual file " + classfile)
-              Array.empty[Byte]
+              Array.empty
             case Some(jar: ZipArchive) => // We are in a jar
-              val jarFile = JarArchive.open(io.File(jar.jpath))
-              try readTastyForClass(jarFile.jpath.resolve(classfile.path))
-              finally jarFile.close()
+              val cl = new URLClassLoader(Array(jar.jpath.toUri.toURL))
+              val path = classfile.path.stripSuffix(".class") + ".tasty"
+              val stream = cl.getResourceAsStream(path)
+              if (stream != null) {
+                val tastyOutStream = new ByteArrayOutputStream()
+                val buffer = new Array[Byte](1024)
+                var read = stream.read(buffer, 0, buffer.length)
+                while (read != -1) {
+                  tastyOutStream.write(buffer, 0, read)
+                  read = stream.read(buffer, 0, buffer.length)
+                }
+                tastyOutStream.flush()
+                tastyOutStream.toByteArray
+              } else {
+                ctx.error(s"Could not find $path in $jar")
+                Array.empty
+              }
             case _ =>
-              readTastyForClass(classfile.jpath)
+              val plainFile = new PlainFile(io.File(classfile.jpath).changeExtension("tasty"))
+              if (plainFile.exists) plainFile.toByteArray
+              else {
+                ctx.error("Could not find " + plainFile)
+                Array.empty
+              }
           }
           if (tastyBytes.nonEmpty)
             return unpickleTASTY(tastyBytes)
