@@ -5,6 +5,7 @@ import java.io.{PrintWriter, StringWriter}
 import java.lang.reflect.Method
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags.Package
@@ -15,6 +16,7 @@ import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.TypeErasure
+import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.tastyreflect.TastyImpl
 
 import scala.util.control.NonFatal
@@ -32,52 +34,15 @@ object Splicer {
    *
    *  See: `ReifyQuotes`
    */
-  def splice(tree: Tree, call: Tree, bindings: List[Tree], pos: Position, classLoader: ClassLoader)(implicit ctx: Context): Tree = tree match {
+  def splice(tree: Tree, pos: Position, classLoader: ClassLoader)(implicit ctx: Context): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
     case _ =>
-      val liftedArgs = getLiftedArgs(call, bindings)
       val interpreter = new Interpreter(pos, classLoader)
-      val interpreted = interpreter.interpretCallToSymbol[Seq[Any] => Object](call.symbol)
-      val tctx = new TastyImpl(ctx)
       evaluateMacro(pos) {
         // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
-        val evaluated = interpreted.map(lambda => lambda(tctx :: liftedArgs).asInstanceOf[scala.quoted.Expr[Nothing]])
-        evaluated.fold(tree)(PickledQuotes.quotedExprToTree)
+        val interpreted = interpreter.interpretCall[scala.quoted.Expr[Any]](tree)
+        interpreted.fold(tree)(x => PickledQuotes.quotedExprToTree(x))
       }
-  }
-
-  /** Given the inline code and bindings, compute the lifted arguments that will be used to execute the macro
-   *  - Type parameters are lifted to quoted.Types.TreeType
-   *  - Inline parameters are listed as their value
-   *  - Other parameters are lifted to quoted.Types.TreeExpr (may reference a binding)
-   */
-  private def getLiftedArgs(call: Tree, bindings: List[Tree])(implicit ctx: Context): List[Any] = {
-    val bindMap = bindings.collect {
-      case vdef: ValDef => (vdef.rhs, ref(vdef.symbol).withPos(vdef.rhs.pos))
-    }.toMap
-    def allArgs(call: Tree, acc: List[List[Tree]]): List[List[Tree]] = call match {
-      case call: Apply => allArgs(call.fun, call.args :: acc)
-      case call: TypeApply => allArgs(call.fun, call.args :: acc)
-      case _ => acc
-    }
-    def liftArgs(tpe: Type, args: List[List[Tree]]): List[Any] = tpe match {
-      case tp: MethodType =>
-        val args1 = args.head.zip(tp.paramInfos).map {
-          case (arg: Literal, tp) if tp.hasAnnotation(defn.InlineParamAnnot) => arg.const.value
-          case (arg, tp) =>
-            assert(!tp.hasAnnotation(defn.InlineParamAnnot))
-            // Replace argument by its binding
-            val arg1 = bindMap.getOrElse(arg, arg)
-            new scala.quoted.Exprs.TastyTreeExpr(arg1)
-        }
-        args1 ::: liftArgs(tp.resType, args.tail)
-      case tp: PolyType =>
-        val args1 = args.head.map(tp => new scala.quoted.Types.TreeType(tp))
-        args1 ::: liftArgs(tp.resType, args.tail)
-      case _ => Nil
-    }
-
-    liftArgs(call.symbol.info, allArgs(call, Nil))
   }
 
   /* Evaluate the code in the macro and handle exceptions durring evaluation */
@@ -92,7 +57,7 @@ object Splicer {
           s"""Failed to evaluate inlined quote.
              |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
              |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").init.mkString("\n    ")}
-         """.stripMargin
+           """.stripMargin
         ctx.error(msg, pos)
         EmptyTree
     }
@@ -108,13 +73,9 @@ object Splicer {
     /** Returns the interpreted result of interpreting the code a call to the symbol with default arguments.
      *  Return Some of the result or None if some error happen during the interpretation.
      */
-    def interpretCallToSymbol[T](sym: Symbol)(implicit ct: ClassTag[T]): Option[T] = {
+    def interpretCall[T](tree: Tree)(implicit ct: ClassTag[T]): Option[T] = {
       try {
-        val (clazz, instance) = loadModule(sym.owner)
-        val paramClasses = paramsSig(sym)
-        val interpretedArgs = paramClasses.map(defaultValue)
-        val method = getMethod(clazz, sym.name, paramClasses)
-        stopIfRuntimeException(method.invoke(instance, interpretedArgs: _*)) match {
+        interpret(tree) match {
           case obj: T => Some(obj)
           case obj =>
             // TODO upgrade to a full type tag check or something similar
@@ -126,6 +87,29 @@ object Splicer {
           ctx.error(ex.msg, ex.pos)
           None
       }
+    }
+
+    private def interpret(tree: Tree): Object = tree match {
+        case Apply(TypeApply(fn, _), quoted :: Nil) if fn.symbol == defn.QuotedExpr_apply =>
+          new scala.quoted.Exprs.TastyTreeExpr(quoted)
+        case TypeApply(fn, quoted :: Nil) if fn.symbol == defn.QuotedType_apply =>
+          new scala.quoted.Types.TreeType(quoted)
+
+        case _ if tree.symbol == defn.TastyTopLevelSplice_tastyContext =>
+          new TastyImpl(ctx)
+
+        case Apply(fn @ Ident(name), args) if fn.symbol.isStatic =>
+          val (clazz, instance) = loadModule(fn.symbol.owner)
+          val method = getMethod(clazz, name, paramsSig(fn.symbol))
+          val interpretedArgs = args.map(arg => interpret(arg))
+          stopIfRuntimeException(method.invoke(instance, interpretedArgs: _*))
+        case Apply(TypeApply(fn @ Ident(name), _), args) if fn.symbol.isStatic =>
+          val (clazz, instance) = loadModule(fn.symbol.owner)
+          val method = getMethod(clazz, name, paramsSig(fn.symbol))
+          val interpretedArgs = args.map(arg => interpret(arg))
+          stopIfRuntimeException(method.invoke(instance, interpretedArgs: _*))
+
+        case Literal(Constant(value)) => value.asInstanceOf[Object]
     }
 
     private def loadModule(sym: Symbol): (Class[_], Object) = {
@@ -221,19 +205,6 @@ object Splicer {
           }
         case _ => Nil
       }
-    }
-
-    /** Get the default value for the given class */
-    private def defaultValue(clazz: Class[_]): Object = {
-      if (clazz == classOf[Boolean]) false.asInstanceOf[Object]
-      else if (clazz == classOf[Byte]) 0.toByte.asInstanceOf[Object]
-      else if (clazz == classOf[Char]) 0.toChar.asInstanceOf[Object]
-      else if (clazz == classOf[Short]) 0.asInstanceOf[Object]
-      else if (clazz == classOf[Int]) 0.asInstanceOf[Object]
-      else if (clazz == classOf[Long]) 0L.asInstanceOf[Object]
-      else if (clazz == classOf[Float]) 0f.asInstanceOf[Object]
-      else if (clazz == classOf[Double]) 0d.asInstanceOf[Object]
-      else null
     }
 
     /** Exception that stops interpretation if some issue is found */

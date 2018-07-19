@@ -7,7 +7,7 @@ Type.AppliedType(Type.SymRef(ClassDef("Function1", _, _, _, _), Type.ThisType(Ty
 Term.Ident("???")
 Type.SymRef(DefDef("???", _, _, _, _), Type.SymRef(ValDef("Predef", _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))))
 
-Term.Typed(Term.Literal(Constant.Int(1)), TypeTree.Singleton(Term.Literal(Constant.Int(1))))
+Term.Literal(Constant.Int(1))
 Type.ConstantType(Constant.Int(1))
 
 Term.Typed(Term.Literal(Constant.Int(1)), TypeTree.TypeIdent("Int"))
@@ -21,18 +21,6 @@ Type.AndType(Type.SymRef(ClassDef("Foo", _, _, _, _), Type.ThisType(Type.SymRef(
 
 Term.Typed(Term.Literal(Constant.Int(1)), TypeTree.Or(TypeTree.TypeIdent("Int"), TypeTree.TypeIdent("String")))
 Type.OrType(Type.SymRef(ClassDef("Int", _, _, _, _), Type.SymRef(PackageDef("scala", _), Type.ThisType(Type.SymRef(PackageDef("<root>", _), NoPrefix())))), Type.SymRef(TypeDef("String", _), Type.SymRef(ValDef("Predef", _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))))
-
-Term.Block(List(Import(Term.Select(Term.Ident("scala"), "collection", None), List(SimpleSelector(Id("mutable"))))), Term.Literal(Constant.Int(1)))
-Type.ConstantType(Constant.Int(1))
-
-Term.Block(List(Import(Term.Select(Term.Ident("scala"), "collection", None), List(SimpleSelector(Id("mutable")), SimpleSelector(Id("immutable"))))), Term.Literal(Constant.Int(2)))
-Type.ConstantType(Constant.Int(2))
-
-Term.Block(List(Import(Term.Select(Term.Ident("scala"), "collection", None), List(RenameSelector(Id("mutable"), Id("mut"))))), Term.Literal(Constant.Int(3)))
-Type.ConstantType(Constant.Int(3))
-
-Term.Block(List(Import(Term.Select(Term.Ident("scala"), "collection", None), List(OmitSelector(Id("mutable"))))), Term.Literal(Constant.Int(4)))
-Type.ConstantType(Constant.Int(4))
 
 Term.Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), TypeTree.Synthetic(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, java.lang.Object))), Nil)), None, Nil)), Term.Literal(Constant.Unit()))
 Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
@@ -61,6 +49,9 @@ Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("
 Term.Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), TypeTree.Synthetic(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, java.lang.Object))), Nil)), None, List(DefDef("a", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(0))))))), Term.Literal(Constant.Unit()))
 Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
+Term.Block(List(ClassDef("Foo", DefDef("<init>", Nil, List(Nil), TypeTree.Synthetic(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, java.lang.Object))), Nil), TypeTree.TermSelect(Term.Select(Term.Ident("_root_"), "scala", None), "Product")), None, List(DefDef("copy", Nil, List(Nil), TypeTree.Synthetic(), Some(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, Test$._$Foo))), Nil))), DefDef("hashCode", Nil, List(Nil), TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(394005536)))), DefDef("equals", Nil, List(List(ValDef("x$0", TypeTree.Synthetic(), None))), TypeTree.Synthetic(), Some(Term.Apply(Term.Select(Term.Apply(Term.Select(Term.This(Some(Id("Foo"))), "eq", Some(Signature(List(java.lang.Object), scala.Boolean))), List(Term.TypeApply(Term.Select(Term.Ident("x$0"), "asInstanceOf", Some(Signature(Nil, java.lang.Object))), List(TypeTree.Synthetic())))), "||", Some(Signature(List(scala.Boolean), scala.Boolean))), List(Term.Match(Term.Ident("x$0"), List(CaseDef(Pattern.Bind("x$0", Pattern.TypeTest(TypeTree.Synthetic())), None, Term.Literal(Constant.Boolean(true))), CaseDef(Pattern.Value(Term.Ident("_")), None, Term.Literal(Constant.Boolean(false))))))))), DefDef("toString", Nil, List(Nil), TypeTree.Synthetic(), Some(Term.Apply(Term.Ident("_toString"), List(Term.This(Some(Id("Foo"))))))), DefDef("canEqual", Nil, List(List(ValDef("that", TypeTree.Synthetic(), None))), TypeTree.Synthetic(), Some(Term.TypeApply(Term.Select(Term.Ident("that"), "isInstanceOf", Some(Signature(Nil, scala.Boolean))), List(TypeTree.Synthetic())))), DefDef("productArity", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(0)))), DefDef("productPrefix", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.String("Foo")))), DefDef("productElement", Nil, List(List(ValDef("n", TypeTree.Synthetic(), None))), TypeTree.Synthetic(), Some(Term.Match(Term.Ident("n"), List(CaseDef(Pattern.Value(Term.Ident("_")), None, Term.Apply(Term.Ident("throw"), List(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(List(java.lang.String), java.lang.IndexOutOfBoundsException))), List(Term.Apply(Term.Select(Term.Ident("n"), "toString", Some(Signature(Nil, java.lang.String))), Nil)))))))))))), ValDef("Foo", TypeTree.TypeIdent("Foo$"), Some(Term.Apply(Term.Select(Term.New(TypeTree.TypeIdent("Foo$")), "<init>", Some(Signature(Nil, Test$._$Foo$))), Nil))), ClassDef("Foo$", DefDef("<init>", Nil, List(Nil), TypeTree.Synthetic(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, java.lang.Object))), Nil), TypeTree.Applied(TypeTree.Synthetic(), List(TypeTree.Synthetic()))), Some(ValDef("_", TypeTree.Singleton(Term.Ident("Foo")), None)), List(DefDef("apply", Nil, List(Nil), TypeTree.Synthetic(), Some(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, Test$._$Foo))), Nil))), DefDef("unapply", Nil, List(List(ValDef("x$1", TypeTree.Synthetic(), None))), TypeTree.Synthetic(), Some(Term.Literal(Constant.Boolean(true))))))), Term.Literal(Constant.Unit()))
+Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
+
 Term.Block(List(ClassDef("Foo1", DefDef("<init>", Nil, List(List(ValDef("a", TypeTree.TypeIdent("Int"), None))), TypeTree.Synthetic(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, java.lang.Object))), Nil)), None, List(ValDef("a", TypeTree.Synthetic(), None)))), Term.Literal(Constant.Unit()))
 Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
@@ -77,6 +68,9 @@ Term.Block(List(ClassDef("Foo5", DefDef("<init>", Nil, List(List(ValDef("a", Typ
 Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
 Term.Block(List(ClassDef("Foo6", DefDef("<init>", Nil, List(List(ValDef("a", TypeTree.TypeIdent("Int"), None)), List(ValDef("b", TypeTree.Singleton(Term.Ident("a")), None))), TypeTree.Synthetic(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, java.lang.Object))), Nil)), None, List(ValDef("a", TypeTree.Synthetic(), None), ValDef("b", TypeTree.Synthetic(), None)))), Term.Literal(Constant.Unit()))
+Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
+
+Term.Block(List(ClassDef("Foo7", DefDef("<init>", Nil, List(List(ValDef("a", TypeTree.TypeIdent("Int"), None))), TypeTree.Synthetic(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, java.lang.Object))), Nil)), None, List(ValDef("a", TypeTree.Synthetic(), None), DefDef("<init>", Nil, List(Nil), TypeTree.Synthetic(), Some(Term.Block(List(Term.Apply(Term.Select(Term.This(Some(Id("Foo7"))), "<init>", Some(Signature(List(scala.Int), Test$._$Foo7))), List(Term.Literal(Constant.Int(6))))), Term.Literal(Constant.Unit()))))))), Term.Literal(Constant.Unit()))
 Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
 Term.Block(List(ClassDef("Foo8", DefDef("<init>", Nil, List(Nil), TypeTree.Synthetic(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, java.lang.Object))), Nil)), None, List(Term.Apply(Term.Ident("println"), List(Term.Literal(Constant.Int(0))))))), Term.Literal(Constant.Unit()))

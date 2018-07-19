@@ -2,22 +2,22 @@ import scala.quoted._
 
 object Test {
 
-  inline def foo1: Int = { // error
+  inline def foo1: Int = {
     println()
     ~impl(1.toExpr)
   }
 
-  inline def foo2: Int = { // error
+  inline def foo2: Int = {
     ~impl(1.toExpr)
     ~impl(2.toExpr)
   }
 
-  inline def foo3: Int = { // error
+  inline def foo3: Int = {
     val a = 1
     ~impl('(a))
   }
 
-  inline def foo4: Int = { // error
+  inline def foo4: Int = {
     ~impl('(1))
     1
   }

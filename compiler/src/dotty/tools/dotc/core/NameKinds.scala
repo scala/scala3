@@ -292,6 +292,7 @@ object NameKinds {
   val SuperArgName            = new UniqueNameKind("$superArg$")
   val DocArtifactName         = new UniqueNameKind("$doc")
   val UniqueInlineName        = new UniqueNameKind("$i")
+  val UniqueSpliceName        = new UniqueNameKind("$splice$")
 
   /** A kind of unique extension methods; Unlike other unique names, these can be
    *  unmangled.
