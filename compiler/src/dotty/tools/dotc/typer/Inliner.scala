@@ -521,7 +521,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     /** Rewrite an application
       *
-      *    ((x1, ..., sn) => b)(e1, ..., en)
+      *    ((x1, ..., xn) => b)(e1, ..., en)
       *
       *  to
       *
@@ -604,10 +604,16 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
               if (name != nme.WILDCARD) newBinding(name, EmptyFlags, ref(scrut))
               true
             }
-          case Ident(name) =>
-            name == nme.WILDCARD ||
+          case Ident(nme.WILDCARD) =>
+            true
+          case pat: RefTree =>
             scrut =:= pat.tpe ||
-            scrut.widen =:= pat.tpe.widen && scrut.widen.classSymbol.is(Module)
+            scrut.widen =:= pat.tpe.widen && scrut.widen.classSymbol.is(Module) && {
+              scrut.prefix match {
+                case _: SingletonType | NoPrefix => true
+                case _ => false
+              }
+            }
           case UnApply(unapp, _, pats) =>
             unapp.tpe.widen match {
               case mt: MethodType if mt.paramInfos.length == 1 =>
