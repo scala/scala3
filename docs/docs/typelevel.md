@@ -208,7 +208,7 @@ defaultValue[AnyVal] = None
 ```
 As another example, consider the type-level inverse of `toNat`: given a _type_ representing a Peano number, return the integer _value_ corresponding to it. Here's how this can be defined:
 ```scala
-transparent def toInt[N <: Nat]: Int = anyValue[N] match {
+transparent def toInt[N <: Nat]: Int = erasedValue[N] match {
   case _: Z => 0
   case _: S[n] => toInt[n] + 1
 }
@@ -431,4 +431,4 @@ One important difference between the two schemes is that the reflective call imp
 
 ## Acknowledgments
 
-Many of the ideas in this proposal resulted from discussions with @gsps and @OlivierBlanvillain, the authors of the "TypeOf" approach (PR #4671). @gsps suggested the use of the `transparent` keyword. @OlivierBlanvillain suggested techniques like `anyValue` and `Typed` to lift term computations to types. The present proposal also benefited from feedback from @milessabin, @adriaanm, @sjrd, Andrei Alexandrescu, John Hughes, Conor McBride and Stephanie Weirich on earlier designs. The relationship with meta programming has a lot in common with the original inline and meta proposals in SIP 28 and SIP 29.
+Many of the ideas in this proposal resulted from discussions with @gsps and @OlivierBlanvillain, the authors of the "TypeOf" approach (PR #4671). @gsps suggested the use of the `transparent` keyword. @OlivierBlanvillain suggested techniques like `erasedValue` and `Typed` to lift term computations to types. The present proposal also benefited from feedback from @milessabin, @adriaanm, @sjrd, Andrei Alexandrescu, John Hughes, Conor McBride and Stephanie Weirich on earlier designs. The relationship with meta programming has a lot in common with the original inline and meta proposals in SIP 28 and SIP 29.
