@@ -1413,7 +1413,12 @@ class Typer extends Namer
     }
   }
 
-  def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = track("typedDefDef") {
+  def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedDefDef") {
+    if (!sym.info.exists) { // it's a discarded synthetic case class method, drop it
+      assert(sym.is(Synthetic) && desugar.isDesugaredCaseClassMethodName(sym.name))
+      sym.owner.info.decls.openForMutations.unlink(sym)
+      return EmptyTree
+    }
     val DefDef(name, tparams, vparamss, tpt, _) = ddef
     completeAnnotations(ddef, sym)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
@@ -1912,7 +1917,8 @@ class Typer extends Namer
                     enumContexts(mdef1.symbol) = ctx
                   case _ =>
                 }
-                buf += mdef1
+                if (!mdef1.isEmpty) // clashing synthetic case methods are converted to empty trees
+                  buf += mdef1
             }
             traverse(rest)
         }
