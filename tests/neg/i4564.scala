@@ -20,7 +20,7 @@ object NoClashNoSig {
 case class NoClashNoSig private(x: Int)
 
 object NoClashOverload {
-  private def apply(x: Boolean) = if (x) NoClashOverload(1) else apply("")   // error: overloaded method apply needs result type
+  private def apply(x: Boolean) = if (x) NoClashOverload(1) else apply("")   // error // error: overloaded method apply needs result type (twice)
 
   def apply(x: String): NoClashOverload = ???
 }
@@ -33,7 +33,7 @@ class BaseNCNSP[T] {
 }
 
 object NoClashNoSigPoly extends BaseNCNSP[Boolean]
-case class NoClashNoSigPoly private(x: Int)   // error: recursive method apply needs result type
+case class NoClashNoSigPoly private(x: Int)   // ok, since `apply` is in base class
 
 
 
