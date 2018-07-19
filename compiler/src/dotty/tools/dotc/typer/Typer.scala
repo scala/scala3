@@ -1993,7 +1993,6 @@ class Typer extends Namer
    *                (but do this at most once per tree).
    *
    *  After that, two strategies are tried, and the first that is successful is picked.
-   *  If neither of the strategies are successful, continues with`fallBack`.
    *
    *  1st strategy: Try to insert `.apply` so that the result conforms to prototype `pt`.
    *                This strategy is not tried if the prototype represents already
@@ -2002,6 +2001,10 @@ class Typer extends Namer
    *  2nd strategy: If tree is a select `qual.name`, try to insert an implicit conversion
    *    around the qualifier part `qual` so that the result conforms to the expected type
    *    with wildcard result type.
+   *
+   *  If neither of the strategies are successful, continues with the `apply` result
+   *  if an apply insertion was tried and `tree` has an `apply` method, or continues
+   *  with `fallBack` otherwise. `fallBack` is supposed to always give an error.
    */
   def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType, locked: TypeVars)(fallBack: => Tree)(implicit ctx: Context): Tree = {
 
@@ -2023,7 +2026,7 @@ class Typer extends Namer
       else try adapt(simplify(sel, pt, locked), pt, locked) finally sel.removeAttachment(InsertedApply)
     }
 
-    def tryImplicit =
+    def tryImplicit(fallBack: => Tree) =
       tryInsertImplicitOnQualifier(tree, pt, locked).getOrElse(fallBack)
 
     pt match {
@@ -2034,8 +2037,17 @@ class Typer extends Namer
         pt.markAsDropped()
         tree
       case _ =>
-        if (isApplyProto(pt) || isMethod(tree) || isSyntheticApply(tree)) tryImplicit
-        else tryEither(tryApply(_))((_, _) => tryImplicit)
+        if (isApplyProto(pt) || isMethod(tree) || isSyntheticApply(tree)) tryImplicit(fallBack)
+        else tryEither(tryApply(_)) { (app, appState) =>
+          tryImplicit {
+            if (tree.tpe.member(nme.apply).exists) {
+              // issue the error about the apply, since it is likely more informative than the fallback
+              appState.commit()
+              app
+            }
+            else fallBack
+          }
+        }
      }
   }
 
