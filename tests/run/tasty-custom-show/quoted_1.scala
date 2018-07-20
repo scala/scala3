@@ -1,5 +1,4 @@
 import scala.quoted._
-import dotty.tools.dotc.quoted.Toolbox._
 
 import scala.tasty.TopLevelSplice
 import scala.tasty.Tasty
