@@ -5,14 +5,16 @@ package classfile
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Positions._
-import NameKinds.{ModuleClassName, DefaultGetterName}
+import NameKinds.DefaultGetterName
+import dotty.tools.dotc.core.tasty.{TastyHeaderUnpickler, TastyReader}
 import ast.tpd._
-import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, File, IOException }
-import java.nio
+import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, IOException }
+
 import java.lang.Integer.toHexString
 import java.net.URLClassLoader
+import java.util.UUID
 
-import scala.collection.{ mutable, immutable }
+import scala.collection.immutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
@@ -785,7 +787,8 @@ class ClassfileParser(
 
       if (scan(tpnme.TASTYATTR)) {
         val attrLen = in.nextInt
-        if (attrLen == 0) { // A tasty attribute implies the existence of the .tasty file
+        val bytes = in.nextBytes(attrLen)
+        if (attrLen == 16) { // A tasty attribute with that has only a UUID (16 bytes) implies the existence of the .tasty file
           val tastyBytes: Array[Byte] = classfile.underlyingSource match { // TODO: simplify when #3552 is fixed
             case None =>
               ctx.error("Could not load TASTY from .tasty for virtual file " + classfile)
@@ -816,10 +819,16 @@ class ClassfileParser(
                 Array.empty
               }
           }
-          if (tastyBytes.nonEmpty)
+          if (tastyBytes.nonEmpty) {
+            val reader = new TastyReader(bytes, 0, 16)
+            val expectedUUID = new UUID(reader.readUncompressedLong(), reader.readUncompressedLong())
+            val tastyUUID = new TastyHeaderUnpickler(tastyBytes).readHeader()
+            if (expectedUUID != tastyUUID)
+              ctx.error(s"Tasty UUID ($tastyUUID) file did not correspond the tasty UUID declared in the classfile ($expectedUUID).")
             return unpickleTASTY(tastyBytes)
+          }
         }
-        else return unpickleTASTY(in.nextBytes(attrLen))
+        else return unpickleTASTY(bytes)
       }
 
       if (scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)) {
