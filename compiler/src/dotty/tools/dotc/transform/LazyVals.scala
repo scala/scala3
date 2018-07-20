@@ -218,11 +218,10 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     * ```
     */
   def mkNonThreadSafeDef(target: Tree, flag: Tree, rhs: Tree, nullables: List[Symbol])(implicit ctx: Context) = {
-    val setFlag = flag.becomes(Literal(Constants.Constant(true)))
-    val setNullables = nullOut(nullables)
-    val setTargetAndNullable = if (isWildcardArg(rhs)) setNullables else target.becomes(rhs) :: setNullables
-    val init = Block(setFlag :: setTargetAndNullable, target.ensureApplied)
-    If(flag.ensureApplied, target.ensureApplied, init)
+    val stats = new mutable.ListBuffer[Tree]
+    if (!isWildcardArg(rhs)) stats += target.becomes(rhs)
+    stats += flag.becomes(Literal(Constants.Constant(true))) ++= nullOut(nullables)
+    If(flag.ensureApplied, target.ensureApplied, Block(stats.toList, target.ensureApplied))
   }
 
   /** Create non-threadsafe lazy accessor for not-nullable types  equivalent to such code
