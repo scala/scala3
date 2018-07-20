@@ -371,7 +371,7 @@ abstract class Tasty { tasty =>
 
     val Inlined: InlinedExtractor
     abstract class InlinedExtractor {
-      def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[Definition], Term)]
+      def unapply(x: Term)(implicit ctx: Context): Option[(Option[Term], List[Definition], Term)]
     }
 
     val SelectOuter: SelectOuterExtractor
