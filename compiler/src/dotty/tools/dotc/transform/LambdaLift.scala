@@ -338,11 +338,23 @@ object LambdaLift {
             else (topClass, JavaStatic)
           }
           else (lOwner, EmptyFlags)
+        // Drop Module because class is no longer a singleton in the lifted context.
+        var initFlags = local.flags &~ Module | Private | Lifted | maybeStatic
+        if (local is Method) {
+          if (newOwner is Trait)
+            // Drop Final when a method is lifted into a trait.
+            // According to the JVM specification, a method declared inside interface cannot have the final flag.
+            // "Methods of interfaces may have any of the flags in Table 4.6-A set except ACC_PROTECTED, ACC_FINAL, ..."
+            // (https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.6)
+            initFlags = initFlags &~ Final
+          else
+            // Add Final when a method is lifted into a class.
+            initFlags = initFlags | Final
+        }
         local.copySymDenotation(
           owner = newOwner,
           name = newName(local),
-          initFlags = local.flags &~ Module &~ Final | Private | Lifted | maybeStatic,
-            // drop Module because class is no longer a singleton in the lifted context.
+          initFlags = initFlags,
           info = liftedInfo(local)).installAfter(thisPhase)
       }
       for (local <- free.keys)
