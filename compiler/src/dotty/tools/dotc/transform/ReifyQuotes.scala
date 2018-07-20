@@ -146,10 +146,10 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
     }
 
     /** We are in a `~(...)` context that is not shadowed by a nested `'(...)` */
-    def inSplice = outer != null && !inQuote
+    def inSplice: Boolean = outer != null && !inQuote
 
     /** We are not in a `~(...)` or a `'(...)` */
-    def isRoot = outer == null
+    def isRoot: Boolean = outer == null
 
     /** A map from type ref T to expressions of type `quoted.Type[T]`".
      *  These will be turned into splices using `addTags` and represent type variables
@@ -516,9 +516,9 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
       outer.enteredSyms.foreach(registerCapturer)
 
       if (ctx.owner.owner.is(Macro)) {
-        registerCapturer(defn.TastyTopLevelSplice_compilationTopLevelSplice)
+        registerCapturer(defn.TastyTopLevelSplice_tastyContext)
         // Force a macro to have the context in first position
-        forceCapture(defn.TastyTopLevelSplice_compilationTopLevelSplice)
+        forceCapture(defn.TastyTopLevelSplice_tastyContext)
         // Force all parameters of the macro to be created in the definition order
         outer.enteredSyms.reverse.foreach(forceCapture)
       }
@@ -652,7 +652,7 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
 
     private def isStage0Value(sym: Symbol)(implicit ctx: Context): Boolean =
       (sym.is(Inline) && sym.owner.is(Macro) && !defn.isFunctionType(sym.info)) ||
-      sym == defn.TastyTopLevelSplice_compilationTopLevelSplice // intrinsic value at stage 0
+      sym == defn.TastyTopLevelSplice_tastyContext // intrinsic value at stage 0
 
     private def liftList(list: List[Tree], tpe: Type)(implicit ctx: Context): Tree = {
       list.foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>

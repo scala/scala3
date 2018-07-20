@@ -1,7 +1,5 @@
 import scala.quoted._
 
-import dotty.tools.dotc.quoted.Toolbox._
-
 import scala.tasty._
 
 case class Location(owners: List[String])

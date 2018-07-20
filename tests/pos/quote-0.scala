@@ -2,11 +2,10 @@ import scala.quoted._
 
 import dotty.tools.dotc.quoted.Toolbox._
 
-
 object Macros {
 
   inline def assert(expr: => Boolean): Unit =
-    ~ assertImpl('(expr))
+    ~assertImpl('(expr))
 
   def assertImpl(expr: Expr[Boolean]) =
     '{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~showExpr(expr)}") }
