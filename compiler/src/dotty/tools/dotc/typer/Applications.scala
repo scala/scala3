@@ -1517,7 +1517,17 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         narrowByTypes(alts, args, resultType)
 
       case pt =>
-        alts filter (normalizedCompatible(_, pt))
+        val noSam = alts filter (normalizedCompatible(_, pt))
+        if (noSam.isEmpty) {
+          pt match {
+            case SAMType(mtp) =>
+              val sam = narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
+              if (sam.nonEmpty && !pt.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot))
+                ctx.warning(ex"$pt does not have the @FunctionalInterface annotation.", ctx.tree.pos)
+              sam
+            case _ => noSam
+          }
+        } else noSam
     }
     val found = narrowMostSpecific(candidates)
     if (found.length <= 1) found
