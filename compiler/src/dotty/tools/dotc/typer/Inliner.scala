@@ -47,7 +47,7 @@ object Inliner {
    *  from Scala2x class files might be `@forceInline`, but still lack that body.
    */
   def hasBodyToInline(sym: SymDenotation)(implicit ctx: Context): Boolean =
-    sym.isTransparentMethod && sym.hasAnnotation(defn.BodyAnnot)
+    sym.isTransparentInlineable && sym.hasAnnotation(defn.BodyAnnot)
 
   /** The body to inline for method `sym`.
    *  @pre  hasBodyToInline(sym)
@@ -69,7 +69,7 @@ object Inliner {
 
   /** Is `meth` a transparent method that should be inlined in this context? */
   def isTransparentInlineable(meth: Symbol)(implicit ctx: Context): Boolean =
-    meth.isTransparentMethod && isInlineable(meth)
+    meth.isTransparentInlineable && isInlineable(meth)
 
   /** Try to inline a call to a transparent method. Fail with error if the maximal
    *  inline depth is exceeded.
@@ -713,7 +713,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     override def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context) =
       tree.getAttachment(PrepareTransparent.TopLevelMatch) match {
-        case Some(_) =>
+        case Some(_) if !ctx.owner.isTransparentMethod => // don't reduce match of nested transparent yet
           reduceTopLevelMatch(sel, selType, tree.cases, this) match {
             case Some((caseBindings, rhs)) =>
               var rhsCtx = ctx.fresh.setNewScope
@@ -731,7 +731,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                                   |
                                   | Hint: if you do not expect the match to be reduced, put it in a locally { ... } block.""")
           }
-        case None =>
+        case _ =>
           super.typedMatchFinish(tree, sel, selType, pt)
       }
 

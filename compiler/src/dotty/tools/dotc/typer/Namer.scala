@@ -760,7 +760,7 @@ class Namer { typer: Typer =>
     }
 
     private def addInlineInfo(sym: Symbol) = original match {
-      case original: untpd.DefDef if sym.isTransparentMethod =>
+      case original: untpd.DefDef if sym.isTransparentInlineable =>
         PrepareTransparent.registerInlineInfo(
             sym,
             original.rhs,

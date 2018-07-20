@@ -1460,7 +1460,7 @@ class Typer extends Namer
     }
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)
 
-    if (sym.isTransparentMethod) PrepareTransparent.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
+    if (sym.isTransparentInlineable) PrepareTransparent.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
 
     if (sym.isConstructor && !sym.isPrimaryConstructor)
       for (param <- tparams1 ::: vparamss1.flatten)
@@ -1929,7 +1929,7 @@ class Typer extends Namer
           case none =>
             typed(mdef) match {
               case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
-                assert(mdef1.symbol.isTransparentMethod, mdef.symbol)
+                assert(mdef1.symbol.isTransparentInlineable, mdef.symbol)
                 Inliner.bodyToInline(mdef1.symbol) // just make sure accessors are computed,
                 buf += mdef1                       // but keep original definition, since inline-expanded code
                                                    // is pickled in this case.
