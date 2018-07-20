@@ -87,9 +87,6 @@ locally { ... }
 ```
 block, which de-classifies it as a top-level expression. (`locally` is a function in `Predef` which simply returns its argument.)
 
-Transparent methods are effectively final; they may not be overwritten. If a transparent
-method has a top-level match expression then it can itself override no other method and it must always be fully applied.
-
 As another example, consider the following two functions over tuples:
 
 ```scala
@@ -231,6 +228,35 @@ The following rewrite rules are performed when simplifying inlined bodies:
 
    Dropping a binding might make other bindings redundant. Garbage collection proceeds until no further bindings
    can be dropped.
+
+## Restrictions for Transparent and Typelevel Functions
+
+Transparent methods are effectively final; they may not be overwritten.
+
+If a transparent
+method has a toplevel match expression or a toplevel splice `~` on its right-hand side,
+it is classified as a typelevel method that can _only_ be executed at compile time. For typelevel methods two more restrictions apply:
+
+ 1. They must be always fully applied.
+ 2. They may override other methods only if one of the overridden methods is concrete.
+
+The right hand side of a typelevel method is never invoked by dynamic dispatch. As an example consider a situation like the following:
+```scala
+class Iterable[T] {
+  def foreach(f: T => Unit): Unit = ...
+}
+class List[T] extends Iterable[T] {
+  override transparent def foreach(f: T => Unit): Unit = ...
+}
+val xs: Iterable[T] = ...
+val ys: List[T] = ...
+val zs: Iterable[T] = ys
+xs.foreach(f)  // calls Iterable's foreach
+ys.foreach(f)  // expands to the body of List's foreach
+zs.foreach(f)  // calls Iterable's foreach
+```
+It follows that an overriding typelevel method should implement exactly the same semantics as the
+method it overrides (but possibly more effeciiently).
 
 ## Matching on Types
 

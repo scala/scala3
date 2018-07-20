@@ -109,14 +109,25 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context) = {
+    val meth = ddef.symbol.asTerm
     def disable(stubKind: String) = {
-      ddef.symbol.resetFlag(Deferred)
-      DefDef(ddef.symbol.asTerm,
-        _ => ref(defn.Sys_errorR).withPos(ddef.pos)
+      meth.resetFlag(Deferred)
+      polyDefDef(meth,
+        _ => _ => ref(defn.Sys_errorR).withPos(ddef.pos)
           .appliedTo(Literal(Constant(s"$stubKind method stub"))))
     }
-    if (ddef.symbol.hasAnnotation(defn.NativeAnnot)) disable("native")
-    else if (ddef.symbol.is(TypeLevel)) disable("type level")
+    if (meth.hasAnnotation(defn.NativeAnnot)) disable("native")
+    else if (meth.is(TypeLevel))
+      meth.allOverriddenSymbols.find(!_.is(Deferred)) match {
+        case Some(overridden) =>
+          polyDefDef(meth,
+            targs => argss =>
+              Super(This(meth.owner.asClass), tpnme.EMPTY, inConstrCall = false)
+                .select(overridden)
+                .appliedToTypes(targs).appliedToArgss(argss))
+        case None =>
+          disable("type level")
+      }
     else ddef
   }
 

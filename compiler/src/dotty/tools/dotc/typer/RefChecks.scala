@@ -376,8 +376,8 @@ object RefChecks {
         overrideError("may not override a non-lazy value")
       } else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy)) {
         overrideError("must be declared lazy to override a lazy value")
-      } else if (member.is(TypeLevel)) { // (1.9)
-        overrideError("is a type-level method, may not override anything")
+      } else if (member.is(TypeLevel) && member.allOverriddenSymbols.forall(_.is(Deferred))) { // (1.9)
+        overrideError("is a type-level method, may not override only deferred methods")
       } else if (member.is(Macro, butNot = Scala2x)) { // (1.9)
         overrideError("is a macro, may not override anything")
       } else if (other.is(Deferred) && member.is(Scala2Macro) && member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.10)
