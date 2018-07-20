@@ -146,10 +146,10 @@ class ReifyQuotes extends MacroTransformWithImplicits with InfoTransformer {
     }
 
     /** We are in a `~(...)` context that is not shadowed by a nested `'(...)` */
-    def inSplice = outer != null && !inQuote
+    def inSplice: Boolean = outer != null && !inQuote
 
     /** We are not in a `~(...)` or a `'(...)` */
-    def isRoot = outer == null
+    def isRoot: Boolean = outer == null
 
     /** A map from type ref T to expressions of type `quoted.Type[T]`".
      *  These will be turned into splices using `addTags` and represent type variables

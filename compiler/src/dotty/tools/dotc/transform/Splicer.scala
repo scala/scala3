@@ -92,7 +92,7 @@ object Splicer {
           s"""Failed to evaluate inlined quote.
              |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
              |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").init.mkString("\n    ")}
-         """.stripMargin
+           """.stripMargin
         ctx.error(msg, pos)
         EmptyTree
     }
