@@ -782,8 +782,10 @@ class Definitions {
   def GetterMetaAnnot(implicit ctx: Context) = GetterMetaAnnotType.symbol.asClass
   lazy val SetterMetaAnnotType = ctx.requiredClassRef("scala.annotation.meta.setter")
   def SetterMetaAnnot(implicit ctx: Context) = SetterMetaAnnotType.symbol.asClass
-  lazy val ShowAsInfixAnotType = ctx.requiredClassRef("scala.annotation.showAsInfix")
-  def ShowAsInfixAnnot(implicit ctx: Context) = ShowAsInfixAnotType.symbol.asClass
+  lazy val ShowAsInfixAnnotType = ctx.requiredClassRef("scala.annotation.showAsInfix")
+  def ShowAsInfixAnnot(implicit ctx: Context) = ShowAsInfixAnnotType.symbol.asClass
+  lazy val FunctionalInterfaceAnnotType = ctx.requiredClassRef("java.lang.FunctionalInterface")
+  def FunctionalInterfaceAnnot(implicit ctx: Context) = FunctionalInterfaceAnnotType.symbol.asClass
 
   // convenient one-parameter method types
   def methOfAny(tp: Type) = MethodType(List(AnyType), tp)
