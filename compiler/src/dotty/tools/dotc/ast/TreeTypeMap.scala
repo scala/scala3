@@ -95,9 +95,7 @@ class TreeTypeMap(
           val (tmap2, vparamss1) = tmap1.transformVParamss(vparamss)
           val res = cpy.DefDef(ddef)(name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(ddef.rhs))
           res.symbol.transformAnnotations {
-            case ann: BodyAnnotation =>
-              if (res.symbol.isTransparentMethod) ann.derivedAnnotation(transform(ann.tree))
-              else ann.derivedAnnotation(res.rhs)
+            case ann: BodyAnnotation => ann.derivedAnnotation(transform(ann.tree))
             case ann => ann
           }
           res
