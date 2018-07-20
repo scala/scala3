@@ -29,13 +29,12 @@ class TastyPickler(val rootCls: ClassSymbol) {
     val uuidHi: Long = sections.iterator.map(x => pjwHash64(x._2.bytes)).fold(0L)(_ ^ _)
 
     val headerBuffer = {
-      val buf = new TastyBuffer(TastyPickler.headerSize)
+      val buf = new TastyBuffer(header.length + 24)
       for (ch <- header) buf.writeByte(ch.toByte)
       buf.writeNat(MajorVersion)
       buf.writeNat(MinorVersion)
       buf.writeUncompressedLong(uuidLow)
       buf.writeUncompressedLong(uuidHi)
-      assert(buf.length == TastyPickler.headerSize)
       buf
     }
 
@@ -90,8 +89,4 @@ class TastyPickler(val rootCls: ClassSymbol) {
     }
     h
   }
-}
-
-object TastyPickler {
-  val headerSize = header.length + 18
 }

@@ -26,7 +26,7 @@ import scala.tools.asm
 import scala.tools.asm.tree._
 import tpd._
 import StdNames._
-import dotty.tools.dotc.core.tasty.TastyPickler
+import dotty.tools.dotc.core.tasty.{TastyBuffer, TastyHeaderUnpickler, TastyPickler}
 import dotty.tools.io._
 
 class GenBCode extends Phase {
@@ -222,9 +222,17 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
                 val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
                 try outstream.write(binary)
                 finally outstream.close()
-                // TASTY attribute is created but only the header bytes are stored in it.
-                // A TASTY attribute has length `headerSize` if and only if the .tasty file exists.
-                java.util.Arrays.copyOf(binary, TastyPickler.headerSize)
+
+                val uuid = new TastyHeaderUnpickler(binary).readHeader()
+                val lo = uuid.getMostSignificantBits
+                val hi = uuid.getLeastSignificantBits
+
+                // TASTY attribute is created but only the UUID bytes are stored in it.
+                // A TASTY attribute has length 16 if and only if the .tasty file exists.
+                val buffer = new TastyBuffer(16)
+                buffer.writeUncompressedLong(lo)
+                buffer.writeUncompressedLong(hi)
+                buffer.bytes
               } else {
                 // Create an empty file to signal that a tasty section exist in the corresponding .class
                 // This is much cheaper and simpler to check than doing classfile parsing

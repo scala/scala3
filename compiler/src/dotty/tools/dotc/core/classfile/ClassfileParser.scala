@@ -5,15 +5,16 @@ package classfile
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Positions._
-import NameKinds.{ModuleClassName, DefaultGetterName}
-import dotty.tools.dotc.core.tasty.{TastyHeaderUnpickler, TastyPickler}
+import NameKinds.DefaultGetterName
+import dotty.tools.dotc.core.tasty.{TastyHeaderUnpickler, TastyReader}
 import ast.tpd._
-import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, File, IOException }
-import java.nio
+import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, IOException }
+
 import java.lang.Integer.toHexString
 import java.net.URLClassLoader
+import java.util.UUID
 
-import scala.collection.{ mutable, immutable }
+import scala.collection.immutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
@@ -787,9 +788,7 @@ class ClassfileParser(
       if (scan(tpnme.TASTYATTR)) {
         val attrLen = in.nextInt
         val bytes = in.nextBytes(attrLen)
-        val headerUnpickler = new TastyHeaderUnpickler(bytes)
-        headerUnpickler.readHeader()
-        if (headerUnpickler.isAtEnd) { // A tasty attribute with that has only a header implies the existence of the .tasty file
+        if (bytes.length == 16) { // A tasty attribute with that has only a UUID implies the existence of the .tasty file
           val tastyBytes: Array[Byte] = classfile.underlyingSource match { // TODO: simplify when #3552 is fixed
             case None =>
               ctx.error("Could not load TASTY from .tasty for virtual file " + classfile)
@@ -821,8 +820,11 @@ class ClassfileParser(
               }
           }
           if (tastyBytes.nonEmpty) {
-            if (!tastyBytes.startsWith(bytes))
-              ctx.error("Header of TASTY file did not correspond to header in classfile. One of the files might be outdated or corrupted.")
+            val reader = new TastyReader(bytes, 0, 16)
+            val expectedUUID = new UUID(reader.readUncompressedLong(), reader.readUncompressedLong())
+            val tastyUUID = new TastyHeaderUnpickler(tastyBytes).readHeader()
+            if (expectedUUID != tastyUUID)
+              ctx.error(s"Tasty UUID ($tastyUUID) file did not correspond the tasty UUID declared in the classfile ($expectedUUID).")
             return unpickleTASTY(tastyBytes)
           }
         }
