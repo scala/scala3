@@ -606,6 +606,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             }
           case Ident(nme.WILDCARD) =>
             true
+          case pat: Literal =>
+            scrut.widenTermRefExpr =:= pat.tpe
           case pat: RefTree =>
             scrut =:= pat.tpe ||
             scrut.widen =:= pat.tpe.widen && scrut.widen.classSymbol.is(Module) && {
@@ -714,7 +716,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     override def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context) =
       tree.getAttachment(PrepareTransparent.TopLevelMatch) match {
         case Some(_) if !ctx.owner.isTransparentMethod => // don't reduce match of nested transparent yet
-          reduceTopLevelMatch(sel, selType, tree.cases, this) match {
+          reduceTopLevelMatch(sel, sel.tpe, tree.cases, this) match {
             case Some((caseBindings, rhs)) =>
               var rhsCtx = ctx.fresh.setNewScope
               for (binding <- caseBindings) {
@@ -726,7 +728,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
               def guardStr(guard: untpd.Tree) = if (guard.isEmpty) "" else i" if $guard"
               def patStr(cdef: untpd.CaseDef) = i"case ${cdef.pat}${guardStr(cdef.guard)}"
               errorTree(tree, em"""cannot reduce top-level match of transparent function with
-                                  | scrutinee:  $sel : $selType
+                                  | scrutinee:  $sel : ${sel.tpe}
                                   | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}
                                   |
                                   | Hint: if you do not expect the match to be reduced, put it in a locally { ... } block.""")
