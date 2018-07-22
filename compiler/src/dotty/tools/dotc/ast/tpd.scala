@@ -1043,6 +1043,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else (trees.head.tpe eq trees1.head.tpe) && sameTypes(trees.tail, trees1.tail)
   }
 
+  /** If `tree`'s purity level is less than `level`, let-bind it so that it gets evaluated
+   *  only once. I.e. produce a
+   *
+   *     { val x = 'tree ;  ~within('x) }
+   *
+   *  instead of otherwise
+   *
+   *     ~within('tree)
+   */
   def letBindUnless(level: TreeInfo.PurityLevel, tree: Tree)(within: Tree => Tree)(implicit ctx: Context) = {
     if (exprPurity(tree) >= level) within(tree)
     else {
@@ -1051,6 +1060,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
+  /** Let bind `tree` unless `tree` is at least idempotent */
   def evalOnce(tree: Tree)(within: Tree => Tree)(implicit ctx: Context) =
     letBindUnless(TreeInfo.Idempotent, tree)(within)
 

@@ -256,7 +256,7 @@ ys.foreach(f)  // expands to the body of List's foreach
 zs.foreach(f)  // calls Iterable's foreach
 ```
 It follows that an overriding typelevel method should implement exactly the same semantics as the
-method it overrides (but possibly more effeciiently).
+method it overrides (but possibly more efficiently).
 
 ## Matching on Types
 

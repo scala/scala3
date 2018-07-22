@@ -389,12 +389,16 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** A utility object offering methods for rewriting inlined code */
   object reducer {
 
-    /** A dditional bidnings established by reducing match expressions */
+    /** Additional bindings established by reducing match expressions */
     val matchBindingsBuf = new mutable.ListBuffer[MemberDef]
 
-    /** An extractor for terms equivalent to `new C(args)`, returning the class `C`
-     *  and the arguments `args`. Can see inside blocks and Inlined nodes and can
+    /** An extractor for terms equivalent to `new C(args)`, returning the class `C`,
+     *  a list of bindings, and the arguments `args`. Can see inside blocks and Inlined nodes and can
      *  follow a reference to an inline value binding to its right hand side.
+     *  @return    optionally, a triple consisting of
+     *             - the class `C`
+     *             - the arguments `args`
+     *             - any bindings that wrap the instance creation
      */
     private object NewInstance {
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Symbol, List[Tree], List[Tree])] = {
@@ -552,6 +556,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       case _ => tree
     }
 
+    /** The result type of reducing a match. It consists, optionally of a list of bindings
+     *  for the pattern-bound variables and the RHS of the selected case.
+     *  Returns `None` if not case was selected.
+     */
     type MatchRedux = Option[(List[MemberDef], untpd.Tree)]
 
     /** Reduce a toplevel match of a transparent function
@@ -610,7 +618,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             scrut.widenTermRefExpr =:= pat.tpe
           case pat: RefTree =>
             scrut =:= pat.tpe ||
-            scrut.widen =:= pat.tpe.widen && scrut.widen.classSymbol.is(Module) && {
+            scrut.widen.classSymbol.is(Module) && scrut.widen =:= pat.tpe.widen && {
               scrut.prefix match {
                 case _: SingletonType | NoPrefix => true
                 case _ => false
@@ -621,7 +629,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
               case mt: MethodType if mt.paramInfos.length == 1 =>
                 val paramType = mt.paramInfos.head
                 val paramCls = paramType.classSymbol
-                (scrut <:< paramType && paramCls.is(Case) && unapp.symbol.is(Synthetic)) && {
+                paramCls.is(Case) && unapp.symbol.is(Synthetic) && scrut <:< paramType && {
                   val caseAccessors =
                     if (paramCls.is(Scala2x)) paramCls.caseAccessors.filter(_.is(Method))
                     else paramCls.asClass.paramAccessors

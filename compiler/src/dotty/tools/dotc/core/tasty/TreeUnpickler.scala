@@ -515,7 +515,7 @@ class TreeUnpickler(reader: TastyReader,
       val rhsStart = currentAddr
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
-      val (givenFlags, annotFns, privateWithin) = readModifiers(end, readAnnot, readWithin, NoSymbol)
+      val (givenFlags, annotFns, privateWithin) = readModifiers(end, readTypedAnnot, readTypedWithin, NoSymbol)
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
@@ -620,10 +620,10 @@ class TreeUnpickler(reader: TastyReader,
       (flags, annotFns.reverse, privateWithin)
     }
 
-    private val readWithin: Context => Symbol =
+    private val readTypedWithin: Context => Symbol =
       implicit ctx => readType().typeSymbol
 
-    private val readAnnot: Context => Symbol => Annotation = {
+    private val readTypedAnnot: Context => Symbol => Annotation = {
       implicit ctx =>
         readByte()
         val end = readEnd()
@@ -1209,10 +1209,8 @@ class TreeUnpickler(reader: TastyReader,
       val tag = readByte()
       pickling.println(s"reading term ${astTagToString(tag)} at $start")
 
-      def readDummyType(): Unit = {
-        assert(readByte() == SHAREDtype)
-        assert(readNat() == 0)
-      }
+      def readDummyType(): Unit =
+        assert(readByte() == EMPTYTYPETREE)
 
       def readIdent(): untpd.Ident = readUntyped().asInstanceOf[untpd.Ident]
 
@@ -1266,9 +1264,7 @@ class TreeUnpickler(reader: TastyReader,
           untpd.NamedArg(readName(), readUntyped())
         case EMPTYTREE =>
           untpd.EmptyTree
-        case SHAREDtype =>
-          val b = readNat()
-          assert(b == 0, i"bad shared type $b at $currentAddr when reading ${ctx.owner.ownersIterator.toList}%, %")
+        case EMPTYTYPETREE =>
           untpd.TypeTree()
         case _ =>
           untpd.Literal(readConstant(tag))

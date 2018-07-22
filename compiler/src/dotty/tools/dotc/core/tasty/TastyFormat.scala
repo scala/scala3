@@ -212,6 +212,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   FUNCTION    Length body_Term arg_Term*
                   INFIXOP     Length op_NameRef left_Term right_Term
                   PATDEF      Length type_Term rhs_Term pattern_Term* Modifier*
+                  EMPTYTYPETREE
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 
@@ -318,6 +319,7 @@ object TastyFormat {
   final val ERASED = 35
   final val PARAMsetter = 36
   final val EMPTYTREE = 37
+  final val EMPTYTYPETREE = 38
 
   // Cat. 2:    tag Nat
 
@@ -452,7 +454,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= EMPTYTREE ||
+    firstSimpleTreeTag <= tag && tag <= EMPTYTYPETREE ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -550,6 +552,7 @@ object TastyFormat {
     case STABLE => "STABLE"
     case PARAMsetter => "PARAMsetter"
     case EMPTYTREE => "EMPTYTREE"
+    case EMPTYTYPETREE => "EMPTYTYPETREE"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"

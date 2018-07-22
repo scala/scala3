@@ -709,6 +709,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   def qualifier(tree: Tree)(implicit ctx: Context) = tree match {
     case Select(qual, _) => qual
+    case tree: Ident => desugarIdentPrefix(tree)
     case _ => This(ctx.owner.enclosingClass.asClass)
   }
 

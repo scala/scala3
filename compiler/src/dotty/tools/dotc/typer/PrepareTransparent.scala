@@ -299,6 +299,12 @@ object PrepareTransparent {
       def registerAccessor(tree: Tree) = {
         inlining.println(i"accessor: $tree at ${tree.pos}")
         accessorAtPos(tree.pos.toSynthetic) = tree.symbol
+          // Note: It's possible that during traversals several accessors are stored under the same
+          // position. This could happen for instance for implicit conersions added around a tree.
+          // or for a setter containing a getter in an op-assignment node.
+          // In general, it's always the innermost tree that holds the relevant symbol. The traversal
+          // order guarantees that the innermost tree's symbol is stored last, and thereby replaces all previously
+          // stored symbols.
       }
 
       def traverse(tree: Tree)(implicit ctx: Context): Unit = {
@@ -309,6 +315,11 @@ object PrepareTransparent {
             if (tree.symbol.exists && !isLocal(tree.symbol, inlineMethod)) {
               if (ctx.debug) inlining.println(i"type at $tree @ ${tree.pos.toSynthetic} = ${tree.tpe}")
               typeAtPos(tree.pos.toSynthetic) = tree.tpe
+                // Note: It's possible that during traversals several types are stored under the same
+                // position. This could happen for instance for implicit conersions added around a tree.
+                // In general, it's always the innermost tree that holds the relevant type. The traversal
+                // order guarantees that the innermost tree's type is stored last, and thereby replaces all previously
+                // stored types.
             }
           case _: Select =>
             tree.symbol.name match {

@@ -654,10 +654,7 @@ class TreePickler(pickler: TastyPickler) {
 
     def pickleDummyRef(): Unit = writeNat(0)
 
-    def pickleDummyType(): Unit = {
-      writeByte(SHAREDtype)
-      pickleDummyRef()
-    }
+    def pickleDummyType(): Unit = writeByte(EMPTYTYPETREE)
 
     def pickleUnlessEmpty(tree: untpd.Tree): Unit =
       if (!tree.isEmpty) pickleUntyped(tree)
@@ -865,7 +862,9 @@ class TreePickler(pickler: TastyPickler) {
         if (trees.isEmpty) writeByte(EMPTYTREE)
         else trees.foreach(pickleUntyped)
       case _ =>
-        pickleUntyped(desugar(tree))
+        val tree1 = desugar(tree)
+        assert(tree1 `ne` tree, s"Cannot pickle untyped tree $tree")
+        pickleUntyped(tree1)
     }
     catch {
       case ex: AssertionError =>
