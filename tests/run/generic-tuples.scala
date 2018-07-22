@@ -10,6 +10,8 @@ trait Pair[H, T <: Tuple] {
   erased transparent def size = ???
 }
 }
-class Test extends App {
+
+
+object Test extends App {
 
 }
