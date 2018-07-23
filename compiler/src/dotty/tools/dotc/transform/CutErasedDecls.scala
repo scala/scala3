@@ -25,7 +25,7 @@ class CutErasedDecls extends MiniPhase with SymTransformer { thisTransform =>
 
   override def changesMembers = true   // makes erased members private
 
-  override def runsAfterGroupsOf = Set(RefChecks.name)
+  override def runsAfterGroupsOf = Set(RefChecks.name, ExplicitOuter.name)
 
   override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (sym.is(Erased, butNot = Private) && sym.owner.isClass)
