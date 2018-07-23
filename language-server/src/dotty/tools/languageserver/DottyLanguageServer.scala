@@ -348,7 +348,7 @@ class DottyLanguageServer extends LanguageServer
     else {
       val symbol = Interactive.enclosingSourceSymbol(trees, pos)
       val docComment = ctx.docCtx.flatMap(_.docstring(symbol))
-      val content = hoverContent(tpw.show.toString, docComment)
+      val content = hoverContent(tpw.show, docComment)
       new Hover(content, null)
     }
   }
@@ -459,9 +459,9 @@ object DottyLanguageServer {
         CIK.Field
     }
 
-    val label = sym.name.show.toString
+    val label = sym.name.show
     val item = new lsp4j.CompletionItem(label)
-    item.setDetail(sym.info.widenTermRefExpr.show.toString)
+    item.setDetail(sym.info.widenTermRefExpr.show)
     item.setKind(completionItemKind(sym))
     item
   }
@@ -503,10 +503,10 @@ object DottyLanguageServer {
         SK.Field
     }
 
-    val name = sym.name.show.toString
+    val name = sym.name.show
     val containerName =
       if (sym.owner.exists && !sym.owner.isEmptyPackage)
-        sym.owner.name.show.toString
+        sym.owner.name.show
       else
         null
 
