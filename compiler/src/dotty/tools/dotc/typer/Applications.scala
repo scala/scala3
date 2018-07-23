@@ -1364,7 +1364,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  Two trials: First, without implicits or SAM conversions enabled. Then,
    *  if the fist finds no eligible candidates, with implicits and SAM conversions enabled.
    */
-  def resolveOverloaded(alts: List[TermRef], pt: Type, pos: Position = NoPosition)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
+  def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
 
     /** Is `alt` a method or polytype whose result type after the first value parameter
      *  section conforms to the expected type `resultType`? If `resultType`
@@ -1409,9 +1409,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case _ => chosen
     }
 
-    var found = resolveOverloaded(alts, pt, Nil, pos)(ctx.retractMode(Mode.ImplicitsEnabled))
+    var found = resolveOverloaded(alts, pt, Nil)(ctx.retractMode(Mode.ImplicitsEnabled))
     if (found.isEmpty && ctx.mode.is(Mode.ImplicitsEnabled))
-      found = resolveOverloaded(alts, pt, Nil, pos)
+      found = resolveOverloaded(alts, pt, Nil)
     found match {
       case alt :: Nil => adaptByResult(alt) :: Nil
       case _ => found
@@ -1423,7 +1423,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  called twice from the public `resolveOverloaded` method, once with
    *  implicits and SAM conversions enabled, and once without.
    */
-  private def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type], pos: Position)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
+  private def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type])(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
 

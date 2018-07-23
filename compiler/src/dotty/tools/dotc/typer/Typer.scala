@@ -2268,7 +2268,7 @@ class Typer extends Namer
         val altDenots = ref.denot.alternatives
         typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
         val alts = altDenots.map(TermRef(ref.prefix, ref.name, _))
-        resolveOverloaded(alts, pt, tree.pos) match {
+        resolveOverloaded(alts, pt) match {
           case alt :: Nil =>
             readaptSimplified(tree.withType(alt))
           case Nil =>
@@ -2480,9 +2480,11 @@ class Typer extends Namer
           !tree.symbol.isConstructor &&
           !tree.symbol.is(InlineMethod) &&
           !ctx.mode.is(Mode.Pattern) &&
-          !(isSyntheticApply(tree) && !isExpandableApply))
+          !(isSyntheticApply(tree) && !isExpandableApply)) {
+        if (!pt.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot))
+          ctx.warning(ex"${tree.symbol} is eta-expanded even though $pt does not have the @FunctionalInterface annotation.", tree.pos)
         simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
-      else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
+      } else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
         readaptSimplified(tpd.Apply(tree, Nil))
       else if (wtp.isImplicitMethod)
         err.typeMismatch(tree, pt)
