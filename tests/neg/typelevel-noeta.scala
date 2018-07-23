@@ -12,6 +12,12 @@ object Test {
     case _: Char =>
   }
 
+  erased def test3(x: Int) = x + 1
+
+  def f(g: Int => Int) = g(0)
+
+  f(test3) // OK, so far, normal erased functions can be eta-expanded
+
   val x: Any = test // error
 
   test // error

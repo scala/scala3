@@ -53,6 +53,8 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def runsAfter = Set(ElimByName.name, // verified empirically, need to figure out what the reason is.
                                AugmentScala2Traits.name)
 
+  override def runsAfterGroupsOf = Set(CutErasedDecls.name) // Erased decls make `isCurrent` work incorrectly
+
   override def changesMembers = true // the phase adds super accessors and method forwarders
 
   override def transformTemplate(impl: Template)(implicit ctx: Context) = {
@@ -90,8 +92,6 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
     }
     else ddef
   }
-
-  private val PrivateOrAccessorOrDeferred = Private | Accessor | Deferred
 }
 
 object ResolveSuper {

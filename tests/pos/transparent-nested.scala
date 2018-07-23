@@ -20,8 +20,8 @@ object Test0 {
 
 object Test1 {
 
-  transparent def f(x: Int) = {
-    transparent def g(x: Int) = x match {
+  erased transparent def f(x: Int) = {
+    erased transparent def g(x: Int) = x match {
       case 0 => 0
     }
     g(0)

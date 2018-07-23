@@ -351,9 +351,6 @@ object Flags {
   /** A bridge method. Set by Erasure */
   final val Bridge = termFlag(34, "<bridge>")
 
-  /** Symbol is a typelevel method, cannot be used in normal code */
-  final val TypeLevel = termFlag(35, "<type-level>")
-
   /** Symbol is a method which should be marked ACC_SYNCHRONIZED */
   final val Synchronized = termFlag(36, "<synchronized>")
 
@@ -562,6 +559,9 @@ object Flags {
 
   /** A transparent method */
   final val TransparentMethod = allOf(Transparent, Method)
+
+  /** An erased transparent method */
+  final val TypeLevelMethod = allOf(Transparent, Erased, Method)
 
   /** A transparent parameter */
   final val TransparentParam = allOf(Transparent, Param)

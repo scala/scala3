@@ -174,17 +174,22 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       }
     }
 
+    private object dropInlines extends TreeMap {
+      override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+        case Inlined(call, _, _) => Typed(call, TypeTree(tree.tpe))
+        case _ => super.transform(tree)
+      }
+    }
+
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
-          checkNotErased(tree)
           handleMeta(tree.symbol)
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
             case _ => tree
           }
         case tree @ Select(qual, name) =>
-          checkNotErased(tree)
           handleMeta(tree.symbol)
           if (name.isTypeName) {
             Checking.checkRealizable(qual.tpe, qual.pos.focus)
@@ -193,9 +198,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           else
             transformSelect(tree, Nil)
         case tree: Apply =>
+          val methType = tree.fun.tpe.widen
           val app =
-            if (tree.fun.tpe.widen.isErasedMethod)
-              tpd.cpy.Apply(tree)(tree.fun, tree.args.map(arg => defaultValue(arg.tpe)))
+            if (methType.isErasedMethod)
+              tpd.cpy.Apply(tree)(
+                tree.fun,
+                tree.args.map(arg =>
+                  if (methType.isImplicitMethod && arg.pos.isSynthetic) defaultValue(arg.tpe)
+                  else dropInlines.transform(arg)))
             else
               tree
           methPart(app) match {
@@ -217,7 +227,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case sel: Select =>
               val args1 = transform(args)
               val sel1 = transformSelect(sel, args1)
-              checkNotErased(sel)
               cpy.TypeApply(tree1)(sel1, args1)
             case _ =>
               super.transform(tree1)
@@ -329,15 +338,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     *  Performed to shrink the tree that is known to be erased later.
     */
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) =
-      if (sym.is(Erased) && rhs.tpe.exists) defaultValue(rhs.tpe) else rhs
-
-    private def checkNotErased(tree: RefTree)(implicit ctx: Context): Unit = {
-      if (tree.symbol.is(Erased) && !ctx.mode.is(Mode.Type) && !ctx.inTransparentMethod) {
-        val msg =
-          if (tree.symbol.is(CaseAccessor)) "First parameter list of case class may not contain `erased` parameters"
-          else i"${tree.symbol} is declared as erased, but is in fact used"
-        ctx.error(msg, tree.pos)
-      }
-    }
+      if (sym.is(Erased, butNot = Deferred)) dropInlines.transform(rhs) else rhs
   }
 }

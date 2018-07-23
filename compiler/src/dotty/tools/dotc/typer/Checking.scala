@@ -680,6 +680,9 @@ trait Checking {
     }
   }
 
+  /** A hook to exclude selected symbols from double declaration check */
+  def excludeFromDoubleDeclCheck(sym: Symbol)(implicit ctx: Context) = false
+
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = {
     val seen = new mutable.HashMap[Name, List[Symbol]] {
@@ -690,7 +693,7 @@ trait Checking {
     def checkDecl(decl: Symbol): Unit = {
       for (other <- seen(decl.name)) {
         typr.println(i"conflict? $decl $other")
-        if (decl.matches(other)) {
+        if (decl.matches(other) /*&& !decl.is(Erased) && !other.is(Erased)*/) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               ctx.error(DoubleDeclaration(decl, other), decl.pos)
@@ -702,7 +705,8 @@ trait Checking {
           decl resetFlag HasDefaultParams
         }
       }
-      seen(decl.name) = decl :: seen(decl.name)
+      if (!excludeFromDoubleDeclCheck(decl))
+        seen(decl.name) = decl :: seen(decl.name)
     }
 
     cls.info.decls.foreach(checkDecl)

@@ -271,7 +271,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     violations.toList
   }
 
-  /** Are we in a transparent method body */
+  /** Are we in a transparent method body? */
   def inTransparentMethod = owner.ownersIterator.exists(_.isTransparentMethod)
 
   /** Is `feature` enabled in class `owner`?
