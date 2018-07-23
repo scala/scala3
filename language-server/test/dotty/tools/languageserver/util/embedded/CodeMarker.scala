@@ -31,6 +31,9 @@ class CodeMarker(val name: String) extends Embedded {
   def toDocumentSymbolParams: PosCtx[DocumentSymbolParams] =
     new DocumentSymbolParams(toTextDocumentIdentifier)
 
+  def toCompletionParams: PosCtx[CompletionParams] =
+    new CompletionParams(toTextDocumentIdentifier, toPosition)
+
   def toRenameParams(newName: String): PosCtx[RenameParams] =
     new RenameParams(toTextDocumentIdentifier, toPosition, newName)
 

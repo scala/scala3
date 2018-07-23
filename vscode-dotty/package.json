@@ -2,7 +2,7 @@
   "name": "dotty",
   "displayName": "Dotty Language Server",
   "description": "IDE integration for Dotty, the experimental Scala compiler",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "license": "BSD-3-Clause",
   "publisher": "lampepfl",
   "repository": {
@@ -11,7 +11,7 @@
   },
   "icon": "images/dotty-logo.png",
   "engines": {
-    "vscode": "^1.15.0"
+    "vscode": "^1.25.1"
   },
   "categories": [
     "Languages"
@@ -50,20 +50,20 @@
     "vscode:prepublish": "npm install && ./node_modules/.bin/tsc -p ./",
     "compile": "./node_modules/.bin/tsc -p ./",
     "test": "node ./node_modules/vscode/bin/test",
-    "postinstall": "node ./node_modules/vscode/bin/install && curl -L -o out/coursier https://github.com/coursier/coursier/raw/v1.0.0/coursier"
+    "postinstall": "node ./node_modules/vscode/bin/install && curl -L -o out/coursier https://github.com/coursier/coursier/raw/v1.0.3/coursier"
   },
   "extensionDependencies": [
     "daltonjorge.scala"
   ],
   "dependencies": {
     "child-process-promise": "^2.2.1",
-    "vscode-languageclient": "^3.5.1",
-    "vscode-languageserver": "^3.5.1"
+    "vscode-languageclient": "^4.3.0",
+    "vscode-languageserver": "^4.3.0"
   },
   "devDependencies": {
-    "@types/mocha": "^5.2.0",
-    "@types/node": "^8.10.9",
-    "typescript": "^2.8.3",
-    "vscode": "^1.1.14"
+    "@types/mocha": "^5.2.5",
+    "@types/node": "^8.10.21",
+    "typescript": "^2.9.2",
+    "vscode": "^1.1.18"
   }
 }

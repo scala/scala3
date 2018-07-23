@@ -20,7 +20,7 @@ class CodeCompletion(override val marker: CodeMarker,
                      expected: Set[(String, CompletionItemKind, String)]) extends ActionOnMarker {
 
   override def execute(): Exec[Unit] = {
-    val result = server.completion(marker.toTextDocumentPositionParams).get()
+    val result = server.completion(marker.toCompletionParams).get()
     assertTrue(s"Completion results were not 'right': $result", result.isRight)
     assertFalse(s"Completion results were 'incomplete': $result", result.getRight.isIncomplete)
     val completionResults = result.getRight.getItems.asScala.toSet.map { item =>

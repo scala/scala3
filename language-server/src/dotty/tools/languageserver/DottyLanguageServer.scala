@@ -222,7 +222,7 @@ class DottyLanguageServer extends LanguageServer
 
 
   // FIXME: share code with messages.NotAMember
-  override def completion(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
+  override def completion(params: CompletionParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
     implicit val ctx = driver.currentCtx
@@ -344,12 +344,12 @@ class DottyLanguageServer extends LanguageServer
     val tp = Interactive.enclosingType(trees, pos)
     val tpw = tp.widenTermRefExpr
 
-    if (tpw == NoType) new Hover
+    if (tpw == NoType) null // null here indicates that no response should be sent
     else {
       val symbol = Interactive.enclosingSourceSymbol(trees, pos)
       val docComment = ctx.docCtx.flatMap(_.docstring(symbol))
-      val markedStrings = docMarkedStrings(docComment, tpw.show.toString)
-      new Hover(markedStrings.map(JEither.forRight(_)).asJava, null)
+      val content = hoverContent(tpw.show.toString, docComment)
+      new Hover(content, null)
     }
   }
 
@@ -466,18 +466,23 @@ object DottyLanguageServer {
     item
   }
 
-  private def docMarkedStrings(comment: Option[Comment], typeInfo: String): List[lsp4j.MarkedString] = {
-
-    val docHover = comment.map { comment =>
-      new lsp4j.MarkedString("scala", comment.raw)
-    }
-
-    val typeInfoHover = new lsp4j.MarkedString()
-    typeInfoHover.setValue(typeInfo)
-
-    typeInfoHover :: docHover.toList
+  private def hoverContent(typeInfo: String, comment: Option[Comment]): lsp4j.MarkupContent = {
+    val markup = new lsp4j.MarkupContent
+    markup.setKind("markdown")
+    markup.setValue((
+      comment.map(_.raw) match {
+        case Some(comment) =>
+          s"""```scala
+             |$typeInfo
+             |$comment
+             |```"""
+        case None =>
+          s"""```scala
+             |$typeInfo
+             |```"""
+      }).stripMargin)
+    markup
   }
-
 
   /** Create an lsp4j.SymbolInfo from a Symbol and a SourcePosition */
   def symbolInfo(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): lsp4j.SymbolInformation = {

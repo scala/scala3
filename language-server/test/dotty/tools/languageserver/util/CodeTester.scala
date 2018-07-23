@@ -25,11 +25,11 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    * Perform a hover over `range`, verifies that result matches `expected`.
    *
    * @param range    The range over which to hover.
-   * @param expected The expected results.
+   * @param expected The expected result.
    *
    * @see dotty.tools.languageserver.util.actions.CodeHover
    */
-  def hover(range: CodeRange, expected: List[String]): this.type =
+  def hover(range: CodeRange, expected: Option[String]): this.type =
     doAction(new CodeHover(range, expected))
 
   /**
