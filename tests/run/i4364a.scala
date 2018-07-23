@@ -1,9 +1,7 @@
 object Test {
-  var flag = false
-
   def f(): Unit = assert(false)
   def f(x: Int): Unit = assert(false)
-  def f(x: String): Unit = flag = true
+  def f(x: String): Unit = ()
 
   def foo(c: java.util.function.Consumer[String]) = c.accept("")
 
