@@ -14,7 +14,6 @@ object Positioned {
 
   def impl[T](x: Expr[T])(implicit ev: Type[T], tasty: Tasty): Expr[Positioned[T]] = {
     import tasty.{Position => _, _}
-    implicit val toolbox: scala.quoted.Toolbox = dotty.tools.dotc.quoted.Toolbox.make
     val pos = x.toTasty.pos
 
     x.toTasty match {
