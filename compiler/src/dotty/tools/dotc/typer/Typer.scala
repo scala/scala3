@@ -2268,7 +2268,7 @@ class Typer extends Namer
         val altDenots = ref.denot.alternatives
         typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
         val alts = altDenots.map(TermRef(ref.prefix, ref.name, _))
-        resolveOverloaded(alts, pt) match {
+        resolveOverloaded(alts, pt, tree.pos) match {
           case alt :: Nil =>
             readaptSimplified(tree.withType(alt))
           case Nil =>

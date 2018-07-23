@@ -1364,7 +1364,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  Two trials: First, without implicits or SAM conversions enabled. Then,
    *  if the fist finds no eligible candidates, with implicits and SAM conversions enabled.
    */
-  def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
+  def resolveOverloaded(alts: List[TermRef], pt: Type, pos: Position = NoPosition)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
 
     /** Is `alt` a method or polytype whose result type after the first value parameter
      *  section conforms to the expected type `resultType`? If `resultType`
@@ -1409,9 +1409,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case _ => chosen
     }
 
-    var found = resolveOverloaded(alts, pt, Nil)(ctx.retractMode(Mode.ImplicitsEnabled))
+    var found = resolveOverloaded(alts, pt, Nil, pos)(ctx.retractMode(Mode.ImplicitsEnabled))
     if (found.isEmpty && ctx.mode.is(Mode.ImplicitsEnabled))
-      found = resolveOverloaded(alts, pt, Nil)
+      found = resolveOverloaded(alts, pt, Nil, pos)
     found match {
       case alt :: Nil => adaptByResult(alt) :: Nil
       case _ => found
@@ -1423,7 +1423,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    *  called twice from the public `resolveOverloaded` method, once with
    *  implicits and SAM conversions enabled, and once without.
    */
-  private def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type])(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
+  private def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type], pos: Position)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
 
@@ -1511,7 +1511,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
       case pt @ PolyProto(targs1, pt1) if targs.isEmpty =>
         val alts1 = alts filter pt.isMatchedBy
-        resolveOverloaded(alts1, pt1, targs1.tpes)
+        resolveOverloaded(alts1, pt1, targs1.tpes, pos)
 
       case defn.FunctionOf(args, resultType, _, _) =>
         narrowByTypes(alts, args, resultType)
@@ -1519,11 +1519,19 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case pt =>
         val noSam = alts filter (normalizedCompatible(_, pt))
         if (noSam.isEmpty) {
+          /*
+           * the case should not be moved to the enclosing match
+           * since SAM type must be considered only if there are no candidates
+           * For example, the second f should be chosen for the following code:
+           *   def f(x: String): Unit = ???
+           *   def f: java.io.OutputStream = ???
+           *   new java.io.ObjectOutputStream(f)
+           */
           pt match {
             case SAMType(mtp) =>
               val sam = narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
               if (sam.nonEmpty && !pt.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot))
-                ctx.warning(ex"$pt does not have the @FunctionalInterface annotation.", ctx.tree.pos)
+                ctx.warning(ex"${sam.head.designator} is eta-expanded even though $pt does not have the @FunctionalInterface annotation.", pos)
               sam
             case _ => noSam
           }
@@ -1536,7 +1544,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       if (noDefaults.length == 1) noDefaults // return unique alternative without default parameters if it exists
       else {
         val deepPt = pt.deepenProto
-        if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
+        if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs, pos)
         else alts
       }
     }
