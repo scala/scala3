@@ -190,6 +190,8 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "Type.ParamRef(" += binder+= ", " += idx += ")"
       case Type.ThisType(tp) =>
         this += "Type.ThisType(" += tp += ")"
+      case Type.SuperType(thistpe, supertpe) =>
+        this += "Type.SuperType(" += thistpe += ", " += supertpe += ")"
       case Type.RecursiveThis(binder) =>
         this += "Type.RecursiveThis(" += binder += ")"
       case Type.RecursiveType(underlying) =>

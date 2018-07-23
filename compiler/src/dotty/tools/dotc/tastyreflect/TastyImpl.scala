@@ -571,6 +571,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
       def unapply(x: Pattern)(implicit ctx: Context): Option[Term] = x match {
         case lit: tpd.Literal @unchecked => Some(lit)
         case ref: tpd.RefTree @unchecked if ref.isTerm => Some(ref)
+        case ths: tpd.This @unchecked => Some(ths)
         case _ => None
       }
     }
