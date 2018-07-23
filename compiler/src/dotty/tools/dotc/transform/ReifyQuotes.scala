@@ -565,11 +565,11 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           case _: Import =>
             tree
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
+            if (enclosingInlineds.nonEmpty)
+              return EmptyTree // Already checked at definition site and already inlined
             markDef(tree)
             tree.rhs match {
               case InlineSplice(_) =>
-                if (!tree.symbol.isStatic)
-                  ctx.error("Transparent macro method must be a static method.", tree.pos)
                 mapOverTree(enteredSyms) // Ignore output, only check PCP
                 cpy.DefDef(tree)(rhs = defaultValue(tree.rhs.tpe))
               case _ =>
