@@ -2481,8 +2481,11 @@ class Typer extends Namer
           !tree.symbol.is(InlineMethod) &&
           !ctx.mode.is(Mode.Pattern) &&
           !(isSyntheticApply(tree) && !isExpandableApply)) {
-        if (!defn.isFunctionType(pt) && !pt.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot))
-          ctx.warning(ex"${tree.symbol} is eta-expanded even though ${pt.classSymbol} does not have the @FunctionalInterface annotation.", tree.pos)
+        pt match {
+          case SAMType(_) if !defn.isFunctionType(pt) && !pt.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot) =>
+            ctx.warning(ex"${tree.symbol} is eta-expanded even though ${pt.classSymbol} does not have the @FunctionalInterface annotation.", tree.pos)
+          case _ =>
+        }
         simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
       } else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
         readaptSimplified(tpd.Apply(tree, Nil))
