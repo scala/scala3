@@ -2336,6 +2336,7 @@ class Typer extends Namer
           !untpd.isImplicitClosure(tree) &&
           !isApplyProto(pt) &&
           !ctx.mode.is(Mode.Pattern) &&
+          !ctx.mode.is(Mode.ImplicitShadowing) &&
           !ctx.isAfterTyper) {
         typr.println(i"insert apply on implicit $tree")
         typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt, locked)
