@@ -683,8 +683,7 @@ object Build {
       Map(
         "dotty-interfaces"    -> packageBin.in(`dotty-interfaces`, Compile).value,
         "dotty-compiler"      -> packageBin.in(Compile).value,
-        "dotty-library"       -> packageBin.in(`dotty-library`, Compile).value,
-        "dotty-compiler-test" -> packageBin.in(Test).value
+        "dotty-library"       -> packageBin.in(`dotty-library`, Compile).value
       ).mapValues(_.getAbsolutePath)
     }
   )
