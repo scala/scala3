@@ -307,13 +307,22 @@ object PrepareTransparent {
       }
 
       def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+        val sym = tree.symbol
         tree match {
           case Ident(nme.WILDCARD) =>
           case _: Ident | _: This =>
             //println(i"leaf: $tree at ${tree.pos}")
-            if (tree.symbol.exists && !isLocal(tree.symbol, inlineMethod)) {
+            if (sym.exists && !isLocal(sym, inlineMethod)) {
               if (ctx.debug) inlining.println(i"type at $tree @ ${tree.pos.toSynthetic} = ${tree.tpe}")
-              typeAtPos(tree.pos.toSynthetic) = tree.tpe
+              tree.tpe match {
+                case tp: NamedType if tp.prefix.member(sym.name).isOverloaded =>
+                  // refer to prefix instead of to ident directly, so that overloading can be resolved
+                  // again at expansion site
+                  println(i"RECORD start for $tree")
+                  typeAtPos(tree.pos.startPos) = tp.prefix
+                case _ =>
+                  typeAtPos(tree.pos.toSynthetic) = tree.tpe
+              }
                 // Note: It's possible that during traversals several types are stored under the same
                 // position. This could happen for instance for implicit conersions added around a tree.
                 // In general, it's always the innermost tree that holds the relevant type. The traversal
@@ -321,13 +330,13 @@ object PrepareTransparent {
                 // stored types.
             }
           case _: Select =>
-            tree.symbol.name match {
+            sym.name match {
               case InlineAccessorName(UniqueInlineName(_, _)) => return // was already recorded in Apply
               case InlineAccessorName(_) => registerAccessor(tree)
               case _ =>
             }
           case Apply(_: RefTree | _: TypeApply, receiver :: Nil) =>
-            tree.symbol.name match {
+            sym.name match {
               case InlineAccessorName(UniqueInlineName(_, _)) => registerAccessor(tree)
               case _ =>
             }
