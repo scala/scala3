@@ -738,7 +738,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
 
       fun1.tpe match {
-        case err: ErrorType => untpd.cpy.Apply(tree)(fun1, proto.typedArgs).withType(err)
+        case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs).withType(err)
         case TryDynamicCallType => typedDynamicApply(tree, pt)
         case _ =>
           if (originalProto.isDropped) fun1
@@ -777,27 +777,34 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       wrapDefs(liftedDefs, typed(assign))
     }
 
-    if (untpd.isOpAssign(tree))
-      tryEither {
-        implicit ctx => realApply
-      } { (failedVal, failedState) =>
+    val app1 =
+      if (untpd.isOpAssign(tree))
         tryEither {
-          implicit ctx => typedOpAssign
-        } { (_, _) =>
-          failedState.commit()
-          failedVal
+          implicit ctx => realApply
+        } { (failedVal, failedState) =>
+          tryEither {
+            implicit ctx => typedOpAssign
+          } { (_, _) =>
+            failedState.commit()
+            failedVal
+          }
         }
+      else {
+        val app = realApply
+        app match {
+          case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
+            val op = fn.symbol
+            if (op == defn.Any_== || op == defn.Any_!=)
+              checkCanEqual(left.tpe.widen, right.tpe.widen, app.pos)
+          case _ =>
+        }
+        app
       }
-    else {
-      val app = realApply
-      app match {
-        case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
-          val op = fn.symbol
-          if (op == defn.Any_== || op == defn.Any_!=)
-            checkCanEqual(left.tpe.widen, right.tpe.widen, app.pos)
-        case _ =>
-      }
-      app
+    app1 match {
+      case Apply(Block(stats, fn), args) =>
+        tpd.cpy.Block(app1)(stats, tpd.cpy.Apply(app1)(fn, args))
+      case _ =>
+        app1
     }
   }
 

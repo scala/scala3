@@ -67,6 +67,12 @@ object Inliner {
     hasBodyToInline(meth) && !suppressInline
   }
 
+  /** Should call be inlined in this context? */
+  def isInlineable(tree: Tree)(implicit ctx: Context): Boolean = tree match {
+    case Block(_, expr) => isInlineable(expr)
+    case _ => isInlineable(tree.symbol)
+  }
+
   /** Is `meth` a transparent method that should be inlined in this context? */
   def isTransparentInlineable(meth: Symbol)(implicit ctx: Context): Boolean =
     meth.isTransparentInlineable && isInlineable(meth)
@@ -79,8 +85,10 @@ object Inliner {
    *  @return   An `Inlined` node that refers to the original call and the inlined bindings
    *            and body that replace it.
    */
-  def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
-    if (enclosingInlineds.length < ctx.settings.XmaxInlines.value) {
+  def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree match {
+    case Block(stats, expr) =>
+      cpy.Block(tree)(stats, inlineCall(expr, pt))
+    case _ if (enclosingInlineds.length < ctx.settings.XmaxInlines.value) =>
       val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
       if (ctx.reporter.hasErrors) tree
       else {
@@ -89,14 +97,15 @@ object Inliner {
           else ctx.fresh.setProperty(InlineBindings, newMutableSymbolMap[Tree])
         new Inliner(tree, body)(inlinerCtx).inlined(pt)
       }
-    }
-    else errorTree(
-      tree,
-      i"""|Maximal number of successive inlines (${ctx.settings.XmaxInlines.value}) exceeded,
-          |Maybe this is caused by a recursive transparent method?
-          |You can use -Xmax:inlines to change the limit.""",
-      (tree :: enclosingInlineds).last.pos
-    )
+    case _ =>
+      errorTree(
+        tree,
+        i"""|Maximal number of successive inlines (${ctx.settings.XmaxInlines.value}) exceeded,
+            |Maybe this is caused by a recursive transparent method?
+            |You can use -Xmax:inlines to change the limit.""",
+        (tree :: enclosingInlineds).last.pos
+      )
+  }
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: tpd.Inlined)(implicit ctx: Context): Tree = {

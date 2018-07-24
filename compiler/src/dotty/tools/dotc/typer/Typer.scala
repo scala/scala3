@@ -2378,7 +2378,7 @@ class Typer extends Namer
         checkEqualityEvidence(tree, pt)
         tree
       }
-      else if (Inliner.isInlineable(tree.symbol)) {
+      else if (Inliner.isInlineable(tree)) {
         tree.tpe <:< wildApprox(pt)
         readaptSimplified(Inliner.inlineCall(tree, pt))
       }
