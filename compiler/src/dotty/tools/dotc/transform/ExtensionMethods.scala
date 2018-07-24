@@ -35,6 +35,9 @@ import SymUtils._
  *
  * Finally, if the constructor of a value class is private pr protected
  * it is widened to public.
+ *
+ * Also, drop the Local flag from all private[this] and protected[this] members
+ * that will be moved to the companion object.
  */
 class ExtensionMethods extends MiniPhase with DenotTransformer with FullParameterization { thisPhase =>
 
@@ -46,7 +49,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
 
   override def runsAfter = Set(
     ElimRepeated.name,
-    ProtectedAccessors.name  // protected accessors cannot handle code that is moved from class to companion object
+    ProtectedAccessors.name,  // protected accessors cannot handle code that is moved from class to companion object
   )
 
   override def runsAfterGroupsOf = Set(FirstTransform.name) // need companion objects to exist
@@ -97,17 +100,22 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
           moduleClassSym
       }
     case ref: SymDenotation =>
+      var ref1 = ref
       if (isMethodWithExtension(ref.symbol) && ref.hasAnnotation(defn.TailrecAnnot)) {
-        val ref1 = ref.copySymDenotation()
+        ref1 = ref.copySymDenotation()
         ref1.removeAnnotation(defn.TailrecAnnot)
-        ref1
       }
       else if (ref.isConstructor && isDerivedValueClass(ref.owner) && ref.is(AccessFlags)) {
-        val ref1 = ref.copySymDenotation()
+        ref1 = ref.copySymDenotation()
         ref1.resetFlag(AccessFlags)
-        ref1
       }
-      else ref
+      // Drop the Local flag from all private[this] and protected[this] members
+      // that will be moved to the companion object.
+      if (ref.is(Local) && isDerivedValueClass(ref.owner)) {
+        if (ref1 ne ref) ref1.resetFlag(Local)
+        else ref1 = ref1.copySymDenotation(initFlags = ref1.flags &~ Local)
+      }
+      ref1
     case _ =>
       ref
   }

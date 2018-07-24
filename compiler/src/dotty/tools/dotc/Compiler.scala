@@ -63,7 +63,6 @@ class Compiler {
          new ElimPackagePrefixes) :: // Eliminate references to package prefixes in Select nodes
     List(new CheckStatic,            // Check restrictions that apply to @static members
          new ElimRepeated,           // Rewrite vararg parameters and arguments
-         new NormalizeFlags,         // Rewrite some definition flags
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods

@@ -45,26 +45,38 @@ import ValueClasses._
  *      -->  p.x_=(e)
  *
  *  No fields are generated yet. This is done later in phase Memoize.
+ *
+ *  Also, drop the Local flag from all private[this] and protected[this] members.
+ *  This allows subsequent code motions in Flatten.
  */
 class Getters extends MiniPhase with SymTransformer {
   import ast.tpd._
 
-  override def phaseName = "getters"
+  override def phaseName = Getters.name
 
   override def transformSym(d: SymDenotation)(implicit ctx: Context): SymDenotation = {
     def noGetterNeeded =
       d.is(NoGetterNeeded) ||
-      d.initial.asInstanceOf[SymDenotation].is(PrivateLocal) && !d.owner.is(Trait) && !isDerivedValueClass(d.owner) && !d.is(Flags.Lazy) ||
+      d.is(PrivateLocal) && !d.owner.is(Trait) && !isDerivedValueClass(d.owner) && !d.is(Flags.Lazy) ||
       d.is(Module) && d.isStatic ||
       d.hasAnnotation(defn.ScalaStaticAnnot) ||
       d.isSelfSym
-    if (d.isTerm && (d.is(Lazy) || d.owner.isClass) && d.info.isValueType && !noGetterNeeded) {
-      val maybeStable = if (d.isStable) Stable else EmptyFlags
-      d.copySymDenotation(
-        initFlags = d.flags | maybeStable | AccessorCreationFlags,
-        info = ExprType(d.info))
+
+    var d1 =
+      if (d.isTerm && (d.is(Lazy) || d.owner.isClass) && d.info.isValueType && !noGetterNeeded) {
+        val maybeStable = if (d.isStable) Stable else EmptyFlags
+        d.copySymDenotation(
+          initFlags = d.flags | maybeStable | AccessorCreationFlags,
+          info = ExprType(d.info))
+      }
+      else d
+
+    // Drop the Local flag from all private[this] and protected[this] members.
+    if (d1.is(Local)) {
+      if (d1 ne d) d1.resetFlag(Local)
+      else d1 = d1.copySymDenotation(initFlags = d1.flags &~ Local)
     }
-    else d
+    d1
   }
   private val NoGetterNeeded = Method | Param | JavaDefined | JavaStatic
 
@@ -73,4 +85,8 @@ class Getters extends MiniPhase with SymTransformer {
 
   override def transformAssign(tree: Assign)(implicit ctx: Context): Tree =
     if (tree.lhs.symbol is Method) tree.lhs.becomes(tree.rhs).withPos(tree.pos) else tree
+}
+
+object Getters {
+  val name = "getters"
 }
