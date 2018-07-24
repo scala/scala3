@@ -1,8 +1,5 @@
-package dotty.tools.dotc
-package util
+package lst
 
-import printing.{Printer, Texts}
-import Texts.Text
 import collection.mutable.{ListBuffer, StringBuilder}
 import collection.immutable.Map
 import reflect.ClassTag

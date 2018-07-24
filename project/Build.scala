@@ -530,7 +530,8 @@ object Build {
       },
 
       testOptions in Test += Tests.Argument(
-        TestFrameworks.JUnit, "--run-listener=dotty.tools.ContextEscapeDetector"
+        TestFrameworks.JUnit,
+        "--run-listener=dotty.tools.ContextEscapeDetector",
       ),
 
       // Spawn new JVM in run and test
@@ -606,6 +607,9 @@ object Build {
         } else if (scalaLib == "") {
           println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
         } else if (args.contains("-with-compiler")) {
+          if (!isDotty.value) {
+            throw new MessageOnlyException("-with-compiler can only be used with a bootstrapped compiler")
+          }
           val args1 = args.filter(_ != "-with-compiler")
           val asm = findLib(attList, "scala-asm")
           val dottyCompiler = jars("dotty-compiler")
@@ -671,7 +675,12 @@ object Build {
 
     var extraClasspath = dottyLib
     if ((decompile || printTasty) && !args.contains("-classpath")) extraClasspath += ":."
-    if (args0.contains("-with-compiler")) extraClasspath += s":$dottyCompiler"
+    if (args0.contains("-with-compiler")) {
+      if (!isDotty.value) {
+        throw new MessageOnlyException("-with-compiler can only be used with a bootstrapped compiler")
+      }
+      extraClasspath += s":$dottyCompiler"
+    }
 
     val fullArgs = main :: insertClasspathInArgs(args, extraClasspath)
 
@@ -699,7 +708,12 @@ object Build {
           "dotty-library"       -> packageBin.in(`dotty-library-bootstrapped`, Compile).value
         ).mapValues(_.getAbsolutePath)
       }
-    }.value
+    }.value,
+
+    testOptions in Test += Tests.Argument(
+      TestFrameworks.JUnit,
+      "--exclude-categories=dotty.BootstrappedOnlyTests",
+    ),
   )
 
   lazy val bootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
