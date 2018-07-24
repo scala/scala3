@@ -48,7 +48,6 @@ object PrepareTransparent {
 
   def markTopLevelMatches(meth: Symbol, tree: untpd.Tree)(implicit ctx: Context): Unit = tree match {
     case tree: untpd.Match =>
-      meth.setFlag(Erased)
       tree.putAttachment(TopLevelMatch, ())
       tree.cases.foreach(markTopLevelMatches(meth, _))
     case tree: untpd.Block =>

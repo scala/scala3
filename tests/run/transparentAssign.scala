@@ -10,8 +10,8 @@ object Test {
   def main(args: Array[String]) = {
     var x = 1
     var y = 2
-    transparent def setX(z: Int) = x = z
-    transparent def setY(z: Int) = y = z
+    def setX(z: Int) = x = z
+    def setY(z: Int) = y = z
     swap(x, setX, y, setY)
     assert(x == 2 && y == 1)
 

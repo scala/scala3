@@ -165,7 +165,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
       def markAsMacro(c: Context): Unit =
         if (c.owner eq c.outer.owner) markAsMacro(c.outer)
-        else if (c.owner.isTransparentInlineable) c.owner.setFlag(Macro)
+        else if (c.owner.isTransparentMethod) {
+          c.owner.setFlag(Macro)
+          c.owner.resetFlag(Erased) // FIXME: Macros should be Erased, but that causes problems right now
+        }
         else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
 
       if (sym.isSplice || sym.isQuote) {

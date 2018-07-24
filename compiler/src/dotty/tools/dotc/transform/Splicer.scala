@@ -154,7 +154,7 @@ object Splicer {
       try clazz.getMethod(name.toString, paramClasses: _*)
       catch {
         case _: NoSuchMethodException =>
-          val msg = s"Could not find transparent macro method ${clazz.getCanonicalName}.$name with parameters $paramClasses$extraMsg"
+          val msg = em"Could not find macro method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)$extraMsg"
           throw new StopInterpretation(msg, pos)
       }
     }

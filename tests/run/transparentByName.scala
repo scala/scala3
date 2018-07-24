@@ -25,7 +25,7 @@ object Test {
     assert(j == 45, j)
     twice { x => j = j - x }
     thrice { j = j + 1 }
-    val f = new Range(1, 10).foreach
+    val f = (g: Int => Unit) => new Range(1, 10).foreach(g)
     f(j -= _)
     assert(j == 0, j)
     new Range(1, 10).foreach { i1 =>

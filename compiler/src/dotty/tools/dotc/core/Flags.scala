@@ -560,9 +560,6 @@ object Flags {
   /** A transparent method */
   final val TransparentMethod = allOf(Transparent, Method)
 
-  /** An erased transparent method */
-  final val TypeLevelMethod = allOf(Transparent, Erased, Method)
-
   /** A transparent parameter */
   final val TransparentParam = allOf(Transparent, Param)
 

@@ -1,6 +1,6 @@
 
 trait HList {
-  def length: Int
+  def length: Int = ???
   def head: Any
   def tail: HList
 
@@ -8,13 +8,13 @@ trait HList {
 }
 
 case object HNil extends HList {
-  transparent def length = 0
+  transparent override def length = 0
   def head: Nothing = ???
   def tail: Nothing = ???
 }
 
 case class :: [H, T <: HList] (hd: H, tl: T) extends HList {
-  transparent def length = 1 + tl.length
+  transparent override def length = 1 + tl.length
   def head: H = this.hd
   def tail: T = this.tl
 }

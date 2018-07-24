@@ -3,17 +3,9 @@ object typelevel {
   case class Typed[T](value: T) { type Type = T }
 }
 
-trait Nat {
-  def toInt: Int
-}
-
-case object Z extends Nat {
-  transparent def toInt = 0
-}
-
-case class S[N <: Nat](n: N) extends Nat {
-  transparent def toInt = n.toInt + 1
-}
+trait Nat
+case object Z extends Nat
+case class S[N <: Nat](n: N) extends Nat
 
 trait HList
 

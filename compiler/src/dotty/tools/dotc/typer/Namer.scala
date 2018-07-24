@@ -1195,6 +1195,7 @@ class Namer { typer: Typer =>
       instantiateDependent(restpe, typeParams, termParamss)
       ctx.methodType(tparams map symbolOfTree, termParamss, restpe, isJava = ddef.mods is JavaDefined)
     }
+    if (sym.is(Transparent)) sym.setFlag(Erased)
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
