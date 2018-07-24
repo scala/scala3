@@ -318,7 +318,6 @@ object PrepareTransparent {
                 case tp: NamedType if tp.prefix.member(sym.name).isOverloaded =>
                   // refer to prefix instead of to ident directly, so that overloading can be resolved
                   // again at expansion site
-                  println(i"RECORD start for $tree")
                   typeAtPos(tree.pos.startPos) = tp.prefix
                 case _ =>
                   typeAtPos(tree.pos.toSynthetic) = tree.tpe
