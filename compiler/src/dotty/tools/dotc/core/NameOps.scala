@@ -58,8 +58,8 @@ object NameOps {
       case _ => false
     }
 
-    def likeSpaced(n: PreName): N =
-      (if (name.isTermName) n.toTermName else n.toTypeName).asInstanceOf[N]
+    private def likeSpaced(n: PreName): N =
+      name.likeSpaced(n).asInstanceOf[N]
 
     def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
     def isStaticConstructorName = name == STATIC_CONSTRUCTOR
