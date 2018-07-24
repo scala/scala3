@@ -908,6 +908,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             printType(tp)
         }
 
+      case Type.SuperType(thistpe, supertpe) =>
+        printType(supertpe)
+        this += ".super"
+
       case Type.TypeLambda(paramNames, tparams, body) =>
         inSquare(printMethodicTypeParams(paramNames, tparams))
         this += " => "
