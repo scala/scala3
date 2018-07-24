@@ -1,0 +1,9 @@
+package scala.annotation.internal
+
+import scala.annotation.Annotation
+
+/** An annotation indicating to `-Ycheck:reentrant` that a class or val can be safely shared.
+ *
+ *  @see scala.annotation.internal.unshared
+ */
+class sharable extends Annotation

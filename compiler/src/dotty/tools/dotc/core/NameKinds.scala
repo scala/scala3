@@ -11,6 +11,8 @@ import Decorators._
 import Contexts.Context
 import collection.mutable
 
+import scala.annotation.internal.sharable
+
 /** Defines possible kinds of NameInfo of a derived name */
 object NameKinds {
 

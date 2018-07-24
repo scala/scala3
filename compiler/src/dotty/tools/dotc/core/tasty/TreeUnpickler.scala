@@ -25,6 +25,8 @@ import scala.quoted
 import scala.quoted.Types.TreeType
 import scala.quoted.Exprs.TastyTreeExpr
 
+import scala.annotation.internal.sharable
+
 /** Unpickler for typed trees
  *  @param reader              the reader from which to unpickle
  *  @param posUnpicklerOpt     the unpickler for positions, if it exists

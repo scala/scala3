@@ -14,6 +14,7 @@ import parsing.Tokens.Token
 import printing.Printer
 import util.{Stats, Attachment, Property, DotClass}
 import config.Config
+import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
 import language.implicitConversions
 

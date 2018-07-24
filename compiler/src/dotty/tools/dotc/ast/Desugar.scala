@@ -13,6 +13,8 @@ import collection.mutable.ListBuffer
 import reporting.diagnostic.messages._
 import reporting.trace
 
+import scala.annotation.internal.sharable
+
 object desugar {
   import untpd._
   import DesugarEnums._

@@ -16,6 +16,8 @@ import util.{DotClass}
 import config.Config
 import java.util.HashMap
 
+import scala.annotation.internal.sharable
+
 object Names {
   import NameKinds._
 

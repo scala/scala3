@@ -2,9 +2,6 @@ package dotty
 import scala.annotation.Annotation
 
 package object tools {
-  class sharable extends Annotation
-  class unshared extends Annotation
-
   // Ensure this object is already classloaded, since it's only actually used
   // when handling stack overflows and every operation (including class loading)
   // risks failing.

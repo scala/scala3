@@ -4,6 +4,8 @@ package dotc
 import core.Contexts.Context
 import reporting.Reporter
 
+import scala.annotation.internal.sharable
+
 /** A main class for running compiler benchmarks. Can instantiate a given
  *  number of compilers and run each (sequentially) a given number of times
  *  on the same sources.

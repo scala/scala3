@@ -14,6 +14,8 @@ import collection.mutable
 import java.lang.ref.WeakReference
 import Decorators._
 
+import scala.annotation.internal.sharable
+
 object TyperState {
   @sharable private var nextId: Int = 0
 }

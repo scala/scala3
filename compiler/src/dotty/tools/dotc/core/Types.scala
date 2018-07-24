@@ -36,6 +36,8 @@ import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr}
 import java.lang.ref.WeakReference
 
+import scala.annotation.internal.sharable
+
 object Types {
 
   @sharable private[this] var nextId = 0

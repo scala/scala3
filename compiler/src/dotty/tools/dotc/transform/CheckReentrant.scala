@@ -50,9 +50,9 @@ class CheckReentrant extends MiniPhase {
   private[this] var indent: Int = 0
 
   private val sharableAnnot = new CtxLazy(implicit ctx =>
-    ctx.requiredClass("dotty.tools.sharable"))
+    ctx.requiredClass("scala.annotation.internal.sharable"))
   private val unsharedAnnot = new CtxLazy(implicit ctx =>
-    ctx.requiredClass("dotty.tools.unshared"))
+    ctx.requiredClass("scala.annotation.internal.unshared"))
 
   def isIgnored(sym: Symbol)(implicit ctx: Context) =
     sym.hasAnnotation(sharableAnnot()) ||

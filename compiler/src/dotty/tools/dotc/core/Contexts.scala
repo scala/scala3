@@ -29,6 +29,8 @@ import collection.immutable.BitSet
 import printing._
 import config.{JavaPlatform, Platform, ScalaSettings, Settings}
 
+import scala.annotation.internal.sharable
+
 import language.implicitConversions
 import DenotTransformers.DenotTransformer
 import dotty.tools.dotc.profile.Profiler

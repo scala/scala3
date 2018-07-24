@@ -19,6 +19,8 @@ import ast.tpd._
 import reporting.trace
 import reporting.diagnostic.Message
 
+import scala.annotation.internal.sharable
+
 trait TypeOps { this: Context => // TODO: Make standalone object.
 
   /** The type `tp` as seen from prefix `pre` and owner `cls`. See the spec

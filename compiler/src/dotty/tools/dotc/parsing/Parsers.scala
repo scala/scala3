@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package parsing
 
+import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
 import util.{ SourceFile, SourcePosition }
