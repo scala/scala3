@@ -6,6 +6,7 @@ import Contexts._
 import DenotTransformers.SymTransformer
 import Flags._
 import SymDenotations._
+import Symbols._
 import Types._
 import typer.RefChecks
 import MegaPhase.MiniPhase
@@ -36,17 +37,17 @@ class CutErasedDecls extends MiniPhase with SymTransformer { thisTransform =>
 
   override def transformApply(tree: Apply)(implicit ctx: Context) =
     if (tree.fun.tpe.widen.isErasedMethod)
-      cpy.Apply(tree)(tree.fun, tree.args.map(arg => defaultValue(arg.tpe)))
+      cpy.Apply(tree)(tree.fun, tree.args.map(arg => ref(defn.Predef_undefined)))
     else tree
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context) =
     if (tree.symbol.is(Erased) && !tree.rhs.isEmpty)
-      cpy.ValDef(tree)(rhs = defaultValue(tree.rhs.tpe))
+      cpy.ValDef(tree)(rhs = ref(defn.Predef_undefined))
     else tree
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context) =
     if (tree.symbol.is(Erased) && !tree.rhs.isEmpty)
-      cpy.DefDef(tree)(rhs = defaultValue(tree.rhs.tpe))
+      cpy.DefDef(tree)(rhs = ref(defn.Predef_undefined))
     else tree
 }
 object CutErasedDecls {
