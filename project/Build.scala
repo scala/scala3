@@ -782,6 +782,21 @@ object Build {
 
   lazy val `dotty-sbt-bridge` = project.in(file("sbt-bridge")).asDottySbtBridge(NonBootstrapped)
   lazy val `dotty-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge")).asDottySbtBridge(Bootstrapped)
+    .settings(
+      // Tweak -Yscala2-unpickler to allow some sbt dependencies used in tests
+      scalacOptions in Test := {
+        val oldOptions = (scalacOptions in Test).value
+        val i = oldOptions.indexOf("-Yscala2-unpickler")
+        assert(i != -1)
+        val oldValue = oldOptions(i + 1)
+
+        val attList = (dependencyClasspath in Test).value
+        val sbtIo = findLib(attList, "org.scala-sbt/io")
+        val zincApiInfo = findLib(attList, "zinc-apiinfo")
+
+        oldOptions.updated(i + 1, s"$sbtIo:$zincApiInfo:$oldValue")
+      }
+    )
 
   lazy val `dotty-language-server` = project.in(file("language-server")).
     dependsOn(dottyCompiler(Bootstrapped)).
