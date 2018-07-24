@@ -98,7 +98,7 @@ object Names {
     /** A name in the same (term or type) namespace as this name and
      *  with same characters as given `name`.
      */
-    def likeSpaced(name: PreName): ThisName
+    def likeSpaced(name: Name): ThisName
 
     /** A derived name consisting of this name and the added info, unless it is
      *  already present in this name.
@@ -181,7 +181,7 @@ object Names {
       _typeName
     }
 
-    override def likeSpaced(name: PreName): TermName = name.toTermName
+    override def likeSpaced(name: Name): TermName = name.toTermName
 
     def info: NameInfo = SimpleNameKind.info
     def underlying: TermName = unsupported("underlying")
@@ -450,7 +450,7 @@ object Names {
     override def mapLast(f: SimpleName => SimpleName) = toTermName.mapLast(f).toTypeName
     override def mapParts(f: SimpleName => SimpleName) = toTermName.mapParts(f).toTypeName
 
-    override def likeSpaced(name: PreName): TypeName = name.toTypeName
+    override def likeSpaced(name: Name): TypeName = name.toTypeName
 
     override def derived(info: NameInfo): TypeName = toTermName.derived(info).toTypeName
     override def exclude(kind: NameKind): TypeName = toTermName.exclude(kind).toTypeName

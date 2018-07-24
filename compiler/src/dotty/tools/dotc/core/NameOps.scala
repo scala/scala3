@@ -58,7 +58,7 @@ object NameOps {
       case _ => false
     }
 
-    private def likeSpacedN(n: PreName): N =
+    private def likeSpacedN(n: Name): N =
       name.likeSpaced(n).asInstanceOf[N]
 
     def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
