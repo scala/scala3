@@ -755,6 +755,20 @@ class ClassfileParser(
       }
 
       def unpickleScala(bytes: Array[Byte]): Some[Embedded] = {
+        val allowed = ctx.settings.Yscala2Unpickler.value
+
+        def failUnless(cond: Boolean) =
+          assert(cond,
+            s"Unpickling ${classRoot.symbol.showLocated} from ${classRoot.symbol.associatedFile} is not allowed with -Yscala2-unpickler $allowed")
+
+        if (allowed != "always") {
+          failUnless(allowed != "never")
+          val allowedList = allowed.split(":").toList
+          val file = classRoot.symbol.associatedFile
+          // Using `.toString.contains` isn't great, but it's good enough for a debug flag.
+          failUnless(file == null || allowedList.exists(path => file.toString.contains(path)))
+        }
+
         val unpickler = new unpickleScala2.Scala2Unpickler(bytes, classRoot, moduleRoot)(ctx)
         unpickler.run()(ctx.addMode(Scala2UnpicklingMode))
         Some(unpickler)

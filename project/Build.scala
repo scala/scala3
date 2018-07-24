@@ -227,6 +227,13 @@ object Build {
     // otherwise sbt 0.13 incremental compilation breaks (https://github.com/sbt/sbt/issues/3142)
     scalacOptions ++= Seq("-bootclasspath", sys.props("sun.boot.class.path")),
 
+    // Enforce that the only Scala 2 classfiles we unpickle come from scala-library
+    scalacOptions ++= {
+      val attList = (dependencyClasspath in `dotty-library` in Compile).value
+      val scalaLib = findLib(attList, "scala-library")
+      Seq("-Yscala2-unpickler", scalaLib)
+    },
+
     // sbt gets very unhappy if two projects use the same target
     target := baseDirectory.value / ".." / "out" / "bootstrap" / name.value,
 
@@ -427,6 +434,11 @@ object Build {
     (testOnly in Test).toTask(cmd)
   }
 
+  def findLib(attList: Seq[Attributed[File]], name: String) = attList
+    .map(_.data.getAbsolutePath)
+    .find(_.contains(name))
+    .toList.mkString(":")
+
   // Settings shared between dotty-compiler and dotty-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
 
@@ -573,7 +585,7 @@ object Build {
         jarOpts ::: tuning ::: agentOptions ::: ci_build ::: path.toList
       },
 
-      testCompilation := testOnlyFiltered("dotty.tools.dotc.CompilationTests", "--exclude-categories=dotty.SlowTests").evaluated,
+      testCompilation := testOnlyFiltered("dotty.tools.dotc.*CompilationTests", "--exclude-categories=dotty.SlowTests").evaluated,
       testFromTasty := testOnlyFiltered("dotty.tools.dotc.FromTastyTests", "").evaluated,
 
       dotr := {
@@ -581,12 +593,7 @@ object Build {
         val attList = (dependencyClasspath in Runtime).value
         val jars = packageAll.value
 
-        def findLib(name: String) = attList
-          .map(_.data.getAbsolutePath)
-          .find(_.contains(name))
-          .toList.mkString(":")
-
-        val scalaLib = findLib("scala-library")
+        val scalaLib = findLib(attList, "scala-library")
         val dottyLib = jars("dotty-library")
 
         def run(args: List[String]): Unit = {
@@ -600,7 +607,7 @@ object Build {
           println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
         } else if (args.contains("-with-compiler")) {
           val args1 = args.filter(_ != "-with-compiler")
-          val asm = findLib("scala-asm")
+          val asm = findLib(attList, "scala-asm")
           val dottyCompiler = jars("dotty-compiler")
           val dottyInterfaces = jars("dotty-interfaces")
           run(insertClasspathInArgs(args1, s"$dottyCompiler:$dottyInterfaces:$asm"))
@@ -679,20 +686,26 @@ object Build {
 
   lazy val nonBootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
     // packageAll packages all and then returns a map with the abs location
-    packageAll := {
-      Map(
-        "dotty-interfaces"    -> packageBin.in(`dotty-interfaces`, Compile).value,
-        "dotty-compiler"      -> packageBin.in(Compile).value,
-        "dotty-library"       -> packageBin.in(`dotty-library`, Compile).value
-      ).mapValues(_.getAbsolutePath)
-    }
+    packageAll := Def.taskDyn { // Use a dynamic task to avoid loops when loading the settings
+      Def.task {
+        Map(
+          "dotty-interfaces"    -> packageBin.in(`dotty-interfaces`, Compile).value,
+          "dotty-compiler"      -> packageBin.in(Compile).value,
+
+          // NOTE: Using dotty-library-bootstrapped here is intentional: when
+          // running the compiler, we should always have the bootstrapped
+          // library on the compiler classpath since the non-bootstrapped one
+          // may not be binary-compatible.
+          "dotty-library"       -> packageBin.in(`dotty-library-bootstrapped`, Compile).value
+        ).mapValues(_.getAbsolutePath)
+      }
+    }.value
   )
 
   lazy val bootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
     packageAll := {
       packageAll.in(`dotty-compiler`).value ++ Seq(
-        "dotty-compiler" -> packageBin.in(Compile).value.getAbsolutePath,
-        "dotty-library"  -> packageBin.in(`dotty-library-bootstrapped`, Compile).value.getAbsolutePath
+        "dotty-compiler" -> packageBin.in(Compile).value.getAbsolutePath
       )
     }
   )
