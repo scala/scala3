@@ -58,7 +58,7 @@ object NameOps {
       case _ => false
     }
 
-    private def likeSpaced(n: PreName): N =
+    private def likeSpacedN(n: PreName): N =
       name.likeSpaced(n).asInstanceOf[N]
 
     def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
@@ -100,7 +100,7 @@ object NameOps {
      *  method needs to work on mangled as well as unmangled names because
      *  it is also called from the backend.
      */
-    def stripModuleClassSuffix: N = likeSpaced {
+    def stripModuleClassSuffix: N = likeSpacedN {
       val semName = name.toTermName match {
         case name: SimpleName if name.endsWith("$") => name.unmangleClassName
         case _ => name
@@ -109,7 +109,7 @@ object NameOps {
     }
 
     /** If flags is a ModuleClass but not a Package, add module class suffix */
-    def adjustIfModuleClass(flags: Flags.FlagSet): N = likeSpaced {
+    def adjustIfModuleClass(flags: Flags.FlagSet): N = likeSpacedN {
       if (flags is (ModuleClass, butNot = Package)) name.asTypeName.moduleClassName
       else name.toTermName.exclude(AvoidClashName)
     }
@@ -119,27 +119,27 @@ object NameOps {
      *  followed by `kind` and the name.
      */
     def expandedName(base: Symbol, kind: QualifiedNameKind = ExpandedName)(implicit ctx: Context): N =
-      likeSpaced { base.fullNameSeparated(ExpandPrefixName, kind, name) }
+      likeSpacedN { base.fullNameSeparated(ExpandPrefixName, kind, name) }
 
     /** Revert the expanded name. */
-    def unexpandedName: N = likeSpaced {
+    def unexpandedName: N = likeSpacedN {
       name.rewrite { case ExpandedName(_, unexp) => unexp }
     }
 
     /** Remove the variance from the name. */
-    def invariantName: N = likeSpaced {
+    def invariantName: N = likeSpacedN {
       name.rewrite { case VariantName(invariant, _) => invariant }
     }
 
-    def implClassName: N = likeSpaced(name ++ tpnme.IMPL_CLASS_SUFFIX)
+    def implClassName: N = likeSpacedN(name ++ tpnme.IMPL_CLASS_SUFFIX)
 
     def traitOfImplClassName: N = {
       val suffix = tpnme.IMPL_CLASS_SUFFIX.toString
       assert(name.endsWith(suffix), name)
-      likeSpaced(name.mapLast(_.dropRight(suffix.length)))
+      likeSpacedN(name.mapLast(_.dropRight(suffix.length)))
     }
 
-    def errorName: N = likeSpaced(name ++ nme.ERROR)
+    def errorName: N = likeSpacedN(name ++ nme.ERROR)
 
     /** Map variance value -1, +1 to 0, 1 */
     private def varianceToNat(v: Int) = (v + 1) / 2
@@ -150,7 +150,7 @@ object NameOps {
     /** Name with variance prefix: `+` for covariant, `-` for contravariant */
     def withVariance(v: Int): N = {
       val underlying = name.exclude(VariantName)
-      likeSpaced(
+      likeSpacedN(
           if (v == 0) underlying
           else VariantName(underlying.toTermName, varianceToNat(v)))
     }
@@ -160,7 +160,7 @@ object NameOps {
      */
     def variance = name.collect { case VariantName(_, n) => natToVariance(n) }.getOrElse(0)
 
-    def freshened(implicit ctx: Context): N = likeSpaced {
+    def freshened(implicit ctx: Context): N = likeSpacedN {
       name.toTermName match {
         case ModuleClassName(original) => ModuleClassName(original.freshened)
         case name => UniqueName.fresh(name)
@@ -238,7 +238,7 @@ object NameOps {
       val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
       val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
 
-      likeSpaced(name ++ nme.specializedTypeNames.prefix ++
+      likeSpacedN(name ++ nme.specializedTypeNames.prefix ++
         methodTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.separator ++
         classTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix)
     }
@@ -249,11 +249,11 @@ object NameOps {
     def unmangleClassName: N = name.toTermName match {
       case name: SimpleName
       if name.endsWith(str.MODULE_SUFFIX) && !nme.falseModuleClassNames.contains(name) =>
-        likeSpaced(name.dropRight(str.MODULE_SUFFIX.length).moduleClassName)
+        likeSpacedN(name.dropRight(str.MODULE_SUFFIX.length).moduleClassName)
       case _ => name
     }
 
-    def unmangle(kind: NameKind): N = likeSpaced {
+    def unmangle(kind: NameKind): N = likeSpacedN {
       name rewrite {
         case unmangled: SimpleName =>
           kind.unmangle(unmangled)
