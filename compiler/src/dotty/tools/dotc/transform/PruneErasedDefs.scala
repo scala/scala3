@@ -19,10 +19,10 @@ import ast.tpd
  *  default values. This is necessary so that subsequent checking phases such
  *  as IsInstanceOfChecker don't give false negatives.
  */
-class CutErasedDecls extends MiniPhase with SymTransformer { thisTransform =>
+class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
   import tpd._
 
-  override def phaseName = CutErasedDecls.name
+  override def phaseName = PruneErasedDefs.name
 
   override def changesMembers = true   // makes erased members private
 
@@ -50,6 +50,6 @@ class CutErasedDecls extends MiniPhase with SymTransformer { thisTransform =>
       cpy.DefDef(tree)(rhs = ref(defn.Predef_undefined))
     else tree
 }
-object CutErasedDecls {
-  val name = "cutErasedDecls"
+object PruneErasedDefs {
+  val name = "pruneErasedDefs"
 }
