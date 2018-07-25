@@ -27,9 +27,9 @@ class FromTastyTests extends ParallelTesting {
 
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
     compileTastyInDir("tests/pos", defaultOptions,
-      fromTastyFilter = FileFilter.exclude(FromTastySources.posFromTastyBlacklisted),
-      decompilationFilter = FileFilter.exclude(FromTastySources.posDecompilationBlacklisted),
-      recompilationFilter = FileFilter.include(FromTastySources.posRecompilationWhitelist)
+      fromTastyFilter = FileFilter.exclude(TestSources.posFromTastyBlacklisted),
+      decompilationFilter = FileFilter.exclude(TestSources.posDecompilationBlacklisted),
+      recompilationFilter = FileFilter.include(TestSources.posRecompilationWhitelist)
     ).checkCompile()
   }
 
@@ -41,9 +41,9 @@ class FromTastyTests extends ParallelTesting {
 
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
     compileTastyInDir("tests/run", defaultOptions,
-      fromTastyFilter = FileFilter.exclude(FromTastySources.runFromTastyBlacklisted),
-      decompilationFilter = FileFilter.exclude(FromTastySources.runDecompilationBlacklisted),
-      recompilationFilter = FileFilter.include(FromTastySources.runRecompilationWhitelist)
+      fromTastyFilter = FileFilter.exclude(TestSources.runFromTastyBlacklisted),
+      decompilationFilter = FileFilter.exclude(TestSources.runDecompilationBlacklisted),
+      recompilationFilter = FileFilter.include(TestSources.runRecompilationWhitelist)
     ).checkRuns()
   }
 }

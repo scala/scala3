@@ -34,12 +34,12 @@ class CompilationTests extends ParallelTesting {
   // @Test  // enable to test compileStdLib separately with detailed stats
   def compileStdLibOnly: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileStdLibOnly")
-    compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline", "-Ydetailed-stats"))
+    compileList("compileStdLib", TestSources.stdLibWhitelisted, scala2Mode.and("-migration", "-Yno-inline", "-Ydetailed-stats"))
   }.checkCompile()
 
   @Test def compilePos: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePos")
-    compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
+    compileList("compileStdLib", TestSources.stdLibWhitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
     compileDir("compiler/src/dotty/tools/dotc/ast", defaultOptions) +
     compileDir("compiler/src/dotty/tools/dotc/config", defaultOptions) +
     compileDir("compiler/src/dotty/tools/dotc/core", defaultOptions) +
