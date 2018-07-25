@@ -53,7 +53,7 @@
     "postinstall": "node ./node_modules/vscode/bin/install && curl -L -o out/coursier https://github.com/coursier/coursier/raw/v1.0.3/coursier"
   },
   "extensionDependencies": [
-    "daltonjorge.scala"
+    "scala-lang.scala"
   ],
   "dependencies": {
     "child-process-promise": "^2.2.1",
