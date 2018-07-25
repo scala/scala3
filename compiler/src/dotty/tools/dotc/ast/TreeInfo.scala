@@ -418,6 +418,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def isPureExpr(tree: Tree)(implicit ctx: Context) = exprPurity(tree) >= Pure
   def isIdempotentExpr(tree: Tree)(implicit ctx: Context) = exprPurity(tree) >= Idempotent
 
+  def isPureBinding(tree: Tree)(implicit ctx: Context) = statPurity(tree) >= Pure
+
   /** The purity level of this reference.
    *  @return
    *    SimplyPure  if reference is (nonlazy and stable) or to a parameterized function
@@ -579,11 +581,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** An extractor for def of a closure contained the block of the closure. */
   object closureDef {
-    def unapply(tree: Tree): Option[DefDef] = tree match {
-      case Block(Nil, expr) => unapply(expr)
+    def unapply(tree: Tree)(implicit ctx: Context): Option[DefDef] = tree match {
       case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, closure: Closure) =>
         Some(meth)
-      case _ => None
+      case Block(Nil, expr) =>
+        unapply(expr)
+      case Inlined(_, bindings, expr) if bindings.forall(isPureBinding) =>
+        unapply(expr)
+      case _ =>
+        None
     }
   }
 
