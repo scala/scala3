@@ -1307,17 +1307,17 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   }
 
   class TastyCompilationTest(step1: CompilationTest, step2: CompilationTest, step3: CompilationTest,
-      recompilationBlacklisted: FileFilter, decompilationDir: String, shouldDelete: Boolean)(implicit testGroup: TestGroup) {
+        recompilationFilter: FileFilter, decompilationDir: String, shouldDelete: Boolean)(implicit testGroup: TestGroup) {
 
     def keepOutput: TastyCompilationTest =
-      new TastyCompilationTest(step1, step2, step3, recompilationBlacklisted, decompilationDir, shouldDelete)
+      new TastyCompilationTest(step1, step2, step3, recompilationFilter, decompilationDir, shouldDelete)
 
     def checkCompile()(implicit summaryReport: SummaryReporting): this.type = {
       step1.checkCompile() // Compile all files to generate the class files with tasty
       step2.checkCompile() // Compile from tasty
       step3.checkCompile() // Decompile from tasty
 
-      val step4 = compileFilesInDir(decompilationDir, defaultOptions, recompilationBlacklisted).keepOutput
+      val step4 = compileFilesInDir(decompilationDir, defaultOptions, recompilationFilter).keepOutput
       step4.checkCompile() // Recompile decompiled code
 
       if (shouldDelete)
@@ -1331,7 +1331,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       step2.checkRuns() // Compile from tasty
       step3.checkCompile() // Decompile from tasty
 
-      val step4 = compileFilesInDir(decompilationDir, defaultOptions, recompilationBlacklisted).keepOutput
+      val step4 = compileFilesInDir(decompilationDir, defaultOptions, recompilationFilter).keepOutput
       step4.checkRuns() // Recompile decompiled code
 
       if (shouldDelete)
