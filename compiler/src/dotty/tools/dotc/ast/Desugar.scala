@@ -20,9 +20,18 @@ object desugar {
   /** Info of a variable in a pattern: The named tree and its type */
   private type VarInfo = (NameTree, Tree)
 
-  /** Names of methods that are added unconditionally to case classes */
+  /** Is `name` the name of a method that can be invalidated as a compiler-generated
+   *  case class method that clashes with a user-defined method?
+   */
+  def isRetractableCaseClassMethodName(name: Name)(implicit ctx: Context): Boolean = name match {
+    case nme.apply | nme.unapply | nme.copy => true
+    case DefaultGetterName(nme.copy, _) => true
+    case _ => false
+  }
+
+  /** Is `name` the name of a method that is added unconditionally to case classes? */
   def isDesugaredCaseClassMethodName(name: Name)(implicit ctx: Context): Boolean =
-    name == nme.copy || name.isSelectorName
+    isRetractableCaseClassMethodName(name) || name.isSelectorName
 
 // ----- DerivedTypeTrees -----------------------------------
 
@@ -207,8 +216,7 @@ object desugar {
             tpt = TypeTree(),
             rhs = vparam.rhs
           )
-          .withMods(Modifiers(mods.flags & AccessFlags, mods.privateWithin))
-          .withFlags(Synthetic)
+          .withMods(Modifiers(mods.flags & (AccessFlags | Synthetic), mods.privateWithin))
         val rest = defaultGetters(vparams :: vparamss1, n + 1)
         if (vparam.rhs.isEmpty) rest else defaultGetter :: rest
       case Nil :: vparamss1 =>

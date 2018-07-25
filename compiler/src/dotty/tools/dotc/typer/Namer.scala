@@ -768,6 +768,28 @@ class Namer { typer: Typer =>
       case _ =>
     }
 
+    /** Invalidate `denot` by overwriting its info with `NoType` if
+     *  `denot` is a compiler generated case class method that clashes
+     *  with a user-defined method in the same scope with a matching type.
+     */
+    private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit = {
+      def isCaseClass(owner: Symbol) =
+        owner.isClass && {
+          if (owner.is(Module)) owner.linkedClass.is(CaseClass)
+          else owner.is(CaseClass)
+        }
+      val isClashingSynthetic =
+        denot.is(Synthetic) &&
+        desugar.isRetractableCaseClassMethodName(denot.name) &&
+        isCaseClass(denot.owner) &&
+        denot.owner.info.decls.lookupAll(denot.name).exists(alt =>
+          alt != denot.symbol && alt.info.matchesLoosely(denot.info))
+      if (isClashingSynthetic) {
+        typr.println(i"invalidating clashing $denot in ${denot.owner}")
+        denot.info = NoType
+      }
+    }
+
     /** Intentionally left without `implicit ctx` parameter. We need
      *  to pick up the context at the point where the completer was created.
      */
@@ -776,6 +798,7 @@ class Namer { typer: Typer =>
       addAnnotations(sym)
       addInlineInfo(sym)
       denot.info = typeSig(sym)
+      invalidateIfClashingSynthetic(denot)
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym, sym.pos)
     }
