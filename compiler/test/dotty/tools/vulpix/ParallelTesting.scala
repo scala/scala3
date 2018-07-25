@@ -1284,11 +1284,15 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     ) extends JointCompilationSource(name, Array(file), flags, outDir, fromTasty, decompilation) {
 
       override def buildInstructions(errors: Int, warnings: Int): String = {
+        val runOrPos = if (file.getPath.startsWith("tests/run/")) "run" else "pos"
+        val listName = if (fromTasty) "from-tasty" else "decompilation"
         s"""|
             |Test '$title' compiled with $errors error(s) and $warnings warning(s),
             |the test can be reproduced by running:
             |
             |  sbt "testFromTasty $file"
+            |
+            |This tests can be disabled by adding `${file.getName}` to `compiler/test/dotc/$runOrPos-$listName.blacklist`
             |
             |""".stripMargin
       }
