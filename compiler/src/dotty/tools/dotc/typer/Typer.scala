@@ -37,7 +37,7 @@ import config.Printers.{gadts, typr}
 import rewrite.Rewrites.patch
 import NavigateAST._
 import transform.SymUtils._
-import reporting.trace
+import reporting.{StoreReporter, trace}
 import config.Config
 
 import language.implicitConversions
@@ -1978,6 +1978,15 @@ class Typer extends Namer
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, selType)(ctx addMode Mode.Pattern)
 
+  def tryEitherWithSameContext[T](op: Context => T)(fallBack: T => T)(implicit ctx: Context) = {
+    val reporter = ctx.reporter
+    val reporter1 = new StoreReporter(reporter)
+    ctx.typerState.setReporter(reporter1)
+    val result = op(ctx)
+    ctx.typerState.setReporter(reporter)
+    if (reporter1.hasErrors) fallBack(result) else result
+  }
+
   def tryEither[T](op: Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context) = {
     val nestedCtx = ctx.fresh.setNewTyperState()
     val result = op(nestedCtx)
@@ -2061,14 +2070,10 @@ class Typer extends Namer
         tree
       case _ =>
         if (isApplyProto(pt) || isMethod(tree) || isSyntheticApply(tree)) tryImplicit(fallBack)
-        else tryEither(tryApply(_)) { (app, appState) =>
+        else tryEitherWithSameContext(tryApply(_)) { app =>
           tryImplicit {
-            if (tree.tpe.member(nme.apply).exists) {
-              // issue the error about the apply, since it is likely more informative than the fallback
-              appState.commit()
-              app
-            }
-            else fallBack
+            // issue the error about the apply, since it is likely more informative than the fallback
+            if (tree.tpe.member(nme.apply).exists) app else fallBack
           }
         }
      }
