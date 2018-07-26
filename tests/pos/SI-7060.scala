@@ -1,6 +1,6 @@
 object Test {
 
-  inline final def mbarray_apply_minibox(array: Any, tag: Byte): Long =
+  transparent final def mbarray_apply_minibox(array: Any, tag: Byte): Long =
     if (tag == 0) {
       array.asInstanceOf[Array[Long]](0)
     } else

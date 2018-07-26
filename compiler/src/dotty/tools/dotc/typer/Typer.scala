@@ -476,9 +476,9 @@ class Typer extends Namer
       case pt: SelectionProto if pt.name == nme.CONSTRUCTOR => true
       case _ => false
     }
-    val enclosingInlineable = ctx.owner.ownersIterator.findSymbol(_.isInlineableMethod)
-    if (enclosingInlineable.exists && !Inliner.isLocal(qual1.symbol, enclosingInlineable))
-      ctx.error(SuperCallsNotAllowedInline(enclosingInlineable), tree.pos)
+    val enclosingTransparent = ctx.owner.ownersIterator.findSymbol(_.isTransparentMethod)
+    if (enclosingTransparent.exists && !PrepareTransparent.isLocal(qual1.symbol, enclosingTransparent))
+      ctx.error(SuperCallsNotAllowedTransparent(enclosingTransparent), tree.pos)
     pt match {
       case pt: SelectionProto if pt.name.isTypeName =>
         qual1 // don't do super references for types; they are meaningless anyway
@@ -567,7 +567,8 @@ class Typer extends Namer
       def typedTpt = checkSimpleKinded(typedType(tree.tpt))
       def handlePattern: Tree = {
         val tpt1 = typedTpt
-        if (!ctx.isAfterTyper) constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
+        if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
+          constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
         // special case for an abstract type that comes with a class tag
         tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
       }
@@ -966,55 +967,70 @@ class Typer extends Namer
     assignType(cpy.Closure(tree)(env1, meth1, target), meth1, target)
   }
 
-  def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context) = track("typedMatch") {
+  def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context): Tree = track("typedMatch") {
     tree.selector match {
       case EmptyTree =>
         val (protoFormals, _) = decomposeProtoFunction(pt, 1)
         val unchecked = pt.isRef(defn.PartialFunctionClass)
         typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
+      case id @ untpd.ImplicitScrutinee() =>
+        if (tree.getAttachment(PrepareTransparent.TopLevelMatch).isEmpty)
+          ctx.error(em"implicit match cannot be used here; it must occur as a toplevel match of a transparent method", tree.pos)
+        val sel1 = id.withType(defn.ImplicitScrutineeTypeRef)
+        typedMatchFinish(tree, sel1, sel1.tpe, pt)
       case _ =>
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
-
-        val cases1 = harmonic(harmonize)(typedCases(tree.cases, selType, pt.notApplied))
-          .asInstanceOf[List[CaseDef]]
-        assignType(cpy.Match(tree)(sel1, cases1), cases1)
+        typedMatchFinish(tree, sel1, selType, pt)
     }
   }
 
-  def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context) = {
+  // Overridden in InlineTyper for transparent matches
+  def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context): Tree = {
+    val cases1 = harmonic(harmonize)(typedCases(tree.cases, selType, pt.notApplied))
+      .asInstanceOf[List[CaseDef]]
+    assignType(cpy.Match(tree)(sel, cases1), cases1)
+  }
 
-    /** gadtSyms = "all type parameters of enclosing methods that appear
-     *              non-variantly in the selector type" todo: should typevars
-     *              which appear with variances +1 and -1 (in different
-     *              places) be considered as well?
-     */
-    val gadtSyms: Set[Symbol] = trace(i"GADT syms of $selType", gadts) {
-      val accu = new TypeAccumulator[Set[Symbol]] {
-        def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
-          val tsyms1 = t match {
-            case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm && variance == 0 =>
-              tsyms + tr.symbol
-            case _ =>
-              tsyms
-          }
-          foldOver(tsyms1, t)
+  /** gadtSyms = "all type parameters of enclosing methods that appear
+    *              non-variantly in the selector type" todo: should typevars
+    *              which appear with variances +1 and -1 (in different
+    *              places) be considered as well?
+    */
+  def gadtSyms(selType: Type)(implicit ctx: Context): Set[Symbol] = trace(i"GADT syms of $selType", gadts) {
+    val accu = new TypeAccumulator[Set[Symbol]] {
+      def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
+        val tsyms1 = t match {
+          case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm && variance == 0 =>
+            tsyms + tr.symbol
+          case _ =>
+            tsyms
         }
+        foldOver(tsyms1, t)
       }
-      accu(Set.empty, selType)
     }
-
-    cases mapconserve (typedCase(_, pt, selType, gadtSyms))
+    accu(Set.empty, selType)
   }
 
-  /** Type a case. */
-  def typedCase(tree: untpd.CaseDef, pt: Type, selType: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = track("typedCase") {
-    val originalCtx = ctx
-
+  /** Context with fresh GADT bounds for all gadtSyms */
+  def gadtContext(gadtSyms: Set[Symbol])(implicit ctx: Context) = {
     val gadtCtx = ctx.fresh.setFreshGADTBounds
     for (sym <- gadtSyms)
       if (!gadtCtx.gadt.bounds.contains(sym))
         gadtCtx.gadt.setBounds(sym, TypeBounds.empty)
+    gadtCtx
+  }
+
+  def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context) = {
+    val gadts = gadtSyms(selType)
+    cases.mapconserve(typedCase(_, selType, pt, gadts))
+  }
+
+  /** Type a case. */
+  def typedCase(tree: untpd.CaseDef, selType: Type, pt: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = track("typedCase") {
+    val originalCtx = ctx
+
+    val gadtCtx = gadtContext(gadtSyms)
 
     /** - strip all instantiated TypeVars from pattern types.
      *    run/reducable.scala is a test case that shows stripping typevars is necessary.
@@ -1072,8 +1088,8 @@ class Typer extends Namer
         (EmptyTree, WildcardType)
       }
       else if (owner != cx.outer.owner && owner.isRealMethod) {
-        if (owner.isInlineableMethod)
-          (EmptyTree, errorType(NoReturnFromInline(owner), tree.pos))
+        if (owner.isTransparentMethod)
+          (EmptyTree, errorType(NoReturnFromTransparent(owner), tree.pos))
         else if (!owner.isCompleted)
           (EmptyTree, errorType(MissingReturnTypeWithReturnStatement(owner), tree.pos))
         else {
@@ -1143,7 +1159,7 @@ class Typer extends Namer
     }
   }
 
-  def typedInlined(tree: untpd.Inlined, pt: Type)(implicit ctx: Context): Inlined = {
+  def typedInlined(tree: untpd.Inlined, pt: Type)(implicit ctx: Context): Tree = {
     val (exprCtx, bindings1) = typedBlockStats(tree.bindings)
     val expansion1 = typed(tree.expansion, pt)(inlineContext(tree.call)(exprCtx))
     assignType(cpy.Inlined(tree)(tree.call, bindings1.asInstanceOf[List[MemberDef]], expansion1),
@@ -1327,6 +1343,7 @@ class Typer extends Namer
             if (body1.tpe.isInstanceOf[TermRef]) pt1
             else body1.tpe.underlyingIfRepeated(isJava = false)
           val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.pos)
+          if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Implicit)
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.pos)
           assignType(cpy.Bind(tree)(tree.name, body1), sym)
@@ -1368,17 +1385,17 @@ class Typer extends Namer
     typed(annot, defn.AnnotationType)
   }
 
-  def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = track("typedValDef") {
+  def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedValDef") {
     val ValDef(name, tpt, _) = vdef
     completeAnnotations(vdef, sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
     val rhs1 = vdef.rhs match {
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe
-      case rhs => normalizeErasedRhs(typedExpr(rhs, tpt1.tpe), sym)
+      case rhs => typedExpr(rhs, tpt1.tpe)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
-    if (sym.is(Inline, butNot = DeferredOrTermParamOrAccessor))
-      checkInlineConformant(rhs1, isFinal = sym.is(Final), em"right-hand side of inline $sym")
+    if (sym.is(Transparent, butNot = DeferredOrTermParamOrAccessor))
+      checkTransparentConformant(rhs1, isFinal = sym.is(Final), em"right-hand side of transparent $sym")
     patchIfLazy(vdef1)
     patchFinalVals(vdef1)
     vdef1
@@ -1393,7 +1410,7 @@ class Typer extends Namer
       patch(Position(toUntyped(vdef).pos.start), "@volatile ")
   }
 
-  /** Adds inline to final vals with idempotent rhs
+  /** Adds transparent to final vals with idempotent rhs
    *
    *  duplicating scalac behavior: for final vals that have rhs as constant, we do not create a field
    *  and instead return the value. This seemingly minor optimization has huge effect on initialization
@@ -1409,7 +1426,7 @@ class Typer extends Namer
     }
     val sym = vdef.symbol
     sym.info match {
-      case info: ConstantType if isFinalInlinableVal(sym) && !ctx.settings.YnoInline.value => sym.setFlag(Inline)
+      case info: ConstantType if isFinalInlinableVal(sym) && !ctx.settings.YnoInline.value => sym.setFlag(Transparent)
       case _ =>
     }
   }
@@ -1437,10 +1454,13 @@ class Typer extends Namer
       (tparams1, sym.owner.typeParams).zipped.foreach ((tdef, tparam) =>
         rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
     }
-    val rhs1 = normalizeErasedRhs(typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx), sym)
+    if (sym.isTransparentMethod) {
+      rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
+      PrepareTransparent.markTopLevelMatches(sym, ddef.rhs)
+    }
+    val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)
 
-    // Overwrite inline body to make sure it is not evaluated twice
-    if (sym.isInlineableMethod) Inliner.registerInlineInfo(sym, _ => rhs1)
+    if (sym.isTransparentInlineable) PrepareTransparent.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
 
     if (sym.isConstructor && !sym.isPrimaryConstructor)
       for (param <- tparams1 ::: vparamss1.flatten)
@@ -1671,7 +1691,7 @@ class Typer extends Namer
   }
 
   def typedTypedSplice(tree: untpd.TypedSplice)(implicit ctx: Context): Tree =
-    tree.tree match {
+    tree.splice match {
       case tree1: TypeTree => tree1  // no change owner necessary here ...
       case tree1: Ident => tree1     // ... or here, since these trees cannot contain bindings
       case tree1 =>
@@ -1909,7 +1929,10 @@ class Typer extends Namer
           case none =>
             typed(mdef) match {
               case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
-                buf += inlineExpansion(mdef1)
+                assert(mdef1.symbol.isTransparentInlineable, mdef.symbol)
+                Inliner.bodyToInline(mdef1.symbol) // just make sure accessors are computed,
+                buf += mdef1                       // but keep original definition, since inline-expanded code
+                                                   // is pickled in this case.
               case mdef1 =>
                 import untpd.modsDeco
                 mdef match {
@@ -1941,7 +1964,7 @@ class Typer extends Namer
     checkEnumCompanions(traverse(stats)(localCtx), enumContexts)
   }
 
-  /** Given an inline method `mdef`, the method rewritten so that its body
+  /** Given a transparent method `mdef`, the method rewritten so that its body
    *  uses accessors to access non-public members.
    *  Overwritten in Retyper to return `mdef` unchanged.
    */
@@ -2103,15 +2126,13 @@ class Typer extends Namer
    *  If all this fails, error
    *  Parameters as for `typedUnadapted`.
    */
-  def adapt(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree = /*>|>*/ track("adapt") /*<|<*/ {
-    def showWithType(x: Any) = x match {
-      case tree: tpd.Tree @unchecked => i"$tree of type ${tree.tpe}"
-      case _ => String.valueOf(x)
+  def adapt(tree: Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree = track("adapt") {
+    trace(i"adapting $tree to $pt", typr, show = true) {
+      adapt1(tree, pt, locked)
     }
-    adapt1(tree, pt, locked)
   }
 
-  def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
+  final def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
     adapt(tree, pt, ctx.typerState.ownedVars)
   }
 
@@ -2123,7 +2144,9 @@ class Typer extends Namer
     def readaptSimplified(tree: Tree)(implicit ctx: Context) = readapt(simplify(tree, pt, locked))
 
     def missingArgs(mt: MethodType) = {
-      ctx.error(MissingEmptyArgumentList(methPart(tree).symbol), tree.pos)
+      val meth = methPart(tree).symbol
+      if (mt.paramNames.length == 0) ctx.error(MissingEmptyArgumentList(meth), tree.pos)
+      else ctx.error(em"missing arguments for $meth", tree.pos)
       tree.withType(mt.resultType)
     }
 
@@ -2229,18 +2252,7 @@ class Typer extends Namer
                 arg :: implicitArgs(formals1)
             }
         }
-        def eraseErasedArgs(args: List[Tree]): List[Tree] = {
-          if (!wtp.isErasedMethod) args
-          else args.map { arg =>
-            arg.tpe match {
-              case tpe if tpe.isStable => arg
-              case _: AmbiguousImplicits => arg
-              case tpe => defaultValue(tpe)
-            }
-          }
-        }
-        val args = eraseErasedArgs(implicitArgs(wtp.paramInfos))
-
+        val args = implicitArgs(wtp.paramInfos)
 
         def propagatedFailure(args: List[Tree]): Type = args match {
           case arg :: args1 =>
@@ -2334,10 +2346,12 @@ class Typer extends Namer
 
       // Reasons NOT to eta expand:
       //  - we reference a constructor
+      //  - we reference a typelevel method
       //  - we are in a pattern
       //  - the current tree is a synthetic apply which is not expandable (eta-expasion would simply undo that)
       if (arity >= 0 &&
           !tree.symbol.isConstructor &&
+          !tree.symbol.is(TransparentMethod) &&
           !ctx.mode.is(Mode.Pattern) &&
           !(isSyntheticApply(tree) && !isExpandableApply))
         simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
@@ -2349,7 +2363,7 @@ class Typer extends Namer
         missingArgs(wtp)
     }
 
-    def adaptNoArgsOther(wtp: Type) = {
+    def adaptNoArgsOther(wtp: Type): Tree = {
       ctx.typeComparer.GADTused = false
       if (defn.isImplicitFunctionClass(wtp.underlyingClassRef(refinementOK = false).classSymbol) &&
           !untpd.isImplicitClosure(tree) &&
@@ -2364,16 +2378,14 @@ class Typer extends Namer
         checkEqualityEvidence(tree, pt)
         tree
       }
+      else if (Inliner.isInlineable(tree)) {
+        tree.tpe <:< wildApprox(pt)
+        readaptSimplified(Inliner.inlineCall(tree, pt))
+      }
       else if (tree.tpe <:< pt) {
-        if (pt.hasAnnotation(defn.InlineParamAnnot))
-          checkInlineConformant(tree, isFinal = false, "argument to inline parameter")
-        if (Inliner.hasBodyToInline(tree.symbol) &&
-            !ctx.owner.ownersIterator.exists(_.isInlineableMethod) &&
-            !ctx.settings.YnoInline.value &&
-            !ctx.isAfterTyper &&
-            !ctx.reporter.hasErrors)
-          readaptSimplified(Inliner.inlineCall(tree, pt))
-        else if (ctx.typeComparer.GADTused && pt.isValueType)
+        if (pt.hasAnnotation(defn.TransparentParamAnnot))
+          checkTransparentConformant(tree, isFinal = false, "argument to transparent parameter")
+        if (ctx.typeComparer.GADTused && pt.isValueType)
           // Insert an explicit cast, so that -Ycheck in later phases succeeds.
           // I suspect, but am not 100% sure that this might affect inferred types,
           // if the expected type is a supertype of the GADT bound. It would be good to come
@@ -2405,7 +2417,7 @@ class Typer extends Namer
     def adaptNoArgs(wtp: Type): Tree = {
       val ptNorm = underlyingApplied(pt)
       lazy val functionExpected = defn.isFunctionType(ptNorm)
-      lazy val resultMatch = constrainResult(wtp, followAlias(pt))
+      lazy val resultMatch = constrainResult(tree.symbol, wtp, followAlias(pt))
       wtp match {
         case wtp: ExprType =>
           readaptSimplified(tree.withType(wtp.resultType))

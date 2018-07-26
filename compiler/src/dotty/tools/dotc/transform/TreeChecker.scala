@@ -259,6 +259,13 @@ class TreeChecker extends Phase with SymTransformer {
       case _ =>
     }
 
+    /** Exclude from double definition checks any erased symbols that were
+     *  made `private` in phase `UnlinkErasedDecls`. These symbols will be removed
+     *  completely in phase `Erasure` if they are defined in a currently compiled unit.
+     */
+    override def excludeFromDoubleDeclCheck(sym: Symbol)(implicit ctx: Context) =
+      sym.is(PrivateErased) && !sym.initial.is(Private)
+
     override def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree = {
       val tpdTree = super.typed(tree, pt)
       checkIdentNotJavaClass(tpdTree)
@@ -411,9 +418,9 @@ class TreeChecker extends Phase with SymTransformer {
         }
       }
 
-    override def typedCase(tree: untpd.CaseDef, pt: Type, selType: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = {
+    override def typedCase(tree: untpd.CaseDef, selType: Type, pt: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = {
       withPatSyms(tpd.patVars(tree.pat.asInstanceOf[tpd.Tree])) {
-        super.typedCase(tree, pt, selType, gadtSyms)
+        super.typedCase(tree, selType, pt, gadtSyms)
       }
     }
 
@@ -505,4 +512,6 @@ object TreeChecker {
       tp
     }
   }.apply(tp0)
+
+  private val PrivateErased = allOf(Private, Erased)
 }

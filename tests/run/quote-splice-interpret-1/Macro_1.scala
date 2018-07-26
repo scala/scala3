@@ -7,7 +7,7 @@ object Macros {
   case object Z extends Nat
   case class S[N <: Nat]() extends Nat
 
-  inline def isZero(inline n: Int): Boolean = ~{
+  transparent def isZero(transparent n: Int): Boolean = ~{
     if (n == 0) '(true)
     else '(false)
   }

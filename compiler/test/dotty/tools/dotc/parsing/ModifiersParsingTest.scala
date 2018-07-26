@@ -120,7 +120,7 @@ class ModifiersParsingTest {
         |   final val c = ???
         |
         |   abstract override def f: Boolean
-        |   inline def g(n: Int) = ???
+        |   transparent def g(n: Int) = ???
         | }
       """.stripMargin
 
@@ -128,12 +128,12 @@ class ModifiersParsingTest {
     assert(source.field("b").modifiers == List(Mod.Lazy(), Mod.Private()))
     assert(source.field("c").modifiers == List(Mod.Final()))
     assert(source.field("f").modifiers == List(Mod.Abstract(), Mod.Override()))
-    assert(source.field("g").modifiers == List(Mod.Inline()))
+    assert(source.field("g").modifiers == List(Mod.Transparent()))
   }
 
   @Test def paramDef = {
-    var source: Tree = "def f(inline a: Int) = ???"
-    assert(source.defParam(0).modifiers == List(Mod.Inline()))
+    var source: Tree = "def f(transparent a: Int) = ???"
+    assert(source.defParam(0).modifiers == List(Mod.Transparent()))
 
     source = "def f(implicit a: Int, b: Int) = ???"
     assert(source.defParam(0).modifiers == List(Mod.Implicit()))

@@ -21,6 +21,8 @@ import scala.io.Codec
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
+  case class UntypedSplice(splice: untpd.Tree) extends Tree
+
   private def ta(implicit ctx: Context) = ctx.typeAssigner
 
   def Ident(tp: NamedType)(implicit ctx: Context): Ident =
@@ -249,8 +251,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val constr = firstParent.decl(nme.CONSTRUCTOR).suchThat(constr => isApplicable(constr.info))
         New(firstParent, constr.symbol.asTerm, superArgs)
       }
-    val parents = superRef :: otherParents.map(TypeTree(_))
+      ClassDefWithParents(cls, constr, superRef :: otherParents.map(TypeTree(_)), body)
+    }
 
+  def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: List[Tree])(implicit ctx: Context): TypeDef = {
     val selfType =
       if (cls.classInfo.selfInfo ne NoType) ValDef(ctx.newSelfSym(cls))
       else EmptyValDef
@@ -325,7 +329,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case pre: ThisType =>
         tp.isType ||
         pre.cls.isStaticOwner ||
-          tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
+        tp.symbol.isParamOrAccessor && !pre.cls.is(Trait) && ctx.owner.enclosingClass == pre.cls
           // was ctx.owner.enclosingClass.derivesFrom(pre.cls) which was not tight enough
           // and was spuriously triggered in case inner class would inherit from outer one
           // eg anonymous TypeMap inside TypeMap.andThen
@@ -659,7 +663,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   override def skipTransform(tree: Tree)(implicit ctx: Context) = tree.tpe.isError
 
-  implicit class TreeOps[ThisTree <: tpd.Tree](val tree: ThisTree) extends AnyVal {
+  implicit class TreeOps[ThisTree <: tpd.Tree](private val tree: ThisTree) extends AnyVal {
 
     def isValue(implicit ctx: Context): Boolean =
       tree.isTerm && tree.tpe.widen.isValueType
@@ -1041,13 +1045,26 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else (trees.head.tpe eq trees1.head.tpe) && sameTypes(trees.tail, trees1.tail)
   }
 
-  def evalOnce(tree: Tree)(within: Tree => Tree)(implicit ctx: Context) = {
-    if (isIdempotentExpr(tree)) within(tree)
+  /** If `tree`'s purity level is less than `level`, let-bind it so that it gets evaluated
+   *  only once. I.e. produce a
+   *
+   *     { val x = 'tree ;  ~within('x) }
+   *
+   *  instead of otherwise
+   *
+   *     ~within('tree)
+   */
+  def letBindUnless(level: TreeInfo.PurityLevel, tree: Tree)(within: Tree => Tree)(implicit ctx: Context) = {
+    if (exprPurity(tree) >= level) within(tree)
     else {
       val vdef = SyntheticValDef(TempResultName.fresh(), tree)
       Block(vdef :: Nil, within(Ident(vdef.namedType)))
     }
   }
+
+  /** Let bind `tree` unless `tree` is at least idempotent */
+  def evalOnce(tree: Tree)(within: Tree => Tree)(implicit ctx: Context) =
+    letBindUnless(TreeInfo.Idempotent, tree)(within)
 
   def runtimeCall(name: TermName, args: List[Tree])(implicit ctx: Context): Tree = {
     Ident(defn.ScalaRuntimeModule.requiredMethod(name).termRef).appliedToArgs(args)
@@ -1067,9 +1084,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   override def inlineContext(call: Tree)(implicit ctx: Context): Context =
     ctx.fresh.setProperty(InlinedCalls, call :: enclosingInlineds)
 
-  /** All enclosing calls that are currently inlined, from innermost to outermost */
-  def enclosingInlineds(implicit ctx: Context): List[Tree] =
-    ctx.property(InlinedCalls).getOrElse(Nil)
+  /** All enclosing calls that are currently inlined, from innermost to outermost.
+   *  EmptyTree calls cancel the next-enclosing non-empty call in the list
+   */
+  def enclosingInlineds(implicit ctx: Context): List[Tree] = {
+    def normalize(ts: List[Tree]): List[Tree] = ts match {
+      case t :: (ts1 @ (t1 :: ts2)) if t.isEmpty => normalize(if (t1.isEmpty) ts1 else ts2)
+      case t :: ts1 => t :: normalize(ts1)
+      case Nil => Nil
+    }
+    normalize(ctx.property(InlinedCalls).getOrElse(Nil))
+  }
 
   /** The source file where the symbol of the `inline` method referred to by `call`
    *  is defined

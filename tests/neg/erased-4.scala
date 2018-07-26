@@ -1,6 +1,8 @@
 object Test {
 
   def main(args: Array[String]): Unit = {
+    def foo (erased i: Int) = 0
+
     val f: erased Int => Int =
       erased (x: Int) => {
         x // error
@@ -10,8 +12,6 @@ object Test {
       erased (x: Int) => {
         foo(x)
       }
-
-    def foo (erased i: Int) = 0
   }
 
 }

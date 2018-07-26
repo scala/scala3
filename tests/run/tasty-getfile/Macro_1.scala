@@ -3,7 +3,7 @@ import scala.tasty.{Tasty, TopLevelSplice}
 
 object SourceFiles {
 
-  implicit inline def getThisFile: String =
+  implicit transparent def getThisFile: String =
     ~getThisFileImpl(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
 
   private def getThisFileImpl(implicit tasty: Tasty): Expr[String] = {

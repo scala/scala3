@@ -13,7 +13,7 @@ import collection.mutable
 import TastyBuffer._
 import util.Positions._
 
-class PositionPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr]) {
+class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Addr]) {
   val buf = new TastyBuffer(5000)
   pickler.newSection("Positions", buf)
   import buf._
@@ -62,8 +62,8 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr
     }
 
     def traverse(x: Any): Unit = x match {
-      case x: Tree @unchecked =>
-        val pos = if (x.isInstanceOf[MemberDef]) x.pos else x.pos.toSynthetic
+      case x: untpd.Tree =>
+        val pos = if (x.isInstanceOf[untpd.MemberDef]) x.pos else x.pos.toSynthetic
         if (pos.exists && (pos != x.initialPos.toSynthetic || alwaysNeedsPos(x))) {
           addrOfTree(x) match {
             case Some(addr) if !pickledIndices.contains(addr.index) =>
@@ -75,7 +75,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Option[Addr
         }
         //else if (x.pos.exists) println(i"skipping $x")
         x match {
-          case x: MemberDef @unchecked =>
+          case x: untpd.MemberDef @unchecked =>
             for (ann <- x.symbol.annotations) traverse(ann.tree)
           case _ =>
         }

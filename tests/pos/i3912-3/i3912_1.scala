@@ -1,7 +1,7 @@
 import scala.quoted._
 
 object Macros {
-  inline def foo3(): Int = {
+  transparent def foo3(): Int = {
     {
       ~impl()
     }

@@ -326,8 +326,8 @@ object Flags {
   /** A method that has default params */
   final val DefaultParameterized = termFlag(27, "<defaultparam>")
 
-  /** Symbol is inlined */
-  final val Inline = commonFlag(29, "inline")
+  /** Labelled with `transparent` modifier */
+  final val Transparent = commonFlag(29, "transparent")
 
   /** Symbol is defined by a Java class */
   final val JavaDefined = commonFlag(30, "<java>")
@@ -351,9 +351,6 @@ object Flags {
   /** A bridge method. Set by Erasure */
   final val Bridge = termFlag(34, "<bridge>")
 
-  /** Symbol is a Java varargs bridge */ // (needed?)
-  final val VBridge = termFlag(35, "<vbridge>") // TODO remove
-
   /** Symbol is a method which should be marked ACC_SYNCHRONIZED */
   final val Synchronized = termFlag(36, "<synchronized>")
 
@@ -362,9 +359,6 @@ object Flags {
 
   /** Symbol is a Java default method */
   final val DefaultMethod = termFlag(38, "<defaultmethod>")
-
-  /** Labelled with `transparent` modifier */
-  final val Transparent = termFlag(39, "transparent")
 
   /** Symbol is an enum class or enum case (if used with case) */
   final val Enum = commonFlag(40, "<enum>")
@@ -439,7 +433,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   final val SourceModifierFlags =
-    commonFlags(Private, Protected, Abstract, Final, Inline, Transparent,
+    commonFlags(Private, Protected, Abstract, Final, Transparent,
      Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic, Erased)
 
   /** Flags representing modifiers that can appear in trees */
@@ -460,7 +454,7 @@ object Flags {
     Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
     NonMember | ImplicitCommon | Permanent | Synthetic |
-    SuperAccessorOrScala2x | Inline | Transparent.toCommonFlags
+    SuperAccessorOrScala2x | Transparent
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class
@@ -551,8 +545,11 @@ object Flags {
   /** Either method or lazy or deferred */
   final val MethodOrLazyOrDeferred = Method | Lazy | Deferred
 
-  /** Labeled `private`, `final`, `inline`, or `transparent` */
-  final val EffectivelyFinal = Private | Final | Inline | Transparent.toCommonFlags
+  /** Assumed to be pure */
+  final val StableOrErased = Stable | Erased
+
+  /** Labeled `private`, `final`, or `transparent` */
+  final val EffectivelyFinal = Private | Final | Transparent
 
   /** A private method */
   final val PrivateMethod = allOf(Private, Method)
@@ -560,14 +557,11 @@ object Flags {
   /** A private accessor */
   final val PrivateAccessor = allOf(Private, Accessor)
 
-  /** An inline method */
-  final val InlineMethod = allOf(Inline, Method)
-
-  /** An transparent method */
+  /** A transparent method */
   final val TransparentMethod = allOf(Transparent, Method)
 
-  /** An inline parameter */
-  final val InlineParam = allOf(Inline, Param)
+  /** A transparent parameter */
+  final val TransparentParam = allOf(Transparent, Param)
 
   /** An enum case */
   final val EnumCase = allOf(Enum, Case)
@@ -593,8 +587,8 @@ object Flags {
   /** A deferred type member or parameter (these don't have right hand sides) */
   final val DeferredOrTypeParam = Deferred | TypeParam
 
-  /** value that's final, inline, or transparent */
-  final val FinalOrInlineOrTransparent = Final | Inline | Transparent.toCommonFlags
+  /** value that's final or transparent */
+  final val FinalOrTransparent = Final | Transparent
 
   /** A covariant type parameter instance */
   final val LocalCovariant = allOf(Local, Covariant)

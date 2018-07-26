@@ -391,12 +391,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       SimplyPure
     case TypeApply(fn, _) =>
       exprPurity(fn)
-/*
- * Not sure we'll need that. Comment out until we find out
-    case Apply(Select(free @ Ident(_), nme.apply), _) if free.symbol.name endsWith nme.REIFY_FREE_VALUE_SUFFIX =>
-      // see a detailed explanation of this trick in `GenSymbols.reifyFreeTerm`
-      free.symbol.hasStableFlag && isIdempotentExpr(free)
-*/
     case Apply(fn, args) =>
       def isKnownPureOp(sym: Symbol) =
         sym.owner.isPrimitiveValueClass || sym.owner == defn.StringClass
@@ -423,6 +417,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def isSimplyPure(tree: Tree)(implicit ctx: Context) = exprPurity(tree) == SimplyPure
   def isPureExpr(tree: Tree)(implicit ctx: Context) = exprPurity(tree) >= Pure
   def isIdempotentExpr(tree: Tree)(implicit ctx: Context) = exprPurity(tree) >= Idempotent
+
+  def isPureBinding(tree: Tree)(implicit ctx: Context) = statPurity(tree) >= Pure
 
   /** The purity level of this reference.
    *  @return
@@ -460,11 +456,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  Strictly speaking we can't replace `O.x` with `42`.  But this would make
    *  most expressions non-constant. Maybe we can change the spec to accept this
    *  kind of eliding behavior. Or else enforce true purity in the compiler.
-   *  The choice will be affected by what we will do with `inline` and with
+   *  The choice will be affected by what we will do with `transparent` and with
    *  Singleton type bounds (see SIP 23). Presumably
    *
    *     object O1 { val x: Singleton = 42; println("43") }
-   *     object O2 { inline val x = 42; println("43") }
+   *     object O2 { transparent val x = 42; println("43") }
    *
    *  should behave differently.
    *
@@ -474,8 +470,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *
    *     O2.x = 42
    *
-   *  Revisit this issue once we have implemented `inline`. Then we can demand
-   *  purity of the prefix unless the selection goes to an inline val.
+   *  Revisit this issue once we have standardized on `transparent`. Then we can demand
+   *  purity of the prefix unless the selection goes to a transparent val.
    *
    *  Note: This method should be applied to all term tree nodes that are not literals,
    *        that can be idempotent, and that can have constant types. So far, only nodes
@@ -585,11 +581,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** An extractor for def of a closure contained the block of the closure. */
   object closureDef {
-    def unapply(tree: Tree): Option[DefDef] = tree match {
-      case Block(Nil, expr) => unapply(expr)
+    def unapply(tree: Tree)(implicit ctx: Context): Option[DefDef] = tree match {
       case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, closure: Closure) =>
         Some(meth)
-      case _ => None
+      case Block(Nil, expr) =>
+        unapply(expr)
+      case Inlined(_, bindings, expr) if bindings.forall(isPureBinding) =>
+        unapply(expr)
+      case _ =>
+        None
     }
   }
 
@@ -709,6 +709,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case nil =>
         Nil
     }
+
+  /** The qualifier part of a Select or Ident.
+   *  For an Ident, this is the `This` of the current class.
+   */
+  def qualifier(tree: Tree)(implicit ctx: Context) = tree match {
+    case Select(qual, _) => qual
+    case tree: Ident => desugarIdentPrefix(tree)
+    case _ => This(ctx.owner.enclosingClass.asClass)
+  }
 
   /** Is this a selection of a member of a structural type that is not a member
    *  of an underlying class or trait?

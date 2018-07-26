@@ -333,6 +333,10 @@ class Definitions {
   def NullType = NullClass.typeRef
   lazy val RuntimeNullModuleRef = ctx.requiredModuleRef("scala.runtime.Null")
 
+  lazy val ImplicitScrutineeTypeSym =
+    newSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
+  def ImplicitScrutineeTypeRef: TypeRef = ImplicitScrutineeTypeSym.typeRef
+
   lazy val ScalaPredefModuleRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context) = ScalaPredefModuleRef.symbol
 
@@ -730,8 +734,8 @@ class Definitions {
   def ImplicitNotFoundAnnot(implicit ctx: Context) = ImplicitNotFoundAnnotType.symbol.asClass
   lazy val ForceInlineAnnotType = ctx.requiredClassRef("scala.forceInline")
   def ForceInlineAnnot(implicit ctx: Context) = ForceInlineAnnotType.symbol.asClass
-  lazy val InlineParamAnnotType = ctx.requiredClassRef("scala.annotation.internal.InlineParam")
-  def InlineParamAnnot(implicit ctx: Context) = InlineParamAnnotType.symbol.asClass
+  lazy val TransparentParamAnnotType = ctx.requiredClassRef("scala.annotation.internal.TransparentParam")
+  def TransparentParamAnnot(implicit ctx: Context) = TransparentParamAnnotType.symbol.asClass
   lazy val InvariantBetweenAnnotType = ctx.requiredClassRef("scala.annotation.internal.InvariantBetween")
   def InvariantBetweenAnnot(implicit ctx: Context) = InvariantBetweenAnnotType.symbol.asClass
   lazy val MigrationAnnotType = ctx.requiredClassRef("scala.annotation.migration")
@@ -1213,7 +1217,7 @@ class Definitions {
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticCoreMethods =
-    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
+    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod, ImplicitScrutineeTypeSym)
 
   lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 

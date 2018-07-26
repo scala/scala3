@@ -145,7 +145,7 @@ abstract class AccessProxies {
     def accessorIfNeeded(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case tree: RefTree if needsAccessor(tree.symbol) =>
         if (tree.symbol.isConstructor) {
-          ctx.error("Implementation restriction: cannot use private constructors in inline methods", tree.pos)
+          ctx.error("Implementation restriction: cannot use private constructors in transparent methods", tree.pos)
           tree // TODO: create a proper accessor for the private constructor
         }
         else useAccessor(tree)
@@ -162,7 +162,7 @@ object AccessProxies {
     def recur(cls: Symbol): Symbol =
       if (!cls.exists) NoSymbol
       else if (cls.derivesFrom(accessed.owner) ||
-               cls.companionModule.moduleClass == accessed.owner) cls 
+               cls.companionModule.moduleClass == accessed.owner) cls
       else recur(cls.owner)
     recur(ctx.owner)
   }

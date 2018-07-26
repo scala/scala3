@@ -754,15 +754,16 @@ class Namer { typer: Typer =>
           val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
           sym.addAnnotation(ann)
           if (cls == defn.ForceInlineAnnot && sym.is(Method, butNot = Accessor))
-            sym.setFlag(Inline)
+            sym.setFlag(Transparent)
         }
       case _ =>
     }
 
     private def addInlineInfo(sym: Symbol) = original match {
-      case original: untpd.DefDef if sym.isInlineableMethod =>
-        Inliner.registerInlineInfo(
+      case original: untpd.DefDef if sym.isTransparentInlineable =>
+        PrepareTransparent.registerInlineInfo(
             sym,
+            original.rhs,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
           )(localContext(sym))
       case _ =>
@@ -1060,7 +1061,7 @@ class Namer { typer: Typer =>
               ctx.defContext(sym).denotNamed(original)
           def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
             case params :: paramss1 =>
-              if (idx < params.length) wildApprox(params(idx), null, Set.empty)
+              if (idx < params.length) wildApprox(params(idx))
               else paramProto(paramss1, idx - params.length)
             case nil =>
               WildcardType
@@ -1074,7 +1075,7 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      def isInline = sym.is(FinalOrInlineOrTransparent, butNot = Method | Mutable)
+      def isInline = sym.is(FinalOrTransparent, butNot = Method | Mutable)
 
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types
@@ -1089,7 +1090,11 @@ class Namer { typer: Typer =>
       // it would be erased to BoxedUnit.
       def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
-      val rhsCtx = ctx.addMode(Mode.InferringReturnType)
+      var rhsCtx = ctx.addMode(Mode.InferringReturnType)
+      if (sym.isTransparentMethod) {
+        rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
+        PrepareTransparent.markTopLevelMatches(sym, mdef.rhs)
+      }
       def rhsType = typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.
@@ -1109,7 +1114,7 @@ class Namer { typer: Typer =>
         if (sym.is(Final, butNot = Method)) {
           val tp = lhsType
           if (tp.isInstanceOf[ConstantType])
-            tp // keep constant types that fill in for a non-constant (to be revised when inline has landed).
+            tp // keep constant types that fill in for a non-constant (to be revised when transparent has landed).
           else inherited
         }
         else inherited
@@ -1190,6 +1195,15 @@ class Namer { typer: Typer =>
       instantiateDependent(restpe, typeParams, termParamss)
       ctx.methodType(tparams map symbolOfTree, termParamss, restpe, isJava = ddef.mods is JavaDefined)
     }
+    if (sym.is(Transparent) &&
+        sym.unforcedAnnotation(defn.ForceInlineAnnot).isEmpty)
+        // Need to keep @forceInline annotated methods around to get to parity with Scala.
+        // This is necessary at least until we have full bootstrap. Right now
+        // dotty-bootstrapped involves running the Dotty compiler compiled with Scala 2 with
+        // a Dotty runtime library compiled with Dotty. If we erase @forceInline annotated
+        // methods, this means that the support methods in dotty.runtime.LazyVals vanish.
+        // But they are needed for running the lazy val implementations in the Scala-2 compiled compiler.
+      sym.setFlag(Erased)
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)

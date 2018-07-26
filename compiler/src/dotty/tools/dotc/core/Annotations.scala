@@ -57,7 +57,7 @@ object Annotations {
   }
 
   /** An annotation indicating the body of a right-hand side,
-   *  typically of an inline method. Treated specially in
+   *  typically of a transparent method. Treated specially in
    *  pickling/unpickling and TypeTreeMaps
    */
   abstract class BodyAnnotation extends Annotation {

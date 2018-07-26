@@ -1,6 +1,6 @@
 class Outer {
   trait F { def f(): Int }
-  inline def inner: F = {
+  transparent def inner: F = {
     class InnerClass(x: Int) extends F {
       def this() = this(3)
       def f() = x

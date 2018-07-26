@@ -600,7 +600,7 @@ object SymDenotations {
 
     /** Is this a denotation of a stable term (or an arbitrary type)? */
     final def isStable(implicit ctx: Context) =
-      isType || is(Stable) || !(is(UnstableValue) || info.isInstanceOf[ExprType])
+      isType || is(StableOrErased) || !is(UnstableValue) && !info.isInstanceOf[ExprType]
 
     /** Is this a denotation of a class that does not have - either direct or inherited -
      *  initaliazion code?
@@ -788,13 +788,14 @@ object SymDenotations {
 
     def isSkolem: Boolean = name == nme.SKOLEM
 
-    def isInlinedMethod(implicit ctx: Context): Boolean =
-      is(InlineMethod, butNot = Accessor)
-
     def isTransparentMethod(implicit ctx: Context): Boolean =
-      is(TransparentMethod, butNot = Accessor)
+      is(TransparentMethod, butNot = AccessorOrSynthetic)
 
-    def isInlineableMethod(implicit ctx: Context) = isInlinedMethod || isTransparentMethod
+    /** A transparent method that is not nested inside another transparent method.
+     *  Nested transparents are not inlineable yet, only their inlined copies are.
+     */
+    def isTransparentInlineable(implicit ctx: Context): Boolean =
+      isTransparentMethod && !owner.ownersIterator.exists(_.is(TransparentMethod))
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,

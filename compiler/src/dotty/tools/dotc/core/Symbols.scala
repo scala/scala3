@@ -397,6 +397,8 @@ trait Symbols { this: Context =>
 
   def requiredMethod(path: PreName): TermSymbol =
     base.staticRef(path.toTermName).requiredSymbol(_ is Method).asTerm
+
+  def requiredMethodRef(path: PreName): TermRef = requiredMethod(path).termRef
 }
 
 object Symbols {
@@ -544,9 +546,27 @@ object Symbols {
           if (this is Module) this.moduleClass.validFor |= InitialPeriod
         }
         else this.owner.asClass.ensureFreshScopeAfter(phase)
-        if (!isPrivate)
-          assert(phase.changesMembers, i"$this entered in ${this.owner} at undeclared phase $phase")
+        assert(isPrivate || phase.changesMembers, i"$this entered in ${this.owner} at undeclared phase $phase")
         entered
+      }
+
+    /** Remove symbol from scope of owning class */
+    final def drop()(implicit ctx: Context): Unit = {
+      this.owner.asClass.delete(this)
+      if (this is Module) this.owner.asClass.delete(this.moduleClass)
+    }
+
+    /** Remove symbol from scope of owning class after given `phase`. Create a fresh
+     *  denotation for its owner class if the class has not yet already one that starts being valid after `phase`.
+     *  @pre  Symbol is a class member
+     */
+    def dropAfter(phase: DenotTransformer)(implicit ctx: Context): Unit =
+      if (ctx.phaseId != phase.next.id) dropAfter(phase)(ctx.withPhase(phase.next))
+      else {
+        assert (!this.owner.is(Package))
+        this.owner.asClass.ensureFreshScopeAfter(phase)
+        assert(isPrivate || phase.changesMembers, i"$this deleted in ${this.owner} at undeclared phase $phase")
+        drop()
       }
 
     /** This symbol, if it exists, otherwise the result of evaluating `that` */
