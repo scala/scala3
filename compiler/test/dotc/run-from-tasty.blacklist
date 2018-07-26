@@ -1,2 +1,5 @@
 # Closure type miss match
 eff-dependent.scala
+
+# superArgs missing (see TODO in tastyreflect/FromSymbol.scala)
+reduce-projection.scala

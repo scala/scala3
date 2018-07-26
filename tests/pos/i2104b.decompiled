@@ -31,7 +31,7 @@ case class Pair[A, B](_1: A, _2: B) {
       throw new java.lang.IndexOutOfBoundsException(n.toString())
   }
 }
-object Pair
+object Pair extends scala.AnyRef()
 /** Decompiled from out/posTestFromTasty/pos/i2104b/Test.class */
 object Test {
   def main(args: scala.Array[scala.Predef.String]): scala.Unit = {
