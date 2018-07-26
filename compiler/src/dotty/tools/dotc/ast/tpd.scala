@@ -251,8 +251,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val constr = firstParent.decl(nme.CONSTRUCTOR).suchThat(constr => isApplicable(constr.info))
         New(firstParent, constr.symbol.asTerm, superArgs)
       }
-    val parents = superRef :: otherParents.map(TypeTree(_))
+      ClassDefWithParents(cls, constr, superRef :: otherParents.map(TypeTree(_)), body)
+    }
 
+  def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: List[Tree])(implicit ctx: Context): TypeDef = {
     val selfType =
       if (cls.classInfo.selfInfo ne NoType) ValDef(ctx.newSelfSym(cls))
       else EmptyValDef
