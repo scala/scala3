@@ -63,28 +63,37 @@ trait ConstraintHandling {
       }
       if (Config.checkConstraintsSeparated)
         assert(!occursIn(bound), s"$param occurs in $bound")
-      val newBound = narrowedBound(param, bound, isUpper)
-      val c1 = constraint.updateEntry(param, newBound)
-      (c1 eq constraint) || {
-        constraint = c1
-        val TypeBounds(lo, hi) = constraint.entry(param)
-        isSubType(lo, hi)
+
+      val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
+      val equalBounds = isUpper && (lo eq bound) || !isUpper && (bound eq hi)
+      if (equalBounds && !bound.existsPart(_.isInstanceOf[WildcardType])) {
+        // The narrowed bounds are equal and do not contain wildcards,
+        // so we can remove `param` from the constraint.
+        // (Handling wildcards requires choosing a bound, but we don't know which
+        // bound to choose here, this is handled in `ConstraintHandling#approximation`)
+        constraint = constraint.replace(param, bound)
+        true
+      }
+      else {
+        // Narrow one of the bounds of type parameter `param`
+        // If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
+        // that `param >: bound`.
+        val narrowedBounds = {
+          val saved = homogenizeArgs
+          homogenizeArgs = Config.alignArgsInAnd
+          try
+            if (isUpper) oldBounds.derivedTypeBounds(lo, hi & bound)
+            else oldBounds.derivedTypeBounds(lo | bound, hi)
+          finally homogenizeArgs = saved
+        }
+        val c1 = constraint.updateEntry(param, narrowedBounds)
+        (c1 eq constraint) || {
+          constraint = c1
+          val TypeBounds(lo, hi) = constraint.entry(param)
+          isSubType(lo, hi)
+        }
       }
     }
-
-  /** Narrow one of the bounds of type parameter `param`
-   *  If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
-   *  that `param >: bound`.
-   */
-  def narrowedBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(implicit ctx: Context): TypeBounds = {
-    val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
-    val saved = homogenizeArgs
-    homogenizeArgs = Config.alignArgsInAnd
-    try
-      if (isUpper) oldBounds.derivedTypeBounds(lo, hi & bound)
-      else oldBounds.derivedTypeBounds(lo | bound, hi)
-    finally homogenizeArgs = saved
-  }
 
   private def location(implicit ctx: Context) = "" // i"in ${ctx.typerState.stateChainStr}" // use for debugging
 
@@ -266,7 +275,7 @@ trait ConstraintHandling {
       case tp: OrType  => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
       case _ => true
     }
-    def isOrType(tp: Type): Boolean = tp.stripTypeVar.dealias match {
+    def isOrType(tp: Type): Boolean = tp.dealias match {
       case tp: OrType => true
       case tp: RefinedOrRecType => isOrType(tp.parent)
       case AndType(tp1, tp2) => isOrType(tp1) | isOrType(tp2)

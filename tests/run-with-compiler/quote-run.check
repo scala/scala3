@@ -3,7 +3,7 @@ foo
 foo
 5
 {
-  val a: Int = 3
-  println("foo")
+  val a: scala.Int = 3
+  scala.Predef.println("foo")
   2.+(a)
 }

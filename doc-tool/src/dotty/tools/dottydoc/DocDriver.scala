@@ -22,7 +22,7 @@ class DocDriver extends Driver {
     val summary = CompilerCommand.distill(args)(ctx)
 
     ctx.setSettings(summary.sstate)
-    ctx.setSetting(ctx.settings.YkeepComments, true)
+    ctx.setSetting(ctx.settings.YcookComments, true)
     ctx.setSetting(ctx.settings.YnoInline, true)
     ctx.setProperty(ContextDoc, new ContextDottydoc)
 

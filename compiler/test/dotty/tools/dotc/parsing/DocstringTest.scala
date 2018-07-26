@@ -6,7 +6,6 @@ import ast.Trees._
 import core.Contexts.Context
 
 trait DocstringTest extends DottyTest {
-  ctx = ctx.fresh.setSetting(ctx.settings.YkeepComments, true)
 
   def checkDocString(actual: Option[String], expected: String): Unit = actual match {
     case Some(str) =>

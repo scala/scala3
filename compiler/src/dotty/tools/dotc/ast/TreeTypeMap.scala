@@ -11,7 +11,7 @@ import core.tasty.TreePickler.Hole
 
 /** A map that applies three functions and a substitution together to a tree and
  *  makes sure they are coordinated so that the result is well-typed. The functions are
- *  @param  typeMap  A function from Type to Type that gets applied to the
+ *  @param typeMap   A function from Type to Type that gets applied to the
  *                   type of every tree node and to all locally defined symbols,
  *                   followed by the substitution [substFrom := substTo].
  *  @param treeMap   A transformer that translates all encountered subtrees in
@@ -95,7 +95,7 @@ class TreeTypeMap(
           val (tmap2, vparamss1) = tmap1.transformVParamss(vparamss)
           val res = cpy.DefDef(ddef)(name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(ddef.rhs))
           res.symbol.transformAnnotations {
-            case ann: BodyAnnotation => ann.derivedAnnotation(res.rhs)
+            case ann: BodyAnnotation => ann.derivedAnnotation(transform(ann.tree))
             case ann => ann
           }
           res
@@ -126,7 +126,7 @@ class TreeTypeMap(
   override def transformStats(trees: List[tpd.Tree])(implicit ctx: Context) =
     transformDefs(trees)._2
 
-  private def transformDefs[TT <: tpd.Tree](trees: List[TT])(implicit ctx: Context): (TreeTypeMap, List[TT]) = {
+  def transformDefs[TT <: tpd.Tree](trees: List[TT])(implicit ctx: Context): (TreeTypeMap, List[TT]) = {
     val tmap = withMappedSyms(tpd.localSyms(trees))
     (tmap, tmap.transformSub(trees))
   }

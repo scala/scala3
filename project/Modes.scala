@@ -6,7 +6,6 @@ object Modes {
 
   object NonBootstrapped extends Mode
   object Bootstrapped extends Mode
-  object BootstrappedOptimised extends Mode
 
   implicit class ProjectModesOps(val project: Project) extends AnyVal {
 

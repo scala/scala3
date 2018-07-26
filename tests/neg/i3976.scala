@@ -8,7 +8,7 @@ object Test {
   A == A
   A == (B: Hoge[_])
 
-  A == B // error: cannot be compared
+  A == B // should be error: cannot be compared, needs proper typeclass drivation of `Eq` to get there.
 
   class C
 

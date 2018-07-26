@@ -332,21 +332,8 @@ object Denotations {
     }
 
     /** Handle merge conflict by throwing a `MergeError` exception */
-    private def mergeConflict(tp1: Type, tp2: Type, that: Denotation)(implicit ctx: Context): Type = {
-      def showSymbol(sym: Symbol): String = if (sym.exists) sym.showLocated else "[unknown]"
-      def showType(tp: Type) = tp match {
-        case ClassInfo(_, cls, _, _, _) => cls.showLocated
-        case bounds: TypeBounds => i"type bounds $bounds"
-        case _ => tp.show
-      }
-      val msg =
-        s"""cannot merge
-           |  ${showSymbol(this.symbol)} of type ${showType(tp1)}  and
-           |  ${showSymbol(that.symbol)} of type ${showType(tp2)}
-           """
-      if (true) throw new MergeError(msg, tp1, tp2)
-      else throw new Error(msg) // flip condition for debugging
-    }
+    private def mergeConflict(tp1: Type, tp2: Type, that: Denotation)(implicit ctx: Context): Type =
+      throw new MergeError(this.symbol, that.symbol, tp1, tp2, NoPrefix)
 
     /** Merge parameter names of lambda types. If names in corresponding positions match, keep them,
      *  otherwise generate new synthetic names.
@@ -403,33 +390,48 @@ object Denotations {
               case tp2: TypeBounds if tp2 contains tp1 => tp1
               case _ => mergeConflict(tp1, tp2, that)
             }
-          case tp1: MethodOrPoly =>
+
+          // Two remedial strategies:
+          //
+          //  1. Prefer method types over poly types. This is necessary to handle
+          //     overloaded definitions like the following
+          //
+          //        def ++ [B >: A](xs: C[B]): D[B]
+          //        def ++ (xs: C[A]): D[A]
+          //
+          //     (Code like this is found in the collection strawman)
+          //
+          // 2. In the case of two method types or two polytypes with matching
+          //    parameters and implicit status, merge corresponding parameter
+          //    and result types.
+          case tp1: MethodType =>
             tp2 match {
-              case tp2: MethodOrPoly =>
-                // Two remedial strategies:
-                //
-                //  1. Prefer method types over poly types. This is necessary to handle
-                //     overloaded definitions like the following
-                //
-                //        def ++ [B >: A](xs: C[B]): D[B]
-                //        def ++ (xs: C[A]): D[A]
-                //
-                //     (Code like this is found in the collection strawman)
-                //
-                // 2. In the case of two method types or two polytypes with matching
-                //    parameters and implicit status, merge corresppnding parameter
-                //    and result types.
-                if (tp1.isInstanceOf[PolyType] && tp2.isInstanceOf[MethodType]) tp2
-                else if (tp2.isInstanceOf[PolyType] && tp1.isInstanceOf[MethodType]) tp1
-                else if (ctx.typeComparer.matchingParams(tp1, tp2) &&
-                         tp1.isImplicitMethod == tp2.isImplicitMethod)
-                  tp1.derivedLambdaType(
-                    mergeParamNames(tp1, tp2), tp1.paramInfos,
-                    infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
-                else mergeConflict(tp1, tp2, that)
+              case tp2: PolyType =>
+                tp1
+              case tp2: MethodType if ctx.typeComparer.matchingMethodParams(tp1, tp2) &&
+                  tp1.isImplicitMethod == tp2.isImplicitMethod =>
+                tp1.derivedLambdaType(
+                  mergeParamNames(tp1, tp2),
+                  tp1.paramInfos,
+                  infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
               case _ =>
                 mergeConflict(tp1, tp2, that)
             }
+          case tp1: PolyType =>
+            tp2 match {
+              case tp2: MethodType =>
+                tp2
+              case tp2: PolyType if ctx.typeComparer.matchingPolyParams(tp1, tp2) =>
+                tp1.derivedLambdaType(
+                  mergeParamNames(tp1, tp2),
+                  tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
+                    infoMeet(p1,  p2.subst(tp2, tp1)).bounds
+                  },
+                  infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
+              case _ =>
+                mergeConflict(tp1, tp2, that)
+            }
+
           case _ =>
             tp1 & tp2
         }
@@ -488,7 +490,9 @@ object Denotations {
          *   4. The access boundary of sym2 is properly contained in the access
          *      boundary of sym1. For protected access, we count the enclosing
          *      package as access boundary.
-         *   5. sym1 a method but sym2 is not.
+         *   5. sym1 is a method but sym2 is not.
+         *   6. sym1 is a non-polymorphic method but sym2 is a polymorphic method.
+         *      (to be consistent with infoMeet, see #4819)
          *  The aim of these criteria is to give some disambiguation on access which
          *   - does not depend on textual order or other arbitrary choices
          *   - minimizes raising of doubleDef errors
@@ -501,7 +505,9 @@ object Denotations {
               (!sym2.isAsConcrete(sym1) ||
                 precedes(sym1.owner, sym2.owner) ||
                 accessBoundary(sym2).isProperlyContainedIn(accessBoundary(sym1)) ||
+                sym2.is(Bridge) && !sym1.is(Bridge) ||
                 sym1.is(Method) && !sym2.is(Method)) ||
+                sym1.info.isInstanceOf[MethodType] && sym2.info.isInstanceOf[PolyType] ||
               sym1.info.isErroneous)
 
         /** Sym preference provided types also override */
@@ -537,8 +543,7 @@ object Denotations {
                   else if (pre.widen.classSymbol.is(Scala2x) || ctx.scala2Mode)
                     info1 // follow Scala2 linearization -
                   // compare with way merge is performed in SymDenotation#computeMembersNamed
-                  else
-                    throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}", ex.tp1, ex.tp2)
+                  else throw new MergeError(ex.sym1, ex.sym2, ex.tp1, ex.tp2, pre)
               }
             new JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor)
           }
@@ -579,13 +584,27 @@ object Denotations {
             case tp2: TypeBounds if tp2 contains tp1 => tp2
             case _ => mergeConflict(tp1, tp2, that)
           }
-        case tp1: MethodOrPoly =>
+        case tp1: MethodType =>
           tp2 match {
-            case tp2: MethodOrPoly
-            if ctx.typeComparer.matchingParams(tp1, tp2) &&
+            case tp2: MethodType
+            if ctx.typeComparer.matchingMethodParams(tp1, tp2) &&
                tp1.isImplicitMethod == tp2.isImplicitMethod =>
               tp1.derivedLambdaType(
-                mergeParamNames(tp1, tp2), tp1.paramInfos,
+                mergeParamNames(tp1, tp2),
+                tp1.paramInfos,
+                tp1.resultType | tp2.resultType.subst(tp2, tp1))
+            case _ =>
+              mergeConflict(tp1, tp2, that)
+          }
+        case tp1: PolyType =>
+          tp2 match {
+            case tp2: PolyType
+            if ctx.typeComparer.matchingPolyParams(tp1, tp2) =>
+              tp1.derivedLambdaType(
+                mergeParamNames(tp1, tp2),
+                tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
+                  (p1 | p2.subst(tp2, tp1)).bounds
+                },
                 tp1.resultType | tp2.resultType.subst(tp2, tp1))
             case _ =>
               mergeConflict(tp1, tp2, that)
@@ -1136,21 +1155,15 @@ object Denotations {
   def doubleDefError(denot1: Denotation, denot2: Denotation, pre: Type = NoPrefix)(implicit ctx: Context): Nothing = {
     val sym1 = denot1.symbol
     val sym2 = denot2.symbol
-    def fromWhere = if (pre == NoPrefix) "" else i"\nwhen seen as members of $pre"
-    val msg =
-      if (denot1.isTerm)
-        i"""cannot merge
-           |  $sym1: ${sym1.info}  and
-           |  $sym2: ${sym2.info};
-           |they are both defined in ${sym1.owner} but have matching signatures
-           |  ${denot1.info} and
-           |  ${denot2.info}$fromWhere"""
-      else
-        i"""cannot merge
-           |  $sym1 ${denot1.info}
-           |  $sym2 ${denot2.info}
-           |they are conflicting definitions$fromWhere"""
-    throw new MergeError(msg, denot2.info, denot2.info)
+    if (denot1.isTerm)
+      throw new MergeError(sym1, sym2, sym1.info, sym2.info, pre) {
+        override def addendum(implicit ctx: Context) =
+          i"""
+             |they are both defined in ${sym1.owner} but have matching signatures
+             |  ${denot1.info} and
+             |  ${denot2.info}${super.addendum}"""
+        }
+    else throw new MergeError(sym1, sym2, denot1.info, denot2.info, pre)
   }
 
   // --- Overloaded denotations and predenotations -------------------------------------------------

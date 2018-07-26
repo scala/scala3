@@ -232,7 +232,7 @@ object PickleBuffer {
       EXPANDEDNAME -> Scala2ExpandedName,
       IMPLCLASS -> (Scala2PreSuper, ImplClass),
       SPECIALIZED -> Specialized,
-      VBRIDGE -> VBridge,
+      VBRIDGE -> EmptyFlags,
       VARARGS -> JavaVarargs,
       ENUM -> Enum)
 

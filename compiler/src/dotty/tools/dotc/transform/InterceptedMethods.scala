@@ -1,31 +1,15 @@
 package dotty.tools.dotc
 package transform
 
-import MegaPhase._
-import core.Denotations._
-import core.SymDenotations._
-import core.Contexts._
-import core.Types._
-import ast.Trees._
-import ast.tpd.{Apply, Tree, cpy}
-import dotty.tools.dotc.ast.tpd
-import scala.collection.mutable
-import dotty.tools.dotc._
-import core._
-import Contexts._
-import Symbols._
-import Decorators._
-import NameOps._
 import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.{untpd, tpd}
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Types.MethodType
-import dotty.tools.dotc.core.Names.{ Name, TermName }
-import scala.collection.mutable.ListBuffer
-import dotty.tools.dotc.core.Denotations.SingleDenotation
-import dotty.tools.dotc.core.SymDenotations.SymDenotation
-import StdNames._
-import Phases.Phase
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Names.TermName
+import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 object InterceptedMethods {
   val name = "intercepted"
@@ -45,9 +29,19 @@ class InterceptedMethods extends MiniPhase {
   override def phaseName: String = InterceptedMethods.name
 
   // this should be removed if we have guarantee that ## will get Apply node
-  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): Tree = {
-    if (tree.symbol.isTerm && (defn.Any_## eq tree.symbol.asTerm)) {
-      val rewrite = poundPoundValue(tree.qualifier)
+  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): Tree =
+    transformRefTree(tree)
+
+  override def transformIdent(tree: tpd.Ident)(implicit ctx: Context): Tree =
+    transformRefTree(tree)
+
+  private def transformRefTree(tree: RefTree)(implicit ctx: Context): Tree = {
+    if (tree.symbol.isTerm && (defn.Any_## eq tree.symbol)) {
+      val qual = tree match {
+        case id: Ident => tpd.desugarIdentPrefix(id)
+        case sel: Select => sel.qualifier
+      }
+      val rewrite = poundPoundValue(qual)
       ctx.log(s"$phaseName rewrote $tree to $rewrite")
       rewrite
     }

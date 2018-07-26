@@ -23,6 +23,12 @@ object Reporter {
           simple.report(m)
       }
     }
+
+  /** A reporter that ignores reports, and doesn't record errors */
+  @sharable object NoReporter extends Reporter {
+    def doReport(m: MessageContainer)(implicit ctx: Context) = ()
+    override def report(m: MessageContainer)(implicit ctx: Context): Unit = ()
+  }
 }
 
 import Reporter._
@@ -157,8 +163,10 @@ abstract class Reporter extends interfaces.ReporterResult {
     finally incompleteHandler = saved
   }
 
-  var errorCount = 0
-  var warningCount = 0
+  private[this] var _errorCount = 0
+  private[this] var _warningCount = 0
+  def errorCount = _errorCount
+  def warningCount = _warningCount
   def hasErrors = errorCount > 0
   def hasWarnings = warningCount > 0
   private[this] var errors: List[Error] = Nil
@@ -185,10 +193,10 @@ abstract class Reporter extends interfaces.ReporterResult {
       doReport(m)(ctx.addMode(Mode.Printing))
       m match {
         case m: ConditionalWarning if !m.enablingOption.value => unreportedWarnings(m.enablingOption.name) += 1
-        case m: Warning => warningCount += 1
+        case m: Warning => _warningCount += 1
         case m: Error =>
           errors = m :: errors
-          errorCount += 1
+          _errorCount += 1
         case m: Info => // nothing to do here
         // match error if d is something else
       }

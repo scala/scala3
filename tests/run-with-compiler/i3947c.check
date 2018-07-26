@@ -1,9 +1,9 @@
 
-classOf[scala.runtime.Null$].getCanonicalName()
+scala.Predef.classOf[runtime.Null].getCanonicalName()
 scala.runtime.Null$
 
-classOf[scala.runtime.Nothing$].getCanonicalName()
+scala.Predef.classOf[runtime.Nothing].getCanonicalName()
 scala.runtime.Nothing$
 
-classOf[String].getCanonicalName()
+scala.Predef.classOf[lang.String].getCanonicalName()
 java.lang.String

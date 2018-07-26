@@ -26,22 +26,11 @@ class FromTastyTests extends ParallelTesting {
     // > dotc -Ythrough-tasty -Ycheck:all <source>
 
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
-    val (step1, step2, step3) = compileTastyInDir("tests/pos", defaultOptions,
-      blacklist = Set(
-        // Wrong number of arguments (only on bootstrapped)
-        "i3130b.scala",
-
-        // Missing position
-        "collections_1.scala",
-
-        // MatchError in SymDenotation.sourceModule on a ThisType
-        "t3612.scala",
-      )
-    )
-    step1.checkCompile() // Compile all files to generate the class files with tasty
-    step2.checkCompile() // Compile from tasty
-    step3.checkCompile() // Decompile from tasty
-    (step1 + step2 + step3).delete()
+    compileTastyInDir("tests/pos", defaultOptions,
+      fromTastyFilter = FileFilter.exclude(TestSources.posFromTastyBlacklisted),
+      decompilationFilter = FileFilter.exclude(TestSources.posDecompilationBlacklisted),
+      recompilationFilter = FileFilter.include(TestSources.posRecompilationWhitelist)
+    ).checkCompile()
   }
 
   @Test def runTestFromTasty: Unit = {
@@ -51,21 +40,11 @@ class FromTastyTests extends ParallelTesting {
     // > dotr Test
 
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
-    val (step1, step2, step3) = compileTastyInDir("tests/run", defaultOptions,
-       blacklist = Set(
-         // Closure type miss match
-         "eff-dependent.scala",
-       )
-    )
-    step1.checkCompile() // Compile all files to generate the class files with tasty
-    step2.checkRuns() // Compile from tasty and run the result
-    step3.checkCompile() // Decompile from tasty
-    (step1 + step2 + step3).delete()
-  }
-
-  private implicit class tastyCompilationTuples(tup: (CompilationTest, CompilationTest)) {
-    def +(that: (CompilationTest, CompilationTest)): (CompilationTest, CompilationTest) =
-      (tup._1 + that._1, tup._2 + that._2)
+    compileTastyInDir("tests/run", defaultOptions,
+      fromTastyFilter = FileFilter.exclude(TestSources.runFromTastyBlacklisted),
+      decompilationFilter = FileFilter.exclude(TestSources.runDecompilationBlacklisted),
+      recompilationFilter = FileFilter.include(TestSources.runRecompilationWhitelist)
+    ).checkRuns()
   }
 }
 

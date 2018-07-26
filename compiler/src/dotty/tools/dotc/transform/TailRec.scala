@@ -6,8 +6,6 @@ import ast.{TreeTypeMap, tpd}
 import core._
 import Contexts.Context
 import Decorators._
-import DenotTransformers.IdentityDenotTransformer
-import Denotations.SingleDenotation
 import Symbols._
 import Types._
 import NameKinds.TailLabelName
@@ -136,9 +134,8 @@ class TailRec extends MiniPhase with FullParameterization {
                 val origVParams = tree.vparamss.flatten map (_.symbol)
                 new TreeTypeMap(
                   typeMap = identity(_)
-                    .substDealias(origTParams, trefs)
-                    .subst(origVParams, vrefss.flatten.map(_.tpe)),
-                    oldOwners = origMeth :: Nil,
+                    .subst(origTParams ++ origVParams, trefs ++ vrefss.flatten.map(_.tpe)),
+                  oldOwners = origMeth :: Nil,
                   newOwners = label :: Nil
                 ).transform(rhsSemiTransformed)
               })
@@ -160,9 +157,6 @@ class TailRec extends MiniPhase with FullParameterization {
         })
       case d: DefDef if d.symbol.hasAnnotation(defn.TailrecAnnot) || methodsWithInnerAnnots.contains(d.symbol) =>
         ctx.error(TailrecNotApplicable(sym), sym.pos)
-        d
-      case d if d.symbol.hasAnnotation(defn.TailrecAnnot) || methodsWithInnerAnnots.contains(d.symbol) =>
-        ctx.error("TailRec optimisation not applicable, not a method", sym.pos)
         d
       case _ => tree
     }

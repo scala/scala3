@@ -73,35 +73,6 @@ trait Substituters { this: Context =>
     }
   }
 
-  final def substDealias(tp: Type, from: List[Symbol], to: List[Type], theMap: SubstDealiasMap): Type = {
-    tp match {
-      case tp: NamedType =>
-        val sym = tp.symbol
-        var fs = from
-        var ts = to
-        while (fs.nonEmpty) {
-          if (fs.head eq sym) return ts.head
-          fs = fs.tail
-          ts = ts.tail
-        }
-        if (sym.isStatic && !existsStatic(from) || (tp.prefix `eq` NoPrefix)) tp
-        else {
-          tp.info match {
-            case TypeAlias(alias) =>
-              val alias1 = substDealias(alias, from, to, theMap)
-              if (alias1 ne alias) return alias1
-            case _ =>
-          }
-          tp.derivedSelect(substDealias(tp.prefix, from, to, theMap))
-        }
-      case _: ThisType | _: BoundType =>
-        tp
-      case _ =>
-        (if (theMap != null) theMap else new SubstDealiasMap(from, to))
-          .mapOver(tp)
-    }
-  }
-
   final def substSym(tp: Type, from: List[Symbol], to: List[Symbol], theMap: SubstSymMap): Type =
     tp match {
       case tp: NamedType =>
@@ -208,10 +179,6 @@ trait Substituters { this: Context =>
 
   final class SubstMap(from: List[Symbol], to: List[Type]) extends DeepTypeMap {
     def apply(tp: Type): Type = subst(tp, from, to, this)
-  }
-
-  final class SubstDealiasMap(from: List[Symbol], to: List[Type]) extends DeepTypeMap {
-    override def apply(tp: Type): Type = substDealias(tp, from, to, this)
   }
 
   final class SubstSymMap(from: List[Symbol], to: List[Symbol]) extends DeepTypeMap {

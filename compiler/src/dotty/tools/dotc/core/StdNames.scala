@@ -9,7 +9,6 @@ import Symbols._
 import Contexts._
 import Decorators.PreNamedString
 import util.NameTransformer
-import scala.collection.breakOut
 
 object StdNames {
 
@@ -487,6 +486,7 @@ object StdNames {
     val productElement: N       = "productElement"
     val productIterator: N      = "productIterator"
     val productPrefix: N        = "productPrefix"
+    val raw_ : N                = "raw"
     val readResolve: N          = "readResolve"
     val reflect : N             = "reflect"
     val reflectiveSelectable: N = "reflectiveSelectable"
@@ -497,6 +497,7 @@ object StdNames {
     val runtime: N              = "runtime"
     val runtimeClass: N         = "runtimeClass"
     val runtimeMirror: N        = "runtimeMirror"
+    val s: N                    = "s"
     val sameElements: N         = "sameElements"
     val scala_ : N              = "scala"
     val scalaShadowing : N      = "scalaShadowing"
@@ -687,7 +688,7 @@ object StdNames {
   class ScalaTermNames extends ScalaNames[TermName] {
     protected implicit def fromString(s: String): TermName = termName(s)
 
-    @switch def syntheticParamName(i: Int): TermName = i match {
+    def syntheticParamName(i: Int): TermName = (i: @switch) match {
       case 0  => x_0
       case 1  => x_1
       case 2  => x_2
@@ -701,7 +702,7 @@ object StdNames {
       case _  => termName("x$" + i)
     }
 
-    @switch def productAccessorName(j: Int): TermName = j match {
+    def productAccessorName(j: Int): TermName = (j: @switch) match {
       case 1  => nme._1
       case 2  => nme._2
       case 3  => nme._3

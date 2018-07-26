@@ -1,0 +1,13 @@
+CaseNums
+ok
+ok
+ok - unchecked error
+None
+Some((SuccClass(ZeroObj),SuccClass(ZeroObj)))
+
+IntNums
+ok
+ok
+ok - unchecked error
+None
+Some((1,1))

@@ -1,10 +1,11 @@
 package dotty.tools
 package dotc
 
-import dotty.tools.dotc.core.Types.Type // Do not remove me #3383
+import core.Types.Type // Do not remove me #3383
 import util.SourceFile
 import ast.{tpd, untpd}
-import dotty.tools.dotc.ast.tpd.{ Tree, TreeTraverser }
+import tpd.{ Tree, TreeTraverser }
+import typer.PrepareTransparent.InlineAccessors
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
@@ -27,13 +28,16 @@ class CompilationUnit(val source: SourceFile) {
    *  is used in phase ReifyQuotes in order to avoid traversing a quote-less tree.
    */
   var containsQuotesOrSplices: Boolean = false
+
+  /** A structure containing a temporary map for generating inline accessors */
+  val inlineAccessors = new InlineAccessors
 }
 
 object CompilationUnit {
 
   /** Make a compilation unit for top class `clsd` with the contends of the `unpickled` */
   def mkCompilationUnit(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit =
-    mkCompilationUnit(new SourceFile(clsd.symbol.associatedFile, Seq()), unpickled, forceTrees)
+    mkCompilationUnit(SourceFile(clsd.symbol.associatedFile, Array.empty), unpickled, forceTrees)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
   def mkCompilationUnit(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit = {

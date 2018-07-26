@@ -9,7 +9,6 @@ import dotty.tools.dotc.transform.MegaPhase._
 import ValueClasses._
 import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.{ mutable, immutable }
-import mutable.ListBuffer
 import core._
 import dotty.tools.dotc.core.Phases.Phase
 import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
@@ -22,7 +21,7 @@ import Decorators._
 import SymUtils._
 
 /**
- * Perform Step 1 in the inline classes SIP: Creates extension methods for all
+ * Perform Step 1 in the transparent classes SIP: Creates extension methods for all
  * methods in a value class, except parameter or super accessors, or constructors.
  *
  * Additionally, for a value class V, let U be the underlying type after erasure. We add
@@ -36,6 +35,9 @@ import SymUtils._
  *
  * Finally, if the constructor of a value class is private pr protected
  * it is widened to public.
+ *
+ * Also, drop the Local flag from all private[this] and protected[this] members
+ * that will be moved to the companion object.
  */
 class ExtensionMethods extends MiniPhase with DenotTransformer with FullParameterization { thisPhase =>
 
@@ -45,7 +47,10 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
   /** the following two members override abstract members in Transform */
   override def phaseName: String = ExtensionMethods.name
 
-  override def runsAfter = Set(ElimRepeated.name)
+  override def runsAfter = Set(
+    ElimRepeated.name,
+    ProtectedAccessors.name,  // protected accessors cannot handle code that is moved from class to companion object
+  )
 
   override def runsAfterGroupsOf = Set(FirstTransform.name) // need companion objects to exist
 
@@ -59,66 +64,58 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
           val decls1 = cinfo.decls.cloneScope
           val moduleSym = moduleClassSym.symbol.asClass
 
-          var newSuperClass: Type = null
-
-          ctx.atPhase(thisPhase.next) { implicit ctx =>
-            // In Scala 2, extension methods are added before pickling so we should
-            // not generate them again.
-            if (!(valueClass is Scala2x)) ctx.atPhase(thisPhase) { implicit ctx =>
-              for (decl <- valueClass.classInfo.decls) {
-                if (isMethodWithExtension(decl)) {
-                  val meth = createExtensionMethod(decl, moduleClassSym.symbol)
-                  decls1.enter(meth)
-                  // Workaround #1895: force denotation of `meth` to be
-                  // at phase where `meth` is entered into the decls of a class
-                  meth.denot(ctx.withPhase(thisPhase.next))
-                }
-              }
-            }
-
-            val underlying = valueErasure(underlyingOfValueClass(valueClass))
-            val evt = ErasedValueType(valueClass.typeRef, underlying)
-            val u2evtSym = ctx.newSymbol(moduleSym, nme.U2EVT, Synthetic | Method,
-              MethodType(List(nme.x_0), List(underlying), evt))
-            val evt2uSym = ctx.newSymbol(moduleSym, nme.EVT2U, Synthetic | Method,
-              MethodType(List(nme.x_0), List(evt), underlying))
-
-            val defn = ctx.definitions
-
-            val underlyingCls = underlying.classSymbol
-            val underlyingClsName =
-              if (underlyingCls.isNumericValueClass || underlyingCls == defn.BooleanClass) underlyingCls.name
-              else nme.Object
-
-            val syp = ctx.requiredClass(s"dotty.runtime.vc.VC${underlyingClsName}Companion").asClass
-
-            newSuperClass = tpd.ref(syp).select(nme.CONSTRUCTOR).appliedToType(valueClass.typeRef).tpe.resultType
-
-            decls1.enter(u2evtSym)
-            decls1.enter(evt2uSym)
+          def enterInModuleClass(sym: Symbol): Unit = {
+            decls1.enter(sym)
+            // This is tricky: in this denotation transformer, we transform
+            // companion modules of value classes by adding methods to them.
+            // Running the transformer will create these methods, but they're
+            // only valid once it has finished running. This means we cannot use
+            // `ctx.withPhase(thisPhase.next)` here without potentially running
+            // into cycles. Instead, we manually set their validity after having
+            // created them to match the validity of the owner transformed
+            // denotation.
+            sym.validFor = thisPhase.validFor
           }
 
-          // Add the extension methods, the cast methods u2evt$ and evt2u$, and a VC*Companion superclass
-          moduleClassSym.copySymDenotation(info =
-            cinfo.derivedClassInfo(
-              // FIXME: use of VC*Companion superclasses is disabled until the conflicts with SyntheticMethods are solved.
-              //classParents = List(newSuperClass)
-              decls = decls1))
+          // Create extension methods, except if the class comes from Scala 2
+          // because it adds extension methods before pickling.
+          if (!(valueClass.is(Scala2x)))
+            for (decl <- valueClass.classInfo.decls)
+              if (isMethodWithExtension(decl))
+                enterInModuleClass(createExtensionMethod(decl, moduleClassSym.symbol))
+
+          // Create synthetic methods to cast values between the underlying type
+          // and the ErasedValueType. These methods are removed in ElimErasedValueType.
+          val underlying = valueErasure(underlyingOfValueClass(valueClass))
+          val evt = ErasedValueType(valueClass.typeRef, underlying)
+          val u2evtSym = ctx.newSymbol(moduleSym, nme.U2EVT, Synthetic | Method,
+            MethodType(List(nme.x_0), List(underlying), evt))
+          val evt2uSym = ctx.newSymbol(moduleSym, nme.EVT2U, Synthetic | Method,
+            MethodType(List(nme.x_0), List(evt), underlying))
+          enterInModuleClass(u2evtSym)
+          enterInModuleClass(evt2uSym)
+
+          moduleClassSym.copySymDenotation(info = cinfo.derivedClassInfo(decls = decls1))
         case _ =>
           moduleClassSym
       }
     case ref: SymDenotation =>
+      var ref1 = ref
       if (isMethodWithExtension(ref.symbol) && ref.hasAnnotation(defn.TailrecAnnot)) {
-        val ref1 = ref.copySymDenotation()
+        ref1 = ref.copySymDenotation()
         ref1.removeAnnotation(defn.TailrecAnnot)
-        ref1
       }
       else if (ref.isConstructor && isDerivedValueClass(ref.owner) && ref.is(AccessFlags)) {
-        val ref1 = ref.copySymDenotation()
+        ref1 = ref.copySymDenotation()
         ref1.resetFlag(AccessFlags)
-        ref1
       }
-      else ref
+      // Drop the Local flag from all private[this] and protected[this] members
+      // that will be moved to the companion object.
+      if (ref.is(Local) && isDerivedValueClass(ref.owner)) {
+        if (ref1 ne ref) ref1.resetFlag(Local)
+        else ref1 = ref1.copySymDenotation(initFlags = ref1.flags &~ Local)
+      }
+      ref1
     case _ =>
       ref
   }
@@ -168,13 +165,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       assert(staticClass.exists, s"$origClass lacks companion, ${origClass.owner.definedPeriodsString} ${origClass.owner.info.decls} ${origClass.owner.info.decls}")
       val extensionMeth = extensionMethod(origMeth)
       ctx.log(s"Value class $origClass spawns extension method.\n  Old: ${origMeth.showDcl}\n  New: ${extensionMeth.showDcl}")
-      val store: ListBuffer[Tree] = extensionDefs.get(staticClass) match {
-        case Some(x) => x
-        case None =>
-          val newC = new ListBuffer[Tree]()
-          extensionDefs(staticClass) = newC
-          newC
-      }
+      val store = extensionDefs.getOrElseUpdate(staticClass, new mutable.ListBuffer[Tree])
       store += fullyParameterizedDef(extensionMeth, tree)
       cpy.DefDef(tree)(rhs = forwarder(extensionMeth, tree))
     } else tree

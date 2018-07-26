@@ -9,9 +9,10 @@ import ast.untpd
 import collection.{mutable, immutable}
 import TypeErasure._
 import ValueClasses.isDerivedValueClass
+import ShortcutImplicits._
 
 /** A helper class for generating bridge methods in class `root`. */
-class Bridges(root: ClassSymbol)(implicit ctx: Context) {
+class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Context) {
   import ast.tpd._
 
   assert(ctx.phase == ctx.erasurePhase.next)
@@ -26,7 +27,11 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
      *  only in classes, never in traits.
      */
     override def parents = Array(root.superClass)
-    override def exclude(sym: Symbol) = !sym.is(Method) || super.exclude(sym)
+    
+    override def exclude(sym: Symbol) =
+      !sym.is(MethodOrModule) ||
+      isImplicitShortcut(sym) ||
+      super.exclude(sym)
   }
 
   //val site = root.thisType
@@ -81,8 +86,7 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
       owner = root,
       flags = (member.flags | Method | Bridge | Artifact) &~
         (Accessor | ParamAccessor | CaseAccessor | Deferred | Lazy | Module),
-      coord = bridgePosFor(member))
-      .enteredAfter(ctx.erasurePhase.asInstanceOf[DenotTransformer]).asTerm
+      coord = bridgePosFor(member)).enteredAfter(thisPhase).asTerm
 
     ctx.debuglog(
       i"""generating bridge from ${other.showLocated}: ${other.info}
@@ -97,8 +101,13 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
       toBeRemoved += other
     }
 
-    bridges +=
-      DefDef(bridge, This(root).select(member).appliedToArgss(_)).withPos(bridge.pos)
+    def bridgeRhs(argss: List[List[Tree]]) = {
+      val ref = This(root).select(member)
+      if (member.info.isParameterless) ref // can happen if `member` is a module
+      else ref.appliedToArgss(argss)
+    }
+
+    bridges += DefDef(bridge, bridgeRhs(_).withPos(bridge.pos))
   }
 
   /** Add all necessary bridges to template statements `stats`, and remove at the same
@@ -106,8 +115,19 @@ class Bridges(root: ClassSymbol)(implicit ctx: Context) {
    */
   def add(stats: List[untpd.Tree]): List[untpd.Tree] = {
     val opc = new BridgesCursor()(preErasureCtx)
+    val ectx = ctx.withPhase(thisPhase)
     while (opc.hasNext) {
-      if (!opc.overriding.is(Deferred)) addBridgeIfNeeded(opc.overriding, opc.overridden)
+      if (!opc.overriding.is(Deferred)) {
+        addBridgeIfNeeded(opc.overriding, opc.overridden)
+        
+        if (needsImplicitShortcut(opc.overriding)(ectx))
+          // implicit shortcuts do not show up in the Bridges cursor, since they
+          // are created only when referenced. Therefore we need to generate a bridge
+          // for them specifically, if one is needed for the original methods.
+          addBridgeIfNeeded(
+            shortcutMethod(opc.overriding, thisPhase)(ectx),
+            shortcutMethod(opc.overridden, thisPhase)(ectx))
+      }
       opc.next()
     }
     if (bridges.isEmpty) stats

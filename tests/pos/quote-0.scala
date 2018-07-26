@@ -2,18 +2,17 @@ import scala.quoted._
 
 import dotty.tools.dotc.quoted.Toolbox._
 
-
 object Macros {
 
-  inline def assert(expr: => Boolean): Unit =
-    ~ assertImpl('(expr))
+  transparent def assert(expr: => Boolean): Unit =
+    ~assertImpl('(expr))
 
   def assertImpl(expr: Expr[Boolean]) =
     '{ if !(~expr) then throw new AssertionError(s"failed assertion: ${~showExpr(expr)}") }
 
   def showExpr[T](expr: Expr[T]): Expr[String] = expr.toString.toExpr
 
-  inline def power(inline n: Int, x: Double) = ~powerCode(n, '(x))
+  transparent def power(transparent n: Int, x: Double) = ~powerCode(n, '(x))
 
   def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
     if (n == 0) '(1.0)

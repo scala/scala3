@@ -1,0 +1,11 @@
+/** Decompiled from out/posTestFromTasty/pos/simpleExtractors-2/Foo.class */
+class Foo() {
+  def bar(x: scala.Any): scala.Unit = x match {
+    case scala.Some(scala.Some(i: scala.Int)) =>
+      scala.Predef.println(i)
+    case scala.Some(s @ scala.Some(i)) =>
+      scala.Predef.println(s)
+    case s @ scala.Some(r @ scala.Some(i)) =>
+      scala.Predef.println(s)
+  }
+}

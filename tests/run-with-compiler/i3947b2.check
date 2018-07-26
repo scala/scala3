@@ -1,9 +1,9 @@
 
-classOf[Short].getCanonicalName()
+scala.Predef.classOf[scala.Short].getCanonicalName()
 short
 
-classOf[Int].getCanonicalName()
+scala.Predef.classOf[scala.Int].getCanonicalName()
 int
 
-classOf[Long].getCanonicalName()
+scala.Predef.classOf[scala.Long].getCanonicalName()
 long

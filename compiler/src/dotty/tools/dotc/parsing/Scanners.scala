@@ -172,7 +172,7 @@ object Scanners {
   }
 
   class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
-    val keepComments = ctx.settings.YkeepComments.value
+    val keepComments = !ctx.settings.YdropComments.value
 
     /** All doc comments kept by their end position in a `Map` */
     private[this] var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
@@ -198,7 +198,9 @@ object Scanners {
 
     private def handleMigration(keyword: Token): Token =
       if (!isScala2Mode) keyword
-      else if (keyword == INLINE) treatAsIdent()
+      else if (  keyword == ENUM
+              || keyword == ERASED
+              || keyword == TRANSPARENT) treatAsIdent()
       else keyword
 
 

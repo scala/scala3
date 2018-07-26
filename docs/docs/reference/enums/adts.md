@@ -64,7 +64,7 @@ As all other enums, ADTs can define methods. For instance, here is `Option` agai
 
 ```scala
 enum Option[+T] {
-  case Some(x: T) extends Option[T]
+  case Some(x: T)
   case None
 
   def isDefined: Boolean = this match {

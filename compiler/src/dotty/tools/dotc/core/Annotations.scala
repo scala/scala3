@@ -34,6 +34,9 @@ object Annotations {
     def isEvaluated: Boolean = true
 
     def ensureCompleted(implicit ctx: Context): Unit = tree
+
+    def sameAnnotation(that: Annotation)(implicit ctx: Context) =
+      symbol == that.symbol && tree.sameTree(that.tree)
   }
 
   case class ConcreteAnnotation(t: Tree) extends Annotation {
@@ -54,7 +57,7 @@ object Annotations {
   }
 
   /** An annotation indicating the body of a right-hand side,
-   *  typically of an inline method. Treated specially in
+   *  typically of a transparent method. Treated specially in
    *  pickling/unpickling and TypeTreeMaps
    */
   abstract class BodyAnnotation extends Annotation {

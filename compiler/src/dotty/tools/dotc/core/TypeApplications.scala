@@ -168,7 +168,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  any type parameter that is-rebound by the refinement.
    */
   final def typeParams(implicit ctx: Context): List[TypeParamInfo] = /*>|>*/ track("typeParams") /*<|<*/ {
-    self match {
+    try self match {
       case self: TypeRef =>
         val tsym = self.symbol
         if (tsym.isClass) tsym.typeParams
@@ -193,6 +193,9 @@ class TypeApplications(val self: Type) extends AnyVal {
       case _ =>
         Nil
     }
+    catch {
+      case ex: Throwable => handleRecursive("type parameters of", self.show, ex)
+    }
   }
 
   /** If `self` is a higher-kinded type, its type parameters, otherwise Nil */
@@ -210,9 +213,9 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Is self type bounded by a type lambda or AnyKind? */
   def isLambdaSub(implicit ctx: Context): Boolean = hkResult.exists
 
-  /** Is self type of kind != "*"? */
-  def hasHigherKind(implicit ctx: Context): Boolean =
-    typeParams.nonEmpty || self.isRef(defn.AnyKindClass)
+  /** Is self type of kind "*"? */
+  def hasSimpleKind(implicit ctx: Context): Boolean =
+    typeParams.isEmpty && !self.hasAnyKind
 
   /** If self type is higher-kinded, its result type, otherwise NoType.
    *  Note: The hkResult of an any-kinded type is again AnyKind.

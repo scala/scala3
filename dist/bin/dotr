@@ -31,6 +31,10 @@ addJvmOptions () {
   jvm_options+=("$1")
 }
 
+addDotcOptions () {
+  java_options+=("$1")
+}
+
 source "$PROG_HOME/bin/common"
 
 declare -a residual_args
@@ -39,6 +43,12 @@ execute_run=false
 with_compiler=false
 class_path_count=0
 CLASS_PATH=""
+
+# Little hack to check if all arguments are options
+all_params="$*"
+truncated_params="${*#-}"
+# options_indicator != 0 if at least one parameter is not an option
+options_indicator=$(( ${#all_params} - ${#truncated_params} - $# ))
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -65,7 +75,8 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -J*)
-      addJvmOptions "-${1:2}"
+      addJvmOptions "${1:2}"
+      addDotcOptions "${1}"
       shift ;;
     *)
       residual_args+=("$1")
@@ -74,13 +85,12 @@ while [[ $# -gt 0 ]]; do
 
   esac
 done
-
-if [ $execute_repl == true ] || ([ $execute_run == false ] && [ ${#residual_args[@]} -eq 0 ]); then
+if [ $execute_repl == true ] || ([ $execute_run == false ] && [ $options_indicator == 0 ]); then
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi
   echo "Starting dotty REPL..."
-  eval "\"$PROG_HOME/bin/dotc\" $cp_arg -repl ${residual_args[@]}"
+  eval "\"$PROG_HOME/bin/dotc\" $cp_arg ${java_options[@]} -repl ${residual_args[@]}"
 elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
   cp_arg="$DOTTY_LIB$PSEP$SCALA_LIB"
   if [ -z "$CLASS_PATH" ]; then

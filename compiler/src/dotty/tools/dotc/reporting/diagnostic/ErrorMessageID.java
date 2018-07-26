@@ -90,7 +90,7 @@ public enum ErrorMessageID {
     OnlyCaseClassOrCaseObjectAllowedID,
     ExpectedClassOrObjectDefID,
     AnonymousFunctionMissingParamTypeID,
-    SuperCallsNotAllowedInlineID,
+    SuperCallsNotAllowedTransparentID,
     ModifiersNotAllowedID,
     WildcardOnTypeArgumentNotAllowedOnNewID,
     FunctionTypeNeedsNonEmptyParameterListID,
@@ -98,7 +98,7 @@ public enum ErrorMessageID {
     DuplicatePrivateProtectedQualifierID,
     ExpectedStartOfTopLevelDefinitionID,
     MissingReturnTypeWithReturnStatementID,
-    NoReturnFromInlineID,
+    NoReturnFromTransparentID,
     ReturnOutsideMethodDefinitionID,
     UncheckedTypePatternID,
     ExtendFinalClassID,
@@ -125,10 +125,12 @@ public enum ErrorMessageID {
     UnableToEmitSwitchID,
     MissingCompanionForStaticID,
     PolymorphicMethodMissingTypeInParentID,
-    ParamsNoInlineID,
+    ParamsNoTransparentID,
     JavaSymbolIsNotAValueID,
     DoubleDeclarationID,
     MatchCaseOnlyNullWarningID,
+    ImportRenamedTwiceID,
+    TypeTestAlwaysSucceedsID,
     ;
 
     public int errorNumber() {

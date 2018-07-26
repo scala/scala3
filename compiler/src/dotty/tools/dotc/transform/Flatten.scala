@@ -17,6 +17,10 @@ class Flatten extends MiniPhase with SymTransformer {
 
   override def phaseName = "flatten"
 
+  // private[this] and protected[this] modifiers must be dropped
+  // before classes are lifted. Getters drop these modifiers.
+  override def runsAfter = Set(Getters.name)
+
   override def changesMembers = true // the phase removes inner classes
 
   private var LiftedDefs: Store.Location[mutable.ListBuffer[Tree]] = _

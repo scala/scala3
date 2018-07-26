@@ -1,15 +1,11 @@
-================================================================================
-out/posTestFromTasty/pos/lambda/foo/Foo.class
---------------------------------------------------------------------------------
+/** Decompiled from out/posTestFromTasty/pos/lambda/foo/Foo.class */
 package foo {
   class Foo() {
     {
-      (x: Int) =>
-        {
-          2
-        }
+      ((x: scala.Int) => {
+        2
+      })
     }
-    val a: Int => Int = (x: Int) => x.*(x)
+    val a: scala.Function1[scala.Int, scala.Int] = ((x: scala.Int) => x.*(x))
   }
 }
---------------------------------------------------------------------------------

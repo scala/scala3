@@ -91,7 +91,6 @@ class ReTyper extends Typer with ReChecking {
   override def localTyper(sym: Symbol) = this
 
   override def index(trees: List[untpd.Tree])(implicit ctx: Context) = ctx
-  override def annotate(trees: List[untpd.Tree])(implicit ctx: Context) = ()
 
   override def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType, locked: TypeVars)(fallBack: => Tree)(implicit ctx: Context): Tree =
     fallBack
@@ -122,7 +121,7 @@ class ReTyper extends Typer with ReChecking {
   override def inferView(from: Tree, to: Type)(implicit ctx: Context): Implicits.SearchResult =
     Implicits.NoMatchingImplicitsFailure
   override def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit = ()
-  override def inlineExpansion(mdef: DefDef)(implicit ctx: Context): List[Tree] = mdef :: Nil
-
+  override def inlineExpansion(mdef: DefDef)(implicit ctx: Context): Tree = mdef
+  override protected def addAccessorDefs(cls: Symbol, body: List[Tree])(implicit ctx: Context): List[Tree] = body
   override protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(implicit ctx: Context): Unit = ()
 }

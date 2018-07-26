@@ -1,0 +1,12 @@
+/** Decompiled from out/posTestFromTasty/pos/simpleMatchRef/Foo.class */
+class Foo() {
+  val X: scala.Int = scala.Predef.???
+  def foo(x: scala.Any): scala.Unit = x match {
+    case Foo.this.X =>
+      scala.Predef.println("a")
+    case Y =>
+      scala.Predef.println("b")
+  }
+}
+/** Decompiled from out/posTestFromTasty/pos/simpleMatchRef/Y.class */
+object Y

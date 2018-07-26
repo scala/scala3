@@ -1,0 +1,3 @@
+ToNat(Z)
+ToNat(S(Z))
+ToNat(S(S(Z)))

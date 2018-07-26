@@ -1,0 +1,8 @@
+/** Decompiled from out/runTestFromTasty/run/t8100/Test.class */
+object Test {
+  import scala.util.{Try}
+  def main(args: scala.Array[scala.Predef.String]): scala.Unit = {
+    def stream: collection.immutable.Stream[scala.None.type] = scala.Stream.from(0).take(100000).map[scala.None.type, collection.immutable.Stream[scala.None.type]](((n: scala.Int) => scala.None))(collection.immutable.Stream.canBuildFrom[scala.None.type])
+    scala.Predef.println(scala.util.Try.apply[scala.Int](stream.flatten[scala.Nothing](((xo: scala.None.type) => scala.Option.option2Iterable[scala.Nothing](xo))).length))
+  }
+}

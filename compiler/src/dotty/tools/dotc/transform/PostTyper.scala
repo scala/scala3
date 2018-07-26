@@ -2,19 +2,14 @@ package dotty.tools.dotc
 package transform
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
-import scala.collection.{ mutable, immutable }
-import ValueClasses._
-import scala.annotation.tailrec
+import scala.collection.mutable
 import core._
-import typer.ErrorReporting._
 import typer.Checking
-import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
-import util.Positions._
+import Types._, Contexts._, Names._, Flags._, DenotTransformers._
+import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
 import Decorators._
-import config.Printers.typr
-import Symbols._, TypeUtils._, SymUtils._
-import reporting.diagnostic.messages.{NotAMember, SuperCallsNotAllowedInline}
+import Symbols._, SymUtils._
+import reporting.diagnostic.messages._
 
 object PostTyper {
   val name = "posttyper"
@@ -22,7 +17,7 @@ object PostTyper {
 
 /** A macro transform that runs immediately after typer and that performs the following functions:
  *
- *  (1) Add super accessors and protected accessors (@see SuperAccessors)
+ *  (1) Add super accessors (@see SuperAccessors)
  *
  *  (2) Convert parameter fields that have the same name as a corresponding
  *      public parameter field in a superclass to a forwarder to the superclass
@@ -45,7 +40,7 @@ object PostTyper {
  *
  *  (10) Adds Child annotations to all sealed classes
  *
- *  (11) Minimizes `call` fields of `Inline` nodes to just point to the toplevel
+ *  (11) Minimizes `call` fields of `Inlined` nodes to just point to the toplevel
  *       class from which code was inlined.
  *
  *  The reason for making this a macro transform is that some functions (in particular
@@ -161,7 +156,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         }
     }
 
-    /** 1. If we are an an inline method but not in a nested quote, mark the inline method
+    /** 1. If we are in a transparent method but not in a nested quote, mark the transparent method
      *  as a macro.
      *
      *  2. If selection is a quote or splice node, record that fact in the current compilation unit.
@@ -170,7 +165,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
       def markAsMacro(c: Context): Unit =
         if (c.owner eq c.outer.owner) markAsMacro(c.outer)
-        else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
+        else if (c.owner.isTransparentMethod) {
+          c.owner.setFlag(Macro)
+          c.owner.resetFlag(Erased) // FIXME: Macros should be Erased, but that causes problems right now
+        }
         else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
 
       if (sym.isSplice || sym.isQuote) {
@@ -179,17 +177,22 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       }
     }
 
+    private object dropInlines extends TreeMap {
+      override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+        case Inlined(call, _, _) => Typed(call, TypeTree(tree.tpe))
+        case _ => super.transform(tree)
+      }
+    }
+
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
-          checkNotErased(tree)
           handleMeta(tree.symbol)
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
             case _ => tree
           }
         case tree @ Select(qual, name) =>
-          checkNotErased(tree)
           handleMeta(tree.symbol)
           if (name.isTypeName) {
             Checking.checkRealizable(qual.tpe, qual.pos.focus)
@@ -197,34 +200,41 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           }
           else
             transformSelect(tree, Nil)
-        case tree: Super =>
-          if (ctx.owner.enclosingMethod.isInlineMethod)
-            ctx.error(SuperCallsNotAllowedInline(ctx.owner), tree.pos)
-          super.transform(tree)
         case tree: Apply =>
-          methPart(tree) match {
+          val methType = tree.fun.tpe.widen
+          val app =
+            if (methType.isErasedMethod)
+              tpd.cpy.Apply(tree)(
+                tree.fun,
+                tree.args.map(arg =>
+                  if (methType.isImplicitMethod && arg.pos.isSynthetic) ref(defn.Predef_undefined)
+                  else dropInlines.transform(arg)))
+            else
+              tree
+          methPart(app) match {
             case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
               // need to check instantiability here, because the type of the New itself
               // might be a type constructor.
               Checking.checkInstantiable(tree.tpe, nu.pos)
-              withNoCheckNews(nu :: Nil)(super.transform(tree))
+              withNoCheckNews(nu :: Nil)(super.transform(app))
             case _ =>
-              super.transform(tree)
+              super.transform(app)
           }
         case tree: TypeApply =>
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
-          Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
+          if (fn.symbol != defn.ChildAnnot.primaryConstructor) {
+            // Make an exception for ChildAnnot, which should really have AnyKind bounds
+            Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
+          }
           fn match {
             case sel: Select =>
               val args1 = transform(args)
               val sel1 = transformSelect(sel, args1)
-              if (superAcc.isProtectedAccessor(sel1)) sel1 else cpy.TypeApply(tree1)(sel1, args1)
+              cpy.TypeApply(tree1)(sel1, args1)
             case _ =>
               super.transform(tree1)
           }
-        case tree @ Assign(sel: Select, _) =>
-          super.transform(superAcc.transformAssign(tree))
-        case Inlined(call, bindings, expansion) =>
+        case Inlined(call, bindings, expansion) if !call.isEmpty =>
           // Leave only a call trace consisting of
           //  - a reference to the top-level class from which the call was inlined,
           //  - the call's position
@@ -241,7 +251,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val callTrace =
             if (call.symbol.is(Macro)) call
             else Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
-          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion))
+          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {
             val templ1 = paramFwd.forwardParamAccessors(tree)
@@ -249,9 +259,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 superAcc.wrapTemplate(templ1)(
                   super.transform(_).asInstanceOf[Template]))
           }
+        case tree: ValDef =>
+          val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
+          transformMemberDef(tree1)
+          super.transform(tree1)
         case tree: DefDef =>
-          transformMemberDef(tree)
-          superAcc.wrapDefDef(tree)(super.transform(tree).asInstanceOf[DefDef])
+          val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
+          transformMemberDef(tree1)
+          superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef])
         case tree: TypeDef =>
           transformMemberDef(tree)
           val sym = tree.symbol
@@ -263,9 +278,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
             tree
           }
-          super.transform(tree)
-        case tree: MemberDef =>
-          transformMemberDef(tree)
           super.transform(tree)
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.pos)
@@ -285,6 +297,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               case tpe => tpe
             }
           )
+        case tree: AndTypeTree =>
+          // Ideally, this should be done by Typer, but we run into cyclic references
+          // when trying to typecheck self types which are intersections.
+          Checking.checkNonCyclicInherited(tree.tpe, tree.left.tpe :: tree.right.tpe :: Nil, EmptyScope, tree.pos)
+          super.transform(tree)
         case Import(expr, selectors) =>
           val exprTpe = expr.tpe
           val seen = mutable.Set.empty[Name]
@@ -293,7 +310,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             if (name != nme.WILDCARD && !exprTpe.member(name).exists && !exprTpe.member(name.toTypeName).exists)
               ctx.error(NotAMember(exprTpe, name, "value"), ident.pos)
             if (seen(ident.name))
-              ctx.error(s"${ident.show} is renamed twice", ident.pos)
+              ctx.error(ImportRenamedTwice(ident), ident.pos)
             seen += ident.name
           }
           selectors.foreach {
@@ -320,13 +337,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           throw ex
       }
 
-    private def checkNotErased(tree: RefTree)(implicit ctx: Context): Unit = {
-      if (tree.symbol.is(Erased) && !ctx.mode.is(Mode.Type)) {
-        val msg =
-          if (tree.symbol.is(CaseAccessor)) "First parameter list of case class may not contain `erased` parameters"
-          else i"${tree.symbol} is declared as erased, but is in fact used"
-        ctx.error(msg, tree.pos)
-      }
-    }
+    /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
+    *  Performed to shrink the tree that is known to be erased later.
+    */
+    private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) =
+      if (sym.is(Erased, butNot = Deferred)) dropInlines.transform(rhs) else rhs
   }
 }

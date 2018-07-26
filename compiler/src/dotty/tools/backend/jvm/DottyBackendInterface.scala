@@ -258,7 +258,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       case t: TypeApply if (t.fun.symbol == Predef_classOf) =>
         av.visit(name, t.args.head.tpe.classSymbol.denot.info.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
       case t: tpd.Select =>
-        if (t.symbol.denot.owner.is(Flags.Enum)) {
+        if (t.symbol.denot.owner.is(Flags.JavaEnum)) {
           val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
           val evalue = t.symbol.name.mangledString // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
@@ -433,7 +433,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   val Flag_METHOD: Flags = Flags.Method.bits
   val ExcludedForwarderFlags: Flags = {
       Flags.Specialized | Flags.Lifted | Flags.Protected | Flags.JavaStatic |
-      Flags.Bridge | Flags.VBridge | Flags.Private | Flags.Macro
+      Flags.Bridge | Flags.Private | Flags.Macro
   }.bits
 
   def isQualifierSafeToElide(qual: Tree): Boolean = tpd.isIdempotentExpr(qual)
@@ -710,7 +710,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def isBottomClass: Boolean = (sym ne defn.NullClass) && (sym ne defn.NothingClass)
     def isBridge: Boolean = sym is Flags.Bridge
     def isArtifact: Boolean = sym is Flags.Artifact
-    def hasEnumFlag: Boolean = sym is Flags.Enum
+    def hasEnumFlag: Boolean = sym is Flags.JavaEnum
     def hasAccessBoundary: Boolean = sym.accessBoundary(defn.RootClass) ne defn.RootClass
     def isVarargsMethod: Boolean = sym is Flags.JavaVarargs
     def isDeprecated: Boolean = false
@@ -842,7 +842,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def superInterfaces: List[Symbol] = {
       val directlyInheritedTraits = decorateSymbol(sym).directlyInheritedTraits
       val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
-      val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.symbol.asClass.baseClasses.drop(1)).toSet
+      val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
       val superCalls = superCallsMap.getOrElse(sym, Set.empty)
       val additional = (superCalls -- directlyInheritedTraitsSet).filter(_.is(Flags.Trait))
 //      if (additional.nonEmpty)

@@ -49,8 +49,10 @@ class ElimByName extends TransformByNameApply with InfoTransformer {
 
   /** Map `tree` to `tree.apply()` is `ftree` was of ExprType and becomes now a function */
   private def applyIfFunction(tree: Tree, ftree: Tree)(implicit ctx: Context) =
-    if (isByNameRef(ftree))
-      ctx.atPhase(next) { implicit ctx => tree.select(defn.Function0_apply).appliedToNone }
+    if (isByNameRef(ftree)) {
+      val tree0 = transformFollowing(tree)
+      ctx.atPhase(next) { implicit ctx => tree0.select(defn.Function0_apply).appliedToNone }
+    }
     else tree
 
   override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =

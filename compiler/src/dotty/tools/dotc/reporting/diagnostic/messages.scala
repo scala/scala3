@@ -352,7 +352,7 @@ object messages {
       }
 
       val closeMember = closest match {
-        case (n, sym) :: Nil => hl""" - did you mean `${s"$siteName.$n"}`?"""
+        case (n, sym) :: Nil => s" - did you mean `$siteName.$n`?"
         case Nil => ""
         case _ => assert(
           false,
@@ -696,10 +696,10 @@ object messages {
     }
   }
 
-  case class ByNameParameterNotSupported()(implicit ctx: Context)
+  case class ByNameParameterNotSupported(tpe: untpd.TypTree)(implicit ctx: Context)
   extends Message(ByNameParameterNotSupportedID) {
     val kind = "Syntax"
-    val msg = "By-name parameter type not allowed here."
+    val msg = hl"By-name parameter type ${tpe} not allowed here."
 
     val explanation =
       hl"""|By-name parameters act like functions that are only evaluated when referenced,
@@ -1260,26 +1260,26 @@ object messages {
            |""".stripMargin
   }
 
-  case class OverloadedOrRecursiveMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  case class OverloadedOrRecursiveMethodNeedsResultType(method: Names.TermName)(implicit ctx: Context)
   extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
     val kind = "Syntax"
-    val msg = hl"""overloaded or recursive method ${tree} needs return type"""
+    val msg = hl"""overloaded or recursive method ${method} needs return type"""
     val explanation =
-      hl"""Case 1: ${tree} is overloaded
-          |If there are multiple methods named `${tree.name}` and at least one definition of
+      hl"""Case 1: ${method} is overloaded
+          |If there are multiple methods named `${method}` and at least one definition of
           |it calls another, you need to specify the calling method's return type.
           |
-          |Case 2: ${tree} is recursive
-          |If `${tree.name}` calls itself on any path, you need to specify its return type.
+          |Case 2: ${method} is recursive
+          |If `${method}` calls itself on any path, you need to specify its return type.
           |""".stripMargin
   }
 
-  case class RecursiveValueNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  case class RecursiveValueNeedsResultType(value: Names.TermName)(implicit ctx: Context)
   extends Message(RecursiveValueNeedsResultTypeID) {
     val kind = "Syntax"
-    val msg = hl"""recursive value ${tree.name} needs type"""
+    val msg = hl"""recursive value ${value} needs type"""
     val explanation =
-      hl"""The definition of `${tree.name}` is recursive and you need to specify its type.
+      hl"""The definition of `${value}` is recursive and you need to specify its type.
           |""".stripMargin
   }
 
@@ -1371,27 +1371,25 @@ object messages {
            |"""
   }
 
-  case class MethodDoesNotTakeParameters(tree: tpd.Tree, methPartType: Types.Type)(err: typer.ErrorReporting.Errors)(implicit ctx: Context)
+  case class MethodDoesNotTakeParameters(tree: tpd.Tree)(implicit ctx: Context)
   extends Message(MethodDoesNotTakeParametersId) {
-    private val more = tree match {
-      case Apply(_, _) => " more"
-      case _ => ""
-    }
-
-    val msg = hl"${err.refStr(methPartType)} does not take$more parameters"
-
     val kind = "Reference"
 
-    private val noParameters = if (methPartType.widenSingleton.isInstanceOf[ExprType])
-      hl"""|As ${err.refStr(methPartType)} is defined without parenthesis, you may
-           |not use any at call-site, either.
-           |"""
-    else
-      ""
+    def methodSymbol = tpd.methPart(tree).symbol
 
-    val explanation =
-      s"""|You have specified more parameter lists as defined in the method definition(s).
-          |$noParameters""".stripMargin
+    val msg = {
+      val more = if (tree.isInstanceOf[tpd.Apply]) " more" else ""
+      hl"${methodSymbol.showLocated} does not take$more parameters"
+    }
+
+    val explanation = {
+      val isNullary = methodSymbol.info.isInstanceOf[ExprType]
+      val addendum =
+        if (isNullary) "\nNullary methods may not be called with parenthesis"
+        else ""
+
+      "You have specified more parameter lists as defined in the method definition(s)." + addendum
+    }
 
   }
 
@@ -1577,7 +1575,7 @@ object messages {
     private val varNote =
       if (sym.is(Mutable)) "Note that variables need to be initialized to be defined."
       else ""
-    val msg = hl"""only classes can have declared but undefined members"""
+    val msg = hl"""declaration of $sym not allowed here: only classes can have declared but undefined members"""
     val kind = "Syntax"
     val explanation = s"$varNote"
   }
@@ -1694,10 +1692,10 @@ object messages {
     val explanation = ""
   }
 
-  case class SuperCallsNotAllowedInline(symbol: Symbol)(implicit ctx: Context)
-    extends Message(SuperCallsNotAllowedInlineID) {
+  case class SuperCallsNotAllowedTransparent(symbol: Symbol)(implicit ctx: Context)
+    extends Message(SuperCallsNotAllowedTransparentID) {
     val kind = "Syntax"
-    val msg = s"super call not allowed in inline $symbol"
+    val msg = s"super call not allowed in transparent $symbol"
     val explanation = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called."
   }
 
@@ -1719,26 +1717,6 @@ object messages {
          |$second
          |In this instance, the modifier combination is not supported
         """
-    }
-  }
-
-  case class FunctionTypeNeedsNonEmptyParameterList(isImplicit: Boolean, isErased: Boolean)(implicit ctx: Context)
-    extends Message(FunctionTypeNeedsNonEmptyParameterListID) {
-    assert(isImplicit || isErased)
-    val kind = "Syntax"
-    val mods = ((isErased, "erased") :: (isImplicit, "implicit") :: Nil).collect { case (true, mod) => mod }.mkString(" ")
-    val msg = mods + " function type needs non-empty parameter list"
-    val explanation = {
-      val code1 = s"type Transactional[T] = $mods Transaction => T"
-      val code2 = "val cl: implicit A => B"
-      hl"""It is not allowed to leave $mods function parameter list empty.
-         |Possible ways to define $mods function type:
-         |
-         |$code1
-         |
-         |or
-         |
-         |$code2""".stripMargin
     }
   }
 
@@ -1765,12 +1743,12 @@ object messages {
       hl"you have to provide either ${"class"}, ${"trait"}, ${"object"}, or ${"enum"} definitions after qualifiers"
   }
 
-  case class NoReturnFromInline(owner: Symbol)(implicit ctx: Context)
-    extends Message(NoReturnFromInlineID) {
+  case class NoReturnFromTransparent(owner: Symbol)(implicit ctx: Context)
+    extends Message(NoReturnFromTransparentID) {
     val kind = "Syntax"
-    val msg = hl"no explicit ${"return"} allowed from inline $owner"
+    val msg = hl"no explicit ${"return"} allowed from transparent $owner"
     val explanation =
-      hl"""Methods marked with ${"@inline"} may not use ${"return"} statements.
+      hl"""Methods marked with ${"transparent"} modifier may not use ${"return"} statements.
           |Instead, you should rely on the last expression's value being
           |returned from a method.
           |"""
@@ -1825,10 +1803,15 @@ object messages {
       }
   }
 
-  case class TailrecNotApplicable(method: Symbol)(implicit ctx: Context)
+  case class TailrecNotApplicable(symbol: Symbol)(implicit ctx: Context)
     extends Message(TailrecNotApplicableID) {
     val kind = "Syntax"
-    val msg = hl"TailRec optimisation not applicable, $method is neither ${"private"} nor ${"final"}."
+    val symbolKind = symbol.showKind
+    val msg =
+      if (symbol.is(Method))
+        hl"TailRec optimisation not applicable, $symbol is neither ${"private"} nor ${"final"}."
+      else
+        hl"TailRec optimisation not applicable, ${symbolKind} isn't a method."
     val explanation =
       hl"A method annotated ${"@tailrec"} must be declared ${"private"} or ${"final"} so it can't be overridden."
   }
@@ -2071,10 +2054,10 @@ object messages {
           |polymorphic methods."""
   }
 
-  case class ParamsNoInline(owner: Symbol)(implicit ctx: Context)
-    extends Message(ParamsNoInlineID) {
+  case class ParamsNoTransparent(owner: Symbol)(implicit ctx: Context)
+    extends Message(ParamsNoTransparentID) {
     val kind = "Syntax"
-    val msg = hl"""${"inline"} modifier cannot be used for a ${owner.showKind} parameter"""
+    val msg = hl"""${"transparent"} modifier cannot be used for a parameter of a non-transparent method"""
     val explanation = ""
   }
 
@@ -2102,6 +2085,23 @@ object messages {
         }
       } else ""
       hl"${decl.showLocated} is already defined as ${previousDecl.showDcl} at line ${previousDecl.pos.line + 1}." + details
+    }
+    val explanation = ""
+  }
+
+  case class ImportRenamedTwice(ident: untpd.Ident)(implicit ctx: Context) extends Message(ImportRenamedTwiceID) {
+    val kind = "Syntax"
+    val msg: String = s"${ident.show} is renamed twice on the same import line."
+    val explanation: String = ""
+  }
+
+  case class TypeTestAlwaysSucceeds(foundCls: Symbol, testCls: Symbol)(implicit ctx: Context) extends Message(TypeTestAlwaysSucceedsID) {
+    val kind = "Syntax"
+    val msg = {
+      val addendum =
+        if (foundCls != testCls) s" is a subtype of $testCls"
+        else " is the same as the tested type"
+      s"The highlighted type test will always succeed since the scrutinee type ($foundCls)" + addendum
     }
     val explanation = ""
   }

@@ -2,10 +2,13 @@ package dotty.tools
 package dotc
 package reporting
 
+import dotty.tools.backend.jvm.GenBCode
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types.WildcardType
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.reporting.diagnostic.messages._
+import dotty.tools.dotc.transform.{CheckStatic, PostTyper, TailRec}
+import dotty.tools.dotc.typer.{FrontEnd, RefChecks}
 import org.junit.Assert._
 import org.junit.Test
 
@@ -13,11 +16,11 @@ class ErrorMessagesTests extends ErrorMessagesTest {
   // In the case where there are no errors, we can do "expectNoErrors" in the
   // `Report`
   @Test def noErrors =
-    checkMessagesAfter("frontend")("""class Foo""")
+    checkMessagesAfter(FrontEnd.name)("""class Foo""")
     .expectNoErrors
 
   @Test def typeMismatch =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
       |object Foo {
       |  def bar: String = 1
@@ -45,7 +48,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def overridesNothing =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """
         |object Foo {
         |  override def bar: Unit = {}
@@ -61,7 +64,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def overridesNothingDifferentSignature =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """
         |class Bar {
         |  def bar(s: String): Unit = {}
@@ -86,7 +89,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def forwardReference =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """
         |object Forward {
         |  def block = {
@@ -107,7 +110,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def unexpectedToken =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |object Forward {
         |  def val = "ds"
@@ -124,7 +127,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def expectedToken =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |object Forward {
         |  def `val` = "ds"
@@ -134,7 +137,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expectNoErrors
 
   @Test def leftAndRightAssociative =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |object Ops {
         |  case class I(j: Int) {
@@ -156,11 +159,11 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def cantInstantiateAbstract =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """
         |object Scope {
         |  abstract class Concept
-        |  new Concept()
+        |  val x = new Concept()
         |}
       """.stripMargin
     }
@@ -174,11 +177,11 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def cantInstantiateTrait =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """
         |object Scope {
         |  trait Concept
-        |  new Concept()
+        |  val x = new Concept()
         |}
       """.stripMargin
     }
@@ -192,7 +195,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def overloadedMethodNeedsReturnType =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |class Scope() {
         |  def foo(i: Int) = foo(i.toString)
@@ -209,7 +212,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def recursiveMethodNeedsReturnType =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |class Scope() {
         |  def i = i + 5
@@ -225,7 +228,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def recursiveValueNeedsReturnType =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |class Scope() {
         |  lazy val i = i + 5
@@ -241,7 +244,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def cyclicReferenceInvolving =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |class A {
         |  val x: T = ???
@@ -258,7 +261,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def cyclicReferenceInvolvingImplicit =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |object implicitDefs {
         |  def foo(implicit x: String) = 1
@@ -278,7 +281,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def superQualMustBeParent =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |class A {
         |  def foo(): Unit = ()
@@ -303,7 +306,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def ambiguousImport =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |object A {
         |  class ToBeImported
@@ -332,7 +335,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def methodDoesNotTakePrameters =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |object Scope {
         |  def foo = ()
@@ -344,14 +347,14 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
+      val msg @ MethodDoesNotTakeParameters(tree) = messages.head
 
       assertEquals("Scope.foo", tree.show)
-      assertEquals("=> Unit(Scope.foo)", methodPart.show)
+      assertEquals("method foo", msg.methodSymbol.show)
     }
 
   @Test def methodDoesNotTakeMorePrameters =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |object Scope{
         |  def foo(a: Int) = ()
@@ -363,14 +366,14 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val MethodDoesNotTakeParameters(tree, methodPart) :: Nil = messages
+      val msg @ MethodDoesNotTakeParameters(tree) = messages.head
 
       assertEquals("Scope.foo(1)", tree.show)
-      assertEquals("((a: Int): Unit)(Scope.foo)", methodPart.show)
+      assertEquals("method foo", msg.methodSymbol.show)
     }
 
   @Test def ambiugousOverloadWithWildcard =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """object Context {
         |  trait A {
         |    def foo(s: String): String
@@ -394,7 +397,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def reassignmentToVal =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |class Context {
         |  val value = 3
@@ -410,7 +413,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def typeDoesNotTakeParameters =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |trait WithOutParams
         |class Extending extends WithOutParams[String]
@@ -425,7 +428,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def parameterizedTypeLacksParameters =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |trait WithParams(s: String)
         |class Extending extends WithParams
@@ -440,7 +443,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def varValParametersMayNotBeCallByName =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       "trait Trait(val noNoNo: => String)"
     }
     .expect { (ictx, messages) =>
@@ -451,7 +454,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def missingTypeParameter =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """object Scope {
         |  val value: List = null
         |}""".stripMargin
@@ -464,7 +467,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def doesNotConformToBound =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """class WithParam[A <: List[Int]]
         |object Scope {
         |  val value: WithParam[Int] = null
@@ -480,7 +483,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def doesNotConformToSelfType =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """class Base
         |trait BlendItIn {
         |  this: Base =>
@@ -501,11 +504,11 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def doesNotConformToSelfTypeCantBeInstantiated =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """class Base
         |class RequiresBase { self: Base => }
         |object Scope {
-        |  new RequiresBase
+        |  val x = new RequiresBase
         |}
         |""".stripMargin
     }
@@ -518,7 +521,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def abstractValueMayNotHaveFinalModifier =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """abstract class Foo {
         |  final val s: String
         |}
@@ -533,7 +536,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def topLevelCantBeImplicit =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """package Foo {
         |  implicit object S
         |}
@@ -547,7 +550,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def typesAndTraitsCantBeImplicit =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """class Foo {
         |  implicit trait S
         |}
@@ -561,7 +564,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def onlyClassesCanBeAbstract =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """class Foo {
         |  abstract val s: String
         |}
@@ -575,7 +578,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def abstractOverrideOnlyInTraits =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """class Foo {
         |  abstract override val s: String = ""
         |}
@@ -589,7 +592,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def traitMayNotBeFinal =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """final trait Foo"""
     }
     .expect { (ictx, messages) =>
@@ -600,7 +603,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def nativeMemberMayNotHaveImplementation =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """trait Foo {
         |  @native def foo() = 5
         |}
@@ -614,7 +617,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def onlyClassesCanHaveDeclaredButUndefinedMembers =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """object Foo {
         |  def foo(): Int
         |}
@@ -628,7 +631,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def cannotExtendAnyval =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """trait Foo extends AnyVal"""
     }
     .expect { (ictx, messages) =>
@@ -639,7 +642,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def cannotHaveSameNameAs =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """trait Foo {
         |  class A
         |}
@@ -656,7 +659,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def valueClassesMayNotDefineInner =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """class MyValue(i: Int) extends AnyVal {
         |  class Inner
         |}
@@ -671,7 +674,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def valueClassesMayNotDefineNonParameterField =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """class MyValue(i: Int) extends AnyVal {
         |  val illegal: Int
         |}
@@ -686,7 +689,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def valueClassesMayNotDefineASecondaryConstructor =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """class MyValue(i: Int) extends AnyVal {
         |  def this() = this(2)
         |}
@@ -701,7 +704,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def valueClassesMayNotContainInitalization =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """class MyValue(i: Int) extends AnyVal {
         |  println("Hallo?")
         |}
@@ -715,7 +718,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def valueClassesMayNotBeContained =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """class Outer {
         |  class MyValue(i: Int) extends AnyVal
         |}
@@ -729,7 +732,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def valueClassesMayNotWrapItself =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """class MyValue(i: MyValue) extends AnyVal"""
     }
     .expect { (ictx, messages) =>
@@ -740,7 +743,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def valueClassParameterMayNotBeVar =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """class MyValue(var i: Int) extends AnyVal"""
     }
     .expect { (ictx, messages) =>
@@ -752,7 +755,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def valueClassNeedsOneVal =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """class MyValue() extends AnyVal"""
     }
     .expect { (ictx, messages) =>
@@ -763,7 +766,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def onlyCaseClassOrCaseObjectAllowed =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """case Foobar"""
     }
     .expect { (ictx, messages) =>
@@ -774,7 +777,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def expectedClassOrObjectDef =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """Foo"""
     }
     .expect { (ictx, messages) =>
@@ -785,7 +788,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def implicitClassPrimaryConstructorArity =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |object Test {
         |  implicit class Foo(i: Int, s: String)
@@ -800,7 +803,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def anonymousFunctionMissingParamType =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """
         |object AnonymousF {
         |  val f = { case x: Int => x + 1 }
@@ -816,14 +819,14 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def superCallsNotAllowedInline =
-  checkMessagesAfter("refchecks") {
+  checkMessagesAfter(RefChecks.name) {
        """
         |class A {
         |  def foo(): Unit = ()
         |}
         |
         |class B extends A {
-        |  inline def bar(): Unit = super.foo()
+        |  transparent def bar(): Unit = super.foo()
         |}
       """.stripMargin
     }
@@ -831,7 +834,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
       assertMessageCount(1, messages)
       val err :: Nil = messages
-      val SuperCallsNotAllowedInline(symbol) = err
+      val SuperCallsNotAllowedTransparent(symbol) = err
       assertEquals("method bar", symbol.show)
     }
 
@@ -843,7 +846,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
 
   private def verifyModifiersNotAllowed(code: String, modifierAssertion: String,
                                         typeAssertion: Option[String] = None) = {
-    checkMessagesAfter("refchecks")(code)
+    checkMessagesAfter(RefChecks.name)(code)
       .expect { (ictx, messages) =>
         implicit val ctx: Context = ictx
         assertMessageCount(1, messages)
@@ -854,7 +857,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
   }
 
   @Test def wildcardOnTypeArgumentNotAllowedOnNew =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """
         |object TyperDemo {
         |  class Team[A]
@@ -870,22 +873,8 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals(err, WildcardOnTypeArgumentNotAllowedOnNew())
     }
 
-  @Test def implicitFunctionTypeNeedsNonEmptyParameterList =
-    checkMessagesAfter("refchecks") {
-      """abstract class Foo {
-        |  type Contextual[T] = implicit () => T
-        |  val x: implicit () => Int
-        |}""".stripMargin
-    }
-    .expect { (ictx, messages) =>
-      implicit val ctx: Context = ictx
-
-      assertMessageCount(2, messages)
-      messages.foreach(assertEquals(_, FunctionTypeNeedsNonEmptyParameterList(isImplicit = true, isErased = false)))
-    }
-
   @Test def wrongNumberOfParameters =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """object NumberOfParams {
         |  def unary[T](x: T => Unit) = ()
         |  unary((x, y) => ())
@@ -901,7 +890,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def duplicatePrivateProtectedQualifier =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """class Test {
         |   private[Test] protected[this] def foo(): Unit = ()
         |} """.stripMargin
@@ -916,7 +905,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       }
 
   @Test def expectedStartOfTopLevelDefinition =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """private Test {}"""
     }
       .expect { (ictx, messages) =>
@@ -929,7 +918,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       }
 
   @Test def missingReturnTypeWithReturnStatement =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """class BadFunction {
         |  def bad() = { return "fail" }
         |}
@@ -944,9 +933,9 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def noReturnInInline =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """class BadFunction {
-        |  @inline def usesReturn: Int = { return 42 }
+        |  transparent def usesReturn: Int = { return 42 }
         |}
       """.stripMargin
     }.expect { (ictx, messages) =>
@@ -954,12 +943,12 @@ class ErrorMessagesTests extends ErrorMessagesTest {
 
       assertMessageCount(1, messages)
 
-      val NoReturnFromInline(method) :: Nil = messages
+      val NoReturnFromTransparent(method) :: Nil = messages
       assertEquals("method usesReturn", method.show)
     }
 
   @Test def returnOutsideMethodDefinition =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """object A {
         |  return 5
         |}
@@ -971,7 +960,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("object A", owner.show)
     }
 
-  @Test def extendFinalClass = checkMessagesAfter("refchecks") {
+  @Test def extendFinalClass = checkMessagesAfter(RefChecks.name) {
     """final class A
       |
       |class B extends A
@@ -985,7 +974,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
   }
 
   @Test def tailrecNotApplicableNeitherPrivateNorFinal =
-    checkMessagesAfter("tailrec") {
+    checkMessagesAfter(TailRec.name) {
     """
       |class Foo {
       |  @scala.annotation.tailrec
@@ -1000,7 +989,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
     @Test def expectedTypeBoundOrEquals =
-      checkMessagesAfter("frontend") {
+      checkMessagesAfter(FrontEnd.name) {
         """object typedef {
           |  type asd > Seq
           |}
@@ -1014,7 +1003,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       }
 
   @Test def classAndCompanionNameClash =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """
         |class T {
         |  class G
@@ -1037,7 +1026,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def onlyFunctionsCanBeFollowedByUnderscore =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |class T {
         |  def main(args: Array[String]): Unit = {
@@ -1055,7 +1044,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def missingEmptyArgumentList =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |class Test {
         |  def greet(): String = "Hello"
@@ -1074,7 +1063,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def duplicateNamedTypeParameter =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |object Test {
         |  def f[A, B]() = ???
@@ -1094,7 +1083,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def undefinedNamedTypeParameter =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |object Test {
         |  def f[A, B]() = ???
@@ -1118,7 +1107,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       }
 
   @Test def illegalStartOfStatement =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |object Test {
         |  { ) }
@@ -1137,7 +1126,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       }
 
   @Test def traitIsExpected =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |class A
         |class B
@@ -1158,7 +1147,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def traitRedefinedFinalMethodFromAnyRef =
-    checkMessagesAfter("refchecks") {
+    checkMessagesAfter(RefChecks.name) {
       """
         |trait C {
         |  def wait (): Unit
@@ -1174,7 +1163,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def packageNameAlreadyDefined =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |package bar { }
         |object bar { }
@@ -1188,7 +1177,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def unapplyInvalidNumberOfArguments =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |case class Boo(a: Int, b: String)
         |
@@ -1210,7 +1199,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       }
 
   @Test def staticOnlyAllowedInsideObjects =
-    checkMessagesAfter("checkStatic") {
+    checkMessagesAfter(CheckStatic.name) {
       """
         |class Foo {
         |  @annotation.static def bar(): Unit = bar()
@@ -1223,7 +1212,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def cyclicInheritance =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       "class A extends A"
     }
     .expect { (ictx, messages) =>
@@ -1235,7 +1224,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def missingCompanionForStatic =
-    checkMessagesAfter("checkStatic") {
+    checkMessagesAfter(CheckStatic.name) {
       """
         |object Foo {
         |  @annotation.static def bar(): Unit = ()
@@ -1248,7 +1237,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def polymorphicMethodMissingTypeInParent =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |object Test {
         |  import scala.reflect.Selectable.reflectiveSelectable
@@ -1265,7 +1254,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def javaSymbolIsNotAValue =
-    checkMessagesAfter("checkStatic") {
+    checkMessagesAfter(CheckStatic.name) {
       """
         |package p
         |object O {
@@ -1281,7 +1270,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def i3187 =
-    checkMessagesAfter("genBCode") {
+    checkMessagesAfter(GenBCode.name) {
       """
         |package scala
         |object collection
@@ -1293,7 +1282,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     }
 
   @Test def typeDoubleDeclaration =
-    checkMessagesAfter("frontend") {
+    checkMessagesAfter(FrontEnd.name) {
       """
         |class Foo {
         |  val a = 1
@@ -1307,45 +1296,37 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals(symbol.name.mangledString, "a")
   }
 
-  @Test def i4127a =
-    checkMessagesAfter("frontend") {
+  @Test def renameImportTwice =
+    checkMessagesAfter(PostTyper.name) {
       """
-        |class Foo {
-        |  val x: implicit () => Int = () => 1
-        |}
+        |import java.lang.{Integer => Foo, Integer => Baz}
       """.stripMargin
     }.expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
       assertMessageCount(1, messages)
-      val (msg @ FunctionTypeNeedsNonEmptyParameterList(_, _)) :: Nil = messages
-      assertEquals(msg.mods, "implicit")
+      val (msg @ ImportRenamedTwice(ident)) :: Nil = messages
+      assertEquals(ident.show, "Integer")
     }
 
-  @Test def i4127b =
-    checkMessagesAfter("frontend") {
+  @Test def tailRecOptimisation =
+    checkMessagesAfter(FrontEnd.name) {
       """
-        |class Foo {
-        |  val x: erased () => Int = () => 1
+        |import scala.annotation.tailrec
+        |@tailrec
+        |object Test {
+        |  @tailrec val a = ""
+        |  @tailrec var b = ""
         |}
+        |@tailrec
+        |class Test {}
+        |
       """.stripMargin
-    }.expect { (ictx, messages) =>
+    }.expect{ (ictx, messages) =>
       implicit val ctx: Context = ictx
-      assertMessageCount(1, messages)
-      val (msg @ FunctionTypeNeedsNonEmptyParameterList(_, _)) :: Nil = messages
-      assertEquals(msg.mods, "erased")
+      assertMessageCount(4, messages)
+
+      val tailRegMessages = messages.map({ case m: TailrecNotApplicable => m.symbolKind }).toSet
+      assertEquals(tailRegMessages, Set("variable", "value", "object", "class"))
     }
 
-  @Test def i4127c =
-    checkMessagesAfter("frontend") {
-      """
-        |class Foo {
-        |  val x: erased implicit () => Int = () => 1
-        |}
-      """.stripMargin
-    }.expect { (ictx, messages) =>
-      implicit val ctx: Context = ictx
-      assertMessageCount(1, messages)
-      val (msg @ FunctionTypeNeedsNonEmptyParameterList(_, _)) :: Nil = messages
-      assertEquals(msg.mods, "erased implicit")
-    }
 }

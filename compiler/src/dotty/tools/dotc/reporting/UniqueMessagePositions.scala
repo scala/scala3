@@ -18,7 +18,7 @@ trait UniqueMessagePositions extends Reporter {
    */
   override def isHidden(m: MessageContainer)(implicit ctx: Context): Boolean =
     super.isHidden(m) || {
-      m.pos.exists && {
+      m.pos.exists && !ctx.settings.YshowSuppressedErrors.value && {
         var shouldHide = false
         for (pos <- m.pos.start to m.pos.end) {
           positions get (ctx.source, pos) match {

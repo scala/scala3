@@ -3,7 +3,7 @@ object Test {
   def main(args: Array[String]) = {
     val x = true
     val n = 1
-    inline val nn = 2
+    transparent val nn = 2
     val y = if (x) 'A' else n
     val z: Int = y
 
@@ -41,7 +41,7 @@ object Test {
 
   }
 
-  inline val b = 33
+  transparent val b = 33
   def f(): Int = b + 1
   val a1 = Array(b, 33, 'a')
   val b1: Array[Int] = a1

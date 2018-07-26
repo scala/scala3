@@ -15,32 +15,15 @@ object ErrorReporting {
 
   import tpd._
 
+  def errorTree(tree: untpd.Tree, msg: => Message, pos: Position)(implicit ctx: Context): tpd.Tree =
+    tree withType errorType(msg, pos)
+
   def errorTree(tree: untpd.Tree, msg: => Message)(implicit ctx: Context): tpd.Tree =
-    tree withType errorType(msg, tree.pos)
+    errorTree(tree, msg, tree.pos)
 
   def errorType(msg: => Message, pos: Position)(implicit ctx: Context): ErrorType = {
     ctx.error(msg, pos)
     ErrorType(msg)
-  }
-
-  def cyclicErrorMsg(ex: CyclicReference)(implicit ctx: Context) = {
-    val cycleSym = ex.denot.symbol
-    def errorMsg(msg: Message, cx: Context): Message =
-      if (cx.mode is Mode.InferringReturnType) {
-        cx.tree match {
-          case tree: untpd.DefDef if !tree.tpt.typeOpt.exists =>
-            OverloadedOrRecursiveMethodNeedsResultType(tree.name)
-          case tree: untpd.ValDef if !tree.tpt.typeOpt.exists =>
-            RecursiveValueNeedsResultType(tree.name)
-          case _ =>
-            errorMsg(msg, cx.outer)
-        }
-      } else msg
-
-    if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
-      CyclicReferenceInvolvingImplicit(cycleSym)
-    else
-      errorMsg(ex.toMessage, ctx)
   }
 
   def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: Position)(implicit ctx: Context) =

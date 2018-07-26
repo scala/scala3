@@ -11,6 +11,7 @@ import liftable.Exprs._
 
 object Test {
   def main(args: Array[String]): Unit = {
+    implicit val toolbox: scala.quoted.Toolbox = dotty.tools.dotc.quoted.Toolbox.make
 
     val liftedUnit: Expr[Unit] = '()
 

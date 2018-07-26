@@ -387,7 +387,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  that are not top-level are not affected.
    */
   def replace(param: TypeParamRef, tp: Type)(implicit ctx: Context): OrderingConstraint = {
-    val replacement = tp.dealias.stripTypeVar
+    val replacement = tp.dealiasKeepAnnots.stripTypeVar
     if (param == replacement) this
     else {
       assert(replacement.isValueTypeOrLambda)
@@ -501,7 +501,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       }
     }
 
-  def & (other: Constraint)(implicit ctx: Context) = {
+  def & (other: Constraint, otherHasErrors: Boolean)(implicit ctx: Context) = {
     def merge[T](m1: ArrayValuedMap[T], m2: ArrayValuedMap[T], join: (T, T) => T): ArrayValuedMap[T] = {
       var merged = m1
       def mergeArrays(xs1: Array[T], xs2: Array[T]) = {
@@ -528,7 +528,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         case (_, e2: TypeBounds) if e2 contains e1 => e1
         case (tv1: TypeVar, tv2: TypeVar) if tv1.instanceOpt eq tv2.instanceOpt => e1
         case _ =>
-          throw new AssertionError(i"cannot merge $this with $other, mergeEntries($e1, $e2) failed")
+          if (otherHasErrors)
+            e1
+          else
+            throw new AssertionError(i"cannot merge $this with $other, mergeEntries($e1, $e2) failed")
       }
 
     val that = other.asInstanceOf[OrderingConstraint]

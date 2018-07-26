@@ -271,6 +271,9 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     violations.toList
   }
 
+  /** Are we in a transparent method body? */
+  def inTransparentMethod = owner.ownersIterator.exists(_.isTransparentMethod)
+
   /** Is `feature` enabled in class `owner`?
    *  This is the case if one of the following two alternatives holds:
    *
@@ -326,10 +329,4 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
 object TypeOps {
   @sharable var track = false // !!!DEBUG
-
-  /** When a property with this key is set in a context, it limits the number
-   *  of recursive member searches. If the limit is reached, findMember returns
-   *  NoDenotation.
-   */
-  val findMemberLimit = new Property.Key[Unit]
 }

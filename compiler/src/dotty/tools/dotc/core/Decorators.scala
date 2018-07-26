@@ -176,7 +176,10 @@ object Decorators {
   }
 
   implicit class genericDeco[T](val x: T) extends AnyVal {
-    def reporting(op: T => String): T = { println(op(x)); x }
+    def reporting(op: T => String, printer: config.Printers.Printer = config.Printers.default): T = {
+      printer.println(op(x))
+      x
+    }
     def assertingErrorsReported(implicit ctx: Context): T = {
       assert(ctx.reporter.errorsReported)
       x

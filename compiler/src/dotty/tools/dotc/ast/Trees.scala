@@ -213,6 +213,31 @@ object Trees {
 
     override def toText(printer: Printer) = printer.toText(this)
 
+    def sameTree(that: Tree[_]): Boolean = {
+      def isSame(x: Any, y: Any): Boolean =
+        x.asInstanceOf[AnyRef].eq(y.asInstanceOf[AnyRef]) || {
+          x match {
+            case x: Tree[_] =>
+              y match {
+                case y: Tree[_] => x.sameTree(y)
+                case _ => false
+              }
+            case x: List[_] =>
+              y match {
+                case y: List[_] => x.corresponds(y)(isSame)
+                case _ => false
+              }
+            case _ =>
+              false
+          }
+        }
+      this.getClass == that.getClass && {
+        val it1 = this.productIterator
+        val it2 = that.productIterator
+        it1.corresponds(it2)(isSame)
+      }
+    }
+
     override def hashCode(): Int = uniqueId // for debugging; was: System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
 
@@ -337,9 +362,11 @@ object Trees {
      *  a calling chain from `viewExists`), in that case the return position is NoPosition.
      */
     def namePos =
-      if (pos.exists)
-        if (rawMods.is(Synthetic)) Position(pos.point, pos.point)
-        else Position(pos.point, pos.point + name.stripModuleClassSuffix.lastPart.length, pos.point)
+      if (pos.exists) {
+        val point = pos.point
+        if (rawMods.is(Synthetic) || name.toTermName == nme.ERROR) Position(point)
+        else Position(point, point + name.stripModuleClassSuffix.lastPart.length, point)
+      }
       else pos
   }
 
@@ -562,6 +589,7 @@ object Trees {
   case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = Inlined[T]
+    override def initialPos = call.pos
   }
 
   /** A type tree that represents an existing or inferred type */
@@ -882,6 +910,7 @@ object Trees {
 
     @sharable val EmptyTree: Thicket = genericEmptyTree
     @sharable val EmptyValDef: ValDef = genericEmptyValDef
+    @sharable val ImplicitEmptyTree: Thicket = Thicket(Nil) // an empty tree marking an implicit closure
 
     // ----- Auxiliary creation methods ------------------
 
@@ -894,6 +923,11 @@ object Trees {
       case ys => Thicket(ys)
     }
 
+    /** Extractor for the synthetic scrutinee tree of an implicit match */
+    object ImplicitScrutinee {
+      def apply() = Ident(nme.IMPLICITkw)
+      def unapply(id: Ident): Boolean = id.name == nme.IMPLICITkw && !id.isInstanceOf[BackquotedIdent]
+    }
     // ----- Helper classes for copying, transforming, accumulating -----------------
 
     val cpy: TreeCopier
@@ -1081,6 +1115,10 @@ object Trees {
         case tree: Annotated if (arg eq tree.arg) && (annot eq tree.annot) => tree
         case _ => finalize(tree, untpd.Annotated(arg, annot))
       }
+      def UntypedSplice(tree: Tree)(splice: untpd.Tree) = tree match {
+        case tree: tpd.UntypedSplice if tree.splice `eq` splice => tree
+        case _ => finalize(tree, tpd.UntypedSplice(splice))
+      }
       def Thicket(tree: Tree)(trees: List[Tree]): Thicket = tree match {
         case tree: Thicket if trees eq tree.trees => tree
         case _ => finalize(tree, untpd.Thicket(trees))
@@ -1118,7 +1156,7 @@ object Trees {
      */
     protected def inlineContext(call: Tree)(implicit ctx: Context): Context = ctx
 
-    abstract class TreeMap(val cpy: TreeCopier = inst.cpy) {
+    abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self =>
 
       def transform(tree: Tree)(implicit ctx: Context): Tree = {
         Stats.record(s"TreeMap.transform $getClass")
@@ -1217,8 +1255,8 @@ object Trees {
           case Thicket(trees) =>
             val trees1 = transform(trees)
             if (trees1 eq trees) tree else Thicket(trees1)
-          case _ if ctx.reporter.errorsReported =>
-            tree
+          case _ =>
+            transformMoreCases(tree)
         }
       }
 
@@ -1230,9 +1268,26 @@ object Trees {
         transform(tree).asInstanceOf[Tr]
       def transformSub[Tr <: Tree](trees: List[Tr])(implicit ctx: Context): List[Tr] =
         transform(trees).asInstanceOf[List[Tr]]
+
+      protected def transformMoreCases(tree: Tree)(implicit ctx: Context): Tree = tree match {
+        case tpd.UntypedSplice(usplice) =>
+          // For a typed tree map: homomorphism on the untyped part with
+          // recursive mapping of typed splices.
+          // The case is overridden in UntypedTreeMap.##
+          val untpdMap = new untpd.UntypedTreeMap {
+            override def transform(tree: untpd.Tree)(implicit ctx: Context): untpd.Tree = tree match {
+              case untpd.TypedSplice(tsplice) =>
+                untpd.cpy.TypedSplice(tree)(self.transform(tsplice).asInstanceOf[tpd.Tree])
+                  // the cast is safe, since the UntypedSplice case is overridden in UntypedTreeMap.
+              case _ => super.transform(tree)
+            }
+          }
+          cpy.UntypedSplice(tree)(untpdMap.transform(usplice))
+        case _ if ctx.reporter.errorsReported => tree
+      }
     }
 
-    abstract class TreeAccumulator[X] {
+    abstract class TreeAccumulator[X] { self =>
       // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
       def apply(x: X, tree: Tree)(implicit ctx: Context): X
 
@@ -1327,13 +1382,28 @@ object Trees {
             this(this(x, arg), annot)
           case Thicket(ts) =>
             this(x, ts)
-          case _ if ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive) =>
-            // In interactive mode, errors might come from previous runs.
-            // In case of errors it may be that typed trees point to untyped ones.
-            // The IDE can still traverse inside such trees, either in the run where errors
-            // are reported, or in subsequent ones.
-            x
+          case _ =>
+            foldMoreCases(x, tree)
         }
+      }
+
+      def foldMoreCases(x: X, tree: Tree)(implicit ctx: Context): X = tree match {
+        case tpd.UntypedSplice(usplice) =>
+          // For a typed tree accumulator: skip the untyped part and fold all typed splices.
+          // The case is overridden in UntypedTreeAccumulator.
+          val untpdAcc = new untpd.UntypedTreeAccumulator[X] {
+            override def apply(x: X, tree: untpd.Tree)(implicit ctx: Context): X = tree match {
+              case untpd.TypedSplice(tsplice) => self(x, tsplice)
+              case _ => foldOver(x, tree)
+            }
+          }
+          untpdAcc(x, usplice)
+        case _ if ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive) =>
+          // In interactive mode, errors might come from previous runs.
+          // In case of errors it may be that typed trees point to untyped ones.
+          // The IDE can still traverse inside such trees, either in the run where errors
+          // are reported, or in subsequent ones.
+          x
       }
     }
 

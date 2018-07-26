@@ -1,6 +1,6 @@
 6
 {
-  val x$1: Int = 3
-  def f(x: Int): Int = x.+(x)
+  val x$1: scala.Int = 3
+  def f(x: scala.Int): scala.Int = x.+(x)
   f(x$1)
 }

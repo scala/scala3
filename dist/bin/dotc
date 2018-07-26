@@ -63,7 +63,12 @@ classpathArgs () {
   toolchain+="$SBT_INTF$PSEP"
   toolchain+="$DOTTY_INTF$PSEP"
   toolchain+="$DOTTY_LIB$PSEP"
-  toolchain+="$DOTTY_COMP"
+  toolchain+="$DOTTY_COMP$PSEP"
+
+  # jine
+  toolchain+="$JLINE$PSEP"
+  toolchain+="$JLINE_TERMINAL$PSEP"
+  toolchain+="$JLINE_TERMINAL_JNA"
 
   if [[ -n "$bootcp" ]]; then
     jvm_cp_args="-Xbootclasspath/a:\"$toolchain\""
@@ -85,6 +90,7 @@ case "$1" in
         -repl) PROG_NAME="$ReplMain" && shift ;;
      -compile) PROG_NAME="$CompilerMain" && shift ;;
    -decompile) PROG_NAME="$DecompilerMain" && shift ;;
+ -print-tasty) PROG_NAME="$DecompilerMain" && addScala "-print-tasty" && shift ;;
          -run) PROG_NAME="$ReplMain" && shift ;;
       -bootcp) bootcp=true && shift ;;
    -nobootcp) unset bootcp && shift ;;
@@ -92,11 +98,11 @@ case "$1" in
    -no-colors) unset colors && shift ;;
   -with-compiler) jvm_cp_args="$PSEP$DOTTY_COMP" && shift ;;
 
-          # break out -D and -J options and add them to JAVA_OPTS as well
-          # so they reach the JVM in time to do some good. The -D options
+          # break out -D and -J options and add them to java_args so
+          # they reach the JVM in time to do some good. The -D options
           # will be available as system properties.
-          -D*) addJava "$1" && addScala "$1" && shift ;;
-          -J*) addJava "${1:2}" && addScala "$1" && shift ;;
+          -D*) addJava "$1" && shift ;;
+          -J*) addJava "${1:2}" && shift ;;
             *) addResidual "$1" && shift ;;
   esac
 done

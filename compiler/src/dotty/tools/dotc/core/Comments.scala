@@ -99,7 +99,7 @@ object Comments {
   }
 
   object Comment {
-    def apply(pos: Position, raw: String, expanded: Boolean = false, usc: List[UseCase] = Nil)(implicit ctx: Context): Comment =
+    def apply(pos: Position, raw: String, expanded: Boolean = false, usc: List[UseCase] = Nil): Comment =
       new Comment(pos, raw) {
         val isExpanded = expanded
         val usecases = usc
@@ -121,7 +121,7 @@ object Comments {
 
           tree match {
             case tree: untpd.DefDef =>
-              val newName = (tree.name.show + "$" + codePos + "$doc").toTermName
+              val newName = ctx.freshNames.newName(tree.name, NameKinds.DocArtifactName)
               untpd.DefDef(newName, tree.tparams, tree.vparamss, tree.tpt, tree.rhs)
             case _ =>
               ctx.error(ProperDefinitionNotFound(), codePos)

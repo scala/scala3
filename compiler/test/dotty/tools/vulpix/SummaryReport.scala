@@ -98,7 +98,7 @@ final class SummaryReport extends SummaryReporting {
           |Test Report
           |================================================================================
           |
-          |$passed passed, $failed failed, ${passed + failed} total
+          |$passed suites passed, $failed failed, ${passed + failed} total
           |""".stripMargin
     )
 

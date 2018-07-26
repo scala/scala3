@@ -1,55 +1,41 @@
-package dotty.tools
-package repl
+package dotty.tools.repl
 
 import org.junit.Assert._
-import org.junit.{Test, Ignore}
-
-import dotc.core.Contexts.Context
-import dotc.ast.Trees._
-import dotc.ast.untpd
-
-import results._
-import ReplTest._
+import org.junit.{Ignore, Test}
 
 class ReplCompilerTests extends ReplTest {
 
-  @Test def compileSingle: Unit = fromInitialState { implicit state =>
-    compiler.compile("def foo: 1 = 1").stateOrFail
+  @Test def compileSingle = fromInitialState { implicit state =>
+    run("def foo: 1 = 1")
+    assertEquals("def foo: Int(1)", storedOutput().trim)
   }
-
 
   @Test def compileTwo =
     fromInitialState { implicit state =>
-      compiler.compile("def foo: 1 = 1").stateOrFail
+      run("def foo: 1 = 1")
     }
     .andThen { implicit state =>
-      val s2 = compiler.compile("def foo(i: Int): i.type = i").stateOrFail
-      assert(s2.objectIndex == 2,
-             s"Wrong object offset: expected 2 got ${s2.objectIndex}")
+      val s2 = run("def foo(i: Int): i.type = i")
+      assertEquals(2, s2.objectIndex)
     }
 
-  @Test def inspectSingle =
+  @Test def inspectWrapper =
     fromInitialState { implicit state =>
-      val untpdTree = compiler.compile("def foo: 1 = 1").map(_._1.untpdTree)
+      run("def foo = 1")
 
-      untpdTree.fold(
-        onErrors,
-        _ match {
-          case PackageDef(_, List(mod: untpd.ModuleDef)) =>
-            implicit val ctx = state.run.runContext
-            assert(mod.name.show == "rs$line$1", mod.name.show)
-          case tree => fail(s"Unexpected structure: $tree")
-        }
-      )
+    }.andThen { implicit state =>
+      storedOutput() // discard output
+      run("val x = rs$line$1.foo")
+      assertEquals("val x: Int = 1", storedOutput().trim)
     }
 
   @Test def testVar = fromInitialState { implicit state =>
-    compile("var x = 5")
-    assertEquals("var x: Int = 5\n", storedOutput())
+    run("var x = 5")
+    assertEquals("var x: Int = 5", storedOutput().trim)
   }
 
   @Test def testRes = fromInitialState { implicit state =>
-    compile {
+    run {
       """|def foo = 1 + 1
          |val x = 5 + 5
          |1 + 1
@@ -57,72 +43,85 @@ class ReplCompilerTests extends ReplTest {
          |10 + 10""".stripMargin
     }
 
-    val expected = Set("def foo: Int",
-                       "val x: Int = 10",
-                       "val res1: Int = 20",
-                       "val res0: Int = 2",
-                       "var y: Int = 5")
+    val expected = List(
+      "def foo: Int",
+      "val x: Int = 10",
+      "val res0: Int = 2",
+      "var y: Int = 5",
+      "val res1: Int = 20"
+    )
 
-    expected === storedOutput().split("\n")
+    assertEquals(expected, storedOutput().split("\n").toList)
   }
 
   @Test def testImportMutable =
     fromInitialState { implicit state =>
-      compile("import scala.collection.mutable")
+      run("import scala.collection.mutable")
     }
     .andThen { implicit state =>
-      assert(state.imports.nonEmpty, "Didn't add import to `State` after compilation")
-
-      compile("""mutable.Map("one" -> 1)""")
-
+      assertEquals(1, state.imports.size)
+      run("""mutable.Map("one" -> 1)""")
       assertEquals(
-        "val res0: scala.collection.mutable.Map[String, Int] = Map(one -> 1)\n",
-        storedOutput()
+        "val res0: scala.collection.mutable.Map[String, Int] = Map(one -> 1)",
+        storedOutput().trim
       )
     }
 
   @Test def rebindVariable =
-    fromInitialState { implicit s => compile("var x = 5") }
+    fromInitialState { implicit s =>
+      val state = run("var x = 5")
+      assertEquals("var x: Int = 5", storedOutput().trim)
+      state
+    }
     .andThen { implicit s =>
-      compile("x = 10")
-      assertEquals(
-        """|var x: Int = 5
-           |x: Int = 10
-           |""".stripMargin,
-        storedOutput()
-      )
+      run("x = 10")
+      assertEquals("x: Int = 10", storedOutput().trim)
     }
 
   // FIXME: Tests are not run in isolation, the classloader is corrupted after the first exception
-  @Ignore def i3305: Unit = {
+  @Ignore @Test def i3305: Unit = {
     fromInitialState { implicit s =>
-      compile("null.toString")
+      run("null.toString")
       assertTrue(storedOutput().startsWith("java.lang.NullPointerException"))
     }
 
     fromInitialState { implicit s =>
-      compile("def foo: Int = 1 + foo; foo")
+      run("def foo: Int = 1 + foo; foo")
       assertTrue(storedOutput().startsWith("def foo: Int\njava.lang.StackOverflowError"))
     }
 
     fromInitialState { implicit s =>
-      compile("""throw new IllegalArgumentException("Hello")""")
+      run("""throw new IllegalArgumentException("Hello")""")
       assertTrue(storedOutput().startsWith("java.lang.IllegalArgumentException: Hello"))
     }
 
     fromInitialState { implicit s =>
-      compile("val (x, y) = null")
+      run("val (x, y) = null")
       assertTrue(storedOutput().startsWith("scala.MatchError: null"))
     }
   }
 
   @Test def i2789: Unit = fromInitialState { implicit state =>
-    compile("(x: Int) => println(x)")
+    run("(x: Int) => println(x)")
     assertTrue(storedOutput().startsWith("val res0: Int => Unit ="))
   }
 
   @Test def byNameParam: Unit = fromInitialState { implicit state =>
-    compile("def f(g: => Int): Int = g")
+    run("def f(g: => Int): Int = g")
     assertTrue(storedOutput().startsWith("def f(g: => Int): Int"))
+  }
+
+  @Test def i4051 = fromInitialState { implicit state =>
+    val source =
+      """val x: PartialFunction[Int, Int] = { case x => x }
+        |val y = Map(("A", 1), ("B", 2), ("X", 3)).collect { case (k, v) => v }.toList""".stripMargin
+
+    val expected = List(
+      "val x: PartialFunction[Int, Int] = <function1>",
+      "val y: List[Int] = List(1, 2, 3)"
+    )
+
+    run(source)
+    assertEquals(expected, storedOutput().split("\n").toList)
   }
 }

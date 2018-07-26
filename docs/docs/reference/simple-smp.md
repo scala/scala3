@@ -3,10 +3,6 @@ layout: doc-page
 title: "The Meta-theory of Symmetric Meta-programming"
 ---
 
-# The Meta-theory of Symmetric Meta-programming
-
-23.12.2017
-
 This note presents a simplified variant of
 [principled meta-programming](./principled-meta-programming.md)
 and sketches its soundness proof. The variant treats only dialogues

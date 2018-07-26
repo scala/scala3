@@ -218,8 +218,10 @@ object Interactive {
       case (sel @ Select(qual, _)) :: _ => getMemberCompletions(qual)
       case _  => getScopeCompletions(ctx)
     }
-    interactiv.println(i"completion with pos = $pos, prefix = $prefix, termOnly = $termOnly, typeOnly = $typeOnly = ${completions.toList}%, %")
-    (completionPos, completions.toList)
+
+    val completionList = completions.toList
+    interactiv.println(i"completion with pos = $pos, prefix = $prefix, termOnly = $termOnly, typeOnly = $typeOnly = $completionList%, %")
+    (completionPos, completionList)
   }
 
   /** Possible completions of members of `prefix` which are accessible when called inside `boundary` */
@@ -229,8 +231,8 @@ object Interactive {
         val boundaryCtx = ctx.withOwner(boundary)
         def exclude(sym: Symbol) = sym.isAbsent || sym.is(Synthetic) || sym.is(Artifact)
         def addMember(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
-          buf ++= prefix.member(name).altsWith(d =>
-            !exclude(d) && d.symbol.isAccessibleFrom(prefix)(boundaryCtx))
+          buf ++= prefix.member(name).altsWith(sym =>
+            !exclude(sym) && sym.isAccessibleFrom(prefix)(boundaryCtx))
           prefix.memberDenots(completionsFilter, addMember).map(_.symbol).toList
       }
       else Nil

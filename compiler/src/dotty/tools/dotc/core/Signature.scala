@@ -42,11 +42,16 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
    *  This is the case if all parameter names are _consistent_, i.e. they are either
    *  equal or on of them is tpnme.Uninstantiated.
    */
-  final def consistentParams(that: Signature): Boolean = {
+  final def consistentParams(that: Signature)(implicit ctx: Context): Boolean = {
     @tailrec def loop(names1: List[TypeName], names2: List[TypeName]): Boolean =
       if (names1.isEmpty) names2.isEmpty
       else !names2.isEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
-    loop(this.paramsSig, that.paramsSig)
+    if (ctx.erasedTypes && (this == NotAMethod) != (that == NotAMethod))
+      false // After erasure, we allow fields and parameterless methods with the same name.
+            // This is needed to allow both a module field and a bridge method for an abstract val.
+            // Test case is patmatch-classtag.scala
+    else
+      loop(this.paramsSig, that.paramsSig)
   }
 
   /** `that` signature, but keeping all corresponding parts of `this` signature. */
@@ -82,14 +87,15 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
 
   /** Construct a signature by prepending the signature names of the given `params`
    *  to the parameter part of this signature.
+   *
+   *  Like Signature#apply, the result is only cacheable if `isUnderDefined == false`.
    */
   def prepend(params: List[Type], isJava: Boolean)(implicit ctx: Context) =
     Signature(params.map(p => sigName(p, isJava)) ++ paramsSig, resSig)
 
   /** A signature is under-defined if its paramsSig part contains at least one
    *  `tpnme.Uninstantiated`. Under-defined signatures arise when taking a signature
-   *  of a type that still contains uninstantiated type variables. They are eliminated
-   *  by `fixSignature` in `PostTyper`.
+   *  of a type that still contains uninstantiated type variables.
    */
   def isUnderDefined(implicit ctx: Context) =
     paramsSig.contains(tpnme.Uninstantiated) || resSig == tpnme.Uninstantiated
@@ -111,7 +117,12 @@ object Signature {
    */
   val OverloadedSignature = Signature(List(tpnme.OVERLOADED), EmptyTypeName)
 
-  /** The signature of a method with no parameters and result type `resultType`. */
+  /** The signature of a method with no parameters and result type `resultType`.
+   *
+   *  The resulting value is only cacheable if `isUnderDefined == false`,
+   *  otherwise the signature will change once the contained type variables have
+   *  been instantiated.
+   */
   def apply(resultType: Type, isJava: Boolean)(implicit ctx: Context): Signature = {
     assert(!resultType.isInstanceOf[ExprType])
     apply(Nil, sigName(resultType, isJava))

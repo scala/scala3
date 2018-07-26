@@ -275,22 +275,25 @@ object NameKinds {
   }
 
   /** Other unique names */
-  val InlineAccessorName      = new UniqueNameKind("$_inlineAccessor_$")
-  val TempResultName          = new UniqueNameKind("ev$")
-  val EvidenceParamName       = new UniqueNameKind("evidence$")
-  val DepParamName            = new UniqueNameKind("(param)")
-  val LazyImplicitName        = new UniqueNameKind("$_lazy_implicit_$")
-  val LazyLocalName           = new UniqueNameKind("$lzy")
-  val LazyLocalInitName       = new UniqueNameKind("$lzyINIT")
-  val LazyFieldOffsetName     = new UniqueNameKind("$OFFSET")
-  val LazyBitMapName          = new UniqueNameKind(nme.BITMAP_PREFIX.toString)
-  val NonLocalReturnKeyName   = new UniqueNameKind("nonLocalReturnKey")
-  val WildcardParamName       = new UniqueNameKind("_$")
-  val TailLabelName           = new UniqueNameKind("tailLabel")
-  val ExceptionBinderName     = new UniqueNameKind("ex")
-  val SkolemName              = new UniqueNameKind("?")
-  val LiftedTreeName          = new UniqueNameKind("liftedTree")
-  val SuperArgName            = new UniqueNameKind("$superArg$")
+  val TempResultName           = new UniqueNameKind("ev$")
+  val EvidenceParamName        = new UniqueNameKind("evidence$")
+  val DepParamName             = new UniqueNameKind("(param)")
+  val LazyImplicitName         = new UniqueNameKind("$_lazy_implicit_$")
+  val LazyLocalName            = new UniqueNameKind("$lzy")
+  val LazyLocalInitName        = new UniqueNameKind("$lzyINIT")
+  val LazyFieldOffsetName      = new UniqueNameKind("$OFFSET")
+  val LazyBitMapName           = new UniqueNameKind(nme.BITMAP_PREFIX.toString)
+  val NonLocalReturnKeyName    = new UniqueNameKind("nonLocalReturnKey")
+  val WildcardParamName        = new UniqueNameKind("_$")
+  val TailLabelName            = new UniqueNameKind("tailLabel")
+  val ExceptionBinderName      = new UniqueNameKind("ex")
+  val SkolemName               = new UniqueNameKind("?")
+  val LiftedTreeName           = new UniqueNameKind("liftedTree")
+  val SuperArgName             = new UniqueNameKind("$superArg$")
+  val DocArtifactName          = new UniqueNameKind("$doc")
+  val UniqueInlineName         = new UniqueNameKind("$i")
+  val TransparentScrutineeName = new UniqueNameKind("$scrutinee")
+  val TransparentBinderName    = new UniqueNameKind("$elem")
 
   /** A kind of unique extension methods; Unlike other unique names, these can be
    *  unmangled.
@@ -355,7 +358,8 @@ object NameKinds {
   val SuperAccessorName = new PrefixNameKind(SUPERACCESSOR, "super$")
   val InitializerName = new PrefixNameKind(INITIALIZER, "initial$")
   val ProtectedAccessorName = new PrefixNameKind(PROTECTEDACCESSOR, "protected$")
-  val ProtectedSetterName = new PrefixNameKind(PROTECTEDSETTER, "protected$set") // dubious encoding, kept for Scala2 compatibility
+  val InlineAccessorName = new PrefixNameKind(INLINEACCESSOR, "inline$")
+
   val AvoidClashName = new SuffixNameKind(AVOIDCLASH, "$_avoid_name_clash_$")
   val DirectMethodName = new SuffixNameKind(DIRECT, "$direct") { override def definesNewName = true }
   val FieldName = new SuffixNameKind(FIELD, "$$local") {
@@ -386,9 +390,12 @@ object NameKinds {
     def infoString: String = "Signed"
   }
 
-  /** Possible name kinds of a method that comes from Scala2 pickling info. */
+  /** Possible name kinds of a method that comes from Scala2 pickling info.
+   *  and that need to be unmangled. Note: Scala2 protected accessors and setters
+   *  can be left mangled, so they are not included in thus list.
+   */
   val Scala2MethodNameKinds: List[NameKind] =
-    List(DefaultGetterName, ExtMethName, UniqueExtMethName, ProtectedAccessorName, ProtectedSetterName)
+    List(DefaultGetterName, ExtMethName, UniqueExtMethName)
 
   def simpleNameKindOfTag      : collection.Map[Int, ClassifiedNameKind] = simpleNameKinds
   def qualifiedNameKindOfTag   : collection.Map[Int, QualifiedNameKind]  = qualifiedNameKinds

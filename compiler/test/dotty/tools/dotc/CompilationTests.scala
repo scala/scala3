@@ -34,12 +34,12 @@ class CompilationTests extends ParallelTesting {
   // @Test  // enable to test compileStdLib separately with detailed stats
   def compileStdLibOnly: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileStdLibOnly")
-    compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline", "-Ydetailed-stats"))
+    compileList("compileStdLib", TestSources.stdLibWhitelisted, scala2Mode.and("-migration", "-Yno-inline", "-Ydetailed-stats"))
   }.checkCompile()
 
   @Test def compilePos: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePos")
-    compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
+    compileList("compileStdLib", TestSources.stdLibWhitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
     compileDir("compiler/src/dotty/tools/dotc/ast", defaultOptions) +
     compileDir("compiler/src/dotty/tools/dotc/config", defaultOptions) +
     compileDir("compiler/src/dotty/tools/dotc/core", defaultOptions) +
@@ -99,10 +99,9 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/new", defaultOptions) +
     compileFilesInDir("tests/pos-scala2", scala2Mode) +
     compileFilesInDir("tests/pos", defaultOptions) +
-    compileFilesInDir("tests/pos-no-optimise", defaultOptions) +
     compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes) +
     compileFilesInDir("tests/pos-kind-polymorphism", defaultOptions and "-Ykind-polymorphism") +
-    compileDir("tests/pos/i1137-1", defaultOptions and "-Yemit-tasty") +
+    compileDir("tests/pos/i1137-1", defaultOptions) +
     compileFile(
       // succeeds despite -Xfatal-warnings because of -nowarn
       "tests/neg-custom-args/fatal-warnings/xfatalWarnings.scala",
@@ -174,7 +173,6 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("compileNeg")
     compileFilesInDir("tests/neg", defaultOptions) +
     compileFilesInDir("tests/neg-tailcall", defaultOptions) +
-    compileFilesInDir("tests/neg-no-optimise", defaultOptions) +
     compileFilesInDir("tests/neg-kind-polymorphism", defaultOptions and "-Ykind-polymorphism") +
     compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")) +
     compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings) +
@@ -187,6 +185,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")) +
     compileFile("tests/neg-custom-args/noimports2.scala", defaultOptions.and("-Yno-imports")) +
     compileFile("tests/neg-custom-args/i3882.scala", allowDeepSubtypes) +
+    compileFile("tests/neg-custom-args/i4372.scala", allowDeepSubtypes) +
     compileFile("tests/neg-custom-args/i1754.scala", allowDeepSubtypes) +
     compileFilesInDir("tests/neg-custom-args/isInstanceOf", allowDeepSubtypes and "-Xfatal-warnings") +
     compileFile("tests/neg-custom-args/i3627.scala", allowDeepSubtypes)
@@ -197,8 +196,8 @@ class CompilationTests extends ParallelTesting {
   @Test def runAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runAll")
     compileFilesInDir("tests/run", defaultOptions) +
-    compileFilesInDir("tests/run-no-optimise", defaultOptions) +
-    compileFilesInDir("tests/run-with-compiler", defaultRunWithCompilerOptions)
+    compileFilesInDir("tests/run-with-compiler", defaultRunWithCompilerOptions) +
+    compileFile("tests/run-with-compiler-custom-args/staged-streams_1.scala", defaultRunWithCompilerOptions without "-Yno-deep-subtypes")
   }.checkRuns()
 
   // Generic java signatures tests ---------------------------------------------
@@ -253,8 +252,9 @@ class CompilationTests extends ParallelTesting {
       defaultOutputDir + libGroup + "/src/:" +
       // as well as bootstrapped compiler:
       defaultOutputDir + dotty1Group + "/dotty/:" +
-      Jars.dottyInterfaces,
-      Array("-Ycheck-reentrant")
+      // and the other compiler dependecies:
+      Jars.dottyInterfaces + ":" + Jars.jline,
+      Array("-Ycheck-reentrant", "-Yemit-tasty-in-class")
     )
 
     val lib =
@@ -306,14 +306,6 @@ class CompilationTests extends ParallelTesting {
     compileList("idempotency", List("tests/idempotency/BootstrapChecker.scala", "tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
 
     tests.foreach(_.delete())
-  }
-
-  @Category(Array(classOf[SlowTests]))
-  @Test def testOptimised: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("optimised/testOptimised")
-    compileFilesInDir("tests/pos", defaultOptimised).checkCompile()
-    compileFilesInDir("tests/run", defaultOptimised).checkRuns()
-    compileFilesInDir("tests/neg", defaultOptimised).checkExpectedErrors()
   }
 
   @Test def testPlugins: Unit = {

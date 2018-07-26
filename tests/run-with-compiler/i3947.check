@@ -1,12 +1,12 @@
 
-classOf[Object].getCanonicalName()
+scala.Predef.classOf[lang.Object].getCanonicalName()
 java.lang.Object
 
-classOf[Object].getCanonicalName()
+scala.Predef.classOf[lang.Object].getCanonicalName()
 java.lang.Object
 
-classOf[Object].getCanonicalName()
+scala.Predef.classOf[lang.Object].getCanonicalName()
 java.lang.Object
 
-classOf[Object].getCanonicalName()
+scala.Predef.classOf[lang.Object].getCanonicalName()
 java.lang.Object

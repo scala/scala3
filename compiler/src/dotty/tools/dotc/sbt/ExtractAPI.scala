@@ -14,7 +14,6 @@ import Symbols._
 import NameOps._
 import NameKinds.DefaultGetterName
 import typer.Inliner
-import typer.ErrorReporting.cyclicErrorMsg
 import transform.ValueClasses
 import transform.SymUtils._
 import dotty.tools.io.File
@@ -243,10 +242,10 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
       val ancestorTypes0 =
         try linearizedAncestorTypes(cinfo)
         catch {
-          case ex: CyclicReference =>
+          case ex: TypeError =>
             // See neg/i1750a for an example where a cyclic error can arise.
             // The root cause in this example is an illegal "override" of an inner trait
-            ctx.error(cyclicErrorMsg(ex), csym.pos)
+            ctx.error(ex.toMessage, csym.pos)
             defn.ObjectType :: Nil
         }
       if (ValueClasses.isDerivedValueClass(csym)) {
@@ -329,7 +328,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     } else if (sym.is(Mutable, butNot = Accessor)) {
       api.Var.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
         apiAnnotations(sym).toArray, apiType(sym.info))
-    } else if (sym.isStable) {
+    } else if (sym.isStable && !sym.isRealMethod) {
       api.Val.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
         apiAnnotations(sym).toArray, apiType(sym.info))
     } else {
@@ -591,7 +590,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     val annots = new mutable.ListBuffer[api.Annotation]
 
     if (Inliner.hasBodyToInline(s)) {
-      // FIXME: If the body of an inline method changes, all the reverse
+      // FIXME: If the body of a transparent method changes, all the reverse
       // dependencies of this method need to be recompiled. sbt has no way
       // of tracking method bodies, so as a hack we include the pretty-printed
       // typed tree of the method as part of the signature we send to sbt.

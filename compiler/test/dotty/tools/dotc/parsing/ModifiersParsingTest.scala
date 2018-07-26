@@ -17,7 +17,7 @@ object ModifiersParsingTest {
   implicit val ctx: Context = (new ContextBase).initialCtx
 
   implicit def parse(code: String): Tree = {
-    val (_, stats) = new Parser(new SourceFile("<meta>", code.toCharArray)).templateStatSeq()
+    val (_, stats) = new Parser(new SourceFile("<meta>", code)).templateStatSeq()
     stats match { case List(stat) => stat; case stats => Thicket(stats) }
   }
 
@@ -82,16 +82,16 @@ class ModifiersParsingTest {
     assert(source.firstConstrValDef.modifiers == List(Mod.Var()))
 
     source = "class A(val a: Int)"
-    assert(source.firstConstrValDef.modifiers == List(Mod.Val()))
+    assert(source.firstConstrValDef.modifiers == List())
 
     source = "class A(private val a: Int)"
-    assert(source.firstConstrValDef.modifiers == List(Mod.Private(), Mod.Val()))
+    assert(source.firstConstrValDef.modifiers == List(Mod.Private()))
 
     source = "class A(protected var a: Int)"
     assert(source.firstConstrValDef.modifiers == List(Mod.Protected(), Mod.Var()))
 
     source = "class A(protected implicit val a: Int)"
-    assert(source.firstConstrValDef.modifiers == List(Mod.Protected(), Mod.Implicit(), Mod.Val()))
+    assert(source.firstConstrValDef.modifiers == List(Mod.Protected(), Mod.Implicit()))
 
     source = "class A[T]"
     assert(source.firstTypeParam.modifiers == List())
@@ -120,20 +120,20 @@ class ModifiersParsingTest {
         |   final val c = ???
         |
         |   abstract override def f: Boolean
-        |   inline def g(n: Int) = ???
+        |   transparent def g(n: Int) = ???
         | }
       """.stripMargin
 
     assert(source.field("a").modifiers == List(Mod.Lazy(), Mod.Var()))
-    assert(source.field("b").modifiers == List(Mod.Lazy(), Mod.Private(), Mod.Val()))
-    assert(source.field("c").modifiers == List(Mod.Final(), Mod.Val()))
+    assert(source.field("b").modifiers == List(Mod.Lazy(), Mod.Private()))
+    assert(source.field("c").modifiers == List(Mod.Final()))
     assert(source.field("f").modifiers == List(Mod.Abstract(), Mod.Override()))
-    assert(source.field("g").modifiers == List(Mod.Inline()))
+    assert(source.field("g").modifiers == List(Mod.Transparent()))
   }
 
   @Test def paramDef = {
-    var source: Tree = "def f(inline a: Int) = ???"
-    assert(source.defParam(0).modifiers == List(Mod.Inline()))
+    var source: Tree = "def f(transparent a: Int) = ???"
+    assert(source.defParam(0).modifiers == List(Mod.Transparent()))
 
     source = "def f(implicit a: Int, b: Int) = ???"
     assert(source.defParam(0).modifiers == List(Mod.Implicit()))
@@ -146,7 +146,7 @@ class ModifiersParsingTest {
 
   @Test def blockDef = {
     var source: Tree = "implicit val x : A = ???"
-    assert(source.modifiers == List(Mod.Implicit(), Mod.Val()))
+    assert(source.modifiers == List(Mod.Implicit()))
 
     source = "implicit var x : A = ???"
     assert(source.modifiers == List(Mod.Implicit(), Mod.Var()))

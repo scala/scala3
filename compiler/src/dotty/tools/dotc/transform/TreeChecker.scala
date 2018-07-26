@@ -13,7 +13,7 @@ import core.Flags._
 import core.Constants._
 import core.StdNames._
 import core.NameOps._
-import core.NameKinds.OuterSelectName
+import core.NameKinds.{DocArtifactName, OuterSelectName}
 import core.Decorators._
 import core.TypeErasure.isErasedType
 import core.Phases.Phase
@@ -259,6 +259,13 @@ class TreeChecker extends Phase with SymTransformer {
       case _ =>
     }
 
+    /** Exclude from double definition checks any erased symbols that were
+     *  made `private` in phase `UnlinkErasedDecls`. These symbols will be removed
+     *  completely in phase `Erasure` if they are defined in a currently compiled unit.
+     */
+    override def excludeFromDoubleDeclCheck(sym: Symbol)(implicit ctx: Context) =
+      sym.is(PrivateErased) && !sym.initial.is(Private)
+
     override def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree = {
       val tpdTree = super.typed(tree, pt)
       checkIdentNotJavaClass(tpdTree)
@@ -302,7 +309,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     /** Check that all methods have MethodicType */
     def isMethodType(pt: Type)(implicit ctx: Context): Boolean = pt match {
-      case at: AnnotatedType => isMethodType(at.tpe)
+      case at: AnnotatedType => isMethodType(at.parent)
       case _: MethodicType => true  // MethodType, ExprType, PolyType
       case _ => false
     }
@@ -379,7 +386,8 @@ class TreeChecker extends Phase with SymTransformer {
         x.is(Method) &&
           !x.isCompanionMethod &&
           !x.isValueClassConvertMethod &&
-          !(x.is(Macro) && ctx.phase.refChecked)
+          !(x.is(Macro) && ctx.phase.refChecked) &&
+          !x.name.is(DocArtifactName)
 
       val symbolsNotDefined = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMethod) -- impl.body.map(_.symbol) - constr.symbol
 
@@ -410,9 +418,9 @@ class TreeChecker extends Phase with SymTransformer {
         }
       }
 
-    override def typedCase(tree: untpd.CaseDef, pt: Type, selType: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = {
+    override def typedCase(tree: untpd.CaseDef, selType: Type, pt: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = {
       withPatSyms(tpd.patVars(tree.pat.asInstanceOf[tpd.Tree])) {
-        super.typedCase(tree, pt, selType, gadtSyms)
+        super.typedCase(tree, selType, pt, gadtSyms)
       }
     }
 
@@ -504,4 +512,6 @@ object TreeChecker {
       tp
     }
   }.apply(tp0)
+
+  private val PrivateErased = allOf(Private, Erased)
 }
