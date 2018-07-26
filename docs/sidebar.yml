@@ -139,6 +139,8 @@ sidebar:
           url: docs/internals/syntax.html
         - title: Type System
           url: docs/internals/type-system.html
+        - title: "Dotty Internals 1: Trees & Symbols (Meeting Notes)"
+          url: docs/internals/dotty-internals-1-notes.html
     - title: Resources
       subsection:
         - title: Talks
