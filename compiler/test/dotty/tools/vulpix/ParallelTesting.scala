@@ -1274,9 +1274,34 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       case None => files
     }
 
+    class JointCompilationSourceFromTasty(
+       name: String,
+       file: JFile,
+       flags: TestFlags,
+       outDir: JFile,
+       fromTasty: Boolean = false,
+       decompilation: Boolean = false
+    ) extends JointCompilationSource(name, Array(file), flags, outDir, fromTasty, decompilation) {
+
+      override def buildInstructions(errors: Int, warnings: Int): String = {
+        val runOrPos = if (file.getPath.startsWith("tests/run/")) "run" else "pos"
+        val listName = if (fromTasty) "from-tasty" else "decompilation"
+        s"""|
+            |Test '$title' compiled with $errors error(s) and $warnings warning(s),
+            |the test can be reproduced by running:
+            |
+            |  sbt "testFromTasty $file"
+            |
+            |This tests can be disabled by adding `${file.getName}` to `compiler/test/dotc/$runOrPos-$listName.blacklist`
+            |
+            |""".stripMargin
+      }
+
+    }
+
     val targets = filteredFiles.map { f =>
       val classpath = createOutputDirsForFile(f, sourceDir, outDir)
-      JointCompilationSource(testGroup.name, Array(f), flags.withClasspath(classpath.getPath), classpath, fromTasty = true)
+      new JointCompilationSourceFromTasty(testGroup.name, f, flags.withClasspath(classpath.getPath), classpath, fromTasty = true)
     }
     // TODO add SeparateCompilationSource from tasty?
 
@@ -1285,7 +1310,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         .filter(f => decompilationFilter.accept(f.getName))
         .map { f =>
           val classpath = createOutputDirsForFile(f, sourceDir, outDir)
-          JointCompilationSource(testGroup.name, Array(f), flags.withClasspath(classpath.getPath), classpath, decompilation = true)
+          new JointCompilationSourceFromTasty(testGroup.name, f, flags.withClasspath(classpath.getPath), classpath, decompilation = true)
         }
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
