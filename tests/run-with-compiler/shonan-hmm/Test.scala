@@ -1,5 +1,5 @@
 
-import dotty.tools.dotc.quoted.Toolbox._
+import scala.quoted.Toolbox.Default._
 import scala.quoted._
 
 // DYNAMIC

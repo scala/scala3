@@ -1,6 +1,6 @@
 import scala.quoted._
 
-import dotty.tools.dotc.quoted.Toolbox._
+import scala.quoted.Toolbox.Default._
 
 class Index[K, Keys](val index: String) extends AnyVal {
   override def toString: String = index

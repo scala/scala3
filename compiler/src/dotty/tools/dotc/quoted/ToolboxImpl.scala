@@ -6,10 +6,10 @@ import scala.quoted.Expr
 import scala.quoted.Exprs.{LiftedExpr, TastyTreeExpr}
 
 /** Default runners for quoted expressions */
-object Toolbox {
+object ToolboxImpl {
   import tpd._
 
-  implicit def make(implicit settings: ToolboxSettings): scala.quoted.Toolbox = new scala.quoted.Toolbox {
+  def make(settings: scala.quoted.Toolbox.Settings): scala.quoted.Toolbox = new scala.quoted.Toolbox {
 
     private[this] val driver: QuoteDriver = new QuoteDriver()
 

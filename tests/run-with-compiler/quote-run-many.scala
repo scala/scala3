@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = dotty.tools.dotc.quoted.Toolbox.make
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
 
     def expr(i: Int) = '{
       val a = 3 + ~i.toExpr
