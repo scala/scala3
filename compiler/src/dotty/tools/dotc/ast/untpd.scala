@@ -301,20 +301,23 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   // ------ Additional creation methods for untyped only -----------------
 
-  /**     new pre.C[Ts](args1)...(args_n)
+  /**     new T(args1)...(args_n)
    *  ==>
-   *      (new pre.C).<init>[Ts](args1)...(args_n)
+   *      new T.<init>[Ts](args1)...(args_n)
+   *
+   *  where `Ts` are the class type arguments of `T` or its class type alias.
+   *  Note: we also keep any type arguments as parts of `T`. This is necessary to allow
+   *  navigation into these arguments from the IDE, and to do the right thing in
+   *  PrepareTransparent.
    */
   def New(tpt: Tree, argss: List[List[Tree]])(implicit ctx: Context): Tree = {
     val (tycon, targs) = tpt match {
       case AppliedTypeTree(tycon, targs) =>
         (tycon, targs)
       case TypedSplice(tpt1: tpd.Tree) =>
-        val tp = tpt1.tpe.dealias
-        val tycon = tp.typeConstructor
-        val argTypes = tp.argTypesLo
-        def wrap(tpe: Type) = TypeTree(tpe) withPos tpt.pos
-        (wrap(tycon), argTypes map wrap)
+        val argTypes = tpt1.tpe.dealias.argTypesLo
+        def wrap(tpe: Type) = TypeTree(tpe).withPos(tpt.pos)
+        (tpt, argTypes.map(wrap))
       case _ =>
         (tpt, Nil)
     }
