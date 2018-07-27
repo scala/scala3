@@ -167,7 +167,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         if (c.owner eq c.outer.owner) markAsMacro(c.outer)
         else if (c.owner.isTransparentMethod) {
           c.owner.setFlag(Macro)
-          c.owner.resetFlag(Erased) // FIXME: Macros should be Erased, but that causes problems right now
         }
         else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
 
