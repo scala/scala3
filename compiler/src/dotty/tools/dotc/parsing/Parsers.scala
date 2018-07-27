@@ -2545,7 +2545,12 @@ object Parsers {
     def localDef(start: Int, implicitMods: Modifiers = EmptyModifiers): Tree = {
       var mods = defAnnotsMods(localModifierTokens)
       for (imod <- implicitMods.mods) mods = addMod(mods, imod)
-      defOrDcl(start, mods)
+      if (mods.is(Final)) {
+        // A final modifier means the local definition is "class-like".
+        tmplDef(start, mods)
+      } else {
+        defOrDcl(start, mods)
+      }
     }
 
     /** BlockStatSeq ::= { BlockStat semi } [ResultExpr]
