@@ -20,7 +20,7 @@ See the paper "[Miniphases: Compilation using Modular and Efficient Tree Transfo
 
 Trees represent code written by the user (e.g. methods, classes, expressions). There are two kinds of trees: untyped and typed.
 
-Unlike other compilers (but like `scalac`), dotty doesn't use intermediate representations (IRs) during the compilation pipeline. Instead, it uses trees for all phases.
+Unlike other compilers (but like `scalac`), dotty doesn't use multiple intermediate representations (IRs) during the compilation pipeline. Instead, it uses trees for all phases.
 
 Dotty trees are immutable, so they can be shared.
 
@@ -113,6 +113,7 @@ trait T {
 Another caveat, before typechecking there can be some trees where the lhs isn't a `RefTree`: e.g. `(a, b) = (3, 4)`.
 
 # Symbols
+`dotc/core/Symbols.scala`
 
 Symbols are references to definitions (e.g. of variables, fields, classes). Symbols can be used to refer to definitions for which we don't have ASTs (for example, from the Java standard library).
 
@@ -141,6 +142,7 @@ val O = new O$
 where we have a type symbol for `class O$` and a term symbol for `val O`. Notice the use of the selftype `O.type` to indicate that `this` has a singleton type.
 
 ## SymDenotation
+`dotc/core/SymDenotations.scala`
 
 Symbols contain `SymDenotation`s. The denotation, in turn, refers to:
 
