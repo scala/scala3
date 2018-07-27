@@ -72,7 +72,7 @@ object Splicer {
   /** Tree interpreter that evaluates the tree */
   private class Interpreter(pos: Position, classLoader: ClassLoader)(implicit ctx: Context) extends AbstractInterpreter {
 
-    type Res = Object
+    type Result = Object
 
     /** Returns the interpreted result of interpreting the code a call to the symbol with default arguments.
      *  Return Some of the result or None if some error happen during the interpretation.
@@ -226,7 +226,7 @@ object Splicer {
   /** Tree interpreter that tests if tree can be interpreted */
   private class CanBeInterpreted(implicit ctx: Context) extends AbstractInterpreter {
 
-    type Res = Boolean
+    type Result = Boolean
 
     def apply(tree: Tree): Boolean = interpretTree(tree)(Map.empty)
 
@@ -246,17 +246,17 @@ object Splicer {
 
   /** Abstract Tree interpreter that can interpret calls to static methods with quoted or transparent arguments */
   private abstract class AbstractInterpreter(implicit ctx: Context) {
-    type Env = Map[Name, Res]
-    type Res
+    type Env = Map[Name, Result]
+    type Result
 
-    protected def interpretQuote(tree: Tree)(implicit env: Env): Res
-    protected def interpretTypeQuote(tree: Tree)(implicit env: Env): Res
-    protected def interpretLiteral(value: Any)(implicit env: Env): Res
-    protected def interpretTastyContext()(implicit env: Env): Res
-    protected def interpretStaticMethodCall(fn: Tree, args: => List[Res])(implicit env: Env): Res
-    protected def unexpectedTree(tree: Tree)(implicit env: Env): Res
+    protected def interpretQuote(tree: Tree)(implicit env: Env): Result
+    protected def interpretTypeQuote(tree: Tree)(implicit env: Env): Result
+    protected def interpretLiteral(value: Any)(implicit env: Env): Result
+    protected def interpretTastyContext()(implicit env: Env): Result
+    protected def interpretStaticMethodCall(fn: Tree, args: => List[Result])(implicit env: Env): Result
+    protected def unexpectedTree(tree: Tree)(implicit env: Env): Result
 
-    protected final def interpretTree(tree: Tree)(implicit env: Env): Res = tree match {
+    protected final def interpretTree(tree: Tree)(implicit env: Env): Result = tree match {
       case Apply(TypeApply(fn, _), quoted :: Nil) if fn.symbol == defn.QuotedExpr_apply =>
         interpretQuote(quoted)
 
