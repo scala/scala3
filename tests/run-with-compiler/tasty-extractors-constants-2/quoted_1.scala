@@ -1,5 +1,5 @@
 import scala.quoted._
-import dotty.tools.dotc.quoted.Toolbox._
+import scala.quoted.Toolbox.Default._
 
 import scala.tasty._
 import scala.tasty.util._
