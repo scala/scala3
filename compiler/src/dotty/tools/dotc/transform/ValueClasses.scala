@@ -28,8 +28,7 @@ object ValueClasses {
       d.isRealMethod &&
       isDerivedValueClass(d.owner) &&
       !d.isConstructor &&
-      !d.isSuperAccessor &&
-      !d.is(Macro)
+      !d.isSuperAccessor
     }
 
   /** The member of a derived value class that unboxes it. */
