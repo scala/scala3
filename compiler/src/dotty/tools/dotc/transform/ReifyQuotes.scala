@@ -225,7 +225,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     def levelOK(sym: Symbol)(implicit ctx: Context): Boolean = levelOf.get(sym) match {
       case Some(l) =>
         l == level ||
-        l == 0 && level == -1 && isStageNegOneValue(sym)
+        level == -1 && sym == defn.TastyTopLevelSplice_tastyContext
       case None =>
         !sym.is(Param) || levelOK(sym.owner)
     }
@@ -359,18 +359,12 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       }
       else body match {
         case body: RefTree if isCaptured(body.symbol, level + 1) =>
-          if (isStageNegOneValue(body.symbol)) {
-            // Optimization: avoid the full conversion when capturing inlined `x`
-            // in '{ x } to '{ x$1.toExpr.unary_~ } and go directly to `x$1.toExpr`
-            liftInlineParamValue(capturers(body.symbol)(body))
-          } else {
-            // Optimization: avoid the full conversion when capturing `x`
-            // in '{ x } to '{ x$1.unary_~ } and go directly to `x$1`
-            capturers(body.symbol)(body)
-          }
+          // Optimization: avoid the full conversion when capturing `x`
+          // in '{ x } to '{ x$1.unary_~ } and go directly to `x$1`
+          capturers(body.symbol)(body)
         case _=>
           val (body1, splices) = nested(isQuote = true).split(body)
-          if (level >= 0) pickledQuote(body1, splices, body.tpe, isType).withPos(quote.pos)
+          if (level == 0 && !ctx.owner.ownersIterator.exists(_.isTransparentMethod)) pickledQuote(body1, splices, body.tpe, isType).withPos(quote.pos)
           else {
             // In top-level splice in an transparent def. Keep the tree as it is, it will be transformed at inline site.
             body
@@ -464,7 +458,6 @@ class ReifyQuotes extends MacroTransformWithImplicits {
                 val tpw = tree.tpe.widen
                 val argTpe =
                   if (tree.isType) defn.QuotedTypeType.appliedTo(tpw)
-                  else if (isStageNegOneValue(tree.symbol)) tpw
                   else defn.QuotedExprType.appliedTo(tpw)
                 val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argTpe)
                 val capturedArg = SyntheticValDef(UniqueName.fresh(tree.symbol.name.toTermName).toTermName, selectArg)
@@ -489,7 +482,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
       val captured2 = capturer(captured)
 
-      outer.enteredSyms.foreach(sym => capturers.put(sym, captured2))
+      outer.enteredSyms.foreach(sym => if (!sym.is(Transparent)) capturers.put(sym, captured2))
 
       val tree2 = transform(tree)
       capturers --= outer.enteredSyms
@@ -497,13 +490,9 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       seq(captured.result().valuesIterator.toList, tree2)
     }
 
-    /** Returns true if this tree will be captured by `makeLambda` */
-    private def isCaptured(sym: Symbol, level: Int)(implicit ctx: Context): Boolean = {
-      // Check phase consistency and presence of capturer
-      ( (level == 1 && levelOf.get(sym).contains(1)) ||
-        (level == 0 && isStageNegOneValue(sym))
-      ) && capturers.contains(sym)
-    }
+    /** Returns true if this tree will be captured by `makeLambda`. Checks phase consistency and presence of capturer. */
+    private def isCaptured(sym: Symbol, level: Int)(implicit ctx: Context): Boolean =
+      level == 1 && levelOf.get(sym).contains(1) && capturers.contains(sym)
 
     /** Transform `tree` and return the resulting tree and all `embedded` quotes
      *  or splices as a pair, after performing the `addTags` transform.
@@ -539,13 +528,11 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             splice(ref(splicedType).select(tpnme.UNARY_~).withPos(tree.pos))
           case tree: Select if tree.symbol.isSplice =>
             splice(tree)
+          case tree: RefTree if tree.symbol.is(Transparent) && tree.symbol.is(Param) =>
+            tree
           case tree: RefTree if isCaptured(tree.symbol, level) =>
-            val capturer = capturers(tree.symbol)
-            def captureAndSplice(t: Tree) =
-              splice(t.select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
-            if (!isStageNegOneValue(tree.symbol)) captureAndSplice(capturer(tree))
-            else if (level == 0) capturer(tree)
-            else captureAndSplice(liftInlineParamValue(capturer(tree)))
+            val t = capturers(tree.symbol).apply(tree)
+            splice(t.select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
           case Block(stats, _) =>
             val last = enteredSyms
             stats.foreach(markDef)
@@ -588,28 +575,6 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             checkLevel(mapOverTree(enteredSyms))
         }
       }
-
-    /** Takes a reference to an transparent parameter `tree` and lifts it to an Expr */
-    private def liftInlineParamValue(tree: Tree)(implicit ctx: Context): Tree = {
-      val tpSym = tree.tpe.widenDealias.classSymbol
-
-      val lifter =
-        if (tpSym eq defn.BooleanClass) defn.QuotedLiftable_BooleanIsLiftable
-        else if (tpSym eq defn.ByteClass) defn.QuotedLiftable_ByteIsLiftable
-        else if (tpSym eq defn.CharClass) defn.QuotedLiftable_CharIsLiftable
-        else if (tpSym eq defn.ShortClass) defn.QuotedLiftable_ShortIsLiftable
-        else if (tpSym eq defn.IntClass) defn.QuotedLiftable_IntIsLiftable
-        else if (tpSym eq defn.LongClass) defn.QuotedLiftable_LongIsLiftable
-        else if (tpSym eq defn.FloatClass) defn.QuotedLiftable_FloatIsLiftable
-        else if (tpSym eq defn.DoubleClass) defn.QuotedLiftable_DoubleIsLiftable
-        else defn.QuotedLiftable_StringIsLiftable
-
-      ref(lifter).select("toExpr".toTermName).appliedTo(tree)
-    }
-
-    private def isStageNegOneValue(sym: Symbol)(implicit ctx: Context): Boolean =
-      (sym.is(Transparent) && sym.owner.is(Transparent) && !defn.isFunctionType(sym.info)) ||
-      sym == defn.TastyTopLevelSplice_tastyContext // intrinsic value at stage 0
 
     private def liftList(list: List[Tree], tpe: Type)(implicit ctx: Context): Tree = {
       list.foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>
