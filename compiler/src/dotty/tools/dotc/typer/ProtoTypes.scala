@@ -253,6 +253,14 @@ object ProtoTypes {
       myTypedArg.size == args.length
     }
 
+    def getConstraints()(implicit ctx: Context) = {
+      evalState.foreachBinding((_, tstateConstr) => {
+        val constr = tstateConstr._1.uncommittedAncestor.constraint
+        val tstate = ctx.typerState
+        if (tstate.constraint ne constr) tstate.constraint &= (constr, false)
+      })
+    }
+
     private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(implicit ctx: Context): Tree = {
       var targ = myTypedArg(arg)
       if (targ == null) {

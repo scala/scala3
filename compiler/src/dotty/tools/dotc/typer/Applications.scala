@@ -1418,7 +1418,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           if (isDetermined(alts2)) alts2
           else {
             pretypeArgs(alts2, pt)
-            narrowByTrees(alts2, pt.typedArgs, resultType)
+            val targs = pt.typedArgs
+            pt.getConstraints()
+            narrowByTrees(alts2, targs, resultType)
           }
         }
 
