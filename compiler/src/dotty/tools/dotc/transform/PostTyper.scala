@@ -165,10 +165,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
       def markAsMacro(c: Context): Unit =
         if (c.owner eq c.outer.owner) markAsMacro(c.outer)
-        else if (c.owner.isTransparentMethod) {
-          c.owner.setFlag(Macro)
-          c.owner.resetFlag(Erased) // FIXME: Macros should be Erased, but that causes problems right now
-        }
+        else if (c.owner.isTransparentMethod) () // OK
         else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
 
       if (sym.isSplice || sym.isQuote) {
@@ -245,12 +242,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           //     be duplicated
           //  2. To enable correct pickling (calls can share symbols with the inlined code, which
           //     would trigger an assertion when pickling).
-          // In the case of macros we keep the call to be able to reconstruct the parameters that
-          // are passed to the macro. This same simplification is applied in ReifiedQuotes when the
-          // macro splices are evaluated.
-          val callTrace =
-            if (call.symbol.is(Macro)) call
-            else Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
+          val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {
