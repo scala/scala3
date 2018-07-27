@@ -11,10 +11,6 @@ object Test {
     printTree(Nil: List[Int])
     printTree(new Baz: Foo & Bar)
     printTree(1: Int | String)
-    printTree { import scala.collection.mutable; 1 }
-    printTree { import scala.collection.{mutable, immutable}; 2 }
-    printTree { import scala.collection.{mutable => mut}; 3 }
-    printTree { import scala.collection.{mutable => _}; 4 }
     printTree { class Foo }
     printTree { object Foo }
     printTree { type Foo }
@@ -24,14 +20,14 @@ object Test {
     printTree { class Foo { final def a = 0 } }
     printTree { class Foo { private[Foo] def a = 0 } }
     printTree { class Foo { protected[Foo] def a = 0 } }
-    // printTree { case class Foo() } // FIXME: issue #4396
+    printTree { case class Foo() }
     printTree { class Foo1(a: Int) }
     printTree { class Foo2(val b: Int) }
     printTree { class Foo3(a: Int = 5) }
     printTree { class Foo4(a: Int)(b: Int) }
     printTree { class Foo5(a: Int)(b: Int = a) }
     printTree { class Foo6(a: Int)(b: a.type) }
-    //    printTree { class Foo7(a: Int) { def this() = this(6) } }
+    printTree { class Foo7(a: Int) { def this() = this(6) } }
     printTree { class Foo8 { println(0) } }
     printTree { class Foo10 { val a = 9 } }
     printTree { class Foo11 { var a = 10 } }

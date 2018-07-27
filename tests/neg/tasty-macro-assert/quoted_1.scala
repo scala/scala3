@@ -11,7 +11,7 @@ object Asserts {
 
   object Ops
 
-  transparent def macroAssert(cond: Boolean): Unit =
+  transparent def macroAssert(cond: => Boolean): Unit =
     ~impl('(cond))(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
 
   def impl(cond: Expr[Boolean])(implicit tasty: Tasty): Expr[Unit] = {
@@ -33,7 +33,7 @@ object Asserts {
     }
 
     tree match {
-      case Term.Apply(Term.Select(OpsTree(left), op, _), right :: Nil) =>
+      case Term.Inlined(_, Nil, Term.Apply(Term.Select(OpsTree(left), op, _), right :: Nil)) =>
         '(assertTrue(~left.toExpr[Boolean])) // Buggy code. To generate the errors
       case _ =>
         '(assertTrue(~cond))
