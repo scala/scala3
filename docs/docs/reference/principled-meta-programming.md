@@ -383,7 +383,7 @@ statically known exponent:
     private def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
       if (n == 0) '(1.0)
       else if (n == 1) x
-      else if (n % 2 == 0) '{ { val y = ~x * ~x; ~powerCode(n / 2, '(y)) } }
+      else if (n % 2 == 0) '{ val y = ~x * ~x; ~powerCode(n / 2, '(y)) }
       else '{ ~x * ~powerCode(n - 1, x) }
 
 The reference to `n` as an argument in `~powerCode(n, '(x))` is not
@@ -436,7 +436,8 @@ we currently impose the following restrictions on the use of splices.
  1. A top-level splice must appear in a transparent function (turning that function
     into a macro)
 
- 2. The splice must call a previously compiled method.
+ 2. The splice must call a previously compiled (previous to the call of the transparent definition)
+    static method passing quoted arguments, constant arguments or transparent arguments.
 
  3. Splices inside splices (but no intervening quotes) are not allowed.
 
