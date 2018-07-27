@@ -24,6 +24,8 @@ import reporting.diagnostic.Message
 import reporting.diagnostic.messages.BadSymbolicReference
 import reporting.trace
 
+import scala.annotation.internal.sharable
+
 trait SymDenotations { this: Context =>
   import SymDenotations._
 

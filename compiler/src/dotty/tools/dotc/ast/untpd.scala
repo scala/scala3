@@ -11,6 +11,8 @@ import language.higherKinds
 import collection.mutable.ListBuffer
 import reflect.ClassTag
 
+import scala.annotation.internal.sharable
+
 object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   // ----- Tree cases that exist in untyped form only ------------------

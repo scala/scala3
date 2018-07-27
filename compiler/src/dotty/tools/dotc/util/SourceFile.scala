@@ -11,6 +11,7 @@ import Chars._
 import ScriptSourceFile._
 import Positions._
 import scala.io.Codec
+import scala.annotation.internal.sharable
 
 import java.util.Optional
 

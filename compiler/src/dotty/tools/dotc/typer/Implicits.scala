@@ -37,6 +37,8 @@ import config.Printers.{implicits, implicitsDetailed, typr}
 import collection.mutable
 import reporting.trace
 
+import scala.annotation.internal.sharable
+
 /** Implicit resolution */
 object Implicits {
   import tpd._

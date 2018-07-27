@@ -9,6 +9,8 @@ import Types.Type, Symbols.Symbol, Contexts.Context, Scopes.Scope, Constants.Con
 import typer.Implicits.SearchResult
 import typer.ImportInfo
 
+import scala.annotation.internal.sharable
+
 /** The base class of all printers
  */
 abstract class Printer {

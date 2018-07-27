@@ -18,6 +18,10 @@ object Jars {
   lazy val scalaAsm: String =
     findJarFromRuntime("scala-asm-6.0.0-scala-1")
 
+  /** scala-xml jar */
+  lazy val scalaXml: String =
+    findJarFromRuntime("scala-xml")
+
   /** JLine Jar */
   lazy val jline: String =
     findJarFromRuntime("jline-3.7.0")

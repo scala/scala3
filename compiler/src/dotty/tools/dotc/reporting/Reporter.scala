@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package reporting
 
+import scala.annotation.internal.sharable
+
 import core.Contexts._
 import util.{SourcePosition, NoSourcePosition}
 import core.Decorators.PhaseListDecorator

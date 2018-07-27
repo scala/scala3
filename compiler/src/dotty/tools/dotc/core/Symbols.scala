@@ -31,6 +31,7 @@ import io.AbstractFile
 import language.implicitConversions
 import util.{NoSource, DotClass, Property}
 import scala.collection.JavaConverters._
+import scala.annotation.internal.sharable
 import config.Printers.typr
 
 /** Creation methods for symbols */

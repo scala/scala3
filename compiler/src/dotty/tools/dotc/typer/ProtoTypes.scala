@@ -19,6 +19,8 @@ import ErrorReporting.errorType
 import config.Printers.typr
 import collection.mutable
 
+import scala.annotation.internal.sharable
+
 object ProtoTypes {
 
   import tpd._

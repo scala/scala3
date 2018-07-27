@@ -1,5 +1,5 @@
 object Test extends App {
-  import dotty.tools.dotc.util.Lst
+  import lst.Lst
 
   val xs0: Lst[String] = Lst.Empty
   val xs1 = Lst("a")

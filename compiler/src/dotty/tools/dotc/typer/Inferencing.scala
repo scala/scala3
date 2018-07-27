@@ -22,6 +22,8 @@ import reporting._
 import collection.mutable
 import config.Config
 
+import scala.annotation.internal.sharable
+
 object Inferencing {
 
   import tpd._

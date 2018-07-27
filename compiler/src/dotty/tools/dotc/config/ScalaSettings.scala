@@ -94,6 +94,8 @@ class ScalaSettings extends Settings.SettingGroup {
   val YlogClasspath = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
   val YdisableFlatCpCaching  = BooleanSetting("-YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
 
+  val Yscala2Unpickler = StringSetting("-Yscala2-unpickler", "", "Control where we may get Scala 2 symbols from. This is either \"always\", \"never\", or a classpath.", "always")
+
   val YnoImports = BooleanSetting("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
   val YnoInline = BooleanSetting("-Yno-inline", "Suppress inlining.")
   val YnoGenericSig = BooleanSetting("-Yno-generic-signatures", "Suppress generation of generic signatures for Java.")

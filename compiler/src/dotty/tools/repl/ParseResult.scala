@@ -11,6 +11,8 @@ import dotc.reporting._
 
 import results._
 
+import scala.annotation.internal.sharable
+
 /** A parsing result from string input */
 sealed trait ParseResult
 

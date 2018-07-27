@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package util
 
+import scala.annotation.internal.sharable
+
 import core.Contexts._
 import collection.mutable
 
