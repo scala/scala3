@@ -11,11 +11,7 @@ trait CaseDefOpsImpl extends scala.tasty.reflect.CaseDefOps with TastyCoreImpl w
   }
 
   object CaseDef extends CaseDefExtractor {
-    def unapply(x: CaseDef): Option[(Pattern, Option[Term], Term)] = x match {
-      case x: tpd.CaseDef =>
-        Some(x.pat, optional(x.guard), x.body)
-      case _ => None
-    }
+    def unapply(x: CaseDef): Some[(Pattern, Option[Term], Term)] = Some(x.pat, optional(x.guard), x.body)
   }
 
 }
