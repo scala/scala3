@@ -7,11 +7,11 @@ object Test {
       val pos = x.position
       println(s"${x.value} columns:${pos.startColumn}-${pos.endColumn} lines:${pos.startLine}-${pos.endLine}")
     }
-//    printPos(Positioned(0)) // FIXME we cannot get possition of values that get inlined
-//    printPos(10)
-//    printPos(4530)
-//    printPos(Positioned("acbvasdfa"))
-//    printPos("acbvasdfa")
+    printPos(Positioned(0))
+    printPos(10)
+    printPos(4530)
+    printPos(Positioned("acbvasdfa"))
+    printPos("acbvasdfa")
     printPos(
       """a
         |b""".stripMargin)

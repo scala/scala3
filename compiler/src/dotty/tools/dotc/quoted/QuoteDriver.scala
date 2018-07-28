@@ -3,15 +3,13 @@ package dotty.tools.dotc.quoted
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase}
+import dotty.tools.dotc.tastyreflect.TastyImpl
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.quoted.{Expr, Type}
 import scala.quoted.Toolbox
-
 import java.net.URLClassLoader
-
-import dotty.tools.dotc.tastyreflect.TastyImpl
 
 class QuoteDriver extends Driver {
   import tpd._

@@ -9,7 +9,7 @@ import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.reporting.diagnostic.MessageContainer
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.{Positions, SourcePosition}
 
 import scala.quoted
 import scala.reflect.ClassTag
@@ -44,6 +44,8 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
     def source: java.nio.file.Path = ctx.compilationUnit.source.file.jpath
   }
+
+  def rootPosition: SourcePosition = SourcePosition(rootContext.source, Positions.NoPosition)
 
   // ===== Id =======================================================
 
