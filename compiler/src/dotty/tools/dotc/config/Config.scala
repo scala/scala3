@@ -160,7 +160,7 @@ object Config {
   final val showCompletions = false
 
   /** If set, enables tracing */
-  final val tracingEnabled = false
+  final val tracingEnabled = true
 
   /** Initial capacity of uniques HashMap.
    *  Note: This MUST BE a power of two to work with util.HashSet

@@ -23,8 +23,13 @@ object Test {
   val z: S[S[S[S[Z]]]] = y
 
   transparent def concat[T, N1 <: Nat, N2 <: Nat](xs: Vec[T, N1], ys: Vec[T, N2]): Vec[T, _] = {
-    val length = Typed(add(erasedValue[N1], erasedValue[N2]))
+    erased val length = Typed(add(erasedValue[N1], erasedValue[N2]))
     Vec[T, length.Type](xs.elems ++ ys.elems)
   }
+
+  val xs = Vec[Int, S[S[Z]]](List(1, 2))
+  val ys = Vec[Int, S[Z]](List(3))
+  val zs = concat(xs, ys)
+  val zsc: Vec[Int, S[S[S[Z]]]] = zs
 }
 

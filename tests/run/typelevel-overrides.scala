@@ -25,5 +25,5 @@ object Test extends App {
   val b: B = new B
   assert(b.f(0) == 0)
   val c: A = new C
-  assert(c.f(0) == 1, c.f(0))
+  assert(c.f(0) == 0, c.f(0))
 }

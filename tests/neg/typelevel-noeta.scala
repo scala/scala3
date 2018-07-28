@@ -2,7 +2,7 @@
 object Test {
   def anyValue[T]: T = ???
 
-  transparent def test(x: Int) = x match {
+  erased transparent def test(x: Int) = x match {
     case _: Byte =>
     case _: Char =>
   }

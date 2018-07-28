@@ -974,8 +974,9 @@ class Typer extends Namer
         val unchecked = pt.isRef(defn.PartialFunctionClass)
         typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
       case id @ untpd.ImplicitScrutinee() =>
-        if (tree.getAttachment(PrepareTransparent.TopLevelMatch).isEmpty)
-          ctx.error(em"implicit match cannot be used here; it must occur as a toplevel match of a transparent method", tree.pos)
+        if (tree.getAttachment(PrepareTransparent.TopLevelMatch).isEmpty ||
+            !ctx.owner.flagsUNSAFE.is(Erased))
+          ctx.error(em"implicit match cannot be used here; it must occur as a toplevel match of an erased transparent method", tree.pos)
         val sel1 = id.withType(defn.ImplicitScrutineeTypeRef)
         typedMatchFinish(tree, sel1, sel1.tpe, pt)
       case _ =>
@@ -2351,7 +2352,7 @@ class Typer extends Namer
       //  - the current tree is a synthetic apply which is not expandable (eta-expasion would simply undo that)
       if (arity >= 0 &&
           !tree.symbol.isConstructor &&
-          !tree.symbol.is(TransparentMethod) &&
+          !tree.symbol.is(TransparentErasedMethod) &&
           !ctx.mode.is(Mode.Pattern) &&
           !(isSyntheticApply(tree) && !isExpandableApply))
         simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)

@@ -1195,15 +1195,6 @@ class Namer { typer: Typer =>
       instantiateDependent(restpe, typeParams, termParamss)
       ctx.methodType(tparams map symbolOfTree, termParamss, restpe, isJava = ddef.mods is JavaDefined)
     }
-    if (sym.is(Transparent) &&
-        sym.unforcedAnnotation(defn.ForceInlineAnnot).isEmpty)
-        // Need to keep @forceInline annotated methods around to get to parity with Scala.
-        // This is necessary at least until we have full bootstrap. Right now
-        // dotty-bootstrapped involves running the Dotty compiler compiled with Scala 2 with
-        // a Dotty runtime library compiled with Dotty. If we erase @forceInline annotated
-        // methods, this means that the support methods in dotty.runtime.LazyVals vanish.
-        // But they are needed for running the lazy val implementations in the Scala-2 compiled compiler.
-      sym.setFlag(Erased)
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
