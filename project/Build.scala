@@ -598,7 +598,8 @@ object Build {
         val dottyLib = jars("dotty-library")
 
         def run(args: List[String]): Unit = {
-          val fullArgs = insertClasspathInArgs(args, s".:$dottyLib:$scalaLib")
+          val sep = File.pathSeparator
+          val fullArgs = insertClasspathInArgs(args, s".$sep$dottyLib$sep$scalaLib")
           runProcess("java" :: fullArgs, wait = true)
         }
 
