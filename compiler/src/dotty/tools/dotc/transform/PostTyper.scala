@@ -156,23 +156,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         }
     }
 
-    /** 1. If we are in a transparent method but not in a nested quote, mark the transparent method
-     *  as a macro.
-     *
-     *  2. If selection is a quote or splice node, record that fact in the current compilation unit.
+    /** If selection is a quote or splice node, record that fact in the current compilation unit.
      */
-    private def handleMeta(sym: Symbol)(implicit ctx: Context): Unit = {
-
-      def markAsMacro(c: Context): Unit =
-        if (c.owner eq c.outer.owner) markAsMacro(c.outer)
-        else if (c.owner.isTransparentMethod) c.owner.setFlag(Macro | Erased)
-        else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
-
-      if (sym.isSplice || sym.isQuote) {
-        markAsMacro(ctx)
-        ctx.compilationUnit.containsQuotesOrSplices = true
-      }
-    }
+    private def handleMeta(sym: Symbol)(implicit ctx: Context): Unit =
+      if (sym.isSplice || sym.isQuote) ctx.compilationUnit.containsQuotesOrSplices = true
 
     private object dropInlines extends TreeMap {
       override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {

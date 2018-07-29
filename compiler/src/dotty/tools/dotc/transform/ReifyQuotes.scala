@@ -11,7 +11,7 @@ import SymUtils._
 import NameKinds._
 import dotty.tools.dotc.ast.tpd.Tree
 import typer.Implicits.SearchFailureType
-
+import reporting.diagnostic.messages._
 import scala.collection.mutable
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
@@ -241,6 +241,10 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       case None =>
         !sym.is(Param) || levelOK(sym.owner)
     }
+
+    /** Issue a "splice outside quote" error unless we are in the body of a transparent method */
+    def spliceOutsideQuotes(pos: Position)(implicit ctx: Context): Unit =
+      ctx.error(SpliceOutsideQuotes(), pos)
 
     /** Try to heal phase-inconsistent reference to type `T` using a local type definition.
      *  @return None      if successful
