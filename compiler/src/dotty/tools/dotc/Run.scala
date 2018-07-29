@@ -19,9 +19,10 @@ import transform.TreeChecker
 import rewrite.Rewrites
 import java.io.{BufferedWriter, OutputStreamWriter}
 
-import dotty.tools.dotc.profile.Profiler
+import profile.Profiler
 import printing.XprintMode
 import parsing.Parsers.Parser
+import parsing.JavaParsers.JavaParser
 import typer.ImplicitRunInfo
 import collection.mutable
 
@@ -209,7 +210,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       lateFiles += file
       val unit = new CompilationUnit(getSource(file.path))
       def process()(implicit ctx: Context) = {
-        unit.untpdTree = new Parser(unit.source).parse()
+        unit.untpdTree =
+          if (unit.isJava) new JavaParser(unit.source).parse()
+          else new Parser(unit.source).parse()
         ctx.typer.lateEnter(unit.untpdTree)
         def typeCheckUnit() = unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
         if (typeCheck)

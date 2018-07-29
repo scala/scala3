@@ -16,6 +16,7 @@ import Decorators._
 import scala.util.control.NonFatal
 import ast.Trees._
 import ast.tpd
+import parsing.JavaParsers.OutlineJavaParser
 import parsing.Parsers.OutlineParser
 import reporting.trace
 
@@ -154,7 +155,10 @@ object SymbolLoaders {
             case _ =>
           }
 
-          traverse(new OutlineParser(unit.source).parse(), Nil)
+          traverse(
+            if (unit.isJava) new OutlineJavaParser(unit.source).parse()
+            else new OutlineParser(unit.source).parse(),
+            Nil)
         }
 
         val unit = new CompilationUnit(ctx.run.getSource(src.path))

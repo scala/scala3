@@ -2638,6 +2638,9 @@ object Parsers {
   }
 
 
+  /** OutlineParser parses top-level declarations in `source` to find declared classes, ignoring their bodies (which
+   *  must only have balanced braces). This is used to map class names to defining sources.
+   */
   class OutlineParser(source: SourceFile)(implicit ctx: Context) extends Parser(source) {
 
     def skipBraces[T](body: T): T = {
