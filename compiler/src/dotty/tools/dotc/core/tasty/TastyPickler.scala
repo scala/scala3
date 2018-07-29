@@ -26,8 +26,13 @@ class TastyPickler(val rootCls: ClassSymbol) {
     nameBuffer.assemble()
     sections.foreach(_._2.assemble())
 
-    val uuidLow: Long = pjwHash64(nameBuffer.bytes)
-    val uuidHi: Long = sections.iterator.map(x => pjwHash64(x._2.bytes)).fold(0L)(_ ^ _)
+    val nameBufferHash = pjwHash64(nameBuffer.bytes)
+    val treeSectionHash +: otherSectionHashes = sections.map(x => pjwHash64(x._2.bytes))
+
+    // Hash of name table and tree
+    val uuidLow: Long = nameBufferHash ^ treeSectionHash
+    // Hash of positions, comments and any additional section
+    val uuidHi: Long = otherSectionHashes.fold(0L)(_ ^ _)
 
     val headerBuffer = {
       val buf = new TastyBuffer(header.length + 24)
