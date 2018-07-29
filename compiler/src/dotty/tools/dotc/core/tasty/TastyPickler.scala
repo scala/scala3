@@ -75,18 +75,19 @@ class TastyPickler(val rootCls: ClassSymbol) {
 
   /** Returns a non-cryptographic 64-bit hash of the array.
    *
-   *  from https://en.wikipedia.org/wiki/PJW_hash_function#Implementation
+   *  from https://en.wikipedia.org/wiki/PJW_hash_function#Algorithm
    */
   private def pjwHash64(data: Array[Byte]): Long = {
     var h = 0L
     var i = 0
     while (i < data.length) {
       val d = data(i) & 0xFFL // Interpret byte as unsigned byte
-      h = (h << 4) + d
-      val high = h & 0xF0000000L
-      if (high != 0)
-        h ^= high >> 24
-      h &= ~high
+      h = (h << 8) + d
+      val high = h & 0xFF00000000000000L
+      if (high != 0) {
+        h ^= high >> 48L
+        h &= ~high
+      }
       i += 1
     }
     h
