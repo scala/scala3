@@ -79,12 +79,12 @@ class TastyPickler(val rootCls: ClassSymbol) {
    */
   private def pjwHash64(data: Array[Byte]): Long = {
     var h = 0L
-    var high = 0L
     var i = 0
     while (i < data.length) {
       h = (h << 4) + data(i)
-      high = h & 0xF0000000L
-      h ^= high >> 24
+      val high = h & 0xF0000000L
+      if (high != 0)
+        h ^= high >> 24
       h &= ~high
       i += 1
     }
