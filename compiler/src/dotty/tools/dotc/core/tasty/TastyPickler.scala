@@ -20,10 +20,11 @@ class TastyPickler(val rootCls: ClassSymbol) {
     sections += ((nameBuffer.nameIndex(name.toTermName), buf))
 
   def assembleParts(): Array[Byte] = {
-    def lengthWithLength(buf: TastyBuffer) = {
-      buf.assemble()
+    def lengthWithLength(buf: TastyBuffer) =
       buf.length + natSize(buf.length)
-    }
+
+    nameBuffer.assemble()
+    sections.foreach(_._2.assemble())
 
     val uuidLow: Long = pjwHash64(nameBuffer.bytes)
     val uuidHi: Long = sections.iterator.map(x => pjwHash64(x._2.bytes)).fold(0L)(_ ^ _)
