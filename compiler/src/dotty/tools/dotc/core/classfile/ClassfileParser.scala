@@ -838,7 +838,7 @@ class ClassfileParser(
             val expectedUUID = new UUID(reader.readUncompressedLong(), reader.readUncompressedLong())
             val tastyUUID = new TastyHeaderUnpickler(tastyBytes).readHeader()
             if (expectedUUID != tastyUUID)
-              ctx.error(s"Tasty UUID ($tastyUUID) file did not correspond the tasty UUID declared in the classfile ($expectedUUID).")
+              ctx.error(s"Tasty UUID ($tastyUUID) file did not correspond the tasty UUID ($expectedUUID) declared in the classfile $classfile.")
             return unpickleTASTY(tastyBytes)
           }
         }
