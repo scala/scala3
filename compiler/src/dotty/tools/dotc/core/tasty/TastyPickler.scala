@@ -81,7 +81,8 @@ class TastyPickler(val rootCls: ClassSymbol) {
     var h = 0L
     var i = 0
     while (i < data.length) {
-      h = (h << 4) + data(i)
+      val d = data(i) & 0xFFL // Interpret byte as unsigned byte
+      h = (h << 4) + d
       val high = h & 0xF0000000L
       if (high != 0)
         h ^= high >> 24
