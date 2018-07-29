@@ -276,6 +276,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   /** Are we in a transparent method body? */
   def inTransparentMethod = owner.ownersIterator.exists(_.isTransparentMethod)
 
+  /** Are we in a transparent method body? */
+  def inErasedTransparentMethod = owner.ownersIterator.exists(sym =>
+    sym.isTransparentMethod && sym.is(Erased))
+
   /** Is `feature` enabled in class `owner`?
    *  This is the case if one of the following two alternatives holds:
    *
