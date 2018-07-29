@@ -45,7 +45,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     compileDir("compiler/src/dotty/tools/dotc/util", defaultOptions) +
     compileDir("compiler/src/dotty/tools/io", defaultOptions) +
     compileDir("compiler/src/dotty/tools/dotc/core", TestFlags(classPath, noCheckOptions))
-  }
+  }.checkCompile()
 
   @Test def posTwiceWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("posTwiceWithCompiler")
