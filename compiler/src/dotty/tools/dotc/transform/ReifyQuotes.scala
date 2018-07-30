@@ -3,7 +3,6 @@ package transform
 
 import core._
 import Decorators._, Flags._, Types._, Contexts._, Symbols._, Constants._
-import Flags._
 import ast.Trees._
 import ast.{TreeTypeMap, untpd}
 import util.Positions._
@@ -16,6 +15,7 @@ import typer.Implicits.SearchFailureType
 import scala.collection.mutable
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
+import dotty.tools.dotc.util.SourcePosition
 
 
 /** Translates quoted terms and types to `unpickle` method calls.
@@ -230,10 +230,6 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         !sym.is(Param) || levelOK(sym.owner)
     }
 
-    /** Issue a "splice outside quote" error unless we are in the body of a transparent method */
-    def spliceOutsideQuotes(pos: Position)(implicit ctx: Context): Unit =
-      ctx.error(i"splice outside quotes", pos)
-
     /** Try to heal phase-inconsistent reference to type `T` using a local type definition.
      *  @return None      if successful
      *  @return Some(msg) if unsuccessful where `msg` is a potentially empty error message
@@ -292,7 +288,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
               outer.checkType(pos).foldOver(acc, tp)
             }
             else {
-              if (tp.isTerm) spliceOutsideQuotes(pos)
+              if (tp.isTerm) ctx.error(i"splice outside quotes", pos)
               tp
             }
           case tp: NamedType =>
@@ -418,13 +414,27 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         val body1 = nested(isQuote = false).transform(splice.qualifier)
         body1.select(splice.name)
       }
-      else if (!inQuote && level == 0 && !ctx.owner.is(Transparent)) {
-        spliceOutsideQuotes(splice.pos)
-        splice
-      }
-      else {
+      else if (level == 1) {
         val (body1, quotes) = nested(isQuote = false).split(splice.qualifier)
         makeHole(body1, quotes, splice.tpe).withPos(splice.pos)
+      }
+      else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
+        val spliceCtx = ctx.outer // drop the last `inlineContext`
+        val pos: SourcePosition = Decorators.sourcePos(enclosingInlineds.head.pos)(spliceCtx)
+        val evaluatedSplice = Splicer.splice(splice.qualifier, pos, macroClassLoader)(spliceCtx).withPos(splice.pos)
+        if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice)
+      }
+      else if (!ctx.owner.is(Transparent)) { // level 0 outside a transparent definition
+        ctx.error(i"splice outside quotes or transparent method", splice.pos)
+        splice
+      }
+      else if (Splicer.canBeSpliced(splice.qualifier)) { // level 0 inside a transparent definition
+        nested(isQuote = false).split(splice.qualifier) // Just check PCP
+        splice
+      }
+      else { // level 0 inside a transparent definition
+        ctx.error("Malformed macro call. The contents of the ~ must call a static method and arguments must be quoted or transparent.".stripMargin, splice.pos)
+        splice
       }
     }
 
@@ -550,18 +560,6 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             val last = enteredSyms
             stats.foreach(markDef)
             mapOverTree(last)
-          case Inlined(call, bindings, InlineSplice(spliced)) if !call.isEmpty =>
-            val tree2 =
-              if (level == 0) {
-                val evaluatedSplice = Splicer.splice(spliced, tree.pos, macroClassLoader).withPos(tree.pos)
-                if (ctx.reporter.hasErrors) EmptyTree
-                else transform(cpy.Inlined(tree)(call, bindings, evaluatedSplice))
-              }
-              else super.transform(tree)
-
-            // due to value-discarding which converts an { e } into { e; () })
-            if (tree.tpe =:= defn.UnitType) Block(tree2 :: Nil, Literal(Constant(())))
-            else tree2
           case _: Import =>
             tree
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
