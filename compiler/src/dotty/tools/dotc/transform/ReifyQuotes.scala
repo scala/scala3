@@ -104,7 +104,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
    *  @param  inQuote    we are within a `'(...)` context that is not shadowed by a nested `~(...)`
    *  @param  outer      the next outer reifier, null is this is the topmost transformer
    *  @param  level      the current level, where quotes add one and splices subtract one level.
-   *                     The initial level is 0, a level `l` where `l > 0` implies code has been quotes `l` times
+   *                     The initial level is 0, a level `l` where `l > 0` implies code has been quoted `l` times
    *                     and `l == -1` is code inside a top level splice (in an transparent method).
    *  @param  levels     a stacked map from symbols to the levels in which they were defined
    *  @param  embedded   a list of embedded quotes (if `inSplice = true`) or splices (if `inQuote = true`
