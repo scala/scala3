@@ -130,6 +130,23 @@ object Parsers {
       ctx.error(msg, source atPos pos)
   }
 
+  trait OutlineParserCommon extends ParserCommon {
+    def accept(token: Int): Int
+
+    def skipBracesHook(): Option[Tree]
+    def skipBraces(): Unit = {
+      accept(LBRACE)
+      var openBraces = 1
+      while (in.token != EOF && openBraces > 0) {
+        skipBracesHook() getOrElse {
+          if (in.token == LBRACE) openBraces += 1
+          else if (in.token == RBRACE) openBraces -= 1
+          in.nextToken()
+        }
+      }
+    }
+  }
+
   class Parser(source: SourceFile)(implicit ctx: Context) extends ParserCommon(source) {
 
     val in: Scanner = new Scanner(source)
@@ -2641,20 +2658,10 @@ object Parsers {
   /** OutlineParser parses top-level declarations in `source` to find declared classes, ignoring their bodies (which
    *  must only have balanced braces). This is used to map class names to defining sources.
    */
-  class OutlineParser(source: SourceFile)(implicit ctx: Context) extends Parser(source) {
+  class OutlineParser(source: SourceFile)(implicit ctx: Context) extends Parser(source) with OutlineParserCommon {
 
-    def skipBraces(): Unit = {
-      accept(LBRACE)
-      var openBraces = 1
-      while (in.token != EOF && openBraces > 0) {
-        if (in.token == XMLSTART) xmlLiteral()
-        else {
-          if (in.token == LBRACE) openBraces += 1
-          else if (in.token == RBRACE) openBraces -= 1
-          in.nextToken()
-        }
-      }
-    }
+    def skipBracesHook(): Option[Tree] =
+      if (in.token == XMLSTART) Some(xmlLiteral()) else None
 
     override def blockExpr(): Tree = {
       skipBraces()
@@ -2663,7 +2670,7 @@ object Parsers {
 
     override def templateBody() = {
       skipBraces()
-      (EmptyValDef, List(EmptyTree)))
+      (EmptyValDef, List(EmptyTree))
     }
   }
 }

@@ -914,21 +914,11 @@ object JavaParsers {
    *  This is necessary even for Java, because the filename defining a non-public classes cannot be determined from the
    *  classname alone.
    */
-  class OutlineJavaParser(source: SourceFile)(implicit ctx: Context) extends JavaParser(source) {
-
-    def skipBraces(): Unit = {
-      accept(LBRACE)
-      var openBraces = 1
-      while (in.token != EOF && openBraces > 0) {
-        if (in.token == LBRACE) openBraces += 1
-        else if (in.token == RBRACE) openBraces -= 1
-        in.nextToken()
-      }
-    }
-
+  class OutlineJavaParser(source: SourceFile)(implicit ctx: Context) extends JavaParser(source) with OutlineParserCommon {
+    override def skipBracesHook() = None
     override def typeBody(leadingToken: Int, parentName: Name, parentTParams: List[TypeDef]): (List[Tree], List[Tree]) = {
       skipBraces()
-      (List(EmptyValDef), List(EmptyTree)))
+      (List(EmptyValDef), List(EmptyTree))
     }
   }
 }
