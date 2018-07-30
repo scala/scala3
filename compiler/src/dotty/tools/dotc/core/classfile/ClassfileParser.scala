@@ -761,7 +761,7 @@ class ClassfileParser(
           assert(cond,
             s"Unpickling ${classRoot.symbol.showLocated} from ${classRoot.symbol.associatedFile} is not allowed with -Yscala2-unpickler $allowed")
 
-        if (false && allowed != "always") {
+        if (allowed != "always") {
           failUnless(allowed != "never")
           val allowedList = allowed.split(":").toList
           val file = classRoot.symbol.associatedFile
