@@ -1501,7 +1501,7 @@ class Typer extends Namer
      */
     def maybeCall(ref: Tree, psym: Symbol, cinfo: Type): Tree = cinfo.stripPoly match {
       case cinfo @ MethodType(Nil) if cinfo.resultType.isImplicitMethod =>
-        typedExpr(untpd.New(ref, Nil))(superCtx)
+        typedExpr(untpd.New(untpd.TypedSplice(ref)(superCtx), Nil))(superCtx)
       case cinfo @ MethodType(Nil) if !cinfo.resultType.isInstanceOf[MethodType] =>
         ref
       case cinfo: MethodType =>
@@ -1518,7 +1518,7 @@ class Typer extends Namer
 
     def typedParent(tree: untpd.Tree): Tree = {
       var result = if (tree.isType) typedType(tree)(superCtx) else typedExpr(tree)(superCtx)
-      val psym = result.tpe.typeSymbol
+      val psym = result.tpe.dealias.typeSymbol
       if (seenParents.contains(psym) && !cls.isRefinementClass)
         ctx.error(i"$psym is extended twice", tree.pos)
       seenParents += psym
