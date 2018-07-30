@@ -112,33 +112,20 @@ object DottyPlugin extends AutoPlugin {
    *  corresponding .tasty or .hasTasty file is also deleted.
    */
   def dottyPatchIncOptions(incOptions: IncOptions): IncOptions = {
-    val inheritedNewClassFileManager = ClassFileManagerUtil.getDefaultClassFileManager(incOptions)
-    val tastyFileManager = new ClassFileManager {
-      private[this] val inherited = inheritedNewClassFileManager
+    val tastyFileManager = new TastyFileManager
 
-      def delete(classes: Array[File]): Unit = {
-        val tastySuffixes = List(".tasty", ".hasTasty")
-        inherited.delete(classes flatMap { classFile =>
-          if (classFile.getPath endsWith ".class") {
-            val prefix = classFile.getAbsolutePath.stripSuffix(".class")
-            tastySuffixes.map(suffix => new File(prefix + suffix)).filter(_.exists)
-          } else Nil
-        })
-      }
-
-      def generated(classes: Array[File]): Unit = {}
-      def complete(success: Boolean): Unit = {}
-    }
+    // Once sbt/zinc#562 is fixed, can be:
+    // val newExternalHooks =
+    //   incOptions.externalHooks.withExternalClassFileManager(tastyFileManager)
     val inheritedHooks = incOptions.externalHooks
-    val externalClassFileManager: Optional[ClassFileManager] = Option(inheritedHooks.getExternalClassFileManager.orElse(null)) match {
-        case Some(prevManager) =>
-          Optional.of(WrappedClassFileManager.of(prevManager, Optional.of(tastyFileManager)))
-        case None =>
-          Optional.of(tastyFileManager)
-      }
+    val external = Optional.of(tastyFileManager: ClassFileManager)
+    val prevManager = inheritedHooks.getExternalClassFileManager
+    val fileManager: Optional[ClassFileManager] =
+      if (prevManager.isPresent) Optional.of(WrappedClassFileManager.of(prevManager.get, external))
+      else external
+    val newExternalHooks = new DefaultExternalHooks(inheritedHooks.getExternalLookup, fileManager)
 
-    val hooks = new DefaultExternalHooks(inheritedHooks.getExternalLookup, externalClassFileManager)
-    incOptions.withExternalHooks(hooks)
+    incOptions.withExternalHooks(newExternalHooks)
   }
 
   override val globalSettings: Seq[Def.Setting[_]] = Seq(
