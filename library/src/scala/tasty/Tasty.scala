@@ -39,6 +39,9 @@ abstract class Tasty { tasty =>
 
   implicit def rootContext: Context
 
+  /** Root position of this tasty context. For macros it corresponds to the expansion site. */
+  def rootPosition: Position
+
   // ===== Id =======================================================
 
   type Id

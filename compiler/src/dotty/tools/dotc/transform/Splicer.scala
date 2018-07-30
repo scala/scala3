@@ -21,6 +21,7 @@ import dotty.tools.dotc.tastyreflect.TastyImpl
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.Positions.Position
+import dotty.tools.dotc.util.SourcePosition
 
 import scala.reflect.ClassTag
 
@@ -103,7 +104,9 @@ object Splicer {
       value.asInstanceOf[Object]
 
     protected def interpretTastyContext()(implicit env: Env): Object =
-      new TastyImpl(ctx)
+      new TastyImpl(ctx) {
+        override def rootPosition: SourcePosition = SourcePosition(ctx.source, pos)
+      }
 
     protected def interpretStaticMethodCall(fn: Tree, args: => List[Object])(implicit env: Env): Object = {
       val (clazz, instance) = loadModule(fn.symbol.owner)
