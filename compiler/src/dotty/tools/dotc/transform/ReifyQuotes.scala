@@ -103,14 +103,16 @@ class ReifyQuotes extends MacroTransformWithImplicits {
   /** The main transformer class
    *  @param  inQuote    we are within a `'(...)` context that is not shadowed by a nested `~(...)`
    *  @param  outer      the next outer reifier, null is this is the topmost transformer
-   *  @param  level      the current level, where quotes add one and splices subtract one level
+   *  @param  level      the current level, where quotes add one and splices subtract one level.
+   *                     The initial level is 0, a level `l` where `l > 0` implies code has been quoted `l` times
+   *                     and `l == -1` is code inside a top level splice (in an transparent method).
    *  @param  levels     a stacked map from symbols to the levels in which they were defined
    *  @param  embedded   a list of embedded quotes (if `inSplice = true`) or splices (if `inQuote = true`
    */
   private class Reifier(inQuote: Boolean, val outer: Reifier, val level: Int, levels: LevelInfo,
       val embedded: mutable.ListBuffer[Tree]) extends ImplicitsTransformer {
     import levels._
-    assert(level >= 0)
+    assert(level >= -1)
 
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
     def nested(isQuote: Boolean): Reifier = {
@@ -205,7 +207,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     }
 
     /** Enter staging level of symbol defined by `tree`, if applicable. */
-    def markDef(tree: Tree)(implicit ctx: Context) = tree match {
+    def markDef(tree: Tree)(implicit ctx: Context): Unit = tree match {
       case tree: DefTree =>
         val sym = tree.symbol
         if ((sym.isClass || !sym.maybeOwner.isType) && !levelOf.contains(sym)) {
@@ -223,7 +225,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     def levelOK(sym: Symbol)(implicit ctx: Context): Boolean = levelOf.get(sym) match {
       case Some(l) =>
         l == level ||
-        l == 1 && level == 0 && isStage0Value(sym)
+        l == 0 && level == -1 && isStageNegOneValue(sym)
       case None =>
         !sym.is(Param) || levelOK(sym.owner)
     }
@@ -239,7 +241,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
      */
     def tryHeal(tp: Type, pos: Position)(implicit ctx: Context): Option[String] = tp match {
       case tp: TypeRef =>
-        if (level == 0) {
+        if (level == -1) {
           assert(ctx.owner.ownersIterator.exists(_.is(Transparent)))
           None
         } else {
@@ -357,7 +359,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       }
       else body match {
         case body: RefTree if isCaptured(body.symbol, level + 1) =>
-          if (isStage0Value(body.symbol)) {
+          if (isStageNegOneValue(body.symbol)) {
             // Optimization: avoid the full conversion when capturing inlined `x`
             // in '{ x } to '{ x$1.toExpr.unary_~ } and go directly to `x$1.toExpr`
             liftInlineParamValue(capturers(body.symbol)(body))
@@ -368,7 +370,11 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           }
         case _=>
           val (body1, splices) = nested(isQuote = true).split(body)
-          pickledQuote(body1, splices, body.tpe, isType).withPos(quote.pos)
+          if (level >= 0) pickledQuote(body1, splices, body.tpe, isType).withPos(quote.pos)
+          else {
+            // In top-level splice in an transparent def. Keep the tree as it is, it will be transformed at inline site.
+            body
+          }
       }
     }
 
@@ -412,7 +418,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         val body1 = nested(isQuote = false).transform(splice.qualifier)
         body1.select(splice.name)
       }
-      else if (!inQuote && level == 0) {
+      else if (!inQuote && level == 0 && !ctx.owner.is(Transparent)) {
         spliceOutsideQuotes(splice.pos)
         splice
       }
@@ -458,7 +464,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
                 val tpw = tree.tpe.widen
                 val argTpe =
                   if (tree.isType) defn.QuotedTypeType.appliedTo(tpw)
-                  else if (isStage0Value(tree.symbol)) tpw
+                  else if (isStageNegOneValue(tree.symbol)) tpw
                   else defn.QuotedExprType.appliedTo(tpw)
                 val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argTpe)
                 val capturedArg = SyntheticValDef(UniqueName.fresh(tree.symbol.name.toTermName).toTermName, selectArg)
@@ -495,7 +501,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     private def isCaptured(sym: Symbol, level: Int)(implicit ctx: Context): Boolean = {
       // Check phase consistency and presence of capturer
       ( (level == 1 && levelOf.get(sym).contains(1)) ||
-        (level == 0 && isStage0Value(sym))
+        (level == 0 && isStageNegOneValue(sym))
       ) && capturers.contains(sym)
     }
 
@@ -537,7 +543,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             val capturer = capturers(tree.symbol)
             def captureAndSplice(t: Tree) =
               splice(t.select(if (tree.isTerm) nme.UNARY_~ else tpnme.UNARY_~))
-            if (!isStage0Value(tree.symbol)) captureAndSplice(capturer(tree))
+            if (!isStageNegOneValue(tree.symbol)) captureAndSplice(capturer(tree))
             else if (level == 0) capturer(tree)
             else captureAndSplice(liftInlineParamValue(capturer(tree)))
           case Block(stats, _) =>
@@ -559,13 +565,12 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           case _: Import =>
             tree
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
+            if (enclosingInlineds.nonEmpty)
+              return EmptyTree // Already checked at definition site and already inlined
+            markDef(tree)
             tree.rhs match {
               case InlineSplice(_) =>
-                if (!tree.symbol.isStatic)
-                  ctx.error("Transparent macro method must be a static method.", tree.pos)
-                markDef(tree)
-                val reifier = nested(isQuote = true)
-                reifier.transform(tree) // Ignore output, only check PCP
+                mapOverTree(enteredSyms) // Ignore output, only check PCP
                 cpy.DefDef(tree)(rhs = defaultValue(tree.rhs.tpe))
               case _ =>
                 ctx.error(
@@ -602,7 +607,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       ref(lifter).select("toExpr".toTermName).appliedTo(tree)
     }
 
-    private def isStage0Value(sym: Symbol)(implicit ctx: Context): Boolean =
+    private def isStageNegOneValue(sym: Symbol)(implicit ctx: Context): Boolean =
       (sym.is(Transparent) && sym.owner.is(Transparent) && !defn.isFunctionType(sym.info)) ||
       sym == defn.TastyTopLevelSplice_tastyContext // intrinsic value at stage 0
 
