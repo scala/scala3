@@ -2043,14 +2043,15 @@ class Typer extends Namer
     }
 
     def tryApply(implicit ctx: Context) = {
-      val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
+      val pt1 = pt.withContext(ctx)
+      val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt1)
       sel.pushAttachment(InsertedApply, ())
       if (sel.tpe.isError) sel
-      else try adapt(simplify(sel, pt, locked), pt, locked) finally sel.removeAttachment(InsertedApply)
+      else try adapt(simplify(sel, pt1, locked), pt1, locked) finally sel.removeAttachment(InsertedApply)
     }
 
     def tryImplicit(fallBack: => Tree) =
-      tryInsertImplicitOnQualifier(tree, pt, locked).getOrElse(fallBack)
+      tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked).getOrElse(fallBack)
 
     pt match {
       case pt @ FunProto(Nil, _, _)
