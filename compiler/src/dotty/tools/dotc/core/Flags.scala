@@ -548,7 +548,7 @@ object Flags {
   /** Assumed to be pure */
   final val StableOrErased = Stable | Erased
 
-  /** Labeled `private`, `final`, `transparent`, or `erasedd` */
+  /** Labeled `private`, `final`, `transparent`, or `erased` */
   final val EffectivelyFinal = Private | Final | Transparent | Erased
 
   /** A private method */

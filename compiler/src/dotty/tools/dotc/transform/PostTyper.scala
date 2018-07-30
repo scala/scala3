@@ -158,7 +158,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     /** If selection is a quote or splice node, record that fact in the current compilation unit.
      */
-    private def handleMeta(sym: Symbol)(implicit ctx: Context): Unit =
+    private def reportMeta(sym: Symbol)(implicit ctx: Context): Unit =
       if (sym.isSplice || sym.isQuote) ctx.compilationUnit.containsQuotesOrSplices = true
 
     private object dropInlines extends TreeMap {
@@ -171,13 +171,13 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
-          handleMeta(tree.symbol)
+          reportMeta(tree.symbol)
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
             case _ => tree
           }
         case tree @ Select(qual, name) =>
-          handleMeta(tree.symbol)
+          reportMeta(tree.symbol)
           if (name.isTypeName) {
             Checking.checkRealizable(qual.tpe, qual.pos.focus)
             super.transform(tree)(ctx.addMode(Mode.Type))
