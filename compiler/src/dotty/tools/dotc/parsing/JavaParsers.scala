@@ -916,7 +916,7 @@ object JavaParsers {
    */
   class OutlineJavaParser(source: SourceFile)(implicit ctx: Context) extends JavaParser(source) {
 
-    def skipBraces[T](body: T): T = {
+    def skipBraces(): Unit = {
       accept(LBRACE)
       var openBraces = 1
       while (in.token != EOF && openBraces > 0) {
@@ -924,10 +924,11 @@ object JavaParsers {
         else if (in.token == RBRACE) openBraces -= 1
         in.nextToken()
       }
-      body
     }
 
-    override def typeBody(leadingToken: Int, parentName: Name, parentTParams: List[TypeDef]): (List[Tree], List[Tree]) =
-      skipBraces((List(EmptyValDef), List(EmptyTree)))
+    override def typeBody(leadingToken: Int, parentName: Name, parentTParams: List[TypeDef]): (List[Tree], List[Tree]) = {
+      skipBraces()
+      (List(EmptyValDef), List(EmptyTree)))
+    }
   }
 }

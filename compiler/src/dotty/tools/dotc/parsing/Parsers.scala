@@ -2643,7 +2643,7 @@ object Parsers {
    */
   class OutlineParser(source: SourceFile)(implicit ctx: Context) extends Parser(source) {
 
-    def skipBraces[T](body: T): T = {
+    def skipBraces(): Unit = {
       accept(LBRACE)
       var openBraces = 1
       while (in.token != EOF && openBraces > 0) {
@@ -2654,11 +2654,16 @@ object Parsers {
           in.nextToken()
         }
       }
-      body
     }
 
-    override def blockExpr(): Tree = skipBraces(EmptyTree)
+    override def blockExpr(): Tree = {
+      skipBraces()
+      EmptyTree
+    }
 
-    override def templateBody() = skipBraces((EmptyValDef, List(EmptyTree)))
+    override def templateBody() = {
+      skipBraces()
+      (EmptyValDef, List(EmptyTree)))
+    }
   }
 }
