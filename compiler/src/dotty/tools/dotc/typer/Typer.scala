@@ -974,9 +974,11 @@ class Typer extends Namer
         val unchecked = pt.isRef(defn.PartialFunctionClass)
         typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
       case id @ untpd.ImplicitScrutinee() =>
-        if (tree.getAttachment(PrepareTransparent.TopLevelMatch).isEmpty ||
-            !ctx.owner.flagsUNSAFE.is(Erased))
-          ctx.error(em"implicit match cannot be used here; it must occur as a toplevel match of an erased transparent method", tree.pos)
+        if (tree.getAttachment(PrepareTransparent.TopLevelMatch).isDefined)
+          ctx.owner.setFlag(Erased)
+        else
+          ctx.error(em"implicit match cannot be used here; it must occur as a toplevel match of a transparent method", tree.pos)
+
         val sel1 = id.withType(defn.ImplicitScrutineeTypeRef)
         typedMatchFinish(tree, sel1, sel1.tpe, pt)
       case _ =>

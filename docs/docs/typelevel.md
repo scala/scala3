@@ -233,7 +233,7 @@ The following rewrite rules are performed when simplifying inlined bodies:
 
 Transparent methods are effectively final; they may not be overwritten.
 
-Transparent methods with an implicit match expression on their right-hand side must in addition be declared `erased`. Erased transparent methods must be always fully applied. In addition, the restrictions on normal erased methods apply, including:
+Transparent methods with a toplevel implicit match or macro splice are classified `erased` - an `erased` modifier can be given for them, but it is redundant. Erased transparent methods must be always fully applied. In addition, the restrictions on normal erased methods apply, including:
 
  1. They may not override other methods.
  2. They may not be referred to from a non-erased context.
@@ -409,7 +409,8 @@ Patterns are tried in sequence. The first case with a pattern `x: T` such that a
 of type `T` can be summoned is chosen. The variable `x` is then bound to the implicit value for the remainder of the case. It can in turn be used as an implicit in the right hand side of the case.
 It is an error if one of the tested patterns gives rise to an ambiguous implicit search.
 
-Implicit matches can only occur as toplevel match expressions of methods that are both `erased` and `transparent`. This ensures that all implicit searches are done at compile-time.
+Implicit matches can only occur as toplevel match expressions of a `transparent` method.
+If a transpatent method contains implicit matches, it is classified as `erased` - an `erased` modifier can be given for it, but it is redundant. This ensures that all implicit searches are done at compile-time.
 
 ## Transparent Values
 
