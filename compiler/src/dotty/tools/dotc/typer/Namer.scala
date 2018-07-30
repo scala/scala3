@@ -1153,7 +1153,7 @@ class Namer { typer: Typer =>
       case _ =>
         WildcardType
     }
-    paramFn(typedAheadType(mdef.tpt, tptProto).tpe)
+    paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
   }
 
   /** The type signature of a DefDef with given symbol */
