@@ -52,7 +52,7 @@ Note that the type of the expressions above is always `Option`. That
 is, the implementation case classes are not visible in the result
 types of their `apply` methods. This is a subtle difference with
 respect to normal case classes. The classes making up the cases do
-exist, and can be unvealed by constructing them directly with a `new`.
+exist, and can be unveiled by constructing them directly with a `new`.
 
 ```scala
 scala> new Option.Some(2)
