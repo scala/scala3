@@ -106,7 +106,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
     * error otherwise.
     */
   private def defUnfolder(fnSym: Symbol): Unfolder = {
-    assert(fnSym.isTerm && fnSym.isDependentMethod && fnSym.hasAnnotation(defn.BodyAnnot))
+    assert(fnSym.isTerm && fnSym.isDependentMethod && fnSym.hasAnnotation(defn.BodyAnnot), s"Tried to illegaly unfold $fnSym, ${fnSym.isTerm && fnSym.isDependentMethod}")
     val body: Tree = fnSym.getAnnotation(defn.BodyAnnot) match {
       case Some(annot) =>
         if (annot.isEvaluating)

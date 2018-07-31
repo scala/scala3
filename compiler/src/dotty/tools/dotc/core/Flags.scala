@@ -329,9 +329,6 @@ object Flags {
   /** Labelled with `transparent` modifier */
   final val Transparent = commonFlag(29, "transparent")
 
-  /** Labelled with `dependent` modifier */
-  final val Dependent = commonFlag(29, "dependent")
-
   /** Symbol is defined by a Java class */
   final val JavaDefined = commonFlag(30, "<java>")
 
@@ -368,6 +365,9 @@ object Flags {
 
   /** Labeled with `erased` modifier (erased value)  */
   final val Erased = termFlag(42, "erased")
+
+  /** Labelled with `dependent` modifier */
+  final val Dependent = commonFlag(43, "dependent")
 
   // Flags following this one are not pickled
 
@@ -436,7 +436,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   final val SourceModifierFlags =
-    commonFlags(Private, Protected, Abstract, Final, Transparent,
+    commonFlags(Private, Protected, Abstract, Final, Transparent, Dependent,
      Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic, Erased)
 
   /** Flags representing modifiers that can appear in trees */
@@ -457,7 +457,7 @@ object Flags {
     Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
     NonMember | ImplicitCommon | Permanent | Synthetic |
-    SuperAccessorOrScala2x | Transparent
+    SuperAccessorOrScala2x | Transparent | Dependent
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class
@@ -552,7 +552,7 @@ object Flags {
   final val StableOrErased = Stable | Erased
 
   /** Labeled `private`, `final`, or `transparent` */
-  final val EffectivelyFinal = Private | Final | Transparent
+  final val EffectivelyFinal = Private | Final | Transparent | Dependent
 
   /** A private method */
   final val PrivateMethod = allOf(Private, Method)
