@@ -32,14 +32,6 @@ t3651.scala
 protectedacc.scala
 t7436.scala
 
-# Constant(Symbol)
-fors.scala
-t6634.scala
-t6632.scala
-t4601.scala
-t6633.scala
-arrays.scala
-
 # scala.MatchError: SeqLiteral in pattern
 i3248.scala
 t6541.scala

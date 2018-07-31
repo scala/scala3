@@ -722,6 +722,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Constant.ClassTag(v) =>
         this += "classOf"
         inSquare(printType(v))
+      case Constant.Symbol(v) =>
+        this += "'" += v.name
     }
 
     def printTypeOrBoundsTree(tpt: TypeOrBoundsTree): Buffer = tpt match {
