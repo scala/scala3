@@ -75,9 +75,8 @@ class ReifyQuotes extends MacroTransformWithImplicits {
   override def phaseName: String = "reifyQuotes"
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
-    val inTransparentMethod = ctx.owner.ownersIterator.exists(_.isTransparentMethod)
     tree match {
-      case tree: RefTree if !inTransparentMethod =>
+      case tree: RefTree if !ctx.inTransparentMethod =>
         assert(!tree.symbol.isQuote)
         // assert(!tree.symbol.isSplice) // TODO widen ~ type references at stage 0?
         assert(tree.symbol != defn.QuotedExpr_~)
