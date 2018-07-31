@@ -20,6 +20,12 @@ import util.Store
  *  is lifted to
  *
  *      { def liftedTree$n() = try body catch handler; liftedTree$n() }
+ *
+ *  However, don't lift try's without catch expressions (try-finally).
+ *  Lifting is needed only for try-catch expressions that are evaluated in a context
+ *  where the stack might not be empty. `finally` does not attempt to continue evaluation
+ *  after an exception, so the fact that values on the stack are 'lost' does not matter
+ *  (copied from https://github.com/scala/scala/pull/922).
  */
 class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
@@ -58,7 +64,7 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     liftingCtx(false)
 
   override def transformTry(tree: Try)(implicit ctx: Context): Tree =
-    if (needLift) {
+    if (needLift && tree.cases.nonEmpty) {
       ctx.debuglog(i"lifting tree at ${tree.pos}, current owner = ${ctx.owner}")
       val fn = ctx.newSymbol(
         ctx.owner, LiftedTreeName.fresh(), Synthetic | Method,
