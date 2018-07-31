@@ -903,6 +903,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
           Some((
             binder.asInstanceOf[LambdaType[TypeOrBounds]], // Cast to tpd
             idx))
+        case Types.TermParamRef(binder, idx) => Some((binder, idx))
         case _ => None
       }
     }

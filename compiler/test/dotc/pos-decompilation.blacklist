@@ -7,9 +7,6 @@ i1181.scala
 large.scala
 large2.scala
 
-# scala.MatchError: TermParamRef(x)
-depfuntype.scala
-
 # NPE
 i2888.scala
 tcpoly_overloaded.scala
