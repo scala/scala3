@@ -75,6 +75,3 @@ i2888.scala
 tcpoly_overloaded.scala
 tcpoly_boundedmonad.scala
 tcpoly_checkkinds_mix.scala
-
-# scala.MatchError: This
-infersingle.scala
