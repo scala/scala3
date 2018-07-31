@@ -924,6 +924,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case Type.TypeLambda(params, _, _) => this += params(idx)
         }
 
+      case Type.RecursiveType(tpe) =>
+        printType(tpe)
+
+      case Type.RecursiveThis(_) =>
+        this += "this"
+
       case _ =>
         throw new MatchError(tpe.show)
     }
