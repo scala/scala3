@@ -15,7 +15,7 @@ import util.FreshNameCreator
 import core.DenotTransformers.DenotTransformer
 import core.Denotations.SingleDenotation
 import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode, LabelDefs}
-import dotty.tools.dotc.transform.localopt.{Simplify, StringInterpolatorOpt}
+import dotty.tools.dotc.transform.localopt.StringInterpolatorOpt
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
@@ -60,13 +60,12 @@ class Compiler {
   protected def transformPhases: List[List[Phase]] =
     List(new FirstTransform,         // Some transformations to put trees into a canonical form
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
-         new ProtectedAccessors,     // Add accessors for protected members
          new ElimPackagePrefixes) :: // Eliminate references to package prefixes in Select nodes
     List(new CheckStatic,            // Check restrictions that apply to @static members
          new ElimRepeated,           // Rewrite vararg parameters and arguments
-         new NormalizeFlags,         // Rewrite some definition flags
-         new ExtensionMethods,       // Expand methods of value classes with extension methods
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
+         new ProtectedAccessors,     // Add accessors for protected members
+         new ExtensionMethods,       // Expand methods of value classes with extension methods
          new ShortcutImplicits,      // Allow implicit functions without creating closures
          new TailRec,                // Rewrite tail recursion to loops
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
@@ -81,8 +80,7 @@ class Compiler {
          new StringInterpolatorOpt,  // Optimizes raw and s string interpolators by rewriting them to string concatentations
          new CrossCastAnd,           // Normalize selections involving intersection types.
          new Splitter) ::            // Expand selections involving union types into conditionals
-    List(new ErasedDecls,            // Removes all erased defs and vals decls (except for parameters)
-         new IsInstanceOfChecker,    // check runtime realisability for `isInstanceOf`
+    List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
          new VCInlineMethods,        // Inlines calls to value class methods
          new SeqLiterals,            // Express vararg arguments as arrays
          new InterceptedMethods,     // Special handling of `==`, `|=`, `getClass` methods
@@ -92,7 +90,6 @@ class Compiler {
          new ElimOuterSelect,        // Expand outer selections
          new AugmentScala2Traits,    // Expand traits defined in Scala 2.x to simulate old-style rewritings
          new ResolveSuper,           // Implement super accessors and add forwarders to trait methods
-         new Simplify,               // Perform local optimizations, simplified versions of what linker does.
          new PrimitiveForwarders,    // Add forwarders to trait methods that have a mismatch between generic and primitives
          new FunctionXXLForwarders,  // Add forwarders for FunctionXXL apply method
          new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify.
@@ -107,8 +104,7 @@ class Compiler {
     List(new Constructors,           // Collect initialization code in primary constructors
                                         // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
          new FunctionalInterfaces,   // Rewrites closures to implement @specialized types of Functions.
-         new GetClass,               // Rewrites getClass calls on primitive types.
-         new Simplify) ::            // Perform local optimizations, simplified versions of what linker does.
+         new GetClass) ::            // Rewrites getClass calls on primitive types.
     List(new LinkScala2Impls,        // Redirect calls to trait methods defined by Scala 2.x, so that they now go to their implementations
          new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
                                         // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
@@ -122,7 +118,6 @@ class Compiler {
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
          new CollectEntryPoints,     // Find classes with main methods
          new CollectSuperCalls,      // Find classes that are called with super
-         new DropInlined,            // Drop Inlined nodes, since backend has no use for them
          new LabelDefs) ::           // Converts calls to labels to jumps
     Nil
 

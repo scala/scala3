@@ -390,33 +390,48 @@ object Denotations {
               case tp2: TypeBounds if tp2 contains tp1 => tp1
               case _ => mergeConflict(tp1, tp2, that)
             }
-          case tp1: MethodOrPoly =>
+
+          // Two remedial strategies:
+          //
+          //  1. Prefer method types over poly types. This is necessary to handle
+          //     overloaded definitions like the following
+          //
+          //        def ++ [B >: A](xs: C[B]): D[B]
+          //        def ++ (xs: C[A]): D[A]
+          //
+          //     (Code like this is found in the collection strawman)
+          //
+          // 2. In the case of two method types or two polytypes with matching
+          //    parameters and implicit status, merge corresponding parameter
+          //    and result types.
+          case tp1: MethodType =>
             tp2 match {
-              case tp2: MethodOrPoly =>
-                // Two remedial strategies:
-                //
-                //  1. Prefer method types over poly types. This is necessary to handle
-                //     overloaded definitions like the following
-                //
-                //        def ++ [B >: A](xs: C[B]): D[B]
-                //        def ++ (xs: C[A]): D[A]
-                //
-                //     (Code like this is found in the collection strawman)
-                //
-                // 2. In the case of two method types or two polytypes with matching
-                //    parameters and implicit status, merge corresppnding parameter
-                //    and result types.
-                if (tp1.isInstanceOf[PolyType] && tp2.isInstanceOf[MethodType]) tp2
-                else if (tp2.isInstanceOf[PolyType] && tp1.isInstanceOf[MethodType]) tp1
-                else if (ctx.typeComparer.matchingParams(tp1, tp2) &&
-                         tp1.isImplicitMethod == tp2.isImplicitMethod)
-                  tp1.derivedLambdaType(
-                    mergeParamNames(tp1, tp2), tp1.paramInfos,
-                    infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
-                else mergeConflict(tp1, tp2, that)
+              case tp2: PolyType =>
+                tp1
+              case tp2: MethodType if ctx.typeComparer.matchingMethodParams(tp1, tp2) &&
+                  tp1.isImplicitMethod == tp2.isImplicitMethod =>
+                tp1.derivedLambdaType(
+                  mergeParamNames(tp1, tp2),
+                  tp1.paramInfos,
+                  infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
               case _ =>
                 mergeConflict(tp1, tp2, that)
             }
+          case tp1: PolyType =>
+            tp2 match {
+              case tp2: MethodType =>
+                tp2
+              case tp2: PolyType if ctx.typeComparer.matchingPolyParams(tp1, tp2) =>
+                tp1.derivedLambdaType(
+                  mergeParamNames(tp1, tp2),
+                  tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
+                    infoMeet(p1,  p2.subst(tp2, tp1)).bounds
+                  },
+                  infoMeet(tp1.resultType, tp2.resultType.subst(tp2, tp1)))
+              case _ =>
+                mergeConflict(tp1, tp2, that)
+            }
+
           case _ =>
             tp1 & tp2
         }
@@ -475,7 +490,9 @@ object Denotations {
          *   4. The access boundary of sym2 is properly contained in the access
          *      boundary of sym1. For protected access, we count the enclosing
          *      package as access boundary.
-         *   5. sym1 a method but sym2 is not.
+         *   5. sym1 is a method but sym2 is not.
+         *   6. sym1 is a non-polymorphic method but sym2 is a polymorphic method.
+         *      (to be consistent with infoMeet, see #4819)
          *  The aim of these criteria is to give some disambiguation on access which
          *   - does not depend on textual order or other arbitrary choices
          *   - minimizes raising of doubleDef errors
@@ -488,7 +505,9 @@ object Denotations {
               (!sym2.isAsConcrete(sym1) ||
                 precedes(sym1.owner, sym2.owner) ||
                 accessBoundary(sym2).isProperlyContainedIn(accessBoundary(sym1)) ||
+                sym2.is(Bridge) && !sym1.is(Bridge) ||
                 sym1.is(Method) && !sym2.is(Method)) ||
+                sym1.info.isInstanceOf[MethodType] && sym2.info.isInstanceOf[PolyType] ||
               sym1.info.isErroneous)
 
         /** Sym preference provided types also override */
@@ -565,13 +584,27 @@ object Denotations {
             case tp2: TypeBounds if tp2 contains tp1 => tp2
             case _ => mergeConflict(tp1, tp2, that)
           }
-        case tp1: MethodOrPoly =>
+        case tp1: MethodType =>
           tp2 match {
-            case tp2: MethodOrPoly
-            if ctx.typeComparer.matchingParams(tp1, tp2) &&
+            case tp2: MethodType
+            if ctx.typeComparer.matchingMethodParams(tp1, tp2) &&
                tp1.isImplicitMethod == tp2.isImplicitMethod =>
               tp1.derivedLambdaType(
-                mergeParamNames(tp1, tp2), tp1.paramInfos,
+                mergeParamNames(tp1, tp2),
+                tp1.paramInfos,
+                tp1.resultType | tp2.resultType.subst(tp2, tp1))
+            case _ =>
+              mergeConflict(tp1, tp2, that)
+          }
+        case tp1: PolyType =>
+          tp2 match {
+            case tp2: PolyType
+            if ctx.typeComparer.matchingPolyParams(tp1, tp2) =>
+              tp1.derivedLambdaType(
+                mergeParamNames(tp1, tp2),
+                tp1.paramInfos.zipWithConserve(tp2.paramInfos) { (p1, p2) =>
+                  (p1 | p2.subst(tp2, tp1)).bounds
+                },
                 tp1.resultType | tp2.resultType.subst(tp2, tp1))
             case _ =>
               mergeConflict(tp1, tp2, that)

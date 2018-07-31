@@ -63,7 +63,12 @@ classpathArgs () {
   toolchain+="$SBT_INTF$PSEP"
   toolchain+="$DOTTY_INTF$PSEP"
   toolchain+="$DOTTY_LIB$PSEP"
-  toolchain+="$DOTTY_COMP"
+  toolchain+="$DOTTY_COMP$PSEP"
+
+  # jine
+  toolchain+="$JLINE$PSEP"
+  toolchain+="$JLINE_TERMINAL$PSEP"
+  toolchain+="$JLINE_TERMINAL_JNA"
 
   if [[ -n "$bootcp" ]]; then
     jvm_cp_args="-Xbootclasspath/a:\"$toolchain\""
@@ -85,7 +90,7 @@ case "$1" in
         -repl) PROG_NAME="$ReplMain" && shift ;;
      -compile) PROG_NAME="$CompilerMain" && shift ;;
    -decompile) PROG_NAME="$DecompilerMain" && shift ;;
- -print-tasty) PROG_NAME="$DecompilerMain" && shift ;;
+ -print-tasty) PROG_NAME="$DecompilerMain" && addScala "-print-tasty" && shift ;;
          -run) PROG_NAME="$ReplMain" && shift ;;
       -bootcp) bootcp=true && shift ;;
    -nobootcp) unset bootcp && shift ;;

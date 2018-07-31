@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package config
 
 import scala.annotation.tailrec
-import dotty.tools.sharable
+import scala.annotation.internal.sharable
 
 /** A simple (overly so) command line parser.
  *  !!! This needs a thorough test suite to make sure quoting is

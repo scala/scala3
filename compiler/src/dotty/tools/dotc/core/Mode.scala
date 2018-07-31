@@ -37,6 +37,7 @@ object Mode {
    *  that TypeParamRefs can be sub- and supertypes of anything. See TypeComparer.
    */
   val TypevarsMissContext = newMode(4, "TypevarsMissContext")
+
   val CheckCyclic = newMode(5, "CheckCyclic")
 
   /** We are looking at the arguments of a supercall */
@@ -94,6 +95,12 @@ object Mode {
   /** We are in the IDE */
   val Interactive = newMode(20, "Interactive")
 
+  /** We are typing the body of a transparent method */
+  val TransparentBody = newMode(21, "TransparentBody")
+
+  /** Read comments from definitions when unpickling from TASTY */
+  val ReadComments = newMode(22, "ReadComments")
+
   /** We are in TypeOf, e.g. to type a SingletonTypeTree or to compute a derived TypeOf */
-  val InTypeOf = newMode(21, "InTypeOf")
+  val InTypeOf = newMode(23, "InTypeOf")
 }

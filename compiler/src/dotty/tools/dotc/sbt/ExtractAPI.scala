@@ -332,7 +332,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     } else if (sym.is(Mutable, butNot = Accessor)) {
       api.Var.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
         apiAnnotations(sym).toArray, apiType(sym.info))
-    } else if (sym.isStable) {
+    } else if (sym.isStable && !sym.isRealMethod) {
       api.Val.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
         apiAnnotations(sym).toArray, apiType(sym.info))
     } else {
@@ -604,7 +604,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     val annots = new mutable.ListBuffer[api.Annotation]
 
     if (Inliner.hasBodyToInline(s)) {
-      // FIXME: If the body of an inline method changes, all the reverse
+      // FIXME: If the body of a transparent method changes, all the reverse
       // dependencies of this method need to be recompiled. sbt has no way
       // of tracking method bodies, so as a hack we include the pretty-printed
       // typed tree of the method as part of the signature we send to sbt.

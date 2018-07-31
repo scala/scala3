@@ -1,6 +1,6 @@
 class A {
   class Foo {
-    inline def inlineMeth: Unit = {
+    transparent def inlineMeth: Unit = {
       new Bar
     }
   }

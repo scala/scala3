@@ -28,7 +28,7 @@ class IdempotencyTests extends ParallelTesting {
   @Category(Array(classOf[SlowTests]))
   @Test def idempotency: Unit = {
     implicit val testGroup: TestGroup = TestGroup("idempotency")
-    val opt = defaultOptions.and("-Yemit-tasty")
+    val opt = defaultOptions
 
     def sourcesFrom(dir: Path) = CompilationTests.sources(Files.walk(dir))
 

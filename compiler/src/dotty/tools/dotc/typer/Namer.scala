@@ -687,89 +687,14 @@ class Namer { typer: Typer =>
     ctxWithStats
   }
 
-  /** Add all annotations of definitions in `stats` to the defined symbols */
-  def annotate(stats: List[Tree])(implicit ctx: Context): Unit = {
-    def recur(stat: Tree): Unit = stat match {
-      case pcl: PackageDef =>
-        annotate(pcl.stats)
-      case stat: untpd.MemberDef =>
-        stat.getAttachment(SymOfTree) match {
-          case Some(sym) =>
-            sym.infoOrCompleter match {
-              case info: Completer if !defn.isPredefClass(sym.owner) =>
-                // Annotate Predef methods only when they are completed;
-                // This is necessary to break a cyclic dependence between `Predef`
-                // and `deprecated` in test `compileStdLib`.
-                addAnnotations(sym, stat)(info.creationContext)
-              case _ =>
-                // Annotations were already added as part of the symbol's completion
-            }
-          case none =>
-            assert(stat.typeOpt.exists, i"no symbol for $stat")
-        }
-      case stat: untpd.Thicket =>
-        stat.trees.foreach(recur)
-      case _ =>
-    }
-
-    for (stat <- stats) recur(expanded(stat))
-  }
-
-  /** Add annotations of `stat` to `sym`.
-   *  This method can be called twice on a symbol (e.g. once
-   *  during the `annotate` phase and then again during completion).
-   *  Therefore, care needs to be taken not to add annotations again
-   *  that are already added to the symbol.
-   */
-  def addAnnotations(sym: Symbol, stat: MemberDef)(implicit ctx: Context) = {
-    // (1) The context in which an annotation of a top-level class or module is evaluated
-    // is the closest enclosing context which has the enclosing package as owner.
-    // (2) The context in which an annotation for any other symbol is evaluated is the
-    // closest enclosing context which has the owner of the class enclosing the symbol as owner.
-    // E.g in
-    //
-    //     package p
-    //     import a.b
-    //     class C {
-    //       import d.e
-    //       @ann m() ...
-    //     }
-    //
-    // `@ann` is evaluated in the context just outside `C`, where the `a.b`
-    // import is visible but the `d.e` import is forgotten. This measure is necessary
-    // in order to avoid cycles.
-    lazy val annotCtx = {
-      var target = sym.owner.lexicallyEnclosingClass
-      if (!target.is(PackageClass)) target = target.owner
-      var c = ctx
-      while (c.owner != target) c = c.outer
-      c
-    }
-    for (annotTree <- untpd.modsDeco(stat).mods.annotations) {
-      val cls = typedAheadAnnotation(annotTree)(annotCtx)
-      if (sym.unforcedAnnotation(cls).isEmpty) {
-        val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
-        sym.addAnnotation(ann)
-        if (cls == defn.InlineAnnot && sym.is(Method, butNot = Accessor))
-          sym.setFlag(Inline)
-      }
-    }
-  }
-
-  def indexAndAnnotate(stats: List[Tree])(implicit ctx: Context): Context = {
-    val localCtx = index(stats)
-    annotate(stats)
-    localCtx
-  }
-
-  /** Index and annotate symbols in `tree` while asserting the `lateCompile` flag.
+  /** Index symbols in `tree` while asserting the `lateCompile` flag.
    *  This will cause any old top-level symbol with the same fully qualified
    *  name as a newly created symbol to be replaced.
    */
   def lateEnter(tree: Tree)(implicit ctx: Context) = {
     val saved = lateCompile
     lateCompile = true
-    try indexAndAnnotate(tree :: Nil) finally lateCompile = saved
+    try index(tree :: Nil) finally lateCompile = saved
   }
 
   def missingType(sym: Symbol, modifier: String)(implicit ctx: Context) = {
@@ -821,13 +746,49 @@ class Namer { typer: Typer =>
       else completeInCreationContext(denot)
     }
 
+    protected def addAnnotations(sym: Symbol): Unit = original match {
+      case original: untpd.MemberDef =>
+        lazy val annotCtx = annotContext(original, sym)
+        for (annotTree <- untpd.modsDeco(original).mods.annotations) {
+          val cls = typedAheadAnnotationClass(annotTree)(annotCtx)
+          val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
+          sym.addAnnotation(ann)
+          if (cls == defn.ForceInlineAnnot && sym.is(Method, butNot = Accessor))
+            sym.setFlag(Transparent)
+        }
+      case _ =>
+    }
+
     private def addInlineInfo(sym: Symbol) = original match {
-      case original: untpd.DefDef if sym.isInlineableMethod =>
-        Inliner.registerInlineInfo(
+      case original: untpd.DefDef if sym.isTransparentInlineable =>
+        PrepareTransparent.registerInlineInfo(
             sym,
+            original.rhs,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
           )(localContext(sym))
       case _ =>
+    }
+
+    /** Invalidate `denot` by overwriting its info with `NoType` if
+     *  `denot` is a compiler generated case class method that clashes
+     *  with a user-defined method in the same scope with a matching type.
+     */
+    private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit = {
+      def isCaseClass(owner: Symbol) =
+        owner.isClass && {
+          if (owner.is(Module)) owner.linkedClass.is(CaseClass)
+          else owner.is(CaseClass)
+        }
+      val isClashingSynthetic =
+        denot.is(Synthetic) &&
+        desugar.isRetractableCaseClassMethodName(denot.name) &&
+        isCaseClass(denot.owner) &&
+        denot.owner.info.decls.lookupAll(denot.name).exists(alt =>
+          alt != denot.symbol && alt.info.matchesLoosely(denot.info))
+      if (isClashingSynthetic) {
+        typr.println(i"invalidating clashing $denot in ${denot.owner}")
+        denot.info = NoType
+      }
     }
 
     /** Intentionally left without `implicit ctx` parameter. We need
@@ -835,12 +796,10 @@ class Namer { typer: Typer =>
      */
     def completeInCreationContext(denot: SymDenotation): Unit = {
       val sym = denot.symbol
-      original match {
-        case original: MemberDef => addAnnotations(sym, original)
-        case _ =>
-      }
+      addAnnotations(sym)
       addInlineInfo(sym)
       denot.info = typeSig(sym)
+      invalidateIfClashingSynthetic(denot)
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym, sym.pos)
     }
@@ -954,7 +913,7 @@ class Namer { typer: Typer =>
         }
       }
 
-      addAnnotations(denot.symbol, original)
+      addAnnotations(denot.symbol)
 
       val selfInfo =
         if (self.isEmpty) NoType
@@ -977,9 +936,7 @@ class Namer { typer: Typer =>
       // accessors, that's why the constructor needs to be completed before
       // the parent types are elaborated.
       index(constr)
-      annotate(constr :: params)
-
-      indexAndAnnotate(rest)(ctx.inClassContext(selfInfo))
+      index(rest)(ctx.inClassContext(selfInfo))
       symbolOfTree(constr).ensureCompleted()
 
       val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_)), cls.pos)
@@ -991,6 +948,8 @@ class Namer { typer: Typer =>
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.info = avoidPrivateLeaks(cls, cls.pos)
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
+      cls.setNoInitsFlags(parentsKind(parents), bodyKind(rest))
+      if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(Stable)
     }
   }
 
@@ -1012,16 +971,19 @@ class Namer { typer: Typer =>
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
     typedAheadImpl(tree, typer.typed(_, pt)(ctx retractMode Mode.PatternOrTypeBits))
 
-  def typedAheadAnnotation(tree: Tree)(implicit ctx: Context): Symbol = tree match {
-    case Apply(fn, _) => typedAheadAnnotation(fn)
-    case TypeApply(fn, _) => typedAheadAnnotation(fn)
-    case Select(qual, nme.CONSTRUCTOR) => typedAheadAnnotation(qual)
+  def typedAheadAnnotation(tree: Tree)(implicit ctx: Context): tpd.Tree =
+    typedAheadExpr(tree, defn.AnnotationType)
+
+  def typedAheadAnnotationClass(tree: Tree)(implicit ctx: Context): Symbol = tree match {
+    case Apply(fn, _) => typedAheadAnnotationClass(fn)
+    case TypeApply(fn, _) => typedAheadAnnotationClass(fn)
+    case Select(qual, nme.CONSTRUCTOR) => typedAheadAnnotationClass(qual)
     case New(tpt) => typedAheadType(tpt).tpe.classSymbol
   }
 
   /** Enter and typecheck parameter list */
   def completeParams(params: List[MemberDef])(implicit ctx: Context) = {
-    indexAndAnnotate(params)
+    index(params)
     for (param <- params) typedAheadExpr(param)
   }
 
@@ -1099,7 +1061,7 @@ class Namer { typer: Typer =>
               ctx.defContext(sym).denotNamed(original)
           def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
             case params :: paramss1 =>
-              if (idx < params.length) wildApprox(params(idx), null, Set.empty)
+              if (idx < params.length) wildApprox(params(idx))
               else paramProto(paramss1, idx - params.length)
             case nil =>
               WildcardType
@@ -1113,7 +1075,7 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      def isInline = sym.is(FinalOrInlineOrTransparent, butNot = Method | Mutable)
+      def isInline = sym.is(FinalOrTransparent, butNot = Method | Mutable)
 
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types
@@ -1132,7 +1094,11 @@ class Namer { typer: Typer =>
       // it would be erased to BoxedUnit.
       def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
-      val rhsCtx = ctx.addMode(Mode.InferringReturnType)
+      var rhsCtx = ctx.addMode(Mode.InferringReturnType)
+      if (sym.isTransparentMethod) {
+        rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
+        PrepareTransparent.markTopLevelMatches(sym, mdef.rhs)
+      }
       def rhsType = typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.
@@ -1152,7 +1118,7 @@ class Namer { typer: Typer =>
         if (sym.is(Final, butNot = Method)) {
           val tp = lhsType
           if (tp.isInstanceOf[ConstantType])
-            tp // keep constant types that fill in for a non-constant (to be revised when inline has landed).
+            tp // keep constant types that fill in for a non-constant (to be revised when transparent has landed).
           else inherited
         }
         else inherited
@@ -1191,7 +1157,7 @@ class Namer { typer: Typer =>
       case _ =>
         WildcardType
     }
-    paramFn(typedAheadType(mdef.tpt, tptProto).tpe)
+    paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
   }
 
   /** The type signature of a DefDef with given symbol */
@@ -1222,7 +1188,7 @@ class Namer { typer: Typer =>
     //   3. Info of CP is computed (to be copied to DP).
     //   4. CP is completed.
     //   5. Info of CP is copied to DP and DP is completed.
-    indexAndAnnotate(tparams)
+    index(tparams)
     if (isConstructor) sym.owner.typeParams.foreach(_.ensureCompleted())
     for (tparam <- tparams) typedAheadExpr(tparam)
 
@@ -1233,6 +1199,15 @@ class Namer { typer: Typer =>
       instantiateDependent(restpe, typeParams, termParamss)
       ctx.methodType(tparams map symbolOfTree, termParamss, restpe, isJava = ddef.mods is JavaDefined)
     }
+    if (sym.is(Transparent) &&
+        sym.unforcedAnnotation(defn.ForceInlineAnnot).isEmpty)
+        // Need to keep @forceInline annotated methods around to get to parity with Scala.
+        // This is necessary at least until we have full bootstrap. Right now
+        // dotty-bootstrapped involves running the Dotty compiler compiled with Scala 2 with
+        // a Dotty runtime library compiled with Dotty. If we erase @forceInline annotated
+        // methods, this means that the support methods in dotty.runtime.LazyVals vanish.
+        // But they are needed for running the lazy val implementations in the Scala-2 compiled compiler.
+      sym.setFlag(Erased)
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)

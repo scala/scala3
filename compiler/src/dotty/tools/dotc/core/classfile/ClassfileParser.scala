@@ -5,12 +5,16 @@ package classfile
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Positions._
-import NameKinds.{ModuleClassName, DefaultGetterName}
+import NameKinds.DefaultGetterName
+import dotty.tools.dotc.core.tasty.{TastyHeaderUnpickler, TastyReader}
 import ast.tpd._
-import java.io.{ ByteArrayInputStream, DataInputStream, File, IOException }
-import java.nio
+import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, IOException }
+
 import java.lang.Integer.toHexString
-import scala.collection.{ mutable, immutable }
+import java.net.URLClassLoader
+import java.util.UUID
+
+import scala.collection.immutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
@@ -172,7 +176,7 @@ class ClassfileParser(
       setClassInfo(classRoot, classInfo)
       setClassInfo(moduleRoot, staticInfo)
     } else if (result == Some(NoEmbedded)) {
-      for (sym <- List(moduleRoot.sourceModule.symbol, moduleRoot.symbol, classRoot.symbol)) {
+      for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
         classRoot.owner.asClass.delete(sym)
         if (classRoot.owner == defn.ScalaShadowingPackageClass) {
           // Symbols in scalaShadowing are also added to scala
@@ -751,6 +755,20 @@ class ClassfileParser(
       }
 
       def unpickleScala(bytes: Array[Byte]): Some[Embedded] = {
+        val allowed = ctx.settings.Yscala2Unpickler.value
+
+        def failUnless(cond: Boolean) =
+          assert(cond,
+            s"Unpickling ${classRoot.symbol.showLocated} from ${classRoot.symbol.associatedFile} is not allowed with -Yscala2-unpickler $allowed")
+
+        if (allowed != "always") {
+          failUnless(allowed != "never")
+          val allowedList = allowed.split(":").toList
+          val file = classRoot.symbol.associatedFile
+          // Using `.toString.contains` isn't great, but it's good enough for a debug flag.
+          failUnless(file == null || allowedList.exists(path => file.toString.contains(path)))
+        }
+
         val unpickler = new unpickleScala2.Scala2Unpickler(bytes, classRoot, moduleRoot)(ctx)
         unpickler.run()(ctx.addMode(Scala2UnpicklingMode))
         Some(unpickler)
@@ -783,30 +801,48 @@ class ClassfileParser(
 
       if (scan(tpnme.TASTYATTR)) {
         val attrLen = in.nextInt
-        if (attrLen == 0) { // A tasty attribute implies the existence of the .tasty file
-          def readTastyForClass(jpath: nio.file.Path): Array[Byte] = {
-            val plainFile = new PlainFile(io.File(jpath).changeExtension("tasty"))
-            if (plainFile.exists) plainFile.toByteArray
-            else {
-              ctx.error("Could not find " + plainFile)
-              Array.empty
-            }
-          }
-          val tastyBytes = classfile.underlyingSource match { // TODO: simplify when #3552 is fixed
+        val bytes = in.nextBytes(attrLen)
+        if (attrLen == 16) { // A tasty attribute with that has only a UUID (16 bytes) implies the existence of the .tasty file
+          val tastyBytes: Array[Byte] = classfile.underlyingSource match { // TODO: simplify when #3552 is fixed
             case None =>
               ctx.error("Could not load TASTY from .tasty for virtual file " + classfile)
-              Array.empty[Byte]
+              Array.empty
             case Some(jar: ZipArchive) => // We are in a jar
-              val jarFile = JarArchive.open(io.File(jar.jpath))
-              try readTastyForClass(jarFile.jpath.resolve(classfile.path))
-              finally jarFile.close()
+              val cl = new URLClassLoader(Array(jar.jpath.toUri.toURL))
+              val path = classfile.path.stripSuffix(".class") + ".tasty"
+              val stream = cl.getResourceAsStream(path)
+              if (stream != null) {
+                val tastyOutStream = new ByteArrayOutputStream()
+                val buffer = new Array[Byte](1024)
+                var read = stream.read(buffer, 0, buffer.length)
+                while (read != -1) {
+                  tastyOutStream.write(buffer, 0, read)
+                  read = stream.read(buffer, 0, buffer.length)
+                }
+                tastyOutStream.flush()
+                tastyOutStream.toByteArray
+              } else {
+                ctx.error(s"Could not find $path in $jar")
+                Array.empty
+              }
             case _ =>
-              readTastyForClass(classfile.jpath)
+              val plainFile = new PlainFile(io.File(classfile.jpath).changeExtension("tasty"))
+              if (plainFile.exists) plainFile.toByteArray
+              else {
+                ctx.error("Could not find " + plainFile)
+                Array.empty
+              }
           }
-          if (tastyBytes.nonEmpty)
+          if (tastyBytes.nonEmpty) {
+            val reader = new TastyReader(bytes, 0, 16)
+            val expectedUUID = new UUID(reader.readUncompressedLong(), reader.readUncompressedLong())
+            val tastyUUID = new TastyHeaderUnpickler(tastyBytes).readHeader()
+            if (expectedUUID != tastyUUID)
+              ctx.error(s"Tasty UUID ($tastyUUID) file did not correspond the tasty UUID ($expectedUUID) declared in the classfile $classfile.")
             return unpickleTASTY(tastyBytes)
+          }
         }
-        else return unpickleTASTY(in.nextBytes(attrLen))
+        else return unpickleTASTY(bytes)
       }
 
       if (scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)) {

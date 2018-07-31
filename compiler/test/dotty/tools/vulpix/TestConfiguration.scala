@@ -10,6 +10,7 @@ object TestConfiguration {
   )
 
   val checkOptions = Array(
+    "-Yscala2-unpickler", s"${Jars.scalaLibrary}:${Jars.scalaXml}",
     "-Yno-deep-subtypes",
     "-Yno-double-bindings",
     "-Yforce-sbt-phases",
@@ -48,13 +49,11 @@ object TestConfiguration {
   val yCheckOptions = Array("-Ycheck:all")
 
   val basicDefaultOptions = checkOptions ++ noCheckOptions ++ yCheckOptions
-  val defaultUnoptimised = TestFlags(classPath, runClassPath, basicDefaultOptions)
-  val defaultOptimised = defaultUnoptimised and "-optimise"
-  val defaultOptions = defaultUnoptimised
+  val defaultOptions = TestFlags(classPath, runClassPath, basicDefaultOptions)
   val defaultRunWithCompilerOptions = defaultOptions.withRunClasspath(Jars.dottyRunWithCompiler.mkString(":"))
   val allowDeepSubtypes = defaultOptions without "-Yno-deep-subtypes"
   val allowDoubleBindings = defaultOptions without "-Yno-double-bindings"
-  val picklingOptions = defaultUnoptimised and (
+  val picklingOptions = defaultOptions and (
     "-Xprint-types",
     "-Ytest-pickler",
     "-Yprint-pos",

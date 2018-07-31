@@ -1,21 +1,27 @@
-package dotty.tools
-package repl
+package dotty.tools.repl
 
-import dotc.ast.Trees._
-import dotc.ast.{ untpd, tpd }
-import dotc.{ Run, CompilationUnit, Compiler }
-import dotc.core.Decorators._, dotc.core.Flags._, dotc.core.Phases, Phases.Phase
-import dotc.core.Names._, dotc.core.Contexts._, dotc.core.StdNames._
-import dotc.core.Constants.Constant
-import dotc.util.SourceFile
-import dotc.typer.{ ImportInfo, FrontEnd }
-import backend.jvm.GenBCode
-import dotc.core.NameOps._
-import dotc.util.Positions._
-import dotc.reporting.diagnostic.messages
-import io._
+import dotty.tools.backend.jvm.GenBCode
+import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.ast.tpd.TreeOps
+import dotty.tools.dotc.core.Comments.CommentsContext
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Names._
+import dotty.tools.dotc.core.Phases
+import dotty.tools.dotc.core.Phases.Phase
+import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.reporting.diagnostic.messages
+import dotty.tools.dotc.typer.{FrontEnd, ImportInfo}
+import dotty.tools.dotc.util.Positions._
+import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
+import dotty.tools.io._
+import dotty.tools.repl.results._
 
-import results._
+import scala.collection.mutable
 
 /** This subclass of `Compiler` replaces the appropriate phases in order to
  *  facilitate the REPL
@@ -25,24 +31,13 @@ import results._
  *  in conjunction with a specialized class loader in order to load virtual
  *  classfiles.
  */
-class ReplCompiler(val directory: AbstractFile) extends Compiler {
-
-
-  /** A GenBCode phase that outputs to a virtual directory */
-  private class REPLGenBCode extends GenBCode {
-    override def phaseName = "genBCode"
-    override def outputDir(implicit ctx: Context) = directory
-  }
-
+class ReplCompiler extends Compiler {
   override protected def frontendPhases: List[List[Phase]] =
     Phases.replace(classOf[FrontEnd], _ => new REPLFrontEnd :: Nil, super.frontendPhases)
 
-  override protected def backendPhases: List[List[Phase]] =
-    List(new REPLGenBCode) :: Nil
-
   def newRun(initCtx: Context, objectIndex: Int) = new Run(this, initCtx) {
     override protected[this] def rootContext(implicit ctx: Context) =
-      addMagicImports(super.rootContext.fresh.setReporter(storeReporter))
+      addMagicImports(super.rootContext)
 
     private def addMagicImports(initCtx: Context): Context = {
       def addImport(path: TermName)(implicit ctx: Context) = {
@@ -59,25 +54,23 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     }
   }
 
-  private[this] var objectNames = Map.empty[Int, TermName]
+  private[this] val objectNames = mutable.Map.empty[Int, TermName]
   private def objectName(state: State) =
-    objectNames.get(state.objectIndex).getOrElse {
-      val newName = (str.REPL_SESSION_LINE + state.objectIndex).toTermName
-      objectNames = objectNames + (state.objectIndex -> newName)
-      newName
-    }
+    objectNames.getOrElseUpdate(state.objectIndex, {
+      (str.REPL_SESSION_LINE + state.objectIndex).toTermName
+    })
 
   private case class Definitions(stats: List[untpd.Tree], state: State)
 
   private def definitions(trees: List[untpd.Tree], state: State): Definitions = {
     import untpd._
 
-    implicit val ctx: Context = state.run.runContext
+    implicit val ctx: Context = state.context
 
     var valIdx = state.valIndex
 
     val defs = trees.flatMap {
-      case expr @ Assign(id: Ident, rhs) =>
+      case expr @ Assign(id: Ident, _) =>
         // special case simple reassignment (e.g. x = 3)
         // in order to print the new value in the REPL
         val assignName = (id.name ++ str.REPL_ASSIGN_SUFFIX).toTermName
@@ -120,11 +113,10 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
 
     assert(defs.stats.nonEmpty)
 
-    implicit val ctx: Context = defs.state.run.runContext
+    implicit val ctx: Context = defs.state.context
 
     val tmpl = Template(emptyConstructor, Nil, EmptyValDef, defs.stats)
     val module = ModuleDef(objectName(defs.state), tmpl)
-      .withMods(new Modifiers(Module | Final))
       .withPos(Position(0, defs.stats.last.pos.end))
 
     PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
@@ -137,24 +129,22 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
   }
 
   private def runCompilationUnit(unit: CompilationUnit, state: State): Result[(CompilationUnit, State)] = {
-    val run = state.run
-    val reporter = state.run.runContext.reporter
-    run.compileUnits(unit :: Nil)
+    val ctx = state.context
+    ctx.run.compileUnits(unit :: Nil)
 
-    if (!reporter.hasErrors) (unit, state).result
-    else run.runContext.flushBufferedMessages().errors
+    if (!ctx.reporter.hasErrors) (unit, state).result
+    else ctx.reporter.removeBufferedMessages(ctx).errors
   }
 
-  def compile(parsed: Parsed)(implicit state: State): Result[(CompilationUnit, State)] = {
+  final def compile(parsed: Parsed)(implicit state: State): Result[(CompilationUnit, State)] = {
     val defs = definitions(parsed.trees, state)
     val unit = createUnit(defs, parsed.sourceCode)
     runCompilationUnit(unit, defs.state)
   }
 
-  def typeOf(expr: String)(implicit state: State): Result[String] =
+  final def typeOf(expr: String)(implicit state: State): Result[String] =
     typeCheck(expr).map { tree =>
-      import dotc.ast.Trees._
-      implicit val ctx = state.run.runContext
+      implicit val ctx = state.context
       tree.rhs match {
         case Block(xs, _) => xs.last.tpe.widen.show
         case _ =>
@@ -165,29 +155,70 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
       }
     }
 
-  def typeCheck(expr: String, errorsAllowed: Boolean = false)(implicit state: State): Result[tpd.ValDef] = {
+  def docOf(expr: String)(implicit state: State): Result[String] = {
+    implicit val ctx: Context = state.context
+
+    /**
+     * Extract the "selected" symbol from `tree`.
+     *
+     * Because the REPL typechecks an expression, special syntax is needed to get the documentation
+     * of certain symbols:
+     *
+     * - To select the documentation of classes, the user needs to pass a call to the class' constructor
+     *   (e.g. `new Foo` to select `class Foo`)
+     * - When methods are overloaded, the user needs to enter a lambda to specify which functions he wants
+     *   (e.g. `foo(_: Int)` to select `def foo(x: Int)` instead of `def foo(x: String)`
+     *
+     * This function returns the right symbol for the received expression, and all the symbols that are
+     * overridden.
+     */
+    def extractSymbols(tree: tpd.Tree): Iterator[Symbol] = {
+      val sym = tree match {
+        case tree if tree.isInstantiation => tree.symbol.owner
+        case tpd.closureDef(defdef) => defdef.rhs.symbol
+        case _ => tree.symbol
+      }
+      Iterator(sym) ++ sym.allOverriddenSymbols
+    }
+
+    typeCheck(expr).map {
+      case ValDef(_, _, Block(stats, _)) if stats.nonEmpty =>
+        val stat = stats.last.asInstanceOf[tpd.Tree]
+        if (stat.tpe.isError) stat.tpe.show
+        else {
+          val docCtx = ctx.docCtx.get
+          val symbols = extractSymbols(stat)
+          val doc = symbols.collectFirst {
+            case sym if docCtx.docstrings.contains(sym) =>
+              docCtx.docstrings(sym).raw
+          }
+          doc.getOrElse(s"// No doc for `${expr}`")
+        }
+
+      case _ =>
+        """Couldn't display the documentation for your expression, so sorry :(
+          |
+          |Please report this to my masters at github.com/lampepfl/dotty
+          """.stripMargin
+    }
+  }
+
+  final def typeCheck(expr: String, errorsAllowed: Boolean = false)(implicit state: State): Result[tpd.ValDef] = {
 
     def wrapped(expr: String, sourceFile: SourceFile, state: State)(implicit ctx: Context): Result[untpd.PackageDef] = {
-      def wrap(trees: Seq[untpd.Tree]): untpd.PackageDef = {
+      def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
         import untpd._
 
-        val valdef =
-          ValDef("expr".toTermName, TypeTree(), Block(trees.toList, untpd.unitLiteral))
-
-        val tmpl = Template(emptyConstructor,
-                            List(Ident(tpnme.Any)),
-                            EmptyValDef,
-                            state.imports :+ valdef)
-
-        PackageDef(Ident(nme.EMPTY_PACKAGE),
-          TypeDef("EvaluateExpr".toTypeName, tmpl)
-            .withMods(new Modifiers(Final))
-            .withPos(Position(0, expr.length)) :: Nil
-        )
+        val valdef = ValDef("expr".toTermName, TypeTree(), Block(trees, unitLiteral))
+        val tmpl = Template(emptyConstructor, Nil, EmptyValDef, state.imports :+ valdef)
+        val wrapper = TypeDef("$wrapper".toTypeName, tmpl)
+          .withMods(Modifiers(Final))
+          .withPos(Position(0, expr.length))
+        PackageDef(Ident(nme.EMPTY_PACKAGE), List(wrapper))
       }
 
       ParseResult(expr) match {
-        case Parsed(sourceCode, trees) =>
+        case Parsed(_, trees) =>
           wrap(trees).result
         case SyntaxErrors(_, reported, trees) =>
           if (errorsAllowed) wrap(trees).result
@@ -218,22 +249,20 @@ class ReplCompiler(val directory: AbstractFile) extends Compiler {
     }
 
 
-    val run = state.run
-    val reporter = state.run.runContext.reporter
-    val src = new SourceFile(s"EvaluateExpr", expr)
-    val runCtx =
-      run.runContext.fresh
-         .setSetting(run.runContext.settings.YstopAfter, List("frontend"))
+    val src = new SourceFile("<typecheck>", expr)
+    implicit val ctx: Context = state.context.fresh
+      .setReporter(newStoreReporter)
+      .setSetting(state.context.settings.YstopAfter, List("frontend"))
 
-    wrapped(expr, src, state)(runCtx).flatMap { pkg =>
+    wrapped(expr, src, state).flatMap { pkg =>
       val unit = new CompilationUnit(src)
       unit.untpdTree = pkg
-      run.compileUnits(unit :: Nil, runCtx.fresh.setReporter(storeReporter))
+      ctx.run.compileUnits(unit :: Nil, ctx)
 
-      if (errorsAllowed || !reporter.hasErrors)
-        unwrapped(unit.tpdTree, src)(runCtx)
+      if (errorsAllowed || !ctx.reporter.hasErrors)
+        unwrapped(unit.tpdTree, src)
       else {
-        reporter.removeBufferedMessages(runCtx).errors
+        ctx.reporter.removeBufferedMessages.errors
       }
     }
   }

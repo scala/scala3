@@ -13,6 +13,8 @@ import collection.mutable.ListBuffer
 import reporting.diagnostic.messages._
 import reporting.trace
 
+import scala.annotation.internal.sharable
+
 object desugar {
   import untpd._
   import DesugarEnums._
@@ -20,9 +22,18 @@ object desugar {
   /** Info of a variable in a pattern: The named tree and its type */
   private type VarInfo = (NameTree, Tree)
 
-  /** Names of methods that are added unconditionally to case classes */
+  /** Is `name` the name of a method that can be invalidated as a compiler-generated
+   *  case class method that clashes with a user-defined method?
+   */
+  def isRetractableCaseClassMethodName(name: Name)(implicit ctx: Context): Boolean = name match {
+    case nme.apply | nme.unapply | nme.copy => true
+    case DefaultGetterName(nme.copy, _) => true
+    case _ => false
+  }
+
+  /** Is `name` the name of a method that is added unconditionally to case classes? */
   def isDesugaredCaseClassMethodName(name: Name)(implicit ctx: Context): Boolean =
-    name == nme.copy || name.isSelectorName
+    isRetractableCaseClassMethodName(name) || name.isSelectorName
 
 // ----- DerivedTypeTrees -----------------------------------
 
@@ -207,8 +218,7 @@ object desugar {
             tpt = TypeTree(),
             rhs = vparam.rhs
           )
-          .withMods(Modifiers(mods.flags & AccessFlags, mods.privateWithin))
-          .withFlags(Synthetic)
+          .withMods(Modifiers(mods.flags & (AccessFlags | Synthetic), mods.privateWithin))
         val rest = defaultGetters(vparams :: vparamss1, n + 1)
         if (vparam.rhs.isEmpty) rest else defaultGetter :: rest
       case Nil :: vparamss1 =>
@@ -1109,8 +1119,8 @@ object desugar {
           case Block(Nil, expr) => expr // important for interpolated string as patterns, see i1773.scala
           case t => t
         }
-
-        Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
+        // This is a deliberate departure from scalac, where StringContext is not rooted (See #4732)
+        Apply(Select(Apply(scalaDot(nme.StringContext), strs), id), elems)
       case InfixOp(l, op, r) =>
         if (ctx.mode is Mode.Type)
           AppliedTypeTree(op, l :: r :: Nil) // op[l, r]

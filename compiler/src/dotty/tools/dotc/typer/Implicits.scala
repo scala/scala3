@@ -37,6 +37,8 @@ import config.Printers.{implicits, implicitsDetailed, typr}
 import collection.mutable
 import reporting.trace
 
+import scala.annotation.internal.sharable
+
 /** Implicit resolution */
 object Implicits {
   import tpd._
@@ -71,6 +73,15 @@ object Implicits {
     /** The implicit references */
     def refs: List[ImplicitRef]
 
+    private[this] var SingletonClass: ClassSymbol = null
+
+    /** Widen type so that it is neither a singleton type nor a type that inherits from scala.Singleton. */
+    private def widenSingleton(tp: Type)(implicit ctx: Context): Type = {
+      if (SingletonClass == null) SingletonClass = defn.SingletonClass
+      val wtp = tp.widenSingleton
+      if (wtp.derivesFrom(SingletonClass)) defn.AnyType else wtp
+    }
+
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[Candidate] = track("filterMatching") {
 
@@ -80,7 +91,8 @@ object Implicits {
           case mt: MethodType =>
             mt.isImplicitMethod ||
             mt.paramInfos.lengthCompare(1) != 0 ||
-            !ctx.test(implicit ctx => argType relaxed_<:< mt.paramInfos.head)
+            !ctx.test(implicit ctx =>
+              argType relaxed_<:< widenSingleton(mt.paramInfos.head))
           case poly: PolyType =>
             // We do not need to call ProtoTypes#constrained on `poly` because
             // `refMatches` is always called with mode TypevarsMissContext enabled.
@@ -88,9 +100,10 @@ object Implicits {
               case mt: MethodType =>
                 mt.isImplicitMethod ||
                 mt.paramInfos.length != 1 ||
-                !ctx.test(implicit ctx => argType relaxed_<:< wildApprox(mt.paramInfos.head, null, Set.empty))
+                !ctx.test(implicit ctx =>
+                  argType relaxed_<:< wildApprox(widenSingleton(mt.paramInfos.head)))
               case rtp =>
-                discardForView(wildApprox(rtp, null, Set.empty), argType)
+                discardForView(wildApprox(rtp), argType)
             }
           case tpw: TermRef =>
             false // can't discard overloaded refs
@@ -132,6 +145,20 @@ object Implicits {
           case _ => false
         }
 
+        /** Widen singleton arguments of implicit conversions to their underlying type.
+         *  This is necessary so that they can be found eligible for the argument type.
+         *  Note that we always take the underlying type of a singleton type as the argument
+         *  type, so that we get a reasonable implicit cache hit ratio.
+         */
+        def adjustSingletonArg(tp: Type): Type = tp match {
+          case tp: PolyType =>
+            val res = adjustSingletonArg(tp.resType)
+            if (res `eq` tp.resType) tp else tp.derivedLambdaType(resType = res)
+          case tp: MethodType =>
+            tp.derivedLambdaType(paramInfos = tp.paramInfos.mapConserve(widenSingleton))
+          case _ => tp
+        }
+
         (ref.symbol isAccessibleFrom ref.prefix) && {
           if (discard) {
             record("discarded eligible")
@@ -139,7 +166,11 @@ object Implicits {
           }
           else {
             val ptNorm = normalize(pt, pt) // `pt` could be implicit function types, check i2749
-            NoViewsAllowed.isCompatible(normalize(ref, pt), ptNorm)
+            val refAdjusted =
+              if (pt.isInstanceOf[ViewProto]) adjustSingletonArg(ref.widenSingleton)
+              else ref
+            val refNorm = normalize(refAdjusted, pt)
+            NoViewsAllowed.isCompatible(refNorm, ptNorm)
           }
         }
       }
@@ -871,7 +902,7 @@ trait Implicits { self: Typer =>
     }
 
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
-    val wildProto = implicitProto(pt, wildApprox(_, null, Set.empty))
+    val wildProto = implicitProto(pt, wildApprox(_))
 
     val isNot = wildProto.classSymbol == defn.NotClass
 
@@ -1103,19 +1134,24 @@ trait Implicits { self: Typer =>
       val eligible =
         if (contextual) ctx.implicits.eligible(wildProto)
         else implicitScope(wildProto).eligible
-      searchImplicits(eligible, contextual).recoverWith {
-        failure => failure.reason match {
-          case _: AmbiguousImplicits => failure
-          case reason =>
-            if (contextual)
-              bestImplicit(contextual = false).recoverWith {
-                failure2 => reason match {
-                  case (_: DivergingImplicit) | (_: ShadowedImplicit) => failure
-                  case _ => failure2
+      searchImplicits(eligible, contextual) match {
+        case result: SearchSuccess =>
+          if (contextual && ctx.mode.is(Mode.TransparentBody))
+            PrepareTransparent.markContextualImplicit(result.tree)
+          result
+        case failure: SearchFailure =>
+          failure.reason match {
+            case _: AmbiguousImplicits => failure
+            case reason =>
+              if (contextual)
+                bestImplicit(contextual = false).recoverWith {
+                  failure2 => reason match {
+                    case (_: DivergingImplicit) | (_: ShadowedImplicit) => failure
+                    case _ => failure2
+                  }
                 }
-              }
-            else failure
-        }
+              else failure
+          }
       }
     }
 

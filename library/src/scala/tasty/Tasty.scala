@@ -31,15 +31,25 @@ abstract class Tasty { tasty =>
 
   trait ContextAPI {
     def owner: Definition
+
+    /** Returns the source file being compiled. The path is relative to the current working directory. */
+    def source: java.nio.file.Path
   }
   implicit def ContextDeco(ctx: Context): ContextAPI
+
+  implicit def rootContext: Context
+
+  /** Root position of this tasty context. For macros it corresponds to the expansion site. */
+  def rootPosition: Position
 
   // ===== Id =======================================================
 
   type Id
 
-  trait IdAPI extends Positioned
-  implicit def IdDeco(x: Id): IdAPI
+  trait IdAPI extends Positioned {
+    def name(implicit ctx: Context): String
+  }
+  implicit def IdDeco(id: Id): IdAPI
 
   implicit def idClassTag: ClassTag[Id]
 
@@ -69,7 +79,7 @@ abstract class Tasty { tasty =>
   trait PackageClauseAPI {
     def definition(implicit ctx: Context): Definition
   }
-  implicit def PackageClauseDeco(x: PackageClause): PackageClauseAPI
+  implicit def PackageClauseDeco(pack: PackageClause): PackageClauseAPI
 
   // ----- Statements -----------------------------------------------
 
@@ -83,6 +93,12 @@ abstract class Tasty { tasty =>
   abstract class ImportExtractor {
     def unapply(x: Import)(implicit ctx: Context): Option[(Term, List[ImportSelector])]
   }
+
+  trait ImportAPI {
+    def expr(implicit ctx: Context): Term
+    def selector(implicit ctx: Context): List[ImportSelector]
+  }
+  implicit def ImportDeco(imp: Import): ImportAPI
 
   type ImportSelector
 
@@ -115,6 +131,7 @@ abstract class Tasty { tasty =>
   implicit def definitionClassTag: ClassTag[Definition]
 
   trait DefinitionAPI {
+    def name(implicit ctx: Context): String
     def flags(implicit ctx: Context): FlagSet
     def privateWithin(implicit ctx: Context): Option[Type]
     def protectedWithin(implicit ctx: Context): Option[Type]
@@ -122,7 +139,7 @@ abstract class Tasty { tasty =>
     def owner(implicit ctx: Context): Definition
     def localContext(implicit ctx: Context): Context
   }
-  implicit def DefinitionDeco(x: Definition): DefinitionAPI
+  implicit def DefinitionDeco(definition: Definition): DefinitionAPI
 
   // ClassDef
 
@@ -135,6 +152,14 @@ abstract class Tasty { tasty =>
     def unapply(x: ClassDef)(implicit ctx: Context): Option[(String, DefDef, List[Parent], Option[ValDef], List[Statement])]
   }
 
+  trait ClassDefAPI {
+    def constructor(implicit ctx: Context): DefDef
+    def parents(implicit ctx: Context): List[Parent]
+    def self(implicit ctx: Context): Option[ValDef]
+    def body(implicit ctx: Context): List[Statement]
+  }
+  implicit def ClassDefDeco(cdef: ClassDef): ClassDefAPI
+
   // DefDef
 
   type DefDef <: Definition
@@ -145,6 +170,14 @@ abstract class Tasty { tasty =>
   abstract class DefDefExtractor {
     def unapply(x: DefDef)(implicit ctx: Context): Option[(String, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])]
   }
+
+  trait DefDefAPI {
+    def typeParams(implicit ctx: Context): List[TypeDef]
+    def paramss(implicit ctx: Context): List[List[ValDef]]
+    def returnTpt(implicit ctx: Context): TypeTree
+    def rhs(implicit ctx: Context): Option[Term]
+  }
+  implicit def DefDefDeco(ddef: DefDef): DefDefAPI
 
   // ValDef
 
@@ -157,6 +190,12 @@ abstract class Tasty { tasty =>
     def unapply(x: ValDef)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])]
   }
 
+  trait ValDefAPI {
+    def tpt(implicit ctx: Context): TypeTree
+    def rhs(implicit ctx: Context): Option[Term]
+  }
+  implicit def ValDefDeco(vdef: ValDef): ValDefAPI
+
   // TypeDef
 
   type TypeDef <: Definition
@@ -168,14 +207,20 @@ abstract class Tasty { tasty =>
     def unapply(x: TypeDef)(implicit ctx: Context): Option[(String, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)]
   }
 
+  trait TypeDefAPI {
+    def rhs(implicit ctx: Context): TypeOrBoundsTree
+  }
+  implicit def TypeDefDeco(tdef: TypeDef): TypeDefAPI
+
   // PackageDef
 
   type PackageDef <: Definition
 
   trait PackageDefAPI {
+    def owner(implicit ctx: Context): PackageDef
     def members(implicit ctx: Context): List[Statement]
   }
-  implicit def PackageDefDeco(t: PackageDef): PackageDefAPI
+  implicit def PackageDefDeco(pdef: PackageDef): PackageDefAPI
 
   implicit def packageDefClassTag: ClassTag[PackageDef]
 
@@ -195,78 +240,98 @@ abstract class Tasty { tasty =>
   trait TermAPI extends Typed with Positioned {
     def toExpr[T: quoted.Type](implicit ctx: Context): quoted.Expr[T]
   }
-  implicit def TermDeco(t: Term): TermAPI
+  implicit def TermDeco(term: Term): TermAPI
 
   implicit def termClassTag: ClassTag[Term]
 
+  /** Scala term. Any tree that can go in expression position. */
   val Term: TermModule
   abstract class TermModule {
 
+    /** Matches any term */
     def unapply(x: Term)(implicit ctx: Context): Boolean
 
+    /** Scala term identifier */
     val Ident: IdentExtractor
     abstract class IdentExtractor {
+      /** Matches a term identifier and returns its name */
       def unapply(x: Term)(implicit ctx: Context): Option[String]
     }
 
+    /** Scala term selection */
     val Select: SelectExtractor
     abstract class SelectExtractor {
+      /** Matches `<qual: Term>.<name: String>: <sig: Signature>` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, String, Option[Signature])]
     }
 
+    /** Scala literal constant */
     val Literal: LiteralExtractor
     abstract class LiteralExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[Constant]
     }
 
+    /** Scala `this` or `this[id]` */
     val This: ThisExtractor
     abstract class ThisExtractor {
+      /** Matches new `this[<id: Option[Id]>` */
       def unapply(x: Term)(implicit ctx: Context): Option[Option[Id]]
     }
 
+    /** Scala `new` */
     val New: NewExtractor
     abstract class NewExtractor {
+      /** Matches new `new <tpt: TypeTree>` */
       def unapply(x: Term)(implicit ctx: Context): Option[TypeTree]
     }
 
+    /** Scala named argument `x = y` in argument position */
     val NamedArg: NamedArgExtractor
     abstract class NamedArgExtractor {
+      /** Matches `<name: String> = <value: Term>` */
       def unapply(x: Term)(implicit ctx: Context): Option[(String, Term)]
     }
 
+    /** Scala parameter application */
     val Apply: ApplyExtractor
     abstract class ApplyExtractor {
+      /** Matches function application `<fun: Term>(<args: List[Term]>)` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[Term])]
     }
 
+    /** Scala type parameter application */
     val TypeApply: TypeApplyExtractor
     abstract class TypeApplyExtractor {
+      /** Matches function type application `<fun: Term>[<args: List[TypeTree]>]` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[TypeTree])]
     }
 
+    /** Scala `x.super` or `x.super[id]` */
     val Super: SuperExtractor
     abstract class SuperExtractor {
+      /** Matches new `<qualifier: Term>.super[<id: Option[Id]>` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Option[Id])]
     }
 
+    /** Scala ascription `x: T` */
     val Typed: TypedExtractor
     abstract class TypedExtractor {
+      /** Matches `<x: Term>: <tpt: Term>` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, TypeTree)]
     }
 
+    /** Scala assign `x = y` */
     val Assign: AssignExtractor
     abstract class AssignExtractor {
+      /** Matches `<lhs: Term> = <rhs: Term>` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term)]
     }
 
+    /** Scala code block `{ stat0; ...; statN; expr }` term */
     val Block: BlockExtractor
     abstract class BlockExtractor {
+      /** Matches `{ <statements: List[Statement]>; <expr: Term> }` */
       def unapply(x: Term)(implicit ctx: Context): Option[(List[Statement], Term)]
-    }
-
-    val Inlined: InlinedExtractor
-    abstract class InlinedExtractor {
-      def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[Definition], Term)]
     }
 
     val Lambda: LambdaExtractor
@@ -274,23 +339,31 @@ abstract class Tasty { tasty =>
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Option[TypeTree])]
     }
 
+    /** Scala `if`/`else` term */
     val If: IfExtractor
     abstract class IfExtractor {
+      /** Matches `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term, Term)]
     }
 
+    /** Scala `match` term */
     val Match: MatchExtractor
     abstract class MatchExtractor {
+      /** Matches `<scrutinee: Trem> match { <cases: List[CaseDef]> }` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[CaseDef])]
     }
 
+    /** Scala `try`/`catch`/`finally` term */
     val Try: TryExtractor
     abstract class TryExtractor {
+      /** Matches `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, List[CaseDef], Option[Term])]
     }
 
+    /** Scala local `return` */
     val Return: ReturnExtractor
     abstract class ReturnExtractor {
+      /** Matches `return <expr: Term>` */
       def unapply(x: Term)(implicit ctx: Context): Option[Term]
     }
 
@@ -299,11 +372,27 @@ abstract class Tasty { tasty =>
       def unapply(x: Term)(implicit ctx: Context): Option[List[Term]]
     }
 
+    val Inlined: InlinedExtractor
+    abstract class InlinedExtractor {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Option[Term], List[Definition], Term)]
+    }
+
     val SelectOuter: SelectOuterExtractor
     abstract class SelectOuterExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Int, Type)]
     }
 
+    val While: WhileExtractor
+    abstract class WhileExtractor {
+      /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term)]
+    }
+
+    val DoWhile: DoWhileExtractor
+    abstract class DoWhileExtractor {
+      /** Extractor for do while loops. Matches `do <body> while (<cond>)` and returns (<body>, <cond>) */
+      def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term)]
+    }
   }
 
   // ----- CaseDef --------------------------------------------------
@@ -314,6 +403,9 @@ abstract class Tasty { tasty =>
 
   trait CaseDefAPI {
     def show(implicit ctx: Context, s: Show[tasty.type]): String
+    def pattern(implicit ctx: Context): Pattern
+    def guard(implicit ctx: Context): Option[Term]
+    def rhs(implicit ctx: Context): Term
   }
   implicit def CaseDefDeco(caseDef: CaseDef): CaseDefAPI
 
@@ -328,8 +420,9 @@ abstract class Tasty { tasty =>
 
   trait PatternAPI extends Typed with Positioned {
     def show(implicit ctx: Context, s: Show[tasty.type]): String
+
   }
-  implicit def PatternDeco(x: Pattern): PatternAPI
+  implicit def PatternDeco(pattern: Pattern): PatternAPI
 
   implicit def patternClassTag: ClassTag[Pattern]
 
@@ -379,7 +472,7 @@ abstract class Tasty { tasty =>
   type TypeTree <: TypeOrBoundsTree with Parent
 
   trait TypeTreeAPI extends Typed with Positioned
-  implicit def TypeTreeDeco(x: TypeTree): TypeTreeAPI
+  implicit def TypeTreeDeco(tpt: TypeTree): TypeTreeAPI
 
   implicit def typeTreeClassTag: ClassTag[TypeTree]
 
@@ -388,8 +481,10 @@ abstract class Tasty { tasty =>
 
     def unapply(x: TypeTree)(implicit ctx: Context): Boolean
 
+    /** TypeTree containing an inferred type */
     val Synthetic: SyntheticExtractor
     abstract class SyntheticExtractor {
+      /** Matches a TypeTree containing an inferred type */
       def unapply(x: TypeTree)(implicit ctx: Context): Boolean
     }
 
@@ -398,9 +493,14 @@ abstract class Tasty { tasty =>
       def unapply(x: TypeTree)(implicit ctx: Context): Option[String]
     }
 
+    val TermSelect: TermSelectExtractor
+    abstract class TermSelectExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(Term, String)]
+    }
+
     val TypeSelect: TypeSelectExtractor
     abstract class TypeSelectExtractor {
-      def unapply(x: TypeTree)(implicit ctx: Context): Option[(Term, String)]
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, String)]
     }
 
     val Singleton: SingletonExtractor
@@ -415,7 +515,7 @@ abstract class Tasty { tasty =>
 
     val Applied: AppliedExtractor
     abstract class AppliedExtractor {
-      def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, List[TypeTree])]
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, List[TypeOrBoundsTree])]
     }
 
     val Annotated: AnnotatedExtractor
@@ -438,6 +538,15 @@ abstract class Tasty { tasty =>
       def unapply(x: TypeTree)(implicit ctx: Context): Option[TypeTree]
     }
 
+    val TypeLambdaTree: TypeLambdaTreeExtractor
+    abstract class TypeLambdaTreeExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(List[TypeDef], TypeOrBoundsTree)]
+    }
+
+    val Bind: BindExtractor
+    abstract class BindExtractor{
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(String, TypeBoundsTree)]
+    }
   }
 
   // ----- TypeBoundsTrees ------------------------------------------------
@@ -446,14 +555,23 @@ abstract class Tasty { tasty =>
 
   trait TypeBoundsTreeAPI {
     def tpe(implicit ctx: Context): TypeBounds
+    def low(implicit ctx: Context): TypeTree
+    def hi(implicit ctx: Context): TypeTree
   }
-  implicit def TypeBoundsTreeDeco(x: TypeBoundsTree): TypeBoundsTreeAPI
+  implicit def TypeBoundsTreeDeco(tpt: TypeBoundsTree): TypeBoundsTreeAPI
 
   implicit def typeBoundsTreeClassTag: ClassTag[TypeBoundsTree]
 
   val TypeBoundsTree: TypeBoundsTreeExtractor
   abstract class TypeBoundsTreeExtractor {
     def unapply(x: TypeBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)]
+  }
+
+  /** TypeBoundsTree containing an inferred type bounds */
+  val SyntheticBounds: SyntheticBoundsExtractor
+  abstract class SyntheticBoundsExtractor {
+    /** Matches a TypeBoundsTree containing inferred type bounds */
+    def unapply(x: TypeBoundsTree)(implicit ctx: Context): Boolean
   }
 
   // ===== Types ====================================================
@@ -489,8 +607,25 @@ abstract class Tasty { tasty =>
   trait MethodTypeAPI {
     def isImplicit: Boolean
     def isErased: Boolean
+    def paramNames(implicit ctx: Context): List[String]
+    def paramTypes(implicit ctx: Context): List[Type]
+    def resultTpe(implicit ctx: Context): Type
   }
-  implicit def MethodTypeDeco(x: MethodType): MethodTypeAPI
+  implicit def MethodTypeDeco(tpt: MethodType): MethodTypeAPI
+
+  trait PolyTypeAPI {
+    def paramNames(implicit ctx: Context): List[String]
+    def paramTypes(implicit ctx: Context): List[TypeBounds]
+    def resultTpe(implicit ctx: Context): Type
+  }
+  implicit def PolyTypeDeco(tpt: PolyType): PolyTypeAPI
+
+  trait TypeLambdaAPI {
+    def paramNames(implicit ctx: Context): List[String]
+    def paramTypes(implicit ctx: Context): List[TypeBounds]
+    def resultTpe(implicit ctx: Context): Type
+  }
+  implicit def TypeLambdaDeco(tpt: TypeLambda): TypeLambdaAPI
 
   val Type: TypeModule
   abstract class TypeModule {
@@ -600,6 +735,12 @@ abstract class Tasty { tasty =>
     def unapply(x: TypeBounds)(implicit ctx: Context): Option[(Type, Type)]
   }
 
+  trait TypeBoundsAPI {
+    def low(implicit ctx: Context): Type
+    def hi(implicit ctx: Context): Type
+  }
+  implicit def TypeBoundsDeco(bounds: TypeBounds): TypeBoundsAPI
+
   // ----- NoPrefix -------------------------------------------------
 
   type NoPrefix <: TypeOrBounds
@@ -680,6 +821,10 @@ abstract class Tasty { tasty =>
       def unapply(x: Constant): Option[String]
     }
 
+    val ClassTag: ClassTagExtractor
+    abstract class ClassTagExtractor {
+      def unapply(x: Constant): Option[Type]
+    }
   }
 
   // ===== Signature ================================================
@@ -692,6 +837,12 @@ abstract class Tasty { tasty =>
   abstract class SignatureExtractor {
     def unapply(x: Signature)(implicit ctx: Context): Option[(List[String], String)]
   }
+
+  trait SignatureAPI {
+    def paramSigs: List[String]
+    def resultSig: String
+  }
+  implicit def SignatureDeco(sig: Signature): SignatureAPI
 
   // ===== Positions ================================================
 

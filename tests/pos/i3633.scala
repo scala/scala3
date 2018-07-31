@@ -1,4 +1,4 @@
 class Test {
-  inline def foo = 1
+  transparent def foo = 1
   def test = -foo
 }

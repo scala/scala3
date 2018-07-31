@@ -132,7 +132,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
             initName,
             Protected | Synthetic | Method,
             sym.info,
-            coord = sym.symbol.coord).enteredAfter(thisPhase))
+            coord = sym.coord).enteredAfter(thisPhase))
     }
   }.asTerm
 
@@ -242,7 +242,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           // transformFollowing call is needed to make memoize & lazy vals run
           transformFollowing(DefDef(implementation(getter.asTerm), rhs))
         }
-        else if (isScala2x || was(getter, ParamAccessor)) EmptyTree
+        else if (isScala2x || was(getter, ParamAccessor | Lazy)) EmptyTree
         else initial
       }
     }

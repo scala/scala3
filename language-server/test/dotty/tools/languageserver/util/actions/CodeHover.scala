@@ -5,27 +5,30 @@ import dotty.tools.languageserver.util.{CodeRange, PositionContext}
 
 import org.junit.Assert.{assertEquals, assertNull, assertTrue}
 
+import scala.collection.JavaConverters._
+
 /**
  * An action requesting for the info shown when `range` is hovered.
  * This action corresponds to the `textDocument/hover` method of the Language Server Protocol.
  *
- * @param range The range of positions that should be hovered.
- * @param expected The expected result.
+ * @param range     The range of positions that should be hovered.
+ * @param expected  None if no response is expected, the expected Markdown string otherwise.
  */
-class CodeHover(override val range: CodeRange, expected: String) extends ActionOnRange {
+class CodeHover(override val range: CodeRange, expectedOpt: Option[String]) extends ActionOnRange {
 
   override def onMarker(marker: CodeMarker): Exec[Unit] = {
     val result = server.hover(marker.toTextDocumentPositionParams).get()
-    assertNull(result.getRange)
-    if (expected.isEmpty) assertNull(result.getContents)
-    else {
-      assertEquals(1, result.getContents.size)
-      val content = result.getContents.get(0)
-      assertTrue(content.isLeft)
-      assertEquals(expected, content.getLeft)
+    expectedOpt match {
+      case None =>
+        assertNull(result)
+      case Some(expected) =>
+        assertNull(result.getRange)
+        val contents = result.getContents.getRight
+        assertEquals(contents.getKind, "markdown")
+        assertEquals(expected, contents.getValue)
     }
   }
 
   override def show: PositionContext.PosCtx[String] =
-    s"CodeHover(${range.show}, $expected)"
+    s"CodeHover(${range.show}, $expectedOpt)"
 }

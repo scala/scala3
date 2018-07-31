@@ -1,6 +1,6 @@
 import scala.quoted._
 
-import scala.tasty.Universe
+import scala.tasty._
 
 object Asserts {
 
@@ -11,12 +11,11 @@ object Asserts {
 
   object Ops
 
-  inline def macroAssert(cond: Boolean): Unit =
-    ~impl('(cond))(Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
+  transparent def macroAssert(cond: => Boolean): Unit =
+    ~impl('(cond))(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
 
-  def impl(cond: Expr[Boolean])(implicit u: Universe): Expr[Unit] = {
-    import u._
-    import u.tasty._
+  def impl(cond: Expr[Boolean])(implicit tasty: Tasty): Expr[Unit] = {
+    import tasty._
 
     val tree = cond.toTasty
 
@@ -34,7 +33,7 @@ object Asserts {
     }
 
     tree match {
-      case Term.Apply(Term.Select(OpsTree(left), op, _), right :: Nil) =>
+      case Term.Inlined(_, Nil, Term.Apply(Term.Select(OpsTree(left), op, _), right :: Nil)) =>
         '(assertTrue(~left.toExpr[Boolean])) // Buggy code. To generate the errors
       case _ =>
         '(assertTrue(~cond))

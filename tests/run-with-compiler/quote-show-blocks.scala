@@ -1,10 +1,8 @@
-
-import dotty.tools.dotc.quoted.Toolbox._
-
 import scala.quoted._
 
 object Test {
   def main(args: Array[String]): Unit = {
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make
 
     def a(n: Int, x: Expr[Unit]): Expr[Unit] =
       if (n == 0) x

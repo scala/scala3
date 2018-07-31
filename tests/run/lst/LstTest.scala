@@ -1,5 +1,5 @@
 object Test extends App {
-  import dotty.tools.dotc.util.Lst
+  import lst.Lst
 
   val xs0: Lst[String] = Lst.Empty
   val xs1 = Lst("a")
@@ -17,6 +17,19 @@ object Test extends App {
   val is5 = Lst(1, 2, 3, 4, 5)
   val is10 = is5 ++ is5
 
+  val xss0: Lst[Lst[String]] = Lst(Lst())
+  val xss1 = Lst(Lst("a"))
+  val xss2 = Lst(Lst("a"), Lst("b"))
+  val xss3 = Lst(Lst("a"), Lst("b"), Lst("c"))
+  val xss4 = Lst(Lst("a"), Lst("b"), Lst("c"), Lst("d"))
+  val xss5 = Lst(Lst("a"), Lst("b"), Lst("c"), Lst("d"), Lst("e"))
+  val xss10 = xss5 ++ xss5
+
+  println(xss0)
+  println(xss1)
+  println(xss5)
+  println(xss10)
+
   def lengthTest() = {
     assert(xs0.length == 0)
     assert(xs1.length == 1)
@@ -27,6 +40,11 @@ object Test extends App {
     assert(is1.length == 1)
     assert(is2.length == 2)
     assert(is10.length == 10)
+
+    assert(xss0.length == 1)
+    assert(xss1.length == 1)
+    assert(xss2.length == 2)
+    assert(xss10.length == 10)
   }
 
   def concatTest() = {
@@ -39,6 +57,11 @@ object Test extends App {
     assert(is0 ++ is1 == is1)
     assert(is3 ++ is0 == is3)
     assert(is0 ++ is4 == is4)
+
+    assert(xss1 ++ xs0 == xss1)
+    assert(xs0 ++ xss1 == xss1)
+    assert(xss3 ++ xs0 == xss3)
+    assert(xs0 ++ xss4 == xss4)
   }
 
   def foreachTest() = {
@@ -57,6 +80,9 @@ object Test extends App {
 
     is0.foreach(i => assert(i == 1))
     is3.foreach(i => assert(i <= 3))
+
+    xss0.foreach(s => assert(s.length == 0))
+    xss3.foreach(s => assert(s.length == 1))
   }
 
   def mapTest() = {
@@ -71,6 +97,13 @@ object Test extends App {
     assert(js1.mkString == "2")
     val js5 = is5.map(s => s + s)
     assert(js5.mkString == "2, 4, 6, 8, 10")
+
+    val yss0 = xss0.map(_.reverse)
+    assert(yss0.mkString == "Lst()", yss0.mkString)
+    val yss1 = xss1.map(s => s ++ s)
+    assert(yss1.mkString == "Lst(a, a)", yss1.mkString)
+    val yss5 = xss5.map(s => s ++ s)
+    assert(yss5.mkString == "Lst(a, a), Lst(b, b), Lst(c, c), Lst(d, d), Lst(e, e)")
   }
 
   def mapConserveTest() = {
@@ -93,6 +126,13 @@ object Test extends App {
     assert(js5.mkString == "2, 4, 6, 8, 10")
     val js4 = is4.mapConserve(s => if (s == 3) -3 else s)
     assert(js4.mkString == "1, 2, -3, 4")
+
+    val yss0 = xss0.mapConserve(_.reverse)
+    assert(yss0.mkString == "Lst()", yss0.mkString)
+    val yss1 = xss1.mapConserve(s => s ++ s)
+    assert(yss1.mkString == "Lst(a, a)", yss1.mkString)
+    val yss5 = xss5.mapConserve(s => s ++ s)
+    assert(yss5.mkString == "Lst(a, a), Lst(b, b), Lst(c, c), Lst(d, d), Lst(e, e)")
   }
 
   def flatMapTest() = {
@@ -117,6 +157,17 @@ object Test extends App {
     assert(js4.mkString == "2, 3, 3, 4, 4, 4", js4)
     val js5 = is5.flatMap(s => if s == 3 then Lst(-3) else Lst())
     assert(js5 == Lst(-3))
+
+    val yss0 = xss0.flatMap(s => Lst(s, s))
+    assert(yss0.length == 2 && yss0.forall(_.isEmpty))
+    val yss2 = xss2.flatMap(s => Lst(s, s))
+    assert(yss2.mkString == "Lst(a), Lst(a), Lst(b), Lst(b)")
+    val yss2a = xss2.flatMap(_ => Lst.Empty)
+    assert(yss2a.isEmpty)
+    val yss4 = xss4.flatMap(s => Lst.fill(s.head.head - 'a')(s))
+    assert(yss4.mkString == "Lst(b), Lst(c), Lst(c), Lst(d), Lst(d), Lst(d)", yss4.mkString)
+    val yss5 = xss5.flatMap(s => if s.head == "c" then Lst(s) else Lst())
+    assert(yss5 == Lst(Lst("c")))
   }
 
   def filterTest() = {
@@ -127,7 +178,7 @@ object Test extends App {
     val ys1a = xs1.filterNot(_.head >= 'c')
     assert(ys1a `eqLst` xs1)
     val ys5 = xs5.filter(_.head % 2 != 0)
-    assert(ys5 === Lst("a", "c", "e"), ys5)
+    assert(ys5 == Lst("a", "c", "e"), ys5)
 
     val js0 = is0.filter(_ > 3)
     assert(js0.isEmpty)
@@ -136,7 +187,18 @@ object Test extends App {
     val js1a = is1.filterNot(_ > 3)
     assert(js1a `eqLst` is1)
     val js5 = is5.filter(_ % 2 != 0)
-    assert(js5 === Lst(1, 3, 5), js5)
+    assert(js5 == Lst(1, 3, 5), js5)
+
+    val yss0 = xss0.filter(_.nonEmpty)
+    assert(yss0.isEmpty)
+    val yss1 = xss1.filter(_.head.head >= 'c')
+    assert(yss1.isEmpty)
+    val yss1a = xss1.filterNot(_.head.head >= 'c')
+    assert(yss1a `eqLst` xss1)
+    val yss5 = xss5.filter(_.head.head % 2 != 0)
+    assert(yss5 == Lst(Lst("a"), Lst("c"), Lst("e")), yss5)
+    val yss5a = xss5.map(_.filter(_.head % 2 != 0))
+    assert(yss5a == Lst(Lst("a"), Lst(), Lst("c"), Lst(), Lst("e")), yss5)
   }
 
   def existsTest() = {
@@ -149,6 +211,13 @@ object Test extends App {
     assert(is1.exists(_ == 1))
     assert(is5.exists(_ == 3))
     assert(!is5.exists(_ > 5))
+
+    assert(!xss0.exists(_.exists(_ => true)))
+    assert(xss1.exists(_.head == "a"))
+    assert(xss1.exists(_.exists(_ == "a")))
+    assert(xss5.exists(_.head == "c"))
+    assert(xss5.exists(_.exists(_ == "c")))
+    assert(!xss5.exists(_.head.head > 'e'))
   }
 
   def forallTest() = {
@@ -168,6 +237,11 @@ object Test extends App {
     assert(is1.contains(1))
     assert(is10.contains(5))
     assert(!is10.contains(6))
+
+    assert(!xss0.contains(Lst("")))
+    assert(xss1.contains(Lst("a")))
+    assert(xss10.contains(Lst("e")), xss10)
+    assert(!xss10.contains(Lst("f")))
   }
 
   def foldTest() = {
@@ -192,13 +266,24 @@ object Test extends App {
     assert((3 /: is3)(_ + _) == 9)
     assert(is1.reduceLeft(_ + _) == 1)
     assert(is3.reduceLeft(_ + _) == 6)
+
+    assert(xss0.foldLeft(Lst("x"))(_ ++ _) == Lst("x"))
+    assert(xss1.foldLeft(Lst("x"))(_ ++ _) == Lst("x", "a"))
+    assert(xss2.foldLeft(Lst(): Lst[String])(_ ++ _) == Lst("a", "b"))
+    assert(xss3.foldLeft(Lst.Empty: Lst[String])(_ ++ _) == Lst("a", "b", "c"))
+    assert((Lst("x") /: xss0)(_ ++ _) == Lst("x"))
+    assert((Lst("x") /: xss1)(_ ++ _) == Lst("x", "a"))
+    assert((Lst("x") /: xss2)(_ ++ _) == Lst("x", "a", "b"))
+    assert((Lst("x") /: xss3)(_ ++ _) == Lst("x", "a", "b", "c"))
+    assert(xss1.reduceLeft(_ ++ _) == Lst("a"))
+    assert(xss3.reduceLeft(_ ++ _) == Lst("a", "b", "c"))
   }
 
   def reverseTest() = {
-    assert(xs0.reverse === xs0)
-    assert(xs1.reverse === xs1)
+    assert(xs0.reverse == xs0)
+    assert(xs1.reverse == xs1)
     assert(xs3.reverse.mkString == "c, b, a", xs3.reverse.mkString)
-    assert(xs4.reverse.reverse === xs4, xs4.reverse.reverse)
+    assert(xs4.reverse.reverse == xs4, xs4.reverse.reverse)
   }
 
   def applyTest() = {
@@ -211,18 +296,23 @@ object Test extends App {
     assert(is5.last == 5)
     assert(is5(3) == 4)
     assert(is1(0) == 1)
+
+    assert(xss5.head.head == "a")
+    assert(xss5.last.head == "e")
+    assert(xss5(3).head == "d")
+    assert(xss1(0).head == "a")
   }
 
   def sliceTest() = {
-    assert(xs5.slice(2, 4) === Lst("c", "d"))
-    assert(xs5.drop(4) === Lst("e"))
+    assert(xs5.slice(2, 4) == Lst("c", "d"))
+    assert(xs5.drop(4) == Lst("e"))
     assert(xs5.take(4).mkString("") == "abcd")
     assert(xs5.drop(-1) `eqLst` xs5)
     assert(xs1.take(1) `eqLst` xs1)
     assert(xs0.take(10).length == 0)
 
-    assert(is5.slice(2, 4) === Lst(3, 4))
-    assert(is5.drop(4) === Lst(5))
+    assert(is5.slice(2, 4) == Lst(3, 4))
+    assert(is5.drop(4) == Lst(5))
     assert(is5.take(4).mkString("") == "1234")
     assert(is5.drop(-1) `eqLst` is5)
     assert(is1.take(1) `eqLst` is1)
@@ -233,34 +323,34 @@ object Test extends App {
     val ys4a = xs4.zipWith(xs5)(_ + _)
     val ys4b = xs5.zipWith(xs4)(_ + _)
     assert(ys4a.mkString("") == "aabbccdd", ys4a)
-    assert(ys4a === ys4b)
+    assert(ys4a == ys4b)
     val ys1a = xs1.zipWith(xs1)(_ + _)
-    assert(ys1a === Lst("aa"))
+    assert(ys1a == Lst("aa"))
     val ys1b = xs1.zipWith(xs2)(_ + _)
-    assert(ys1b === Lst("aa"))
+    assert(ys1b == Lst("aa"))
     val ys1c = xs2.zipWith(xs1)(_ + _)
-    assert(ys1c === Lst("aa"))
+    assert(ys1c == Lst("aa"))
     val ys0a = xs1.zipWith(xs0)(_ + _)
     val ys0b = xs0.zipWith(xs1)(_ + _)
     assert((ys0a ++ ys0b).isEmpty)
     val ys3i = xs3.zipWithIndex.map((x, y) => (x, y + 1))
-    assert(ys3i === Lst(("a", 1), ("b", 2), ("c", 3)), ys3i)
+    assert(ys3i == Lst(("a", 1), ("b", 2), ("c", 3)), ys3i)
 
     val js4a = is4.zipWith(is5)(_ + _)
     val js4b = is5.zipWith(is4)(_ + _)
     assert(js4a.mkString("") == "2468", js4a)
-    assert(js4a === js4b)
+    assert(js4a == js4b)
     val js1a = is1.zipWith(is1)(_ + _)
-    assert(js1a === Lst(2))
+    assert(js1a == Lst(2))
     val js1b = is1.zipWith(is2)(_ + _)
-    assert(js1b === Lst(2))
+    assert(js1b == Lst(2))
     val js1c = is2.zipWith(is1)(_ + _)
-    assert(js1c === Lst(2))
+    assert(js1c == Lst(2))
     val js0a = is1.zipWith(is0)(_ + _)
     val js0b = is0.zipWith(is1)(_ + _)
     assert((js0a ++ js0b).isEmpty)
     val js3i = is3.zipWithIndex.map((x, y) => (x, y + 1))
-    assert(js3i === Lst((1, 1), (2, 2), (3, 3)), js3i)
+    assert(js3i == Lst((1, 1), (2, 2), (3, 3)), js3i)
     assert(js3i.forall(_ == _))
   }
 
@@ -290,7 +380,7 @@ object Test extends App {
     { val b = new Lst.Buffer[String]
       b += "a"
       assert(b.size == 1)
-      assert(b.toLst === Lst("a"))
+      assert(b.toLst == Lst("a"))
       b += "aa"
       b ++= Lst.fill(20)("a")
       assert(b.toLst.mkString("") == "a" * 23)
@@ -300,15 +390,24 @@ object Test extends App {
     { val b = new Lst.Buffer[Int]
       b += 1
       assert(b.size == 1)
-      assert(b.toLst === Lst(1))
+      assert(b.toLst == Lst(1))
       b += 11
       b ++= Lst.fill(20)(1)
       assert(b.toLst.mkString("") == "1" * 23)
       assert(b.size == 22)
     }
+
+    { val b = new Lst.Buffer[Lst[String]]
+      b += Lst("a")
+      assert(b.size == 1)
+      assert(b.toLst == Lst(Lst("a")))
+      b += Lst("aa")
+      b ++= Lst.fill(20)(Lst("a"))
+      assert(b.toLst.map(_.mkString("")).mkString("") == "a" * 23)
+      assert(b.size == 22)
+    }
   }
 
-  println("testing")
   lengthTest()
   concatTest()
   foreachTest()

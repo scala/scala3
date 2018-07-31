@@ -11,52 +11,57 @@ import util.{SourceFile, NoSource}
 import Annotations.Annotation
 import classfile.ClassfileParser
 import Names.SimpleName
+import TreeUnpickler.UnpickleMode
 
 object DottyUnpickler {
 
   /** Exception thrown if classfile is corrupted */
   class BadSignature(msg: String) extends RuntimeException(msg)
 
-  class TreeSectionUnpickler(posUnpickler: Option[PositionUnpickler])
+  class TreeSectionUnpickler(posUnpickler: Option[PositionUnpickler], commentUnpickler: Option[CommentUnpickler])
   extends SectionUnpickler[TreeUnpickler]("ASTs") {
     def unpickle(reader: TastyReader, nameAtRef: NameTable) =
-      new TreeUnpickler(reader, nameAtRef, posUnpickler, Seq.empty)
+      new TreeUnpickler(reader, nameAtRef, posUnpickler, commentUnpickler, Seq.empty)
   }
 
   class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler]("Positions") {
     def unpickle(reader: TastyReader, nameAtRef: NameTable) =
       new PositionUnpickler(reader)
   }
+
+  class CommentsSectionUnpickler extends SectionUnpickler[CommentUnpickler]("Comments") {
+    def unpickle(reader: TastyReader, nameAtRef: NameTable): CommentUnpickler =
+      new CommentUnpickler(reader)
+  }
 }
 
 /** A class for unpickling Tasty trees and symbols.
  *  @param bytes         the bytearray containing the Tasty file from which we unpickle
+ *  @param mode          the tasty file contains package (TopLevel), an expression (Term) or a type (TypeTree)
  */
-class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded with tpd.TreeProvider {
+class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLevel) extends ClassfileParser.Embedded with tpd.TreeProvider {
   import tpd._
   import DottyUnpickler._
 
   val unpickler = new TastyUnpickler(bytes)
   private val posUnpicklerOpt = unpickler.unpickle(new PositionsSectionUnpickler)
-  private val treeUnpickler = unpickler.unpickle(treeSectionUnpickler(posUnpicklerOpt)).get
+  private val commentUnpicklerOpt = unpickler.unpickle(new CommentsSectionUnpickler)
+  private val treeUnpickler = unpickler.unpickle(treeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)).get
 
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling
    */
   def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit =
-    treeUnpickler.enterTopLevel(roots)
-
-  def unpickleExpr()(implicit ctx: Context): Tree =
-    treeUnpickler.unpickleExpr()
+    treeUnpickler.enter(roots)
 
   def unpickleTypeTree()(implicit ctx: Context): Tree =
     treeUnpickler.unpickleTypeTree()
 
-  protected def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler]): TreeSectionUnpickler = {
-    new TreeSectionUnpickler(posUnpicklerOpt)
+  protected def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler], commentUnpicklerOpt: Option[CommentUnpickler]): TreeSectionUnpickler = {
+    new TreeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)
   }
 
-  protected def computeTrees(implicit ctx: Context) = treeUnpickler.unpickle()
+  protected def computeTrees(implicit ctx: Context) = treeUnpickler.unpickle(mode)
 
   private[this] var ids: Array[String] = null
 

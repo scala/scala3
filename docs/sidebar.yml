@@ -43,7 +43,7 @@ sidebar:
               url: docs/reference/multiversal-equality.html
             - title: Trait Parameters
               url: docs/reference/trait-parameters.html
-            - title: Inline
+            - title: Inlining with Transparent
               url: docs/reference/inline.html
             - title: Meta Programming
               url: docs/reference/principled-meta-programming.html
@@ -57,8 +57,6 @@ sidebar:
               url: docs/reference/erased-terms.html
             - title: Kind Polymorphism
               url: docs/reference/kind-polymorphism.html
-            - title: Local Optimisations
-              url: docs/reference/optimisations.html
         - title: Changed Features
           subsection:
             - title: Volatile Lazy Vals
@@ -79,6 +77,8 @@ sidebar:
               url: docs/reference/changed/pattern-matching.html
             - title: Eta Expansion
               url: docs/reference/changed/eta-expansion.html
+            - title: Compiler Plugins
+              url: docs/reference/changed/compiler-plugins.html
         - title: Dropped Features
           subsection:
             - title: DelayedInit
@@ -139,6 +139,8 @@ sidebar:
           url: docs/internals/syntax.html
         - title: Type System
           url: docs/internals/type-system.html
+        - title: "Dotty Internals 1: Trees & Symbols (Meeting Notes)"
+          url: docs/internals/dotty-internals-1-notes.html
     - title: Resources
       subsection:
         - title: Talks

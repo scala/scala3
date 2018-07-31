@@ -2,6 +2,7 @@ package dotty
 package tools
 
 import dotc.core._
+import dotc.core.Comments.{ContextDoc, ContextDocstrings}
 import dotc.core.Contexts._
 import dotc.core.Symbols._
 import dotc.core.Flags._
@@ -39,6 +40,7 @@ trait DottyTest extends ContextEscapeDetection {
   protected def initializeCtx(fc: FreshContext): Unit = {
     fc.setSetting(fc.settings.encoding, "UTF8")
     fc.setSetting(fc.settings.classpath, Jars.dottyLib)
+    fc.setProperty(ContextDoc, new ContextDocstrings)
   }
 
   private def compilerWithChecker(phase: String)(assertion: (tpd.Tree, Context) => Unit) = new Compiler {

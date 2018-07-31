@@ -6,6 +6,7 @@ import core._
 import Types._, Contexts._, Flags._, Symbols._, Annotations._, Trees._, NameOps._
 import Decorators._
 import Variances._
+import NameKinds._
 import util.Positions._
 import rewrite.Rewrites.patch
 import config.Printers.variances
@@ -134,6 +135,7 @@ class VarianceChecker()(implicit ctx: Context) {
       def skip =
         !sym.exists ||
         sym.is(PrivateLocal) ||
+        sym.name.is(InlineAccessorName) || // TODO: should we exclude all synthetic members?
         sym.is(TypeParam) && sym.owner.isClass // already taken care of in primary constructor of class
       tree match {
         case defn: MemberDef if skip =>

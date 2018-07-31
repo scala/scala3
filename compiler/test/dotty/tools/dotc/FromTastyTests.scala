@@ -27,20 +27,9 @@ class FromTastyTests extends ParallelTesting {
 
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
     compileTastyInDir("tests/pos", defaultOptions,
-      blacklist = Set(
-        // Wrong number of arguments (only on bootstrapped)
-        "i3130b.scala",
-
-        // Missing position
-        "collections_1.scala",
-
-        // MatchError in SymDenotation.sourceModule on a ThisType
-        "t3612.scala",
-      ),
-      recompilationBlacklist = Set(
-        "simpleCaseObject",
-        "annot-bootstrap.scala",
-      )
+      fromTastyFilter = FileFilter.exclude(TestSources.posFromTastyBlacklisted),
+      decompilationFilter = FileFilter.exclude(TestSources.posDecompilationBlacklisted),
+      recompilationFilter = FileFilter.include(TestSources.posRecompilationWhitelist)
     ).checkCompile()
   }
 
@@ -52,11 +41,9 @@ class FromTastyTests extends ParallelTesting {
 
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
     compileTastyInDir("tests/run", defaultOptions,
-      blacklist = Set(
-        // Closure type miss match
-        "eff-dependent.scala",
-      ),
-      recompilationBlacklist = Set()
+      fromTastyFilter = FileFilter.exclude(TestSources.runFromTastyBlacklisted),
+      decompilationFilter = FileFilter.exclude(TestSources.runDecompilationBlacklisted),
+      recompilationFilter = FileFilter.include(TestSources.runRecompilationWhitelist)
     ).checkRuns()
   }
 }

@@ -7,6 +7,8 @@ import core.Decorators._
 import collection.mutable
 import util.Chars.isValidJVMMethodChar
 
+import scala.annotation.internal.sharable
+
 /** Provides functions to encode and decode Scala symbolic names.
  */
 object NameTransformer {

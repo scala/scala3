@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package config
 
+import scala.annotation.internal.sharable
+
 import java.io.{ IOException, PrintWriter }
 import java.util.jar.Attributes.{ Name => AttributeName }
 

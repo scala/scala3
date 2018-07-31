@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package config
 
 import java.io.File
-import dotty.tools.io.{ Directory, Path }
+import dotty.tools.io.{ Directory, PlainDirectory }
 
 import PathResolver.Defaults
 import rewrite.Rewrites
@@ -20,7 +20,8 @@ class ScalaSettings extends Settings.SettingGroup {
   val scansource = BooleanSetting("-scansource", "Scan source files to locate classes for which class-name != file-name")
 
   val classpath = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp"
-  val outputDir = PathSetting("-d", "directory|jar", "destination for generated classfiles.", ".")
+  val outputDir = OutputSetting("-d", "directory|jar", "destination for generated classfiles.",
+    new PlainDirectory(Directory(".")))
   val priorityclasspath = PathSetting("-priorityclasspath", "class path that takes precedence over all other paths (or testing only)", "")
 
   /** Other settings */
@@ -90,9 +91,11 @@ class ScalaSettings extends Settings.SettingGroup {
   val YdebugNames = BooleanSetting("-Ydebug-names", "Show internal representation of names")
   val YtermConflict = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
   val Ylog = PhasesSetting("-Ylog", "Log operations during")
-  val YemitTasty = BooleanSetting("-Yemit-tasty", "Generate tasty in separate *.tasty file.")
+  val YemitTastyInClass = BooleanSetting("-Yemit-tasty-in-class", "Generate tasty in the .class file and add an empty *.hasTasty file.")
   val YlogClasspath = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
   val YdisableFlatCpCaching  = BooleanSetting("-YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
+
+  val Yscala2Unpickler = StringSetting("-Yscala2-unpickler", "", "Control where we may get Scala 2 symbols from. This is either \"always\", \"never\", or a classpath.", "always")
 
   val YnoImports = BooleanSetting("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
   val YnoInline = BooleanSetting("-Yno-inline", "Suppress inlining.")
@@ -117,7 +120,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YshowPrintErrors = BooleanSetting("-Yshow-print-errors", "don't suppress exceptions thrown during tree printing.")
   val YtestPickler = BooleanSetting("-Ytest-pickler", "self-test for pickling functionality; should be used with -Ystop-after:pickler")
   val YcheckReentrant = BooleanSetting("-Ycheck-reentrant", "check that compiled program does not contain vars that can be accessed from a global root.")
-  val YkeepComments = BooleanSetting("-Ykeep-comments", "Keep comments when scanning source files.")
+  val YdropComments = BooleanSetting("-Ydrop-comments", "Drop comments when scanning source files.")
   val YcookComments = BooleanSetting("-Ycook-comments", "Cook the comments (type check `@usecase`, etc.)")
   val YforceSbtPhases = BooleanSetting("-Yforce-sbt-phases", "Run the phases used by sbt for incremental compilation (ExtractDependencies and ExtractAPI) even if the compiler is ran outside of sbt, for debugging.")
   val YdumpSbtInc = BooleanSetting("-Ydump-sbt-inc", "For every compiled foo.scala, output the API representation and dependencies used for sbt incremental compilation in foo.inc, implies -Yforce-sbt-phases.")
@@ -143,10 +146,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YshowNoInline = BooleanSetting("-Yshow-no-inline", "Show inlined code without the 'inlined from' info")
 
   /** Linker specific flags */
-  val optimise = BooleanSetting("-optimise", "Generates faster bytecode by applying local optimisations to the .program") withAbbreviation "-optimize"
   val Xlink = BooleanSetting("-Xlink", "Recompile library code with the application.")
-  val YoptPhases = PhasesSetting("-Yopt-phases", "Restrict the optimisation phases to execute under -optimise.")
-  val YoptFuel = IntSetting("-Yopt-fuel", "Maximum number of optimisations performed under -optimise.", -1)
   val YnoDecodeStacktraces = BooleanSetting("-Yno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.")
 
   /** Dottydoc specific settings */

@@ -16,6 +16,7 @@ import core.Decorators._
 import core.Constants._
 import core.Definitions._
 import typer.NoChecking
+import typer.Inliner
 import typer.ProtoTypes._
 import typer.ErrorReporting._
 import core.TypeErasure._
@@ -37,7 +38,7 @@ class Erasure extends Phase with DenotTransformer {
   /** List of names of phases that should precede this phase */
   override def runsAfter = Set(InterceptedMethods.name, Splitter.name, ElimRepeated.name)
 
-  override def changesMembers: Boolean = true   // the phase adds bridges
+  override def changesMembers: Boolean = true // the phase adds bridges
   override def changesParents: Boolean = true // the phase drops Any
 
   def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
@@ -91,7 +92,7 @@ class Erasure extends Phase with DenotTransformer {
       ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.symbol.info))
   }
 
-  val eraser = new Erasure.Typer
+  val eraser = new Erasure.Typer(this)
 
   def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
@@ -314,8 +315,19 @@ object Erasure {
       }
   }
 
-  class Typer extends typer.ReTyper with NoChecking {
+  class Typer(erasurePhase: DenotTransformer) extends typer.ReTyper with NoChecking {
     import Boxing._
+
+    private def checkNotErased(tree: Tree)(implicit ctx: Context): tree.type = {
+      if (tree.symbol.is(Flags.Erased) && !ctx.mode.is(Mode.Type))
+        ctx.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.pos)
+      tree
+    }
+
+    def erasedDef(sym: Symbol)(implicit ctx: Context) = {
+      if (sym.owner.isClass) sym.dropAfter(erasurePhase)
+      tpd.EmptyTree
+    }
 
     def erasedType(tree: untpd.Tree)(implicit ctx: Context): Type = {
       val tp = tree.typeOpt
@@ -355,6 +367,10 @@ object Erasure {
           .appliedTo(Literal(Constant(tree.const.scalaSymbolValue.name)))
       else
         super.typedLiteral(tree)
+
+    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
+      checkNotErased(super.typedIdent(tree, pt))
+    }
 
     /** Type check select nodes, applying the following rewritings exhaustively
      *  on selections `e.m`, where `OT` is the type of the owner of `m` and `ET`
@@ -436,7 +452,7 @@ object Erasure {
         }
       }
 
-      recur(typed(tree.qualifier, AnySelectionProto))
+      checkNotErased(recur(typed(tree.qualifier, AnySelectionProto)))
     }
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
@@ -532,43 +548,52 @@ object Erasure {
       }
     }
 
-    override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): ValDef =
-      super.typedValDef(untpd.cpy.ValDef(vdef)(
-        tpt = untpd.TypedSplice(TypeTree(sym.info).withPos(vdef.tpt.pos))), sym)
+    override def typedInlined(tree: untpd.Inlined, pt: Type)(implicit ctx: Context): Tree =
+      super.typedInlined(tree, pt) match {
+        case tree: Inlined => Inliner.dropInlined(tree)
+      }
+
+    override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): Tree =
+      if (sym.is(Flags.Erased)) erasedDef(sym)
+      else
+        super.typedValDef(untpd.cpy.ValDef(vdef)(
+          tpt = untpd.TypedSplice(TypeTree(sym.info).withPos(vdef.tpt.pos))), sym)
 
     /** Besides normal typing, this function also compacts anonymous functions
      *  with more than `MaxImplementedFunctionArity` parameters to ise a single
      *  parameter of type `[]Object`.
      */
-    override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
-      val restpe =
-        if (sym.isConstructor) defn.UnitType
-        else sym.info.resultType
-      var vparamss1 = (outer.paramDefs(sym) ::: ddef.vparamss.flatten) :: Nil
-      var rhs1 = ddef.rhs match {
-        case id @ Ident(nme.WILDCARD) => untpd.TypedSplice(id.withType(restpe))
-        case _ => ddef.rhs
-      }
-      if (sym.isAnonymousFunction && vparamss1.head.length > MaxImplementedFunctionArity) {
-        val bunchedParam = ctx.newSymbol(sym, nme.ALLARGS, Flags.TermParam, JavaArrayType(defn.ObjectType))
-        def selector(n: Int) = ref(bunchedParam)
-          .select(defn.Array_apply)
-          .appliedTo(Literal(Constant(n)))
-        val paramDefs = vparamss1.head.zipWithIndex.map {
-          case (paramDef, idx) =>
-            assignType(untpd.cpy.ValDef(paramDef)(rhs = selector(idx)), paramDef.symbol)
+    override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context): Tree =
+      if (sym.is(Flags.Erased)) erasedDef(sym)
+      else {
+        val restpe =
+          if (sym.isConstructor) defn.UnitType
+          else sym.info.resultType
+        var vparamss1 = (outer.paramDefs(sym) ::: ddef.vparamss.flatten) :: Nil
+        var rhs1 = ddef.rhs match {
+          case id @ Ident(nme.WILDCARD) => untpd.TypedSplice(id.withType(restpe))
+          case _ => ddef.rhs
         }
-        vparamss1 = (tpd.ValDef(bunchedParam) :: Nil) :: Nil
-        rhs1 = untpd.Block(paramDefs, rhs1)
+        if (sym.isAnonymousFunction && vparamss1.head.length > MaxImplementedFunctionArity) {
+          val bunchedParam = ctx.newSymbol(sym, nme.ALLARGS, Flags.TermParam, JavaArrayType(defn.ObjectType))
+          def selector(n: Int) = ref(bunchedParam)
+            .select(defn.Array_apply)
+            .appliedTo(Literal(Constant(n)))
+          val paramDefs = vparamss1.head.zipWithIndex.map {
+            case (paramDef, idx) =>
+              assignType(untpd.cpy.ValDef(paramDef)(rhs = selector(idx)), paramDef.symbol)
+          }
+          vparamss1 = (tpd.ValDef(bunchedParam) :: Nil) :: Nil
+          rhs1 = untpd.Block(paramDefs, rhs1)
+        }
+        vparamss1 = vparamss1.mapConserve(_.filterConserve(!_.symbol.is(Flags.Erased)))
+        val ddef1 = untpd.cpy.DefDef(ddef)(
+          tparams = Nil,
+          vparamss = vparamss1,
+          tpt = untpd.TypedSplice(TypeTree(restpe).withPos(ddef.tpt.pos)),
+          rhs = rhs1)
+        super.typedDefDef(ddef1, sym)
       }
-      vparamss1 = vparamss1.mapConserve(_.filterConserve(!_.symbol.is(Flags.Erased)))
-      val ddef1 = untpd.cpy.DefDef(ddef)(
-        tparams = Nil,
-        vparamss = vparamss1,
-        tpt = untpd.TypedSplice(TypeTree(restpe).withPos(ddef.tpt.pos)),
-        rhs = rhs1)
-      super.typedDefDef(ddef1, sym)
-    }
 
     override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = {
       val xxl = defn.isXXLFunctionClass(tree.typeOpt.typeSymbol)
@@ -672,7 +697,7 @@ object Erasure {
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
       val stats1 =
-        if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass).add(stats)
+        if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass, erasurePhase).add(stats)
         else stats
       super.typedStats(stats1, exprOwner).filter(!_.isEmpty)
     }

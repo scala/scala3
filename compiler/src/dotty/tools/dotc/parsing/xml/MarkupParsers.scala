@@ -316,7 +316,7 @@ object MarkupParsers {
     }
 
     /** Some try/catch/finally logic used by xLiteral and xLiteralPattern.  */
-    @inline private def xLiteralCommon(f: () => Tree, ifTruncated: String => Unit): Tree = {
+    @forceInline private def xLiteralCommon(f: () => Tree, ifTruncated: String => Unit): Tree = {
       var output: Tree = null.asInstanceOf[Tree]
       try output = f()
       catch {

@@ -49,7 +49,7 @@ abstract class Lifter {
       // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
       var liftedType = expr.tpe.widen
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
-      val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags, liftedType, coord = positionCoord(expr.pos))
+      val lifted = ctx.newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = positionCoord(expr.pos))
       defs += liftedDef(lifted, expr).withPos(expr.pos)
       ref(lifted.termRef).withPos(expr.pos.focus)
     }
@@ -208,14 +208,18 @@ object EtaExpansion extends LiftImpure {
     val paramTypes: List[Tree] =
       if (isLastApplication && mt.paramInfos.length == xarity) mt.paramInfos map (_ => TypeTree())
       else mt.paramInfos map TypeTree
+    var paramFlag = Synthetic | Param
+    if (mt.isImplicitMethod) paramFlag |= Implicit
     val params = (mt.paramNames, paramTypes).zipped.map((name, tpe) =>
-      ValDef(name, tpe, EmptyTree).withFlags(Synthetic | Param).withPos(tree.pos.startPos))
+      ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withPos(tree.pos.startPos))
     var ids: List[Tree] = mt.paramNames map (name => Ident(name).withPos(tree.pos.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
     var body: Tree = Apply(lifted, ids)
     if (!isLastApplication) body = PostfixOp(body, Ident(nme.WILDCARD))
-    val fn = untpd.Function(params, body)
+    val fn =
+      if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))
+      else untpd.Function(params, body)
     if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
   }
 }

@@ -22,6 +22,8 @@ import reporting._
 import collection.mutable
 import config.Config
 
+import scala.annotation.internal.sharable
+
 object Inferencing {
 
   import tpd._
@@ -185,6 +187,8 @@ object Inferencing {
    *
    *  Invariant refinement can be assumed if `PatternType`'s class(es) are final or
    *  case classes (because of `RefChecks#checkCaseClassInheritanceInvariant`).
+   *
+   *  TODO: Update so that GADT symbols can be variant, and we special case final class types in patterns
    */
   def constrainPatternType(tp: Type, pt: Type)(implicit ctx: Context): Boolean = {
     def refinementIsInvariant(tp: Type): Boolean = tp match {
@@ -279,7 +283,7 @@ object Inferencing {
       case tp: TypeRef =>
         val companion = tp.classSymbol.companionModule
         if (companion.exists)
-          companion.termRef.asSeenFrom(tp.prefix, companion.symbol.owner)
+          companion.termRef.asSeenFrom(tp.prefix, companion.owner)
         else NoType
       case _ => NoType
     }
@@ -408,7 +412,7 @@ trait Inferencing { this: Typer =>
       val resultAlreadyConstrained =
         tree.isInstanceOf[Apply] || tree.tpe.isInstanceOf[MethodOrPoly]
       if (!resultAlreadyConstrained)
-        constrainResult(tree.tpe, pt)
+        constrainResult(tree.symbol, tree.tpe, pt)
           // This is needed because it could establish singleton type upper bounds. See i2998.scala.
 
       val tp = tree.tpe.widen

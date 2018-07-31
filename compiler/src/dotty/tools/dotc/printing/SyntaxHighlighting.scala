@@ -51,12 +51,12 @@ object SyntaxHighlighting {
     val newBuf     = new StringBuilder
     var lastValDefToken  = ""
 
-    @inline def keywordStart =
+    @forceInline def keywordStart =
       prev == 0    || prev == ' ' || prev == '{' || prev == '(' ||
       prev == '\n' || prev == '[' || prev == ',' || prev == ':' ||
       prev == '|'  || prev == '&'
 
-    @inline def numberStart(c: Char) =
+    @forceInline def numberStart(c: Char) =
       c.isDigit && (!prev.isLetter || prev == '.' || prev == ' ' || prev == '(' || prev == '\u0000')
 
     def takeChar(): Char = takeChars(1).head

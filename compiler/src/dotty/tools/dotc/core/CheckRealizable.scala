@@ -52,6 +52,8 @@ object CheckRealizable {
 
   def boundsRealizability(tp: Type)(implicit ctx: Context) =
     new CheckRealizable().boundsRealizability(tp)
+
+  private val LateInitialized = Lazy | Erased,
 }
 
 /** Compute realizability status */
@@ -63,10 +65,10 @@ class CheckRealizable(implicit ctx: Context) {
    */
   private val checkedFields: mutable.Set[Symbol] = mutable.LinkedHashSet[Symbol]()
 
-  /** Is symbol's definitition a lazy val?
+  /** Is symbol's definitition a lazy or erased val?
    *  (note we exclude modules here, because their realizability is ensured separately)
    */
-  private def isLateInitialized(sym: Symbol) = sym.is(Lazy, butNot = Module)
+  private def isLateInitialized(sym: Symbol) = sym.is(LateInitialized, butNot = Module)
 
   /** The realizability status of given type `tp`*/
   def realizability(tp: Type): Realizability = tp.dealias match {
@@ -156,10 +158,10 @@ class CheckRealizable(implicit ctx: Context) {
   private def memberRealizability(tp: Type) = {
     def checkField(sofar: Realizability, fld: SingleDenotation): Realizability =
       sofar andAlso {
-        if (checkedFields.contains(fld.symbol) || fld.symbol.is(Private | Mutable | Lazy))
+        if (checkedFields.contains(fld.symbol) || fld.symbol.is(Private | Mutable | LateInitialized))
           // if field is private it cannot be part of a visible path
           // if field is mutable it cannot be part of a path
-          // if field is lazy it does not need to be initialized when the owning object is
+          // if field is lazy or erased it does not need to be initialized when the owning object is
           // so in all cases the field does not influence realizability of the enclosing object.
           Realizable
         else {

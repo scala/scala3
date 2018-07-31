@@ -1,23 +1,20 @@
 import scala.quoted._
-import dotty.tools.dotc.quoted.Toolbox._
 
-import scala.tasty.Universe
+import scala.tasty.TopLevelSplice
 import scala.tasty.Tasty
 import scala.tasty.util.{TreeTraverser, Show}
 
 object Macros {
 
-  implicit inline def printOwners[T](x: => T): Unit =
-    ~impl('(x))(Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
+  implicit transparent def printOwners[T](x: => T): Unit =
+    ~impl('(x))(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
 
-  def impl[T](x: Expr[T])(implicit u: Universe): Expr[Unit] = {
-    import u._
-    import u.tasty._
-
+  def impl[T](x: Expr[T])(implicit tasty: Tasty): Expr[Unit] = {
+    import tasty._
 
     val buff = new StringBuilder
 
-    val output = new TreeTraverser(u.tasty) {
+    val output = new TreeTraverser(tasty) {
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
         // Use custom Show[_] here
         implicit val printer = new DummyShow(tasty)

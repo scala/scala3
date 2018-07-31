@@ -14,7 +14,7 @@ class FlagSet(flags: Flags.FlagSet) extends scala.tasty.FlagSet {
   def isErased: Boolean = flags.is(Erased)
   def isLazy: Boolean = flags.is(Lazy)
   def isOverride: Boolean = flags.is(Override)
-  def isInline: Boolean = flags.is(Inline)
+  def isTransparent: Boolean = flags.is(Transparent)
   def isMacro: Boolean = flags.is(Macro)
   def isStatic: Boolean = flags.is(JavaStatic)
   def isObject: Boolean = flags.is(Module)
@@ -45,7 +45,7 @@ class FlagSet(flags: Flags.FlagSet) extends scala.tasty.FlagSet {
     if (isErased) flags += "erased"
     if (isLazy) flags += "lazy"
     if (isOverride) flags += "override"
-    if (isInline) flags += "inline"
+    if (isTransparent) flags += "transparent"
     if (isMacro) flags += "macro"
     if (isStatic) flags += "javaStatic"
     if (isObject) flags += "object"

@@ -11,6 +11,7 @@ import Chars._
 import ScriptSourceFile._
 import Positions._
 import scala.io.Codec
+import scala.annotation.internal.sharable
 
 import java.util.Optional
 
@@ -37,9 +38,8 @@ object ScriptSourceFile {
 
 case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfaces.SourceFile {
 
-  def this(_file: AbstractFile, codec: Codec) = this(_file, new String(_file.toByteArray, codec.charSet).toCharArray)
-  def this(sourceName: String, cs: Seq[Char]) = this(new VirtualFile(sourceName), cs.toArray)
-  def this(file: AbstractFile, cs: Seq[Char]) = this(file, cs.toArray)
+  def this(file: AbstractFile, codec: Codec) = this(file, new String(file.toByteArray, codec.charSet).toCharArray)
+  def this(name: String, content: String) = this(new VirtualFile(name), content.toCharArray)
 
   /** Tab increment; can be overridden */
   def tabInc = 8
@@ -150,7 +150,7 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
   override def toString = file.toString
 }
 
-@sharable object NoSource extends SourceFile("<no source>", Nil) {
+@sharable object NoSource extends SourceFile("<no source>", "") {
   override def exists = false
   override def atPos(pos: Position): SourcePosition = NoSourcePosition
 }

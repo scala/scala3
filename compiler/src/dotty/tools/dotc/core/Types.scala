@@ -36,6 +36,8 @@ import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr}
 import java.lang.ref.WeakReference
 
+import scala.annotation.internal.sharable
+
 object Types {
 
   @sharable private[this] var nextId = 0
@@ -2973,18 +2975,18 @@ object Types {
   abstract class MethodTypeCompanion extends TermLambdaCompanion[MethodType] { self =>
 
     /** Produce method type from parameter symbols, with special mappings for repeated
-     *  and inline parameters:
+     *  and transparent parameters:
      *   - replace @repeated annotations on Seq or Array types by <repeated> types
-     *   - add @inlineParam to inline call-by-value parameters
+     *   - add @inlineParam to transparent call-by-value parameters
      */
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
-      def translateInline(tp: Type): Type = tp match {
+      def translateTransparent(tp: Type): Type = tp match {
         case _: ExprType => tp
-        case _ => AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
+        case _ => AnnotatedType(tp, Annotation(defn.TransparentParamAnnot))
       }
       def paramInfo(param: Symbol) = {
         val paramType = param.info.annotatedToRepeated
-        if (param.is(Inline)) translateInline(paramType) else paramType
+        if (param.is(Transparent)) translateTransparent(paramType) else paramType
       }
 
       apply(params.map(_.name.asTermName))(
@@ -4208,7 +4210,7 @@ object Types {
   abstract class VariantTraversal {
     protected[core] var variance = 1
 
-    @inline protected def atVariance[T](v: Int)(op: => T): T = {
+    @forceInline protected def atVariance[T](v: Int)(op: => T): T = {
       val saved = variance
       variance = v
       val res = op

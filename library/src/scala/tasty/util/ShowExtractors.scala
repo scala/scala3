@@ -3,7 +3,7 @@ package scala.tasty.util
 import scala.tasty.Tasty
 
 class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty0) {
-  import tasty._
+  import tasty.{rootContext => _, _}
 
   def showTree(tree: Tree)(implicit ctx: Context): String =
     new Buffer().visitTree(tree).result()
@@ -94,6 +94,8 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "TypeTree.Synthetic()"
       case TypeTree.TypeIdent(name) =>
         this += "TypeTree.TypeIdent(\"" += name += "\")"
+      case TypeTree.TermSelect(qualifier, name) =>
+        this += "TypeTree.TermSelect(" += qualifier += ", \"" += name += "\")"
       case TypeTree.TypeSelect(qualifier, name) =>
         this += "TypeTree.TypeSelect(" += qualifier += ", \"" += name += "\")"
       case TypeTree.Singleton(ref) =>
@@ -110,8 +112,14 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "TypeTree.ByName(" += result += ")"
       case TypeTree.Annotated(arg, annot) =>
         this += "TypeTree.Annotated(" += arg += ", " += annot += ")"
+      case TypeTree.TypeLambdaTree(tparams, body) =>
+        this += "LambdaTypeTree(" ++= tparams += ", " += body += ")"
+      case TypeTree.Bind(name, bounds) =>
+        this += "Bind(" += name += ", " += bounds += ")"
       case TypeBoundsTree(lo, hi) =>
         this += "TypeBoundsTree(" += lo += ", " += hi += ")"
+      case SyntheticBounds() =>
+        this += s"SyntheticBounds()"
     }
 
     def visitCaseDef(x: CaseDef): Buffer = {
@@ -144,6 +152,7 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Constant.Float(value) => this += "Constant.Float(" += value += ")"
       case Constant.Double(value) => this += "Constant.Double(" += value += ")"
       case Constant.String(value) => this += "Constant.String(\"" += value += "\")"
+      case Constant.ClassTag(value) => this += "Constant.ClassTag(" += value += ")"
     }
 
     def visitType(x: TypeOrBounds): Buffer = x match {
@@ -181,14 +190,19 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "Type.ParamRef(" += binder+= ", " += idx += ")"
       case Type.ThisType(tp) =>
         this += "Type.ThisType(" += tp += ")"
+      case Type.SuperType(thistpe, supertpe) =>
+        this += "Type.SuperType(" += thistpe += ", " += supertpe += ")"
       case Type.RecursiveThis(binder) =>
         this += "Type.RecursiveThis(" += binder += ")"
+      case Type.RecursiveType(underlying) =>
+        this += "Type.RecursiveType(" += underlying += ")"
       case Type.MethodType(argNames, argTypes, resType) =>
         this += "Type.MethodType(" ++= argNames += ", " ++= argTypes += ", " += resType += ")"
       case Type.PolyType(argNames, argBounds, resType) =>
         this += "Type.PolyType(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
       case Type.TypeLambda(argNames, argBounds, resType) =>
-        this += "Type.TypeLambda(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
+        // resType is not printed to avoid cycles
+        this += "Type.TypeLambda(" ++= argNames += ", " ++= argBounds += ", _)"
       case TypeBounds(lo, hi) =>
         this += "TypeBounds(" += lo += ", " += hi += ")"
       case NoPrefix() =>
@@ -246,8 +260,8 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     private implicit class TypeTreeOps(buff: Buffer) {
       def +=(x: TypeOrBoundsTree): Buffer = { visitTypeTree(x); buff }
-      def +=(x: Option[TypeTree]): Buffer = { visitOption(x, visitTypeTree); buff }
-      def ++=(x: List[TypeTree]): Buffer = { visitList(x, visitTypeTree); buff }
+      def +=(x: Option[TypeOrBoundsTree]): Buffer = { visitOption(x, visitTypeTree); buff }
+      def ++=(x: List[TypeOrBoundsTree]): Buffer = { visitList(x, visitTypeTree); buff }
     }
 
     private implicit class TypeOps(buff: Buffer) {

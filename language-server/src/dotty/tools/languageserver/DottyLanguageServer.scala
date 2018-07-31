@@ -19,7 +19,7 @@ import scala.io.Codec
 import dotc._
 import ast.{Trees, tpd}
 import core._, core.Decorators.{sourcePos => _, _}
-import Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import Comments._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.MessageContainer
 import util._
@@ -222,7 +222,7 @@ class DottyLanguageServer extends LanguageServer
 
 
   // FIXME: share code with messages.NotAMember
-  override def completion(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
+  override def completion(params: CompletionParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
     implicit val ctx = driver.currentCtx
@@ -340,13 +340,16 @@ class DottyLanguageServer extends LanguageServer
     implicit val ctx = driver.currentCtx
 
     val pos = sourcePosition(driver, uri, params.getPosition)
-    val tp = Interactive.enclosingType(driver.openedTrees(uri), pos)
+    val trees = driver.openedTrees(uri)
+    val tp = Interactive.enclosingType(trees, pos)
     val tpw = tp.widenTermRefExpr
 
-    if (tpw == NoType) new Hover
+    if (tpw == NoType) null // null here indicates that no response should be sent
     else {
-      val str = tpw.show.toString
-      new Hover(List(JEither.forLeft(str)).asJava, null)
+      val symbol = Interactive.enclosingSourceSymbol(trees, pos)
+      val docComment = ctx.docCtx.flatMap(_.docstring(symbol))
+      val content = hoverContent(tpw.show, docComment)
+      new Hover(content, null)
     }
   }
 
@@ -456,11 +459,29 @@ object DottyLanguageServer {
         CIK.Field
     }
 
-    val label = sym.name.show.toString
+    val label = sym.name.show
     val item = new lsp4j.CompletionItem(label)
-    item.setDetail(sym.info.widenTermRefExpr.show.toString)
+    item.setDetail(sym.info.widenTermRefExpr.show)
     item.setKind(completionItemKind(sym))
     item
+  }
+
+  private def hoverContent(typeInfo: String, comment: Option[Comment]): lsp4j.MarkupContent = {
+    val markup = new lsp4j.MarkupContent
+    markup.setKind("markdown")
+    markup.setValue((
+      comment.map(_.raw) match {
+        case Some(comment) =>
+          s"""```scala
+             |$typeInfo
+             |$comment
+             |```"""
+        case None =>
+          s"""```scala
+             |$typeInfo
+             |```"""
+      }).stripMargin)
+    markup
   }
 
   /** Create an lsp4j.SymbolInfo from a Symbol and a SourcePosition */
@@ -482,10 +503,10 @@ object DottyLanguageServer {
         SK.Field
     }
 
-    val name = sym.name.show.toString
+    val name = sym.name.show
     val containerName =
       if (sym.owner.exists && !sym.owner.isEmptyPackage)
-        sym.owner.name.show.toString
+        sym.owner.name.show
       else
         null
 

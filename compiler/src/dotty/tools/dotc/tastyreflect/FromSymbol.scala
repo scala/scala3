@@ -23,9 +23,9 @@ object FromSymbol {
     val constrSym = cls.unforcedDecls.find(_.isPrimaryConstructor)
     if (!constrSym.exists) return tpd.EmptyTree
     val constr = tpd.DefDef(constrSym.asTerm)
+    val parents = cls.classParents.map(tpd.TypeTree(_))
     val body = cls.unforcedDecls.filter(!_.isPrimaryConstructor).map(s => definition(s))
-    val superArgs = Nil // TODO
-    tpd.ClassDef(cls, constr, body, superArgs)
+    tpd.ClassDefWithParents(cls, constr, parents, body)
   }
 
   def typeDef(sym: TypeSymbol)(implicit ctx: Context): tpd.TypeDef = tpd.TypeDef(sym)

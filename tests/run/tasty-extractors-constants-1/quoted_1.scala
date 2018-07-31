@@ -1,17 +1,15 @@
 import scala.quoted._
-import dotty.tools.dotc.quoted.Toolbox._
 
-import scala.tasty.Universe
+import scala.tasty._
 import scala.tasty.util._
 
 object Macros {
 
-  implicit inline def testMacro: Unit =
-    ~impl(Universe.compilationUniverse) // FIXME infer Universe.compilationUniverse within top level ~
+  implicit transparent def testMacro: Unit =
+    ~impl(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
 
-  def impl(implicit u: Universe): Expr[Unit] = {
-    import u._
-    import u.tasty._
+  def impl(implicit tasty: Tasty): Expr[Unit] = {
+    import tasty._
 
     val buff = new StringBuilder
     def stagedPrintln(x: Any): Unit = buff append java.util.Objects.toString(x) append "\n"

@@ -1,11 +1,12 @@
 
-import dotty.tools.dotc.quoted.Toolbox._
+import scala.quoted.Toolbox.Default._
+import scala.quoted.Toolbox
 
 import scala.quoted._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val settings = Settings.show(rawTree = true)
+    implicit val settings: Toolbox.Settings = Toolbox.Settings.make(showRawTree = true)
 
     def a(n: Int, x: Expr[Unit]): Expr[Unit] =
       if (n == 0) x

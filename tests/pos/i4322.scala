@@ -3,12 +3,12 @@ object Foo {
 
   private def x(n: String): Int = n.toInt
 
-  inline def foo: Int = x + x + x("22")
+  transparent def foo: Int = x + x + x("22")
 
-  inline def bar = {
+  transparent def bar = {
     x += 1
     x += 1
   }
 
-  inline def baz = { x += x("11") }
+  transparent def baz = { x += x("11") }
 }

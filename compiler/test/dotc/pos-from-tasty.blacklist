@@ -1,0 +1,14 @@
+# Wrong number of arguments (only on bootstrapped)
+i3130b.scala
+
+# Missing position
+collections_1.scala
+
+# MatchError in SymDenotation.sourceModule on a ThisType
+t3612.scala
+
+# Fails on MacOS
+annot-bootstrap.scala
+
+# ScalaRunTime cannot be unpickled because it is already loaded
+repeatedArgs213.scala

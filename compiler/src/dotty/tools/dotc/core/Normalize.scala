@@ -19,7 +19,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 object Normalize {
-  @sharable var track = true
+  var track = true
 }
 
 private final class NormalizeMap(implicit ctx: Context) extends TypeMap {

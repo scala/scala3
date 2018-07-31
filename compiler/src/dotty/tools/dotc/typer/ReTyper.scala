@@ -91,7 +91,6 @@ class ReTyper extends Typer with ReChecking {
   override def localTyper(sym: Symbol) = this
 
   override def index(trees: List[untpd.Tree])(implicit ctx: Context) = ctx
-  override def annotate(trees: List[untpd.Tree])(implicit ctx: Context) = ()
 
   override def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType, locked: TypeVars)(fallBack: => Tree)(implicit ctx: Context): Tree =
     fallBack

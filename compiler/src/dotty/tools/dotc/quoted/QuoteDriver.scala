@@ -2,32 +2,34 @@ package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ContextBase}
+import dotty.tools.dotc.tastyreflect.TastyImpl
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.quoted.{Expr, Type}
+import scala.quoted.Toolbox
 import java.net.URLClassLoader
-
-import Toolbox.{Run, Settings, Show}
-import dotty.tools.dotc.tastyreflect.TastyImpl
 
 class QuoteDriver extends Driver {
   import tpd._
 
-  def run[T](expr: Expr[T], settings: Settings[Run]): T = {
-    val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
+  private[this] val contextBase: ContextBase = new ContextBase
 
+  def run[T](expr: Expr[T], settings: Toolbox.Settings): T = {
     val outDir: AbstractFile = settings.outDir match {
       case Some(out) =>
         val dir = Directory(out)
         dir.createDirectory()
         new PlainDirectory(Directory(out))
       case None =>
-        new VirtualDirectory("(memory)", None)
+        new VirtualDirectory("<quote compilation output>")
     }
 
-    val driver = new QuoteCompiler(outDir)
+    val (_, ctx0: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
+    val ctx = ctx0.fresh.setSetting(ctx0.settings.outputDir, outDir)
+
+    val driver = new QuoteCompiler
     driver.newRun(ctx).compileExpr(expr)
 
     val classLoader = new AbstractFileClassLoader(outDir, this.getClass.getClassLoader)
@@ -39,15 +41,15 @@ class QuoteDriver extends Driver {
     method.invoke(instance).asInstanceOf[T]
   }
 
-  def show(expr: Expr[_], settings: Settings[Show]): String = {
+  def show(expr: Expr[_], settings: Toolbox.Settings): String = {
     def show(tree: Tree, ctx: Context): String = {
-      val tree1 = if (settings.rawTree) tree else (new TreeCleaner).transform(tree)(ctx)
-      TastyImpl.showSourceCode.showTree(tree1)(ctx)
+      val tree1 = if (settings.showRawTree) tree else (new TreeCleaner).transform(tree)(ctx)
+      new TastyImpl(ctx).showSourceCode.showTree(tree1)(ctx)
     }
     withTree(expr, show, settings)
   }
 
-  def withTree[T](expr: Expr[_], f: (Tree, Context) => T, settings: Settings[_]): T = {
+  def withTree[T](expr: Expr[_], f: (Tree, Context) => T, settings: Toolbox.Settings): T = {
     val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
 
     var output: Option[T] = None
@@ -59,7 +61,7 @@ class QuoteDriver extends Driver {
     output.getOrElse(throw new Exception("Could not extract " + expr))
   }
 
-  def withTypeTree[T](tpe: Type[_], f: (TypTree, Context) => T, settings: Settings[_]): T = {
+  def withTypeTree[T](tpe: Type[_], f: (TypTree, Context) => T, settings: Toolbox.Settings): T = {
     val (_, ctx: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
 
     var output: Option[T] = None
@@ -72,7 +74,7 @@ class QuoteDriver extends Driver {
   }
 
   override def initCtx: Context = {
-    val ictx = super.initCtx.fresh
+    val ictx = contextBase.initialCtx
     var classpath = System.getProperty("java.class.path")
     this.getClass.getClassLoader match {
       case cl: URLClassLoader =>

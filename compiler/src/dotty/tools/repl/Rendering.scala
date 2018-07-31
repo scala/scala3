@@ -22,8 +22,7 @@ import dotc.core.StdNames.str
  *       `ReplDriver#resetToInitial` is called, the accompanying instance of
  *       `Rendering` is no longer valid.
  */
-private[repl] class Rendering(compiler: ReplCompiler,
-                              parentClassLoader: Option[ClassLoader] = None) {
+private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
   private[this] var myClassLoader: ClassLoader = _
 
@@ -37,7 +36,7 @@ private[repl] class Rendering(compiler: ReplCompiler,
         new java.net.URLClassLoader(compilerClasspath.toArray, classOf[ReplDriver].getClassLoader)
       }
 
-      myClassLoader = new AbstractFileClassLoader(compiler.directory, parent)
+      myClassLoader = new AbstractFileClassLoader(ctx.settings.outputDir.value, parent)
       // Set the current Java "context" class loader to this rendering class loader
       Thread.currentThread.setContextClassLoader(myClassLoader)
       myClassLoader

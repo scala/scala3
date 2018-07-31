@@ -243,7 +243,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case methType: MethodType =>
         // apply the result type constraint, unless method type is dependent
         val resultApprox = resultTypeApprox(methType)
-        if (!constrainResult(resultApprox, resultType))
+        if (!constrainResult(methRef.symbol, resultApprox, resultType))
           if (ctx.typerState.isCommittable)
             // defer the problem until after the application;
             // it might be healed by an implicit conversion
@@ -708,7 +708,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       // help sharpen the inferred parameter types for the argument function literal(s).
       // This tweak is needed to make i1378 compile.
       if (tree.args.exists(untpd.isFunctionWithUnknownParamType(_)))
-        if (!constrainResult(fun1.tpe.widen, proto.derivedFunProto(resultType = pt)))
+        if (!constrainResult(tree.symbol, fun1.tpe.widen, proto.derivedFunProto(resultType = pt)))
           typr.println(i"result failure for $tree with type ${fun1.tpe.widen}, expected = $pt")
 
       /** Type application where arguments come from prototype, and no implicits are inserted */
@@ -738,7 +738,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
         }
 
       fun1.tpe match {
-        case err: ErrorType => untpd.cpy.Apply(tree)(fun1, proto.typedArgs).withType(err)
+        case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs).withType(err)
         case TryDynamicCallType => typedDynamicApply(tree, pt)
         case _ =>
           if (originalProto.isDropped) fun1
@@ -777,31 +777,34 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       wrapDefs(liftedDefs, typed(assign))
     }
 
-    if (untpd.isOpAssign(tree))
-      tryEither {
-        implicit ctx => realApply
-      } { (failedVal, failedState) =>
+    val app1 =
+      if (untpd.isOpAssign(tree))
         tryEither {
-          implicit ctx => typedOpAssign
-        } { (_, _) =>
-          failedState.commit()
-          failedVal
+          implicit ctx => realApply
+        } { (failedVal, failedState) =>
+          tryEither {
+            implicit ctx => typedOpAssign
+          } { (_, _) =>
+            failedState.commit()
+            failedVal
+          }
         }
+      else {
+        val app = realApply
+        app match {
+          case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
+            val op = fn.symbol
+            if (op == defn.Any_== || op == defn.Any_!=)
+              checkCanEqual(left.tpe.widen, right.tpe.widen, app.pos)
+          case _ =>
+        }
+        app
       }
-    else {
-      val app = realApply
-      app match {
-        case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
-          val op = fn.symbol
-          if (op == defn.Any_== || op == defn.Any_!=)
-            checkCanEqual(left.tpe.widen, right.tpe.widen, app.pos)
-        case _ =>
-      }
-      app match {
-        case Apply(fun, args) if fun.tpe.widen.isErasedMethod =>
-          tpd.cpy.Apply(app)(fun = fun, args = args.map(arg => normalizeErasedExpr(arg, "This argument is given to an erased parameter. ")))
-        case _ => app
-      }
+    app1 match {
+      case Apply(Block(stats, fn), args) =>
+        tpd.cpy.Block(app1)(stats, tpd.cpy.Apply(app1)(fn, args))
+      case _ =>
+        app1
     }
   }
 
@@ -1280,12 +1283,12 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  section conforms to the expected type `resultType`? If `resultType`
      *  is a `IgnoredProto`, pick the underlying type instead.
      */
-    def resultConforms(alt: Type, resultType: Type)(implicit ctx: Context): Boolean = resultType match {
-      case IgnoredProto(ignored) => resultConforms(alt, ignored)
+    def resultConforms(altSym: Symbol, altType: Type, resultType: Type)(implicit ctx: Context): Boolean = resultType match {
+      case IgnoredProto(ignored) => resultConforms(altSym, altType, ignored)
       case _: ValueType =>
-        alt.widen match {
-          case tp: PolyType => resultConforms(constrained(tp).resultType, resultType)
-          case tp: MethodType => constrainResult(tp.resultType, resultType)
+        altType.widen match {
+          case tp: PolyType => resultConforms(altSym, constrained(tp).resultType, resultType)
+          case tp: MethodType => constrainResult(altSym, tp.resultType, resultType)
           case _ => true
         }
       case _ => true
@@ -1304,9 +1307,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  do they prune much, on average.
      */
     def adaptByResult(chosen: TermRef) = pt match {
-      case pt: FunProto if !ctx.test(implicit ctx => resultConforms(chosen, pt.resultType)) =>
+      case pt: FunProto if !ctx.test(implicit ctx => resultConforms(chosen.symbol, chosen, pt.resultType)) =>
         val conformingAlts = alts.filter(alt =>
-          (alt ne chosen) && ctx.test(implicit ctx => resultConforms(alt, pt.resultType)))
+          (alt ne chosen) && ctx.test(implicit ctx => resultConforms(alt.symbol, alt, pt.resultType)))
         conformingAlts match {
           case Nil => chosen
           case alt2 :: Nil => alt2
@@ -1565,23 +1568,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val harmonizedElems = harmonize(origElems)
     if (harmonizedElems ne origElems) ctx.typerState.constraint = origConstraint
     harmonizedElems
-  }
-
-  /** Transforms the tree into a its default tree.
-   *  Performed to shrink the tree that is known to be erased later.
-   */
-  protected def normalizeErasedExpr(tree: Tree, msg: String)(implicit ctx: Context): Tree = {
-    if (!isPureExpr(tree))
-      ctx.warning(msg + "This expression will not be evaluated.", tree.pos)
-    defaultValue(tree.tpe)
-  }
-
-  /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
-   *  Performed to shrink the tree that is known to be erased later.
-   */
-  protected def normalizeErasedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) = {
-    if (sym.is(Erased) && rhs.tpe.exists) normalizeErasedExpr(rhs, "Expression is on the RHS of an `erased` " + sym.showKind + ". ")
-    else rhs
   }
 
   /** If all `types` are numeric value types, and they are not all the same type,

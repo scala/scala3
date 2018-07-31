@@ -34,23 +34,12 @@ class CompilationTests extends ParallelTesting {
   // @Test  // enable to test compileStdLib separately with detailed stats
   def compileStdLibOnly: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileStdLibOnly")
-    compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline", "-Ydetailed-stats"))
+    compileList("compileStdLib", TestSources.stdLibWhitelisted, scala2Mode.and("-migration", "-Yno-inline", "-Ydetailed-stats"))
   }.checkCompile()
 
-  @Test def compilePos: Unit = {
+  @Test def pos: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePos")
-    compileList("compileStdLib", StdLibSources.whitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
-    compileDir("compiler/src/dotty/tools/dotc/ast", defaultOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/config", defaultOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/core", defaultOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/transform", defaultOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/parsing", defaultOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/printing", defaultOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/reporting", defaultOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/typer", defaultOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/util", defaultOptions) +
-    compileDir("compiler/src/dotty/tools/io", defaultOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/core", TestFlags(classPath, noCheckOptions)) +
+    compileList("compileStdLib", TestSources.stdLibWhitelisted, scala2Mode.and("-migration", "-Yno-inline")) +
     compileFile("tests/pos/nullarify.scala", defaultOptions.and("-Ycheck:nullarify")) +
     compileFile("tests/pos-scala2/rewrites.scala", scala2Mode.and("-rewrite")).copyToTarget() +
     compileFile("tests/pos-special/utf8encoded.scala", explicitUTF8) +
@@ -99,10 +88,9 @@ class CompilationTests extends ParallelTesting {
     compileFilesInDir("tests/new", defaultOptions) +
     compileFilesInDir("tests/pos-scala2", scala2Mode) +
     compileFilesInDir("tests/pos", defaultOptions) +
-    compileFilesInDir("tests/pos-no-optimise", defaultOptions) +
     compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes) +
     compileFilesInDir("tests/pos-kind-polymorphism", defaultOptions and "-Ykind-polymorphism") +
-    compileDir("tests/pos/i1137-1", defaultOptions and "-Yemit-tasty") +
+    compileDir("tests/pos/i1137-1", defaultOptions) +
     compileFile(
       // succeeds despite -Xfatal-warnings because of -nowarn
       "tests/neg-custom-args/fatal-warnings/xfatalWarnings.scala",
@@ -112,7 +100,6 @@ class CompilationTests extends ParallelTesting {
 
   @Test def posTwice: Unit = {
     implicit val testGroup: TestGroup = TestGroup("posTwice")
-    compileFile("tests/pos/Labels.scala", defaultOptions) +
     compileFilesInDir("tests/pos-java-interop", defaultOptions) +
     compileFilesInDir("tests/pos-java-interop-separate", defaultOptions) +
     compileFile("tests/pos/t2168.scala", defaultOptions) +
@@ -123,7 +110,6 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/pos/functions1.scala", defaultOptions) +
     compileFile("tests/pos/implicits1.scala", defaultOptions) +
     compileFile("tests/pos/inferred.scala", defaultOptions) +
-    compileFile("tests/pos/Patterns.scala", defaultOptions) +
     compileFile("tests/pos/selftypes.scala", defaultOptions) +
     compileFile("tests/pos/varargs.scala", defaultOptions) +
     compileFile("tests/pos/vararg-pattern.scala", defaultOptions) +
@@ -148,33 +134,15 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/pos/i0239.scala", defaultOptions) +
     compileFile("tests/pos/anonClassSubtyping.scala", defaultOptions) +
     compileFile("tests/pos/extmethods.scala", defaultOptions) +
-    compileFile("tests/pos/companions.scala", defaultOptions) +
-    compileList(
-      "testNonCyclic",
-      List(
-        "compiler/src/dotty/tools/dotc/CompilationUnit.scala",
-        "compiler/src/dotty/tools/dotc/core/Types.scala",
-        "compiler/src/dotty/tools/dotc/ast/Trees.scala"
-      ),
-      defaultOptions.and("-Xprompt")
-    ) +
-    compileList(
-      "testIssue34",
-      List(
-        "compiler/src/dotty/tools/dotc/config/Properties.scala",
-        "compiler/src/dotty/tools/dotc/config/PathResolver.scala"
-      ),
-      defaultOptions.and("-Xprompt")
-    )
+    compileFile("tests/pos/companions.scala", defaultOptions)
   }.times(2).checkCompile()
 
   // Negative tests ------------------------------------------------------------
 
-  @Test def compileNeg: Unit = {
+  @Test def negAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNeg")
     compileFilesInDir("tests/neg", defaultOptions) +
     compileFilesInDir("tests/neg-tailcall", defaultOptions) +
-    compileFilesInDir("tests/neg-no-optimise", defaultOptions) +
     compileFilesInDir("tests/neg-kind-polymorphism", defaultOptions and "-Ykind-polymorphism") +
     compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")) +
     compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings) +
@@ -197,9 +165,7 @@ class CompilationTests extends ParallelTesting {
 
   @Test def runAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runAll")
-    compileFilesInDir("tests/run", defaultOptions) +
-    compileFilesInDir("tests/run-no-optimise", defaultOptions) +
-    compileFilesInDir("tests/run-with-compiler", defaultRunWithCompilerOptions)
+    compileFilesInDir("tests/run", defaultOptions)
   }.checkRuns()
 
   // Generic java signatures tests ---------------------------------------------
@@ -210,34 +176,12 @@ class CompilationTests extends ParallelTesting {
   }.checkRuns()
 
   // Pickling Tests ------------------------------------------------------------
-  //
-  // Pickling tests are very memory intensive and as such need to be run with a
-  // lower level of concurrency as to not kill their running VMs
 
-  @Test def testPickling: Unit = {
+  @Test def pickling: Unit = {
     implicit val testGroup: TestGroup = TestGroup("testPickling")
-    compileDir("compiler/src/dotty/tools", picklingOptions, recursive = false) +
-    compileDir("compiler/src/dotty/tools/dotc", picklingOptions, recursive = false) +
     compileFilesInDir("tests/new", picklingOptions) +
-    compileFilesInDir("tests/pickling", picklingOptions) +
-    compileDir("library/src/dotty/runtime", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/backend/jvm", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/ast", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/core", picklingOptions, recursive = false) +
-    compileDir("compiler/src/dotty/tools/dotc/config", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/parsing", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/printing", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/repl", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/rewrite", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/transform", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/typer", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/util", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/io", picklingOptions) +
-    compileFile("tests/pos/pickleinf.scala", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/core/classfile", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/core/tasty", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/core/unpickleScala2", picklingOptions)
-  }.limitThreads(4).checkCompile()
+    compileFilesInDir("tests/pickling", picklingOptions)
+  }.checkCompile()
 
   /** The purpose of this test is two-fold, being able to compile dotty
    *  bootstrapped, and making sure that TASTY can link against a compiled
@@ -254,8 +198,9 @@ class CompilationTests extends ParallelTesting {
       defaultOutputDir + libGroup + "/src/:" +
       // as well as bootstrapped compiler:
       defaultOutputDir + dotty1Group + "/dotty/:" +
-      Jars.dottyInterfaces,
-      Array("-Ycheck-reentrant")
+      // and the other compiler dependecies:
+      Jars.dottyInterfaces + ":" + Jars.jline,
+      Array("-Ycheck-reentrant", "-Yemit-tasty-in-class")
     )
 
     val lib =
@@ -307,14 +252,6 @@ class CompilationTests extends ParallelTesting {
     compileList("idempotency", List("tests/idempotency/BootstrapChecker.scala", "tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
 
     tests.foreach(_.delete())
-  }
-
-  @Category(Array(classOf[SlowTests]))
-  @Test def testOptimised: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("optimised/testOptimised")
-    compileFilesInDir("tests/pos", defaultOptimised).checkCompile()
-    compileFilesInDir("tests/run", defaultOptimised).checkRuns()
-    compileFilesInDir("tests/neg", defaultOptimised).checkExpectedErrors()
   }
 
   @Test def testPlugins: Unit = {

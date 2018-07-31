@@ -1,7 +1,7 @@
 
 import scala.quoted._
 
-import scala.tasty.Universe
+import scala.tasty._
 
 class MyMap[Keys](private val underlying: Array[Int]) extends AnyVal {
   def get[K <: String](implicit i: Index[K, Keys]): Int = underlying(i.index)
@@ -24,11 +24,10 @@ object Index {
 
   implicit def zero[K, T]: Index[K, (K, T)] = new Index(0)
 
-  implicit inline def succ[K, H, T](implicit prev: => Index[K, T]): Index[K, (H, T)] = ~succImpl(Universe.compilationUniverse)('[K], '[H], '[T])
+  implicit transparent def succ[K, H, T](implicit prev: => Index[K, T]): Index[K, (H, T)] = ~succImpl(TopLevelSplice.tastyContext)('[K], '[H], '[T])
 
-  def succImpl[K, H, T](u: Universe)(implicit k: Type[K], h: Type[H], t: Type[T]): Expr[Index[K, (H, T)]] = {
-    import u._
-    import u.tasty._
+  def succImpl[K, H, T](tasty: Tasty)(implicit k: Type[K], h: Type[H], t: Type[T]): Expr[Index[K, (H, T)]] = {
+    import tasty._
 
     def name(tp: TypeOrBounds): String = tp match {
       case Type.ConstantType(Constant.String(str)) => str

@@ -9,7 +9,6 @@ import scala.collection.{ mutable, immutable }
 import PartialFunction._
 import collection.mutable
 import util.common.alwaysZero
-import dotty.tools.dotc.transform.TreeGen
 
 object Definitions {
 
@@ -55,10 +54,10 @@ class Definitions {
     ctx.newSymbol(owner, name, flags | Permanent, info)
 
   private def newClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, infoFn: ClassSymbol => Type) =
-    ctx.newClassSymbol(owner, name, flags | Permanent, infoFn)
+    ctx.newClassSymbol(owner, name, flags | Permanent | NoInits, infoFn)
 
   private def enterCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef], decls: Scope = newScope) =
-    ctx.newCompleteClassSymbol(owner, name, flags | Permanent, parents, decls).entered
+    ctx.newCompleteClassSymbol(owner, name, flags | Permanent | NoInits, parents, decls).entered
 
   private def enterTypeField(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
     scope.enter(newSymbol(cls, name, flags, TypeBounds.empty))
@@ -275,6 +274,7 @@ class Definitions {
     val cls = ctx.requiredClass("java.lang.Object")
     assert(!cls.isCompleted, "race for completing java.lang.Object")
     cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
+    cls.setFlag(NoInits)
 
     // The companion object doesn't really exist, `NoType` is the general
     // technique to do that. Here we need to set it before completing
@@ -333,6 +333,10 @@ class Definitions {
   def NullType = NullClass.typeRef
   lazy val RuntimeNullModuleRef = ctx.requiredModuleRef("scala.runtime.Null")
 
+  lazy val ImplicitScrutineeTypeSym =
+    newSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
+  def ImplicitScrutineeTypeRef: TypeRef = ImplicitScrutineeTypeSym.typeRef
+
   lazy val ScalaPredefModuleRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context) = ScalaPredefModuleRef.symbol
 
@@ -344,11 +348,6 @@ class Definitions {
     def Predef_classOf(implicit ctx: Context) = Predef_classOfR.symbol
     lazy val Predef_undefinedR = ScalaPredefModule.requiredMethodRef("???")
     def Predef_undefined(implicit ctx: Context) = Predef_undefinedR.symbol
-    // The set of all wrap{X, Ref}Array methods, where X is a value type
-    val Predef_wrapArray = new PerRun[collection.Set[Symbol]]({ implicit ctx =>
-      val methodNames = ScalaValueTypes.map(TreeGen.wrapArrayMethodName) + nme.wrapRefArray
-      methodNames.map(ScalaPredefModule.requiredMethodRef(_).symbol)
-    })
 
   lazy val ScalaRuntimeModuleRef = ctx.requiredModuleRef("scala.runtime.ScalaRunTime")
   def ScalaRuntimeModule(implicit ctx: Context) = ScalaRuntimeModuleRef.symbol
@@ -389,6 +388,17 @@ class Definitions {
     def newGenericArrayMethod(implicit ctx: Context) = DottyArraysModule.requiredMethod("newGenericArray")
     def newArrayMethod(implicit ctx: Context) = DottyArraysModule.requiredMethod("newArray")
 
+  // TODO: Remove once we drop support for 2.12 standard library
+  private[this] lazy val isNewCollections = ctx.base.staticRef("scala.collection.IterableOnce".toTypeName).exists
+
+  def getWrapVarargsArrayModule = if (isNewCollections) ScalaRuntimeModule else ScalaPredefModule
+
+  // The set of all wrap{X, Ref}Array methods, where X is a value type
+  val WrapArrayMethods = new PerRun[collection.Set[Symbol]]({ implicit ctx =>
+    val methodNames = ScalaValueTypes.map(ast.tpd.wrapArrayMethodName) + nme.wrapRefArray
+    methodNames.map(getWrapVarargsArrayModule.requiredMethodRef(_).symbol)
+  })
+
   lazy val NilModuleRef = ctx.requiredModuleRef("scala.collection.immutable.Nil")
   def NilModule(implicit ctx: Context) = NilModuleRef.symbol
 
@@ -400,7 +410,9 @@ class Definitions {
       List(AnyClass.typeRef), EmptyScope)
   lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
-  lazy val SeqType: TypeRef = ctx.requiredClassRef("scala.collection.Seq")
+  lazy val SeqType: TypeRef =
+    if (isNewCollections) ctx.requiredClassRef("scala.collection.immutable.Seq")
+    else ctx.requiredClassRef("scala.collection.Seq")
   def SeqClass(implicit ctx: Context) = SeqType.symbol.asClass
     lazy val Seq_applyR = SeqClass.requiredMethodRef(nme.apply)
     def Seq_apply(implicit ctx: Context) = Seq_applyR.symbol
@@ -625,7 +637,7 @@ class Definitions {
     lazy val Product_productPrefixR = ProductClass.requiredMethodRef(nme.productPrefix)
     def Product_productPrefix(implicit ctx: Context) = Product_productPrefixR.symbol
   lazy val LanguageModuleRef = ctx.requiredModule("scala.language")
-  def LanguageModuleClass(implicit ctx: Context) = LanguageModuleRef.symbol.moduleClass.asClass
+  def LanguageModuleClass(implicit ctx: Context) = LanguageModuleRef.moduleClass.asClass
   lazy val NonLocalReturnControlType: TypeRef   = ctx.requiredClassRef("scala.runtime.NonLocalReturnControl")
   lazy val SelectableType: TypeRef              = ctx.requiredClassRef("scala.Selectable")
 
@@ -635,19 +647,13 @@ class Definitions {
 
   lazy val QuotedExprType = ctx.requiredClassRef("scala.quoted.Expr")
   def QuotedExprClass(implicit ctx: Context) = QuotedExprType.symbol.asClass
-
-  lazy val QuotedExprModuleType = ctx.requiredModuleRef("scala.quoted.Expr")
-  def QuotedExprModule(implicit ctx: Context) = QuotedExprModuleType.symbol
+  def QuotedExprModule(implicit ctx: Context) = QuotedExprClass.companionModule
     lazy val QuotedExpr_applyR = QuotedExprModule.requiredMethodRef(nme.apply)
     def QuotedExpr_apply(implicit ctx: Context) = QuotedExpr_applyR.symbol
-
-    lazy val QuotedExpr_spliceR = QuotedExprClass.requiredMethod(nme.UNARY_~)
-    def QuotedExpr_~(implicit ctx: Context) = QuotedExpr_spliceR.symbol
-    lazy val QuotedExpr_runR = QuotedExprClass.requiredMethodRef(nme.run)
-    def QuotedExpr_run(implicit ctx: Context) = QuotedExpr_runR.symbol
+    lazy val QuotedExpr_~ = QuotedExprClass.requiredMethod(nme.UNARY_~)
 
   lazy val QuotedExprsModule = ctx.requiredModule("scala.quoted.Exprs")
-  def QuotedExprsClass(implicit ctx: Context) = QuotedExprsModule.symbol.asClass
+  def QuotedExprsClass(implicit ctx: Context) = QuotedExprsModule.asClass
 
   lazy val QuotedTypeType = ctx.requiredClassRef("scala.quoted.Type")
   def QuotedTypeClass(implicit ctx: Context) = QuotedTypeType.symbol.asClass
@@ -660,6 +666,19 @@ class Definitions {
     lazy val QuotedType_applyR = QuotedTypeModule.requiredMethodRef(nme.apply)
     def QuotedType_apply(implicit ctx: Context) = QuotedType_applyR.symbol
 
+  lazy val QuotedLiftableModule = ctx.requiredModule("scala.quoted.Liftable")
+  def QuotedLiftableModuleClass(implicit ctx: Context) = QuotedLiftableModule.asClass
+
+    def QuotedLiftable_BooleanIsLiftable = QuotedLiftableModule.requiredMethodRef("BooleanIsLiftable")
+    def QuotedLiftable_ByteIsLiftable = QuotedLiftableModule.requiredMethodRef("ByteIsLiftable")
+    def QuotedLiftable_CharIsLiftable = QuotedLiftableModule.requiredMethodRef("CharIsLiftable")
+    def QuotedLiftable_ShortIsLiftable = QuotedLiftableModule.requiredMethodRef("ShortIsLiftable")
+    def QuotedLiftable_IntIsLiftable = QuotedLiftableModule.requiredMethodRef("IntIsLiftable")
+    def QuotedLiftable_LongIsLiftable = QuotedLiftableModule.requiredMethodRef("LongIsLiftable")
+    def QuotedLiftable_FloatIsLiftable = QuotedLiftableModule.requiredMethodRef("FloatIsLiftable")
+    def QuotedLiftable_DoubleIsLiftable = QuotedLiftableModule.requiredMethodRef("DoubleIsLiftable")
+    def QuotedLiftable_StringIsLiftable = QuotedLiftableModule.requiredMethodRef("StringIsLiftable")
+
   lazy val QuotedLiftableType = ctx.requiredClassRef("scala.quoted.Liftable")
   def QuotedLiftableClass(implicit ctx: Context) = QuotedLiftableType.symbol.asClass
 
@@ -667,11 +686,8 @@ class Definitions {
   def Unpickler_liftedExpr = ctx.requiredMethod("scala.runtime.quoted.Unpickler.liftedExpr")
   def Unpickler_unpickleType = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
 
-  lazy val TastyUniverseModule = ctx.requiredModule("scala.tasty.Universe")
-  def TastyUniverseModuleClass(implicit ctx: Context) = TastyUniverseModule.symbol.asClass
-
-    lazy val TastyUniverse_compilationUniverseR = TastyUniverseModule.requiredMethod("compilationUniverse")
-    def TastyUniverse_compilationUniverse(implicit ctx: Context) = TastyUniverse_compilationUniverseR.symbol
+  lazy val TastyTopLevelSpliceModule = ctx.requiredModule("scala.tasty.TopLevelSplice")
+    lazy val TastyTopLevelSplice_tastyContext = TastyTopLevelSpliceModule.requiredMethod("tastyContext")
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass
@@ -716,10 +732,10 @@ class Definitions {
   def ImplicitAmbiguousAnnot(implicit ctx: Context) = ImplicitAmbiguousAnnotType.symbol.asClass
   lazy val ImplicitNotFoundAnnotType = ctx.requiredClassRef("scala.annotation.implicitNotFound")
   def ImplicitNotFoundAnnot(implicit ctx: Context) = ImplicitNotFoundAnnotType.symbol.asClass
-  lazy val InlineAnnotType = ctx.requiredClassRef("scala.inline")
-  def InlineAnnot(implicit ctx: Context) = InlineAnnotType.symbol.asClass
-  lazy val InlineParamAnnotType = ctx.requiredClassRef("scala.annotation.internal.InlineParam")
-  def InlineParamAnnot(implicit ctx: Context) = InlineParamAnnotType.symbol.asClass
+  lazy val ForceInlineAnnotType = ctx.requiredClassRef("scala.forceInline")
+  def ForceInlineAnnot(implicit ctx: Context) = ForceInlineAnnotType.symbol.asClass
+  lazy val TransparentParamAnnotType = ctx.requiredClassRef("scala.annotation.internal.TransparentParam")
+  def TransparentParamAnnot(implicit ctx: Context) = TransparentParamAnnotType.symbol.asClass
   lazy val InvariantBetweenAnnotType = ctx.requiredClassRef("scala.annotation.internal.InvariantBetween")
   def InvariantBetweenAnnot(implicit ctx: Context) = InvariantBetweenAnnotType.symbol.asClass
   lazy val MigrationAnnotType = ctx.requiredClassRef("scala.annotation.migration")
@@ -1203,24 +1219,30 @@ class Definitions {
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticCoreMethods =
-    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
+    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod, ImplicitScrutineeTypeSym)
 
   lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 
-  private[this] var _isInitialized = false
-  private def isInitialized = _isInitialized
+  private[this] var isInitialized = false
 
   def init()(implicit ctx: Context) = {
     this.ctx = ctx
-    if (!_isInitialized) {
+    if (!isInitialized) {
       // Enter all symbols from the scalaShadowing package in the scala package
       for (m <- ScalaShadowingPackageClass.info.decls)
         ScalaPackageClass.enter(m)
 
+      // Temporary measure, as long as we do not read these classes from Tasty.
+      // Scala-2 classes don't have NoInits set even if they are pure. We override this
+      // for Product and Serializable so that case classes can be pure. A full solution
+      // requiers that we read all Scala code from Tasty.
+      ProductClass.setFlag(NoInits)
+      SerializableClass.setFlag(NoInits)
+
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
 
-      _isInitialized = true
+      isInitialized = true
     }
   }
 

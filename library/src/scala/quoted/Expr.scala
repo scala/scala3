@@ -1,6 +1,5 @@
 package scala.quoted
 
-import scala.runtime.quoted.Toolbox
 import scala.runtime.quoted.Unpickler.Pickled
 
 sealed abstract class Expr[T] {
@@ -8,12 +7,12 @@ sealed abstract class Expr[T] {
 
   /** Evaluate the contents of this expression and return the result.
    *
-   *  May throw a FreeVariableError on expressions that came from an inline macro.
+   *  May throw a FreeVariableError on expressions that came from a transparent macro.
    */
-  final def run(implicit toolbox: Toolbox[T]): T = toolbox.run(this)
+  final def run(implicit toolbox: Toolbox): T = toolbox.run(this)
 
   /** Show a source code like representation of this expression */
-  final def show(implicit toolbox: Toolbox[T]): String = toolbox.show(this)
+  final def show(implicit toolbox: Toolbox): String = toolbox.show(this)
 }
 
 object Expr {
@@ -45,7 +44,7 @@ object Exprs {
 
   /** An Expr backed by a tree. Only the current compiler trees are allowed.
    *
-   *  These expressions are used for arguments of inline macros. They contain and actual tree
+   *  These expressions are used for arguments of transparent macros. They contain and actual tree
    *  from the program that is being expanded by the macro.
    *
    *  May contain references to code defined outside this TastyTreeExpr instance.

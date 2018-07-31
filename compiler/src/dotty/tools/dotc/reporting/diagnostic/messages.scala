@@ -1260,26 +1260,26 @@ object messages {
            |""".stripMargin
   }
 
-  case class OverloadedOrRecursiveMethodNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  case class OverloadedOrRecursiveMethodNeedsResultType(method: Names.TermName)(implicit ctx: Context)
   extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
     val kind = "Syntax"
-    val msg = hl"""overloaded or recursive method ${tree} needs return type"""
+    val msg = hl"""overloaded or recursive method ${method} needs return type"""
     val explanation =
-      hl"""Case 1: ${tree} is overloaded
-          |If there are multiple methods named `${tree.name}` and at least one definition of
+      hl"""Case 1: ${method} is overloaded
+          |If there are multiple methods named `${method}` and at least one definition of
           |it calls another, you need to specify the calling method's return type.
           |
-          |Case 2: ${tree} is recursive
-          |If `${tree.name}` calls itself on any path, you need to specify its return type.
+          |Case 2: ${method} is recursive
+          |If `${method}` calls itself on any path, you need to specify its return type.
           |""".stripMargin
   }
 
-  case class RecursiveValueNeedsResultType(tree: Names.TermName)(implicit ctx: Context)
+  case class RecursiveValueNeedsResultType(value: Names.TermName)(implicit ctx: Context)
   extends Message(RecursiveValueNeedsResultTypeID) {
     val kind = "Syntax"
-    val msg = hl"""recursive value ${tree.name} needs type"""
+    val msg = hl"""recursive value ${value} needs type"""
     val explanation =
-      hl"""The definition of `${tree.name}` is recursive and you need to specify its type.
+      hl"""The definition of `${value}` is recursive and you need to specify its type.
           |""".stripMargin
   }
 
@@ -1692,10 +1692,10 @@ object messages {
     val explanation = ""
   }
 
-  case class SuperCallsNotAllowedInline(symbol: Symbol)(implicit ctx: Context)
-    extends Message(SuperCallsNotAllowedInlineID) {
+  case class SuperCallsNotAllowedTransparent(symbol: Symbol)(implicit ctx: Context)
+    extends Message(SuperCallsNotAllowedTransparentID) {
     val kind = "Syntax"
-    val msg = s"super call not allowed in inline $symbol"
+    val msg = s"super call not allowed in transparent $symbol"
     val explanation = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called."
   }
 
@@ -1743,12 +1743,12 @@ object messages {
       hl"you have to provide either ${"class"}, ${"trait"}, ${"object"}, or ${"enum"} definitions after qualifiers"
   }
 
-  case class NoReturnFromInline(owner: Symbol)(implicit ctx: Context)
-    extends Message(NoReturnFromInlineID) {
+  case class NoReturnFromTransparent(owner: Symbol)(implicit ctx: Context)
+    extends Message(NoReturnFromTransparentID) {
     val kind = "Syntax"
-    val msg = hl"no explicit ${"return"} allowed from inline $owner"
+    val msg = hl"no explicit ${"return"} allowed from transparent $owner"
     val explanation =
-      hl"""Methods marked with ${"@inline"} may not use ${"return"} statements.
+      hl"""Methods marked with ${"transparent"} modifier may not use ${"return"} statements.
           |Instead, you should rely on the last expression's value being
           |returned from a method.
           |"""
@@ -2054,10 +2054,10 @@ object messages {
           |polymorphic methods."""
   }
 
-  case class ParamsNoInline(owner: Symbol)(implicit ctx: Context)
-    extends Message(ParamsNoInlineID) {
+  case class ParamsNoTransparent(owner: Symbol)(implicit ctx: Context)
+    extends Message(ParamsNoTransparentID) {
     val kind = "Syntax"
-    val msg = hl"""${"inline"} modifier cannot be used for a ${owner.showKind} parameter"""
+    val msg = hl"""${"transparent"} modifier cannot be used for a parameter of a non-transparent method"""
     val explanation = ""
   }
 
@@ -2095,4 +2095,14 @@ object messages {
     val explanation: String = ""
   }
 
+  case class TypeTestAlwaysSucceeds(foundCls: Symbol, testCls: Symbol)(implicit ctx: Context) extends Message(TypeTestAlwaysSucceedsID) {
+    val kind = "Syntax"
+    val msg = {
+      val addendum =
+        if (foundCls != testCls) s" is a subtype of $testCls"
+        else " is the same as the tested type"
+      s"The highlighted type test will always succeed since the scrutinee type ($foundCls)" + addendum
+    }
+    val explanation = ""
+  }
 }

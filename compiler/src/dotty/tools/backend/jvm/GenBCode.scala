@@ -26,6 +26,7 @@ import scala.tools.asm
 import scala.tools.asm.tree._
 import tpd._
 import StdNames._
+import dotty.tools.dotc.core.tasty.{TastyBuffer, TastyHeaderUnpickler, TastyPickler}
 import dotty.tools.io._
 
 class GenBCode extends Phase {
@@ -41,13 +42,9 @@ class GenBCode extends Phase {
 
   private[this] var myOutput: AbstractFile = _
 
-  protected def outputDir(implicit ctx: Context): AbstractFile = {
-    if (myOutput eq null) {
-      val path = Directory(ctx.settings.outputDir.value)
-      myOutput =
-        if (path.extension == "jar") JarArchive.create(path)
-        else new PlainDirectory(path)
-    }
+  private def outputDir(implicit ctx: Context): AbstractFile = {
+    if (myOutput eq null)
+      myOutput = ctx.settings.outputDir.value
     myOutput
   }
 
@@ -220,14 +217,22 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
             val store = if (mirrorC ne null) mirrorC else plainC
             val tasty =
-              if (ctx.settings.YemitTasty.value) {
+              if (!ctx.settings.YemitTastyInClass.value) {
                 val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
                 val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
                 try outstream.write(binary)
                 finally outstream.close()
-                // TASTY attribute is created but 0 bytes are stored in it.
-                // A TASTY attribute has length 0 if and only if the .tasty file exists.
-                Array.empty[Byte]
+
+                val uuid = new TastyHeaderUnpickler(binary).readHeader()
+                val lo = uuid.getMostSignificantBits
+                val hi = uuid.getLeastSignificantBits
+
+                // TASTY attribute is created but only the UUID bytes are stored in it.
+                // A TASTY attribute has length 16 if and only if the .tasty file exists.
+                val buffer = new TastyBuffer(16)
+                buffer.writeUncompressedLong(lo)
+                buffer.writeUncompressedLong(hi)
+                buffer.bytes
               } else {
                 // Create an empty file to signal that a tasty section exist in the corresponding .class
                 // This is much cheaper and simpler to check than doing classfile parsing

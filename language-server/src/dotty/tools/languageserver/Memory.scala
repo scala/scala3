@@ -37,7 +37,7 @@ object Memory {
   }
 
   def stats(): String = {
-    final val M = 2 << 20
+    val M = 2 << 20
     val runtime = Runtime.getRuntime
     def total = runtime.totalMemory / M
     def maximal = runtime.maxMemory / M

@@ -25,23 +25,14 @@ import scala.quoted.{Expr, Type}
 /** Compiler that takes the contents of a quoted expression `expr` and produces
  *  a class file with `class ' { def apply: Object = expr }`.
  */
-class QuoteCompiler(directory: AbstractFile) extends Compiler {
+class QuoteCompiler extends Compiler {
   import tpd._
-
-  /** A GenBCode phase that outputs to a virtual directory */
-  private class ExprGenBCode extends GenBCode {
-    override def phaseName = "genBCode"
-    override def outputDir(implicit ctx: Context) = directory
-  }
 
   override protected def frontendPhases: List[List[Phase]] =
     List(List(new QuotedFrontend(putInClass = true)))
 
   override protected def picklerPhases: List[List[Phase]] =
     List(List(new ReifyQuotes))
-
-  override protected def backendPhases: List[List[Phase]] =
-    List(List(new ExprGenBCode))
 
   override def newRun(implicit ctx: Context): ExprRun = {
     reset()
@@ -62,12 +53,12 @@ class QuoteCompiler(directory: AbstractFile) extends Compiler {
           val tree =
             if (putInClass) inClass(exprUnit.expr)
             else PickledQuotes.quotedExprToTree(exprUnit.expr)
-          val source = new SourceFile("", Seq())
+          val source = new SourceFile("", "")
           CompilationUnit.mkCompilationUnit(source, tree, forceTrees = true)
         case typeUnit: TypeCompilationUnit =>
           assert(!putInClass)
           val tree = PickledQuotes.quotedTypeToTree(typeUnit.tpe)
-          val source = new SourceFile("", Seq())
+          val source = new SourceFile("", "")
           CompilationUnit.mkCompilationUnit(source, tree, forceTrees = true)
       }
     }

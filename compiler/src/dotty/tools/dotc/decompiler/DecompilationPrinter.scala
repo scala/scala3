@@ -19,13 +19,13 @@ class DecompilationPrinter extends Phase {
   override def phaseName: String = "decompilationPrinter"
 
   override def run(implicit ctx: Context): Unit = {
-    val outputDir = ctx.settings.outputDir.value
-    if (outputDir == ".") printToOutput(System.out)
+    if (ctx.settings.outputDir.isDefault) printToOutput(System.out)
     else {
+      val outputDir = ctx.settings.outputDir.value
       var os: OutputStream = null
       var ps: PrintStream = null
       try {
-        os = File(outputDir + "/decompiled.scala").outputStream(append = true)
+        os = File(outputDir.fileNamed("decompiled.scala").path).outputStream(append = true)
         ps = new PrintStream(os)
         printToOutput(ps)
       } finally {
@@ -41,7 +41,7 @@ class DecompilationPrinter extends Phase {
       new TastyPrinter(unit.pickled.head._2).printContents()
     } else {
       out.println(s"/** Decompiled from $unit */")
-      out.println(TastyImpl.showSourceCode.showTree(unit.tpdTree)(ctx))
+      out.println(new TastyImpl(ctx).showSourceCode.showTree(unit.tpdTree)(ctx))
     }
   }
 }

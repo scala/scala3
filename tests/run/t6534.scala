@@ -8,7 +8,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     val b1 = new Bippy1(71)
     val b2 = new Bippy2(71)
-    assert(b1 == b1)
+    assert(b1 != b1)
     assert(b1.## == b1.x.##, "hash differs1 " + ((b1, b1.##)))
     assert(b2 == b2)
     // assert(b2.## == b2.x.##, "hash differs2 " + ((b2, b2.##, b2.x.##)))

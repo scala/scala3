@@ -4,6 +4,8 @@ package util
 
 import Positions.{Position, NoPosition}
 
+import scala.annotation.internal.sharable
+
 /** A source position is comprised of a position in a source file */
 case class SourcePosition(source: SourceFile, pos: Position, outer: SourcePosition = NoSourcePosition)
 extends interfaces.SourcePosition {

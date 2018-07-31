@@ -44,7 +44,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
    */
   def isCurrent(sym: Symbol) =
     ctx.atPhase(thisPhase) { implicit ctx =>
-      cls.info.member(sym.name).hasAltWith(_.symbol == sym)
+      cls.info.nonPrivateMember(sym.name).hasAltWith(_.symbol == sym)
       // this is a hot spot, where we spend several seconds while compiling stdlib
       // unfortunately it will discard and recompute all the member chaches,
       // both making itself slow and slowing down anything that runs after it

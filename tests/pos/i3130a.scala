@@ -5,6 +5,6 @@ object O {
  class D(val x: Int) {
   class DD()
   object DD {
-   inline def apply() = x // new DD()
+   transparent def apply() = x // new DD()
   }
 }

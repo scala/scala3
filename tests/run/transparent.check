@@ -1,0 +1,11 @@
+100
+10000
+
+ Inner
+Outer.f
+Outer.f Inner
+ Inner
+Outer.f
+Outer.f Inner
+(hi,1)
+(true,)

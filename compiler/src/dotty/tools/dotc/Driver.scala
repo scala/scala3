@@ -2,7 +2,9 @@ package dotty.tools.dotc
 
 import dotty.tools.FatalError
 import config.CompilerCommand
+import core.Comments.{ContextDoc, ContextDocstrings}
 import core.Contexts.{Context, ContextBase}
+import core.Mode
 import util.DotClass
 import reporting._
 import scala.util.control.NonFatal
@@ -44,6 +46,11 @@ class Driver extends DotClass {
     val ctx = rootCtx.fresh
     val summary = CompilerCommand.distill(args)(ctx)
     ctx.setSettings(summary.sstate)
+
+    if (!ctx.settings.YdropComments.value(ctx) || ctx.mode.is(Mode.ReadComments)) {
+      ctx.setProperty(ContextDoc, new ContextDocstrings)
+    }
+
     val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
     (fileNames, ctx)
   }

@@ -369,8 +369,11 @@ object Checking {
       if (!ok && !sym.is(Synthetic))
         fail(i"modifier `$flag` is not allowed for this definition")
 
-    if (sym.is(Inline) && ((sym.is(ParamAccessor) && sym.owner.isClass) || sym.is(TermParam) && sym.owner.isClassConstructor))
-      fail(ParamsNoInline(sym.owner))
+    if (sym.is(Transparent) &&
+          (  sym.is(ParamAccessor) && sym.owner.isClass
+          || sym.is(TermParam) && !sym.owner.isTransparentMethod
+          ))
+      fail(ParamsNoTransparent(sym.owner))
 
     if (sym.is(ImplicitCommon)) {
       if (sym.owner.is(Package))
@@ -396,18 +399,17 @@ object Checking {
         fail(OnlyClassesCanHaveDeclaredButUndefinedMembers(sym))
       checkWithDeferred(Private)
       checkWithDeferred(Final)
-      checkWithDeferred(Inline)
+      checkWithDeferred(Transparent)
     }
     if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
       fail(CannotExtendAnyVal(sym))
     checkCombination(Final, Sealed)
     checkCombination(Private, Protected)
     checkCombination(Abstract, Override)
-    checkCombination(Lazy, Inline)
-    checkCombination(Module, Inline)
-    checkCombination(Transparent, Inline)
+    checkCombination(Lazy, Transparent)
+    checkCombination(Module, Transparent)
     checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
-    if (sym.is(Inline)) checkApplicable(Inline, sym.isTerm && !sym.is(Mutable | Module))
+    if (sym.is(Transparent)) checkApplicable(Transparent, sym.isTerm && !sym.is(Mutable | Module))
     if (sym.is(Lazy)) checkApplicable(Lazy, !sym.is(Method | Mutable))
     if (sym.isType && !sym.is(Deferred))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
@@ -598,15 +600,6 @@ trait Checking {
         defn.ObjectType
     }
 
-  /** Check that a non-implicit parameter making up the first parameter section of an
-   *  implicit conversion is not a singleton type.
-   */
-  def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = vparamss match {
-    case (vparam :: Nil) :: _ if !(vparam.symbol is Implicit) =>
-      checkNotSingleton(vparam.tpt, " to be parameter type of an implicit conversion")
-    case _ =>
-  }
-
   /** If `sym` is an implicit conversion, check that implicit conversions are enabled.
    *  @pre  sym.is(Implicit)
    */
@@ -675,20 +668,20 @@ trait Checking {
     }
   }
 
-  /** Check that `tree` can be marked `inline` */
-  def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context): Unit = {
-    // final vals can be marked inline even if they're not pure, see Typer#patchFinalVals
+  /** Check that `tree` can right hand-side or argument to `transparent` value or parameter. */
+  def checkTransparentConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context): Unit = {
+    // final vals can be marked transparent even if they're not pure, see Typer#patchFinalVals
     val purityLevel = if (isFinal) Idempotent else Pure
-    tree.tpe match {
-      case tp: TermRef if tp.symbol.is(InlineParam) => // ok
-      case tp => tp.widenTermRefExpr match {
-        case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
-        case _ =>
-          val allow = ctx.erasedTypes || ctx.owner.ownersIterator.exists(_.isInlineableMethod)
-          if (!allow) ctx.error(em"$what must be a constant expression", tree.pos)
-      }
+    tree.tpe.widenTermRefExpr match {
+      case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
+      case _ =>
+        val allow = ctx.erasedTypes || ctx.inTransparentMethod
+        if (!allow) ctx.error(em"$what must be a constant expression", tree.pos)
     }
   }
+
+  /** A hook to exclude selected symbols from double declaration check */
+  def excludeFromDoubleDeclCheck(sym: Symbol)(implicit ctx: Context) = false
 
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = {
@@ -700,7 +693,7 @@ trait Checking {
     def checkDecl(decl: Symbol): Unit = {
       for (other <- seen(decl.name)) {
         typr.println(i"conflict? $decl $other")
-        if (decl.matches(other)) {
+        if (decl.matches(other) /*&& !decl.is(Erased) && !other.is(Erased)*/) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               ctx.error(DoubleDeclaration(decl, other), decl.pos)
@@ -712,7 +705,8 @@ trait Checking {
           decl resetFlag HasDefaultParams
         }
       }
-      seen(decl.name) = decl :: seen(decl.name)
+      if (!excludeFromDoubleDeclCheck(decl))
+        seen(decl.name) = decl :: seen(decl.name)
     }
 
     cls.info.decls.foreach(checkDecl)
@@ -948,11 +942,10 @@ trait NoChecking extends ReChecking {
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassType(tp: Type, pos: Position, traitReq: Boolean, stablePrefixReq: Boolean)(implicit ctx: Context): Type = tp
-  override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = ()
   override def checkImplicitConversionUseOK(sym: Symbol, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
-  override def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context) = ()
+  override def checkTransparentConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context) = ()
   override def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt

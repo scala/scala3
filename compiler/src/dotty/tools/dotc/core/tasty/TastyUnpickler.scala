@@ -35,9 +35,6 @@ class TastyUnpickler(reader: TastyReader) {
   private val sectionReader = new mutable.HashMap[String, TastyReader]
   val nameAtRef = new NameTable
 
-  private def check(cond: Boolean, msg: => String) =
-    if (!cond) throw new UnpickleException(msg)
-
   private def readName(): TermName = nameAtRef(readNameRef())
   private def readString(): String = readName().toString
 
@@ -73,19 +70,7 @@ class TastyUnpickler(reader: TastyReader) {
     result
   }
 
-  private def readHeader(): UUID = {
-    for (i <- 0 until header.length)
-      check(readByte() == header(i), "not a TASTy file")
-    val major = readNat()
-    val minor = readNat()
-    check(major == MajorVersion && minor <= MinorVersion,
-      s"""TASTy signature has wrong version.
-         | expected: $MajorVersion.$MinorVersion
-         | found   : $major.$minor""".stripMargin)
-    new UUID(readUncompressedLong(), readUncompressedLong())
-  }
-
-  private val uuid = readHeader()
+  new TastyHeaderUnpickler(reader).readHeader()
 
   locally {
     until(readEnd()) { nameAtRef.add(readNameContents()) }

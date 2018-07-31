@@ -60,6 +60,9 @@ class Pickler extends Phase {
       if (tree.pos.exists)
         new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
+      if (!ctx.settings.YdropComments.value)
+        new CommentPickler(pickler, treePkl.buf.addrOfTree).pickleComment(tree)
+
       // other pickle sections go here.
       val pickled = pickler.assembleParts()
       unit.pickled += (cls -> pickled)
@@ -84,6 +87,7 @@ class Pickler extends Phase {
             .setPeriod(Period(ctx.runId + 1, FirstPhaseId))
             .setReporter(new ThrowingReporter(ctx.reporter))
             .addMode(Mode.ReadPositions)
+            .addMode(Mode.ReadComments)
             .addMode(Mode.PrintShowExceptions))
     result
   }
@@ -94,7 +98,7 @@ class Pickler extends Phase {
     val unpicklers =
       for ((cls, pickler) <- picklers) yield {
         val unpickler = new DottyUnpickler(pickler.assembleParts())
-        unpickler.enter(roots = Set())
+        unpickler.enter(roots = Set.empty)
         cls -> unpickler
       }
     pickling.println("************* entered toplevel ***********")

@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package util
 
+import scala.annotation.internal.sharable
+
 import core.Contexts._
 import collection.mutable
 
@@ -20,7 +22,7 @@ import collection.mutable
     override def default(key: String): Int = 0
   }
 
-  @inline
+  @forceInline
   def record(fn: => String, n: => Int = 1) =
     if (enabled) doRecord(fn, n)
 
@@ -30,7 +32,7 @@ import collection.mutable
       hits(name) += n
     }
 
-  @inline
+  @forceInline
   def track[T](fn: String)(op: => T) =
     if (enabled) doTrack(fn)(op) else op
 
@@ -42,7 +44,7 @@ import collection.mutable
       finally stack = stack.tail
     } else op
 
-  @inline
+  @forceInline
   def trackTime[T](fn: String)(op: => T) =
     if (enabled) doTrackTime(fn)(op) else op
 

@@ -19,6 +19,8 @@ import ErrorReporting.errorType
 import config.Printers.typr
 import collection.mutable
 
+import scala.annotation.internal.sharable
+
 object ProtoTypes {
 
   import tpd._
@@ -71,6 +73,19 @@ object ProtoTypes {
       if (!res) ctx.typerState.resetConstraintTo(savedConstraint)
       res
     }
+
+    /** Constrain result with special case if `meth` is a transparent method in an inlineable context.
+     *  In that case, we should always succeed and not constrain type parameters in the expected type,
+     *  because the actual return type can be a subtype of the currently known return type.
+     *  However, we should constrain parameters of the declared return type. This distinction is
+     *  achieved by replacing expected type parameters with wildcards.
+     */
+    def constrainResult(meth: Symbol, mt: Type, pt: Type)(implicit ctx: Context): Boolean =
+      if (Inliner.isTransparentInlineable(meth)) {
+        constrainResult(mt, wildApprox(pt))
+        true
+      }
+      else constrainResult(mt, pt)
   }
 
   object NoViewsAllowed extends Compatibility {
@@ -535,7 +550,7 @@ object ProtoTypes {
   /** Approximate occurrences of parameter types and uninstantiated typevars
    *  by wildcard types.
    */
-  final def wildApprox(tp: Type, theMap: WildApproxMap, seen: Set[TypeParamRef])(implicit ctx: Context): Type = tp match {
+  private def wildApprox(tp: Type, theMap: WildApproxMap, seen: Set[TypeParamRef])(implicit ctx: Context): Type = tp match {
     case tp: NamedType => // default case, inlined for speed
       if (tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
       else tp.derivedSelect(wildApprox(tp.prefix, theMap, seen))
@@ -603,6 +618,8 @@ object ProtoTypes {
       (if (theMap != null && seen.eq(theMap.seen)) theMap else new WildApproxMap(seen))
         .mapOver(tp)
   }
+
+  final def wildApprox(tp: Type)(implicit ctx: Context): Type = wildApprox(tp, null, Set.empty)
 
   @sharable object AssignProto extends UncachedGroundType with MatchAlways
 

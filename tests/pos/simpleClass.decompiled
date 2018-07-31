@@ -4,5 +4,5 @@ package foo {
 }
 /** Decompiled from out/posTestFromTasty/pos/simpleClass/foo/B.class */
 package foo {
-  class B() extends foo.A
+  class B() extends foo.A()
 }

@@ -351,7 +351,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       val owner = if (atEnd) loadingMirror.RootClass else readSymbolRef()
 
       def adjust(denot: Denotation) = {
-        val denot1 = denot.disambiguate(d => p(d.symbol))
+        val denot1 = denot.disambiguate(p)
         val sym = denot1.symbol
         if (denot.exists && !denot1.exists) { // !!!DEBUG
           val alts = denot.alternatives map (d => d + ":" + d.info + "/" + d.signature)

@@ -29,7 +29,7 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    *
    * @see dotty.tools.languageserver.util.actions.CodeHover
    */
-  def hover(range: CodeRange, expected: String): this.type =
+  def hover(range: CodeRange, expected: Option[String]): this.type =
     doAction(new CodeHover(range, expected))
 
   /**

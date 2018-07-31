@@ -5,7 +5,7 @@ import core.Types.Type // Do not remove me #3383
 import util.SourceFile
 import ast.{tpd, untpd}
 import tpd.{ Tree, TreeTraverser }
-import typer.Inliner.InlineAccessors
+import typer.PrepareTransparent.InlineAccessors
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
@@ -37,7 +37,7 @@ object CompilationUnit {
 
   /** Make a compilation unit for top class `clsd` with the contends of the `unpickled` */
   def mkCompilationUnit(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit =
-    mkCompilationUnit(new SourceFile(clsd.symbol.associatedFile, Seq()), unpickled, forceTrees)
+    mkCompilationUnit(SourceFile(clsd.symbol.associatedFile, Array.empty), unpickled, forceTrees)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
   def mkCompilationUnit(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit = {

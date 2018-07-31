@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package parsing
 
+import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
 import util.{ SourceFile, SourcePosition }
@@ -801,10 +802,13 @@ object Parsers {
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
           if (imods.is(Implicit) && !t.isInstanceOf[FunctionWithMods])
-            syntaxError("Types with implicit keyword can only be function types", Position(start, start + nme.IMPLICITkw.asSimpleName.length))
+            syntaxError("Types with implicit keyword can only be function types", implicitKwPos(start))
           t
       }
     }
+
+    private def implicitKwPos(start: Int): Position =
+      Position(start, start + nme.IMPLICITkw.asSimpleName.length)
 
     /** TypedFunParam   ::= id ':' Type */
     def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): Tree = atPos(start) {
@@ -1098,6 +1102,7 @@ object Parsers {
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  PostfixExpr [Ascription]
      *                      |  PostfixExpr `match' `{' CaseClauses `}'
+     *                      |  `implicit' `match' `{' ImplicitCaseClauses `}'
      *  Bindings          ::= `(' [Binding {`,' Binding}] `)'
      *  Binding           ::= (id | `_') [`:' Type]
      *  Ascription        ::= `:' CompoundType
@@ -1112,7 +1117,8 @@ object Parsers {
       val start = in.offset
       if (in.token == IMPLICIT || in.token == ERASED) {
         val imods = modifiers(funArgMods)
-        implicitClosure(start, location, imods)
+        if (in.token == MATCH) implicitMatch(start, imods)
+        else implicitClosure(start, location, imods)
       } else {
         val saved = placeholderParams
         placeholderParams = Nil
@@ -1213,9 +1219,7 @@ object Parsers {
       case COLON =>
         ascription(t, location)
       case MATCH =>
-        atPos(startOffset(t), in.skipToken()) {
-          inBraces(Match(t, caseClauses()))
-        }
+        matchExpr(t)
       case _ =>
         t
     }
@@ -1244,6 +1248,37 @@ object Parsers {
           }
           Typed(t, tpt)
       }
+    }
+
+    /**    `match' { CaseClauses }
+     *     `match' { ImplicitCaseClauses }
+     */
+    def matchExpr(t: Tree) =
+      atPos(startOffset(t), in.skipToken()) {
+        inBraces(Match(t, caseClauses()))
+      }
+
+    /**    `match' { ImplicitCaseClauses }
+     */
+    def implicitMatch(start: Int, imods: Modifiers) = {
+      def markFirstIllegal(mods: List[Mod]) = mods match {
+        case mod :: _ => syntaxError(em"illegal modifier for implicit match", mod.pos)
+        case _ =>
+      }
+      imods.mods match {
+        case Mod.Implicit() :: mods => markFirstIllegal(mods)
+        case mods => markFirstIllegal(mods)
+      }
+      val result @ Match(t, cases) = matchExpr(ImplicitScrutinee().withPos(implicitKwPos(start)))
+      for (CaseDef(pat, _, _) <- cases) {
+        def isImplicitPattern(pat: Tree) = pat match {
+          case Typed(pat1, _) => isVarPattern(pat1)
+          case pat => isVarPattern(pat)
+        }
+        if (!isImplicitPattern(pat))
+          syntaxError(em"not a legal pattern for an implicit match", pat.pos)
+      }
+      result
     }
 
     /** FunParams         ::=  Bindings
@@ -1550,8 +1585,9 @@ object Parsers {
       }
     }
 
-    /** CaseClauses ::= CaseClause {CaseClause}
-    */
+    /** CaseClauses         ::= CaseClause {CaseClause}
+     *  ImplicitCaseClauses ::= ImplicitCaseClause {ImplicitCaseClause}
+     */
     def caseClauses(): List[CaseDef] = {
       val buf = new ListBuffer[CaseDef]
       buf += caseClause()
@@ -1559,7 +1595,8 @@ object Parsers {
       buf.toList
     }
 
-   /** CaseClause ::= case Pattern [Guard] `=>' Block
+   /** CaseClause         ::= case Pattern [Guard] `=>' Block
+    *  ImplicitCaseClause ::= case PatVar [Ascription] [Guard] `=>' Block
     */
     def caseClause(): CaseDef = atPos(in.offset) {
       accept(CASE)
@@ -1685,7 +1722,6 @@ object Parsers {
       case FINAL       => Mod.Final()
       case IMPLICIT    => Mod.Implicit()
       case ERASED      => Mod.Erased()
-      case INLINE      => Mod.Inline()
       case TRANSPARENT => Mod.Transparent()
       case LAZY        => Mod.Lazy()
       case OVERRIDE    => Mod.Override()
@@ -1797,7 +1833,6 @@ object Parsers {
      */
     def annot() =
       adjustStart(accept(AT)) {
-        if (in.token == INLINE) in.token = BACKQUOTED_IDENT // allow for now
         ensureApplied(parArgumentExprss(wrapNew(simpleType())))
       }
 
@@ -1894,7 +1929,7 @@ object Parsers {
                 addMod(mods, mod)
               }
               else {
-                if (!(mods.flags &~ (ParamAccessor | Inline)).isEmpty)
+                if (!(mods.flags &~ (ParamAccessor | Transparent)).isEmpty)
                   syntaxError("`val' or `var' expected")
                 if (firstClauseOfCaseClass) mods
                 else mods | PrivateLocal
@@ -1902,7 +1937,7 @@ object Parsers {
             }
         }
         else {
-          if (in.token == INLINE) mods = addModifier(mods)
+          if (in.token == TRANSPARENT) mods = addModifier(mods)
           mods = atPos(start) { mods | Param }
         }
         atPos(start, nameStart) {
@@ -2024,7 +2059,16 @@ object Parsers {
       val from = termIdentOrWildcard()
       if (from.name != nme.WILDCARD && in.token == ARROW)
         atPos(startOffset(from), in.skipToken()) {
-          Thicket(from, termIdentOrWildcard())
+          val start = in.offset
+          val to = termIdentOrWildcard()
+          val toWithPos =
+            if (to.name == nme.ERROR)
+              // error identifiers don't consume any characters, so atPos(start)(id) wouldn't set a position.
+              // Some testcases would then fail in Positioned.checkPos. Set a position anyway!
+              atPos(start, start, in.lastOffset)(to)
+            else
+              to
+          Thicket(from, toWithPos)
         }
       else from
     }
@@ -2508,7 +2552,12 @@ object Parsers {
     def localDef(start: Int, implicitMods: Modifiers = EmptyModifiers): Tree = {
       var mods = defAnnotsMods(localModifierTokens)
       for (imod <- implicitMods.mods) mods = addMod(mods, imod)
-      defOrDcl(start, mods)
+      if (mods.is(Final)) {
+        // A final modifier means the local definition is "class-like".
+        tmplDef(start, mods)
+      } else {
+        defOrDcl(start, mods)
+      }
     }
 
     /** BlockStatSeq ::= { BlockStat semi } [ResultExpr]
@@ -2531,8 +2580,12 @@ object Parsers {
           if (in.token == IMPLICIT || in.token == ERASED) {
             val start = in.offset
             var imods = modifiers(funArgMods)
-            if (isBindingIntro) stats += implicitClosure(start, Location.InBlock, imods)
-            else stats +++= localDef(start, imods)
+            if (isBindingIntro)
+              stats += implicitClosure(start, Location.InBlock, imods)
+            else if (in.token == MATCH)
+              stats += implicitMatch(start, imods)
+            else
+              stats +++= localDef(start, imods)
           } else {
             stats +++= localDef(in.offset)
           }
