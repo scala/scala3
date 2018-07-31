@@ -364,7 +364,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           capturers(body.symbol)(body)
         case _=>
           val (body1, splices) = nested(isQuote = true).split(body)
-          if (level == 0 && !ctx.owner.ownersIterator.exists(_.isTransparentMethod)) pickledQuote(body1, splices, body.tpe, isType).withPos(quote.pos)
+          if (level == 0 && !ctx.inTransparentMethod) pickledQuote(body1, splices, body.tpe, isType).withPos(quote.pos)
           else {
             // In top-level splice in an transparent def. Keep the tree as it is, it will be transformed at inline site.
             body
