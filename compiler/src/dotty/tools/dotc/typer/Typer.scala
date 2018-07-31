@@ -1020,13 +1020,6 @@ class Typer extends Namer
         foldOver(tsyms1, t)
       }
     }
-    // TODO
-    // pt match {
-    //   case TypeOf.Match(_, cs) if cs.length == cases.length =>
-    //     cases.zip(cs).mapconserve { case (c, p) => typedCase(c, p, selType, gadtSyms) }
-    //   case _ =>
-    //     cases.mapconserve(typedCase(_, pt, selType, gadtSyms))
-    // }
     accu(Set.empty, selType)
   }
 
@@ -1041,7 +1034,12 @@ class Typer extends Namer
 
   def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context) = {
     val gadts = gadtSyms(selType)
-    cases.mapconserve(typedCase(_, selType, pt, gadts))
+    pt match {
+      case TypeOf.Match(_, cs) if cs.length == cases.length =>
+        cases.zip(cs).mapconserve { case (c, p) => typedCase(c, selType, p, gadts) }
+      case _ =>
+        cases.mapconserve(typedCase(_, selType, pt, gadts))
+    }
   }
 
   /** Type a case. */
