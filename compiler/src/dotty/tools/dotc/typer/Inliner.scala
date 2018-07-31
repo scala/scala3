@@ -102,7 +102,7 @@ object Inliner {
 
     val bindings = new mutable.ListBuffer[Tree]
 
-    /** Lift bindings in function or argument of inline call to
+    /** Lift bindings around inline call or in its function part to
      *  the `bindings` buffer. This is done as an optimization to keep
      *  inline call expansions smaller.
      */
@@ -115,7 +115,7 @@ object Inliner {
         val lifter = liftFromInlined(call)
         cpy.Inlined(tree)(call, Nil, liftBindings(expr, liftFromInlined(call).transform(_)))
       case Apply(fn, args) =>
-        cpy.Apply(tree)(liftBindings(fn, liftPos), args.map(liftBindings(_, liftPos)))
+        cpy.Apply(tree)(liftBindings(fn, liftPos), args)
       case TypeApply(fn, args) =>
         cpy.TypeApply(tree)(liftBindings(fn, liftPos), args)
       case Select(qual, name) =>
@@ -123,7 +123,7 @@ object Inliner {
       case _ =>
         tree
     }
-    
+
     val tree1 = liftBindings(tree, identity)
     if (bindings.nonEmpty)
       cpy.Block(tree)(bindings.toList, inlineCall(tree1, pt))
@@ -511,7 +511,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
               else letBindUnless(TreeInfo.Pure, arg)(seq(trailing, _))
             val fullArg = seq(prefix, seq(leading, argInPlace))
             new TreeTypeMap().transform(fullArg) // make sure local bindings in argument have fresh symbols
-              .reporting(res => i"projecting $tree -> $res")
+              .reporting(res => i"projecting $tree -> $res", inlining)
           }
           else tree
         case Block(stats, expr) if stats.forall(isPureBinding) =>
