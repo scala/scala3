@@ -287,7 +287,7 @@ object PrepareTransparent {
            !isLocalOrParam(tree.symbol, inlineMethod) &&
            !implicitRefTypes.contains(tree.tpe) =>
           if (tree.existsSubTree(t => isLocal(tree.symbol, inlineMethod)))
-            ctx.warning("implicit reference $tree is dropped at inline site because it refers to local symbol(s)", tree.pos)
+            ctx.warning(i"implicit reference $tree is dropped at inline site because it refers to local symbol(s)", tree.pos)
           else {
             implicitRefTypes += tree.tpe
             implicitRefs += tree
@@ -417,11 +417,23 @@ object PrepareTransparent {
         val localImplicit = iref.symbol.asTerm.copy(
           owner = inlineMethod,
           name = UniqueInlineName.fresh(iref.symbol.name.asTermName),
-          flags = Implicit | Method | Stable,
+          flags = Implicit | Method | Stable | iref.symbol.flags & (Transparent | Erased),
           info = iref.tpe.widen.ensureMethodic,
           coord = inlineMethod.pos).asTerm
-        polyDefDef(localImplicit, tps => vrefss =>
+        val idef = polyDefDef(localImplicit, tps => vrefss =>
             iref.appliedToTypes(tps).appliedToArgss(vrefss))
+        if (localImplicit.is(Transparent)) {
+          // produce a Body annotation for inlining
+          def untype(tree: Tree): untpd.Tree = tree match {
+            case Apply(fn, args) => untpd.cpy.Apply(tree)(untype(fn), args)
+            case TypeApply(fn, args) => untpd.cpy.TypeApply(tree)(untype(fn), args)
+            case _ => untpd.TypedSplice(tree)
+          }
+          val inlineBody = tpd.UntypedSplice(untype(idef.rhs)).withType(idef.rhs.tpe)
+          inlining.println(i"body annot for $idef: $inlineBody")
+          localImplicit.addAnnotation(ConcreteBodyAnnotation(inlineBody))
+        }
+        idef
       }
     val untpdSplice = tpd.UntypedSplice(addRefs.transform(original)).withType(typed.tpe)
     seq(implicitBindings, untpdSplice)

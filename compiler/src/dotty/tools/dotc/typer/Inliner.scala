@@ -793,6 +793,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
     countRefs.traverse(tree)
     for (binding <- bindings) countRefs.traverse(binding)
+
+    def retain(boundSym: Symbol) = {
+      refCount.get(boundSym) match {
+        case Some(x) => x > 1 || x == 1 && !boundSym.is(Method)
+        case none => true
+      }
+    } && !boundSym.is(TransparentImplicitMethod)
+
     val inlineBindings = new TreeMap {
       override def transform(t: Tree)(implicit ctx: Context) = t match {
         case t: RefTree =>
@@ -812,11 +820,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           super.transform(t)
       }
     }
-    def retain(binding: MemberDef) = refCount.get(binding.symbol) match {
-      case Some(x) => x > 1 || x == 1 && !binding.symbol.is(Method)
-      case none => true
-    }
-    val retained = bindings.filterConserve(retain)
+
+    val retained = bindings.filterConserve(binding => retain(binding.symbol))
     if (retained `eq` bindings) {
       (bindings, tree)
     }
