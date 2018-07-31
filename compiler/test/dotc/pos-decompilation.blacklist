@@ -49,16 +49,8 @@ i1181.scala
 large.scala
 large2.scala
 
-# scala.MatchError: EmptyTree
+# scala.MatchError: TermParamRef(x)
 depfuntype.scala
-compound.scala
-implicit-dep.scala
-refinedSubtyping.scala
-zoo2.scala
-typers.scala
-apply-equiv.scala
-projections.scala
-lookuprefined.scala
 
 # NPE
 i2888.scala
