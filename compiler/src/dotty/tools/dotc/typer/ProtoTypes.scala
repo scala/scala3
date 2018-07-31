@@ -211,7 +211,7 @@ object ProtoTypes {
   trait ApplyingProto extends ProtoType
 
   class FunProtoState {
-  
+
     /** The list of typed arguments, if all arguments are typed */
     var typedArgs: List[Tree] = Nil
 
@@ -402,7 +402,7 @@ object ProtoTypes {
   }
 
   class UnapplyFunProto(argType: Type, typer: Typer)(implicit ctx: Context) extends FunProto(
-    untpd.TypedSplice(dummyTreeOfType(argType))(ctx) :: Nil, WildcardType)(typer)
+    untpd.TypedSplice(dummyTreeOfType(argType))(ctx) :: Nil, WildcardType)(typer, new FunProtoState()) // TODO: Investigate Dotty failure with default param
 
   /** A prototype for expressions [] that are type-parameterized:
    *
