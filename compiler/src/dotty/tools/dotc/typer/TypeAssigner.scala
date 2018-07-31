@@ -139,7 +139,7 @@ trait TypeAssigner {
 
         if (pre eq tp.prefix)
           tp
-        else if (ctx.isTransparent)
+        else if (ctx.isDependent)
           default
         else
           tryWiden(tp, tp.prefix).orElse {
@@ -376,7 +376,7 @@ trait TypeAssigner {
           val tpe =
             if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
             else fntpe.resultType
-          if (!ctx.erasedTypes && (fn.symbol.isTransparentMethod || ctx.isTransparent)) TypeOf(tpe, tree)
+          if (!ctx.erasedTypes && (fn.symbol.isDependentMethod || ctx.isDependent)) TypeOf(tpe, tree)
           else tpe
         } else
           errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
@@ -437,7 +437,7 @@ trait TypeAssigner {
           val argTypes = args.tpes
           if (sameLength(argTypes, paramNames)) {
             val tpe = pt.instantiate(argTypes)
-            if (!ctx.erasedTypes && (fn.symbol.isTransparentMethod || ctx.isTransparent)) TypeOf(tpe, tree)
+            if (!ctx.erasedTypes && (fn.symbol.isDependentMethod || ctx.isDependent)) TypeOf(tpe, tree)
             else tpe
           }
           else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
@@ -469,7 +469,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) = {
     val underlying = thenp.tpe | elsep.tpe
-    if (!ctx.erasedTypes && ctx.isTransparent)
+    if (!ctx.erasedTypes && ctx.isDependent)
       tree.withType(TypeOf(underlying, tree))
     else
       tree.withType(underlying)
@@ -485,7 +485,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) = {
     val underlying = ctx.typeComparer.lub(cases.tpes)
-    if (!ctx.erasedTypes && ctx.isTransparent)
+    if (!ctx.erasedTypes && ctx.isDependent)
       tree.withType(TypeOf(underlying, tree))
     else
       tree.withType(underlying)

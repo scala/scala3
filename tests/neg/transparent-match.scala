@@ -2,7 +2,7 @@ object Test {
   trait Bar
   trait Foo extends Bar
 
-  transparent def test(t: Any) =
+  dependent def test(t: Any) =
     t match {
       case x: Bar => "a"
       case _ => 1

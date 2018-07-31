@@ -20,10 +20,10 @@ object UnapplyBooleanT {
   def unapply(t: T): Boolean = ???
 }
 object UnapplyBooleanT_true {
-  transparent def unapply(t: T): Boolean = true
+  dependent def unapply(t: T): Boolean = true
 }
 object UnapplyBooleanT_false {
-  transparent def unapply(t: T): Boolean = false
+  dependent def unapply(t: T): Boolean = false
 }
 
 object UnapplyProductT {
@@ -34,22 +34,22 @@ object UnapplyNameBasedT {
   def unapply(t: T): Option[String] = ???
 }
 object UnapplyNameBasedT_None {
-  transparent def unapply(t: T): Option[String] = None
+  dependent def unapply(t: T): Option[String] = None
 }
 object UnapplyNameBasedT_Some {
-  transparent def unapply(t: T): Option[String] = Some("")
+  dependent def unapply(t: T): Option[String] = Some("")
 }
 
 object Test {
   var any: Any = null
 
   // --------------------------------------------------------------------------
-  transparent def typePattern(x: Any) =
+  dependent def typePattern(x: Any) =
     x match {
       case _: T => 1
       case _    => 2
     }
-  transparent def typeDesugared(x: Any) =
+  dependent def typeDesugared(x: Any) =
     if (any.isInstanceOf[T]) 1 else 2
 
   typePattern(any): { typeDesugared(any) } //-
@@ -59,12 +59,12 @@ object Test {
   typeDesugared("")      : 2 //-
 
   // --------------------------------------------------------------------------
-  transparent def typedHKPattern(x: Any) =
+  dependent def typedHKPattern(x: Any) =
     x match {
       case _: F[Int] => 1
       case _         => 2
     }
-  transparent def typedHKDesugared(x: Any) =
+  dependent def typedHKDesugared(x: Any) =
     if (x.isInstanceOf[F[Int]]) 1 else 2
 
   typedHK(any): { typedHKDesugared(any) } //-
@@ -74,12 +74,12 @@ object Test {
   typedHKDesugared("")              : 2 //-
 
   // --------------------------------------------------------------------------
-  transparent def alternativePattern(x: Any) =
+  dependent def alternativePattern(x: Any) =
     x match {
       case _: T | _: U => 1
       case _           => 2
     }
-  transparent def alternativeDesugared(x: Any) =
+  dependent def alternativeDesugared(x: Any) =
     if (x.isInstanceOf[T] || x.isInstanceOf[U]) 1 else 2
 
   alternative(any): { alternativeDesugared(any) } //-
@@ -91,16 +91,16 @@ object Test {
   alternativeDesugared("")      : 2 //-
 
   // --------------------------------------------------------------------------
-  transparent def stablePattern(x: Any) =
+  dependent def stablePattern(x: Any) =
     x match {
       case NIL => 1
       case _   => 2
     }
-  transparent def stableDesugared(x: Any) =
+  dependent def stableDesugared(x: Any) =
     if (NIL == x) 1 else 2
 
   stable(any): { stableDesugared(any) } //-
-  // For these cases we would need to transparentify AnyRef.== (to `eq`) //-
+  // For these cases we would need to dependentify AnyRef.== (to `eq`) //-
   // and prove that there is only one value of `NIL`. //-
   stable(NIL)          : 1 //-
   stableDesugared(NIL) : 1 //-
@@ -108,12 +108,12 @@ object Test {
   stableDesugared("")  : 2 //-
 
   // --------------------------------------------------------------------------
-  transparent def literalPattern(x: Any) =
+  dependent def literalPattern(x: Any) =
     x match {
       case 0 => 1
       case _ => 2
     }
-  transparent def literalDesugared(x: Any) =
+  dependent def literalDesugared(x: Any) =
     if (0 == x) 1 else 2
 
   literal(any): { literalDesugared(any) } //-
@@ -123,28 +123,28 @@ object Test {
   literalDesugared("") : 2 //-
 
   // --------------------------------------------------------------------------
-  transparent def unapplyBoolPattern(x: Any) =
+  dependent def unapplyBoolPattern(x: Any) =
     x match {
       case UnapplyBooleanT() => 1
       case _                  => 2
     }
-  transparent def unapplyTruePattern(x: Any) =
+  dependent def unapplyTruePattern(x: Any) =
     x match {
       case UnapplyBooleanT_true() => 1
       case _                       => 2
     }
-  transparent def unapplyFalsePattern(x: Any) =
+  dependent def unapplyFalsePattern(x: Any) =
     x match {
       case UnapplyBooleanT_false() => 1
       case _                        => 2
     }
-  transparent def unapplyBoolDesugared(x: Any) =
+  dependent def unapplyBoolDesugared(x: Any) =
     if (x.isInstanceOf[T] && UnapplyBooleanT.unapply(x.asInstanceOf[T])) 1 else 2
 
-  transparent def unapplyTrueDesugared(x: Any) =
+  dependent def unapplyTrueDesugared(x: Any) =
     if (x.isInstanceOf[T] && UnapplyBooleanT_true.unapply(x.asInstanceOf[T])) 1 else 2
 
-  transparent def unapplyFalseDesugared(x: Any) =
+  dependent def unapplyFalseDesugared(x: Any) =
     if (x.isInstanceOf[T] && UnapplyBooleanT_false.unapply(x.asInstanceOf[T])) 1 else 2
 
   unapplyBoolPattern(any): { unapplyBoolDesugared(any) } //-
@@ -163,12 +163,12 @@ object Test {
   unapplyFalsePattern(new T{})   : 2 //-
   unapplyFalseDesugared(new T{}) : 2 //-
 
-  transparent def unapplyProductPattern(x: Any) =
+  dependent def unapplyProductPattern(x: Any) =
     x match {
       case UnapplyProductT(_, _) => 1
       case _                     => 2
     }
-  transparent def unapplyProductDesugared(x: Any) =
+  dependent def unapplyProductDesugared(x: Any) =
     if (x.isInstanceOf[T]) 1 else 2
 
   unapplyProductPattern(any): { unapplyProductDesugared(any) } //-

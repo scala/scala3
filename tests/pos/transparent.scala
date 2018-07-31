@@ -5,13 +5,13 @@ object SimpleEqs {
 }
 
 object Call {
-  transparent def foo(x: Int) = 123
+  dependent def foo(x: Int) = 123
   foo(1): { foo(1) }
   foo(1): Int
 }
 
 object ITE {
-  transparent def foo1(b: Boolean) = {
+  dependent def foo1(b: Boolean) = {
     val res = if (b)
       1
     else
@@ -20,7 +20,7 @@ object ITE {
     res
   }
 
-  transparent def foo2(b: Boolean): { if (b) 1 else 2 } =
+  dependent def foo2(b: Boolean): { if (b) 1 else 2 } =
     if (b) 1 else 2
 
   var b: Boolean = true
@@ -39,7 +39,7 @@ object ITE {
 }
 
 object Match {
-  transparent def foo1(b: Boolean) = {
+  dependent def foo1(b: Boolean) = {
     val res = b match {
       case true => 1
       case false => 2
@@ -48,20 +48,20 @@ object Match {
     res
   }
 
-  transparent def foo(b: Boolean): Int =
+  dependent def foo(b: Boolean): Int =
     b match { case true => 1; case false => 2 }
 }
 
 object Applied {
-  transparent def foo1(b: Boolean) = ???
-  transparent def foo2(b: Boolean): { foo1(b) } = foo1(b)
+  dependent def foo1(b: Boolean) = ???
+  dependent def foo2(b: Boolean): { foo1(b) } = foo1(b)
   val a: { foo2(true) } = foo2(true)
 }
 
 object Approx1 {
-  transparent def foo(x: Any): { x } = x
+  dependent def foo(x: Any): { x } = x
   class A {
-    transparent def bar(i: Int): Int = i + 1
+    dependent def bar(i: Int): Int = i + 1
     val v: { bar(foo(1)) } = bar(foo(1))
   }
 
@@ -73,9 +73,9 @@ object Approx1 {
 }
 
 object Approx2 {
-  transparent def foo(x: Any): { x } = x
+  dependent def foo(x: Any): { x } = x
   class A {
-    transparent def bar(i: Int): Int = i + 1
+    dependent def bar(i: Int): Int = i + 1
     val v: { foo(bar(1)) } = foo(bar(1))
   }
 
@@ -93,7 +93,7 @@ object SimpleType {
 
 object Ignored {
   val a = 1
-  transparent def plus(a: Int, b: Int) = a + b
+  dependent def plus(a: Int, b: Int) = a + b
 
   type Foo = {{
     case class Bar(i: Int)

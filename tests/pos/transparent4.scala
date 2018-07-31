@@ -1,6 +1,6 @@
 object ListIntConcat {
   sealed trait List {
-    transparent def ++(that: List): List =
+    dependent def ++(that: List): List =
       if (this.isInstanceOf[Nil.type]) that
       else Cons(this.asInstanceOf[Cons].head, this.asInstanceOf[Cons].tail ++ that)
   }
@@ -17,7 +17,7 @@ object ListIntConcat {
 
 object ListGenericConcat {
   sealed trait List[T] {
-    transparent def ++(that: List[T]): List[T] =
+    dependent def ++(that: List[T]): List[T] =
       if (this.isInstanceOf[Nil[T]]) that
       else Cons(this.asInstanceOf[Cons[T]].head, this.asInstanceOf[Cons[T]].tail ++ that)
   }
@@ -36,7 +36,7 @@ object ListGenericConcat {
 
 object ListCovariantConcat {
   sealed trait List[+T] {
-    transparent def ++[TT >: T](that: List[TT]): List[TT] =
+    dependent def ++[TT >: T](that: List[TT]): List[TT] =
       if (this.isInstanceOf[Nil.type]) that
       else Cons(this.asInstanceOf[Cons[T]].head, this.asInstanceOf[Cons[T]].tail ++ that)
   }

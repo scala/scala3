@@ -3,7 +3,7 @@ object DepNats {
   case object Zero extends Nat { val pred: Nat = Zero }
   case class Succ(pred: Nat) extends Nat
 
-  transparent def asNat(i: Int): Nat =
+  dependent def asNat(i: Int): Nat =
     if (i == 0) Zero
     else        Succ(asNat(i - 1))
 
@@ -15,10 +15,10 @@ object DepNats {
   val Nat1: Nat1 = asNat(1)
   val Nat2: Nat2 = asNat(2)
 
-  transparent def isZero(a: Nat): Boolean =
+  dependent def isZero(a: Nat): Boolean =
     a.isInstanceOf[Zero.type]
 
-  transparent def isZeroT[T](a: T): Boolean =
+  dependent def isZeroT[T](a: T): Boolean =
     a.isInstanceOf[Zero.type]
 
   val v1: true =  isZero(Zero)
@@ -41,7 +41,7 @@ object DepNats {
   val _1b: Nat1         = Nat2.pred
 //  val _1c: {Nat1}        = Nat2.pred
 
-  transparent def plus(n: Nat, m: Nat): Nat =
+  dependent def plus(n: Nat, m: Nat): Nat =
     if (isZero(m)) n
     else           plus(Succ(n), m.pred)
 

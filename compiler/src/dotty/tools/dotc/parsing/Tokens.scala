@@ -179,6 +179,7 @@ object Tokens extends TokensCommon {
   final val TRANSPARENT = 62;      enter(TRANSPARENT, "transparent")
   final val ENUM = 63;             enter(ENUM, "enum")
   final val ERASED = 64;           enter(ERASED, "erased")
+  final val DEPENDENT = 65;        enter(DEPENDENT, "dependent")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")

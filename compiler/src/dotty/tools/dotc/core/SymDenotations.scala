@@ -793,11 +793,17 @@ object SymDenotations {
     def isTransparentMethod(implicit ctx: Context): Boolean =
       is(TransparentMethod, butNot = AccessorOrSynthetic)
 
+    def isDependentMethod(implicit ctx: Context): Boolean =
+      is(DependentMethod, butNot = AccessorOrSynthetic)
+
     /** A transparent method that is not nested inside another transparent method.
      *  Nested transparents are not inlineable yet, only their inlined copies are.
      */
     def isTransparentInlineable(implicit ctx: Context): Boolean =
       isTransparentMethod && !owner.ownersIterator.exists(_.is(TransparentMethod))
+
+    def requiresInlineInfo(implicit ctx: Context): Boolean =
+      isTransparentInlineable || isDependentMethod
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,

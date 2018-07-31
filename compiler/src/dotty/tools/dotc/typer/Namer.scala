@@ -760,7 +760,7 @@ class Namer { typer: Typer =>
     }
 
     private def addInlineInfo(sym: Symbol) = original match {
-      case original: untpd.DefDef if sym.isTransparentInlineable =>
+      case original: untpd.DefDef if sym.requiresInlineInfo =>
         PrepareTransparent.registerInlineInfo(
             sym,
             original.rhs,
@@ -1081,7 +1081,7 @@ class Namer { typer: Typer =>
       // definition is inline (i.e. final in Scala2) and keep module singleton types
       // instead of widening to the underlying module class types.
       def widenRhs(tp: Type): Type =
-        if (ctx.isTransparent)
+        if (ctx.isDependent)
           tp
         else
           tp.widenTermRefExpr match {

@@ -4052,7 +4052,7 @@ object Types {
       } else
         tp
 
-    private def transparently(implicit ctx: Context): Context =
+    private def dependently(implicit ctx: Context): Context =
       ctx.addMode(Mode.InTypeOf)
 
     object If {
@@ -4061,7 +4061,7 @@ object Types {
           dummyTreeOfType(condTp),
           dummyTreeOfType(thenTp),
           dummyTreeOfType(elseTp)
-        )(transparently).tpe.asInstanceOf[TypeOf]
+        )(dependently).tpe.asInstanceOf[TypeOf]
 
       def unapply(to: TypeOf): Option[(Type, Type, Type)] = to.tree match {
         case Trees.If(cond, thenb, elseb) => Some((cond.tpe, thenb.tpe, elseb.tpe))
@@ -4075,7 +4075,7 @@ object Types {
               treeWithTpe(cond, condTp),
               treeWithTpe(thenp, thenTp),
               treeWithTpe(elsep, elseTp)
-            )(transparently)
+            )(dependently)
         })
     }
 
@@ -4094,13 +4094,13 @@ object Types {
       def derived(to: TypeOf)(selectorTp: Type, caseTps: List[Type])(implicit ctx: Context): Type =
         finalizeDerived(to, to.tree match {
           case Trees.Match(selector, cases) =>
-            cpy.Match(to.tree)(treeWithTpe(selector, selectorTp), treesWithTpes(cases, caseTps))(transparently)
+            cpy.Match(to.tree)(treeWithTpe(selector, selectorTp), treesWithTpes(cases, caseTps))(dependently)
         })
     }
 
     object Apply {
       def apply(funTp: Type, argTps: List[Type])(implicit ctx: Context): TypeOf =
-        dummyTreeOfType(funTp).appliedToArgs(argTps.map(x => dummyTreeOfType(x)))(transparently)
+        dummyTreeOfType(funTp).appliedToArgs(argTps.map(x => dummyTreeOfType(x)))(dependently)
           .tpe.asInstanceOf[TypeOf]
 
       def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
@@ -4111,13 +4111,13 @@ object Types {
       def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
         finalizeDerived(to, to.tree match {
           case Trees.Apply(fun, args) =>
-            cpy.Apply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(transparently)
+            cpy.Apply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(dependently)
         })
     }
 
     object TypeApply {
       def apply(funTp: Type, argTps: List[Type])(implicit ctx: Context): TypeOf =
-        dummyTreeOfType(funTp).appliedToTypes(argTps)(transparently)
+        dummyTreeOfType(funTp).appliedToTypes(argTps)(dependently)
           .tpe.asInstanceOf[TypeOf]
 
       def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
@@ -4128,7 +4128,7 @@ object Types {
       def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
         finalizeDerived(to, to.tree match {
           case Trees.TypeApply(fun, args) =>
-            cpy.TypeApply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(transparently)
+            cpy.TypeApply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(dependently)
         })
     }
 

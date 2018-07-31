@@ -121,7 +121,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 
   /** Normalize the type as far as possible, if we are in an opaque context before erasure. */
   final def normalizedType(tp: Type): Type =
-    if (erasedTypes || isTransparent) tp else normalize(tp)
+    if (erasedTypes || isDependent) tp else normalize(tp)
 
   /** Approximate union type by intersection of its dominators.
    *  That is, replace a union type Tn | ... | Tn

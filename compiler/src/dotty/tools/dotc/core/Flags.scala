@@ -329,6 +329,9 @@ object Flags {
   /** Labelled with `transparent` modifier */
   final val Transparent = commonFlag(29, "transparent")
 
+  /** Labelled with `dependent` modifier */
+  final val Dependent = commonFlag(29, "dependent")
+
   /** Symbol is defined by a Java class */
   final val JavaDefined = commonFlag(30, "<java>")
 
@@ -559,6 +562,9 @@ object Flags {
 
   /** A transparent method */
   final val TransparentMethod = allOf(Transparent, Method)
+
+  /** A dependent method */
+  final val DependentMethod = allOf(Dependent, Method)
 
   /** A transparent parameter */
   final val TransparentParam = allOf(Transparent, Param)

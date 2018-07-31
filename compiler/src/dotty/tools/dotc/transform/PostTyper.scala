@@ -286,7 +286,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           Checking.checkAppliedType(tree, boundsCheck = !ctx.mode.is(Mode.Pattern))
           super.transform(tree)
         case SingletonTypeTree(ref) =>
-//          Checking.checkRealizable(ref.tpe, ref.pos.focus)
+         // Checking.checkRealizable(ref.tpe, ref.pos.focus) // TODO
           super.transform(tree)
         case tree: TypeTree =>
           tree.withType(

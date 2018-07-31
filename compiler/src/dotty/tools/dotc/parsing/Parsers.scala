@@ -1723,6 +1723,7 @@ object Parsers {
       case IMPLICIT    => Mod.Implicit()
       case ERASED      => Mod.Erased()
       case TRANSPARENT => Mod.Transparent()
+      case DEPENDENT   => Mod.Dependent()
       case LAZY        => Mod.Lazy()
       case OVERRIDE    => Mod.Override()
       case PRIVATE     => Mod.Private()

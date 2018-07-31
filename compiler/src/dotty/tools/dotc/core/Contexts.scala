@@ -163,25 +163,25 @@ object Contexts {
     }
 
     /** Is this context transparent? */
-    private[this] var _transparentInit: Boolean = true // NOTE: This initial value only applies to InitialContext
-    private[this] var _transparent: Boolean = false
-    final def isTransparent: Boolean = {
-      /** NOTE: The initialization of `_transparent` is rather tricky: We do need to make sure that any
-        *       enclosing context's `_transparent` has been computed, since the property is inherited. In case the
+    private[this] var _dependentInit: Boolean = true // NOTE: This initial value only applies to InitialContext
+    private[this] var _dependent: Boolean = false
+    final def isDependent: Boolean = {
+      /** NOTE: The initialization of `_dependent` is rather tricky: We do need to make sure that any
+        *       enclosing context's `_dependent` has been computed, since the property is inherited. In case the
         *       outer's `transparent` has been accessed before, we inherit the value by way of clone() in fresh(),
-        *       (and as a result `_transparentInit` will be true as well).
-        *       Otherwise we force the enclosing context's `_transparent` here, and, if the outer turns out not to be
-        *       transparent, we finally also compute `_transparent` based on this context.
+        *       (and as a result `_dependentInit` will be true as well).
+        *       Otherwise we force the enclosing context's `_dependent` here, and, if the outer turns out not to be
+        *       transparent, we finally also compute `_dependent` based on this context.
         */
-      if (!_transparentInit) {
+      if (!_dependentInit) {
         val S = this.base.settings
-        _transparent = if (owner eq NoSymbol) false else
-          outer.isTransparent ||
+        _dependent = if (owner eq NoSymbol) false else
+          outer.isDependent ||
             this.owner.flagsUNSAFE.is(Flags.Transparent) ||
             this.mode.is(Mode.InTypeOf)
-        _transparentInit = true
+        _dependentInit = true
       }
-      _transparent
+      _dependent
     }
 
     /** A map in which more contextual properties can be stored
@@ -429,9 +429,9 @@ object Contexts {
       this.phasedCtxs = null
       // See comment related to `creationTrace` in this file
       // setCreationTrace()
-      // The _transparent member was cloned, but is monotonic anyways, so we *could* only recompute in case
-      // _transparentInit is false, but it turns out that branching here is very costly.
-      this._transparentInit = false
+      // The _dependent member was cloned, but is monotonic anyways, so we *could* only recompute in case
+      // _dependentInit is false, but it turns out that branching here is very costly.
+      this._dependentInit = false
       this
     }
 

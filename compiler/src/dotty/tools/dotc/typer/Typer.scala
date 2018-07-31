@@ -1479,7 +1479,7 @@ class Typer extends Namer
     }
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)
 
-    if (sym.isTransparentInlineable) PrepareTransparent.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
+    if (sym.requiresInlineInfo) PrepareTransparent.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
 
     if (sym.isConstructor && !sym.isPrimaryConstructor)
       for (param <- tparams1 ::: vparamss1.flatten)

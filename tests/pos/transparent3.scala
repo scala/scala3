@@ -1,5 +1,5 @@
 object BooleanListLengthFunction {
-  transparent def length(l: LIST): Int =
+  dependent def length(l: LIST): Int =
     if (l.isInstanceOf[NIL.type]) 0
     else 1 + length(l.asInstanceOf[CONS].tail)
 
@@ -18,16 +18,16 @@ object GenericListInstanceOf {
   case object NIL extends LIST[Nothing]
   case class CONS[+T](head: T, tail: LIST[T]) extends LIST[T]
 
-  transparent def iioNIL(x: Any) = x.isInstanceOf[NIL.type]
-  transparent def iioCONS(x: Any) = x.isInstanceOf[CONS[_]]
+  dependent def iioNIL(x: Any) = x.isInstanceOf[NIL.type]
+  dependent def iioCONS(x: Any) = x.isInstanceOf[CONS[_]]
 
   val x1: true  = iioNIL(NIL)
   val x2: false = iioCONS(NIL)
   val x3: false = iioNIL(CONS(true, NIL))
   val x4: true  = iioCONS(CONS(true, NIL))
 
-  transparent def iioNIL_T[T](x: LIST[T]) = x.isInstanceOf[NIL.type]
-  transparent def iioCONS_T[T](x: LIST[T]) = x.isInstanceOf[CONS[_]]
+  dependent def iioNIL_T[T](x: LIST[T]) = x.isInstanceOf[NIL.type]
+  dependent def iioCONS_T[T](x: LIST[T]) = x.isInstanceOf[CONS[_]]
 
   val x5: true  = iioNIL_T(NIL)
   val x6: false = iioCONS_T(NIL)
@@ -40,12 +40,12 @@ object G {
   case object NIL extends LIST[Nothing]
   case class CONS[+T](head: T, tail: LIST[T]) extends LIST[T]
 
-  transparent def AIO_tail(l: Any) = l.asInstanceOf[CONS[Boolean]].tail
+  dependent def AIO_tail(l: Any) = l.asInstanceOf[CONS[Boolean]].tail
   val nil: NIL.type = AIO_tail(CONS(true, NIL))
 }
 
 object GenericListLengthFunction {
-  transparent def length[T](l: LIST[T]): Int =
+  dependent def length[T](l: LIST[T]): Int =
     if (l.isInstanceOf[NIL.type]) 0
     else 1 + length(l.asInstanceOf[CONS[T]].tail)
 
@@ -59,7 +59,7 @@ object GenericListLengthFunction {
 
 object GenericListLengthMethod {
   sealed trait LIST[+T] {
-    transparent def length: Int =
+    dependent def length: Int =
       if (this.isInstanceOf[NIL.type]) 0
       else 1 + this.asInstanceOf[CONS[T]].tail.length
   }

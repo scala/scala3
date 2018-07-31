@@ -42,7 +42,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
     */
   private def NotApplicable: Type = NoType
 
-  /** Infrastructure for beta-reduction at the type-level, to be cached per transparent method. */
+  /** Infrastructure for beta-reduction at the type-level, to be cached per dependent method. */
   class Unfolder(fnSym: Symbol, body: Tree) {
     private[this] val paramPos = mutable.ArrayBuffer[Name]()
     private[this] var params: Array[Symbol] = _
@@ -80,7 +80,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
       body.tpe.subst(from, to).asSeenFrom(pre, fnSym.enclosingClass)  // TODO: Check whether enclosingClass makes sense
     }
 
-    // TODO: Cache this per transparent method
+    // TODO: Cache this per dependent method
     computeParamPositions(fnSym.info)
     computeOrderedParams
   }
@@ -102,25 +102,25 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
     else                                                  Some(false)
   }
 
-  /** The body type of transparent method `sym` if the body itself is not currently being type-checked,
+  /** The body type of dependent method `sym` if the body itself is not currently being type-checked,
     * error otherwise.
     */
   private def defUnfolder(fnSym: Symbol): Unfolder = {
-    assert(fnSym.isTerm && fnSym.isTransparentMethod && fnSym.hasAnnotation(defn.BodyAnnot))
+    assert(fnSym.isTerm && fnSym.isDependentMethod && fnSym.hasAnnotation(defn.BodyAnnot))
     val body: Tree = fnSym.getAnnotation(defn.BodyAnnot) match {
       case Some(annot) =>
         if (annot.isEvaluating)
           throw CyclicReference(fnSym)  // TODO: Better error message?
         annot.tree
       case None =>
-        throw new AssertionError(s"Expected transparent method $fnSym to have a body annotation!")
+        throw new AssertionError(s"Expected dependent method $fnSym to have a body annotation!")
     }
     new Unfolder(fnSym, body)
   }
 
   /** Normalizes applications of various kinds:
     *  - If `fn` is a unary or binary method of a value class, perform constant-folding.
-    *  - If `fn` is a transparent method, beta-reduce.
+    *  - If `fn` is a dependent method, beta-reduce.
     *  - If `tp` is `pre.isInstanceOf[T]` and `pre: S`, evaluate to the outcome of `erased(S) <: erased(T)`.
     *    In case the result is not yet determined, get stuck.
     *  - If `tp` is `pre.asInstanceOf[T]` and `pre: S`, evaluate to `pre` if `erased(S) <: erased(T)`.
@@ -144,10 +144,10 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
           case _                         => NoType  // TODO: error/stuck/impossible?
         }
       }
-      else if (fnSym is Transparent) {
+      else if (fnSym is Dependent) {
         // Semantically, this is what we want to do:
         // if (fnSym.isCompleting)
-        //   if (ctx.isTransparent) Stuck(tp)
+        //   if (ctx.isDependent) Stuck(tp)
         //   else throw CyclicReference(fnSym)
         // else { ... }
 

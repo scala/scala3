@@ -1,5 +1,5 @@
 object IdrisVect {
-  transparent def þ [T] : T = ??? : T
+  dependent def þ [T] : T = ??? : T
 
   sealed trait Nat { val pred: Nat }
   case object Zero extends Nat { val pred: Nat = Zero }
@@ -26,9 +26,9 @@ object IdrisVect {
   case class Cons[T](head: T, tail: Vect[T], length: Nat) extends Vect[T]
 
   object Vect {
-    transparent def sized[T](n: Nat) = Cons(þ[T], þ[Vect[T]], n)
-    transparent def nil = Nil[Int](Zero)
-    transparent def cons(head: Int, tail: Vect[Int]): Vect[Int] = Cons(head, tail, Succ(tail.length))
+    dependent def sized[T](n: Nat) = Cons(þ[T], þ[Vect[T]], n)
+    dependent def nil = Nil[Int](Zero)
+    dependent def cons(head: Int, tail: Vect[Int]): Vect[Int] = Cons(head, tail, Succ(tail.length))
   }
   import Vect._
 
@@ -37,7 +37,7 @@ object IdrisVect {
   val y2: _2 = cons(1, cons(2, nil)).length
   val y3: _3 = cons(1, cons(2, cons(3, nil))).length
 
-  transparent def concat(v1: Vect[Int], v2: Vect[Int]): Vect[Int] = {
+  dependent def concat(v1: Vect[Int], v2: Vect[Int]): Vect[Int] = {
     if (v1.isInstanceOf[Nil[Int]]) v2
     else {
       val vv1 = v1.asInstanceOf[Cons[Int]]
@@ -57,7 +57,7 @@ object IdrisVect {
   val x5c: { sized(þ[_3]) }      = concat(cons(1, nil), cons(2, cons(3, nil)))
 
   /** Calculate the length of a `Vect`. */
-  transparent def length[T](xs: Vect[T]): Nat =
+  dependent def length[T](xs: Vect[T]): Nat =
     if (xs.isInstanceOf[Nil[_]]) Zero
     else {
       val xs1 = xs.asInstanceOf[Cons[_]].tail
@@ -80,7 +80,7 @@ object IdrisVect {
   def f[T](x: { Vect.sized[T](Succ(þ[Nat])) }, y: Int) = ???
   // f(x2)
   // /** All but the first element of the vector */
-  // transparent def tail[T](v: { Vect.sized[T](Succ(þ[Nat])) }): Vect[T] =
+  // dependent def tail[T](v: { Vect.sized[T](Succ(þ[Nat])) }): Vect[T] =
   //   v.asInstanceOf[Cons[T]].tail
 
   // // val t1: { nil }                   = tail(x1) // error: stuck on failing asInstanceOf, as expected!
@@ -90,7 +90,7 @@ object IdrisVect {
   // val t5: { cons(2, cons(3, nil)) } = tail(x5)
 
   /** Only the first element of the vector */
-  transparent def head[T](v: Vect[T]): T =
+  dependent def head[T](v: Vect[T]): T =
     v.asInstanceOf[Cons[T]].head
 
   // val h1: 1 = head[Int](x1) // error: stuck on failing asInstanceOf, as expected!
@@ -99,7 +99,7 @@ object IdrisVect {
   val h4: 1 = head[Int](x4)
   val h5: 1 = head[Int](x5)
 
-  transparent def headSafe[T](v: { Vect.sized[T](Succ(þ[Nat])) }): T =
+  dependent def headSafe[T](v: { Vect.sized[T](Succ(þ[Nat])) }): T =
     v.asInstanceOf[Cons[T]].head
 
   // val hs1: 1 = headSafe[Int](x1) // error: not a subtype
@@ -128,7 +128,7 @@ object IdrisVect {
   val hsop5: 1 = head[Int](x5)
 
   /** The last element of the vector */
-  transparent def last[T](v: Vect[T]): T = {
+  dependent def last[T](v: Vect[T]): T = {
     val h = v.asInstanceOf[Cons[T]].head
     val t = v.asInstanceOf[Cons[T]].tail
     if (t.isInstanceOf[Nil[T]])
@@ -144,7 +144,7 @@ object IdrisVect {
   val a5: 3 = last[Int](x5)
 
   // /** Extract a particular element from a vector */
-  // transparent def index(i: Nat, v: { sized(i) }): T
+  // dependent def index(i: Nat, v: { sized(i) }): T
   // index FZ     (x::xs) = x
   // index (FS k) (x::xs) = index k xs
 
