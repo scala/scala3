@@ -47,9 +47,6 @@ i1776.scala
 i3638.scala
 i618.scala
 
-# scala.MatchError: Type.RecursiveType
-i3647.scala
-
 # Stackoverflow
 avoid.scala
 i1047.scala
