@@ -870,7 +870,7 @@ class Typer extends Namer
               expr1.tpe
             case _ =>
               val protoArgs = args map (_ withType WildcardType)
-              val callProto = FunProto(protoArgs, WildcardType, this)
+              val callProto = FunProto(protoArgs, WildcardType)(this)
               val expr1 = typedExpr(expr, callProto)
               fnBody = cpy.Apply(fnBody)(untpd.TypedSplice(expr1), args)
               expr1.tpe
@@ -2054,7 +2054,7 @@ class Typer extends Namer
       tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked).getOrElse(fallBack)
 
     pt match {
-      case pt @ FunProto(Nil, _, _)
+      case pt @ FunProto(Nil, _)
       if tree.symbol.allOverriddenSymbols.exists(_.info.isNullaryMethod) &&
          tree.getAttachment(DroppedEmptyArgs).isEmpty =>
         tree.putAttachment(DroppedEmptyArgs, ())
