@@ -587,9 +587,13 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
     object Unapply extends UnapplyExtractor {
       def unapply(x: Pattern)(implicit ctx: Context): Option[(Term, List[Term], List[Pattern])] = x match {
-        case Trees.UnApply(fun, implicits, patterns) => Some((fun, implicits, patterns))
-        case Trees.Typed(Trees.UnApply(fun, implicits, patterns), _) => Some((fun, implicits, patterns))
+        case Trees.UnApply(fun, implicits, patterns) => Some((fun, implicits, effectivePatterns(patterns)))
+        case Trees.Typed(Trees.UnApply(fun, implicits, patterns), _) => Some((fun, implicits, effectivePatterns(patterns)))
         case _ => None
+      }
+      private def effectivePatterns(patterns: List[Pattern]): List[Pattern] = patterns match {
+        case patterns0 :+ Trees.SeqLiteral(elems, _) => patterns0 ::: elems
+        case _ => patterns
       }
     }
 
