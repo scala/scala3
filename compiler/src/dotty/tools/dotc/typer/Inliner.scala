@@ -469,10 +469,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             val argInPlace =
               if (trailing.isEmpty) arg
               else letBindUnless(TreeInfo.Pure, arg)(seq(trailing, _))
-            seq(prefix, seq(leading, argInPlace))
-              .reporting(res => i"projecting $tree -> $res", inlining)
+            val fullArg = seq(prefix, seq(leading, argInPlace))
+            new TreeTypeMap().transform(fullArg) // make sure local bindings in argument have fresh symbols
+              .reporting(res => i"projecting $tree -> $res")
           }
           else tree
+        case Block(stats, expr) if stats.forall(isPureBinding) =>
+          cpy.Block(tree)(stats, reduceProjection(expr))
         case _ => tree
       }
     }
