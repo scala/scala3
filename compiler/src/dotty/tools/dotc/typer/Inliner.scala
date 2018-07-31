@@ -85,10 +85,49 @@ object Inliner {
    *  @return   An `Inlined` node that refers to the original call and the inlined bindings
    *            and body that replace it.
    */
-  def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree match {
-    case Block(stats, expr) =>
-      cpy.Block(tree)(stats, inlineCall(expr, pt))
-    case _ if (enclosingInlineds.length < ctx.settings.XmaxInlines.value) =>
+  def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
+
+	/** Set the position of all trees logically contained in the expansion of
+	 *  inlined call `call` to the position of `call`. This transform is necessary
+	 *  when lifting bindings from the expansion to the outside of the call.
+	 */
+    def liftFromInlined(call: Tree) = new TreeMap {
+      override def transform(t: Tree)(implicit ctx: Context) = {
+        t match {
+          case Inlined(t, Nil, expr) if t.isEmpty => expr
+          case _ => super.transform(t.withPos(call.pos))
+        }
+      }
+    }
+
+    val bindings = new mutable.ListBuffer[Tree]
+
+    /** Lift bindings in function or argument of inline call to
+     *  the `bindings` buffer. This is done as an optimization to keep
+     *  inline call expansions smaller.
+     */
+    def liftBindings(tree: Tree, liftPos: Tree => Tree): Tree = tree match {
+      case Block(stats, expr) =>
+        bindings ++= stats.map(liftPos)
+        liftBindings(expr, liftPos)
+      case Inlined(call, stats, expr) =>
+        bindings ++= stats.map(liftPos)
+        val lifter = liftFromInlined(call)
+        cpy.Inlined(tree)(call, Nil, liftBindings(expr, liftFromInlined(call).transform(_)))
+      case Apply(fn, args) =>
+        cpy.Apply(tree)(liftBindings(fn, liftPos), args.map(liftBindings(_, liftPos)))
+      case TypeApply(fn, args) =>
+        cpy.TypeApply(tree)(liftBindings(fn, liftPos), args)
+      case Select(qual, name) =>
+        cpy.Select(tree)(liftBindings(qual, liftPos), name)
+      case _ =>
+        tree
+    }
+    
+    val tree1 = liftBindings(tree, identity)
+    if (bindings.nonEmpty)
+      cpy.Block(tree)(bindings.toList, inlineCall(tree1, pt))
+    else if (enclosingInlineds.length < ctx.settings.XmaxInlines.value) {
       val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
       if (ctx.reporter.hasErrors) tree
       else {
@@ -97,7 +136,8 @@ object Inliner {
           else ctx.fresh.setProperty(InlineBindings, newMutableSymbolMap[Tree])
         new Inliner(tree, body)(inlinerCtx).inlined(pt)
       }
-    case _ =>
+    }
+    else
       errorTree(
         tree,
         i"""|Maximal number of successive inlines (${ctx.settings.XmaxInlines.value}) exceeded,
