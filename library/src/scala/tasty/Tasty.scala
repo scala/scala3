@@ -825,6 +825,13 @@ abstract class Tasty { tasty =>
     abstract class ClassTagExtractor {
       def unapply(x: Constant): Option[Type]
     }
+
+    /** Extractor for scala.Symbol literals */
+    val Symbol: SymbolExtractor
+    /** Extractor for scala.Symbol literals */
+    abstract class SymbolExtractor {
+      def unapply(x: Constant): Option[scala.Symbol]
+    }
   }
 
   // ===== Signature ================================================

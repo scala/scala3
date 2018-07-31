@@ -1072,6 +1072,12 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
       }
     }
 
+    object Symbol extends SymbolExtractor {
+      def unapply(x: Constant): Option[scala.Symbol] = x match {
+        case x: Constants.Constant if x.tag == Constants.ScalaSymbolTag => Some(x.scalaSymbolValue)
+        case _ => None
+      }
+    }
   }
 
   // ===== Signature ================================================
