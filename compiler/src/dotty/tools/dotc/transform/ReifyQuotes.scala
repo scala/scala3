@@ -304,7 +304,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
               outer.checkType(pos).foldOver(acc, tp)
             }
             else {
-              if (tp.isTerm) ctx.error(i"splice outside quotes", pos)
+              if (tp.isTerm) spliceOutsideQuotes(pos)
               tp
             }
           case tp: NamedType =>
@@ -435,7 +435,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice)
       }
       else if (!ctx.owner.is(Transparent)) { // level 0 outside a transparent definition
-        ctx.error(i"splice outside quotes or transparent method", splice.pos)
+        spliceOutsideQuotes(splice.pos)
         splice
       }
       else if (Splicer.canBeSpliced(splice.qualifier)) { // level 0 inside a transparent definition
