@@ -358,7 +358,6 @@ object ProtoTypes {
       else new FunProto(args, resType)(typer, state)(newCtx)
   }
 
-
   /** A prototype for expressions that appear in function position
    *
    *  [](args): resultType, where args are known to be typed
