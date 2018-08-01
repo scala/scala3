@@ -10,7 +10,7 @@ object TestConfiguration {
   )
 
   val checkOptions = Array(
-    "-Yscala2-unpickler", s"${Jars.scalaLibrary}:${Jars.scalaXml}",
+    // "-Yscala2-unpickler", s"${Jars.scalaLibrary}:${Jars.scalaXml}",
     "-Yno-deep-subtypes",
     "-Yno-double-bindings",
     "-Yforce-sbt-phases",
