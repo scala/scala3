@@ -228,11 +228,13 @@ object Build {
     scalacOptions ++= Seq("-bootclasspath", sys.props("sun.boot.class.path")),
 
     // Enforce that the only Scala 2 classfiles we unpickle come from scala-library
+    /*
     scalacOptions ++= {
       val attList = (dependencyClasspath in `dotty-library` in Compile).value
       val scalaLib = findLib(attList, "scala-library")
       Seq("-Yscala2-unpickler", scalaLib)
     },
+    */
 
     // sbt gets very unhappy if two projects use the same target
     target := baseDirectory.value / ".." / "out" / "bootstrap" / name.value,
@@ -785,6 +787,7 @@ object Build {
   lazy val `dotty-sbt-bridge-bootstrapped` = project.in(file("sbt-bridge")).asDottySbtBridge(Bootstrapped)
     .settings(
       // Tweak -Yscala2-unpickler to allow some sbt dependencies used in tests
+      /*
       scalacOptions in Test := {
         val oldOptions = (scalacOptions in Test).value
         val i = oldOptions.indexOf("-Yscala2-unpickler")
@@ -797,6 +800,7 @@ object Build {
 
         oldOptions.updated(i + 1, s"$sbtIo:$zincApiInfo:$oldValue")
       }
+      */
     )
 
   lazy val `dotty-language-server` = project.in(file("language-server")).
