@@ -172,8 +172,10 @@ object Annotations {
 
       def unapply(ann: Annotation)(implicit ctx: Context): Option[Symbol] =
         if (ann.symbol == defn.ChildAnnot) {
-          val AppliedType(tycon, (arg: NamedType) :: Nil) = ann.tree.tpe
-          Some(arg.symbol)
+          ann.tree.tpe match { // TODO: proper fix
+            case AppliedType(tycon, (arg: NamedType) :: Nil) => Some(arg.symbol)
+            case _ => None
+          }
         }
         else None
     }

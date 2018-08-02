@@ -141,7 +141,7 @@ final class JLineTerminal extends java.io.Closeable {
               defaultParsedLine
           }
 
-        case _ =>
+        case _ | null =>
           incomplete()
       }
     }
