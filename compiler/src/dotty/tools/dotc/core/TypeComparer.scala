@@ -253,10 +253,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             }
           else
             false
-        tp1 match {
-          case tp1: TypeOf => comparePointwise(tp1) || secondTry
-          case _ => secondTry
-        }
+        if (ctx.phase.id > ctx.picklerPhase.id)
+          recur(tp1, tp2.underlyingTp)
+        else
+          tp1 match {
+            case tp1: TypeOf => comparePointwise(tp1) || secondTry
+            case _ => secondTry
+          }
       case tp2: AnnotatedType if !tp2.isRefining =>
         recur(tp1, tp2.parent)
       case tp2: ThisType =>
