@@ -9,6 +9,20 @@ import ast.tpd
 trait Docstrings { self: Typer =>
 
   /**
+   * Expands or cooks the documentation for all members of `cdef`.
+   *
+   * @see Docstrings#cookComment
+   */
+  def cookComments(cdef: tpd.Tree, cls: ClassSymbol)(implicit ctx: Context): Unit = {
+    // val cls = cdef.symbol
+    val cookingCtx = ctx.localContext(cdef, cls).setNewScope
+    cls.info.allMembers.foreach { member =>
+      cookComment(member.symbol, cls)(cookingCtx)
+    }
+    cookComment(cls, cls)(cookingCtx)
+  }
+
+  /**
    * Expands or cooks the documentation for `sym` in class `owner`.
    * The expanded comment will directly replace the original comment in the doc context.
    *

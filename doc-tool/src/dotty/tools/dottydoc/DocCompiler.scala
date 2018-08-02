@@ -34,7 +34,8 @@ class DocCompiler extends Compiler {
   }
 
   override protected def frontendPhases: List[List[Phase]] =
-    List(new DocFrontEnd) :: Nil
+    List(new ReadTastyTreesFromClasses) ::
+    List(new DocFrontEnd) ::  Nil
 
   override protected def picklerPhases: List[List[Phase]] =
     Nil

@@ -20,23 +20,8 @@ import util.syntax.ContextWithContextDottydoc
 class DocFrontEnd extends FrontEnd {
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
-    if (ctx.settings.fromTasty.value) {
-      val fromTastyFrontend = new ReadTastyTreesFromClasses
-      val unpickledUnits = fromTastyFrontend.runOn(units)
-
-      val typer = new Typer()
-      if (ctx.settings.YcookComments.value) {
-        ctx.docbase.docstrings.keys.foreach { sym =>
-            val owner = sym.owner
-            val cookingCtx = ctx.withOwner(owner)
-            typer.cookComment(sym, owner)(cookingCtx)
-        }
-      }
-
-      unpickledUnits
-    } else {
-      super.runOn(units)
-    }
+    if (ctx.settings.fromTasty.value) units
+    else super.runOn(units)
   }
 
   override protected def discardAfterTyper(unit: CompilationUnit)(implicit ctx: Context) =

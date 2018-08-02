@@ -1568,15 +1568,6 @@ class Typer extends Namer
       val body1 = addAccessorDefs(cls,
         typedStats(impl.body, dummy)(ctx.inClassContext(self1.symbol)))
 
-      // Expand comments and type usecases if `-Ycook-comments` is set.
-      if (ctx.settings.YcookComments.value) {
-        val cookingCtx = ctx.localContext(cdef, cls).setNewScope
-        body1.foreach { stat =>
-          cookComment(stat.symbol, self1.symbol)(cookingCtx)
-        }
-        cookComment(cls, cls)(cookingCtx)
-      }
-
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
         .withType(dummy.termRef)
@@ -1600,6 +1591,12 @@ class Typer extends Namer
       checkDerivedValueClass(cls, body1)
 
       if (ctx.settings.YretainTrees.value) cls.treeOrProvider = cdef1
+
+      // Expand comments and type usecases if `-Ycook-comments` is set.
+      if (ctx.settings.YcookComments.value) {
+        cookComments(cdef1, cls)
+      }
+
 
       cdef1
 
