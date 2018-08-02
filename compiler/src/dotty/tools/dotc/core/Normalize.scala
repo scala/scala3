@@ -192,8 +192,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
       case TypeOf.New(cnstrSym, _, args) =>
         selectTermParam(cnstrSym, args)
       case pre: TypeProxy =>
-        // TODO: Keep track of these normalization "reentries"
-        revealNewAndSelect(ctx.normalize(pre.underlying))
+        revealNewAndSelect(pre.underlying)
       case _ =>
         NoType  // TODO: stuck?
     }

@@ -376,8 +376,10 @@ trait TypeAssigner {
           val tpe =
             if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
             else fntpe.resultType
-          if (!ctx.erasedTypes && (fn.symbol.isDependentMethod || ctx.isDependent)) TypeOf(tpe, tree)
-          else tpe
+          val tpe1 =
+            if (!ctx.erasedTypes && (fn.symbol.isDependentMethod || ctx.isDependent)) TypeOf(tpe, tree)
+            else tpe
+          ctx.normalizedType(tpe1)
         } else
           errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.pos)
       case t =>
@@ -437,8 +439,10 @@ trait TypeAssigner {
           val argTypes = args.tpes
           if (sameLength(argTypes, paramNames)) {
             val tpe = pt.instantiate(argTypes)
-            if (!ctx.erasedTypes && (fn.symbol.isDependentMethod || ctx.isDependent)) TypeOf(tpe, tree)
-            else tpe
+            val tpe1 =
+              if (!ctx.erasedTypes && (fn.symbol.isDependentMethod || ctx.isDependent)) TypeOf(tpe, tree)
+              else tpe
+            ctx.normalizedType(tpe1)
           }
           else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.pos)
         }
@@ -519,7 +523,7 @@ trait TypeAssigner {
         else
           throw new AssertionError(i"Tree $ref is not a valid reference for a singleton type tree.")
     }
-    tree.withType(tp)
+    tree.withType(ctx.normalizedType(tp))
   }
 
   def assignType(tree: untpd.AndTypeTree, left: Tree, right: Tree)(implicit ctx: Context) =
