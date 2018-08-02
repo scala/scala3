@@ -4,8 +4,8 @@ object BooleanListLengthFunction {
     else 1 + length(l.asInstanceOf[CONS].tail)
 
   sealed trait LIST
-  case object NIL extends LIST
-  case class CONS(head: Boolean, tail: LIST) extends LIST
+  dependent case object NIL extends LIST
+  dependent case class CONS(head: Boolean, tail: LIST) extends LIST
 
   val a: 0 = length(NIL)
   val b: 1 = length(CONS(true, NIL))
@@ -15,8 +15,8 @@ object BooleanListLengthFunction {
 
 object GenericListInstanceOf {
   sealed trait LIST[+T]
-  case object NIL extends LIST[Nothing]
-  case class CONS[+T](head: T, tail: LIST[T]) extends LIST[T]
+  dependent case object NIL extends LIST[Nothing]
+  dependent case class CONS[+T](head: T, tail: LIST[T]) extends LIST[T]
 
   dependent def iioNIL(x: Any) = x.isInstanceOf[NIL.type]
   dependent def iioCONS(x: Any) = x.isInstanceOf[CONS[_]]
@@ -37,8 +37,8 @@ object GenericListInstanceOf {
 
 object G {
   sealed trait LIST[+T]
-  case object NIL extends LIST[Nothing]
-  case class CONS[+T](head: T, tail: LIST[T]) extends LIST[T]
+  dependent case object NIL extends LIST[Nothing]
+  dependent case class CONS[+T](head: T, tail: LIST[T]) extends LIST[T]
 
   dependent def AIO_tail(l: Any) = l.asInstanceOf[CONS[Boolean]].tail
   val nil: NIL.type = AIO_tail(CONS(true, NIL))
@@ -50,8 +50,8 @@ object GenericListLengthFunction {
     else 1 + length(l.asInstanceOf[CONS[T]].tail)
 
   sealed trait LIST[+T]
-  case object NIL extends LIST[Nothing]
-  case class CONS[+T](head: T, tail: LIST[T]) extends LIST[T]
+  dependent case object NIL extends LIST[Nothing]
+  dependent case class CONS[+T](head: T, tail: LIST[T]) extends LIST[T]
 
   val x1: 0 = length(NIL)
   val x2: 1 = length(CONS(true, NIL))
@@ -63,8 +63,8 @@ object GenericListLengthMethod {
       if (this.isInstanceOf[NIL.type]) 0
       else 1 + this.asInstanceOf[CONS[T]].tail.length
   }
-  case object NIL extends LIST[Nothing]
-  case class CONS[+T](head: T, tail: LIST[T]) extends LIST[T]
+  dependent case object NIL extends LIST[Nothing]
+  dependent case class CONS[+T](head: T, tail: LIST[T]) extends LIST[T]
 
   val x1: 0 = NIL.length
   val x2: 1 = CONS(true, NIL).length

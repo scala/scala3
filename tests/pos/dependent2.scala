@@ -1,7 +1,7 @@
 object DepNats {
   sealed trait Nat { val pred: Nat }
-  case object Zero extends Nat { val pred: Nat = Zero }
-  case class Succ(pred: Nat) extends Nat
+  dependent case object Zero extends Nat { val pred: Nat = Zero }
+  dependent case class Succ(pred: Nat) extends Nat
 
   dependent def asNat(i: Int): Nat =
     if (i == 0) Zero

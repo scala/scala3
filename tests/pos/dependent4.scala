@@ -4,8 +4,8 @@ object ListIntConcat {
       if (this.isInstanceOf[Nil.type]) that
       else Cons(this.asInstanceOf[Cons].head, this.asInstanceOf[Cons].tail ++ that)
   }
-  case object Nil extends List
-  case class Cons(head: Int, tail: List) extends List
+  dependent case object Nil extends List
+  dependent case class Cons(head: Int, tail: List) extends List
 
   val x1: Nil.type = Nil ++ Nil
   val x2: { Cons(1, Nil) } = Cons(1, Nil) ++ Nil
@@ -21,8 +21,8 @@ object ListGenericConcat {
       if (this.isInstanceOf[Nil[T]]) that
       else Cons(this.asInstanceOf[Cons[T]].head, this.asInstanceOf[Cons[T]].tail ++ that)
   }
-  case class Nil[T]() extends List[T]
-  case class Cons[T](head: T, tail: List[T]) extends List[T]
+  dependent case class Nil[T]() extends List[T]
+  dependent case class Cons[T](head: T, tail: List[T]) extends List[T]
 
   val nil = new Nil[Int]()
 
@@ -40,8 +40,8 @@ object ListCovariantConcat {
       if (this.isInstanceOf[Nil.type]) that
       else Cons(this.asInstanceOf[Cons[T]].head, this.asInstanceOf[Cons[T]].tail ++ that)
   }
-  case object Nil extends List[Nothing]
-  case class Cons[+T](head: T, tail: List[T]) extends List[T]
+  dependent case object Nil extends List[Nothing]
+  dependent case class Cons[+T](head: T, tail: List[T]) extends List[T]
 
   val x2: { Cons(1, Nil) } = Cons(1, Nil) ++ Nil
   val x3: { Cons(1, Nil) } = Nil ++ Cons(1, Nil)

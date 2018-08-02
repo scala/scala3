@@ -2,14 +2,14 @@ object IdrisVect {
   dependent def þ [T] : T = ??? : T
 
   sealed trait Nat { val pred: Nat }
-  case object Zero extends Nat { val pred: Nat = Zero }
-  case class Succ(pred: Nat) extends Nat
+  dependent case object Zero extends Nat { val pred: Nat = Zero }
+  dependent case class Succ(pred: Nat) extends Nat
 
   // case class Fin(n: Nat, m: Nat, ev: [n < m])
 
   sealed trait Fin { def bound: Nat }
-  case class FinZero(val bound: Succ) extends Fin
-  case class FinSucc(f: Fin) extends Fin {
+  dependent case class FinZero(val bound: Succ) extends Fin
+  dependent case class FinSucc(f: Fin) extends Fin {
     val bound: { Succ(f.bound) } = Succ(f.bound)
   }
 
@@ -22,8 +22,8 @@ object IdrisVect {
   import Nat._
 
   sealed trait  Vect[T] { def length: Nat }
-  case class Nil[T](length: Zero.type) extends Vect[T]
-  case class Cons[T](head: T, tail: Vect[T], length: Nat) extends Vect[T]
+  dependent case class Nil[T](length: Zero.type) extends Vect[T]
+  dependent case class Cons[T](head: T, tail: Vect[T], length: Nat) extends Vect[T]
 
   object Vect {
     dependent def sized[T](n: Nat) = Cons(þ[T], þ[Vect[T]], n)
