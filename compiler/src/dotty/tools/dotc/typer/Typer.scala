@@ -992,7 +992,7 @@ class Typer extends Namer
 
         if (tree.isInstanceOf[untpd.RewriteMatch]) checkInRewriteContext("rewrite match", tree.pos)
         val sel1 = typedExpr(tree.selector)
-        val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
+        val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos)
         typedMatchFinish(tree, sel1, selType, pt)
     }
   }
