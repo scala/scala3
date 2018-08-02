@@ -1,22 +1,22 @@
 object Foo {
   sealed trait List
-  case object Nil extends List
-  case class Cons(head: Int, tail: List) extends List
+  dependent case object Nil extends List
+  dependent case class Cons(head: Int, tail: List) extends List
 
 
-  transparent def cons1 =
+  dependent def cons1 =
     Cons(1, Cons(2, Nil)) match {
       case Cons(x, _) => x
     }
 
-  transparent def cons2 = {
+  dependent def cons2 = {
     val list1 = Cons(1, Cons(2, Nil))
     list1 match {
       case Cons(x, _) => x
     }
   }
 
-  transparent def cons3 = {
+  dependent def cons3 = {
     val list1 = Cons(1, Cons(2, Nil))
     list1 match {
       case Nil        => 0
@@ -24,12 +24,12 @@ object Foo {
     }
   }
 
-  transparent def cons4 =
+  dependent def cons4 =
     Cons(1, Cons(2, Nil)) match {
       case Cons(x, Cons(y, _)) => y
     }
 
-  transparent def cons5 =
+  dependent def cons5 =
     Cons(1, Cons(2, Nil)) match {
       case Cons(x, Cons(y, zs)) => zs
     }
@@ -43,7 +43,7 @@ object Foo {
 
   case class Some(x: Some)
 
-  transparent def bla =
+  dependent def bla =
     (??? : Some) match {
       case Some(Some(x)) => x
     }
