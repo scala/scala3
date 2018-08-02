@@ -296,12 +296,16 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected def caseDefText[T >: Untyped](cd: CaseDef[T], showType: Boolean): Text = {
     val CaseDef(pat, guard, body) = cd
+    val patText = inPattern { if (showType) toText(pat.asInstanceOf[tpd.Tree].tpe) else toText(pat) }
+    val guardText: Text =
+      if (guard.isEmpty) ""
+      else keywordStr(" if ") ~ (if (showType) toText(guard.asInstanceOf[tpd.Tree].tpe) else toText(guard))
     val bodyText = body match {
       case body if showType => toText(List(body.asInstanceOf[tpd.Tree].tpe), "\n")
       case Block(stats, expr) => toText(stats :+ expr, "\n")
       case expr => toText(expr)
     }
-    keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ " => " ~ bodyText
+    keywordStr("case ") ~ patText ~ guardText ~ " => " ~ bodyText
   }
 
   protected def matchText[T >: Untyped](sel: Tree[T], cases: List[CaseDef[T]], showType: Boolean): Text = {

@@ -1037,7 +1037,7 @@ class Typer extends Namer
     val gadts = gadtSyms(selType.widen)
     pt match {
       case TypeOf.Match(_, cs) if cs.length == cases.length =>
-        cases.zip(cs).mapconserve { case (c, p) => typedCase(c, selType, p, gadts) }
+        cases.zip(cs).mapconserve { case (c, (_, _, p)) => typedCase(c, selType, p, gadts) }
       case _ =>
         cases.mapconserve(typedCase(_, selType, pt, gadts))
     }
