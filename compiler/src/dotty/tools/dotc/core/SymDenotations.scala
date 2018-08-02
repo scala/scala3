@@ -794,7 +794,7 @@ object SymDenotations {
       is(TransparentMethod, butNot = AccessorOrSynthetic)
 
     def isDependentMethod(implicit ctx: Context): Boolean =
-      is(DependentMethod, butNot = AccessorOrSynthetic)
+      is(DependentMethod)
 
     /** A transparent method that is not nested inside another transparent method.
      *  Nested transparents are not inlineable yet, only their inlined copies are.

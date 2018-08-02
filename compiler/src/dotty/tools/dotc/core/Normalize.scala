@@ -106,7 +106,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
     * error otherwise.
     */
   private def defUnfolder(fnSym: Symbol): Unfolder = {
-    assert(fnSym.isTerm && fnSym.isDependentMethod && fnSym.hasAnnotation(defn.BodyAnnot), s"Tried to illegaly unfold $fnSym, ${fnSym.isTerm && fnSym.isDependentMethod}")
+    assert(fnSym.isTerm && fnSym.isDependentMethod && fnSym.hasAnnotation(defn.BodyAnnot), s"Tried to illegally unfold $fnSym")
     val body: Tree = fnSym.getAnnotation(defn.BodyAnnot) match {
       case Some(annot) =>
         if (annot.isEvaluating)
@@ -144,7 +144,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
           case _                         => NoType  // TODO: error/stuck/impossible?
         }
       }
-      else if (fnSym is Dependent) {
+      else if (fnSym.isDependentMethod) {
         // Semantically, this is what we want to do:
         // if (fnSym.isCompleting)
         //   if (ctx.isDependent) Stuck(tp)
@@ -192,7 +192,8 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
       case TypeOf.New(cnstrSym, _, args) =>
         selectTermParam(cnstrSym, args)
       case pre: TypeProxy =>
-        revealNewAndSelect(pre.underlying)
+        // TODO: Keep track of these normalization "reentries"
+        revealNewAndSelect(ctx.normalize(pre.underlying))
       case _ =>
         NoType  // TODO: stuck?
     }
@@ -229,7 +230,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
           normalizeApp(tp, tp, Nil) orElse normalizeTermParamSel(tp) orElse {
             tp.underlying match {
               case underTp: SingletonType => apply(underTp)
-              case underTp => tp  // TODO: stuck?
+              case _ => tp  // TODO: stuck?
             }
           }
 
