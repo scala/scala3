@@ -10,11 +10,9 @@ import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
-import dotty.tools.IOUtils
+import dotty.tools.io.{Directory, File, Path}
 
 import dotty.tools.vulpix.TestConfiguration
-
-import java.nio.file.{Files, Path}
 
 import org.junit.Test
 import org.junit.Assert.{assertEquals, assertFalse, fail}
@@ -81,25 +79,25 @@ class CommentPicklingTest {
   }
 
   private def compileAndUnpickle[T](sources: List[String])(fn: (List[tpd.Tree], Context) => T) = {
-    IOUtils.inTempDirectory { tmp =>
+    Directory.inTempDirectory { tmp =>
       val sourceFiles = sources.zipWithIndex.map {
         case (src, id) =>
-          val path = tmp.resolve(s"Src$id.scala").toAbsolutePath
-          Files.write(path, src.getBytes("UTF-8"))
+          val path = tmp./(File("Src$id.scala")).toAbsolute
+          path.writeAll(src)
           path.toString
       }
 
-      val out = tmp.resolve("out")
-      Files.createDirectories(out)
+      val out = tmp./("out")
+      out.createDirectory()
 
-      val options = compileOptions.and("-d", out.toAbsolutePath.toString).and(sourceFiles: _*)
+      val options = compileOptions.and("-d", out.toAbsolute.toString).and(sourceFiles: _*)
       val reporter = TestReporter.reporter(System.out, logLevel = ERROR)
       Main.process(options.all, reporter)
       assertFalse("Compilation failed.", reporter.hasErrors)
 
-      val tastyFiles = IOUtils.getAll(tmp, "glob:**.tasty")
+      val tastyFiles = Path.onlyFiles(out.walkFilter(_.extension == "tasty")).toList
       val unpicklingOptions = unpickleOptions
-        .withClasspath(out.toAbsolutePath.toString)
+        .withClasspath(out.toAbsolute.toString)
         .and("dummy") // Need to pass a dummy source file name
       val unpicklingDriver = new UnpicklingDriver
       unpicklingDriver.unpickle(unpicklingOptions.all, tastyFiles)(fn)
@@ -108,12 +106,11 @@ class CommentPicklingTest {
 
   private class UnpicklingDriver extends Driver {
     override def initCtx = super.initCtx.addMode(Mode.ReadComments)
-    def unpickle[T](args: Array[String], paths: List[Path])(fn: (List[tpd.Tree], Context) => T): T = {
+    def unpickle[T](args: Array[String], files: List[File])(fn: (List[tpd.Tree], Context) => T): T = {
       implicit val (_, ctx: Context) = setup(args, initCtx)
       ctx.initialize()
-      val trees = paths.flatMap { p =>
-        val bytes = Files.readAllBytes(p)
-        val unpickler = new DottyUnpickler(bytes)
+      val trees = files.flatMap { f =>
+        val unpickler = new DottyUnpickler(f.bytes().toArray)
         unpickler.enter(roots = Set.empty)
         unpickler.trees(ctx)
       }

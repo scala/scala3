@@ -16,10 +16,10 @@ import dotty.tools.dottydoc.util.syntax._
 import dotty.tools.io.AbstractFile
 import dotc.reporting.{ StoreReporter, MessageRendering }
 import dotc.interfaces.Diagnostic.ERROR
+import io.Directory
 import org.junit.Assert.fail
 
 import java.io.{ BufferedWriter, OutputStreamWriter }
-import java.nio.file.Files
 
 trait DottyDocTest extends MessageRendering {
   dotty.tools.dotc.parsing.Scanners // initialize keywords
@@ -105,10 +105,10 @@ trait DottyDocTest extends MessageRendering {
   }
 
   def checkFromTasty(classNames: List[String], sources: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit = {
-    IOUtils.inTempDirectory { tmp =>
+    Directory.inTempDirectory { tmp =>
       val ctx = "shadow ctx"
-      val out = tmp.resolve("out")
-      Files.createDirectories(out)
+      val out = tmp./(Directory("out"))
+      out.createDirectory()
 
       val dotcCtx = {
         val ctx = freshCtx(out.toString :: Nil)

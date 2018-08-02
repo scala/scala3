@@ -23,6 +23,12 @@ object Directory {
     if (userDir == "") None
     else Some(apply(userDir).normalize)
 
+  def inTempDirectory[T](fn: Directory => T): T = {
+    val temp = Directory(Files.createTempDirectory("temp"))
+    try fn(temp)
+    finally temp.deleteRecursively()
+  }
+
   def apply(path: String): Directory = apply(Paths.get(path))
   def apply(path: JPath): Directory = new Directory(path)
 }
