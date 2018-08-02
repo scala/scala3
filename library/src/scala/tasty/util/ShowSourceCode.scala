@@ -722,6 +722,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Constant.ClassTag(v) =>
         this += "classOf"
         inSquare(printType(v))
+      case Constant.Symbol(v) =>
+        this += "'" += v.name
     }
 
     def printTypeOrBoundsTree(tpt: TypeOrBoundsTree): Buffer = tpt match {
@@ -923,6 +925,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case Type.PolyType(params, _, _) => this += params(idx)
           case Type.TypeLambda(params, _, _) => this += params(idx)
         }
+
+      case Type.RecursiveType(tpe) =>
+        printType(tpe)
+
+      case Type.RecursiveThis(_) =>
+        this += "this"
 
       case _ =>
         throw new MatchError(tpe.show)

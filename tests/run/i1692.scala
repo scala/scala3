@@ -12,6 +12,9 @@ class LazyNullable(a: => Int) {
 
   private[this] val d = "D"
   lazy val l3 = d + d // null out d (Scalac require single use?)
+
+  private [this] val e = "E"
+  lazy val l4 = try e finally () // null out e
 }
 
 object LazyNullable2 {
@@ -47,6 +50,10 @@ class LazyNotNullable {
   class Inner {
     lazy val l8 = h
   }
+
+  private[this] val i = "I"
+  // not nullable because try is lifted, so i is used outside lazy val initializer
+  lazy val l9 = try i catch { case e: Exception => () } 
 }
 
 trait LazyTrait {
@@ -87,6 +94,9 @@ object Test {
     assert(lz.l3 == "DD")
     assertNull("d")
 
+    assert(lz.l4 == "E")
+    assertNull("e")
+
     assert(LazyNullable2.l0 == "A")
     assert(readField("a", LazyNullable2) == null)
   }
@@ -123,6 +133,9 @@ object Test {
     val inner = new lz.Inner
     assert(inner.l8 == "H")
     assertNotNull("LazyNotNullable$$h") // fragile: test will break if compiler generated names change
+
+    assert(lz.l9 == "I")
+    assertNotNull("i")
 
     val fromTrait = new LazyTrait {}
     assert(fromTrait.l0 == "A")

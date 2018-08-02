@@ -587,9 +587,13 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
     object Unapply extends UnapplyExtractor {
       def unapply(x: Pattern)(implicit ctx: Context): Option[(Term, List[Term], List[Pattern])] = x match {
-        case Trees.UnApply(fun, implicits, patterns) => Some((fun, implicits, patterns))
-        case Trees.Typed(Trees.UnApply(fun, implicits, patterns), _) => Some((fun, implicits, patterns))
+        case Trees.UnApply(fun, implicits, patterns) => Some((fun, implicits, effectivePatterns(patterns)))
+        case Trees.Typed(Trees.UnApply(fun, implicits, patterns), _) => Some((fun, implicits, effectivePatterns(patterns)))
         case _ => None
+      }
+      private def effectivePatterns(patterns: List[Pattern]): List[Pattern] = patterns match {
+        case patterns0 :+ Trees.SeqLiteral(elems, _) => patterns0 ::: elems
+        case _ => patterns
       }
     }
 
@@ -899,6 +903,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
           Some((
             binder.asInstanceOf[LambdaType[TypeOrBounds]], // Cast to tpd
             idx))
+        case Types.TermParamRef(binder, idx) => Some((binder, idx))
         case _ => None
       }
     }
@@ -1072,6 +1077,12 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
       }
     }
 
+    object Symbol extends SymbolExtractor {
+      def unapply(x: Constant): Option[scala.Symbol] = x match {
+        case x: Constants.Constant if x.tag == Constants.ScalaSymbolTag => Some(x.scalaSymbolValue)
+        case _ => None
+      }
+    }
   }
 
   // ===== Signature ================================================

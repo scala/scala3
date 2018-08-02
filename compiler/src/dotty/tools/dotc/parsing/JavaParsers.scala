@@ -907,4 +907,18 @@ object JavaParsers {
       unit
     }
   }
+
+
+  /** OutlineJavaParser parses top-level declarations in `source` to find declared classes, ignoring their bodies (which
+   *  must only have balanced braces). This is used to map class names to defining sources.
+   *  This is necessary even for Java, because the filename defining a non-public classes cannot be determined from the
+   *  classname alone.
+   */
+  class OutlineJavaParser(source: SourceFile)(implicit ctx: Context) extends JavaParser(source) with OutlineParserCommon {
+    override def skipBracesHook() = None
+    override def typeBody(leadingToken: Int, parentName: Name, parentTParams: List[TypeDef]): (List[Tree], List[Tree]) = {
+      skipBraces()
+      (List(EmptyValDef), List(EmptyTree))
+    }
+  }
 }

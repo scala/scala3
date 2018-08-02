@@ -9,13 +9,13 @@ object Flags {
    *  The first two bits indicate whether a flagset applies to terms,
    *  to types, or to both.  Bits 2..63 are available for properties
    *  and can be doubly used for terms and types.
-   *  Combining two FlagSets with `|` will give a FlagSet
-   *  that has the intersection of the applicability to terms/types
-   *  of the two flag sets. It is checked that the intersection is not empty.
    */
   case class FlagSet(val bits: Long) extends AnyVal {
 
     /** The union of this flag set and the given flag set
+     *  Combining two FlagSets with `|` will give a FlagSet
+     *  that has the intersection of the applicability to terms/types
+     *  of the two flag sets. It is checked that the intersection is not empty.
      */
     def | (that: FlagSet): FlagSet =
       if (bits == 0) that

@@ -153,6 +153,7 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Constant.Double(value) => this += "Constant.Double(" += value += ")"
       case Constant.String(value) => this += "Constant.String(\"" += value += "\")"
       case Constant.ClassTag(value) => this += "Constant.ClassTag(" += value += ")"
+      case Constant.Symbol(value) => this += "Constant.Symbol('" += value.name += ")"
     }
 
     def visitType(x: TypeOrBounds): Buffer = x match {
