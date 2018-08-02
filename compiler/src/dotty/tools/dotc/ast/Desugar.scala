@@ -310,7 +310,7 @@ object desugar {
     val isEnum = mods.isEnumClass && !mods.is(Module)
     def isEnumCase = mods.isEnumCase
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
-    val dependent = if (mods.is(Dependent)) Dependent else EmptyFlags
+    val dependentFlag = if (mods.is(Dependent)) Dependent else EmptyFlags
       // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
 
     val originalTparams = constr1.tparams
@@ -424,7 +424,7 @@ object desugar {
     // two errors without @uncheckedVariance, one of them spurious.
     val caseClassMeths = {
       def syntheticProperty(name: TermName, rhs: Tree) =
-        DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic | dependent)
+        DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic | dependentFlag)
       def productElemMeths = {
         val caseParams = constrVparamss.head.toArray
         for (i <- 0 until arity if nme.selectorName(i) `ne` caseParams(i).name)
@@ -554,12 +554,12 @@ object desugar {
           if (mods is Abstract) Nil
           else
             DefDef(nme.apply, derivedTparams, derivedVparamss, applyResultTpt, widenedCreatorExpr)
-              .withFlags(Synthetic | dependent | (constr1.mods.flags & DefaultParameterized)) :: widenDefs
+              .withFlags(Synthetic | dependentFlag | (constr1.mods.flags & DefaultParameterized)) :: widenDefs
         val unapplyMeth = {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
           DefDef(nme.unapply, derivedTparams, (unapplyParam :: Nil) :: Nil, TypeTree(), unapplyRHS)
-            .withMods(synthetic | dependent)
+            .withMods(synthetic | dependentFlag)
         }
         companionDefs(companionParent, applyMeths ::: unapplyMeth :: companionMembers)
       }
