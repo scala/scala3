@@ -12,8 +12,8 @@ class Bad[X, Y](val v: Int) extends AnyVal {
     else {(); new Bad[X, Y](0)}.differentReceiver2
   }
 
-  @annotation.tailrec final def dependent[Z](a: Int)(b: String): b.type = {
-    this.dependent[Z](a)(b)
+  @annotation.tailrec final def dependentf[Z](a: Int)(b: String): b.type = {
+    this.dependentf[Z](a)(b)
   }
 }
 

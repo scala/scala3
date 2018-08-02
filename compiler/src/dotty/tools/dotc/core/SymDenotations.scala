@@ -2101,20 +2101,20 @@ object SymDenotations {
   private abstract class InheritedCacheImpl(val createdAt: Period) extends InheritedCache {
     protected def sameGroup(p1: Phase, p2: Phase): Boolean
 
-    private[this] var dependent: WeakHashMap[InheritedCache, Unit] = null
+    private[this] var dependentMap: WeakHashMap[InheritedCache, Unit] = null
     private[this] var checkedPeriod: Period = Nowhere
 
     protected def invalidateDependents() = {
-      if (dependent != null) {
-        val it = dependent.keySet.iterator()
+      if (dependentMap != null) {
+        val it = dependentMap.keySet.iterator()
         while (it.hasNext()) it.next().invalidate()
       }
-      dependent = null
+      dependentMap = null
     }
 
     protected def addDependent(dep: InheritedCache) = {
-      if (dependent == null) dependent = new WeakHashMap
-      dependent.put(dep, ())
+      if (dependentMap == null) dependentMap = new WeakHashMap
+      dependentMap.put(dep, ())
     }
 
     def isValidAt(phase: Phase)(implicit ctx: Context) =
