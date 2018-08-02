@@ -591,6 +591,12 @@ abstract class Tasty { tasty =>
 
   type Type <: TypeOrBounds
 
+  trait TypeAPI {
+    def =:=(other: Type)(implicit ctx: Context): Boolean
+    def <:<(other: Type)(implicit ctx: Context): Boolean
+  }
+  implicit def TypeDeco(tpe: Type): TypeAPI
+
   type RecursiveType <: Type
 
   type LambdaType[ParamInfo <: TypeOrBounds] <: Type

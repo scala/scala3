@@ -769,6 +769,12 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
   // ----- Types ----------------------------------------------------
 
   type Type = Types.Type
+
+  def TypeDeco(tpe: Type): TypeAPI = new TypeAPI {
+    def =:=(other: Type)(implicit ctx: Context): Boolean = tpe =:= other
+    def <:<(other: Type)(implicit ctx: Context): Boolean = tpe <:< other
+  }
+
   type RecursiveType = Types.RecType
   type LambdaType[ParamInfo <: TypeOrBounds] = Types.LambdaType { type PInfo = ParamInfo }
   type MethodType = Types.MethodType
