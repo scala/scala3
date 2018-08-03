@@ -26,11 +26,12 @@ final class TastyFileManager extends ClassFileManager {
   private[this] val movedTastyFiles = new mutable.HashMap[File, File]
 
   override def delete(classes: Array[File]): Unit = {
-    val toBeBackedUp = tastyFiles(classes)
+    val tasties = tastyFiles(classes)
+    val toBeBackedUp = tasties
       .filter(t => t.exists && !movedTastyFiles.contains(t) && !generatedTastyFiles(t))
     for (c <- toBeBackedUp)
       movedTastyFiles.put(c, move(c))
-    IO.deleteFilesEmptyDirs(classes)
+    IO.deleteFilesEmptyDirs(tasties)
   }
 
   override def generated(classes: Array[File]): Unit =
