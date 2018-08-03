@@ -6,21 +6,7 @@ import core._
 import Contexts._, Symbols._, Decorators._, Comments._
 import ast.tpd
 
-trait Docstrings { self: Typer =>
-
-  /**
-   * Expands or cooks the documentation for all members of `cdef`.
-   *
-   * @see Docstrings#cookComment
-   */
-  def cookComments(cdef: tpd.Tree, cls: ClassSymbol)(implicit ctx: Context): Unit = {
-    // val cls = cdef.symbol
-    val cookingCtx = ctx.localContext(cdef, cls).setNewScope
-    cls.info.allMembers.foreach { member =>
-      cookComment(member.symbol, cls)(cookingCtx)
-    }
-    cookComment(cls, cls)(cookingCtx)
-  }
+object Docstrings {
 
   /**
    * Expands or cooks the documentation for `sym` in class `owner`.
@@ -47,8 +33,8 @@ trait Docstrings { self: Typer =>
       case _ =>
         expandComment(sym).map { expanded =>
           val typedUsecases = expanded.usecases.map { usecase =>
-            enterSymbol(createSymbol(usecase.untpdCode))
-            typedStats(usecase.untpdCode :: Nil, owner) match {
+            ctx.typer.enterSymbol(ctx.typer.createSymbol(usecase.untpdCode))
+            ctx.typer.typedStats(usecase.untpdCode :: Nil, owner) match {
               case List(df: tpd.DefDef) =>
                 usecase.typed(df)
               case _ =>

@@ -45,9 +45,6 @@ class ReadTastyTreesFromClasses extends FrontEnd {
               else {
                 val unit = mkCompilationUnit(cls, cls.tree, forceTrees = true)
                 unit.pickled += (cls -> unpickler.unpickler.bytes)
-                if (ctx.settings.YcookComments.value) {
-                  ctx.typer.cookComments(cls.tree, cls)
-                }
                 Some(unit)
               }
             case tree: Tree[_] =>

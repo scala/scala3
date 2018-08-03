@@ -85,8 +85,7 @@ class Typer extends Namer
                with Implicits
                with Inferencing
                with Dynamic
-               with Checking
-               with Docstrings {
+               with Checking {
 
   import Typer._
   import tpd.{cpy => _, _}
@@ -1591,12 +1590,6 @@ class Typer extends Namer
       checkDerivedValueClass(cls, body1)
 
       if (ctx.settings.YretainTrees.value) cls.treeOrProvider = cdef1
-
-      // Expand comments and type usecases if `-Ycook-comments` is set.
-      if (ctx.settings.YcookComments.value) {
-        cookComments(cdef1, cls)
-      }
-
 
       cdef1
 

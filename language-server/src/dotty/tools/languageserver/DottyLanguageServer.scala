@@ -368,16 +368,7 @@ class DottyLanguageServer extends LanguageServer
     if (tpw == NoType) null // null here indicates that no response should be sent
     else {
       val symbol = Interactive.enclosingSourceSymbol(trees, pos)
-      val docComment = ctx.docCtx.flatMap(_.docstring(symbol)).map {
-        case comment if !comment.isExpanded =>
-          val typer = new Typer()
-          val owner = symbol.owner
-          val cookingCtx = ctx.withOwner(owner)
-          typer.cookComment(symbol, owner)(cookingCtx)
-          ctx.docCtx.get.docstring(symbol).get
-        case comment =>
-          comment
-      }
+      val docComment = ctx.docCtx.flatMap(_.docstring(symbol))
       val content = hoverContent(tpw.show, docComment)
       new Hover(content, null)
     }

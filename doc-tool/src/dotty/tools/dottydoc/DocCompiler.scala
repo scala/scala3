@@ -9,6 +9,7 @@ import dotc.core.Mode
 import dotc.{Compiler, Run}
 
 import dotty.tools.dotc.fromtasty.{ReadTastyTreesFromClasses, TASTYRun}
+import dotty.tools.dotc.transform.CookComments
 
 /** Custom Compiler with phases for the documentation tool
  *
@@ -41,6 +42,7 @@ class DocCompiler extends Compiler {
     Nil
 
   override protected def transformPhases: List[List[Phase]] =
+    List(new CookComments) ::
     List(new DocImplicitsPhase) ::
     List(new DocASTPhase) ::
     List(DocMiniTransformations(new UsecasePhase,

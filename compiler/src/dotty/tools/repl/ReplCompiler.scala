@@ -14,7 +14,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.reporting.diagnostic.messages
 import dotty.tools.dotc.transform.PostTyper
-import dotty.tools.dotc.typer.{FrontEnd, ImportInfo, Typer}
+import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.Positions._
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
@@ -195,13 +195,11 @@ class ReplCompiler extends Compiler {
         if (stat.tpe.isError) stat.tpe.show
         else {
           val symbols = extractSymbols(stat)
-          val typer = new Typer()
           val doc = for {
             sym <- symbols
-            owner = sym.owner
-            cookingCtx = ctx.withOwner(owner)
-            cooked <- typer.cookComment(sym, owner)(cookingCtx)
-            body <- cooked.expandedBody
+            docCtx <- ctx.docCtx
+            comment <- docCtx.docstring(sym)
+            body <- comment.expandedBody
           } yield body
 
           if (doc.hasNext) doc.next()
