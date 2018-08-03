@@ -102,9 +102,10 @@ class TreeUnpickler(reader: TastyReader,
     }
   }
 
-  class Completer(owner: Symbol, reader: TastyReader) extends LazyType {
+  class Completer(owner: Symbol, reader: TastyReader)(implicit creationContext: Context) extends LazyType {
     import reader._
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+      implicit val ctx = creationContext
       treeAtAddr(currentAddr) =
         new TreeReader(reader).readIndexedDef()(
           ctx.withPhaseNoLater(ctx.picklerPhase).withOwner(owner))
