@@ -1211,7 +1211,7 @@ object Trees {
           case TypeTree() =>
             tree
           case SingletonTypeTree(ref) =>
-            cpy.SingletonTypeTree(tree)(transform(ref))
+            cpy.SingletonTypeTree(tree)(transform(ref)(ctx.fresh.addMode(Mode.InTypeOf)))
           case AndTypeTree(left, right) =>
             cpy.AndTypeTree(tree)(transform(left), transform(right))
           case OrTypeTree(left, right) =>

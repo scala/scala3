@@ -600,6 +600,7 @@ class TreeUnpickler(reader: TastyReader,
           case LAZY => addFlag(Lazy)
           case OVERRIDE => addFlag(Override)
           case TRANSPARENT => addFlag(Transparent)
+          case DEPENDENT => addFlag(Dependent)
           case MACRO => addFlag(Macro)
           case STATIC => addFlag(JavaStatic)
           case OBJECT => addFlag(Module)
@@ -1032,7 +1033,7 @@ class TreeUnpickler(reader: TastyReader,
         case THROW =>
           Throw(readTerm())
         case SINGLETONtpt =>
-          SingletonTypeTree(readTerm())
+          SingletonTypeTree(readTerm()(ctx.fresh.addMode(Mode.InTypeOf)))
         case BYNAMEtpt =>
           ByNameTypeTree(readTpt())
         case NAMEDARG =>

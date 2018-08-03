@@ -408,6 +408,7 @@ object Checking {
     checkCombination(Abstract, Override)
     checkCombination(Lazy, Transparent)
     checkCombination(Module, Transparent)
+    checkCombination(Dependent, Transparent)  // TODO: Add further restrictions on Dependent
     checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
     if (sym.is(Transparent)) checkApplicable(Transparent, sym.isTerm && !sym.is(Mutable | Module))
     if (sym.is(Lazy)) checkApplicable(Lazy, !sym.is(Method | Mutable))

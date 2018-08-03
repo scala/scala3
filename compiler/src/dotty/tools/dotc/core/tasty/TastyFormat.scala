@@ -305,7 +305,7 @@ object TastyFormat {
   final val LAZY = 14
   final val OVERRIDE = 15
   final val TRANSPARENT = 16
-
+  final val DEPENDENT = 17
   final val STATIC = 18
   final val OBJECT = 19
   final val TRAIT = 20
