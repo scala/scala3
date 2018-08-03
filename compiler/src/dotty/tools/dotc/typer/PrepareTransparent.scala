@@ -250,12 +250,17 @@ object PrepareTransparent {
           inlined.updateAnnotation(LazyBodyAnnotation { _ =>
             implicit val ctx = inlineCtx
             val rawBody = treeExpr(ctx)
-            val typedBody =
-              if (ctx.reporter.hasErrors) rawBody
-              else ctx.compilationUnit.inlineAccessors.makeInlineable(rawBody)
-            val inlineableBody = addReferences(inlined, originalBody, typedBody)
-            inlining.println(i"Body to inline for $inlined: $inlineableBody")
-            inlineableBody
+            if (inlined.is(Transparent)) {
+              val typedBody =
+                if (ctx.reporter.hasErrors) rawBody
+                else ctx.compilationUnit.inlineAccessors.makeInlineable(rawBody)
+              val inlineableBody = addReferences(inlined, originalBody, typedBody)
+              inlining.println(i"Body to inline for $inlined: $inlineableBody")
+              inlineableBody
+            } else {
+              assert(inlined.is(Dependent))
+              rawBody
+            }
           })
         }
     }
