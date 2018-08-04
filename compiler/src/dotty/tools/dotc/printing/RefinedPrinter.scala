@@ -201,7 +201,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         // (they don't need to because we keep the original type tree with
         //  the original annotation anyway. Therefore, there will always be
         //  one version of the annotation tree that has the correct positions).
-        withoutPos(super.toText(tp))
+        return withoutPos(super.toText(tp))
       case tp: SelectionProto =>
         return "?{ " ~ toText(tp.name) ~
            (Str(" ") provided !tp.name.toSimpleName.last.isLetterOrDigit) ~
