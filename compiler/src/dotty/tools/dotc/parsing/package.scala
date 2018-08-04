@@ -2,7 +2,7 @@ package dotty.tools.dotc
 
 import util.Chars._
 import core.Names.Name
-import core.StdNames.nme
+import core.StdNames.{nme,tpnme}
 import core.NameOps._
 
 package object parsing {
@@ -11,7 +11,12 @@ package object parsing {
     if (operator eq nme.ERROR) -1
     /* SLS 3.2.10 (https://www.scala-lang.org/files/archive/spec/2.13/03-types.html#infix-types):
      * all infix types have the same precedence */
-    else if (isType) minInfixPrec
+    else if (isType) {
+      if (operator == tpnme.raw.AMP || operator == tpnme.raw.BAR)
+        precedence(operator, false)
+      else
+        minInfixPrec
+    }
     else {
       val firstCh = operator.firstPart.head
       if (isScalaLetter(firstCh)) 1
