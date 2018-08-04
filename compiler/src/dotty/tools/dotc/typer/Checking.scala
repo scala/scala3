@@ -65,10 +65,14 @@ object Checking {
    *     cannot handle those.
    */
   def checkAppliedType(tree: AppliedTypeTree, boundsCheck: Boolean)(implicit ctx: Context) = {
+    def kind(tp: Type): Type = tp match {
+      case nTp: NamedType => nTp.info
+      case _ => tp
+    }
     val AppliedTypeTree(tycon, args) = tree
     // If `args` is a list of named arguments, return corresponding type parameters,
     // otherwise return type parameters unchanged
-    val tparams = tycon.tpe.typeParams
+    val tparams = kind(tycon.tpe).typeParams
     def argNamed(tparam: ParamInfo) = args.find {
       case NamedArg(name, _) => name == tparam.paramName
       case _ => false
