@@ -559,6 +559,16 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             val last = enteredSyms
             stats.foreach(markDef)
             mapOverTree(last)
+          case CaseDef(pat, guard, body) =>
+            val last = enteredSyms
+            // mark all bindings
+            new TreeTraverser {
+              def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+                markDef(tree)
+                traverseChildren(tree)
+              }
+            }.traverse(pat)
+            mapOverTree(last)
           case _: Import =>
             tree
           case tree: DefDef if tree.symbol.is(Macro) && level == 0 =>
