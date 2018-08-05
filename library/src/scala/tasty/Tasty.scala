@@ -1,9 +1,10 @@
 package scala.tasty
 
 import scala.reflect.ClassTag
+import scala.tasty.reflect.StandardDefinitions
 import scala.tasty.util.Show
 
-abstract class Tasty { tasty =>
+abstract class Tasty extends StandardDefinitions { tasty =>
 
   // ===== Quotes ===================================================
 
