@@ -656,18 +656,18 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
     // Fix subtype checking for child instantiation,
     // such that `Foo(Test.this.foo) <:< Foo(Foo.this)`
     // See tests/patmat/i3938.scala
-    def removeThisType(implicit ctx: Context) = new TypeMap {
-      // is in tvarBounds? Don't create new tvars if true
-      private var tvarBounds: Boolean = false
+    class RemoveThisMap extends TypeMap {
+      var prefixTVar: Type = null
       def apply(tp: Type): Type = tp match {
         case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
           if (tref.symbol.is(Module))
             TermRef(this(tref.prefix), tref.symbol.sourceModule)
-          else if (tvarBounds)
+          else if (prefixTVar != null)
             this(tref)
           else {
-            tvarBounds = true
-            newTypeVar(TypeBounds.upper(this(tref)))
+            prefixTVar = WildcardType  // prevent recursive call from assigning it
+            prefixTVar = newTypeVar(TypeBounds.upper(this(tref)))
+            prefixTVar
           }
         case tp => mapOver(tp)
       }
@@ -681,13 +681,16 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       }
     }
 
-    val force = new ForceDegree.Value(
-      tvar => !(ctx.typerState.constraint.entry(tvar.origin) eq tvar.origin.underlying),
-      minimizeAll = false
-    )
-
+    val removeThisType = new RemoveThisMap
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
     val protoTp1 = removeThisType.apply(tp1).appliedTo(tvars)
+
+    val force = new ForceDegree.Value(
+      tvar =>
+        !(ctx.typerState.constraint.entry(tvar.origin) `eq` tvar.origin.underlying) ||
+        (tvar `eq` removeThisType.prefixTVar),
+      minimizeAll = false
+    )
 
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to
