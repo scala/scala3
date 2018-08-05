@@ -2,7 +2,7 @@ package scala.quoted
 
 import scala.runtime.quoted.Unpickler.Pickled
 
-sealed abstract class Expr[T] {
+sealed abstract class Expr[+T] {
   final def unary_~ : T = throw new Error("~ should have been compiled away")
 
   /** Evaluate the contents of this expression and return the result.
