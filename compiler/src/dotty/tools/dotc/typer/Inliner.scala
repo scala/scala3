@@ -629,7 +629,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       /** Try to match pattern `pat` against scrutinee reference `scrut`. If successful add
        *  bindings for variables bound in this pattern to `bindingsBuf`.
        */
-      def reducePattern(bindingsBuf: mutable.ListBuffer[MemberDef], scrut: TermRef, pat: Tree): Boolean = {
+      def reducePattern(bindingsBuf: mutable.ListBuffer[MemberDef], scrut: TermRef, pat: Tree)(implicit ctx: Context): Boolean = {
         val isImplicit = scrut.info == defn.ImplicitScrutineeTypeRef
 
         def newBinding(name: TermName, flags: FlagSet, rhs: Tree): Symbol = {
@@ -655,8 +655,30 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
         pat match {
           case Typed(pat1, tpt) =>
+            val getBoundVars = new TreeAccumulator[List[TypeSymbol]] {
+              def apply(syms: List[TypeSymbol], t: Tree)(implicit ctx: Context) = {
+                val syms1 = t match {
+                  case t: Bind if t.symbol.isType => t.symbol.asType :: syms
+                  case _ => syms
+                }
+                foldOver(syms1, t)
+              }
+            }
+            val boundVars = getBoundVars(Nil, tpt)
+            for (bv <- boundVars) ctx.gadt.setBounds(bv, bv.info.bounds)
             if (isImplicit) searchImplicit(nme.WILDCARD, tpt)
-            else scrut <:< tpt.tpe && reducePattern(bindingsBuf, scrut, pat1)
+            else scrut <:< tpt.tpe && {
+              for (bv <- boundVars) {
+                bv.info = TypeAlias(ctx.gadt.bounds(bv).lo)
+                  // FIXME: This is very crude. We should approximate with lower or higher bound depending
+                  // on variance, and we should also take care of recursive bounds. Basically what
+                  // ConstraintHandler#approximation does. However, this only works for constrained paramrefs
+                  // not GADT-bound variables. Hopefully we will get some way to improve this when we
+                  // re-implement GADTs in terms of constraints.
+                bindingsBuf += TypeDef(bv)
+              }
+              reducePattern(bindingsBuf, scrut, pat1)
+            }
           case pat @ Bind(name: TermName, Typed(_, tpt)) if isImplicit =>
             searchImplicit(name, tpt)
           case pat @ Bind(name: TermName, body) =>
@@ -714,8 +736,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         }
         val caseBindingsBuf = new mutable.ListBuffer[MemberDef]()
         if (scrutType != defn.ImplicitScrutineeTypeRef) caseBindingsBuf += scrutineeBinding
-        val pat1 = typer.typedPattern(cdef.pat, scrutType)(typer.gadtContext(gadtSyms))
-        if (reducePattern(caseBindingsBuf, scrutineeSym.termRef, pat1) && guardOK)
+        val gadtCtx = typer.gadtContext(gadtSyms).addMode(Mode.GADTflexible)
+        val pat1 = typer.typedPattern(cdef.pat, scrutType)(gadtCtx)
+        if (reducePattern(caseBindingsBuf, scrutineeSym.termRef, pat1)(gadtCtx) && guardOK)
           Some((caseBindingsBuf.toList, cdef.body))
         else
           None
@@ -843,6 +866,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case none => true
       }
     } && !boundSym.is(TransparentImplicitMethod)
+      // FIXME: It would be nice if we could also drop type bindings, but reference counting is trickier for them.
 
     val inlineBindings = new TreeMap {
       override def transform(t: Tree)(implicit ctx: Context) = t match {
