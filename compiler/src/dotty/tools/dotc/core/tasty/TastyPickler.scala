@@ -26,8 +26,8 @@ class TastyPickler(val rootCls: ClassSymbol) {
     nameBuffer.assemble()
     sections.foreach(_._2.assemble())
 
-    val nameBufferHash = pjwHash64(nameBuffer.bytes)
-    val treeSectionHash +: otherSectionHashes = sections.map(x => pjwHash64(x._2.bytes))
+    val nameBufferHash = TastyHash.pjwHash64(nameBuffer.bytes)
+    val treeSectionHash +: otherSectionHashes = sections.map(x => TastyHash.pjwHash64(x._2.bytes))
 
     // Hash of name table and tree
     val uuidLow: Long = nameBufferHash ^ treeSectionHash
@@ -78,21 +78,4 @@ class TastyPickler(val rootCls: ClassSymbol) {
 
   val treePkl = new TreePickler(this)
 
-  /** Returns a non-cryptographic 64-bit hash of the array.
-   *
-   *  from https://en.wikipedia.org/wiki/PJW_hash_function#Algorithm
-   */
-  private def pjwHash64(data: Array[Byte]): Long = {
-    var h = 0L
-    var i = 0
-    while (i < data.length) {
-      val d = data(i) & 0xFFL // Interpret byte as unsigned byte
-      h = (h << 8) + d
-      val high = h & 0xFF00000000000000L
-      h ^= high >> 48L
-      h &= ~high
-      i += 1
-    }
-    h
-  }
 }
