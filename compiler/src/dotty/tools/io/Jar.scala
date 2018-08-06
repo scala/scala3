@@ -40,7 +40,7 @@ class Jar(file: File) extends Iterable[JarEntry] {
 
   protected def errorFn(msg: String): Unit = Console println msg
 
-  private implicit def enrichManifest(m: JManifest): Jar.WManifest = Jar.WManifest(m)
+  import Jar._
 
   lazy val jarFile  = new JarFile(file.jpath.toFile)
   lazy val manifest = withJarInput(s => Option(s.getManifest))
@@ -60,7 +60,7 @@ class Jar(file: File) extends Iterable[JarEntry] {
     finally in.close()
   }
   def jarWriter(mainAttrs: (Attributes.Name, String)*) = {
-    new JarWriter(file, Jar.WManifest(mainAttrs: _*).underlying)
+    new JarWriter(file, Jar.WManifest.apply(mainAttrs: _*).underlying)
   }
 
   override def foreach[U](f: JarEntry => U): Unit = withJarInput { in =>
@@ -132,10 +132,8 @@ object Jar {
 
       m
     }
-    def apply(manifest: JManifest): WManifest = new WManifest(manifest)
-    implicit def unenrichManifest(x: WManifest): JManifest = x.underlying
   }
-  class WManifest(manifest: JManifest) {
+  implicit class WManifest(val manifest: JManifest) {
     for ((k, v) <- initialMainAttrs)
       this(k) = v
 

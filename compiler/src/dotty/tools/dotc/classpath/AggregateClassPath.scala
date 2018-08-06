@@ -70,7 +70,7 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   override private[dotty] def list(inPackage: String): ClassPathEntries = {
     val (packages, classesAndSources) = aggregates.map { cp =>
       try {
-        cp.list(inPackage)
+        cp.list(inPackage).toTuple
       } catch {
         case ex: java.io.IOException =>
           val e = new FatalError(ex.getMessage)
