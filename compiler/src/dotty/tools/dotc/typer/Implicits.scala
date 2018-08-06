@@ -627,7 +627,7 @@ trait Implicits { self: Typer =>
     }
 
     def synthesizedTastyContext(formal: Type): Tree =
-      if (ctx.inTransparentMethod || enclosingInlineds.nonEmpty) ref(defn.TastyTopLevelSplice_tastyContext)
+      if (ctx.inTransparentMethod || enclosingInlineds.nonEmpty) ref(defn.TastyTasty_macroContext)
       else EmptyTree
 
     /** If `formal` is of the form Eq[T, U], where no `Eq` instance exists for

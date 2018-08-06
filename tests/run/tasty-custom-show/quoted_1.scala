@@ -1,6 +1,5 @@
 import scala.quoted._
 
-import scala.tasty.TopLevelSplice
 import scala.tasty.Tasty
 import scala.tasty.util.{TreeTraverser, Show}
 

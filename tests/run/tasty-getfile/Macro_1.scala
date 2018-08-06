@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.tasty.{Tasty, TopLevelSplice}
+import scala.tasty.Tasty
 
 object SourceFiles {
 

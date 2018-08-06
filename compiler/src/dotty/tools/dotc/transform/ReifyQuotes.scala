@@ -237,7 +237,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     def levelOK(sym: Symbol)(implicit ctx: Context): Boolean = levelOf.get(sym) match {
       case Some(l) =>
         l == level ||
-        level == -1 && sym == defn.TastyTopLevelSplice_tastyContext
+        level == -1 && sym == defn.TastyTasty_macroContext
       case None =>
         !sym.is(Param) || levelOK(sym.owner)
     }

@@ -268,7 +268,7 @@ object Splicer {
       case Literal(Constant(value)) =>
         interpretLiteral(value)
 
-      case _ if tree.symbol == defn.TastyTopLevelSplice_tastyContext =>
+      case _ if tree.symbol == defn.TastyTasty_macroContext =>
         interpretTastyContext()
 
       case StaticMethodCall(fn, args) =>
