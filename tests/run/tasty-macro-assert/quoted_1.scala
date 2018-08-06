@@ -12,7 +12,7 @@ object Asserts {
   object Ops
 
   rewrite def macroAssert(cond: => Boolean): Unit =
-    ~impl('(cond))(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+    ~impl('(cond))
 
   def impl(cond: Expr[Boolean])(implicit tasty: Tasty): Expr[Unit] = {
     import tasty._

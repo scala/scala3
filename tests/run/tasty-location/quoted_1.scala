@@ -6,8 +6,7 @@ case class Location(owners: List[String])
 
 object Location {
 
-  implicit rewrite def location: Location =
-    ~impl(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+  implicit rewrite def location: Location = ~impl
 
   def impl(implicit tasty: Tasty): Expr[Location] = {
     import tasty._

@@ -286,6 +286,8 @@ object Splicer {
       case NamedArg(_, arg) => interpretTree(arg)
       case Ident(name) if env.contains(name) => env(name)
 
+      case Inlined(EmptyTree, Nil, expansion) => interpretTree(expansion)
+
       case _ => unexpectedTree(tree)
     }
 

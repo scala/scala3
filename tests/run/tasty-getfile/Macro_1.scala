@@ -4,7 +4,7 @@ import scala.tasty.{Tasty, TopLevelSplice}
 object SourceFiles {
 
   implicit rewrite def getThisFile: String =
-    ~getThisFileImpl(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+    ~getThisFileImpl
 
   private def getThisFileImpl(implicit tasty: Tasty): Expr[String] = {
     import tasty._
