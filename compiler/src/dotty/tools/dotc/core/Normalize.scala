@@ -17,9 +17,10 @@ import typer.ForceDegree
 import ast.tpd._
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.annotation.internal.sharable
 
 object Normalize {
-  var track = true
+  @sharable var track = true
 }
 
 private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
