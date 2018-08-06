@@ -13,7 +13,7 @@ object TastyHash {
       val d = data(i) & 0xFFL // Interpret byte as unsigned byte
       h = (h << 8) + d
       val high = h & 0xFF00000000000000L
-      h ^= high >> 48L
+      h ^= high >>> 48L
       h &= ~high
       i += 1
     }
