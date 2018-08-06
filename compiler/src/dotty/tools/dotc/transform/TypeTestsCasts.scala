@@ -270,7 +270,7 @@ object TypeTestsCasts {
         if (sym.isTypeTest) {
           val argType = tree.args.head.tpe
           if (!checkable(expr.tpe, argType, tree.pos))
-            ctx.warning(s"the type test for $argType cannot be checked at runtime", tree.pos)
+            ctx.warning(i"the type test for $argType cannot be checked at runtime", tree.pos)
           transformTypeTest(expr, tree.args.head.tpe, flagUnrelated = true)
         }
         else if (sym eq defn.Any_asInstanceOf)
