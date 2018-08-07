@@ -1,6 +1,7 @@
 package dotty.tools.dotc
 
 import org.junit.Test
+import org.junit.Assert.assertEquals
 
 import dotty.tools.dotc.core.tasty.TastyHash.pjwHash64
 
@@ -22,8 +23,7 @@ class TastyHashTest {
   }
 
   def testHash(expected: Long, arr: Array[Byte]): Unit = {
-    val res = pjwHash64(arr)
-    assert(res == expected, s"Exprected 0x${expected.toHexString}L but got 0X${res.toHexString}L")
+    assertEquals(s"0x${expected.toHexString}L", s"0x${pjwHash64(arr).toHexString}L")
   }
 
 }
