@@ -71,8 +71,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case tree @ PackageClause(name, stats) =>
         val stats1 = stats.collect {
-          case stat @ PackageClause(_, _) => stat
-          case stat @ Definition() if !(stat.flags.isObject && stat.flags.isLazy) => stat
+          case IsPackageClause(stat) => stat
+          case IsDefinition(stat) if !(stat.flags.isObject && stat.flags.isLazy) => stat
           case stat @ Import(_, _) => stat
         }
         name match {
@@ -90,7 +90,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "."
         printImportSelectors(selectors)
 
-      case cdef @ ClassDef(name, DefDef(_, targs, argss, _, _), parents, self, stats) =>
+      case IsClassDef(cdef @ ClassDef(name, DefDef(_, targs, argss, _, _), parents, self, stats)) =>
         printDefAnnotations(cdef)
 
         val flags = cdef.flags
@@ -115,29 +115,26 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
 
         val parents1 = parents.filter {
-          case Term.Apply(Term.Select(Term.New(tpt), _, _), _) => !Types.JavaLangObject.unapply(tpt.tpe)
-          case TypeTree.TermSelect(Term.Select(Term.Ident("_root_"), "scala", _), "Product") => false
+          case IsTerm(Term.Apply(Term.Select(Term.New(tpt), _, _), _)) => !Types.JavaLangObject.unapply(tpt.tpe)
+          case IsTypeTree(TypeTree.TermSelect(Term.Select(Term.Ident("_root_"), "scala", _), "Product")) => false
           case _ => true
         }
         if (parents1.nonEmpty)
           this += " extends "
 
         def printParent(parent: Parent): Unit = parent match {
-          case parent @ Term.TypeApply(fun, targs) =>
+          case IsTypeTree(parent) =>
+            printTypeTree(parent)
+          case IsTerm(Term.TypeApply(fun, targs)) =>
             printParent(fun)
             inSquare(printTypeOrBoundsTrees(targs, ", "))
-
-          case parent @ Term.Apply(fun, args) =>
+          case IsTerm(Term.Apply(fun, args)) =>
             printParent(fun)
             inParens(printTrees(args, ", "))
-
-          case parent @ Term.Select(Term.New(tpt), _, _) =>
+          case IsTerm(Term.Select(Term.New(tpt), _, _)) =>
             printTypeTree(tpt)
-
-          case parent @ TypeTree() =>
-            printTypeTree(parent)
-
-          case parent @ Term() => throw new MatchError(parent.show)
+          case IsTerm(parent) =>
+            throw new MatchError(parent.show)
         }
 
         def printSeparated(list: List[Parent]): Unit = list match {
@@ -168,9 +165,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           !flags.isParam && !flags.isParamAccessor && !flags.isFieldAccessor && !isCaseClassUnOverridableMethod && !isInnerModuleObject
         }
         val stats1 = stats.collect {
-          case stat @ Definition() if keepDefinition(stat) => stat
+          case IsDefinition(stat) if keepDefinition(stat) => stat
           case stat @ Import(_, _) => stat
-          case stat @ Term() => stat
+          case IsTerm(stat) => stat
         }
 
         def printBody(printSelf: Boolean) = {
@@ -202,12 +199,12 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
         this
 
-      case tdef @ TypeDef(name, rhs) =>
+      case IsTypeDef(tdef @ TypeDef(name, rhs)) =>
         printDefAnnotations(tdef)
         this += "type "
         printTargDef(tdef, isMember = true)
 
-      case vdef @ ValDef(name, tpt, rhs) =>
+      case IsValDef(vdef @ ValDef(name, tpt, rhs)) =>
         printDefAnnotations(vdef)
 
         val flags = vdef.flags
@@ -240,7 +237,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printTree(body) += " while "
         inParens(printTree(cond))
 
-      case ddef @ DefDef(name, targs, argss, tpt, rhs) =>
+      case IsDefDef(ddef @ DefDef(name, targs, argss, tpt, rhs)) =>
         printDefAnnotations(ddef)
 
         val isConstructor = name == "<init>"
@@ -269,7 +266,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
         this
 
-      case tree @ Term.Ident(_) =>
+      case IsTerm(tree @ Term.Ident(_)) =>
         printType(tree.tpe)
 
       case Term.Select(qual, name, sig) =>
@@ -362,7 +359,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Term.Block(stats0, expr) =>
         val stats = stats0.filter {
-          case tree @ ValDef(_, _, _) => !tree.flags.isObject
+          case IsValDef(tree) => !tree.flags.isObject
           case _ => true
         }
 
@@ -557,13 +554,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def printTargDef(arg: TypeDef, isMember: Boolean = false): Buffer = {
       this += arg.name
       arg.rhs match {
-        case rhs @ TypeBoundsTree(lo, hi) => printBoundsTree(rhs)
+        case IsTypeBoundsTree(rhs) => printBoundsTree(rhs)
         case rhs @ SyntheticBounds() =>
           printTypeOrBound(rhs.tpe)
         case rhs @ TypeTree.TypeLambdaTree(tparams, body) =>
           def printParam(t: TypeOrBoundsTree): Unit = t match {
-            case t @ TypeBoundsTree(_, _) => printBoundsTree(t)
-            case t @ TypeTree() => printTypeTree(t)
+            case IsTypeBoundsTree(t) => printBoundsTree(t)
+            case IsTypeTree(t) => printTypeTree(t)
           }
           def printSeparated(list: List[TypeDef]): Unit = list match {
             case Nil =>
@@ -582,7 +579,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             printTypeOrBoundsTree(body)
           }
           else this
-        case rhs @ TypeTree() =>
+        case IsTypeTree(rhs) =>
           this += " = "
           printTypeTree(rhs)
       }
@@ -627,7 +624,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         case DefDef("<init>", _, _, _, _) =>
           val ClassDef(_, _, _, _, body) = arg.owner.owner
           body.collectFirst {
-            case vdef @ ValDef(`name`, _, _) if vdef.flags.isParamAccessor =>
+            case IsValDef(vdef @ ValDef(`name`, _, _)) if vdef.flags.isParamAccessor =>
               if (!vdef.flags.isLocal) {
                 var printedPrefix = false
                 if (vdef.flags.isOverride) {
@@ -734,7 +731,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printTypeTree(hi)
       case tpt @ SyntheticBounds() =>
         printTypeOrBound(tpt.tpe)
-      case tpt @ TypeTree() =>
+      case IsTypeTree(tpt) =>
         printTypeTree(tpt)
     }
 
@@ -819,7 +816,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printType(lo)
         this += " <: "
         printType(hi)
-      case tpe@Type() => printType(tpe)
+      case IsType(tpe) => printType(tpe)
     }
 
     def printType(tpe: Type): Buffer = tpe match {
@@ -829,10 +826,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Type.SymRef(sym, prefix) =>
         prefix match {
           case Types.EmptyPrefix() =>
-          case prefix @ Type.SymRef(ClassDef(_, _, _, _, _), _) =>
+          case IsType(prefix @ Type.SymRef(ClassDef(_, _, _, _, _), _)) =>
             printType(prefix)
             this += "#"
-          case prefix @ Type() =>
+          case IsType(prefix) =>
             if (!sym.flags.isLocal) {
               printType(prefix)
               this += "."
@@ -844,7 +841,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         prefix match {
           case Type.ThisType(Types.EmptyPackage()) =>
             this += name
-          case prefix @ Type() =>
+          case IsType(prefix) =>
             printType(prefix)
             if (name != "package")
               this += "." += name
@@ -856,7 +853,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Type.TypeRef(name, prefix) =>
         prefix match {
           case NoPrefix() | Type.ThisType(Types.EmptyPackage()) =>
-          case prefix@Type() => printType(prefix) += "."
+          case IsType(prefix) => printType(prefix) += "."
         }
         if (name.endsWith("$")) this += name.stripSuffix("$") += ".type"
         else this += name
@@ -983,7 +980,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         case Type.ByNameType(t) =>
           this += ": "
           printType(t)
-        case tp @ Type() =>
+        case IsType(tp) =>
           this += ": "
           printType(tp)
       }
@@ -993,13 +990,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           indented {
             this += lineBreak()
             info match {
-              case info @ TypeBounds(_, _) =>
+              case IsTypeBounds(info) =>
                 this += "type " += name
                 printBounds(info)
               case Type.ByNameType(_) | Type.MethodType(_, _, _) | Type.TypeLambda(_, _, _) =>
                 this += "def " += name
                 printMethodicType(info)
-              case info @ Type() =>
+              case IsType(info) =>
                 this += "val " += name
                 printMethodicType(info)
             }
@@ -1014,8 +1011,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printMethodicTypeParams(paramNames: List[String], params: List[TypeOrBounds]): Unit = {
       def printInfo(info: TypeOrBounds) = info match {
-        case info @ TypeBounds(_, _) => printBounds(info)
-        case info @ Type() =>
+        case IsTypeBounds(info) => printBounds(info)
+        case IsType(info) =>
           this += ": "
           printType(info)
       }
@@ -1121,8 +1118,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
   }
 
   private object SpecialOp {
-    def unapply(arg: Term)(implicit ctx: Context): Option[(String, List[Term])] = arg match {
-      case arg@Term.Apply(fn, args) =>
+    def unapply(arg: Tree)(implicit ctx: Context): Option[(String, List[Term])] = arg match {
+      case IsTerm(arg @ Term.Apply(fn, args)) =>
         fn.tpe match {
           case Type.SymRef(DefDef(op, _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("<special-ops>", _), NoPrefix()))) =>
             Some((op, args))
@@ -1153,7 +1150,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     object Repeated {
       def unapply(tpe: Type)(implicit ctx: Context): Option[Type] = tpe match {
-        case Type.AppliedType(Type.TypeRef("<repeated>", ScalaPackage()), (tp@Type()) :: Nil) => Some(tp)
+        case Type.AppliedType(Type.TypeRef("<repeated>", ScalaPackage()), IsType(tp) :: Nil) => Some(tp)
         case _ => None
       }
     }

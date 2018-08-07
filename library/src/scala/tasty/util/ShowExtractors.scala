@@ -77,8 +77,8 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case ClassDef(name, constr, parents, self, body) =>
         this += "ClassDef(\"" += name += "\", " += constr += ", "
         visitList[Parent](parents, {
-          case parent @ Term() => this += parent
-          case parent @ TypeTree() => this += parent
+          case IsTerm(parent) => this += parent
+          case IsTypeTree(parent) => this += parent
         })
         this += ", " += self += ", " ++= body += ")"
       case PackageDef(name, owner) =>

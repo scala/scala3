@@ -19,12 +19,12 @@ object Macros {
         // Use custom Show[_] here
         implicit val printer = new DummyShow(tasty)
         tree match {
-          case tree @ DefDef(name, _, _, _, _) =>
+          case IsDefinition(tree @ DefDef(name, _, _, _, _)) =>
             buff.append(name)
             buff.append("\n")
             buff.append(tree.owner.show)
             buff.append("\n\n")
-          case tree @ ValDef(name, _, _) =>
+          case IsDefinition(tree @ ValDef(name, _, _)) =>
             buff.append(name)
             buff.append("\n")
             buff.append(tree.owner.show)
