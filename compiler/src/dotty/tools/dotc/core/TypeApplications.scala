@@ -177,10 +177,9 @@ class TypeApplications(val self: Type) extends AnyVal {
       case self: TypeRef =>
         val tsym = self.symbol
         if (tsym.isClass) tsym.typeParams
-        else if (!tsym.exists || !isTrivial(self.prefix, tsym)) self.info.typeParams
         else tsym.infoOrCompleter match {
-          case info: LazyType => info.completerTypeParams(tsym)
-          case info => info.typeParams
+          case info: LazyType if tsym.exists && isTrivial(self.prefix, tsym) => info.completerTypeParams(tsym)
+          case _ => self.info.typeParams
         }
       case self: AppliedType =>
         if (self.tycon.typeSymbol.isClass) Nil
