@@ -316,7 +316,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
     }
 
     object Inlined extends InlinedExtractor {
-      def unapply(x: Term)(implicit ctx: Context): Option[(Option[Term], List[Statement], Term)] = x match {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Option[Parent], List[Statement], Term)] = x match {
         case x: tpd.Inlined =>
           Some((optional(x.call), x.bindings, x.expansion))
         case _ => None

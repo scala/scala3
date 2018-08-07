@@ -1,0 +1,2 @@
+DefDef("foo", Nil, Nil, TypeTree.TypeIdent("Int"), Some(Term.Apply(Term.Select(Term.Literal(Constant.Int(1)), "+", Some(Signature(List(scala.Int), scala.Int))), List(Term.Literal(Constant.Int(2))))))
+ValDef("bar", TypeTree.TypeIdent("Int"), Some(Term.Apply(Term.Select(Term.Literal(Constant.Int(2)), "+", Some(Signature(List(scala.Int), scala.Int))), List(Term.Literal(Constant.Int(3))))))

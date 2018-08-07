@@ -169,6 +169,7 @@ class CompilationTests extends ParallelTesting {
 
   @Test def runAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runAll")
+    compileFilesInDir("tests/run-custom-args/Yretain-trees", defaultOptions and "-Yretain-trees") +
     compileFilesInDir("tests/run", defaultOptions)
   }.checkRuns()
 

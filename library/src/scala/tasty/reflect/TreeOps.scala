@@ -286,7 +286,7 @@ trait TreeOps extends TastyCore {
 
     val Inlined: InlinedExtractor
     abstract class InlinedExtractor {
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[Term], List[Definition], Term)]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[Parent], List[Definition], Term)]
     }
 
     val SelectOuter: SelectOuterExtractor
