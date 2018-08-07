@@ -1238,9 +1238,10 @@ class Typer extends Namer
           args = args.take(tparams.length)
         }
         def typedArg(arg: untpd.Tree, tparam: ParamInfo) = {
+          def tparamBounds = tparam.paramInfoAsSeenFrom(tpt1.tpe.normalizedPrefix)
           val (desugaredArg, argPt) =
             if (ctx.mode is Mode.Pattern)
-              (if (untpd.isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.paramInfo)
+              (if (untpd.isVarPattern(arg)) desugar.patternVar(arg) else arg, tparamBounds)
             else
               (arg, WildcardType)
           if (tpt1.symbol.isClass)
@@ -1259,10 +1260,10 @@ class Typer extends Namer
                 // An unbounded `_` automatically adapts to type parameter bounds. This means:
                 // If we have wildcard application C[_], where `C` is a class replace
                 // with C[_ >: L <: H] where `L` and `H` are the bounds of the corresponding
-                // type parameter in `C`, avoiding any referemces to parameters of `C`.
-                // The transform does not apply for patters, where empty bounds translate to
+                // type parameter in `C`.
+                // The transform does not apply for patterns, where empty bounds translate to
                 // wildcard identifiers `_` instead.
-                res = res.withType(avoid(tparam.paramInfo, tpt1.tpe.typeParamSymbols))
+                res = res.withType(tparamBounds)
               case _ =>
             }
             res

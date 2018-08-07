@@ -168,11 +168,16 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  any type parameter that is-rebound by the refinement.
    */
   final def typeParams(implicit ctx: Context): List[TypeParamInfo] = /*>|>*/ track("typeParams") /*<|<*/ {
+    def isTrivial(prefix: Type, tycon: Symbol) = prefix match {
+      case prefix: ThisType => prefix.cls `eq` tycon.owner
+      case NoPrefix => true
+      case _ => false
+    }
     try self match {
       case self: TypeRef =>
         val tsym = self.symbol
         if (tsym.isClass) tsym.typeParams
-        else if (!tsym.exists) self.info.typeParams
+        else if (!tsym.exists || !isTrivial(self.prefix, tsym)) self.info.typeParams
         else tsym.infoOrCompleter match {
           case info: LazyType => info.completerTypeParams(tsym)
           case info => info.typeParams
