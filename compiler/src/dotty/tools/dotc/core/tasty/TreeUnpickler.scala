@@ -836,7 +836,7 @@ class TreeUnpickler(reader: TastyReader,
           tree.setComment(comment)
         }
       }
-
+      tree.symbol.tree = tree // TODO only do it under some flag?
       tree
     }
 

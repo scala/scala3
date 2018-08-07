@@ -5,6 +5,7 @@ trait TreeOps extends TastyCore {
 
   trait TreeAPI {
     def pos(implicit ctx: Context): Position
+    def definition(implicit ctx: Context): Option[Definition]
   }
   implicit def TreeDeco(tree: Tree): TreeAPI
 
@@ -17,11 +18,6 @@ trait TreeOps extends TastyCore {
   abstract class PackageClauseExtractor {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[Tree])]
   }
-
-  trait PackageClauseAPI {
-    def definition(implicit ctx: Context): Definition
-  }
-  implicit def PackageClauseDeco(pack: PackageClause): PackageClauseAPI
 
   // ----- Statements -----------------------------------------------
 
@@ -290,7 +286,7 @@ trait TreeOps extends TastyCore {
 
     val Inlined: InlinedExtractor
     abstract class InlinedExtractor {
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[Term], List[Definition], Term)]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[Parent], List[Definition], Term)]
     }
 
     val SelectOuter: SelectOuterExtractor

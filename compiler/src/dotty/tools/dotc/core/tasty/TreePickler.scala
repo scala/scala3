@@ -302,6 +302,7 @@ class TreePickler(pickler: TastyPickler) {
 
   def pickleParam(tree: Tree)(implicit ctx: Context): Unit = {
     registerTreeAddr(tree)
+    registerDefTree(tree)
     tree match {
       case tree: ValDef => pickleDef(PARAM, tree.symbol, tree.tpt)
       case tree: DefDef => pickleDef(PARAM, tree.symbol, tree.tpt, tree.rhs)
@@ -460,6 +461,7 @@ class TreePickler(pickler: TastyPickler) {
             patterns.foreach(pickleTree)
           }
         case tree: ValDef =>
+          registerDefTree(tree)
           pickleDef(VALDEF, tree.symbol, tree.tpt, tree.rhs)
         case tree: DefDef =>
           def pickleAllParams = {
@@ -469,10 +471,13 @@ class TreePickler(pickler: TastyPickler) {
               withLength { pickleParams(vparams) }
             }
           }
+          registerDefTree(tree)
           pickleDef(DEFDEF, tree.symbol, tree.tpt, tree.rhs, pickleAllParams)
         case tree: TypeDef =>
+          registerDefTree(tree)
           pickleDef(TYPEDEF, tree.symbol, tree.rhs)
         case tree: Template =>
+          registerDefTree(tree)
           registerDef(tree.symbol)
           writeByte(TEMPLATE)
           val (params, rest) = tree.body partition {
@@ -870,6 +875,11 @@ class TreePickler(pickler: TastyPickler) {
         println(i"error when pickling tree $tree")
         throw ex
     }
+  }
+
+  private def registerDefTree(tree: Tree)(implicit ctx: Context): Unit = {
+    // TODO should have a flag for this?
+    tree.symbol.tree = tree
   }
 
 // ---- main entry points ---------------------------------------

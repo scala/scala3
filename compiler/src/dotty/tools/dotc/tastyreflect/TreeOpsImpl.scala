@@ -13,6 +13,9 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
 
   def TreeDeco(tree: Tree): TreeAPI = new TreeAPI {
     def pos(implicit ctx: Context): Position = tree.pos
+    def definition(implicit ctx: Context): Option[Definition] =
+      if (tree.symbol.exists) Some(definitionFromSym(tree.symbol))
+      else None
   }
 
   object IsPackageClause extends IsPackageClauseExtractor {
@@ -27,10 +30,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
       case x: tpd.PackageDef => Some((x.pid, x.stats))
       case _ => None
     }
-  }
-
-  def PackageClauseDeco(pack: PackageClause): PackageClauseAPI = new PackageClauseAPI {
-    def definition(implicit ctx: Context): Definition = packageDefFromSym(pack.symbol)
   }
 
   // ----- Statements -----------------------------------------------
@@ -342,7 +341,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
     }
 
     object Inlined extends InlinedExtractor {
-      def unapply(x: Term)(implicit ctx: Context): Option[(Option[Term], List[Statement], Term)] = x match {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Option[Parent], List[Statement], Term)] = x match {
         case x: tpd.Inlined =>
           Some((optional(x.call), x.bindings, x.expansion))
         case _ => None
