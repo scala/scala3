@@ -1,13 +1,21 @@
 object Test {
   trait A
   trait B
-  trait TestConstructor1 { type F[_ <: A] }
+  trait TestConstructor1 { type F[X <: A] <: TestConstructor2[A] }
   trait TestConstructor2[D] {
     type F[_ <: D]
     class G[X <: D]
     trait TestConstructor3[E] {
-      type G[_ <: D & E]
-      class H[X <: D & E]
+      type G[X <: D & E] <: TestConstructor2.this.F[X] & H[X]
+      class H[X <: D & E] {
+        type A <: G[X]
+      }
+    }
+  }
+  trait TestConstructor4[D] {
+    trait TestConstructor5[E] {
+      trait MSetLike[X <: D & E, This <: MSet[X] with MSetLike[X, This]]
+      trait MSet[X <: D & E] extends MSetLike[X, MSet[X]]
     }
   }
 
@@ -33,5 +41,8 @@ object Test {
     type R2[c <: C] = f.G[c] | g.H[c]
     type S1[c <: C] = ([X <: C] => f.F[X] & g.G[X])[c]
     type S2[c <: C] = ([X <: C] => f.F[X] | g.G[X])[c]
+  }
+  def f3(f: TestConstructor4[A], g: f.TestConstructor5[B]): Unit = {
+    type P1[c <: C] = g.MSet[c]
   }
 }
