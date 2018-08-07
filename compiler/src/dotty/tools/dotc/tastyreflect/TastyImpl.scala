@@ -12,7 +12,6 @@ import dotty.tools.dotc.reporting.diagnostic.MessageContainer
 import dotty.tools.dotc.util.{Positions, SourcePosition}
 
 import scala.quoted
-import scala.reflect.ClassTag
 import scala.tasty.util.{Show, ShowExtractors, ShowSourceCode}
 
 import dotty.tools.dotc.tastyreflect.FromSymbol._
@@ -58,13 +57,8 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
     def name(implicit ctx: Context): String = id.name.toString
   }
 
-  def idClassTag: ClassTag[Id] = implicitly[ClassTag[Id]]
-
   object Id extends IdExtractor {
-    def unapply(x: Id): Option[String] = x match {
-      case x: untpd.Ident => Some(x.name.toString)
-      case _ => None
-    }
+    def unapply(id: Id): Option[String] = Some(id.name.toString)
   }
 
   // ===== Trees ====================================================
@@ -78,10 +72,15 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
 
   type PackageClause = tpd.PackageDef
 
-  def packageClauseClassTag: ClassTag[PackageClause] = implicitly[ClassTag[PackageClause]]
+  object IsPackageClause extends IsPackageClauseExtractor {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[PackageClause] = tree match {
+      case x: tpd.PackageDef @unchecked => Some(x)
+      case _ => None
+    }
+  }
 
   object PackageClause extends PackageClauseExtractor {
-    def unapply(x: PackageClause)(implicit ctx: Context): Option[(Term, List[Tree])] = x match {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, List[Tree])] = tree match {
       case x: tpd.PackageDef @unchecked => Some((x.pid, x.stats))
       case _ => None
     }
@@ -97,10 +96,8 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
 
   type Import = tpd.Import
 
-  def importClassTag: ClassTag[Import] = implicitly[ClassTag[Import]]
-
   object Import extends ImportExtractor {
-    def unapply(x: Import)(implicit ctx: Context): Option[(Term, List[ImportSelector])] = x match {
+    def unapply(x: Tree)(implicit ctx: Context): Option[(Term, List[ImportSelector])] = x match {
       case x: tpd.Import @unchecked => Some((x.expr, x.selectors))
       case _ => None
     }
@@ -112,8 +109,6 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
   }
 
   type ImportSelector = untpd.Tree
-
-  def importSelectorClassTag: ClassTag[ImportSelector] = implicitly[ClassTag[ImportSelector]]
 
   object SimpleSelector extends SimpleSelectorExtractor {
     def unapply(x: ImportSelector)(implicit ctx: Context): Option[Id] = x match {
@@ -140,9 +135,11 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
 
   type Definition = tpd.Tree
 
-  object Definition extends DefinitionExtractor {
-    def unapply(x: Definition)(implicit ctx: Context): Boolean =
-      x.isInstanceOf[Trees.MemberDef[_]]
+  object IsDefinition extends IsDefinitionExtractor {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[Definition] = tree match {
+      case tree: tpd.MemberDef => Some(tree)
+      case _ => None
+    }
   }
 
   def DefinitionDeco(definition: Definition): DefinitionAPI = new DefinitionAPI {
@@ -178,16 +175,19 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
       else ctx
   }
 
-  def definitionClassTag: ClassTag[Definition] = implicitly[ClassTag[Definition]]
-
   // ClassDef
 
   type ClassDef = tpd.TypeDef
 
-  def classDefClassTag: ClassTag[ClassDef] = implicitly[ClassTag[ClassDef]]
+  object IsClassDef extends IsClassDefExtractor {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[ClassDef] = tree match {
+      case x: tpd.TypeDef @unchecked if x.isClassDef => Some(x)
+      case _ => None
+    }
+  }
 
   object ClassDef extends ClassDefExtractor {
-    def unapply(x: ClassDef)(implicit ctx: Context): Option[(String, DefDef, List[Parent],  Option[ValDef], List[Statement])] = x match {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[Parent],  Option[ValDef], List[Statement])] = tree match {
       case x: tpd.TypeDef @unchecked if x.isClassDef =>
         val deco = ClassDefDeco(x)
         Some((x.name.toString, deco.constructor, deco.parents, deco.self, deco.body))
@@ -207,10 +207,15 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
 
   type DefDef = tpd.DefDef
 
-  def defDefClassTag: ClassTag[DefDef] = implicitly[ClassTag[DefDef]]
+  object IsDefDef extends IsDefDefExtractor {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[DefDef] = tree match {
+      case x: tpd.DefDef @unchecked => Some(x)
+      case _ => None
+    }
+  }
 
   object DefDef extends DefDefExtractor {
-    def unapply(x: DefDef)(implicit ctx: Context): Option[(String, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])] = x match {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, List[TypeDef],  List[List[ValDef]], TypeTree, Option[Term])] = tree match {
       case x: tpd.DefDef @unchecked =>
         Some((x.name.toString, x.tparams, x.vparamss, x.tpt, optional(x.rhs)))
       case _ => None
@@ -228,10 +233,15 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
 
   type ValDef = tpd.ValDef
 
-  def valDefClassTag: ClassTag[ValDef] = implicitly[ClassTag[ValDef]]
+  object IsValDef extends IsValDefExtractor {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[ValDef] = tree match {
+      case x: tpd.ValDef @unchecked => Some(x)
+      case _ => None
+    }
+  }
 
   object ValDef extends ValDefExtractor {
-    def unapply(x: ValDef)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])] = x match {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeTree, Option[Term])] = tree match {
       case x: tpd.ValDef @unchecked =>
         Some((x.name.toString, x.tpt, optional(x.rhs)))
       case _ => None
@@ -247,10 +257,15 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
 
   type TypeDef = tpd.TypeDef
 
-  def typeDefClassTag: ClassTag[TypeDef] = implicitly[ClassTag[TypeDef]]
+  object IsTypeDef extends IsTypeDefExtractor {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[TypeDef] = tree match {
+      case x: tpd.TypeDef @unchecked if !x.symbol.isClass => Some(x)
+      case _ => None
+    }
+  }
 
   object TypeDef extends TypeDefExtractor {
-    def unapply(x: TypeDef)(implicit ctx: Context): Option[(String, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)] = x match {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, TypeOrBoundsTree /* TypeTree | TypeBoundsTree */)] = tree match {
       case x: tpd.TypeDef @unchecked if !x.symbol.isClass => Some((x.name.toString, x.rhs))
       case _ => None
     }
@@ -274,10 +289,15 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
     }
   }
 
-  def packageDefClassTag: ClassTag[PackageDef] = implicitly[ClassTag[PackageDef]]
+  object IsPackageDef extends IsPackageDefExtractor {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[PackageDef] = tree match {
+      case x: PackageDefinition => Some(x)
+      case _ => None
+    }
+  }
 
   object PackageDef extends PackageDefExtractor {
-    def unapply(x: PackageDef)(implicit ctx: Context): Option[(String, PackageDef)] = x match {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, PackageDef)] = tree match {
       case x: PackageDefinition =>
         Some((x.symbol.name.toString, packageDefFromSym(x.symbol.owner)))
       case _ => None
@@ -328,11 +348,14 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
     }
   }
 
-  def termClassTag: ClassTag[Term] = implicitly[ClassTag[Term]]
+  object IsTerm extends IsTermExtractor {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
+      if (tree.isTerm) Some(tree) else None
+    def unapply(parent: Parent)(implicit ctx: Context, dummy: DummyImplicit): Option[Term] =
+      if (parent.isTerm) Some(parent) else None
+  }
 
   object Term extends TermModule {
-
-    def unapply(x: Term)(implicit ctx: Context): Boolean = x.isTerm
 
     object Ident extends IdentExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[String] = x match {
@@ -540,8 +563,6 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
 
   type CaseDef = tpd.CaseDef
 
-  def caseDefClassTag: ClassTag[CaseDef] = implicitly[ClassTag[CaseDef]]
-
   def CaseDefDeco(caseDef: CaseDef): CaseDefAPI = new CaseDefAPI {
     def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showCaseDef(caseDef)
     def pattern(implicit ctx: Context): Pattern = caseDef.pat
@@ -566,8 +587,6 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
     def pos(implicit ctx: Context): Position = pattern.pos
     def tpe(implicit ctx: Context): Types.Type = pattern.tpe.stripTypeVar
   }
-
-  def patternClassTag: ClassTag[Pattern] = implicitly[ClassTag[Pattern]]
 
   object Pattern extends PatternModule {
 
@@ -635,11 +654,14 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
     def tpe(implicit ctx: Context): Types.Type = tpt.tpe.stripTypeVar
   }
 
-  def typeTreeClassTag: ClassTag[TypeTree] = implicitly[ClassTag[TypeTree]]
+  object IsTypeTree extends IsTypeTreeExtractor {
+    def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree] =
+      if (x.isType) Some(x) else None
+    def unapply(x: Parent)(implicit ctx: Context, dummy: DummyImplicit): Option[TypeTree] =
+      if (x.isType) Some(x) else None
+  }
 
   object TypeTree extends TypeTreeModule {
-
-    def unapply(x: TypeTree)(implicit ctx: Context): Boolean = x.isType
 
     object Synthetic extends SyntheticExtractor {
       def unapply(x: TypeTree)(implicit ctx: Context): Boolean = x match {
@@ -743,17 +765,22 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
     def hi(implicit ctx: Context): TypeTree = bounds.asInstanceOf[tpd.TypeBoundsTree].hi
   }
 
-  def typeBoundsTreeClassTag: ClassTag[TypeBoundsTree] = implicitly[ClassTag[TypeBoundsTree]]
+  object IsTypeBoundsTree extends IsTypeBoundsTreeExtractor {
+    def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeBoundsTree] = x match {
+      case x: tpd.TypeBoundsTree @unchecked => Some(x)
+      case _ => None
+    }
+  }
 
   object TypeBoundsTree extends TypeBoundsTreeExtractor {
-    def unapply(x: TypeBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] = x match {
+    def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, TypeTree)] = x match {
       case x: tpd.TypeBoundsTree @unchecked => Some(x.lo, x.hi)
       case _ => None
     }
   }
 
   object SyntheticBounds extends SyntheticBoundsExtractor {
-    def unapply(x: TypeBoundsTree)(implicit ctx: Context): Boolean = x match {
+    def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Boolean = x match {
       case x @ Trees.TypeTree() => x.tpe.isInstanceOf[Types.TypeBounds]
       case Trees.Ident(nme.WILDCARD) => x.tpe.isInstanceOf[Types.TypeBounds]
       case _ => false
@@ -783,12 +810,6 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
   type PolyType = Types.PolyType
   type TypeLambda = Types.TypeLambda
 
-  def typeClassTag: ClassTag[Type] = implicitly[ClassTag[Type]]
-  def recursiveTypeClassTag: ClassTag[RecursiveType] = implicitly[ClassTag[RecursiveType]]
-  def methodTypeClassTag: ClassTag[MethodType] = implicitly[ClassTag[MethodType]]
-  def polyTypeClassTag: ClassTag[PolyType] = implicitly[ClassTag[PolyType]]
-  def typeLambdaClassTag: ClassTag[TypeLambda] = implicitly[ClassTag[TypeLambda]]
-
   def MethodTypeDeco(tpe: MethodType): MethodTypeAPI = new MethodTypeAPI {
     def isErased: Boolean = tpe.isErasedMethod
     def isImplicit: Boolean = tpe.isImplicitMethod
@@ -809,22 +830,25 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
     def resultTpe(implicit ctx: Context): Type = tpe.resType
   }
 
+  object IsType extends IsTypeExtractor {
+    def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
+      case x: Types.TypeBounds => None
+      case x if x == Types.NoPrefix => None
+      case _ => Some(x)
+    }
+  }
+
   object Type extends TypeModule {
 
-    def unapply(x: Type)(implicit ctx: Context): Boolean = x match {
-      case x: Types.TypeBounds => false
-      case x => x != Types.NoPrefix
-    }
-
     object ConstantType extends ConstantTypeExtractor {
-      def unapply(x: Type)(implicit ctx: Context): Option[Constant] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Constant] = x match {
         case Types.ConstantType(value) => Some(value)
         case _ => None
       }
     }
 
     object SymRef extends SymRefExtractor {
-      def unapply(x: Type)(implicit ctx: Context): Option[(Definition, TypeOrBounds /* Type | NoPrefix */)] = x  match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Definition, TypeOrBounds /* Type | NoPrefix */)] = x  match {
         case tp: Types.NamedType =>
           tp.designator match {
             case sym: Symbol => Some((definitionFromSym(sym), tp.prefix))
@@ -835,7 +859,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
     }
 
     object TermRef extends TermRefExtractor {
-      def unapply(x: Type)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
         case tp: Types.NamedType =>
           tp.designator match {
             case name: Names.TermName => Some(name.toString, tp.prefix)
@@ -846,7 +870,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
     }
 
     object TypeRef extends TypeRefExtractor {
-      def unapply(x: Type)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(String, TypeOrBounds /* Type | NoPrefix */)] = x match {
         case tp: Types.NamedType =>
           tp.designator match {
             case name: Names.TypeName => Some(name.toString, tp.prefix)
@@ -857,56 +881,56 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
     }
 
     object SuperType extends SuperTypeExtractor {
-      def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] = x match {
         case Types.SuperType(thistpe, supertpe) => Some(thistpe, supertpe)
         case _ => None
       }
     }
 
     object Refinement extends RefinementExtractor {
-      def unapply(x: Type)(implicit ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] = x match {
         case Types.RefinedType(parent, name, info) => Some(parent, name.toString, info)
         case _ => None
       }
     }
 
     object AppliedType extends AppliedTypeExtractor {
-      def unapply(x: Type)(implicit ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] = x match {
         case Types.AppliedType(tycon, args) => Some((tycon.stripTypeVar, args.map(_.stripTypeVar)))
         case _ => None
       }
     }
 
     object AnnotatedType extends AnnotatedTypeExtractor {
-      def unapply(x: Type)(implicit ctx: Context): Option[(Type, Term)] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Term)] = x match {
         case Types.AnnotatedType(underlying, annot) => Some((underlying.stripTypeVar, annot.tree))
         case _ => None
       }
     }
 
     object AndType extends AndTypeExtractor {
-      def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] = x match {
         case Types.AndType(left, right) => Some(left.stripTypeVar, right.stripTypeVar)
         case _ => None
       }
     }
 
     object OrType extends OrTypeExtractor {
-      def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] = x match {
         case Types.OrType(left, right) => Some(left.stripTypeVar, right.stripTypeVar)
         case _ => None
       }
     }
 
     object ByNameType extends ByNameTypeExtractor {
-      def unapply(x: Type)(implicit ctx: Context): Option[Type] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
         case Types.ExprType(resType) => Some(resType.stripTypeVar)
         case _ => None
       }
     }
 
     object ParamRef extends ParamRefExtractor {
-      def unapply(x: Type)(implicit ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] = x match {
         case Types.TypeParamRef(binder, idx) =>
           Some((
             binder.asInstanceOf[LambdaType[TypeOrBounds]], // Cast to tpd
@@ -917,42 +941,42 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
     }
 
     object ThisType extends ThisTypeExtractor {
-      def unapply(x: Type)(implicit ctx: Context): Option[Type] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
         case Types.ThisType(tp) => Some(tp)
         case _ => None
       }
     }
 
     object RecursiveThis extends RecursiveThisExtractor {
-      def unapply(x: Type)(implicit ctx: Context): Option[RecursiveType] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[RecursiveType] = x match {
         case Types.RecThis(binder) => Some(binder)
         case _ => None
       }
     }
 
     object RecursiveType extends RecursiveTypeExtractor {
-      def unapply(x: RecursiveType)(implicit ctx: Context): Option[Type] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
         case tp: Types.RecType => Some(tp.underlying.stripTypeVar)
         case _ => None
       }
     }
 
     object MethodType extends MethodTypeExtractor {
-      def unapply(x: MethodType)(implicit ctx: Context): Option[(List[String], List[Type], Type)] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[Type], Type)] = x match {
         case x: MethodType => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
         case _ => None
       }
     }
 
     object PolyType extends PolyTypeExtractor {
-      def unapply(x: PolyType)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] = x match {
         case x: PolyType => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
         case _ => None
       }
     }
 
     object TypeLambda extends TypeLambdaExtractor {
-      def unapply(x: TypeLambda)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] = x match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(List[String], List[TypeBounds], Type)] = x match {
         case x: TypeLambda => Some(x.paramNames.map(_.toString), x.paramInfos, x.resType)
         case _ => None
       }
@@ -964,10 +988,15 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
 
   type TypeBounds = Types.TypeBounds
 
-  def typeBoundsClassTag: ClassTag[TypeBounds] = implicitly[ClassTag[TypeBounds]]
+  object IsTypeBounds extends IsTypeBoundsExtractor {
+    def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[TypeBounds] = x match {
+      case x: Types.TypeBounds => Some(x)
+      case _ => None
+    }
+  }
 
   object TypeBounds extends TypeBoundsExtractor {
-    def unapply(x: TypeBounds)(implicit ctx: Context): Option[(Type, Type)] = x match {
+    def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] = x match {
       case x: Types.TypeBounds => Some(x.lo, x.hi)
       case _ => None
     }
@@ -982,10 +1011,8 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
 
   type NoPrefix = Types.NoPrefix.type
 
-  def noPrefixClassTag: ClassTag[NoPrefix] = implicitly[ClassTag[NoPrefix]]
-
   object NoPrefix extends NoPrefixExtractor {
-    def unapply(x: NoPrefix)(implicit ctx: Context): Boolean = x == Types.NoPrefix
+    def unapply(x: TypeOrBounds)(implicit ctx: Context): Boolean = x == Types.NoPrefix
   }
 
   // ===== Constants ================================================
@@ -996,8 +1023,6 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
     def show(implicit ctx: Context, s: Show[TastyImpl.this.type]): String = s.showConstant(const)
     def value: Any = const.value
   }
-
-  def constantClassTag: ClassTag[Constant] = implicitly[ClassTag[Constant]]
 
   object Constant extends ConstantModule {
 
@@ -1096,8 +1121,6 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
   // ===== Signature ================================================
 
   type Signature = core.Signature
-
-  def signatureClassTag: ClassTag[Signature] = implicitly[ClassTag[Signature]]
 
   object Signature extends SignatureExtractor {
     def unapply(x: Signature)(implicit ctx: Context): Option[(List[String], String)] = {
