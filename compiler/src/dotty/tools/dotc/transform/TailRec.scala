@@ -90,7 +90,7 @@ class TailRec extends MiniPhase with FullParameterization {
     val name = TailLabelName.fresh()
 
     if (method.owner.isClass)
-      ctx.newSymbol(method, name.toTermName, labelFlags, fullyParameterizedType(method.info, method.enclosingClass.asClass, abstractOverClass, liftThisType = false))
+      ctx.newSymbol(method, name.toTermName, labelFlags, fullyParameterizedType(method.info, method.enclosingClass.asClass, abstractOverClass, liftThisType = false)(ctx.withOwner(method)))
     else ctx.newSymbol(method, name.toTermName, labelFlags, method.info)
   }
 
