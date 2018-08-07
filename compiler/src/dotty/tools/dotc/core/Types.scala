@@ -134,7 +134,7 @@ object Types {
     }
 
     /** Is this type different from NoType? */
-    def exists: Boolean = true
+    final def exists: Boolean = this.ne(NoType)
 
     /** This type, if it exists, otherwise `that` type */
     def orElse(that: => Type) = if (exists) this else that
@@ -621,14 +621,14 @@ object Types {
           val jointInfo =
             if (rinfo.isAlias) rinfo
             else if (pinfo.isAlias) pinfo
-            else if (ctx.pendingMemberSearches.contains(name)) pinfo safe_& rinfo
+            else if (ctx.base.pendingMemberSearches.contains(name)) pinfo safe_& rinfo
             else pinfo recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         } else {
           pdenot & (
             new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)),
             pre,
-            safeIntersection = ctx.pendingMemberSearches.contains(name))
+            safeIntersection = ctx.base.pendingMemberSearches.contains(name))
         }
       }
 
@@ -670,13 +670,13 @@ object Types {
       }
 
       def goAnd(l: Type, r: Type) = {
-        go(l) & (go(r), pre, safeIntersection = ctx.pendingMemberSearches.contains(name))
+        go(l) & (go(r), pre, safeIntersection = ctx.base.pendingMemberSearches.contains(name))
       }
 
-      val recCount = ctx.findMemberCount
+      val recCount = ctx.base.findMemberCount
       if (recCount >= Config.LogPendingFindMemberThreshold)
-        ctx.pendingMemberSearches = name :: ctx.pendingMemberSearches
-      ctx.findMemberCount = recCount + 1
+        ctx.base.pendingMemberSearches = name :: ctx.base.pendingMemberSearches
+      ctx.base.findMemberCount = recCount + 1
       try go(this)
       catch {
         case ex: Throwable =>
@@ -693,8 +693,8 @@ object Types {
       }
       finally {
         if (recCount >= Config.LogPendingFindMemberThreshold)
-          ctx.pendingMemberSearches = ctx.pendingMemberSearches.tail
-        ctx.findMemberCount = recCount
+          ctx.base.pendingMemberSearches = ctx.base.pendingMemberSearches.tail
+        ctx.base.findMemberCount = recCount
       }
     }
 
@@ -1934,8 +1934,8 @@ object Types {
      *  not loop before the error is detected.
      */
     final def controlled[T](op: => T)(implicit ctx: Context): T = try {
-      ctx.underlyingRecursions += 1
-      if (ctx.underlyingRecursions < Config.LogPendingUnderlyingThreshold)
+      ctx.base.underlyingRecursions += 1
+      if (ctx.base.underlyingRecursions < Config.LogPendingUnderlyingThreshold)
         op
       else if (ctx.pendingUnderlying contains this)
         throw CyclicReference(symbol)
@@ -1947,7 +1947,7 @@ object Types {
           ctx.pendingUnderlying -= this
         }
     } finally {
-      ctx.underlyingRecursions -= 1
+      ctx.base.underlyingRecursions -= 1
     }
 
     /** The argument corresponding to class type parameter `tparam` as seen from
@@ -3770,7 +3770,6 @@ object Types {
 
   /** Sentinel for "missing type" */
   @sharable case object NoType extends CachedGroundType {
-    override def exists = false
     override def computeHash(bs: Binders) = hashSeed
   }
 
@@ -3792,7 +3791,7 @@ object Types {
     def apply(msg: => Message)(implicit ctx: Context): ErrorType = {
       val et = new ErrorType {
         def msg(implicit ctx: Context): Message =
-          ctx.errorTypeMsg.get(this) match {
+          ctx.base.errorTypeMsg.get(this) match {
             case Some(msgFun) => msgFun()
             case None => "error message from previous run no longer available"
           }

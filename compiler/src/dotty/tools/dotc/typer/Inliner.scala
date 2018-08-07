@@ -85,10 +85,49 @@ object Inliner {
    *  @return   An `Inlined` node that refers to the original call and the inlined bindings
    *            and body that replace it.
    */
-  def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree = tree match {
-    case Block(stats, expr) =>
-      cpy.Block(tree)(stats, inlineCall(expr, pt))
-    case _ if (enclosingInlineds.length < ctx.settings.XmaxInlines.value) =>
+  def inlineCall(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
+
+	/** Set the position of all trees logically contained in the expansion of
+	 *  inlined call `call` to the position of `call`. This transform is necessary
+	 *  when lifting bindings from the expansion to the outside of the call.
+	 */
+    def liftFromInlined(call: Tree) = new TreeMap {
+      override def transform(t: Tree)(implicit ctx: Context) = {
+        t match {
+          case Inlined(t, Nil, expr) if t.isEmpty => expr
+          case _ => super.transform(t.withPos(call.pos))
+        }
+      }
+    }
+
+    val bindings = new mutable.ListBuffer[Tree]
+
+    /** Lift bindings around inline call or in its function part to
+     *  the `bindings` buffer. This is done as an optimization to keep
+     *  inline call expansions smaller.
+     */
+    def liftBindings(tree: Tree, liftPos: Tree => Tree): Tree = tree match {
+      case Block(stats, expr) =>
+        bindings ++= stats.map(liftPos)
+        liftBindings(expr, liftPos)
+      case Inlined(call, stats, expr) =>
+        bindings ++= stats.map(liftPos)
+        val lifter = liftFromInlined(call)
+        cpy.Inlined(tree)(call, Nil, liftBindings(expr, liftFromInlined(call).transform(_)))
+      case Apply(fn, args) =>
+        cpy.Apply(tree)(liftBindings(fn, liftPos), args)
+      case TypeApply(fn, args) =>
+        cpy.TypeApply(tree)(liftBindings(fn, liftPos), args)
+      case Select(qual, name) =>
+        cpy.Select(tree)(liftBindings(qual, liftPos), name)
+      case _ =>
+        tree
+    }
+
+    val tree1 = liftBindings(tree, identity)
+    if (bindings.nonEmpty)
+      cpy.Block(tree)(bindings.toList, inlineCall(tree1, pt))
+    else if (enclosingInlineds.length < ctx.settings.XmaxInlines.value) {
       val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
       if (ctx.reporter.hasErrors) tree
       else {
@@ -97,7 +136,8 @@ object Inliner {
           else ctx.fresh.setProperty(InlineBindings, newMutableSymbolMap[Tree])
         new Inliner(tree, body)(inlinerCtx).inlined(pt)
       }
-    case _ =>
+    }
+    else
       errorTree(
         tree,
         i"""|Maximal number of successive inlines (${ctx.settings.XmaxInlines.value}) exceeded,
@@ -469,10 +509,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             val argInPlace =
               if (trailing.isEmpty) arg
               else letBindUnless(TreeInfo.Pure, arg)(seq(trailing, _))
-            seq(prefix, seq(leading, argInPlace))
+            val fullArg = seq(prefix, seq(leading, argInPlace))
+            new TreeTypeMap().transform(fullArg) // make sure local bindings in argument have fresh symbols
               .reporting(res => i"projecting $tree -> $res", inlining)
           }
           else tree
+        case Block(stats, expr) if stats.forall(isPureBinding) =>
+          cpy.Block(tree)(stats, reduceProjection(expr))
         case _ => tree
       }
     }
@@ -793,6 +836,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
     countRefs.traverse(tree)
     for (binding <- bindings) countRefs.traverse(binding)
+
+    def retain(boundSym: Symbol) = {
+      refCount.get(boundSym) match {
+        case Some(x) => x > 1 || x == 1 && !boundSym.is(Method)
+        case none => true
+      }
+    } && !boundSym.is(TransparentImplicitMethod)
+
     val inlineBindings = new TreeMap {
       override def transform(t: Tree)(implicit ctx: Context) = t match {
         case t: RefTree =>
@@ -812,11 +863,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           super.transform(t)
       }
     }
-    def retain(binding: MemberDef) = refCount.get(binding.symbol) match {
-      case Some(x) => x > 1 || x == 1 && !binding.symbol.is(Method)
-      case none => true
-    }
-    val retained = bindings.filterConserve(retain)
+
+    val retained = bindings.filterConserve(binding => retain(binding.symbol))
     if (retained `eq` bindings) {
       (bindings, tree)
     }

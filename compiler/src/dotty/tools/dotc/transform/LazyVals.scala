@@ -64,7 +64,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
     if (lazyValNullables == null)
-      lazyValNullables = ctx.collectNullableFieldsPhase.asInstanceOf[CollectNullableFields].lazyValNullables
+      lazyValNullables = ctx.base.collectNullableFieldsPhase.asInstanceOf[CollectNullableFields].lazyValNullables
     ctx
   }
 

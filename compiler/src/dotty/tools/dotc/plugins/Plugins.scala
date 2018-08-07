@@ -80,7 +80,7 @@ trait Plugins {
       }
     }
 
-    val plugs = pick(roughPluginsList, ctx.phasePlan.flatten.map(_.phaseName).toSet)
+    val plugs = pick(roughPluginsList, ctx.base.phasePlan.flatten.map(_.phaseName).toSet)
 
     // Verify required plugins are present.
     for (req <- ctx.settings.require.value ; if !(plugs exists (_.name == req)))

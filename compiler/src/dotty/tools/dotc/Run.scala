@@ -44,7 +44,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    */
   protected[this] def rootContext(implicit ctx: Context): Context = {
     ctx.initialize()(ctx)
-    ctx.setPhasePlan(comp.phases)
+    ctx.base.setPhasePlan(comp.phases)
     val rootScope = new MutableScope
     val bootstrap = ctx.fresh
       .setPeriod(Period(comp.nextRunId, FirstPhaseId))
@@ -149,7 +149,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   protected def compileUnits()(implicit ctx: Context) = Stats.maybeMonitored {
     if (!ctx.mode.is(Mode.Interactive)) // IDEs might have multi-threaded access, accesses are synchronized
-      ctx.checkSingleThreaded()
+      ctx.base.checkSingleThreaded()
 
     compiling = true
 
@@ -158,16 +158,16 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       if (ctx.settings.YtestPickler.value) List("pickler")
       else ctx.settings.YstopAfter.value
 
-    val pluginPlan = ctx.addPluginPhases(ctx.phasePlan)
-    val phases = ctx.squashPhases(pluginPlan,
+    val pluginPlan = ctx.addPluginPhases(ctx.base.phasePlan)
+    val phases = ctx.base.squashPhases(pluginPlan,
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
-    ctx.usePhases(phases)
+    ctx.base.usePhases(phases)
 
     def runPhases(implicit ctx: Context) = {
       var lastPrintedTree: PrintedTree = NoPrintedTree
       val profiler = ctx.profiler
 
-      for (phase <- ctx.allPhases)
+      for (phase <- ctx.base.allPhases)
         if (phase.isRunnable)
           Stats.trackTime(s"$phase ms ") {
             val start = System.currentTimeMillis
@@ -228,7 +228,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private def printTree(last: PrintedTree)(implicit ctx: Context): PrintedTree = {
     val unit = ctx.compilationUnit
     val prevPhase = ctx.phase.prev // can be a mini-phase
-    val squashedPhase = ctx.squashed(prevPhase)
+    val squashedPhase = ctx.base.squashed(prevPhase)
     val treeString = unit.tpdTree.show(ctx.withProperty(XprintMode, Some(())))
 
     ctx.echo(s"result of $unit after $squashedPhase:")

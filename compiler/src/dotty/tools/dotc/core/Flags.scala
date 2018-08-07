@@ -566,6 +566,9 @@ object Flags {
   /** A dependent method */
   final val DependentMethod = allOf(Dependent, Method)
 
+  /** A transparent implicit method */
+  final val TransparentImplicitMethod = allOf(Transparent, Implicit, Method)
+
   /** A transparent parameter */
   final val TransparentParam = allOf(Transparent, Param)
 

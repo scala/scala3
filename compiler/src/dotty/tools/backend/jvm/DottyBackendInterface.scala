@@ -365,7 +365,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   def getAnnotPickle(jclassName: String, sym: Symbol): Option[Annotation] = None
 
 
-  def getRequiredClass(fullname: String): Symbol = ctx.requiredClass(fullname.toTermName)
+  def getRequiredClass(fullname: String): Symbol = ctx.requiredClass(fullname)
 
   def getClassIfDefined(fullname: String): Symbol = NoSymbol // used only for android. todo: implement
 
@@ -375,12 +375,12 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   def requiredClass[T](implicit evidence: ClassTag[T]): Symbol =
-    ctx.requiredClass(erasureString(evidence.runtimeClass).toTermName)
+    ctx.requiredClass(erasureString(evidence.runtimeClass))
 
   def requiredModule[T](implicit evidence: ClassTag[T]): Symbol = {
     val moduleName = erasureString(evidence.runtimeClass)
     val className = if (moduleName.endsWith("$")) moduleName.dropRight(1)  else moduleName
-    ctx.requiredModule(className.toTermName)
+    ctx.requiredModule(className)
   }
 
 
@@ -1193,8 +1193,8 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         val arity = field.meth.tpe.widenDealias.paramTypes.size - _1.size
         val returnsUnit = field.meth.tpe.widenDealias.resultType.classSymbol == UnitClass
         if (returnsUnit)
-          ctx.requiredClass(("scala.compat.java8.JProcedure" + arity).toTermName)
-        else ctx.requiredClass(("scala.compat.java8.JFunction" + arity).toTermName)
+          ctx.requiredClass(("scala.compat.java8.JProcedure" + arity))
+        else ctx.requiredClass(("scala.compat.java8.JFunction" + arity))
       }
     }
   }
