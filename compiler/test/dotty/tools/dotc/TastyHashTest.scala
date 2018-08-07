@@ -1,7 +1,11 @@
+package dotty.tools.dotc
+
+import org.junit.Test
+
 import dotty.tools.dotc.core.tasty.TastyHash.pjwHash64
 
-object Test {
-  def main(args: Array[String]): Unit = {
+class TastyHashTest {
+  @Test def pjwHash64Tests(): Unit = {
     testHash(0L, Array.empty)
     testHash(0L, Array(0))
     testHash(1L, Array(1))
