@@ -981,7 +981,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type], expectedType: Type, isAnnotConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val typer = ctx.typer
-    val proto = new FunProtoTyped(args, expectedType, typer)
+    val proto = new FunProtoTyped(args, expectedType)(typer)
     val denot = receiver.tpe.member(method)
     assert(denot.exists, i"no member $receiver . $method, members = ${receiver.tpe.decls}")
     val selected =

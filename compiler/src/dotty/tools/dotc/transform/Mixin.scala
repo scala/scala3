@@ -168,15 +168,19 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
      *  to be used as initializers of trait parameters if the target of the call
      *  is a trait.
      */
-    def transformConstructor(tree: Tree): (Tree, List[Tree]) = {
-      val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree
-      val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
-      (superRef(tree.symbol, tree.pos).appliedToArgs(callArgs), initArgs)
+    def transformConstructor(tree: Tree): (Tree, List[Tree]) = tree match {
+      case Block(stats, expr) =>
+        val (scall, inits) = transformConstructor(expr)
+        (cpy.Block(tree)(stats, scall), inits)
+      case _ =>
+        val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree
+        val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
+        (superRef(tree.symbol, tree.pos).appliedToArgs(callArgs), initArgs)
     }
 
     val superCallsAndArgs = (
-      for (p <- impl.parents if p.symbol.isConstructor)
-      yield p.symbol.owner -> transformConstructor(p)
+      for (p <- impl.parents; constr = stripBlock(p).symbol if constr.isConstructor)
+      yield constr.owner -> transformConstructor(p)
     ).toMap
     val superCalls = superCallsAndArgs.mapValues(_._1)
     val initArgs = superCallsAndArgs.mapValues(_._2)

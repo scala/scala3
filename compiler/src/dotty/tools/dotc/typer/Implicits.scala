@@ -897,7 +897,7 @@ trait Implicits { self: Typer =>
 
     lazy val funProto = fullProto match {
       case proto: ViewProto =>
-        FunProto(untpd.TypedSplice(dummyTreeOfType(proto.argType)) :: Nil, proto.resultType, self)
+        FunProto(untpd.TypedSplice(dummyTreeOfType(proto.argType)) :: Nil, proto.resultType)(self)
       case proto => proto
     }
 

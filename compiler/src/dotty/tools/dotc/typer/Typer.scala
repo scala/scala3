@@ -870,7 +870,7 @@ class Typer extends Namer
               expr1.tpe
             case _ =>
               val protoArgs = args map (_ withType WildcardType)
-              val callProto = FunProto(protoArgs, WildcardType, this)
+              val callProto = FunProto(protoArgs, WildcardType)(this)
               val expr1 = typedExpr(expr, callProto)
               fnBody = cpy.Apply(fnBody)(untpd.TypedSplice(expr1), args)
               expr1.tpe
@@ -2043,17 +2043,18 @@ class Typer extends Namer
     }
 
     def tryApply(implicit ctx: Context) = {
-      val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
+      val pt1 = pt.withContext(ctx)
+      val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt1)
       sel.pushAttachment(InsertedApply, ())
       if (sel.tpe.isError) sel
-      else try adapt(simplify(sel, pt, locked), pt, locked) finally sel.removeAttachment(InsertedApply)
+      else try adapt(simplify(sel, pt1, locked), pt1, locked) finally sel.removeAttachment(InsertedApply)
     }
 
     def tryImplicit(fallBack: => Tree) =
-      tryInsertImplicitOnQualifier(tree, pt, locked).getOrElse(fallBack)
+      tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked).getOrElse(fallBack)
 
     pt match {
-      case pt @ FunProto(Nil, _, _)
+      case pt @ FunProto(Nil, _)
       if tree.symbol.allOverriddenSymbols.exists(_.info.isNullaryMethod) &&
          tree.getAttachment(DroppedEmptyArgs).isEmpty =>
         tree.putAttachment(DroppedEmptyArgs, ())

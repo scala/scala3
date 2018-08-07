@@ -1593,6 +1593,11 @@ object Types {
     def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean
     def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T
     def map(tm: TypeMap)(implicit ctx: Context): ProtoType
+
+    /** If this prototype captures a context, the same prototype except that the result
+     *  captures the given context `ctx`.
+     */
+    def withContext(ctx: Context): ProtoType = this
   }
 
   /** Implementations of this trait cache the results of `narrow`. */
