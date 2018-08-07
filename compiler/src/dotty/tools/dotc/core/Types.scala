@@ -4056,11 +4056,11 @@ object Types {
       ctx.addMode(Mode.InTypeOf)
 
     object If {
-      def apply(condTp: Type, thenTp: Type, elseTp: Type)(implicit ctx: Context): Type =
-        ast.tpd.If(
-          dummyTreeOfType(condTp),
-          dummyTreeOfType(thenTp),
-          dummyTreeOfType(elseTp)
+      def apply(tree: If, condTp: Type, thenTp: Type, elseTp: Type)(implicit ctx: Context): TypeOf =
+        cpy.If(tree)(
+          treeWithTpe(tree.cond, condTp),
+          treeWithTpe(tree.thenp, thenTp),
+          treeWithTpe(tree.elsep, elseTp)
         )(dependently).tpe.asInstanceOf[TypeOf]
 
       def unapply(to: TypeOf): Option[(Type, Type, Type)] = to.tree match {
@@ -4080,7 +4080,7 @@ object Types {
     }
 
     object Match {
-      def apply(selectorTp: Type, caseTps: List[Type])(implicit ctx: Context): TypeOf =
+      def apply(tree: Match, selectorTp: Type, caseTps: List[Type])(implicit ctx: Context): TypeOf =
         ???.asInstanceOf[TypeOf] // TODO
 
       def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
@@ -4099,9 +4099,11 @@ object Types {
     }
 
     object Apply {
-      def apply(funTp: Type, argTps: List[Type])(implicit ctx: Context): TypeOf =
-        dummyTreeOfType(funTp).appliedToArgs(argTps.map(x => dummyTreeOfType(x)))(dependently)
-          .tpe.asInstanceOf[TypeOf]
+      def apply(tree: Apply, funTp: Type, argTps: List[Type])(implicit ctx: Context): TypeOf =
+        cpy.Apply(tree)(
+          treeWithTpe(tree.fun, funTp),
+          treesWithTpes(tree.args, argTps)
+        )(dependently).tpe.asInstanceOf[TypeOf]
 
       def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
         case Trees.Apply(fn, args) => Some((fn.tpe, args.map(_.tpe)))
@@ -4116,9 +4118,11 @@ object Types {
     }
 
     object TypeApply {
-      def apply(funTp: Type, argTps: List[Type])(implicit ctx: Context): TypeOf =
-        dummyTreeOfType(funTp).appliedToTypes(argTps)(dependently)
-          .tpe.asInstanceOf[TypeOf]
+      def apply(tree: TypeApply, funTp: Type, argTps: List[Type])(implicit ctx: Context): TypeOf =
+        cpy.TypeApply(tree)(
+          treeWithTpe(tree.fun, funTp),
+          treesWithTpes(tree.args, argTps)
+        ).tpe.asInstanceOf[TypeOf]
 
       def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
         case Trees.TypeApply(fn, args) => Some((fn.tpe, args.map(_.tpe)))

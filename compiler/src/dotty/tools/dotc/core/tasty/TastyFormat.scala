@@ -279,13 +279,6 @@ object TastyFormat {
   }
   object NameTags extends NameTags
 
-  object TypeOfTags {
-    final val If        = 1
-    final val Match     = 2
-    final val Apply     = 3
-    final val TypeApply = 4
-  }
-
   // AST tags
   // Cat. 1:    tag
 

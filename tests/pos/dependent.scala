@@ -38,19 +38,19 @@ object ITE {
   foo2(b):     { if (b) 1 else 2 }
 }
 
-object Match {
-  dependent def foo1(b: Boolean) = {
-    val res = b match {
-      case true => 1
-      case false => 2
-    }
-    identity[{ b match { case true => 1; case false => 2 } }](res)
-    res
-  }
+// object Match { TODO
+//   dependent def foo1(b: Boolean) = {
+//     val res = b match {
+//       case true => 1
+//       case false => 2
+//     }
+//     identity[{ b match { case true => 1; case false => 2 } }](res)
+//     res
+//   }
 
-  dependent def foo(b: Boolean): Int =
-    b match { case true => 1; case false => 2 }
-}
+//   dependent def foo(b: Boolean): Int =
+//     b match { case true => 1; case false => 2 }
+// }
 
 object Applied {
   dependent def foo1(b: Boolean) = ???

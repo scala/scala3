@@ -156,13 +156,7 @@ class TreePickler(pickler: TastyPickler) {
   private def pickleTypeOf(to: TypeOf)(implicit ctx: Context): Unit = {
     writeByte(TYPEOF)
     withLength {
-      val treeKind = to.tree match {
-        case _: If        => TypeOfTags.If
-        case _: Match     => TypeOfTags.Match
-        case _: Apply     => TypeOfTags.Apply
-        case _: TypeApply => TypeOfTags.TypeApply
-      }
-      writeByte(treeKind)
+      pickleTree(to.tree)
       to match {
         case TypeOf.Generic(types) =>
           types.foreach(tp => pickleType(tp, richTypes = true))

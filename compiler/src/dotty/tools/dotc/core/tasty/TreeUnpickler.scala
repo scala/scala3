@@ -295,14 +295,17 @@ class TreeUnpickler(reader: TastyReader,
         }
 
         def readTypeOf(): Type = {
-          val treeKind = readByte()
+          // val treeKind = readByte()
+          val tree = readTerm()
           val types = until(end)(readType())
-          ((treeKind, types): @unchecked) match {
-            case (TypeOfTags.If, List(cond, thenb, elseb)) => TypeOf.If(cond, thenb, elseb)
-            case (TypeOfTags.Match, sel :: cases)          => TypeOf.Match(sel, cases)
-            case (TypeOfTags.Apply, fn :: args)            => TypeOf.Apply(fn, args)
-            case (TypeOfTags.TypeApply, fn :: args)        => TypeOf.TypeApply(fn, args)
+
+          (tree, types) match {
+            case (t: If       , List(cond, thenb, elseb)) => TypeOf.If(t, cond, thenb, elseb)
+            case (t: Match    , sel :: cases)             => TypeOf.Match(t, sel, cases)
+            case (t: Apply    , fn :: args)               => TypeOf.Apply(t, fn, args)
+            case (t: TypeApply, fn :: args)               => TypeOf.TypeApply(t, fn, args)
           }
+
         }
 
         val result =
