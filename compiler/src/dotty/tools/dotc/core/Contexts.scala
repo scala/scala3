@@ -176,9 +176,11 @@ object Contexts {
       if (!_dependentInit) {
         val S = this.base.settings
         _dependent = if (owner eq NoSymbol) false else
-          outer.isDependent ||
-            this.owner.flagsUNSAFE.is(Flags.Dependent) && !this.owner.isClass ||
-            this.mode.is(Mode.InTypeOf)
+          this.mode.is(Mode.InTypeOf) ||
+            !this.owner.isClass && (
+              outer.isDependent ||
+              this.owner.flagsUNSAFE.is(Flags.Dependent)
+            )
         _dependentInit = true
       }
       _dependent
