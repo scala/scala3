@@ -310,4 +310,29 @@ class TestBCode extends DottyBytecodeTest {
       assertTrue(callMagic)
     }
   }
+
+  @Test def i4172 = {
+    val source =
+      """class Test {
+        |  transparent def foo(first: Int*)(second: String = "") = {}
+        |
+        |  def test = {
+        |    foo(1)()
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn = dir.lookupName("Test.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val method = getMethod(moduleNode, "test")
+
+      val fooInvoke = instructionsFromMethod(method).exists {
+        case inv: Invoke => inv.name == "foo"
+        case _ => false
+      }
+
+      assert(!fooInvoke, "foo should not be called\n")
+    }
+  }
 }
