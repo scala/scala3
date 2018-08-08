@@ -59,20 +59,20 @@ trait StandardDefinitions extends scala.tasty.reflect.StandardDefinitions with F
     def ScalaNumericValueClasses: List[ClassDef] =
       ByteClass :: ShortClass :: IntClass :: LongClass :: FloatClass :: DoubleClass :: CharClass :: Nil
 
-    def UnitTpe: Type = defn.UnitType
-    def ByteTpe: Type = defn.ByteType
-    def ShortTpe: Type = defn.ShortType
-    def CharTpe: Type = defn.CharType
-    def IntTpe: Type = defn.IntType
-    def LongTpe: Type = defn.LongType
-    def FloatTpe: Type = defn.FloatType
-    def DoubleTpe: Type = defn.DoubleType
-    def BooleanTpe: Type = defn.BooleanType
-    def AnyTpe: Type = defn.AnyType
-    def AnyValTpe: Type = defn.AnyValType
-    def AnyRefTpe: Type = defn.AnyRefType
-    def ObjectTpe: Type = defn.ObjectType
-    def NothingTpe: Type = defn.NothingType
-    def NullTpe: Type = defn.NullType
+    def UnitType: Type = defn.UnitType
+    def ByteType: Type = defn.ByteType
+    def ShortType: Type = defn.ShortType
+    def CharType: Type = defn.CharType
+    def IntType: Type = defn.IntType
+    def LongType: Type = defn.LongType
+    def FloatType: Type = defn.FloatType
+    def DoubleType: Type = defn.DoubleType
+    def BooleanType: Type = defn.BooleanType
+    def AnyType: Type = defn.AnyType
+    def AnyValType: Type = defn.AnyValType
+    def AnyRefType: Type = defn.AnyRefType
+    def ObjectType: Type = defn.ObjectType
+    def NothingType: Type = defn.NothingType
+    def NullType: Type = defn.NullType
   }
 }

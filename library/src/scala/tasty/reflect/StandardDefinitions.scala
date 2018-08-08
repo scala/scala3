@@ -161,48 +161,48 @@ trait StandardDefinitions {
     */
   trait StandardTypes {
     /** The type of primitive type `Unit`. */
-    def UnitTpe: Type
+    def UnitType: Type
 
     /** The type of primitive type `Byte`. */
-    def ByteTpe: Type
+    def ByteType: Type
 
     /** The type of primitive type `Short`. */
-    def ShortTpe: Type
+    def ShortType: Type
 
     /** The type of primitive type `Char`. */
-    def CharTpe: Type
+    def CharType: Type
 
     /** The type of primitive type `Int`. */
-    def IntTpe: Type
+    def IntType: Type
 
     /** The type of primitive type `Long`. */
-    def LongTpe: Type
+    def LongType: Type
 
     /** The type of primitive type `Float`. */
-    def FloatTpe: Type
+    def FloatType: Type
 
     /** The type of primitive type `Double`. */
-    def DoubleTpe: Type
+    def DoubleType: Type
 
     /** The type of primitive type `Boolean`. */
-    def BooleanTpe: Type
+    def BooleanType: Type
 
     /** The type of core type `Any`. */
-    def AnyTpe: Type
+    def AnyType: Type
 
     /** The type of core type `AnyVal`. */
-    def AnyValTpe: Type
+    def AnyValType: Type
 
     /** The type of core type `AnyRef`. */
-    def AnyRefTpe: Type
+    def AnyRefType: Type
 
     /** The type of core type `Object`. */
-    def ObjectTpe: Type
+    def ObjectType: Type
 
     /** The type of core type `Nothing`. */
-    def NothingTpe: Type
+    def NothingType: Type
 
     /** The type of core type `Null`. */
-    def NullTpe: Type
+    def NullType: Type
   }
 }
