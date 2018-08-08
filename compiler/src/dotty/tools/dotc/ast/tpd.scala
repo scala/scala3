@@ -76,7 +76,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def seq(stats: List[Tree], expr: Tree)(implicit ctx: Context): Tree =
     if (stats.isEmpty) expr
     else expr match {
-      case Block(estats, eexpr) => cpy.Block(expr)(stats ::: estats, eexpr)
+      case Block(estats, eexpr) =>
+        cpy.Block(expr)(stats ::: estats, eexpr).withType(ta.avoidingType(eexpr, stats))
       case _ => Block(stats, expr)
     }
 

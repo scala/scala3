@@ -1,29 +1,66 @@
+package test {
+
 import annotation.showAsInfix
 
 object typelevel {
   erased def erasedValue[T]: T = ???
-  class Typed[T](val value: T) { type Type = T }
+  case class Typed[T](val value: T) { type Type = T }
 }
 
 sealed trait Tuple
 object Empty extends Tuple
 
 @showAsInfix
-final case class *: [H, T <: Tuple](hd: H, tl: T) extends Tuple
+case class *: [+H, +T <: Tuple](hd: H, tl: T) extends Tuple
 
 object Tuple {
   import typelevel._
   type Empty = Empty.type
 
+  transparent def _cons[H, T <: Tuple] (x: H, xs: T): Tuple = new *:(x, xs)
+
+  transparent def _size(xs: Tuple): Int = xs match {
+    case Empty => 0
+    case _ *: xs1 => _size(xs1) + 1
+  }
+
+  transparent def _index(xs: Tuple, n: Int): Any = xs match {
+    case x *: _   if n == 0 => x
+    case _ *: xs1 if n > 0 => _index(xs1, n - 1)
+  }
+
   class TupleOps(val xs: Tuple) extends AnyVal {
+
     transparent def *: [H] (x: H): Tuple = new *:(x, xs)
-    transparent def size: Int = xs match {
-      case Empty => 0
-      case _ *: xs1 => xs1.size + 1
-    }
-    transparent def apply(n: Int): Any = xs match {
-      case x *: _   if n == 0 => x
-      case _ *: xs1 if n > 0  => xs1.apply(n - 1)
+    transparent def size: Int = _size(xs)
+
+    transparent def apply(n: Int): Any = {
+      erased val typed = Typed(_index(xs, n))
+      val result = _size(xs) match {
+        case 1 =>
+          n match {
+            case 1 => xs.asInstanceOf[Tuple1[_]].__1
+          }
+        case 2 =>
+          n match {
+            case 1 => xs.asInstanceOf[Tuple2[_, _]].__1
+            case 2 => xs.asInstanceOf[Tuple2[_, _]].__2
+          }
+        case 3 =>
+          n match {
+            case 1 => xs.asInstanceOf[Tuple3[_, _, _]].__1
+            case 2 => xs.asInstanceOf[Tuple3[_, _, _]].__2
+            case 3 => xs.asInstanceOf[Tuple3[_, _, _]].__3
+          }
+        case 4 =>
+          n match {
+            case 1 => xs.asInstanceOf[Tuple4[_, _, _, _]].__1
+            case 2 => xs.asInstanceOf[Tuple4[_, _, _, _]].__2
+            case 3 => xs.asInstanceOf[Tuple4[_, _, _, _]].__3
+            case 4 => xs.asInstanceOf[Tuple4[_, _, _, _]].__4
+          }
+      }
+      result.asInstanceOf[typed.Type]
     }
     transparent def **: (ys: Tuple): Tuple = ys match {
       case Empty    => xs
@@ -75,6 +112,13 @@ object Tuple {
   val e4c: Int = conc1(1)
   val e5c: Int = conc2(0)
   val e6c: Double = conc2(4)
+
+}
+
+class Tuple1[+T1](val __1: T1) extends *:(__1, Empty)
+class Tuple2[+T1, +T2](val __1: T1, val __2: T2) extends *:(__1, *:(__2, Empty))
+class Tuple3[+T1, +T2, +T3](val __1: T1, val __2: T2, val __3: T3) extends *:(__1, *:(__2, *:(__3, Empty)))
+class Tuple4[+T1, +T2, +T3, +T4](val __1: T1, val __2: T2, val __3: T3, val __4: T4) extends *:(__1, *:(__2, *:(__3, *:(__4, Empty))))
 
 }
 
