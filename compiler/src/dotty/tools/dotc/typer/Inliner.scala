@@ -602,7 +602,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
               newOwners = ctx.owner :: Nil,
               substFrom = ddef.vparamss.head.map(_.symbol),
               substTo = argSyms)
-            Block(bindingsBuf.toList, expander.transform(ddef.rhs))
+            seq(bindingsBuf.toList, expander.transform(ddef.rhs))
           case _ => tree
         }
       case _ => tree
@@ -885,6 +885,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case t: Apply =>
           val t1 = super.transform(t)
           if (t1 `eq` t) t else reducer.betaReduce(t1)
+        case Block(Nil, expr) =>
+          super.transform(expr)
         case _ =>
           super.transform(t)
       }
