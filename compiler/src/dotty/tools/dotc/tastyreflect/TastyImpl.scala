@@ -15,7 +15,9 @@ import scala.quoted
 import scala.reflect.ClassTag
 import scala.tasty.util.{Show, ShowExtractors, ShowSourceCode}
 
-class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { self =>
+import dotty.tools.dotc.tastyreflect.FromSymbol._
+
+class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty with StandardDefinitions { self =>
 
   // ===== Quotes ===================================================
 
@@ -40,7 +42,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
   type Context = Contexts.Context
 
   def ContextDeco(ctx: Context): ContextAPI = new ContextAPI {
-    def owner: Definition = FromSymbol.definition(ctx.owner)(ctx)
+    def owner: Definition = definitionFromSym(ctx.owner)(ctx)
 
     def source: java.nio.file.Path = ctx.compilationUnit.source.file.jpath
   }
@@ -86,7 +88,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
   }
 
   def PackageClauseDeco(pack: PackageClause): PackageClauseAPI = new PackageClauseAPI {
-    def definition(implicit ctx: Context): Definition = FromSymbol.packageDef(pack.symbol)
+    def definition(implicit ctx: Context): Definition = packageDefFromSym(pack.symbol)
   }
 
   // ----- Statements -----------------------------------------------
@@ -147,7 +149,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
     def name(implicit ctx: Context): String = definition.symbol.name.toString
 
-    def owner(implicit ctx: Context): Definition = FromSymbol.definition(definition.symbol.owner)
+    def owner(implicit ctx: Context): Definition = definitionFromSym(definition.symbol.owner)
 
     def flags(implicit ctx: Context): FlagSet =
       new FlagSet(definition.symbol.flags)
@@ -264,11 +266,11 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
 
   def PackageDefDeco(pdef: PackageDef): PackageDefAPI = new PackageDefAPI {
 
-    def owner(implicit ctx: Context): PackageDefinition = FromSymbol.packageDef(pdef.symbol.owner)
+    def owner(implicit ctx: Context): PackageDefinition = packageDefFromSym(pdef.symbol.owner)
 
     def members(implicit ctx: Context): List[Statement] = {
       if (pdef.symbol.is(core.Flags.JavaDefined)) Nil // FIXME should also support java packages
-      else pdef.symbol.info.decls.iterator.map(FromSymbol.definition).toList
+      else pdef.symbol.info.decls.iterator.map(definitionFromSym).toList
     }
   }
 
@@ -277,7 +279,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
   object PackageDef extends PackageDefExtractor {
     def unapply(x: PackageDef)(implicit ctx: Context): Option[(String, PackageDef)] = x match {
       case x: PackageDefinition =>
-        Some((x.symbol.name.toString, FromSymbol.packageDef(x.symbol.owner)))
+        Some((x.symbol.name.toString, packageDefFromSym(x.symbol.owner)))
       case _ => None
     }
   }
@@ -825,7 +827,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
       def unapply(x: Type)(implicit ctx: Context): Option[(Definition, TypeOrBounds /* Type | NoPrefix */)] = x  match {
         case tp: Types.NamedType =>
           tp.designator match {
-            case sym: Symbol => Some((FromSymbol.definition(sym), tp.prefix))
+            case sym: Symbol => Some((definitionFromSym(sym), tp.prefix))
             case _ => None
           }
         case _ => None
