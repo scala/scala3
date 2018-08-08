@@ -19,7 +19,7 @@ object Tuples {
 
   transparent def _size(xs: typelevel.Tuple): Int = xs match {
     case _: typelevel.Empty => 0
-    case _: typelevel.Pair[x1, xs1] => _size(erasedValue[xs1]) + 1
+    case _: typelevel.Pair[_, xs1] => _size(erasedValue[xs1]) + 1
   }
 
   val x = _size(erasedValue[Pair[Int, Pair[String, Empty]]])

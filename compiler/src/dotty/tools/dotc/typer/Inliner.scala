@@ -11,7 +11,7 @@ import Symbols._
 import Types._
 import Decorators._
 import Constants._
-import StdNames.nme
+import StdNames._
 import Contexts.Context
 import Names.{Name, TermName, EmptyTermName}
 import NameOps._
@@ -658,8 +658,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             val getBoundVars = new TreeAccumulator[List[TypeSymbol]] {
               def apply(syms: List[TypeSymbol], t: Tree)(implicit ctx: Context) = {
                 val syms1 = t match {
-                  case t: Bind if t.symbol.isType => t.symbol.asType :: syms
-                  case _ => syms
+                  case t: Bind if t.symbol.isType && t.name != tpnme.WILDCARD =>
+                    t.symbol.asType :: syms
+                  case _ =>
+                    syms
                 }
                 foldOver(syms1, t)
               }
