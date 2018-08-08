@@ -1,12 +1,13 @@
 package dotty.tools.dotc.tastyreflect
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 
-trait FromSymbol { tasty: TastyImpl =>
+object FromSymbol {
 
   def definitionFromSym(sym: Symbol)(implicit ctx: Context): tpd.Tree = {
     if (sym.is(Package)) packageDefFromSym(sym)
@@ -20,7 +21,7 @@ trait FromSymbol { tasty: TastyImpl =>
 
   def packageDefFromSym(sym: Symbol)(implicit ctx: Context): PackageDefinition = PackageDefinitionImpl(sym)
 
-  def classDef(cls: ClassSymbol)(implicit ctx: Context): ClassDef = {
+  def classDef(cls: ClassSymbol)(implicit ctx: Context): tpd.TypeDef = {
     val constrSym = cls.unforcedDecls.find(_.isPrimaryConstructor).orElse(
       // Dummy constructor for classes such as `<refinement>`
       ctx.newSymbol(cls, nme.CONSTRUCTOR, EmptyFlags, NoType)

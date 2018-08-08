@@ -15,7 +15,9 @@ import scala.quoted
 import scala.reflect.ClassTag
 import scala.tasty.util.{Show, ShowExtractors, ShowSourceCode}
 
-class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty with FromSymbol with StandardDefinitions { self =>
+import dotty.tools.dotc.tastyreflect.FromSymbol._
+
+class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty with StandardDefinitions { self =>
 
   // ===== Quotes ===================================================
 
