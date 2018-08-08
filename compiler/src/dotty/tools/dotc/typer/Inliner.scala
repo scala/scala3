@@ -834,6 +834,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   def dropUnusedDefs(bindings: List[MemberDef], tree: Tree)(implicit ctx: Context): (List[MemberDef], Tree) = {
     val refCount = newMutableSymbolMap[Int]
     val bindingOfSym = newMutableSymbolMap[MemberDef]
+    val dealiased = new java.util.IdentityHashMap[Type, Type]()
+
     def isInlineable(binding: MemberDef) = binding match {
       case DefDef(_, Nil, Nil, _, _) => true
       case vdef @ ValDef(_, _, _) => isPureExpr(vdef.rhs)
@@ -843,6 +845,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       refCount(binding.symbol) = 0
       bindingOfSym(binding.symbol) = binding
     }
+
     val countRefs = new TreeTraverser {
       override def traverse(t: Tree)(implicit ctx: Context) = {
         def updateRefCount(sym: Symbol, inc: Int) =
@@ -868,7 +871,45 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case none => true
       }
     } && !boundSym.is(TransparentImplicitMethod)
-      // FIXME: It would be nice if we could also drop type bindings, but reference counting is trickier for them.
+
+    val (termBindings, typeBindings) = bindings.partition(_.symbol.isTerm)
+
+    /** drop any referenced type symbols from the given set of type symbols */
+    val dealiasTypeBindings = new TreeMap {
+      val boundTypes = typeBindings.map(_.symbol).toSet
+
+      val dealias = new TypeMap {
+        override def apply(tp: Type) = dealiased.get(tp) match {
+          case null =>
+            val tp1 = mapOver {
+              tp match {
+                case tp: TypeRef if boundTypes.contains(tp.symbol) =>
+                  val TypeAlias(alias) = tp.info
+                  alias
+                case _ => tp
+              }
+            }
+            dealiased.put(tp, tp1)
+            tp1
+          case tp1 => tp1
+        }
+      }
+
+      override def transform(t: Tree)(implicit ctx: Context) = {
+        val dealiasedType = dealias(t.tpe)
+        val t1 = t match {
+          case t: RefTree =>
+            if (boundTypes.contains(t.symbol)) TypeTree(dealiasedType).withPos(t.pos)
+            else t.withType(dealiasedType)
+          case t: DefTree =>
+            t.symbol.info = dealias(t.symbol.info)
+            t
+          case _ =>
+            t.withType(dealiasedType)
+        }
+        super.transform(t1)
+      }
+    }
 
     val inlineBindings = new TreeMap {
       override def transform(t: Tree)(implicit ctx: Context) = t match {
@@ -892,12 +933,16 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
     }
 
-    val retained = bindings.filterConserve(binding => retain(binding.symbol))
-    if (retained `eq` bindings) {
-      (bindings, tree)
+    val dealiasedTermBindings =
+      termBindings.mapconserve(dealiasTypeBindings.transform).asInstanceOf[List[MemberDef]]
+    val dealiasedTree = dealiasTypeBindings.transform(tree)
+
+    val retained = dealiasedTermBindings.filterConserve(binding => retain(binding.symbol))
+    if (retained `eq` dealiasedTermBindings) {
+      (dealiasedTermBindings, dealiasedTree)
     }
     else {
-      val expanded = inlineBindings.transform(tree)
+      val expanded = inlineBindings.transform(dealiasedTree)
       dropUnusedDefs(retained, expanded)
     }
   }
