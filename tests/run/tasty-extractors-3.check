@@ -2,11 +2,11 @@ Type.SymRef(ClassDef("Int", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("s
 
 Type.SymRef(ValDef("x", _, _), NoPrefix())
 
-TypeBounds(Type.SymRef(#, Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))), Type.SymRef(#, Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))))
+TypeBounds(Type.SymRef(ClassDef("Nothing", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))), Type.SymRef(ClassDef("Any", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))))
 
-Type.SymRef(#, Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
+Type.SymRef(ClassDef("Nothing", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
-Type.SymRef(#, Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
+Type.SymRef(ClassDef("Any", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
 Type.SymRef(TypeDef("T", _), NoPrefix())
 
@@ -22,11 +22,11 @@ Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("
 
 Type.SymRef(ClassDef("Object", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("lang", _), NoPrefix())))
 
-TypeBounds(Type.SymRef(#, Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))), Type.SymRef(#, Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))))
+TypeBounds(Type.SymRef(ClassDef("Nothing", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))), Type.SymRef(ClassDef("Any", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))))
 
-Type.SymRef(#, Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
+Type.SymRef(ClassDef("Nothing", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
-Type.SymRef(#, Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
+Type.SymRef(ClassDef("Any", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
 Type.Refinement(Type.SymRef(ClassDef("Foo", _, _, _, _), NoPrefix()), X, TypeBounds(Type.SymRef(TypeDef("String", _), Type.SymRef(ValDef("Predef", _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))), Type.SymRef(TypeDef("String", _), Type.SymRef(ValDef("Predef", _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))))))
 

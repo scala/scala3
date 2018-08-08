@@ -11,8 +11,6 @@ object FromSymbol {
 
   def definitionFromSym(sym: Symbol)(implicit ctx: Context): tpd.Tree = {
     if (sym.is(Package)) packageDefFromSym(sym)
-    else if (sym == defn.AnyClass) tpd.EmptyTree // FIXME
-    else if (sym == defn.NothingClass) tpd.EmptyTree // FIXME
     else if (sym.isClass) classDef(sym.asClass)
     else if (sym.isType) typeDefFromSym(sym.asType)
     else if (sym.is(Method)) defDefFromSym(sym.asTerm)

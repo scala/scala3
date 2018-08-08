@@ -166,7 +166,6 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case TypeDef(name, _) => this += "TypeDef(\"" += name += "\", _)"
           case ClassDef(name, _, _, _, _) => this += "ClassDef(\"" += name += "\", _, _, _, _)"
           case PackageDef(name, _) => this += "PackageDef(\"" += name += "\", _)"
-          case _ => this += "#"
         }
         this += "Type.SymRef("
         visitName(sym)
