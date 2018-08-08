@@ -147,7 +147,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     compileUnits()(ctx)
   }
 
-  protected def compileUnits()(implicit ctx: Context) = Stats.maybeMonitored {
+  private def compileUnits()(implicit ctx: Context) = Stats.maybeMonitored {
     if (!ctx.mode.is(Mode.Interactive)) // IDEs might have multi-threaded access, accesses are synchronized
       ctx.base.checkSingleThreaded()
 
