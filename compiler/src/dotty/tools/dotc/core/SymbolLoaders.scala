@@ -390,7 +390,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
   }
 
   private def mayLoadTreesFromTasty(implicit ctx: Context): Boolean =
-    ctx.settings.YretainTrees.value || ctx.settings.Xlink.value || ctx.settings.fromTasty.value
+    ctx.settings.YretainTrees.value || ctx.settings.fromTasty.value
 }
 
 class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {

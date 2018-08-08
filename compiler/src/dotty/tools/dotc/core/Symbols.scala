@@ -668,10 +668,8 @@ object Symbols {
 
     private[this] var myTree: TreeOrProvider = tpd.EmptyTree
 
-    /** If this is either:
-      *   - a top-level class and `-Yretain-trees` is set
-      *   - a top-level class loaded from TASTY and `-tasty` or `-Xlink` is set
-      * then return the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
+    /** If this is a top-level class and `-Yretain-trees` (or `-from-tasty`) is set.
+      * Returns the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
       * This will force the info of the class.
       */
     def tree(implicit ctx: Context): Tree = treeContaining("")
