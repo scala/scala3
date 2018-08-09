@@ -133,11 +133,12 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
 
   // ----- Definitions ----------------------------------------------
 
-  type Definition = tpd.Tree
+  type Definition = tpd.Tree /* tpd.MemberDef | PackageDefinition */
 
   object IsDefinition extends IsDefinitionExtractor {
     def unapply(tree: Tree)(implicit ctx: Context): Option[Definition] = tree match {
       case tree: tpd.MemberDef => Some(tree)
+      case tree: PackageDefinition => Some(tree)
       case _ => None
     }
   }
