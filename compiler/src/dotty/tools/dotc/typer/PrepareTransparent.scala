@@ -76,12 +76,14 @@ object PrepareTransparent {
        *  by excluding all symbols properly contained in the inlined method.
        *
        *  Constant vals don't need accessors since they are inlined in FirstTransform.
+       *  Transparent methods don't need accessors since they are inlined in Typer.
        */
       def needsAccessor(sym: Symbol)(implicit ctx: Context) =
         sym.isTerm &&
         (sym.is(AccessFlags) || sym.privateWithin.exists) &&
         !sym.isContainedIn(inlineSym) &&
-        !(sym.isStable && sym.info.widenTermRefExpr.isInstanceOf[ConstantType])
+        !(sym.isStable && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
+        !sym.is(TransparentMethod)
 
       def preTransform(tree: Tree)(implicit ctx: Context): Tree
 
