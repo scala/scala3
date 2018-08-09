@@ -189,15 +189,14 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
 
   object ClassDef extends ClassDefExtractor {
     def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[Parent],  Option[ValDef], List[Statement])] = tree match {
-      case x: tpd.TypeDef if x.isClassDef =>
-        val deco = ClassDefDeco(x)
-        Some((x.name.toString, deco.constructor, deco.parents, deco.self, deco.body))
+      case Trees.TypeDef(name, impl: tpd.Template) =>
+        Some((name.toString, impl.constr, impl.parents, optional(impl.self), impl.body))
       case _ => None
     }
   }
 
   def ClassDefDeco(cdef: ClassDef): ClassDefAPI = new ClassDefAPI {
-    private[this] val rhs = cdef.rhs.asInstanceOf[tpd.Template]
+    private def rhs = cdef.rhs.asInstanceOf[tpd.Template]
     def constructor(implicit ctx: Context): DefDef = rhs.constr
     def parents(implicit ctx: Context): List[tpd.Tree] = rhs.parents
     def self(implicit ctx: Context): Option[tpd.ValDef] = optional(rhs.self)
