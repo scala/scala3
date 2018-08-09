@@ -4,55 +4,62 @@ import annotation.showAsInfix
 
 class TypeLevel {
   type Tuple
+
   type Empty <: Tuple
+    // in the actual implementation, pick scala.Unit, and have it extend `Tuple`.
 
   @showAsInfix type *:[+H, +T <: Tuple] <: Tuple
+
   erased def erasedValue[T]: T = ???
   case class Typed[T](val value: T) { type Type = T }
 }
 
-class TupleXXL(val elems: Array[Object])
+class TupleXXL private (es: Array[Object]) {
+  override def toString = elems.mkString("(", ",", ")")
+  override def hashCode = getClass.hashCode * 41 + elems.deep.hashCode
+  override def equals(that: Any) = that match {
+    case that: TupleXXL => this.elems.deep.equals(that.elems.deep)
+    case _ => false
+  }
+  def elems: Array[Object] = es
+}
+object TupleXXL {
+  def apply(elems: Array[Object]) = new TupleXXL(elems.clone)
+}
 
 object Tuples {
   val typelevel = new TypeLevel
   import typelevel._
 
-  final val MaxSpecialized = 7   // 22 in real life
-
-  transparent def _empty: Tuple = erasedValue[Empty]
-  transparent def _pair[H, T <: Tuple] (x: H, xs: T): Tuple = erasedValue[H *: T]
-
   def unit = ().asInstanceOf[Empty]
 
-  transparent def _size(xs: Tuple): Int = xs match {
+  private final val MaxSpecialized = 7   // 22 in real life
+
+  private transparent def _empty: Tuple = erasedValue[Empty]
+  private transparent def _pair[H, T <: Tuple] (x: H, xs: T): Tuple = erasedValue[H *: T]
+
+  private transparent def _size(xs: Tuple): Int = xs match {
     case _: Empty => 0
     case _: (_ *: xs1) => _size(erasedValue[xs1]) + 1
   }
 
-  erased val xs2 = erasedValue[Int *: String *: Empty]
-
-  erased val s = _size(xs2)
-
-  transparent def _index(xs: Tuple, n: Int): Any = xs match {
+  private transparent def _index(xs: Tuple, n: Int): Any = xs match {
     case _: (x *: _)   if n == 0 => erasedValue[x]
     case _: (_ *: xs1) if n > 0  => _index(erasedValue[xs1], n - 1)
   }
 
-  transparent def _head(xs: Tuple): Any = xs match {
+  private transparent def _head(xs: Tuple): Any = xs match {
     case _: (x *: _) => erasedValue[x]
   }
 
-  transparent def _tail(xs: Tuple): Tuple = xs match {
+  private transparent def _tail(xs: Tuple): Tuple = xs match {
     case _: (_ *: xs1) => erasedValue[xs1]
   }
 
-  transparent def _concat(xs: Tuple, ys: Tuple): Tuple = xs match {
+  private transparent def _concat(xs: Tuple, ys: Tuple): Tuple = xs match {
     case _: Empty => ys
     case _: (x1 *: xs1) => _pair(erasedValue[x1], _concat(erasedValue[xs1], ys))
   }
-
-  erased val e0 = _index(xs2, 0)
-  erased val e1 = _index(xs2, 1)
 
   transparent def fromArray[T <: Tuple](xs: Array[Object]): T =
     _size(erasedValue[T]) match {
@@ -64,7 +71,7 @@ object Tuples {
       case 5 => Tuple5(xs(0), xs(1), xs(2), xs(3), xs(4)).asInstanceOf[T]
       case 6 => Tuple6(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5)).asInstanceOf[T]
       case 7 => Tuple7(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6)).asInstanceOf[T]
-      case _ => new TupleXXL(xs).asInstanceOf[T]
+      case _ => TupleXXL(xs).asInstanceOf[T]
     }
 
   val emptyArray = Array[Object]()
@@ -255,38 +262,38 @@ object Test extends App {
   import test._
   import Tuples._
   import typelevel._
-  val x0 = unit
-  val x1 = 1 *: x0
-  val x2 = "A" *: x1
-  val x3 = 2 *: x2
-  val x4 = "B" *: x3
-  val x5 = 3 *: x4
-  val x6 = "C" *: x5
-  val x7 = 4 *: x6
-  val x8 = "D" *: x7
-  val h1 = x1.head; val h1c: Int = h1
-  val h2 = x2.head; val h2c: String = h2
-  val h7 = x7.head; val h7c: Int = h7
-  val h8 = x8.head; val h8c: String = h8
-  val t1 = x1.tail; val t1c: Empty = t1
-  val t2 = x2.tail; val t2c: Int *: Empty = t2
-  val t7 = x7.tail; val t7c: String *: Int *: Empty = t7.tail.tail.tail.tail
-  val t8 = x8.tail; val t8c: Int = t8(6)
-  val a1_0 = x1(0); val a1_0c: Int = a1_0
-  val a2_0 = x2(0); val a2_0c: String = a2_0
-  val a3_1 = x3(1); val a3_1c: String = a3_1
-  val a4_3 = x4(3); val a4_3c: Int = a4_3
-  val a6_4 = x6(4); val a6_4c: String = a6_4
-  val a8_0 = x8(0); val a8_0c: String = a8_0
-  val c0_0 = x0 ++ x0; val c0_0c: Empty = c0_0
-  val c0_1 = x0 ++ x1; val c0_1c: Int *: Empty = c0_1c
-  val c1_0 = x1 ++ x0; val c1_0c: Int *: Empty = c1_0c
-  val c0_4 = x0 ++ x4; val c0_4c: String *: Int *: String *: Int *: Empty = c0_4
-  val c4_0 = x4 ++ x0; val c4_0c: String *: Int *: String *: Int *: Empty = c4_0
-  val c1_1 = x1 ++ x1; val c1_1c: Int *: Int *: Empty = c1_1
-  val c1_8 = x1 ++ x8; val c1_8c: Int *: String *: Int *: String *: Int *: String *: Int *: String *: Int *: Empty = c1_8
-  val c2_1 = x2 ++ x1; val c2_1c: String *: Int *: Int *: Empty = c2_1
-  val c2_2 = x2 ++ x2; val c2_2c: String *: Int *: String *: Int *: Empty = c2_2
-  val c2_3 = x2 ++ x3; val c2_3c: String *: Int *: Int *: String *: Int *: Empty = c2_3
-  val c3_3 = x3 ++ x3; val c3_3c: Int *: String *: Int *: Int *: String *: Int *: Empty = c3_3
+  val x0 = unit; println(x0)
+  val x1 = 1 *: x0; println(x1)
+  val x2 = "A" *: x1; println(x2)
+  val x3 = 2 *: x2; println(x3)
+  val x4 = "B" *: x3; println(x4)
+  val x5 = 3 *: x4; println(x5)
+  val x6 = "C" *: x5; println(x6)
+  val x7 = 4 *: x6; println(x7)
+  val x8 = "D" *: x7; println(x8)
+  val h1 = x1.head; val h1c: Int = h1; println(s"h1 = $h1")
+  val h2 = x2.head; val h2c: String = h2; println(s"h2 = $h2")
+  val h7 = x7.head; val h7c: Int = h7; println(s"h7 = $h7")
+  val h8 = x8.head; val h8c: String = h8; println(s"h8 = $h8")
+  val t1 = x1.tail; val t1c: Empty = t1; println(s"t1 = $t1")
+  val t2 = x2.tail; val t2c: Int *: Empty = t2; println(s"t2 = $t2")
+  val t7 = x7.tail; val t7c: String *: Int *: Empty = t7.tail.tail.tail.tail; println(s"t7 = $t7")
+  val t8 = x8.tail; val t8c: Int = t8(6); println(s"t8 = $t8")
+  val a1_0 = x1(0); val a1_0c: Int = a1_0; println(s"a1_0 = $a1_0")
+  val a2_0 = x2(0); val a2_0c: String = a2_0; println(s"a2_0 = $a2_0")
+  val a3_1 = x3(1); val a3_1c: String = a3_1; println(s"a3_1 = $a3_1")
+  val a4_3 = x4(3); val a4_3c: Int = a4_3; println(s"a4_3 = $a4_3")
+  val a6_4 = x6(4); val a6_4c: String = a6_4; println(s"a6_4 = $a6_4")
+  val a8_0 = x8(0); val a8_0c: String = a8_0; println(s"a8_0 = $a8_0")
+  val c0_0 = x0 ++ x0; val c0_0c: Empty = c0_0; println(s"c0_0 = $c0_0")
+  val c0_1 = x0 ++ x1; val c0_1c: Int *: Empty = c0_1c; println(s"c0_1 = $c0_1")
+  val c1_0 = x1 ++ x0; val c1_0c: Int *: Empty = c1_0c; println(s"c1_0 = $c1_0")
+  val c0_4 = x0 ++ x4; val c0_4c: String *: Int *: String *: Int *: Empty = c0_4; println(s"c0_4 = $c0_4")
+  val c4_0 = x4 ++ x0; val c4_0c: String *: Int *: String *: Int *: Empty = c4_0; println(s"c4_0 = $c4_0")
+  val c1_1 = x1 ++ x1; val c1_1c: Int *: Int *: Empty = c1_1; println(s"c1_1 = $c1_1")
+  val c1_8 = x1 ++ x8; val c1_8c: Int *: String *: Int *: String *: Int *: String *: Int *: String *: Int *: Empty = c1_8; println(s"c1_8 = $c1_8")
+  val c2_1 = x2 ++ x1; val c2_1c: String *: Int *: Int *: Empty = c2_1; println(s"c2_1 = $c2_1")
+  val c2_2 = x2 ++ x2; val c2_2c: String *: Int *: String *: Int *: Empty = c2_2; println(s"c2_2 = $c2_2")
+  val c2_3 = x2 ++ x3; val c2_3c: String *: Int *: Int *: String *: Int *: Empty = c2_3; println(s"c2_3 = $c2_3")
+  val c3_3 = x3 ++ x3; val c3_3c: Int *: String *: Int *: Int *: String *: Int *: Empty = c3_3; println(s"c3_3 = $c3_3")
 }
