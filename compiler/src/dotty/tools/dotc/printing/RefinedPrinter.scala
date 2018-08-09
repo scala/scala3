@@ -185,7 +185,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           val l :: r :: Nil = args
           val opName = tyconName(tycon)
 
-          return toTextInfixType(tyconName(tycon), l, r) { simpleNameString(tycon.classSymbol) }
+          return toTextInfixType(tyconName(tycon), l, r) { simpleNameString(tycon.typeSymbol) }
         }
 
       // Since RefinedPrinter, unlike PlainPrinter, can output right-associative type-operators, we must override handling
