@@ -155,15 +155,15 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => false
     }
 
-    def toTextInfixType(op: Type, args: List[Type]): Text = {
+    def toTextInfixType(op: Type, args: List[Type]): Text = changePrec(InfixPrec) {
       /* SLS 3.2.8: all infix types have the same precedence.
        * In A op B op' C, op and op' need the same associativity.
        * Therefore, if op is left associative, anything on its right
        * needs to be parenthesized if it's an infix type, and vice versa. */
       val l :: r :: Nil = args
       val isRightAssoc = op.typeSymbol.name.endsWith(":")
-      val leftArg = if (isRightAssoc && isInfixType(l)) "(" ~ atPrec(GlobalPrec) { argText(l) } ~ ")" else atPrec(GlobalPrec) { argText(l) }
-      val rightArg = if (!isRightAssoc && isInfixType(r)) "(" ~ atPrec(GlobalPrec) { argText(r) } ~ ")" else atPrec(GlobalPrec) { argText(r) }
+      val leftArg = if (isRightAssoc) atPrec(InfixPrec + 1) { argText(l) } else argText(l)
+      val rightArg = if (!isRightAssoc) atPrec(InfixPrec + 1) { argText(r) } else argText(r)
 
       leftArg ~ " " ~ simpleNameString(op.classSymbol) ~ " " ~ rightArg
     }
