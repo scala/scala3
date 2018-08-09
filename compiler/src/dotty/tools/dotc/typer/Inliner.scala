@@ -730,13 +730,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       val scrutineeBinding = normalizeBinding(ValDef(scrutineeSym, scrutinee))
 
       def reduceCase(cdef: untpd.CaseDef): MatchRedux = {
-        def guardOK = cdef.guard.isEmpty || {
-          typer.typed(cdef.guard, defn.BooleanType) match {
+        val caseBindingsBuf = new mutable.ListBuffer[MemberDef]()
+        def guardOK(implicit ctx: Context) = cdef.guard.isEmpty || {
+          val guardCtx = ctx.fresh.setNewScope
+          caseBindingsBuf.foreach(binding => guardCtx.enter(binding.symbol))
+          typer.typed(cdef.guard, defn.BooleanType)(guardCtx) match {
             case ConstantValue(true) => true
             case _ => false
           }
         }
-        val caseBindingsBuf = new mutable.ListBuffer[MemberDef]()
         if (scrutType != defn.ImplicitScrutineeTypeRef) caseBindingsBuf += scrutineeBinding
         val gadtCtx = typer.gadtContext(gadtSyms).addMode(Mode.GADTflexible)
         val pat1 = typer.typedPattern(cdef.pat, scrutType)(gadtCtx)
