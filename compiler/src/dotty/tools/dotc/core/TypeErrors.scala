@@ -125,11 +125,11 @@ class CyclicReference private (val denot: SymDenotation) extends TypeError {
         cx.tree match {
           case tree: untpd.ValOrDefDef if !tree.tpt.typeOpt.exists =>
             if (inImplicitSearch)
-              TermMemberNeedsResultTypeForImplicitSearch(tree.name, cycleSym)
+              TermMemberNeedsResultTypeForImplicitSearch(cycleSym)
             else if (isMethod)
-              OverloadedOrRecursiveMethodNeedsResultType(tree.name, cycleSym)
+              OverloadedOrRecursiveMethodNeedsResultType(cycleSym)
             else if (isVal)
-              RecursiveValueNeedsResultType(tree.name, cycleSym)
+              RecursiveValueNeedsResultType(cycleSym)
             else
               errorMsg(cx.outer)
           case _ =>

@@ -1260,7 +1260,7 @@ object messages {
            |""".stripMargin
   }
 
-  case class OverloadedOrRecursiveMethodNeedsResultType(methodName: Names.TermName, cycleSym: Symbol)(implicit ctx: Context)
+  case class OverloadedOrRecursiveMethodNeedsResultType(cycleSym: Symbol)(implicit ctx: Context)
   extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
     val kind = "Syntax"
     val msg = hl"""overloaded or recursive $cycleSym needs return type"""
@@ -1275,7 +1275,7 @@ object messages {
           |""".stripMargin
   }
 
-  case class RecursiveValueNeedsResultType(valName: Names.TermName, cycleSym: Symbol)(implicit ctx: Context)
+  case class RecursiveValueNeedsResultType(cycleSym: Symbol)(implicit ctx: Context)
   extends Message(RecursiveValueNeedsResultTypeID) {
     val kind = "Syntax"
     val msg = hl"""recursive $cycleSym needs type"""
@@ -2111,7 +2111,7 @@ object messages {
   }
 
   // Relative of CyclicReferenceInvolvingImplicit and RecursiveValueNeedsResultType
-  case class TermMemberNeedsResultTypeForImplicitSearch(memberName: Names.TermName, cycleSym: Symbol)(implicit ctx: Context)
+  case class TermMemberNeedsResultTypeForImplicitSearch(cycleSym: Symbol)(implicit ctx: Context)
     extends Message(TermMemberNeedsNeedsResultTypeForImplicitSearchID) {
     val kind = "Syntax"
     val msg = hl"""$cycleSym needs result type because its right-hand side attempts implicit search"""

@@ -207,8 +207,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val OverloadedOrRecursiveMethodNeedsResultType(methodName, cycleSym) :: Nil = messages
-      assertEquals("foo", methodName.show)
+      val OverloadedOrRecursiveMethodNeedsResultType(cycleSym) :: Nil = messages
       assertEquals("foo", cycleSym.name.show)
     }
 
@@ -224,8 +223,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val OverloadedOrRecursiveMethodNeedsResultType(methodName, cycleSym) :: Nil = messages
-      assertEquals("i", methodName.show)
+      val OverloadedOrRecursiveMethodNeedsResultType(cycleSym) :: Nil = messages
       assertEquals("i", cycleSym.name.show)
     }
 
@@ -241,8 +239,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val RecursiveValueNeedsResultType(valName, cycleSym) :: Nil = messages
-      assertEquals("i", valName.show)
+      val RecursiveValueNeedsResultType(cycleSym) :: Nil = messages
       assertEquals("i", cycleSym.name.show)
     }
 
@@ -259,8 +256,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
 
         assertMessageCount(1, messages)
-        val RecursiveValueNeedsResultType(valName, cycleSym) :: Nil = messages
-        assertEquals("j", valName.show)
+        val RecursiveValueNeedsResultType(cycleSym) :: Nil = messages
         assertEquals("i", cycleSym.name.show)
       }
 
@@ -311,8 +307,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
 
         assertMessageCount(1, messages)
-        val OverloadedOrRecursiveMethodNeedsResultType(methodName, cycleSym) :: Nil = messages
-        assertEquals("even", methodName.show)
+        val OverloadedOrRecursiveMethodNeedsResultType(cycleSym) :: Nil = messages
         assertEquals("odd", cycleSym.name.show)
       }
 
@@ -334,9 +329,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
 
         assertMessageCount(1, messages)
-        val OverloadedOrRecursiveMethodNeedsResultType(methodName, cycleSym) :: Nil = messages
-        // Not ideal behavior
-        assertEquals("foo", methodName.show)
+        val OverloadedOrRecursiveMethodNeedsResultType(cycleSym) :: Nil = messages
         assertEquals("odd", cycleSym.name.show)
       }
 
@@ -358,9 +351,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
 
         assertMessageCount(1, messages)
-        val OverloadedOrRecursiveMethodNeedsResultType(methodName, cycleSym) :: Nil = messages
-        // Not ideal behavior
-        assertEquals("foo", methodName.show)
+        val OverloadedOrRecursiveMethodNeedsResultType(cycleSym) :: Nil = messages
         assertEquals("odd", cycleSym.name.show)
       }
 
@@ -380,9 +371,8 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val TermMemberNeedsResultTypeForImplicitSearch(memberName, cycleSym) :: Nil = messages
+      val TermMemberNeedsResultTypeForImplicitSearch(cycleSym) :: Nil = messages
       assertEquals("x", cycleSym.name.show)
-      assertEquals("x", memberName.show)
     }
 
   @Test def implicitSearchForcesImplicitRetType_i4709 =
@@ -406,8 +396,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
 
       assertMessageCount(1, messages)
-      val TermMemberNeedsResultTypeForImplicitSearch(memberName, cycleSym) :: Nil = messages
-      assertEquals("ctx", memberName.show)
+      val TermMemberNeedsResultTypeForImplicitSearch(cycleSym) :: Nil = messages
       assertEquals("ctx", cycleSym.name.show)
     }
 
@@ -425,8 +414,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
 
         assertMessageCount(1, messages)
-        val TermMemberNeedsResultTypeForImplicitSearch(memberName, cycleSym) :: Nil = messages
-        assertEquals("test", memberName.show)
+        val TermMemberNeedsResultTypeForImplicitSearch(cycleSym) :: Nil = messages
         assertEquals("test", cycleSym.name.show)
       }
 
