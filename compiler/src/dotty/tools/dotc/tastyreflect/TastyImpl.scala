@@ -62,7 +62,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
 
   object Id extends IdExtractor {
     def unapply(x: Id): Option[String] = x match {
-      case x: untpd.Ident => Some(x.name.toString) // TODO how to make sure it is not a Ident or TypeIdent? Check x.tpe?
+      case x: untpd.Ident => Some(x.name.toString)
       case _ => None
     }
   }
@@ -117,7 +117,7 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty wit
 
   object SimpleSelector extends SimpleSelectorExtractor {
     def unapply(x: ImportSelector)(implicit ctx: Context): Option[Id] = x match {
-      case x: untpd.Ident => Some(x) // TODO make sure it will not match other idents
+      case x: untpd.Ident => Some(x)
       case _ => None
     }
   }
