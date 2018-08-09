@@ -1263,24 +1263,24 @@ object messages {
   case class OverloadedOrRecursiveMethodNeedsResultType(methodName: Names.TermName, cycleSym: Symbol)(implicit ctx: Context)
   extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
     val kind = "Syntax"
-    val msg = hl"""overloaded or recursive ${cycleSym} needs return type"""
+    val msg = hl"""overloaded or recursive $cycleSym needs return type"""
     val explanation =
-      hl"""Case 1: ${cycleSym} is overloaded
-          |If there are multiple methods named `${cycleSym}` and at least one definition of
+      hl"""Case 1: $cycleSym is overloaded
+          |If there are multiple methods named `$cycleSym` and at least one definition of
           |it calls another, you need to specify the calling method's return type.
           |
-          |Case 2: ${cycleSym} is recursive
-          |If `${cycleSym}` calls itself on any path (even through mutual recursion), you need to specify the return type
-          |of `${cycleSym}` or of a definition it's mutually recursive with.
+          |Case 2: $cycleSym is recursive
+          |If `$cycleSym` calls itself on any path (even through mutual recursion), you need to specify the return type
+          |of `$cycleSym` or of a definition it's mutually recursive with.
           |""".stripMargin
   }
 
   case class RecursiveValueNeedsResultType(valName: Names.TermName, cycleSym: Symbol)(implicit ctx: Context)
   extends Message(RecursiveValueNeedsResultTypeID) {
     val kind = "Syntax"
-    val msg = hl"""recursive ${cycleSym} needs type"""
+    val msg = hl"""recursive $cycleSym needs type"""
     val explanation =
-      hl"""The definition of `${cycleSym}` is recursive and you need to specify its type.
+      hl"""The definition of `$cycleSym` is recursive and you need to specify its type.
           |""".stripMargin
   }
 
