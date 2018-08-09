@@ -100,11 +100,14 @@ package scala.tasty.reflect
  */
 trait TastyCore {
 
+  /** Compilation context */
   type Context
 
-  // TODO: When bootstrapped, remove and use `Term | TypeTree` type directly
+  // TODO: When bootstrapped, remove and use `Term | TypeTree` type directly in other files
+  /** Workaround missing `|` types in Scala 2 to represent `Term | TypeTree` */
   type Parent /* Term | TypeTree */
 
+  /** Tree representing executable code written in the source */
   type Tree
     type PackageClause <: Tree
     type Statement <: Tree
@@ -115,14 +118,17 @@ trait TastyCore {
         type DefDef <: Definition
         type ValDef <: Definition
         type PackageDef <: Definition
-      type Term <: Statement with Parent
+      type Term <: Statement with Parent // TODO: When bootstrapped, remove `Parent`
 
+  /** Branch of a pattern match or catch clause */
   type CaseDef
 
+  /** Pattern tree of the pattern part of a CaseDef */
   type Pattern
 
+  /** Tree representing a type written in the source */
   type TypeOrBoundsTree
-    type TypeTree <: TypeOrBoundsTree with Parent
+    type TypeTree <: TypeOrBoundsTree with Parent // TODO: When bootstrapped, remove `Parent`
     type TypeBoundsTree <: TypeOrBoundsTree
 
   type TypeOrBounds
@@ -140,12 +146,16 @@ trait TastyCore {
 
   type ImportSelector
 
+  /** Untyped identifier */
   type Id
 
+  /** JVM signature of a method */
   type Signature
 
+  /** Source position */
   type Position
 
+  /** Constant value represented as the constant itself */
   type Constant
 
 }
