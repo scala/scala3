@@ -1262,7 +1262,7 @@ object messages {
 
   case class OverloadedOrRecursiveMethodNeedsResultType(cycleSym: Symbol)(implicit ctx: Context)
   extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
-    val kind = "Syntax"
+    val kind = "Cyclic"
     val msg = hl"""overloaded or recursive $cycleSym needs return type"""
     val explanation =
       hl"""Case 1: $cycleSym is overloaded
@@ -1277,7 +1277,7 @@ object messages {
 
   case class RecursiveValueNeedsResultType(cycleSym: Symbol)(implicit ctx: Context)
   extends Message(RecursiveValueNeedsResultTypeID) {
-    val kind = "Syntax"
+    val kind = "Cyclic"
     val msg = hl"""recursive $cycleSym needs type"""
     val explanation =
       hl"""The definition of `$cycleSym` is recursive and you need to specify its type.
@@ -1286,7 +1286,7 @@ object messages {
 
   case class CyclicReferenceInvolving(denot: SymDenotation)(implicit ctx: Context)
   extends Message(CyclicReferenceInvolvingID) {
-    val kind = "Syntax"
+    val kind = "Cyclic"
     val msg = hl"""cyclic reference involving $denot"""
     val explanation =
       hl"""|$denot is declared as part of a cycle which makes it impossible for the
@@ -1297,7 +1297,7 @@ object messages {
 
   case class CyclicReferenceInvolvingImplicit(cycleSym: Symbol)(implicit ctx: Context)
   extends Message(CyclicReferenceInvolvingImplicitID) {
-    val kind = "Syntax"
+    val kind = "Cyclic"
     val msg = hl"""cyclic reference involving implicit $cycleSym"""
     val explanation =
       hl"""|$cycleSym is declared as part of a cycle which makes it impossible for the
@@ -2113,7 +2113,7 @@ object messages {
   // Relative of CyclicReferenceInvolvingImplicit and RecursiveValueNeedsResultType
   case class TermMemberNeedsResultTypeForImplicitSearch(cycleSym: Symbol)(implicit ctx: Context)
     extends Message(TermMemberNeedsNeedsResultTypeForImplicitSearchID) {
-    val kind = "Syntax"
+    val kind = "Cyclic"
     val msg = hl"""$cycleSym needs result type because its right-hand side attempts implicit search"""
     val explanation =
       hl"""|The right hand-side of $cycleSym's definition requires an implicit search at the highlighted position.
