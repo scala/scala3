@@ -375,9 +375,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case SingletonTypeTree(ref) =>
         toTextLocal(ref) ~ "." ~ keywordStr("type")
       case AndTypeTree(l, r) =>
-        changePrec(AndTypePrec) { toText(l) ~ " & " ~ toText(r) }
+        changePrec(AndTypePrec) { toText(l) ~ " & " ~ atPrec(AndTypePrec + 1) { toText(r) } }
       case OrTypeTree(l, r) =>
-        changePrec(OrTypePrec) { toText(l) ~ " | " ~ toText(r) }
+        changePrec(OrTypePrec) { toText(l) ~ " | " ~ atPrec(OrTypePrec + 1) { toText(r) } }
       case RefinedTypeTree(tpt, refines) =>
         toTextLocal(tpt) ~ " " ~ blockText(refines)
       case AppliedTypeTree(tpt, args) =>

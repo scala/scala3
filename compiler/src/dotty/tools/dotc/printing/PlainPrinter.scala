@@ -161,9 +161,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }
         finally openRecs = openRecs.tail
       case AndType(tp1, tp2) =>
-        changePrec(AndTypePrec) { toText(tp1) ~ " & " ~ toText(tp2) }
+        changePrec(AndTypePrec) { toText(tp1) ~ " & " ~ atPrec(AndTypePrec + 1) { toText(tp2) } }
       case OrType(tp1, tp2) =>
-        changePrec(OrTypePrec) { toText(tp1) ~ " | " ~ toText(tp2) }
+        changePrec(OrTypePrec) { toText(tp1) ~ " | " ~ atPrec(OrTypePrec + 1) { toText(tp2) } }
       case tp: ErrorType =>
         s"<error ${tp.msg.msg}>"
       case tp: WildcardType =>
