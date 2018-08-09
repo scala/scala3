@@ -32,11 +32,11 @@ scala> import scala.annotation.showAsInfix
 scala> @scala.annotation.showAsInfix class Mappy[T,U]
 // defined class Mappy
 scala> def foo: (Int Mappy Boolean) && String = ???
-def foo: (Int Mappy Boolean) && String
+def foo: Int Mappy Boolean && String
 scala> def foo: Int Mappy Boolean && String = ???
 def foo: Int Mappy Boolean && String
 scala> def foo: Int Mappy (Boolean && String) = ???
-def foo: Int Mappy Boolean && String
+def foo: Int Mappy (Boolean && String)
 scala> @scala.annotation.showAsInfix(false) class ||[T,U]
 // defined class ||
 scala> def foo: Int || Boolean = ???
