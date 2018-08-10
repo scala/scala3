@@ -58,7 +58,7 @@ object Applications {
 
   /** Does `tp` fit the "get match" conditions as an unapply result type?
    *  This is the case of `tp` has a `get` member as well as a
-   *  parameterless `isDefined` member of result type `Boolean`.
+   *  parameterless `isEmpty` member of result type `Boolean`.
    */
   def isGetMatch(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context) =
     extractorMemberType(tp, nme.isEmpty, errorPos).isRef(defn.BooleanClass) &&
@@ -95,6 +95,7 @@ object Applications {
       val addendum =
         if (ctx.scala2Mode && unapplyName == nme.unapplySeq)
           "\nYou might want to try to rewrite the extractor to use `unapply` instead."
+        else ""
       ctx.error(em"$unapplyResult is not a valid result type of an $unapplyName method of an extractor$addendum", pos)
       Nil
     }
