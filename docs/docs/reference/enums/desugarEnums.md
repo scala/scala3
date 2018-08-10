@@ -181,4 +181,4 @@ this object or its members via `this` or a simple identifier is also illegal. Th
 
 A normal case class which is not produced from an enum case is not allowed to extend
 `scala.Enum`. This ensures that the only cases of an enum are the ones that are
-explictly declared in it.
+explicitly declared in it.

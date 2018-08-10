@@ -954,7 +954,7 @@ class Typer extends Namer
                      |position = ${tree.pos}, raw type = ${mt.toString}""") // !!! DEBUG. Eventually, convert to an error?
                 }
                 else if ((tree.tpt `eq` untpd.ImplicitEmptyTree) && mt.paramNames.isEmpty)
-                  // Note implicitness of function in target type sicne there are no method parameters that indicate it.
+                  // Note implicitness of function in target type since there are no method parameters that indicate it.
                   TypeTree(defn.FunctionOf(Nil, mt.resType, isImplicit = true, isErased = false))
                 else
                   EmptyTree
@@ -2329,7 +2329,7 @@ class Typer extends Namer
       *
       *     val x: AnyRef = f
       *
-      *  That's intentional, we want to fail here, otherwise some unsuccesful implicit searches
+      *  That's intentional, we want to fail here, otherwise some unsuccessful implicit searches
       *  would go undetected.
       *
       *  Examples for these cases are found in run/implicitFuns.scala and neg/i2006.scala.

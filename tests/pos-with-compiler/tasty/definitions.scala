@@ -113,7 +113,7 @@ object definitions {
     def tpe: Type.TypeBounds = ???
   }
 
-  /** Trees denoting type infered bounds */
+  /** Trees denoting type inferred bounds */
   case class SyntheticBounds() extends Tree {
     def tpe: Type.TypeBounds = ???
   }

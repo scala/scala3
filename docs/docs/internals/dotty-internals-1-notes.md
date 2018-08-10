@@ -47,8 +47,8 @@ Typed trees contain not only the user-written code, but also semantic informatio
   * `Literal`: constants (e.g. integer constant 1)
   * `Typed`: type ascription (e.g. for widening, as in `(1: Any)`)
   * `NamedArg`: named arguments (can appear out-of-order in untyped trees, but will appear in-order in typed ones)
-  * `Assign`: assignment. The node has a `lhs` and a `rhs`, but the `lhs` can be arbitrarly complicated (e.g. `(new C).f = 0`).
-  * `If`: the condition in an if-expression can be arbitrarly complex (e.g. it can contain class definitions)
+  * `Assign`: assignment. The node has a `lhs` and a `rhs`, but the `lhs` can be arbitrarily complicated (e.g. `(new C).f = 0`).
+  * `If`: the condition in an if-expression can be arbitrarily complex (e.g. it can contain class definitions)
   * `Closure`: the free variables are stored in the `env` field, but are only accessible "around" the `LambdaLift` phase.
   * `Match` and `CaseDef`: pattern-matching trees. The `pat` field in `CaseDef` (the pattern) is, in turn, populated with a subset of trees like `Bind` and `Unapply`.
   * `Return`: return from a method. If the `from` field is empty, then we return from the closest enclosing method.

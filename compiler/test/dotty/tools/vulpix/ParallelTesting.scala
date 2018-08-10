@@ -838,7 +838,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  neg tests
    *  =========
    *  Neg tests are expected to generate a certain amount of errors - but not
-   *  crash the compiler. In each `.scala` file, you specifiy the line on which
+   *  crash the compiler. In each `.scala` file, you specify the line on which
    *  the error will be generated, e.g:
    *
    *  ```

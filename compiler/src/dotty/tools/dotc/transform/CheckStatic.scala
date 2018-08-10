@@ -12,7 +12,7 @@ import reporting.diagnostic.messages.{MissingCompanionForStatic, StaticFieldsOnl
 
 /** A transformer that check that requirements of Static fields\methods are implemented:
   *  1. Only objects can have members annotated with `@static`
-  *  2. The fields annotated with `@static` should preceed any non-`@static` fields.
+  *  2. The fields annotated with `@static` should precede any non-`@static` fields.
   *     This ensures that we do not introduce surprises for users in initialization order.
   *  3. If a member `foo` of an `object C` is annotated with `@static`,
   *     the companion class `C` is not allowed to define term members with name `foo`.
@@ -37,7 +37,7 @@ class CheckStatic extends MiniPhase {
         }
 
         if (defn.isInstanceOf[ValDef] && hadNonStaticField) {
-          ctx.error("@static fields should preceed non-static ones", defn.pos)
+          ctx.error("@static fields should precede non-static ones", defn.pos)
         }
 
         val companion = ctx.owner.companionClass

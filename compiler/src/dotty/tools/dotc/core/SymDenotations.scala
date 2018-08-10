@@ -1068,7 +1068,7 @@ object SymDenotations {
       if (!canMatchInheritedSymbols && (owner ne inClass)) NoSymbol
       else matchingDecl(inClass, owner.thisType)
 
-    /** All symbols overriden by this denotation. */
+    /** All symbols overridden by this denotation. */
     final def allOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
       if (!canMatchInheritedSymbols) Iterator.empty
       else overriddenFromType(owner.info)

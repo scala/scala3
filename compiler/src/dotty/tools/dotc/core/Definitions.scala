@@ -1233,7 +1233,7 @@ class Definitions {
       // Temporary measure, as long as we do not read these classes from Tasty.
       // Scala-2 classes don't have NoInits set even if they are pure. We override this
       // for Product and Serializable so that case classes can be pure. A full solution
-      // requiers that we read all Scala code from Tasty.
+      // requires that we read all Scala code from Tasty.
       ProductClass.setFlag(NoInits)
       SerializableClass.setFlag(NoInits)
 

@@ -11,7 +11,7 @@ is the default on all systems except Mac where you'll need to follow these
 instructions: https://code.visualstudio.com/docs/setup/mac#_command-line
 
 
-If this is the case and your project succesfully compiles with dotty, you can
+If this is the case and your project successfully compiles with dotty, you can
 simply use the `launchIDE` command provided by the sbt-dotty plugin:
 
 ```shell

@@ -103,7 +103,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     reorder(stats, Nil)
   }
 
-  /** elimiate self in Template */
+  /** eliminate self in Template */
   override def transformTemplate(impl: Template)(implicit ctx: Context): Tree = {
     cpy.Template(impl)(self = EmptyValDef)
   }

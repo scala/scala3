@@ -350,7 +350,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *   - For a refined type scala.Array+[T]:
    *      - if T is Nothing or Null, []Object
    *      - otherwise, if T <: Object, []|T|
-   *      - otherwise, if T is a type paramter coming from Java, []Object
+   *      - otherwise, if T is a type parameter coming from Java, []Object
    *      - otherwise, Object
    *   - For a term ref p.x, the type <noprefix> # x.
    *   - For a typeref scala.Any, scala.AnyVal or scala.Singleton: |java.lang.Object|
