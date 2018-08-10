@@ -20,7 +20,14 @@ import scala.collection.mutable
  *  temporary directory as class files.
  */
 final class TastyFileManager extends ClassFileManager {
-  private[this] val tempDir = Files.createTempDirectory("backup").toFile
+  private[this] var _tempDir: File = null
+  private[this] def tempDir = {
+    if (_tempDir == null) {
+      _tempDir = Files.createTempDirectory("backup").toFile
+      println(s"ClassFileManager.tempDir: creating ${_tempDir} in $this")
+    }
+    _tempDir
+  }
 
   private[this] val generatedTastyFiles = new mutable.HashSet[File]
   private[this] val movedTastyFiles = new mutable.HashMap[File, File]
@@ -42,7 +49,11 @@ final class TastyFileManager extends ClassFileManager {
       IO.deleteFilesEmptyDirs(generatedTastyFiles)
       for ((orig, tmp) <- movedTastyFiles) IO.move(tmp, orig)
     }
-    IO.delete(tempDir)
+    if (_tempDir != null) {
+      println(s"ClassFileManager.complete($success): deleting $tempDir from $this")
+      IO.delete(tempDir)
+      _tempDir = null
+    }
   }
 
   private def tastyFiles(classes: Array[File]): Array[File] = {
@@ -56,6 +67,7 @@ final class TastyFileManager extends ClassFileManager {
   }
 
   private def move(c: File): File = {
+    println(s"ClassFileManager.delete: maybe using $tempDir in $this")
     val target = File.createTempFile("sbt", ".tasty", tempDir)
     IO.move(c, target)
     target
