@@ -24,7 +24,6 @@ final class TastyFileManager extends ClassFileManager {
   private[this] def tempDir = {
     if (_tempDir == null) {
       _tempDir = Files.createTempDirectory("backup").toFile
-      println(s"ClassFileManager.tempDir: creating ${_tempDir} in $this")
     }
     _tempDir
   }
@@ -50,7 +49,6 @@ final class TastyFileManager extends ClassFileManager {
       for ((orig, tmp) <- movedTastyFiles) IO.move(tmp, orig)
     }
     if (_tempDir != null) {
-      println(s"ClassFileManager.complete($success): deleting $tempDir from $this")
       IO.delete(tempDir)
       _tempDir = null
     }
@@ -67,7 +65,6 @@ final class TastyFileManager extends ClassFileManager {
   }
 
   private def move(c: File): File = {
-    println(s"ClassFileManager.delete: maybe using $tempDir in $this")
     val target = File.createTempFile("sbt", ".tasty", tempDir)
     IO.move(c, target)
     target
