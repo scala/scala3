@@ -2105,4 +2105,12 @@ object messages {
     }
     val explanation = ""
   }
+
+  case class SpliceOutsideQuotes() extends Message(SpliceOutsideQuotesID) {
+    val kind = "Syntax"
+    val msg = "splice outside quotes"
+    val explanation =
+      """A splice may only appear inside quotes '{ ... },
+        |or else it must be the whole right hand side of a transparent method.""".stripMargin
+  }
 }

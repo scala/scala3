@@ -2,23 +2,23 @@ import scala.quoted._
 
 object Test {
 
-  transparent def foo1: Int = { // error
+  transparent def foo1: Int = {
     println()
-    ~impl(1.toExpr)
+    ~impl(1.toExpr) // error: splice outside quotes
   }
 
-  transparent def foo2: Int = { // error
-    ~impl(1.toExpr)
-    ~impl(2.toExpr)
+  transparent def foo2: Int = {
+    ~impl(1.toExpr)  // error: splice outside quotes
+    ~impl(2.toExpr)  // error: splice outside quotes
   }
 
-  transparent def foo3: Int = { // error
+  transparent def foo3: Int = {
     val a = 1
-    ~impl('(a))
+    ~impl('(a)) // error: splice outside quotes
   }
 
-  transparent def foo4: Int = { // error
-    ~impl('(1))
+  transparent def foo4: Int = {
+    ~impl('(1))  // error: splice outside quotes
     1
   }
 

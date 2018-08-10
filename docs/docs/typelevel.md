@@ -229,34 +229,17 @@ The following rewrite rules are performed when simplifying inlined bodies:
    Dropping a binding might make other bindings redundant. Garbage collection proceeds until no further bindings
    can be dropped.
 
-## Restrictions for Transparent and Typelevel Functions
+## Restrictions for Transparent and Erased Functions
 
 Transparent methods are effectively final; they may not be overwritten.
 
-If a transparent
-method has a toplevel match expression or a toplevel splice `~` on its right-hand side,
-it is classified as a typelevel method that can _only_ be executed at compile time. For typelevel methods two more restrictions apply:
+Transparent methods with a toplevel implicit match or macro splice are classified `erased` - an `erased` modifier can be given for them, but it is redundant. Erased transparent methods must be always fully applied. In addition, the restrictions on normal erased methods apply, including:
 
- 1. They must be always fully applied.
- 2. They may override other methods only if one of the overridden methods is concrete.
+ 1. They may not override other methods.
+ 2. They may not be referred to from a non-erased context.
 
-The right hand side of a typelevel method is never invoked by dynamic dispatch. As an example consider a situation like the following:
-```scala
-class Iterable[T] {
-  def foreach(f: T => Unit): Unit = ...
-}
-class List[T] extends Iterable[T] {
-  override transparent def foreach(f: T => Unit): Unit = ...
-}
-val xs: Iterable[T] = ...
-val ys: List[T] = ...
-val zs: Iterable[T] = ys
-xs.foreach(f)  // calls Iterable's foreach
-ys.foreach(f)  // expands to the body of List's foreach
-zs.foreach(f)  // calls Iterable's foreach
-```
-It follows that an overriding typelevel method should implement exactly the same semantics as the
-method it overrides (but possibly more efficiently).
+**Question:** We currently set `erased` automatically for macros, i.e. methods with a
+right-hand side of the form `~...`. But we require it to be written explicitly for methods that have an implicit match as RHS. Should these situations be treated in the same instead? If yes, which of the two is preferable?
 
 ## Matching on Types
 
@@ -415,7 +398,7 @@ There are some proposals to improve the situation in specific areas, for instanc
 By contrast, the new `implicit match` construct makes implicit search available in a functional context. To solve
 the problem of creating the right set, one would use it as follows:
 ```scala
-transparent def setFor[T]: Set[T] = implicit match {
+erased transparent def setFor[T]: Set[T] = implicit match {
   case ord: Ordering[T] => new TreeSet[T]
   case _                => new HashSet[T]
 }
@@ -426,8 +409,8 @@ Patterns are tried in sequence. The first case with a pattern `x: T` such that a
 of type `T` can be summoned is chosen. The variable `x` is then bound to the implicit value for the remainder of the case. It can in turn be used as an implicit in the right hand side of the case.
 It is an error if one of the tested patterns gives rise to an ambiguous implicit search.
 
-Implicit matches can only occur as toplevel match expressions of transparent methods. This ensures that
-all implicit searches are done at compile-time.
+Implicit matches can only occur as toplevel match expressions of a `transparent` method.
+If a transpatent method contains implicit matches, it is classified as `erased` - an `erased` modifier can be given for it, but it is redundant. This ensures that all implicit searches are done at compile-time.
 
 ## Transparent Values
 

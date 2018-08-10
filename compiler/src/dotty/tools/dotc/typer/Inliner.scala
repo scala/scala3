@@ -58,8 +58,12 @@ object Inliner {
   /** Should call with method `meth` be inlined in this context? */
   def isInlineable(meth: Symbol)(implicit ctx: Context): Boolean = {
 
+    /** Suppress inlining of
+     *   - non-erased methods inside a transparent method,
+     *   - all methods inside an erased transparent method
+     */
     def suppressInline =
-      ctx.inTransparentMethod ||
+      ctx.inTransparentMethod && (!meth.is(Erased) || ctx.inErasedTransparentMethod) ||
       ctx.settings.YnoInline.value ||
       ctx.isAfterTyper ||
       ctx.reporter.hasErrors

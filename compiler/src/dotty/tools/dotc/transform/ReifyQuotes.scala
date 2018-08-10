@@ -11,7 +11,7 @@ import SymUtils._
 import NameKinds._
 import dotty.tools.dotc.ast.tpd.Tree
 import typer.Implicits.SearchFailureType
-
+import reporting.diagnostic.messages._
 import scala.collection.mutable
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
@@ -242,6 +242,10 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         !sym.is(Param) || levelOK(sym.owner)
     }
 
+    /** Issue a "splice outside quote" error unless we are in the body of a transparent method */
+    def spliceOutsideQuotes(pos: Position)(implicit ctx: Context): Unit =
+      ctx.error(SpliceOutsideQuotes(), pos)
+
     /** Try to heal phase-inconsistent reference to type `T` using a local type definition.
      *  @return None      if successful
      *  @return Some(msg) if unsuccessful where `msg` is a potentially empty error message
@@ -300,7 +304,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
               outer.checkType(pos).foldOver(acc, tp)
             }
             else {
-              if (tp.isTerm) ctx.error(i"splice outside quotes", pos)
+              if (tp.isTerm) spliceOutsideQuotes(pos)
               tp
             }
           case tp: NamedType =>
@@ -431,7 +435,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice)
       }
       else if (!ctx.owner.is(Transparent)) { // level 0 outside a transparent definition
-        ctx.error(i"splice outside quotes or transparent method", splice.pos)
+        spliceOutsideQuotes(splice.pos)
         splice
       }
       else if (Splicer.canBeSpliced(splice.qualifier)) { // level 0 inside a transparent definition

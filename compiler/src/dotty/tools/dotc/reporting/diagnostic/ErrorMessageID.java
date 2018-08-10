@@ -131,6 +131,7 @@ public enum ErrorMessageID {
     MatchCaseOnlyNullWarningID,
     ImportRenamedTwiceID,
     TypeTestAlwaysSucceedsID,
+    SpliceOutsideQuotesID,
     ;
 
     public int errorNumber() {

@@ -548,8 +548,8 @@ object Flags {
   /** Assumed to be pure */
   final val StableOrErased = Stable | Erased
 
-  /** Labeled `private`, `final`, or `transparent` */
-  final val EffectivelyFinal = Private | Final | Transparent
+  /** Labeled `private`, `final`, `transparent`, or `erased` */
+  final val EffectivelyFinal = Private | Final | Transparent | Erased
 
   /** A private method */
   final val PrivateMethod = allOf(Private, Method)
@@ -565,6 +565,9 @@ object Flags {
 
   /** A transparent parameter */
   final val TransparentParam = allOf(Transparent, Param)
+
+  /** A transparent erased method */
+  final val TransparentErasedMethod = allOf(Transparent, Erased, Method)
 
   /** An enum case */
   final val EnumCase = allOf(Enum, Case)

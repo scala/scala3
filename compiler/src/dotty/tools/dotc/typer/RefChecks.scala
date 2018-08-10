@@ -143,16 +143,14 @@ object RefChecks {
    *    1.8.1  M's type is a subtype of O's type, or
    *    1.8.2  M is of type []S, O is of type ()T and S <: T, or
    *    1.8.3  M is of type ()S, O is of type []T and S <: T, or
-   *    1.9    M must not be a typelevel def or a Dotty macro def
-   *    1.10.  If M is a 2.x macro def, O cannot be deferred unless there's a concrete method overriding O.
-   *    1.11.  If M is not a macro def, O cannot be a macro def.
+   *    1.9    If M is an erased definition, it must override at least one concrete member
    *  2. Check that only abstract classes have deferred members
    *  3. Check that concrete classes do not have deferred definitions
    *     that are not implemented in a subclass.
    *  4. Check that every member with an `override` modifier
    *     overrides some other member.
    *  TODO check that classes are not overridden
-   *  TODO This still needs to be cleaned up; the current version is a staright port of what was there
+   *  TODO This still needs to be cleaned up; the current version is a straight port of what was there
    *       before, but it looks too complicated and method bodies are far too large.
    */
   private def checkAllOverrides(clazz: Symbol)(implicit ctx: Context): Unit = {
@@ -376,14 +374,8 @@ object RefChecks {
         overrideError("may not override a non-lazy value")
       } else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy)) {
         overrideError("must be declared lazy to override a lazy value")
-      } else if (member.is(Erased) && member.allOverriddenSymbols.forall(_.is(Deferred))) { // (1.9)
-        overrideError("is an erased method, may not override only deferred methods")
-      } else if (member.is(Macro, butNot = Scala2x)) { // (1.9)
-        overrideError("is a macro, may not override anything")
-      } else if (other.is(Deferred) && member.is(Scala2Macro) && member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.10)
-        overrideError("cannot be used here - term macros cannot override abstract methods")
-      } else if (other.is(Macro) && !member.is(Macro)) { // (1.11)
-        overrideError("cannot be used here - only term macros can override term macros")
+      } else if (member.is(Erased) && other.is(Deferred) && member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.9)
+        overrideError("is erased, cannot override only abstract methods")
       } else if (!compatibleTypes(memberTp(self), otherTp(self)) &&
                  !compatibleTypes(memberTp(upwardsSelf), otherTp(upwardsSelf))) {
         overrideError("has incompatible type" + err.whyNoMatchStr(memberTp(self), otherTp(self)))

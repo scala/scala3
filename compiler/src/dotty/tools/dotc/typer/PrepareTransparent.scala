@@ -20,6 +20,7 @@ import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
 import Annotations._
 import transform.{ExplicitOuter, AccessProxies}
+import transform.SymUtils._
 import Inferencing.fullyDefinedType
 import config.Printers.inlining
 import ErrorReporting.errorTree
@@ -250,6 +251,15 @@ object PrepareTransparent {
           inlined.updateAnnotation(LazyBodyAnnotation { _ =>
             implicit val ctx = inlineCtx
             val rawBody = treeExpr(ctx)
+
+            def markAsMacro(body: Tree): Unit = body match {
+              case _: Select if body.symbol.isSplice => inlined.setFlag(Erased | Macro)
+              case Block(Nil, expr) => markAsMacro(expr)
+              case Block(expr :: Nil, Literal(Constant(()))) => markAsMacro(expr)
+              case _ =>
+            }
+            markAsMacro(rawBody)
+
             val typedBody =
               if (ctx.reporter.hasErrors) rawBody
               else ctx.compilationUnit.inlineAccessors.makeInlineable(rawBody)
