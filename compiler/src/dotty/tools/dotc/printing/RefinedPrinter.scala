@@ -130,7 +130,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def toText(tp: Type): Text = controlled {
     def toTextTuple(args: List[Type]): Text =
-      "(" ~ Text(args.map(argText), ", ") ~ ")"
+      "(" ~ argsText(args) ~ ")"
 
     def toTextFunction(args: List[Type], isImplicit: Boolean, isErased: Boolean): Text =
       changePrec(GlobalPrec) {
@@ -155,17 +155,24 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => false
     }
 
-    def toTextInfixType(op: Type, args: List[Type]): Text = {
-      /* SLS 3.2.8: all infix types have the same precedence.
-       * In A op B op' C, op and op' need the same associativity.
-       * Therefore, if op is left associative, anything on its right
-       * needs to be parenthesized if it's an infix type, and vice versa. */
-      val l :: r :: Nil = args
-      val isRightAssoc = op.typeSymbol.name.endsWith(":")
-      val leftArg = if (isRightAssoc && isInfixType(l)) "(" ~ argText(l) ~ ")" else argText(l)
-      val rightArg = if (!isRightAssoc && isInfixType(r)) "(" ~ argText(r) ~ ")" else argText(r)
+    def tyconName(tp: Type): Name = tp.typeSymbol.name
+    def checkAssocMismatch(tp: Type, isRightAssoc: Boolean) = tp match {
+      case AppliedType(tycon, _) => isInfixType(tp) && tyconName(tycon).endsWith(":") != isRightAssoc
+      case AndType(_, _) => isRightAssoc
+      case OrType(_, _) => isRightAssoc
+      case _ => false
+    }
 
-      leftArg ~ " " ~ simpleNameString(op.classSymbol) ~ " " ~ rightArg
+    def toTextInfixType(opName: Name, l: Type, r: Type)(op: => Text): Text = {
+      val isRightAssoc = opName.endsWith(":")
+      val opPrec = parsing.precedence(opName, true)
+
+      changePrec(opPrec) {
+        val leftPrec = if (isRightAssoc || checkAssocMismatch(l, isRightAssoc)) opPrec + 1 else opPrec
+        val rightPrec = if (!isRightAssoc || checkAssocMismatch(r, isRightAssoc)) opPrec + 1 else opPrec
+
+        atPrec(leftPrec) { argText(l) }  ~ " " ~ op ~ " " ~ atPrec(rightPrec) { argText(r) }
+      }
     }
 
     homogenize(tp) match {
@@ -174,7 +181,20 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
         if (defn.isFunctionClass(cls)) return toTextFunction(args, cls.name.isImplicitFunction, cls.name.isErasedFunction)
         if (defn.isTupleClass(cls)) return toTextTuple(args)
-        if (isInfixType(tp)) return toTextInfixType(tycon, args)
+        if (isInfixType(tp)) {
+          val l :: r :: Nil = args
+          val opName = tyconName(tycon)
+
+          return toTextInfixType(tyconName(tycon), l, r) { simpleNameString(tycon.typeSymbol) }
+        }
+
+      // Since RefinedPrinter, unlike PlainPrinter, can output right-associative type-operators, we must override handling
+      // of AndType and OrType to account for associativity
+      case AndType(tp1, tp2) =>
+        return toTextInfixType(tpnme.raw.AMP, tp1, tp2) { toText(tpnme.raw.AMP) }
+      case OrType(tp1, tp2) =>
+        return toTextInfixType(tpnme.raw.BAR, tp1, tp2) { toText(tpnme.raw.BAR) }
+
       case EtaExpansion(tycon) =>
         return toText(tycon)
       case tp: RefinedType if defn.isFunctionType(tp) =>
@@ -201,7 +221,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         // (they don't need to because we keep the original type tree with
         //  the original annotation anyway. Therefore, there will always be
         //  one version of the annotation tree that has the correct positions).
-        withoutPos(super.toText(tp))
+        return withoutPos(super.toText(tp))
       case tp: SelectionProto =>
         return "?{ " ~ toText(tp.name) ~
            (Str(" ") provided !tp.name.toSimpleName.last.isLetterOrDigit) ~
@@ -375,9 +395,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case SingletonTypeTree(ref) =>
         toTextLocal(ref) ~ "." ~ keywordStr("type")
       case AndTypeTree(l, r) =>
-        changePrec(AndPrec) { toText(l) ~ " & " ~ toText(r) }
+        changePrec(AndTypePrec) { toText(l) ~ " & " ~ atPrec(AndTypePrec + 1) { toText(r) } }
       case OrTypeTree(l, r) =>
-        changePrec(OrPrec) { toText(l) ~ " | " ~ toText(r) }
+        changePrec(OrTypePrec) { toText(l) ~ " | " ~ atPrec(OrTypePrec + 1) { toText(r) } }
       case RefinedTypeTree(tpt, refines) =>
         toTextLocal(tpt) ~ " " ~ blockText(refines)
       case AppliedTypeTree(tpt, args) =>
