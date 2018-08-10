@@ -1,8 +1,7 @@
 package scala.tasty
 package reflect
 
-trait StandardDefinitions {
-  self: Tasty =>
+trait StandardDefinitions extends TastyCore {
 
   /** A value containing all standard definitions in [[DefinitionsApi]]
     *  @group Definitions
