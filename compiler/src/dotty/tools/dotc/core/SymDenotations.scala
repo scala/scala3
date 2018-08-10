@@ -680,9 +680,9 @@ object SymDenotations {
         // after Erasure and to avoid cyclic references caused by forcing denotations
     }
 
-    /** Is this symbol a class references to which that are supertypes of null? */
+    /** Is this symbol a class with nullable values? */
     final def isNullableClass(implicit ctx: Context): Boolean =
-      isClass && !isValueClass && !is(ModuleClass) && symbol != defn.NothingClass
+      symbol == defn.NullClass || symbol == defn.AnyRefAlias || symbol == defn.AnyClass
 
     /** Is this definition accessible as a member of tree with type `pre`?
      *  @param pre          The type of the tree from which the selection is made
@@ -1549,7 +1549,7 @@ object SymDenotations {
       derivesFrom(base) ||
         base.isClass && (
           (symbol eq defn.NothingClass) ||
-            (symbol eq defn.NullClass) && (base ne defn.NothingClass))
+            (symbol eq defn.NullClass) && base.isNullableClass)
 
     final override def typeParamCreationFlags: FlagSet = ClassTypeParamCreationFlags
 

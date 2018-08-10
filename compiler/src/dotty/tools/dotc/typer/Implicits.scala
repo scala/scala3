@@ -852,7 +852,7 @@ trait Implicits { self: Typer =>
         else if (rtp.isRef(defn.NullClass)) ltp
         else NoType
 
-      (other ne NoType) && !other.derivesFrom(defn.AnyValClass)
+      (other ne NoType) && other.classSymbol.isNullableClass
     }
 
     // Map all non-opaque abstract types to their upper bound.

@@ -962,10 +962,8 @@ class Definitions {
       name.length > prefix.length &&
       name.drop(prefix.length).forall(_.isDigit))
 
-  def isBottomClass(cls: Symbol): Boolean =
-    cls == NothingClass || cls == NullClass
-  def isBottomType(tp: Type): Boolean =
-    tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
+  def isBottomClass(cls: Symbol) = cls == NothingClass
+  def isBottomType(tp: Type) = tp.derivesFrom(NothingClass)
 
   /** Is a function class.
    *   - FunctionN for N >= 0
