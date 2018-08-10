@@ -1017,7 +1017,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
             lastParam.tpe match {
               case defn.ArrayOf(el2) if el2 <:< el =>
                 // we have a JavaSeqLiteral with a more precise type
-                // we cannot construct a tree as JavaSeqLiteral infered to precise type
+                // we cannot construct a tree as JavaSeqLiteral inferred to precise type
                 // if we add typed than it would be both type-correct and
                 // will pass Ycheck
                 prefix ::: List(tpd.Typed(lastParam, TypeTree(defn.ArrayOf(el))))

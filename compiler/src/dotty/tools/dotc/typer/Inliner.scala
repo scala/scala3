@@ -626,7 +626,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
       val gadtSyms = typer.gadtSyms(scrutType)
 
-      /** Try to match pattern `pat` against scrutinee reference `scrut`. If succesful add
+      /** Try to match pattern `pat` against scrutinee reference `scrut`. If successful add
        *  bindings for variables bound in this pattern to `bindingsBuf`.
        */
       def reducePattern(bindingsBuf: mutable.ListBuffer[MemberDef], scrut: TermRef, pat: Tree): Boolean = {

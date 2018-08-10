@@ -626,7 +626,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def symbol: Symbol = a.tree.symbol
 
-    def args: List[Tree] = List.empty // those arguments to scala-defined annotations. they are never emmited
+    def args: List[Tree] = List.empty // those arguments to scala-defined annotations. they are never emmitted
   }
 
   def assocsFromApply(tree: Tree): List[(Name, Tree)] = {
@@ -810,7 +810,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def annotations: List[Annotation] = toDenot(sym).annotations
     def companionModuleMembers: List[Symbol] =  {
       // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
-      // not local classes of the companion module (E in the exmaple) that were lifted by lambdalift.
+      // not local classes of the companion module (E in the example) that were lifted by lambdalift.
       if (linkedClass.isTopLevelModuleClass) /*exitingPickler*/ linkedClass.memberClasses
       else Nil
     }

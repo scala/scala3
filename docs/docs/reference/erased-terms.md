@@ -34,7 +34,7 @@ m.turnedOn.turnedOn // ERROR
 
 Note that in the code above the actual implicit arguments for `IsOff` are never used at runtime; they serve only to establish the right constraints at compile time.
 As these terms are never used at runtime there is not real need to have them around, but they still need to be
-present in some form in the generated code to be able to do separate compilation and retain binary compatiblity.
+present in some form in the generated code to be able to do separate compilation and retain binary compatibility.
 
 How to define erased terms?
 -------------------------------
@@ -186,8 +186,8 @@ Rules
 
 
 5. Erasure Semantics
-   * All `erased` paramters are removed from the function
-   * All argument to `erased` paramters are not passed to the function
+   * All `erased` parameters are removed from the function
+   * All argument to `erased` parameters are not passed to the function
    * All `erased` definitions are removed
    * All `(erased T1, T2, ..., TN) => R` and `(implicit erased T1, T2, ..., TN) => R` become `() => R`
 
@@ -199,5 +199,5 @@ Rules
 
 7. Overriding
    * Member definitions overidding each other must both be `erased` or not be `erased`
-   * `def foo(x: T): U` cannot be overriden by `def foo(erased x: T): U` an viceversa
+   * `def foo(x: T): U` cannot be overridden by `def foo(erased x: T): U` an viceversa
 

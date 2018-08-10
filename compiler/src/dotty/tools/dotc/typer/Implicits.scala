@@ -1025,7 +1025,7 @@ trait Implicits { self: Typer =>
        *   - otherwise, if a previous search was also successful, handle the ambiguity
        *     in `disambiguate`,
        *   - otherwise, continue the search with all candidates that are not strictly
-       *     worse than the succesful candidate.
+       *     worse than the successful candidate.
        *  If a trial failed:
        *    - if the query term is a `Not[T]` treat it as a success,
        *    - otherwise, if the failure is an ambiguity, try to heal it (see @healAmbiguous)

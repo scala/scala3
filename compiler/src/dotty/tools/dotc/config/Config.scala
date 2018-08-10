@@ -120,7 +120,7 @@ object Config {
 
   /** If this flag is set, it is checked that class type parameters are
    *  only references with NoPrefix or ThisTypes as prefixes. This option
-   *  is usally disabled, because there are still some legitimate cases where
+   *  is usually disabled, because there are still some legitimate cases where
    *  this can arise (e.g. for pos/Map.scala, in LambdaType.integrate).
    */
   final val checkTypeParamRefs = false

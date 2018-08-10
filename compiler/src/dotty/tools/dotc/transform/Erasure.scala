@@ -259,7 +259,7 @@ object Erasure {
           cast(ref(defn.runtimeMethodRef(nme.toObjectArray)).appliedTo(tree), pt)
 
         // When casting between two EVTs, we need to check which one underlies the other to determine
-        // wheter u2evt or evt2u should be used.
+        // whether u2evt or evt2u should be used.
         case (tp1 @ ErasedValueType(tycon1, underlying1), tp2 @ ErasedValueType(tycon2, underlying2)) =>
           if (tp1 <:< underlying2)
             // Cast EVT(tycon1, underlying1) to EVT(tycon2, EVT(tycon1, underlying1))

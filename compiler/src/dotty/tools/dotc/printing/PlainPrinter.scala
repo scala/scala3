@@ -435,7 +435,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else if (ownr.isAnonymousFunction) nextOuter("function")
         else if (isEmptyPrefix(ownr)) ""
         else if (ownr.isLocalDummy) showLocation(ownr.owner, "locally defined in")
-        else if (ownr.isTerm && !ownr.is(Module | Method)) showLocation(ownr, "in the initalizer of")
+        else if (ownr.isTerm && !ownr.is(Module | Method)) showLocation(ownr, "in the initializer of")
         else showLocation(ownr, "in")
       }
       recur(sym.owner, "")

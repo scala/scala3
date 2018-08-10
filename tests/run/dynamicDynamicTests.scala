@@ -106,7 +106,7 @@ object Test {
   def runBarTests() = {
     val bar = new Bar("bar")
 
-    // dynamics combined with themselfs
+    // dynamics combined with themselves
     assertEquals("bar.selectDynamic(select1).selectDynamic(select2).selectDynamic(select3)",
         bar.select1.select2.select3)
     assertEquals("bar.applyDynamic(apply1)().applyDynamic(apply2)().applyDynamic(apply3)()",

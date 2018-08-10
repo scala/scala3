@@ -24,7 +24,7 @@ object AugmentScala2Traits {
 /** This phase augments Scala2 traits with implementation classes and with additional members
  *  needed for mixin composition.
  *  These symbols would have been added between Unpickling and Mixin in the Scala2 pipeline.
- *  Specifcally, it adds
+ *  Specifically, it adds
  *
  *   - an implementation class which defines a trait constructor and trait method implementations
  *   - trait setters for vals defined in traits
