@@ -17,7 +17,7 @@ affect implicits on the language level.
 
           /*!*/ implicit val x = ...    // error: type must be given explicitly
 
-          /*!*/ next(): Context = ...   // error: type must be given explicitly
+          /*!*/ implicit def y = ...    // error: type must be given explicitly
 
           val y = {
             implicit val ctx = this.ctx // ok
