@@ -1260,46 +1260,50 @@ object messages {
            |""".stripMargin
   }
 
-  case class OverloadedOrRecursiveMethodNeedsResultType(method: Names.TermName)(implicit ctx: Context)
+  case class OverloadedOrRecursiveMethodNeedsResultType(cycleSym: Symbol)(implicit ctx: Context)
   extends Message(OverloadedOrRecursiveMethodNeedsResultTypeID) {
-    val kind = "Syntax"
-    val msg = hl"""overloaded or recursive method ${method} needs return type"""
+    val kind = "Cyclic"
+    val msg = hl"""overloaded or recursive $cycleSym needs return type"""
     val explanation =
-      hl"""Case 1: ${method} is overloaded
-          |If there are multiple methods named `${method}` and at least one definition of
+      hl"""Case 1: $cycleSym is overloaded
+          |If there are multiple methods named `$cycleSym` and at least one definition of
           |it calls another, you need to specify the calling method's return type.
           |
-          |Case 2: ${method} is recursive
-          |If `${method}` calls itself on any path, you need to specify its return type.
+          |Case 2: $cycleSym is recursive
+          |If `$cycleSym` calls itself on any path (even through mutual recursion), you need to specify the return type
+          |of `$cycleSym` or of a definition it's mutually recursive with.
           |""".stripMargin
   }
 
-  case class RecursiveValueNeedsResultType(value: Names.TermName)(implicit ctx: Context)
+  case class RecursiveValueNeedsResultType(cycleSym: Symbol)(implicit ctx: Context)
   extends Message(RecursiveValueNeedsResultTypeID) {
-    val kind = "Syntax"
-    val msg = hl"""recursive value ${value} needs type"""
+    val kind = "Cyclic"
+    val msg = hl"""recursive $cycleSym needs type"""
     val explanation =
-      hl"""The definition of `${value}` is recursive and you need to specify its type.
+      hl"""The definition of `$cycleSym` is recursive and you need to specify its type.
           |""".stripMargin
   }
 
   case class CyclicReferenceInvolving(denot: SymDenotation)(implicit ctx: Context)
   extends Message(CyclicReferenceInvolvingID) {
-    val kind = "Syntax"
+    val kind = "Cyclic"
     val msg = hl"""cyclic reference involving $denot"""
     val explanation =
       hl"""|$denot is declared as part of a cycle which makes it impossible for the
            |compiler to decide upon ${denot.name}'s type.
+           |To avoid this error, try giving `${denot.name}` an explicit type.
            |""".stripMargin
   }
 
   case class CyclicReferenceInvolvingImplicit(cycleSym: Symbol)(implicit ctx: Context)
   extends Message(CyclicReferenceInvolvingImplicitID) {
-    val kind = "Syntax"
+    val kind = "Cyclic"
     val msg = hl"""cyclic reference involving implicit $cycleSym"""
     val explanation =
-      hl"""|This happens when the right hand-side of $cycleSym's definition involves an implicit search.
-           |To avoid this error, give `${cycleSym.name}` an explicit type.
+      hl"""|$cycleSym is declared as part of a cycle which makes it impossible for the
+           |compiler to decide upon ${cycleSym.name}'s type.
+           |This might happen when the right hand-side of $cycleSym's definition involves an implicit search.
+           |To avoid this error, try giving `${cycleSym.name}` an explicit type.
            |""".stripMargin
   }
 
@@ -2104,5 +2108,16 @@ object messages {
       s"The highlighted type test will always succeed since the scrutinee type ($foundCls)" + addendum
     }
     val explanation = ""
+  }
+
+  // Relative of CyclicReferenceInvolvingImplicit and RecursiveValueNeedsResultType
+  case class TermMemberNeedsResultTypeForImplicitSearch(cycleSym: Symbol)(implicit ctx: Context)
+    extends Message(TermMemberNeedsNeedsResultTypeForImplicitSearchID) {
+    val kind = "Cyclic"
+    val msg = hl"""$cycleSym needs result type because its right-hand side attempts implicit search"""
+    val explanation =
+      hl"""|The right hand-side of $cycleSym's definition requires an implicit search at the highlighted position.
+           |To avoid this error, give `$cycleSym` an explicit type.
+           |""".stripMargin
   }
 }

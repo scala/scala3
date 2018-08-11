@@ -847,7 +847,15 @@ trait Implicits { self: Typer =>
       else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
     trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       assert(!pt.isInstanceOf[ExprType])
-      val result = new ImplicitSearch(pt, argument, pos).bestImplicit(contextual = true)
+      val result =
+        try {
+          new ImplicitSearch(pt, argument, pos).bestImplicit(contextual = true)
+        } catch {
+          case ce: CyclicReference =>
+            ce.inImplicitSearch = true
+            throw ce
+        }
+
       result match {
         case result: SearchSuccess =>
           result.tstate.commit()

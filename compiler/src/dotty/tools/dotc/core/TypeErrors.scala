@@ -98,28 +98,52 @@ object handleRecursive {
   }
 }
 
+/**
+ * This TypeError signals that completing denot encountered a cycle: it asked for denot.info (or similar),
+ * so it requires knowing denot already.
+ * @param denot
+ */
 class CyclicReference private (val denot: SymDenotation) extends TypeError {
+  var inImplicitSearch: Boolean = false
 
-  override def toMessage(implicit ctx: Context) = {
+  override def toMessage(implicit ctx: Context): Message = {
+    val cycleSym = denot.symbol
 
-    def errorMsg(cx: Context): Message =
+    // cycleSym.flags would try completing denot and would fail, but here we can use flagsUNSAFE to detect flags
+    // set by the parser.
+    val unsafeFlags = cycleSym.flagsUNSAFE
+    val isMethod = unsafeFlags.is(Method)
+    val isVal = !isMethod && cycleSym.isTerm
+
+    /* This CyclicReference might have arisen from asking for `m`'s type while trying to infer it.
+     * To try to diagnose this, walk the context chain searching for context in
+     * Mode.InferringReturnType for the innermost member without type
+     * annotations (!tree.tpt.typeOpt.exists).
+     */
+    def errorMsg(cx: Context): Message = {
       if (cx.mode is Mode.InferringReturnType) {
         cx.tree match {
-          case tree: untpd.DefDef if !tree.tpt.typeOpt.exists =>
-            OverloadedOrRecursiveMethodNeedsResultType(tree.name)
-          case tree: untpd.ValDef if !tree.tpt.typeOpt.exists =>
-            RecursiveValueNeedsResultType(tree.name)
+          case tree: untpd.ValOrDefDef if !tree.tpt.typeOpt.exists =>
+            if (inImplicitSearch)
+              TermMemberNeedsResultTypeForImplicitSearch(cycleSym)
+            else if (isMethod)
+              OverloadedOrRecursiveMethodNeedsResultType(cycleSym)
+            else if (isVal)
+              RecursiveValueNeedsResultType(cycleSym)
+            else
+              errorMsg(cx.outer)
           case _ =>
             errorMsg(cx.outer)
         }
       }
-      else CyclicReferenceInvolving(denot)
+      // Give up and give generic errors.
+      else if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
+        CyclicReferenceInvolvingImplicit(cycleSym)
+      else
+        CyclicReferenceInvolving(denot)
+    }
 
-    val cycleSym = denot.symbol
-    if (cycleSym.is(Implicit, butNot = Method) && cycleSym.owner.isTerm)
-      CyclicReferenceInvolvingImplicit(cycleSym)
-    else
-      errorMsg(ctx)
+    errorMsg(ctx)
   }
 }
 
