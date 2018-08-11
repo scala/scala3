@@ -888,7 +888,7 @@ class Namer { typer: Typer =>
        * (4) If the class is sealed, it is defined in the same compilation unit as the current class
        */
       def checkedParentType(parent: untpd.Tree): Type = {
-        val ptype = parentType(parent)(ctx.superCallContext).dealias
+        val ptype = parentType(parent)(ctx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
         else {
           val pt = checkClassType(ptype, parent.pos,
