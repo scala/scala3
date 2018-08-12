@@ -8,6 +8,9 @@ abstract class ZipArchive(path: String) extends AbstractFile {
 
 object Test {
   def foo(file: AbstractFile) = file match {
-    case ze: ZipArchive#Entry =>
+    case a: PlainFile =>
+    case b: ZipArchive =>
+    case c1: ZipArchive#Entry =>
+    case c: VirtualFile =>
   }
 }
