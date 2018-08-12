@@ -30,7 +30,7 @@ import util.Positions.Position
 import util.Property
 import ast.TreeInfo
 
-object PrepareTransparent {
+object PrepareInlineable {
   import tpd._
 
   /** Marks an implicit reference found in the context (as opposed to the implicit scope)
@@ -39,21 +39,9 @@ object PrepareTransparent {
    */
   private val ContextualImplicit = new Property.StickyKey[Unit]
 
-  /** An attachment labeling a toplevel match node of a transparent function */
-  val TopLevelMatch = new Property.StickyKey[Unit]
-
   def markContextualImplicit(tree: Tree)(implicit ctx: Context): Unit =
     if (!defn.ScalaPredefModule.moduleClass.derivesFrom(tree.symbol.maybeOwner))
       methPart(tree).putAttachment(ContextualImplicit, ())
-
-  def markTopLevelMatches(meth: Symbol, tree: untpd.Tree)(implicit ctx: Context): Unit = tree match {
-    case tree: untpd.Match =>
-      tree.putAttachment(TopLevelMatch, ())
-      for (cdef <- tree.cases) markTopLevelMatches(meth, cdef.body)
-    case tree: untpd.Block =>
-      markTopLevelMatches(meth, tree.expr)
-    case _ =>
-  }
 
   class InlineAccessors extends AccessProxies {
 
@@ -76,14 +64,14 @@ object PrepareTransparent {
        *  by excluding all symbols properly contained in the inlined method.
        *
        *  Constant vals don't need accessors since they are inlined in FirstTransform.
-       *  Transparent methods don't need accessors since they are inlined in Typer.
+       *  Rewrite methods don't need accessors since they are inlined in Typer.
        */
       def needsAccessor(sym: Symbol)(implicit ctx: Context) =
         sym.isTerm &&
         (sym.is(AccessFlags) || sym.privateWithin.exists) &&
         !sym.isContainedIn(inlineSym) &&
         !(sym.isStable && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
-        !sym.is(TransparentMethod)
+        !sym.isRewriteMethod
 
       def preTransform(tree: Tree)(implicit ctx: Context): Tree
 
@@ -107,7 +95,7 @@ object PrepareTransparent {
       def preTransform(tree: Tree)(implicit ctx: Context): Tree = tree match {
         case tree: RefTree if needsAccessor(tree.symbol) =>
           if (tree.symbol.isConstructor) {
-            ctx.error("Implementation restriction: cannot use private constructors in transparent methods", tree.pos)
+            ctx.error("Implementation restriction: cannot use private constructors in transparent or rewrite methods", tree.pos)
             tree // TODO: create a proper accessor for the private constructor
           }
           else useAccessor(tree)
@@ -127,11 +115,11 @@ object PrepareTransparent {
      *      private[inlines] def next[U](y: U): (T, U) = (x, y)
      *    }
      *    class TestPassing {
-     *      transparent def foo[A](x: A): (A, Int) = {
+     *      rewrite def foo[A](x: A): (A, Int) = {
      *      val c = new C[A](x)
      *      c.next(1)
      *    }
-     *    transparent def bar[A](x: A): (A, String) = {
+     *    rewrite def bar[A](x: A): (A, String) = {
      *      val c = new C[A](x)
      *      c.next("")
      *    }
@@ -218,7 +206,7 @@ object PrepareTransparent {
     def makeInlineable(tree: Tree)(implicit ctx: Context) = {
       val inlineSym = ctx.owner
       if (inlineSym.owner.isTerm)
-        // Transparent methods in local scopes can only be called in the scope they are defined,
+        // Inlineable methods in local scopes can only be called in the scope they are defined,
         // so no accessors are needed for them.
         tree
       else
@@ -233,9 +221,9 @@ object PrepareTransparent {
   def isLocal(sym: Symbol, inlineMethod: Symbol)(implicit ctx: Context) =
     isLocalOrParam(sym, inlineMethod) && !(sym.is(Param) && sym.owner == inlineMethod)
 
-  /** Register inline info for given transparent method `sym`.
+  /** Register inline info for given inlineable method `sym`.
    *
-   *  @param sym         The symbol denotatioon of the transparent method for which info is registered
+   *  @param sym         The symbol denotation of the inlineable method for which info is registered
    *  @param treeExpr    A function that computes the tree to be inlined, given a context
    *                     This tree may still refer to non-public members.
    *  @param ctx         The context to use for evaluating `treeExpr`. It needs
@@ -419,12 +407,12 @@ object PrepareTransparent {
         val localImplicit = iref.symbol.asTerm.copy(
           owner = inlineMethod,
           name = UniqueInlineName.fresh(iref.symbol.name.asTermName),
-          flags = Implicit | Method | Stable | iref.symbol.flags & (Transparent | Erased),
+          flags = Implicit | Method | Stable | iref.symbol.flags & (Rewrite | Erased),
           info = iref.tpe.widen.ensureMethodic,
           coord = inlineMethod.pos).asTerm
         val idef = polyDefDef(localImplicit, tps => vrefss =>
             iref.appliedToTypes(tps).appliedToArgss(vrefss))
-        if (localImplicit.is(Transparent)) {
+        if (localImplicit.is(Rewrite)) {
           // produce a Body annotation for inlining
           def untype(tree: Tree): untpd.Tree = tree match {
             case Apply(fn, args) => untpd.cpy.Apply(tree)(untype(fn), args)

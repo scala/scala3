@@ -240,7 +240,7 @@ class CompilationTests extends ParallelTesting {
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/parsing", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/printing", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/reporting", opt) +
-        compileShallowFilesInDir("compiler/src/dotty/tools/dotc/rewrite", opt) +
+        compileShallowFilesInDir("compiler/src/dotty/tools/dotc/rewrites", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/transform", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/typer", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/util", opt) +

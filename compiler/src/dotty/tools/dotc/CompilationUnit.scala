@@ -5,7 +5,7 @@ import core.Types.Type // Do not remove me #3383
 import util.SourceFile
 import ast.{tpd, untpd}
 import tpd.{ Tree, TreeTraverser }
-import typer.PrepareTransparent.InlineAccessors
+import typer.PrepareInlineable.InlineAccessors
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._

@@ -1,5 +1,5 @@
 /** Decompiled from out/posTestFromTasty/pos/i1570/Test.class */
 object Test {
-  transparent def foo(n: scala.Int): scala.Int = Test.bar(n)
-  transparent def bar(n: scala.Int): scala.Int = n
+  rewrite def foo(n: scala.Int): scala.Int = Test.bar(n)
+  rewrite def bar(n: scala.Int): scala.Int = n
 }

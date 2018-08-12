@@ -754,14 +754,14 @@ class Namer { typer: Typer =>
           val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
           sym.addAnnotation(ann)
           if (cls == defn.ForceInlineAnnot && sym.is(Method, butNot = Accessor))
-            sym.setFlag(Transparent)
+            sym.setFlag(Rewrite)
         }
       case _ =>
     }
 
     private def addInlineInfo(sym: Symbol) = original match {
-      case original: untpd.DefDef if sym.isTransparentInlineable =>
-        PrepareTransparent.registerInlineInfo(
+      case original: untpd.DefDef if sym.isInlineable =>
+        PrepareInlineable.registerInlineInfo(
             sym,
             original.rhs,
             implicit ctx => typedAheadExpr(original).asInstanceOf[tpd.DefDef].rhs
@@ -1075,13 +1075,13 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      def isInline = sym.is(FinalOrTransparent, butNot = Method | Mutable)
+      def isTransparentVal = sym.is(FinalOrTransparent, butNot = Method | Mutable)
 
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types
       // instead of widening to the underlying module class types.
       def widenRhs(tp: Type): Type = tp.widenTermRefExpr match {
-        case ctp: ConstantType if isInline => ctp
+        case ctp: ConstantType if isTransparentVal => ctp
         case ref: TypeRef if ref.symbol.is(ModuleClass) => tp
         case _ => tp.widen.widenUnion
       }
@@ -1091,10 +1091,7 @@ class Namer { typer: Typer =>
       def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
       var rhsCtx = ctx.addMode(Mode.InferringReturnType)
-      if (sym.isTransparentMethod) {
-        rhsCtx = rhsCtx.addMode(Mode.TransparentBody)
-        PrepareTransparent.markTopLevelMatches(sym, mdef.rhs)
-      }
+      if (sym.isInlineable) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
       def rhsType = typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.
@@ -1195,15 +1192,6 @@ class Namer { typer: Typer =>
       instantiateDependent(restpe, typeParams, termParamss)
       ctx.methodType(tparams map symbolOfTree, termParamss, restpe, isJava = ddef.mods is JavaDefined)
     }
-    if (sym.is(Transparent) &&
-        sym.unforcedAnnotation(defn.ForceInlineAnnot).isEmpty)
-        // Need to keep @forceInline annotated methods around to get to parity with Scala.
-        // This is necessary at least until we have full bootstrap. Right now
-        // dotty-bootstrapped involves running the Dotty compiler compiled with Scala 2 with
-        // a Dotty runtime library compiled with Dotty. If we erase @forceInline annotated
-        // methods, this means that the support methods in dotty.runtime.LazyVals vanish.
-        // But they are needed for running the lazy val implementations in the Scala-2 compiled compiler.
-      sym.setFlag(Erased)
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)

@@ -8,7 +8,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
   @Test def inlineUnit = {
     val source = """
                  |class Foo {
-                 |  transparent def foo: Int = 1
+                 |  rewrite def foo: Int = 1
                  |  @forceInline def bar: Int = 1
                  |
                  |  def meth1: Unit = foo

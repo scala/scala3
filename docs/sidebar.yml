@@ -43,7 +43,7 @@ sidebar:
               url: docs/reference/multiversal-equality.html
             - title: Trait Parameters
               url: docs/reference/trait-parameters.html
-            - title: Inlining with Transparent
+            - title: Inlining by Rewriting
               url: docs/reference/inline.html
             - title: Meta Programming
               url: docs/reference/principled-meta-programming.html

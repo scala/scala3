@@ -11,7 +11,7 @@ import Decorators._
 import NameOps._
 import NameKinds._
 import StdNames.nme
-import rewrite.Rewrites.patch
+import rewrites.Rewrites.patch
 import util.Positions.Position
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.Trees._

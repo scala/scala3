@@ -1,7 +1,7 @@
 import scala.quoted._
 
 object Macros {
-  transparent def foo3(): Int = {
+  rewrite def foo3(): Int = {
     {
       ~impl()
     }

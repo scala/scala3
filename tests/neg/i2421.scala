@@ -1,10 +1,10 @@
-transparent object Foo // OK (error would be detected later, in PostTyper)
-transparent class Bar // error: modifier(s) `transparent' incompatible with type definition
-transparent abstract class Baz // error: modifier(s) `transparent' incompatible with type definition
-transparent trait Qux // error: modifier(s) `transparent' incompatible with type definition
+rewrite object Foo // OK (error would be detected later, in PostTyper)
+rewrite class Bar // error: modifier(s) `rewrite' incompatible with type definition
+rewrite abstract class Baz // error: modifier(s) `rewrite' incompatible with type definition
+rewrite trait Qux // error: modifier(s) `rewrite' incompatible with type definition
 
 object Quux {
-  transparent type T // error: modifier(s) `transparent' incompatible with type definition
-  transparent var x: Int = 42 // error: modifier(s) `transparent' incompatible with var definition
-  transparent lazy val y: Int = 43 // error: modifier(s) `transparent' incompatible with lazy val definition
+  rewrite type T // error: modifier(s) `rewrite' incompatible with type definition
+  rewrite var x: Int = 42 // error: modifier(s) `rewrite' incompatible with var definition
+  rewrite lazy val y: Int = 43 // error: modifier(s) `rewrite' incompatible with lazy val definition
 }

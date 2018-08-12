@@ -1,14 +1,14 @@
 object Test0 {
 
   def f(x: Int) = {
-    transparent def g(x: Int) = x match {
+    rewrite def g(x: Int) = rewrite x match {
       case 0 => 0
     }
     g(0)
     transparent val Y = 0
     g(Y)
 
-    transparent def h(x: Int) = x match {
+    rewrite def h(x: Int) = rewrite x match {
       case Y => 0
     }
     h(0)
@@ -20,15 +20,15 @@ object Test0 {
 
 object Test1 {
 
-  erased transparent def f(x: Int) = {
-    erased transparent def g(x: Int) = x match {
+  erased rewrite def f(x: Int) = {
+    erased rewrite def g(x: Int) = rewrite x match {
       case 0 => 0
     }
     g(0)
     transparent val Y = 0
     g(Y)
 
-    transparent def h(x: Int) = x match {
+    rewrite def h(x: Int) = rewrite x match {
       case Y => 0
     }
     h(0)

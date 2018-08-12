@@ -8,7 +8,7 @@ object Logger {
 
   private var indent = 0
 
-  transparent def log[T](msg: String)(op: => T): T =
+  rewrite def log[T](msg: String)(op: => T): T =
     if (Config.logging) {
       println(s"${"  " * indent}start $msg")
       indent += 1

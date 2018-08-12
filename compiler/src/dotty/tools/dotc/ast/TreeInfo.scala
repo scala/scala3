@@ -437,7 +437,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel = {
     val sym = tree.symbol
     if (!tree.hasType) Impure
-    else if (!tree.tpe.widen.isParameterless || sym.is(Erased)) SimplyPure
+    else if (!tree.tpe.widen.isParameterless || sym.isEffectivelyErased) SimplyPure
     else if (!sym.isStable) Impure
     else if (sym.is(Module))
       if (sym.moduleClass.isNoInitsClass) Pure else Idempotent

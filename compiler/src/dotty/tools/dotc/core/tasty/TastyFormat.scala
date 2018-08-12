@@ -182,8 +182,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   LAZY
                   OVERRIDE
                   TRANSPARENT
-                  TYPELEVEL                           // transparent method containing toplevel matches (TODO: merge with MACRO)
-                  MACRO                               // transparent method containing toplevel splices
+                  REWRITE
+                  MACRO                               // rewrite method containing toplevel splices
                   STATIC                              // mapped to static Java member
                   OBJECT                              // an object or its class
                   TRAIT                               // a trait
@@ -298,7 +298,7 @@ object TastyFormat {
   final val LAZY = 14
   final val OVERRIDE = 15
   final val TRANSPARENT = 16
-
+  final val REWRITE = 17
   final val STATIC = 18
   final val OBJECT = 19
   final val TRAIT = 20
@@ -476,6 +476,7 @@ object TastyFormat {
        | LAZY
        | OVERRIDE
        | TRANSPARENT
+       | REWRITE
        | MACRO
        | STATIC
        | OBJECT
@@ -532,6 +533,7 @@ object TastyFormat {
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
     case TRANSPARENT => "TRANSPARENT"
+    case REWRITE => "REWRITE"
     case MACRO => "MACRO"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"

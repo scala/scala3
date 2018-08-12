@@ -1,7 +1,7 @@
 package test
 
 class ArrayDeque {
-  transparent def isResizeNecessary(len: Int) = len > ArrayDeque.StableSize
+  rewrite def isResizeNecessary(len: Int) = len > ArrayDeque.StableSize
 }
 
 object ArrayDeque {
@@ -9,7 +9,7 @@ object ArrayDeque {
 }
 
 class List {
-  transparent def foo(x: List.Cons): Unit = {
+  rewrite def foo(x: List.Cons): Unit = {
     x.next = this
   }
 }

@@ -319,7 +319,7 @@ object Erasure {
     import Boxing._
 
     private def checkNotErased(tree: Tree)(implicit ctx: Context): tree.type = {
-      if (tree.symbol.is(Flags.Erased) && !ctx.mode.is(Mode.Type))
+      if (tree.symbol.isEffectivelyErased && !ctx.mode.is(Mode.Type))
         ctx.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.pos)
       tree
     }
@@ -554,17 +554,17 @@ object Erasure {
       }
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): Tree =
-      if (sym.is(Flags.Erased)) erasedDef(sym)
+      if (sym.isEffectivelyErased) erasedDef(sym)
       else
         super.typedValDef(untpd.cpy.ValDef(vdef)(
           tpt = untpd.TypedSplice(TypeTree(sym.info).withPos(vdef.tpt.pos))), sym)
 
     /** Besides normal typing, this function also compacts anonymous functions
-     *  with more than `MaxImplementedFunctionArity` parameters to ise a single
+     *  with more than `MaxImplementedFunctionArity` parameters to use a single
      *  parameter of type `[]Object`.
      */
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context): Tree =
-      if (sym.is(Flags.Erased)) erasedDef(sym)
+      if (sym.isEffectivelyErased) erasedDef(sym)
       else {
         val restpe =
           if (sym.isConstructor) defn.UnitType

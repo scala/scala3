@@ -12,7 +12,7 @@ import java.io.IOException
 
 object ErrorHandler {
 
-  transparent def defaultIfIOException[T](default: => T)(closure: => T): T = {
+  rewrite def defaultIfIOException[T](default: => T)(closure: => T): T = {
     try {
       closure
     } catch {

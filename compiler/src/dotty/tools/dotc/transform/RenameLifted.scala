@@ -37,11 +37,11 @@ class RenameLifted extends MiniPhase with SymTransformer {
         val fullName = (sym.owner.fullName.toString + name.underlying).toTermName
         val freshName = UniqueName.fresh(fullName)
         val info = freshName.asInstanceOf[DerivedName].info
-        DerivedName(name.underlying.rewrite(rewriteUnique), info)
+        DerivedName(name.underlying.replace(rewriteUnique), info)
       case DerivedName(underlying, info: QualifiedInfo) =>
-        underlying.rewrite(rewriteUnique).derived(info)
+        underlying.replace(rewriteUnique).derived(info)
     }
 
-    sym.name.rewrite(rewriteUnique)
+    sym.name.replace(rewriteUnique)
   }
 }

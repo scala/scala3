@@ -1,4 +1,4 @@
-// A demonstrator how `transparent override` can be used to sepcialize inherited methods
+// A demonstrator how `rewrite override` can be used to sepcialize inherited methods
 trait Iterable[+A] {
   def foreach(f: A => Unit): Unit
 }
@@ -35,7 +35,7 @@ abstract class Range extends Iterable[Int]  {
 class UntilRange(val start: Int, val end: Int) extends Range {
   def step = 1
   def inclusive = false
-  transparent override def foreach(f: Int => Unit): Unit = {
+  rewrite override def foreach(f: Int => Unit): Unit = {
     var idx = start
     while (idx < end) {
       f(idx)
@@ -54,13 +54,13 @@ object Test extends App {
     //    }
 
   class IntDeco(val x: Int) extends AnyVal {
-    transparent def until(y: Int) = new UntilRange(x, y)
+    rewrite def until(y: Int) = new UntilRange(x, y)
   }
-  implicit transparent def intDeco(x: Int): IntDeco = new IntDeco(x)
+  implicit rewrite def intDeco(x: Int): IntDeco = new IntDeco(x)
     // So far, the decorator has to be an explicit def, since
     // we can inline only methods defined in source. So an implicit class
     // will not work. We can make this work by making `Desugar` smarter
-    // and generate a transparent with pre-defined "BodyToInline" annotation.
+    // and generate a rewrite method with pre-defined "BodyToInline" annotation.
     // It's doable, just extra work.
 
   (1 until 10).foreach(x += _)

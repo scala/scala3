@@ -1,6 +1,6 @@
 abstract class A {
    def f(x: Int): Int
-   transparent def g(x: Int): Int = x
+   rewrite def g(x: Int): Int = x
 }
 
 

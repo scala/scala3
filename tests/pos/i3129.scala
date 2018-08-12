@@ -1,5 +1,5 @@
 object companions2 {
-  transparent def foo() = {
+  rewrite def foo() = {
     class C {
       println(C.p)
     }
@@ -15,7 +15,7 @@ class A {
 
   class B {
     private def getAncestor2(p: A): A = p
-    private transparent def getAncestor(p: A): A = {
+    private rewrite def getAncestor(p: A): A = {
       p.b.getAncestor(p)
     }
   }

@@ -2,7 +2,7 @@ object Test extends App {
   import collection.immutable.TreeSet
   import collection.immutable.HashSet
 
-  transparent def f[T]() = implicit match {
+  rewrite def f[T]() = implicit match {
     case ord: Ordering[T] => new TreeSet[T]
     case _ => new HashSet[T]
   }
@@ -11,7 +11,7 @@ object Test extends App {
   class B
   implicit val b: B = new B
 
-  transparent def g = implicit match {
+  rewrite def g = implicit match {
     case _: A => println("A")
     case _: B => println("B")
   }

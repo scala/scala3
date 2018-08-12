@@ -45,7 +45,7 @@ object NameKinds {
     }
 
     /** Does this kind define logically a new name (respectively qualified name)?
-     *  Tested by the `rewrite` and `collect` combinators of class `Name`.
+     *  Tested by the `replace` and `collect` combinators of class `Name`.
      */
     def definesNewName = false
     def definesQualifiedName = false
@@ -135,7 +135,7 @@ object NameKinds {
      *  Needed because the suffix of an expanded name may itself be expanded.
      *  For example, look at javap of scala.App.initCode
      */
-    def apply(qual: TermName, name: TermName): TermName = name rewrite {
+    def apply(qual: TermName, name: TermName): TermName = name replace {
       case name: SimpleName => apply(qual, name)
       case AnyQualifiedName(_, _) => apply(qual, name.toSimpleName)
     }
@@ -294,8 +294,8 @@ object NameKinds {
   val SuperArgName             = new UniqueNameKind("$superArg$")
   val DocArtifactName          = new UniqueNameKind("$doc")
   val UniqueInlineName         = new UniqueNameKind("$i")
-  val TransparentScrutineeName = new UniqueNameKind("$scrutinee")
-  val TransparentBinderName    = new UniqueNameKind("$elem")
+  val RewriteScrutineeName     = new UniqueNameKind("$scrutinee")
+  val RewriteBinderName        = new UniqueNameKind("$elem")
 
   /** A kind of unique extension methods; Unlike other unique names, these can be
    *  unmangled.
