@@ -43,7 +43,7 @@ object RefChecks {
       if defaultGetterClass.isClass
     ) {
       val defaultGetterNames = defaultGetterClass.asClass.memberNames(defaultMethodFilter)
-      val defaultMethodNames = defaultGetterNames map { _ rewrite {
+      val defaultMethodNames = defaultGetterNames map { _ replace {
         case DefaultGetterName(methName, _) => methName
       }}
 
@@ -143,9 +143,10 @@ object RefChecks {
    *    1.8.1  M's type is a subtype of O's type, or
    *    1.8.2  M is of type []S, O is of type ()T and S <: T, or
    *    1.8.3  M is of type ()S, O is of type []T and S <: T, or
-   *    1.9    M must not be a typelevel def or a Dotty macro def
-   *    1.10.  If M is a 2.x macro def, O cannot be deferred unless there's a concrete method overriding O.
-   *    1.11.  If M is not a macro def, O cannot be a macro def.
+   *    1.9    If M is an erased def, O must be as well
+   *    1.10   If `M` is a rewrite or Scala2x macro method, O cannot be deferred unless
+   *           there's also a concrete method that M overrides.
+   *    1.11.  If O is a Scala-2 macro, M must be a Scala-2 macro.
    *  2. Check that only abstract classes have deferred members
    *  3. Check that concrete classes do not have deferred definitions
    *     that are not implemented in a subclass.
@@ -376,14 +377,13 @@ object RefChecks {
         overrideError("may not override a non-lazy value")
       } else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy)) {
         overrideError("must be declared lazy to override a lazy value")
-      } else if (member.is(Erased) && member.allOverriddenSymbols.forall(_.is(Deferred))) { // (1.9)
-        overrideError("is an erased method, may not override only deferred methods")
-      } else if (member.is(Macro, butNot = Scala2x)) { // (1.9)
-        overrideError("is a macro, may not override anything")
-      } else if (other.is(Deferred) && member.is(Scala2Macro) && member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.10)
-        overrideError("cannot be used here - term macros cannot override abstract methods")
-      } else if (other.is(Macro) && !member.is(Macro)) { // (1.11)
-        overrideError("cannot be used here - only term macros can override term macros")
+      } else if (member.is(Erased) && !other.is(Erased)) { // (1.9)
+        overrideError("is erased, cannot override non-erased member")
+      } else if ((member.is(Rewrite) || member.is(Scala2Macro)) && other.is(Deferred) &&
+                 member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.10)
+        overrideError("is a rewrite method, must override at least one concrete method")
+      } else if (other.is(Scala2Macro) && !member.is(Scala2Macro)) { // (1.11)
+        overrideError("cannot be used here - only Scala-2 macros can override Scala-2 macros")
       } else if (!compatibleTypes(memberTp(self), otherTp(self)) &&
                  !compatibleTypes(memberTp(upwardsSelf), otherTp(upwardsSelf))) {
         overrideError("has incompatible type" + err.whyNoMatchStr(memberTp(self), otherTp(self)))

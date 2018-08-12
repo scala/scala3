@@ -1,4 +1,4 @@
 class Foo {
-  transparent def foo: Int = try { 1 } finally println("Hello")
+  rewrite def foo: Int = try { 1 } finally println("Hello")
   foo
 }

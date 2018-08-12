@@ -1,7 +1,7 @@
 
 object Test {
 
-  transparent def assert2(expr: => Boolean): Unit =  ~Macros.assertImpl('(expr))
+  rewrite def assert2(expr: => Boolean): Unit =  ~Macros.assertImpl('(expr))
 
   def main(args: Array[String]): Unit = {
     val x = 1

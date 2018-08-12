@@ -7,7 +7,7 @@ sealed abstract class Expr[+T] {
 
   /** Evaluate the contents of this expression and return the result.
    *
-   *  May throw a FreeVariableError on expressions that came from a transparent macro.
+   *  May throw a FreeVariableError on expressions that came from a macro.
    */
   final def run(implicit toolbox: Toolbox): T = toolbox.run(this)
 
@@ -44,7 +44,7 @@ object Exprs {
 
   /** An Expr backed by a tree. Only the current compiler trees are allowed.
    *
-   *  These expressions are used for arguments of transparent macros. They contain and actual tree
+   *  These expressions are used for arguments of macros. They contain and actual tree
    *  from the program that is being expanded by the macro.
    *
    *  May contain references to code defined outside this TastyTreeExpr instance.

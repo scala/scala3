@@ -24,7 +24,7 @@ object Index {
 
   implicit def zero[K, T]: Index[K, (K, T)] = new Index(0)
 
-  implicit transparent def succ[K, H, T](implicit prev: => Index[K, T]): Index[K, (H, T)] = ~succImpl(TopLevelSplice.tastyContext)('[K], '[H], '[T])
+  implicit rewrite def succ[K, H, T](implicit prev: => Index[K, T]): Index[K, (H, T)] = ~succImpl(TopLevelSplice.tastyContext)('[K], '[H], '[T])
 
   def succImpl[K, H, T](tasty: Tasty)(implicit k: Type[K], h: Type[H], t: Type[T]): Expr[Index[K, (H, T)]] = {
     import tasty._

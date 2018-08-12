@@ -587,6 +587,7 @@ class TreeUnpickler(reader: TastyReader,
           case LAZY => addFlag(Lazy)
           case OVERRIDE => addFlag(Override)
           case TRANSPARENT => addFlag(Transparent)
+          case REWRITE => addFlag(Rewrite)
           case MACRO => addFlag(Macro)
           case STATIC => addFlag(JavaStatic)
           case OBJECT => addFlag(Module)
@@ -1304,9 +1305,14 @@ class TreeUnpickler(reader: TastyReader,
             val stats = until(end)(readUntyped())
             untpd.Block(stats, expr)
           case IF =>
-            untpd.If(readUntyped(), readUntyped(), readUntyped())
+            val mkIf = if (nextByte == REWRITE) { readByte(); untpd.RewriteIf(_, _, _) }
+              else untpd.If(_, _, _)
+            mkIf(readUntyped(), readUntyped(), readUntyped())
           case MATCH =>
-            untpd.Match(readUntyped(), readCases(end))
+            val mkMatch =
+              if (nextByte == REWRITE) { readByte(); untpd.RewriteMatch(_, _) }
+              else untpd.Match(_, _)
+            mkMatch(readUntyped(), readCases(end))
           case CASEDEF =>
             val pat = readUntyped()
             val rhs = readUntyped()

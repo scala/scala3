@@ -1,11 +1,11 @@
 object Test {
 
-  transparent def swap[T](x: T, x_= : => T => Unit, y: T, y_= : => T => Unit) = {
+  rewrite def swap[T](x: T, x_= : => T => Unit, y: T, y_= : => T => Unit) = {
     x_=(y)
     y_=(x)
   }
 
-  transparent def f(x: Int => Unit) = x
+  rewrite def f(x: Int => Unit) = x
 
   def main(args: Array[String]) = {
     var x = 1

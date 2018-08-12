@@ -35,22 +35,22 @@ class ArrayConstructors extends MiniPhase {
   override def phaseName: String = "arrayConstructors"
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = {
-    def rewrite(elemType: Type, dims: List[Tree]) =
+    def expand(elemType: Type, dims: List[Tree]) =
       tpd.newArray(elemType, tree.tpe, tree.pos, JavaSeqLiteral(dims, TypeTree(defn.IntClass.typeRef)))
 
     if (tree.fun.symbol eq defn.ArrayConstructor) {
       val TypeApply(tycon, targ :: Nil) = tree.fun
-      rewrite(targ.tpe, tree.args)
+      expand(targ.tpe, tree.args)
     } else if ((tree.fun.symbol.maybeOwner eq defn.ArrayModule) && (tree.fun.symbol.name eq nme.ofDim) && !tree.tpe.isInstanceOf[MethodicType]) {
       val Apply(Apply(TypeApply(_, List(tp)), _), _) = tree
       val cs = tp.tpe.widen.classSymbol
       tree.fun match {
         case Apply(TypeApply(t: Ident, targ), dims)
           if !TypeErasure.isGeneric(targ.head.tpe) && !ValueClasses.isDerivedValueClass(cs) =>
-          rewrite(targ.head.tpe, dims)
+          expand(targ.head.tpe, dims)
         case Apply(TypeApply(t: Select, targ), dims)
           if !TypeErasure.isGeneric(targ.head.tpe) && !ValueClasses.isDerivedValueClass(cs) =>
-          Block(t.qualifier :: Nil, rewrite(targ.head.tpe, dims))
+          Block(t.qualifier :: Nil, expand(targ.head.tpe, dims))
         case _ => tree
       }
 

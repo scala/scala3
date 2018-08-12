@@ -13,7 +13,7 @@ object Test {
   import typelevel._
   type Z = Z.type
 
-  transparent def add(x: Nat, y: Nat): Nat = x match {
+  rewrite def add(x: Nat, y: Nat): Nat = rewrite x match {
     case Z => y
     case S(x1) => S(add(x1, y))
   }
@@ -22,7 +22,7 @@ object Test {
   val y = add(x, x)
   val z: S[S[S[S[Z]]]] = y
 
-  transparent def concat[T, N1 <: Nat, N2 <: Nat](xs: Vec[T, N1], ys: Vec[T, N2]): Vec[T, _] = {
+  rewrite def concat[T, N1 <: Nat, N2 <: Nat](xs: Vec[T, N1], ys: Vec[T, N2]): Vec[T, _] = {
     val length = Typed(add(erasedValue[N1], erasedValue[N2]))
     Vec[T, length.Type](xs.elems ++ ys.elems)
   }

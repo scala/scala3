@@ -1,4 +1,4 @@
 object B {
-  transparent def getInline: Int =
+  rewrite def getInline: Int =
     sys.error("This is an expected failure when running C")
 }

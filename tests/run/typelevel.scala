@@ -4,24 +4,24 @@ trait Nat {
 }
 
 case object Z extends Nat {
-  transparent override def toInt = 0
+  rewrite override def toInt = 0
 }
 
 case class S[N <: Nat](n: N) extends Nat {
-  transparent override def toInt = n.toInt + 1
+  rewrite override def toInt = n.toInt + 1
 }
 
 trait HList {
   def length: Int = ???
   def head: Any
   def tail: HList
-  transparent def isEmpty: Boolean =
+  rewrite def isEmpty: Boolean =
     length == 0
 }
 
 // ()
 case object HNil extends HList {
-  transparent override def length = 0
+  rewrite override def length = 0
   def head: Nothing = ???
   def tail: Nothing = ???
 }
@@ -29,7 +29,7 @@ case object HNil extends HList {
 // (H, T)
 @annotation.showAsInfix(true)
 case class HCons [H, T <: HList](hd: H, tl: T) extends HList {
-  transparent override def length = 1 + tl.length
+  rewrite override def length = 1 + tl.length
   def head: H = this.hd
   def tail: T = this.tl
 }
@@ -42,7 +42,7 @@ object Test extends App {
   type HNil = HNil.type
   type Z = Z.type
 
-  transparent def ToNat(transparent n: Int): ToNat[Nat] =
+  rewrite def ToNat(transparent n: Int): ToNat[Nat] =
     if n == 0 then new ToNat(Z)
     else {
       val n1 = ToNat(n - 1)
@@ -67,10 +67,10 @@ object Test extends App {
   val j2: 2 = i2
 
   class HListDeco(private val as: HList) extends AnyVal {
-    transparent def :: [H] (a: H) = HCons(a, as)
-    transparent def ++ (bs: HList) = concat(as, bs)
+    rewrite def :: [H] (a: H) = HCons(a, as)
+    rewrite def ++ (bs: HList) = concat(as, bs)
   }
-  transparent def concat(xs: HList, ys: HList): HList =
+  rewrite def concat(xs: HList, ys: HList): HList =
     if xs.isEmpty then ys
     else HCons(xs.head, concat(xs.tail, ys))
 
@@ -85,11 +85,11 @@ object Test extends App {
   val r5 = concat(HCons(1, HCons("a", HNil)) , HNil)
   val r6 = concat(HCons(1, HCons("a", HNil)), HCons(true, HCons(1.0, HNil)))
 
-  transparent def size(xs: HList): Nat =
+  rewrite def size(xs: HList): Nat =
     if xs.isEmpty then Z
     else S(size(xs.tail))
 
-  transparent def sizeDefensive(xs: HList): Nat = xs.isEmpty match {
+  rewrite def sizeDefensive(xs: HList): Nat = rewrite xs.isEmpty match {
     case true => Z
     case false => S(sizeDefensive(xs.tail))
   }
@@ -101,7 +101,7 @@ object Test extends App {
   transparent val l1 = xs.length
   val l1a: 2 = l1
 
-  transparent def index(xs: HList, transparent idx: Int): Any =
+  rewrite def index(xs: HList, transparent idx: Int): Any =
     if idx == 0 then xs.head
     else index(xs.tail, idx - 1)
 
@@ -117,7 +117,7 @@ object Test extends App {
 
   //val ys = 1 :: "a" :: HNil
 
-  transparent implicit def hlistDeco(xs: HList): HListDeco = new HListDeco(xs)
+  rewrite implicit def hlistDeco(xs: HList): HListDeco = new HListDeco(xs)
 
   val rr0 = new HListDeco(HNil).++(HNil)
   val rr1 = HNil ++ xs
@@ -125,7 +125,7 @@ object Test extends App {
   val rr3 = xs ++ xs
   val rr3a: HCons[Int, HCons[String, HCons[Int, HCons[String, HNil]]]] = rr3
 
-  transparent def f(c: Boolean): Nat = {
+  rewrite def f(c: Boolean): Nat = {
     def g[X <: Nat](x: X): X = x
     g(if (c) Z else S(Z))
   }
@@ -133,8 +133,8 @@ object Test extends App {
   val f1: Z = f(true)
   val f2: S[Z] = f(false)
 
-  transparent def mapHead[T, R](t: T)(implicit fh: T => R): R = fh(t)
-  transparent def map(xs: HList): HList = {
+  rewrite def mapHead[T, R](t: T)(implicit fh: T => R): R = fh(t)
+  rewrite def map(xs: HList): HList = {
 
     if (xs.isEmpty) HNil
     else HCons(mapHead(xs.head), map(xs.tail))
@@ -148,12 +148,12 @@ object Test extends App {
   val res1: Boolean `HCons` (Int `HCons` (String `HCons` HNil)) = res
 
 /*
-  transparent def toInt1[T]: Int = type T match {
+  rewrite def toInt1[T]: Int = type T match {
     case Z => 0
     case S[type N] => toInt[N] + 1
   }
 
-  transparent def toInt1[T]: Nat = implicit match {
+  rewrite def toInt1[T]: Nat = implicit match {
     case C[type T, type U], T =:= U =>
     case T <:< S[type N] => toInt[N] + 1
   }
