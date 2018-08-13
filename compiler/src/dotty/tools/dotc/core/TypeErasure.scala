@@ -44,7 +44,8 @@ object TypeErasure {
     case tp: TypeRef =>
       val sym = tp.symbol
       sym.isClass &&
-      sym != defn.AnyClass && sym != defn.ArrayClass &&
+      sym != defn.ArrayClass &&
+      !defn.erasedToObject.contains(sym) &&
       !defn.isSyntheticFunctionClass(sym)
     case _: TermRef =>
       true
@@ -279,10 +280,8 @@ object TypeErasure {
 
           // Pick the last minimum to prioritise classes over traits
           minimums.lastOption match {
-            case Some(lub) if lub != defn.AnyClass && lub != defn.AnyValClass =>
-              lub.typeRef
-            case _ => // Any/AnyVal only exist before erasure
-              defn.ObjectType
+            case Some(lub) => valueErasure(lub.typeRef)
+            case _ => defn.ObjectType
           }
       }
   }
@@ -353,7 +352,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *      - otherwise, if T is a type parameter coming from Java, []Object
    *      - otherwise, Object
    *   - For a term ref p.x, the type <noprefix> # x.
-   *   - For a typeref scala.Any, scala.AnyVal or scala.Singleton: |java.lang.Object|
+   *   - For a typeref scala.Any, scala.AnyVal, scala.Singleton, scala.Tuple, or scala.*: : |java.lang.Object|
    *   - For a typeref scala.Unit, |scala.runtime.BoxedUnit|.
    *   - For a typeref scala.FunctionN, where N > MaxImplementedFunctionArity, scala.FunctionXXL
    *   - For a typeref scala.ImplicitFunctionN, | scala.FunctionN |
@@ -499,7 +498,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
 
   private def normalizeClass(cls: ClassSymbol)(implicit ctx: Context): ClassSymbol = {
     if (cls.owner == defn.ScalaPackageClass) {
-      if (cls == defn.AnyClass || cls == defn.AnyValClass || cls == defn.SingletonClass)
+      if (defn.erasedToObject.contains(cls))
         return defn.ObjectClass
       if (cls == defn.UnitClass)
         return defn.BoxedUnitClass

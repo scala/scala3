@@ -1,6 +1,7 @@
 package scala
 
-/** An annotation on methods that is equivalent to Dotty `inline` modifier.
+/** An annotation on methods that is equivalent to Dotty `rewrite` modifier,
+ *  except that it does not imply `erased`.
  *
  *  The annotation should be used instead of the `inline` modifier in code
  *  that needs to cross compile between Scala 2 and Dotty.
