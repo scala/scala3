@@ -706,6 +706,12 @@ class Definitions {
 
   lazy val XMLTopScopeModuleRef = ctx.requiredModuleRef("scala.xml.TopScope")
 
+  lazy val TupleTypeRef = ctx.requiredClassRef("scala.Tuple")
+  def TupleClass(implicit ctx: Context) = TupleTypeRef.symbol.asClass
+
+  lazy val PairType = ctx.requiredClassRef("scala.*:")
+  def PairClass(implicit ctx: Context) = PairType.symbol.asClass
+
   // Annotation base classes
   lazy val AnnotationType              = ctx.requiredClassRef("scala.annotation.Annotation")
   def AnnotationClass(implicit ctx: Context) = AnnotationType.symbol.asClass
@@ -737,6 +743,8 @@ class Definitions {
   def ImplicitNotFoundAnnot(implicit ctx: Context) = ImplicitNotFoundAnnotType.symbol.asClass
   lazy val ForceInlineAnnotType = ctx.requiredClassRef("scala.forceInline")
   def ForceInlineAnnot(implicit ctx: Context) = ForceInlineAnnotType.symbol.asClass
+  lazy val RewriteAnnotType = ctx.requiredClassRef("scala.rewrite")
+  def RewriteAnnot(implicit ctx: Context) = RewriteAnnotType.symbol.asClass
   lazy val TransparentParamAnnotType = ctx.requiredClassRef("scala.annotation.internal.TransparentParam")
   def TransparentParamAnnot(implicit ctx: Context) = TransparentParamAnnotType.symbol.asClass
   lazy val InvariantBetweenAnnotType = ctx.requiredClassRef("scala.annotation.internal.InvariantBetween")
@@ -880,7 +888,7 @@ class Definitions {
   private lazy val ImplementedFunctionType = mkArityArray("scala.Function", MaxImplementedFunctionArity, 0)
   def FunctionClassPerRun = new PerRun[Array[Symbol]](implicit ctx => ImplementedFunctionType.map(_.symbol.asClass))
 
-  lazy val TupleType = mkArityArray("scala.Tuple", MaxTupleArity, 2)
+  lazy val TupleType = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 
   def FunctionClass(n: Int, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: Context) =
     if (isImplicit && isErased)
@@ -900,8 +908,6 @@ class Definitions {
   def FunctionType(n: Int, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): TypeRef =
     if (n <= MaxImplementedFunctionArity && (!isImplicit || ctx.erasedTypes) && !isErased) ImplementedFunctionType(n)
     else FunctionClass(n, isImplicit, isErased).typeRef
-
-  private lazy val TupleTypes: Set[TypeRef] = TupleType.toSet
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(cls: Symbol)(implicit ctx: Context): TypeName =
@@ -1199,6 +1205,8 @@ class Definitions {
   def isValueSubClass(sym1: Symbol, sym2: Symbol) =
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
 
+  lazy val erasedToObject = Set[Symbol](AnyClass, AnyValClass, TupleClass, PairClass, SingletonClass)
+
   // ----- Initialization ---------------------------------------------------
 
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
@@ -1226,6 +1234,24 @@ class Definitions {
 
   private[this] var isInitialized = false
 
+  def fixTupleCompleter(cls: ClassSymbol): Unit = cls.infoOrCompleter match {
+    case completer: LazyType =>
+      cls.info = new LazyType {
+        def syntheticParent(tparams: List[TypeSymbol]): Type =
+          if (tparams.isEmpty) TupleTypeRef
+          else (tparams :\ (UnitType: Type)) ((tparam, tail) => PairType.appliedTo(tparam.typeRef, tail))
+        override def complete(denot: SymDenotation)(implicit ctx: Context) = {
+          completer.complete(denot)
+          denot.info match {
+            case info: ClassInfo =>
+              denot.info = info.derivedClassInfo(
+                classParents = info.classParents :+ syntheticParent(cls.typeParams))
+          }
+        }
+      }
+    case _ =>
+  }
+
   def init()(implicit ctx: Context) = {
     this.ctx = ctx
     if (!isInitialized) {
@@ -1242,6 +1268,10 @@ class Definitions {
 
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
+
+      fixTupleCompleter(UnitClass)
+      for (i <- 1 to MaxTupleArity)
+      	fixTupleCompleter(TupleType(i).symbol.asClass)
 
       isInitialized = true
     }
