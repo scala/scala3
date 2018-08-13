@@ -701,6 +701,9 @@ class Definitions {
   lazy val TastyTastyModule = ctx.requiredModule("scala.tasty.Tasty")
     lazy val TastyTasty_macroContext = TastyTastyModule.requiredMethod("macroContext")
 
+  lazy val RefinedScrutineeType: TypeRef       = ctx.requiredClassRef("scala.RefinedScrutinee")
+  def RefinedScrutineeClass(implicit ctx: Context) = RefinedScrutineeType.symbol.asClass
+
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass
   def EqModule(implicit ctx: Context) = EqClass.companionModule

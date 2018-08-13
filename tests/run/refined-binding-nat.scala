@@ -38,12 +38,7 @@ trait Peano {
   val Succ: SuccExtractor
   trait SuccExtractor {
     def apply(nat: Nat): Succ
-    def unapply(nat: Nat): SuccOpt { def refinedScrutinee: Succ & nat.type }
-  }
-  trait SuccOpt {
-    def isEmpty: Boolean
-    def refinedScrutinee: Succ
-    def get: Nat
+    def unapply(nat: Nat): RefinedScrutinee[nat.type & Succ, Nat]
   }
 }
 
@@ -58,13 +53,10 @@ object IntNums extends Peano {
 
   object Succ extends SuccExtractor {
     def apply(nat: Nat): Succ = nat + 1
-    def unapply(nat: Nat) = new SuccOpt {
-      def isEmpty: Boolean = nat == 0
-      def refinedScrutinee: Succ & nat.type = nat
-      def get: Int = nat - 1
-    }
+    def unapply(nat: Nat) =
+      if (nat == 0) RefinedScrutinee.noMatch
+      else RefinedScrutinee.matchOf(nat)(nat - 1)
   }
-
   def succDeco(succ: Succ): SuccAPI = new SuccAPI {
     def pred: Nat = succ - 1
   }
@@ -75,17 +67,7 @@ object ClassNums extends Peano {
   object ZeroObject extends NatTrait {
     override def toString: String = "ZeroObject"
   }
-  case class SuccClass(predecessor: NatTrait) extends NatTrait with SuccOpt {
-    def isEmpty: Boolean = false
-    def refinedScrutinee: this.type = this
-    def get: NatTrait = this
-  }
-
-  object SuccNoMatch extends SuccOpt {
-    def isEmpty: Boolean = true
-    def refinedScrutinee: Nothing = throw new NoSuchElementException
-    def get: NatTrait = throw new NoSuchElementException
-  }
+  case class SuccClass(predecessor: NatTrait) extends NatTrait
 
   type Nat  = NatTrait
   type Zero = ZeroObject.type
@@ -109,8 +91,8 @@ object ClassNums extends Peano {
   object Succ extends SuccExtractor {
     def apply(nat: Nat): Succ = new SuccClass(nat)
     def unapply(nat: Nat) = nat match {
-      case nat: (SuccClass & nat.type) => nat
-      case _ => SuccNoMatch
+      case nat: (SuccClass & nat.type) => RefinedScrutinee.matchOf(nat)(nat.predecessor)
+      case _ => RefinedScrutinee.noMatch
     }
   }
 

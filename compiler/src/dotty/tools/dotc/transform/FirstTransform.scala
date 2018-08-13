@@ -113,16 +113,20 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
       ddef.tpe.widen match {
         case mt: MethodType if !mt.resType.widen.isInstanceOf[MethodicType] =>
           val resultType = mt.resType.substParam(mt.paramRefs.head, mt.paramRefs.head)
-          val refinedType = resultType.select(nme.refinedScrutinee).widen.resultType
-          if (refinedType.exists && !(refinedType <:< mt.paramRefs.head)) {
-            val paramName = mt.paramNames.head
-            val paramTpe = mt.paramRefs.head
-            val paramInfo = mt.paramInfos.head
-            ctx.error(
-              i"""Extractor with ${nme.refinedScrutinee} should refine the result type of that member.
-                 |The result type of ${nme.refinedScrutinee} should be a subtype of $paramTpe:
-                 |  def unapply($paramName: $paramInfo): ${resultType.widenDealias.classSymbol.name} { def ${nme.refinedScrutinee}: $refinedType & $paramTpe }
+          resultType match {
+            case resultType: AppliedType if resultType.derivesFrom(defn.RefinedScrutineeClass) =>
+              val refinedType :: resultType2 :: Nil = resultType.args
+              if (refinedType.exists && !(refinedType <:< mt.paramRefs.head)) {
+                val paramName = mt.paramNames.head
+                val paramTpe = mt.paramRefs.head
+                val paramInfo = mt.paramInfos.head
+                ctx.error(
+                  i"""Extractor with ${tpnme.RefinedScrutinee} should refine the result type of that member.
+                     |The scrutinee type of ${tpnme.RefinedScrutinee} should be a subtype of $paramTpe:
+                     |  def unapply($paramName: $paramInfo): ${tpnme.RefinedScrutinee}[$paramTpe & $refinedType, $resultType2]
                """.stripMargin, ddef.tpt.pos)
+              }
+            case _ =>
           }
         case _ =>
       }
