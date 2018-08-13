@@ -143,8 +143,8 @@ object RefChecks {
    *    1.8.1  M's type is a subtype of O's type, or
    *    1.8.2  M is of type []S, O is of type ()T and S <: T, or
    *    1.8.3  M is of type ()S, O is of type []T and S <: T, or
-   *    1.9    If M is an erased def, O must be as well
-   *    1.10   If `M` is a rewrite or Scala2x macro method, O cannot be deferred unless
+   *    1.9    If M or O are erased, they must be both erased
+   *    1.10   If M is a rewrite or Scala-2 macro method, O cannot be deferred unless
    *           there's also a concrete method that M overrides.
    *    1.11.  If O is a Scala-2 macro, M must be a Scala-2 macro.
    *  2. Check that only abstract classes have deferred members
@@ -379,6 +379,8 @@ object RefChecks {
         overrideError("must be declared lazy to override a lazy value")
       } else if (member.is(Erased) && !other.is(Erased)) { // (1.9)
         overrideError("is erased, cannot override non-erased member")
+      } else if (other.is(Erased) && !member.is(Erased)) { // (1.9)
+        overrideError("is not erased, cannot override erased member")
       } else if ((member.is(Rewrite) || member.is(Scala2Macro)) && other.is(Deferred) &&
                  member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.10)
         overrideError("is a rewrite method, must override at least one concrete method")
