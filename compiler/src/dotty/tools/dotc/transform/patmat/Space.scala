@@ -292,7 +292,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   private val nullType             = ConstantType(Constant(null))
   private val nullSpace            = Typ(nullType)
 
-  override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type) = {
+  override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type): Space = {
     val and = AndType(tp1, tp2)
     // Precondition: !(tp1 <:< tp2) && !(tp2 <:< tp1)
     // Then, no leaf of the and-type tree `and` is a subtype of `and`.
@@ -689,7 +689,8 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
       tvar =>
         !(ctx.typerState.constraint.entry(tvar.origin) `eq` tvar.origin.underlying) ||
         (tvar `eq` removeThisType.prefixTVar),
-      minimizeAll = false
+      minimizeAll = false,
+      allowBottom = false
     )
 
     // If parent contains a reference to an abstract type, then we should

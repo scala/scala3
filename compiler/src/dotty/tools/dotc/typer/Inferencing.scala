@@ -115,7 +115,7 @@ object Inferencing {
             val minimize =
               force.minimizeAll ||
               variance >= 0 && !(
-                force == ForceDegree.noBottom &&
+                !force.allowBottom &&
                 defn.isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true)))
             if (minimize) instantiate(tvar, fromBelow = true)
             else toMaximize = true
@@ -466,9 +466,9 @@ trait Inferencing { this: Typer =>
 
 /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
 @sharable object ForceDegree {
-  class Value(val appliesTo: TypeVar => Boolean, val minimizeAll: Boolean)
+  class Value(val appliesTo: TypeVar => Boolean, val minimizeAll: Boolean, val allowBottom: Boolean = true)
   val none = new Value(_ => false, minimizeAll = false)
   val all = new Value(_ => true, minimizeAll = false)
-  val noBottom = new Value(_ => true, minimizeAll = false)
+  val noBottom = new Value(_ => true, minimizeAll = false, allowBottom = false)
 }
 
