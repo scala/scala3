@@ -138,25 +138,26 @@ object Tuples {
 
     rewrite def head: Any = {
       erased val resTpe = Typed(_head(xs))
-      rewrite _size(xs) match {
+      val resVal = rewrite _size(xs) match {
         case 1 =>
           val t = xs.asInstanceOf[Tuple1[_]]
-          t._1.asInstanceOf[resTpe.Type]
+          t._1
         case 2 =>
           val t = xs.asInstanceOf[Tuple2[_, _]]
-          t._1.asInstanceOf[resTpe.Type]
+          t._1
         case 3 =>
           val t = xs.asInstanceOf[Tuple3[_, _, _]]
-          t._1.asInstanceOf[resTpe.Type]
+          t._1
         case 4 =>
           val t = xs.asInstanceOf[Tuple4[_, _, _, _]]
-          t._1.asInstanceOf[resTpe.Type]
+          t._1
         case n if n > 4 && n <= MaxSpecialized =>
-          xs.asInstanceOf[Product].productElement(0).asInstanceOf[resTpe.Type]
+          xs.asInstanceOf[Product].productElement(0)
         case n if n > MaxSpecialized =>
           val t = xs.asInstanceOf[TupleXXL]
-          t.elems(0).asInstanceOf[resTpe.Type]
+          t.elems(0)
       }
+      resVal.asInstanceOf[resTpe.Type]
     }
 
     rewrite def tail: Any = {
