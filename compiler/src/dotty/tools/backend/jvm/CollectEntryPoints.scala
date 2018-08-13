@@ -46,7 +46,7 @@ class CollectEntryPoints extends MiniPhase {
 }
 
 object CollectEntryPoints{
-  def isJavaMainMethod(sym: Symbol)(implicit ctx: Context) = {
+  def isJavaMainMethod(sym: Symbol)(implicit ctx: Context): Boolean = {
     (sym.name == nme.main) && (sym.info match {
       case r@MethodTpe(_, List(defn.ArrayOf(t)), _) =>
         (t.widenDealias =:= defn.StringType) && (
@@ -63,7 +63,7 @@ object CollectEntryPoints{
     def hasJavaMainMethod(sym: Symbol): Boolean =
       (toDenot(sym).info member nme.main).alternatives exists(x => isJavaMainMethod(x.symbol))
 
-    def fail(msg: String, pos: Position = sym.pos) = {
+    def fail(msg: String, pos: Position = sym.pos): Boolean = {
       ctx.warning(          sym.name +
         s" has a main method with parameter type Array[String], but ${toDenot(sym).fullName} will not be a runnable program.\n  Reason: $msg",
         sourcePos(sym.pos)
@@ -74,7 +74,7 @@ object CollectEntryPoints{
       )
       false
     }
-    def failNoForwarder(msg: String) = {
+    def failNoForwarder(msg: String): Boolean = {
       fail(s"$msg, which means no static forwarder can be generated.\n")
     }
     val possibles = if (sym.flags is Flags.Module) (toDenot(sym).info nonPrivateMember nme.main).alternatives else Nil

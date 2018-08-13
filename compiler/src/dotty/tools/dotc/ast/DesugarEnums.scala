@@ -108,7 +108,7 @@ object DesugarEnums {
    *     $values.register(this)
    *   }
    */
-  private def enumValueCreator(implicit ctx: Context) = {
+  private def enumValueCreator(implicit ctx: Context): Tree = {
     def param(name: TermName, typ: Type) =
       ValDef(name, TypeTree(typ), EmptyTree).withFlags(Param)
     val enumTagDef =
@@ -178,7 +178,7 @@ object DesugarEnums {
     val (count, seenKind) = ctx.tree.removeAttachment(EnumCaseCount).getOrElse((0, CaseKind.Class))
     val minKind = if (kind < seenKind) kind else seenKind
     ctx.tree.pushAttachment(EnumCaseCount, (count + 1, minKind))
-    val scaffolding =
+    val scaffolding: List[Tree] =
       if (enumClass.typeParams.nonEmpty || kind >= seenKind) Nil
       else if (kind == CaseKind.Object) enumScaffolding
       else if (seenKind == CaseKind.Object) enumValueCreator :: Nil
