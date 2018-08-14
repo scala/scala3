@@ -12,7 +12,6 @@ object Test extends App {
   val h2 = x2.head; val h2c: String = h2; println(s"h2 = $h2")
   val h7 = x7.head; val h7c: Int = h7; println(s"h7 = $h7")
   val h8 = x8.head; val h8c: String = h8; println(s"h8 = $h8")
-/*
   val t1 = x1.tail; val t1c: Unit = t1; println(s"t1 = $t1")
   val t2 = x2.tail; val t2c: Int *: Unit = t2; println(s"t2 = $t2")
   val t7 = x7.tail; val t7c: String *: Int *: Unit = t7.tail.tail.tail.tail; println(s"t7 = $t7")
@@ -33,5 +32,5 @@ object Test extends App {
   val c2_1 = x2 ++ x1; val c2_1c: String *: Int *: Int *: Unit = c2_1; println(s"c2_1 = $c2_1")
   val c2_2 = x2 ++ x2; val c2_2c: String *: Int *: String *: Int *: Unit = c2_2; println(s"c2_2 = $c2_2")
   val c2_3 = x2 ++ x3; val c2_3c: String *: Int *: Int *: String *: Int *: Unit = c2_3; println(s"c2_3 = $c2_3")
-  val c3_3 = x3 ++ x3; val c3_3c: Int *: String *: Int *: Int *: String *: Int *: Unit = c3_3; println(s"c3_3 = $c3_3")*/
+  val c3_3 = x3 ++ x3; val c3_3c: Int *: String *: Int *: Int *: String *: Int *: Unit = c3_3; println(s"c3_3 = $c3_3")
 }

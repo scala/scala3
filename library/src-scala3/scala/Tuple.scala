@@ -45,6 +45,46 @@ sealed trait Tuple extends Any {
         fromArray[resTpe.Type]($consArray(x, toArray))
     }
   }
+
+  rewrite def ++(that: Tuple): Tuple = {
+    erased val resTpe = Typed(_concat(this, that))
+    rewrite _size(this) match {
+      case 0 =>
+        that
+      case 1 =>
+        if (_size(that) == 0) this
+        else (asInstanceOf[Tuple1[_]]._1 *: that).asInstanceOf[resTpe.Type]
+      case 2 =>
+        val t = asInstanceOf[Tuple2[_, _]]
+        rewrite _size(that) match {
+          case 0 => this
+          case 1 =>
+            val u = that.asInstanceOf[Tuple1[_]]
+            Tuple3(t._1, t._2, u._1).asInstanceOf[resTpe.Type]
+          case 2 =>
+            val u = that.asInstanceOf[Tuple2[_, _]]
+            Tuple4(t._1, t._2, u._1, u._2).asInstanceOf[resTpe.Type]
+          case _ =>
+            genericConcat[resTpe.Type](this, that)
+        }
+      case 3 =>
+        val t = asInstanceOf[Tuple3[_, _, _]]
+        rewrite _size(that) match {
+          case 0 => this
+          case 1 =>
+            val u = that.asInstanceOf[Tuple1[_]]
+            Tuple4(t._1, t._2, t._3, u._1).asInstanceOf[resTpe.Type]
+          case _ =>
+            genericConcat[resTpe.Type](this, that)
+        }
+      case _ =>
+        if (_size(that) == 0) this
+        else genericConcat[resTpe.Type](this, that)
+    }
+  }
+
+  rewrite def genericConcat[T <: Tuple](xs: Tuple, ys: Tuple): Tuple =
+    fromArray[T](xs.toArray ++ ys.toArray)
 }
 
 object Tuple {
@@ -81,6 +121,20 @@ object Tuple {
 
   private[scala] rewrite def _head(xs: Tuple): Any = rewrite xs match {
     case _: (x *: _) => erasedValue[x]
+  }
+
+  private[scala] rewrite def _tail(xs: Tuple): Tuple = rewrite xs match {
+    case _: (_ *: xs1) => erasedValue[xs1]
+  }
+
+  private[scala] rewrite def _index(xs: Tuple, n: Int): Any = rewrite xs match {
+    case _: (x *: _)   if n == 0 => erasedValue[x]
+    case _: (_ *: xs1) if n > 0  => _index(erasedValue[xs1], n - 1)
+  }
+
+  private[scala] rewrite def _concat(xs: Tuple, ys: Tuple): Tuple = rewrite xs match {
+    case _: Unit => ys
+    case _: (x1 *: xs1) => _pair(erasedValue[x1], _concat(erasedValue[xs1], ys))
   }
 
   rewrite def fromArray[T <: Tuple](xs: Array[Object]): T =
@@ -140,8 +194,63 @@ sealed class *:[+H, +T <: Tuple] extends Tuple {
     resVal.asInstanceOf[resTpe.Type]
   }
 
-  rewrite def tail: T = ???
+  rewrite def tail: Tuple = {
+    erased val resTpe = Typed(_tail(this))
+    rewrite _size(this) match {
+      case 1 =>
+        ()
+      case 2 =>
+        val t = asInstanceOf[Tuple2[_, _]]
+        Tuple1(t._2).asInstanceOf[resTpe.Type]
+      case 3 =>
+        val t = asInstanceOf[Tuple3[_, _, _]]
+        Tuple2(t._2, t._3).asInstanceOf[resTpe.Type]
+      case 4 =>
+        val t = asInstanceOf[Tuple4[_, _, _, _]]
+        Tuple3(t._2, t._3, t._4).asInstanceOf[resTpe.Type]
+      case 5 =>
+        val t = asInstanceOf[Tuple5[_, _, _, _, _]]
+        Tuple4(t._2, t._3, t._4, t._5).asInstanceOf[resTpe.Type]
+      case n if n > 5 =>
+        fromArray[resTpe.Type](toArray.tail)
+    }
+  }
 
+  rewrite def apply(n: Int): Any = {
+    erased val resTpe = Typed(_index(this, n))
+    rewrite _size(this) match {
+      case 1 =>
+        val t = asInstanceOf[Tuple1[_]]
+        rewrite n match {
+          case 0 => t._1.asInstanceOf[resTpe.Type]
+        }
+      case 2 =>
+        val t = asInstanceOf[Tuple2[_, _]]
+        rewrite n match {
+          case 0 => t._1.asInstanceOf[resTpe.Type]
+          case 1 => t._2.asInstanceOf[resTpe.Type]
+        }
+      case 3 =>
+        val t = asInstanceOf[Tuple3[_, _, _]]
+        rewrite n match {
+          case 0 => t._1.asInstanceOf[resTpe.Type]
+          case 1 => t._2.asInstanceOf[resTpe.Type]
+          case 2 => t._3.asInstanceOf[resTpe.Type]
+        }
+      case 4 =>
+        val t = asInstanceOf[Tuple4[_, _, _, _]]
+        rewrite n match {
+          case 0 => t._1.asInstanceOf[resTpe.Type]
+          case 1 => t._2.asInstanceOf[resTpe.Type]
+          case 2 => t._3.asInstanceOf[resTpe.Type]
+          case 3 => t._4.asInstanceOf[resTpe.Type]
+        }
+      case s if s > 4 && s <= $MaxSpecialized && n >= 0 && n < s =>
+        asInstanceOf[Product].productElement(n).asInstanceOf[resTpe.Type]
+      case s if s > $MaxSpecialized && n >= 0 && n < s =>
+        asInstanceOf[TupleXXL].elems(n).asInstanceOf[resTpe.Type]
+    }
+  }
 }
 
 object *: {
