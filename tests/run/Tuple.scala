@@ -75,7 +75,6 @@ object Tuple {
   val e4c: Int = conc1(1)
   val e5c: Int = conc2(0)
   val e6c: Double = conc2(4)
-
 }
 
 object Test extends App
