@@ -711,6 +711,8 @@ class Definitions {
 
   lazy val PairType = ctx.requiredClassRef("scala.*:")
   def PairClass(implicit ctx: Context) = PairType.symbol.asClass
+  lazy val TupleXXLType = ctx.requiredClassRef("scala.TupleXXL")
+  def TupleXXLClass(implicit ctx: Context) = TupleXXLType.symbol.asClass
 
   // Annotation base classes
   lazy val AnnotationType              = ctx.requiredClassRef("scala.annotation.Annotation")
@@ -1203,7 +1205,7 @@ class Definitions {
   def isValueSubClass(sym1: Symbol, sym2: Symbol) =
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
 
-  lazy val erasedToObject = Set[Symbol](AnyClass, AnyValClass, TupleClass, PairClass, SingletonClass)
+  lazy val erasedToObject = Set[Symbol](AnyClass, AnyValClass, TupleClass, SingletonClass)
 
   // ----- Initialization ---------------------------------------------------
 
