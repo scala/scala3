@@ -13,17 +13,11 @@ trait ConstantOpsImpl extends scala.tasty.reflect.ConstantOps with TastyCoreImpl
   object Constant extends ConstantModule {
 
     object Unit extends UnitExtractor {
-      def unapply(x: Constant): Boolean = x match {
-        case x: Constants.Constant => x.tag == Constants.UnitTag
-        case _ => false
-      }
+      def unapply(x: Constant): Boolean = x.tag == Constants.UnitTag
     }
 
     object Null extends NullExtractor {
-      def unapply(x: Constant): Boolean =  x match {
-        case x: Constants.Constant => x.tag == Constants.NullTag
-        case _ => false
-      }
+      def unapply(x: Constant): Boolean = x.tag == Constants.NullTag
     }
 
     object Boolean extends BooleanExtractor {

@@ -293,8 +293,12 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   private val nullSpace            = Typ(nullType)
 
   override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type): Space = {
+    // Precondition: !isSubType(tp1, tp2) && !isSubType(tp2, tp1)
+    if (tp1 == nullType || tp2 == nullType) {
+      // Since projections of types don't include null, intersection with null is empty.
+      return Empty
+    }
     val and = AndType(tp1, tp2)
-    // Precondition: !(tp1 <:< tp2) && !(tp2 <:< tp1)
     // Then, no leaf of the and-type tree `and` is a subtype of `and`.
     val res = inhabited(and)
 
