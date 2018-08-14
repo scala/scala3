@@ -206,8 +206,11 @@ class CompilationTests extends ParallelTesting {
       Array("-Ycheck-reentrant", "-Yemit-tasty-in-class")
     )
 
+    val libraryDirs = List(Paths.get("library/src"), Paths.get("library/src-scala3"))
+    val librarySources = libraryDirs.flatMap(d => sources(Files.walk(d)))
+
     val lib =
-      compileDir("library/src",
+      compileList("src", librarySources,
         defaultOptions.and("-Ycheck-reentrant", "-strict", "-priorityclasspath", defaultOutputDir))(libGroup)
 
     val compilerDir = Paths.get("compiler/src")
