@@ -127,6 +127,17 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
                """.stripMargin, ddef.tpt.pos)
               }
             case _ =>
+              val refinedType = resultType.select(nme.refinedScrutinee).widen.resultType
+              if (refinedType.exists && !(refinedType <:< mt.paramRefs.head)) {
+                val paramName = mt.paramNames.head
+                val paramTpe = mt.paramRefs.head
+                val paramInfo = mt.paramInfos.head
+                ctx.error(
+                  i"""Extractor with ${nme.refinedScrutinee} should refine the result type of that member.
+                     |The result type of ${nme.refinedScrutinee} should be a subtype of $paramTpe:
+                     |  def unapply($paramName: $paramInfo): ${resultType.widenDealias.classSymbol.name} { def ${nme.refinedScrutinee}: $refinedType & $paramTpe }
+               """.stripMargin, ddef.tpt.pos)
+              }
           }
         case _ =>
       }

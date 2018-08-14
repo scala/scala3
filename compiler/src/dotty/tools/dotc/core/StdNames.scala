@@ -492,6 +492,7 @@ object StdNames {
     val raw_ : N                = "raw"
     val readResolve: N          = "readResolve"
     val reflect : N             = "reflect"
+    val refinedScrutinee: N     = "refinedScrutinee"
     val reflectiveSelectable: N = "reflectiveSelectable"
     val reify : N               = "reify"
     val rootMirror : N          = "rootMirror"

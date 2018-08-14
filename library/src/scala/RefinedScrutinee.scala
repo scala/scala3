@@ -6,13 +6,20 @@ final class RefinedScrutinee[+Scrutinee /*<: Singleton*/, +Result] private (val 
   /** There is no result */
   def isEmpty: Boolean = result == RefinedScrutinee.NoResult
 
-  /** Get the result */
+  /** When non-empty, get the result */
   def get: Result = result.asInstanceOf[Result]
+
+  /** Scrutinee type on a successful match */
+  /*erased*/ def refinedScrutinee: Scrutinee = null.asInstanceOf[Scrutinee] // evaluated in RefinedScrutinee.matchOf
+
 }
 
 object RefinedScrutinee {
+
   private[RefinedScrutinee] object NoResult
 
   def matchOf[Scrutinee <: Singleton, Result](scrutinee: Scrutinee)(result: Result): RefinedScrutinee[Scrutinee, Result] = new RefinedScrutinee(result)
+
   def noMatch[Scrutinee <: Singleton, Result]: RefinedScrutinee[Scrutinee, Result] = new RefinedScrutinee(NoResult)
+
 }

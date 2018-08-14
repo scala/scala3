@@ -9,17 +9,8 @@ sealed trait Foo {
   def f(y: Y) = println("ok")
 
   object Z {
-    def unapply(arg: X) = new Opt {
-      type Scrutinee = arg.type
-      def refinedScrutinee: Y & Scrutinee = arg.asInstanceOf[Y & Scrutinee]
-    }
-  }
-
-  abstract class Opt {
-    type Scrutinee <: Singleton
-    def refinedScrutinee: Y & Scrutinee
-    def get: Int = 9
-    def isEmpty: Boolean = false
+    def unapply(arg: X): RefinedScrutinee[arg.type & Y, Int] =
+      RefinedScrutinee.matchOf(arg.asInstanceOf[arg.type & Y])(9)
   }
 }
 

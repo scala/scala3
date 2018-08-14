@@ -9,7 +9,12 @@ trait Peano {
   val Succ: SuccExtractor
   trait SuccExtractor {
     def apply(nat: Nat): Succ
-    def unapply(nat: Nat): RefinedScrutinee[Succ, Nat] // error
+    def unapply(nat: Nat): SuccOpt // error: Extractor with refinedScrutinee should refine the result type of that member ...
+  }
+  trait SuccOpt {
+    def isEmpty: Boolean
+    def refinedScrutinee: Succ
+    def get: Nat
   }
 }
 
@@ -22,9 +27,11 @@ object IntNums extends Peano {
 
   object Succ extends SuccExtractor {
     def apply(nat: Nat): Succ = nat + 1
-    def unapply(nat: Nat) = // error
-      if (nat == 0) RefinedScrutinee.noMatch
-      else RefinedScrutinee.matchOf(nat)(nat - 1)
+    def unapply(nat: Nat) = new SuccOpt { // error: Extractor with refinedScrutinee should refine the result type of that member ...
+      def isEmpty: Boolean = nat == 0
+      def refinedScrutinee: Succ & nat.type = nat
+      def get: Int = nat - 1
+    }
   }
 
 }
@@ -38,9 +45,11 @@ object IntNums2 extends Peano {
 
   object Succ extends SuccExtractor {
     def apply(nat: Nat): Succ = nat + 1
-    def unapply(nat: Nat): RefinedScrutinee[nat.type & Succ, Nat] =
-      if (nat == 0) RefinedScrutinee.noMatch
-      else RefinedScrutinee.matchOf(nat)(nat - 1)
+    def unapply(nat: Nat): SuccOpt { def refinedScrutinee: Succ & nat.type } = new SuccOpt {
+      def isEmpty: Boolean = nat == 0
+      def refinedScrutinee: Succ & nat.type = nat
+      def get: Int = nat - 1
+    }
   }
 
 }

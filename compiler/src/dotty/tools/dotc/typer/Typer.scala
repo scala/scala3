@@ -1383,11 +1383,9 @@ class Typer extends Namer
               fun.tpe.widen match {
                 case mt: MethodType if !mt.resType.isInstanceOf[MethodType] =>
                   val resultType = mt.resType.substParam(mt.paramRefs.head, symTp0)
-                  resultType match {
-                    case resultType: AppliedType if resultType.derivesFrom(defn.RefinedScrutineeClass) =>
-                      resultType.args.head
-                    case _ => symTp0
-                  }
+                  val refinedType = resultType.select(nme.refinedScrutinee).widen.resultType
+                  if (refinedType.exists) refinedType
+                  else symTp0
                 case _ =>
                   symTp0
               }
