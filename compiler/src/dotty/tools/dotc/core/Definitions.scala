@@ -740,8 +740,6 @@ class Definitions {
   def ImplicitNotFoundAnnot(implicit ctx: Context) = ImplicitNotFoundAnnotType.symbol.asClass
   lazy val ForceInlineAnnotType = ctx.requiredClassRef("scala.forceInline")
   def ForceInlineAnnot(implicit ctx: Context) = ForceInlineAnnotType.symbol.asClass
-  lazy val RewriteAnnotType = ctx.requiredClassRef("scala.rewrite")
-  def RewriteAnnot(implicit ctx: Context) = RewriteAnnotType.symbol.asClass
   lazy val TransparentParamAnnotType = ctx.requiredClassRef("scala.annotation.internal.TransparentParam")
   def TransparentParamAnnot(implicit ctx: Context) = TransparentParamAnnotType.symbol.asClass
   lazy val InvariantBetweenAnnotType = ctx.requiredClassRef("scala.annotation.internal.InvariantBetween")
@@ -1231,6 +1229,9 @@ class Definitions {
 
   private[this] var isInitialized = false
 
+  /** Add a `Tuple` as a parent to `Unit`.
+   *  Add the right `*:` instance as a parent to Tuple1..Tuple22
+   */
   def fixTupleCompleter(cls: ClassSymbol): Unit = cls.infoOrCompleter match {
     case completer: LazyType =>
       cls.info = new LazyType {
@@ -1268,7 +1269,7 @@ class Definitions {
 
       fixTupleCompleter(UnitClass)
       for (i <- 1 to MaxTupleArity)
-      	fixTupleCompleter(TupleType(i).symbol.asClass)
+        fixTupleCompleter(TupleType(i).symbol.asClass)
 
       isInitialized = true
     }

@@ -753,8 +753,7 @@ class Namer { typer: Typer =>
           val cls = typedAheadAnnotationClass(annotTree)(annotCtx)
           val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
           sym.addAnnotation(ann)
-          if ((cls == defn.ForceInlineAnnot || cls == defn.RewriteAnnot) &&
-              sym.is(Method, butNot = Accessor))
+          if (cls == defn.ForceInlineAnnot && sym.is(Method, butNot = Accessor))
             sym.setFlag(Rewrite)
         }
       case _ =>
