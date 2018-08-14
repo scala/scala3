@@ -1,7 +1,7 @@
 object Test extends App {
   val x0 = (); println(x0)
   val x1 = 1 *: x0; println(x1)
-  val x2 = "A" *: x1; println(x2)
+  val x2 = ("A", 1); println(x2)
   val x3 = 2 *: x2; println(x3)
   val x4 = "B" *: x3; println(x4)
   val x5 = 3 *: x4; println(x5)
