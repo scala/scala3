@@ -21,7 +21,7 @@ object Test extends App {
   type HNil = HNil.type
   type Z = Z.type
 
-  transparent def ToNat(transparent n: Int): Typed[Nat] =
+  transparent def ToNat(n: Int & Constant): Typed[Nat] =
     if n == 0 then Typed(Z)
     else Typed(S(ToNat(n - 1).value))
 

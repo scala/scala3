@@ -3016,15 +3016,8 @@ object Types {
      *   - add @inlineParam to transparent call-by-value parameters
      */
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
-      def translateTransparent(tp: Type): Type = tp match {
-        case _: ExprType => tp
-        case _ => AnnotatedType(tp, Annotation(defn.TransparentParamAnnot))
-      }
-      def paramInfo(param: Symbol) = {
-        val paramType = param.info.annotatedToRepeated
-        if (param.is(Transparent)) translateTransparent(paramType) else paramType
-      }
-
+      def paramInfo(param: Symbol) =
+        param.info.annotatedToRepeated
       apply(params.map(_.name.asTermName))(
          tl => params.map(p => tl.integrate(params, paramInfo(p))),
          tl => tl.integrate(params, resultType))

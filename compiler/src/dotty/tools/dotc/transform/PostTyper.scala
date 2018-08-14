@@ -254,6 +254,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                   super.transform(_).asInstanceOf[Template]))
           }
         case tree: ValDef =>
+          if (tree.symbol.is(Param) && !tree.symbol.owner.is(Transparent) && tree.tpt.tpe.derivesFrom(defn.ConstantClass))
+            ctx.error("only parameters of transparent method can have Constant type", tree.pos)
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           transformMemberDef(tree1)
           super.transform(tree1)

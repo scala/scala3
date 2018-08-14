@@ -563,9 +563,6 @@ object Flags {
   /** A transparent implicit method */
   final val TransparentImplicitMethod = allOf(Transparent, Implicit, Method)
 
-  /** A transparent parameter */
-  final val TransparentParam = allOf(Transparent, Param)
-
   /** An enum case */
   final val EnumCase = allOf(Enum, Case)
 

@@ -1913,12 +1913,12 @@ object Parsers {
     /** ClsParamClauses   ::=  {ClsParamClause} [[nl] `(' [FunArgMods] ClsParams `)']
      *  ClsParamClause    ::=  [nl] `(' [`erased'] [ClsParams] ')'
      *  ClsParams         ::=  ClsParam {`' ClsParam}
-     *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var') | `inline'] Param
+     *  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var')] Param
      *  DefParamClauses   ::=  {DefParamClause} [[nl] `(' [FunArgMods] DefParams `)']
      *  DefParamClause    ::=  [nl] `(' [`erased'] [DefParams] ')'
      *  DefParams         ::=  DefParam {`,' DefParam}
-     *  DefParam          ::=  {Annotation} [`inline'] Param
-     *  Param             ::=  id `:' ParamType [`=' Expr]
+     *  DefParam          ::=  {Annotation} Param
+     *  Param             ::=  id :' ParamType [`=' Expr]
      */
     def paramClauses(owner: Name, ofCaseClass: Boolean = false): List[List[ValDef]] = {
       var imods: Modifiers = EmptyModifiers
@@ -1940,7 +1940,7 @@ object Parsers {
                 addMod(mods, mod)
               }
               else {
-                if (!(mods.flags &~ (ParamAccessor | Transparent)).isEmpty)
+                if (!(mods.flags &~ ParamAccessor).isEmpty)
                   syntaxError("`val' or `var' expected")
                 if (firstClauseOfCaseClass) mods
                 else mods | PrivateLocal
@@ -1948,7 +1948,6 @@ object Parsers {
             }
         }
         else {
-          if (in.token == TRANSPARENT) mods = addModifier(mods)
           mods = atPos(start) { mods | Param }
         }
         atPos(start, nameStart) {
