@@ -410,6 +410,13 @@ class Definitions {
       List(AnyClass.typeRef), EmptyScope)
   lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
+  lazy val ConstantClass: ClassSymbol =
+    // TODO needs to be synthetic as is SingletonClass?
+    enterCompleteClassSymbol(
+      ScalaPackageClass, tpnme.Constant, PureInterfaceCreationFlags | Final,
+      List(SingletonType), EmptyScope)
+  lazy val ConstantType: TypeRef = ConstantClass.typeRef
+
   lazy val SeqType: TypeRef =
     if (isNewCollections) ctx.requiredClassRef("scala.collection.immutable.Seq")
     else ctx.requiredClassRef("scala.collection.Seq")
@@ -1209,6 +1216,7 @@ class Definitions {
     NullClass,
     NothingClass,
     SingletonClass,
+    ConstantClass,
     EqualsPatternClass)
 
   lazy val syntheticCoreClasses = syntheticScalaClasses ++ List(

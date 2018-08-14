@@ -158,6 +158,14 @@ object Types {
       case _ => false
     }
 
+    /** Does this type denote a constant type */
+    final def isConstant(implicit ctx: Context): Boolean = stripTypeVar match {
+      case _: ConstantType => true
+      case tp: ExprType => tp.resultType.isConstant
+      case tp: AnnotatedType => tp.parent.isConstant
+      case _ => false
+    }
+
     /** Is this type a (possibly refined or applied or aliased) type reference
      *  to the given type symbol?
      *  @sym  The symbol to compare to. It must be a class symbol or abstract type.
