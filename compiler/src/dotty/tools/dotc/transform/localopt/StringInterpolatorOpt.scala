@@ -7,6 +7,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
+import dotty.tools.dotc.util.Result
 
 /**
   * MiniPhase to transform s and raw string interpolators from using StringContext to string
@@ -23,11 +24,11 @@ class StringInterpolatorOpt extends MiniPhase {
 
   /** Matches a list of constant literals */
   private object Literals {
-    def unapply(tree: SeqLiteral)(implicit ctx: Context): Option[List[Literal]] = {
+    def unapply(tree: SeqLiteral)(implicit ctx: Context): Result[List[Literal]] = {
       tree.elems match {
         case literals if literals.forall(_.isInstanceOf[Literal]) =>
-          Some(literals.map(_.asInstanceOf[Literal]))
-        case _ => None
+          Result(literals.map(_.asInstanceOf[Literal]))
+        case _ => Result.empty
       }
     }
   }
@@ -41,12 +42,12 @@ class StringInterpolatorOpt extends MiniPhase {
 
   /** Matches an s or raw string interpolator */
   private object SOrRawInterpolator {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(List[Literal], List[Tree])] = {
+    def unapply(tree: Tree)(implicit ctx: Context): Result[(List[Literal], List[Tree])] = {
       tree match {
         case Apply(Select(Apply(StringContextApply(), List(Literals(strs))), _),
         List(SeqLiteral(elems, _))) if elems.length == strs.length - 1 =>
-          Some(strs, elems)
-        case _ => None
+          Result(strs, elems)
+        case _ => Result.empty
       }
     }
   }
@@ -57,22 +58,22 @@ class StringInterpolatorOpt extends MiniPhase {
     * the variable references.
     */
   private object StringContextIntrinsic {
-    def unapply(tree: Apply)(implicit ctx: Context): Option[(List[Literal], List[Tree])] = {
+    def unapply(tree: Apply)(implicit ctx: Context): Result[(List[Literal], List[Tree])] = {
       tree match {
         case SOrRawInterpolator(strs, elems) =>
-          if (tree.symbol == defn.StringContextRaw) Some(strs, elems)
+          if (tree.symbol == defn.StringContextRaw) Result(strs, elems)
           else { // tree.symbol == defn.StringContextS
             try {
               val escapedStrs = strs.map { str =>
                 val escapedValue = StringContext.processEscapes(str.const.stringValue)
                 cpy.Literal(str)(Constant(escapedValue))
               }
-              Some(escapedStrs, elems)
+              Result(escapedStrs, elems)
             } catch {
-              case _: StringContext.InvalidEscapeException => None
+              case _: StringContext.InvalidEscapeException => Result.empty
             }
           }
-        case _ => None
+        case _ => Result.empty
       }
     }
   }

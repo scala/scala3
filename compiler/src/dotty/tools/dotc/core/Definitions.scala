@@ -2,10 +2,23 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
-import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._, Periods._
+import Types._
+import Contexts._
+import Symbols._
+import Denotations._
+import SymDenotations._
+import StdNames._
+import Names._
+import Flags._
+import Scopes._
+import Decorators._
+import NameOps._
+import util.Positions._
+import Periods._
+import dotty.tools.dotc.util.Result
 import unpickleScala2.Scala2Unpickler.ensureConstructor
-import scala.collection.{ mutable, immutable }
+
+import scala.collection.{immutable, mutable}
 import PartialFunction._
 import collection.mutable
 import util.common.alwaysZero
@@ -810,36 +823,36 @@ class Definitions {
   object FunctionOf {
     def apply(args: List[Type], resultType: Type, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: Context) =
       FunctionType(args.length, isImplicit, isErased).appliedTo(args ::: resultType :: Nil)
-    def unapply(ft: Type)(implicit ctx: Context) = {
+    def unapply(ft: Type)(implicit ctx: Context): Result[(List[Type], Type, Boolean, Boolean)] = {
       val tsym = ft.typeSymbol
       if (isFunctionClass(tsym)) {
         val targs = ft.dealias.argInfos
-        if (targs.isEmpty) None
-        else Some(targs.init, targs.last, tsym.name.isImplicitFunction, tsym.name.isErasedFunction)
+        if (targs.isEmpty) Result.empty
+        else Result(targs.init, targs.last, tsym.name.isImplicitFunction, tsym.name.isErasedFunction)
       }
-      else None
+      else Result.empty
     }
   }
 
   object PartialFunctionOf {
-    def apply(arg: Type, result: Type)(implicit ctx: Context) =
+    def apply(arg: Type, result: Type)(implicit ctx: Context): Type =
       PartialFunctionType.appliedTo(arg :: result :: Nil)
-    def unapply(pft: Type)(implicit ctx: Context) = {
+    def unapply(pft: Type)(implicit ctx: Context): Result[(Type, List[Type])] = {
       if (pft.isRef(PartialFunctionClass)) {
         val targs = pft.dealias.argInfos
-        if (targs.length == 2) Some((targs.head, targs.tail)) else None
+        if (targs.length == 2) Result((targs.head, targs.tail)) else Result.empty
       }
-      else None
+      else Result.empty
     }
   }
 
   object ArrayOf {
-    def apply(elem: Type)(implicit ctx: Context) =
+    def apply(elem: Type)(implicit ctx: Context): Type =
       if (ctx.erasedTypes) JavaArrayType(elem)
       else ArrayType.appliedTo(elem :: Nil)
-    def unapply(tp: Type)(implicit ctx: Context): Option[Type] = tp.dealias match {
-      case AppliedType(at, arg :: Nil) if at isRef ArrayType.symbol => Some(arg)
-      case _ => None
+    def unapply(tp: Type)(implicit ctx: Context): Result[Type] = tp.dealias match {
+      case AppliedType(at, arg :: Nil) if at isRef ArrayType.symbol => Result(arg)
+      case _ => Result.empty
     }
   }
 
@@ -856,16 +869,16 @@ class Definitions {
   object MultiArrayOf {
     def apply(elem: Type, ndims: Int)(implicit ctx: Context): Type =
       if (ndims == 0) elem else ArrayOf(apply(elem, ndims - 1))
-    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp match {
+    def unapply(tp: Type)(implicit ctx: Context): Result[(Type, Int)] = tp match {
       case ArrayOf(elemtp) =>
-        def recur(elemtp: Type): Option[(Type, Int)] = elemtp.dealias match {
+        def recur(elemtp: Type): Result[(Type, Int)] = elemtp.dealias match {
           case TypeBounds(lo, hi) => recur(hi)
-          case MultiArrayOf(finalElemTp, n) => Some(finalElemTp, n + 1)
-          case _ => Some(elemtp, 1)
+          case MultiArrayOf(finalElemTp, n) => Result(finalElemTp, n + 1)
+          case _ => Result(elemtp, 1)
         }
         recur(elemtp)
       case _ =>
-        None
+        Result.empty
     }
   }
 

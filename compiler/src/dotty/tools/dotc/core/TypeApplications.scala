@@ -9,6 +9,7 @@ import SymDenotations.{LazyType, TypeParamsCompleter}
 import Decorators._
 import util.Stats._
 import util.common._
+import util.Result
 import Names._
 import NameOps._
 import NameKinds._
@@ -63,9 +64,9 @@ object TypeApplications {
       tycon.EtaExpand(tycon.typeParamSymbols)
     }
 
-    def unapply(tp: Type)(implicit ctx: Context): Option[TypeRef] = tp match {
-      case tp @ HKTypeLambda(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.paramRef)) => Some(fn)
-      case _ => None
+    def unapply(tp: Type)(implicit ctx: Context): Result[TypeRef] = tp match {
+      case tp @ HKTypeLambda(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.paramRef)) => Result(fn)
+      case _ => Result.empty
     }
   }
 

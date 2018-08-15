@@ -8,6 +8,7 @@ import MegaPhase._
 import SymUtils._
 import ast.untpd
 import ast.Trees._
+import util.Result
 import dotty.tools.dotc.reporting.diagnostic.messages.TypeMismatch
 import dotty.tools.dotc.util.Positions.Position
 
@@ -98,10 +99,10 @@ class ExpandSAMs extends MiniPhase {
   private def toPartialFunction(tree: Block, tpe: Type)(implicit ctx: Context): Tree = {
     /** An extractor for match, either contained in a block or standalone. */
     object PartialFunctionRHS {
-      def unapply(tree: Tree): Option[Match] = tree match {
+      def unapply(tree: Tree): Result[Match] = tree match {
         case Block(Nil, expr) => unapply(expr)
-        case m: Match => Some(m)
-        case _ => None
+        case m: Match => Result(m)
+        case _ => Result.empty
       }
     }
 

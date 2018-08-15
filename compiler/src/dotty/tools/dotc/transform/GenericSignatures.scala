@@ -16,6 +16,8 @@ import SymUtils._
 import TypeUtils._
 import java.lang.StringBuilder
 
+import dotty.tools.dotc.util.Result
+
 /** Helper object to generate generic java signatures, as defined in
  *  the Java Virtual Machine Specification, §4.3.4
  */
@@ -452,36 +454,36 @@ object GenericSignatures {
       *  then Some((N, T)) where N is the number of Array constructors enclosing `T`,
       *  otherwise None. Existentials on any level are ignored.
       */
-    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp.widenDealias match {
+    def unapply(tp: Type)(implicit ctx: Context): Result[(Type, Int)] = tp.widenDealias match {
       case defn.ArrayOf(arg) =>
         genericCore(arg) match {
           case NoType =>
             arg match {
-              case GenericArray(core, level) => Some((core, level + 1))
-              case _ => None
+              case GenericArray(core, level) => Result((core, level + 1))
+              case _ => Result.empty
             }
           case core =>
-            Some((core, 1))
+            Result((core, 1))
         }
       case _ =>
-        None
+        Result.empty
     }
 
   }
 
   private object RefOrAppliedType {
-    def unapply(tp: Type)(implicit ctx: Context): Option[(Symbol, Type, List[Type])] = tp match {
+    def unapply(tp: Type)(implicit ctx: Context): Result[(Symbol, Type, List[Type])] = tp match {
       case TypeParamRef(_, _) =>
-        Some((tp.typeSymbol, tp, Nil))
+        Result((tp.typeSymbol, tp, Nil))
       case TermParamRef(_, _) =>
-        Some((tp.termSymbol, tp, Nil))
+        Result((tp.termSymbol, tp, Nil))
       case TypeRef(pre, _) if !tp.typeSymbol.isAliasType =>
         val sym = tp.typeSymbol
-        Some((sym, pre, Nil))
+        Result((sym, pre, Nil))
       case AppliedType(pre, args) =>
-        Some((pre.typeSymbol, pre, args))
+        Result((pre.typeSymbol, pre, args))
       case _ =>
-        None
+        Result.empty
     }
   }
 

@@ -8,6 +8,7 @@ import transform.SymUtils._
 import transform.TypeUtils._
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
+import util.Result
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Denotations._, Decorators._, DenotTransformers._
 import collection.mutable
@@ -1073,9 +1074,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** An extractor that pulls out type arguments */
   object MaybePoly {
-    def unapply(tree: Tree): Option[(Tree, List[Tree])] = tree match {
-      case TypeApply(tree, targs) => Some(tree, targs)
-      case _ => Some(tree, Nil)
+    def unapply(tree: Tree): Result[(Tree, List[Tree])] = tree match {
+      case TypeApply(tree, targs) => Result((tree, targs))
+      case _ => Result((tree, Nil))
     }
   }
 

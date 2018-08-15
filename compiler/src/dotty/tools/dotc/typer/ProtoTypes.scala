@@ -13,6 +13,7 @@ import annotation.unchecked
 import util.Positions._
 import util.{Stats, SimpleIdentityMap}
 import util.common._
+import util.Result
 import Decorators._
 import Uniques._
 import ErrorReporting.errorType
@@ -639,9 +640,9 @@ object ProtoTypes {
   /** Dummy tree to be used as an argument of a FunProto or ViewProto type */
   object dummyTreeOfType {
     def apply(tp: Type): Tree = untpd.Literal(Constant(null)) withTypeUnchecked tp
-    def unapply(tree: untpd.Tree): Option[Type] = tree match {
-      case Literal(Constant(null)) => Some(tree.typeOpt)
-      case _ => None
+    def unapply(tree: untpd.Tree): Result[Type] = tree match {
+      case Literal(Constant(null)) => Result(tree.typeOpt)
+      case _ => Result.empty
     }
   }
 }
