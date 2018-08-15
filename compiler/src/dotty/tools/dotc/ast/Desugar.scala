@@ -4,6 +4,7 @@ package ast
 
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
+import util.Result
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
@@ -1227,10 +1228,10 @@ object desugar {
  /** If tree is of the form `id` or `id: T`, return its name and type, otherwise return None.
    */
   private object IdPattern {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[VarInfo] = tree match {
-      case id: Ident => Some(id, TypeTree())
-      case Typed(id: Ident, tpt) => Some((id, tpt))
-      case _ => None
+    def unapply(tree: Tree)(implicit ctx: Context): Result[VarInfo] = tree match {
+      case id: Ident => Result(id, TypeTree())
+      case Typed(id: Ident, tpt) => Result((id, tpt))
+      case _ => Result.empty
     }
   }
 

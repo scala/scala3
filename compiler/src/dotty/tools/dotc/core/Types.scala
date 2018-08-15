@@ -6,8 +6,9 @@ import util.common._
 import Symbols._
 import Flags._
 import Names._
-import StdNames._, NameOps._
-import NameKinds.{SkolemName, SignedName}
+import StdNames._
+import NameOps._
+import NameKinds.{SignedName, SkolemName}
 import Scopes._
 import Constants._
 import Contexts._
@@ -16,9 +17,9 @@ import SymDenotations._
 import Decorators._
 import Denotations._
 import Periods._
-import util.Positions.{Position, NoPosition}
+import util.Positions.{NoPosition, Position}
 import util.Stats._
-import util.{DotClass, SimpleIdentitySet}
+import util.{DotClass, Result, SimpleIdentitySet}
 import reporting.diagnostic.Message
 import ast.tpd._
 import ast.TreeTypeMap
@@ -28,11 +29,13 @@ import dotty.tools.dotc.transform.Erasure
 import printing.Printer
 import Hashable._
 import Uniques._
-import collection.{mutable, Seq}
+
+import collection.{Seq, mutable}
 import config.Config
+
 import annotation.tailrec
 import language.implicitConversions
-import scala.util.hashing.{ MurmurHash3 => hashing }
+import scala.util.hashing.{MurmurHash3 => hashing}
 import config.Printers.{core, typr}
 import java.lang.ref.WeakReference
 
@@ -3056,8 +3059,8 @@ object Types {
 
   /** A ternary extractor for MethodType */
   object MethodTpe {
-    def unapply(mt: MethodType)(implicit ctx: Context) =
-      Some((mt.paramNames, mt.paramInfos, mt.resultType))
+    def unapply(mt: MethodType)(implicit ctx: Context): Result[(List[TermName], List[Type], Type)] =
+      Result((mt.paramNames, mt.paramInfos, mt.resultType))
   }
 
   trait TypeLambda extends LambdaType {
@@ -3159,8 +3162,8 @@ object Types {
       unique(new HKTypeLambda(paramNames)(paramInfosExp, resultTypeExp))
     }
 
-    def unapply(tl: HKTypeLambda): Some[(List[LambdaParam], Type)] =
-      Some((tl.typeParams, tl.resType))
+    def unapply(tl: HKTypeLambda): Result[(List[LambdaParam], Type)] =
+      Result((tl.typeParams, tl.resType))
 
     def any(n: Int)(implicit ctx: Context) =
       apply(syntheticParamNames(n))(
@@ -3196,8 +3199,8 @@ object Types {
       unique(new PolyType(paramNames)(paramInfosExp, resultTypeExp))
     }
 
-    def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =
-      Some((tl.typeParams, tl.resType))
+    def unapply(tl: PolyType): Result[(List[LambdaParam], Type)] =
+      Result((tl.typeParams, tl.resType))
 
     def any(n: Int)(implicit ctx: Context) =
       apply(syntheticParamNames(n))(
@@ -3730,7 +3733,7 @@ object Types {
   object TypeAlias {
     def apply(alias: Type)(implicit ctx: Context) =
       unique(new CachedTypeAlias(alias))
-    def unapply(tp: TypeAlias): Option[Type] = Some(tp.alias)
+    def unapply(tp: TypeAlias): Result[Type] = Result(tp.alias)
   }
 
   // ----- Annotated and Import types -----------------------------------------------
@@ -3904,7 +3907,7 @@ object Types {
       case _ =>
         false
     }
-    def unapply(tp: Type)(implicit ctx: Context): Option[MethodType] =
+    def unapply(tp: Type)(implicit ctx: Context): Result[MethodType] =
       if (isInstantiatable(tp)) {
         val absMems = tp.abstractTermMembers
         // println(s"absMems: ${absMems map (_.show) mkString ", "}")
@@ -3945,9 +3948,9 @@ object Types {
                 }
               }
               val approx = approxParams(mt).asInstanceOf[MethodType]
-              Some(approx)
+              Result(approx)
             case _ =>
-              None
+              Result.empty
           }
         else if (tp isRef defn.PartialFunctionClass)
           // To maintain compatibility with 2.x, we treat PartialFunction specially,
@@ -3956,10 +3959,10 @@ object Types {
           //     def isDefinedAt(x: T) = true
           // and overwrite that method whenever the function body is a sequence of
           // case clauses.
-          absMems.find(_.symbol.name == nme.apply).map(_.info.asInstanceOf[MethodType])
-        else None
+          Result.from(absMems.find(_.symbol.name == nme.apply).map(_.info.asInstanceOf[MethodType]))
+        else Result.empty
       }
-      else None
+      else Result.empty
   }
 
   // ----- TypeMaps --------------------------------------------------------------------

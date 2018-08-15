@@ -5,12 +5,12 @@ package core
 import Names._
 import NameOps._
 import StdNames._
-import util.DotClass
+import util.{DotClass, Result}
 import NameTags._
 import Decorators._
 import Contexts.Context
-import collection.mutable
 
+import collection.mutable
 import scala.annotation.internal.sharable
 
 /** Defines possible kinds of NameInfo of a derived name */
@@ -82,9 +82,9 @@ object NameKinds {
     def apply(underlying: TermName) = underlying.derived(info)
 
     /** Extractor operation for names of this kind */
-    def unapply(name: DerivedName): Option[TermName] =  name match {
-      case DerivedName(underlying, `info`) => Some(underlying)
-      case _ => None
+    def unapply(name: DerivedName): Result[TermName] =  name match {
+      case DerivedName(underlying, `info`) => Result(underlying)
+      case _ => Result.empty
     }
 
     simpleNameKinds(tag) = this
@@ -140,9 +140,9 @@ object NameKinds {
       case AnyQualifiedName(_, _) => apply(qual, name.toSimpleName)
     }
 
-    def unapply(name: DerivedName): Option[(TermName, SimpleName)] = name match {
-      case DerivedName(qual, info: this.QualInfo) => Some((qual, info.name))
-      case _ => None
+    def unapply(name: DerivedName): Result[(TermName, SimpleName)] = name match {
+      case DerivedName(qual, info: this.QualInfo) => Result((qual, info.name))
+      case _ => Result.empty
     }
 
     override def definesNewName = true
@@ -158,10 +158,10 @@ object NameKinds {
 
   /** An extractor for qualified names of an arbitrary kind */
   object AnyQualifiedName {
-    def unapply(name: DerivedName): Option[(TermName, SimpleName)] = name match {
+    def unapply(name: DerivedName): Result[(TermName, SimpleName)] = name match {
       case DerivedName(qual, info: QualifiedInfo) =>
-        Some((name.underlying, info.name))
-      case _ => None
+        Result((name.underlying, info.name))
+      case _ => Result.empty
     }
   }
 
@@ -178,9 +178,9 @@ object NameKinds {
     }
     def apply(qual: TermName, num: Int) =
       qual.derived(new NumberedInfo(num))
-    def unapply(name: DerivedName): Option[(TermName, Int)] = name match {
-      case DerivedName(underlying, info: this.NumberedInfo) => Some((underlying, info.num))
-      case _ => None
+    def unapply(name: DerivedName): Result[(TermName, Int)] = name match {
+      case DerivedName(underlying, info: this.NumberedInfo) => Result((underlying, info.num))
+      case _ => Result.empty
     }
     protected def skipSeparatorAndNum(name: SimpleName, separator: String): Int = {
       var i = name.length
@@ -195,9 +195,9 @@ object NameKinds {
 
   /** An extractor for numbered names of arbitrary kind */
   object AnyNumberedName {
-    def unapply(name: DerivedName): Option[(TermName, Int)] = name match {
-      case DerivedName(qual, info: NumberedInfo) => Some((qual, info.num))
-      case _ => None
+    def unapply(name: DerivedName): Result[(TermName, Int)] = name match {
+      case DerivedName(qual, info: NumberedInfo) => Result((qual, info.num))
+      case _ => Result.empty
     }
   }
 
@@ -228,13 +228,13 @@ object NameKinds {
 
   /** An extractor for unique names of arbitrary kind */
   object AnyUniqueName {
-    def unapply(name: DerivedName): Option[(TermName, String, Int)] = name match {
+    def unapply(name: DerivedName): Result[(TermName, String, Int)] = name match {
       case DerivedName(qual, info: NumberedInfo) =>
         info.kind match {
-          case unique: UniqueNameKind => Some((qual, unique.separator, info.num))
-          case _ => None
+          case unique: UniqueNameKind => Result((qual, unique.separator, info.num))
+          case _ => Result.empty
         }
-      case _ => None
+      case _ => Result.empty
     }
   }
 
@@ -383,9 +383,9 @@ object NameKinds {
 
     def apply(qual: TermName, sig: Signature) =
       qual.derived(new SignedInfo(sig))
-    def unapply(name: DerivedName): Option[(TermName, Signature)] = name match {
-      case DerivedName(underlying, info: SignedInfo) => Some((underlying, info.sig))
-      case _ => None
+    def unapply(name: DerivedName): Result[(TermName, Signature)] = name match {
+      case DerivedName(underlying, info: SignedInfo) => Result((underlying, info.sig))
+      case _ => Result.empty
     }
 
     def mkString(underlying: TermName, info: ThisInfo): String = s"$underlying[with sig ${info.sig}]"

@@ -4,6 +4,7 @@ package reporting
 package diagnostic
 
 import util.SourcePosition
+import util.Result
 import core.Contexts.Context
 
 import messages._
@@ -132,7 +133,7 @@ class NoExplanation(val msg: String) extends Message(ErrorMessageID.NoExplanatio
   * lacks an explanation
   */
 object NoExplanation {
-  def unapply(m: Message): Option[Message] =
-    if (m.explanation == "") Some(m)
-    else None
+  def unapply(m: Message): Result[Message] =
+    if (m.explanation == "") Result(m)
+    else Result.empty
 }

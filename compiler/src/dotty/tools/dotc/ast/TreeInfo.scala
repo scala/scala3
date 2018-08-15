@@ -3,9 +3,16 @@ package dotc
 package ast
 
 import core._
-import Flags._, Trees._, Types._, Contexts._
-import Names._, StdNames._, NameOps._, Decorators._, Symbols._
-import util.HashSet
+import Flags._
+import Trees._
+import Types._
+import Contexts._
+import Names._
+import StdNames._
+import NameOps._
+import Decorators._
+import Symbols._
+import util.{HashSet, Result}
 import typer.ConstFold
 import reporting.trace
 
@@ -577,25 +584,25 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** An extractor for closures, either contained in a block or standalone.
    */
   object closure {
-    def unapply(tree: Tree): Option[(List[Tree], Tree, Tree)] = tree match {
+    def unapply(tree: Tree): Result[(List[Tree], Tree, Tree)] = tree match {
       case Block(_, expr) => unapply(expr)
-      case Closure(env, meth, tpt) => Some(env, meth, tpt)
+      case Closure(env, meth, tpt) => Result((env, meth, tpt))
       case Typed(expr, _)  => unapply(expr)
-      case _ => None
+      case _ => Result.empty
     }
   }
 
   /** An extractor for def of a closure contained the block of the closure. */
   object closureDef {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[DefDef] = tree match {
+    def unapply(tree: Tree)(implicit ctx: Context): Result[DefDef] = tree match {
       case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, closure: Closure) =>
-        Some(meth)
+        Result(meth)
       case Block(Nil, expr) =>
         unapply(expr)
       case Inlined(_, bindings, expr) if bindings.forall(isPureBinding) =>
         unapply(expr)
       case _ =>
-        None
+        Result.empty
     }
   }
 

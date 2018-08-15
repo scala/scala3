@@ -290,11 +290,11 @@ object Splicer {
     }
 
     object StaticMethodCall {
-      def unapply(arg: Tree): Option[(RefTree, List[Tree])] = arg match {
-        case fn: RefTree if fn.symbol.isStatic => Some((fn, Nil))
-        case Apply(StaticMethodCall(fn, args1), args2) => Some((fn, args1 ::: args2)) // TODO improve performance
-        case TypeApply(StaticMethodCall(fn, args), _) => Some((fn, args))
-        case _ => None
+      def unapply(arg: Tree): util.Result[(RefTree, List[Tree])] = arg match {
+        case fn: RefTree if fn.symbol.isStatic => util.Result((fn, Nil))
+        case Apply(StaticMethodCall(fn, args1), args2) => util.Result((fn, args1 ::: args2)) // TODO improve performance
+        case TypeApply(StaticMethodCall(fn, args), _) => util.Result((fn, args))
+        case _ => util.Result.empty
       }
     }
   }

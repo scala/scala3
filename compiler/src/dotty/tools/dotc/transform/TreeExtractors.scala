@@ -4,6 +4,7 @@ package transform
 import ast.{Trees, tpd}
 import core._, core.Decorators._
 import Contexts._, Flags._, Trees._, Types._, StdNames._, Symbols._
+import util.Result
 import ValueClasses._
 
 object TreeExtractors {
@@ -11,21 +12,21 @@ object TreeExtractors {
 
   /** Match arg1.op(arg2) and extract (arg1, op.symbol, arg2) */
   object BinaryOp {
-    def unapply(t: Tree)(implicit ctx: Context): Option[(Tree, Symbol, Tree)] = t match {
+    def unapply(t: Tree)(implicit ctx: Context): Result[(Tree, Symbol, Tree)] = t match {
       case Apply(sel @ Select(arg1, _), List(arg2)) =>
-        Some((arg1, sel.symbol, arg2))
+        Result((arg1, sel.symbol, arg2))
       case _ =>
-        None
+        Result.empty
     }
   }
 
  /** Match new C(args) and extract (C, args) */
   object NewWithArgs {
-    def unapply(t: Tree)(implicit ctx: Context): Option[(Type, List[Tree])] = t match {
+    def unapply(t: Tree)(implicit ctx: Context): Result[(Type, List[Tree])] = t match {
       case Apply(Select(New(_), nme.CONSTRUCTOR), args) =>
-        Some((t.tpe, args))
+        Result((t.tpe, args))
       case _ =>
-        None
+        Result.empty
     }
   }
 
@@ -34,15 +35,15 @@ object TreeExtractors {
    *  Match v.underlying() and extract v
    */
   object ValueClassUnbox {
-    def unapply(t: Tree)(implicit ctx: Context): Option[Tree] = t match {
+    def unapply(t: Tree)(implicit ctx: Context): Result[Tree] = t match {
       case Apply(sel @ Select(ref, _), Nil) =>
         val sym = ref.tpe.widenDealias.typeSymbol
         if (isDerivedValueClass(sym) && (sel.symbol eq valueClassUnbox(sym.asClass))) {
-          Some(ref)
+          Result(ref)
         } else
-          None
+          Result.empty
       case _ =>
-        None
+        Result.empty
     }
   }
 }

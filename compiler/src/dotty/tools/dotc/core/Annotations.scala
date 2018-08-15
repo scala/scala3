@@ -1,10 +1,16 @@
 package dotty.tools.dotc
 package core
 
-import Symbols._, Types._, util.Positions._, Contexts._, Constants._, ast.tpd._
+import Symbols._
+import Types._
+import util.Positions._
+import Contexts._
+import Constants._
+import ast.tpd._
 import config.ScalaVersion
 import StdNames._
 import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.util.Result
 
 object Annotations {
 
@@ -168,12 +174,12 @@ object Annotations {
       /** A regular, non-deferred Child annotation */
       def apply(sym: Symbol)(implicit ctx: Context): Annotation = apply(_ => sym)
 
-      def unapply(ann: Annotation)(implicit ctx: Context): Option[Symbol] =
+      def unapply(ann: Annotation)(implicit ctx: Context): Result[Symbol] =
         if (ann.symbol == defn.ChildAnnot) {
           val AppliedType(tycon, (arg: NamedType) :: Nil) = ann.tree.tpe
-          Some(arg.symbol)
+          Result(arg.symbol)
         }
-        else None
+        else Result.empty
     }
 
     def makeSourceFile(path: String)(implicit ctx: Context) =

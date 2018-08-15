@@ -6,6 +6,7 @@ import Decorators._, Flags._, Types._, Contexts._, Symbols._, Constants._
 import ast.Trees._
 import ast.{TreeTypeMap, untpd}
 import util.Positions._
+import util.Result
 import tasty.TreePickler.Hole
 import SymUtils._
 import NameKinds._
@@ -596,11 +597,11 @@ class ReifyQuotes extends MacroTransformWithImplicits {
      *  consists of a (possibly multiple & nested) block or a sole expression.
      */
     object InlineSplice {
-      def unapply(tree: Tree)(implicit ctx: Context): Option[Tree] = tree match {
-        case Select(qual, _) if tree.symbol.isSplice && Splicer.canBeSpliced(qual) => Some(qual)
+      def unapply(tree: Tree)(implicit ctx: Context): Result[Tree] = tree match {
+        case Select(qual, _) if tree.symbol.isSplice && Splicer.canBeSpliced(qual) => Result(qual)
         case Block(List(stat), Literal(Constant(()))) => unapply(stat)
         case Block(Nil, expr) => unapply(expr)
-        case _ => None
+        case _ => Result.empty
       }
     }
   }

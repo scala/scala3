@@ -15,6 +15,7 @@ import patmat.Space
 import NameKinds.{UniqueNameKind, PatMatStdBinderName, PatMatCaseName}
 import config.Printers.patmatch
 import reporting.diagnostic.messages._
+import dotty.tools.dotc.util.Result
 
 /** The pattern matching transform.
  *  After this phase, the only Match nodes remaining in the code are simple switches
@@ -192,9 +193,9 @@ object PatternMatcher {
     }
 
     private object VarArgPattern {
-      def unapply(pat: Tree): Option[Tree] = swapBind(pat) match {
-        case Typed(pat1, tpt) if tpt.tpe.isRepeatedParam => Some(pat1)
-        case _ => None
+      def unapply(pat: Tree): Result[Tree] = swapBind(pat) match {
+        case Typed(pat1, tpt) if tpt.tpe.isRepeatedParam => Result(pat1)
+        case _ => Result.empty
       }
     }
 
@@ -544,14 +545,14 @@ object PatternMatcher {
 
       /** Extractor for Let/NonEmptyTest combos that represent unapplies */
       object UnappTestPlan {
-        def unapply(plan: Plan): Option[TestPlan] = plan match {
+        def unapply(plan: Plan): Result[TestPlan] = plan match {
           case LetPlan(sym, body: TestPlan) =>
             val RHS = initializer(sym)
             normalize(body) match {
-              case normPlan @ TestPlan(UnappTest, RHS, _, _, _) => Some(normPlan)
-              case _ => None
+              case normPlan @ TestPlan(UnappTest, RHS, _, _, _) => Result(normPlan)
+              case _ => Result.empty
             }
-          case _ => None
+          case _ => Result.empty
         }
       }
 
