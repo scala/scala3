@@ -116,7 +116,7 @@ object Tuple {
   private[scala] rewrite def _size(xs: Tuple): Int =
     rewrite xs match {
       case _: Unit => 0
-      case _: *:[_, xs1] => _size(erasedValue[xs1]) + 1
+      case _: (_ *: xs1) => _size(erasedValue[xs1]) + 1
     }
 
   private[scala] rewrite def _head(xs: Tuple): Any = rewrite xs match {

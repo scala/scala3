@@ -713,6 +713,10 @@ class Definitions {
   def PairClass(implicit ctx: Context) = PairType.symbol.asClass
   lazy val TupleXXLType = ctx.requiredClassRef("scala.TupleXXL")
   def TupleXXLClass(implicit ctx: Context) = TupleXXLType.symbol.asClass
+  def TupleXXLModule(implicit ctx: Context) = TupleXXLClass.companionModule
+
+    def TupleXXL_apply(implicit ctx: Context) =
+      TupleXXLModule.info.member(nme.apply).requiredSymbol(_.info.isVarArgsMethod)
 
   // Annotation base classes
   lazy val AnnotationType              = ctx.requiredClassRef("scala.annotation.Annotation")

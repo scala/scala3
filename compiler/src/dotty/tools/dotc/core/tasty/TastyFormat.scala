@@ -211,6 +211,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEDSPLICE Length splice_Term
                   FUNCTION    Length body_Term arg_Term*
                   INFIXOP     Length op_NameRef left_Term right_Term
+                  TUPLE       Length elem_Term*
                   PATDEF      Length type_Term rhs_Term pattern_Term* Modifier*
                   EMPTYTYPETREE
 
@@ -438,6 +439,7 @@ object TastyFormat {
   final val FUNCTION = 201
   final val INFIXOP = 202
   final val PATDEF = 203
+  final val TUPLE = 204
 
   def methodType(isImplicit: Boolean = false, isErased: Boolean = false) = {
     val implicitOffset = if (isImplicit) 1 else 0
@@ -657,6 +659,7 @@ object TastyFormat {
     case TYPEDSPLICE => "TYPEDSPLICE"
     case FUNCTION => "FUNCTION"
     case INFIXOP => "INFIXOP"
+    case TUPLE => "TUPLE"
     case PATDEF => "PATDEF"
   }
 

@@ -815,6 +815,23 @@ object desugar {
       makeOp(right, left, Position(op.pos.start, right.pos.end))
   }
 
+  /** Translate tuple expressions of arity <= 22
+   *
+   *     ()             ==>   ()
+   *     (t)            ==>   t
+   *     (t1, ..., tN)  ==>   TupleN(t1, ..., tN)
+   */
+  def smallTuple(tree: Tuple)(implicit ctx: Context): Tree = {
+    val ts = tree.trees
+    val arity = ts.length
+    assert(arity <= Definitions.MaxTupleArity)
+    def tupleTypeRef = defn.TupleType(arity)
+    if (arity == 1) ts.head
+    else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
+    else if (arity == 0) unitLiteral
+    else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
+  }
+
   /** Make closure corresponding to function.
    *      params => body
    *  ==>
@@ -1141,16 +1158,6 @@ object desugar {
       case PrefixOp(op, t) =>
         val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
         Select(t, nspace.UNARY_PREFIX ++ op.name)
-      case Tuple(ts) =>
-        val arity = ts.length
-        def tupleTypeRef = defn.TupleType(arity)
-        if (arity > Definitions.MaxTupleArity) {
-          ctx.error(TupleTooLong(ts), tree.pos)
-          unitLiteral
-        } else if (arity == 1) ts.head
-        else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
-        else if (arity == 0) unitLiteral
-        else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
       case WhileDo(cond, body) =>
         // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }
         val call = Apply(Ident(nme.WHILE_PREFIX), Nil).withPos(tree.pos)

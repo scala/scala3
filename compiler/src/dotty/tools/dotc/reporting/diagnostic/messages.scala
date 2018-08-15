@@ -490,22 +490,6 @@ object messages {
     }
   }
 
-  case class TupleTooLong(ts: List[untpd.Tree])(implicit ctx: Context)
-  extends Message(TupleTooLongID) {
-    import Definitions.MaxTupleArity
-    val kind = "Syntax"
-    val msg = hl"""A ${"tuple"} cannot have more than ${MaxTupleArity} members"""
-
-    val explanation = {
-      val members = ts.map(_.showSummary).grouped(MaxTupleArity)
-      val nestedRepresentation = members.map(_.mkString(", ")).mkString(")(")
-      hl"""|This restriction will be removed in the future.
-           |Currently it is possible to use nested tuples when more than $MaxTupleArity are needed, for example:
-           |
-           |((${nestedRepresentation}))"""
-    }
-  }
-
   case class RepeatedModifier(modifier: String)(implicit ctx:Context)
   extends Message(RepeatedModifierID) {
     val kind = "Syntax"
