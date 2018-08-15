@@ -58,7 +58,7 @@ object Config {
   /** Type comparer will fail with an assert if the upper bound
    *  of a constrained parameter becomes Nothing. This should be turned
    *  on only for specific debugging as normally instantiation to Nothing
-   *  is not an error consdition.
+   *  is not an error condition.
    */
   final val failOnInstantiationToNothing = false
 
