@@ -853,6 +853,9 @@ class TreePickler(pickler: TastyPickler) {
       case untpd.InfixOp(l, op, r) =>
         writeByte(INFIXOP)
         withLength { pickleUntyped(l); pickleUntyped(op); pickleUntyped(r) }
+      case untpd.Tuple(elems) =>
+        writeByte(TUPLE)
+        withLength { elems.foreach(pickleUntyped) }
       case untpd.PatDef(mods, pats, tpt, rhs) =>
         writeByte(PATDEF)
         withLength {

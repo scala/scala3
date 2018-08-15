@@ -37,6 +37,7 @@ import config.Printers.{gadts, typr}
 import rewrites.Rewrites.patch
 import NavigateAST._
 import transform.SymUtils._
+import transform.TypeUtils._
 import reporting.trace
 import config.Config
 
@@ -1767,6 +1768,37 @@ class Typer extends Namer
     }
   }
 
+  /** Translate tuples of all arities */
+  def typedTuple(tree: untpd.Tuple, pt: Type)(implicit ctx: Context) = {
+    val elems = tree.trees
+    val arity = elems.length
+    if (arity <= Definitions.MaxTupleArity)
+      typed(desugar.smallTuple(tree).withPos(tree.pos), pt)
+    else {
+      val pts =
+        if (arity == pt.tupleArity) pt.tupleElementTypes
+        else elems.map(_ => defn.AnyType)
+      val elems1 = (tree.trees, pts).zipped.map(typed(_, _))
+      if (ctx.mode.is(Mode.Type))
+        (elems1 :\ (TypeTree(defn.UnitType): Tree))((elemTpt, elemTpts) =>
+          AppliedTypeTree(TypeTree(defn.PairType), List(elemTpt, elemTpts)))
+          .withPos(tree.pos)
+      else {
+        val tupleXXLobj = untpd.ref(defn.TupleXXLModule.termRef)
+        val app = untpd.cpy.Apply(tree)(tupleXXLobj, elems1.map(untpd.TypedSplice(_)))
+          .withPos(tree.pos)
+        val app1 = typed(app, pt)
+        if (ctx.mode.is(Mode.Pattern)) app1
+        else {
+          val elemTpes = (elems, pts).zipped.map((elem, pt) =>
+            ctx.typeComparer.widenInferred(elem.tpe, pt))
+          val resTpe = (elemTpes :\ (defn.UnitType: Type))(defn.PairType.appliedTo(_, _))
+          app1.asInstance(resTpe)
+        }
+      }
+    }
+  }
+
   /** Retrieve symbol attached to given tree */
   protected def retrieveSym(tree: untpd.Tree)(implicit ctx: Context) = tree.removeAttachment(SymOfTree) match {
     case Some(sym) =>
@@ -1852,6 +1884,7 @@ class Typer extends Namer
           case tree: untpd.Annotated => typedAnnotated(tree, pt)
           case tree: untpd.TypedSplice => typedTypedSplice(tree)
           case tree: untpd.UnApply => typedUnApply(tree, pt)
+          case tree: untpd.Tuple => typedTuple(tree, pt)
           case tree: untpd.DependentTypeTree => typed(untpd.TypeTree().withPos(tree.pos), pt)
           case tree: untpd.InfixOp if ctx.mode.isExpr => typedInfixOp(tree, pt)
           case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
