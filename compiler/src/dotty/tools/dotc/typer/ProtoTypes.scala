@@ -457,10 +457,10 @@ object ProtoTypes {
       s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
 
     def newTypeVars(tl: TypeLambda): List[TypeTree] =
-      for (n <- (0 until tl.paramNames.length).toList)
+      for (paramRef <- tl.paramRefs)
       yield {
         val tt = new TypeVarBinder().withPos(owningTree.pos)
-        val tvar = new TypeVar(tl.paramRefs(n), state)
+        val tvar = new TypeVar(paramRef, state)
         state.ownedVars += tvar
         tt.withType(tvar)
       }
