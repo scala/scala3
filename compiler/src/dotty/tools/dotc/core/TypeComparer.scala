@@ -393,6 +393,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
             if (base.exists && base.ne(tp1))
               return isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow)
             if (cls2 == defn.SingletonClass && tp1.isStable) return true
+            if (cls2 == defn.ConstantClass && tp1.isConstant) return true
           }
           else if (cls2.is(JavaDefined)) {
             // If `cls2` is parameterized, we are seeing a raw type, so we need to compare only the symbol

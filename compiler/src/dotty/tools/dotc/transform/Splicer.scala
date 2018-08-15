@@ -240,9 +240,9 @@ object Splicer {
 
     def unexpectedTree(tree: tpd.Tree)(implicit env: Env): Boolean = {
       // Assuming that top-level splices can only be in transparent methods
-      // and splices are expanded at inline site, references to transparent values
+      // and splices are expanded at inline site, references to parameter wit constant type
       // will be know literal constant trees.
-      tree.symbol.is(Transparent)
+      tree.symbol.is(Param) && tree.tpe.derivesFrom(defn.ConstantClass)
     }
   }
 

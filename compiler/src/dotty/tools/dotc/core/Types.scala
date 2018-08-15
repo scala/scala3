@@ -158,6 +158,14 @@ object Types {
       case _ => false
     }
 
+    /** Does this type denote a constant type */
+    final def isConstant(implicit ctx: Context): Boolean = stripTypeVar match {
+      case _: ConstantType => true
+      case tp: ExprType => tp.resultType.isConstant
+      case tp: AnnotatedType => tp.parent.isConstant
+      case _ => false
+    }
+
     /** Is this type a (possibly refined or applied or aliased) type reference
      *  to the given type symbol?
      *  @sym  The symbol to compare to. It must be a class symbol or abstract type.
@@ -3008,15 +3016,8 @@ object Types {
      *   - add @inlineParam to transparent call-by-value parameters
      */
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
-      def translateTransparent(tp: Type): Type = tp match {
-        case _: ExprType => tp
-        case _ => AnnotatedType(tp, Annotation(defn.TransparentParamAnnot))
-      }
-      def paramInfo(param: Symbol) = {
-        val paramType = param.info.annotatedToRepeated
-        if (param.is(Transparent)) translateTransparent(paramType) else paramType
-      }
-
+      def paramInfo(param: Symbol) =
+        param.info.annotatedToRepeated
       apply(params.map(_.name.asTermName))(
          tl => params.map(p => tl.integrate(params, paramInfo(p))),
          tl => tl.integrate(params, resultType))

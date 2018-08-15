@@ -8,5 +8,5 @@ object PowerMacro {
 }
 
 class Num(x: Double) {
-  transparent def power(transparent n: Long) = ~PowerMacro.powerCode('(x), n)
+  transparent def power(n: Long & Constant) = ~PowerMacro.powerCode('(x), n)
 }

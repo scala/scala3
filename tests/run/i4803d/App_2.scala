@@ -11,7 +11,7 @@ object Test {
   }
 
   transparent def power2(x: Double) = {
-    transparent def power(x: Double, transparent n: Long) = ~PowerMacro.powerCode('(x), n)
-    power(x, 2)
+    transparent def power(x: Double, n: Long & Constant) = ~PowerMacro.powerCode('(x), n)
+    power(x, 2L)
   }
 }

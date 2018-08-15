@@ -2385,8 +2385,6 @@ class Typer extends Namer
         readaptSimplified(Inliner.inlineCall(tree, pt))
       }
       else if (tree.tpe <:< pt) {
-        if (pt.hasAnnotation(defn.TransparentParamAnnot))
-          checkTransparentConformant(tree, isFinal = false, "argument to transparent parameter")
         if (ctx.typeComparer.GADTused && pt.isValueType)
           // Insert an explicit cast, so that -Ycheck in later phases succeeds.
           // I suspect, but am not 100% sure that this might affect inferred types,

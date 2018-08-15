@@ -504,7 +504,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
       val captured2 = capturer(captured)
 
-      outer.enteredSyms.foreach(sym => if (!sym.is(Transparent)) capturers.put(sym, captured2))
+      outer.enteredSyms.foreach(sym => if (!sym.info.derivesFrom(defn.ConstantClass)) capturers.put(sym, captured2))
 
       val tree2 = transform(tree)
       capturers --= outer.enteredSyms
@@ -550,7 +550,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             splice(ref(splicedType).select(tpnme.UNARY_~).withPos(tree.pos))
           case tree: Select if tree.symbol.isSplice =>
             splice(tree)
-          case tree: RefTree if tree.symbol.is(Transparent) && tree.symbol.is(Param) =>
+          case tree: RefTree if tree.symbol.is(Param) && tree.tpe.derivesFrom(defn.ConstantClass) =>
             tree
           case tree: RefTree if isCaptured(tree.symbol, level) =>
             val t = capturers(tree.symbol).apply(tree)

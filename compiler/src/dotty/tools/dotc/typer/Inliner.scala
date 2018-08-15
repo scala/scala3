@@ -221,10 +221,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                               bindingsBuf: mutable.ListBuffer[MemberDef]): MemberDef = {
     val argtpe = arg.tpe.dealiasKeepAnnots
     val isByName = paramtp.dealias.isInstanceOf[ExprType]
-    val inlineFlag = if (paramtp.hasAnnotation(defn.TransparentParamAnnot)) Transparent else EmptyFlags
     val (bindingFlags, bindingType) =
       if (isByName) (Method, ExprType(argtpe.widen))
-      else (inlineFlag, argtpe.widen)
+      else (EmptyFlags, argtpe.widen)
     val boundSym = newSym(name, bindingFlags, bindingType).asTerm
     val binding =
       if (isByName) DefDef(boundSym, arg.changeOwner(ctx.owner, boundSym))

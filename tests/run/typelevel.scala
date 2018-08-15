@@ -42,7 +42,7 @@ object Test extends App {
   type HNil = HNil.type
   type Z = Z.type
 
-  transparent def ToNat(transparent n: Int): ToNat[Nat] =
+  transparent def ToNat(n: Int & Constant): ToNat[Nat] =
     if n == 0 then new ToNat(Z)
     else {
       val n1 = ToNat(n - 1)
@@ -101,7 +101,7 @@ object Test extends App {
   transparent val l1 = xs.length
   val l1a: 2 = l1
 
-  transparent def index(xs: HList, transparent idx: Int): Any =
+  transparent def index(xs: HList, idx: Int & Constant): Any =
     if idx == 0 then xs.head
     else index(xs.tail, idx - 1)
 

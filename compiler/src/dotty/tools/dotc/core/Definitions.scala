@@ -410,6 +410,12 @@ class Definitions {
       List(AnyClass.typeRef), EmptyScope)
   lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
+  lazy val ConstantClass: ClassSymbol =
+    // TODO needs to be synthetic as is SingletonClass?
+    enterCompleteClassSymbol(
+      ScalaPackageClass, tpnme.Constant, PureInterfaceCreationFlags | Final,
+      List(SingletonType), EmptyScope)
+
   lazy val SeqType: TypeRef =
     if (isNewCollections) ctx.requiredClassRef("scala.collection.immutable.Seq")
     else ctx.requiredClassRef("scala.collection.Seq")
@@ -734,8 +740,6 @@ class Definitions {
   def ImplicitNotFoundAnnot(implicit ctx: Context) = ImplicitNotFoundAnnotType.symbol.asClass
   lazy val ForceInlineAnnotType = ctx.requiredClassRef("scala.forceInline")
   def ForceInlineAnnot(implicit ctx: Context) = ForceInlineAnnotType.symbol.asClass
-  lazy val TransparentParamAnnotType = ctx.requiredClassRef("scala.annotation.internal.TransparentParam")
-  def TransparentParamAnnot(implicit ctx: Context) = TransparentParamAnnotType.symbol.asClass
   lazy val InvariantBetweenAnnotType = ctx.requiredClassRef("scala.annotation.internal.InvariantBetween")
   def InvariantBetweenAnnot(implicit ctx: Context) = InvariantBetweenAnnotType.symbol.asClass
   lazy val MigrationAnnotType = ctx.requiredClassRef("scala.annotation.migration")
@@ -1209,6 +1213,7 @@ class Definitions {
     NullClass,
     NothingClass,
     SingletonClass,
+    ConstantClass,
     EqualsPatternClass)
 
   lazy val syntheticCoreClasses = syntheticScalaClasses ++ List(

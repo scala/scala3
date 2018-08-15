@@ -37,7 +37,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
     }
   }
 
-  transparent def foreachReversed(transparent op: T => Unit): Unit = locally {
+  transparent def foreachReversed(op: => T => Unit): Unit = locally {
     def sharedOp(x: T) = op(x)
     elems match {
       case null =>
