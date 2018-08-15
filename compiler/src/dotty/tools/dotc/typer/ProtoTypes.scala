@@ -480,7 +480,12 @@ object ProtoTypes {
       else tl
     val added = ensureFresh(tl)
     val tvars = if (addTypeVars) newTypeVars(added) else Nil
-    ctx.typeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
+    // addToConstraint can return false if the constraints have no solution, but it seems easier to detect and report
+    // any resulting bound violations later in PostTyper (see #4946). We still give a warning because the subsequent
+    // errors might be misleading.
+    if (!ctx.typeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]]))
+      ctx.warning(s"Unsatisfiable type parameter constraints in polymorphic application", owningTree.pos)
+
     (added, tvars)
   }
 
