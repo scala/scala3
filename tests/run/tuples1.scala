@@ -33,4 +33,15 @@ object Test extends App {
   val c2_2 = x2 ++ x2; val c2_2c: String *: Int *: String *: Int *: Unit = c2_2; println(s"c2_2 = $c2_2")
   val c2_3 = x2 ++ x3; val c2_3c: String *: Int *: Int *: String *: Int *: Unit = c2_3; println(s"c2_3 = $c2_3")
   val c3_3 = x3 ++ x3; val c3_3c: Int *: String *: Int *: Int *: String *: Int *: Unit = c3_3; println(s"c3_3 = $c3_3")
+
+  val x23 = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23)
+  type T23 = (Int, Int, Int, Int, Int,
+              Int, Int, Int, Int, Int,
+              Int, Int, Int, Int, Int,
+              Int, Int, Int, Int, Int,
+              Int, Int, Int)
+  val x23c: T23 = x23
+  println(x23)
+  assert(x23(0) == 1)
+  assert(x23(22) == 23)
 }

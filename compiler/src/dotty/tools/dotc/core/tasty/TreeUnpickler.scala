@@ -1385,6 +1385,8 @@ class TreeUnpickler(reader: TastyReader,
             untpd.Function(params, body)
           case INFIXOP =>
             untpd.InfixOp(readUntyped(), readIdent(), readUntyped())
+          case TUPLE =>
+            untpd.Tuple(until(end)(readUntyped()))
           case PATDEF =>
             val tpt = readUntyped()
             val rhs = readUntyped()

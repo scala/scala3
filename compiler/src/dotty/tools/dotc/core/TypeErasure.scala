@@ -9,6 +9,7 @@ import Uniques.unique
 import dotc.transform.ExplicitOuter._
 import dotc.transform.ValueClasses._
 import util.DotClass
+import transform.TypeUtils._
 import Definitions.MaxImplementedFunctionArity
 import scala.annotation.tailrec
 
@@ -457,16 +458,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   }
 
   private def erasePair(tp: Type)(implicit ctx: Context): Type = {
-    def tupleArity(tp: Type): Int = tp.dealias match {
-      case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
-        val arity = tupleArity(tl)
-        if (arity < 0) arity else arity + 1
-      case tp1 =>
-        if (tp1.isRef(defn.UnitClass)) 0
-        else if (defn.isTupleClass(tp1.classSymbol)) tp1.dealias.argInfos.length
-        else -1
-    }
-    val arity = tupleArity(tp)
+    val arity = tp.tupleArity
     if (arity < 0) defn.ObjectType
     else if (arity <= Definitions.MaxTupleArity) defn.TupleType(arity)
     else defn.TupleXXLType

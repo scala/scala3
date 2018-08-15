@@ -12,4 +12,6 @@ final class TupleXXL private (es: Array[Object]) {
 }
 object TupleXXL {
   def apply(elems: Array[Object]) = new TupleXXL(elems.clone)
+  def apply(elems: Any*) = new TupleXXL(elems.asInstanceOf[Seq[Object]].toArray)
+  def unapplySeq(x: TupleXXL): Option[Seq[Any]] = Some(x.elems.toSeq)
 }
