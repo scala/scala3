@@ -149,8 +149,12 @@ object Inliner {
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: tpd.Inlined)(implicit ctx: Context): Tree = {
-    if (enclosingInlineds.nonEmpty) inlined // remove in the outer inlined call
+    if (enclosingInlineds.nonEmpty) inlined // Remove in the outer most inlined call
     else {
+      /** Removes all Inlined trees, replacing them with blocks.
+       *  Repositions all trees directly inside an inlined expantion of a non empty call to the position of the call.
+       *  Any tree directly inside an empty call (inlined in the inlined code) retains their position.
+       */
       class Reposition extends TreeMap {
         override def transform(tree: Tree)(implicit ctx: Context): Tree = {
           tree match {
@@ -158,9 +162,7 @@ object Inliner {
             case _ =>
               val transformed = super.transform(tree)
               enclosingInlineds match {
-                case call :: _ if !call.isEmpty =>
-                // This tree was inlined and will have the position of the call that was inlined
-                transformed.withPos(call.pos)
+                case call :: _ if !call.isEmpty => transformed.withPos(call.pos)
                 case _ => transformed
               }
           }
