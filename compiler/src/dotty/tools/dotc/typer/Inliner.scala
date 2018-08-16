@@ -151,23 +151,25 @@ object Inliner {
   def dropInlined(inlined: tpd.Inlined)(implicit ctx: Context): Tree = {
     if (enclosingInlineds.nonEmpty) inlined // remove in the outer inlined call
     else {
-      val reposition = new TreeMap {
-        private[this] var pos: Position = inlined.pos
+      class Reposition extends TreeMap {
         override def transform(tree: Tree)(implicit ctx: Context): Tree = {
           tree match {
-            case inlined: Inlined =>
-              val last = pos
-              pos = inlined.call.pos
-              val res = tpd.seq(inlined.bindings.map(transform), transform(inlined.expansion)).withPos(last)
-              pos = last
-              res
-            case tree =>
-              if (pos.exists) super.transform(tree).withPos(pos)
-              else super.transform(tree)
+            case tree: Inlined => transformInline(tree)
+            case _ =>
+              val transformed = super.transform(tree)
+              enclosingInlineds match {
+                case call :: _ if !call.isEmpty =>
+                // This tree was inlined and will have the position of the call that was inlined
+                transformed.withPos(call.pos)
+                case _ => transformed
+              }
           }
         }
+        def transformInline(tree: tpd.Inlined)(implicit ctx: Context): Tree = {
+          tpd.seq(transformSub(tree.bindings), transform(tree.expansion)(inlineContext(tree.call)))
+        }
       }
-      reposition.transform(inlined)
+      (new Reposition).transformInline(inlined)
     }
   }
 }
