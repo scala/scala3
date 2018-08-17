@@ -463,29 +463,35 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
      *             - the class `C`
      *             - the arguments `args`
      *             - any bindings that wrap the instance creation
+     *             - whether the instance creation is precomputed or by-name
      */
     private object NewInstance {
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Symbol, List[Tree], List[Tree])] = {
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Symbol, List[Tree], List[Tree], Boolean)] = {
         def unapplyLet(bindings: List[Tree], expr: Tree) =
           unapply(expr) map {
-            case (cls, reduced, prefix) => (cls, reduced, bindings ::: prefix)
+            case (cls, reduced, prefix, precomputed) => (cls, reduced, bindings ::: prefix, precomputed)
           }
         tree match {
           case Apply(fn, args) =>
             fn match {
               case Select(New(tpt), nme.CONSTRUCTOR) =>
-                Some((tpt.tpe.classSymbol, args, Nil))
+                Some((tpt.tpe.classSymbol, args, Nil, false))
               case TypeApply(Select(New(tpt), nme.CONSTRUCTOR), _) =>
-                Some((tpt.tpe.classSymbol, args, Nil))
+                Some((tpt.tpe.classSymbol, args, Nil, false))
               case _ =>
                 val meth = fn.symbol
                 if (meth.name == nme.apply &&
                     meth.flags.is(Synthetic) &&
-                    meth.owner.linkedClass.is(Case)) Some(meth.owner.linkedClass, args, Nil)
+                    meth.owner.linkedClass.is(Case))
+                  Some(meth.owner.linkedClass, args, Nil, false)
                 else None
             }
           case Ident(_) =>
-            inlineBindings.get(tree.symbol).flatMap(unapply)
+            for {
+              binding <- inlineBindings.get(tree.symbol)
+              (cls, reduced, prefix, precomputed) <- unapply(binding)
+            }
+            yield (cls, reduced, prefix, precomputed || binding.isInstanceOf[ValDef])
           case Inlined(_, bindings, expansion) =>
             unapplyLet(bindings, expansion)
           case Block(stats, expr) if isPureExpr(tree) =>
@@ -498,13 +504,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     /** If `tree` is equivalent to `new C(args).x` where class `C` does not have
      *  initialization code and `x` is a parameter corresponding to one of the
-     *  arguments `args`, the corresponding argument, prefixed by the evaluation
-     *  of impure arguments, otherwise `tree` itself.
+     *  arguments `args`, the corresponding argument, otherwise `tree` itself.
+     *  Side effects of original arguments need to be preserved.
      */
     def reduceProjection(tree: Tree)(implicit ctx: Context): Tree = {
       if (ctx.debug) inlining.println(i"try reduce projection $tree")
       tree match {
-        case Select(NewInstance(cls, args, prefix), field) if cls.isNoInitsClass =>
+        case Select(NewInstance(cls, args, prefix, precomputed), field) if cls.isNoInitsClass =>
           def matches(param: Symbol, selection: Symbol): Boolean =
             param == selection || {
               selection.name match {
@@ -516,17 +522,25 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             }
           val idx = cls.asClass.paramAccessors.indexWhere(matches(_, tree.symbol))
           if (idx >= 0 && idx < args.length) {
-            def collectImpure(from: Int, end: Int) =
-              (from until end).filterNot(i => isPureExpr(args(i))).toList.map(args)
-            val leading = collectImpure(0, idx)
-            val trailing = collectImpure(idx + 1, args.length)
+            def finish(arg: Tree) =
+              new TreeTypeMap().transform(arg) // make sure local bindings in argument have fresh symbols
+                .reporting(res => i"projecting $tree -> $res", inlining)
             val arg = args(idx)
-            val argInPlace =
-              if (trailing.isEmpty) arg
-              else letBindUnless(TreeInfo.Pure, arg)(seq(trailing, _))
-            val fullArg = seq(prefix, seq(leading, argInPlace))
-            new TreeTypeMap().transform(fullArg) // make sure local bindings in argument have fresh symbols
-              .reporting(res => i"projecting $tree -> $res", inlining)
+            if (precomputed)
+              if (isPureExpr(arg)) finish(arg)
+              else tree // nothing we can do here, projection would duplicate side effect
+            else {
+              // newInstance is evaluated in place, need to reflect side effects of
+              // arguments in the order they were written originally
+              def collectImpure(from: Int, end: Int) =
+                (from until end).filterNot(i => isPureExpr(args(i))).toList.map(args)
+              val leading = collectImpure(0, idx)
+              val trailing = collectImpure(idx + 1, args.length)
+              val argInPlace =
+                if (trailing.isEmpty) arg
+                else letBindUnless(TreeInfo.Pure, arg)(seq(trailing, _))
+              finish(seq(prefix, seq(leading, argInPlace)))
+            }
           }
           else tree
         case Block(stats, expr) if stats.forall(isPureBinding) =>
