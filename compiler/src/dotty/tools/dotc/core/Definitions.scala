@@ -1137,6 +1137,10 @@ class Definitions {
   def isErasedFunctionType(tp: Type)(implicit ctx: Context) =
     isFunctionType(tp) && tp.dealias.typeSymbol.name.isErasedFunction
 
+  /** A whitelist of Scala-2 classes that are known to be pure */
+  def isAssuredNoInits(sym: Symbol) =
+    (sym `eq` SomeClass) || isTupleClass(sym)
+
   // ----- primitive value class machinery ------------------------------------------
 
   /** This class would also be obviated by the implicit function type design */
