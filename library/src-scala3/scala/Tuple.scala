@@ -254,5 +254,5 @@ sealed class *:[+H, +T <: Tuple] extends Tuple {
 }
 
 object *: {
-  rewrite def unapply[H, T <: Tuple](x: H *: T) = Some((x.head, x.tail))
+  rewrite def unapply[H, T <: Tuple](x: H *: T) = (x.head, x.tail)
 }

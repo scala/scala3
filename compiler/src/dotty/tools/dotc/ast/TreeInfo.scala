@@ -716,6 +716,19 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         Nil
     }
 
+  /** If `tree` is an instance of `TupleN[...](e1, ..., eN)`, the arguments `e1, ..., eN`
+   *  otherwise the empty list.
+   */
+  def tupleArgs(tree: Tree)(implicit ctx: Context): List[Tree] = tree match {
+    case Block(Nil, expr) => tupleArgs(expr)
+    case Inlined(_, Nil, expr) => tupleArgs(expr)
+    case Apply(fn, args)
+    if fn.symbol.name == nme.apply &&
+        fn.symbol.owner.is(Module) &&
+        defn.isTupleClass(fn.symbol.owner.companionClass) => args
+    case _ => Nil
+  }
+
   /** The qualifier part of a Select or Ident.
    *  For an Ident, this is the `This` of the current class.
    */

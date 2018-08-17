@@ -732,21 +732,34 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           case UnApply(unapp, _, pats) =>
             unapp.tpe.widen match {
               case mt: MethodType if mt.paramInfos.length == 1 =>
+
+                def reduceSubPatterns(pats: List[Tree], selectors: List[Tree]): Boolean = (pats, selectors) match {
+                  case (Nil, Nil) => true
+                  case (pat :: pats1, selector :: selectors1) =>
+                    val elem = newBinding(RewriteBinderName.fresh(), Synthetic, selector)
+                    reducePattern(bindingsBuf, elem.termRef, pat) &&
+                    reduceSubPatterns(pats1, selectors1)
+                  case _ => false
+                }
+
                 val paramType = mt.paramInfos.head
                 val paramCls = paramType.classSymbol
-                paramCls.is(Case) && unapp.symbol.is(Synthetic) && scrut <:< paramType && {
+                if (paramCls.is(Case) && unapp.symbol.is(Synthetic) && scrut <:< paramType) {
                   val caseAccessors =
                     if (paramCls.is(Scala2x)) paramCls.caseAccessors.filter(_.is(Method))
                     else paramCls.asClass.paramAccessors
-                  var subOK = caseAccessors.length == pats.length
-                  for ((pat, accessor) <- (pats, caseAccessors).zipped)
-                    subOK = subOK && {
-                      val rhs = constToLiteral(reduceProjection(ref(scrut).select(accessor).ensureApplied))
-                      val elem = newBinding(RewriteBinderName.fresh(), Synthetic, rhs)
-                      reducePattern(bindingsBuf, elem.termRef, pat)
-                    }
-                  subOK
+                  val selectors =
+                    for (accessor <- caseAccessors)
+                    yield constToLiteral(reduceProjection(ref(scrut).select(accessor).ensureApplied))
+                  caseAccessors.length == pats.length && reduceSubPatterns(pats, selectors)
                 }
+                else if (unapp.symbol.isRewriteMethod) {
+                  val app = untpd.Apply(untpd.TypedSplice(unapp), untpd.ref(scrut))
+                  val app1 = typer.typedExpr(app)
+                  val args = tupleArgs(app1)
+                  args.nonEmpty && reduceSubPatterns(pats, args)
+                }
+                else false
               case _ =>
                 false
             }
