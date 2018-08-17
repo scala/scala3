@@ -44,10 +44,14 @@ object Checking {
         ctx.error(ex"missing type parameter(s) for $arg", arg.pos)
       }
     }
-    for ((arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate))
-      ctx.error(
+    for ((arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate)) {
+      if (arg.pos.isZeroExtent)
+        ctx.error(
           DoesNotConformToBound(arg.tpe, which, bound)(err),
           arg.pos.focus)
+      else
+        ctx.error(hl"inferred type ${arg.tpe} violates $which bound $bound", arg.pos.focus)
+    }
   }
 
   /** Check that type arguments `args` conform to corresponding bounds in `tl`
