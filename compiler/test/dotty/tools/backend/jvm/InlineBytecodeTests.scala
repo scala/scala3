@@ -127,6 +127,9 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val track = clsNode.methods.asScala.find(_.name == "track")
       assert(track.isEmpty, "method `track` should have been erased")
 
+      val track2 = clsNode.methods.asScala.find(_.name == "track2")
+      assert(track2.isEmpty, "method `track2` should have been erased")
+
       val main = getMethod(clsNode, "main")
       val instructions = instructionsFromMethod(main)
       val expected =
@@ -182,6 +185,9 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       val track = clsNode.methods.asScala.find(_.name == "track")
       assert(track.isEmpty, "method `track` should have been erased")
+
+      val track2 = clsNode.methods.asScala.find(_.name == "track2")
+      assert(track2.isEmpty, "method `track2` should have been erased")
 
       val main = getMethod(clsNode, "main")
       val instructions = instructionsFromMethod(main)
@@ -239,6 +245,9 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       val track = clsNode.methods.asScala.find(_.name == "track")
       assert(track.isEmpty, "method `track` should have been erased")
+
+      val track2 = clsNode.methods.asScala.find(_.name == "track2")
+      assert(track2.isEmpty, "method `track2` should have been erased")
 
       val main = getMethod(clsNode, "main")
       val instructions = instructionsFromMethod(main)
