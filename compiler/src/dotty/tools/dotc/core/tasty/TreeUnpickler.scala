@@ -1310,7 +1310,11 @@ class TreeUnpickler(reader: TastyReader,
             mkIf(readUntyped(), readUntyped(), readUntyped())
           case MATCH =>
             val mkMatch =
-              if (nextByte == REWRITE) { readByte(); untpd.RewriteMatch(_, _) }
+              if (nextByte == REWRITE) {
+                readByte()
+                val typeMatch = readByte() == 1
+                untpd.RewriteMatch(_, _, typeMatch)
+              }
               else untpd.Match(_, _)
             mkMatch(readUntyped(), readCases(end))
           case CASEDEF =>

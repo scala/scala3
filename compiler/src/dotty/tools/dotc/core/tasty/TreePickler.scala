@@ -774,7 +774,12 @@ class TreePickler(pickler: TastyPickler) {
       case Match(selector, cases) =>
         writeByte(MATCH)
         withLength {
-          if (tree.isInstanceOf[untpd.RewriteMatch]) writeByte(REWRITE)
+          tree match {
+            case tree: untpd.RewriteMatch =>
+              writeByte(REWRITE)
+              writeByte(if (tree.typeMatch) 1 else 0)
+            case _ =>
+          }
           pickleUntyped(selector); cases.foreach(pickleUntyped)
         }
       case CaseDef(pat, guard, rhs) =>

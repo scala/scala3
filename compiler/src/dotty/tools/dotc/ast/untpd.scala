@@ -278,7 +278,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def RewriteIf(cond: Tree, thenp: Tree, elsep: Tree): If = new RewriteIf(cond, thenp, elsep)
   def Closure(env: List[Tree], meth: Tree, tpt: Tree): Closure = new Closure(env, meth, tpt)
   def Match(selector: Tree, cases: List[CaseDef]): Match = new Match(selector, cases)
-  def RewriteMatch(selector: Tree, cases: List[CaseDef]): Match = new RewriteMatch(selector, cases)
+  def RewriteMatch(selector: Tree, cases: List[CaseDef], typeMatch: Boolean): Match = new RewriteMatch(selector, cases, typeMatch)
   def CaseDef(pat: Tree, guard: Tree, body: Tree): CaseDef = new CaseDef(pat, guard, body)
   def Return(expr: Tree, from: Tree): Return = new Return(expr, from)
   def Try(expr: Tree, cases: List[CaseDef], finalizer: Tree): Try = new Try(expr, cases, finalizer)
