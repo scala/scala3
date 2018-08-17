@@ -53,6 +53,7 @@ object Build {
   }
   val dottyNonBootstrappedVersion = dottyVersion + "-nonbootstrapped"
 
+  val sbtDottyName = "sbt-dotty"
   val sbtDottyVersion = {
     val base = "0.2.3"
     if (isRelease) base else base + "-SNAPSHOT"
@@ -935,6 +936,7 @@ object Build {
   lazy val `sbt-dotty` = project.in(file("sbt-dotty")).
     settings(commonSettings).
     settings(
+      name := sbtDottyName,
       version := sbtDottyVersion,
       // Keep in sync with inject-sbt-dotty.sbt
       libraryDependencies ++= Seq(
@@ -975,9 +977,11 @@ object Build {
       includeFilter in unmanagedSources := NothingFilter | "*.ts" | "**.json",
       watchSources in Global ++= (unmanagedSources in Compile).value,
       resourceGenerators in Compile += Def.task {
-        val out = baseDirectory.value / "out" / "default-dotty-ide-config"
-        IO.writeLines(out, Seq(dottyVersion, sbtDottyVersion))
-        Seq(out)
+        val defaultIDEConfig = baseDirectory.value / "out" / "default-dotty-ide-config"
+        IO.write(defaultIDEConfig, dottyVersion)
+        val dottyPluginSbtFile = baseDirectory.value / "out" / "dotty-plugin.sbt"
+        IO.write(dottyPluginSbtFile, s"""addSbtPlugin("$dottyOrganization" % $sbtDottyName % "$sbtDottyVersion")""")
+        Seq(defaultIDEConfig, dottyPluginSbtFile)
       },
       compile in Compile := Def.task {
         val workingDir = baseDirectory.value
