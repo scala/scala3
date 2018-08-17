@@ -935,6 +935,9 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       else trySelectUnapply(qual1)(_ => notAnExtractor(sel))
     }
 
+    if (unapplyFn.symbol.isRewriteMethod)
+      checkInRewriteContext("implementation restriction: call to rewrite unapply", tree.pos)
+
     /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
     def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {
       case TypeApply(fn, args) =>
