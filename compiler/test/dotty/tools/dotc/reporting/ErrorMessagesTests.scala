@@ -211,6 +211,21 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("foo", cycleSym.name.show)
     }
 
+  @Test def i1731 =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        |case class Foo[T](x: T)
+        |object Foo { def apply[T]() = Foo(null.asInstanceOf[T]) }
+      """.stripMargin
+    }
+      .expect { (ictx, messages) =>
+        implicit val ctx: Context = ictx
+
+        assertMessageCount(1, messages)
+        val OverloadedOrRecursiveMethodNeedsResultType(cycleSym) :: Nil = messages
+        assertEquals("apply", cycleSym.name.show)
+      }
+
   @Test def recursiveMethodNeedsReturnType =
     checkMessagesAfter(FrontEnd.name) {
       """
