@@ -151,7 +151,7 @@ object Inliner {
   def dropInlined(inlined: tpd.Inlined)(implicit ctx: Context): Tree = {
     if (enclosingInlineds.nonEmpty) inlined // Remove in the outer most inlined call
     else {
-      // Position used for any tree that was inlined (inlcuding recursive inlines)
+      // Position used for any tree that was inlined (including recursive inlines)
       val inlinedAtPos = inlined.call.pos
 
       /** Removes all Inlined trees, replacing them with blocks.
