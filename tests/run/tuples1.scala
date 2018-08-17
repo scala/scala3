@@ -41,11 +41,35 @@ object Test extends App {
               Int, Int, Int, Int, Int,
               Int, Int, Int)
   val x23c: T23 = x23
+  println(x23)
+  assert(x23(0) == 1)
+  assert(x23(22) == 23)
+
   x23 match {
     case (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22, x23) =>
       println(x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10 + x11 + x12 + x13 + x14 + x15 + x16 + x17 + x18 + x19 + x20 + x21 + x22 + x23)
   }
-  println(x23)
-  assert(x23(0) == 1)
-  assert(x23(22) == 23)
+  rewrite def decompose1 = rewrite x2 match { case x *: xs => (x, xs) }
+  rewrite def decompose2 = rewrite x2 match { case x *: y *: xs => (x, y, xs) }
+  rewrite def decompose3 = rewrite x23 match { case x *: y *: xs => (x, y, xs) }
+
+  { val (x, xs) = decompose1
+    val xc: String = x
+    val xsc: Int *: Unit = xs
+    println(s"$x2 -> $x, $xs")
+  }
+
+  { val (x, y, xs) = decompose2
+    val xc: String = x
+    val yc: Int = y
+    val xsc: Unit = xs
+    println(s"$x2 -> $x, $y, $xs")
+  }
+
+  { val (x, y, xs) = decompose3
+    val xc: Int = x
+    val yc: Int = y
+    val xsc: Unit = xs
+    println(s"$x23 -> $x, $y, $xs")
+  }
 }
