@@ -153,4 +153,113 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
     }
   }
+
+  @Test def i4947c = {
+    val source = """class Foo {
+                   |  transparent def track2[T](f: => T): T = {
+                   |    println("tracking2") // line 3
+                   |    f // line 4
+                   |  }
+                   |  transparent def track[T](f: => T): T = {
+                   |    track2 { // line 7
+                   |      println("fgh") // line 8
+                   |      f // line 9
+                   |    }
+                   |  }
+                   |  def main(args: Array[String]): Unit = { // line 12
+                   |    track { // line 13
+                   |      println("abc") // line 14
+                   |    }
+                   |  }
+                   |}
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn, skipDebugInfo = false)
+
+      val track = clsNode.methods.asScala.find(_.name == "track")
+      assert(track.isEmpty, "method `track` should have been erased")
+
+      val main = getMethod(clsNode, "main")
+      val instructions = instructionsFromMethod(main)
+      val expected =
+        List(
+          Label(0),
+          LineNumber(12, Label(0)), // Position of the method start
+          LineNumber(13, Label(0)), // Position of the call to `track`
+          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          Ldc(LDC, "tracking2"),
+          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
+          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          Ldc(LDC, "fgh"),
+          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
+          Label(9),
+          LineNumber(14, Label(9)), // Actual position
+          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          Ldc(LDC, "abc"),
+          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
+          Op(RETURN),
+          Label(15)
+        )
+        assert(instructions == expected,
+          "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
+  @Test def i4947d = {
+    val source = """class Foo {
+                   |  transparent def track2[T](f: => T): T = {
+                   |    println("tracking2") // line 3
+                   |    f // line 4
+                   |  }
+                   |  transparent def track[T](f: => T): T = {
+                   |    track2 { // line 7
+                   |      track2 { // line 8
+                   |        f // line 9
+                   |      }
+                   |    }
+                   |  }
+                   |  def main(args: Array[String]): Unit = { // line 13
+                   |    track { // line 14
+                   |      println("abc") // line 15
+                   |    }
+                   |  }
+                   |}
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn, skipDebugInfo = false)
+
+      val track = clsNode.methods.asScala.find(_.name == "track")
+      assert(track.isEmpty, "method `track` should have been erased")
+
+      val main = getMethod(clsNode, "main")
+      val instructions = instructionsFromMethod(main)
+      val expected =
+        List(
+          Label(0),
+          LineNumber(13, Label(0)), // Position of the method start
+          LineNumber(14, Label(0)), // Position of the call to `track`
+          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          Ldc(LDC, "tracking2"),
+          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
+          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          Ldc(LDC, "tracking2"),
+          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
+          Label(9),
+          LineNumber(15, Label(9)), // Actual position
+          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          Ldc(LDC, "abc"),
+          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
+          Op(RETURN),
+          Label(15)
+        )
+        assert(instructions == expected,
+          "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
 }
