@@ -196,6 +196,9 @@ class CompilationTests extends ParallelTesting {
     val dotty2Group = TestGroup("tastyBootstrap/dotty2")
     val libGroup = TestGroup("tastyBootstrap/lib")
 
+    // Make sure that the directory is clean
+    dotty.tools.io.Path(s"out/tastyBootstrap").deleteRecursively()
+
     val opt = TestFlags(
       // compile with bootstrapped library on cp:
       defaultOutputDir + libGroup + "/src/:" +
