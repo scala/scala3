@@ -151,6 +151,9 @@ object Inliner {
   def dropInlined(inlined: tpd.Inlined)(implicit ctx: Context): Tree = {
     if (enclosingInlineds.nonEmpty) inlined // Remove in the outer most inlined call
     else {
+      // Position used for any tree that was inlined (inlcuding recursive inlines)
+      val inlinedAtPos = inlined.call.pos
+
       /** Removes all Inlined trees, replacing them with blocks.
        *  Repositions all trees directly inside an inlined expantion of a non empty call to the position of the call.
        *  Any tree directly inside an empty call (inlined in the inlined code) retains their position.
@@ -162,7 +165,7 @@ object Inliner {
             case _ =>
               val transformed = super.transform(tree)
               enclosingInlineds match {
-                case call :: _ if !call.isEmpty => transformed.withPos(call.pos)
+                case call :: _ if !call.isEmpty => transformed.withPos(inlinedAtPos)
                 case _ => transformed
               }
           }
@@ -171,6 +174,7 @@ object Inliner {
           tpd.seq(transformSub(tree.bindings), transform(tree.expansion)(inlineContext(tree.call)))
         }
       }
+
       (new Reposition).transformInline(inlined)
     }
   }
