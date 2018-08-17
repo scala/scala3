@@ -64,7 +64,7 @@ object factories {
         val cls = tycon.typeSymbol
 
         if (defn.isFunctionClass(cls))
-          FunctionReference(args.init.map(expandTpe(_, Nil)), expandTpe(args.last))
+          FunctionReference(args.init.map(expandTpe(_, Nil)), expandTpe(args.last), defn.isImplicitFunctionClass(cls))
         else if (defn.isTupleClass(cls))
           TupleReference(args.map(expandTpe(_, Nil)))
         else {
