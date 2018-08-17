@@ -78,14 +78,14 @@ class Pickler extends Phase {
         finally tastyOutput.close()
       }
 
-      def rawBytes = // not needed right now, but useful to print raw format.
-        pickled.iterator.grouped(10).toList.zipWithIndex.map {
-          case (row, i) => s"${i}0: ${row.mkString(" ")}"
-        }
+//      def rawBytes = // not needed right now, but useful to print raw format.
+//        pickled.iterator.grouped(10).toList.zipWithIndex.map {
+//          case (row, i) => s"${i}0: ${row.mkString(" ")}"
+//        }
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
       if (pickling ne noPrinter) {
         println(i"**** pickled info of $cls")
-        new TastyPrinter(pickler.assembleParts()).printContents()
+        new TastyPrinter(pickled).printContents()
       }
     }
   }
