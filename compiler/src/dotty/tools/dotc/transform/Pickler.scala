@@ -65,10 +65,12 @@ class Pickler extends Phase {
         new CommentPickler(pickler, treePkl.buf.addrOfTree).pickleComment(tree)
 
       // other pickle sections go here.
-      val pickled = pickler.assembleParts()
-      unit.pickled += (cls -> pickled)
+      val (uuid, pickled) = pickler.assembleParts()
 
-      if (!ctx.settings.YemitTastyInClass.value) {
+      if (ctx.settings.YemitTastyInClass.value) {
+        unit.pickled += (cls -> pickled)
+      } else {
+        unit.tastyUUID += (cls -> uuid)
         val parts = cls.fullName.stripModuleClassSuffix.mangledString.split('.')
         val name = parts.last
         val tastyDirectory = parts.init.foldLeft(ctx.settings.outputDir.value)((dir, part) => dir.subdirectoryNamed(part))
@@ -108,7 +110,8 @@ class Pickler extends Phase {
     ctx.initialize()
     val unpicklers =
       for ((cls, pickler) <- picklers) yield {
-        val unpickler = new DottyUnpickler(pickler.assembleParts())
+        val bytes = pickler.assembleParts()._2
+        val unpickler = new DottyUnpickler(bytes)
         unpickler.enter(roots = Set.empty)
         cls -> unpickler
       }

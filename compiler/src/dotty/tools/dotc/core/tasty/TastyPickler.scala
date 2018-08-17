@@ -6,9 +6,11 @@ package tasty
 import TastyFormat._
 import collection.mutable
 import TastyBuffer._
-import core.Symbols.{Symbol, ClassSymbol}
+import core.Symbols.{ClassSymbol, Symbol}
 import ast.tpd
 import Decorators._
+
+import java.util.UUID
 
 class TastyPickler(val rootCls: ClassSymbol) {
 
@@ -19,7 +21,8 @@ class TastyPickler(val rootCls: ClassSymbol) {
   def newSection(name: String, buf: TastyBuffer) =
     sections += ((nameBuffer.nameIndex(name.toTermName), buf))
 
-  def assembleParts(): Array[Byte] = {
+  /** Returns the UUID and bytes of the tasty file */
+  def assembleParts(): (UUID, Array[Byte]) = {
     def lengthWithLength(buf: TastyBuffer) =
       buf.length + natSize(buf.length)
 
@@ -60,7 +63,7 @@ class TastyPickler(val rootCls: ClassSymbol) {
       all.writeBytes(buf.bytes, buf.length)
     }
     assert(all.length == totalSize && all.bytes.length == totalSize, s"totalSize = $totalSize, all.length = ${all.length}, all.bytes.length = ${all.bytes.length}")
-    all.bytes
+    (new UUID(uuidHi, uuidLow), all.bytes)
   }
 
   /** The address in the TASTY file of a given tree, or None if unknown.
