@@ -71,23 +71,23 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val expected =
         List(
           Label(0),
-          LineNumber(6, Label(0)), // Position of the method start
-          LineNumber(7, Label(0)), // Position of the call to `track`
+          LineNumber(6, Label(0)),
+          LineNumber(3, Label(0)),
           Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
           Ldc(LDC, "tracking"),
           Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
           Label(6),
-          LineNumber(8, Label(6)), // Actual position
+          LineNumber(8, Label(6)),
           Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
           Ldc(LDC, "abc"),
           Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
           Label(11),
-          LineNumber(9, Label(11)), // Position of the call to `track`
+          LineNumber(3, Label(11)),
           Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
           Ldc(LDC, "tracking"),
           Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
           Label(16),
-          LineNumber(10, Label(16)), // Actual position
+          LineNumber(10, Label(16)),
           Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
           Ldc(LDC, "inner"),
           Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
@@ -132,21 +132,23 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val expected =
         List(
           Label(0),
-          LineNumber(12, Label(0)), // Position of the method start
-          LineNumber(13, Label(0)), // Position of the call to `track`
+          LineNumber(12, Label(0)),
+          LineNumber(7, Label(0)),
           Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
           Ldc(LDC, "tracking"),
           Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
+          Label(6),
+          LineNumber(3, Label(6)),
           Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
           Ldc(LDC, "tracking2"),
           Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
-          Label(9),
-          LineNumber(14, Label(9)), // Actual position
+          Label(11),
+          LineNumber(14, Label(11)),
           Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
           Ldc(LDC, "abc"),
           Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
           Op(RETURN),
-          Label(15)
+          Label(17)
         )
         assert(instructions == expected,
           "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
@@ -186,21 +188,23 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val expected =
         List(
           Label(0),
-          LineNumber(12, Label(0)), // Position of the method start
-          LineNumber(13, Label(0)), // Position of the call to `track`
+          LineNumber(12, Label(0)),
+          LineNumber(3, Label(0)),
           Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
           Ldc(LDC, "tracking2"),
           Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
+          Label(6),
+          LineNumber(8, Label(6)),
           Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
           Ldc(LDC, "fgh"),
           Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
-          Label(9),
-          LineNumber(14, Label(9)), // Actual position
+          Label(11),
+          LineNumber(14, Label(11)),
           Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
           Ldc(LDC, "abc"),
           Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
           Op(RETURN),
-          Label(15)
+          Label(17)
         )
         assert(instructions == expected,
           "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
@@ -241,21 +245,23 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val expected =
         List(
           Label(0),
-          LineNumber(13, Label(0)), // Position of the method start
-          LineNumber(14, Label(0)), // Position of the call to `track`
+          LineNumber(13, Label(0)),
+          LineNumber(3, Label(0)),
           Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
           Ldc(LDC, "tracking2"),
           Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
+          Label(6),
+          LineNumber(3, Label(6)),
           Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
           Ldc(LDC, "tracking2"),
           Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
-          Label(9),
-          LineNumber(15, Label(9)), // Actual position
+          Label(11),
+          LineNumber(15, Label(11)),
           Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
           Ldc(LDC, "abc"),
           Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
           Op(RETURN),
-          Label(15)
+          Label(17)
         )
         assert(instructions == expected,
           "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
