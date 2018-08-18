@@ -29,14 +29,17 @@ class PatternMatcher extends MiniPhase {
   override def runsAfterGroupsOf = Set(TailRec.name) // tailrec is not capable of reversing the patmat tranformation made for tree
 
   override def transformMatch(tree: Match)(implicit ctx: Context): Tree = {
-    val translated = new Translator(tree.tpe, this).translateMatch(tree)
+    if (tree.isTypeMatch) tree // type matches are erased later
+    else {
+      val translated = new Translator(tree.tpe, this).translateMatch(tree)
 
-    // check exhaustivity and unreachability
-    val engine = new patmat.SpaceEngine
-    engine.checkExhaustivity(tree)
-    engine.checkRedundancy(tree)
+      // check exhaustivity and unreachability
+      val engine = new patmat.SpaceEngine
+      engine.checkExhaustivity(tree)
+      engine.checkRedundancy(tree)
 
-    translated.ensureConforms(tree.tpe)
+      translated.ensureConforms(tree.tpe)
+    }
   }
 }
 

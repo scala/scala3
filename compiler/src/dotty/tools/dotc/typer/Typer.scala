@@ -981,15 +981,20 @@ class Typer extends Namer
         typedMatchFinish(tree, sel1, sel1.tpe, pt)
       case _ =>
         if (tree.isInstanceOf[untpd.RewriteMatch]) checkInRewriteContext("rewrite match", tree.pos)
-        val sel1 = typedExpr(tree.selector)
-        val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
+        val sel = tree.selector
+        val sel1 =
+          if (tree.isTypeMatch) typedType(sel)
+          else typedExpr(sel)
+        val selType =
+          if (tree.isTypeMatch) sel1.tpe
+          else fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
         typedMatchFinish(tree, sel1, selType, pt)
     }
   }
 
   // Overridden in InlineTyper for rewrite matches
   def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context): Tree = {
-    val cases1 = harmonic(harmonize)(typedCases(tree.cases, selType, pt.notApplied))
+    val cases1 = harmonic(harmonize)(typedCases(tree.cases, selType, pt.notApplied, tree.isTypeMatch))
       .asInstanceOf[List[CaseDef]]
     assignType(cpy.Match(tree)(sel, cases1), cases1)
   }
@@ -1023,13 +1028,13 @@ class Typer extends Namer
     gadtCtx
   }
 
-  def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context) = {
+  def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type, isTypeMatch: Boolean)(implicit ctx: Context) = {
     val gadts = gadtSyms(selType)
-    cases.mapconserve(typedCase(_, selType, pt, gadts))
+    cases.mapconserve(typedCase(_, selType, pt, gadts, isTypeMatch))
   }
 
   /** Type a case. */
-  def typedCase(tree: untpd.CaseDef, selType: Type, pt: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = track("typedCase") {
+  def typedCase(tree: untpd.CaseDef, selType: Type, pt: Type, gadtSyms: Set[Symbol], isTypeMatch: Boolean)(implicit ctx: Context): CaseDef = track("typedCase") {
     val originalCtx = ctx
 
     val gadtCtx = gadtContext(gadtSyms)
@@ -1067,7 +1072,13 @@ class Typer extends Namer
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), body1)
     }
 
-    val pat1 = typedPattern(tree.pat, selType)(gadtCtx)
+    val pat1 =
+      if (isTypeMatch) {
+        val pat1 = checkSimpleKinded(typedType(tree.pat))
+        constrainPatternType(pat1.tpe, selType)(ctx.addMode(Mode.GADTflexible))
+        pat1
+      }
+      else typedPattern(tree.pat, selType)(gadtCtx)
     caseRest(pat1)(gadtCtx.fresh.setNewScope)
   }
 
@@ -1120,7 +1131,7 @@ class Typer extends Namer
   def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = track("typedTry") {
     val expr2 :: cases2x = harmonic(harmonize) {
       val expr1 = typed(tree.expr, pt.notApplied)
-      val cases1 = typedCases(tree.cases, defn.ThrowableType, pt.notApplied)
+      val cases1 = typedCases(tree.cases, defn.ThrowableType, pt.notApplied, isTypeMatch = false)
       expr1 :: cases1
     }
     val finalizer1 = typed(tree.finalizer, defn.UnitType)

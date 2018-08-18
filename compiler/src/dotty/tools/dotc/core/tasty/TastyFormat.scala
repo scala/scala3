@@ -213,6 +213,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   INFIXOP     Length op_NameRef left_Term right_Term
                   TUPLE       Length elem_Term*
                   PATDEF      Length type_Term rhs_Term pattern_Term* Modifier*
+                  REWRITEtype
                   EMPTYTYPETREE
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
@@ -321,6 +322,7 @@ object TastyFormat {
   final val PARAMsetter = 36
   final val EMPTYTREE = 37
   final val EMPTYTYPETREE = 38
+  final val REWRITEtype = 39
 
   // Cat. 2:    tag Nat
 
@@ -456,7 +458,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= EMPTYTYPETREE ||
+    firstSimpleTreeTag <= tag && tag <= REWRITEtype ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -479,6 +481,7 @@ object TastyFormat {
        | OVERRIDE
        | TRANSPARENT
        | REWRITE
+       | REWRITEtype
        | MACRO
        | STATIC
        | OBJECT
@@ -536,6 +539,7 @@ object TastyFormat {
     case OVERRIDE => "OVERRIDE"
     case TRANSPARENT => "TRANSPARENT"
     case REWRITE => "REWRITE"
+    case REWRITEtype => "REWRITEtype"
     case MACRO => "MACRO"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"

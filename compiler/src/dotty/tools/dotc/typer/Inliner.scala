@@ -626,70 +626,73 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
      *   @return    optionally, if match can be reduced to a matching case: A pair of
      *              bindings for all pattern-bound variables and the untyped RHS of the case.
      */
-    def reduceRewriteMatch(scrutinee: Tree, scrutType: Type, cases: List[untpd.CaseDef], typer: Typer)(implicit ctx: Context): MatchRedux = {
+    def reduceRewriteMatch(scrutinee: Tree, scrutType: Type, cases: List[untpd.CaseDef], isTypeMatch: Boolean, typer: Typer)(implicit ctx: Context): MatchRedux = {
 
-      val gadtSyms = typer.gadtSyms(scrutType)
+      def newBinding(patBindings: mutable.ListBuffer[MemberDef], name: TermName, flags: FlagSet, rhs: Tree): Symbol = {
+        val info = if (flags `is` Implicit) rhs.tpe.widen else rhs.tpe.widenTermRefExpr
+        val sym = newSym(name, flags, info).asTerm
+        patBindings += ValDef(sym, constToLiteral(rhs))
+        sym
+      }
 
-      /** Try to match pattern `pat` against scrutinee reference `scrut`. If successful add
-       *  bindings for variables bound in this pattern to `bindingsBuf`.
-       */
-      def reducePattern(bindingsBuf: mutable.ListBuffer[MemberDef], scrut: TermRef, pat: Tree)(implicit ctx: Context): Boolean = {
-        val isImplicit = scrut.info == defn.ImplicitScrutineeTypeRef
-
-        def newBinding(name: TermName, flags: FlagSet, rhs: Tree): Symbol = {
-          val info = if (flags `is` Implicit) rhs.tpe.widen else rhs.tpe.widenTermRefExpr
-          val sym = newSym(name, flags, info).asTerm
-          bindingsBuf += ValDef(sym, constToLiteral(rhs))
-          sym
+      def searchImplicit(patBindings: mutable.ListBuffer[MemberDef], name: TermName, tpt: Tree): Boolean = {
+        val evidence = typer.inferImplicitArg(tpt.tpe, tpt.pos)
+        evidence.tpe match {
+          case fail: Implicits.AmbiguousImplicits =>
+            ctx.error(typer.missingArgMsg(evidence, tpt.tpe, ""), tpt.pos)
+            true // hard error: return true to stop implicit search here
+          case fail: Implicits.SearchFailureType =>
+            false
+          case _ =>
+            if (name != nme.WILDCARD) newBinding(patBindings, name, Implicit, evidence)
+            true
         }
+      }
 
-        def searchImplicit(name: TermName, tpt: Tree) = {
-          val evidence = typer.inferImplicitArg(tpt.tpe, tpt.pos)
-          evidence.tpe match {
-            case fail: Implicits.AmbiguousImplicits =>
-              ctx.error(typer.missingArgMsg(evidence, tpt.tpe, ""), tpt.pos)
-              true // hard error: return true to stop implicit search here
-            case fail: Implicits.SearchFailureType =>
-              false
-            case _ =>
-              if (name != nme.WILDCARD) newBinding(name, Implicit, evidence)
-              true
+      def typeMatch(patBindings: mutable.ListBuffer[MemberDef], scrutType: Type, tpt: Tree, isImplicit: Boolean)(implicit ctx: Context): Boolean = {
+        val getBoundVars = new TreeAccumulator[List[TypeSymbol]] {
+          def apply(syms: List[TypeSymbol], t: Tree)(implicit ctx: Context) = {
+            val syms1 = t match {
+              case t: Bind if t.symbol.isType && t.name != tpnme.WILDCARD =>
+                t.symbol.asType :: syms
+              case _ =>
+                syms
+            }
+            foldOver(syms1, t)
           }
         }
+        val boundVars = getBoundVars(Nil, tpt)
+        for (bv <- boundVars) ctx.gadt.setBounds(bv, bv.info.bounds)
+        if (isImplicit) searchImplicit(patBindings, nme.WILDCARD, tpt)
+        else if (scrutType <:< tpt.tpe) {
+          for (bv <- boundVars) {
+            bv.info = TypeAlias(ctx.gadt.bounds(bv).lo)
+              // FIXME: This is very crude. We should approximate with lower or higher bound depending
+              // on variance, and we should also take care of recursive bounds. Basically what
+              // ConstraintHandler#approximation does. However, this only works for constrained paramrefs
+              // not GADT-bound variables. Hopefully we will get some way to improve this when we
+              // re-implement GADTs in terms of constraints.
+            patBindings += TypeDef(bv)
+          }
+          true
+        }
+        else false
+      }
+
+      /** Try to match pattern `pat` against scrutinee reference `scrut`. If successful add
+       *  bindings for variables bound in this pattern to `patBindings`.
+       */
+      def reducePattern(patBindings: mutable.ListBuffer[MemberDef], scrut: TermRef, pat: Tree)(implicit ctx: Context): Boolean = {
+        val isImplicit = scrut.info == defn.ImplicitScrutineeTypeRef
 
         pat match {
           case Typed(pat1, tpt) =>
-            val getBoundVars = new TreeAccumulator[List[TypeSymbol]] {
-              def apply(syms: List[TypeSymbol], t: Tree)(implicit ctx: Context) = {
-                val syms1 = t match {
-                  case t: Bind if t.symbol.isType && t.name != tpnme.WILDCARD =>
-                    t.symbol.asType :: syms
-                  case _ =>
-                    syms
-                }
-                foldOver(syms1, t)
-              }
-            }
-            val boundVars = getBoundVars(Nil, tpt)
-            for (bv <- boundVars) ctx.gadt.setBounds(bv, bv.info.bounds)
-            if (isImplicit) searchImplicit(nme.WILDCARD, tpt)
-            else scrut <:< tpt.tpe && {
-              for (bv <- boundVars) {
-                bv.info = TypeAlias(ctx.gadt.bounds(bv).lo)
-                  // FIXME: This is very crude. We should approximate with lower or higher bound depending
-                  // on variance, and we should also take care of recursive bounds. Basically what
-                  // ConstraintHandler#approximation does. However, this only works for constrained paramrefs
-                  // not GADT-bound variables. Hopefully we will get some way to improve this when we
-                  // re-implement GADTs in terms of constraints.
-                bindingsBuf += TypeDef(bv)
-              }
-              reducePattern(bindingsBuf, scrut, pat1)
-            }
+            typeMatch(patBindings, scrut, tpt, isImplicit) && reducePattern(patBindings, scrut, pat1)
           case pat @ Bind(name: TermName, Typed(_, tpt)) if isImplicit =>
-            searchImplicit(name, tpt)
+            searchImplicit(patBindings, name, tpt)
           case pat @ Bind(name: TermName, body) =>
-            reducePattern(bindingsBuf, scrut, body) && {
-              if (name != nme.WILDCARD) newBinding(name, EmptyFlags, ref(scrut))
+            reducePattern(patBindings, scrut, body) && {
+              if (name != nme.WILDCARD) newBinding(patBindings, name, EmptyFlags, ref(scrut))
               true
             }
           case Ident(nme.WILDCARD) =>
@@ -711,8 +714,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                 def reduceSubPatterns(pats: List[Tree], selectors: List[Tree]): Boolean = (pats, selectors) match {
                   case (Nil, Nil) => true
                   case (pat :: pats1, selector :: selectors1) =>
-                    val elem = newBinding(RewriteBinderName.fresh(), Synthetic, selector)
-                    reducePattern(bindingsBuf, elem.termRef, pat) &&
+                    val elem = newBinding(patBindings, RewriteBinderName.fresh(), Synthetic, selector)
+                    reducePattern(patBindings, elem.termRef, pat) &&
                     reduceSubPatterns(pats1, selectors1)
                   case _ => false
                 }
@@ -743,26 +746,31 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
 
       /** The initial scrutinee binding: `val $scrutineeN = <scrutinee>` */
-      val scrutineeSym = newSym(RewriteScrutineeName.fresh(), Synthetic, scrutType).asTerm
-      val scrutineeBinding = normalizeBinding(ValDef(scrutineeSym, scrutinee))
+      lazy val scrutineeSym = newSym(RewriteScrutineeName.fresh(), Synthetic, scrutType).asTerm
+      lazy val scrutineeBinding = normalizeBinding(ValDef(scrutineeSym, scrutinee))
 
       def reduceCase(cdef: untpd.CaseDef): MatchRedux = {
-        val caseBindingsBuf = new mutable.ListBuffer[MemberDef]()
+        val patBindings = new mutable.ListBuffer[MemberDef]()
         def guardOK(implicit ctx: Context) = cdef.guard.isEmpty || {
           val guardCtx = ctx.fresh.setNewScope
-          caseBindingsBuf.foreach(binding => guardCtx.enter(binding.symbol))
+          patBindings.foreach(binding => guardCtx.enter(binding.symbol))
           typer.typed(cdef.guard, defn.BooleanType)(guardCtx) match {
             case ConstantValue(true) => true
             case _ => false
           }
         }
-        if (scrutType != defn.ImplicitScrutineeTypeRef) caseBindingsBuf += scrutineeBinding
-        val gadtCtx = typer.gadtContext(gadtSyms).addMode(Mode.GADTflexible)
-        val pat1 = typer.typedPattern(cdef.pat, scrutType)(gadtCtx)
-        if (reducePattern(caseBindingsBuf, scrutineeSym.termRef, pat1)(gadtCtx) && guardOK)
-          Some((caseBindingsBuf.toList, cdef.body))
-        else
-          None
+        val gadtCtx = ctx.fresh.setFreshGADTBounds.addMode(Mode.GADTflexible)
+        def reduceIf(patOK: Boolean) =
+          if (patOK && guardOK) Some((patBindings.toList, cdef.body)) else None
+        if (isTypeMatch) {
+          val pat1 = typer.typedType(cdef.pat)(gadtCtx)
+          reduceIf(typeMatch(patBindings, scrutType, pat1, false)(gadtCtx))
+        }
+        else {
+          if (scrutType != defn.ImplicitScrutineeTypeRef) patBindings += scrutineeBinding
+          val pat1 = typer.typedPattern(cdef.pat, scrutType)(gadtCtx)
+          reduceIf(reducePattern(patBindings, scrutineeSym.termRef, pat1)(gadtCtx))
+        }
       }
 
       def recur(cases: List[untpd.CaseDef]): MatchRedux = cases match {
@@ -823,7 +831,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     override def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context) = tree match {
       case _: untpd.RewriteMatch if !ctx.owner.isRewriteMethod => // don't reduce match of nested rewrite method yet
-        reduceRewriteMatch(sel, sel.tpe, tree.cases, this) match {
+        reduceRewriteMatch(sel, sel.tpe, tree.cases, tree.isTypeMatch, this) match {
           case Some((caseBindings, rhs)) =>
             var rhsCtx = ctx.fresh.setNewScope
             for (binding <- caseBindings) {

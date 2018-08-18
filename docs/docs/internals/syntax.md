@@ -176,6 +176,7 @@ Expr1             ::=  [‘rewrite’] ‘if’ ‘(’ Expr ‘)’ {nl}
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
                     |  PostfixExpr [Ascription]
                     |  [‘rewrite’] PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’      Match(expr, cases) -- point on match
+                    |  ‘rewrite’ ‘type’ InfixType ‘match’ ‘{’ TypeCaseClauses ‘}’
                     |  ‘implicit’ ‘match’ ‘{’ ImplicitCaseClauses ‘}’
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
@@ -227,6 +228,8 @@ CaseClauses       ::=  CaseClause { CaseClause }                                
 CaseClause        ::=  ‘case’ (Pattern [Guard] ‘=>’ Block | INT)                CaseDef(pat, guard?, block)   // block starts at =>
 ImplicitCaseClauses ::=  ImplicitCaseClause { ImplicitCaseClause }
 ImplicitCaseClause  ::=  ‘case’ PatVar [‘:’ RefinedType] [Guard] ‘=>’ Block
+TypeCaseClauses   ::=  TypeCaseClause { TypeCaseClause }
+TypeCaseClause    ::=  ‘case’ InfixType [Guard] ‘=>’ Block
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
 Pattern1          ::=  PatVar ‘:’ RefinedType                                   Bind(name, Typed(Ident(wildcard), tpe))

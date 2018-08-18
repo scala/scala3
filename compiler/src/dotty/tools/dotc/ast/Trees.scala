@@ -520,10 +520,11 @@ object Trees {
   case class Match[-T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Match[T]
+    def isTypeMatch = false
   }
-  class RewriteMatch[T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]], val typeMatch: Boolean)
+  class RewriteMatch[T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]], override val isTypeMatch: Boolean)
     extends Match(selector, cases) {
-    override def toString = s"RewriteMatch($selector, $cases, $typeMatch)"
+    override def toString = s"RewriteMatch($selector, $cases, $isTypeMatch)"
   }
 
   /** case pat if guard => body; only appears as child of a Match */
@@ -1036,7 +1037,7 @@ object Trees {
       def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = tree match {
         case tree: RewriteMatch =>
           if ((selector eq tree.selector) && (cases eq tree.cases)) tree
-          else finalize(tree, untpd.RewriteMatch(selector, cases, tree.typeMatch))
+          else finalize(tree, untpd.RewriteMatch(selector, cases, tree.isTypeMatch))
         case tree: Match if (selector eq tree.selector) && (cases eq tree.cases) => tree
         case _ => finalize(tree, untpd.Match(selector, cases))
       }
