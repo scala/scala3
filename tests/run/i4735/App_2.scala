@@ -10,5 +10,5 @@ object Test {
 }
 
 class Unrolled(arr: Array[Int]) extends AnyVal {
-  transparent def foreach(f: => Int => Unit): Unit = Macro.unrolledForeach(3, arr, f)
+  rewrite def foreach(f: => Int => Unit): Unit = Macro.unrolledForeach(3, arr, f)
 }

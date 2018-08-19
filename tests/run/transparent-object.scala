@@ -6,7 +6,7 @@ object Test {
 }
 
 object Foo extends Bar {
-  transparent def foo: Unit = bar
+  rewrite def foo: Unit = bar
 }
 
 class Bar {

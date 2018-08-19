@@ -156,7 +156,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         }
     }
 
-    /** 1. If we are in a transparent method but not in a nested quote, mark the transparent method
+    /** 1. If we are in a rewrite method but not in a nested quote, mark the rewrite method
      *  as a macro.
      *
      *  2. If selection is a quote or splice node, record that fact in the current compilation unit.
@@ -165,7 +165,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
       def markAsMacro(c: Context): Unit =
         if (c.owner eq c.outer.owner) markAsMacro(c.outer)
-        else if (c.owner.isTransparentMethod) {
+        else if (c.owner.isRewriteMethod) {
           c.owner.setFlag(Macro)
         }
         else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
@@ -178,7 +178,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     private object dropInlines extends TreeMap {
       override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-        case Inlined(call, _, _) => Typed(call, TypeTree(tree.tpe))
+        case Inlined(call, _, _) =>
+          cpy.Inlined(tree)(call, Nil, Typed(ref(defn.Predef_undefined), TypeTree(tree.tpe)))
         case _ => super.transform(tree)
       }
     }
@@ -335,6 +336,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     *  Performed to shrink the tree that is known to be erased later.
     */
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) =
-      if (sym.is(Erased, butNot = Deferred)) dropInlines.transform(rhs) else rhs
+      if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
   }
 }

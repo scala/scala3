@@ -4,8 +4,8 @@ object Test {
   def f(x: String): String = x
   def f(x: Any): Any = x
 
-  transparent def g(x: Any) = f(x)
-  transparent def h(x: Any) = this.f(x)
+  rewrite def g(x: Any) = f(x)
+  rewrite def h(x: Any) = this.f(x)
 
   locally {
     val x1 = g(1)

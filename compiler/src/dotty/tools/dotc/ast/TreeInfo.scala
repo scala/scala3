@@ -437,7 +437,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def refPurity(tree: Tree)(implicit ctx: Context): PurityLevel = {
     val sym = tree.symbol
     if (!tree.hasType) Impure
-    else if (!tree.tpe.widen.isParameterless || sym.is(Erased)) SimplyPure
+    else if (!tree.tpe.widen.isParameterless || sym.isEffectivelyErased) SimplyPure
     else if (!sym.isStable) Impure
     else if (sym.is(Module))
       if (sym.moduleClass.isNoInitsClass) Pure else Idempotent
@@ -715,6 +715,19 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case nil =>
         Nil
     }
+
+  /** If `tree` is an instance of `TupleN[...](e1, ..., eN)`, the arguments `e1, ..., eN`
+   *  otherwise the empty list.
+   */
+  def tupleArgs(tree: Tree)(implicit ctx: Context): List[Tree] = tree match {
+    case Block(Nil, expr) => tupleArgs(expr)
+    case Inlined(_, Nil, expr) => tupleArgs(expr)
+    case Apply(fn, args)
+    if fn.symbol.name == nme.apply &&
+        fn.symbol.owner.is(Module) &&
+        defn.isTupleClass(fn.symbol.owner.companionClass) => args
+    case _ => Nil
+  }
 
   /** The qualifier part of a Select or Ident.
    *  For an Ident, this is the `This` of the current class.

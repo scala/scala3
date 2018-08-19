@@ -16,7 +16,7 @@ import scala.io.Codec
 import util.{Set => _, _}
 import reporting.Reporter
 import transform.TreeChecker
-import rewrite.Rewrites
+import rewrites.Rewrites
 import java.io.{BufferedWriter, OutputStreamWriter}
 
 import profile.Profiler

@@ -13,7 +13,7 @@ import scala.annotation.{ switch, tailrec }
 import scala.collection.mutable
 import scala.collection.immutable.SortedMap
 import mutable.ListBuffer
-import rewrite.Rewrites.patch
+import rewrites.Rewrites.patch
 
 object Scanners {
 

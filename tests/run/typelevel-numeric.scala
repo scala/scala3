@@ -7,7 +7,7 @@ abstract class MathLib[N : Numeric] {
 
 object MathLib {
 
-  transparent def apply[N](implicit n: Numeric[N]) = new MathLib[N] {
+  rewrite def apply[N](implicit n: Numeric[N]) = new MathLib[N] {
     import n._
     def dotProduct(xs: Array[N], ys: Array[N]): N = {
       require(xs.length == ys.length)

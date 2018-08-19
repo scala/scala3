@@ -490,22 +490,6 @@ object messages {
     }
   }
 
-  case class TupleTooLong(ts: List[untpd.Tree])(implicit ctx: Context)
-  extends Message(TupleTooLongID) {
-    import Definitions.MaxTupleArity
-    val kind = "Syntax"
-    val msg = hl"""A ${"tuple"} cannot have more than ${MaxTupleArity} members"""
-
-    val explanation = {
-      val members = ts.map(_.showSummary).grouped(MaxTupleArity)
-      val nestedRepresentation = members.map(_.mkString(", ")).mkString(")(")
-      hl"""|This restriction will be removed in the future.
-           |Currently it is possible to use nested tuples when more than $MaxTupleArity are needed, for example:
-           |
-           |((${nestedRepresentation}))"""
-    }
-  }
-
   case class RepeatedModifier(modifier: String)(implicit ctx:Context)
   extends Message(RepeatedModifierID) {
     val kind = "Syntax"
@@ -1696,10 +1680,10 @@ object messages {
     val explanation = ""
   }
 
-  case class SuperCallsNotAllowedTransparent(symbol: Symbol)(implicit ctx: Context)
-    extends Message(SuperCallsNotAllowedTransparentID) {
+  case class SuperCallsNotAllowedInlineable(symbol: Symbol)(implicit ctx: Context)
+    extends Message(SuperCallsNotAllowedInlineableID) {
     val kind = "Syntax"
-    val msg = s"super call not allowed in transparent $symbol"
+    val msg = s"super call not allowed in inlineable $symbol"
     val explanation = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called."
   }
 
@@ -1747,12 +1731,12 @@ object messages {
       hl"you have to provide either ${"class"}, ${"trait"}, ${"object"}, or ${"enum"} definitions after qualifiers"
   }
 
-  case class NoReturnFromTransparent(owner: Symbol)(implicit ctx: Context)
-    extends Message(NoReturnFromTransparentID) {
+  case class NoReturnFromInlineable(owner: Symbol)(implicit ctx: Context)
+    extends Message(NoReturnFromInlineableID) {
     val kind = "Syntax"
-    val msg = hl"no explicit ${"return"} allowed from transparent $owner"
+    val msg = hl"no explicit ${"return"} allowed from inlineable $owner"
     val explanation =
-      hl"""Methods marked with ${"transparent"} modifier may not use ${"return"} statements.
+      hl"""Methods marked with ${"rewrite"} or  ${"transparent"} modifier may not use ${"return"} statements.
           |Instead, you should rely on the last expression's value being
           |returned from a method.
           |"""
@@ -2061,7 +2045,7 @@ object messages {
   case class ParamsNoTransparent(owner: Symbol)(implicit ctx: Context)
     extends Message(ParamsNoTransparentID) {
     val kind = "Syntax"
-    val msg = hl"""${"transparent"} modifier cannot be used for a parameter of a non-transparent method"""
+    val msg = hl"""${"transparent"} modifier can only be used for parameters of rewrite methods"""
     val explanation = ""
   }
 

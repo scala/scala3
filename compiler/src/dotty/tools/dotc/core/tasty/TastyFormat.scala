@@ -182,8 +182,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   LAZY
                   OVERRIDE
                   TRANSPARENT
-                  TYPELEVEL                           // transparent method containing toplevel matches (TODO: merge with MACRO)
-                  MACRO                               // transparent method containing toplevel splices
+                  REWRITE
+                  MACRO                               // rewrite method containing toplevel splices
                   STATIC                              // mapped to static Java member
                   OBJECT                              // an object or its class
                   TRAIT                               // a trait
@@ -211,7 +211,9 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEDSPLICE Length splice_Term
                   FUNCTION    Length body_Term arg_Term*
                   INFIXOP     Length op_NameRef left_Term right_Term
+                  TUPLE       Length elem_Term*
                   PATDEF      Length type_Term rhs_Term pattern_Term* Modifier*
+                  REWRITEtype
                   EMPTYTYPETREE
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
@@ -298,7 +300,7 @@ object TastyFormat {
   final val LAZY = 14
   final val OVERRIDE = 15
   final val TRANSPARENT = 16
-
+  final val REWRITE = 17
   final val STATIC = 18
   final val OBJECT = 19
   final val TRAIT = 20
@@ -320,6 +322,7 @@ object TastyFormat {
   final val PARAMsetter = 36
   final val EMPTYTREE = 37
   final val EMPTYTYPETREE = 38
+  final val REWRITEtype = 39
 
   // Cat. 2:    tag Nat
 
@@ -438,6 +441,7 @@ object TastyFormat {
   final val FUNCTION = 201
   final val INFIXOP = 202
   final val PATDEF = 203
+  final val TUPLE = 204
 
   def methodType(isImplicit: Boolean = false, isErased: Boolean = false) = {
     val implicitOffset = if (isImplicit) 1 else 0
@@ -454,7 +458,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= EMPTYTYPETREE ||
+    firstSimpleTreeTag <= tag && tag <= REWRITEtype ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -476,6 +480,8 @@ object TastyFormat {
        | LAZY
        | OVERRIDE
        | TRANSPARENT
+       | REWRITE
+       | REWRITEtype
        | MACRO
        | STATIC
        | OBJECT
@@ -532,6 +538,8 @@ object TastyFormat {
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
     case TRANSPARENT => "TRANSPARENT"
+    case REWRITE => "REWRITE"
+    case REWRITEtype => "REWRITEtype"
     case MACRO => "MACRO"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
@@ -655,6 +663,7 @@ object TastyFormat {
     case TYPEDSPLICE => "TYPEDSPLICE"
     case FUNCTION => "FUNCTION"
     case INFIXOP => "INFIXOP"
+    case TUPLE => "TUPLE"
     case PATDEF => "PATDEF"
   }
 

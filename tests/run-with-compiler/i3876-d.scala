@@ -13,5 +13,5 @@ object Test {
     println(f4(x).show)
   }
 
-  transparent def inlineLambda: Int => Int = x => x + x
+  rewrite def inlineLambda: Int => Int = x => x + x
 }

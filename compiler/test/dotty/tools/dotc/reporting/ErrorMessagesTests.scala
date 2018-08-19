@@ -979,7 +979,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |
         |class B extends A {
-        |  transparent def bar(): Unit = super.foo()
+        |  rewrite def bar(): Unit = super.foo()
         |}
       """.stripMargin
     }
@@ -987,7 +987,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       implicit val ctx: Context = ictx
       assertMessageCount(1, messages)
       val err :: Nil = messages
-      val SuperCallsNotAllowedTransparent(symbol) = err
+      val SuperCallsNotAllowedInlineable(symbol) = err
       assertEquals("method bar", symbol.show)
     }
 
@@ -1088,7 +1088,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
   @Test def noReturnInInline =
     checkMessagesAfter(FrontEnd.name) {
       """class BadFunction {
-        |  transparent def usesReturn: Int = { return 42 }
+        |  rewrite def usesReturn: Int = { return 42 }
         |}
       """.stripMargin
     }.expect { (ictx, messages) =>
@@ -1096,7 +1096,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
 
       assertMessageCount(1, messages)
 
-      val NoReturnFromTransparent(method) :: Nil = messages
+      val NoReturnFromInlineable(method) :: Nil = messages
       assertEquals("method usesReturn", method.show)
     }
 

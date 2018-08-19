@@ -161,8 +161,9 @@ BlockResult       ::=  [FunArgMods] FunParams ‘=>’ Block
 FunParams         ::=  Bindings
                     |  id
                     |  ‘_’
-Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr]         If(Parens(cond), thenp, elsep?)
-                    |  ‘if’ Expr ‘then’ Expr [[semi] ‘else’ Expr]               If(cond, thenp, elsep?)
+Expr1             ::=  [‘rewrite’] ‘if’ ‘(’ Expr ‘)’ {nl}
+                       Expr [[semi] ‘else’ Expr]                                If(Parens(cond), thenp, elsep?)
+                    |  [‘rewrite’] ‘if’ Expr ‘then’ Expr [[semi] ‘else’ Expr]   If(cond, thenp, elsep?)
                     |  ‘while’ ‘(’ Expr ‘)’ {nl} Expr                           WhileDo(Parens(cond), body)
                     |  ‘while’ Expr ‘do’ Expr                                   WhileDo(cond, body)
                     |  ‘do’ Expr [semi] ‘while’ Expr                            DoWhile(expr, cond)
@@ -174,7 +175,8 @@ Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else�
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
                     |  PostfixExpr [Ascription]
-                    |  PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’                  Match(expr, cases) -- point on match
+                    |  [‘rewrite’] PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’      Match(expr, cases) -- point on match
+                    |  ‘rewrite’ ‘type’ InfixType ‘match’ ‘{’ TypeCaseClauses ‘}’
                     |  ‘implicit’ ‘match’ ‘{’ ImplicitCaseClauses ‘}’
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
@@ -226,6 +228,8 @@ CaseClauses       ::=  CaseClause { CaseClause }                                
 CaseClause        ::=  ‘case’ (Pattern [Guard] ‘=>’ Block | INT)                CaseDef(pat, guard?, block)   // block starts at =>
 ImplicitCaseClauses ::=  ImplicitCaseClause { ImplicitCaseClause }
 ImplicitCaseClause  ::=  ‘case’ PatVar [‘:’ RefinedType] [Guard] ‘=>’ Block
+TypeCaseClauses   ::=  TypeCaseClause { TypeCaseClause }
+TypeCaseClause    ::=  ‘case’ InfixType [Guard] ‘=>’ Block
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
 Pattern1          ::=  PatVar ‘:’ RefinedType                                   Bind(name, Typed(Ident(wildcard), tpe))
@@ -289,6 +293,9 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘sealed’
                     |  ‘implicit’
                     |  ‘lazy’
+                    |  ‘transparent’
+                    |  ‘rewrite’
+                    |  ‘erased’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
 

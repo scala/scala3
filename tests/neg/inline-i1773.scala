@@ -1,7 +1,7 @@
 object Test {
   implicit class Foo(sc: StringContext) {
     object q {
-      transparent def unapply(arg: Any): Option[(Any, Any)] =
+      rewrite def unapply(arg: Any): Option[(Any, Any)] =
         Some((sc.parts(0), sc.parts(1)))
     }
   }

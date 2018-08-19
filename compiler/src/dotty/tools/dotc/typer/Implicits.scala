@@ -1144,8 +1144,8 @@ trait Implicits { self: Typer =>
         else implicitScope(wildProto).eligible
       searchImplicits(eligible, contextual) match {
         case result: SearchSuccess =>
-          if (contextual && ctx.mode.is(Mode.TransparentBody))
-            PrepareTransparent.markContextualImplicit(result.tree)
+          if (contextual && ctx.mode.is(Mode.InlineableBody))
+            PrepareInlineable.markContextualImplicit(result.tree)
           result
         case failure: SearchFailure =>
           failure.reason match {

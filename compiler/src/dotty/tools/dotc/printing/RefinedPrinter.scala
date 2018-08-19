@@ -165,7 +165,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       val leftArg = if (isRightAssoc && isInfixType(l)) "(" ~ argText(l) ~ ")" else argText(l)
       val rightArg = if (!isRightAssoc && isInfixType(r)) "(" ~ argText(r) ~ ")" else argText(r)
 
-      leftArg ~ " " ~ simpleNameString(op.classSymbol) ~ " " ~ rightArg
+      leftArg ~ " " ~ simpleNameString(op.typeSymbol) ~ " " ~ rightArg
     }
 
     homogenize(tp) match {

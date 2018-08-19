@@ -56,7 +56,7 @@ import dotty.tools.dotc.util.SourcePosition
  *  and then performs the same transformation on `'{ ... x1$1.unary_~ ... x2$1.unary_~ ...}`.
  *
  *
- *  For transparent macro definitions we assume that we have a single ~ directly as the RHS.
+ *  For macro definitions we assume that we have a single ~ directly as the RHS.
  *  The Splicer is used to check that the RHS will be interpretable (with the `Splicer`) once inlined.
  */
 class ReifyQuotes extends MacroTransformWithImplicits {
@@ -76,7 +76,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
-      case tree: RefTree if !ctx.inTransparentMethod =>
+      case tree: RefTree if !ctx.inRewriteMethod =>
         assert(!tree.symbol.isQuote)
         // assert(!tree.symbol.isSplice) // TODO widen ~ type references at stage 0?
         assert(tree.symbol != defn.QuotedExpr_~)
@@ -117,7 +117,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
    *  @param  outer      the next outer reifier, null is this is the topmost transformer
    *  @param  level      the current level, where quotes add one and splices subtract one level.
    *                     The initial level is 0, a level `l` where `l > 0` implies code has been quoted `l` times
-   *                     and `l == -1` is code inside a top level splice (in an transparent method).
+   *                     and `l == -1` is code inside a top level splice (in a rewrite method).
    *  @param  levels     a stacked map from symbols to the levels in which they were defined
    *  @param  embedded   a list of embedded quotes (if `inSplice = true`) or splices (if `inQuote = true`
    */
@@ -250,7 +250,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     def tryHeal(tp: Type, pos: Position)(implicit ctx: Context): Option[String] = tp match {
       case tp: TypeRef =>
         if (level == -1) {
-          assert(ctx.owner.ownersIterator.exists(_.is(Transparent)))
+          assert(ctx.inRewriteMethod)
           None
         } else {
           val reqType = defn.QuotedTypeType.appliedTo(tp)
@@ -281,7 +281,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         else i"${sym.name}.this"
       if (!isThis && sym.maybeOwner.isType && !sym.is(Param))
         check(sym.owner, sym.owner.thisType, pos)
-      else if (level == 1 && sym.isType && sym.is(Param) && sym.owner.is(Transparent) && !outer.isRoot)
+      else if (level == 1 && sym.isType && sym.is(Param) && sym.owner.isRewriteMethod && !outer.isRoot)
         importedTags(sym.typeRef) = capturers(sym)(ref(sym))
       else if (sym.exists && !sym.isStaticOwner && !levelOK(sym))
         for (errMsg <- tryHeal(tp, pos))
@@ -372,9 +372,9 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           capturers(body.symbol)(body)
         case _=>
           val (body1, splices) = nested(isQuote = true).split(body)
-          if (level == 0 && !ctx.inTransparentMethod) pickledQuote(body1, splices, body.tpe, isType).withPos(quote.pos)
+          if (level == 0 && !ctx.inRewriteMethod) pickledQuote(body1, splices, body.tpe, isType).withPos(quote.pos)
           else {
-            // In top-level splice in an transparent def. Keep the tree as it is, it will be transformed at inline site.
+            // In top-level splice in a rewrite def. Keep the tree as it is, it will be transformed at inline site.
             body
           }
       }
@@ -413,7 +413,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
 
     /** If inside a quote, split the body of the splice into a core and a list of embedded quotes
      *  and make a hole from these parts. Otherwise issue an error, unless we
-     *  are in the body of a transparent method.
+     *  are in the body of a rewrite method.
      */
     private def splice(splice: Select)(implicit ctx: Context): Tree = {
       if (level > 1) {
@@ -430,15 +430,15 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         val evaluatedSplice = Splicer.splice(splice.qualifier, pos, macroClassLoader)(spliceCtx).withPos(splice.pos)
         if (ctx.reporter.hasErrors) splice else transform(evaluatedSplice)
       }
-      else if (!ctx.owner.is(Transparent)) { // level 0 outside a transparent definition
-        ctx.error(i"splice outside quotes or transparent method", splice.pos)
+      else if (!ctx.owner.isRewriteMethod) { // level 0 outside a rewrite method
+        ctx.error(i"splice outside quotes or rewrite method", splice.pos)
         splice
       }
-      else if (Splicer.canBeSpliced(splice.qualifier)) { // level 0 inside a transparent definition
+      else if (Splicer.canBeSpliced(splice.qualifier)) { // level 0 inside a rewrite definition
         nested(isQuote = false).split(splice.qualifier) // Just check PCP
         splice
       }
-      else { // level 0 inside a transparent definition
+      else { // level 0 inside a rewrite definition
         ctx.error("Malformed macro call. The contents of the ~ must call a static method and arguments must be quoted or transparent.".stripMargin, splice.pos)
         splice
       }
@@ -504,7 +504,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
       val captured2 = capturer(captured)
 
-      outer.enteredSyms.foreach(sym => if (!sym.is(Transparent)) capturers.put(sym, captured2))
+      outer.enteredSyms.foreach(sym => if (!sym.isRewriteMethod) capturers.put(sym, captured2))
 
       val tree2 = transform(tree)
       capturers --= outer.enteredSyms
@@ -571,10 +571,10 @@ class ReifyQuotes extends MacroTransformWithImplicits {
                 cpy.DefDef(tree)(rhs = defaultValue(tree.rhs.tpe))
               case _ =>
                 ctx.error(
-                  """Malformed transparent macro.
+                  """Malformed macro.
                     |
                     |Expected the ~ to be at the top of the RHS:
-                    |  transparent def foo(x: X, ..., y: Y): Int = ~impl(x, ... '(y))
+                    |  rewrite def foo(x: X, ..., y: Y): Int = ~impl(x, ... '(y))
                     |
                     |The contents of the splice must call a static method. Arguments must be quoted or inlined.
                   """.stripMargin, tree.rhs.pos)

@@ -36,7 +36,7 @@ object Test {
   }
 
   implicit class intArrayOps(arr: Array[Int]) {
-    transparent def foreach(op: => Int => Unit): Unit = {
+    rewrite def foreach(op: => Int => Unit): Unit = {
       var i = 0
       while (i < arr.length) {
         op(arr(i))

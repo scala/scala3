@@ -147,7 +147,7 @@ object Splicer {
       }
     }
 
-    private def extraMsg = ". The most common reason for that is that you cannot use transparent macro implementations in the same compilation run that defines them"
+    private def extraMsg = ". The most common reason for that is that you apply macros in the compilation run that defines them"
 
     private def stopIfRuntimeException[T](thunk: => T): T = {
       try thunk
@@ -239,9 +239,9 @@ object Splicer {
     def interpretStaticMethodCall(fn: tpd.Tree, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
 
     def unexpectedTree(tree: tpd.Tree)(implicit env: Env): Boolean = {
-      // Assuming that top-level splices can only be in transparent methods
+      // Assuming that top-level splices can only be in rewrite methods
       // and splices are expanded at inline site, references to transparent values
-      // will be know literal constant trees.
+      // will be known literal constant trees.
       tree.symbol.is(Transparent)
     }
   }

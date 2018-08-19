@@ -1,3 +1,3 @@
 class Foo private() {
-  transparent def foo = new Foo // error
+  rewrite def foo = new Foo // error
 }

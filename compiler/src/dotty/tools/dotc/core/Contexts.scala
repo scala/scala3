@@ -307,6 +307,10 @@ object Contexts {
     def isNonEmptyScopeContext: Boolean =
       (this.scope ne outer.scope) && !this.scope.isEmpty
 
+    /** Is this a context for typechecking an inlined body? */
+    def isInlineContext: Boolean =
+      typer.isInstanceOf[Inliner#InlineTyper]
+
     /** The next outer context whose tree is a template or package definition
      *  Note: Currently unused
     def enclTemplate: Context = {

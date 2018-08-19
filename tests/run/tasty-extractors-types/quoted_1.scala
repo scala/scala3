@@ -5,7 +5,7 @@ import scala.tasty.util.TreeTraverser
 
 object Macros {
 
-  implicit transparent def printType[T]: Unit =
+  implicit rewrite def printType[T]: Unit =
     ~impl('[T])(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
 
   def impl[T](x: Type[T])(implicit tasty: Tasty): Expr[Unit] = {

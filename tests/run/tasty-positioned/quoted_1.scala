@@ -9,7 +9,7 @@ case class Positioned[T](value: T, position: Position)
 
 object Positioned {
 
-  implicit transparent def apply[T](x: => T): Positioned[T] =
+  implicit rewrite def apply[T](x: => T): Positioned[T] =
     ~impl('(x))('[T], TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
 
   def impl[T](x: Expr[T])(implicit ev: Type[T], tasty: Tasty): Expr[Positioned[T]] = {

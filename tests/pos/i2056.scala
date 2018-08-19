@@ -1,5 +1,5 @@
 object Test {
-  transparent def crash() = {
+  rewrite def crash() = {
     try {
       println("hi")
     } catch {

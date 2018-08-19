@@ -102,7 +102,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     compileDir("compiler/src/dotty/tools/dotc/parsing", picklingOptions) +
     compileDir("compiler/src/dotty/tools/dotc/printing", picklingOptions) +
     compileDir("compiler/src/dotty/tools/repl", picklingOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/rewrite", picklingOptions) +
+    compileDir("compiler/src/dotty/tools/dotc/rewrites", picklingOptions) +
     compileDir("compiler/src/dotty/tools/dotc/transform", picklingOptions) +
     compileDir("compiler/src/dotty/tools/dotc/typer", picklingOptions) +
     compileDir("compiler/src/dotty/tools/dotc/util", picklingOptions) +

@@ -121,6 +121,7 @@ class ModifiersParsingTest {
         |
         |   abstract override def f: Boolean
         |   transparent def g(n: Int) = ???
+        |   rewrite def h(n: Int) = ???
         | }
       """.stripMargin)
 
@@ -129,6 +130,7 @@ class ModifiersParsingTest {
     assert(source.field("c").modifiers == List(Mod.Final()))
     assert(source.field("f").modifiers == List(Mod.Abstract(), Mod.Override()))
     assert(source.field("g").modifiers == List(Mod.Transparent()))
+    assert(source.field("h").modifiers == List(Mod.Rewrite()))
   }
 
   @Test def paramDef = {
