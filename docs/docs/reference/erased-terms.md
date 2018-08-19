@@ -85,7 +85,7 @@ State machine with erased evidence example
 The following example is an extended implementation of a simple state machine which can be in a state `On` or `Off`.
 The machine can change state from `Off` to `On` with `turnedOn` only if it is currently `Off`, 
 conversely from `On` to `Off` with `turnedOff` only if it is currently `On`. These last constraint are
-captured with the `IsOff[S]` and `IsOn[S]` implicit evidence only exist for `IsOff[Off]` and `InOn[On]`. 
+captured with the `IsOff[S]` and `IsOn[S]` implicit evidence only exist for `IsOff[Off]` and `IsOn[On]`. 
 For example, not allowing calling `turnedOff` on in an `Off` state as we would require an evidence `IsOn[Off]` 
 that will not be found.
 
