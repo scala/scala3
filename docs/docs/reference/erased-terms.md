@@ -112,7 +112,7 @@ object IsOff {
 @implicitNotFound("State is must be On")
 class IsOn[S <: State]
 object IsOn {
-  // def isOn will not exist at runtime, the compiler will only require that this evidence exists at compile time
+  // erased val isOn will not exist at runtime, the compiler will only require that this evidence exists at compile time
   erased implicit val isOn: IsOn[On] = new IsOn[On]
 }
 
