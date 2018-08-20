@@ -328,10 +328,19 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     else {
       assert(contains(param1))
       assert(contains(param2))
+      // We add edge param1 <: param2 to the graph representing which params are known to be smaller
+      // than which other params, which is recorded in both lowerMap and upperMap.
+      // Since we store the *transitive closure* of the parameter subtyping relation, here
+      // we find all param0 <: param1, and param3 >: param2, and add all edges of form param0 <: param3,
+      // but without readding existing edges!
+
+      // Params param3 that *become* known-to-be-bigger than param1.
       val newUpper = param2 :: exclusiveUpper(param2, param1)
+      // Params param0 that *become* known-to-be-bigger than param2.
       val newLower = param1 :: exclusiveLower(param1, param2)
-      val current1 = (current /: newLower)(upperLens.map(this, _, _, newUpper ::: _))
-      val current2 = (current1 /: newUpper)(lowerLens.map(this, _, _, newLower ::: _))
+      // For each param0, prepend all param3 to the upper params.
+      val current1 = newLower.foldLeft(current)((curr, p) => upperLens.map(this, curr, p, upper => newUpper ::: upper))
+      val current2 = newUpper.foldLeft(current1)((curr, p) => lowerLens.map(this, curr, p, lower => newLower ::: lower))
       current2
     }
 
