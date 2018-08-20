@@ -48,6 +48,9 @@ final class TastyFileManager extends ClassFileManager {
       IO.deleteFilesEmptyDirs(generatedTastyFiles)
       for ((orig, tmp) <- movedTastyFiles) IO.move(tmp, orig)
     }
+
+    generatedTastyFiles.clear()
+    movedTastyFiles.clear()
     if (_tempDir != null) {
       IO.delete(tempDir)
       _tempDir = null
