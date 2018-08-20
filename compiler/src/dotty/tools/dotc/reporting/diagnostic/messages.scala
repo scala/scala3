@@ -1478,10 +1478,10 @@ object messages {
     val explanation = ""
   }
 
-  case class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(
+  case class DoesNotConformToBound(tpe: Type, which: String, bound: Type, inferred: Boolean)(
     err: typer.ErrorReporting.Errors)(implicit ctx: Context)
     extends Message(DoesNotConformToBoundID) {
-    val msg = hl"Type argument ${tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(tpe, bound)}"
+    val msg = hl"${if (inferred) "Inferred type" else "Type"} argument $tpe does not conform to $which bound $bound ${err.whyNoMatchStr(tpe, bound)}"
     val kind = "Type Mismatch"
     val explanation = ""
   }

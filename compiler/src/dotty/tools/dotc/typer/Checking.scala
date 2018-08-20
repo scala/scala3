@@ -45,12 +45,10 @@ object Checking {
       }
     }
     for ((arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate)) {
-      if (arg.pos.isZeroExtent)
-        ctx.error(
-          DoesNotConformToBound(arg.tpe, which, bound)(err),
-          arg.pos.focus)
-      else
-        ctx.error(hl"inferred type ${arg.tpe} violates $which bound $bound", arg.pos.focus)
+      println(s"arg.pos ${arg.pos}, ${arg.pos.isSynthetic}")
+      ctx.error(
+        DoesNotConformToBound(arg.tpe, which, bound, arg.pos.isZeroExtent)(err),
+        arg.pos.focus)
     }
   }
 

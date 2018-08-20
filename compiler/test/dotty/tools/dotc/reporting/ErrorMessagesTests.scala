@@ -629,10 +629,11 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     .expect { (ictx, messages) =>
       implicit val ctx: Context = ictx
       assertMessageCount(1, messages)
-      val DoesNotConformToBound(tpe, which, bound) :: Nil = messages
+      val DoesNotConformToBound(tpe, which, bound, inferred) :: Nil = messages
       assertEquals("Int", tpe.show)
       assertEquals("upper", which)
       assertEquals("List[Int]", bound.show)
+      assertEquals(true, inferred)
     }
 
   @Test def doesNotConformToSelfType =
