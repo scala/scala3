@@ -488,7 +488,9 @@ class Typer extends Namer
   }
 
   def typedLiteral(tree: untpd.Literal)(implicit ctx: Context): Tree = track("typedLiteral") {
-    assignType(tree)
+    val tree1 = assignType(tree)
+    if (ctx.mode.is(Mode.Type)) tpd.SingletonTypeTree(tree1) // this ensures that tree is classified as a type tree
+    else tree1
   }
 
   def typedNew(tree: untpd.New, pt: Type)(implicit ctx: Context) = track("typedNew") {
