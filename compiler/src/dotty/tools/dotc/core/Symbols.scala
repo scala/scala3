@@ -417,7 +417,17 @@ object Symbols {
 
     type ThisName <: Name
 
-    //assert(id != 723)
+    private[this] var myPickledTree: tpd.Tree = _
+
+    /** Tree defining the symbol at pickling time */
+    def tree(implicit ctx: Context): Tree = {
+      if (myPickledTree eq null)
+        myPickledTree = tpd.EmptyTree
+      myPickledTree
+    }
+
+    private[dotc] def tree_=(t: tpd.Tree)(implicit ctx: Context): Unit =
+      myPickledTree = t
 
     def coord: Coord = myCoord
     /** Set the coordinate of this class, this is only useful when the coordinate is
@@ -666,13 +676,13 @@ object Symbols {
 
     type TreeOrProvider = AnyRef /* tpd.TreeProvider | tpd.PackageDef | tpd.TypeDef | tpd.EmptyTree | Null */
 
-    private[this] var myTree: TreeOrProvider = tpd.EmptyTree
+    private[this] var myCompilationUnitTree: TreeOrProvider = tpd.EmptyTree
 
     /** If this is a top-level class and `-Yretain-trees` (or `-from-tasty`) is set.
       * Returns the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
       * This will force the info of the class.
       */
-    def tree(implicit ctx: Context): Tree = treeContaining("")
+    def compilationUnitTree(implicit ctx: Context): Tree = treeContaining("")
 
     /** Same as `tree` but load tree only if `id == ""` or the tree might contain `id`.
      *  For Tasty trees this means consulting whether the name table defines `id`.
@@ -683,11 +693,11 @@ object Symbols {
         case _: NoCompleter =>
         case _ => denot.ensureCompleted()
       }
-      myTree match {
+      myCompilationUnitTree match {
         case fn: TreeProvider =>
           if (id.isEmpty || fn.mightContain(id)) {
             val tree = fn.tree
-            myTree = tree
+            myCompilationUnitTree = tree
             tree
           }
           else tpd.EmptyTree
@@ -696,10 +706,10 @@ object Symbols {
       }
     }
 
-    def treeOrProvider: TreeOrProvider = myTree
+    def treeOrProvider: TreeOrProvider = myCompilationUnitTree
 
     private[dotc] def treeOrProvider_=(t: TreeOrProvider)(implicit ctx: Context): Unit =
-      myTree = t
+      myCompilationUnitTree = t
 
     private def mightContain(tree: Tree, id: String)(implicit ctx: Context): Boolean = {
       val ids = tree.getAttachment(Ids) match {

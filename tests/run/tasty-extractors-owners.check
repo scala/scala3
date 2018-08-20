@@ -1,27 +1,27 @@
 foo
-DefDef("main", Nil, List(List(ValDef("args", TypeTree.Synthetic(), None))), TypeTree.Synthetic(), None)
+DefDef("main", Nil, List(List(ValDef("args", TypeTree.Applied(TypeTree.TypeIdent("Array"), List(TypeTree.TypeIdent("String"))), None))), TypeTree.TypeIdent("Unit"), Some(Term.Block(Nil, Term.Inlined(Some(TypeTree.TypeIdent("Macros$")), Nil, Term.Select(Term.Apply(Term.Apply(Term.TypeApply(Term.Ident("impl"), List(TypeTree.Synthetic())), List(Term.Apply(Term.TypeApply(Term.Ident("apply"), List(TypeTree.Synthetic())), List(Term.Inlined(None, Nil, Term.Block(List(DefDef("foo", Nil, Nil, TypeTree.Synthetic(), Some(Term.Block(List(DefDef("bar", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(1)))), ValDef("bar2", TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(2))))), Term.Typed(Term.Ident("bar"), TypeTree.Synthetic())))), ValDef("foo2", TypeTree.Synthetic(), Some(Term.Block(List(DefDef("baz", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(3)))), ValDef("baz2", TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(4))))), Term.Typed(Term.Ident("baz"), TypeTree.Synthetic())))), ClassDef("A", DefDef("<init>", Nil, List(Nil), TypeTree.Synthetic(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, java.lang.Object))), Nil)), None, List(TypeDef("B", TypeTree.TypeIdent("Int")), DefDef("b", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(5)))), ValDef("b2", TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(6))))))), Term.Literal(Constant.Unit()))))))), List(Term.Select(Term.Ident("TopLevelSplice"), "tastyContext", Some(Signature(Nil, scala.tasty.Tasty))))), "unary_~", Some(Signature(Nil, java.lang.Object)))))))
 
 bar
-DefDef("foo", Nil, Nil, TypeTree.Synthetic(), None)
+DefDef("foo", Nil, Nil, TypeTree.Synthetic(), Some(Term.Block(List(DefDef("bar", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(1)))), ValDef("bar2", TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(2))))), Term.Typed(Term.Ident("bar"), TypeTree.Synthetic()))))
 
 bar2
-DefDef("foo", Nil, Nil, TypeTree.Synthetic(), None)
+DefDef("foo", Nil, Nil, TypeTree.Synthetic(), Some(Term.Block(List(DefDef("bar", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(1)))), ValDef("bar2", TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(2))))), Term.Typed(Term.Ident("bar"), TypeTree.Synthetic()))))
 
 foo2
-DefDef("main", Nil, List(List(ValDef("args", TypeTree.Synthetic(), None))), TypeTree.Synthetic(), None)
+DefDef("main", Nil, List(List(ValDef("args", TypeTree.Applied(TypeTree.TypeIdent("Array"), List(TypeTree.TypeIdent("String"))), None))), TypeTree.TypeIdent("Unit"), Some(Term.Block(Nil, Term.Inlined(Some(TypeTree.TypeIdent("Macros$")), Nil, Term.Select(Term.Apply(Term.Apply(Term.TypeApply(Term.Ident("impl"), List(TypeTree.Synthetic())), List(Term.Apply(Term.TypeApply(Term.Ident("apply"), List(TypeTree.Synthetic())), List(Term.Inlined(None, Nil, Term.Block(List(DefDef("foo", Nil, Nil, TypeTree.Synthetic(), Some(Term.Block(List(DefDef("bar", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(1)))), ValDef("bar2", TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(2))))), Term.Typed(Term.Ident("bar"), TypeTree.Synthetic())))), ValDef("foo2", TypeTree.Synthetic(), Some(Term.Block(List(DefDef("baz", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(3)))), ValDef("baz2", TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(4))))), Term.Typed(Term.Ident("baz"), TypeTree.Synthetic())))), ClassDef("A", DefDef("<init>", Nil, List(Nil), TypeTree.Synthetic(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, java.lang.Object))), Nil)), None, List(TypeDef("B", TypeTree.TypeIdent("Int")), DefDef("b", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(5)))), ValDef("b2", TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(6))))))), Term.Literal(Constant.Unit()))))))), List(Term.Select(Term.Ident("TopLevelSplice"), "tastyContext", Some(Signature(Nil, scala.tasty.Tasty))))), "unary_~", Some(Signature(Nil, java.lang.Object)))))))
 
 baz
-ValDef("foo2", TypeTree.Synthetic(), None)
+ValDef("foo2", TypeTree.Synthetic(), Some(Term.Block(List(DefDef("baz", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(3)))), ValDef("baz2", TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(4))))), Term.Typed(Term.Ident("baz"), TypeTree.Synthetic()))))
 
 baz2
-ValDef("foo2", TypeTree.Synthetic(), None)
+ValDef("foo2", TypeTree.Synthetic(), Some(Term.Block(List(DefDef("baz", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(3)))), ValDef("baz2", TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(4))))), Term.Typed(Term.Ident("baz"), TypeTree.Synthetic()))))
 
 <init>
-ClassDef("A", DefDef("<init>", Nil, List(Nil), TypeTree.Synthetic(), None), List(TypeTree.Synthetic()), None, List(TypeDef("B", SyntheticBounds()), DefDef("b", Nil, Nil, TypeTree.Synthetic(), None), ValDef("b2", TypeTree.Synthetic(), None)))
+ClassDef("A", DefDef("<init>", Nil, List(Nil), TypeTree.Synthetic(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, java.lang.Object))), Nil)), None, List(TypeDef("B", TypeTree.TypeIdent("Int")), DefDef("b", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(5)))), ValDef("b2", TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(6))))))
 
 b
-ClassDef("A", DefDef("<init>", Nil, List(Nil), TypeTree.Synthetic(), None), List(TypeTree.Synthetic()), None, List(TypeDef("B", SyntheticBounds()), DefDef("b", Nil, Nil, TypeTree.Synthetic(), None), ValDef("b2", TypeTree.Synthetic(), None)))
+ClassDef("A", DefDef("<init>", Nil, List(Nil), TypeTree.Synthetic(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, java.lang.Object))), Nil)), None, List(TypeDef("B", TypeTree.TypeIdent("Int")), DefDef("b", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(5)))), ValDef("b2", TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(6))))))
 
 b2
-ClassDef("A", DefDef("<init>", Nil, List(Nil), TypeTree.Synthetic(), None), List(TypeTree.Synthetic()), None, List(TypeDef("B", SyntheticBounds()), DefDef("b", Nil, Nil, TypeTree.Synthetic(), None), ValDef("b2", TypeTree.Synthetic(), None)))
+ClassDef("A", DefDef("<init>", Nil, List(Nil), TypeTree.Synthetic(), None), List(Term.Apply(Term.Select(Term.New(TypeTree.Synthetic()), "<init>", Some(Signature(Nil, java.lang.Object))), Nil)), None, List(TypeDef("B", TypeTree.TypeIdent("Int")), DefDef("b", Nil, Nil, TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(5)))), ValDef("b2", TypeTree.Synthetic(), Some(Term.Literal(Constant.Int(6))))))
 

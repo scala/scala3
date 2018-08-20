@@ -41,9 +41,9 @@ class ReadTastyTreesFromClasses extends FrontEnd {
         case cls: ClassSymbol =>
           (cls.treeOrProvider: @unchecked) match {
             case unpickler: tasty.DottyUnpickler =>
-              if (cls.tree.isEmpty) None
+              if (cls.compilationUnitTree.isEmpty) None
               else {
-                val unit = mkCompilationUnit(cls, cls.tree, forceTrees = true)
+                val unit = mkCompilationUnit(cls, cls.compilationUnitTree, forceTrees = true)
                 unit.pickled += (cls -> unpickler.unpickler.bytes)
                 Some(unit)
               }

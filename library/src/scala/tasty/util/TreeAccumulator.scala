@@ -74,7 +74,7 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
       case Import(expr, selectors) =>
         foldTree(x, expr)
       case IsPackageClause(clause @ PackageClause(pid, stats)) =>
-        foldTrees(foldTree(x, pid), stats)(localCtx(clause.definition))
+        foldTrees(foldTree(x, pid), stats)(localCtx(clause.definition.get))
     }
   }
 
