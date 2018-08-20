@@ -214,6 +214,10 @@ object Checking {
         tp.derivedRefinedType(this(parent), name, this(rinfo, nestedCycleOK, nestedCycleOK))
       case tp: RecType =>
         tp.rebind(this(tp.parent))
+      case tp @ MatchType(scrutinee, cases) =>
+        tp.derivedMatchType(
+          this(scrutinee),
+          cases.map(this(_, cycleOK = this.cycleOK, nestedCycleOK = true)))
       case tp @ TypeRef(pre, _) =>
         try {
           // A prefix is interesting if it might contain (transitively) a reference

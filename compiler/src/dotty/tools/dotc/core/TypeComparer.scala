@@ -362,6 +362,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
             false
         }
         joinOK || recur(tp11, tp2) && recur(tp12, tp2)
+      case tp1: MatchType =>
+        recur(tp1.underlying, tp2)
       case _: FlexType =>
         true
       case _ =>

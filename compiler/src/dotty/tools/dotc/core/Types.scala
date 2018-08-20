@@ -68,6 +68,7 @@ object Types {
    *        |              +- AnnotatedType
    *        |              +- TypeVar
    *        |              +- HKTypeLambda
+   *        |              +- MatchType
    *        |
    *        +- GroundType -+- AndType
    *                       +- OrType
@@ -3515,7 +3516,43 @@ object Types {
 
   type TypeVars = SimpleIdentitySet[TypeVar]
 
-  // ------ ClassInfo, Type Bounds ------------------------------------------------------------
+  // ------ MatchType ---------------------------------------------------------------
+
+  abstract case class MatchType(scrutinee: Type, cases: List[Type]) extends CachedProxyType with TermType {
+    override def computeHash(bs: Binders) = doHash(bs, scrutinee, cases)
+
+    override def eql(that: Type) = that match {
+      case that: MatchType => scrutinee.eq(that.scrutinee) && cases.eqElements(that.cases)
+      case _ => false
+    }
+
+    def derivedMatchType(scrutinee: Type, cases: List[Type])(implicit ctx: Context) =
+      if (scrutinee.eq(this.scrutinee) && cases.eqElements(this.cases)) this
+      else MatchType(scrutinee, cases)
+
+    def caseType(tp: Type)(implicit ctx: Context): Type = tp match {
+      case tp: HKTypeLambda => caseType(tp.resType)
+      case defn.FunctionOf(_, restpe, _, _) => restpe
+    }
+
+    def alternatives(implicit ctx: Context): List[Type] = cases.map(caseType)
+
+    private var myUnderlying: Type = null
+
+    def underlying(implicit ctx: Context): Type = {
+      if (myUnderlying == null) myUnderlying = alternatives.reduceLeft(OrType(_, _))
+      myUnderlying
+    }
+  }
+
+  class CachedMatchType(scrutinee: Type, cases: List[Type]) extends MatchType(scrutinee, cases)
+
+  object MatchType {
+    def apply(scrutinee: Type, cases: List[Type])(implicit ctx: Context) =
+      unique(new CachedMatchType(scrutinee, cases))
+  }
+
+  // ------ ClassInfo, Type Bounds --------------------------------------------------
 
   type TypeOrSymbol = AnyRef /* should be: Type | Symbol */
 
@@ -4003,6 +4040,8 @@ object Types {
       tp.derivedAndType(tp1, tp2)
     protected def derivedOrType(tp: OrType, tp1: Type, tp2: Type): Type =
       tp.derivedOrType(tp1, tp2)
+    protected def derivedMatchType(tp: MatchType, scrutinee: Type, cases: List[Type]): Type =
+      tp.derivedMatchType(scrutinee, cases)
     protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =
       tp.derivedAnnotatedType(underlying, annot)
     protected def derivedWildcardType(tp: WildcardType, bounds: Type): Type =
@@ -4099,6 +4138,9 @@ object Types {
 
         case tp: OrType =>
           derivedOrType(tp, this(tp.tp1), this(tp.tp2))
+
+        case tp: MatchType =>
+          derivedMatchType(tp, this(tp.scrutinee), tp.cases.mapConserve(this))
 
         case tp: SkolemType =>
           tp
@@ -4473,6 +4515,9 @@ object Types {
 
       case tp: OrType =>
         this(this(x, tp.tp1), tp.tp2)
+
+      case tp: MatchType =>
+        foldOver(this(x, tp.scrutinee), tp.cases)
 
       case AnnotatedType(underlying, annot) =>
         this(applyToAnnot(x, annot), underlying)
