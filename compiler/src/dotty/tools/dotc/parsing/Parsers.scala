@@ -819,6 +819,7 @@ object Parsers {
 
       in.token match {
         case ARROW => functionRest(t :: Nil)
+        case MATCH => matchType(t)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
           if (imods.is(Implicit) && !t.isInstanceOf[FunctionWithMods])
@@ -1288,7 +1289,7 @@ object Parsers {
      */
     def matchExpr(t: Tree, start: Offset, mkMatch: (Tree, List[CaseDef]) => Match) =
       atPos(start, in.skipToken()) {
-        inBraces(mkMatch(t, caseClauses()))
+        inBraces(mkMatch(t, caseClauses(caseClause)))
       }
 
     /**    `match' { ImplicitCaseClauses }
@@ -1314,6 +1315,13 @@ object Parsers {
       }
       result
     }
+
+    /**    `match' { TypeCaseClauses }
+     */
+    def matchType(t: Tree) =
+      atPos(t.pos.start, in.skipToken()) {
+        inBraces(Match(t, caseClauses(typeCaseClause)))
+      }
 
     /** FunParams         ::=  Bindings
      *                     |   id
@@ -1531,7 +1539,7 @@ object Parsers {
      */
     def blockExpr(): Tree = atPos(in.offset) {
       inDefScopeBraces {
-        if (in.token == CASE) Match(EmptyTree, caseClauses())
+        if (in.token == CASE) Match(EmptyTree, caseClauses(caseClause))
         else block()
       }
     }
@@ -1621,20 +1629,32 @@ object Parsers {
 
     /** CaseClauses         ::= CaseClause {CaseClause}
      *  ImplicitCaseClauses ::= ImplicitCaseClause {ImplicitCaseClause}
+     *  TypeCaseClauses     ::= TypeCaseClause {TypeCaseClause}
      */
-    def caseClauses(): List[CaseDef] = {
+    def caseClauses(clause: () => CaseDef): List[CaseDef] = {
       val buf = new ListBuffer[CaseDef]
-      buf += caseClause()
-      while (in.token == CASE) buf += caseClause()
+      buf += clause()
+      while (in.token == CASE) buf += clause()
       buf.toList
     }
 
-   /** CaseClause         ::= case Pattern [Guard] `=>' Block
-    *  ImplicitCaseClause ::= case PatVar [Ascription] [Guard] `=>' Block
+   /** CaseClause         ::= ‘case’ Pattern [Guard] `=>' Block
+    *  ImplicitCaseClause ::= ‘case’ PatVar [Ascription] [Guard] `=>' Block
     */
-    def caseClause(): CaseDef = atPos(in.offset) {
+    val caseClause = () => atPos(in.offset) {
       accept(CASE)
       CaseDef(pattern(), guard(), atPos(accept(ARROW)) { block() })
+    }
+
+    /** TypeCaseClause     ::= ‘case’ InfixType ‘=>’ Type [nl]
+     */
+    val typeCaseClause = () => atPos(in.offset) {
+      accept(CASE)
+      CaseDef(infixType(), EmptyTree, atPos(accept(ARROW)) {
+        val t = typ()
+        if (isStatSep) in.nextToken()
+        t
+      })
     }
 
     /* -------- PATTERNS ------------------------------------------- */

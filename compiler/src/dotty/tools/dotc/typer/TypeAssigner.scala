@@ -460,11 +460,26 @@ trait TypeAssigner {
       if (target.isEmpty) meth.tpe.widen.toFunctionType(tree.env.length)
       else target.tpe)
 
-  def assignType(tree: untpd.CaseDef, body: Tree)(implicit ctx: Context) =
-    tree.withType(body.tpe)
+  def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(implicit ctx: Context) = {
+    val ownType =
+      if (body.isType) {
+        val params = new TreeAccumulator[mutable.ListBuffer[TypeSymbol]] {
+          def apply(ps: mutable.ListBuffer[TypeSymbol], t: Tree)(implicit ctx: Context) = t match {
+            case t: Bind if t.symbol.isType => foldOver(ps += t.symbol.asType, t)
+            case _ => foldOver(ps, t)
+          }
+        }
+        HKTypeLambda.fromParams(
+          params(new mutable.ListBuffer[TypeSymbol](), pat).toList,
+          defn.FunctionOf(pat.tpe :: Nil, body.tpe))
+      }
+      else body.tpe
+    tree.withType(ownType)
+  }
 
-  def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) =
-    tree.withType(ctx.typeComparer.lub(cases.tpes))
+  def assignType(tree: untpd.Match, scrutinee: Tree, cases: List[CaseDef])(implicit ctx: Context) =
+    if (scrutinee.isType) tree.withType(MatchType(scrutinee.tpe, cases.tpes))
+    else tree.withType(ctx.typeComparer.lub(cases.tpes))
 
   def assignType(tree: untpd.Labeled)(implicit ctx: Context) =
     tree.withType(tree.bind.symbol.info)

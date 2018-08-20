@@ -229,7 +229,7 @@ CaseClause        ::=  ‘case’ (Pattern [Guard] ‘=>’ Block | INT)        
 ImplicitCaseClauses ::=  ImplicitCaseClause { ImplicitCaseClause }
 ImplicitCaseClause  ::=  ‘case’ PatVar [‘:’ RefinedType] [Guard] ‘=>’ Block
 TypeCaseClauses   ::=  TypeCaseClause { TypeCaseClause }
-TypeCaseClause    ::=  ‘case’ InfixType ‘=>’ Type
+TypeCaseClause    ::=  ‘case’ InfixType ‘=>’ Type [nl]
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
 Pattern1          ::=  PatVar ‘:’ RefinedType                                   Bind(name, Typed(Ident(wildcard), tpe))
