@@ -18,7 +18,7 @@ abstract class Printer {
   private[this] var prec: Precedence = GlobalPrec
 
   /** The current precedence level.
-   *  WHen pretty-printing arguments of operator `op`, `currentPrecedence` must equal `op`'s precedence level,
+   *  When pretty-printing arguments of operator `op`, `currentPrecedence` must equal `op`'s precedence level,
    *  so that pretty-printing expressions using lower-precedence operators can insert parentheses automatically
    *  by calling `changePrec`.
    */
