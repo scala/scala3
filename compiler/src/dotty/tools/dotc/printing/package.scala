@@ -9,8 +9,8 @@ package object printing {
   type Precedence = Int
 
   val DotPrec       = parsing.maxPrec
-  val AndTypePrec   = parsing.precedence(tpnme.raw.AMP, true)
-  val OrTypePrec    = parsing.precedence(tpnme.raw.BAR, true)
+  val AndTypePrec   = parsing.precedence(tpnme.raw.AMP)
+  val OrTypePrec    = parsing.precedence(tpnme.raw.BAR)
   val OrPrec        = parsing.precedence(nme.raw.BAR)
   val InfixPrec     = parsing.minInfixPrec
   val GlobalPrec    = parsing.minPrec

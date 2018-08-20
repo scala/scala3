@@ -7,7 +7,7 @@ import core.NameOps._
 
 package object parsing {
 
-  def precedence(operator: Name, isType: Boolean = false): Int =
+  def precedence(operator: Name): Int =
     if (operator eq nme.ERROR) -1
     else {
       val firstCh = operator.firstPart.head

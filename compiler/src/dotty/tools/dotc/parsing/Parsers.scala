@@ -471,13 +471,13 @@ object Parsers {
         syntaxError(MixedLeftAndRightAssociativeOps(op1, op2, op2LeftAssoc), offset)
 
     def reduceStack(base: List[OpInfo], top: Tree, prec: Int, leftAssoc: Boolean, op2: Name, isType: Boolean): Tree = {
-      if (opStack != base && precedence(opStack.head.operator.name, isType) == prec)
+      if (opStack != base && precedence(opStack.head.operator.name) == prec)
         checkAssoc(opStack.head.offset, opStack.head.operator.name, op2, leftAssoc)
       def recur(top: Tree): Tree = {
         if (opStack == base) top
         else {
           val opInfo = opStack.head
-          val opPrec = precedence(opInfo.operator.name, isType)
+          val opPrec = precedence(opInfo.operator.name)
           if (prec < opPrec || leftAssoc && prec == opPrec) {
             opStack = opStack.tail
             recur {
@@ -514,7 +514,7 @@ object Parsers {
       var top = first
       while (isIdent && isOperator) {
         val op = if (isType) typeIdent() else termIdent()
-        top = reduceStack(base, top, precedence(op.name, isType), isLeftAssoc(op.name), op.name, isType)
+        top = reduceStack(base, top, precedence(op.name), isLeftAssoc(op.name), op.name, isType)
         opStack = OpInfo(top, op, in.offset) :: opStack
         newLineOptWhenFollowing(canStartOperand)
         if (maybePostfix && !canStartOperand(in.token)) {

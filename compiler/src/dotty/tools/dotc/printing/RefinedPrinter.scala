@@ -165,7 +165,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     def toTextInfixType(opName: Name, l: Type, r: Type)(op: => Text): Text = {
       val isRightAssoc = opName.endsWith(":")
-      val opPrec = parsing.precedence(opName, true)
+      val opPrec = parsing.precedence(opName)
 
       changePrec(opPrec) {
         val leftPrec = if (isRightAssoc || checkAssocMismatch(l, isRightAssoc)) opPrec + 1 else opPrec
