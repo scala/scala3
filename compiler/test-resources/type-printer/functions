@@ -1,10 +1,10 @@
-scala> val toInt: Any => Int = new { def apply(a: Any) = 1; override def toString() = "<func1>" }
-val toInt: Any => Int = <func1>
-scala> val hoFun: (Int => Int) => Int = new { def apply(a: Int => Int) = 1; override def toString() = "<func2>" }
-val hoFun: (Int => Int) => Int = <func2>
-scala> val curriedFun: Int => (Int => Int) = new { def apply(a: Int) = _ => 1; override def toString() = "<func3>" }
-val curriedFun: Int => Int => Int = <func3>
-scala> val tupFun: ((Int, Int)) => Int = new { def apply(a: (Int, Int)) = 1; override def toString() = "<func4>" }
-val tupFun: ((Int, Int)) => Int = <func4>
-scala> val binFun: (Int, Int) => Int = new { def apply(a: Int, b: Int) = 1; override def toString() = "<func5>" }
-val binFun: (Int, Int) => Int = <func5>
+scala> def toInt: Any => Int = ???
+def toInt: Any => Int
+scala> def hoFun: (Int => Int) => Int = ???
+def hoFun: (Int => Int) => Int
+scala> def curriedFun: Int => (Int => Int) = ???
+def curriedFun: Int => Int => Int
+scala> def tupFun: ((Int, Int)) => Int = ???
+def tupFun: ((Int, Int)) => Int
+scala> def binFun: (Int, Int) => Int = ???
+def binFun: (Int, Int) => Int
