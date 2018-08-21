@@ -1,7 +1,7 @@
 object Test {
   def foo: Unit = {
-    val a: GenericCompanion2[Bar] = null
-    val b: GenericCompanion2[Baz] = null
+    val a: GenericCompanion2[Bar] = ???
+    val b: GenericCompanion2[Baz] = ???
     List(a, b)
   }
 }

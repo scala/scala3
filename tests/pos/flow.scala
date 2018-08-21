@@ -9,7 +9,7 @@ trait Flow[-In, +Out] extends FlowOps[Out] {
 
 class Test {
   def slowFlow: Unit = {
-    (null: Flow[String, String])
+    (??? : Flow[String, String])
       .map(b => b)
       .map(b => b)
       .map(b => b)

@@ -18,7 +18,7 @@ abstract class B[T, @specialized(scala.Int) U : Manifest, @specialized(scala.Int
     val v: V
 
     def f(t: T, v2: V): Tuple2[U, V] = {
-        val m: Array[U] = null
+        val m: Array[U] = ???
         if (m.isEmpty) {
             (u, v)
         } else {

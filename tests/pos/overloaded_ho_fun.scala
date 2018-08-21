@@ -62,8 +62,8 @@ object SI10194 {
 
   trait Z[A] extends Y[A]
 
-  (null: Y[Int]).map(x => x.toString) // compiled
-  (null: Z[Int]).map(x => x.toString) // didn't compile
+  (??? : Y[Int]).map(x => x.toString) // compiled
+  (??? : Z[Int]).map(x => x.toString) // didn't compile
 }
 
 // Perform eta-expansion of methods passed as functions to overloaded functions

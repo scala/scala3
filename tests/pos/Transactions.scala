@@ -25,7 +25,7 @@ class Transaction {
   var id: Long = _  // only for real transactions
 
   var head: Transaction = this
-  var next: Transaction = null
+  var next: Transaction = ???
 
   def this(hd: Transaction, tl: Transaction) = { this(); this.head = head; this.next = next }
 

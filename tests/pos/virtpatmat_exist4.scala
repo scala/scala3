@@ -17,7 +17,7 @@ trait MemberHandlers {
 }
 
 object Test {
-  var intp: IMain with MemberHandlers = null
+  var intp: IMain with MemberHandlers = ???
 
   val handlers = intp.handlers
   handlers.filterNot(_.importedSymbols.isEmpty).zipWithIndex foreach {

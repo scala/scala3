@@ -17,7 +17,7 @@ trait Toolbox {
 
 class Test(val tb: Toolbox) {
   import tb._
-  implicit val cap: Cap = null
+  implicit val cap: Cap = ???
 
   def foo(tree: Tree): Int = tree match {
     case Apply(fun, args) => 3

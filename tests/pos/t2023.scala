@@ -1,7 +1,7 @@
 trait C[A]
 
 object C {
-  implicit def ipl[A](implicit from: A => Ordered[A]): C[A] = null
+  implicit def ipl[A](implicit from: A => Ordered[A]): C[A] = ???
 }
 
 object P {

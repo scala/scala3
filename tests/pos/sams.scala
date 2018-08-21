@@ -82,7 +82,7 @@ class Foo[T] {
 }
 
 object Foo {
-  val f: Foo[Int] = null
+  val f: Foo[Int] = ???
   val m = f.toMap(_ % 2)
 }
 }

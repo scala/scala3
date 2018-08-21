@@ -6,10 +6,10 @@ object Test {
 
   def k[M[_], B](f: Int => M[B]): K[M, Int, B] = null
 
-  val okay1: K[StringW,Int,Int] = k{ (y: Int) => null: StringW[Int] }
-  val okay2 = k[StringW,Int]{ (y: Int) => null: W[String, Int] }
+  val okay1: K[StringW,Int,Int] = k{ (y: Int) => ??? : StringW[Int] }
+  val okay2 = k[StringW,Int]{ (y: Int) => ??? : W[String, Int] }
 
-  val crash: K[StringW,Int,Int] = k{ (y: Int) => null: W[String, Int] }
+  val crash: K[StringW,Int,Int] = k{ (y: Int) => ??? : W[String, Int] }
 
   // remove `extends NT[Int]`, and the last line gives an inference error
   // rather than a crash.
@@ -18,6 +18,6 @@ object Test {
   // argument expression's type is not compatible with formal parameter type;
   //  found   : Int => Test.W[String,Int]
   //  required: Int => ?M[?B]
-  //   val crash: K[StringW,Int,Int] = k{ (y: Int) => null: W[String, Int] }
+  //   val crash: K[StringW,Int,Int] = k{ (y: Int) => ??? : W[String, Int] }
   //                                   ^
 }

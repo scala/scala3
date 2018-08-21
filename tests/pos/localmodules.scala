@@ -16,7 +16,7 @@ object main {
 
   def main(args: Array[String]) = {
     val aa = new a;
-    val xx: aa.b.c = null;
+    val xx: aa.b.c = ???;
     Console.println(aa.bar(xx));
   }
 }

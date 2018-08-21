@@ -6,7 +6,7 @@ trait View[AIn] {
 }
 
 object Test {
-  val view: View[Int] = null
+  val view: View[Int] = ???
 
   view f2 5  // fails
 }

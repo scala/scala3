@@ -2,14 +2,14 @@ class ParseResult[+T]
 case class MemoEntry[+T](var r: Either[Nothing,ParseResult[_]])
 
 object Test {
-  def grow[T]: ParseResult[T] = (null: MemoEntry[T]) match {
+  def grow[T]: ParseResult[T] = (??? : MemoEntry[T]) match {
     case MemoEntry(Right(x: ParseResult[_])) => x.asInstanceOf[ParseResult[T]]
   }
 
   // what's the _$1 doing there?
   // def grow[T >: Nothing <: Any]: ParseResult[T] = {
   //   import OptionMatching._
-  //   runOrElse[MemoEntry[T], ParseResult[T]]((null: MemoEntry[T]))(((x1: MemoEntry[T]) =>
+  //   runOrElse[MemoEntry[T], ParseResult[T]]((??? : MemoEntry[T]))(((x1: MemoEntry[T]) =>
   //     (MemoEntry.unapply[T](x1).flatMap[ParseResult[T]](((x4: Either[Nothing,ParseResult[_]]) =>
   //       guard[Right[Nothing,ParseResult[_]]](x4.isInstanceOf[Right[Nothing,ParseResult[_]]], x4.asInstanceOf[Right[Nothing,ParseResult[_]]]).flatMap[ParseResult[T]](((cp3: Right[Nothing,ParseResult[_]]) =>
   //         scala.Right.unapply[Nothing, ParseResult[_]](cp3).flatMap[ParseResult[T]](((x5: ParseResult[_]) =>

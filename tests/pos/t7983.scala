@@ -25,7 +25,7 @@ class DivergenceTest {
 
     def map1[F, T](f: F)(implicit shape: Shape2[_ <: Flat, F, T]) = ???
 
-    map1(((1, null: Coffees), 1))
-    map1(((null: Coffees, 1), 1)) // fails with implicit divergence error in 2.11.0-M6, works under 2.10.3
+    map1(((1, ??? : Coffees), 1))
+    map1(((??? : Coffees, 1), 1)) // fails with implicit divergence error in 2.11.0-M6, works under 2.10.3
   }
 }

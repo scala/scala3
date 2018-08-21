@@ -4,7 +4,7 @@ class O[X]() {
     trait I[Y] {
         def foo(y: Y): Y = y;
     }
-    val j:I[X] = null;
+    val j: I[X] = ???;
 }
 
 object p extends O[C]() {

@@ -20,7 +20,7 @@ object test {
       def val_ix: X = val_ix;
       }
 
-      val i:I[G[P]] = null;
+      val i: I[G[P]] = ???;
 
       // Values with types P and i.X as seen from instances of M
       def val_mp: P = val_mp;
@@ -28,7 +28,7 @@ object test {
   }
 
   class N[Q]() extends M[F[Q]]() {
-      val j:J[G[Q]] = null;
+      val j: J[G[Q]] = ???;
 
       abstract class J[Y]() extends I[G[Y]]() {
       // Values with types Y and X as seen from instances of J

@@ -23,7 +23,7 @@ object Test {
 
 
   def main(args: Array[String]): Unit = {
-    implicit val taggedInt: Tagged[Int] = null
+    implicit val taggedInt: Tagged[Int] = ???
 
     assert(implicitly[Foo[Int]].value) // fooDefault
 

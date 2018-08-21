@@ -23,7 +23,7 @@ object test {
       def val_ix: X = val_ix;
       }
 
-      val i: I { type X = G { type Ig = P } } = null;
+      val i: I { type X = G { type Ig = P } } = ???;
 
       // Values with types P and i.X as seen from instances of M
       def val_mp: P = val_mp;
@@ -33,7 +33,7 @@ object test {
   abstract class N() extends M() {
       type Q;
       type P = F { type If = Q };
-      val j:J { type Y = G { type Ig = Q } } = null;
+      val j: J { type Y = G { type Ig = Q } } = ???;
 
       abstract class J() extends I() {
       type Y;

@@ -9,9 +9,9 @@ object Lub {
   // use named args transforms to include TypeTree(<lub.tpe>) in the AST before refchecks.
   def foo(a: L[_, _], b: Any) = 0
 
-  foo(b = 0, a = if (true) (null: L[A, A]) else (null: L[B, B]))
+  foo(b = 0, a = if (true) (??? : L[A, A]) else (??? : L[B, B]))
 
-  (if (true) (null: L[A, A]) else (null: L[B, B])).bar(b = 0, a = 0)
+  (if (true) (??? : L[A, A]) else (??? : L[B, B])).bar(b = 0, a = 0)
 }
 
 /*

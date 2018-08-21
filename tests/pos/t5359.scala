@@ -11,7 +11,7 @@ object test {
   case class S1[F[_]]() extends Step[F]
 
   // okay
-  (null: Step[Option]) match {
+  (??? : Step[Option]) match {
     case S1() =>
   }
 }

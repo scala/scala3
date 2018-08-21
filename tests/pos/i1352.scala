@@ -5,7 +5,7 @@ object Test {
   class Foo extends Parent with A
   class Bar extends Parent with B
 
-  (null: Parent) match {
+  (??? : Parent) match {
     case (_: A) | (_: B) =>
       /*
        * This case would incorrectly be reported as an error,

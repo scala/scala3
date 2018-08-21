@@ -8,5 +8,5 @@ object Tags {
   trait Disjunction
 
   def meh[M[_], A](ma: M[A]): M[A] = ma
-  meh(null: Int @@ Disjunction)//.asInstanceOf[Int @@ Disjunction])
+  meh(??? : Int @@ Disjunction)//.asInstanceOf[Int @@ Disjunction])
 }

@@ -31,7 +31,7 @@ class C {
   def model = Option(m).getOrElse(M("bar")()).copy("baz")("empty")
 
   // style points for this version
-  def modish = ((null: Option[M]) getOrElse new M()()).copy()("empty")
+  def modish = ((??? : Option[M]) getOrElse new M()()).copy()("empty")
 
   // various simplifications are too simple
   case class N(currentUser: String = "anon")
