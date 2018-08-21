@@ -729,11 +729,6 @@ object Symbols {
     override protected def prefixString = "ClassSymbol"
   }
 
-  class ErrorSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(NoCoord, ctx.nextId) {
-    type ThisName = underlying.ThisName
-    denot = underlying.denot
-  }
-
   @sharable object NoSymbol extends Symbol(NoCoord, 0) {
     override def associatedFile(implicit ctx: Context): AbstractFile = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = NoDenotation
