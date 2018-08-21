@@ -5,6 +5,7 @@ trait TreeOps extends TastyCore {
 
   trait TreeAPI {
     def pos(implicit ctx: Context): Position
+    def symbol(implicit ctx: Context): Symbol
   }
   implicit def TreeDeco(tree: Tree): TreeAPI
 
@@ -19,7 +20,7 @@ trait TreeOps extends TastyCore {
   }
 
   trait PackageClauseAPI {
-    def definition(implicit ctx: Context): Definition
+
   }
   implicit def PackageClauseDeco(pack: PackageClause): PackageClauseAPI
 

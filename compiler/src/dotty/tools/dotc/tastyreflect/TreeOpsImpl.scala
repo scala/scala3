@@ -13,6 +13,8 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
 
   def TreeDeco(tree: Tree): TreeAPI = new TreeAPI {
     def pos(implicit ctx: Context): Position = tree.pos
+    def symbol(implicit ctx: Context): Symbol = tree.symbol
+
   }
 
   object IsPackageClause extends IsPackageClauseExtractor {
@@ -30,7 +32,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
   }
 
   def PackageClauseDeco(pack: PackageClause): PackageClauseAPI = new PackageClauseAPI {
-    def definition(implicit ctx: Context): Definition = packageDefFromSym(pack.symbol)
+
   }
 
   // ----- Statements -----------------------------------------------
