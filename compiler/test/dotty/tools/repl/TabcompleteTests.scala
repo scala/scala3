@@ -60,4 +60,14 @@ class TabcompleteTests extends ReplTest {
       val expected = List("comp1", "comp2", "comp3")
       assertEquals(expected, tabComplete("(new Foo).comp").sorted)
     }
+
+  @Test def tabCompleteImport =
+    fromInitialState { implicit state =>
+      val src = "import java.io.FileDescriptor"
+      run(src)
+    }
+    .andThen { implicit state =>
+      val expected = List("FileDescriptor")
+      assertEquals(expected, tabComplete("val foo: FileDesc"))
+    }
 }

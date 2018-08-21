@@ -94,13 +94,22 @@ object Interactive {
   private def safely[T](op: => List[T]): List[T] =
     try op catch { case ex: TypeError => Nil }
 
+  private def addExtraImports(extraImports: List[untpd.Import], ctx: Context): Context = {
+    extraImports.foldLeft(ctx) { case (c, i) => c.importContext(i, i.symbol(c)) }
+  }
+
   /** Get possible completions from tree at `pos`
    *
+   *  @param pos The cursor position in the current compilation unit, where the
+   *             completion should be introduced.
+   *  @param extraImports Additional import statements that are not reflected in
+   *                      the compilation unit, but which should be considered.
    *  @return offset and list of symbols for possible completions
    */
-  def completions(pos: SourcePosition)(implicit ctx: Context): (Int, List[Symbol]) = {
+  def completions(pos: SourcePosition, extraImports: List[untpd.Import] = Nil)(implicit ctx: Context): (Int, List[Symbol]) = {
     val path = pathTo(ctx.compilationUnit.tpdTree, pos.pos)
-    computeCompletions(pos, path)(contextOfPath(path))
+    val completionCtx = addExtraImports(extraImports, contextOfPath(path))
+    computeCompletions(pos, path)(completionCtx)
   }
 
   private def computeCompletions(pos: SourcePosition, path: List[Tree])(implicit ctx: Context): (Int, List[Symbol]) = {
