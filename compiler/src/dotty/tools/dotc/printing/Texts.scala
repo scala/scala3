@@ -4,7 +4,7 @@ import language.implicitConversions
 
 object Texts {
 
-  abstract class Text {
+  sealed abstract class Text {
 
     protected def indentMargin = 2
 
@@ -46,9 +46,11 @@ object Texts {
           case Str(s1, lines2) => Str(s1 + s2, lines1 union lines2)
           case Fluid(Str(s1, lines2) :: prev) => Fluid(Str(s1 + s2, lines1 union lines2) :: prev)
           case Fluid(relems) => Fluid(that :: relems)
+          case Vertical(_) => throw new IllegalArgumentException("Unexpected Vertical.appendToLastLine")
         }
       case Fluid(relems) =>
         (this /: relems.reverse)(_ appendToLastLine _)
+      case Vertical(_) => throw new IllegalArgumentException("Unexpected Text.appendToLastLine(Vertical(...))")
     }
 
     private def appendIndented(that: Text)(width: Int): Text =

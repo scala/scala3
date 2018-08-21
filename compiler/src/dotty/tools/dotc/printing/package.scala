@@ -1,6 +1,6 @@
 package dotty.tools.dotc
 
-import core.StdNames.nme
+import core.StdNames.{nme,tpnme}
 import parsing.{precedence, minPrec, maxPrec, minInfixPrec}
 import util.Property.Key
 
@@ -9,7 +9,8 @@ package object printing {
   type Precedence = Int
 
   val DotPrec       = parsing.maxPrec
-  val AndPrec       = parsing.precedence(nme.raw.AMP)
+  val AndTypePrec   = parsing.precedence(tpnme.raw.AMP)
+  val OrTypePrec    = parsing.precedence(tpnme.raw.BAR)
   val OrPrec        = parsing.precedence(nme.raw.BAR)
   val InfixPrec     = parsing.minInfixPrec
   val GlobalPrec    = parsing.minPrec
