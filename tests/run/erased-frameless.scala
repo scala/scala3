@@ -5,7 +5,7 @@ import scala.annotation.implicitNotFound
 
 sealed trait HList
 sealed trait HNil extends HList
-final case object HNil extends HNil
+case object HNil extends HNil
 final case class ::[H, T <: HList](h: H, t: T) extends HList
 
 /** Generic representation os type T as a labelled sum of product. */

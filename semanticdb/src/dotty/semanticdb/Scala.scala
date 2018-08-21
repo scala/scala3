@@ -148,7 +148,7 @@ object Scala {
     }
   }
   object Descriptor {
-    final case object None extends Descriptor { def value: String = "" }
+    case object None extends Descriptor { def value: String = "" }
     final case class Term(value: String) extends Descriptor
     final case class Method(value: String, disambiguator: String) extends Descriptor
     final case class Type(value: String) extends Descriptor
