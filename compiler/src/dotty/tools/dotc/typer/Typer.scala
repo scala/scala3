@@ -1178,7 +1178,7 @@ class Typer extends Namer
   }
 
   def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Tree = track("typedThrow") {
-    val expr1 = typed(tree.expr, defn.ThrowableType)
+    val expr1 = typed(tree.expr, OrType(defn.ThrowableType, defn.NullType))
     Throw(expr1).withPos(tree.pos)
   }
 
