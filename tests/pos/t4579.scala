@@ -97,7 +97,7 @@ object LispCaseClasses extends Lisp {
    x6: Data, x7: Data, x8: Data, x9: Data): Data =
     CONS(x0, list(x1, x2, x3, x4, x5, x6, x7, x8, x9));
 
-  var curexp: Data = ???
+  var curexp: Data = null
   var trace: Boolean = false
   var indent: Int = 0
 
