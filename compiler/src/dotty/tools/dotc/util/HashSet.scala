@@ -133,7 +133,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
 
   /** Privileged access: Add entry `x` at the last position where an unsuccsessful
    *  `findEntryByHash` or `nextEntryByhash` operation returned. Needs to immediately
-   *  follow a `findEntryByhash` or `nextEntryByHash` operation that was unsucessful,
+   *  follow a `findEntryByhash` or `nextEntryByHash` operation that was unsuccessful,
    *  i.e. that returned `null`.
    */
   protected def addEntryAfterScan(x: T): T = addEntryAt(rover, x)

@@ -58,7 +58,7 @@ object Applications {
 
   /** Does `tp` fit the "get match" conditions as an unapply result type?
    *  This is the case of `tp` has a `get` member as well as a
-   *  parameterless `isDefined` member of result type `Boolean`.
+   *  parameterless `isEmpty` member of result type `Boolean`.
    */
   def isGetMatch(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context) =
     extractorMemberType(tp, nme.isEmpty, errorPos).isRef(defn.BooleanClass) &&
@@ -95,13 +95,14 @@ object Applications {
       val addendum =
         if (ctx.scala2Mode && unapplyName == nme.unapplySeq)
           "\nYou might want to try to rewrite the extractor to use `unapply` instead."
+        else ""
       ctx.error(em"$unapplyResult is not a valid result type of an $unapplyName method of an extractor$addendum", pos)
       Nil
     }
 
     if (unapplyName == nme.unapplySeq) {
       if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
-      else if (isGetMatch(unapplyResult, pos)) {
+      else if (isGetMatch(unapplyResult, pos) && getTp.derivesFrom(defn.SeqClass)) {
         val seqArg = getTp.elemType.hiBound
         if (seqArg.exists) args.map(Function.const(seqArg))
         else fail
@@ -690,7 +691,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
-      val originalProto = new FunProto(tree.args, IgnoredProto(pt), this)(argCtx(tree))
+      val originalProto = new FunProto(tree.args, IgnoredProto(pt))(this)(argCtx(tree))
       val fun1 = typedExpr(tree.fun, originalProto)
 
       // Warning: The following lines are dirty and fragile. We record that auto-tupling was demanded as
@@ -1365,7 +1366,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       alts filter (isApplicable(_, argTypes, resultType))
 
     val candidates = pt match {
-      case pt @ FunProto(args, resultType, _) =>
+      case pt @ FunProto(args, resultType) =>
         val numArgs = args.length
         val normArgs = args.mapConserve {
           case Block(Nil, expr) => expr

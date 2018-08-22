@@ -274,7 +274,7 @@ object TastyFormat {
 
     final val OBJECTCLASS = 23       // The name of an object class (or: module class) `<name>$`.
 
-    final val SIGNED = 63            // A pair of a name and a signature, used to idenitfy
+    final val SIGNED = 63            // A pair of a name and a signature, used to identify
                                      // possibly overloaded methods.
   }
   object NameTags extends NameTags

@@ -72,7 +72,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     myMacroClassLoader
   }
 
-  override def phaseName: String = "reifyQuotes"
+  override def phaseName: String = ReifyQuotes.name
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
@@ -607,6 +607,8 @@ class ReifyQuotes extends MacroTransformWithImplicits {
 }
 
 object ReifyQuotes {
+  val name = "reifyQuotes"
+
   def toValue(tree: Tree): Option[Any] = tree match {
     case Literal(Constant(c)) => Some(c)
     case Block(Nil, e) => toValue(e)

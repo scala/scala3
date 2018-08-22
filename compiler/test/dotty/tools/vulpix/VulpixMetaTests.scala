@@ -9,7 +9,7 @@ import TestConfiguration._
 
 /** Meta tests for the Vulpix test suite. This test follows the structure of
  *  CompilationTests.scala. It is meant to be called from bash to diff with
- *  output againts an expected result.
+ *  output against an expected result.
  */
 @Category(Array(classOf[dotty.VulpixMetaTests]))
 class VulpixMetaTests extends ParallelTesting {

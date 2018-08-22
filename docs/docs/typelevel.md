@@ -332,7 +332,7 @@ transparent def concat(xs: Tuple, ys: Tuple): Tuple = {
 The transparent `concat` method makes use of two helper functions, `concatTyped` (described in the last section) and `concatImpl`. `concatTyped` is called as the right hand side of an `erased` value `r`. Since `r` is `erased`, no code is generated for its definition.
 `concatImpl` is a regular, non-transparent function that implements `concat` on generic tuples. It is not inlineable, and its result type is always `Tuple`. The actual code for `concat` calls `concatImpl` and casts its result to type `r.Type`, the computed result type of the concatenation. This gives the best of both worlds: Compact code and expressive types.
 
-One might criticize that this scheme involves code duplication. In the example above, the recursive `concat` algorithm had to be implemented twice, once as a regular function, the other time as a transparent function. However, in practice it is is quite likely that the regular function would use optimized data representatons and algortihms that do not lend themselves easily to a typelevel interpretation. In these cases a dual implementation is required anyway.
+One might criticize that this scheme involves code duplication. In the example above, the recursive `concat` algorithm had to be implemented twice, once as a regular function, the other time as a transparent function. However, in practice it is is quite likely that the regular function would use optimized data representatons and algorithms that do not lend themselves easily to a typelevel interpretation. In these cases a dual implementation is required anyway.
 
 ## Code Specialization
 

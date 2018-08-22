@@ -16,3 +16,6 @@ repeatedArgs213.scala
 # Wildcard assigned to something else while unpickling
 from-tasty-wildcard.scala
 dependent5.scala
+
+# Error printing parent constructors that are blocks
+default-super.scala

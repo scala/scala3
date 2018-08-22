@@ -34,7 +34,7 @@ m.turnedOn.turnedOn // ERROR
 
 Note that in the code above the actual implicit arguments for `IsOff` are never used at runtime; they serve only to establish the right constraints at compile time.
 As these terms are never used at runtime there is not real need to have them around, but they still need to be
-present in some form in the generated code to be able to do separate compilation and retain binary compatiblity.
+present in some form in the generated code to be able to do separate compilation and retain binary compatibility.
 
 How to define erased terms?
 -------------------------------
@@ -85,7 +85,7 @@ State machine with erased evidence example
 The following example is an extended implementation of a simple state machine which can be in a state `On` or `Off`.
 The machine can change state from `Off` to `On` with `turnedOn` only if it is currently `Off`, 
 conversely from `On` to `Off` with `turnedOff` only if it is currently `On`. These last constraint are
-captured with the `IsOff[S]` and `IsOn[S]` implicit evidence only exist for `IsOff[Off]` and `InOn[On]`. 
+captured with the `IsOff[S]` and `IsOn[S]` implicit evidence only exist for `IsOff[Off]` and `IsOn[On]`. 
 For example, not allowing calling `turnedOff` on in an `Off` state as we would require an evidence `IsOn[Off]` 
 that will not be found.
 
@@ -112,7 +112,7 @@ object IsOff {
 @implicitNotFound("State is must be On")
 class IsOn[S <: State]
 object IsOn {
-  // def isOn will not exist at runtime, the compiler will only require that this evidence exists at compile time
+  // erased val isOn will not exist at runtime, the compiler will only require that this evidence exists at compile time
   erased implicit val isOn: IsOn[On] = new IsOn[On]
 }
 
@@ -186,8 +186,8 @@ Rules
 
 
 5. Erasure Semantics
-   * All `erased` paramters are removed from the function
-   * All argument to `erased` paramters are not passed to the function
+   * All `erased` parameters are removed from the function
+   * All argument to `erased` parameters are not passed to the function
    * All `erased` definitions are removed
    * All `(erased T1, T2, ..., TN) => R` and `(implicit erased T1, T2, ..., TN) => R` become `() => R`
 
@@ -199,5 +199,5 @@ Rules
 
 7. Overriding
    * Member definitions overidding each other must both be `erased` or not be `erased`
-   * `def foo(x: T): U` cannot be overriden by `def foo(erased x: T): U` an viceversa
+   * `def foo(x: T): U` cannot be overridden by `def foo(erased x: T): U` an viceversa
 

@@ -60,7 +60,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.plugins.{PluginPhase, StandardPlugin}
-import dotty.tools.dotc.transform.{LinkAll, Pickler}
+import dotty.tools.dotc.transform.{Pickler, ReifyQuotes}
 
 class DivideZero extends StandardPlugin {
   val name: String = "divideZero"
@@ -75,7 +75,7 @@ class DivideZeroPhase extends PluginPhase {
   val phaseName = "divideZero"
 
   override val runsAfter = Set(Pickler.name)
-  override val runsBefore = Set(LinkAll.name)
+  override val runsBefore = Set(ReifyQuotes.name)
 
   override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
     tree match {

@@ -265,7 +265,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
         } else {
             // println(i"not an enum: ${t.symbol} / ${t.symbol.denot.owner} / ${t.symbol.denot.owner.isTerm} / ${t.symbol.denot.owner.flags}")
             assert(toDenot(t.symbol).name.is(DefaultGetterName),
-              s"${toDenot(t.symbol).name.debugString}") // this should be default getter. do not emmit.
+              s"${toDenot(t.symbol).name.debugString}") // this should be default getter. do not emit.
         }
       case t: SeqLiteral =>
         val arrAnnotV: AnnotationVisitor = av.visitArray(name)
@@ -626,7 +626,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
     def symbol: Symbol = a.tree.symbol
 
-    def args: List[Tree] = List.empty // those arguments to scala-defined annotations. they are never emmited
+    def args: List[Tree] = List.empty // those arguments to scala-defined annotations. they are never emitted
   }
 
   def assocsFromApply(tree: Tree): List[(Name, Tree)] = {
@@ -810,7 +810,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def annotations: List[Annotation] = toDenot(sym).annotations
     def companionModuleMembers: List[Symbol] =  {
       // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
-      // not local classes of the companion module (E in the exmaple) that were lifted by lambdalift.
+      // not local classes of the companion module (E in the example) that were lifted by lambdalift.
       if (linkedClass.isTopLevelModuleClass) /*exitingPickler*/ linkedClass.memberClasses
       else Nil
     }
@@ -986,7 +986,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     def summaryString: String = tp.showSummary
 
     def params: List[Symbol] =
-      Nil // backend uses this to emmit annotations on parameter lists of forwarders
+      Nil // backend uses this to emit annotations on parameter lists of forwarders
           // to static methods of companion class
           // in Dotty this link does not exists: there is no way to get from method type
           // to inner symbols of DefDef

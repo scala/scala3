@@ -17,18 +17,14 @@ affect implicits on the language level.
 
           /*!*/ implicit val x = ...    // error: type must be given explicitly
 
-          /*!*/ next(): Context = ...   // error: type must be given explicitly
+          /*!*/ implicit def y = ...    // error: type must be given explicitly
 
           val y = {
             implicit val ctx = this.ctx // ok
             ...
           }
 
- 2. Implicit parameters may not have singleton types.
-
-        /*!*/ def f(implicit x: y.type) // error `y.type` not allowed as type of implicit
-
- 3. Nesting is now taken into account for selecting an implicit.
+ 2. Nesting is now taken into account for selecting an implicit.
     Consider for instance the following scenario:
 
         def f(implicit i: C) = {
@@ -41,7 +37,7 @@ affect implicits on the language level.
     more deeply than `i`. Previously, this would have resulted in an
     ambiguity error.
 
- 4. The treatment of ambiguity errors has changed. If an ambiguity is encountered
+ 3. The treatment of ambiguity errors has changed. If an ambiguity is encountered
     in some recursive step of an implicit search, the ambiguity is propagated to the caller.
     Example: Say you have the following definitions:
 
@@ -69,7 +65,7 @@ affect implicits on the language level.
     which implements negation directly. For any query type `Q`: `Not[Q]` succeeds if and only if
     the implicit search for `Q` fails.
 
- 5. The treatment of divergence errors has also changed. A divergent implicit is
+ 4. The treatment of divergence errors has also changed. A divergent implicit is
     treated as a normal failure, after which alternatives are still tried. This also makes
     sense: Encountering a divergent implicit means that we assume that no finite
     solution can be found on the given path, but another path can still be tried. By contrast

@@ -85,6 +85,12 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => tree
   }
 
+  /** If this is a block, its expression part */
+  def stripBlock(tree: Tree): Tree = unsplice(tree) match {
+    case Block(_, expr) => stripBlock(expr)
+    case _ => tree
+  }
+
   /** The number of arguments in an application */
   def numArgs(tree: Tree): Int = unsplice(tree) match {
     case Apply(fn, args) => numArgs(fn) + args.length

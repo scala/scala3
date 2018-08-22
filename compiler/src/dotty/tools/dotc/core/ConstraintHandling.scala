@@ -341,19 +341,22 @@ trait ConstraintHandling {
    *  and propagate all bounds.
    *  @param tvars   See Constraint#add
    */
-  def addToConstraint(tl: TypeLambda, tvars: List[TypeVar]): Unit =
-    assert {
-      checkPropagated(i"initialized $tl") {
-        constraint = constraint.add(tl, tvars)
-        tl.paramNames.indices.forall { i =>
-          val param = tl.paramRefs(i)
-          val bounds = constraint.nonParamBounds(param)
-          val lower = constraint.lower(param)
-          val upper = constraint.upper(param)
-          if (lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass) ||
-            upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) constr.println(i"INIT*** $tl")
-          lower.forall(addOneBound(_, bounds.hi, isUpper = true)) &&
-            upper.forall(addOneBound(_, bounds.lo, isUpper = false))
+  def addToConstraint(tl: TypeLambda, tvars: List[TypeVar]): Boolean =
+    checkPropagated(i"initialized $tl") {
+      constraint = constraint.add(tl, tvars)
+      tl.paramRefs.forall { param =>
+        constraint.entry(param) match {
+          case bounds: TypeBounds =>
+            val lower = constraint.lower(param)
+            val upper = constraint.upper(param)
+            if (lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass) ||
+              upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) constr.println(i"INIT*** $tl")
+            lower.forall(addOneBound(_, bounds.hi, isUpper = true)) &&
+              upper.forall(addOneBound(_, bounds.lo, isUpper = false))
+          case _ =>
+            // Happens if param was already solved while processing earlier params of the same TypeLambda.
+            // See #4720.
+            true
         }
       }
     }

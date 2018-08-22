@@ -152,7 +152,7 @@ object RefChecks {
    *  4. Check that every member with an `override` modifier
    *     overrides some other member.
    *  TODO check that classes are not overridden
-   *  TODO This still needs to be cleaned up; the current version is a staright port of what was there
+   *  TODO This still needs to be cleaned up; the current version is a straight port of what was there
    *       before, but it looks too complicated and method bodies are far too large.
    */
   private def checkAllOverrides(clazz: Symbol)(implicit ctx: Context): Unit = {

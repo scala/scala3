@@ -191,8 +191,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def isLess(param1: TypeParamRef, param2: TypeParamRef): Boolean =
     upper(param1).contains(param2)
 
-  def nonParamBounds(param: TypeParamRef): TypeBounds =
-    entry(param).asInstanceOf[TypeBounds]
+  def nonParamBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds =
+    entry(param).bounds
 
   def fullLowerBound(param: TypeParamRef)(implicit ctx: Context): Type =
     (nonParamBounds(param).lo /: minLower(param))(_ | _)

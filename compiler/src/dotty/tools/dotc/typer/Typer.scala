@@ -876,7 +876,7 @@ class Typer extends Namer
               expr1.tpe
             case _ =>
               val protoArgs = args map (_ withType WildcardType)
-              val callProto = FunProto(protoArgs, WildcardType, this)
+              val callProto = FunProto(protoArgs, WildcardType)(this)
               val expr1 = typedExpr(expr, callProto)
               fnBody = cpy.Apply(fnBody)(untpd.TypedSplice(expr1), args)
               expr1.tpe
@@ -960,7 +960,7 @@ class Typer extends Namer
                      |position = ${tree.pos}, raw type = ${mt.toString}""") // !!! DEBUG. Eventually, convert to an error?
                 }
                 else if ((tree.tpt `eq` untpd.ImplicitEmptyTree) && mt.paramNames.isEmpty)
-                  // Note implicitness of function in target type sicne there are no method parameters that indicate it.
+                  // Note implicitness of function in target type since there are no method parameters that indicate it.
                   TypeTree(defn.FunctionOf(Nil, mt.resType, isImplicit = true, isErased = false))
                 else
                   EmptyTree
@@ -1255,9 +1255,10 @@ class Typer extends Namer
           args = args.take(tparams.length)
         }
         def typedArg(arg: untpd.Tree, tparam: ParamInfo) = {
+          def tparamBounds = tparam.paramInfoAsSeenFrom(tpt1.tpe.appliedTo(tparams.map(_ => TypeBounds.empty)))
           val (desugaredArg, argPt) =
             if (ctx.mode is Mode.Pattern)
-              (if (untpd.isVarPattern(arg)) desugar.patternVar(arg) else arg, tparam.paramInfo)
+              (if (untpd.isVarPattern(arg)) desugar.patternVar(arg) else arg, tparamBounds)
             else
               (arg, WildcardType)
           if (tpt1.symbol.isClass)
@@ -1276,10 +1277,10 @@ class Typer extends Namer
                 // An unbounded `_` automatically adapts to type parameter bounds. This means:
                 // If we have wildcard application C[_], where `C` is a class replace
                 // with C[_ >: L <: H] where `L` and `H` are the bounds of the corresponding
-                // type parameter in `C`, avoiding any referemces to parameters of `C`.
-                // The transform does not apply for patters, where empty bounds translate to
+                // type parameter in `C`.
+                // The transform does not apply for patterns, where empty bounds translate to
                 // wildcard identifiers `_` instead.
-                res = res.withType(avoid(tparam.paramInfo, tpt1.tpe.typeParamSymbols))
+                res = res.withType(tparamBounds)
               case _ =>
             }
             res
@@ -2060,17 +2061,18 @@ class Typer extends Namer
     }
 
     def tryApply(implicit ctx: Context) = {
-      val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
+      val pt1 = pt.withContext(ctx)
+      val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt1)
       sel.pushAttachment(InsertedApply, ())
       if (sel.tpe.isError) sel
-      else try adapt(simplify(sel, pt, locked), pt, locked) finally sel.removeAttachment(InsertedApply)
+      else try adapt(simplify(sel, pt1, locked), pt1, locked) finally sel.removeAttachment(InsertedApply)
     }
 
     def tryImplicit(fallBack: => Tree) =
-      tryInsertImplicitOnQualifier(tree, pt, locked).getOrElse(fallBack)
+      tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked).getOrElse(fallBack)
 
     pt match {
-      case pt @ FunProto(Nil, _, _)
+      case pt @ FunProto(Nil, _)
       if tree.symbol.allOverriddenSymbols.exists(_.info.isNullaryMethod) &&
          tree.getAttachment(DroppedEmptyArgs).isEmpty =>
         tree.putAttachment(DroppedEmptyArgs, ())
@@ -2344,7 +2346,7 @@ class Typer extends Namer
       *
       *     val x: AnyRef = f
       *
-      *  That's intentional, we want to fail here, otherwise some unsuccesful implicit searches
+      *  That's intentional, we want to fail here, otherwise some unsuccessful implicit searches
       *  would go undetected.
       *
       *  Examples for these cases are found in run/implicitFuns.scala and neg/i2006.scala.

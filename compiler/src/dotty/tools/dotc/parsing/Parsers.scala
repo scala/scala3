@@ -262,7 +262,7 @@ object Parsers {
     def deprecationWarning(msg: => Message, offset: Int = in.offset) =
       ctx.deprecationWarning(msg, source atPos Position(offset))
 
-    /** Issue an error at current offset taht input is incomplete */
+    /** Issue an error at current offset that input is incomplete */
     def incompleteInputError(msg: => Message) =
       ctx.incompleteInputError(msg, source atPos Position(in.offset))
 

@@ -1,4 +1,4 @@
-package scala.tasty
+package scala.tasty.reflect
 
 trait FlagSet {
   def isProtected: Boolean

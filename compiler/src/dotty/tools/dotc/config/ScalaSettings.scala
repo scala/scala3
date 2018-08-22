@@ -145,8 +145,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val YshowVarBounds = BooleanSetting("-Yshow-var-bounds", "Print type variables with their bounds")
   val YshowNoInline = BooleanSetting("-Yshow-no-inline", "Show inlined code without the 'inlined from' info")
 
-  /** Linker specific flags */
-  val Xlink = BooleanSetting("-Xlink", "Recompile library code with the application.")
   val YnoDecodeStacktraces = BooleanSetting("-Yno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.")
 
   /** Dottydoc specific settings */

@@ -196,13 +196,16 @@ class CompilationTests extends ParallelTesting {
     val dotty2Group = TestGroup("tastyBootstrap/dotty2")
     val libGroup = TestGroup("tastyBootstrap/lib")
 
+    // Make sure that the directory is clean
+    dotty.tools.io.Directory(defaultOutputDir + "tastyBootstrap").deleteRecursively()
+
     val opt = TestFlags(
       // compile with bootstrapped library on cp:
       defaultOutputDir + libGroup + "/src/:" +
       // as well as bootstrapped compiler:
       defaultOutputDir + dotty1Group + "/dotty/:" +
       // and the other compiler dependecies:
-      Jars.dottyInterfaces + ":" + Jars.jline,
+      Jars.dottyInterfaces + ":" + Jars.jlineTerminal + ":" + Jars.jlineReader,
       Array("-Ycheck-reentrant", "-Yemit-tasty-in-class")
     )
 

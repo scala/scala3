@@ -75,8 +75,6 @@ class CompilerOptions {
 }
 
 class Worker extends Driver {
-  override def newCompiler(implicit ctx: Context): Compiler = new Compiler
-
   @Benchmark
   def compile(state: CompilerOptions): Unit = {
     val res = process(state.opts)

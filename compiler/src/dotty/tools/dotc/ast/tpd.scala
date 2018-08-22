@@ -76,7 +76,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def seq(stats: List[Tree], expr: Tree)(implicit ctx: Context): Tree =
     if (stats.isEmpty) expr
     else expr match {
-      case Block(estats, eexpr) => cpy.Block(expr)(stats ::: estats, eexpr)
+      case Block(estats, eexpr) =>
+        cpy.Block(expr)(stats ::: estats, eexpr).withType(ta.avoidingType(eexpr, stats))
       case _ => Block(stats, expr)
     }
 
@@ -981,7 +982,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type], expectedType: Type, isAnnotConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val typer = ctx.typer
-    val proto = new FunProtoTyped(args, expectedType, typer)
+    val proto = new FunProtoTyped(args, expectedType)(typer)
     val denot = receiver.tpe.member(method)
     assert(denot.exists, i"no member $receiver . $method, members = ${receiver.tpe.decls}")
     val selected =
@@ -1016,7 +1017,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
             lastParam.tpe match {
               case defn.ArrayOf(el2) if el2 <:< el =>
                 // we have a JavaSeqLiteral with a more precise type
-                // we cannot construct a tree as JavaSeqLiteral infered to precise type
+                // we cannot construct a tree as JavaSeqLiteral inferred to precise type
                 // if we add typed than it would be both type-correct and
                 // will pass Ycheck
                 prefix ::: List(tpd.Typed(lastParam, TypeTree(defn.ArrayOf(el))))

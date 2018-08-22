@@ -16,7 +16,7 @@ import model._
 trait MemberLookup {
   /** Performs a lookup based on the provided (pruned) query string
    *
-   *  Will return a `Tooltip` if unsucessfull, otherwise a LinkToEntity or
+   *  Will return a `Tooltip` if unsuccessful, otherwise a LinkToEntity or
    *  LinkToExternal
    */
   def lookup(entity: Entity, packages: Map[String, Package], query: String): Option[Entity] = {

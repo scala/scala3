@@ -259,7 +259,7 @@ object Erasure {
           cast(ref(defn.runtimeMethodRef(nme.toObjectArray)).appliedTo(tree), pt)
 
         // When casting between two EVTs, we need to check which one underlies the other to determine
-        // wheter u2evt or evt2u should be used.
+        // whether u2evt or evt2u should be used.
         case (tp1 @ ErasedValueType(tycon1, underlying1), tp2 @ ErasedValueType(tycon2, underlying2)) =>
           if (tp1 <:< underlying2)
             // Cast EVT(tycon1, underlying1) to EVT(tycon2, EVT(tycon1, underlying1))
@@ -500,7 +500,7 @@ object Erasure {
       val Apply(fun, args) = tree
       if (fun.symbol == defn.cbnArg)
         typedUnadapted(args.head, pt)
-      else typedExpr(fun, FunProto(args, pt, this)) match {
+      else typedExpr(fun, FunProto(args, pt)(this)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1
         case fun1 =>
