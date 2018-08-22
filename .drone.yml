@@ -23,7 +23,7 @@ pipeline:
   # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
   test:
     group: test
-    image: lampepfl/dotty:2018-06-29
+    image: lampepfl/dotty:2018-08-22
     commands:
       - cp -R . /tmp/1/ && cd /tmp/1/
       - ./project/scripts/sbt ";compile ;test"
@@ -31,14 +31,14 @@ pipeline:
 
   test_bootstrapped:
     group: test
-    image: lampepfl/dotty:2018-06-29
+    image: lampepfl/dotty:2018-08-22
     commands:
       - cp -R . /tmp/2/ && cd /tmp/2/
       - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
 
   test_sbt:
     group: test
-    image: lampepfl/dotty:2018-06-29
+    image: lampepfl/dotty:2018-08-22
     commands:
       - cp -R . /tmp/4/ && cd /tmp/4/
       - ./project/scripts/sbt sbt-dotty/scripted
@@ -48,7 +48,7 @@ pipeline:
 
   # DOCUMENTATION:
   documentation:
-    image: lampepfl/dotty:2018-06-29
+    image: lampepfl/dotty:2018-08-22
     commands:
       - ./project/scripts/genDocs
     secrets: [ bot_pass ]
@@ -60,7 +60,7 @@ pipeline:
   # PUBLISHING:
   # Publishing expect NIGHTLYBUILD or RELEASEBUILD to be set. See dottyVersion in Build.scala
   publish_nightly:
-    image: lampepfl/dotty:2018-06-29
+    image: lampepfl/dotty:2018-08-22
     environment:
       - NIGHTLYBUILD=yes
     commands:
@@ -71,7 +71,7 @@ pipeline:
       environment: nightly
 
   publish_release:
-    image: lampepfl/dotty:2018-06-29
+    image: lampepfl/dotty:2018-08-22
     environment:
       - RELEASEBUILD=yes
     commands:
@@ -95,7 +95,7 @@ pipeline:
       event: tag
 
   publish_sbt_release:
-    image: lampepfl/dotty:2018-06-29
+    image: lampepfl/dotty:2018-08-22
     environment:
       - RELEASEBUILD=yes
     commands:
