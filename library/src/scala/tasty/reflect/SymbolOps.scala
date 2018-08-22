@@ -4,11 +4,11 @@ package reflect
 /** Tasty reflect symbol */
 trait SymbolOps extends TastyCore {
 
-  trait SymbolasAPI {
+  trait SymbolAPI {
     def isEmpty: Boolean
     def localContext(implicit ctx: Context): Context
     def tree(implicit ctx: Context): Option[Definition]
   }
-  implicit def SymbolasDeco(symbol: Symbol): SymbolasAPI
+  implicit def SymbolDeco(symbol: Symbol): SymbolAPI
 
 }
