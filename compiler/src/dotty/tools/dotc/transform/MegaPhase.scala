@@ -66,6 +66,7 @@ object MegaPhase {
     def prepareForClosure(tree: Closure)(implicit ctx: Context) = ctx
     def prepareForMatch(tree: Match)(implicit ctx: Context) = ctx
     def prepareForCaseDef(tree: CaseDef)(implicit ctx: Context) = ctx
+    def prepareForLabeled(tree: Labeled)(implicit ctx: Context) = ctx
     def prepareForReturn(tree: Return)(implicit ctx: Context) = ctx
     def prepareForTry(tree: Try)(implicit ctx: Context) = ctx
     def prepareForSeqLiteral(tree: SeqLiteral)(implicit ctx: Context) = ctx
@@ -98,6 +99,7 @@ object MegaPhase {
     def transformClosure(tree: Closure)(implicit ctx: Context): Tree = tree
     def transformMatch(tree: Match)(implicit ctx: Context): Tree = tree
     def transformCaseDef(tree: CaseDef)(implicit ctx: Context): Tree = tree
+    def transformLabeled(tree: Labeled)(implicit ctx: Context): Tree = tree
     def transformReturn(tree: Return)(implicit ctx: Context): Tree = tree
     def transformTry(tree: Try)(implicit ctx: Context): Tree = tree
     def transformSeqLiteral(tree: SeqLiteral)(implicit ctx: Context): Tree = tree
@@ -165,6 +167,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
           case tree: ValDef => goValDef(tree, start)
           case tree: DefDef => goDefDef(tree, start)
           case tree: TypeDef => goTypeDef(tree, start)
+          case tree: Labeled => goLabeled(tree, start)
           case tree: Bind => goBind(tree, start)
           case _ => goOther(tree, start)
         }
@@ -249,6 +252,11 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         implicit val ctx = prepTypeDef(tree, start)(outerCtx)
         val rhs = transformTree(tree.rhs, start)(localContext)
         goTypeDef(cpy.TypeDef(tree)(tree.name, rhs), start)
+      case tree: Labeled =>
+        implicit val ctx = prepLabeled(tree, start)(outerCtx)
+        val bind = transformTree(tree.bind, start).asInstanceOf[Bind]
+        val expr = transformTree(tree.expr, start)
+        goLabeled(cpy.Labeled(tree)(bind, expr), start)
       case tree: Bind =>
         implicit val ctx = prepBind(tree, start)(outerCtx)
         val body = transformTree(tree.body, start)
@@ -741,6 +749,21 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     if (phase == null) tree
     else phase.transformCaseDef(tree)(ctx) match {
       case tree1: CaseDef => goCaseDef(tree1, phase.idxInGroup + 1)
+      case tree1 => transformNode(tree1, phase.idxInGroup + 1)
+    }
+  }
+
+  def prepLabeled(tree: Labeled, start: Int)(implicit ctx: Context): Context = {
+    val phase = nxReturnPrepPhase(start)
+    if (phase == null) ctx
+    else prepLabeled(tree, phase.idxInGroup + 1)(phase.prepareForLabeled(tree))
+  }
+
+  def goLabeled(tree: Labeled, start: Int)(implicit ctx: Context): Tree = {
+    val phase = nxReturnTransPhase(start)
+    if (phase == null) tree
+    else phase.transformLabeled(tree)(ctx) match {
+      case tree1: Labeled => goLabeled(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }

@@ -276,6 +276,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Closure(env: List[Tree], meth: Tree, tpt: Tree): Closure = new Closure(env, meth, tpt)
   def Match(selector: Tree, cases: List[CaseDef]): Match = new Match(selector, cases)
   def CaseDef(pat: Tree, guard: Tree, body: Tree): CaseDef = new CaseDef(pat, guard, body)
+  def Labeled(bind: Bind, expr: Tree): Labeled = new Labeled(bind, expr)
   def Return(expr: Tree, from: Tree): Return = new Return(expr, from)
   def Try(expr: Tree, cases: List[CaseDef], finalizer: Tree): Try = new Try(expr, cases, finalizer)
   def SeqLiteral(elems: List[Tree], elemtpt: Tree): SeqLiteral = new SeqLiteral(elems, elemtpt)

@@ -466,6 +466,9 @@ trait TypeAssigner {
   def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) =
     tree.withType(ctx.typeComparer.lub(cases.tpes))
 
+  def assignType(tree: untpd.Labeled)(implicit ctx: Context) =
+    tree.withType(tree.bind.symbol.info)
+
   def assignType(tree: untpd.Return)(implicit ctx: Context) =
     tree.withType(defn.NothingType)
 

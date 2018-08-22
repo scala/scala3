@@ -191,7 +191,7 @@ class TreeChecker extends Phase with SymTransformer {
     def assertDefined(tree: untpd.Tree)(implicit ctx: Context) =
       if (
         tree.symbol.maybeOwner.isTerm &&
-        !(tree.symbol.is(Label) && !tree.symbol.owner.isClass && ctx.phase.labelsReordered) // labeldefs breaks scoping
+        !(tree.symbol.is(Label | Method) && !tree.symbol.owner.isClass && ctx.phase.labelsReordered) // labeldefs breaks scoping
       )
         assert(nowDefinedSyms contains tree.symbol, i"undefined symbol ${tree.symbol} at line " + tree.pos.line)
 
@@ -444,6 +444,22 @@ class TreeChecker extends Phase with SymTransformer {
         case _ =>
       }
       super.typedStats(trees, exprOwner)
+    }
+
+    override def typedLabeled(tree: untpd.Labeled)(implicit ctx: Context): Labeled = {
+      checkOwner(tree.bind)
+      withDefinedSyms(tree.bind :: Nil) { super.typedLabeled(tree) }
+    }
+
+    override def typedReturn(tree: untpd.Return)(implicit ctx: Context): Return = {
+      val tree1 = super.typedReturn(tree)
+      val from = tree1.from
+      val fromSym = from.symbol
+      if (fromSym.is(Label)) {
+        assert(!fromSym.is(Method), i"return from a label-def $fromSym at $tree")
+        assertDefined(from)
+      }
+      tree1
     }
 
     override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(implicit ctx: Context): Tree =
