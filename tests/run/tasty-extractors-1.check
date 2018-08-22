@@ -37,40 +37,40 @@ Type.ConstantType(Constant.Int(3))
 Term.Inlined(None, Nil, Term.If(Term.Typed(Term.Literal(Constant.Boolean(true)), TypeTree.TypeIdent("Boolean")), Term.Literal(Constant.Int(1)), Term.Literal(Constant.Int(2))))
 Type.SymRef(ClassDef("Int", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
-Term.Inlined(None, Nil, Term.Match(Term.Literal(Constant.String("a")), List(CaseDef(Pattern.Value(Term.Literal(Constant.String("a"))), None, Term.Block(Nil, Term.Literal(Constant.Unit()))))))
+Term.Inlined(None, Nil, Term.Match(Term.Literal(Constant.String("a")), List(CaseDef(Pattern.Value(Term.Literal(Constant.String("a"))), None, Term.Literal(Constant.Unit())))))
 Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
-Term.Inlined(None, Nil, Term.Match(Term.Literal(Constant.String("b")), List(CaseDef(Pattern.Bind("n", Pattern.Value(Term.Ident("_"))), None, Term.Block(Nil, Term.Literal(Constant.Unit()))))))
+Term.Inlined(None, Nil, Term.Match(Term.Literal(Constant.String("b")), List(CaseDef(Pattern.Bind("n", Pattern.Value(Term.Ident("_"))), None, Term.Literal(Constant.Unit())))))
 Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
-Term.Inlined(None, Nil, Term.Match(Term.Literal(Constant.String("c")), List(CaseDef(Pattern.Bind("n", Pattern.TypeTest(TypeTree.TypeIdent("String"))), None, Term.Block(Nil, Term.Literal(Constant.Unit()))))))
+Term.Inlined(None, Nil, Term.Match(Term.Literal(Constant.String("c")), List(CaseDef(Pattern.Bind("n", Pattern.TypeTest(TypeTree.TypeIdent("String"))), None, Term.Literal(Constant.Unit())))))
 Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
-Term.Inlined(None, Nil, Term.Match(Term.Literal(Constant.String("e")), List(CaseDef(Pattern.Value(Term.Ident("_")), None, Term.Block(Nil, Term.Literal(Constant.Unit()))))))
+Term.Inlined(None, Nil, Term.Match(Term.Literal(Constant.String("e")), List(CaseDef(Pattern.Value(Term.Ident("_")), None, Term.Literal(Constant.Unit())))))
 Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
-Term.Inlined(None, Nil, Term.Match(Term.Literal(Constant.String("f")), List(CaseDef(Pattern.TypeTest(TypeTree.TypeIdent("String")), None, Term.Block(Nil, Term.Literal(Constant.Unit()))))))
+Term.Inlined(None, Nil, Term.Match(Term.Literal(Constant.String("f")), List(CaseDef(Pattern.TypeTest(TypeTree.TypeIdent("String")), None, Term.Literal(Constant.Unit())))))
 Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
-Term.Inlined(None, Nil, Term.Match(Term.Typed(Term.Literal(Constant.String("g")), TypeTree.TypeIdent("Any")), List(CaseDef(Pattern.Alternative(List(Pattern.TypeTest(TypeTree.TypeIdent("String")), Pattern.TypeTest(TypeTree.TypeIdent("Int")))), None, Term.Block(Nil, Term.Literal(Constant.Unit()))))))
+Term.Inlined(None, Nil, Term.Match(Term.Typed(Term.Literal(Constant.String("g")), TypeTree.TypeIdent("Any")), List(CaseDef(Pattern.Alternative(List(Pattern.TypeTest(TypeTree.TypeIdent("String")), Pattern.TypeTest(TypeTree.TypeIdent("Int")))), None, Term.Literal(Constant.Unit())))))
 Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
-Term.Inlined(None, Nil, Term.Match(Term.Literal(Constant.String("h")), List(CaseDef(Pattern.Value(Term.Ident("_")), Some(Term.Literal(Constant.Boolean(false))), Term.Block(Nil, Term.Literal(Constant.Unit()))))))
+Term.Inlined(None, Nil, Term.Match(Term.Literal(Constant.String("h")), List(CaseDef(Pattern.Value(Term.Ident("_")), Some(Term.Literal(Constant.Boolean(false))), Term.Literal(Constant.Unit())))))
 Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
-Term.Inlined(None, Nil, Term.Block(List(ValDef("a", TypeTree.Synthetic(), Some(Term.Literal(Constant.String("o"))))), Term.Match(Term.Literal(Constant.String("i")), List(CaseDef(Pattern.Bind("a", Pattern.Value(Term.Ident("_"))), None, Term.Block(Nil, Term.Literal(Constant.Unit())))))))
+Term.Inlined(None, Nil, Term.Block(List(ValDef("a", TypeTree.Synthetic(), Some(Term.Literal(Constant.String("o"))))), Term.Match(Term.Literal(Constant.String("i")), List(CaseDef(Pattern.Bind("a", Pattern.Value(Term.Ident("_"))), None, Term.Literal(Constant.Unit()))))))
 Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
-Term.Inlined(None, Nil, Term.Match(Term.Ident("Nil"), List(CaseDef(Pattern.Unapply(Term.TypeApply(Term.Select(Term.Ident("List"), "unapplySeq", Some(Signature(List(scala.collection.Seq), scala.Some))), List(TypeTree.Synthetic())), Nil, List(Pattern.Bind("a", Pattern.Value(Term.Ident("_"))), Pattern.Bind("b", Pattern.Value(Term.Ident("_"))), Pattern.Bind("c", Pattern.Value(Term.Ident("_"))))), None, Term.Block(Nil, Term.Literal(Constant.Unit()))))))
+Term.Inlined(None, Nil, Term.Match(Term.Ident("Nil"), List(CaseDef(Pattern.Unapply(Term.TypeApply(Term.Select(Term.Ident("List"), "unapplySeq", Some(Signature(List(scala.collection.Seq), scala.Some))), List(TypeTree.Synthetic())), Nil, List(Pattern.Bind("a", Pattern.Value(Term.Ident("_"))), Pattern.Bind("b", Pattern.Value(Term.Ident("_"))), Pattern.Bind("c", Pattern.Value(Term.Ident("_"))))), None, Term.Literal(Constant.Unit())))))
 Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix())))
 
-Term.Inlined(None, Nil, Term.Try(Term.Literal(Constant.Int(1)), List(CaseDef(Pattern.Value(Term.Ident("_")), None, Term.Block(Nil, Term.Literal(Constant.Unit())))), None))
+Term.Inlined(None, Nil, Term.Try(Term.Literal(Constant.Int(1)), List(CaseDef(Pattern.Value(Term.Ident("_")), None, Term.Literal(Constant.Unit()))), None))
 Type.OrType(Type.SymRef(ClassDef("Int", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))), Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))))
 
 Term.Inlined(None, Nil, Term.Try(Term.Literal(Constant.Int(2)), Nil, Some(Term.Literal(Constant.Unit()))))
 Type.ConstantType(Constant.Int(2))
 
-Term.Inlined(None, Nil, Term.Try(Term.Literal(Constant.Int(3)), List(CaseDef(Pattern.Value(Term.Ident("_")), None, Term.Block(Nil, Term.Literal(Constant.Unit())))), Some(Term.Literal(Constant.Unit()))))
+Term.Inlined(None, Nil, Term.Try(Term.Literal(Constant.Int(3)), List(CaseDef(Pattern.Value(Term.Ident("_")), None, Term.Literal(Constant.Unit()))), Some(Term.Literal(Constant.Unit()))))
 Type.OrType(Type.SymRef(ClassDef("Int", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))), Type.SymRef(ClassDef("Unit", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("scala", _), NoPrefix()))))
 
 Term.Inlined(None, Nil, Term.Apply(Term.Select(Term.Literal(Constant.String("a")), "==", Some(Signature(List(java.lang.Object), scala.Boolean))), List(Term.Literal(Constant.String("b")))))

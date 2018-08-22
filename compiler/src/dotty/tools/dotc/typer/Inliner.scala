@@ -11,7 +11,7 @@ import Symbols._
 import Types._
 import Decorators._
 import Constants._
-import StdNames.nme
+import StdNames._
 import Contexts.Context
 import Names.{Name, TermName, EmptyTermName}
 import NameOps._
@@ -602,7 +602,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
               newOwners = ctx.owner :: Nil,
               substFrom = ddef.vparamss.head.map(_.symbol),
               substTo = argSyms)
-            Block(bindingsBuf.toList, expander.transform(ddef.rhs))
+            seq(bindingsBuf.toList, expander.transform(ddef.rhs))
           case _ => tree
         }
       case _ => tree
@@ -629,7 +629,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       /** Try to match pattern `pat` against scrutinee reference `scrut`. If successful add
        *  bindings for variables bound in this pattern to `bindingsBuf`.
        */
-      def reducePattern(bindingsBuf: mutable.ListBuffer[MemberDef], scrut: TermRef, pat: Tree): Boolean = {
+      def reducePattern(bindingsBuf: mutable.ListBuffer[MemberDef], scrut: TermRef, pat: Tree)(implicit ctx: Context): Boolean = {
         val isImplicit = scrut.info == defn.ImplicitScrutineeTypeRef
 
         def newBinding(name: TermName, flags: FlagSet, rhs: Tree): Symbol = {
@@ -655,8 +655,32 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
         pat match {
           case Typed(pat1, tpt) =>
+            val getBoundVars = new TreeAccumulator[List[TypeSymbol]] {
+              def apply(syms: List[TypeSymbol], t: Tree)(implicit ctx: Context) = {
+                val syms1 = t match {
+                  case t: Bind if t.symbol.isType && t.name != tpnme.WILDCARD =>
+                    t.symbol.asType :: syms
+                  case _ =>
+                    syms
+                }
+                foldOver(syms1, t)
+              }
+            }
+            val boundVars = getBoundVars(Nil, tpt)
+            for (bv <- boundVars) ctx.gadt.setBounds(bv, bv.info.bounds)
             if (isImplicit) searchImplicit(nme.WILDCARD, tpt)
-            else scrut <:< tpt.tpe && reducePattern(bindingsBuf, scrut, pat1)
+            else scrut <:< tpt.tpe && {
+              for (bv <- boundVars) {
+                bv.info = TypeAlias(ctx.gadt.bounds(bv).lo)
+                  // FIXME: This is very crude. We should approximate with lower or higher bound depending
+                  // on variance, and we should also take care of recursive bounds. Basically what
+                  // ConstraintHandler#approximation does. However, this only works for constrained paramrefs
+                  // not GADT-bound variables. Hopefully we will get some way to improve this when we
+                  // re-implement GADTs in terms of constraints.
+                bindingsBuf += TypeDef(bv)
+              }
+              reducePattern(bindingsBuf, scrut, pat1)
+            }
           case pat @ Bind(name: TermName, Typed(_, tpt)) if isImplicit =>
             searchImplicit(name, tpt)
           case pat @ Bind(name: TermName, body) =>
@@ -706,16 +730,19 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       val scrutineeBinding = normalizeBinding(ValDef(scrutineeSym, scrutinee))
 
       def reduceCase(cdef: untpd.CaseDef): MatchRedux = {
-        def guardOK = cdef.guard.isEmpty || {
-          typer.typed(cdef.guard, defn.BooleanType) match {
+        val caseBindingsBuf = new mutable.ListBuffer[MemberDef]()
+        def guardOK(implicit ctx: Context) = cdef.guard.isEmpty || {
+          val guardCtx = ctx.fresh.setNewScope
+          caseBindingsBuf.foreach(binding => guardCtx.enter(binding.symbol))
+          typer.typed(cdef.guard, defn.BooleanType)(guardCtx) match {
             case ConstantValue(true) => true
             case _ => false
           }
         }
-        val caseBindingsBuf = new mutable.ListBuffer[MemberDef]()
         if (scrutType != defn.ImplicitScrutineeTypeRef) caseBindingsBuf += scrutineeBinding
-        val pat1 = typer.typedPattern(cdef.pat, scrutType)(typer.gadtContext(gadtSyms))
-        if (reducePattern(caseBindingsBuf, scrutineeSym.termRef, pat1) && guardOK)
+        val gadtCtx = typer.gadtContext(gadtSyms).addMode(Mode.GADTflexible)
+        val pat1 = typer.typedPattern(cdef.pat, scrutType)(gadtCtx)
+        if (reducePattern(caseBindingsBuf, scrutineeSym.termRef, pat1)(gadtCtx) && guardOK)
           Some((caseBindingsBuf.toList, cdef.body))
         else
           None
@@ -809,6 +836,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   def dropUnusedDefs(bindings: List[MemberDef], tree: Tree)(implicit ctx: Context): (List[MemberDef], Tree) = {
     val refCount = newMutableSymbolMap[Int]
     val bindingOfSym = newMutableSymbolMap[MemberDef]
+    val dealiased = new java.util.IdentityHashMap[Type, Type]()
+
     def isInlineable(binding: MemberDef) = binding match {
       case DefDef(_, Nil, Nil, _, _) => true
       case vdef @ ValDef(_, _, _) => isPureExpr(vdef.rhs)
@@ -818,6 +847,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       refCount(binding.symbol) = 0
       bindingOfSym(binding.symbol) = binding
     }
+
     val countRefs = new TreeTraverser {
       override def traverse(t: Tree)(implicit ctx: Context) = {
         def updateRefCount(sym: Symbol, inc: Int) =
@@ -844,6 +874,45 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
     } && !boundSym.is(TransparentImplicitMethod)
 
+    val (termBindings, typeBindings) = bindings.partition(_.symbol.isTerm)
+
+    /** drop any referenced type symbols from the given set of type symbols */
+    val dealiasTypeBindings = new TreeMap {
+      val boundTypes = typeBindings.map(_.symbol).toSet
+
+      val dealias = new TypeMap {
+        override def apply(tp: Type) = dealiased.get(tp) match {
+          case null =>
+            val tp1 = mapOver {
+              tp match {
+                case tp: TypeRef if boundTypes.contains(tp.symbol) =>
+                  val TypeAlias(alias) = tp.info
+                  alias
+                case _ => tp
+              }
+            }
+            dealiased.put(tp, tp1)
+            tp1
+          case tp1 => tp1
+        }
+      }
+
+      override def transform(t: Tree)(implicit ctx: Context) = {
+        val dealiasedType = dealias(t.tpe)
+        val t1 = t match {
+          case t: RefTree =>
+            if (boundTypes.contains(t.symbol)) TypeTree(dealiasedType).withPos(t.pos)
+            else t.withType(dealiasedType)
+          case t: DefTree =>
+            t.symbol.info = dealias(t.symbol.info)
+            t
+          case _ =>
+            t.withType(dealiasedType)
+        }
+        super.transform(t1)
+      }
+    }
+
     val inlineBindings = new TreeMap {
       override def transform(t: Tree)(implicit ctx: Context) = t match {
         case t: RefTree =>
@@ -859,17 +928,23 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case t: Apply =>
           val t1 = super.transform(t)
           if (t1 `eq` t) t else reducer.betaReduce(t1)
+        case Block(Nil, expr) =>
+          super.transform(expr)
         case _ =>
           super.transform(t)
       }
     }
 
-    val retained = bindings.filterConserve(binding => retain(binding.symbol))
-    if (retained `eq` bindings) {
-      (bindings, tree)
+    val dealiasedTermBindings =
+      termBindings.mapconserve(dealiasTypeBindings.transform).asInstanceOf[List[MemberDef]]
+    val dealiasedTree = dealiasTypeBindings.transform(tree)
+
+    val retained = dealiasedTermBindings.filterConserve(binding => retain(binding.symbol))
+    if (retained `eq` dealiasedTermBindings) {
+      (dealiasedTermBindings, dealiasedTree)
     }
     else {
-      val expanded = inlineBindings.transform(tree)
+      val expanded = inlineBindings.transform(dealiasedTree)
       dropUnusedDefs(retained, expanded)
     }
   }
