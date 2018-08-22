@@ -308,6 +308,7 @@ class TreeUnpickler(reader: TastyReader,
               TypeOf.Apply(underlying, fn, args)
             case (TT.TypeApply, fn :: args) =>
               TypeOf.TypeApply(underlying, fn, args)
+            case _ => throw new AssertionError(s"Inconsistant types in TypeOf: $types")
           }
         }
 
