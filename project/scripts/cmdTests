@@ -50,7 +50,7 @@ clear_out "$OUT"
 grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
 
 echo "testing scala.quoted.Expr.run from sbt dotr"
-"$SBT" ";dotty-compiler-bootstrapped/dotc -with-compiler tests/run-with-compiler/quote-run.scala; dotty-compiler-bootstrapped/dotr -with-compiler Test" > "$tmp"
+"$SBT" ";dotty-compiler-bootstrapped/dotc tests/run-with-compiler/quote-run.scala; dotty-compiler-bootstrapped/dotr -with-compiler Test" > "$tmp"
 grep -qe "val a: scala.Int = 3" "$tmp"
 
 

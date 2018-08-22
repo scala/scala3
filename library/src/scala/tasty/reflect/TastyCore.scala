@@ -96,6 +96,8 @@ package scala.tasty.reflect
  *
  *  +- Constant
  *
+ *  +- Symbol
+ *
  *  ```
  */
 trait TastyCore {
@@ -157,5 +159,10 @@ trait TastyCore {
 
   /** Constant value represented as the constant itself */
   type Constant
+
+  /** Symbol of a definition.
+   *  Then can be compared with == to know if the definition is the same.
+   */
+  type Symbol
 
 }
