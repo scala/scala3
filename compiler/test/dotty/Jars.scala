@@ -24,11 +24,11 @@ object Jars {
 
   /** jline-terminal jar */
   lazy val jlineTerminal: String =
-    findJarFromRuntime("jline-terminal-3.7.0")
+    findJarFromRuntime("jline-terminal-3.9.0")
 
   /** jline-reader jar */
   lazy val jlineReader: String =
-    findJarFromRuntime("jline-reader-3.7.0")
+    findJarFromRuntime("jline-reader-3.9.0")
 
   /** Dotty extras classpath from env or properties */
   val dottyExtras: List[String] = sys.env.get("DOTTY_EXTRAS")
