@@ -3,7 +3,7 @@ class D {
 }
 
 class C {
-  def m: D = {
+  def m: D | Null = {
     if ("abc".length == 0) {
       object p       // (program point 2)
     }

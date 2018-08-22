@@ -14,8 +14,8 @@ object Test {
   abstract class Base[+T] {
     def apply(f: String): Res[T]
     // 'i' crashes the compiler, similarly if we use currying
-    //def |[U >: T](a: => Base[U], i: SomeInfo = NoInfo): Base[U] = null
-    def bar[U >: T](a: => Base[U], i: SomeInfo = NoInfo): Base[U] = null
+    //def |[U >: T](a: => Base[U], i: SomeInfo = NoInfo): Base[U] = ???
+    def bar[U >: T](a: => Base[U], i: SomeInfo = NoInfo): Base[U] = ???
   }
 
   implicit def fromStringToBase(a: String): Base[String] = new Base[String] { def apply(in: String) = NotRes }
@@ -24,7 +24,7 @@ object Test {
   //def Sample: Base[Any] = ( rep("foo" | "bar") | "sth")
   def Sample: Base[Any] = ( rep("foo" bar "bar") bar "sth")
 
-  def rep[T](p: => Base[T]): Base[T] = null // whatever
+  def rep[T](p: => Base[T]): Base[T] = ??? // whatever
 
   def main(args: Array[String]): Unit = {
   }

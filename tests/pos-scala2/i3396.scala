@@ -5,11 +5,11 @@ object Test {
   // Negation Tagged: NotTagged[A] is available only if there are no Tagged[A] in scope.
   trait NotTagged[A]
   trait NotTaggedLowPrio {
-    implicit def notTaggedInstance[A]: NotTagged[A] = null
+    implicit def notTaggedInstance[A]: NotTagged[A] = ???
   }
   object NotTagged extends NotTaggedLowPrio {
-    implicit def notTaggedAmbiguity1[A](implicit ev: Tagged[A]): NotTagged[A] = null
-    implicit def notTaggedAmbiguity2[A](implicit ev: Tagged[A]): NotTagged[A] = null
+    implicit def notTaggedAmbiguity1[A](implicit ev: Tagged[A]): NotTagged[A] = ???
+    implicit def notTaggedAmbiguity2[A](implicit ev: Tagged[A]): NotTagged[A] = ???
   }
 
 

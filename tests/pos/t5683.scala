@@ -4,7 +4,7 @@ object Test {
   type StringW[T] = W[String, T]
   trait K[M[_], A, B]
 
-  def k[M[_], B](f: Int => M[B]): K[M, Int, B] = null
+  def k[M[_], B](f: Int => M[B]): K[M, Int, B] = ???
 
   val okay1: K[StringW,Int,Int] = k{ (y: Int) => ??? : StringW[Int] }
   val okay2 = k[StringW,Int]{ (y: Int) => ??? : W[String, Int] }

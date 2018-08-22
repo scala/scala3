@@ -41,6 +41,6 @@ package buffer {
   class ArrayVec2(val backingSeq: ArrayFloat1)
   extends GenericSeq[Vec2] with DataArray[Vec2] {
     def this() = this(new ArrayFloat1)
-    def apply(i: Int) :Vec2 = null
+    def apply(i: Int) : Vec2 = ???
   }
 }

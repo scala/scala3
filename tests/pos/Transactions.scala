@@ -62,7 +62,7 @@ trait Transactional {
   var readers: Transaction
   var writer: Transaction
 
-  def currentWriter(): Transaction = null
+  def currentWriter(): Transaction = ???
     if (writer == null) null
     else if (writer.status == Transaction.Running) writer
     else {

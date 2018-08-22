@@ -23,7 +23,7 @@ object hk0 {
 
 object higherKinded {
 
-  type Untyped = Null
+  type Untyped = Nothing
 
   class Tree[-T >: Untyped] {
     type ThisType[-U >: Untyped] <: Tree[U]

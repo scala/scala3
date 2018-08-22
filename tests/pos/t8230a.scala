@@ -1,12 +1,12 @@
 trait Arr[T]
 object Arr {
-  def apply[T](xs: T): Arr[T]    = null
-  def apply(x: Long) : Arr[Long] = null
+  def apply[T](xs: T): Arr[T] = ???
+  def apply(x: Long) : Arr[Long] = ???
 }
 
 object I {
-  implicit def arrToTrav[T] (a: Arr[T])   : Traversable[T]    = null
-  implicit def longArrToTrav(a: Arr[Long]): Traversable[Long] = null
+  implicit def arrToTrav[T] (a: Arr[T])   : Traversable[T] = ???
+  implicit def longArrToTrav(a: Arr[Long]): Traversable[Long] = ???
 }
 
 object Test {

@@ -24,5 +24,5 @@ object Bug359 {
         }
     }
   }
-  private def g(op: List[C] => C): C = null;
+  private def g(op: List[C] => C): C = ???;
 }
