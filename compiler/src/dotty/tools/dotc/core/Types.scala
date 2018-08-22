@@ -3572,17 +3572,17 @@ object Types {
     }
 
     def reduced(implicit ctx: Context): Type = {
-      def recur(cases: List[Type]): Type = cases match {
+      val trackingCtx = ctx.fresh.setTypeComparerFn(new TrackingTypeComparer(_))
+      val cmp = trackingCtx.typeComparer.asInstanceOf[TrackingTypeComparer]
+      def recur(cases: List[Type])(implicit ctx: Context): Type = cases match {
         case Nil => NoType
         case cas :: cases1 =>
-          def tryReduce(scrut: Type, instantiate: Boolean) =
-            ctx.typeComparer.matchCase(scrut, cas, instantiate)
-          val r = tryReduce(scrutinee, true)
+          val r = cmp.matchCase(scrutinee, cas, instantiate = true)
           if (r.exists) r
-          else if (tryReduce(approximatedScrutinee, false).exists) NoType
+          else if (cmp.matchCase(approximatedScrutinee, cas, instantiate = false).exists) NoType
           else recur(cases1)
       }
-      recur(cases)
+      recur(cases)(trackingCtx)
     }
   }
 
