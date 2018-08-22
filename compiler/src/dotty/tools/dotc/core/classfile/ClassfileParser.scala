@@ -157,7 +157,7 @@ class ClassfileParser(
 
       enterOwnInnerClasses()
 
-      classRoot.setFlag(sflags)
+      classRoot.setFlag(Flags.JavaDefined | sflags)
       moduleRoot.setFlag(Flags.JavaDefined | Flags.ModuleClassCreationFlags)
       setPrivateWithin(classRoot, jflags)
       setPrivateWithin(moduleRoot, jflags)
@@ -269,7 +269,8 @@ class ClassfileParser(
         setPrivateWithin(denot, jflags)
         denot.info = translateTempPoly(parseAttributes(sym, denot.info))
         if (isConstructor) normalizeConstructorInfo()
-
+        val nullMap = new NullifyMap
+        if (!isConstructor) denot.info = nullMap(denot.info)
         if ((denot is Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
           denot.info = arrayToRepeated(denot.info)
 

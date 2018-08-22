@@ -4726,6 +4726,33 @@ object Types {
     protected def reapply(tp: Type): Type = apply(tp)
   }
 
+  /** Adds "| Null" to the relevant places of a Java type to reflect the fact
+   *  that Java types remain nullable by default.
+   *
+   *  nullify(T) = T | Null if T is a type parameter or class or interface
+   *  nullify(C[S]) = C[nullify(S)] | Null if C is a generic class
+   */
+  class NullifyMap(implicit ctx: Context) extends TypeMap {
+    def shouldNullify(tp: TypeRef): Boolean = {
+      !tp.symbol.isValueClass && !tp.symbol.derivesFrom(defn.AnnotationClass)
+    }
+
+    override def apply(tp: Type): Type = {
+      tp match {
+        case tp: MethodType =>
+          mapOver(tp)
+        case tp: TypeAlias =>
+          mapOver(tp)
+        case tp: TypeRef if shouldNullify(tp) =>
+          OrType(tp, defn.NullType)
+        case tp@RefinedType(parent, name, info) =>
+          OrType(derivedRefinedType(tp, parent, this(info)), defn.NullType)
+        case _ =>
+          tp
+      }
+    }
+  }
+
   /** A range of possible types between lower bound `lo` and upper bound `hi`.
    *  Only used internally in `ApproximatingTypeMap`.
    */

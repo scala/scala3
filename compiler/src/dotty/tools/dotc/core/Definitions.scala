@@ -327,8 +327,8 @@ class Definitions {
       pt => MethodType(List(FunctionOf(Nil, pt.paramRefs(0))), pt.paramRefs(0)))
 
   /** Method representing a throw */
-  lazy val throwMethod: TermSymbol = enterMethod(OpsPackageClass, nme.THROWkw,
-      MethodType(List(ThrowableType), NothingType))
+  lazy val throwMethod = enterMethod(OpsPackageClass, nme.THROWkw,
+      MethodType(List(OrType(ThrowableType, NullType)), NothingType))
 
   lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))

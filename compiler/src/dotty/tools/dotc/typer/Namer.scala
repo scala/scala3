@@ -1176,7 +1176,14 @@ class Namer { typer: Typer =>
       case _ =>
         WildcardType
     }
-    paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
+    val resTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
+    val isConstructor = mdef.name == nme.CONSTRUCTOR
+    if (mdef.mods.is(JavaDefined) && !isConstructor) {
+      val nullMap = new NullifyMap
+      nullMap(resTpe)
+    } else {
+      resTpe
+    }
   }
 
   /** The type signature of a DefDef with given symbol */
