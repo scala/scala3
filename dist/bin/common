@@ -119,7 +119,7 @@ SCALA_ASM=$(find_lib "*scala-asm*")
 SCALA_LIB=$(find_lib "*scala-library*")
 SCALA_XML=$(find_lib "*scala-xml*")
 SBT_INTF=$(find_lib "*compiler-interface*")
-JLINE=$(find_lib "*jline-3*")
+JLINE_READER=$(find_lib "*jline-reader-3*")
 JLINE_TERMINAL=$(find_lib "*jline-terminal-3*")
 JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna-3*")
 

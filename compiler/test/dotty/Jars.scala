@@ -22,9 +22,13 @@ object Jars {
   lazy val scalaXml: String =
     findJarFromRuntime("scala-xml")
 
-  /** JLine Jar */
-  lazy val jline: String =
-    findJarFromRuntime("jline-3.7.0")
+  /** jline-terminal jar */
+  lazy val jlineTerminal: String =
+    findJarFromRuntime("jline-terminal-3.9.0")
+
+  /** jline-reader jar */
+  lazy val jlineReader: String =
+    findJarFromRuntime("jline-reader-3.9.0")
 
   /** Dotty extras classpath from env or properties */
   val dottyExtras: List[String] = sys.env.get("DOTTY_EXTRAS")
@@ -32,7 +36,7 @@ object Jars {
 
   /** Dotty test dependencies */
   val dottyTestDeps: List[String] =
-    dottyLib :: dottyCompiler :: dottyInterfaces :: jline :: dottyExtras
+    dottyLib :: dottyCompiler :: dottyInterfaces :: jlineTerminal :: jlineReader :: dottyExtras
 
   /** Dotty runtime with compiler dependencies, used for quoted.Expr.run */
   lazy val dottyRunWithCompiler: List[String] =
