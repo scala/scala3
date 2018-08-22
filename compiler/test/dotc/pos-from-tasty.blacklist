@@ -12,3 +12,7 @@ annot-bootstrap.scala
 
 # ScalaRunTime cannot be unpickled because it is already loaded
 repeatedArgs213.scala
+
+# Wildcard assigned to something else while unpickling
+from-tasty-wildcard.scala
+dependent5.scala
