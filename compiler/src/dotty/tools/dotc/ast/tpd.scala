@@ -1083,13 +1083,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   private val InlinedCalls = new Property.Key[List[Tree]]
 
   /** Record an enclosing inlined call.
-    * EmptyTree calls (for parameters) cancel the next-enclosing non-empty call in the list
+    * EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.
+    * We assume parameters are never nested inside parameters.
     */
   override def inlineContext(call: Tree)(implicit ctx: Context): Context = {
     // We assume enclosingInlineds is already normalized, and only process the new call with the head.
     val oldIC = enclosingInlineds
     val newIC = (call, oldIC) match {
-      case (t, ts1 @ (t1 :: ts2)) if t.isEmpty => if (t1.isEmpty) ts1 else ts2
+      case (t, t1 :: ts2) if t.isEmpty =>
+        assert(!t1.isEmpty)
+        ts2
       case _ => call :: oldIC
     }
     ctx.fresh.setProperty(InlinedCalls, newIC)
