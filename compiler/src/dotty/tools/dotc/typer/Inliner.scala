@@ -155,7 +155,7 @@ object Inliner {
       val inlinedAtPos = inlined.call.pos
 
       /** Removes all Inlined trees, replacing them with blocks.
-       *  Repositions all trees directly inside an inlined expantion of a non empty call to the position of the call.
+       *  Repositions all trees directly inside an inlined expansion of a non empty call to the position of the call.
        *  Any tree directly inside an empty call (inlined in the inlined code) retains their position.
        */
       class Reposition extends TreeMap {
