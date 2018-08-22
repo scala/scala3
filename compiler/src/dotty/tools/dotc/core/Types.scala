@@ -330,6 +330,14 @@ object Types {
     /** Is this a MethodType for which the parameters will not be used */
     def isErasedMethod: Boolean = false
 
+    /** Is this a match type or a higher-kinded abstraction of one?
+     */
+    def isMatch(implicit ctx: Context): Boolean = stripTypeVar.stripAnnots match {
+      case _: MatchType => true
+      case tp: HKTypeLambda => tp.resType.isMatch
+      case _ => false
+    }
+
 // ----- Higher-order combinators -----------------------------------
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.

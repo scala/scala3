@@ -306,6 +306,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case mdef: TypeDef =>
       def isBounds(rhs: Tree): Boolean = rhs match {
         case _: TypeBoundsTree => true
+        case _: Match => true // Typedefs with Match rhs classify as abstract
         case LambdaTypeTree(_, body) => isBounds(body)
         case _ => false
       }
