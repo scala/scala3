@@ -70,7 +70,7 @@ class ReadTastyTreesFromClasses extends FrontEnd {
           def moduleClass = clsd.owner.info.member(className.moduleClassName).symbol
           compilationUnit(clsd.classSymbol).orElse(compilationUnit(moduleClass))
         case _ =>
-          cannotUnpickle(s"no class file was found")
+          cannotUnpickle(s"no class file was found for class $className")
       }
   }
 }

@@ -295,17 +295,20 @@ class TreeUnpickler(reader: TastyReader,
         }
 
         def readTypeOf(): Type = {
-          // val treeKind = readByte()
-          val tree = readTerm()
+          val treeKind = readByte()
+          val underlying = readType()
           val types = until(end)(readType())
-
-          (tree, types) match {
-            case (t: If       , List(cond, thenb, elseb)) => TypeOf.If(t, cond, thenb, elseb)
-            case (t: Match    , sel :: cases)             => TypeOf.Match(t, sel, cases)
-            case (t: Apply    , fn :: args)               => TypeOf.Apply(t, fn, args)
-            case (t: TypeApply, fn :: args)               => TypeOf.TypeApply(t, fn, args)
+          val TT = TypeOfTags
+          (treeKind, types) match {
+            case (TT.If, List(cond, thenb, elseb)) =>
+              TypeOf.If(underlying, cond, thenb, elseb)
+            case (TT.Match, sel :: cases) =>
+              TypeOf.Match(underlying, sel, cases)
+            case (TT.Apply, fn :: args) =>
+              TypeOf.Apply(underlying, fn, args)
+            case (TT.TypeApply, fn :: args) =>
+              TypeOf.TypeApply(underlying, fn, args)
           }
-
         }
 
         val result =
@@ -1151,8 +1154,10 @@ class TreeUnpickler(reader: TastyReader,
               readHole(end, isType = false)
             case UNTYPEDSPLICE =>
               tpd.UntypedSplice(readUntyped()).withType(readType())
-            case _ =>
-              readPathTerm()
+            case TYPEDEF | VALDEF | DEFDEF =>
+              goto(start)
+              symbolAtCurrent()
+              readNewDef()
           }
         assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
         result

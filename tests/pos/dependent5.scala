@@ -149,3 +149,18 @@ object IdrisVect {
   // index (FS k) (x::xs) = index k xs
 
 }
+
+object IdrisVect2 {
+  def length(x: Int) = {
+    // At some point x became a shared tree in pickling
+    val y = x
+    identity(x)
+  }
+}
+
+object MatchError129 {
+  dependent def length[T](x: Unit): Unit = {
+    val y = x
+    length(y)
+  }
+}

@@ -279,6 +279,13 @@ object TastyFormat {
   }
   object NameTags extends NameTags
 
+  object TypeOfTags {
+    final val If        = 1
+    final val Match     = 2
+    final val Apply     = 3
+    final val TypeApply = 4
+  }
+
   // AST tags
   // Cat. 1:    tag
 
@@ -533,6 +540,7 @@ object TastyFormat {
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
     case TRANSPARENT => "TRANSPARENT"
+    case DEPENDENT => "DEPENDENT"
     case MACRO => "MACRO"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"

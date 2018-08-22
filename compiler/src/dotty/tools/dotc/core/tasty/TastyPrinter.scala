@@ -76,14 +76,12 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
             case PARAMtype =>
               printNat(); printNat()
             case TYPEOF =>
-              printTree(); printTree()
+              printTree(); until(end) { printTree() }
             case _ =>
               printTrees()
           }
-          if (currentAddr != end) {
-            println(s"incomplete read, current = $currentAddr, end = $end")
-            goto(end)
-          }
+          if (currentAddr != end)
+            throw new AssertionError(s"incomplete read, current = $currentAddr, end = $end, tag = $tag")
         }
         else if (tag >= firstNatASTTreeTag) {
           tag match {

@@ -4055,12 +4055,12 @@ object Types {
       ctx.addMode(Mode.InTypeOf)
 
     object If {
-      def apply(tree: If, condTp: Type, thenTp: Type, elseTp: Type)(implicit ctx: Context): TypeOf =
-        cpy.If(tree)(
-          treeWithTpe(tree.cond, condTp),
-          treeWithTpe(tree.thenp, thenTp),
-          treeWithTpe(tree.elsep, elseTp)
-        )(dependently).tpe.asInstanceOf[TypeOf]
+      def apply(underlyingTp: Type, condTp: Type, thenTp: Type, elseTp: Type)(implicit ctx: Context): TypeOf =
+        TypeOf(underlyingTp, untpd.If(
+          dummyTreeOfType(condTp),
+          dummyTreeOfType(thenTp),
+          dummyTreeOfType(elseTp)
+        ))
 
       def unapply(to: TypeOf): Option[(Type, Type, Type)] = to.tree match {
         case Trees.If(cond, thenb, elseb) => Some((cond.tpe, thenb.tpe, elseb.tpe))
@@ -4079,7 +4079,7 @@ object Types {
     }
 
     object Match {
-      def apply(tree: Match, selectorTp: Type, caseTps: List[Type])(implicit ctx: Context): TypeOf =
+      def apply(underlyingTp: Type, selectorTp: Type, caseTps: List[Type])(implicit ctx: Context): TypeOf =
         ???.asInstanceOf[TypeOf] // TODO
 
       def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
@@ -4098,11 +4098,11 @@ object Types {
     }
 
     object Apply {
-      def apply(tree: Apply, funTp: Type, argTps: List[Type])(implicit ctx: Context): TypeOf =
-        cpy.Apply(tree)(
-          treeWithTpe(tree.fun, funTp),
-          treesWithTpes(tree.args, argTps)
-        )(dependently).tpe.asInstanceOf[TypeOf]
+      def apply(underlyingTp: Type, funTp: Type, argTps: List[Type])(implicit ctx: Context): TypeOf =
+        TypeOf(underlyingTp, untpd.Apply(
+          dummyTreeOfType(funTp),
+          argTps.map(x => dummyTreeOfType(x))
+        ))
 
       def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
         case Trees.Apply(fn, args) => Some((fn.tpe, args.map(_.tpe)))
@@ -4117,11 +4117,11 @@ object Types {
     }
 
     object TypeApply {
-      def apply(tree: TypeApply, funTp: Type, argTps: List[Type])(implicit ctx: Context): TypeOf =
-        cpy.TypeApply(tree)(
-          treeWithTpe(tree.fun, funTp),
-          treesWithTpes(tree.args, argTps)
-        ).tpe.asInstanceOf[TypeOf]
+      def apply(underlyingTp: Type, funTp: Type, argTps: List[Type])(implicit ctx: Context): TypeOf =
+        TypeOf(underlyingTp, untpd.TypeApply(
+          dummyTreeOfType(funTp),
+          argTps.map(x => dummyTreeOfType(x))
+        ))
 
       def unapply(to: TypeOf): Option[(Type, List[Type])] = to.tree match {
         case Trees.TypeApply(fn, args) => Some((fn.tpe, args.map(_.tpe)))
@@ -4163,38 +4163,39 @@ object Types {
     }
 
     object New {
-      /** Extracts the class symbol, list of type parameters and value
-       *  parameters and list of from the TypeOf a new.
+      /** Extracts the class symbol, list of type parameters and list of
+       *  value parameters from the TypeOf of a new.
        */
-      def unapply(tp: TypeOf)(implicit ctx: Context): Option[(Symbol, List[Type], List[Type])] = {
-        @tailrec
-        def loop(tree: Tree, targsAcc: List[Type], argsAcc: List[Type]): Option[(Symbol, List[Type], List[Type])] =
-          tree match {
+      def unapply(to: TypeOf)(implicit ctx: Context): Option[(Symbol, List[Type], List[Type])] = {
+        def loop(to: TypeOf, targsAcc: List[Type], argsAcc: List[Type]): Option[(Symbol, List[Type], List[Type])] = {
+          to.tree match {
             case Trees.Apply(fn, args) =>
-              fn.tpe.stripMethodPrefix match {
+              fn.tpe match {
+                case fnTpe: TypeOf =>
+                  loop(fnTpe, targsAcc, args.tpes ::: argsAcc)
                 case fnTpe: TermRef =>
-                  if (fn.symbol.isPrimaryConstructor)
-                    Some((fn.symbol, targsAcc, args.tpes ::: argsAcc))
+                  if (fnTpe.symbol.isPrimaryConstructor)
+                    Some((fnTpe.symbol, targsAcc, args.tpes ::: argsAcc))
                   else
                     None
-                case fnTpe: MethodType =>
-                  loop(fn, targsAcc, args.tpes ::: argsAcc)
               }
 
             case Trees.TypeApply(fn, targs) =>
               fn.tpe match {
+                case fnTpe: TypeOf =>
+                  loop(fnTpe, targs.tpes ::: targsAcc, argsAcc)
                 case fnTpe: TermRef =>
-                  if (fn.symbol.isPrimaryConstructor)
-                    Some((fn.symbol, targs.tpes ::: targsAcc, argsAcc))
+                  if (fnTpe.symbol.isPrimaryConstructor)
+                    Some((fnTpe.symbol, targsAcc ::: targs.tpes, argsAcc))
                   else
                     None
-                case _ => loop(fn, targsAcc, argsAcc)
               }
 
             case _ => None
           }
-          loop(tp.tree, Nil, Nil)
         }
+        loop(to, Nil, Nil)
+      }
     }
 
     object Generic {
