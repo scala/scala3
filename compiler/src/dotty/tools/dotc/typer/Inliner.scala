@@ -165,7 +165,7 @@ object Inliner {
             case _ =>
               val transformed = super.transform(tree)
               enclosingInlineds match {
-                case call :: _ if call.symbol.topLevelClass != ctx.owner.topLevelClass =>
+                case call :: _ if call.symbol.sourceFile != ctx.owner.sourceFile =>
                   // reposition tree inlined from some other file
                   transformed.withPos(inlinedAtPos)
                 case _ => transformed
