@@ -3551,6 +3551,39 @@ object Types {
       if (myUnderlying == null) myUnderlying = alternatives.reduceLeft(OrType(_, _))
       myUnderlying
     }
+
+    private def wildApproxMap(implicit ctx: Context) = new TypeMap {
+      def apply(t: Type) = t match {
+        case t: TypeRef =>
+          t.info match {
+            case TypeBounds(lo, hi) if lo `ne` hi => WildcardType
+            case _ => mapOver(t)
+          }
+        case t: ParamRef => WildcardType
+        case _ => mapOver(t)
+      }
+    }
+
+    private var myApproxScrut: Type = null
+
+    def approximatedScrutinee(implicit ctx: Context): Type = {
+      if (myApproxScrut == null) myApproxScrut = wildApproxMap.apply(scrutinee)
+      myApproxScrut
+    }
+
+    def reduced(implicit ctx: Context): Type = {
+      def recur(cases: List[Type]): Type = cases match {
+        case Nil => NoType
+        case cas :: cases1 =>
+          def tryReduce(scrut: Type, instantiate: Boolean) =
+            ctx.typeComparer.matchCase(scrut, cas, instantiate)
+          val r = tryReduce(scrutinee, true)
+          if (r.exists) r
+          else if (tryReduce(approximatedScrutinee, false).exists) NoType
+          else recur(cases1)
+      }
+      recur(cases)
+    }
   }
 
   class CachedMatchType(scrutinee: Type, cases: List[Type]) extends MatchType(scrutinee, cases)
@@ -3720,6 +3753,9 @@ object Types {
       case that: TypeBounds => this | that
       case _ => super.| (that)
     }
+
+    def effectiveLo(implicit ctx: Context) =
+      if (hi.isMatch) hi else lo
 
     override def computeHash(bs: Binders) = doHash(bs, lo, hi)
     override def stableHash = lo.stableHash && hi.stableHash
