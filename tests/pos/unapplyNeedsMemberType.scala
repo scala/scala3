@@ -20,6 +20,6 @@ class Join[a] extends Gunk[a] {
 
   def unapply_Cons(s: Any) = s match {
     case App(Cons(x, xs), ys) => Some((x, append(xs, ys)))
-    case _ => null
+    case _ => None
   }
 }
