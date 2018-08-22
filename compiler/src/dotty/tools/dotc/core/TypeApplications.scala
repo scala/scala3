@@ -434,10 +434,13 @@ class TypeApplications(val self: Type) extends AnyVal {
       appliedTo(args)
   }
 
-  /** Turns non-bounds types to type aliases */
+  /** Turns non-bounds types to type bounds.
+   *  A (possible lambda abstracted) match type is turned into an abstract type.
+   *  Every other type is turned into a type alias
+   */
   final def toBounds(implicit ctx: Context): TypeBounds = self match {
     case self: TypeBounds => self // this can happen for wildcard args
-    case _ => TypeAlias(self)
+    case _ => if (self.isMatch) TypeBounds.upper(self) else TypeAlias(self)
   }
 
   /** Translate a type of the form From[T] to To[T], keep other types as they are.
