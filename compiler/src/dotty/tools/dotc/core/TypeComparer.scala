@@ -945,51 +945,6 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
       }
     } && isSubArgs(args1.tail, args2.tail, tp1, tparams.tail)
 
-  def matchCase(scrut: Type, cas: Type, instantiate: Boolean)(implicit ctx: Context): Type = {
-
-    def paramInstances = new TypeAccumulator[Array[Type]] {
-      def apply(inst: Array[Type], t: Type) = t match {
-        case t @ TypeParamRef(b, n) if b `eq` unfrozen =>
-          inst(n) = instanceType(t, fromBelow = variance >= 0)
-          inst
-        case _ =>
-          foldOver(inst, t)
-      }
-    }
-
-    def instantiateParams(inst: Array[Type]) = new TypeMap {
-      def apply(t: Type) = t match {
-        case t @ TypeParamRef(b, n) if b `eq` unfrozen => inst(n)
-        case t: LazyRef => apply(t.ref)
-        case _ => mapOver(t)
-      }
-    }
-
-    val saved = constraint
-    try {
-      inFrozenConstraint {
-        val cas1 = cas match {
-          case cas: HKTypeLambda =>
-            unfrozen = constrained(cas)
-            unfrozen.resultType
-          case _ =>
-            cas
-        }
-        val defn.FunctionOf(pat :: Nil, body, _, _) = cas1
-        if (isSubType(scrut, pat))
-          unfrozen match {
-            case unfrozen: HKTypeLambda if instantiate =>
-              val instances = paramInstances(new Array(unfrozen.paramNames.length), pat)
-              instantiateParams(instances)(body)
-            case _ =>
-              body
-          }
-        else NoType
-      }
-    }
-    finally constraint = saved
-  }
-
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
    *   - `B` derives from one of the class symbols of `tp2`,
    *   - the type parameters of `B` match one-by-one the variances of `tparams`,
@@ -1776,6 +1731,55 @@ object TypeComparer {
     val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(_))
     op(nestedCtx)
     nestedCtx.typeComparer.toString
+  }
+}
+
+class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
+  import state.constraint
+
+  def matchCase(scrut: Type, cas: Type, instantiate: Boolean)(implicit ctx: Context): Type = {
+
+    def paramInstances = new TypeAccumulator[Array[Type]] {
+      def apply(inst: Array[Type], t: Type) = t match {
+        case t @ TypeParamRef(b, n) if b `eq` unfrozen =>
+          inst(n) = instanceType(t, fromBelow = variance >= 0)
+          inst
+        case _ =>
+          foldOver(inst, t)
+      }
+    }
+
+    def instantiateParams(inst: Array[Type]) = new TypeMap {
+      def apply(t: Type) = t match {
+        case t @ TypeParamRef(b, n) if b `eq` unfrozen => inst(n)
+        case t: LazyRef => apply(t.ref)
+        case _ => mapOver(t)
+      }
+    }
+
+    val saved = constraint
+    try {
+      inFrozenConstraint {
+        val cas1 = cas match {
+          case cas: HKTypeLambda =>
+            unfrozen = constrained(cas)
+            unfrozen.resultType
+          case _ =>
+            cas
+        }
+        val defn.FunctionOf(pat :: Nil, body, _, _) = cas1
+        if (isSubType(scrut, pat))
+          unfrozen match {
+            case unfrozen: HKTypeLambda if instantiate =>
+              val instances = paramInstances(new Array(unfrozen.paramNames.length), pat)
+              instantiateParams(instances)(body)
+            case _ =>
+              body
+          }
+        else NoType
+      }
+    }
+    finally constraint = saved
   }
 }
 
