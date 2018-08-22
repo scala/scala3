@@ -12,6 +12,7 @@ import config.Printers.{typr, constr, subtyping, gadts, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import scala.util.control.NonFatal
+import typer.ProtoTypes.constrained
 import reporting.trace
 
 /** Provides methods to compare types.
@@ -336,7 +337,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         recur(tp1.underlying, tp2)
       case tp1: WildcardType =>
         def compareWild = tp1.optBounds match {
-          case TypeBounds(lo, _) => recur(lo, tp2)
+          case bounds: TypeBounds => recur(bounds.effectiveLo, tp2)
           case _ => true
         }
         compareWild
@@ -363,7 +364,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         }
         joinOK || recur(tp11, tp2) && recur(tp12, tp2)
       case tp1: MatchType =>
-        recur(tp1.underlying, tp2)
+        val reduced = tp1.reduced
+        if (reduced.exists) recur(reduced, tp2) else thirdTry
       case _: FlexType =>
         true
       case _ =>
@@ -371,7 +373,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
     }
 
     def thirdTryNamed(tp2: NamedType): Boolean = tp2.info match {
-      case TypeBounds(lo2, _) =>
+      case info2: TypeBounds =>
         def compareGADT: Boolean = {
           val gbounds2 = ctx.gadt.bounds(tp2.symbol)
           (gbounds2 != null) &&
@@ -379,7 +381,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
             GADTusage(tp2.symbol)
         }
-        isSubApproxHi(tp1, lo2) || compareGADT || fourthTry
+        isSubApproxHi(tp1, info2.effectiveLo) || compareGADT || fourthTry
 
       case _ =>
         val cls2 = tp2.symbol
@@ -423,7 +425,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
             // So if the constraint is not yet frozen, we do the same comparison again
             // with a frozen constraint, which means that we get a chance to do the
             // widening in `fourthTry` before adding to the constraint.
-            if (frozenConstraint) isSubType(tp1, bounds(tp2).lo)
+            if (frozenConstraint) isSubType(tp1, bounds(tp2).effectiveLo)
             else isSubTypeWhenFrozen(tp1, tp2)
           alwaysTrue || {
             if (canConstrain(tp2) && !approx.low)
@@ -534,6 +536,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
           case _ =>
         }
         either(recur(tp1, tp21), recur(tp1, tp22)) || fourthTry
+      case tp2: MatchType =>
+        val reduced = tp2.reduced
+        if (reduced.exists) recur(tp1, reduced) else fourthTry
       case tp2: MethodType =>
         def compareMethod = tp1 match {
           case tp1: MethodType =>
@@ -667,6 +672,14 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
           case _ =>
         }
         either(recur(tp11, tp2), recur(tp12, tp2))
+      case tp1: MatchType =>
+        def compareMatch = tp2 match {
+          case tp2: MatchType =>
+            isSameType(tp1.scrutinee, tp2.scrutinee) &&
+            tp1.cases.corresponds(tp2.cases)(isSubType)
+          case _ => false
+        }
+        recur(tp1.underlying, tp2) || compareMatch
       case tp1: AnnotatedType if tp1.isRefining =>
         isNewSubType(tp1.parent)
       case JavaArrayType(elem1) =>
@@ -798,7 +811,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
           if (tyconIsTypeRef) recur(tp1, tp2.superType)
           else isSubApproxHi(tp1, tycon2bounds.lo.applyIfParameterized(args2))
         else
-          fallback(tycon2bounds.lo)
+          fallback(tycon2bounds.effectiveLo)
 
       tycon2 match {
         case param2: TypeParamRef =>
@@ -931,6 +944,51 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         adapted2.ne(arg2) && isSubArg(arg1, adapted2)
       }
     } && isSubArgs(args1.tail, args2.tail, tp1, tparams.tail)
+
+  def matchCase(scrut: Type, cas: Type, instantiate: Boolean)(implicit ctx: Context): Type = {
+
+    def paramInstances = new TypeAccumulator[Array[Type]] {
+      def apply(inst: Array[Type], t: Type) = t match {
+        case t @ TypeParamRef(b, n) if b `eq` unfrozen =>
+          inst(n) = instanceType(t, fromBelow = variance >= 0)
+          inst
+        case _ =>
+          foldOver(inst, t)
+      }
+    }
+
+    def instantiateParams(inst: Array[Type]) = new TypeMap {
+      def apply(t: Type) = t match {
+        case t @ TypeParamRef(b, n) if b `eq` unfrozen => inst(n)
+        case t: LazyRef => apply(t.ref)
+        case _ => mapOver(t)
+      }
+    }
+
+    val saved = constraint
+    try {
+      inFrozenConstraint {
+        val cas1 = cas match {
+          case cas: HKTypeLambda =>
+            unfrozen = constrained(cas)
+            unfrozen.resultType
+          case _ =>
+            cas
+        }
+        val defn.FunctionOf(pat :: Nil, body, _, _) = cas1
+        if (isSubType(scrut, pat))
+          unfrozen match {
+            case unfrozen: HKTypeLambda if instantiate =>
+              val instances = paramInstances(new Array(unfrozen.paramNames.length), pat)
+              instantiateParams(instances)(body)
+            case _ =>
+              body
+          }
+        else NoType
+      }
+    }
+    finally constraint = saved
+  }
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
    *   - `B` derives from one of the class symbols of `tp2`,

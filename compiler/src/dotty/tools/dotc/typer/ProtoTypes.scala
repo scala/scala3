@@ -454,9 +454,11 @@ object ProtoTypes {
   def constrained(tl: TypeLambda, owningTree: untpd.Tree, alwaysAddTypeVars: Boolean = false)(implicit ctx: Context): (TypeLambda, List[TypeTree]) = {
     val state = ctx.typerState
     val addTypeVars = alwaysAddTypeVars || !owningTree.isEmpty
-    assert(!(ctx.typerState.isCommittable && !addTypeVars),
-      s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
-
+    if (tl.isInstanceOf[PolyType]) 
+      assert(!(ctx.typerState.isCommittable && !addTypeVars),
+        s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
+      // hk type lambdas can be added to constraints without typevars during match reduction
+      
     def newTypeVars(tl: TypeLambda): List[TypeTree] =
       for (paramRef <- tl.paramRefs)
       yield {

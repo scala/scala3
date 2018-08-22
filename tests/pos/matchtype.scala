@@ -14,6 +14,9 @@ object Test {
 
   type Len[X] = X match {
     case Unit => Z
-    case (x, xs) => S[Len[xs]]
+    case x *: xs => S[Len[xs]]
   }
+
+  type T2 = Len[(1, 2, 3)]
+  erased val x: S[S[S[Z]]] = typelevel.erasedValue[T2]
 }
