@@ -678,6 +678,11 @@ abstract class Tasty { tasty =>
       def unapply(x: Type)(implicit ctx: Context): Option[(Type, Term)]
     }
 
+    val TypeOf: TypeOfExtractor
+    abstract class TypeOfExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[(Type, Term)]
+    }
+
     val AndType: AndTypeExtractor
     abstract class AndTypeExtractor {
       def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)]

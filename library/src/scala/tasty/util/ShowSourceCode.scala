@@ -879,6 +879,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += " "
         printAnnotation(annot)
 
+      case Type.TypeOf(tp, tree) =>
+        this += "{ ??? }" // TODO
+
       case Type.AndType(left, right) =>
         printType(left)
         this += " & "

@@ -882,6 +882,13 @@ class TastyImpl(val rootContext: Contexts.Context) extends scala.tasty.Tasty { s
       }
     }
 
+    object TypeOf extends TypeOfExtractor {
+      def unapply(x: Type)(implicit ctx: Context): Option[(Type, Term)] = x match {
+        case Types.TypeOf(underlying, tree) => Some((underlying.stripTypeVar, tree))
+        case _ => None
+      }
+    }
+
     object AndType extends AndTypeExtractor {
       def unapply(x: Type)(implicit ctx: Context): Option[(Type, Type)] = x match {
         case Types.AndType(left, right) => Some(left.stripTypeVar, right.stripTypeVar)

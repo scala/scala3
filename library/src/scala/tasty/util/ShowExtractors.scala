@@ -181,6 +181,8 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "Type.AppliedType(" += tycon += ", " ++= args += ")"
       case Type.AnnotatedType(underlying, annot) =>
         this += "Type.AnnotatedType(" += underlying += ", " += annot += ")"
+      case Type.TypeOf(underlying, tree) =>
+        this += "Type.TypeOf(" += underlying += ", " += tree += ")"
       case Type.AndType(left, right) =>
         this += "Type.AndType(" += left += ", " += right += ")"
       case Type.OrType(left, right) =>
