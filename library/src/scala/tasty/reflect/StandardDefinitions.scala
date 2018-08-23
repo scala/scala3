@@ -29,79 +29,79 @@ trait StandardDefinitions extends TastyCore {
     def ScalaPackageClass: Symbol
 
     /** The class symbol of core class `scala.Any`. */
-    def AnyClass   : ClassDef
+    def AnyClass: Symbol
 
     /** The class symbol of core class `scala.AnyVal`. */
-    def AnyValClass: ClassDef
+    def AnyValClass: Symbol
 
     /** The class symbol of core class `java.lang.Object`. */
-    def ObjectClass: ClassDef
+    def ObjectClass: Symbol
 
     /** The type symbol of core class `scala.AnyRef`. */
-    def AnyRefClass: TypeDef
+    def AnyRefClass: Symbol
 
     /** The class symbol of core class `scala.Null`. */
-    def NullClass   : ClassDef
+    def NullClass: Symbol
 
     /** The class symbol of core class `scala.Nothing`. */
-    def NothingClass: ClassDef
+    def NothingClass: Symbol
 
     /** The class symbol of primitive class `scala.Unit`. */
-    def UnitClass   : ClassDef
+    def UnitClass: Symbol
 
     /** The class symbol of primitive class `scala.Byte`. */
-    def ByteClass   : ClassDef
+    def ByteClass: Symbol
 
     /** The class symbol of primitive class `scala.Short`. */
-    def ShortClass  : ClassDef
+    def ShortClass: Symbol
 
     /** The class symbol of primitive class `scala.Char`. */
-    def CharClass   : ClassDef
+    def CharClass: Symbol
 
     /** The class symbol of primitive class `scala.Int`. */
-    def IntClass    : ClassDef
+    def IntClass: Symbol
 
     /** The class symbol of primitive class `scala.Long`. */
-    def LongClass   : ClassDef
+    def LongClass: Symbol
 
     /** The class symbol of primitive class `scala.Float`. */
-    def FloatClass  : ClassDef
+    def FloatClass: Symbol
 
     /** The class symbol of primitive class `scala.Double`. */
-    def DoubleClass : ClassDef
+    def DoubleClass: Symbol
 
     /** The class symbol of primitive class `scala.Boolean`. */
-    def BooleanClass: ClassDef
+    def BooleanClass: Symbol
 
     /** The class symbol of class `scala.String`. */
-    def StringClass : ClassDef
+    def StringClass: Symbol
 
     /** The class symbol of class `java.lang.Class`. */
-    def ClassClass  : ClassDef
+    def ClassClass: Symbol
 
     /** The class symbol of class `scala.Array`. */
-    def ArrayClass  : ClassDef
+    def ArrayClass: Symbol
 
     /** The module symbol of module `scala.Predef`. */
-    def PredefModule: ValDef
+    def PredefModule: Symbol
 
     /** The module symbol of package `java.lang`. */
-    def JavaLangPackage: PackageDef
+    def JavaLangPackage: Symbol
 
     /** The module symbol of module `scala.Array`. */
-    def ArrayModule: ValDef
+    def ArrayModule: Symbol
 
     /** The method symbol of method `apply` in class `scala.Array`. */
-    def Array_apply: DefDef
+    def Array_apply: Symbol
 
     /** The method symbol of method `clone` in class `scala.Array`. */
-    def Array_clone: DefDef
+    def Array_clone: Symbol
 
     /** The method symbol of method `length` in class `scala.Array`. */
-    def Array_length: DefDef
+    def Array_length: Symbol
 
     /** The method symbol of method `update` in class `scala.Array`. */
-    def Array_update: DefDef
+    def Array_update: Symbol
 
     /** A dummy class symbol that is used to indicate repeated parameters
       *  compiled by the Scala compiler.
@@ -109,16 +109,16 @@ trait StandardDefinitions extends TastyCore {
     def RepeatedParamClass: Symbol
 
     /** The class symbol of class `scala.Option`. */
-    def OptionClass: ClassDef
+    def OptionClass: Symbol
 
     /** The module symbol of module `scala.None`. */
-    def NoneModule: ValDef
+    def NoneModule: Symbol
 
     /** The module symbol of module `scala.Some`. */
-    def SomeModule: ValDef
+    def SomeModule: Symbol
 
     /** Function-like object that maps arity to symbols for classes `scala.Product` */
-    def ProductClass: ClassDef
+    def ProductClass: Symbol
 
     /** Function-like object that maps arity to symbols for classes `scala.FunctionX`.
       *   -  0th element is `Function0`
@@ -126,7 +126,7 @@ trait StandardDefinitions extends TastyCore {
       *   -  ...
       *   -  Nth element is `FunctionN`
       */
-    def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): ClassDef
+    def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol
 
     /** Function-like object that maps arity to symbols for classes `scala.TupleX`.
       *   -  0th element is `NoSymbol`
@@ -137,7 +137,7 @@ trait StandardDefinitions extends TastyCore {
       *   - 23nd element is `NoSymbol`  // TODO update when we will have more tuples
       *   - ...
       */
-    def TupleClass(arity: Int): ClassDef
+    def TupleClass(arity: Int): Symbol
 
     /** Contains Scala primitive value classes:
       *   - Byte
@@ -150,7 +150,7 @@ trait StandardDefinitions extends TastyCore {
       *   - Boolean
       *   - Unit
       */
-    def ScalaPrimitiveValueClasses: List[ClassDef]
+    def ScalaPrimitiveValueClasses: List[Symbol]
 
     /** Contains Scala numeric value classes:
       *   - Byte
@@ -161,7 +161,7 @@ trait StandardDefinitions extends TastyCore {
       *   - Double
       *   - Char
       */
-    def ScalaNumericValueClasses: List[ClassDef]
+    def ScalaNumericValueClasses: List[Symbol]
   }
 
   /** Defines standard types.
