@@ -18,7 +18,7 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
   private def foldParents(x: X, trees: Iterable[Parent])(implicit ctx: Context): X = (x /: trees)(foldOverParent)
 
   def foldOverTree(x: X, tree: Tree)(implicit ctx: Context): X = {
-    def localCtx(definition: Definition): Context = definition.localContext
+    def localCtx(definition: Definition): Context = definition.symbol.localContext
     tree match {
       case Term.Ident(_) =>
         x
@@ -74,7 +74,7 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
       case Import(expr, selectors) =>
         foldTree(x, expr)
       case IsPackageClause(clause @ PackageClause(pid, stats)) =>
-        foldTrees(foldTree(x, pid), stats)(localCtx(clause.definition))
+        foldTrees(foldTree(x, pid), stats)(clause.symbol.localContext)
     }
   }
 

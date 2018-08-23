@@ -50,5 +50,7 @@ trait TastyCoreImpl extends scala.tasty.reflect.TastyCore {
   type Position = util.SourcePosition
 
   type Constant = Constants.Constant
-  
+
+  type Symbol = core.Symbols.Symbol
+
 }
