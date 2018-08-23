@@ -3545,7 +3545,7 @@ object Types {
 
     def alternatives(implicit ctx: Context): List[Type] = cases.map(caseType)
 
-    private var myUnderlying: Type = null
+    private[this] var myUnderlying: Type = null
 
     def underlying(implicit ctx: Context): Type = {
       if (myUnderlying == null) myUnderlying = alternatives.reduceLeft(OrType(_, _))
@@ -3564,16 +3564,20 @@ object Types {
       }
     }
 
-    private var myApproxScrut: Type = null
+    private[this] var myApproxScrut: Type = null
 
     def approximatedScrutinee(implicit ctx: Context): Type = {
       if (myApproxScrut == null) myApproxScrut = wildApproxMap.apply(scrutinee)
       myApproxScrut
     }
 
+    private[this] var myReduced: Type = null
+    private[this] var reductionContext: mutable.Map[Type, TypeBounds] = null
+
     def reduced(implicit ctx: Context): Type = {
       val trackingCtx = ctx.fresh.setTypeComparerFn(new TrackingTypeComparer(_))
       val cmp = trackingCtx.typeComparer.asInstanceOf[TrackingTypeComparer]
+
       def recur(cases: List[Type])(implicit ctx: Context): Type = cases match {
         case Nil => NoType
         case cas :: cases1 =>
@@ -3582,7 +3586,30 @@ object Types {
           else if (cmp.matchCase(approximatedScrutinee, cas, instantiate = false).exists) NoType
           else recur(cases1)
       }
-      recur(cases)(trackingCtx)
+
+      def contextBounds(tp: Type): TypeBounds = tp match {
+        case tp: TypeParamRef => ctx.typerState.constraint.fullBounds(tp)
+        case tp: TypeRef => ctx.gadt.bounds(tp.symbol)
+      }
+
+      def updateReductionContext() = {
+        reductionContext = new mutable.HashMap
+        for (tp <- cmp.footprint) reductionContext(tp) = contextBounds(tp)
+      }
+
+      def upToDate =
+        cmp.footprint.forall { tp =>
+          reductionContext.get(tp) match {
+            case Some(bounds) => bounds `eq` contextBounds(tp)
+            case None => false
+          }
+        }
+
+      if (!Config.cacheMatchReduced || myReduced == null || !upToDate) {
+        myReduced = recur(cases)(trackingCtx)
+        updateReductionContext()
+      }
+      myReduced
     }
   }
 
