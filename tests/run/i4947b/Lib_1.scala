@@ -15,6 +15,9 @@ object Lib {
   transparent def fact[T](transparent i: Int)(f: => T): Int = {
     printStack("track", i)
     printStack("track", i)
+    track {
+      printStack("fact")
+    }
     f
     if (i == 0)
       1
