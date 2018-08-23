@@ -162,25 +162,24 @@ object Contexts {
       _typeComparer
     }
 
-    /** Is this context transparent? */
+    /** Is this context dependent? */
     private[this] var _dependentInit: Boolean = true // NOTE: This initial value only applies to InitialContext
     private[this] var _dependent: Boolean = false
     final def isDependent: Boolean = {
+      def isDepOwner(owner: Symbol): Boolean =
+        if ((owner eq NoSymbol) || owner.isClass) false
+        else if (owner.flagsUNSAFE.is(Flags.Dependent)) true
+        else isDepOwner(owner.owner)
+
       /** NOTE: The initialization of `_dependent` is rather tricky: We do need to make sure that any
         *       enclosing context's `_dependent` has been computed, since the property is inherited. In case the
-        *       outer's `transparent` has been accessed before, we inherit the value by way of clone() in fresh(),
+        *       outer's `dependent` has been accessed before, we inherit the value by way of clone() in fresh(),
         *       (and as a result `_dependentInit` will be true as well).
         *       Otherwise we force the enclosing context's `_dependent` here, and, if the outer turns out not to be
-        *       transparent, we finally also compute `_dependent` based on this context.
+        *       dependent, we finally also compute `_dependent` based on this context.
         */
       if (!_dependentInit) {
-        val S = this.base.settings
-        _dependent = if (owner eq NoSymbol) false else
-          this.mode.is(Mode.InTypeOf) ||
-            !this.owner.isClass && (
-              outer.isDependent ||
-              this.owner.flagsUNSAFE.is(Flags.Dependent)
-            )
+        _dependent = this.mode.is(Mode.InTypeOf) || isDepOwner(this.owner)
         _dependentInit = true
       }
       _dependent
