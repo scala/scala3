@@ -743,7 +743,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             printTypeAndAnnots(tp)
             this += " "
             printAnnotation(annot)
-          case Type.SymRef(sym, Type.ThisType(Type.SymRef(PackageDef("runtime", _), NoPrefix()))) if sym.symbol.isClass && (sym.symbol.name == "Null$" || sym.symbol.name == "Nothing$") =>
+          case Type.SymRef(sym, _) if sym.symbol.isClass && (sym.symbol.fullName == "scala.runtime.Null$" || sym.symbol.fullName == "scala.runtime.Nothing$") =>
             // scala.runtime.Null$ and scala.runtime.Nothing$ are not modules, those are their actual names
             printType(tpe)
           case tpe @ Type.SymRef(sym, _) if sym.symbol.isClass && sym.name.endsWith("$") =>
@@ -1122,7 +1122,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def unapply(arg: Tree)(implicit ctx: Context): Option[(String, List[Term])] = arg match {
       case IsTerm(arg @ Term.Apply(fn, args)) =>
         fn.tpe match {
-          case Type.SymRef(DefDef(op, _, _, _, _), Type.ThisType(Type.SymRef(sym, _))) if sym.name == "<special-ops>" =>
+          case Type.SymRef(DefDef(op, _, _, _, _), Type.ThisType(Type.SymRef(sym2, _))) if sym2.name == "<special-ops>" =>
             Some((op, args))
           case _ => None
         }
@@ -1158,21 +1158,21 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     object ScalaPackage {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-        case Type.SymRef(PackageDef("scala", _), Type.ThisType(RootPackage())) => true
+        case Type.SymRef(sym, _) => sym.symbol == definitions.ScalaPackage
         case _ => false
       }
     }
 
     object RootPackage {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-        case Type.SymRef(PackageDef("<root>", _), NoPrefix()) => true
+        case Type.SymRef(sym, _) => sym.symbol == definitions.RootClass
         case _ => false
       }
     }
 
     object EmptyPackage {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-        case Type.SymRef(PackageDef("<empty>", _), NoPrefix() | Type.ThisType(RootPackage())) => true
+        case Type.SymRef(sym, _) => sym.symbol == definitions.EmptyPackageClass
         case _ => false
       }
     }

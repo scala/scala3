@@ -16,8 +16,17 @@ trait StandardDefinitions extends TastyCore {
     /** The module symbol of root package `_root_`. */
     def RootPackage: PackageDef
 
+    /** The class symbol of root package `_root_`. */
+    def RootClass: Symbol
+
+    /** The class symbol of empty package `_root_._empty_`. */
+    def EmptyPackageClass: Symbol
+
     /** The module symbol of package `scala`. */
-    def ScalaPackage: PackageDef
+    def ScalaPackage: Symbol
+
+    /** The class symbol of package `scala`. */
+    def ScalaPackageClass: Symbol
 
     /** The class symbol of core class `scala.Any`. */
     def AnyClass   : ClassDef
@@ -97,7 +106,7 @@ trait StandardDefinitions extends TastyCore {
     /** A dummy class symbol that is used to indicate repeated parameters
       *  compiled by the Scala compiler.
       */
-    def RepeatedParamClass: ClassDef
+    def RepeatedParamClass: Symbol
 
     /** The class symbol of class `scala.Option`. */
     def OptionClass: ClassDef

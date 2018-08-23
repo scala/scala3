@@ -11,9 +11,15 @@ trait StandardDefinitions extends scala.tasty.reflect.StandardDefinitions {
 
   val definitions: DefinitionsApi = new DefinitionsApi {
 
-    def RootPackage: PackageDef = packageDefFromSym(defn.RootPackage)
+    // TODO return Symbols instead of Definitions
 
-    def ScalaPackage: PackageDef = packageDefFromSym(defn.ScalaPackageVal)
+    def RootPackage: PackageDef = packageDefFromSym(defn.RootPackage)
+    def RootClass: Symbol = defn.RootClass
+
+    def EmptyPackageClass: Symbol = defn.EmptyPackageClass
+
+    def ScalaPackage: Symbol = defn.ScalaPackageVal
+    def ScalaPackageClass: Symbol = defn.ScalaPackageClass
 
     def AnyClass: ClassDef = classDef(defn.AnyClass)
     def AnyValClass: ClassDef = classDef(defn.AnyValClass)
@@ -44,7 +50,7 @@ trait StandardDefinitions extends scala.tasty.reflect.StandardDefinitions {
     def Array_length: DefDef = defDefFromSym(defn.Array_length.asTerm)
     def Array_update: DefDef = defDefFromSym(defn.Array_update.asTerm)
 
-    def RepeatedParamClass: ClassDef = classDef(defn.RepeatedParamClass)
+    def RepeatedParamClass: Symbol = defn.RepeatedParamClass
 
     def OptionClass: TypeDef = classDef(defn.OptionClass)
     def NoneModule: ValDef = valDefFromSym(defn.NoneClass.companionModule.asTerm)
