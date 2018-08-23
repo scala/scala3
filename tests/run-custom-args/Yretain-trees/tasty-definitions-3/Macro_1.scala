@@ -8,9 +8,10 @@ object Foo {
 
   def inspectBodyImpl(x: Expr[Int])(implicit tasty: Tasty): Expr[String] = {
     import tasty._
-     def definitionString(tree: Tree): Expr[String] = tree.symbol.tree match {
-      case Some(definition) => definition.show.toExpr
-      case None => '("NO DEFINTION")
+    def definitionString(tree: Tree): Expr[String] = tree.symbol match {
+      case IsDefSymbol(sym) => sym.tree.show.toExpr
+      case IsValSymbol(sym) => sym.tree.show.toExpr
+      case IsBindSymbol(sym) => sym.tree.show.toExpr
     }
     x.toTasty match {
       case Term.Inlined(None, Nil, arg) => definitionString(arg)

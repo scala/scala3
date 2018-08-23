@@ -21,12 +21,12 @@ object Macros {
           case IsDefinition(tree @ DefDef(name, _, _, _, _)) =>
             buff.append(name)
             buff.append("\n")
-            buff.append(tree.symbol.owner.tree.get.show)
+            buff.append(tree.show)
             buff.append("\n\n")
           case IsDefinition(tree @ ValDef(name, _, _)) =>
             buff.append(name)
             buff.append("\n")
-            buff.append(tree.symbol.owner.tree.get.show)
+            buff.append(tree.show)
             buff.append("\n\n")
           case _ =>
         }
@@ -49,4 +49,5 @@ class DummyShow[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty0) {
   def showTypeOrBoundsTree(tpt: TypeOrBoundsTree)(implicit ctx: Context): String = "TypeOrBoundsTree"
   def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String = "TypeOrBounds"
   def showConstant(const: Constant)(implicit ctx: Context): String = "Constant"
+  def showSymbol(symbol: Symbol)(implicit ctx: Context): String = "Symbol"
 }

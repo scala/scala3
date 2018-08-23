@@ -66,6 +66,8 @@ trait TreeOps extends TastyCore {
     def parents(implicit ctx: Context): List[TermOrTypeTree]
     def self(implicit ctx: Context): Option[ValDef]
     def body(implicit ctx: Context): List[Statement]
+
+    def symbol(implicit ctx: Context): ClassSymbol
   }
   implicit def ClassDefDeco(cdef: ClassDef): ClassDefAPI
 
@@ -86,6 +88,8 @@ trait TreeOps extends TastyCore {
     def paramss(implicit ctx: Context): List[List[ValDef]]
     def returnTpt(implicit ctx: Context): TypeTree
     def rhs(implicit ctx: Context): Option[Term]
+
+    def symbol(implicit ctx: Context): DefSymbol
   }
   implicit def DefDefDeco(ddef: DefDef): DefDefAPI
 
@@ -104,6 +108,8 @@ trait TreeOps extends TastyCore {
   trait ValDefAPI {
     def tpt(implicit ctx: Context): TypeTree
     def rhs(implicit ctx: Context): Option[Term]
+
+    def symbol(implicit ctx: Context): ValSymbol
   }
   implicit def ValDefDeco(vdef: ValDef): ValDefAPI
 
@@ -121,6 +127,7 @@ trait TreeOps extends TastyCore {
 
   trait TypeDefAPI {
     def rhs(implicit ctx: Context): TypeOrBoundsTree
+    def symbol(implicit ctx: Context): TypeSymbol
   }
   implicit def TypeDefDeco(tdef: TypeDef): TypeDefAPI
 
@@ -134,6 +141,7 @@ trait TreeOps extends TastyCore {
   trait PackageDefAPI {
     def owner(implicit ctx: Context): PackageDef
     def members(implicit ctx: Context): List[Statement]
+    def symbol(implicit ctx: Context): PackageSymbol
   }
   implicit def PackageDefDeco(pdef: PackageDef): PackageDefAPI
 

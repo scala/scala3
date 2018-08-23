@@ -24,6 +24,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
   def showConstant(const: Constant)(implicit ctx: Context): String =
     (new Buffer).printConstant(const).result()
 
+  def showSymbol(symbol: Symbol)(implicit ctx: Context): String =
+    symbol.fullName
+
   private class Buffer(implicit ctx: Context) {
 
     private[this] val sb: StringBuilder = new StringBuilder
@@ -622,9 +625,9 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printParamDef(arg: ValDef): Unit = {
       val name = arg.name
-      arg.symbol.owner.tree match {
-        case Some(DefDef("<init>", _, _, _, _)) =>
-          val Some(ClassDef(_, _, _, _, body)) = arg.symbol.owner.owner.tree
+      arg.symbol.owner match {
+        case IsDefSymbol(sym) if sym.name == "<init>" =>
+          val ClassDef(_, _, _, _, body) = sym.owner.asClass.tree
           body.collectFirst {
             case IsValDef(vdef @ ValDef(`name`, _, _)) if vdef.symbol.flags.isParamAccessor =>
               if (!vdef.symbol.flags.isLocal) {
@@ -745,10 +748,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             printTypeAndAnnots(tp)
             this += " "
             printAnnotation(annot)
-          case Type.SymRef(sym, _) if sym.isClass && (sym.fullName == "scala.runtime.Null$" || sym.fullName == "scala.runtime.Nothing$") =>
+          case Type.SymRef(IsClassSymbol(sym), _) if sym.fullName == "scala.runtime.Null$" || sym.fullName == "scala.runtime.Nothing$" =>
             // scala.runtime.Null$ and scala.runtime.Nothing$ are not modules, those are their actual names
             printType(tpe)
-          case tpe @ Type.SymRef(sym, _) if sym.isClass && sym.name.endsWith("$") =>
+          case tpe @ Type.SymRef(IsClassSymbol(sym), _) if sym.name.endsWith("$") =>
             printType(tpe)
             this += ".type"
           case tpe => printType(tpe)
@@ -828,7 +831,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Type.SymRef(sym, prefix) =>
         prefix match {
           case Types.EmptyPrefix() =>
-          case IsType(prefix @ Type.SymRef(sym, _)) if sym.isClass =>
+          case IsType(prefix @ Type.SymRef(IsClassSymbol(_), _)) =>
             printType(prefix)
             this += "#"
           case IsType(prefix) =>
@@ -1085,7 +1088,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printFullClassName(tp: TypeOrBounds): Unit = {
       def printClassPrefix(prefix: TypeOrBounds): Unit = prefix match {
-        case Type.SymRef(sym, prefix2) if sym.isClass =>
+        case Type.SymRef(IsClassSymbol(sym), prefix2) =>
           printClassPrefix(prefix2)
           this += sym.name += "."
         case _ =>
@@ -1124,11 +1127,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def unapply(arg: Tree)(implicit ctx: Context): Option[(String, List[Term])] = arg match {
       case IsTerm(arg @ Term.Apply(fn, args)) =>
         fn.tpe match {
-          case Type.SymRef(sym, Type.ThisType(Type.SymRef(sym2, _))) if sym2.name == "<special-ops>" =>
-            sym.tree match {
-              case Some(DefDef(op, _, _, _, _)) => Some((op, args))
-              case _ => None
-            }
+          case Type.SymRef(IsDefSymbol(sym), Type.ThisType(Type.SymRef(sym2, _))) if sym2.name == "<special-ops>" =>
+            Some((sym.tree.name, args))
           case _ => None
         }
       case _ => None

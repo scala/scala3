@@ -40,4 +40,9 @@ trait PrintersImpl extends scala.tasty.reflect.Printers with scala.tasty.reflect
     def show(implicit ctx: Contexts.Context, s: Show[tasty.type]): String = s.showConstant(const)
   }
 
+  /** Adds `show` as an extension method of a `Symbol` */
+  def SymbolShowDeco(symbol: Symbol): ShowAPI = new ShowAPI {
+    def show(implicit ctx: Contexts.Context, s: Show[tasty.type]): String = s.showSymbol(symbol)
+  }
+
 }

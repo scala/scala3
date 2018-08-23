@@ -1,6 +1,6 @@
 package dotty.tools.dotc.tastyreflect
 
-import dotty.tools.dotc.ast.{Trees, tpd, untpd}
+import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.StdNames.nme
@@ -12,7 +12,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
   def TreeDeco(tree: Tree): TreeAPI = new TreeAPI {
     def pos(implicit ctx: Context): Position = tree.pos
     def symbol(implicit ctx: Context): Symbol = tree.symbol
-
   }
 
   object IsPackageClause extends IsPackageClauseExtractor {
@@ -84,6 +83,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
     def parents(implicit ctx: Context): List[tpd.Tree] = rhs.parents
     def self(implicit ctx: Context): Option[tpd.ValDef] = optional(rhs.self)
     def body(implicit ctx: Context): List[tpd.Tree] = rhs.body
+    def symbol(implicit ctx: Context): ClassSymbol = cdef.symbol.asClass
   }
 
   // DefDef
@@ -108,6 +108,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
     def paramss(implicit ctx: Context): List[List[ValDef]] = ddef.vparamss
     def returnTpt(implicit ctx: Context): TypeTree = ddef.tpt
     def rhs(implicit ctx: Context): Option[Tree] = optional(ddef.rhs)
+    def symbol(implicit ctx: Context): DefSymbol = ddef.symbol.asTerm
   }
 
   // ValDef
@@ -130,6 +131,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
   def ValDefDeco(vdef: ValDef): ValDefAPI = new ValDefAPI {
     def tpt(implicit ctx: Context): TypeTree = vdef.tpt
     def rhs(implicit ctx: Context): Option[Tree] = optional(vdef.rhs)
+    def symbol(implicit ctx: Context): ValSymbol = vdef.symbol.asTerm
   }
 
   // TypeDef
@@ -150,6 +152,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
 
   def TypeDefDeco(tdef: TypeDef): TypeDefAPI = new TypeDefAPI {
     def rhs(implicit ctx: Context): TypeOrBoundsTree = tdef.rhs
+    def symbol(implicit ctx: Context): TypeSymbol = tdef.symbol.asType
   }
 
   // PackageDef
@@ -162,6 +165,8 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
       if (pdef.symbol.is(core.Flags.JavaDefined)) Nil // FIXME should also support java packages
       else pdef.symbol.info.decls.iterator.map(definitionFromSym).toList
     }
+
+    def symbol(implicit ctx: Context): PackageSymbol = pdef.symbol
   }
 
   object IsPackageDef extends IsPackageDefExtractor {
