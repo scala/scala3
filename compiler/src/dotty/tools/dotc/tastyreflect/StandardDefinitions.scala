@@ -13,7 +13,7 @@ trait StandardDefinitions extends scala.tasty.reflect.StandardDefinitions {
 
     // TODO return Symbols instead of Definitions
 
-    def RootPackage: PackageDef = packageDefFromSym(defn.RootPackage)
+    def RootPackage: Symbol = defn.RootPackage
     def RootClass: Symbol = defn.RootClass
 
     def EmptyPackageClass: Symbol = defn.EmptyPackageClass

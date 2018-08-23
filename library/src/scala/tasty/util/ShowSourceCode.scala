@@ -743,10 +743,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             printTypeAndAnnots(tp)
             this += " "
             printAnnotation(annot)
-          case Type.SymRef(sym, _) if sym.symbol.isClass && (sym.symbol.fullName == "scala.runtime.Null$" || sym.symbol.fullName == "scala.runtime.Nothing$") =>
+          case Type.SymRef(sym, _) if sym.isClass && (sym.fullName == "scala.runtime.Null$" || sym.fullName == "scala.runtime.Nothing$") =>
             // scala.runtime.Null$ and scala.runtime.Nothing$ are not modules, those are their actual names
             printType(tpe)
-          case tpe @ Type.SymRef(sym, _) if sym.symbol.isClass && sym.name.endsWith("$") =>
+          case tpe @ Type.SymRef(sym, _) if sym.isClass && sym.name.endsWith("$") =>
             printType(tpe)
             this += ".type"
           case tpe => printType(tpe)
@@ -826,7 +826,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Type.SymRef(sym, prefix) =>
         prefix match {
           case Types.EmptyPrefix() =>
-          case IsType(prefix @ Type.SymRef(sym, _)) if sym.symbol.isClass =>
+          case IsType(prefix @ Type.SymRef(sym, _)) if sym.isClass =>
             printType(prefix)
             this += "#"
           case IsType(prefix) =>
@@ -958,7 +958,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       val annots = definition.annots.filter {
         case Annotation(annot, _) =>
           annot.tpe match {
-            case Type.TypeRef(_, Type.SymRef(sym, _)) if sym.symbol.fullName == "scala.annotation.internal" => false
+            case Type.TypeRef(_, Type.SymRef(sym, _)) if sym.fullName == "scala.annotation.internal" => false
             case Type.TypeRef("forceInline", Types.ScalaPackage()) => false
             case _ => true
           }
@@ -1055,7 +1055,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def printProtectedOrPrivate(definition: Definition): Boolean = {
       var prefixWasPrinted = false
       def printWithin(within: Type) = within match {
-        case Type.SymRef(sym @ PackageDef(name, _), _) =>
+        case Type.SymRef(sym, _) =>
           this += sym.name
         case _ => printFullClassName(within)
       }
@@ -1083,7 +1083,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printFullClassName(tp: TypeOrBounds): Unit = {
       def printClassPrefix(prefix: TypeOrBounds): Unit = prefix match {
-        case Type.SymRef(sym, prefix2) if sym.symbol.isClass =>
+        case Type.SymRef(sym, prefix2) if sym.isClass =>
           printClassPrefix(prefix2)
           this += sym.name += "."
         case _ =>
@@ -1122,8 +1122,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def unapply(arg: Tree)(implicit ctx: Context): Option[(String, List[Term])] = arg match {
       case IsTerm(arg @ Term.Apply(fn, args)) =>
         fn.tpe match {
-          case Type.SymRef(DefDef(op, _, _, _, _), Type.ThisType(Type.SymRef(sym2, _))) if sym2.name == "<special-ops>" =>
-            Some((op, args))
+          case Type.SymRef(sym, Type.ThisType(Type.SymRef(sym2, _))) if sym2.name == "<special-ops>" =>
+            sym.tree match {
+              case Some(DefDef(op, _, _, _, _)) => Some((op, args))
+              case _ => None
+            }
           case _ => None
         }
       case _ => None
@@ -1144,7 +1147,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     object JavaLangObject {
       def unapply(tpe: Type)(implicit ctx: Context): Boolean = tpe match {
-        case Type.TypeRef("Object", Type.SymRef(sym, _)) if sym.symbol.fullName == "java.lang" => true
+        case Type.TypeRef("Object", Type.SymRef(sym, _)) if sym.fullName == "java.lang" => true
         case _ => false
       }
     }
@@ -1158,21 +1161,21 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     object ScalaPackage {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-        case Type.SymRef(sym, _) => sym.symbol == definitions.ScalaPackage
+        case Type.SymRef(sym, _) => sym == definitions.ScalaPackage
         case _ => false
       }
     }
 
     object RootPackage {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-        case Type.SymRef(sym, _) => sym.symbol == definitions.RootClass
+        case Type.SymRef(sym, _) => sym.fullName == "<root>" // TODO use Symbol.==
         case _ => false
       }
     }
 
     object EmptyPackage {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-        case Type.SymRef(sym, _) => sym.symbol == definitions.EmptyPackageClass
+        case Type.SymRef(sym, _) => sym.fullName == "<empty>"
         case _ => false
       }
     }

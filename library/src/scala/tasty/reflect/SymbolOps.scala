@@ -6,6 +6,8 @@ trait SymbolOps extends TastyCore {
 
   trait SymbolAPI {
 
+    def owner(implicit ctx: Context): Symbol
+
     def isEmpty(implicit ctx: Context): Boolean
     def isClass(implicit ctx: Context): Boolean
 

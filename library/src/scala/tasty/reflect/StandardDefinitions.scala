@@ -14,7 +14,7 @@ trait StandardDefinitions extends TastyCore {
   trait DefinitionsApi extends StandardTypes {
 
     /** The module symbol of root package `_root_`. */
-    def RootPackage: PackageDef
+    def RootPackage: Symbol
 
     /** The class symbol of root package `_root_`. */
     def RootClass: Symbol
