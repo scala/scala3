@@ -154,6 +154,9 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   private def pickleTypeOf(to: TypeOf)(implicit ctx: Context): Unit = {
+    def pickleTypes(types: List[Type]): Unit =
+      types.foreach(tp => pickleType(tp, richTypes = true))
+
     writeByte(TYPEOF)
     withLength {
       val treeKind = to.tree match {
@@ -165,8 +168,14 @@ class TreePickler(pickler: TastyPickler) {
       writeByte(treeKind)
       pickleType(to.underlying, richTypes = true)
       to match {
+        case TypeOf.Match(selectorTp, caseTriples) =>
+          pickleType(selectorTp, richTypes = true)
+          caseTriples.foreach {
+            case (patTp, NoType, bodyTp)  => writeByte(2); pickleTypes(patTp :: bodyTp :: Nil)
+            case (patTp, guardTp, bodyTp) => writeByte(3); pickleTypes(patTp :: guardTp :: bodyTp :: Nil)
+          }
         case TypeOf.Generic(types) =>
-          types.foreach(tp => pickleType(tp, richTypes = true))
+          pickleTypes(types)
       }
     }
   }

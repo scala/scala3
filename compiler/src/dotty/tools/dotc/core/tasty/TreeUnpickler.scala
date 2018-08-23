@@ -297,18 +297,27 @@ class TreeUnpickler(reader: TastyReader,
         def readTypeOf(): Type = {
           val treeKind = readByte()
           val underlying = readType()
-          val types = until(end)(readType())
           val TT = TypeOfTags
-          (treeKind, types) match {
-            case (TT.If, List(cond, thenb, elseb)) =>
-              TypeOf.If(underlying, cond, thenb, elseb)
-            case (TT.Match, sel :: cases) =>
-              TypeOf.Match(underlying, sel, cases)
-            case (TT.Apply, fn :: args) =>
-              TypeOf.Apply(underlying, fn, args)
-            case (TT.TypeApply, fn :: args) =>
-              TypeOf.TypeApply(underlying, fn, args)
-            case _ => throw new AssertionError(s"Inconsistant types in TypeOf: $types")
+          if (treeKind == TT.Match) {
+            val selectorTp = readType()
+            val caseTriples = until(end) {
+              readByte() match {
+                case 2 => (readType(), NoType, readType())
+                case 3 => (readType(), readType(), readType())
+              }
+            }
+            TypeOf.Match(underlying, selectorTp, caseTriples)
+          } else {
+            val types = until(end)(readType())
+            (treeKind, types) match {
+              case (TT.If, List(cond, thenb, elseb)) =>
+                TypeOf.If(underlying, cond, thenb, elseb)
+              case (TT.Apply, fn :: args) =>
+                TypeOf.Apply(underlying, fn, args)
+              case (TT.TypeApply, fn :: args) =>
+                TypeOf.TypeApply(underlying, fn, args)
+              case _ => throw new AssertionError(s"Inconsistant types in TypeOf: $types")
+            }
           }
         }
 

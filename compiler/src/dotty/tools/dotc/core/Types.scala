@@ -4135,7 +4135,8 @@ object Types {
     }
 
     object Match {
-      def apply(underlyingTp: Type, selectorTp: Type, caseTps: List[Type])(implicit ctx: Context): TypeOf =
+      def apply(underlyingTp: Type, selectorTp: Type,
+                caseTriples: List[(Type, Type, Type)])(implicit ctx: Context): TypeOf =
         ???.asInstanceOf[TypeOf] // TODO
 
       def unapply(to: TypeOf): Option[(Type, List[(Type, Type, Type)])] = to.tree match {
