@@ -103,6 +103,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
     true
   }
 
+  protected def gadtBounds(sym: Symbol)(implicit ctx: Context) = ctx.gadt.bounds(sym)
+  protected def gadtSetBounds(sym: Symbol, b: TypeBounds) = ctx.gadt.setBounds(sym, b)
+
   // Subtype testing `<:<`
 
   def topLevelSubType(tp1: Type, tp2: Type): Boolean = {
@@ -375,7 +378,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
     def thirdTryNamed(tp2: NamedType): Boolean = tp2.info match {
       case info2: TypeBounds =>
         def compareGADT: Boolean = {
-          val gbounds2 = ctx.gadt.bounds(tp2.symbol)
+          val gbounds2 = gadtBounds(tp2.symbol)
           (gbounds2 != null) &&
             (isSubTypeWhenFrozen(tp1, gbounds2.lo) ||
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
@@ -601,7 +604,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         tp1.info match {
           case TypeBounds(_, hi1) =>
             def compareGADT = {
-              val gbounds1 = ctx.gadt.bounds(tp1.symbol)
+              val gbounds1 = gadtBounds(tp1.symbol)
               (gbounds1 != null) &&
                 (isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
                 narrowGADTBounds(tp1, tp2, approx, isUpper = true)) &&
@@ -1146,12 +1149,12 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false
       else {
-        val oldBounds = ctx.gadt.bounds(tparam)
+        val oldBounds = gadtBounds(tparam)
         val newBounds =
           if (isUpper) TypeBounds(oldBounds.lo, oldBounds.hi & bound)
           else TypeBounds(oldBounds.lo | bound, oldBounds.hi)
         isSubType(newBounds.lo, newBounds.hi) &&
-          { ctx.gadt.setBounds(tparam, newBounds); true }
+          { gadtSetBounds(tparam, newBounds); true }
       }
     }
   }
@@ -1737,11 +1740,33 @@ object TypeComparer {
 class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   import state.constraint
 
+  val footprint = mutable.Set[Type]()
+
+  override def bounds(param: TypeParamRef): TypeBounds = {
+    if (param.binder `ne` caseLambda) footprint += param
+    super.bounds(param)
+  }
+
+  override def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean): Boolean = {
+    if (param.binder `ne` caseLambda) footprint += param
+    super.addOneBound(param, bound, isUpper)
+  }
+
+  override def gadtBounds(sym: Symbol)(implicit ctx: Context) = {
+    footprint += sym.typeRef
+    super.gadtBounds(sym)
+  }
+
+  override def gadtSetBounds(sym: Symbol, b: TypeBounds) = {
+    footprint += sym.typeRef
+    super.gadtSetBounds(sym, b)
+  }
+
   def matchCase(scrut: Type, cas: Type, instantiate: Boolean)(implicit ctx: Context): Type = {
 
     def paramInstances = new TypeAccumulator[Array[Type]] {
       def apply(inst: Array[Type], t: Type) = t match {
-        case t @ TypeParamRef(b, n) if b `eq` unfrozen =>
+        case t @ TypeParamRef(b, n) if b `eq` caseLambda =>
           inst(n) = instanceType(t, fromBelow = variance >= 0)
           inst
         case _ =>
@@ -1751,7 +1776,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
     def instantiateParams(inst: Array[Type]) = new TypeMap {
       def apply(t: Type) = t match {
-        case t @ TypeParamRef(b, n) if b `eq` unfrozen => inst(n)
+        case t @ TypeParamRef(b, n) if b `eq` caseLambda => inst(n)
         case t: LazyRef => apply(t.ref)
         case _ => mapOver(t)
       }
@@ -1762,16 +1787,16 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       inFrozenConstraint {
         val cas1 = cas match {
           case cas: HKTypeLambda =>
-            unfrozen = constrained(cas)
-            unfrozen.resultType
+            caseLambda = constrained(cas)
+            caseLambda.resultType
           case _ =>
             cas
         }
         val defn.FunctionOf(pat :: Nil, body, _, _) = cas1
         if (isSubType(scrut, pat))
-          unfrozen match {
-            case unfrozen: HKTypeLambda if instantiate =>
-              val instances = paramInstances(new Array(unfrozen.paramNames.length), pat)
+          caseLambda match {
+            case caseLambda: HKTypeLambda if instantiate =>
+              val instances = paramInstances(new Array(caseLambda.paramNames.length), pat)
               instantiateParams(instances)(body)
             case _ =>
               body

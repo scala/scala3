@@ -38,7 +38,7 @@ trait ConstraintHandling {
   /** Potentially a type lambda that is still instantiatable, even though the constraint
    *  is generally frozen.
    */
-  protected var unfrozen: Type = NoType
+  protected var caseLambda: Type = NoType
 
   /** If set, align arguments `S1`, `S2`when taking the glb
    *  `T1 { X = S1 } & T2 { X = S2 }` of a constraint upper bound for some type parameter.
@@ -52,7 +52,7 @@ trait ConstraintHandling {
    */
   protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
 
-  private def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean): Boolean =
+  protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean): Boolean =
     !constraint.contains(param) || {
       def occursIn(bound: Type): Boolean = {
         val b = bound.dealias
@@ -174,13 +174,13 @@ trait ConstraintHandling {
 
   @forceInline final def inFrozenConstraint[T](op: => T): T = {
     val savedFrozen = frozenConstraint
-    val savedUnfrozen = unfrozen
+    val savedLambda = caseLambda
     frozenConstraint = true
-    unfrozen = NoType
+    caseLambda = NoType
     try op
     finally {
       frozenConstraint = savedFrozen
-      unfrozen = savedUnfrozen
+      caseLambda = savedLambda
     }
   }
 
@@ -325,7 +325,7 @@ trait ConstraintHandling {
     }
 
   /** The current bounds of type parameter `param` */
-  final def bounds(param: TypeParamRef): TypeBounds = {
+  def bounds(param: TypeParamRef): TypeBounds = {
     val e = constraint.entry(param)
     if (e.exists) e.bounds
     else {
@@ -361,7 +361,7 @@ trait ConstraintHandling {
 
   /** Can `param` be constrained with new bounds? */
   final def canConstrain(param: TypeParamRef): Boolean =
-    (!frozenConstraint || (unfrozen `eq` param.binder)) && constraint.contains(param)
+    (!frozenConstraint || (caseLambda `eq` param.binder)) && constraint.contains(param)
 
   /** Add constraint `param <: bound` if `fromBelow` is false, `param >: bound` otherwise.
    *  `bound` is assumed to be in normalized form, as specified in `firstTry` and
