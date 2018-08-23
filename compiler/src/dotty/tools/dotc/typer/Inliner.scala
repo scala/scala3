@@ -152,6 +152,7 @@ object Inliner {
     if (enclosingInlineds.nonEmpty) inlined // Remove in the outer most inlined call
     else {
       val inlinedAtPos = inlined.call.pos
+      val callSourceFile = ctx.source.file
 
       /** Removes all Inlined trees, replacing them with blocks.
        *  Repositions all trees directly inside an inlined expansion of a non empty call to the position of the call.
@@ -164,7 +165,7 @@ object Inliner {
             case _ =>
               val transformed = super.transform(tree)
               enclosingInlineds match {
-                case call :: _ if call.symbol.sourceFile != ctx.owner.sourceFile =>
+                case call :: _ if call.symbol.sourceFile != callSourceFile =>
                   // Until we implement JSR-45, we cannot represent in output positions in other source files.
                   // So, reposition inlined code from other files with the call position:
                   transformed.withPos(inlinedAtPos)
