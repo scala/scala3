@@ -7,4 +7,19 @@ object Lib {
   def printStack(tag: String): Unit = {
     println(tag + ": "+ new Exception().getStackTrace().apply(1))
   }
+
+  def printStack(tag: String, i: Int): Unit = {
+    println(s"$tag (i = $i): ${new Exception().getStackTrace().apply(1)}")
+  }
+
+  transparent def fact[T](transparent i: Int)(f: => T): Int = {
+    printStack("track", i)
+    printStack("track", i)
+    f
+    if (i == 0)
+      1
+    else {
+      i * fact(i-1)(f)
+    }
+  }
 }

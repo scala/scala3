@@ -16,9 +16,11 @@ object Test {
   }
 
   def main(args: Array[String]): Unit = {
-    fact(2) {
-      printStack("main1", -1)
-      printStack("main2", -1)
+    fact(0) {
+      fact(2) {
+        printStack("main1", -1)
+        printStack("main2", -1)
+      }
     }
   }
 
