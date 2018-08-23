@@ -4,7 +4,7 @@ package reflect
 trait ContextOps extends TastyCore {
 
   trait ContextAPI {
-    def owner: Definition
+    def owner: Symbol
 
     /** Returns the source file being compiled. The path is relative to the current working directory. */
     def source: java.nio.file.Path

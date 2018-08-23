@@ -13,12 +13,17 @@ trait SymbolOps extends TastyCore {
 
     def flags(implicit ctx: Context): FlagSet
 
+    def privateWithin(implicit ctx: Context): Option[Type]
+    def protectedWithin(implicit ctx: Context): Option[Type]
+
     def name(implicit ctx: Context): String
     def fullName(implicit ctx: Context): String
 
     def localContext(implicit ctx: Context): Context
 
     def tree(implicit ctx: Context): Option[Definition]
+
+    def annots(implicit ctx: Context): List[Term]
 
   }
   implicit def SymbolDeco(symbol: Symbol): SymbolAPI

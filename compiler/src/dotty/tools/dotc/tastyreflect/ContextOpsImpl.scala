@@ -9,7 +9,7 @@ trait ContextOpsImpl extends scala.tasty.reflect.ContextOps with TastyCoreImpl {
   val rootContext: Contexts.Context
 
   def ContextDeco(ctx: Context): ContextAPI = new ContextAPI {
-    def owner: Definition = definitionFromSym(ctx.owner)(ctx)
+    def owner: Symbol = ctx.owner
 
     def source: java.nio.file.Path = ctx.compilationUnit.source.file.jpath
   }

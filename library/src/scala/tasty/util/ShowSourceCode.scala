@@ -72,7 +72,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case tree @ PackageClause(name, stats) =>
         val stats1 = stats.collect {
           case IsPackageClause(stat) => stat
-          case IsDefinition(stat) if !(stat.flags.isObject && stat.flags.isLazy) => stat
+          case IsDefinition(stat) if !(stat.symbol.flags.isObject && stat.symbol.flags.isLazy) => stat
           case stat @ Import(_, _) => stat
         }
         name match {
@@ -93,14 +93,14 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case IsClassDef(cdef @ ClassDef(name, DefDef(_, targs, argss, _, _), parents, self, stats)) =>
         printDefAnnotations(cdef)
 
-        val flags = cdef.flags
+        val flags = cdef.symbol.flags
         if (flags.isImplicit) this += "implicit "
         if (flags.isSealed) this += "sealed "
         if (flags.isFinal && !flags.isObject) this += "final "
         if (flags.isCase) this += "case "
 
         if (name == "package$") {
-          this += "package object " += cdef.owner.name.stripSuffix("$")
+          this += "package object " += cdef.symbol.owner.name.stripSuffix("$")
         }
         else if (flags.isObject) this += "object " += name.stripSuffix("$")
         else if (flags.isTrait) this += "trait " += name
@@ -148,20 +148,20 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printSeparated(parents1)
 
         def keepDefinition(d: Definition): Boolean = {
-          val flags = d.flags
+          val flags = d.symbol.flags
           def isCaseClassUnOverridableMethod: Boolean = {
             // Currently the compiler does not allow overriding some of the methods generated for case classes
-            d.flags.isSynthetic &&
+            d.symbol.flags.isSynthetic &&
             (d match {
-              case DefDef("apply" | "unapply", _, _, _, _) if d.owner.flags.isObject => true
-              case DefDef(n, _, _, _, _) if d.owner.flags.isCase =>
+              case DefDef("apply" | "unapply", _, _, _, _) if d.symbol.owner.flags.isObject => true
+              case DefDef(n, _, _, _, _) if d.symbol.owner.flags.isCase =>
                 n == "copy" ||
                 n.matches("copy\\$default\\$[1-9][0-9]*") || // default parameters for the copy method
                 n.matches("_[1-9][0-9]*") // Getters from Product
               case _ => false
             })
           }
-          def isInnerModuleObject = d.flags.isLazy && d.flags.isObject
+          def isInnerModuleObject = d.symbol.flags.isLazy && d.symbol.flags.isObject
           !flags.isParam && !flags.isParamAccessor && !flags.isFieldAccessor && !isCaseClassUnOverridableMethod && !isInnerModuleObject
         }
         val stats1 = stats.collect {
@@ -207,14 +207,14 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case IsValDef(vdef @ ValDef(name, tpt, rhs)) =>
         printDefAnnotations(vdef)
 
-        val flags = vdef.flags
+        val flags = vdef.symbol.flags
         if (flags.isImplicit) this += "implicit "
         if (flags.isOverride) this += "override "
 
         printProtectedOrPrivate(vdef)
 
         if (flags.isLazy) this += "lazy "
-        if (vdef.flags.isMutable) this += "var "
+        if (vdef.symbol.flags.isMutable) this += "var "
         else this += "val "
 
         this += name += ": "
@@ -242,7 +242,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
         val isConstructor = name == "<init>"
 
-        val flags = ddef.flags
+        val flags = ddef.symbol.flags
         if (flags.isImplicit) this += "implicit "
         if (flags.isTransparent) this += "transparent "
         if (flags.isOverride) this += "override "
@@ -359,7 +359,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Term.Block(stats0, expr) =>
         val stats = stats0.filter {
-          case IsValDef(tree) => !tree.flags.isObject
+          case IsValDef(tree) => !tree.symbol.flags.isObject
           case _ => true
         }
 
@@ -589,8 +589,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       args match {
         case Nil =>
         case arg :: _ =>
-          if (arg.flags.isErased) this += "erased "
-          if (arg.flags.isImplicit) this += "implicit "
+          if (arg.symbol.flags.isErased) this += "erased "
+          if (arg.symbol.flags.isImplicit) this += "implicit "
       }
 
       def printSeparated(list: List[ValDef]): Unit = list match {
@@ -620,20 +620,20 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printParamDef(arg: ValDef): Unit = {
       val name = arg.name
-      arg.owner match {
-        case DefDef("<init>", _, _, _, _) =>
-          val ClassDef(_, _, _, _, body) = arg.owner.owner
+      arg.symbol.owner.tree match {
+        case Some(DefDef("<init>", _, _, _, _)) =>
+          val Some(ClassDef(_, _, _, _, body)) = arg.symbol.owner.owner.tree
           body.collectFirst {
-            case IsValDef(vdef @ ValDef(`name`, _, _)) if vdef.flags.isParamAccessor =>
-              if (!vdef.flags.isLocal) {
+            case IsValDef(vdef @ ValDef(`name`, _, _)) if vdef.symbol.flags.isParamAccessor =>
+              if (!vdef.symbol.flags.isLocal) {
                 var printedPrefix = false
-                if (vdef.flags.isOverride) {
+                if (vdef.symbol.flags.isOverride) {
                   this += "override "
                   printedPrefix = true
                 }
                 printedPrefix  |= printProtectedOrPrivate(vdef)
-                if (vdef.flags.isMutable) this += "var "
-                else if (printedPrefix || !vdef.flags.isCaseAcessor) this += "val "
+                if (vdef.symbol.flags.isMutable) this += "var "
+                else if (printedPrefix || !vdef.symbol.flags.isCaseAcessor) this += "val "
                 else this // val not explicitly needed
               }
           }
@@ -955,7 +955,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
 
     def printDefAnnotations(definition: Definition): Buffer = {
-      val annots = definition.annots.filter {
+      val annots = definition.symbol.annots.filter {
         case Annotation(annot, _) =>
           annot.tpe match {
             case Type.TypeRef(_, Type.SymRef(sym, _)) if sym.fullName == "scala.annotation.internal" => false
@@ -1059,16 +1059,16 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           this += sym.name
         case _ => printFullClassName(within)
       }
-      if (definition.flags.isProtected) {
+      if (definition.symbol.flags.isProtected) {
         this += "protected"
-        definition.protectedWithin match {
+        definition.symbol.protectedWithin match {
           case Some(within) =>
             inSquare(printWithin(within))
           case _ =>
         }
         prefixWasPrinted = true
       } else {
-        definition.privateWithin match {
+        definition.symbol.privateWithin match {
           case Some(within) =>
             this += "private"
             inSquare(printWithin(within))
