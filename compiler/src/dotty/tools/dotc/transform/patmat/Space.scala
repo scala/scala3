@@ -320,38 +320,42 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   /** Return the space that represents the pattern `pat` */
-  def project(pat: Tree): Space = pat match {
-    case Literal(c) =>
-      if (c.value.isInstanceOf[Symbol])
-        Typ(c.value.asInstanceOf[Symbol].termRef, false)
-      else
-        Typ(ConstantType(c), false)
-    case _: BackquotedIdent => Typ(pat.tpe, false)
-    case Ident(nme.WILDCARD) =>
-      Or(Typ(pat.tpe.stripAnnots, false) :: nullSpace :: Nil)
-    case Ident(_) | Select(_, _) =>
-      Typ(pat.tpe.stripAnnots, false)
-    case Alternative(trees) => Or(trees.map(project(_)))
-    case Bind(_, pat) => project(pat)
-    case SeqLiteral(pats, _) => projectSeq(pats)
-    case UnApply(fun, _, pats) =>
-      if (fun.symbol.name == nme.unapplySeq)
-        if (fun.symbol.owner == scalaSeqFactoryClass)
-          projectSeq(pats)
+  def project(pat: Tree): Space = {
+    def patTpe = pat.tpe.widen
+    def patTpeStripped = patTpe.stripAnnots
+    pat match {
+      case Literal(c) =>
+        if (c.value.isInstanceOf[Symbol])
+          Typ(c.value.asInstanceOf[Symbol].termRef, false)
         else
-          Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
-      else
-        Prod(erase(pat.tpe.stripAnnots), fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
-    case Typed(pat @ UnApply(_, _, _), _) => project(pat)
-    case Typed(expr, tpt) =>
-      Typ(erase(expr.tpe.stripAnnots), true)
-    case This(_) =>
-      Typ(pat.tpe.stripAnnots, false)
-    case EmptyTree =>         // default rethrow clause of try/catch, check tests/patmat/try2.scala
-      Typ(WildcardType, false)
-    case _ =>
-      debug.println(s"unknown pattern: $pat")
-      Empty
+          Typ(ConstantType(c), false)
+      case _: BackquotedIdent => Typ(patTpe, false)
+      case Ident(nme.WILDCARD) =>
+        Or(Typ(patTpeStripped, false) :: nullSpace :: Nil)
+      case Ident(_) | Select(_, _) =>
+        Typ(patTpeStripped, false)
+      case Alternative(trees) => Or(trees.map(project(_)))
+      case Bind(_, pat) => project(pat)
+      case SeqLiteral(pats, _) => projectSeq(pats)
+      case UnApply(fun, _, pats) =>
+        if (fun.symbol.name == nme.unapplySeq)
+          if (fun.symbol.owner == scalaSeqFactoryClass)
+            projectSeq(pats)
+          else
+            Prod(erase(patTpeStripped), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
+        else
+          Prod(erase(patTpeStripped), fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
+      case Typed(pat @ UnApply(_, _, _), _) => project(pat)
+      case Typed(expr, tpt) =>
+        Typ(erase(expr.tpe.stripAnnots), true)
+      case This(_) =>
+        Typ(patTpeStripped, false)
+      case EmptyTree =>         // default rethrow clause of try/catch, check tests/patmat/try2.scala
+        Typ(WildcardType, false)
+      case _ =>
+        debug.println(s"unknown pattern: $pat")
+        Empty
+    }
   }
 
   /* Erase pattern bound types with WildcardType */
