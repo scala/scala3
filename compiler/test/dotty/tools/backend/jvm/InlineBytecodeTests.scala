@@ -45,17 +45,18 @@ class InlineBytecodeTests extends DottyBytecodeTest {
   @Test def i4947 = {
     val source = """class Foo {
                    |  transparent def track[T](f: => T): T = {
-                   |    println("tracking") // line 3
+                   |    foo("tracking") // line 3
                    |    f // line 4
                    |  }
                    |  def main(args: Array[String]): Unit = { // line 6
                    |    track { // line 7
-                   |      println("abc") // line 8
+                   |      foo("abc") // line 8
                    |      track { // line 9
-                   |        println("inner") // line 10
+                   |        foo("inner") // line 10
                    |      }
                    |    } // line 11
                    |  }
+                   |  def foo(str: String): Unit = ()
                    |}
                  """.stripMargin
 
@@ -73,24 +74,24 @@ class InlineBytecodeTests extends DottyBytecodeTest {
           Label(0),
           LineNumber(6, Label(0)),
           LineNumber(3, Label(0)),
-          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          VarOp(ALOAD, 0),
           Ldc(LDC, "tracking"),
-          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
+          Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Label(6),
           LineNumber(8, Label(6)),
-          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          VarOp(ALOAD, 0),
           Ldc(LDC, "abc"),
-          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
+          Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Label(11),
           LineNumber(3, Label(11)),
-          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          VarOp(ALOAD, 0),
           Ldc(LDC, "tracking"),
-          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
+          Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Label(16),
           LineNumber(10, Label(16)),
-          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          VarOp(ALOAD, 0),
           Ldc(LDC, "inner"),
-          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
+          Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Op(RETURN),
           Label(22)
         )
@@ -103,20 +104,21 @@ class InlineBytecodeTests extends DottyBytecodeTest {
   @Test def i4947b = {
     val source = """class Foo {
                    |  transparent def track2[T](f: => T): T = {
-                   |    println("tracking2") // line 3
+                   |    foo("tracking2") // line 3
                    |    f // line 4
                    |  }
                    |  transparent def track[T](f: => T): T = {
-                   |    println("tracking") // line 7
+                   |    foo("tracking") // line 7
                    |    track2 { // line 8
                    |      f // line 9
                    |    }
                    |  }
                    |  def main(args: Array[String]): Unit = { // line 12
                    |    track { // line 13
-                   |      println("abc") // line 14
+                   |      foo("abc") // line 14
                    |    }
                    |  }
+                   |  def foo(str: String): Unit = ()
                    |}
                  """.stripMargin
 
@@ -137,19 +139,19 @@ class InlineBytecodeTests extends DottyBytecodeTest {
           Label(0),
           LineNumber(12, Label(0)),
           LineNumber(7, Label(0)),
-          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          VarOp(ALOAD, 0),
           Ldc(LDC, "tracking"),
-          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
+          Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Label(6),
           LineNumber(3, Label(6)),
-          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          VarOp(ALOAD, 0),
           Ldc(LDC, "tracking2"),
-          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
+          Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Label(11),
           LineNumber(14, Label(11)),
-          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          VarOp(ALOAD, 0),
           Ldc(LDC, "abc"),
-          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
+          Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Op(RETURN),
           Label(17)
         )
@@ -162,20 +164,21 @@ class InlineBytecodeTests extends DottyBytecodeTest {
   @Test def i4947c = {
     val source = """class Foo {
                    |  transparent def track2[T](f: => T): T = {
-                   |    println("tracking2") // line 3
+                   |    foo("tracking2") // line 3
                    |    f // line 4
                    |  }
                    |  transparent def track[T](f: => T): T = {
                    |    track2 { // line 7
-                   |      println("fgh") // line 8
+                   |      foo("fgh") // line 8
                    |      f // line 9
                    |    }
                    |  }
                    |  def main(args: Array[String]): Unit = { // line 12
                    |    track { // line 13
-                   |      println("abc") // line 14
+                   |      foo("abc") // line 14
                    |    }
                    |  }
+                   |  def foo(str: String): Unit = ()
                    |}
                  """.stripMargin
 
@@ -196,19 +199,19 @@ class InlineBytecodeTests extends DottyBytecodeTest {
           Label(0),
           LineNumber(12, Label(0)),
           LineNumber(3, Label(0)),
-          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          VarOp(ALOAD, 0),
           Ldc(LDC, "tracking2"),
-          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
+          Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Label(6),
           LineNumber(8, Label(6)),
-          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          VarOp(ALOAD, 0),
           Ldc(LDC, "fgh"),
-          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
+          Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Label(11),
           LineNumber(14, Label(11)),
-          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          VarOp(ALOAD, 0),
           Ldc(LDC, "abc"),
-          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
+          Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Op(RETURN),
           Label(17)
         )
@@ -221,7 +224,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
   @Test def i4947d = {
     val source = """class Foo {
                    |  transparent def track2[T](f: => T): T = {
-                   |    println("tracking2") // line 3
+                   |    foo("tracking2") // line 3
                    |    f // line 4
                    |  }
                    |  transparent def track[T](f: => T): T = {
@@ -233,9 +236,10 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                    |  }
                    |  def main(args: Array[String]): Unit = { // line 13
                    |    track { // line 14
-                   |      println("abc") // line 15
+                   |      foo("abc") // line 15
                    |    }
                    |  }
+                   |  def foo(str: String): Unit = ()
                    |}
                  """.stripMargin
 
@@ -256,19 +260,19 @@ class InlineBytecodeTests extends DottyBytecodeTest {
           Label(0),
           LineNumber(13, Label(0)),
           LineNumber(3, Label(0)),
-          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          VarOp(ALOAD, 0),
           Ldc(LDC, "tracking2"),
-          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
+          Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Label(6),
           LineNumber(3, Label(6)),
-          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          VarOp(ALOAD, 0),
           Ldc(LDC, "tracking2"),
-          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
+          Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Label(11),
           LineNumber(15, Label(11)),
-          Field(GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+          VarOp(ALOAD, 0),
           Ldc(LDC, "abc"),
-          Invoke(INVOKEVIRTUAL, "scala/Predef$", "println","(Ljava/lang/Object;)V", false),
+          Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Op(RETURN),
           Label(17)
         )
