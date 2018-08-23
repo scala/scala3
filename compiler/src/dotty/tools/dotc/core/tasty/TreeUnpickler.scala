@@ -1159,6 +1159,8 @@ class TreeUnpickler(reader: TastyReader,
               goto(start)
               symbolAtCurrent()
               readNewDef()
+            case _ =>
+              readPathTerm()
           }
         assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
         result
