@@ -26,7 +26,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => false
   }
 
-  def isOpAssign(tree: Tree) = unsplice(tree) match {
+  def isOpAssign(tree: Tree): Boolean = unsplice(tree) match {
     case Apply(fn, _ :: _) =>
       unsplice(fn) match {
         case Select(_, name) if name.isOpAssignmentName => true
@@ -510,7 +510,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** Is tree a reference to a mutable variable, or to a potential getter
    *  that has a setter in the same class?
    */
-  def isVariableOrGetter(tree: Tree)(implicit ctx: Context) = {
+  def isVariableOrGetter(tree: Tree)(implicit ctx: Context): Boolean = {
     def sym = tree.symbol
     def isVar    = sym is Mutable
     def isGetter =

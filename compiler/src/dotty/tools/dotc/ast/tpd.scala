@@ -325,7 +325,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   // ------ Making references ------------------------------------------------------
 
-  def prefixIsElidable(tp: NamedType)(implicit ctx: Context) = {
+  def prefixIsElidable(tp: NamedType)(implicit ctx: Context): Boolean = {
     val typeIsElidable = tp.prefix match {
       case pre: ThisType =>
         tp.isType ||
@@ -470,7 +470,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** A `_' with given type */
   def Underscore(tp: Type)(implicit ctx: Context) = untpd.Ident(nme.WILDCARD).withType(tp)
 
-  def defaultValue(tpe: Types.Type)(implicit ctx: Context) = {
+  def defaultValue(tpe: Types.Type)(implicit ctx: Context): Tree = {
     val tpw = tpe.widen
 
     if (tpw isRef defn.IntClass) Literal(Constant(0))
@@ -1008,7 +1008,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       .select(TermRef(receiver.tpe, selected.termSymbol.asTerm))
       .appliedToTypes(targs)
 
-    def adaptLastArg(lastParam: Tree, expectedType: Type) = {
+    def adaptLastArg(lastParam: Tree, expectedType: Type): List[Tree] = {
       if (isAnnotConstructor && !(lastParam.tpe <:< expectedType)) {
         val defn = ctx.definitions
         val prefix = args.take(selected.widen.paramInfoss.head.size - 1)
@@ -1055,7 +1055,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *
    *     ~within('tree)
    */
-  def letBindUnless(level: TreeInfo.PurityLevel, tree: Tree)(within: Tree => Tree)(implicit ctx: Context) = {
+  def letBindUnless(level: TreeInfo.PurityLevel, tree: Tree)(within: Tree => Tree)(implicit ctx: Context): Tree = {
     if (exprPurity(tree) >= level) within(tree)
     else {
       val vdef = SyntheticValDef(TempResultName.fresh(), tree)

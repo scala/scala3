@@ -32,7 +32,7 @@ class CollectSuperCalls extends MiniPhase {
     tree
   }
 
-  private def registerSuperCall(sym: ClassSymbol, calls: ClassSymbol)(implicit ctx: Context) = {
+  private def registerSuperCall(sym: ClassSymbol, calls: ClassSymbol)(implicit ctx: Context): Unit = {
     ctx.genBCodePhase match {
       case genBCodePhase: GenBCode =>
         genBCodePhase.registerSuperCall(sym, calls)

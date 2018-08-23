@@ -313,7 +313,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   override def emitAnnotations(cw: asm.ClassVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
-                              (innerClasesStore: bcodeStore.BCInnerClassGen) = {
+                              (innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
     for(annot <- annotations; if shouldEmitAnnotation(annot)) {
       val typ = annot.atp
       val assocs = annot.assocs
@@ -323,14 +323,14 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)], bcodeStore: BCodeHelpers)
-                        (innerClasesStore: bcodeStore.BCInnerClassGen) = {
+                        (innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
     for ((name, value) <- assocs)
       emitArgument(av, name.mangledString, value.asInstanceOf[Tree], bcodeStore)(innerClasesStore)
     av.visitEnd()
   }
 
   override def emitAnnotations(mw: asm.MethodVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
-                              (innerClasesStore: bcodeStore.BCInnerClassGen) = {
+                              (innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
     for(annot <- annotations; if shouldEmitAnnotation(annot)) {
       val typ = annot.atp
       val assocs = annot.assocs
@@ -340,7 +340,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   override def emitAnnotations(fw: asm.FieldVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)
-                              (innerClasesStore: bcodeStore.BCInnerClassGen) = {
+                              (innerClasesStore: bcodeStore.BCInnerClassGen): Unit = {
     for(annot <- annotations; if shouldEmitAnnotation(annot)) {
       val typ = annot.atp
       val assocs = annot.assocs
