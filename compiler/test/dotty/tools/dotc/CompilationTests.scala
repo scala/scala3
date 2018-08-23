@@ -182,6 +182,13 @@ class CompilationTests extends ParallelTesting {
 
   @Test def pickling: Unit = {
     implicit val testGroup: TestGroup = TestGroup("testPickling")
+    compileFile("tests/pos/dependent-patterns.scala", picklingOptions) +
+    compileFile("tests/pos/dependent.scala", picklingOptions) +
+    compileFile("tests/pos/dependent2.scala", picklingOptions) +
+    compileFile("tests/pos/dependent3.scala", picklingOptions) +
+    compileFile("tests/pos/dependent4.scala", picklingOptions) +
+    compileFile("tests/pos/dependent5-min.scala", picklingOptions) +
+    compileFile("tests/pos/dependent5.scala", picklingOptions) +
     compileFilesInDir("tests/new", picklingOptions) +
     compileFilesInDir("tests/pickling", picklingOptions)
   }.checkCompile()
