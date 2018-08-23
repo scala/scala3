@@ -2,6 +2,9 @@ package dotty
 
 /** Jars used when compiling test, normally set from the sbt build */
 object Jars {
+  def scalaLibrary: String = sys.env.get("DOTTY_SCALA_LIBRARY")
+    .getOrElse(findJarFromRuntime("scala-library"))
+
   /** Dotty library Jar */
   val dottyLib: String = sys.env.get("DOTTY_LIB")
     .getOrElse(Properties.dottyLib)
@@ -36,14 +39,12 @@ object Jars {
 
   /** Dotty test dependencies */
   val dottyTestDeps: List[String] =
-    dottyLib :: dottyCompiler :: dottyInterfaces :: jlineTerminal :: jlineReader :: dottyExtras
+    scalaLibrary :: dottyLib :: dottyCompiler :: dottyInterfaces :: jlineTerminal :: jlineReader :: dottyExtras
 
   /** Dotty runtime with compiler dependencies, used for quoted.Expr.run */
   lazy val dottyRunWithCompiler: List[String] =
-    dottyLib :: dottyCompiler :: dottyInterfaces :: scalaAsm :: Nil
+    scalaLibrary :: dottyLib :: dottyCompiler :: dottyInterfaces :: scalaAsm :: Nil
 
-  def scalaLibrary: String = sys.env.get("DOTTY_SCALA_LIBRARY")
-    .getOrElse(findJarFromRuntime("scala-library"))
 
   /** Gets the scala 2.* library at runtime, note that doing this is unsafe
    *  unless you know that the library will be on the classpath of the running

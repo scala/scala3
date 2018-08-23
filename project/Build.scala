@@ -223,9 +223,6 @@ object Build {
     // non-bootstrapped dotty-library that will then take priority over
     // the bootstrapped dotty-library on the classpath or sourcepath.
     classpathOptions ~= (_.withAutoBoot(false)),
-    // We still need a Scala bootclasspath equal to the JVM bootclasspath,
-    // otherwise sbt 0.13 incremental compilation breaks (https://github.com/sbt/sbt/issues/3142)
-    scalacOptions ++= Seq("-bootclasspath", sys.props("sun.boot.class.path")),
 
     // Enforce that the only Scala 2 classfiles we unpickle come from scala-library
     /*
@@ -551,22 +548,22 @@ object Build {
         val attList = (dependencyClasspath in Runtime).value
         val jars = packageAll.value
 
-        // put needed dependencies on classpath:
-        val path = for {
-          file <- attList.map(_.data)
-          path = file.getAbsolutePath
-          // FIXME: when we snip the cord, this should go bye-bye
-          if path.contains("scala-library") ||
-            // FIXME: currently needed for tests referencing scalac internals
-            path.contains("scala-reflect") ||
-            // used for tests that compile xml
-            path.contains("scala-xml") ||
-            // used for tests that compile dotty
-            path.contains("scala-asm") ||
-            // needed for the xsbti interface
-            path.contains("compiler-interface") ||
-            path.contains("util-interface")
-        } yield "-Xbootclasspath/p:" + path
+        // // put needed dependencies on classpath:
+        // val path = for {
+        //   file <- attList.map(_.data)
+        //   path = file.getAbsolutePath
+        //   // FIXME: when we snip the cord, this should go bye-bye
+        //   if path.contains("scala-library") ||
+        //     // FIXME: currently needed for tests referencing scalac internals
+        //     path.contains("scala-reflect") ||
+        //     // used for tests that compile xml
+        //     path.contains("scala-xml") ||
+        //     // used for tests that compile dotty
+        //     path.contains("scala-asm") ||
+        //     // needed for the xsbti interface
+        //     path.contains("compiler-interface") ||
+        //     path.contains("util-interface")
+        // } yield "-Xbootclasspath/p:" + path
 
         val ci_build = // propagate if this is a ci build
           sys.props.get("dotty.drone.mem") match {
@@ -586,7 +583,7 @@ object Build {
           "-Ddotty.tests.classes.compiler=" + jars("dotty-compiler")
         )
 
-        jarOpts ::: tuning ::: agentOptions ::: ci_build ::: path.toList
+        jarOpts ::: tuning ::: agentOptions ::: ci_build
       },
 
       testCompilation := testOnlyFiltered("dotty.tools.dotc.*CompilationTests", "--exclude-categories=dotty.SlowTests").evaluated,
@@ -661,7 +658,9 @@ object Build {
   )
 
   def runCompilerMain(repl: Boolean = false) = Def.inputTaskDyn {
+    val attList = (dependencyClasspath in Runtime).value
     val jars = packageAll.value
+    val scalaLib = findLib(attList, "scala-library")
     val dottyLib = jars("dotty-library")
     val dottyCompiler = jars("dotty-compiler")
     val args0: List[String] = spaceDelimited("<arg>").parsed.toList
@@ -677,7 +676,7 @@ object Build {
       else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
       else "dotty.tools.dotc.Main"
 
-    var extraClasspath = dottyLib
+    var extraClasspath = s"$scalaLib:$dottyLib"
     if ((decompile || printTasty) && !args.contains("-classpath")) extraClasspath += ":."
     if (args0.contains("-with-compiler")) {
       if (!isDotty.value) {
