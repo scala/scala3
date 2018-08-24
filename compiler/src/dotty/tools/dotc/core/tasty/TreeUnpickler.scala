@@ -1040,7 +1040,7 @@ class TreeUnpickler(reader: TastyReader,
         case THROW =>
           Throw(readTerm())
         case SINGLETONtpt =>
-          SingletonTypeTree(readTerm()(ctx.fresh.addMode(Mode.InTypeOf)))
+          SingletonTypeTree(readTerm()(ctx.enterTypeOf()))
         case BYNAMEtpt =>
           ByNameTypeTree(readTpt())
         case NAMEDARG =>

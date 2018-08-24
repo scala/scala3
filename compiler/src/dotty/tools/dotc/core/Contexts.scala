@@ -116,6 +116,11 @@ object Contexts {
     protected def owner_=(owner: Symbol) = _owner = owner
     def owner: Symbol = _owner
 
+    /** The owner at the point of entering TypeOf (for SingletonTypeTrees) */
+    private[this] var _inTypeOfOwner: Symbol = _
+    protected def inTypeOfOwner_=(owner: Symbol) = _inTypeOfOwner = owner
+    def inTypeOfOwner: Symbol = _inTypeOfOwner
+
     /** The current tree */
     private[this] var _tree: Tree[_ >: Untyped]= _
     protected def tree_=(tree: Tree[_ >: Untyped]) = _tree = tree
@@ -179,11 +184,14 @@ object Contexts {
         *       dependent, we finally also compute `_dependent` based on this context.
         */
       if (!_dependentInit) {
-        _dependent = this.mode.is(Mode.InTypeOf) || isDepOwner(this.owner)
+        _dependent = this.isInTypeOf || isDepOwner(this.owner)
         _dependentInit = true
       }
       _dependent
     }
+
+    final def isInTypeOf: Boolean =
+      this.inTypeOfOwner == this.owner
 
     /** A map in which more contextual properties can be stored
      *  Typically used for attributes that are read and written only in special situations.
@@ -497,6 +505,7 @@ object Contexts {
     def setPeriod(period: Period): this.type = { this.period = period; this }
     def setMode(mode: Mode): this.type = { this.mode = mode; this }
     def setOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
+    def enterTypeOf(): this.type = { assert(this.owner != NoSymbol); this.inTypeOfOwner = this.owner; this }
     def setTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
     def setScope(scope: Scope): this.type = { this.scope = scope; this }
     def setNewScope: this.type = { this.scope = newScope; this }
@@ -561,6 +570,8 @@ object Contexts {
     final def addMode(mode: Mode): Context = withModeBits(c.mode | mode)
     final def maskMode(mode: Mode): Context = withModeBits(c.mode & mode)
     final def retractMode(mode: Mode): Context = withModeBits(c.mode &~ mode)
+
+    final def enterTypeOf(): Context = if (c.isInTypeOf) c else c.fresh.enterTypeOf()
   }
 
   implicit class FreshModeChanges(val c: FreshContext) extends AnyVal {

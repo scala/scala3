@@ -4084,9 +4084,6 @@ object Types {
       } else
         tp
 
-    private def dependently(implicit ctx: Context): Context =
-      ctx.addMode(Mode.InTypeOf)
-
     object If {
       def apply(underlyingTp: Type, condTp: Type, thenTp: Type, elseTp: Type)(implicit ctx: Context): TypeOf =
         TypeOf(underlyingTp, untpd.If(
@@ -4107,7 +4104,7 @@ object Types {
               treeWithTpe(cond, condTp),
               treeWithTpe(thenp, thenTp),
               treeWithTpe(elsep, elseTp)
-            )(dependently)
+            )(ctx.enterTypeOf())
         })
     }
 
@@ -4126,7 +4123,7 @@ object Types {
       def derived(to: TypeOf)(selectorTp: Type, caseTps: List[Type])(implicit ctx: Context): Type =
         finalizeDerived(to, to.tree match {
           case Trees.Match(selector, cases) =>
-            cpy.Match(to.tree)(treeWithTpe(selector, selectorTp), treesWithTpes(cases, caseTps))(dependently)
+            cpy.Match(to.tree)(treeWithTpe(selector, selectorTp), treesWithTpes(cases, caseTps))(ctx.enterTypeOf())
         })
     }
 
@@ -4145,7 +4142,7 @@ object Types {
       def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
         finalizeDerived(to, to.tree match {
           case Trees.Apply(fun, args) =>
-            cpy.Apply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(dependently)
+            cpy.Apply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(ctx.enterTypeOf())
         })
     }
 
@@ -4164,7 +4161,7 @@ object Types {
       def derived(to: TypeOf)(funTp: Type, argTps: List[Type])(implicit ctx: Context): Type =
         finalizeDerived(to, to.tree match {
           case Trees.TypeApply(fun, args) =>
-            cpy.TypeApply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(dependently)
+            cpy.TypeApply(to.tree)(treeWithTpe(fun, funTp), treesWithTpes(args, argTps))(ctx.enterTypeOf())
         })
     }
 
