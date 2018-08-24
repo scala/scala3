@@ -60,36 +60,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
   }
 
   def DefinitionDeco(definition: Definition): DefinitionAPI = new DefinitionAPI {
-
     def name(implicit ctx: Context): String = definition.symbol.name.toString
-
-    def owner(implicit ctx: Context): Definition = definitionFromSym(definition.symbol.owner)
-
-    def flags(implicit ctx: Context): FlagSet =
-      new FlagSet(definition.symbol.flags)
-
-    def privateWithin(implicit ctx: Context): Option[Type] = {
-      val within = definition.symbol.privateWithin
-      if (within.exists && !definition.symbol.is(core.Flags.Protected)) Some(within.typeRef)
-      else None
-    }
-
-    def protectedWithin(implicit ctx: Context): Option[Type] = {
-      val within = definition.symbol.privateWithin
-      if (within.exists && definition.symbol.is(core.Flags.Protected)) Some(within.typeRef)
-      else None
-    }
-
-    def annots(implicit ctx: Context): List[Term] = {
-      definition.symbol.annotations.flatMap {
-        case _: core.Annotations.LazyBodyAnnotation => Nil
-        case annot => annot.tree :: Nil
-      }
-    }
-
-    def localContext(implicit ctx: Context): Context =
-      if (definition.hasType && definition.symbol.exists) ctx.withOwner(definition.symbol)
-      else ctx
   }
 
   // ClassDef

@@ -23,11 +23,16 @@ object Macros {
       import tasty._
 
       e.toTasty.tpe match {
-        case Type.SymRef(ValDef(_, tpt, _), pre) =>
-          tpt.tpe match {
-            case Type.ConstantType(Constant.Int(i)) => Some(i)
+        case Type.SymRef(sym, pre) =>
+          sym.tree match {
+            case Some(ValDef(_, tpt, _)) =>
+              tpt.tpe match {
+                case Type.ConstantType(Constant.Int(i)) => Some(i)
+                case _ => None
+              }
             case _ => None
           }
+
         case Type.ConstantType(Constant.Int(i)) => Some(i)
         case _ => None
       }

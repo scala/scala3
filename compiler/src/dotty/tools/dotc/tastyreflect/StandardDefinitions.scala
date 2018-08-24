@@ -11,54 +11,58 @@ trait StandardDefinitions extends scala.tasty.reflect.StandardDefinitions {
 
   val definitions: DefinitionsApi = new DefinitionsApi {
 
-    def RootPackage: PackageDef = packageDefFromSym(defn.RootPackage)
+    def RootPackage: Symbol = defn.RootPackage
+    def RootClass: Symbol = defn.RootClass
 
-    def ScalaPackage: PackageDef = packageDefFromSym(defn.ScalaPackageVal)
+    def EmptyPackageClass: Symbol = defn.EmptyPackageClass
 
-    def AnyClass: ClassDef = classDef(defn.AnyClass)
-    def AnyValClass: ClassDef = classDef(defn.AnyValClass)
-    def ObjectClass: ClassDef = classDef(defn.ObjectClass)
-    def AnyRefClass: TypeDef = typeDefFromSym(defn.AnyRefAlias)
-    def NullClass: ClassDef = classDef(defn.AnyClass)
-    def NothingClass: ClassDef = classDef(defn.NothingClass)
-    def UnitClass: ClassDef = classDef(defn.UnitClass)
-    def ByteClass: ClassDef = classDef(defn.ByteClass)
-    def ShortClass: ClassDef = classDef(defn.ShortClass)
-    def CharClass: ClassDef = classDef(defn.CharClass)
-    def IntClass: ClassDef = classDef(defn.IntClass)
-    def LongClass: ClassDef = classDef(defn.LongClass)
-    def FloatClass: ClassDef = classDef(defn.FloatClass)
-    def DoubleClass: ClassDef = classDef(defn.DoubleClass)
-    def BooleanClass: ClassDef = classDef(defn.BooleanClass)
-    def StringClass: ClassDef = classDef(defn.StringClass)
-    def ClassClass: ClassDef = classDef(defn.ClassClass)
-    def ArrayClass: ClassDef = classDef(defn.ArrayClass)
-    def PredefModule: ValDef = valDefFromSym(defn.ScalaPredefModule.asTerm)
+    def ScalaPackage: Symbol = defn.ScalaPackageVal
+    def ScalaPackageClass: Symbol = defn.ScalaPackageClass
 
-    def JavaLangPackage: PackageDef = packageDefFromSym(defn.JavaLangPackageVal)
+    def AnyClass: Symbol = defn.AnyClass
+    def AnyValClass: Symbol = defn.AnyValClass
+    def ObjectClass: Symbol = defn.ObjectClass
+    def AnyRefClass: Symbol = defn.AnyRefAlias
+    def NullClass: Symbol = defn.AnyClass
+    def NothingClass: Symbol = defn.NothingClass
+    def UnitClass: Symbol = defn.UnitClass
+    def ByteClass: Symbol = defn.ByteClass
+    def ShortClass: Symbol = defn.ShortClass
+    def CharClass: Symbol = defn.CharClass
+    def IntClass: Symbol = defn.IntClass
+    def LongClass: Symbol = defn.LongClass
+    def FloatClass: Symbol = defn.FloatClass
+    def DoubleClass: Symbol = defn.DoubleClass
+    def BooleanClass: Symbol = defn.BooleanClass
+    def StringClass: Symbol = defn.StringClass
+    def ClassClass: Symbol = defn.ClassClass
+    def ArrayClass: Symbol = defn.ArrayClass
+    def PredefModule: Symbol = defn.ScalaPredefModule.asTerm
 
-    def ArrayModule: ValDef = valDefFromSym(defn.ArrayClass.companionModule.asTerm)
+    def JavaLangPackage: Symbol = defn.JavaLangPackageVal
 
-    def Array_apply: DefDef = defDefFromSym(defn.Array_apply.asTerm)
-    def Array_clone: DefDef = defDefFromSym(defn.Array_clone.asTerm)
-    def Array_length: DefDef = defDefFromSym(defn.Array_length.asTerm)
-    def Array_update: DefDef = defDefFromSym(defn.Array_update.asTerm)
+    def ArrayModule: Symbol = defn.ArrayClass.companionModule.asTerm
 
-    def RepeatedParamClass: ClassDef = classDef(defn.RepeatedParamClass)
+    def Array_apply: Symbol = defn.Array_apply.asTerm
+    def Array_clone: Symbol = defn.Array_clone.asTerm
+    def Array_length: Symbol = defn.Array_length.asTerm
+    def Array_update: Symbol = defn.Array_update.asTerm
 
-    def OptionClass: TypeDef = classDef(defn.OptionClass)
-    def NoneModule: ValDef = valDefFromSym(defn.NoneClass.companionModule.asTerm)
-    def SomeModule: ValDef = valDefFromSym(defn.SomeClass.companionModule.asTerm)
+    def RepeatedParamClass: Symbol = defn.RepeatedParamClass
 
-    def ProductClass: ClassDef = classDef(defn.ProductClass)
-    def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): ClassDef =
-      classDef(defn.FunctionClass(arity, isImplicit, isErased).asClass)
-    def TupleClass(arity: Int): ClassDef = classDef(defn.TupleType(arity).classSymbol.asClass)
+    def OptionClass: Symbol = defn.OptionClass
+    def NoneModule: Symbol = defn.NoneClass.companionModule.asTerm
+    def SomeModule: Symbol = defn.SomeClass.companionModule.asTerm
+
+    def ProductClass: Symbol = defn.ProductClass
+    def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol =
+      defn.FunctionClass(arity, isImplicit, isErased).asClass
+    def TupleClass(arity: Int): Symbol = defn.TupleType(arity).classSymbol.asClass
 
 
-    def ScalaPrimitiveValueClasses: List[ClassDef] =
+    def ScalaPrimitiveValueClasses: List[Symbol] =
       UnitClass :: BooleanClass :: ScalaNumericValueClasses
-    def ScalaNumericValueClasses: List[ClassDef] =
+    def ScalaNumericValueClasses: List[Symbol] =
       ByteClass :: ShortClass :: IntClass :: LongClass :: FloatClass :: DoubleClass :: CharClass :: Nil
 
     def UnitType: Type = defn.UnitType

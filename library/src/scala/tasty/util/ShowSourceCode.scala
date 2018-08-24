@@ -72,7 +72,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case tree @ PackageClause(name, stats) =>
         val stats1 = stats.collect {
           case IsPackageClause(stat) => stat
-          case IsDefinition(stat) if !(stat.flags.isObject && stat.flags.isLazy) => stat
+          case IsDefinition(stat) if !(stat.symbol.flags.isObject && stat.symbol.flags.isLazy) => stat
           case stat @ Import(_, _) => stat
         }
         name match {
@@ -93,14 +93,14 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case IsClassDef(cdef @ ClassDef(name, DefDef(_, targs, argss, _, _), parents, self, stats)) =>
         printDefAnnotations(cdef)
 
-        val flags = cdef.flags
+        val flags = cdef.symbol.flags
         if (flags.isImplicit) this += "implicit "
         if (flags.isSealed) this += "sealed "
         if (flags.isFinal && !flags.isObject) this += "final "
         if (flags.isCase) this += "case "
 
         if (name == "package$") {
-          this += "package object " += cdef.owner.name.stripSuffix("$")
+          this += "package object " += cdef.symbol.owner.name.stripSuffix("$")
         }
         else if (flags.isObject) this += "object " += name.stripSuffix("$")
         else if (flags.isTrait) this += "trait " += name
@@ -148,20 +148,20 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printSeparated(parents1)
 
         def keepDefinition(d: Definition): Boolean = {
-          val flags = d.flags
+          val flags = d.symbol.flags
           def isCaseClassUnOverridableMethod: Boolean = {
             // Currently the compiler does not allow overriding some of the methods generated for case classes
-            d.flags.isSynthetic &&
+            d.symbol.flags.isSynthetic &&
             (d match {
-              case DefDef("apply" | "unapply", _, _, _, _) if d.owner.flags.isObject => true
-              case DefDef(n, _, _, _, _) if d.owner.flags.isCase =>
+              case DefDef("apply" | "unapply", _, _, _, _) if d.symbol.owner.flags.isObject => true
+              case DefDef(n, _, _, _, _) if d.symbol.owner.flags.isCase =>
                 n == "copy" ||
                 n.matches("copy\\$default\\$[1-9][0-9]*") || // default parameters for the copy method
                 n.matches("_[1-9][0-9]*") // Getters from Product
               case _ => false
             })
           }
-          def isInnerModuleObject = d.flags.isLazy && d.flags.isObject
+          def isInnerModuleObject = d.symbol.flags.isLazy && d.symbol.flags.isObject
           !flags.isParam && !flags.isParamAccessor && !flags.isFieldAccessor && !isCaseClassUnOverridableMethod && !isInnerModuleObject
         }
         val stats1 = stats.collect {
@@ -207,14 +207,14 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case IsValDef(vdef @ ValDef(name, tpt, rhs)) =>
         printDefAnnotations(vdef)
 
-        val flags = vdef.flags
+        val flags = vdef.symbol.flags
         if (flags.isImplicit) this += "implicit "
         if (flags.isOverride) this += "override "
 
         printProtectedOrPrivate(vdef)
 
         if (flags.isLazy) this += "lazy "
-        if (vdef.flags.isMutable) this += "var "
+        if (vdef.symbol.flags.isMutable) this += "var "
         else this += "val "
 
         this += name += ": "
@@ -242,7 +242,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
         val isConstructor = name == "<init>"
 
-        val flags = ddef.flags
+        val flags = ddef.symbol.flags
         if (flags.isImplicit) this += "implicit "
         if (flags.isTransparent) this += "transparent "
         if (flags.isOverride) this += "override "
@@ -359,7 +359,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Term.Block(stats0, expr) =>
         val stats = stats0.filter {
-          case IsValDef(tree) => !tree.flags.isObject
+          case IsValDef(tree) => !tree.symbol.flags.isObject
           case _ => true
         }
 
@@ -589,8 +589,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       args match {
         case Nil =>
         case arg :: _ =>
-          if (arg.flags.isErased) this += "erased "
-          if (arg.flags.isImplicit) this += "implicit "
+          if (arg.symbol.flags.isErased) this += "erased "
+          if (arg.symbol.flags.isImplicit) this += "implicit "
       }
 
       def printSeparated(list: List[ValDef]): Unit = list match {
@@ -620,20 +620,20 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printParamDef(arg: ValDef): Unit = {
       val name = arg.name
-      arg.owner match {
-        case DefDef("<init>", _, _, _, _) =>
-          val ClassDef(_, _, _, _, body) = arg.owner.owner
+      arg.symbol.owner.tree match {
+        case Some(DefDef("<init>", _, _, _, _)) =>
+          val Some(ClassDef(_, _, _, _, body)) = arg.symbol.owner.owner.tree
           body.collectFirst {
-            case IsValDef(vdef @ ValDef(`name`, _, _)) if vdef.flags.isParamAccessor =>
-              if (!vdef.flags.isLocal) {
+            case IsValDef(vdef @ ValDef(`name`, _, _)) if vdef.symbol.flags.isParamAccessor =>
+              if (!vdef.symbol.flags.isLocal) {
                 var printedPrefix = false
-                if (vdef.flags.isOverride) {
+                if (vdef.symbol.flags.isOverride) {
                   this += "override "
                   printedPrefix = true
                 }
                 printedPrefix  |= printProtectedOrPrivate(vdef)
-                if (vdef.flags.isMutable) this += "var "
-                else if (printedPrefix || !vdef.flags.isCaseAcessor) this += "val "
+                if (vdef.symbol.flags.isMutable) this += "var "
+                else if (printedPrefix || !vdef.symbol.flags.isCaseAcessor) this += "val "
                 else this // val not explicitly needed
               }
           }
@@ -743,10 +743,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             printTypeAndAnnots(tp)
             this += " "
             printAnnotation(annot)
-          case Type.SymRef(ClassDef("Null$" | "Nothing$", _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("runtime", _), NoPrefix()))) =>
+          case Type.SymRef(sym, _) if sym.isClass && (sym.fullName == "scala.runtime.Null$" || sym.fullName == "scala.runtime.Nothing$") =>
             // scala.runtime.Null$ and scala.runtime.Nothing$ are not modules, those are their actual names
             printType(tpe)
-          case tpe @ Type.SymRef(ClassDef(name, _, _, _, _), _) if name.endsWith("$") =>
+          case tpe @ Type.SymRef(sym, _) if sym.isClass && sym.name.endsWith("$") =>
             printType(tpe)
             this += ".type"
           case tpe => printType(tpe)
@@ -826,7 +826,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Type.SymRef(sym, prefix) =>
         prefix match {
           case Types.EmptyPrefix() =>
-          case IsType(prefix @ Type.SymRef(ClassDef(_, _, _, _, _), _)) =>
+          case IsType(prefix @ Type.SymRef(sym, _)) if sym.isClass =>
             printType(prefix)
             this += "#"
           case IsType(prefix) =>
@@ -892,7 +892,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Type.ThisType(tp) =>
         tp match {
-          case Type.SymRef(cdef @ ClassDef(_, _, _, _, _), _) if !cdef.flags.isObject =>
+          case Type.SymRef(cdef, _) if !cdef.flags.isObject =>
             printFullClassName(tp)
             this += ".this"
           case Type.TypeRef(name, prefix) if name.endsWith("$") =>
@@ -955,10 +955,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
 
     def printDefAnnotations(definition: Definition): Buffer = {
-      val annots = definition.annots.filter {
+      val annots = definition.symbol.annots.filter {
         case Annotation(annot, _) =>
           annot.tpe match {
-            case Type.TypeRef(_, Type.SymRef(PackageDef("internal", _), Type.ThisType(Type.SymRef(PackageDef("annotation", _), NoPrefix())))) => false
+            case Type.TypeRef(_, Type.SymRef(sym, _)) if sym.fullName == "scala.annotation.internal" => false
             case Type.TypeRef("forceInline", Types.ScalaPackage()) => false
             case _ => true
           }
@@ -1055,19 +1055,20 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def printProtectedOrPrivate(definition: Definition): Boolean = {
       var prefixWasPrinted = false
       def printWithin(within: Type) = within match {
-        case Type.SymRef(PackageDef(name, _), _) => this += name
+        case Type.SymRef(sym, _) =>
+          this += sym.name
         case _ => printFullClassName(within)
       }
-      if (definition.flags.isProtected) {
+      if (definition.symbol.flags.isProtected) {
         this += "protected"
-        definition.protectedWithin match {
+        definition.symbol.protectedWithin match {
           case Some(within) =>
             inSquare(printWithin(within))
           case _ =>
         }
         prefixWasPrinted = true
       } else {
-        definition.privateWithin match {
+        definition.symbol.privateWithin match {
           case Some(within) =>
             this += "private"
             inSquare(printWithin(within))
@@ -1082,14 +1083,14 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     def printFullClassName(tp: TypeOrBounds): Unit = {
       def printClassPrefix(prefix: TypeOrBounds): Unit = prefix match {
-        case Type.SymRef(ClassDef(name, _, _, _, _), prefix2) =>
+        case Type.SymRef(sym, prefix2) if sym.isClass =>
           printClassPrefix(prefix2)
-          this += name += "."
+          this += sym.name += "."
         case _ =>
       }
-      val Type.SymRef(ClassDef(name, _, _, _, _), prefix) = tp
+      val Type.SymRef(sym, prefix) = tp
       printClassPrefix(prefix)
-      this += name
+      this += sym.name
     }
 
     def +=(x: Boolean): this.type = { sb.append(x); this }
@@ -1121,8 +1122,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def unapply(arg: Tree)(implicit ctx: Context): Option[(String, List[Term])] = arg match {
       case IsTerm(arg @ Term.Apply(fn, args)) =>
         fn.tpe match {
-          case Type.SymRef(DefDef(op, _, _, _, _), Type.ThisType(Type.SymRef(PackageDef("<special-ops>", _), NoPrefix()))) =>
-            Some((op, args))
+          case Type.SymRef(sym, Type.ThisType(Type.SymRef(sym2, _))) if sym2.name == "<special-ops>" =>
+            sym.tree match {
+              case Some(DefDef(op, _, _, _, _)) => Some((op, args))
+              case _ => None
+            }
           case _ => None
         }
       case _ => None
@@ -1143,7 +1147,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     object JavaLangObject {
       def unapply(tpe: Type)(implicit ctx: Context): Boolean = tpe match {
-        case Type.TypeRef("Object", Type.SymRef(PackageDef("lang", _), Type.ThisType(Type.SymRef(PackageDef("java", _), NoPrefix())))) => true
+        case Type.TypeRef("Object", Type.SymRef(sym, _)) if sym.fullName == "java.lang" => true
         case _ => false
       }
     }
@@ -1157,21 +1161,21 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     object ScalaPackage {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-        case Type.SymRef(PackageDef("scala", _), Type.ThisType(RootPackage())) => true
+        case Type.SymRef(sym, _) => sym == definitions.ScalaPackage
         case _ => false
       }
     }
 
     object RootPackage {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-        case Type.SymRef(PackageDef("<root>", _), NoPrefix()) => true
+        case Type.SymRef(sym, _) => sym.fullName == "<root>" // TODO use Symbol.==
         case _ => false
       }
     }
 
     object EmptyPackage {
       def unapply(tpe: TypeOrBounds)(implicit ctx: Context): Boolean = tpe match {
-        case Type.SymRef(PackageDef("<empty>", _), NoPrefix() | Type.ThisType(RootPackage())) => true
+        case Type.SymRef(sym, _) => sym.fullName == "<empty>"
         case _ => false
       }
     }
