@@ -1,0 +1,4 @@
+track: Test$.main(i4947.scala:4)
+track: Test$.main(i4947.scala:5)
+main1: Test$.main(i4947.scala:15)
+main2: Test$.main(i4947.scala:16)

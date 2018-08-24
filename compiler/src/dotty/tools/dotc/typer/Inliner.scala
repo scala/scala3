@@ -149,12 +149,37 @@ object Inliner {
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: tpd.Inlined)(implicit ctx: Context): Tree = {
-    val reposition = new TreeMap {
-      override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-        super.transform(tree).withPos(inlined.call.pos)
+    if (enclosingInlineds.nonEmpty) inlined // Remove in the outer most inlined call
+    else {
+      val inlinedAtPos = inlined.call.pos
+      val callSourceFile = ctx.source.file
+
+      /** Removes all Inlined trees, replacing them with blocks.
+       *  Repositions all trees directly inside an inlined expansion of a non empty call to the position of the call.
+       *  Any tree directly inside an empty call (inlined in the inlined code) retains their position.
+       */
+      class Reposition extends TreeMap {
+        override def transform(tree: Tree)(implicit ctx: Context): Tree = {
+          tree match {
+            case tree: Inlined => transformInline(tree)
+            case _ =>
+              val transformed = super.transform(tree)
+              enclosingInlineds match {
+                case call :: _ if call.symbol.sourceFile != callSourceFile =>
+                  // Until we implement JSR-45, we cannot represent in output positions in other source files.
+                  // So, reposition inlined code from other files with the call position:
+                  transformed.withPos(inlinedAtPos)
+                case _ => transformed
+              }
+          }
+        }
+        def transformInline(tree: tpd.Inlined)(implicit ctx: Context): Tree = {
+          tpd.seq(transformSub(tree.bindings), transform(tree.expansion)(inlineContext(tree.call)))
+        }
       }
+
+      (new Reposition).transformInline(inlined)
     }
-    tpd.seq(inlined.bindings, reposition.transform(inlined.expansion))
   }
 }
 

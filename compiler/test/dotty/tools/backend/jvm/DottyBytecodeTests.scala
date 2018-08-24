@@ -335,4 +335,5 @@ class TestBCode extends DottyBytecodeTest {
       assert(!fooInvoke, "foo should not be called\n")
     }
   }
+
 }
