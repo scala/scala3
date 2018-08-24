@@ -980,7 +980,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type], expectedType: Type, isAnnotConstructor: Boolean = false)(implicit ctx: Context): Tree = {
+  def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type], expectedType: Type)(implicit ctx: Context): Tree = {
     val typer = ctx.typer
     val proto = new FunProtoTyped(args, expectedType)(typer)
     val denot = receiver.tpe.member(method)
@@ -998,7 +998,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         assert(alternatives.size == 1,
           i"${if (alternatives.isEmpty) "no" else "multiple"} overloads available for " +
           i"$method on ${receiver.tpe.widenDealiasKeepAnnots} with targs: $targs%, %; args: $args%, % of types ${args.tpes}%, %; expectedType: $expectedType." +
-          i" isAnnotConstructor = $isAnnotConstructor.\n" +
           i"all alternatives: ${allAlts.map(_.symbol.showDcl).mkString(", ")}\n" +
           i"matching alternatives: ${alternatives.map(_.symbol.showDcl).mkString(", ")}.") // this is parsed from bytecode tree. there's nothing user can do about it
         alternatives.head
@@ -1008,35 +1007,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       .select(TermRef(receiver.tpe, selected.termSymbol.asTerm))
       .appliedToTypes(targs)
 
-    def adaptLastArg(lastParam: Tree, expectedType: Type) = {
-      if (isAnnotConstructor && !(lastParam.tpe <:< expectedType)) {
-        val defn = ctx.definitions
-        val prefix = args.take(selected.widen.paramInfoss.head.size - 1)
-        expectedType match {
-          case defn.ArrayOf(el) =>
-            lastParam.tpe match {
-              case defn.ArrayOf(el2) if el2 <:< el =>
-                // we have a JavaSeqLiteral with a more precise type
-                // we cannot construct a tree as JavaSeqLiteral inferred to precise type
-                // if we add typed than it would be both type-correct and
-                // will pass Ycheck
-                prefix ::: List(tpd.Typed(lastParam, TypeTree(defn.ArrayOf(el))))
-              case _ =>
-                ???
-            }
-          case _ => args
-        }
-      } else args
-    }
-
-    val callArgs: List[Tree] = if (args.isEmpty) Nil else {
-      val expectedType = selected.widen.paramInfoss.head.last
-      val lastParam = args.last
-      adaptLastArg(lastParam, expectedType)
-    }
-
-    val apply = untpd.Apply(fun, callArgs)
-    new typer.ApplyToTyped(apply, fun, selected, callArgs, expectedType).result.asInstanceOf[Tree] // needed to handle varargs
+    val apply = untpd.Apply(fun, args)
+    new typer.ApplyToTyped(apply, fun, selected, args, expectedType).result.asInstanceOf[Tree] // needed to handle varargs
   }
 
   @tailrec
