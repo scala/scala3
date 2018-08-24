@@ -1082,20 +1082,26 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = new Property.Key[List[Tree]]
 
-  override def inlineContext(call: Tree)(implicit ctx: Context): Context =
-    ctx.fresh.setProperty(InlinedCalls, call :: enclosingInlineds)
+  /** Record an enclosing inlined call.
+    * EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.
+    * We assume parameters are never nested inside parameters.
+    */
+  override def inlineContext(call: Tree)(implicit ctx: Context): Context = {
+    // We assume enclosingInlineds is already normalized, and only process the new call with the head.
+    val oldIC = enclosingInlineds
+    val newIC = (call, oldIC) match {
+      case (t, t1 :: ts2) if t.isEmpty =>
+        assert(!t1.isEmpty)
+        ts2
+      case _ => call :: oldIC
+    }
+    ctx.fresh.setProperty(InlinedCalls, newIC)
+  }
 
   /** All enclosing calls that are currently inlined, from innermost to outermost.
-   *  EmptyTree calls cancel the next-enclosing non-empty call in the list
-   */
-  def enclosingInlineds(implicit ctx: Context): List[Tree] = {
-    def normalize(ts: List[Tree]): List[Tree] = ts match {
-      case t :: (ts1 @ (t1 :: ts2)) if t.isEmpty => normalize(if (t1.isEmpty) ts1 else ts2)
-      case t :: ts1 => t :: normalize(ts1)
-      case Nil => Nil
-    }
-    normalize(ctx.property(InlinedCalls).getOrElse(Nil))
-  }
+    */
+  def enclosingInlineds(implicit ctx: Context): List[Tree] =
+    ctx.property(InlinedCalls).getOrElse(Nil)
 
   /** The source file where the symbol of the `inline` method referred to by `call`
    *  is defined
