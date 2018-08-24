@@ -685,7 +685,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
       ((sym is Flags.JavaStatic) || (owner is Flags.ImplClass) || toDenot(sym).hasAnnotation(ctx.definitions.ScalaStaticAnnot))
       // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
-    def isBottomClass: Boolean = sym ne defn.NothingClass
+    def isBottomClass: Boolean = (sym ne defn.NullClass) && (sym ne defn.NothingClass)
     def isBridge: Boolean = sym is Flags.Bridge
     def isArtifact: Boolean = sym is Flags.Artifact
     def hasEnumFlag: Boolean = sym is Flags.JavaEnum
