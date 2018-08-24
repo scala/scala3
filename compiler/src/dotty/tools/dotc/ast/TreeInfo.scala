@@ -393,11 +393,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case Ident(_) =>
       refPurity(tree)
     case Select(qual, _) =>
-      refPurity(tree).min(exprPurity(qual))
+      if (tree.symbol.is(Erased)) Pure
+      else refPurity(tree).min(exprPurity(qual))
     case New(_) =>
       SimplyPure
     case TypeApply(fn, _) =>
-      exprPurity(fn)
+      if (fn.symbol.is(Erased)) Pure else exprPurity(fn)
     case Apply(fn, args) =>
       def isKnownPureOp(sym: Symbol) =
         sym.owner.isPrimitiveValueClass || sym.owner == defn.StringClass
@@ -405,8 +406,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
              // A constant expression with pure arguments is pure.
           || fn.symbol.isStable)
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Pure
-      else
-        Impure
+      else if (fn.symbol.is(Erased)) Pure
+      else Impure
     case Typed(expr, _) =>
       exprPurity(expr)
     case Block(stats, expr) =>
