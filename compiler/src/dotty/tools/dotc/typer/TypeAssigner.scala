@@ -99,8 +99,8 @@ trait TypeAssigner {
           }
         case tp: TypeRef if toAvoid(tp.symbol) =>
           tp.info match {
-            case TypeAlias(alias) =>
-              apply(alias)
+            case info: AliasingBounds =>
+              apply(info.alias)
             case TypeBounds(lo, hi) =>
               range(atVariance(-variance)(apply(lo)), apply(hi))
             case info: ClassInfo =>

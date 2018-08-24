@@ -165,29 +165,30 @@ object Checking {
     /** The last type top-level type checked when a CyclicReference occurs. */
     var lastChecked: Type = NoType
 
+    private def checkPart(tp: Type, w: String) =
+      try apply(tp)
+      finally {
+        where = w
+        lastChecked = tp
+      }
+
+    private def checkUpper(tp: Type, w: String) = {
+      val saved = nestedCycleOK
+      nestedCycleOK = true
+      try checkPart(tp, w)
+      finally nestedCycleOK = saved
+    }
+
     /** Check info `tp` for cycles. Throw CyclicReference for illegal cycles,
      *  break direct cycle with a LazyRef for legal, F-bounded cycles.
      */
     def checkInfo(tp: Type): Type = tp match {
       case tp @ TypeAlias(alias) =>
-        try tp.derivedTypeAlias(apply(alias))
-        finally {
-          where = "alias"
-          lastChecked = alias
-        }
+        tp.derivedAlias(checkPart(alias, "alias"))
+      case tp @ MatchAlias(alias) =>
+        tp.derivedAlias(checkUpper(alias, "match"))
       case tp @ TypeBounds(lo, hi) =>
-        val lo1 = try apply(lo) finally {
-          where = "lower bound"
-          lastChecked = lo
-        }
-        val saved = nestedCycleOK
-        nestedCycleOK = true
-        try tp.derivedTypeBounds(lo1, apply(hi))
-        finally {
-          nestedCycleOK = saved
-          where = "upper bound"
-          lastChecked = hi
-        }
+        tp.derivedTypeBounds(checkPart(lo, "lower bound"), checkUpper(hi, "upper bound"))
       case _ =>
         tp
     }
@@ -476,7 +477,7 @@ object Checking {
               tp
             }
             else mapOver(tp)
-          if ((errors ne prevErrors) && !sym.isType && tp.info.isAlias) {
+          if ((errors ne prevErrors) && !sym.isType && tp.info.isTypeAlias) {
             // try to dealias to avoid a leak error
             val savedErrors = errors
             errors = prevErrors

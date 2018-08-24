@@ -454,11 +454,11 @@ object ProtoTypes {
   def constrained(tl: TypeLambda, owningTree: untpd.Tree, alwaysAddTypeVars: Boolean = false)(implicit ctx: Context): (TypeLambda, List[TypeTree]) = {
     val state = ctx.typerState
     val addTypeVars = alwaysAddTypeVars || !owningTree.isEmpty
-    if (tl.isInstanceOf[PolyType]) 
+    if (tl.isInstanceOf[PolyType])
       assert(!(ctx.typerState.isCommittable && !addTypeVars),
         s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
       // hk type lambdas can be added to constraints without typevars during match reduction
-      
+
     def newTypeVars(tl: TypeLambda): List[TypeTree] =
       for (paramRef <- tl.paramRefs)
       yield {
@@ -576,8 +576,8 @@ object ProtoTypes {
           wildApprox(tp.parent, theMap, seen),
           tp.refinedName,
           wildApprox(tp.refinedInfo, theMap, seen))
-    case tp: TypeAlias => // default case, inlined for speed
-      tp.derivedTypeAlias(wildApprox(tp.alias, theMap, seen))
+    case tp: AliasingBounds => // default case, inlined for speed
+      tp.derivedAlias(wildApprox(tp.alias, theMap, seen))
     case tp @ TypeParamRef(poly, pnum) =>
       def wildApproxBounds(bounds: TypeBounds) =
         if (seen.contains(tp)) WildcardType

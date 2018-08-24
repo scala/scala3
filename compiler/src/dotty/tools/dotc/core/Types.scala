@@ -118,7 +118,7 @@ object Types {
                 t.symbol.is(Provisional) ||
                 apply(x, t.prefix) || {
                   t.info match {
-                    case TypeAlias(alias) => apply(x, alias)
+                    case info: AliasingBounds => apply(x, info.alias)
                     case TypeBounds(lo, hi) => apply(apply(x, lo), hi)
                     case _ => false
                   }
@@ -319,7 +319,7 @@ object Types {
     }
 
     /** Is this an alias TypeBounds? */
-    final def isAlias: Boolean = this.isInstanceOf[TypeAlias]
+    final def isTypeAlias: Boolean = this.isInstanceOf[TypeAlias]
 
     /** Is this a MethodType which is from Java */
     def isJavaMethod: Boolean = false
@@ -628,8 +628,8 @@ object Types {
         val rinfo = tp.refinedInfo
         if (name.isTypeName && !pinfo.isInstanceOf[ClassInfo]) { // simplified case that runs more efficiently
           val jointInfo =
-            if (rinfo.isAlias) rinfo
-            else if (pinfo.isAlias) pinfo
+            if (rinfo.isTypeAlias) rinfo
+            else if (pinfo.isTypeAlias) pinfo
             else if (ctx.base.pendingMemberSearches.contains(name)) pinfo safe_& rinfo
             else pinfo recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
@@ -1238,7 +1238,7 @@ object Types {
      */
     @tailrec final def normalizedPrefix(implicit ctx: Context): Type = this match {
       case tp: NamedType =>
-        if (tp.symbol.info.isAlias) tp.info.normalizedPrefix else tp.prefix
+        if (tp.symbol.info.isTypeAlias) tp.info.normalizedPrefix else tp.prefix
       case tp: ClassInfo =>
         tp.prefix
       case tp: TypeProxy =>
@@ -3085,8 +3085,8 @@ object Types {
 
     def derivedLambdaAbstraction(paramNames: List[TypeName], paramInfos: List[TypeBounds], resType: Type)(implicit ctx: Context): Type =
       resType match {
-        case resType @ TypeAlias(alias) =>
-          resType.derivedTypeAlias(newLikeThis(paramNames, paramInfos, alias))
+        case resType: AliasingBounds =>
+          resType.derivedAlias(newLikeThis(paramNames, paramInfos, resType.alias))
         case resType @ TypeBounds(lo, hi) =>
           resType.derivedTypeBounds(
             if (lo.isRef(defn.NothingClass)) lo else newLikeThis(paramNames, paramInfos, lo),
@@ -3187,8 +3187,8 @@ object Types {
     override def fromParams[PI <: ParamInfo.Of[TypeName]](params: List[PI], resultType: Type)(implicit ctx: Context): Type = {
       def expand(tp: Type) = super.fromParams(params, tp)
       resultType match {
-        case rt: TypeAlias =>
-          rt.derivedTypeAlias(expand(rt.alias))
+        case rt: AliasingBounds =>
+          rt.derivedAlias(expand(rt.alias))
         case rt @ TypeBounds(lo, hi) =>
           rt.derivedTypeBounds(
             if (lo.isRef(defn.NothingClass)) lo else expand(lo), expand(hi))
@@ -3526,6 +3526,14 @@ object Types {
 
   // ------ MatchType ---------------------------------------------------------------
 
+  /**    scrutinee match { case_1 ... case_n }
+   *
+   *  where
+   *
+   *     case_i  =   [X1, ..., Xn] patternType => resultType
+   *
+   *  and `X_1,...X_n` are the type variables bound in `patternType`
+   */
   abstract case class MatchType(scrutinee: Type, cases: List[Type]) extends CachedProxyType with TermType {
     override def computeHash(bs: Binders) = doHash(bs, scrutinee, cases)
 
@@ -3781,22 +3789,19 @@ object Types {
       case _ => super.| (that)
     }
 
-    def effectiveLo(implicit ctx: Context) =
-      if (hi.isMatch) hi else lo
-
     override def computeHash(bs: Binders) = doHash(bs, lo, hi)
     override def stableHash = lo.stableHash && hi.stableHash
 
     override def equals(that: Any): Boolean = equals(that, null)
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
-      case that: TypeAlias => false
+      case that: AliasingBounds => false
       case that: TypeBounds => lo.equals(that.lo, bs) && hi.equals(that.hi, bs)
       case _ => false
     }
 
     override def eql(that: Type) = that match {
-      case that: TypeAlias => false
+      case that: AliasingBounds => false
       case that: TypeBounds => lo.eq(that.lo) && hi.eq(that.hi)
       case _ => false
     }
@@ -3804,28 +3809,44 @@ object Types {
 
   class RealTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)
 
-  abstract class TypeAlias(val alias: Type) extends TypeBounds(alias, alias) {
+  /** Common supertype of `TypeAlias` and `MatchAlias` */
+  abstract class AliasingBounds(val alias: Type) extends TypeBounds(alias, alias) {
 
-    /** pre: this is a type alias */
-    def derivedTypeAlias(alias: Type)(implicit ctx: Context) =
-      if (alias eq this.alias) this else TypeAlias(alias)
+    def derivedAlias(alias: Type)(implicit ctx: Context): AliasingBounds
 
     override def computeHash(bs: Binders) = doHash(bs, alias)
     override def stableHash = alias.stableHash
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
-      case that: TypeAlias => alias.equals(that.alias, bs)
+      case that: AliasingBounds => this.isTypeAlias == that.isTypeAlias && alias.equals(that.alias, bs)
       case _ => false
     }
     // equals comes from case class; no matching override is needed
 
     override def eql(that: Type): Boolean = that match {
-      case that: TypeAlias => alias.eq(that.alias)
+      case that: AliasingBounds => this.isTypeAlias == that.isTypeAlias && alias.eq(that.alias)
       case _ => false
     }
   }
 
-  class CachedTypeAlias(alias: Type) extends TypeAlias(alias)
+  /**    = T
+   */
+  class TypeAlias(alias: Type) extends AliasingBounds(alias) {
+    def derivedAlias(alias: Type)(implicit ctx: Context) =
+      if (alias eq this.alias) this else TypeAlias(alias)
+  }
+
+  /**    = T     where `T` is a `MatchType`
+   *
+   *  Match aliases are treated differently from type aliases. Their sides are mutually
+   *  subtypes of each other but one side is not generally substitutable for the other.
+   *  If we assumed full substitutivity, we would have to reject all recursive match
+   *  aliases (or else take the jump and allow full recursive types).
+   */
+  class MatchAlias(alias: Type) extends AliasingBounds(alias) {
+    def derivedAlias(alias: Type)(implicit ctx: Context) =
+      if (alias eq this.alias) this else MatchAlias(alias)
+  }
 
   object TypeBounds {
     def apply(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
@@ -3836,9 +3857,13 @@ object Types {
   }
 
   object TypeAlias {
-    def apply(alias: Type)(implicit ctx: Context) =
-      unique(new CachedTypeAlias(alias))
+    def apply(alias: Type)(implicit ctx: Context) = unique(new TypeAlias(alias))
     def unapply(tp: TypeAlias): Option[Type] = Some(tp.alias)
+  }
+
+  object MatchAlias {
+    def apply(alias: Type)(implicit ctx: Context) = unique(new MatchAlias(alias))
+    def unapply(tp: MatchAlias): Option[Type] = Some(tp.alias)
   }
 
   // ----- Annotated and Import types -----------------------------------------------
@@ -4042,8 +4067,8 @@ object Types {
                 def apply(tp: Type): Type = tp match {
                   case tp: TypeRef if tp.symbol.is(ClassTypeParam) && tp.symbol.owner == cls =>
                     tp.info match {
-                      case TypeAlias(alias) =>
-                        mapOver(alias)
+                      case info: AliasingBounds =>
+                        mapOver(info.alias)
                       case TypeBounds(lo, hi) =>
                         range(atVariance(-variance)(apply(lo)), apply(hi))
                        case _ =>
@@ -4099,8 +4124,8 @@ object Types {
       tp.derivedRefinedType(parent, tp.refinedName, info)
     protected def derivedRecType(tp: RecType, parent: Type): Type =
       tp.rebind(parent)
-    protected def derivedTypeAlias(tp: TypeAlias, alias: Type): Type =
-      tp.derivedTypeAlias(alias)
+    protected def derivedAlias(tp: AliasingBounds, alias: Type): Type =
+      tp.derivedAlias(alias)
     protected def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type): Type =
       tp.derivedTypeBounds(lo, hi)
     protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type): Type =
@@ -4167,8 +4192,8 @@ object Types {
         case tp: RefinedType =>
           derivedRefinedType(tp, this(tp.parent), this(tp.refinedInfo))
 
-        case tp: TypeAlias =>
-          derivedTypeAlias(tp, atVariance(0)(this(tp.alias)))
+        case tp: AliasingBounds =>
+          derivedAlias(tp, atVariance(0)(this(tp.alias)))
 
         case tp: TypeBounds =>
           variance = -variance
@@ -4387,7 +4412,7 @@ object Types {
           else info match {
             case Range(infoLo: TypeBounds, infoHi: TypeBounds) =>
               assert(variance == 0)
-              if (!infoLo.isAlias && !infoHi.isAlias) propagate(infoLo, infoHi)
+              if (!infoLo.isTypeAlias && !infoHi.isTypeAlias) propagate(infoLo, infoHi)
               else range(defn.NothingType, tp.parent)
             case Range(infoLo, infoHi) =>
               propagate(infoLo, infoHi)
@@ -4403,13 +4428,13 @@ object Types {
         case _ => tp.rebind(parent)
       }
 
-    override protected def derivedTypeAlias(tp: TypeAlias, alias: Type) =
+    override protected def derivedAlias(tp: AliasingBounds, alias: Type) =
       if (alias eq tp.alias) tp
       else alias match {
         case Range(lo, hi) =>
           if (variance > 0) TypeBounds(lo, hi)
-          else range(TypeAlias(lo), TypeAlias(hi))
-        case _ => tp.derivedTypeAlias(alias)
+          else range(tp.derivedAlias(lo), tp.derivedAlias(hi))
+        case _ => tp.derivedAlias(alias)
       }
 
     override protected def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type) =

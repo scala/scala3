@@ -325,7 +325,10 @@ class TreeUnpickler(reader: TastyReader,
             case APPLIEDtype =>
               readType().appliedTo(until(end)(readType()))
             case TYPEBOUNDS =>
-              TypeBounds(readType(), readType())
+              val lo = readType()
+              val hi = readType()
+              if (lo.isMatch && (lo `eq` hi)) MatchAlias(lo)
+              else TypeBounds(lo, hi)
             case ANNOTATEDtype =>
               AnnotatedType(readType(), Annotation(readTerm()))
             case ANDtype =>
