@@ -1079,15 +1079,24 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
+  //inlineContext, enclosingInlineds, sourceFile and Decorators.sourcePos work closely together.
+
   /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = new Property.Key[List[Tree]]
 
-  /** Record an enclosing inlined call.
-    * EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.
-    * We assume parameters are never nested inside parameters.
+  /** Record an enclosing inlined call in enclosingInlineds, and produces the context for visiting
+    * Inlined(call, ...).
+    *
+    * Invariants:
+    * - enclosingInlineds never contains EmptyTree nodes.
+    * - if enclosingInlineds.nonEmpty, the current tree comes from the file *defining* enclosingInlineds.head.symbol;
+    *   this is exploited in e.g. Decorators.sourcePos.
+    *
+    * Arguments of inlined calls (enclosed in Inlined(EmptyTree, ...)) come instead from the call-site, so
+    * inlineContext(EmptyTree) pops the enclosing call.
     */
   override def inlineContext(call: Tree)(implicit ctx: Context): Context = {
-    // We assume enclosingInlineds is already normalized, and only process the new call with the head.
+    // enclosingInlineds is already normalized, so we only process the new call with the head.
     val oldIC = enclosingInlineds
     val newIC = (call, oldIC) match {
       case (t, t1 :: ts2) if t.isEmpty =>
@@ -1106,7 +1115,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** The source file where the symbol of the `inline` method referred to by `call`
    *  is defined
    */
-  def sourceFile(call: Tree)(implicit ctx: Context) = {
+  def sourceFile(call: Tree)(implicit ctx: Context): SourceFile = {
     val file = call.symbol.sourceFile
     val encoding = ctx.settings.encoding.value
     if (file != null && file.exists) new SourceFile(file, Codec(encoding)) else NoSource

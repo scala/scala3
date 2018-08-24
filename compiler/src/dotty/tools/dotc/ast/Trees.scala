@@ -574,8 +574,9 @@ object Trees {
 
   /** A tree representing inlined code.
    *
-   *  @param  call      Info about the original call that was inlined
-   *                    Until PostTyper, this is the full call, afterwards only
+   *  @param  call      Tree representing the original call that was inlined.
+   *                    If EmptyTree: this represents an argument actual tree.
+   *                    Otherwise: Until PostTyper, this is the full call, afterwards only
    *                    a reference to the toplevel class from which the call was inlined.
    *  @param  bindings  Bindings for proxies to be used in the inlined code
    *  @param  expansion The inlined tree, minus bindings.
@@ -587,6 +588,8 @@ object Trees {
    *  The reason to keep `bindings` separate is because they are typed in a
    *  different context: `bindings` represent the arguments to the inlined
    *  call, whereas `expansion` represents the body of the inlined function.
+   *  Call argument trees (whether kept in `bindings` or inlined in the body)
+   *  are typed in the caller's context.
    */
   case class Inlined[-T >: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])
     extends Tree[T] {
