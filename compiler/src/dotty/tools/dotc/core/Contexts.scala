@@ -710,7 +710,7 @@ object Contexts {
       else assert(thread == Thread.currentThread(), "illegal multithreaded access to ContextBase")
   }
 
-  class GADTMap(initBounds: SimpleIdentityMap[Symbol, TypeBounds]) extends util.DotClass {
+  class GADTMap(initBounds: SimpleIdentityMap[Symbol, TypeBounds]) {
     private[this] var myBounds = initBounds
     def setBounds(sym: Symbol, b: TypeBounds): Unit =
       myBounds = myBounds.updated(sym, b)

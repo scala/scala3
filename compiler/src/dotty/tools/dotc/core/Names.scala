@@ -34,7 +34,7 @@ object Names {
   /** A common superclass of Name and Symbol. After bootstrap, this should be
    *  just the type alias Name | Symbol
    */
-  abstract class Designator extends util.DotClass
+  abstract class Designator
 
   /** A name if either a term name or a type name. Term names can be simple
    *  or derived. A simple term name is essentially an interned string stored

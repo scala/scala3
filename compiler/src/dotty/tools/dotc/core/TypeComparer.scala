@@ -16,7 +16,7 @@ import reporting.trace
 
 /** Provides methods to compare types.
  */
-class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling {
+class TypeComparer(initctx: Context) extends ConstraintHandling {
   import TypeComparer._
   implicit val ctx = initctx
 

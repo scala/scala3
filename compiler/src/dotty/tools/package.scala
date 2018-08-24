@@ -20,4 +20,8 @@ package object tools {
       }
     case _ => ys.isEmpty
   }
+
+  /** Throws an `UnsupportedOperationException` with the given method name. */
+  def unsupported(methodName: String): Nothing =
+    throw new UnsupportedOperationException(methodName)
 }

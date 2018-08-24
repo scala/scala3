@@ -64,7 +64,7 @@ object Parsers {
     if (source.isSelfContained) new ScriptParser(source)
     else new Parser(source)
 
-  abstract class ParserCommon(val source: SourceFile)(implicit ctx: Context) extends DotClass {
+  abstract class ParserCommon(val source: SourceFile)(implicit ctx: Context) {
 
     val in: ScannerCommon
 

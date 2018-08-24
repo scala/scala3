@@ -3,7 +3,8 @@
  * @author  Martin Odersky
  */
 
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Symbols._
@@ -66,7 +67,7 @@ object Scopes {
    *  or to delete them. These methods are provided by subclass
    *  MutableScope.
    */
-  abstract class Scope extends DotClass with printing.Showable {
+  abstract class Scope extends printing.Showable {
 
     /** The last scope-entry from which all others are reachable via `prev` */
     private[dotc] def lastEntry: ScopeEntry

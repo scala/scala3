@@ -10,7 +10,7 @@ import Properties._
 
 import scala.collection.JavaConverters._
 
-object CompilerCommand extends DotClass {
+object CompilerCommand {
 
   /** The name of the command */
   def cmdName = "dotc"

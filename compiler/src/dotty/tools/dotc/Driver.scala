@@ -16,7 +16,7 @@ import fromtasty.TASTYCompiler
  *  process, but in most cases you only need to call [[process]] on the
  *  existing object [[Main]].
  */
-class Driver extends DotClass {
+class Driver {
 
   protected def newCompiler(implicit ctx: Context): Compiler =
     if (ctx.settings.fromTasty.value) new TASTYCompiler
