@@ -11,4 +11,12 @@ class CompletionTest {
     code"class Foo { val xyz: Int = 0; def y: Int = xy$m1 }".withSource
       .completion(m1, Set(("xyz", CompletionItemKind.Field, "Int")))
   }
+
+  @Test def completionWithImplicitConversion: Unit = {
+    withSources(
+      code"object Foo { implicit class WithBaz(bar: Bar) { def baz = 0 } }",
+      code"class Bar",
+      code"object Main { import Foo._; val bar: Bar = new Bar; bar.b${m1} }"
+    ) .completion(m1, Set(("baz", CompletionItemKind.Method, "=> Int")))
+  }
 }
