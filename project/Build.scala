@@ -718,6 +718,9 @@ object Build {
       TestFrameworks.JUnit,
       "--exclude-categories=dotty.BootstrappedOnlyTests",
     ),
+    // increase stack size for non-bootstrapped compiler, because some code
+    // is only tail-recursive after bootstrap
+    javaOptions in Test += "-Xss2m"
   )
 
   lazy val bootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
