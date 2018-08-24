@@ -1,6 +1,8 @@
 package dotty.tools
 package dottydoc
 
+import vulpix.TestConfiguration
+
 import dotc.core.Contexts.{ Context, ContextBase, FreshContext }
 import dotc.core.Comments.{ ContextDoc, ContextDocstrings }
 import dotc.util.SourceFile
@@ -30,7 +32,7 @@ trait DottyDocTest extends MessageRendering {
     ctx.setProperty(ContextDoc, new ContextDottydoc)
     ctx.setSetting(
       ctx.settings.classpath,
-      dotty.Jars.dottyLib
+      TestConfiguration.basicClasspath
     )
     ctx.setReporter(new StoreReporter(ctx.reporter))
     base.initialize()(ctx)

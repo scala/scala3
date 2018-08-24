@@ -32,18 +32,30 @@ object Properties {
    */
   val testsSafeMode: Boolean = sys.props.isDefinedAt("dotty.tests.safemode")
 
-  /** Dotty compiler path provided through define */
-  def dottyCompiler: String = sys.props("dotty.tests.classes.compiler")
+  /** dotty-interfaces jar */
+  def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces")
 
-  /** Dotty classpath extras provided through define */
-  def dottyExtras: List[String] =
-    Option(sys.props("dotty.tests.extraclasspath"))
-      .map(_.split(":").toList)
-      .getOrElse(Nil)
+  /** dotty-library jar */
+  def dottyLibrary: String = sys.props("dotty.tests.classes.dottyLibrary")
 
-  /** Dotty interfaces path provided through define */
-  def dottyInterfaces: String = sys.props("dotty.tests.classes.interfaces")
+  /** dotty-compiler jar */
+  def dottyCompiler: String = sys.props("dotty.tests.classes.dottyCompiler")
 
-  /** Dotty library path provided through define */
-  def dottyLib: String = sys.props("dotty.tests.classes.library")
+  /** compiler-interface jar */
+  def compilerInterface: String = sys.props("dotty.tests.classes.compilerInterface")
+
+  /** scala-library jar */
+  def scalaLibrary: String = sys.props("dotty.tests.classes.scalaLibrary")
+
+  /** scala-asm jar */
+  def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm")
+
+  /** scala-xml jar */
+  def scalaXml: String = sys.props("dotty.tests.classes.scalaXml")
+
+  /** jline-terminal jar */
+  def jlineTerminal: String = sys.props("dotty.tests.classes.jlineTerminal")
+
+  /** jline-reader jar */
+  def jlineReader: String = sys.props("dotty.tests.classes.jlineReader")
 }

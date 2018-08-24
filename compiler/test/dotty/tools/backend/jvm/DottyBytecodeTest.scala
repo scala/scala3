@@ -2,6 +2,8 @@ package dotty
 package tools
 package backend.jvm
 
+import vulpix.TestConfiguration
+
 import dotc.core.Contexts.{Context, ContextBase}
 import dotc.core.Comments.{ContextDoc, ContextDocstrings}
 import dotc.core.Phases.Phase
@@ -44,7 +46,7 @@ trait DottyBytecodeTest {
   def initCtx = {
     val ctx0 = (new ContextBase).initialCtx.fresh
     val outputDir = new VirtualDirectory("<DottyBytecodeTest output>")
-    ctx0.setSetting(ctx0.settings.classpath, Jars.dottyLib)
+    ctx0.setSetting(ctx0.settings.classpath, TestConfiguration.basicClasspath)
     ctx0.setProperty(ContextDoc, new ContextDocstrings)
     ctx0.setSetting(ctx0.settings.outputDir, outputDir)
   }

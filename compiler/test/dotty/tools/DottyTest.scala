@@ -1,6 +1,8 @@
 package dotty
 package tools
 
+import vulpix.TestConfiguration
+
 import dotc.core._
 import dotc.core.Comments.{ContextDoc, ContextDocstrings}
 import dotc.core.Contexts._
@@ -39,7 +41,7 @@ trait DottyTest extends ContextEscapeDetection {
 
   protected def initializeCtx(fc: FreshContext): Unit = {
     fc.setSetting(fc.settings.encoding, "UTF8")
-    fc.setSetting(fc.settings.classpath, Jars.dottyLib)
+    fc.setSetting(fc.settings.classpath, TestConfiguration.basicClasspath)
     fc.setProperty(ContextDoc, new ContextDocstrings)
   }
 

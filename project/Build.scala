@@ -578,9 +578,15 @@ object Build {
           else List()
 
         val jarOpts = List(
-          "-Ddotty.tests.classes.interfaces=" + jars("dotty-interfaces"),
-          "-Ddotty.tests.classes.library=" + jars("dotty-library"),
-          "-Ddotty.tests.classes.compiler=" + jars("dotty-compiler")
+          "-Ddotty.tests.classes.dottyInterfaces=" + jars("dotty-interfaces"),
+          "-Ddotty.tests.classes.dottyLibrary=" + jars("dotty-library"),
+          "-Ddotty.tests.classes.dottyCompiler=" + jars("dotty-compiler"),
+          "-Ddotty.tests.classes.compilerInterface=" + findLib(attList, "compiler-interface"),
+          "-Ddotty.tests.classes.scalaLibrary=" + findLib(attList, "scala-library"),
+          "-Ddotty.tests.classes.scalaAsm=" + findLib(attList, "scala-asm"),
+          "-Ddotty.tests.classes.scalaXml=" + findLib(attList, "scala-xml"),
+          "-Ddotty.tests.classes.jlineTerminal=" + findLib(attList, "jline-terminal"),
+          "-Ddotty.tests.classes.jlineReader=" + findLib(attList, "jline-reader")
         )
 
         jarOpts ::: tuning ::: agentOptions ::: ci_build
