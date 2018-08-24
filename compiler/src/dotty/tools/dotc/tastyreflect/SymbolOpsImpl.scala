@@ -7,7 +7,7 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with TastyCoreImpl {
 
   def SymbolDeco(symbol: Symbol): SymbolAPI = new SymbolAPI {
 
-    def isEmpty(implicit ctx: Context): Boolean = symbol eq NoSymbol
+    def exists(implicit ctx: Context): Boolean = symbol eq NoSymbol
     def isClass(implicit ctx: Context): Boolean = symbol.isClass
 
     def flags(implicit ctx: Context): FlagSet = new FlagSet(symbol.flags)
@@ -35,7 +35,7 @@ trait SymbolOpsImpl extends scala.tasty.reflect.SymbolOps with TastyCoreImpl {
     }
 
     def tree(implicit ctx: Context): Option[Definition] =
-      if (isEmpty) None else Some(FromSymbol.definitionFromSym(symbol))
+      if (exists) None else Some(FromSymbol.definitionFromSym(symbol))
 
     def annots(implicit ctx: Context): List[Term] = {
       symbol.annotations.flatMap {

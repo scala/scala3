@@ -8,7 +8,7 @@ trait SymbolOps extends TastyCore {
 
     def owner(implicit ctx: Context): Symbol
 
-    def isEmpty(implicit ctx: Context): Boolean
+    def exists(implicit ctx: Context): Boolean
     def isClass(implicit ctx: Context): Boolean
 
     def flags(implicit ctx: Context): FlagSet
