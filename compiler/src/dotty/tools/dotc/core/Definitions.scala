@@ -218,6 +218,10 @@ class Definitions {
     lazy val Sys_errorR = SysPackage.moduleClass.requiredMethodRef(nme.error)
     def Sys_error(implicit ctx: Context) = Sys_errorR.symbol
 
+  lazy val TypelevelPackageObjectRef = ctx.requiredModuleRef("scala.typelevel.package")
+    lazy val Typelevel_errorR = TypelevelPackageObjectRef.symbol.requiredMethodRef(nme.error)
+    def Typelevel_error(implicit ctx: Context) = Typelevel_errorR.symbol
+
   /** The `scalaShadowing` package is used to safely modify classes and
    *  objects in scala so that they can be used from dotty. They will
    *  be visible as members of the `scala` package, replacing any objects
