@@ -116,7 +116,7 @@ object PatternMatcher {
     /** Widen type as far as necessary so that it does not refer to a pattern-
      *  generated variable.
      */
-    private def sanitize(tp: Type): Type = tp.widenExpr match {
+    private def sanitize(tp: Type): Type = tp.widenTermRefExpr match {
       case tp: TermRef if refersToInternal(false, tp) => sanitize(tp.underlying)
       case tp => tp
     }
