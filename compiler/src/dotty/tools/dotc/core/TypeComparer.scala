@@ -396,10 +396,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
               // Note: We would like to replace this by `if (tp1.hasHigherKind)`
               // but right now we cannot since some parts of the standard library rely on the
               // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
-            val base = tp1.baseType(cls2)
-            if (base.exists && base.ne(tp1))
-              return isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow)
             if (cls2 == defn.SingletonClass && tp1.isStable) return true
+            return tryBaseType(cls2)
           }
           else if (cls2.is(JavaDefined)) {
             // If `cls2` is parameterized, we are seeing a raw type, so we need to compare only the symbol
@@ -597,6 +595,17 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         compareClassInfo
       case _ =>
         fourthTry
+    }
+
+    def tryBaseType(cls2: Symbol) = {
+      val base = tp1.baseType(cls2)
+      if (base.exists && (base `ne` tp1))
+        isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow) ||
+        base.isInstanceOf[OrType] && fourthTry
+          // if base is a disjunction, this might have come from a tp1 type that
+          // expands to a match type. In this case, we should try to reduce the type
+          // and compare the redux. This is done in fourthTry
+      else fourthTry
     }
 
     def fourthTry: Boolean = tp1 match {
@@ -810,7 +819,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
       *    tp1 <:< app2   using isSubType (this might instantiate params in tp2)
       */
       def compareLower(tycon2bounds: TypeBounds, tyconIsTypeRef: Boolean): Boolean =
-        if (tycon2bounds.lo eq tycon2bounds.hi)
+        if ((tycon2bounds.lo `eq` tycon2bounds.hi) && !tycon2bounds.isInstanceOf[MatchAlias])
           if (tyconIsTypeRef) recur(tp1, tp2.superType)
           else isSubApproxHi(tp1, tycon2bounds.lo.applyIfParameterized(args2))
         else
@@ -827,10 +836,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
               case info2: TypeBounds =>
                 compareLower(info2, tyconIsTypeRef = true)
               case info2: ClassInfo =>
-                val base = tp1.baseType(info2.cls)
-                if (base.exists && base.ne(tp1))
-                  isSubType(base, tp2, if (tp1.isRef(info2.cls)) approx else approx.addLow)
-                else fourthTry
+                tryBaseType(info2.cls)
               case _ =>
                 fourthTry
             }
