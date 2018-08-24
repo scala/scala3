@@ -425,6 +425,16 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         expansion
     }
 
+    def issueError() = callValueArgss match {
+      case (msgArg :: Nil) :: Nil =>
+        msgArg.tpe match {
+          case ConstantType(Constant(msg: String)) =>
+            ctx.error(msg, call.pos)
+          case _ =>
+        }
+      case _ =>
+    }
+
     trace(i"inlining $call", inlining, show = true) {
 
       // The normalized bindings collected in `bindingsBuf`
@@ -443,6 +453,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       val matchBindings = reducer.matchBindingsBuf.toList
       val (finalBindings, finalExpansion) = dropUnusedDefs(bindingsBuf.toList ++ matchBindings, expansion1)
       val (finalMatchBindings, finalArgBindings) = finalBindings.partition(matchBindings.contains(_))
+
+      if (inlinedMethod == defn.Typelevel_error) issueError()
 
       // Take care that only argument bindings go into `bindings`, since positions are
       // different for bindings from arguments and bindings from body.
