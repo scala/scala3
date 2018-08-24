@@ -337,8 +337,8 @@ class TypeApplications(val self: Type) extends AnyVal {
             tl => arg.paramInfos.map(_.subst(arg, tl).bounds),
             tl => arg.resultType.subst(arg, tl)
           )
-        case arg @ TypeAlias(alias) =>
-          arg.derivedTypeAlias(adaptArg(alias))
+        case arg: AliasingBounds =>
+          arg.derivedAlias(adaptArg(arg.alias))
         case arg @ TypeBounds(lo, hi) =>
           arg.derivedTypeBounds(adaptArg(lo), adaptArg(hi))
         case _ =>
@@ -401,8 +401,8 @@ class TypeApplications(val self: Type) extends AnyVal {
         dealiased.derivedAndType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
       case dealiased: OrType =>
         dealiased.derivedOrType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
-      case dealiased: TypeAlias =>
-        dealiased.derivedTypeAlias(dealiased.alias.appliedTo(args))
+      case dealiased: AliasingBounds =>
+        dealiased.derivedAlias(dealiased.alias.appliedTo(args))
       case dealiased: TypeBounds =>
         dealiased.derivedTypeBounds(dealiased.lo.appliedTo(args), dealiased.hi.appliedTo(args))
       case dealiased: LazyRef =>
@@ -440,7 +440,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def toBounds(implicit ctx: Context): TypeBounds = self match {
     case self: TypeBounds => self // this can happen for wildcard args
-    case _ => if (self.isMatch) TypeBounds.upper(self) else TypeAlias(self)
+    case _ => if (self.isMatch) MatchAlias(self) else TypeAlias(self)
   }
 
   /** Translate a type of the form From[T] to To[T], keep other types as they are.

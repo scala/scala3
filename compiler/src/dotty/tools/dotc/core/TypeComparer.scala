@@ -340,7 +340,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         recur(tp1.underlying, tp2)
       case tp1: WildcardType =>
         def compareWild = tp1.optBounds match {
-          case bounds: TypeBounds => recur(bounds.effectiveLo, tp2)
+          case bounds: TypeBounds => recur(bounds.lo, tp2)
           case _ => true
         }
         compareWild
@@ -384,7 +384,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
             GADTusage(tp2.symbol)
         }
-        isSubApproxHi(tp1, info2.effectiveLo) || compareGADT || fourthTry
+        isSubApproxHi(tp1, info2.lo) || compareGADT || fourthTry
 
       case _ =>
         val cls2 = tp2.symbol
@@ -428,7 +428,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
             // So if the constraint is not yet frozen, we do the same comparison again
             // with a frozen constraint, which means that we get a chance to do the
             // widening in `fourthTry` before adding to the constraint.
-            if (frozenConstraint) isSubType(tp1, bounds(tp2).effectiveLo)
+            if (frozenConstraint) isSubType(tp1, bounds(tp2).lo)
             else isSubTypeWhenFrozen(tp1, tp2)
           alwaysTrue || {
             if (canConstrain(tp2) && !approx.low)
@@ -814,7 +814,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
           if (tyconIsTypeRef) recur(tp1, tp2.superType)
           else isSubApproxHi(tp1, tycon2bounds.lo.applyIfParameterized(args2))
         else
-          fallback(tycon2bounds.effectiveLo)
+          fallback(tycon2bounds.lo)
 
       tycon2 match {
         case param2: TypeParamRef =>

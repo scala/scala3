@@ -1201,7 +1201,7 @@ class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
           foldOver(n + 1, tp)
         case tp: RefinedType =>
           foldOver(n + 1, tp)
-        case tp: TypeRef if tp.info.isAlias =>
+        case tp: TypeRef if tp.info.isTypeAlias =>
           apply(n, tp.superType)
         case _ =>
           foldOver(n, tp)

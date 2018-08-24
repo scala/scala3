@@ -101,8 +101,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       }
     case  _: ThisType | _: BoundType =>
       tp
-    case tp: TypeAlias =>
-      tp.derivedTypeAlias(simplify(tp.alias, theMap))
+    case tp: AliasingBounds =>
+      tp.derivedAlias(simplify(tp.alias, theMap))
     case AndType(l, r) if !ctx.mode.is(Mode.Type) =>
       simplify(l, theMap) & simplify(r, theMap)
     case OrType(l, r) if !ctx.mode.is(Mode.Type) =>
