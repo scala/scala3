@@ -548,23 +548,6 @@ object Build {
         val attList = (dependencyClasspath in Runtime).value
         val jars = packageAll.value
 
-        // // put needed dependencies on classpath:
-        // val path = for {
-        //   file <- attList.map(_.data)
-        //   path = file.getAbsolutePath
-        //   // FIXME: when we snip the cord, this should go bye-bye
-        //   if path.contains("scala-library") ||
-        //     // FIXME: currently needed for tests referencing scalac internals
-        //     path.contains("scala-reflect") ||
-        //     // used for tests that compile xml
-        //     path.contains("scala-xml") ||
-        //     // used for tests that compile dotty
-        //     path.contains("scala-asm") ||
-        //     // needed for the xsbti interface
-        //     path.contains("compiler-interface") ||
-        //     path.contains("util-interface")
-        // } yield "-Xbootclasspath/p:" + path
-
         val ci_build = // propagate if this is a ci build
           sys.props.get("dotty.drone.mem") match {
             case Some(prop) => List("-Xmx" + prop)
