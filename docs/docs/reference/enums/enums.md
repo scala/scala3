@@ -89,6 +89,35 @@ object Planet {
   }
 }
 ```
+### A specific use case of enum
+
+Two enums can be combined into a different type as shown below:
+ 
+```scala
+
+trait Animal
+object Animal {
+  def enumValues: Iterable[Animal] = Dog.enumValues ++ Cat.enumValues
+  def enumValueNamed = Dog.enumValueNamed ++ Cat.enumValueNamed
+}
+
+enum Dog extends Animal {
+  case GermanShepherd, Labrador, Boxer
+}
+
+enum Cat extends Animal {
+  case PersianCat, Ragdoll, ScottishFold
+}
+
+object Main {
+  def main(args: Array[String]): Unit = {
+    val values: Iterable[Animal] = Animal.enumValues
+    val boxer_dog: Animal = Animal.enumValueNamed("Boxer")
+    val ragdoll_cat: Animal = Animal.enumValueNamed("Ragdoll")
+  }
+}
+
+```
 
 ### Implementation
 

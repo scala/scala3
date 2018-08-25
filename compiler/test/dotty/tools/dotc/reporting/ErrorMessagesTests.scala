@@ -19,6 +19,30 @@ class ErrorMessagesTests extends ErrorMessagesTest {
     checkMessagesAfter(FrontEnd.name)("""class Foo""")
     .expectNoErrors
 
+  @Test def caseClassExtendsEnum =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        | enum Foo {}
+        | case class Bar() extends Foo
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head
+        assertEquals("normal case class Bar in package <empty> cannot extend an enum", errorMsg.msg)
+      }
+
+  // FIXME
+  @Test def enumExtendsAnothorEnum =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        | enum Foo {}
+        | enum Bar extends Foo {}
+      """.stripMargin
+    }
+      .expectNoErrors
+
   @Test def typeMismatch =
     checkMessagesAfter(FrontEnd.name) {
       """
