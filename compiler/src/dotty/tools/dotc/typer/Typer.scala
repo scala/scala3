@@ -1575,6 +1575,15 @@ class Typer extends Namer
       if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.namePos)
       if (cls.is(Case) && cls.derivesFrom(defn.EnumClass)) checkEnum(cdef, cls)
+      if (seenParents.contains(defn.EnumClass)) {
+        // Since enums are classes and Namer checks that classes don't extend multiple classes, we only check the class
+        // parent.
+        val firstParent = parents1.head.tpe.dealias.typeSymbol
+        if (firstParent.derivesFrom(defn.EnumClass))
+          //Tricky to phrase; language taken from "case-to-case inheritance is prohibited".
+          ctx.error(s"Enum ${cls.name} has enum ancestor ${firstParent.name}, but enum-to-enum inheritance is prohibited", cdef.pos)
+      }
+
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
       checkVariance(cdef1)
       if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
