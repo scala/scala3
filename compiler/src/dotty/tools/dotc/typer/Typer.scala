@@ -1517,11 +1517,6 @@ class Typer extends Namer
 
     val seenParents = mutable.Set[Symbol]()
 
-    var parentIsEnumClass = false
-    // Since enums are classes and Namer checks that classes don't extend multiple classes, we can only have one
-    // violation.
-    var enumParentOpt: Option[Symbol] = None
-
     def typedParent(tree: untpd.Tree): Tree = {
       var result = if (tree.isType) typedType(tree)(superCtx) else typedExpr(tree)(superCtx)
       val psym = result.tpe.dealias.typeSymbol
@@ -1536,11 +1531,6 @@ class Typer extends Namer
       else checkParentCall(result, cls)
       checkTraitInheritance(psym, cls, tree.pos)
       if (cls is Case) checkCaseInheritance(psym, cls, tree.pos)
-      if (psym == defn.EnumClass)
-        parentIsEnumClass = true
-      else if (psym.derivesFrom(defn.EnumClass))
-        enumParentOpt = Some(psym)
-
       result
     }
 
@@ -1587,10 +1577,13 @@ class Typer extends Namer
       if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.namePos)
       if (cls.is(Case) && cls.derivesFrom(defn.EnumClass)) checkEnum(cdef, cls)
-      if (parentIsEnumClass) {
-        for (enumParent <- enumParentOpt)
+      if (seenParents.contains(defn.EnumClass)) {
+        // Since enums are classes and Namer checks that classes don't extend multiple classes, we only check the class
+        // parent.
+        val firstParent = parents1.head.tpe.dealias.typeSymbol
+        if (firstParent.derivesFrom(defn.EnumClass))
           //Tricky to phrase; language taken from "case-to-case inheritance is prohibited".
-          ctx.error(s"Enum ${cls.name} has enum ancestor ${enumParent.name}, but enum-to-enum inheritance is prohibited", cdef.pos)
+          ctx.error(s"Enum ${cls.name} has enum ancestor ${firstParent.name}, but enum-to-enum inheritance is prohibited", cdef.pos)
       }
 
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
