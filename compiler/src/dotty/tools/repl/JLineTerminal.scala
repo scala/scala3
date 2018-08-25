@@ -18,7 +18,6 @@ final class JLineTerminal extends java.io.Closeable {
   // Logger.getLogger("org.jline").setLevel(Level.FINEST)
 
   private val terminal = TerminalBuilder.builder()
-    .dumb(false) // fail early if not able to create a terminal
     .build()
   private val history = new DefaultHistory
 
