@@ -1529,6 +1529,7 @@ class Typer extends Namer
         ctx.error(i"$psym is extended twice", tree.pos)
       seenParents += psym
       if (tree.isType) {
+        checkSimpleKinded(result) // Not needed for constructor calls, as type arguments will be inferred.
         if (psym.is(Trait) && !cls.is(Trait) && !cls.superClass.isSubClass(psym))
           result = maybeCall(result, psym, psym.primaryConstructor.info)
       }
