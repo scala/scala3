@@ -132,7 +132,7 @@ object Settings {
         case (BooleanTag, _) =>
           update(true, args)
         case (OptionTag, _) =>
-          update(Some(propertyClass.get.newInstance), args)
+          update(Some(propertyClass.get.getConstructor().newInstance()), args)
         case (ListTag, _) =>
           if (argRest.isEmpty) missingArg
           else update((argRest split ",").toList, args)
