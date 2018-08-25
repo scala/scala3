@@ -1,7 +1,7 @@
 [submodule "scala-backend"]
 	path = scala-backend
 	url = https://github.com/lampepfl/scala.git
-	branch = sharing-backend
+	branch = fix-java9-itf
 [submodule "scala2-library"]
 	path = scala2-library
 	url = https://github.com/lampepfl/scala.git

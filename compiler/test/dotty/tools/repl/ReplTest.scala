@@ -1,14 +1,16 @@
-package dotty.tools.repl
+package dotty.tools
+package repl
+
+import vulpix.TestConfiguration
 
 import java.io.{ByteArrayOutputStream, PrintStream}
 
-import dotty.Jars
 import dotty.tools.dotc.reporting.MessageRendering
 import org.junit.{After, Before}
 
 
 class ReplTest private (out: ByteArrayOutputStream) extends ReplDriver(
-  Array("-classpath", List(Jars.dottyLib, Jars.dottyInterfaces).mkString(":"), "-color:never"),
+  Array("-classpath", TestConfiguration.basicClasspath, "-color:never"),
   new PrintStream(out)
 ) with MessageRendering {
 

@@ -5,12 +5,12 @@ package dotc
 import org.junit.Test
 import org.junit.Assert._
 
-import vulpix.TestConfiguration.mkClassPath
+import vulpix.TestConfiguration.mkClasspath
 
 class MissingCoreLibTests {
 
   @Test def missingDottyLib: Unit = {
-    val classPath = mkClassPath(Jars.dottyCompiler :: Jars.dottyInterfaces :: Jars.dottyExtras) // missing Jars.dottyLib
+    val classPath = mkClasspath(List(Properties.scalaLibrary)) // missing Properties.dottyLibrary
     val source = "tests/pos/Foo.scala"
     val options = Array("-classpath", classPath, source)
     val reporter = Main.process(options)

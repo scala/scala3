@@ -125,7 +125,7 @@ object Splicer {
       } else {
         // nested object in an object
         val clazz = loadClass(sym.fullNameSeparated(FlatName))
-        (clazz, clazz.newInstance().asInstanceOf[Object])
+        (clazz, clazz.getConstructor().newInstance().asInstanceOf[Object])
       }
     }
 

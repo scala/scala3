@@ -1,12 +1,14 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
+
+import vulpix.TestConfiguration
 
 import org.junit.Test
 import org.junit.Assert._
 
 import java.nio.file._
 
-import dotty.Jars
-import dotty.tools.vulpix.TestConfiguration.mkClassPath
+import dotty.tools.vulpix.TestConfiguration.mkClasspath
 
 class SettingsTests {
 
@@ -18,11 +20,10 @@ class SettingsTests {
   }
 
   @Test def jarOutput: Unit = {
-    val classPath = mkClassPath(Jars.dottyTestDeps)
     val source = "tests/pos/Foo.scala"
     val out = Paths.get("out/jaredFoo.jar").normalize
     if (Files.exists(out)) Files.delete(out)
-    val options = Array("-classpath", classPath, "-d", out.toString, source)
+    val options = Array("-classpath", TestConfiguration.basicClasspath, "-d", out.toString, source)
     val reporter = Main.process(options)
     assertEquals(0, reporter.errorCount)
     assertTrue(Files.exists(out))
