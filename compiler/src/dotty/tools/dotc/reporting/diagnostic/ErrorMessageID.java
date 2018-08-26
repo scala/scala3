@@ -131,7 +131,8 @@ public enum ErrorMessageID {
     MatchCaseOnlyNullWarningID,
     ImportRenamedTwiceID,
     TypeTestAlwaysSucceedsID,
-    TermMemberNeedsNeedsResultTypeForImplicitSearchID
+    TermMemberNeedsNeedsResultTypeForImplicitSearchID,
+    CaseClassCannotExtendEnumID
     ;
 
     public int errorNumber() {
