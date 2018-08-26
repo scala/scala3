@@ -1,28 +1,11 @@
 #!/usr/bin/env bash
 
-set -eux
-
-SBT="./project/scripts/sbt" # if run on CI
-# SBT="sbt" # if run locally
-
-SOURCE="tests/pos/HelloWorld.scala"
-MAIN="HelloWorld"
-EXPECTED_OUTPUT="hello world"
+source $(dirname $0)/cmdTestsCommon.inc.sh
 
 # check that benchmarks can run
 "$SBT" "dotty-bench/jmh:run 1 1 tests/pos/alias.scala"
 "$SBT" "dotty-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
 "$SBT" "dotty-bench-bootstrapped/jmh:run 1 1 -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
-
-OUT=$(mktemp -d)
-OUT1=$(mktemp -d)
-tmp=$(mktemp)
-
-clear_out()
-{
-  local out="$1"
-  rm -rf "$out/*"
-}
 
 # check that `sbt dotc` compiles and `sbt dotr` runs it
 echo "testing sbt dotc and dotr"
