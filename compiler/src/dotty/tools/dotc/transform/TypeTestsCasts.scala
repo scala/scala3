@@ -140,7 +140,15 @@ object TypeTestsCasts {
   }
 
   def interceptTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = trace(s"transforming ${tree.show}", show = true) {
-    tree.fun match {
+    interceptTypeApply1(tree, tree.fun match {
+      case i: Ident =>
+        desugarIdent(i).withPos(tree.fun)
+      case t => t
+    })
+  }
+
+  private def interceptTypeApply1(tree: TypeApply, treeFun: Tree)(implicit ctx: Context): Tree = {
+    treeFun match {
       case fun @ Select(expr, selector) =>
         val sym = tree.symbol
 
