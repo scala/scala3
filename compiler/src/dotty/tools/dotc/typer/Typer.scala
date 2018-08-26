@@ -1803,7 +1803,7 @@ class Typer extends Namer
       case none =>
 
         def typedNamed(tree: untpd.NameTree, pt: Type)(implicit ctx: Context): Tree = {
-          val sym = retrieveSym(xtree)
+          val sym = retrieveSym(tree)
           tree match {
             case tree: untpd.Ident => typedIdent(tree, pt)
             case tree: untpd.Select => typedSelect(tree, pt)
