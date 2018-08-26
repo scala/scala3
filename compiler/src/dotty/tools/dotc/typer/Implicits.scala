@@ -552,6 +552,7 @@ trait Implicits { self: Typer =>
         || (from.tpe isRef defn.NothingClass)
         || (from.tpe isRef defn.NullClass)
         || !(ctx.mode is Mode.ImplicitsEnabled)
+        || from.isInstanceOf[Super]
         || (from.tpe eq NoPrefix)) NoMatchingImplicitsFailure
     else {
       def adjust(to: Type) = to.stripTypeVar.widenExpr match {
