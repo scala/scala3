@@ -483,16 +483,17 @@ object Checking {
           }
           tp1
         case tp: ClassInfo =>
+          def transformedParent(tp: Type): Type = tp match {
+            case ref: TypeRef => ref
+            case ref: AppliedType => ref
+            case AnnotatedType(parent, annot) =>
+              AnnotatedType(transformedParent(parent), annot)
+            case _ => defn.ObjectType // can happen if class files are missing
+          }
           tp.derivedClassInfo(
             prefix = apply(tp.prefix),
             classParents =
-              tp.parents.map { p =>
-                apply(p).stripAnnots match {
-                  case ref: TypeRef => ref
-                  case ref: AppliedType => ref
-                  case _ => defn.ObjectType // can happen if class files are missing
-                }
-              }
+              tp.parents.map(p => transformedParent(apply(p)))
             )
         case _ =>
           mapOver(tp)
