@@ -27,6 +27,7 @@ import org.jline.reader._
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
+
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation
  *
@@ -70,7 +71,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** the initial, empty state of the REPL session */
-  protected[this] def initState = State(0, 0, Nil, rootCtx)
+  final def initialState = State(0, 0, Nil, rootCtx)
 
   /** Reset state of repl to the initial state
    *
@@ -101,7 +102,7 @@ class ReplDriver(settings: Array[String],
    *  observable outside of the CLI, for this reason, most helper methods are
    *  `protected final` to facilitate testing.
    */
-  final def runUntilQuit(): State = {
+  final def runUntilQuit(initialState: State = initialState): State = {
     val terminal = new JLineTerminal()
 
     /** Blockingly read a line, getting back a parse result */
@@ -127,7 +128,7 @@ class ReplDriver(settings: Array[String],
       else loop(interpret(res)(state))
     }
 
-    try withRedirectedOutput { loop(initState) }
+    try withRedirectedOutput { loop(initialState) }
     finally terminal.close()
   }
 
@@ -135,6 +136,9 @@ class ReplDriver(settings: Array[String],
     val parsed = ParseResult(input)(state.context)
     interpret(parsed)
   }
+
+  // TODO: i5069
+  final def bind(name: String, value: Any)(implicit state: State): State = state
 
   private def withRedirectedOutput(op: => State): State =
     Console.withOut(out) { Console.withErr(out) { op } }
@@ -308,7 +312,7 @@ class ReplDriver(settings: Array[String],
 
     case Reset =>
       resetToInitial()
-      initState
+      initialState
 
     case Imports =>
       state.imports.foreach(i => out.println(SyntaxHighlighting(i.show(state.context))))
