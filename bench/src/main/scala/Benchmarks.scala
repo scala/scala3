@@ -34,11 +34,9 @@ object Bench {
     }
     storeCompileOptions(args2)
 
-    val libs = System.getProperty("BENCH_CLASS_PATH")
-
     val opts = new OptionsBuilder()
                .shouldFailOnError(true)
-               .jvmArgsPrepend(s"-classpath $libs", "-Xms2G", "-Xmx2G")
+               .jvmArgs("-Xms2G", "-Xmx2G")
                .mode(Mode.AverageTime)
                .timeUnit(TimeUnit.MILLISECONDS)
                .warmupIterations(warmup)
@@ -55,9 +53,13 @@ object Bench {
   def removeCompileOptions: Unit = new File(COMPILE_OPTS_FILE).delete()
 
   def storeCompileOptions(args: Array[String]): Unit = {
+    val libs = System.getProperty("BENCH_CLASS_PATH")
+
     val file = new File(COMPILE_OPTS_FILE)
     val bw = new BufferedWriter(new FileWriter(file))
-    bw.write(args.mkString("\n"))
+    bw.write(args.mkString("", "\n", "\n"))
+    bw.write("-classpath\n")
+    bw.write(libs)
     bw.close()
   }
 
