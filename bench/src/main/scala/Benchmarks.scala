@@ -37,6 +37,7 @@ object Bench {
     val libs = System.getProperty("BENCH_CLASS_PATH")
 
     val opts = new OptionsBuilder()
+               .shouldFailOnError(true)
                .jvmArgsPrepend(s"-classpath $libs", "-Xms2G", "-Xmx2G")
                .mode(Mode.AverageTime)
                .timeUnit(TimeUnit.MILLISECONDS)
