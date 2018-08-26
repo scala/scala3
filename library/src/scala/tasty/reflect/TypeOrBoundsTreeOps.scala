@@ -119,4 +119,5 @@ trait TypeOrBoundsTreeOps extends TastyCore {
     def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean
   }
 
+  implicit def typeTreeAsParent(term: TypeTree): Parent
 }

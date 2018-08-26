@@ -153,4 +153,5 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
   }
 
+  def typeTreeAsParent(typeTree: TypeTree): Parent = typeTree
 }

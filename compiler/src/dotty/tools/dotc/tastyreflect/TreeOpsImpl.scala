@@ -5,8 +5,6 @@ import dotty.tools.dotc.core
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core._
-import dotty.tools.dotc.reporting.Reporter
-import dotty.tools.dotc.reporting.diagnostic.MessageContainer
 import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFromSym}
 
 trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with Helpers {
@@ -399,4 +397,5 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
     }
   }
 
+  def termAsParent(term: Term): Parent = term
 }

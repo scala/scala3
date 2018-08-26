@@ -306,4 +306,5 @@ trait TreeOps extends TastyCore {
     }
   }
 
+  implicit def termAsParent(term: Term): Parent
 }
