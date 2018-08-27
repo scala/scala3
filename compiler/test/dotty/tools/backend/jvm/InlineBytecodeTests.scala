@@ -44,7 +44,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
   @Test def i4947 = {
     val source = """class Foo {
-                   |  transparent def track[T](f: => T): T = {
+                   |  rewrite def track[T](f: => T): T = {
                    |    foo("tracking") // line 3
                    |    f // line 4
                    |  }
@@ -103,11 +103,11 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
   @Test def i4947b = {
     val source = """class Foo {
-                   |  transparent def track2[T](f: => T): T = {
+                   |  rewrite def track2[T](f: => T): T = {
                    |    foo("tracking2") // line 3
                    |    f // line 4
                    |  }
-                   |  transparent def track[T](f: => T): T = {
+                   |  rewrite def track[T](f: => T): T = {
                    |    foo("tracking") // line 7
                    |    track2 { // line 8
                    |      f // line 9
@@ -163,11 +163,11 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
   @Test def i4947c = {
     val source = """class Foo {
-                   |  transparent def track2[T](f: => T): T = {
+                   |  rewrite def track2[T](f: => T): T = {
                    |    foo("tracking2") // line 3
                    |    f // line 4
                    |  }
-                   |  transparent def track[T](f: => T): T = {
+                   |  rewrite def track[T](f: => T): T = {
                    |    track2 { // line 7
                    |      foo("fgh") // line 8
                    |      f // line 9
@@ -223,11 +223,11 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
   @Test def i4947d = {
     val source = """class Foo {
-                   |  transparent def track2[T](f: => T): T = {
+                   |  rewrite def track2[T](f: => T): T = {
                    |    foo("tracking2") // line 3
                    |    f // line 4
                    |  }
-                   |  transparent def track[T](f: => T): T = {
+                   |  rewrite def track[T](f: => T): T = {
                    |    track2 { // line 7
                    |      track2 { // line 8
                    |        f // line 9
