@@ -1,0 +1,3 @@
+class Iterator<T> {
+	Iterator() {}
+}

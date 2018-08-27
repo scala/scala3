@@ -1,5 +1,5 @@
 
-// Tests that we add "| Null" to Java fields and methods.
+// Tests that we add "| Null" to Java fields and methods from classfiles.
 class Foo {
 
   // So that the chained accessors compile.

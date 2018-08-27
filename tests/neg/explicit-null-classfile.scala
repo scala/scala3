@@ -1,5 +1,5 @@
 
-// Test that we mark fields and methods in Java classes as nullable.
+// Test that we mark fields and methods in Java classfiles as nullable.
 class Foo {
 
   def s[T](x: T | Null): T = x.asInstanceOf[T]
