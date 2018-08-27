@@ -134,7 +134,7 @@ object Types {
     }
 
     /** Normalized versions of this type */
-    private[this] var myNormalized: Type = NoType
+    @sharable private[this] var myNormalized: Type = NoType
 
     final def isNormalizing: Boolean = myNormalized == null
 
