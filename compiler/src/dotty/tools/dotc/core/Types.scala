@@ -4003,8 +4003,16 @@ object Types {
     override def eql(that: Type): Boolean = {
       that match {
         case that: TypeOf =>
+          @tailrec
           def compareArgs[T <: Tree](args1: List[T], args2: List[T]): Boolean =
-            args1.zip(args2).forall { case (a,b) => a.tpe eql b.tpe }
+            args1 match {
+              case head1 :: tail1 =>
+                args2 match {
+                  case head2 :: tail2 => head1.tpe.eql(head2.tpe) && compareArgs(tail1, tail2)
+                  case nil => false
+                }
+              case nil => args2.isEmpty
+            }
           (this.tree, that.tree) match {
             case (t1: Apply, t2: Apply) =>
               (t1.fun.tpe eql t2.fun.tpe) && compareArgs(t1.args, t2.args)
