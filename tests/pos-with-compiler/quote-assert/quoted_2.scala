@@ -4,7 +4,7 @@ import Macros._
 
 object Test {
 
-  transparent def assert(expr: => Boolean): Unit =
+  rewrite def assert(expr: => Boolean): Unit =
     ~ assertImpl('(expr))
 
 

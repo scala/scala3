@@ -10,5 +10,5 @@ object Test {
     println(power2(x3))
   }
 
-  transparent def power2(x: Double) = ~PowerMacro.power2('(x))
+  rewrite def power2(x: Double) = ~PowerMacro.power2('(x))
 }

@@ -14,7 +14,7 @@ object Test {
   object O3a extends D(3)
   object O3b extends D(3)
 
-  transparent def f(): Unit = {
+  rewrite def f(): Unit = {
     println(new C(
       { println(1); 1 },
       { println(2); 2 },

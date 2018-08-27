@@ -35,34 +35,34 @@ object Tuples {
 
   private final val MaxSpecialized = 7   // 22 in real life
 
-  private transparent def _empty: Tuple = erasedValue[Empty]
-  private transparent def _pair[H, T <: Tuple] (x: H, xs: T): Tuple = erasedValue[H *: T]
+  private rewrite def _empty: Tuple = erasedValue[Empty]
+  private rewrite def _pair[H, T <: Tuple] (x: H, xs: T): Tuple = erasedValue[H *: T]
 
-  private transparent def _size(xs: Tuple): Int = xs match {
+  private rewrite def _size(xs: Tuple): Int = rewrite xs match {
     case _: Empty => 0
     case _: (_ *: xs1) => _size(erasedValue[xs1]) + 1
   }
 
-  private transparent def _index(xs: Tuple, n: Int): Any = xs match {
+  private rewrite def _index(xs: Tuple, n: Int): Any = rewrite xs match {
     case _: (x *: _)   if n == 0 => erasedValue[x]
     case _: (_ *: xs1) if n > 0  => _index(erasedValue[xs1], n - 1)
   }
 
-  private transparent def _head(xs: Tuple): Any = xs match {
+  private rewrite def _head(xs: Tuple): Any = rewrite xs match {
     case _: (x *: _) => erasedValue[x]
   }
 
-  private transparent def _tail(xs: Tuple): Tuple = xs match {
+  private rewrite def _tail(xs: Tuple): Tuple = rewrite xs match {
     case _: (_ *: xs1) => erasedValue[xs1]
   }
 
-  private transparent def _concat(xs: Tuple, ys: Tuple): Tuple = xs match {
+  private rewrite def _concat(xs: Tuple, ys: Tuple): Tuple = rewrite xs match {
     case _: Empty => ys
     case _: (x1 *: xs1) => _pair(erasedValue[x1], _concat(erasedValue[xs1], ys))
   }
 
-  transparent def fromArray[T <: Tuple](xs: Array[Object]): T =
-    _size(erasedValue[T]) match {
+  rewrite def fromArray[T <: Tuple](xs: Array[Object]): T =
+    rewrite _size(erasedValue[T]) match {
       case 0 => ().asInstanceOf[T]
       case 1 => Tuple1(xs(0)).asInstanceOf[T]
       case 2 => Tuple2(xs(0), xs(1)).asInstanceOf[T]
@@ -76,11 +76,11 @@ object Tuples {
 
   val emptyArray = Array[Object]()
 
-  transparent implicit def tupleDeco(xs: Tuple): TupleOps = new TupleOps(xs)
+  rewrite implicit def tupleDeco(xs: Tuple): TupleOps = new TupleOps(xs)
 
   class TupleOps(val xs: Tuple) extends AnyVal {
 
-    transparent def toArray: Array[Object] = _size(xs) match {
+    rewrite def toArray: Array[Object] = rewrite _size(xs) match {
       case 0 =>
         emptyArray
       case 1 =>
@@ -108,9 +108,9 @@ object Tuples {
         xs.asInstanceOf[TupleXXL].elems
     }
 
-    transparent def *: [H] (x: H): Tuple = {
+    rewrite def *: [H] (x: H): Tuple = {
       erased val resTpe = Typed(_pair(x, xs))
-      _size(xs) match {
+      rewrite _size(xs) match {
         case 0 =>
           Tuple1(x).asInstanceOf[resTpe.Type]
         case 1 =>
@@ -136,32 +136,33 @@ object Tuples {
       elems1
     }
 
-    transparent def head: Any = {
+    rewrite def head: Any = {
       erased val resTpe = Typed(_head(xs))
-      _size(xs) match {
+      val resVal = rewrite _size(xs) match {
         case 1 =>
           val t = xs.asInstanceOf[Tuple1[_]]
-          t._1.asInstanceOf[resTpe.Type]
+          t._1
         case 2 =>
           val t = xs.asInstanceOf[Tuple2[_, _]]
-          t._1.asInstanceOf[resTpe.Type]
+          t._1
         case 3 =>
           val t = xs.asInstanceOf[Tuple3[_, _, _]]
-          t._1.asInstanceOf[resTpe.Type]
+          t._1
         case 4 =>
           val t = xs.asInstanceOf[Tuple4[_, _, _, _]]
-          t._1.asInstanceOf[resTpe.Type]
+          t._1
         case n if n > 4 && n <= MaxSpecialized =>
-          xs.asInstanceOf[Product].productElement(0).asInstanceOf[resTpe.Type]
+          xs.asInstanceOf[Product].productElement(0)
         case n if n > MaxSpecialized =>
           val t = xs.asInstanceOf[TupleXXL]
-          t.elems(0).asInstanceOf[resTpe.Type]
+          t.elems(0)
       }
+      resVal.asInstanceOf[resTpe.Type]
     }
 
-    transparent def tail: Any = {
+    rewrite def tail: Any = {
       erased val resTpe = Typed(_tail(xs))
-      _size(xs) match {
+      rewrite _size(xs) match {
         case 1 =>
           unit
         case 2 =>
@@ -181,30 +182,30 @@ object Tuples {
       }
     }
 
-    transparent def apply(n: Int): Any = {
+    rewrite def apply(n: Int): Any = {
       erased val resTpe = Typed(_index(xs, n))
-      _size(xs) match {
+      rewrite _size(xs) match {
         case 1 =>
           val t = xs.asInstanceOf[Tuple1[_]]
-          n match {
+          rewrite n match {
             case 0 => t._1.asInstanceOf[resTpe.Type]
           }
         case 2 =>
           val t = xs.asInstanceOf[Tuple2[_, _]]
-          n match {
+          rewrite n match {
             case 0 => t._1.asInstanceOf[resTpe.Type]
             case 1 => t._2.asInstanceOf[resTpe.Type]
           }
         case 3 =>
           val t = xs.asInstanceOf[Tuple3[_, _, _]]
-          n match {
+          rewrite n match {
             case 0 => t._1.asInstanceOf[resTpe.Type]
             case 1 => t._2.asInstanceOf[resTpe.Type]
             case 2 => t._3.asInstanceOf[resTpe.Type]
           }
         case 4 =>
           val t = xs.asInstanceOf[Tuple4[_, _, _, _]]
-          n match {
+          rewrite n match {
             case 0 => t._1.asInstanceOf[resTpe.Type]
             case 1 => t._2.asInstanceOf[resTpe.Type]
             case 2 => t._3.asInstanceOf[resTpe.Type]
@@ -217,16 +218,16 @@ object Tuples {
       }
     }
 
-    transparent def ++(ys: Tuple): Tuple = {
+    rewrite def ++(ys: Tuple): Tuple = {
       erased val resTpe = Typed(_concat(xs, ys))
-      _size(xs) match {
+      rewrite _size(xs) match {
         case 0 => ys
         case 1 =>
           if (_size(ys) == 0) xs
           else xs.head *: ys
         case 2 =>
           val t = xs.asInstanceOf[Tuple2[_, _]]
-          _size(ys) match {
+          rewrite _size(ys) match {
             case 0 => xs
             case 1 =>
               val u = ys.asInstanceOf[Tuple1[_]]
@@ -239,7 +240,7 @@ object Tuples {
           }
         case 3 =>
           val t = xs.asInstanceOf[Tuple3[_, _, _]]
-          _size(ys) match {
+          rewrite _size(ys) match {
             case 0 => xs
             case 1 =>
               val u = ys.asInstanceOf[Tuple1[_]]
@@ -253,7 +254,7 @@ object Tuples {
       }
     }
 
-    transparent def genericConcat[T <: Tuple](xs: Tuple, ys: Tuple): Tuple =
+    rewrite def genericConcat[T <: Tuple](xs: Tuple, ys: Tuple): Tuple =
       fromArray[T](xs.toArray ++ ys.toArray)
   }
 }

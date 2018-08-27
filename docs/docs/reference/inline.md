@@ -1,9 +1,9 @@
 ---
 layout: doc-page
-title: Transparent
+title: Rewrite and Transparent
 ---
 
-`transparent` is a new modifier that guarantees that a definition will be
+`rewrite` is a new modifier that guarantees that a definition will be
 inlined at the point of use. Example:
 
     object Config {
@@ -14,7 +14,7 @@ inlined at the point of use. Example:
 
       private var indent = 0
 
-      transparent def log[T](msg: => String)(op: => T): T =
+      rewrite def log[T](msg: => String)(op: => T): T =
         if (Config.logging) {
           println(s"${"  " * indent}start $msg")
           indent += 1
@@ -26,15 +26,15 @@ inlined at the point of use. Example:
         else op
     }
 
-The `Config` object contains a definition of an `transparent` value
+The `Config` object contains a definition of a `transparent` value
 `logging`. This means that `logging` is treated as a constant value,
 equivalent to its right-hand side `false`. The right-hand side of such
-an transparent val must itself be a [constant
+a transparent val must itself be a [constant
 expression](#the-definition-of-constant-expression). Used in this way,
 `transparent` is equivalent to Java and Scala 2's `final`. `final` meaning
 "constant" is still supported in Dotty, but will be phased out.
 
-The `Logger` object contains a definition of an `transparent` method `log`.
+The `Logger` object contains a definition of a `rewrite` method `log`.
 This method will always be inlined at the point of call.
 
 In the inlined code, an if-then-else with a constant condition will be
@@ -57,29 +57,29 @@ If `Config.logging == false`, this will be rewritten to
   }
 
 Note that the arguments corresponding to the parameters `msg` and `op`
-of the transparent method `log` are defined before the inlined body (which
+of the rewrite method `log` are defined before the inlined body (which
 is in this case simply `op`). By-name parameters of the inlined method
 correspond to `def` bindings whereas by-value parameters correspond to
 `val` bindings. So if `log` was defined like this:
 
-    transparent def log[T](msg: String)(op: => T): T = ...
+    rewrite def log[T](msg: String)(op: => T): T = ...
 
 we'd get
 
     val msg = s"factorial($n)"
 
-instead. This behavior is designed so that calling a transparent method is
+instead. This behavior is designed so that calling a rewrite method is
 semantically the same as calling a normal method: By-value arguments
 are evaluated before the call whereas by-name arguments are evaluated
 each time they are referenced. As a consequence, it is often
-preferable to make arguments of transparent methods by-name in order to
+preferable to make arguments of rewrite methods by-name in order to
 avoid unnecessary evaluations.
 
 For instance, here is how we can define a zero-overhead `foreach` method
 that translates into a straightforward while loop without any indirection or
 overhead:
 
-    transparent def foreach(op: => Int => Unit): Unit = {
+    rewrite def foreach(op: => Int => Unit): Unit = {
       var i = from
       while (i < end) {
         op(i)
@@ -91,9 +91,9 @@ By contrast, if `op` is a call-by-value parameter, it would be evaluated separat
 
 Transparent methods can be recursive. For instance, when called with a constant
 exponent `n`, the following method for `power` will be implemented by
-straight transparent code without any loop or recursion.
+straight inline code without any loop or recursion.
 
-    transparent def power(x: Double, n: Int): Double =
+    rewrite def power(x: Double, n: Int): Double =
       if (n == 0) 1.0
       else if (n == 1) x
       else {
@@ -110,19 +110,19 @@ straight transparent code without any loop or recursion.
         //    val y3 = y2 * x  // ^5
         //    y3 * y3          // ^10
 
-Parameters of transparent methods can themselves be marked `transparent`. This means
+Parameters of rewrite methods can be marked `transparent`. This means
 that actual arguments to these parameters must be constant expressions.
 
 ### Relationship to `@inline`.
 
 Scala also defines a `@inline` annotation which is used as a hint
-for the backend to inline. The `transparent` modifier is a more powerful
+for the backend to inline. The `rewrite` modifier is a more powerful
 option: Expansion is guaranteed instead of best effort,
 it happens in the frontend instead of in the backend, and it also applies
 to recursive methods.
 
 To cross compile between both Dotty and Scalac, we introduce a new `@forceInline`
-annotation which is equivalent to the new `transparent` modifier. Note that
+annotation which is equivalent to the new `rewrite` modifier. Note that
 Scala 2 ignores the `@forceInline` annotation, so one must use both
 annotations to guarantee inlining for Dotty and at the same time hint inlining
 for Scala 2 (i.e. `@forceInline @inline`).
@@ -137,5 +137,5 @@ pure numeric computations.
 
 ### Reference
 
-For more info, see [PR #4768](https://github.com/lampepfl/dotty/pull/4768), which explains how
-transparent methods can be used for typelevel programming and code specialization.
+For more info, see [PR #4927](https://github.com/lampepfl/dotty/pull/4768), which explains how
+rewrite methods can be used for typelevel programming and code specialization.

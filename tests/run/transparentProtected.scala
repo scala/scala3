@@ -7,7 +7,7 @@ package P {
 package Q {
   class D extends P.C {
     class Inner {
-      transparent def g() = f()
+      rewrite def g() = f()
     }
   }
 }

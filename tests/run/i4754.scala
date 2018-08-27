@@ -6,7 +6,7 @@ object Foo {
 
 class Foo {
   import Foo._
-  transparent def foo = x + Foo.x + y + Foo.y + z + Foo.z
+  rewrite def foo = x + Foo.x + y + Foo.y + z + Foo.z
 }
 
 object Test {

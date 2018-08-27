@@ -7,7 +7,7 @@ object PowerMacro {
     else '{ ~x * ~powerCode(x, n - 1) }
 
   def power2(x: Expr[Double]) = '{
-    transparent def power(x: Double): Double = ~powerCode('(x), 2)
+    rewrite def power(x: Double): Double = ~powerCode('(x), 2)
     power(~x)
   }
 }

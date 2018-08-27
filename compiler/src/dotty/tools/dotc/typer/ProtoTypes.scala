@@ -74,14 +74,14 @@ object ProtoTypes {
       res
     }
 
-    /** Constrain result with special case if `meth` is a transparent method in an inlineable context.
+    /** Constrain result with special case if `meth` is an inlineable method in an inlineable context.
      *  In that case, we should always succeed and not constrain type parameters in the expected type,
      *  because the actual return type can be a subtype of the currently known return type.
      *  However, we should constrain parameters of the declared return type. This distinction is
      *  achieved by replacing expected type parameters with wildcards.
      */
     def constrainResult(meth: Symbol, mt: Type, pt: Type)(implicit ctx: Context): Boolean =
-      if (Inliner.isTransparentInlineable(meth)) {
+      if (Inliner.isInlineable(meth)) {
         constrainResult(mt, wildApprox(pt))
         true
       }

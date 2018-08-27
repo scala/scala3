@@ -4,7 +4,7 @@ import scala.quoted.Toolbox.Default._
 
 object Macros {
 
-  transparent def assert(expr: => Boolean): Unit =
+  rewrite def assert(expr: => Boolean): Unit =
     ~assertImpl('(expr))
 
   def assertImpl(expr: Expr[Boolean]) =
@@ -12,7 +12,7 @@ object Macros {
 
   def showExpr[T](expr: Expr[T]): Expr[String] = expr.toString.toExpr
 
-  transparent def power(transparent n: Int, x: Double) = ~powerCode(n, '(x))
+  rewrite def power(transparent n: Int, x: Double) = ~powerCode(n, '(x))
 
   def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
     if (n == 0) '(1.0)

@@ -1,6 +1,6 @@
 object Test {
 
-  transparent def track[T](f: => T): T = {
+  rewrite def track[T](f: => T): T = {
     printStack("track")
     printStack("track")
     f

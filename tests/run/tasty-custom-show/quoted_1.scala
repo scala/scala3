@@ -6,7 +6,7 @@ import scala.tasty.util.{TreeTraverser, Show}
 
 object Macros {
 
-  implicit transparent def printOwners[T](x: => T): Unit =
+  implicit rewrite def printOwners[T](x: => T): Unit =
     ~impl('(x))(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
 
   def impl[T](x: Expr[T])(implicit tasty: Tasty): Expr[Unit] = {

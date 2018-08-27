@@ -15,7 +15,7 @@ import StdNames._
 import Contexts.Context
 import Names.{Name, TermName, EmptyTermName}
 import NameOps._
-import NameKinds.{ClassifiedNameKind, InlineAccessorName, UniqueInlineName, TransparentScrutineeName, TransparentBinderName}
+import NameKinds.{ClassifiedNameKind, InlineAccessorName, UniqueInlineName, RewriteScrutineeName, RewriteBinderName}
 import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
 import Annotations._
@@ -43,11 +43,11 @@ object Inliner {
   def inlineBindings(implicit ctx: Context): MutableSymbolMap[Tree] =
     ctx.property(InlineBindings).get
 
-  /** `sym` has a transparent method with a known body to inline (note: definitions coming
-   *  from Scala2x class files might be `@forceInline`, but still lack that body.
+  /** `sym` is a rewrite or transparent method with a known body to inline (note: definitions coming
+   *  from Scala2x class files might be `@forceInline`, but still lack that body).
    */
   def hasBodyToInline(sym: SymDenotation)(implicit ctx: Context): Boolean =
-    sym.isTransparentInlineable && sym.hasAnnotation(defn.BodyAnnot)
+    sym.isInlineable && sym.hasAnnotation(defn.BodyAnnot)
 
   /** The body to inline for method `sym`.
    *  @pre  hasBodyToInline(sym)
@@ -55,17 +55,11 @@ object Inliner {
   def bodyToInline(sym: SymDenotation)(implicit ctx: Context): Tree =
     sym.unforcedAnnotation(defn.BodyAnnot).get.tree
 
-  /** Should call with method `meth` be inlined in this context? */
-  def isInlineable(meth: Symbol)(implicit ctx: Context): Boolean = {
-
-    def suppressInline =
-      ctx.inTransparentMethod ||
-      ctx.settings.YnoInline.value ||
-      ctx.isAfterTyper ||
-      ctx.reporter.hasErrors
-
-    hasBodyToInline(meth) && !suppressInline
-  }
+  /** Should call to method `meth` be inlined in this context? */
+  def isInlineable(meth: Symbol)(implicit ctx: Context): Boolean =
+    (meth.is(Rewrite) || meth.is(Transparent) && ctx.isInlineContext) &&
+    hasBodyToInline(meth) &&
+    !ctx.inRewriteMethod
 
   /** Should call be inlined in this context? */
   def isInlineable(tree: Tree)(implicit ctx: Context): Boolean = tree match {
@@ -73,11 +67,7 @@ object Inliner {
     case _ => isInlineable(tree.symbol)
   }
 
-  /** Is `meth` a transparent method that should be inlined in this context? */
-  def isTransparentInlineable(meth: Symbol)(implicit ctx: Context): Boolean =
-    meth.isTransparentInlineable && isInlineable(meth)
-
-  /** Try to inline a call to a transparent method. Fail with error if the maximal
+  /** Try to inline a call to a rewrite or transparent method. Fail with error if the maximal
    *  inline depth is exceeded.
    *
    *  @param tree   The call to inline
@@ -141,7 +131,7 @@ object Inliner {
       errorTree(
         tree,
         i"""|Maximal number of successive inlines (${ctx.settings.XmaxInlines.value}) exceeded,
-            |Maybe this is caused by a recursive transparent method?
+            |Maybe this is caused by a recursive rewrite method?
             |You can use -Xmax:inlines to change the limit.""",
         (tree :: enclosingInlineds).last.pos
       )
@@ -185,8 +175,8 @@ object Inliner {
 
 /** Produces an inlined version of `call` via its `inlined` method.
  *
- *  @param  call         the original call to an `inline` method
- *  @param  rhsToInline  the body of the transparent method that replaces the call.
+ *  @param  call         the original call to an inlineable method
+ *  @param  rhsToInline  the body of the inlineable method that replaces the call.
  */
 class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   import tpd._
@@ -199,7 +189,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   // Make sure all type arguments to the call are fully determined
   for (targ <- callTypeArgs) fullyDefinedType(targ.tpe, "inlined type argument", targ.pos)
 
-  /** A map from parameter names of the transparent method to references of the actual arguments.
+  /** A map from parameter names of the inlineable method to references of the actual arguments.
    *  For a type argument this is the full argument type.
    *  For a value argument, it is a reference to either the argument value
    *  (if the argument is a pure expression of singleton type), or to `val` or `def` acting
@@ -207,7 +197,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    */
   private val paramBinding = new mutable.HashMap[Name, Type]
 
-  /** A map from references to (type and value) parameters of the transparent method
+  /** A map from references to (type and value) parameters of the inlineable method
    *  to their corresponding argument or proxy references, as given by `paramBinding`.
    */
   private val paramProxy = new mutable.HashMap[Type, Type]
@@ -506,9 +496,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
     }
 
-    /** If we are inlining a transparent method and `tree` is equivalent to `new C(args).x`
-     *  where class `C` does not have initialization code and `x` is a parameter corresponding
-     *  to one of the arguments `args`, the corresponding argument, prefixed by the evaluation
+    /** If `tree` is equivalent to `new C(args).x` where class `C` does not have
+     *  initialization code and `x` is a parameter corresponding to one of the
+     *  arguments `args`, the corresponding argument, prefixed by the evaluation
      *  of impure arguments, otherwise `tree` itself.
      */
     def reduceProjection(tree: Tree)(implicit ctx: Context): Tree = {
@@ -639,7 +629,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
      */
     type MatchRedux = Option[(List[MemberDef], untpd.Tree)]
 
-    /** Reduce a toplevel match of a transparent function
+    /** Reduce a rewrite match
      *   @param     scrutinee    the scrutinee expression, assumed to be pure
      *   @param     scrutType    its fully defined type
      *   @param     cases        All cases of the match
@@ -647,7 +637,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
      *   @return    optionally, if match can be reduced to a matching case: A pair of
      *              bindings for all pattern-bound variables and the untyped RHS of the case.
      */
-    def reduceTopLevelMatch(scrutinee: Tree, scrutType: Type, cases: List[untpd.CaseDef], typer: Typer)(implicit ctx: Context): MatchRedux = {
+    def reduceRewriteMatch(scrutinee: Tree, scrutType: Type, cases: List[untpd.CaseDef], typer: Typer)(implicit ctx: Context): MatchRedux = {
 
       val gadtSyms = typer.gadtSyms(scrutType)
 
@@ -738,7 +728,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                   for ((pat, accessor) <- (pats, caseAccessors).zipped)
                     subOK = subOK && {
                       val rhs = constToLiteral(reduceProjection(ref(scrut).select(accessor).ensureApplied))
-                      val elem = newBinding(TransparentBinderName.fresh(), Synthetic, rhs)
+                      val elem = newBinding(RewriteBinderName.fresh(), Synthetic, rhs)
                       reducePattern(bindingsBuf, elem.termRef, pat)
                     }
                   subOK
@@ -751,7 +741,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
 
       /** The initial scrutinee binding: `val $scrutineeN = <scrutinee>` */
-      val scrutineeSym = newSym(TransparentScrutineeName.fresh(), Synthetic, scrutType).asTerm
+      val scrutineeSym = newSym(RewriteScrutineeName.fresh(), Synthetic, scrutType).asTerm
       val scrutineeBinding = normalizeBinding(ValDef(scrutineeSym, scrutinee))
 
       def reduceCase(cdef: untpd.CaseDef): MatchRedux = {
@@ -782,8 +772,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
   }
 
-  /** A typer for inlined bodies of transparent methods. Beyond standard typing
-   *  an inline typer performs the following functions:
+  /** A typer for inlined bodies. Beyond standard typing, an inline typer performs
+   *  the following functions:
    *
    *  1. Implement constant folding over inlined code
    *  2. Selectively expand ifs with constant conditions
@@ -821,33 +811,34 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           if (isIdempotentExpr(cond1)) selected
           else Block(cond1 :: Nil, selected)
         case cond1 =>
+          if (tree.isInstanceOf[untpd.RewriteIf])
+            errorTree(tree, em"""cannot reduce rewrite if
+                                | its condition   ${tree.cond}
+                                | is not a constant value.""")
           val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
           super.typedIf(if1, pt)
       }
 
-    override def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context) =
-      tree.getAttachment(PrepareTransparent.TopLevelMatch) match {
-        case Some(_) if !ctx.owner.isTransparentMethod => // don't reduce match of nested transparent yet
-          reduceTopLevelMatch(sel, sel.tpe, tree.cases, this) match {
-            case Some((caseBindings, rhs)) =>
-              var rhsCtx = ctx.fresh.setNewScope
-              for (binding <- caseBindings) {
-                matchBindingsBuf += binding
-                rhsCtx.enter(binding.symbol)
-              }
-              typedExpr(rhs, pt)(rhsCtx)
-            case None =>
-              def guardStr(guard: untpd.Tree) = if (guard.isEmpty) "" else i" if $guard"
-              def patStr(cdef: untpd.CaseDef) = i"case ${cdef.pat}${guardStr(cdef.guard)}"
-              errorTree(tree, em"""cannot reduce top-level match of transparent function with
-                                  | scrutinee:  $sel : ${sel.tpe}
-                                  | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}
-                                  |
-                                  | Hint: if you do not expect the match to be reduced, put it in a locally { ... } block.""")
-          }
-        case _ =>
-          super.typedMatchFinish(tree, sel, selType, pt)
-      }
+    override def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context) = tree match {
+      case _: untpd.RewriteMatch if !ctx.owner.isRewriteMethod => // don't reduce match of nested rewrite method yet
+        reduceRewriteMatch(sel, sel.tpe, tree.cases, this) match {
+          case Some((caseBindings, rhs)) =>
+            var rhsCtx = ctx.fresh.setNewScope
+            for (binding <- caseBindings) {
+              matchBindingsBuf += binding
+              rhsCtx.enter(binding.symbol)
+            }
+            typedExpr(rhs, pt)(rhsCtx)
+          case None =>
+            def guardStr(guard: untpd.Tree) = if (guard.isEmpty) "" else i" if $guard"
+            def patStr(cdef: untpd.CaseDef) = i"case ${cdef.pat}${guardStr(cdef.guard)}"
+            errorTree(tree, em"""cannot reduce rewrite match with
+                                | scrutinee:  $sel : ${sel.tpe}
+                                | patterns :  ${tree.cases.map(patStr).mkString("\n             ")}.""")
+        }
+      case _ =>
+        super.typedMatchFinish(tree, sel, selType, pt)
+    }
 
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) =
       constToLiteral(betaReduce(super.typedApply(tree, pt)))
@@ -897,7 +888,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         case Some(x) => x > 1 || x == 1 && !boundSym.is(Method)
         case none => true
       }
-    } && !boundSym.is(TransparentImplicitMethod)
+    } && !boundSym.is(ImplicitRewriteMethod)
 
     val (termBindings, typeBindings) = bindings.partition(_.symbol.isTerm)
 

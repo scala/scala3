@@ -132,6 +132,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     case class Lazy() extends Mod(Flags.Lazy)
 
+    case class Rewrite() extends Mod(Flags.Rewrite)
+
     case class Transparent() extends Mod(Flags.Transparent)
 
     case class Enum() extends Mod(Flags.Enum)
@@ -273,8 +275,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Assign(lhs: Tree, rhs: Tree): Assign = new Assign(lhs, rhs)
   def Block(stats: List[Tree], expr: Tree): Block = new Block(stats, expr)
   def If(cond: Tree, thenp: Tree, elsep: Tree): If = new If(cond, thenp, elsep)
+  def RewriteIf(cond: Tree, thenp: Tree, elsep: Tree): If = new RewriteIf(cond, thenp, elsep)
   def Closure(env: List[Tree], meth: Tree, tpt: Tree): Closure = new Closure(env, meth, tpt)
   def Match(selector: Tree, cases: List[CaseDef]): Match = new Match(selector, cases)
+  def RewriteMatch(selector: Tree, cases: List[CaseDef]): Match = new RewriteMatch(selector, cases)
   def CaseDef(pat: Tree, guard: Tree, body: Tree): CaseDef = new CaseDef(pat, guard, body)
   def Return(expr: Tree, from: Tree): Return = new Return(expr, from)
   def Try(expr: Tree, cases: List[CaseDef], finalizer: Tree): Try = new Try(expr, cases, finalizer)
@@ -310,7 +314,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  where `Ts` are the class type arguments of `T` or its class type alias.
    *  Note: we also keep any type arguments as parts of `T`. This is necessary to allow
    *  navigation into these arguments from the IDE, and to do the right thing in
-   *  PrepareTransparent.
+   *  PrepareInlineable.
    */
   def New(tpt: Tree, argss: List[List[Tree]])(implicit ctx: Context): Tree = {
     val (tycon, targs) = tpt match {
