@@ -355,7 +355,7 @@ class Typer extends Namer
     }
 
     // begin typedIdent
-    def kind = if (name.isTermName) "" else "type "
+    def kind = if (name.isTermName) "value " else "type "
     typr.println(s"typed ident $kind$name in ${ctx.owner}")
     if (ctx.mode is Mode.Pattern) {
       if (name == nme.WILDCARD)
