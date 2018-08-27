@@ -213,7 +213,9 @@ object Build {
         // on a task. Instead, we make `compile` below depend on the bridge `packageSrc`
         Some((artifactPath in (`dotty-sbt-bridge`, Compile, packageSrc)).value.toURI.toURL))),
     compile in Compile := (compile in Compile)
-      .dependsOn(packageSrc in (`dotty-sbt-bridge`, Compile)).value,
+      .dependsOn(packageSrc in (`dotty-sbt-bridge`, Compile))
+      .dependsOn(compile in (`dotty-sbt-bridge`, Compile))
+      .value,
 
     // Use the same name as the non-bootstrapped projects for the artifacts
     moduleName ~= { _.stripSuffix("-bootstrapped") },
@@ -746,18 +748,29 @@ object Build {
   // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
   lazy val cleanSbtBridge = TaskKey[Unit]("cleanSbtBridge", "delete dotty-sbt-bridge cache")
 
+  def cleanSbtBridgeImpl(): Unit = {
+    val home = System.getProperty("user.home")
+    val sbtOrg = "org.scala-sbt"
+    val bridgePattern = s"*dotty-sbt-bridge*$dottyVersion*"
+
+    IO.delete((file(home) / ".sbt" / "1.0" / "zinc" / sbtOrg * bridgePattern).get)
+    IO.delete((file(home) / ".sbt"  / "boot" * "scala-*" / sbtOrg / "sbt" * "*" * bridgePattern).get)
+  }
+
   lazy val dottySbtBridgeSettings = Seq(
     cleanSbtBridge := {
-      val home = System.getProperty("user.home")
-      val sbtOrg = "org.scala-sbt"
-      val bridgeDirectoryPattern = s"*$dottyVersion*"
-
-      val log = streams.value.log
-      log.info("Cleaning the dotty-sbt-bridge cache")
-      IO.delete((file(home) / ".ivy2" / "cache" / sbtOrg * bridgeDirectoryPattern).get)
-      IO.delete((file(home) / ".sbt"  / "boot" * "scala-*" / sbtOrg / "sbt" * "*" * bridgeDirectoryPattern).get)
+      cleanSbtBridgeImpl()
     },
-    compile in Compile := (compile in Compile).dependsOn(cleanSbtBridge).value,
+    compile in Compile := {
+      val log = streams.value.log
+      val prev = (previousCompile in Compile).value.analysis.orElse(null)
+      val cur = (compile in Compile).value
+      if (prev != cur) {
+        log.info("Cleaning the dotty-sbt-bridge cache because it was recompiled.")
+        cleanSbtBridgeImpl()
+      }
+      cur
+    },
     description := "sbt compiler bridge for Dotty",
     resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:api
     libraryDependencies ++= Seq(
