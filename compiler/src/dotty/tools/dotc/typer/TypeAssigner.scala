@@ -478,8 +478,7 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.Match, scrutinee: Tree, cases: List[CaseDef])(implicit ctx: Context) =
-    if (scrutinee.isType) tree.withType(MatchType(scrutinee.tpe, cases.tpes))
-    else tree.withType(ctx.typeComparer.lub(cases.tpes))
+    tree.withType(ctx.typeComparer.lub(cases.tpes))
 
   def assignType(tree: untpd.Labeled)(implicit ctx: Context) =
     tree.withType(tree.bind.symbol.info)
@@ -534,6 +533,11 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.LambdaTypeTree, tparamDefs: List[TypeDef], body: Tree)(implicit ctx: Context) =
     tree.withType(HKTypeLambda.fromParams(tparamDefs.map(_.symbol.asType), body.tpe))
+
+  def assignType(tree: untpd.MatchTypeTree, bound: Tree, scrutinee: Tree, cases: List[CaseDef])(implicit ctx: Context) = {
+    val boundType = if (bound.isEmpty) defn.AnyType else bound.tpe
+    tree.withType(MatchType(boundType, scrutinee.tpe, cases.tpes))
+  }
 
   def assignType(tree: untpd.ByNameTypeTree, result: Tree)(implicit ctx: Context) =
     tree.withType(ExprType(result.tpe))

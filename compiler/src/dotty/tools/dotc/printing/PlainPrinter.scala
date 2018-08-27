@@ -164,11 +164,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(AndTypePrec) { toText(tp1) ~ " & " ~ atPrec(AndTypePrec + 1) { toText(tp2) } }
       case OrType(tp1, tp2) =>
         changePrec(OrTypePrec) { toText(tp1) ~ " | " ~ atPrec(OrTypePrec + 1) { toText(tp2) } }
-      case MatchType(scrutinee, cases) =>
+      case MatchType(bound, scrutinee, cases) =>
         changePrec(GlobalPrec) {
           def caseText(tp: Type): Text = "case " ~ toText(tp)
           def casesText = Text(cases.map(caseText), "\n")
-          atPrec(InfixPrec) { toText(scrutinee) } ~ " match {" ~ casesText ~ "}"
+            atPrec(InfixPrec) { toText(scrutinee) } ~
+            keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
+            (" <: " ~ toText(bound) provided !bound.isRef(defn.AnyClass))
         }.close
       case tp: ErrorType =>
         s"<error ${tp.msg.msg}>"

@@ -119,13 +119,14 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 ```ebnf
 Type              ::=  [FunArgMods] FunArgTypes ‘=>’ Type                       Function(ts, t)
                     |  HkTypeParamClause ‘=>’ Type                              TypeLambda(ps, t)
-                    |  InfixType `match` TypeCaseClauses
+                    |  MatchType
                     |  InfixType
 FunArgMods        ::=  { ‘implicit’ | ‘erased’ }
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
                     |  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
+MatchType         ::=  InfixType `match` TypeCaseClauses
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
 RefinedType       ::=  WithType {[nl] Refinement}                               RefinedTypeTree(t, ds)
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
@@ -319,8 +320,8 @@ ValDcl            ::=  ids ‘:’ Type                                         
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 DefDcl            ::=  DefSig [‘:’ Type]                                        DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
 DefSig            ::=  id [DefTypeParamClause] DefParamClauses
-TypeDcl           ::=  id [TypTypeParamClause] [‘=’ Type]                       TypeDefTree(_, name, tparams, tpt)
-                    |  id [HkTypeParamClause] TypeBounds                        TypeDefTree(_, name, tparams, bounds)
+TypeDcl           ::=  id [TypeParamClause] (TypeBounds | ‘=’ Type)             TypeDefTree(_, name, tparams, bounds)
+                    |  id [TypeParamClause] <: Type = MatchType
 
 Def               ::=  ‘val’ PatDef
                     |  ‘var’ VarDef
