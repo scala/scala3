@@ -2543,8 +2543,6 @@ object Parsers {
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         else if (!isStatSep) {
           exitOnError = mustStartStat
-          println(in.token)
-          println(in.next.token)
           syntaxErrorOrIncomplete("illegal start of definition")
         }
         acceptStatSepUnlessAtEnd()
