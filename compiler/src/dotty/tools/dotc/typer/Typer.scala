@@ -1070,6 +1070,12 @@ class Typer extends Namer
     caseRest(pat1)(gadtCtx.fresh.setNewScope)
   }
 
+  def typedLabeled(tree: untpd.Labeled)(implicit ctx: Context): Labeled = track("typedLabeled") {
+    val bind1 = typedBind(tree.bind, WildcardType).asInstanceOf[Bind]
+    val expr1 = typed(tree.expr, bind1.symbol.info)
+    assignType(cpy.Labeled(tree)(bind1, expr1))
+  }
+
   def typedReturn(tree: untpd.Return)(implicit ctx: Context): Return = track("typedReturn") {
     def returnProto(owner: Symbol, locals: Scope): Type =
       if (owner.isConstructor) defn.UnitType
@@ -1807,6 +1813,7 @@ class Typer extends Namer
                 typedClassDef(tree, sym.asClass)(ctx.localContext(tree, sym).setMode(ctx.mode &~ Mode.InSuperCall))
               else
                 typedTypeDef(tree, sym)(ctx.localContext(tree, sym).setNewScope)
+            case tree: untpd.Labeled => typedLabeled(tree)
             case _ => typedUnadapted(desugar(tree), pt, locked)
           }
         }

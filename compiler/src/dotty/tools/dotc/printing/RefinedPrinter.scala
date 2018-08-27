@@ -372,8 +372,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         else changePrec(GlobalPrec) { toText(sel) ~ keywordStr(" match ") ~ blockText(cases) }
       case CaseDef(pat, guard, body) =>
         keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ " => " ~ caseBlockText(body)
+      case Labeled(bind, expr) =>
+        changePrec(GlobalPrec) { toText(bind.name) ~ keywordStr("[") ~ toText(bind.symbol.info) ~ keywordStr("]: ") ~ toText(expr) }
       case Return(expr, from) =>
-        changePrec(GlobalPrec) { keywordStr("return") ~ optText(expr)(" " ~ _) }
+        val sym = from.symbol
+        if (sym.is(Label))
+          changePrec(GlobalPrec) { keywordStr("return[") ~ toText(sym.name) ~ keywordStr("]") ~ optText(expr)(" " ~ _) }
+        else
+          changePrec(GlobalPrec) { keywordStr("return") ~ optText(expr)(" " ~ _) }
       case Try(expr, cases, finalizer) =>
         changePrec(GlobalPrec) {
           keywordStr("try ") ~ toText(expr) ~ optText(cases)(keywordStr(" catch ") ~ _) ~ optText(finalizer)(keywordStr(" finally ") ~ _)

@@ -120,6 +120,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Match(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =
     ta.assignType(untpd.Match(selector, cases), cases)
 
+  def Labeled(bind: Bind, expr: Tree)(implicit ctx: Context): Labeled =
+    ta.assignType(untpd.Labeled(bind, expr))
+
+  def Labeled(sym: TermSymbol, expr: Tree)(implicit ctx: Context): Labeled =
+    Labeled(Bind(sym, EmptyTree), expr)
+
   def Return(expr: Tree, from: Tree)(implicit ctx: Context): Return =
     ta.assignType(untpd.Return(expr, from))
 
@@ -593,6 +599,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         case _ => ta.assignType(tree1, body)
       }
     }
+
+    override def Labeled(tree: Tree)(bind: Bind, expr: Tree)(implicit ctx: Context): Labeled =
+      ta.assignType(untpd.cpy.Labeled(tree)(bind, expr))
 
     override def Return(tree: Tree)(expr: Tree, from: Tree)(implicit ctx: Context): Return =
       ta.assignType(untpd.cpy.Return(tree)(expr, from))

@@ -11,7 +11,7 @@ import collection.mutable
 object NonLocalReturns {
   import ast.tpd._
   def isNonLocalReturn(ret: Return)(implicit ctx: Context) =
-    ret.from.symbol != ctx.owner.enclosingMethod || ctx.owner.is(Lazy)
+    !ret.from.symbol.is(Label) && (ret.from.symbol != ctx.owner.enclosingMethod || ctx.owner.is(Lazy))
 }
 
 /** Implement non-local returns using NonLocalReturnControl exceptions.
