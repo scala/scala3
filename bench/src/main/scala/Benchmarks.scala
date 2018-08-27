@@ -53,13 +53,20 @@ object Bench {
   def removeCompileOptions: Unit = new File(COMPILE_OPTS_FILE).delete()
 
   def storeCompileOptions(args: Array[String]): Unit = {
-    val libs = System.getProperty("BENCH_CLASS_PATH")
+    val standard_libs = System.getProperty("BENCH_CLASS_PATH")
+    val compiler_libs = System.getProperty("BENCH_COMPILER_CLASS_PATH")
+
+    val libs = if (args.contains("-with-compiler")) compiler_libs else standard_libs
+    var argsNorm = args.filter(_ != "-with-compiler")
+
+    var cpIndex = argsNorm.indexOf("-classpath")
+    if (cpIndex == -1) cpIndex = argsNorm.indexOf("-cp")
+    if (cpIndex != -1) argsNorm(cpIndex + 1) = argsNorm(cpIndex + 1) + ":" + libs
+    else argsNorm = argsNorm :+ "-classpath" :+ libs
 
     val file = new File(COMPILE_OPTS_FILE)
     val bw = new BufferedWriter(new FileWriter(file))
-    bw.write(args.mkString("", "\n", "\n"))
-    bw.write("-classpath\n")
-    bw.write(libs)
+    bw.write(argsNorm.mkString("", "\n", "\n"))
     bw.close()
   }
 
