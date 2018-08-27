@@ -12,6 +12,7 @@ import util.common._
 import Names._
 import NameOps._
 import NameKinds._
+import Constants.Constant
 import Flags._
 import StdNames.tpnme
 import util.Positions.Position
@@ -409,8 +410,15 @@ class TypeApplications(val self: Type) extends AnyVal {
         LazyRef(c => dealiased.ref(c).appliedTo(args))
       case dealiased: WildcardType =>
         WildcardType(dealiased.optBounds.appliedTo(args).bounds)
-      case dealiased: TypeRef if dealiased.symbol == defn.NothingClass =>
-        dealiased
+      case dealiased: TypeRef =>
+        val sym = dealiased.symbol
+        if (sym == defn.NothingClass) return dealiased
+        if (defn.isTypelevel_S(sym) && args.length == 1)
+          args.head.safeDealias match {
+            case ConstantType(Constant(n: Int)) => return ConstantType(Constant(n + 1))
+            case none =>
+          }
+        AppliedType(self, args)
       case dealiased =>
         AppliedType(self, args)
     }
