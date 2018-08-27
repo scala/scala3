@@ -30,7 +30,9 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
         assertMessageCount(1, messages)
         val errorMsg = messages.head
-        assertEquals("normal case class Bar in package <empty> cannot extend an enum", errorMsg.msg)
+        val CaseClassCannotExtendEnum(cls) :: Nil = messages
+        assertEquals("Bar", cls.name.show)
+        assertEquals("<empty>", cls.owner.name.show)
       }
 
   @Test def typeMismatch =

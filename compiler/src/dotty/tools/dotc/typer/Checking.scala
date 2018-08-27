@@ -853,7 +853,7 @@ trait Checking {
       cls.owner.isTerm &&
       (cls.owner.flagsUNSAFE.is(Case) || cls.owner.name == nme.DOLLAR_NEW)
     if (!cdef.mods.isEnumCase && !isEnumAnonCls)
-      ctx.error(em"normal case $cls in ${cls.owner} cannot extend an enum", cdef.pos)
+      ctx.error(CaseClassCannotExtendEnum(cls), cdef.pos)
   }
 
   /** Check that all references coming from enum cases in an enum companion object

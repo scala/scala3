@@ -2120,4 +2120,10 @@ object messages {
            |To avoid this error, give `$cycleSym` an explicit type.
            |""".stripMargin
   }
+
+  case class CaseClassCannotExtendEnum(cls: Symbol)(implicit ctx: Context) extends Message(CaseClassCannotExtendEnumID) {
+    override def kind: String = "Syntax"
+    override def msg: String = hl"""normal case $cls in ${cls.owner} cannot extend an enum"""
+    override def explanation: String = ""
+  }
 }
