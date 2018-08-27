@@ -146,7 +146,7 @@ class ScalaSettings extends Settings.SettingGroup {
 
   val YnoDecodeStacktraces = BooleanSetting("-Yno-decode-stacktraces", "Show raw StackOverflow stacktraces, instead of decoding them into triggering operations.")
 
-  val YtypeNormalizationFuel = IntSetting("-Ytype-normalization-fuel", "Maximal number of steps when evaluating type expressions.", 22222)
+  val YtypeNormalizationFuel = IntSetting("-Ytype-normalization-fuel", "Maximal number of steps when evaluating type expressions.", 2222222)
 
   /** Dottydoc specific settings */
   val siteRoot = StringSetting(
