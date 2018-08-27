@@ -7,4 +7,6 @@ package object typelevel {
   case class Typed[T](val value: T) { type Type = T }
 
   rewrite def error(transparent msg: String): Nothing = ???
+
+  type S[X <: Int] <: Int
 }

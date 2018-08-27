@@ -11,6 +11,7 @@ import config.Config
 import config.Printers.{typr, constr, subtyping, gadts, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
+import Constants.Constant
 import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
 import reporting.trace
@@ -287,6 +288,15 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         tp1 match {
           case ConstantType(v1) => v1.value == v2.value
           case _ => secondTry
+        }
+      case tp2: AnyConstantType =>
+        if (tp2.tpe.exists) recur(tp1, tp2.tpe)
+        else tp1 match {
+          case tp1: ConstantType =>
+            tp2.tpe = tp1
+            true
+          case _ =>
+            secondTry
         }
       case _: FlexType =>
         true
@@ -831,7 +841,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
           canConstrain(param2) && canInstantiate(param2) ||
           compareLower(bounds(param2), tyconIsTypeRef = false)
         case tycon2: TypeRef =>
-          isMatchingApply(tp1) || {
+          isMatchingApply(tp1) ||
+          defn.isTypelevel_S(tycon2.symbol) && compareS(tp2, tp1, fromBelow = true) || {
             tycon2.info match {
               case info2: TypeBounds =>
                 compareLower(info2, tyconIsTypeRef = true)
@@ -865,13 +876,38 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
           }
           canConstrain(param1) && canInstantiate ||
             isSubType(bounds(param1).hi.applyIfParameterized(args1), tp2, approx.addLow)
-        case tycon1: TypeRef if tycon1.symbol.isClass =>
-          false
+        case tycon1: TypeRef =>
+          val sym = tycon1.symbol
+          !sym.isClass && (
+            defn.isTypelevel_S(sym) && compareS(tp1, tp2, fromBelow = false) ||
+            recur(tp1.superType, tp2))
         case tycon1: TypeProxy =>
           recur(tp1.superType, tp2)
         case _ =>
           false
       }
+
+    /** Compare `tp` of form `S[arg]` with `other`, via ">:>` if fromBelowis true, "<:<" otherwise.
+     *  If `arg` is a Nat constant `n`, proceed with comparing `n + 1` and `other`.
+     *  Otherwise, if `other` is a Nat constant `n`, proceed with comparing `arg` and `n - 1`.
+     */
+    def compareS(tp: AppliedType, other: Type, fromBelow: Boolean): Boolean = tp.args match {
+      case arg :: Nil =>
+        natValue(arg) match {
+          case Some(n) =>
+            val succ = ConstantType(Constant(n + 1))
+            if (fromBelow) recur(other, succ) else recur(succ, other)
+          case none =>
+            natValue(other) match {
+              case Some(n) if n > 0 =>
+                val pred = ConstantType(Constant(n - 1))
+                if (fromBelow) recur(pred, arg) else recur(arg, pred)
+              case none =>
+                false
+            }
+        }
+      case _ => false
+    }
 
     /** Like tp1 <:< tp2, but returns false immediately if we know that
     *  the case was covered previously during subtyping.
@@ -912,6 +948,17 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
           throw ex
       }
     }
+  }
+
+  /** Optionally, the `n` such that `tp <:< ConstantType(Constant(n: Int))` */
+  def natValue(tp: Type): Option[Int] = {
+    val ct = new AnyConstantType
+    if (isSubTypeWhenFrozen(tp, ct))
+      ct.tpe match {
+        case ConstantType(Constant(n: Int)) if n >= 0 => Some(n)
+        case _ => None
+      }
+    else None
   }
 
   /** Subtype test for corresponding arguments in `args1`, `args2` according to
@@ -1713,6 +1760,11 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
 
 object TypeComparer {
 
+  /** Class for unification variables used in `natValue`. */
+  private class AnyConstantType extends UncachedGroundType with ValueType {
+    var tpe: Type = NoType
+  }
+
   private[core] def show(res: Any)(implicit ctx: Context) = res match {
     case res: printing.Showable if !ctx.settings.YexplainLowlevel.value => res.show
     case _ => String.valueOf(res)
@@ -1773,7 +1825,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     def paramInstances = new TypeAccumulator[Array[Type]] {
       def apply(inst: Array[Type], t: Type) = t match {
         case t @ TypeParamRef(b, n) if b `eq` caseLambda =>
-          inst(n) = instanceType(t, fromBelow = variance >= 0)
+          inst(n) = approximation(t, fromBelow = variance >= 0).simplified
           inst
         case _ =>
           foldOver(inst, t)

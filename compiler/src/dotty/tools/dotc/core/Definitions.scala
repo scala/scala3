@@ -219,6 +219,7 @@ class Definitions {
     def Sys_error(implicit ctx: Context) = Sys_errorR.symbol
 
   lazy val TypelevelPackageObjectRef = ctx.requiredModuleRef("scala.typelevel.package")
+  lazy val TypelevelPackageObject = TypelevelPackageObjectRef.symbol.moduleClass
     lazy val Typelevel_errorR = TypelevelPackageObjectRef.symbol.requiredMethodRef(nme.error)
     def Typelevel_error(implicit ctx: Context) = Typelevel_errorR.symbol
 
@@ -887,6 +888,9 @@ class Definitions {
         None
     }
   }
+
+  final def isTypelevel_S(sym: Symbol)(implicit ctx: Context) =
+    sym.name == tpnme.S && sym.owner == TypelevelPackageObject
 
   // ----- Symbol sets ---------------------------------------------------
 
