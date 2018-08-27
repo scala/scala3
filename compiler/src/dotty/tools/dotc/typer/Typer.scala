@@ -983,15 +983,9 @@ class Typer extends Namer
         typedMatchFinish(tree, sel1, sel1.tpe, pt)
       case _ =>
         if (tree.isInstanceOf[untpd.RewriteMatch]) checkInRewriteContext("rewrite match", tree.pos)
-        val sel1 = typed(tree.selector)
-        if (ctx.mode.is(Mode.Type)) {
-          val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1.tpe, pt))
-          assignType(cpy.Match(tree)(sel1, cases1), sel1, cases1)
-        }
-        else {
-          val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
-          typedMatchFinish(tree, sel1, selType, pt)
-        }
+        val sel1 = typedExpr(tree.selector)
+        val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
+        typedMatchFinish(tree, sel1, selType, pt)
     }
   }
 
@@ -1089,7 +1083,7 @@ class Typer extends Namer
     def caseRest(implicit ctx: Context) = {
       val pat1 = checkSimpleKinded(typedType(cdef.pat)(ctx.addMode(Mode.Pattern)))
       if (!ctx.isAfterTyper)
-        constrainPatternType(pat1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
+        constrainPatternType(pat1.tpe, selType)(ctx.addMode(Mode.GADTflexible))
       val pat2 = indexPattern(cdef).transform(pat1)
       val body1 = typedType(cdef.body, pt)
       assignType(cpy.CaseDef(cdef)(pat2, EmptyTree, body1), pat2, body1)
@@ -1321,6 +1315,14 @@ class Typer extends Namer
     val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
     val body1 = typedType(tree.body)
     assignType(cpy.LambdaTypeTree(tree)(tparams1, body1), tparams1, body1)
+  }
+
+  def typedMatchTypeTree(tree: untpd.MatchTypeTree, pt: Type)(implicit ctx: Context): Tree = {
+    val bound1 = typed(tree.bound)
+    val sel1 = typed(tree.selector)
+    val pt1 = if (bound1.isEmpty) pt else bound1.tpe
+    val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1.tpe, pt1))
+    assignType(cpy.MatchTypeTree(tree)(bound1, sel1, cases1), bound1, sel1, cases1)
   }
 
   def typedByNameTypeTree(tree: untpd.ByNameTypeTree)(implicit ctx: Context): ByNameTypeTree = track("typedByNameTypeTree") {
@@ -1901,6 +1903,7 @@ class Typer extends Namer
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)
           case tree: untpd.AppliedTypeTree => typedAppliedTypeTree(tree)
           case tree: untpd.LambdaTypeTree => typedLambdaTypeTree(tree)(ctx.localContext(tree, NoSymbol).setNewScope)
+          case tree: untpd.MatchTypeTree => typedMatchTypeTree(tree, pt)
           case tree: untpd.ByNameTypeTree => typedByNameTypeTree(tree)
           case tree: untpd.TypeBoundsTree => typedTypeBoundsTree(tree, pt)
           case tree: untpd.Alternative => typedAlternative(tree, pt)

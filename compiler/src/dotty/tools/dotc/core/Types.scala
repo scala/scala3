@@ -3534,17 +3534,11 @@ object Types {
    *
    *  and `X_1,...X_n` are the type variables bound in `patternType`
    */
-  abstract case class MatchType(scrutinee: Type, cases: List[Type]) extends CachedProxyType with TermType {
-    override def computeHash(bs: Binders) = doHash(bs, scrutinee, cases)
+  abstract case class MatchType(bound: Type, scrutinee: Type, cases: List[Type]) extends CachedProxyType with TermType {
 
-    override def eql(that: Type) = that match {
-      case that: MatchType => scrutinee.eq(that.scrutinee) && cases.eqElements(that.cases)
-      case _ => false
-    }
-
-    def derivedMatchType(scrutinee: Type, cases: List[Type])(implicit ctx: Context) =
-      if (scrutinee.eq(this.scrutinee) && cases.eqElements(this.cases)) this
-      else MatchType(scrutinee, cases)
+    def derivedMatchType(bound: Type, scrutinee: Type, cases: List[Type])(implicit ctx: Context) =
+      if (bound.eq(this.bound) && scrutinee.eq(this.scrutinee) && cases.eqElements(this.cases)) this
+      else MatchType(bound, scrutinee, cases)
 
     def caseType(tp: Type)(implicit ctx: Context): Type = tp match {
       case tp: HKTypeLambda => caseType(tp.resType)
@@ -3552,13 +3546,7 @@ object Types {
     }
 
     def alternatives(implicit ctx: Context): List[Type] = cases.map(caseType)
-
-    private[this] var myUnderlying: Type = null
-
-    def underlying(implicit ctx: Context): Type = {
-      if (myUnderlying == null) myUnderlying = alternatives.reduceLeft(OrType(_, _))
-      myUnderlying
-    }
+    def underlying(implicit ctx: Context): Type = bound
 
     private def wildApproxMap(implicit ctx: Context) = new TypeMap {
       def apply(t: Type) = t match {
@@ -3596,7 +3584,10 @@ object Types {
       }
 
       def contextBounds(tp: Type): TypeBounds = tp match {
-        case tp: TypeParamRef => ctx.typerState.constraint.fullBounds(tp)
+        case tp: TypeParamRef =>
+          if (ctx.typerState.constraint.entry(tp).exists)
+            ctx.typerState.constraint.fullBounds(tp)
+          else TypeBounds.empty
         case tp: TypeRef => ctx.gadt.bounds(tp.symbol)
       }
 
@@ -3619,13 +3610,21 @@ object Types {
       }
       myReduced
     }
+
+    override def computeHash(bs: Binders) = doHash(bs, scrutinee, bound :: cases)
+
+    override def eql(that: Type) = that match {
+      case that: MatchType =>
+        bound.eq(that.bound) && scrutinee.eq(that.scrutinee) && cases.eqElements(that.cases)
+      case _ => false
+    }
   }
 
-  class CachedMatchType(scrutinee: Type, cases: List[Type]) extends MatchType(scrutinee, cases)
+  class CachedMatchType(bound: Type, scrutinee: Type, cases: List[Type]) extends MatchType(bound, scrutinee, cases)
 
   object MatchType {
-    def apply(scrutinee: Type, cases: List[Type])(implicit ctx: Context) =
-      unique(new CachedMatchType(scrutinee, cases))
+    def apply(bound: Type, scrutinee: Type, cases: List[Type])(implicit ctx: Context) =
+      unique(new CachedMatchType(bound, scrutinee, cases))
   }
 
   // ------ ClassInfo, Type Bounds --------------------------------------------------
@@ -4136,8 +4135,8 @@ object Types {
       tp.derivedAndType(tp1, tp2)
     protected def derivedOrType(tp: OrType, tp1: Type, tp2: Type): Type =
       tp.derivedOrType(tp1, tp2)
-    protected def derivedMatchType(tp: MatchType, scrutinee: Type, cases: List[Type]): Type =
-      tp.derivedMatchType(scrutinee, cases)
+    protected def derivedMatchType(tp: MatchType, bound: Type, scrutinee: Type, cases: List[Type]): Type =
+      tp.derivedMatchType(bound, scrutinee, cases)
     protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =
       tp.derivedAnnotatedType(underlying, annot)
     protected def derivedWildcardType(tp: WildcardType, bounds: Type): Type =
@@ -4236,7 +4235,7 @@ object Types {
           derivedOrType(tp, this(tp.tp1), this(tp.tp2))
 
         case tp: MatchType =>
-          derivedMatchType(tp, this(tp.scrutinee), tp.cases.mapConserve(this))
+          derivedMatchType(tp, this(tp.bound), this(tp.scrutinee), tp.cases.mapConserve(this))
 
         case tp: SkolemType =>
           tp
@@ -4613,7 +4612,7 @@ object Types {
         this(this(x, tp.tp1), tp.tp2)
 
       case tp: MatchType =>
-        foldOver(this(x, tp.scrutinee), tp.cases)
+        foldOver(this(this(x, tp.bound), tp.scrutinee), tp.cases)
 
       case AnnotatedType(underlying, annot) =>
         this(applyToAnnot(x, annot), underlying)

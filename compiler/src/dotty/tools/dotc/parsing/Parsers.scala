@@ -819,7 +819,7 @@ object Parsers {
 
       in.token match {
         case ARROW => functionRest(t :: Nil)
-        case MATCH => matchType(t)
+        case MATCH => matchType(EmptyTree, t)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
           if (imods.is(Implicit) && !t.isInstanceOf[FunctionWithMods])
@@ -1318,9 +1318,9 @@ object Parsers {
 
     /**    `match' { TypeCaseClauses }
      */
-    def matchType(t: Tree) =
-      atPos(t.pos.start, in.skipToken()) {
-        inBraces(Match(t, caseClauses(typeCaseClause)))
+    def matchType(bound: Tree, t: Tree) =
+      atPos((if (bound.isEmpty) t else bound).pos.start, accept(MATCH)) {
+        inBraces(MatchTypeTree(bound, t, caseClauses(typeCaseClause)))
       }
 
     /** FunParams         ::=  Bindings
@@ -2281,20 +2281,30 @@ object Parsers {
         Block(stats, Literal(Constant(())))
       }
 
-    /** TypeDef ::= type id [TypeParamClause] `=' Type
-     *  TypeDcl ::= type id [TypeParamClause] TypeBounds
+    /** TypeDcl ::=  id [TypeParamClause] (TypeBounds | ‘=’ Type)
+     *            |  id [TypeParamClause] <: Type = MatchType
      */
     def typeDefOrDcl(start: Offset, mods: Modifiers): Tree = {
       newLinesOpt()
       atPos(start, nameStart) {
         val name = ident().toTypeName
         val tparams = typeParamClauseOpt(ParamOwner.Type)
+        def makeTypeDef(rhs: Tree): Tree =
+          TypeDef(name, lambdaAbstract(tparams, rhs)).withMods(mods).setComment(in.getDocComment(start))
         in.token match {
           case EQUALS =>
             in.nextToken()
-            TypeDef(name, lambdaAbstract(tparams, toplevelTyp())).withMods(mods).setComment(in.getDocComment(start))
-          case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
-            TypeDef(name, lambdaAbstract(tparams, typeBounds())).withMods(mods).setComment(in.getDocComment(start))
+            makeTypeDef(toplevelTyp())
+          case SUBTYPE =>
+            in.nextToken()
+            val bound = toplevelTyp()
+            if (in.token == EQUALS) {
+              in.nextToken()
+              makeTypeDef(matchType(bound, infixType()))
+            }
+            else makeTypeDef(TypeBoundsTree(EmptyTree, bound))
+          case SUPERTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
+            makeTypeDef(typeBounds())
           case _ =>
             syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))
             EmptyTree

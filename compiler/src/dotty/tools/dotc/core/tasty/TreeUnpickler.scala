@@ -337,6 +337,8 @@ class TreeUnpickler(reader: TastyReader,
               OrType(readType(), readType())
             case SUPERtype =>
               SuperType(readType(), readType())
+            case MATCHtype =>
+              MatchType(readType(), readType(), until(end)(readType()))
             case POLYtype =>
               readMethodic(PolyType, _.toTypeName)
             case METHODtype =>
@@ -1130,6 +1132,11 @@ class TreeUnpickler(reader: TastyReader,
               val tparams = readParams[TypeDef](TYPEPARAM)
               val body = readTpt()
               LambdaTypeTree(tparams, body)
+            case MATCHtpt =>
+              val fst = readTpt()
+              val (bound, scrut) =
+                if (nextUnsharedTag == CASEDEF) (EmptyTree, fst) else (fst, readTpt())
+              MatchTypeTree(bound, scrut, readCases(end))
             case TYPEBOUNDStpt =>
               val lo = readTpt()
               val hi = if (currentAddr == end) lo else readTpt()
@@ -1372,6 +1379,11 @@ class TreeUnpickler(reader: TastyReader,
             val tparams = readParams[TypeDef](TYPEPARAM)
             val body = readUntyped()
             untpd.LambdaTypeTree(tparams, body)
+          case MATCHtpt =>
+            val fst = readUntyped()
+            val (bound, scrut) =
+              if (nextUnsharedTag == CASEDEF) (EmptyTree, fst) else (fst, readUntyped())
+            MatchTypeTree(bound, scrut, readCases(end))
           case TYPEBOUNDStpt =>
             val lo = readUntyped()
             val hi = ifBefore(end)(readUntyped(), lo)
