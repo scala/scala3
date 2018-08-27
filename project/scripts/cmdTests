@@ -12,6 +12,7 @@ EXPECTED_OUTPUT="hello world"
 # check that benchmarks can run
 "$SBT" "dotty-bench/jmh:run 1 1 tests/pos/alias.scala"
 "$SBT" "dotty-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
+"$SBT" "dotty-bench-bootstrapped/jmh:run 1 1 -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
 
 OUT=$(mktemp -d)
 OUT1=$(mktemp -d)
