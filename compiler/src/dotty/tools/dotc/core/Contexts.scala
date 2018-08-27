@@ -646,6 +646,7 @@ object Contexts {
     def initialize()(implicit ctx: Context): Unit = {
       _platform = newPlatform
       definitions.init()
+      typeNormalizationFuel = settings.YtypeNormalizationFuel.value
     }
 
     def squashed(p: Phase): Phase = {
@@ -745,6 +746,8 @@ object Contexts {
     def checkSingleThreaded() =
       if (thread == null) thread = Thread.currentThread()
       else assert(thread == Thread.currentThread(), "illegal multithreaded access to ContextBase")
+
+    private[dotc] var typeNormalizationFuel: Int = 0
   }
 
   class GADTMap(initBounds: SimpleIdentityMap[Symbol, TypeBounds]) extends util.DotClass {

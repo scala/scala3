@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package core
 
+import config.Config
 import Contexts._
 import Decorators._
 import Denotations._
@@ -24,7 +25,6 @@ object Normalize {
 }
 
 private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
-  private[this] var fuel: Int = ctx.settings.XmaxTypeEvaluationSteps.value
   private[this] var canReduce: Boolean = true
 
   /** To be called in branches that correspond to the evaluation context in which evaluation gets stuck.
@@ -107,7 +107,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
     * error otherwise.
     */
   private def defUnfolder(fnSym: Symbol): Unfolder = {
-    assert(fnSym.isTerm && fnSym.isDependentMethod && fnSym.hasAnnotation(defn.BodyAnnot), s"Tried to illegally unfold $fnSym")
+    assert(fnSym.isTerm && fnSym.isDependentMethod && fnSym.hasAnnotation(defn.BodyAnnot), s"Tried to illegally unfold $fnSym with flags")
     val body: Tree = fnSym.getAnnotation(defn.BodyAnnot) match {
       case Some(annot) =>
         if (annot.isEvaluating)
@@ -250,11 +250,21 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
   }
 
   def apply(tp: Type): Type = trace.conditionally(Normalize.track, i"normalize($tp)", show = true) {
-    if (fuel == 0)
-      errorType(i"Diverged while normalizing $tp (${ctx.settings.XmaxTypeEvaluationSteps.value} steps)", ctx.tree.pos)
+    if (ctx.base.typeNormalizationFuel == 0)
+      errorType(i"Diverged while normalizing $tp (${ctx.settings.YtypeNormalizationFuel.value} steps)", ctx.tree.pos)
     else {
-      fuel -= 1
-      bigStep(tp)
+      if (ctx.base.typeNormalizationFuel > 0)
+        ctx.base.typeNormalizationFuel -= 1
+      if (Config.cacheNormalizedTypes)
+        if (tp.isNormalizing) {
+          val tpNormalized = bigStep(tp)
+          tp.setNormalized(tpNormalized)
+          tpNormalized
+        } else {
+          tp.normalized
+        }
+      else
+        bigStep(tp)
     }
   }
 }

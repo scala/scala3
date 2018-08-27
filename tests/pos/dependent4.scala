@@ -11,6 +11,7 @@ object ListIntConcat {
   val x2: { Cons(1, Nil) } = Cons(1, Nil) ++ Nil
   val x3: { Cons(1, Nil) } = Nil ++ Cons(1, Nil)
   val x4: { Cons(1, Cons(2, Nil)) } = Cons(1, Nil) ++ Cons(2, Nil)
+  val x4extra: { Cons(1, Cons(1, Nil)) } = x2 ++ x2
   val x5: { Cons(1, Cons(2, Cons(3, Nil))) } = Cons(1, Nil) ++ Cons(2, Cons(3, Nil))
   val x6: { Cons(1, Cons(2, Cons(3, Nil))) } = Cons(1, Cons(2, Nil)) ++ Cons(3, Nil)
 }
