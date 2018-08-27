@@ -3623,8 +3623,10 @@ object Types {
   class CachedMatchType(bound: Type, scrutinee: Type, cases: List[Type]) extends MatchType(bound, scrutinee, cases)
 
   object MatchType {
-    def apply(bound: Type, scrutinee: Type, cases: List[Type])(implicit ctx: Context) =
-      unique(new CachedMatchType(bound, scrutinee, cases))
+    def apply(bound: Type, scrutinee: Type, cases: List[Type])(implicit ctx: Context) = {
+      val mt = unique(new CachedMatchType(bound, scrutinee, cases))
+      mt.reduced.orElse(mt)
+    }
   }
 
   // ------ ClassInfo, Type Bounds --------------------------------------------------
