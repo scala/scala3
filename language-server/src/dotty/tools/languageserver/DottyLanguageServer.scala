@@ -283,9 +283,11 @@ class DottyLanguageServer extends LanguageServer
       // only need to look for trees in the target directory if the symbol is defined in the
       // current project
       val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
-      val refs = Interactive.namedTrees(trees, includeReferences = true, (tree: tpd.NameTree) =>
-        (includeDeclaration || !Interactive.isDefinition(tree))
-          && Interactive.matchSymbol(tree, sym, Include.overriding))
+      val refs = Interactive.namedTrees(trees, includeReferences = true, tree =>
+        tree.pos.isSourceDerived
+          && (includeDeclaration || !Interactive.isDefinition(tree))
+          && !tree.symbol.isConstructor
+          && (Interactive.matchSymbol(tree, sym, Include.overriding)))
 
       refs.map(ref => location(ref.namePos)).asJava
     }
@@ -307,6 +309,7 @@ class DottyLanguageServer extends LanguageServer
 
       val refs = Interactive.namedTrees(trees, includeReferences = true, tree =>
         tree.pos.isSourceDerived
+        && !tree.symbol.isConstructor
           && (Interactive.matchSymbol(tree, sym, Include.overriding)
             || (linkedSym != NoSymbol && Interactive.matchSymbol(tree, linkedSym, Include.overriding))))
 
