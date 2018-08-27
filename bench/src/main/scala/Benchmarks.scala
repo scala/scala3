@@ -2,6 +2,8 @@ package dotty.tools.benchmarks
 
 import dotty.tools.dotc._
 import core.Contexts.Context
+import dotty.tools.FatalError
+import reporting._
 
 import org.openjdk.jmh.results.RunResult
 import org.openjdk.jmh.runner.Runner
@@ -85,6 +87,21 @@ class CompilerOptions {
 }
 
 class Worker extends Driver {
+  // override to avoid printing summary information
+  override  def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
+    if (fileNames.nonEmpty)
+      try {
+        val run = compiler.newRun
+        run.compile(fileNames)
+        ctx.reporter
+      }
+      catch {
+        case ex: FatalError  =>
+          ctx.error(ex.getMessage) // signals that we should fail compilation.
+          ctx.reporter
+      }
+    else ctx.reporter
+
   @Benchmark
   def compile(state: CompilerOptions): Unit = {
     val res = process(state.opts)
