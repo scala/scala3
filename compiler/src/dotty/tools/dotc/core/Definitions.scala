@@ -3,7 +3,7 @@ package dotc
 package core
 
 import Types._, Contexts._, Symbols._, SymDenotations._, StdNames._, Names._
-import Flags._, Scopes._, Decorators._, NameOps._, Periods._
+import Flags._, Scopes._, Decorators._, NameOps._, Periods._, Annotations.Annotation
 import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.mutable
 import collection.mutable
@@ -343,6 +343,11 @@ class Definitions {
     newSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
   def ImplicitScrutineeTypeRef: TypeRef = ImplicitScrutineeTypeSym.typeRef
 
+  /** Marker for null values that originate in Java.
+   *  Equivalently defined as `type JavaNull = Null @JavaNull`
+   */
+  lazy val JavaNull = enterAliasType(tpnme.JavaNull, AnnotatedType.make(NullType, List(Annotation(JavaNullAnnot))))
+  def JavaNullType = JavaNull.typeRef
 
   lazy val ScalaPredefModuleRef: TermRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context): Symbol = ScalaPredefModuleRef.symbol
@@ -816,6 +821,8 @@ class Definitions {
   def SetterMetaAnnot(implicit ctx: Context): ClassSymbol = SetterMetaAnnotType.symbol.asClass
   lazy val ShowAsInfixAnotType: TypeRef = ctx.requiredClassRef("scala.annotation.showAsInfix")
   def ShowAsInfixAnnot(implicit ctx: Context): ClassSymbol = ShowAsInfixAnotType.symbol.asClass
+  lazy val JavaNullAnnotType = ctx.requiredClassRef("scala.annotation.internal.JavaNullAnnot")
+  def JavaNullAnnot(implicit ctx: Context) = JavaNullAnnotType.symbol.asClass
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)

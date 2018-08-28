@@ -4726,13 +4726,13 @@ object Types {
     protected def reapply(tp: Type): Type = apply(tp)
   }
 
-  /** Adds "| Null" to the relevant places of a Java type to reflect the fact
+  /** Adds "| JavaNull" to the relevant places of a Java type to reflect the fact
    *  that Java types remain nullable by default.
    *
-   *  nullify(T) = T | Null if T is a type parameter or class or interface
-   *  nullify(C[S]) = C[nullify(S)] | Null if C is a generic class
+   *  nullify(T) = T | JavaNull if T is a type parameter or class or interface
+   *  nullify(C[S]) = C[nullify(S)] | JavaNull if C is a generic class
    */
-  class NullifyMap(implicit ctx: Context) extends TypeMap {
+  class JavaNullMap(implicit ctx: Context) extends TypeMap {
     def shouldNullify(tp: TypeRef): Boolean = {
       !tp.symbol.isValueClass && !tp.symbol.derivesFrom(defn.AnnotationClass)
     }
@@ -4744,9 +4744,9 @@ object Types {
         case tp: TypeAlias =>
           mapOver(tp)
         case tp: TypeRef if shouldNullify(tp) =>
-          OrType(tp, defn.NullType)
+          OrType(tp, defn.JavaNullType)
         case tp@RefinedType(parent, name, info) =>
-          OrType(derivedRefinedType(tp, parent, this(info)), defn.NullType)
+          OrType(derivedRefinedType(tp, parent, this(info)), defn.JavaNullType)
         case _ =>
           tp
       }
