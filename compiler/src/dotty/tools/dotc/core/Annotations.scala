@@ -58,7 +58,7 @@ object Annotations {
   }
 
   /** An annotation indicating the body of a right-hand side,
-   *  typically of a transparent method. Treated specially in
+   *  typically of a rewrite or transparent method. Treated specially in
    *  pickling/unpickling and TypeTreeMaps
    */
   abstract class BodyAnnotation extends Annotation {
@@ -116,7 +116,7 @@ object Annotations {
 
     private def resolveConstructor(atp: Type, args:List[Tree])(implicit ctx: Context): Tree = {
       val targs = atp.argTypes
-      tpd.applyOverloaded(New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp, isAnnotConstructor = true)
+      tpd.applyOverloaded(New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp)
     }
 
     def applyResolve(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation = {

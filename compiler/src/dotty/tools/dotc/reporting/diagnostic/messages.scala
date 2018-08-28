@@ -1696,10 +1696,10 @@ object messages {
     val explanation = ""
   }
 
-  case class SuperCallsNotAllowedTransparent(symbol: Symbol)(implicit ctx: Context)
-    extends Message(SuperCallsNotAllowedTransparentID) {
+  case class SuperCallsNotAllowedInlineable(symbol: Symbol)(implicit ctx: Context)
+    extends Message(SuperCallsNotAllowedInlineableID) {
     val kind = "Syntax"
-    val msg = s"super call not allowed in transparent $symbol"
+    val msg = s"super call not allowed in inlineable $symbol"
     val explanation = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called."
   }
 
@@ -1747,12 +1747,12 @@ object messages {
       hl"you have to provide either ${"class"}, ${"trait"}, ${"object"}, or ${"enum"} definitions after qualifiers"
   }
 
-  case class NoReturnFromTransparent(owner: Symbol)(implicit ctx: Context)
-    extends Message(NoReturnFromTransparentID) {
+  case class NoReturnFromInlineable(owner: Symbol)(implicit ctx: Context)
+    extends Message(NoReturnFromInlineableID) {
     val kind = "Syntax"
-    val msg = hl"no explicit ${"return"} allowed from transparent $owner"
+    val msg = hl"no explicit ${"return"} allowed from inlineable $owner"
     val explanation =
-      hl"""Methods marked with ${"transparent"} modifier may not use ${"return"} statements.
+      hl"""Methods marked with ${"rewrite"} or  ${"transparent"} modifier may not use ${"return"} statements.
           |Instead, you should rely on the last expression's value being
           |returned from a method.
           |"""
@@ -2061,7 +2061,7 @@ object messages {
   case class ParamsNoTransparent(owner: Symbol)(implicit ctx: Context)
     extends Message(ParamsNoTransparentID) {
     val kind = "Syntax"
-    val msg = hl"""${"transparent"} modifier cannot be used for a parameter of a non-transparent method"""
+    val msg = hl"""${"transparent"} modifier can only be used for parameters of rewrite methods"""
     val explanation = ""
   }
 
@@ -2119,5 +2119,11 @@ object messages {
       hl"""|The right hand-side of $cycleSym's definition requires an implicit search at the highlighted position.
            |To avoid this error, give `$cycleSym` an explicit type.
            |""".stripMargin
+  }
+
+  case class CaseClassCannotExtendEnum(cls: Symbol)(implicit ctx: Context) extends Message(CaseClassCannotExtendEnumID) {
+    override def kind: String = "Syntax"
+    override def msg: String = hl"""normal case $cls in ${cls.owner} cannot extend an enum"""
+    override def explanation: String = ""
   }
 }

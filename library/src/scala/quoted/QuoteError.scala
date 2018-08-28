@@ -1,6 +1,6 @@
 package scala.quoted
 
-/** Throwing this error in the implementation of a transparent macro
+/** Throwing this error in the implementation of a macro
  *  will result in a compilation error with the given message.
  */
 class QuoteError(message: String) extends Throwable(message)

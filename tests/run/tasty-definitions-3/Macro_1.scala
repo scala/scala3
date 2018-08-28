@@ -3,8 +3,8 @@ import scala.tasty._
 
 object Foo {
 
-  transparent def inspectBody(i: => Int): String =
-    ~inspectBodyImpl('(i))(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+  rewrite def inspectBody(i: => Int): String =
+    ~inspectBodyImpl('(i))
 
   def inspectBodyImpl(x: Expr[Int])(implicit tasty: Tasty): Expr[String] = {
     import tasty._

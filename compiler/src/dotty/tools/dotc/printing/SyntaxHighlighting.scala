@@ -31,7 +31,7 @@ object SyntaxHighlighting {
   private val tripleQs = Console.RED_B + "???" + NoColor
 
   private val keywords: Seq[String] = for {
-    index <- IF to ERASED // All alpha keywords
+    index <- IF to DEPENDENT // All alpha keywords
   } yield tokenString(index)
 
   private val interpolationPrefixes =

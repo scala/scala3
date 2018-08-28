@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Periods._
@@ -263,7 +264,7 @@ object Phases {
     final def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
   }
 
-  trait Phase extends DotClass {
+  trait Phase {
 
     /** A name given to the `Phase` that can be used to debug the compiler. For
      *  instance, it is possible to print trees after a given phase using:

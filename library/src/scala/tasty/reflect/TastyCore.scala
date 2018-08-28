@@ -13,29 +13,29 @@ package scala.tasty.reflect
  *                         |               +- PackageDef
  *                         |
  *                         +- Term --------+- Ident
- *                           /             +- Select
- *                          /              +- Literal
- *                         /               +- This
- *                        /                +- New
- *                       /                 +- NamedArg
- *                      /                  +- Apply
- *                     /                   +- TypeApply
- *                    /                    +- Super
- *                   /                     +- Typed
- *                  /                      +- Assign
- *                 /                       +- Block
- *  +- Parent ----+                        +- Lambda
- *                 \                       +- If
- *                  \                      +- Match
- *                   \                     +- Try
- *                    \                    +- Return
- *                     \                   +- Repeated
- *                      \                  +- Inlined
- *                       \                 +- SelectOuter
- *                        \                +- While
- *                         \               +- DoWhile
- *                          \
- *                           \
+ *                                         +- Select
+ *                                         +- Literal
+ *                                         +- This
+ *                                         +- New
+ *                                         +- NamedArg
+ *                                         +- Apply
+ *                                         +- TypeApply
+ *                                         +- Super
+ *                                         +- Typed
+ *                                         +- Assign
+ *                                         +- Block
+ *                                         +- Lambda
+ *                                         +- If
+ *                                         +- Match
+ *                                         +- Try
+ *                                         +- Return
+ *                                         +- Repeated
+ *                                         +- Inlined
+ *                                         +- SelectOuter
+ *                                         +- While
+ *                                         +- DoWhile
+ *
+ *
  *                         +- TypeTree ----+- Synthetic
  *                         |               +- TypeIdent
  *                         |               +- TermSelect
@@ -98,6 +98,9 @@ package scala.tasty.reflect
  *
  *  +- Symbol
  *
+ *  Aliases:
+ *   # Parent = Term | TypeTree
+ *
  *  ```
  */
 trait TastyCore {
@@ -120,7 +123,7 @@ trait TastyCore {
         type DefDef <: Definition
         type ValDef <: Definition
         type PackageDef <: Definition
-      type Term <: Statement with Parent // TODO: When bootstrapped, remove `Parent`
+      type Term <: Statement
 
   /** Branch of a pattern match or catch clause */
   type CaseDef
@@ -130,7 +133,7 @@ trait TastyCore {
 
   /** Tree representing a type written in the source */
   type TypeOrBoundsTree
-    type TypeTree <: TypeOrBoundsTree with Parent // TODO: When bootstrapped, remove `Parent`
+    type TypeTree <: TypeOrBoundsTree
     type TypeBoundsTree <: TypeOrBoundsTree
 
   type TypeOrBounds

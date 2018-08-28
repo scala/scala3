@@ -49,7 +49,7 @@ trait TypeOrBoundsOps extends TastyCore {
 
     val SymRef: SymRefExtractor
     abstract class SymRefExtractor {
-      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Definition, TypeOrBounds /* Type | NoPrefix */)]
+      def unapply(typeOrBounds: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)]
     }
 
     val TermRef: TermRefExtractor

@@ -314,7 +314,7 @@ class TestBCode extends DottyBytecodeTest {
   @Test def i4172 = {
     val source =
       """class Test {
-        |  transparent def foo(first: Int*)(second: String = "") = {}
+        |  rewrite def foo(first: Int*)(second: String = "") = {}
         |
         |  def test = {
         |    foo(1)()
@@ -335,4 +335,5 @@ class TestBCode extends DottyBytecodeTest {
       assert(!fooInvoke, "foo should not be called\n")
     }
   }
+
 }

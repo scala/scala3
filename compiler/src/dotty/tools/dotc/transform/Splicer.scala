@@ -125,7 +125,7 @@ object Splicer {
       } else {
         // nested object in an object
         val clazz = loadClass(sym.fullNameSeparated(FlatName))
-        (clazz, clazz.newInstance().asInstanceOf[Object])
+        (clazz, clazz.getConstructor().newInstance().asInstanceOf[Object])
       }
     }
 
@@ -147,7 +147,7 @@ object Splicer {
       }
     }
 
-    private def extraMsg = ". The most common reason for that is that you cannot use transparent macro implementations in the same compilation run that defines them"
+    private def extraMsg = ". The most common reason for that is that you apply macros in the compilation run that defines them"
 
     private def stopIfRuntimeException[T](thunk: => T): T = {
       try thunk
@@ -239,9 +239,9 @@ object Splicer {
     def interpretStaticMethodCall(fn: tpd.Tree, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
 
     def unexpectedTree(tree: tpd.Tree)(implicit env: Env): Boolean = {
-      // Assuming that top-level splices can only be in transparent methods
+      // Assuming that top-level splices can only be in rewrite methods
       // and splices are expanded at inline site, references to transparent values
-      // will be know literal constant trees.
+      // will be known literal constant trees.
       tree.symbol.is(Transparent)
     }
   }
@@ -268,7 +268,7 @@ object Splicer {
       case Literal(Constant(value)) =>
         interpretLiteral(value)
 
-      case _ if tree.symbol == defn.TastyTopLevelSplice_tastyContext =>
+      case _ if tree.symbol == defn.TastyTasty_macroContext =>
         interpretTastyContext()
 
       case StaticMethodCall(fn, args) =>
@@ -285,6 +285,8 @@ object Splicer {
         interpretTree(expr)(newEnv)
       case NamedArg(_, arg) => interpretTree(arg)
       case Ident(name) if env.contains(name) => env(name)
+
+      case Inlined(EmptyTree, Nil, expansion) => interpretTree(expansion)
 
       case _ => unexpectedTree(tree)
     }

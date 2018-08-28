@@ -5,8 +5,8 @@ import scala.tasty.util.TreeTraverser
 
 object Macros {
 
-  implicit transparent def printOwners[T](x: => T): Unit =
-    ~impl('(x))(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+  implicit rewrite def printOwners[T](x: => T): Unit =
+    ~impl('(x))
 
   def impl[T](x: Expr[T])(implicit tasty: Tasty): Expr[Unit] = {
     import tasty._
@@ -19,12 +19,12 @@ object Macros {
           case IsDefinition(tree @ DefDef(name, _, _, _, _)) =>
             buff.append(name)
             buff.append("\n")
-            buff.append(tree.owner.show)
+            buff.append(tree.symbol.owner.tree.get.show)
             buff.append("\n\n")
           case IsDefinition(tree @ ValDef(name, _, _)) =>
             buff.append(name)
             buff.append("\n")
-            buff.append(tree.owner.show)
+            buff.append(tree.symbol.owner.tree.get.show)
             buff.append("\n\n")
           case _ =>
         }

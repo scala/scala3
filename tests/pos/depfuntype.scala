@@ -19,7 +19,7 @@ object Test {
   // Reproduced here because the one from DottyPredef is lacking a Tasty tree and
   // therefore can't be inlined when testing non-bootstrapped.
   // But inlining `implicitly` is vital to make the definition of `ifun` below work.
-  transparent final def implicitly[T](implicit ev: T): T = ev
+  rewrite final def implicitly[T](implicit ev: T): T = ev
 
   type IDF = implicit (x: C) => x.M
 

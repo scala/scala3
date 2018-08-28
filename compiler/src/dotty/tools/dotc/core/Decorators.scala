@@ -157,7 +157,7 @@ object Decorators {
         names exists { name =>
           name == "all" || {
             val strippedName = name.stripSuffix("+")
-            val logNextPhase = name ne strippedName
+            val logNextPhase = name != strippedName
             phase.phaseName.startsWith(strippedName) ||
               (logNextPhase && phase.prev.phaseName.startsWith(strippedName))
           }

@@ -5,8 +5,4 @@ package dotty.tools.dotc.util
  */
 class DotClass {
 
-  /** Throws an `UnsupportedOperationException` with the given method name. */
-  def unsupported(methodName: String): Nothing =
-    throw new UnsupportedOperationException(s"$getClass.$methodName")
-
 }

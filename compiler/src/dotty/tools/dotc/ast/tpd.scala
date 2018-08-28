@@ -120,6 +120,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Match(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =
     ta.assignType(untpd.Match(selector, cases), cases)
 
+  def Labeled(bind: Bind, expr: Tree)(implicit ctx: Context): Labeled =
+    ta.assignType(untpd.Labeled(bind, expr))
+
+  def Labeled(sym: TermSymbol, expr: Tree)(implicit ctx: Context): Labeled =
+    Labeled(Bind(sym, EmptyTree), expr)
+
   def Return(expr: Tree, from: Tree)(implicit ctx: Context): Return =
     ta.assignType(untpd.Return(expr, from))
 
@@ -594,6 +600,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
+    override def Labeled(tree: Tree)(bind: Bind, expr: Tree)(implicit ctx: Context): Labeled =
+      ta.assignType(untpd.cpy.Labeled(tree)(bind, expr))
+
     override def Return(tree: Tree)(expr: Tree, from: Tree)(implicit ctx: Context): Return =
       ta.assignType(untpd.cpy.Return(tree)(expr, from))
 
@@ -980,7 +989,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type], expectedType: Type, isAnnotConstructor: Boolean = false)(implicit ctx: Context): Tree = {
+  def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type], expectedType: Type)(implicit ctx: Context): Tree = {
     val typer = ctx.typer
     val proto = new FunProtoTyped(args, expectedType)(typer)
     val denot = receiver.tpe.member(method)
@@ -998,7 +1007,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         assert(alternatives.size == 1,
           i"${if (alternatives.isEmpty) "no" else "multiple"} overloads available for " +
           i"$method on ${receiver.tpe.widenDealiasKeepAnnots} with targs: $targs%, %; args: $args%, % of types ${args.tpes}%, %; expectedType: $expectedType." +
-          i" isAnnotConstructor = $isAnnotConstructor.\n" +
           i"all alternatives: ${allAlts.map(_.symbol.showDcl).mkString(", ")}\n" +
           i"matching alternatives: ${alternatives.map(_.symbol.showDcl).mkString(", ")}.") // this is parsed from bytecode tree. there's nothing user can do about it
         alternatives.head
@@ -1008,35 +1016,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       .select(TermRef(receiver.tpe, selected.termSymbol.asTerm))
       .appliedToTypes(targs)
 
-    def adaptLastArg(lastParam: Tree, expectedType: Type) = {
-      if (isAnnotConstructor && !(lastParam.tpe <:< expectedType)) {
-        val defn = ctx.definitions
-        val prefix = args.take(selected.widen.paramInfoss.head.size - 1)
-        expectedType match {
-          case defn.ArrayOf(el) =>
-            lastParam.tpe match {
-              case defn.ArrayOf(el2) if el2 <:< el =>
-                // we have a JavaSeqLiteral with a more precise type
-                // we cannot construct a tree as JavaSeqLiteral inferred to precise type
-                // if we add typed than it would be both type-correct and
-                // will pass Ycheck
-                prefix ::: List(tpd.Typed(lastParam, TypeTree(defn.ArrayOf(el))))
-              case _ =>
-                ???
-            }
-          case _ => args
-        }
-      } else args
-    }
-
-    val callArgs: List[Tree] = if (args.isEmpty) Nil else {
-      val expectedType = selected.widen.paramInfoss.head.last
-      val lastParam = args.last
-      adaptLastArg(lastParam, expectedType)
-    }
-
-    val apply = untpd.Apply(fun, callArgs)
-    new typer.ApplyToTyped(apply, fun, selected, callArgs, expectedType).result.asInstanceOf[Tree] // needed to handle varargs
+    val apply = untpd.Apply(fun, args)
+    new typer.ApplyToTyped(apply, fun, selected, args, expectedType).result.asInstanceOf[Tree] // needed to handle varargs
   }
 
   @tailrec
@@ -1082,20 +1063,26 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = new Property.Key[List[Tree]]
 
-  override def inlineContext(call: Tree)(implicit ctx: Context): Context =
-    ctx.fresh.setProperty(InlinedCalls, call :: enclosingInlineds)
+  /** Record an enclosing inlined call.
+    * EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.
+    * We assume parameters are never nested inside parameters.
+    */
+  override def inlineContext(call: Tree)(implicit ctx: Context): Context = {
+    // We assume enclosingInlineds is already normalized, and only process the new call with the head.
+    val oldIC = enclosingInlineds
+    val newIC = (call, oldIC) match {
+      case (t, t1 :: ts2) if t.isEmpty =>
+        assert(!t1.isEmpty)
+        ts2
+      case _ => call :: oldIC
+    }
+    ctx.fresh.setProperty(InlinedCalls, newIC)
+  }
 
   /** All enclosing calls that are currently inlined, from innermost to outermost.
-   *  EmptyTree calls cancel the next-enclosing non-empty call in the list
-   */
-  def enclosingInlineds(implicit ctx: Context): List[Tree] = {
-    def normalize(ts: List[Tree]): List[Tree] = ts match {
-      case t :: (ts1 @ (t1 :: ts2)) if t.isEmpty => normalize(if (t1.isEmpty) ts1 else ts2)
-      case t :: ts1 => t :: normalize(ts1)
-      case Nil => Nil
-    }
-    normalize(ctx.property(InlinedCalls).getOrElse(Nil))
-  }
+    */
+  def enclosingInlineds(implicit ctx: Context): List[Tree] =
+    ctx.property(InlinedCalls).getOrElse(Nil)
 
   /** The source file where the symbol of the `inline` method referred to by `call`
    *  is defined

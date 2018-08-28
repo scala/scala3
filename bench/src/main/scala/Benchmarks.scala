@@ -2,6 +2,8 @@ package dotty.tools.benchmarks
 
 import dotty.tools.dotc._
 import core.Contexts.Context
+import dotty.tools.FatalError
+import reporting._
 
 import org.openjdk.jmh.results.RunResult
 import org.openjdk.jmh.runner.Runner
@@ -34,10 +36,9 @@ object Bench {
     }
     storeCompileOptions(args2)
 
-    val libs = System.getProperty("BENCH_CLASS_PATH")
-
     val opts = new OptionsBuilder()
-               .jvmArgsPrepend("-Xbootclasspath/a:" + libs + ":", "-Xms2G", "-Xmx2G")
+               .shouldFailOnError(true)
+               .jvmArgs("-Xms2G", "-Xmx2G")
                .mode(Mode.AverageTime)
                .timeUnit(TimeUnit.MILLISECONDS)
                .warmupIterations(warmup)
@@ -54,9 +55,20 @@ object Bench {
   def removeCompileOptions: Unit = new File(COMPILE_OPTS_FILE).delete()
 
   def storeCompileOptions(args: Array[String]): Unit = {
+    val standard_libs = System.getProperty("BENCH_CLASS_PATH")
+    val compiler_libs = System.getProperty("BENCH_COMPILER_CLASS_PATH")
+
+    val libs = if (args.contains("-with-compiler")) compiler_libs else standard_libs
+    var argsNorm = args.filter(_ != "-with-compiler")
+
+    var cpIndex = argsNorm.indexOf("-classpath")
+    if (cpIndex == -1) cpIndex = argsNorm.indexOf("-cp")
+    if (cpIndex != -1) argsNorm(cpIndex + 1) = argsNorm(cpIndex + 1) + ":" + libs
+    else argsNorm = argsNorm :+ "-classpath" :+ libs
+
     val file = new File(COMPILE_OPTS_FILE)
     val bw = new BufferedWriter(new FileWriter(file))
-    bw.write(args.mkString("\n"))
+    bw.write(argsNorm.mkString("", "\n", "\n"))
     bw.close()
   }
 
@@ -75,6 +87,21 @@ class CompilerOptions {
 }
 
 class Worker extends Driver {
+  // override to avoid printing summary information
+  override  def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
+    if (fileNames.nonEmpty)
+      try {
+        val run = compiler.newRun
+        run.compile(fileNames)
+        ctx.reporter
+      }
+      catch {
+        case ex: FatalError  =>
+          ctx.error(ex.getMessage) // signals that we should fail compilation.
+          ctx.reporter
+      }
+    else ctx.reporter
+
   @Benchmark
   def compile(state: CompilerOptions): Unit = {
     val res = process(state.opts)

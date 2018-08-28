@@ -29,3 +29,13 @@ class A3 {
   @CAnn[Int](classOf[Int]) val b3 = null
   @CAnn[Int]((1, 2)) val b4 = null
 }
+
+class B1 extends AnyRef @BAnn((1, 2, 3))
+class B2 extends AnyRef @BAnn((1, 2))
+class B3 extends AnyRef @BAnn[Int]((1, 2, 3))
+class B4 extends AnyRef @BAnn[Int]((1, 2))
+
+class C1 extends AnyRef @CAnn((1, 2))
+class C2 extends AnyRef @CAnn(classOf[Int])
+class C3 extends AnyRef @CAnn[Int]((1, 2))
+class C4 extends AnyRef @CAnn[Int](classOf[Int])

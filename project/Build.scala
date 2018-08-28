@@ -213,7 +213,9 @@ object Build {
         // on a task. Instead, we make `compile` below depend on the bridge `packageSrc`
         Some((artifactPath in (`dotty-sbt-bridge`, Compile, packageSrc)).value.toURI.toURL))),
     compile in Compile := (compile in Compile)
-      .dependsOn(packageSrc in (`dotty-sbt-bridge`, Compile)).value,
+      .dependsOn(packageSrc in (`dotty-sbt-bridge`, Compile))
+      .dependsOn(compile in (`dotty-sbt-bridge`, Compile))
+      .value,
 
     // Use the same name as the non-bootstrapped projects for the artifacts
     moduleName ~= { _.stripSuffix("-bootstrapped") },
@@ -223,9 +225,6 @@ object Build {
     // non-bootstrapped dotty-library that will then take priority over
     // the bootstrapped dotty-library on the classpath or sourcepath.
     classpathOptions ~= (_.withAutoBoot(false)),
-    // We still need a Scala bootclasspath equal to the JVM bootclasspath,
-    // otherwise sbt 0.13 incremental compilation breaks (https://github.com/sbt/sbt/issues/3142)
-    scalacOptions ++= Seq("-bootclasspath", sys.props("sun.boot.class.path")),
 
     // Enforce that the only Scala 2 classfiles we unpickle come from scala-library
     /*
@@ -305,7 +304,8 @@ object Build {
   lazy val commonBenchmarkSettings = Seq(
     outputStrategy := Some(StdoutOutput),
     mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
-    javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in Compile).value).mkString("", ":", "")
+    javaOptions += "-DBENCH_COMPILER_CLASS_PATH=" + Attributed.data((fullClasspath in (`dotty-bootstrapped`, Compile)).value).mkString("", ":", ""),
+    javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in (`dotty-library-bootstrapped`, Compile)).value).mkString("", ":", "")
   )
 
   // sbt >= 0.13.12 will automatically rewrite transitive dependencies on
@@ -551,23 +551,6 @@ object Build {
         val attList = (dependencyClasspath in Runtime).value
         val jars = packageAll.value
 
-        // put needed dependencies on classpath:
-        val path = for {
-          file <- attList.map(_.data)
-          path = file.getAbsolutePath
-          // FIXME: when we snip the cord, this should go bye-bye
-          if path.contains("scala-library") ||
-            // FIXME: currently needed for tests referencing scalac internals
-            path.contains("scala-reflect") ||
-            // used for tests that compile xml
-            path.contains("scala-xml") ||
-            // used for tests that compile dotty
-            path.contains("scala-asm") ||
-            // needed for the xsbti interface
-            path.contains("compiler-interface") ||
-            path.contains("util-interface")
-        } yield "-Xbootclasspath/p:" + path
-
         val ci_build = // propagate if this is a ci build
           sys.props.get("dotty.drone.mem") match {
             case Some(prop) => List("-Xmx" + prop)
@@ -581,12 +564,18 @@ object Build {
           else List()
 
         val jarOpts = List(
-          "-Ddotty.tests.classes.interfaces=" + jars("dotty-interfaces"),
-          "-Ddotty.tests.classes.library=" + jars("dotty-library"),
-          "-Ddotty.tests.classes.compiler=" + jars("dotty-compiler")
+          "-Ddotty.tests.classes.dottyInterfaces=" + jars("dotty-interfaces"),
+          "-Ddotty.tests.classes.dottyLibrary=" + jars("dotty-library"),
+          "-Ddotty.tests.classes.dottyCompiler=" + jars("dotty-compiler"),
+          "-Ddotty.tests.classes.compilerInterface=" + findLib(attList, "compiler-interface"),
+          "-Ddotty.tests.classes.scalaLibrary=" + findLib(attList, "scala-library"),
+          "-Ddotty.tests.classes.scalaAsm=" + findLib(attList, "scala-asm"),
+          "-Ddotty.tests.classes.scalaXml=" + findLib(attList, "scala-xml"),
+          "-Ddotty.tests.classes.jlineTerminal=" + findLib(attList, "jline-terminal"),
+          "-Ddotty.tests.classes.jlineReader=" + findLib(attList, "jline-reader")
         )
 
-        jarOpts ::: tuning ::: agentOptions ::: ci_build ::: path.toList
+        jarOpts ::: tuning ::: agentOptions ::: ci_build
       },
 
       testCompilation := testOnlyFiltered("dotty.tools.dotc.*CompilationTests", "--exclude-categories=dotty.SlowTests").evaluated,
@@ -661,7 +650,9 @@ object Build {
   )
 
   def runCompilerMain(repl: Boolean = false) = Def.inputTaskDyn {
+    val attList = (dependencyClasspath in Runtime).value
     val jars = packageAll.value
+    val scalaLib = findLib(attList, "scala-library")
     val dottyLib = jars("dotty-library")
     val dottyCompiler = jars("dotty-compiler")
     val args0: List[String] = spaceDelimited("<arg>").parsed.toList
@@ -677,7 +668,7 @@ object Build {
       else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
       else "dotty.tools.dotc.Main"
 
-    var extraClasspath = dottyLib
+    var extraClasspath = s"$scalaLib:$dottyLib"
     if ((decompile || printTasty) && !args.contains("-classpath")) extraClasspath += ":."
     if (args0.contains("-with-compiler")) {
       if (!isDotty.value) {
@@ -718,6 +709,9 @@ object Build {
       TestFrameworks.JUnit,
       "--exclude-categories=dotty.BootstrappedOnlyTests",
     ),
+    // increase stack size for non-bootstrapped compiler, because some code
+    // is only tail-recursive after bootstrap
+    javaOptions in Test += "-Xss2m"
   )
 
   lazy val bootstrapedDottyCompilerSettings = commonDottyCompilerSettings ++ Seq(
@@ -755,18 +749,29 @@ object Build {
   // until sbt/sbt#2402 is fixed (https://github.com/sbt/sbt/issues/2402)
   lazy val cleanSbtBridge = TaskKey[Unit]("cleanSbtBridge", "delete dotty-sbt-bridge cache")
 
+  def cleanSbtBridgeImpl(): Unit = {
+    val home = System.getProperty("user.home")
+    val sbtOrg = "org.scala-sbt"
+    val bridgePattern = s"*dotty-sbt-bridge*$dottyVersion*"
+
+    IO.delete((file(home) / ".sbt" / "1.0" / "zinc" / sbtOrg * bridgePattern).get)
+    IO.delete((file(home) / ".sbt"  / "boot" * "scala-*" / sbtOrg / "sbt" * "*" * bridgePattern).get)
+  }
+
   lazy val dottySbtBridgeSettings = Seq(
     cleanSbtBridge := {
-      val home = System.getProperty("user.home")
-      val sbtOrg = "org.scala-sbt"
-      val bridgeDirectoryPattern = s"*$dottyVersion*"
-
-      val log = streams.value.log
-      log.info("Cleaning the dotty-sbt-bridge cache")
-      IO.delete((file(home) / ".ivy2" / "cache" / sbtOrg * bridgeDirectoryPattern).get)
-      IO.delete((file(home) / ".sbt"  / "boot" * "scala-*" / sbtOrg / "sbt" * "*" * bridgeDirectoryPattern).get)
+      cleanSbtBridgeImpl()
     },
-    compile in Compile := (compile in Compile).dependsOn(cleanSbtBridge).value,
+    compile in Compile := {
+      val log = streams.value.log
+      val prev = (previousCompile in Compile).value.analysis.orElse(null)
+      val cur = (compile in Compile).value
+      if (prev != cur) {
+        log.info("Cleaning the dotty-sbt-bridge cache because it was recompiled.")
+        cleanSbtBridgeImpl()
+      }
+      cur
+    },
     description := "sbt compiler bridge for Dotty",
     resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:api
     libraryDependencies ++= Seq(

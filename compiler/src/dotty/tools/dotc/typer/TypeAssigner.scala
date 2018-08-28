@@ -493,6 +493,9 @@ trait TypeAssigner {
       tree.withType(underlying)
   }
 
+  def assignType(tree: untpd.Labeled)(implicit ctx: Context) =
+    tree.withType(tree.bind.symbol.info)
+
   def assignType(tree: untpd.Return)(implicit ctx: Context) =
     tree.withType(defn.NothingType)
 

@@ -371,7 +371,7 @@ object Checking {
 
     if (sym.is(Transparent) &&
           (  sym.is(ParamAccessor) && sym.owner.isClass
-          || sym.is(TermParam) && !sym.owner.isTransparentMethod
+          || sym.is(TermParam) && !sym.owner.isRewriteMethod
           ))
       fail(ParamsNoTransparent(sym.owner))
 
@@ -400,6 +400,7 @@ object Checking {
       checkWithDeferred(Private)
       checkWithDeferred(Final)
       checkWithDeferred(Transparent)
+      checkWithDeferred(Rewrite)
     }
     if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
       fail(CannotExtendAnyVal(sym))
@@ -408,9 +409,12 @@ object Checking {
     checkCombination(Abstract, Override)
     checkCombination(Lazy, Transparent)
     checkCombination(Module, Transparent)
-    checkCombination(Dependent, Transparent)  // TODO: Add further restrictions on Dependent
+    checkCombination(Rewrite, Transparent)
+    checkCombination(Rewrite, Dependent)
+    checkCombination(Dependent, Transparent) // TODO: Add further restrictions on Dependent
     checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
     if (sym.is(Transparent)) checkApplicable(Transparent, sym.isTerm && !sym.is(Mutable | Module))
+    if (sym.is(Rewrite)) checkApplicable(Rewrite, sym.is(Method, butNot = Accessor))
     if (sym.is(Lazy)) checkApplicable(Lazy, !sym.is(Method | Mutable))
     if (sym.isType && !sym.is(Deferred))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
@@ -484,16 +488,17 @@ object Checking {
           }
           tp1
         case tp: ClassInfo =>
+          def transformedParent(tp: Type): Type = tp match {
+            case ref: TypeRef => ref
+            case ref: AppliedType => ref
+            case AnnotatedType(parent, annot) =>
+              AnnotatedType(transformedParent(parent), annot)
+            case _ => defn.ObjectType // can happen if class files are missing
+          }
           tp.derivedClassInfo(
             prefix = apply(tp.prefix),
             classParents =
-              tp.parents.map { p =>
-                apply(p).stripAnnots match {
-                  case ref: TypeRef => ref
-                  case ref: AppliedType => ref
-                  case _ => defn.ObjectType // can happen if class files are missing
-                }
-              }
+              tp.parents.map(p => transformedParent(apply(p)))
             )
         case _ =>
           mapOver(tp)
@@ -676,7 +681,7 @@ trait Checking {
     tree.tpe.widenTermRefExpr match {
       case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
       case _ =>
-        val allow = ctx.erasedTypes || ctx.inTransparentMethod
+        val allow = ctx.erasedTypes || ctx.inRewriteMethod
         if (!allow) ctx.error(em"$what must be a constant expression", tree.pos)
     }
   }
@@ -694,7 +699,7 @@ trait Checking {
     def checkDecl(decl: Symbol): Unit = {
       for (other <- seen(decl.name)) {
         typr.println(i"conflict? $decl $other")
-        if (decl.matches(other) /*&& !decl.is(Erased) && !other.is(Erased)*/) {
+        if (decl.matches(other)) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               ctx.error(DoubleDeclaration(decl, other), decl.pos)
@@ -845,6 +850,11 @@ trait Checking {
     checker.traverse(tree)
   }
 
+  /** Check that we are in a rewrite context (inside a rewrite method or in inlined code) */
+  def checkInRewriteContext(what: String, pos: Position)(implicit ctx: Context) =
+    if (!ctx.inRewriteMethod && !ctx.isInlineContext)
+      ctx.error(em"$what can only be used in a rewrite method", pos)
+
   /** Check that all case classes that extend `scala.Enum` are `enum` cases */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol)(implicit ctx: Context): Unit = {
     import untpd.modsDeco
@@ -853,7 +863,7 @@ trait Checking {
       cls.owner.isTerm &&
       (cls.owner.flagsUNSAFE.is(Case) || cls.owner.name == nme.DOLLAR_NEW)
     if (!cdef.mods.isEnumCase && !isEnumAnonCls)
-      ctx.error(em"normal case $cls in ${cls.owner} cannot extend an enum", cdef.pos)
+      ctx.error(CaseClassCannotExtendEnum(cls), cdef.pos)
   }
 
   /** Check that all references coming from enum cases in an enum companion object
@@ -956,5 +966,6 @@ trait NoChecking extends ReChecking {
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: Position)(implicit ctx: Context): Type = tp
+  override def checkInRewriteContext(what: String, pos: Position)(implicit ctx: Context) = ()
   override def checkFeature(base: ClassSymbol, name: TermName, description: => String, featureUseSite: Symbol, pos: Position)(implicit ctx: Context): Unit = ()
 }

@@ -1,5 +1,5 @@
 sealed abstract class Foo {
-  transparent def bar(x: Int) = x + 1
+  rewrite def bar(x: Int) = x + 1
 }
 object Foo {
   def mkFoo(): Foo = new Baz2

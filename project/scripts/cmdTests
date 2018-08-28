@@ -1,27 +1,6 @@
 #!/usr/bin/env bash
 
-set -eux
-
-SBT="./project/scripts/sbt" # if run on CI
-# SBT="sbt" # if run locally
-
-SOURCE="tests/pos/HelloWorld.scala"
-MAIN="HelloWorld"
-EXPECTED_OUTPUT="hello world"
-
-# check that benchmarks can run
-"$SBT" "dotty-bench/jmh:run 1 1 tests/pos/alias.scala"
-"$SBT" "dotty-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
-
-OUT=$(mktemp -d)
-OUT1=$(mktemp -d)
-tmp=$(mktemp)
-
-clear_out()
-{
-  local out="$1"
-  rm -rf "$out/*"
-}
+source $(dirname $0)/cmdTestsCommon.inc.sh
 
 # check that `sbt dotc` compiles and `sbt dotr` runs it
 echo "testing sbt dotc and dotr"
@@ -48,34 +27,6 @@ echo "testing loading tasty from .tasty file in jar"
 clear_out "$OUT"
 "$SBT" ";dotc -d $OUT/out.jar $SOURCE; dotc -decompile -classpath $OUT/out.jar -color:never $MAIN" > "$tmp"
 grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
-
-echo "testing scala.quoted.Expr.run from sbt dotr"
-"$SBT" ";dotty-compiler-bootstrapped/dotc tests/run-with-compiler/quote-run.scala; dotty-compiler-bootstrapped/dotr -with-compiler Test" > "$tmp"
-grep -qe "val a: scala.Int = 3" "$tmp"
-
-
-# setup for `dotc`/`dotr` script tests
-"$SBT" dist-bootstrapped/pack
-
-# check that `dotc` compiles and `dotr` runs it
-echo "testing ./bin/dotc and ./bin/dotr"
-clear_out "$OUT"
-./bin/dotc "$SOURCE" -d "$OUT"
-./bin/dotr -classpath "$OUT" "$MAIN" > "$tmp"
-test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
-
-# check that `dotc -from-tasty` compiles and `dotr` runs it
-echo "testing ./bin/dotc -from-tasty and dotr -classpath"
-clear_out "$OUT1"
-./bin/dotc -from-tasty -classpath "$OUT" -d "$OUT1" "$MAIN"
-./bin/dotr -classpath "$OUT1" "$MAIN" > "$tmp"
-test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
-
-# echo ":quit" | ./dist-bootstrapped/target/pack/bin/dotr  # not supported by CI
-
-echo "testing ./bin/dotd"
-clear_out "$OUT"
-./bin/dotd -project Hello -siteroot "$OUT" "$SOURCE"
 
 ## Disabled because of flakeyness, should be changed to not depend on sbt
 # echo "running Vulpix meta test"

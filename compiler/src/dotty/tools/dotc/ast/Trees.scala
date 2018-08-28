@@ -498,6 +498,10 @@ object Trees {
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = If[T]
   }
+  class RewriteIf[T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])
+    extends If(cond, thenp, elsep) {
+    override def toString = s"RewriteIf($cond, $thenp, $elsep)"
+  }
 
   /** A closure with an environment and a reference to a method.
    *  @param env    The captured parameters of the closure
@@ -518,6 +522,10 @@ object Trees {
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Match[T]
   }
+  class RewriteMatch[T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])
+    extends Match(selector, cases) {
+    override def toString = s"RewriteMatch($selector, $cases)"
+  }
 
   /** case pat if guard => body; only appears as child of a Match */
   case class CaseDef[-T >: Untyped] private[ast] (pat: Tree[T], guard: Tree[T], body: Tree[T])
@@ -525,8 +533,15 @@ object Trees {
     type ThisTree[-T >: Untyped] = CaseDef[T]
   }
 
+  /** label[tpt]: { expr } */
+  case class Labeled[-T >: Untyped] private[ast] (bind: Bind[T], expr: Tree[T])
+    extends NameTree[T] {
+    type ThisTree[-T >: Untyped] = Labeled[T]
+    def name: Name = bind.name
+  }
+
   /** return expr
-   *  where `from` refers to the method from which the return takes place
+   *  where `from` refers to the method or label from which the return takes place
    *  After program transformations this is not necessarily the enclosing method, because
    *  closures can intervene.
    */
@@ -854,7 +869,7 @@ object Trees {
 
   // ----- Generic Tree Instances, inherited from `tpt` and `untpd`.
 
-  abstract class Instance[T >: Untyped <: Type] extends DotClass { inst =>
+  abstract class Instance[T >: Untyped <: Type] { inst =>
 
     type Tree = Trees.Tree[T]
     type TypTree = Trees.TypTree[T]
@@ -884,9 +899,12 @@ object Trees {
     type Assign = Trees.Assign[T]
     type Block = Trees.Block[T]
     type If = Trees.If[T]
+    type RewriteIf = Trees.RewriteIf[T]
     type Closure = Trees.Closure[T]
     type Match = Trees.Match[T]
+    type RewriteMatch = Trees.RewriteMatch[T]
     type CaseDef = Trees.CaseDef[T]
+    type Labeled = Trees.Labeled[T]
     type Return = Trees.Return[T]
     type Try = Trees.Try[T]
     type SeqLiteral = Trees.SeqLiteral[T]
@@ -1014,6 +1032,9 @@ object Trees {
         case _ => finalize(tree, untpd.Block(stats, expr))
       }
       def If(tree: Tree)(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If = tree match {
+        case tree: RewriteIf =>
+          if ((cond eq tree.cond) && (thenp eq tree.thenp) && (elsep eq tree.elsep)) tree
+          else finalize(tree, untpd.RewriteIf(cond, thenp, elsep))
         case tree: If if (cond eq tree.cond) && (thenp eq tree.thenp) && (elsep eq tree.elsep) => tree
         case _ => finalize(tree, untpd.If(cond, thenp, elsep))
       }
@@ -1022,12 +1043,19 @@ object Trees {
         case _ => finalize(tree, untpd.Closure(env, meth, tpt))
       }
       def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = tree match {
+        case tree: RewriteMatch =>
+          if ((selector eq tree.selector) && (cases eq tree.cases)) tree
+          else finalize(tree, untpd.RewriteMatch(selector, cases))
         case tree: Match if (selector eq tree.selector) && (cases eq tree.cases) => tree
         case _ => finalize(tree, untpd.Match(selector, cases))
       }
       def CaseDef(tree: Tree)(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef = tree match {
         case tree: CaseDef if (pat eq tree.pat) && (guard eq tree.guard) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.CaseDef(pat, guard, body))
+      }
+      def Labeled(tree: Tree)(bind: Bind, expr: Tree)(implicit ctx: Context): Labeled = tree match {
+        case tree: Labeled if (bind eq tree.bind) && (expr eq tree.expr) => tree
+        case _ => finalize(tree, untpd.Labeled(bind, expr))
       }
       def Return(tree: Tree)(expr: Tree, from: Tree)(implicit ctx: Context): Return = tree match {
         case tree: Return if (expr eq tree.expr) && (from eq tree.from) => tree
@@ -1203,6 +1231,8 @@ object Trees {
             cpy.Match(tree)(transform(selector), transformSub(cases))
           case CaseDef(pat, guard, body) =>
             cpy.CaseDef(tree)(transform(pat), transform(guard), transform(body))
+          case Labeled(bind, expr) =>
+            cpy.Labeled(tree)(transformSub(bind), transform(expr))
           case Return(expr, from) =>
             cpy.Return(tree)(transform(expr), transformSub(from))
           case Try(block, cases, finalizer) =>
@@ -1335,6 +1365,8 @@ object Trees {
             this(this(x, selector), cases)
           case CaseDef(pat, guard, body) =>
             this(this(this(x, pat), guard), body)
+          case Labeled(bind, expr) =>
+            this(this(x, bind), expr)
           case Return(expr, from) =>
             this(this(x, expr), from)
           case Try(block, handler, finalizer) =>

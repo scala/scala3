@@ -178,6 +178,7 @@ object TypeErasure {
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
+    else if (sym.is(Label, butNot = Method)) erase.eraseResult(sym.info)(erasureCtx)
     else erase.eraseInfo(tp, sym)(erasureCtx) match {
       case einfo: MethodType =>
         if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))
@@ -343,7 +344,7 @@ import TypeErasure._
  *  @param wildcardOK    Wildcards are acceptable (true when using the erasure
  *                       for computing a signature name).
  */
-class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean) extends DotClass {
+class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean) {
 
   /**  The erasure |T| of a type T. This is:
    *

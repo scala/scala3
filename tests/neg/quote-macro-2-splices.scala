@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Macro {
 
-  transparent def foo(b: Boolean): Int = { // error
+  rewrite def foo(b: Boolean): Int = { // error
     if (b) ~bar(true)
     else ~bar(false)
   }

@@ -34,7 +34,7 @@ object Names {
   /** A common superclass of Name and Symbol. After bootstrap, this should be
    *  just the type alias Name | Symbol
    */
-  abstract class Designator extends util.DotClass
+  abstract class Designator
 
   /** A name if either a term name or a type name. Term names can be simple
    *  or derived. A simple term name is essentially an interned string stored
@@ -83,7 +83,7 @@ object Names {
      *  Stops at derived names whose kind has `definesNewName = true`.
      *  If `f` does not apply to any part, return name unchanged.
      */
-    def rewrite(f: PartialFunction[Name, Name]): ThisName
+    def replace(f: PartialFunction[Name, Name]): ThisName
 
     /** If partial function `f` is defined for some part of this name, apply it
      *  in a Some, otherwise None.
@@ -348,7 +348,7 @@ object Names {
     override def toSimpleName = this
     override final def mangle = encode
 
-    override def rewrite(f: PartialFunction[Name, Name]): ThisName =
+    override def replace(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this)) else this
     override def collect[T](f: PartialFunction[Name, T]): Option[T] = f.lift(this)
     override def mapLast(f: SimpleName => SimpleName) = f(this)
@@ -447,7 +447,7 @@ object Names {
     override def mangled = toTermName.mangled.toTypeName
     override def mangledString = toTermName.mangledString
 
-    override def rewrite(f: PartialFunction[Name, Name]): ThisName = toTermName.rewrite(f).toTypeName
+    override def replace(f: PartialFunction[Name, Name]): ThisName = toTermName.replace(f).toTypeName
     override def collect[T](f: PartialFunction[Name, T]): Option[T] = toTermName.collect(f)
     override def mapLast(f: SimpleName => SimpleName) = toTermName.mapLast(f).toTypeName
     override def mapParts(f: SimpleName => SimpleName) = toTermName.mapParts(f).toTypeName
@@ -480,11 +480,11 @@ object Names {
     override def toSimpleName = termName(toString)
     override final def mangle = encode.toSimpleName
 
-    override def rewrite(f: PartialFunction[Name, Name]): ThisName =
+    override def replace(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this))
       else info match {
         case qual: QualifiedInfo => this
-        case _ => underlying.rewrite(f).derived(info)
+        case _ => underlying.replace(f).derived(info)
       }
 
     override def collect[T](f: PartialFunction[Name, T]): Option[T] =

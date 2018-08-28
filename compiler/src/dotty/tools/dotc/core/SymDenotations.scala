@@ -409,7 +409,7 @@ object SymDenotations {
           prefix = prefix.exclude(ModuleClassName)
         def qualify(n: SimpleName) =
           kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler + n))
-        val fn = name rewrite {
+        val fn = name replace {
           case name: SimpleName => qualify(name)
           case name @ AnyQualifiedName(_, _) => qualify(name.mangled.toSimpleName)
         }
@@ -784,14 +784,27 @@ object SymDenotations {
     def isDependentMethod(implicit ctx: Context): Boolean =
       is(DependentMethod)
 
-    /** A transparent method that is not nested inside another transparent method.
-     *  Nested transparents are not inlineable yet, only their inlined copies are.
+    def isRewriteMethod(implicit ctx: Context): Boolean =
+      is(RewriteMethod, butNot = AccessorOrSynthetic)
+
+    /** A transparent or rewrite method */
+    def isInlineable(implicit ctx: Context): Boolean =
+      is(TransparentMethod) || is(RewriteMethod)
+
+    /** An erased value or a rewrite method, excluding @forceInline annotated methods.
+     *  The latter have to be kept around to get to parity with Scala.
+     *  This is necessary at least until we have full bootstrap. Right now
+     *  dotty-bootstrapped involves running the Dotty compiler compiled with Scala 2 with
+     *  a Dotty runtime library compiled with Dotty. If we erase @forceInline annotated
+     *  methods, this means that the support methods in dotty.runtime.LazyVals vanish.
+     *  But they are needed for running the lazy val implementations in the Scala-2 compiled compiler.
      */
-    def isTransparentInlineable(implicit ctx: Context): Boolean =
-      isTransparentMethod && !owner.ownersIterator.exists(_.is(TransparentMethod))
+    def isEffectivelyErased(implicit ctx: Context): Boolean =
+      is(Erased) ||
+      isRewriteMethod && unforcedAnnotation(defn.ForceInlineAnnot).isEmpty
 
     def requiresInlineInfo(implicit ctx: Context): Boolean =
-      isTransparentInlineable || isDependentMethod
+      isInlineable || isDependentMethod
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,

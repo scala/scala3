@@ -4,11 +4,11 @@ import scala.tasty._
 
 object Macros {
 
-  transparent def isTypeEqual[T, U]: Boolean =
-    ~isTypeEqualImpl('[T], '[U])(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+  rewrite def isTypeEqual[T, U]: Boolean =
+    ~isTypeEqualImpl('[T], '[U])
 
-  transparent def isSubTypeOf[T, U]: Boolean =
-    ~isSubTypeOfImpl('[T], '[U])(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+  rewrite def isSubTypeOf[T, U]: Boolean =
+    ~isSubTypeOfImpl('[T], '[U])
 
   def isTypeEqualImpl[T, U](t: Type[T], u: Type[U])(implicit tasty: Tasty): Expr[Boolean] = {
     import tasty._

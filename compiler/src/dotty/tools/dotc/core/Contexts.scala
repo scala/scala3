@@ -338,6 +338,10 @@ object Contexts {
     def isNonEmptyScopeContext: Boolean =
       (this.scope ne outer.scope) && !this.scope.isEmpty
 
+    /** Is this a context for typechecking an inlined body? */
+    def isInlineContext: Boolean =
+      typer.isInstanceOf[Inliner#InlineTyper]
+
     /** The next outer context whose tree is a template or package definition
      *  Note: Currently unused
     def enclTemplate: Context = {
@@ -750,7 +754,7 @@ object Contexts {
     private[dotc] var typeNormalizationFuel: Int = 0
   }
 
-  class GADTMap(initBounds: SimpleIdentityMap[Symbol, TypeBounds]) extends util.DotClass {
+  class GADTMap(initBounds: SimpleIdentityMap[Symbol, TypeBounds]) {
     private[this] var myBounds = initBounds
     def setBounds(sym: Symbol, b: TypeBounds): Unit =
       myBounds = myBounds.updated(sym, b)

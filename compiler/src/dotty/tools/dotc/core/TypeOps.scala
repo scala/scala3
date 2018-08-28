@@ -281,8 +281,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     violations.toList
   }
 
-  /** Are we in a transparent method body? */
-  def inTransparentMethod = owner.ownersIterator.exists(_.isTransparentMethod)
+  /** Are we in a rewrite method body? */
+  def inRewriteMethod = owner.ownersIterator.exists(_.isRewriteMethod)
 
   /** Is `feature` enabled in class `owner`?
    *  This is the case if one of the following two alternatives holds:
@@ -328,10 +328,10 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   def dynamicsEnabled =
     featureEnabled(defn.LanguageModuleClass, nme.dynamics)
 
-  def testScala2Mode(msg: => Message, pos: Position, rewrite: => Unit = ()) = {
+  def testScala2Mode(msg: => Message, pos: Position, replace: => Unit = ()) = {
     if (scala2Mode) {
       migrationWarning(msg, pos)
-      rewrite
+      replace
     }
     scala2Mode
   }

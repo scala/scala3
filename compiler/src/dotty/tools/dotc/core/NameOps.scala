@@ -123,12 +123,12 @@ object NameOps {
 
     /** Revert the expanded name. */
     def unexpandedName: N = likeSpacedN {
-      name.rewrite { case ExpandedName(_, unexp) => unexp }
+      name.replace { case ExpandedName(_, unexp) => unexp }
     }
 
     /** Remove the variance from the name. */
     def invariantName: N = likeSpacedN {
-      name.rewrite { case VariantName(invariant, _) => invariant }
+      name.replace { case VariantName(invariant, _) => invariant }
     }
 
     def implClassName: N = likeSpacedN(name ++ tpnme.IMPL_CLASS_SUFFIX)
@@ -254,11 +254,11 @@ object NameOps {
     }
 
     def unmangle(kind: NameKind): N = likeSpacedN {
-      name rewrite {
+      name replace {
         case unmangled: SimpleName =>
           kind.unmangle(unmangled)
         case ExpandedName(prefix, last) =>
-          kind.unmangle(last) rewrite {
+          kind.unmangle(last) replace {
             case kernel: SimpleName =>
               ExpandedName(prefix, kernel)
           }

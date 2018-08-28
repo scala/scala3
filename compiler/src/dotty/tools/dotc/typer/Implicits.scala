@@ -620,9 +620,15 @@ trait Implicits { self: Typer =>
         val tag = bindFreeVars(arg)
         if (bindFreeVars.ok) ref(defn.QuotedType_apply).appliedToType(tag)
         else EmptyTree
+      case arg :: Nil if ctx.inRewriteMethod =>
+        ref(defn.QuotedType_apply).appliedToType(arg)
       case _ =>
         EmptyTree
     }
+
+    def synthesizedTastyContext(formal: Type): Tree =
+      if (ctx.inRewriteMethod || enclosingInlineds.nonEmpty) ref(defn.TastyTasty_macroContext)
+      else EmptyTree
 
     /** If `formal` is of the form Eq[T, U], where no `Eq` instance exists for
      *  either `T` or `U`, synthesize `Eq.eqAny[T, U]` as solution.
@@ -694,7 +700,8 @@ trait Implicits { self: Typer =>
         else
           trySpecialCase(defn.ClassTagClass, synthesizedClassTag,
             trySpecialCase(defn.QuotedTypeClass, synthesizedTypeTag,
-              trySpecialCase(defn.EqClass, synthesizedEq, failed)))
+              trySpecialCase(defn.TastyTastyClass, synthesizedTastyContext,
+                trySpecialCase(defn.EqClass, synthesizedEq, failed))))
     }
   }
 
@@ -1144,8 +1151,8 @@ trait Implicits { self: Typer =>
         else implicitScope(wildProto).eligible
       searchImplicits(eligible, contextual) match {
         case result: SearchSuccess =>
-          if (contextual && ctx.mode.is(Mode.TransparentBody))
-            PrepareTransparent.markContextualImplicit(result.tree)
+          if (contextual && ctx.mode.is(Mode.InlineableBody))
+            PrepareInlineable.markContextualImplicit(result.tree)
           result
         case failure: SearchFailure =>
           failure.reason match {

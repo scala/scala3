@@ -211,8 +211,9 @@ class CompilationTests extends ParallelTesting {
       defaultOutputDir + libGroup + "/src/:" +
       // as well as bootstrapped compiler:
       defaultOutputDir + dotty1Group + "/dotty/:" +
-      // and the other compiler dependecies:
-      Jars.dottyInterfaces + ":" + Jars.jlineTerminal + ":" + Jars.jlineReader,
+      // and the other compiler dependenies:
+      Properties.compilerInterface + ":" + Properties.scalaLibrary + ":" + Properties.scalaAsm + ":" +
+      Properties.dottyInterfaces + ":" + Properties.jlineTerminal + ":" + Properties.jlineReader,
       Array("-Ycheck-reentrant", "-Yemit-tasty-in-class")
     )
 
@@ -250,7 +251,7 @@ class CompilationTests extends ParallelTesting {
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/parsing", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/printing", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/reporting", opt) +
-        compileShallowFilesInDir("compiler/src/dotty/tools/dotc/rewrite", opt) +
+        compileShallowFilesInDir("compiler/src/dotty/tools/dotc/rewrites", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/transform", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/typer", opt) +
         compileShallowFilesInDir("compiler/src/dotty/tools/dotc/util", opt) +
@@ -284,7 +285,7 @@ class CompilationTests extends ParallelTesting {
         val compileDir = createOutputDirsForDir(dir, sourceDir, outDir)
         import java.nio.file.StandardCopyOption.REPLACE_EXISTING
         Files.copy(dir.toPath.resolve(pluginFile), compileDir.toPath.resolve(pluginFile), REPLACE_EXISTING)
-        val flags = TestFlags(classPath, noCheckOptions) and ("-Xplugin:" + compileDir.getAbsolutePath)
+        val flags = TestFlags(withCompilerClasspath, noCheckOptions) and ("-Xplugin:" + compileDir.getAbsolutePath)
         SeparateCompilationSource("testPlugins", dir, flags, compileDir)
       }
 

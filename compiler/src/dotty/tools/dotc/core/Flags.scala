@@ -283,6 +283,9 @@ object Flags {
    */
   final val Synthetic = commonFlag(18, "<synthetic>")
 
+  /** Labelled with `rewrite` modifier */
+  final val Rewrite = commonFlag(19, "rewrite")
+
   /** A covariant type variable / an outer accessor */
   final val CovariantOrOuter = commonFlag(20, "")
   final val Covariant = typeFlag(20, "<covariant>")
@@ -436,7 +439,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   final val SourceModifierFlags =
-    commonFlags(Private, Protected, Abstract, Final, Transparent, Dependent,
+    commonFlags(Private, Protected, Abstract, Final, Rewrite | Transparent, Dependent,
      Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic, Erased)
 
   /** Flags representing modifiers that can appear in trees */
@@ -457,7 +460,7 @@ object Flags {
     Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
     NonMember | ImplicitCommon | Permanent | Synthetic |
-    SuperAccessorOrScala2x | Transparent | Dependent
+    SuperAccessorOrScala2x | Rewrite | Transparent | Dependent
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class
@@ -552,7 +555,7 @@ object Flags {
   final val StableOrErased = Stable | Erased
 
   /** Labeled `private`, `final`, or `transparent` */
-  final val EffectivelyFinal = Private | Final | Transparent | Dependent
+  final val EffectivelyFinal = Private | Final | Rewrite | Transparent | Dependent
 
   /** A private method */
   final val PrivateMethod = allOf(Private, Method)
@@ -563,11 +566,17 @@ object Flags {
   /** A transparent method */
   final val TransparentMethod = allOf(Transparent, Method)
 
+  /** A rewrite method */
+  final val RewriteMethod = allOf(Rewrite, Method)
+
   /** A dependent method */
   final val DependentMethod = allOf(Dependent, Method)
 
   /** A transparent implicit method */
-  final val TransparentImplicitMethod = allOf(Transparent, Implicit, Method)
+  final val TransparentImplicitMethod = allOf(Transparent, Rewrite, Implicit, Method)
+
+  /** An implicit rewrite method */
+  final val ImplicitRewriteMethod = allOf(Rewrite, Implicit, Method)
 
   /** A transparent parameter */
   final val TransparentParam = allOf(Transparent, Param)

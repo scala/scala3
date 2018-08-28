@@ -16,32 +16,32 @@ object Tuple {
   type Empty = Empty.type
 
   class TupleOps(val xs: Tuple) extends AnyVal {
-    transparent def *: [H] (x: H): Tuple = new *:(x, xs)
-    transparent def size: Int = xs match {
+    rewrite def *: [H] (x: H): Tuple = new *:(x, xs)
+    rewrite def size: Int = rewrite xs match {
       case Empty => 0
       case _ *: xs1 => xs1.size + 1
     }
-    transparent def apply(n: Int): Any = xs match {
+    rewrite def apply(n: Int): Any = rewrite xs match {
       case x *: _   if n == 0 => x
       case _ *: xs1 if n > 0  => xs1.apply(n - 1)
     }
-    transparent def **: (ys: Tuple): Tuple = ys match {
+    rewrite def **: (ys: Tuple): Tuple = rewrite ys match {
       case Empty    => xs
       case y *: ys1 => y *: (ys1 **: xs)
     }
-    transparent def head = xs match {
+    rewrite def head = rewrite xs match {
       case x *: _ => x
     }
-    transparent def tail = xs match {
+    rewrite def tail = rewrite xs match {
       case _ *: xs => xs
     }
   }
 
   val emptyArray = Array[Object]()
 
-  transparent def toObj(t: Any) = t.asInstanceOf[Object]
+  rewrite def toObj(t: Any) = t.asInstanceOf[Object]
 
-  transparent def toArray(t: Tuple): Array[Object] = t.size match {
+  rewrite def toArray(t: Tuple): Array[Object] = rewrite t.size match {
     case 0 => emptyArray
     case 1 => Array(toObj(t(0)))
     case 2 => Array(toObj(t(0)), toObj(t(1)))
@@ -49,12 +49,12 @@ object Tuple {
     case 4 => Array(toObj(t(0)), toObj(t(1)), toObj(t(2)), toObj(t(3)))
   }
 
-  transparent implicit def tupleDeco(xs: Tuple): TupleOps = new TupleOps(xs)
+  rewrite implicit def tupleDeco(xs: Tuple): TupleOps = new TupleOps(xs)
 
-  transparent def apply(): Tuple = Empty
-  transparent def apply(x1: Any): Tuple = x1 *: Empty
-  transparent def apply(x1: Any, x2: Any) = x1 *: x2 *: Empty
-  transparent def apply(x1: Any, x2: Any, x3: Any) = x1 *: x2 *: x3 *: Empty
+  rewrite def apply(): Tuple = Empty
+  rewrite def apply(x1: Any): Tuple = x1 *: Empty
+  rewrite def apply(x1: Any, x2: Any) = x1 *: x2 *: Empty
+  rewrite def apply(x1: Any, x2: Any, x3: Any) = x1 *: x2 *: x3 *: Empty
 
   val xs0 = Tuple()
   val xs1 = Tuple(2)

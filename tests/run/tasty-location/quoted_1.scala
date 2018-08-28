@@ -6,18 +6,14 @@ case class Location(owners: List[String])
 
 object Location {
 
-  implicit transparent def location: Location =
-    ~impl(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+  implicit rewrite def location: Location = ~impl
 
   def impl(implicit tasty: Tasty): Expr[Location] = {
     import tasty._
 
-    def listOwnerNames(definition: Definition, acc: List[String]): List[String] = definition match {
-      case ValDef(name, _, _) => listOwnerNames(definition.owner, name :: acc)
-      case DefDef(name, _, _, _, _) => listOwnerNames(definition.owner, name :: acc)
-      case ClassDef(name, _, _, _, _) => listOwnerNames(definition.owner, name :: acc)
-      case _ => acc
-    }
+    def listOwnerNames(sym: Symbol, acc: List[String]): List[String] =
+      if (sym == definitions.RootClass || sym == definitions.EmptyPackageClass) acc
+      else listOwnerNames(sym.owner, sym.name :: acc)
 
     val list = listOwnerNames(rootContext.owner, Nil)
     '(new Location(~list.toExpr))

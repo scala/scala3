@@ -10,7 +10,7 @@ import Properties._
 
 import scala.collection.JavaConverters._
 
-object CompilerCommand extends DotClass {
+object CompilerCommand {
 
   /** The name of the command */
   def cmdName = "dotc"
@@ -136,9 +136,6 @@ object CompilerCommand extends DotClass {
     }
     else if (settings.version.value) {
       ctx.echo(versionMsg)
-      Nil
-    } else if (!Properties.isJavaAtLeast("1.8")) {
-      ctx.error("Dotty requires Java 8 to run")
       Nil
     }
     else if (shouldStopWithInfo) {

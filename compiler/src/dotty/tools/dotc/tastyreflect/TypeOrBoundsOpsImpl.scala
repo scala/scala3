@@ -51,10 +51,10 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with Tasty
     }
 
     object SymRef extends SymRefExtractor {
-      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Definition, TypeOrBounds /* Type | NoPrefix */)] = x  match {
+      def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Symbol, TypeOrBounds /* Type | NoPrefix */)] = x  match {
         case tp: Types.NamedType =>
           tp.designator match {
-            case sym: Symbol => Some((definitionFromSym(sym), tp.prefix))
+            case sym: Symbol => Some((sym, tp.prefix))
             case _ => None
           }
         case _ => None

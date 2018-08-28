@@ -5,14 +5,14 @@ import scala.tasty.util.TreeTraverser
 
 object Macros {
 
-  implicit transparent def foo(i: Int): String =
-    ~impl('(i))(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+  implicit rewrite def foo(i: Int): String =
+    ~impl('(i))
 
   def impl(i: Expr[Int])(implicit tasty: Tasty): Expr[String] = {
     value(i).toString.toExpr
   }
 
-  transparent implicit def value[X](e: Expr[X])(implicit tasty: Tasty, ev: Valuable[X]): Option[X] = ev.value(e)
+  rewrite implicit def value[X](e: Expr[X])(implicit tasty: Tasty, ev: Valuable[X]): Option[X] = ev.value(e)
 
   trait Valuable[X] {
     def value(e: Expr[X])(implicit tasty: Tasty): Option[X]
@@ -23,11 +23,16 @@ object Macros {
       import tasty._
 
       e.toTasty.tpe match {
-        case Type.SymRef(ValDef(_, tpt, _), pre) =>
-          tpt.tpe match {
-            case Type.ConstantType(Constant.Int(i)) => Some(i)
+        case Type.SymRef(sym, pre) =>
+          sym.tree match {
+            case Some(ValDef(_, tpt, _)) =>
+              tpt.tpe match {
+                case Type.ConstantType(Constant.Int(i)) => Some(i)
+                case _ => None
+              }
             case _ => None
           }
+
         case Type.ConstantType(Constant.Int(i)) => Some(i)
         case _ => None
       }

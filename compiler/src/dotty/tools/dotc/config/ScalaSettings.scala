@@ -5,7 +5,7 @@ import java.io.File
 import dotty.tools.io.{ Directory, PlainDirectory }
 
 import PathResolver.Defaults
-import rewrite.Rewrites
+import rewrites.Rewrites
 
 class ScalaSettings extends Settings.SettingGroup {
 
@@ -43,7 +43,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val pageWidth = IntSetting("-pagewidth", "Set page width", 80)
   val strict = BooleanSetting("-strict", "Use strict type rules, which means some formerly legal code does not typecheck anymore.")
   val language = MultiStringSetting("-language", "feature", "Enable one or more language features.")
-  val rewrite = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax")
+  val `rewrite` = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with -language:Scala2 rewrites sources to migrate to new syntax")
   val silentWarnings = BooleanSetting("-nowarn", "Silence all warnings.")
   val fromTasty = BooleanSetting("-from-tasty", "Compile classes from tasty in classpath. The arguments are used as class names.")
 

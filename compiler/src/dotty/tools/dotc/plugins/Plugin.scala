@@ -177,7 +177,7 @@ object Plugin {
   /** Instantiate a plugin class, given the class and
    *  the compiler it is to be used in.
    */
-  def instantiate(clazz: AnyClass): Plugin = clazz.newInstance.asInstanceOf[Plugin]
+  def instantiate(clazz: AnyClass): Plugin = clazz.getConstructor().newInstance().asInstanceOf[Plugin]
 }
 
 class PluginLoadException(val path: String, message: String, cause: Exception) extends Exception(message, cause) {

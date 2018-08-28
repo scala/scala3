@@ -1,6 +1,8 @@
 package dotty.tools
 package dottydoc
 
+import vulpix.TestConfiguration
+
 import org.junit.Test
 import org.junit.Assert._
 
@@ -22,7 +24,7 @@ class MarkdownTests extends DottyDocTest {
     ctx.setProperty(ContextDoc, new ContextDottydoc)
     ctx.setSetting(
       ctx.settings.classpath,
-      dotty.Jars.dottyLib
+      TestConfiguration.basicClasspath
     )
     base.initialize()(ctx)
     ctx

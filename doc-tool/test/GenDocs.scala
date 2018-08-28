@@ -1,6 +1,8 @@
 package dotty.tools
 package dottydoc
 
+import vulpix.TestConfiguration
+
 object Files {
   type JFile = java.io.File
 
@@ -11,7 +13,6 @@ object Files {
 
 trait LocalResources extends DocDriver {
   import Files._
-  import dotty.Jars
 
   def getFiles(file: JFile): Array[JFile] =
     if (file.isDirectory) file.listFiles.flatMap(getFiles)
@@ -23,7 +24,7 @@ trait LocalResources extends DocDriver {
     "-project" +: "Dotty" +:
     "-language:Scala2" +:
     "-classpath" +:
-    (Jars.dottyLib + ":" + Jars.dottyInterfaces) +:
+    TestConfiguration.basicClasspath +:
     files
 }
 

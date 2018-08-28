@@ -24,7 +24,7 @@ import ScriptParsers._
 import Comments._
 import scala.annotation.{tailrec, switch}
 import util.DotClass
-import rewrite.Rewrites.patch
+import rewrites.Rewrites.patch
 
 object Parsers {
 
@@ -64,7 +64,7 @@ object Parsers {
     if (source.isSelfContained) new ScriptParser(source)
     else new Parser(source)
 
-  abstract class ParserCommon(val source: SourceFile)(implicit ctx: Context) extends DotClass {
+  abstract class ParserCommon(val source: SourceFile)(implicit ctx: Context) {
 
     val in: ScannerCommon
 
@@ -170,18 +170,21 @@ object Parsers {
     def isLiteral = literalTokens contains in.token
     def isNumericLit = numericLitTokens contains in.token
     def isModifier = modifierTokens contains in.token
-    def isExprIntro = canStartExpressionTokens contains in.token
     def isBindingIntro = canStartBindingTokens contains in.token
     def isTemplateIntro = templateIntroTokens contains in.token
     def isDclIntro = dclIntroTokens contains in.token
     def isStatSeqEnd = in.token == RBRACE || in.token == EOF
     def mustStartStat = mustStartStatTokens contains in.token
 
-    def isDefIntro(allowedMods: BitSet) =
-      in.token == AT || (allowedMods contains in.token) || (defIntroTokens contains in.token)
+    def isExprIntro =
+      (canStartExpressionTokens `contains` in.token) &&
+        (in.token != REWRITE || lookaheadIn(canStartExpressionTokens))
 
-    def isCaseIntro =
-      in.token == AT || (modifierTokensOrCase contains in.token)
+    def isDefIntro(allowedMods: BitSet) =
+      in.token == AT ||
+      (defIntroTokens `contains` in.token) ||
+      (allowedMods `contains` in.token) &&
+        (in.token != REWRITE || lookaheadIn(BitSet(AT) | defIntroTokens | allowedMods))
 
     def isStatSep: Boolean =
       in.token == NEWLINE || in.token == NEWLINES || in.token == SEMI
@@ -456,7 +459,7 @@ object Parsers {
     def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
 
     /** Is the token following the current one in `tokens`? */
-    def lookaheadIn(tokens: Token*): Boolean = {
+    def lookaheadIn(tokens: BitSet): Boolean = {
       val lookahead = in.lookaheadScanner
       lookahead.nextToken()
       tokens.contains(lookahead.token)
@@ -839,7 +842,7 @@ object Parsers {
 
     /** Is current ident a `*`, and is it followed by a `)` or `,`? */
     def isPostfixStar: Boolean =
-      in.name == nme.raw.STAR && lookaheadIn(RPAREN, COMMA)
+      in.name == nme.raw.STAR && lookaheadIn(BitSet(RPAREN, COMMA))
 
     def infixTypeRest(t: Tree): Tree =
       infixOps(t, canStartTypeTokens, refinedType, isType = true, isOperator = !isPostfixStar)
@@ -897,7 +900,7 @@ object Parsers {
         val start = in.skipToken()
         typeBounds().withPos(Position(start, in.lastOffset, start))
       }
-      else if (isIdent(nme.raw.TILDE) && lookaheadIn(IDENTIFIER, BACKQUOTED_IDENT))
+      else if (isIdent(nme.raw.TILDE) && lookaheadIn(BitSet(IDENTIFIER, BACKQUOTED_IDENT)))
         atPos(in.offset) { PrefixOp(typeIdent(), path(thisOK = true)) }
       else path(thisOK = false, handleSingletonType) match {
         case r @ SingletonTypeTree(_) => r
@@ -1105,8 +1108,8 @@ object Parsers {
      *                      |  Expr
      *  BlockResult       ::=  [FunArgMods] FunParams =>' Block
      *                      |  Expr1
-     *  Expr1             ::=  `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
-     *                      |  `if' Expr `then' Expr [[semi] else Expr]
+     *  Expr1             ::=  [‘rewrite’] `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
+     *                      |  [‘rewrite’] `if' Expr `then' Expr [[semi] else Expr]
      *                      |  `while' `(' Expr `)' {nl} Expr
      *                      |  `while' Expr `do' Expr
      *                      |  `do' Expr [semi] `while' Expr
@@ -1118,7 +1121,7 @@ object Parsers {
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  PostfixExpr [Ascription]
-     *                      |  PostfixExpr `match' `{' CaseClauses `}'
+     *                      |  [‘rewrite’] PostfixExpr `match' `{' CaseClauses `}'
      *                      |  `implicit' `match' `{' ImplicitCaseClauses `}'
      *  Bindings          ::= `(' [Binding {`,' Binding}] `)'
      *  Binding           ::= (id | `_') [`:' Type]
@@ -1160,14 +1163,7 @@ object Parsers {
 
     def expr1(location: Location.Value = Location.ElseWhere): Tree = in.token match {
       case IF =>
-        atPos(in.skipToken()) {
-          val cond = condExpr(THEN)
-          newLinesOpt()
-          val thenp = expr()
-          val elsep = if (in.token == ELSE) { in.nextToken(); expr() }
-                      else EmptyTree
-          If(cond, thenp, elsep)
-        }
+        ifExpr(in.offset, If)
       case WHILE =>
         atPos(in.skipToken()) {
           val cond = condExpr(DO)
@@ -1221,6 +1217,19 @@ object Parsers {
         atPos(in.skipToken()) { Return(if (isExprIntro) expr() else EmptyTree, EmptyTree) }
       case FOR =>
         forExpr()
+      case REWRITE =>
+        val start = in.skipToken()
+        in.token match {
+          case IF =>
+            ifExpr(start, RewriteIf)
+          case _ =>
+            val t = postfixExpr()
+            if (in.token == MATCH) matchExpr(t, start, RewriteMatch)
+            else {
+              syntaxErrorOrIncomplete("`match` or `if` expected but ${in.token} found")
+              t
+            }
+        }
       case _ =>
         expr1Rest(postfixExpr(), location)
     }
@@ -1236,7 +1245,7 @@ object Parsers {
       case COLON =>
         ascription(t, location)
       case MATCH =>
-        matchExpr(t)
+        matchExpr(t, startOffset(t), Match)
       case _ =>
         t
     }
@@ -1267,12 +1276,25 @@ object Parsers {
       }
     }
 
+    /**    `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
+     *     `if' Expr `then' Expr [[semi] else Expr]
+     */
+    def ifExpr(start: Offset, mkIf: (Tree, Tree, Tree) => If): If =
+      atPos(start, in.skipToken()) {
+        val cond = condExpr(THEN)
+        newLinesOpt()
+        val thenp = expr()
+        val elsep = if (in.token == ELSE) { in.nextToken(); expr() }
+                    else EmptyTree
+        mkIf(cond, thenp, elsep)
+      }
+
     /**    `match' { CaseClauses }
      *     `match' { ImplicitCaseClauses }
      */
-    def matchExpr(t: Tree) =
-      atPos(startOffset(t), in.skipToken()) {
-        inBraces(Match(t, caseClauses()))
+    def matchExpr(t: Tree, start: Offset, mkMatch: (Tree, List[CaseDef]) => Match) =
+      atPos(start, in.skipToken()) {
+        inBraces(mkMatch(t, caseClauses()))
       }
 
     /**    `match' { ImplicitCaseClauses }
@@ -1286,7 +1308,8 @@ object Parsers {
         case Mod.Implicit() :: mods => markFirstIllegal(mods)
         case mods => markFirstIllegal(mods)
       }
-      val result @ Match(t, cases) = matchExpr(ImplicitScrutinee().withPos(implicitKwPos(start)))
+      val result @ Match(t, cases) =
+        matchExpr(ImplicitScrutinee().withPos(implicitKwPos(start)), start, RewriteMatch)
       for (CaseDef(pat, _, _) <- cases) {
         def isImplicitPattern(pat: Tree) = pat match {
           case Typed(pat1, _) => isVarPattern(pat1)
@@ -1739,6 +1762,7 @@ object Parsers {
       case FINAL       => Mod.Final()
       case IMPLICIT    => Mod.Implicit()
       case ERASED      => Mod.Erased()
+      case REWRITE     => Mod.Rewrite()
       case TRANSPARENT => Mod.Transparent()
       case DEPENDENT   => Mod.Dependent()
       case LAZY        => Mod.Lazy()

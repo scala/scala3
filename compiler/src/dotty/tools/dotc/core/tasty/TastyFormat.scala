@@ -182,8 +182,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   LAZY
                   OVERRIDE
                   TRANSPARENT
-                  TYPELEVEL                           // transparent method containing toplevel matches (TODO: merge with MACRO)
-                  MACRO                               // transparent method containing toplevel splices
+                  REWRITE
+                  MACRO                               // rewrite method containing toplevel splices
                   STATIC                              // mapped to static Java member
                   OBJECT                              // an object or its class
                   TRAIT                               // a trait
@@ -305,7 +305,7 @@ object TastyFormat {
   final val LAZY = 14
   final val OVERRIDE = 15
   final val TRANSPARENT = 16
-  final val DEPENDENT = 17
+  final val REWRITE = 17
   final val STATIC = 18
   final val OBJECT = 19
   final val TRAIT = 20
@@ -327,6 +327,7 @@ object TastyFormat {
   final val PARAMsetter = 36
   final val EMPTYTREE = 37
   final val EMPTYTYPETREE = 38
+  final val DEPENDENT = 39
 
   // Cat. 2:    tag Nat
 
@@ -462,7 +463,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= EMPTYTYPETREE ||
+    firstSimpleTreeTag <= tag && tag <= DEPENDENT ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -484,6 +485,7 @@ object TastyFormat {
        | LAZY
        | OVERRIDE
        | TRANSPARENT
+       | REWRITE
        | MACRO
        | STATIC
        | OBJECT
@@ -540,7 +542,7 @@ object TastyFormat {
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
     case TRANSPARENT => "TRANSPARENT"
-    case DEPENDENT => "DEPENDENT"
+    case REWRITE => "REWRITE"
     case MACRO => "MACRO"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
@@ -560,6 +562,7 @@ object TastyFormat {
     case PARAMsetter => "PARAMsetter"
     case EMPTYTREE => "EMPTYTREE"
     case EMPTYTYPETREE => "EMPTYTYPETREE"
+    case DEPENDENT => "DEPENDENT"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"

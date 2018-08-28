@@ -46,12 +46,6 @@ trait TreeOps extends TastyCore {
 
   trait DefinitionAPI {
     def name(implicit ctx: Context): String
-    def flags(implicit ctx: Context): FlagSet
-    def privateWithin(implicit ctx: Context): Option[Type]
-    def protectedWithin(implicit ctx: Context): Option[Type]
-    def annots(implicit ctx: Context): List[Term]
-    def owner(implicit ctx: Context): Definition
-    def localContext(implicit ctx: Context): Context
   }
   implicit def DefinitionDeco(definition: Definition): DefinitionAPI
 
@@ -312,4 +306,5 @@ trait TreeOps extends TastyCore {
     }
   }
 
+  implicit def termAsParent(term: Term): Parent
 }

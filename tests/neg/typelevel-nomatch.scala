@@ -2,7 +2,7 @@
 object Test {
   def anyValue[T]: T = ???
 
-  transparent def test[T] = anyValue[T] match {  // error
+  rewrite def test[T] = rewrite anyValue[T] match {  // error
     case _: Byte =>
     case _: Char =>
   }
