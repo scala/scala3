@@ -4734,10 +4734,13 @@ object Types {
    */
   class JavaNullMap(implicit ctx: Context) extends TypeMap {
     def shouldNullify(tp: TypeRef): Boolean = {
-      !tp.symbol.isValueClass && !tp.symbol.derivesFrom(defn.AnnotationClass)
+      val res = !tp.symbol.isValueClass && !tp.symbol.derivesFrom(defn.AnnotationClass)
+//      println(s"tp = ${tp.show} res = ${res}")
+      res
     }
 
     override def apply(tp: Type): Type = {
+//      println(s"tp = ${tp.show} ${tp}")
       tp match {
         case tp: MethodType =>
           mapOver(tp)
@@ -4747,6 +4750,8 @@ object Types {
           OrType(tp, defn.JavaNullType)
         case tp@RefinedType(parent, name, info) =>
           OrType(derivedRefinedType(tp, parent, this(info)), defn.JavaNullType)
+        case AppliedType(tycons, targs) =>
+          OrType(AppliedType(tycons, targs map this), defn.JavaNullType)
         case _ =>
           tp
       }
