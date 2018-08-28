@@ -54,7 +54,7 @@ object SyntaxHighlighting {
     @forceInline def keywordStart =
       prev == 0    || prev == ' ' || prev == '{' || prev == '(' ||
       prev == '\n' || prev == '[' || prev == ',' || prev == ':' ||
-      prev == '|'  || prev == '&'
+      prev == '|'  || prev == '&' || prev.isDigit
 
     @forceInline def numberStart(c: Char) =
       c.isDigit && (!prev.isLetter || prev == '.' || prev == ' ' || prev == '(' || prev == '\u0000')

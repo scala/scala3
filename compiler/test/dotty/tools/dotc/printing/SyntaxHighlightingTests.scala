@@ -64,6 +64,7 @@ class SyntaxHighlightingTests {
   @Test
   def expressions = {
     test("val x = 1 + 2 + 3", "<K|val> <V|x> = <L|1> + <L|2> + <L|3>")
+    test("if (true) 3 else 1", "<K|if> (<K|true>) <L|3> <K|else> <L|1>")
   }
 
   @Test
