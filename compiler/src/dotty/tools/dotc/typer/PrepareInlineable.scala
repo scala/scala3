@@ -240,7 +240,7 @@ object PrepareInlineable {
           inlined.updateAnnotation(LazyBodyAnnotation { _ =>
             implicit val ctx = inlineCtx
             val rawBody = treeExpr(ctx)
-            if (inlined.is(Transparent)) {
+            if (inlined.is(Transparent | Rewrite)) {
               val typedBody =
                 if (ctx.reporter.hasErrors) rawBody
                 else ctx.compilationUnit.inlineAccessors.makeInlineable(rawBody)
