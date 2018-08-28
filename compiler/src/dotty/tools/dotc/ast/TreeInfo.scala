@@ -542,19 +542,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case _ => false
   }
 
-  /** Strips layers of `.asInstanceOf[T]` / `_.$asInstanceOf[T]()` from an expression */
-  def stripCast(tree: Tree)(implicit ctx: Context): Tree = {
-    def isCast(sel: Tree) = sel.symbol == defn.Any_asInstanceOf
-    unsplice(tree) match {
-      case TypeApply(sel @ Select(inner, _), _) if isCast(sel) =>
-        stripCast(inner)
-      case Apply(TypeApply(sel @ Select(inner, _), _), Nil) if isCast(sel) =>
-        stripCast(inner)
-      case t =>
-        t
-    }
-  }
-
   /** Decompose a call fn[targs](vargs_1)...(vargs_n)
    *  into its constituents (fn, targs, vargss).
    *
