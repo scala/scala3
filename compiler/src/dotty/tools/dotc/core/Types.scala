@@ -134,8 +134,8 @@ object Types {
     }
 
     /** Normalized variant of this type */
-    private[dotc] var _myNormalized: Type = NoType
-    private[dotc] var _myNormalizedStuck: Boolean = _
+    @sharable private[dotc] var _myNormalized: Type = NoType
+    @sharable private[dotc] var _myNormalizedStuck: Boolean = _
 
     /** Is this type different from NoType? */
     final def exists: Boolean = this.ne(NoType)
