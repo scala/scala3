@@ -54,7 +54,7 @@ object SyntaxHighlighting {
     @forceInline def keywordStart =
       prev == 0    || prev == ' ' || prev == '{' || prev == '(' ||
       prev == '\n' || prev == '[' || prev == ',' || prev == ':' ||
-      prev == '|'  || prev == '&'
+      prev == '|'  || prev == '&' || prev.isDigit
 
     @forceInline def numberStart(c: Char) =
       c.isDigit && (!prev.isLetter || prev == '.' || prev == ' ' || prev == '(' || prev == '\u0000')
@@ -79,7 +79,7 @@ object SyntaxHighlighting {
         } else {
           if (n.isUpper && (keywordStart || prev == '.')) {
             appendWhile(n, !typeEnders.contains(_), typeDef)
-          } else if (keywordStart || prev.isDigit) {
+          } else if (keywordStart) {
             append(n, keywords.contains(_), { kw =>
               if (kw == "new") typeDef(kw) else keyword(kw)
             })
