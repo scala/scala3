@@ -520,7 +520,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
         val sym = tp.symbol
         if (!sym.isClass) {
           val info = tp.info
-          if (!info.exists) assert(false, "undefined: $tp with symbol $sym")
+          if (!info.exists) assert(false, s"undefined: $tp with symbol $sym")
           return sigName(info)
         }
         if (isDerivedValueClass(sym)) {

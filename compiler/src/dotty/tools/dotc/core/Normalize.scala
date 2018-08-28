@@ -43,6 +43,22 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
     */
   private def NotApplicable: Type = NoType
 
+  /** Get the normalized form of a type or force and cache its computation */
+  private def normalizedType(tp: Type): Type =
+    if (Config.cacheNormalizedTypes) {
+      assert(canReduce, "Trying to compute normalized type in an already stuck state")
+      assert(tp._myNormalized != null, i"Cyclic normalization of $tp")
+      if (tp._myNormalized eq NoType) {
+        tp._myNormalized = null
+        tp._myNormalized = bigStep(tp)
+        tp._myNormalizedStuck = canReduce
+      }
+      canReduce = tp._myNormalizedStuck
+      tp._myNormalized
+    } else {
+      bigStep(tp)
+    }
+
   /** Infrastructure for beta-reduction at the type-level, to be cached per dependent method. */
   class Unfolder(fnSym: Symbol, body: Tree) {
     private[this] val paramPos = mutable.ArrayBuffer[Name]()
@@ -238,6 +254,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
         case tp if !tp.widen.isInstanceOf[MethodOrPoly] =>
           tp match {
             case tp @ TypeOf.Call(fn, argss) =>
+              assert(argss.forall(_.forall(defn.NullType.ne)), s"Unexpected nulls in arguments: $argss")
               normalizeApp(tp, fn, argss) orElse tp
             case tp => tp  // TODO: stuck?
           }
@@ -255,16 +272,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
     else {
       if (ctx.base.typeNormalizationFuel > 0)
         ctx.base.typeNormalizationFuel -= 1
-      if (Config.cacheNormalizedTypes)
-        if (tp.isNormalizing) {
-          val tpNormalized = bigStep(tp)
-          tp.setNormalized(tpNormalized)
-          tpNormalized
-        } else {
-          tp.normalized
-        }
-      else
-        bigStep(tp)
+      normalizedType(tp)
     }
   }
 }
