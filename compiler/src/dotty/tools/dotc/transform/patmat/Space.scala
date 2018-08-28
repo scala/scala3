@@ -321,8 +321,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
 
   /** Return the space that represents the pattern `pat` */
   def project(pat: Tree): Space = {
-    def patTpe = pat.tpe.widen
-    def patTpeStripped = patTpe.stripAnnots
+    def patTpe = pat.tpe.widenUnapplyPath
     pat match {
       case Literal(c) =>
         if (c.value.isInstanceOf[Symbol])
@@ -331,9 +330,9 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           Typ(ConstantType(c), false)
       case _: BackquotedIdent => Typ(patTpe, false)
       case Ident(nme.WILDCARD) =>
-        Or(Typ(patTpeStripped, false) :: nullSpace :: Nil)
+        Or(Typ(patTpe.stripAnnots, false) :: nullSpace :: Nil)
       case Ident(_) | Select(_, _) =>
-        Typ(patTpeStripped, false)
+        Typ(patTpe.stripAnnots, false)
       case Alternative(trees) => Or(trees.map(project(_)))
       case Bind(_, pat) => project(pat)
       case SeqLiteral(pats, _) => projectSeq(pats)
@@ -342,14 +341,14 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
           if (fun.symbol.owner == scalaSeqFactoryClass)
             projectSeq(pats)
           else
-            Prod(erase(patTpeStripped), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
+            Prod(erase(patTpe.stripAnnots), fun.tpe, fun.symbol, projectSeq(pats) :: Nil, irrefutable(fun))
         else
-          Prod(erase(patTpeStripped), fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
+          Prod(erase(patTpe.stripAnnots), fun.tpe, fun.symbol, pats.map(project), irrefutable(fun))
       case Typed(pat @ UnApply(_, _, _), _) => project(pat)
       case Typed(expr, tpt) =>
         Typ(erase(expr.tpe.stripAnnots), true)
       case This(_) =>
-        Typ(patTpeStripped, false)
+        Typ(patTpe.stripAnnots, false)
       case EmptyTree =>         // default rethrow clause of try/catch, check tests/patmat/try2.scala
         Typ(WildcardType, false)
       case _ =>
