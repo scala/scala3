@@ -686,8 +686,11 @@ class Definitions {
   def Unpickler_liftedExpr = ctx.requiredMethod("scala.runtime.quoted.Unpickler.liftedExpr")
   def Unpickler_unpickleType = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
 
-  lazy val TastyTopLevelSpliceModule = ctx.requiredModule("scala.tasty.TopLevelSplice")
-    lazy val TastyTopLevelSplice_tastyContext = TastyTopLevelSpliceModule.requiredMethod("tastyContext")
+  lazy val TastyTastyType = ctx.requiredClassRef("scala.tasty.Tasty")
+  def TastyTastyClass(implicit ctx: Context) = TastyTastyType.symbol.asClass
+
+  lazy val TastyTastyModule = ctx.requiredModule("scala.tasty.Tasty")
+    lazy val TastyTasty_macroContext = TastyTastyModule.requiredMethod("macroContext")
 
   lazy val EqType = ctx.requiredClassRef("scala.Eq")
   def EqClass(implicit ctx: Context) = EqType.symbol.asClass

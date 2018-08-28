@@ -268,7 +268,7 @@ object Splicer {
       case Literal(Constant(value)) =>
         interpretLiteral(value)
 
-      case _ if tree.symbol == defn.TastyTopLevelSplice_tastyContext =>
+      case _ if tree.symbol == defn.TastyTasty_macroContext =>
         interpretTastyContext()
 
       case StaticMethodCall(fn, args) =>
@@ -285,6 +285,8 @@ object Splicer {
         interpretTree(expr)(newEnv)
       case NamedArg(_, arg) => interpretTree(arg)
       case Ident(name) if env.contains(name) => env(name)
+
+      case Inlined(EmptyTree, Nil, expansion) => interpretTree(expansion)
 
       case _ => unexpectedTree(tree)
     }

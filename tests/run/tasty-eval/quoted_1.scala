@@ -6,7 +6,7 @@ import scala.tasty.util.TreeTraverser
 object Macros {
 
   implicit rewrite def foo(i: Int): String =
-    ~impl('(i))(TopLevelSplice.tastyContext) // FIXME infer TopLevelSplice.tastyContext within top level ~
+    ~impl('(i))
 
   def impl(i: Expr[Int])(implicit tasty: Tasty): Expr[String] = {
     value(i).toString.toExpr

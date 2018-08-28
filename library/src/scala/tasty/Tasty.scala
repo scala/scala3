@@ -19,3 +19,8 @@ abstract class Tasty
     with TreeOps
     with TypeOrBoundsTreeOps
     with TypeOrBoundsOps
+
+object Tasty {
+  /** Compiler tasty context available in a top level ~ of a transparent macro */
+  def macroContext: Tasty = throw new Exception("Not in transparent macro.")
+}
