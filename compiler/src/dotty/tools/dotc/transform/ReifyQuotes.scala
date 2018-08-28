@@ -372,7 +372,20 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           capturers(body.symbol)(body)
         case _=>
           val (body1, splices) = nested(isQuote = true).split(body)
-          if (level == 0 && !ctx.inRewriteMethod) pickledQuote(body1, splices, body.tpe, isType).withPos(quote.pos)
+          if (level == 0 && !ctx.inRewriteMethod) {
+            val body2 =
+              if (body1.isType) body1
+              else {
+                // Leave only a call trace consisting of
+                //  - a reference to the top-level class from which the call was inlined,
+                //  - the call's position
+                // in the call field of an Inlined node.
+                // The trace has enough info to completely reconstruct positions.
+                val callTrace = Ident(ctx.owner.topLevelClass.typeRef).withPos(body1.pos)
+                Inlined(callTrace, Nil, body1)
+              }
+            pickledQuote(body2, splices, body.tpe, isType).withPos(quote.pos)
+          }
           else {
             // In top-level splice in a rewrite def. Keep the tree as it is, it will be transformed at inline site.
             body
