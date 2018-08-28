@@ -43,8 +43,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     compileDir("compiler/src/dotty/tools/dotc/reporting", withCompilerOptions) +
     compileDir("compiler/src/dotty/tools/dotc/typer", withCompilerOptions) +
     compileDir("compiler/src/dotty/tools/dotc/util", withCompilerOptions) +
-    compileDir("compiler/src/dotty/tools/io", withCompilerOptions) +
-    compileDir("compiler/src/dotty/tools/dotc/core", withCompilerOptions)
+    compileDir("compiler/src/dotty/tools/io", withCompilerOptions)
   }.checkCompile()
 
   @Test def posTwiceWithCompiler: Unit = {
