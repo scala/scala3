@@ -104,7 +104,7 @@ object Applications {
     if (unapplyName == nme.unapplySeq) {
       if (unapplyResult derivesFrom defn.SeqClass)
         seqSelector :: Nil
-      else if (isGetMatch(unapplyResult, pos)) {
+      else if (isGetMatch(unapplyResult, pos) && getTp.derivesFrom(defn.SeqClass)) {
         val seqArg = (if (ctx.isDependent) getTp.widenTermRefExpr.annotatedToRepeated.dealiasKeepAnnots else getTp)
           .elemType.hiBound
         if (seqArg.exists) args.map(Function.const(seqArg))
