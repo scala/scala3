@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+source $(dirname $0)/cmdTestsCommon.inc.sh
+
+# check that benchmarks can run
+"$SBT" "dotty-bench/jmh:run 1 1 tests/pos/alias.scala"
+# The above is here as it relies on the bootstrapped library.
+"$SBT" "dotty-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
+"$SBT" "dotty-bench-bootstrapped/jmh:run 1 1 -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
+
+echo "testing scala.quoted.Expr.run from sbt dotr"
+"$SBT" ";dotty-compiler-bootstrapped/dotc tests/run-with-compiler/quote-run.scala; dotty-compiler-bootstrapped/dotr -with-compiler Test" > "$tmp"
+grep -qe "val a: scala.Int = 3" "$tmp"
+
+
+# setup for `dotc`/`dotr` script tests
+"$SBT" dist-bootstrapped/pack
+
+# check that `dotc` compiles and `dotr` runs it
+echo "testing ./bin/dotc and ./bin/dotr"
+clear_out "$OUT"
+./bin/dotc "$SOURCE" -d "$OUT"
+./bin/dotr -classpath "$OUT" "$MAIN" > "$tmp"
+test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
+
+# check that `dotc -from-tasty` compiles and `dotr` runs it
+echo "testing ./bin/dotc -from-tasty and dotr -classpath"
+clear_out "$OUT1"
+./bin/dotc -from-tasty -classpath "$OUT" -d "$OUT1" "$MAIN"
+./bin/dotr -classpath "$OUT1" "$MAIN" > "$tmp"
+test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
+
+# echo ":quit" | ./dist-bootstrapped/target/pack/bin/dotr  # not supported by CI
+
+echo "testing ./bin/dotd"
+clear_out "$OUT"
+./bin/dotd -project Hello -siteroot "$OUT" "$SOURCE"
