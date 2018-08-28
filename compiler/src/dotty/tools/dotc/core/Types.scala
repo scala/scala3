@@ -1081,6 +1081,12 @@ object Types {
     /** Perform successive widenings and dealiasings while rewrapping refining annotations, until none can be applied anymore */
     final def widenDealiasKeepRefiningAnnots(implicit ctx: Context): Type = widenDealias1(keepIfRefining)
 
+    /** Widen to underlying if this is an UnapplyPath, otherwise return this */
+    final def widenUnapplyPath: Type = this match {
+      case UnapplyPath(underlying, _) => underlying
+      case _ => this
+    }
+
     /** Widen from constant type to its underlying non-constant
      *  base type.
      */
@@ -4278,6 +4284,16 @@ object Types {
         case Trees.TypeApply(fn, args)    => Some(fn.tpe :: args.map(_.tpe))
       }
     }
+  }
+
+  // ----- UnapplyPath ----------------------------
+
+  final case class UnapplyPath private (widenedPath: Type, path: Type) extends UncachedProxyType with TermType {
+    def underlying(implicit ctx: Context) = widenedPath
+  }
+
+  object UnapplyPath {
+    def apply(path: Type)(implicit ctx: Context): UnapplyPath = UnapplyPath(path.widen, path)
   }
 
   // ----- TypeMaps --------------------------------------------------------------------

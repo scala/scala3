@@ -358,10 +358,11 @@ class Typer extends Namer
     def kind = if (name.isTermName) "" else "type "
     typr.println(s"typed ident $kind$name in ${ctx.owner}")
     if (ctx.mode is Mode.Pattern) {
+      val pt1 = pt.widenUnapplyPath
       if (name == nme.WILDCARD)
-        return tree.withType(pt)
+        return tree.withType(pt1)
       if (untpd.isVarPattern(tree) && name.isTermName)
-        return typed(desugar.patternVar(tree), pt)
+        return typed(desugar.patternVar(tree), pt1)
     }
 
     val rawType = {
@@ -531,7 +532,8 @@ class Typer extends Namer
     }
   }
 
-  def typedTyped(tree: untpd.Typed, pt: Type)(implicit ctx: Context): Tree = track("typedTyped") {
+  def typedTyped(tree: untpd.Typed, pt0: Type)(implicit ctx: Context): Tree = track("typedTyped") {
+    val pt = pt0.widenUnapplyPath
     /*  Handles three cases:
      *  @param  ifPat    how to handle a pattern (_: T)
      *  @param  ifExpr   how to handle an expression (e: T)
@@ -1082,7 +1084,7 @@ class Typer extends Namer
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), body1)
     }
 
-    val pat1 = typedPattern(tree.pat, selType)(gadtCtx)
+    val pat1 = typedPattern(tree.pat, UnapplyPath(selType))(gadtCtx)
     caseRest(pat1)(gadtCtx.fresh.setNewScope)
   }
 
@@ -1350,7 +1352,8 @@ class Typer extends Namer
 
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Tree = track("typedBind") {
     val pt1 = fullyDefinedType(pt, "pattern variable", tree.pos)
-    val body1 = typed(tree.body, pt1.widen)
+    val pt2 = pt1.widenUnapplyPath
+    val body1 = typed(tree.body, pt2)
     body1 match {
       case UnApply(fn, Nil, arg :: Nil)
       if fn.symbol.exists && fn.symbol.owner == defn.ClassTagClass && !body1.tpe.isError =>
@@ -1365,10 +1368,13 @@ class Typer extends Namer
           // for a singleton pattern like `x @ Nil`, `x` should get the type from the scrutinee
           // see tests/neg/i3200b.scala and SI-1503
           val bindTp =
-            if (body1.tpe.isInstanceOf[TermRef]) pt1
+            if (body1.tpe.isInstanceOf[TermRef]) pt2
             else body1.tpe.underlyingIfRepeated(isJava = false)
           val symTp =
-            if (ctx.isDependent) TypeOf.TypeApply(pt1.select(defn.Any_asInstanceOf), bindTp)
+            if (ctx.isDependent)
+              pt1 match {
+                case UnapplyPath(_, path) => TypeOf.TypeApply(path.select(defn.Any_asInstanceOf), bindTp)
+              }
             else bindTp
           val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.pos)
           if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Implicit)
@@ -1381,7 +1387,8 @@ class Typer extends Namer
 
   def typedAlternative(tree: untpd.Alternative, pt: Type)(implicit ctx: Context): Alternative = track("typedAlternative") {
     val nestedCtx = ctx.addMode(Mode.InPatternAlternative)
-    val trees1 = tree.trees.mapconserve(typed(_, pt)(nestedCtx))
+    val pt1 = pt.widenUnapplyPath
+    val trees1 = tree.trees.mapconserve(typed(_, pt1)(nestedCtx))
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
 
@@ -2395,7 +2402,7 @@ class Typer extends Namer
         typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt, locked)
       }
       else if (ctx.mode is Mode.Pattern) {
-        checkEqualityEvidence(tree, pt)
+        checkEqualityEvidence(tree, pt.widenUnapplyPath)
         tree
       }
       else if (Inliner.isInlineable(tree) &&

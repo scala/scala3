@@ -863,8 +863,13 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       tree
   }
 
-  def typedUnApply(tree: untpd.Apply, selType: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
+  def typedUnApply(tree: untpd.Apply, selType0: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
     val Apply(qual, args) = tree
+
+    val (selType, pathType): (Type, Type) = selType0 match {
+      case UnapplyPath(underlying, path) => (underlying, path)
+      case _                             => (selType0, selType0)
+    }
 
     def notAnExtractor(tree: Tree) =
       errorTree(tree, s"${qual.show} cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method")
@@ -993,8 +998,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
               tree.pos)
           }
         val dummyArgTp =
-          if (selType eq ownType) ownType
-          else if (ctx.isDependent) TypeOf.TypeApply(selType.select(defn.Any_asInstanceOf), ownType)
+          if ((pathType ne ownType) && ctx.isDependent) TypeOf.TypeApply(pathType.select(defn.Any_asInstanceOf), ownType)
           else ownType
         val dummyArg = dummyTreeOfType(dummyArgTp)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
@@ -1025,7 +1029,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }
-        val unapplyPatterns = (bunchedArgs, argTypes).zipped map (typed(_, _))
+        val unapplyPatterns = (bunchedArgs, argTypes).zipped map { case (arg, argTp) => typed(arg, UnapplyPath(argTp)) }
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
         if ((ownType eq selType) || ownType.isError) result
