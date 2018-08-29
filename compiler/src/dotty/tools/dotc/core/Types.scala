@@ -208,6 +208,10 @@ object Types {
         case tp: TypeRef =>
           val sym = tp.symbol
           if (sym.isClass) sym.derivesFrom(cls) else loop(tp.superType): @tailrec
+        case tp: AppliedType =>
+          tp.superType.derivesFrom(cls)
+        case tp: MatchType =>
+          tp.bound.derivesFrom(cls) || tp.reduced.derivesFrom(cls)
         case tp: TypeProxy =>
           loop(tp.underlying): @tailrec
         case tp: AndType =>
