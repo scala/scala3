@@ -10,6 +10,6 @@ class Foo {
 
     // Test that we can select through "|JavaNull" (unsoundly).
     val x2 = new ArrayList[ArrayList[ArrayList[String]]]()
-    x2.get(0).get(0)
+    val x3 = x2.get(0).get(0)
   }
 }
