@@ -4149,7 +4149,12 @@ object Types {
     object Match {
       def apply(underlyingTp: Type, selectorTp: Type,
                 caseTriples: List[(Type, Type, Type)])(implicit ctx: Context): TypeOf =
-        ???.asInstanceOf[TypeOf] // TODO
+        TypeOf(underlyingTp, untpd.Match(
+          dummyTreeOfType(selectorTp),
+          caseTriples.map { case (patTp, guardTp, bodyTp) =>
+            ast.tpd.CaseDef(dummyTreeOfType(patTp), dummyTreeOfType(guardTp), dummyTreeOfType(bodyTp))
+          }
+        ))
 
       def unapply(to: TypeOf): Option[(Type, List[(Type, Type, Type)])] = to.tree match {
         case Trees.Match(selector, cases) =>
