@@ -99,8 +99,11 @@ object Code {
     }
   }
 
-  /** A new `CodeTester` working with `sources` in the workspace. */
-  def withSources(sources: SourceWithPositions*): CodeTester = new CodeTester(sources.toList, Nil)
+  /** A new `CodeTester` working with a single workspace containing `sources`. */
+  def withSources(sources: SourceWithPositions*): CodeTester = withWorkspaces(Workspace(sources.toList))
+
+  /** A new `CodeTester` working with `workspaces`. */
+  def withWorkspaces(workspaces: Workspace*): CodeTester = new CodeTester(workspaces.toList)
 
   sealed trait SourceWithPositions {
 
@@ -111,7 +114,7 @@ object Code {
     def positions: List[(CodeMarker, Int, Int)]
 
     /** A new `CodeTester` with only this source in the workspace. */
-    def withSource: CodeTester = new CodeTester(this :: Nil, Nil)
+    def withSource: CodeTester = withSources(this)
 
   }
 
@@ -130,5 +133,44 @@ object Code {
    * @param positions The positions of the markers that have been set.
    */
   case class WorksheetWithPositions(text: String, positions: List[(CodeMarker, Int, Int)]) extends SourceWithPositions
+
+  /**
+   * A group of sources belonging to the same project.
+   *
+   * @param sources   The sources that this workspace holds.
+   * @param name      The name of this workspace
+   * @param dependsOn The other workspaces on which this workspace depend.
+   */
+  case class Workspace(sources: List[SourceWithPositions],
+                       name: String = Workspace.freshName,
+                       dependsOn: List[Workspace] = Nil) {
+
+    /**
+     * Add `sources` to the sources of this workspace.
+     */
+    def withSources(sources: SourceWithPositions*): Workspace = copy(sources = this.sources ::: sources.toList)
+
+  }
+
+  object Workspace {
+    private[this] val count = new java.util.concurrent.atomic.AtomicInteger()
+    private def freshName: String = s"workspace${count.incrementAndGet()}"
+
+    /**
+     * Creates a new workspace that depends on `workspaces`.
+     *
+     * @param workspaces The dependencies of the new workspace.
+     * @return An empty workspace with a dependency on the specified workspaces.
+     */
+    def dependingOn(workspaces: Workspace*) = new Workspace(Nil, dependsOn = workspaces.toList)
+
+    /**
+     * Create a new workspace with the given sources.
+     *
+     * @param sources The sources to add to this workspace.
+     * @return a new workspace containing the specified sources.
+     */
+    def withSources(sources: SourceWithPositions*): Workspace = new Workspace(sources.toList)
+  }
 
 }

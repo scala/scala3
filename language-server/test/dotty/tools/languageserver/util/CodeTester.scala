@@ -10,16 +10,18 @@ import org.eclipse.lsp4j.{CompletionItemKind, DocumentHighlightKind}
  * Simulates an LSP client for test in a workspace defined by `sources`.
  *
  * @param sources The list of sources in the workspace
- * @param actions Unused
  */
-class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
+class CodeTester(workspaces: List[Workspace]) {
 
-  private val testServer = new TestServer(TestFile.testDir)
+  private val testServer = new TestServer(TestFile.testDir, workspaces)
 
+  private val sources = for { workspace <- workspaces
+                              source <- workspace.sources } yield (workspace, source)
   private val files = sources.zipWithIndex.map {
-    case (ScalaSourceWithPositions(text, _), i) => testServer.openCode(text, s"Source$i.scala")
-    case (WorksheetWithPositions(text, _), i) => testServer.openCode(text, s"Worksheet$i.sc")
+    case ((workspace, ScalaSourceWithPositions(text, _)), i) => testServer.openCode(text, workspace, s"Source$i.scala")
+    case ((workspace, WorksheetWithPositions(text, _)), i) => testServer.openCode(text, workspace, s"Worksheet$i.sc")
   }
+
   private val positions: PositionContext = getPositions(files)
 
   /**
@@ -158,7 +160,13 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
       action.execute()(testServer, testServer.client, positions)
     } catch {
       case ex: AssertionError =>
-        val sourcesStr = sources.zip(files).map{ case (source, file) => "// " + file.file + "\n" + source.text}.mkString("\n")
+        val sourcesStr =
+          sources.zip(files).map {
+            case ((workspace, source), file) =>
+              s"""// ${file.file} in workspace ${workspace.name}
+                 |${source.text}""".stripMargin
+          }.mkString(System.lineSeparator)
+
         val msg =
           s"""
             |
@@ -177,7 +185,7 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
   private def getPositions(files: List[TestFile]): PositionContext = {
     val posSeq = {
       for {
-        (code, file) <- sources.zip(files)
+        ((_, code), file) <- sources.zip(files)
         (position, line, char) <- code.positions
       } yield position -> (file, line, char)
     }
