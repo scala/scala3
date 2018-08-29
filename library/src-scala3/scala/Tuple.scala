@@ -5,60 +5,64 @@ import typelevel._
 sealed trait Tuple extends Any {
   import Tuple._
 
-  rewrite def toArray: Array[Object] = rewrite constValue[BoundedSize[this.type]] match {
-    case 0 =>
+  rewrite def toArray: Array[Object] = rewrite constValueOpt[BoundedSize[this.type]] match {
+    case Some(0) =>
       $emptyArray
-    case 1 =>
+    case Some(1) =>
       val t = asInstanceOf[Tuple1[Object]]
       Array(t._1)
-    case 2 =>
+    case Some(2) =>
       val t = asInstanceOf[Tuple2[Object, Object]]
       Array(t._1, t._2)
-    case 3 =>
+    case Some(3) =>
       val t = asInstanceOf[Tuple3[Object, Object, Object]]
       Array(t._1, t._2, t._3)
-    case 4 =>
+    case Some(4) =>
       val t = asInstanceOf[Tuple4[Object, Object, Object, Object]]
       Array(t._1, t._2, t._3, t._4)
-    case n if n <= $MaxSpecialized =>
+    case Some(n) if n <= $MaxSpecialized =>
       $toArray(this, n)
-    case n =>
+    case Some(n) =>
       asInstanceOf[TupleXXL].elems
+    case None =>
+      error(".toArray cannot be applied to tuple of unknown size")
   }
 
-  rewrite def *: [H] (x: H): Tuple = {
-    erased val resTpe = Typed(_pair(x, this))
-    rewrite _size(this) match {
-      case 0 =>
-        Tuple1(x).asInstanceOf[resTpe.Type]
-      case 1 =>
-        Tuple2(x, asInstanceOf[Tuple1[_]]._1).asInstanceOf[resTpe.Type]
-      case 2 =>
+  rewrite def *: [H] (x: H): H *: this.type = {
+    type Result = H *: this.type
+    rewrite constValueOpt[BoundedSize[this.type]] match {
+      case Some(0) =>
+        Tuple1(x).asInstanceOf[Result]
+      case Some(1) =>
+        Tuple2(x, asInstanceOf[Tuple1[_]]._1).asInstanceOf[Result]
+      case Some(2) =>
         val t = asInstanceOf[Tuple2[_, _]]
-        Tuple3(x, t._1, t._2).asInstanceOf[resTpe.Type]
-      case 3 =>
+        Tuple3(x, t._1, t._2).asInstanceOf[Result]
+      case Some(3) =>
         val t = asInstanceOf[Tuple3[_, _, _]]
-        Tuple4(x, t._1, t._2, t._3).asInstanceOf[resTpe.Type]
-      case 4 =>
+        Tuple4(x, t._1, t._2, t._3).asInstanceOf[Result]
+      case Some(4) =>
         val t = asInstanceOf[Tuple4[_, _, _, _]]
-        Tuple5(x, t._1, t._2, t._3, t._4).asInstanceOf[resTpe.Type]
-      case n =>
-        fromArray[resTpe.Type]($consArray(x, toArray))
+        Tuple5(x, t._1, t._2, t._3, t._4).asInstanceOf[Result]
+      case Some(n) =>
+        fromArray[Result]($consArray(x, toArray))
+      case _ =>
+        error("*: cannot be applied to tuple of unknown size")
     }
   }
 
-  rewrite def ++(that: Tuple): Tuple = {
+  rewrite def ++(that: Tuple): Concat[this.type, that.type] = {
     type Result = Concat[this.type, that.type]
-    rewrite constValue[BoundedSize[this.type]] match {
-      case 0 =>
-        that
-      case 1 =>
-        if (constValue[BoundedSize[that.type]] == 0) this
+    rewrite constValueOpt[BoundedSize[this.type]] match {
+      case Some(0) =>
+        that.asInstanceOf[Result]
+      case Some(1) =>
+        if (constValue[BoundedSize[that.type]] == 0) this.asInstanceOf[Result]
         else (asInstanceOf[Tuple1[_]]._1 *: that).asInstanceOf[Result]
-      case 2 =>
+      case Some(2) =>
         val t = asInstanceOf[Tuple2[_, _]]
         rewrite constValue[BoundedSize[that.type]] match {
-          case 0 => this
+          case 0 => this.asInstanceOf[Result]
           case 1 =>
             val u = that.asInstanceOf[Tuple1[_]]
             Tuple3(t._1, t._2, u._1).asInstanceOf[Result]
@@ -66,21 +70,23 @@ sealed trait Tuple extends Any {
             val u = that.asInstanceOf[Tuple2[_, _]]
             Tuple4(t._1, t._2, u._1, u._2).asInstanceOf[Result]
           case _ =>
-            genericConcat[Result](this, that)
+            genericConcat[Result](this, that).asInstanceOf[Result]
         }
-      case 3 =>
+      case Some(3) =>
         val t = asInstanceOf[Tuple3[_, _, _]]
         rewrite constValue[BoundedSize[that.type]] match {
-          case 0 => this
+          case 0 => this.asInstanceOf[Result]
           case 1 =>
             val u = that.asInstanceOf[Tuple1[_]]
             Tuple4(t._1, t._2, t._3, u._1).asInstanceOf[Result]
           case _ =>
-            genericConcat[Result](this, that)
+            genericConcat[Result](this, that).asInstanceOf[Result]
         }
-      case _ =>
-        if (constValue[BoundedSize[that.type]] == 0) this
-        else genericConcat[Result](this, that)
+      case Some(_) =>
+        if (constValue[BoundedSize[that.type]] == 0) this.asInstanceOf[Result]
+        else genericConcat[Result](this, that).asInstanceOf[Result]
+      case None =>
+        error("++ cannot be applied to tuple of unknown size")
     }
   }
 
@@ -91,6 +97,14 @@ sealed trait Tuple extends Any {
 object Tuple {
   transparent val $MaxSpecialized = 22
   transparent private val XXL = $MaxSpecialized + 1
+
+  type Head[X <: NonEmptyTuple] = X match {
+    case x *: _ => x
+  }
+
+  type Tail[X <: NonEmptyTuple] <: Tuple = X match {
+    case _ *: xs => xs
+  }
 
   type Concat[X <: Tuple, Y <: Tuple] <: Tuple = X match {
     case Unit => Y
@@ -142,33 +156,6 @@ object Tuple {
     elems1
   }
 
-  private[scala] rewrite def _pair[H, T <: Tuple] (x: H, xs: T): Tuple =
-    erasedValue[H *: T]
-
-  private[scala] rewrite def _size(xs: Tuple): Int =
-    rewrite xs match {
-      case _: Unit => 0
-      case _: (_ *: xs1) => _size(erasedValue[xs1]) + 1
-    }
-
-  private[scala] rewrite def _head(xs: Tuple): Any = rewrite xs match {
-    case _: (x *: _) => erasedValue[x]
-  }
-
-  private[scala] rewrite def _tail(xs: Tuple): Tuple = rewrite xs match {
-    case _: (_ *: xs1) => erasedValue[xs1]
-  }
-
-  private[scala] rewrite def _index(xs: Tuple, n: Int): Any = rewrite xs match {
-    case _: (x *: _)   if n == 0 => erasedValue[x]
-    case _: (_ *: xs1) if n > 0  => _index(erasedValue[xs1], n - 1)
-  }
-
-  private[scala] rewrite def _concat(xs: Tuple, ys: Tuple): Tuple = rewrite xs match {
-    case _: Unit => ys
-    case _: (x1 *: xs1) => _pair(erasedValue[x1], _concat(erasedValue[xs1], ys))
-  }
-
   rewrite def fromArray[T <: Tuple](xs: Array[Object]): T =
     rewrite constValue[BoundedSize[T]] match {
       case 0  => ().asInstanceOf[T]
@@ -201,85 +188,99 @@ object Tuple {
 abstract sealed class NonEmptyTuple extends Tuple {
   import Tuple._
 
-  rewrite def head: Any = {
-    erased val resTpe = Typed(_head(this))
-    val resVal = rewrite _size(this) match {
-      case 1 =>
+  rewrite def head: Head[this.type] = {
+    type Result = Head[this.type]
+    val resVal = rewrite constValueOpt[BoundedSize[this.type]] match {
+      case Some(1) =>
         val t = asInstanceOf[Tuple1[_]]
         t._1
-      case 2 =>
+      case Some(2) =>
         val t = asInstanceOf[Tuple2[_, _]]
         t._1
-      case 3 =>
+      case Some(3) =>
         val t = asInstanceOf[Tuple3[_, _, _]]
         t._1
-      case 4 =>
+      case Some(4) =>
         val t = asInstanceOf[Tuple4[_, _, _, _]]
         t._1
-      case n if n > 4 && n <= $MaxSpecialized =>
+      case Some(n) if n > 4 && n <= $MaxSpecialized =>
         asInstanceOf[Product].productElement(0)
-      case n if n > $MaxSpecialized =>
+      case Some(n) if n > $MaxSpecialized =>
         val t = asInstanceOf[TupleXXL]
         t.elems(0)
+      case None =>
+        error(".head cannot be applied to tuple of unknown size")
     }
-    resVal.asInstanceOf[resTpe.Type]
+    resVal.asInstanceOf[Result]
   }
 
-  rewrite def tail: Tuple = {
-    erased val resTpe = Typed(_tail(this))
-    rewrite _size(this) match {
-      case 1 =>
-        ()
-      case 2 =>
+  rewrite def tail: Tail[this.type] = {
+    type Result = Tail[this.type]
+    rewrite constValueOpt[BoundedSize[this.type]]  match {
+      case Some(1) =>
+        ().asInstanceOf[Result]
+      case Some(2) =>
         val t = asInstanceOf[Tuple2[_, _]]
-        Tuple1(t._2).asInstanceOf[resTpe.Type]
-      case 3 =>
+        Tuple1(t._2).asInstanceOf[Result]
+      case Some(3) =>
         val t = asInstanceOf[Tuple3[_, _, _]]
-        Tuple2(t._2, t._3).asInstanceOf[resTpe.Type]
-      case 4 =>
+        Tuple2(t._2, t._3).asInstanceOf[Result]
+      case Some(4) =>
         val t = asInstanceOf[Tuple4[_, _, _, _]]
-        Tuple3(t._2, t._3, t._4).asInstanceOf[resTpe.Type]
-      case 5 =>
+        Tuple3(t._2, t._3, t._4).asInstanceOf[Result]
+      case Some(5) =>
         val t = asInstanceOf[Tuple5[_, _, _, _, _]]
-        Tuple4(t._2, t._3, t._4, t._5).asInstanceOf[resTpe.Type]
-      case n if n > 5 =>
-        fromArray[resTpe.Type](toArray.tail)
+        Tuple4(t._2, t._3, t._4, t._5).asInstanceOf[Result]
+      case Some(n) if n > 5 =>
+        fromArray[Result](toArray.tail)
+      case None =>
+        error(".tail cannot be applied to tuple of unknown size")
     }
   }
 
-  rewrite def apply(n: Int): Any = {
+  rewrite def indexOutOfBounds = error("index out of bounds")
+
+  rewrite def apply(transparent n: Int): Elem[this.type, n.type] = {
     type Result = Elem[this.type, n.type]
-    rewrite constValue[BoundedSize[this.type]] match {
-      case 1 =>
+    rewrite constValueOpt[BoundedSize[this.type]] match {
+      case Some(1) =>
         val t = asInstanceOf[Tuple1[_]]
         rewrite n match {
           case 0 => t._1.asInstanceOf[Result]
+          case _ => indexOutOfBounds
         }
-      case 2 =>
+      case Some(2) =>
         val t = asInstanceOf[Tuple2[_, _]]
         rewrite n match {
           case 0 => t._1.asInstanceOf[Result]
           case 1 => t._2.asInstanceOf[Result]
+          case _ => indexOutOfBounds
         }
-      case 3 =>
+      case Some(3) =>
         val t = asInstanceOf[Tuple3[_, _, _]]
         rewrite n match {
           case 0 => t._1.asInstanceOf[Result]
           case 1 => t._2.asInstanceOf[Result]
           case 2 => t._3.asInstanceOf[Result]
+          case _ => indexOutOfBounds
         }
-      case 4 =>
+      case Some(4) =>
         val t = asInstanceOf[Tuple4[_, _, _, _]]
         rewrite n match {
           case 0 => t._1.asInstanceOf[Result]
           case 1 => t._2.asInstanceOf[Result]
           case 2 => t._3.asInstanceOf[Result]
           case 3 => t._4.asInstanceOf[Result]
+          case _ => indexOutOfBounds
         }
-      case s if s > 4 && s <= $MaxSpecialized && n >= 0 && n < s =>
+      case Some(s) if s > 4 && s <= $MaxSpecialized && n >= 0 && n < s =>
         asInstanceOf[Product].productElement(n).asInstanceOf[Result]
-      case s if s > $MaxSpecialized && n >= 0 && n < s =>
+      case Some(s) if s > $MaxSpecialized && n >= 0 && n < s =>
         asInstanceOf[TupleXXL].elems(n).asInstanceOf[Result]
+      case Some(s) =>
+        indexOutOfBounds
+      case None =>
+        error("selection (...) cannot be applied to tuple of unknown size")
     }
   }
 }
