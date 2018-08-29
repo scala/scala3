@@ -154,7 +154,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
     val fnSym = fn.symbol
     // TODO: Replace `Stable` requirement by some other special case
     if (fnSym.is(Method)) {
-      if (defn.ScalaValueClasses().contains(fnSym.owner)) {
+      if (defn.ScalaValueClasses().contains(fnSym.owner) || fnSym == defn.Any_== || fnSym == defn.Any_!=) {
         argss match {
           case List() if realApplication => ConstFold(fn)
           case List(List(arg))           => ConstFold(fn, arg)
@@ -269,10 +269,10 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
   def apply(tp: Type): Type = trace.conditionally(Normalize.track, i"normalize($tp)", show = true) {
     if (ctx.base.typeNormalizationFuel == 0)
       errorType(i"Diverged while normalizing $tp (${ctx.settings.YtypeNormalizationFuel.value} steps)", ctx.tree.pos)
-    else {
+    else if (canReduce) {
       if (ctx.base.typeNormalizationFuel > 0)
         ctx.base.typeNormalizationFuel -= 1
       normalizedType(tp)
-    }
+    } else tp
   }
 }
