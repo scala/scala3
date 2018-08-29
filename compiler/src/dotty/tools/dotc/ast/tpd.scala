@@ -824,7 +824,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** `tree == that` */
     def equal(that: Tree)(implicit ctx: Context) =
-      applyOverloaded(tree, nme.EQ, that :: Nil, Nil, defn.BooleanType)
+      if (that.tpe.widen.isRef(defn.NothingClass))
+        Literal(Constant(false))
+      else
+        applyOverloaded(tree, nme.EQ, that :: Nil, Nil, defn.BooleanType)
 
     /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
     def isInstance(tp: Type)(implicit ctx: Context): Tree = tp.dealias match {
