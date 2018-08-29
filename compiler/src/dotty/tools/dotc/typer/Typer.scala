@@ -358,11 +358,10 @@ class Typer extends Namer
     def kind = if (name.isTermName) "" else "type "
     typr.println(s"typed ident $kind$name in ${ctx.owner}")
     if (ctx.mode is Mode.Pattern) {
-      val pt1 = pt.widenUnapplyPath
       if (name == nme.WILDCARD)
-        return tree.withType(pt1)
+        return tree.withType(pt.widenUnapplyPath)
       if (untpd.isVarPattern(tree) && name.isTermName)
-        return typed(desugar.patternVar(tree), pt1)
+        return typed(desugar.patternVar(tree), pt)
     }
 
     val rawType = {
@@ -1371,10 +1370,13 @@ class Typer extends Namer
             if (body1.tpe.isInstanceOf[TermRef]) pt2
             else body1.tpe.underlyingIfRepeated(isJava = false)
           val symTp =
-            if (ctx.isDependent)
-              pt1 match {
-                case UnapplyPath(_, path) => TypeOf.TypeApply(path.select(defn.Any_asInstanceOf), bindTp)
+            if (ctx.isDependent) {
+              val pre = pt1 match {
+                case UnapplyPath(_, path) => path
+                case _                    => pt1
               }
+              TypeOf.TypeApply(pre.select(defn.Any_asInstanceOf), bindTp)
+            }
             else bindTp
           val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.pos)
           if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Implicit)
