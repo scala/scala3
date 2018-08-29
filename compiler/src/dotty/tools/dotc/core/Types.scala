@@ -3583,28 +3583,36 @@ object Types {
           else recur(cases1)
       }
 
+      def isRelevant(tp: Type) = tp match {
+        case tp: TypeParamRef => ctx.typerState.constraint.entry(tp).exists
+        case tp: TypeRef => ctx.gadt.bounds.contains(tp.symbol)
+      }
+
       def contextBounds(tp: Type): TypeBounds = tp match {
-        case tp: TypeParamRef =>
-          if (ctx.typerState.constraint.entry(tp).exists)
-            ctx.typerState.constraint.fullBounds(tp)
-          else TypeBounds.empty
+        case tp: TypeParamRef => ctx.typerState.constraint.fullBounds(tp)
         case tp: TypeRef => ctx.gadt.bounds(tp.symbol)
       }
 
       def updateReductionContext() = {
         reductionContext = new mutable.HashMap
-        for (tp <- cmp.footprint) reductionContext(tp) = contextBounds(tp)
+        for (tp <- cmp.footprint if isRelevant(tp))
+          reductionContext(tp) = contextBounds(tp)
       }
 
       def upToDate =
         cmp.footprint.forall { tp =>
-          reductionContext.get(tp) match {
-            case Some(bounds) => bounds `eq` contextBounds(tp)
-            case None => false
+          !isRelevant(tp) || {
+            reductionContext.get(tp) match {
+              case Some(bounds) => bounds `eq` contextBounds(tp)
+              case None => false
+            }
           }
         }
 
+      record("MatchType.reduce called")
       if (!Config.cacheMatchReduced || myReduced == null || !upToDate) {
+        record("MatchType.reduce computed")
+        if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced = recur(cases)(trackingCtx)
         updateReductionContext()
       }
