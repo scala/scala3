@@ -4,7 +4,8 @@ import typelevel._
 
 sealed trait Tuple extends Any {
   import Tuple._
-  rewrite def toArray: Array[Object] = rewrite _size(this) match {
+
+  rewrite def toArray: Array[Object] = rewrite constValue[BoundedSize[this.type]] match {
     case 0 =>
       $emptyArray
     case 1 =>
@@ -47,39 +48,39 @@ sealed trait Tuple extends Any {
   }
 
   rewrite def ++(that: Tuple): Tuple = {
-    erased val resTpe = Typed(_concat(this, that))
-    rewrite _size(this) match {
+    type Result = Concat[this.type, that.type]
+    rewrite constValue[BoundedSize[this.type]] match {
       case 0 =>
         that
       case 1 =>
-        if (_size(that) == 0) this
-        else (asInstanceOf[Tuple1[_]]._1 *: that).asInstanceOf[resTpe.Type]
+        if (constValue[BoundedSize[that.type]] == 0) this
+        else (asInstanceOf[Tuple1[_]]._1 *: that).asInstanceOf[Result]
       case 2 =>
         val t = asInstanceOf[Tuple2[_, _]]
-        rewrite _size(that) match {
+        rewrite constValue[BoundedSize[that.type]] match {
           case 0 => this
           case 1 =>
             val u = that.asInstanceOf[Tuple1[_]]
-            Tuple3(t._1, t._2, u._1).asInstanceOf[resTpe.Type]
+            Tuple3(t._1, t._2, u._1).asInstanceOf[Result]
           case 2 =>
             val u = that.asInstanceOf[Tuple2[_, _]]
-            Tuple4(t._1, t._2, u._1, u._2).asInstanceOf[resTpe.Type]
+            Tuple4(t._1, t._2, u._1, u._2).asInstanceOf[Result]
           case _ =>
-            genericConcat[resTpe.Type](this, that)
+            genericConcat[Result](this, that)
         }
       case 3 =>
         val t = asInstanceOf[Tuple3[_, _, _]]
-        rewrite _size(that) match {
+        rewrite constValue[BoundedSize[that.type]] match {
           case 0 => this
           case 1 =>
             val u = that.asInstanceOf[Tuple1[_]]
-            Tuple4(t._1, t._2, t._3, u._1).asInstanceOf[resTpe.Type]
+            Tuple4(t._1, t._2, t._3, u._1).asInstanceOf[Result]
           case _ =>
-            genericConcat[resTpe.Type](this, that)
+            genericConcat[Result](this, that)
         }
       case _ =>
-        if (_size(that) == 0) this
-        else genericConcat[resTpe.Type](this, that)
+        if (constValue[BoundedSize[that.type]] == 0) this
+        else genericConcat[Result](this, that)
     }
   }
 
@@ -89,6 +90,37 @@ sealed trait Tuple extends Any {
 
 object Tuple {
   transparent val $MaxSpecialized = 22
+  transparent private val XXL = $MaxSpecialized + 1
+
+  type Concat[X <: Tuple, Y <: Tuple] <: Tuple = X match {
+    case Unit => Y
+    case x1 *: xs1 => x1 *: Concat[xs1, Y]
+  }
+
+  type Elem[X <: Tuple, N] = (X, N) match {
+    case (x *: xs, 0) => x
+    case (x *: xs, S[n1]) => Elem[xs, n1]
+  }
+
+  type Size[X] <: Int = X match {
+    case Unit => 0
+    case x *: xs => S[Size[xs]]
+  }
+
+  private type XXL = S[$MaxSpecialized.type]
+
+  private type BoundedS[N <: Int] = N match {
+    case XXL => XXL
+    case _ => S[N]
+  }
+
+  private[scala] type BoundedSize[X] <: Int = X match {
+    case Unit => 0
+    case x *: xs => BoundedSize[xs] match {
+      case XXL => XXL
+      case _ => S[BoundedSize[xs]]
+    }
+  }
 
   val $emptyArray = Array[Object]()
 
@@ -138,7 +170,7 @@ object Tuple {
   }
 
   rewrite def fromArray[T <: Tuple](xs: Array[Object]): T =
-    rewrite _size(erasedValue[T]) match {
+    rewrite constValue[BoundedSize[T]] match {
       case 0  => ().asInstanceOf[T]
       case 1  => Tuple1(xs(0)).asInstanceOf[T]
       case 2  => Tuple2(xs(0), xs(1)).asInstanceOf[T]
@@ -216,38 +248,38 @@ abstract sealed class NonEmptyTuple extends Tuple {
   }
 
   rewrite def apply(n: Int): Any = {
-    erased val resTpe = Typed(_index(this, n))
-    rewrite _size(this) match {
+    type Result = Elem[this.type, n.type]
+    rewrite constValue[BoundedSize[this.type]] match {
       case 1 =>
         val t = asInstanceOf[Tuple1[_]]
         rewrite n match {
-          case 0 => t._1.asInstanceOf[resTpe.Type]
+          case 0 => t._1.asInstanceOf[Result]
         }
       case 2 =>
         val t = asInstanceOf[Tuple2[_, _]]
         rewrite n match {
-          case 0 => t._1.asInstanceOf[resTpe.Type]
-          case 1 => t._2.asInstanceOf[resTpe.Type]
+          case 0 => t._1.asInstanceOf[Result]
+          case 1 => t._2.asInstanceOf[Result]
         }
       case 3 =>
         val t = asInstanceOf[Tuple3[_, _, _]]
         rewrite n match {
-          case 0 => t._1.asInstanceOf[resTpe.Type]
-          case 1 => t._2.asInstanceOf[resTpe.Type]
-          case 2 => t._3.asInstanceOf[resTpe.Type]
+          case 0 => t._1.asInstanceOf[Result]
+          case 1 => t._2.asInstanceOf[Result]
+          case 2 => t._3.asInstanceOf[Result]
         }
       case 4 =>
         val t = asInstanceOf[Tuple4[_, _, _, _]]
         rewrite n match {
-          case 0 => t._1.asInstanceOf[resTpe.Type]
-          case 1 => t._2.asInstanceOf[resTpe.Type]
-          case 2 => t._3.asInstanceOf[resTpe.Type]
-          case 3 => t._4.asInstanceOf[resTpe.Type]
+          case 0 => t._1.asInstanceOf[Result]
+          case 1 => t._2.asInstanceOf[Result]
+          case 2 => t._3.asInstanceOf[Result]
+          case 3 => t._4.asInstanceOf[Result]
         }
       case s if s > 4 && s <= $MaxSpecialized && n >= 0 && n < s =>
-        asInstanceOf[Product].productElement(n).asInstanceOf[resTpe.Type]
+        asInstanceOf[Product].productElement(n).asInstanceOf[Result]
       case s if s > $MaxSpecialized && n >= 0 && n < s =>
-        asInstanceOf[TupleXXL].elems(n).asInstanceOf[resTpe.Type]
+        asInstanceOf[TupleXXL].elems(n).asInstanceOf[Result]
     }
   }
 }
