@@ -3538,7 +3538,7 @@ object Types {
    *
    *  and `X_1,...X_n` are the type variables bound in `patternType`
    */
-  abstract case class MatchType(bound: Type, scrutinee: Type, cases: List[Type]) extends CachedProxyType with TermType {
+  abstract case class MatchType(bound: Type, scrutinee: Type, cases: List[Type]) extends CachedProxyType with ValueType {
 
     def derivedMatchType(bound: Type, scrutinee: Type, cases: List[Type])(implicit ctx: Context) =
       if (bound.eq(this.bound) && scrutinee.eq(this.scrutinee) && cases.eqElements(this.cases)) this
