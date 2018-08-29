@@ -800,7 +800,7 @@ class TreeUnpickler(reader: TastyReader,
             }
             sym.info = rhs.tpe match {
               case _: TypeBounds | _: ClassInfo => checkNonCyclic(sym, rhs.tpe, reportErrors = false)
-              case _ => TypeAlias(rhs.tpe)
+              case _ => rhs.tpe.toBounds
             }
             sym.resetFlag(Provisional)
             TypeDef(rhs)
