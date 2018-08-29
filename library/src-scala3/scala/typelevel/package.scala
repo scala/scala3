@@ -8,6 +8,8 @@ package object typelevel {
 
   rewrite def error(transparent msg: String): Nothing = ???
 
+  rewrite def constValueOpt[T]: Option[T] = ???
+
   rewrite def constValue[T]: T = ???
 
   type S[X <: Int] <: Int
