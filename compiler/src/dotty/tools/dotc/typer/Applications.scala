@@ -866,10 +866,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def typedUnApply(tree: untpd.Apply, selType0: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
     val Apply(qual, args) = tree
 
-    val (selType, pathType): (Type, Type) = selType0 match {
-      case UnapplyPath(underlying, path) => (underlying, path)
-      case _                             => (selType0, selType0)
-    }
+    val selType  = selType0.widenUnapplyPath
+    val pathType = selType0.stripUnapplyPath
 
     def notAnExtractor(tree: Tree) =
       errorTree(tree, s"${qual.show} cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method")

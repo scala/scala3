@@ -1368,16 +1368,10 @@ class Typer extends Namer
           // see tests/neg/i3200b.scala and SI-1503
           val bindTp =
             if (body1.tpe.isInstanceOf[TermRef]) pt2
-            else body1.tpe.underlyingIfRepeated(isJava = false)
+            else                                 body1.tpe.underlyingIfRepeated(isJava = false)
           val symTp =
-            if (ctx.isDependent) {
-              val pre = pt1 match {
-                case UnapplyPath(_, path) => path
-                case _                    => pt1
-              }
-              TypeOf.TypeApply(pre.select(defn.Any_asInstanceOf), bindTp)
-            }
-            else bindTp
+            if (ctx.isDependent) TypeOf.TypeApply(pt1.stripUnapplyPath.select(defn.Any_asInstanceOf), bindTp)
+            else                 bindTp
           val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.pos)
           if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Implicit)
           if (ctx.mode.is(Mode.InPatternAlternative))

@@ -1082,9 +1082,15 @@ object Types {
     final def widenDealiasKeepRefiningAnnots(implicit ctx: Context): Type = widenDealias1(keepIfRefining)
 
     /** Widen to underlying if this is an UnapplyPath, otherwise return this */
-    final def widenUnapplyPath: Type = this match {
-      case UnapplyPath(underlying, _) => underlying
-      case _ => this
+    final def widenUnapplyPath(implicit ctx: Context): Type = this match {
+      case UnapplyPath(path) => path.widen
+      case _                 => this
+    }
+
+    /** Strip UnapplyPath, if present */
+    final def stripUnapplyPath: Type = this match {
+      case UnapplyPath(path) => path
+      case _                 => this
     }
 
     /** Widen from constant type to its underlying non-constant
@@ -4288,12 +4294,9 @@ object Types {
 
   // ----- UnapplyPath ----------------------------
 
-  final case class UnapplyPath private (widenedPath: Type, path: Type) extends UncachedProxyType with TermType {
-    def underlying(implicit ctx: Context) = widenedPath
-  }
-
-  object UnapplyPath {
-    def apply(path: Type)(implicit ctx: Context): UnapplyPath = UnapplyPath(path.widen, path)
+  final case class UnapplyPath private (path: Type) extends UncachedGroundType with typer.ProtoTypes.MatchAlways {
+    override def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T = ta(x, path)
+    override def map(tm: TypeMap)(implicit ctx: Context): ProtoType = this
   }
 
   // ----- TypeMaps --------------------------------------------------------------------
