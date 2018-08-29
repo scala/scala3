@@ -887,7 +887,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
           false
       }
 
-    /** Compare `tp` of form `S[arg]` with `other`, via ">:>` if fromBelowis true, "<:<" otherwise.
+    /** Compare `tp` of form `S[arg]` with `other`, via ">:>` if fromBelow is true, "<:<" otherwise.
      *  If `arg` is a Nat constant `n`, proceed with comparing `n + 1` and `other`.
      *  Otherwise, if `other` is a Nat constant `n`, proceed with comparing `arg` and `n - 1`.
      */
@@ -951,11 +951,17 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
   }
 
   /** Optionally, the `n` such that `tp <:< ConstantType(Constant(n: Int))` */
-  def natValue(tp: Type): Option[Int] = {
+  def natValue(tp: Type): Option[Int] = constValue(tp) match {
+    case Some(Constant(n: Int)) if n >= 0 => Some(n)
+    case _ => None
+  }
+
+  /** Optionally, the constant `c` such that `tp <:< ConstantType(c)` */
+  def constValue(tp: Type): Option[Constant] = {
     val ct = new AnyConstantType
     if (isSubTypeWhenFrozen(tp, ct))
       ct.tpe match {
-        case ConstantType(Constant(n: Int)) if n >= 0 => Some(n)
+        case ConstantType(c) => Some(c)
         case _ => None
       }
     else None

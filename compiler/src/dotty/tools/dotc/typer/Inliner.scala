@@ -350,7 +350,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   }
 
   /** The Inlined node representing the inlined call */
-  def inlined(pt: Type) = {
+  def inlined(pt: Type): Tree = {
+
+    if (inlinedMethod == defn.Typelevel_constValue && callTypeArgs.length == 1) {
+      ctx.typeComparer.constValue(callTypeArgs.head.tpe) match {
+        case Some(c) => return tpd.Literal(c).withPos(call.pos)
+        case _ => ctx.error(i"not a constant type: ${callTypeArgs.head}; cannot take constValue")
+      }
+    }
+
     // Compute bindings for all parameters, appending them to bindingsBuf
     computeParamBindings(inlinedMethod.info, callTypeArgs, callValueArgss)
 
