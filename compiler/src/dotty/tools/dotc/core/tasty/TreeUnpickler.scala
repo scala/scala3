@@ -1383,7 +1383,7 @@ class TreeUnpickler(reader: TastyReader,
             val fst = readUntyped()
             val (bound, scrut) =
               if (nextUnsharedTag == CASEDEF) (EmptyTree, fst) else (fst, readUntyped())
-            MatchTypeTree(bound, scrut, readCases(end))
+            untpd.MatchTypeTree(bound, scrut, readCases(end))
           case TYPEBOUNDStpt =>
             val lo = readUntyped()
             val hi = ifBefore(end)(readUntyped(), lo)
