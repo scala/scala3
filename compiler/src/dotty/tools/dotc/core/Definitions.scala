@@ -224,6 +224,8 @@ class Definitions {
     def Typelevel_error(implicit ctx: Context) = Typelevel_errorR.symbol
     lazy val Typelevel_constValueR = TypelevelPackageObjectRef.symbol.requiredMethodRef("constValue")
     def Typelevel_constValue(implicit ctx: Context) = Typelevel_constValueR.symbol
+    lazy val Typelevel_constValueOptR = TypelevelPackageObjectRef.symbol.requiredMethodRef("constValueOpt")
+    def Typelevel_constValueOpt(implicit ctx: Context) = Typelevel_constValueOptR.symbol
 
   /** The `scalaShadowing` package is used to safely modify classes and
    *  objects in scala so that they can be used from dotty. They will
