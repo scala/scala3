@@ -44,11 +44,11 @@ object Test {
   var any: Any = null
 
   // --------------------------------------------------------------------------
-  dependent def typePattern(x: Any) =
-    x match {
-      case _: T => 1
-      case _    => 2
-    }
+  // dependent def typePattern(x: Any) =
+  //   x match {
+  //     case _: T => 1
+  //     case _    => 2
+  //   }
   dependent def typeDesugared(x: Any) =
     if (x.isInstanceOf[T]) 1 else 2
 
@@ -60,11 +60,11 @@ object Test {
   typeDesugared("")      : 2 //-
 
   // --------------------------------------------------------------------------
-  dependent def typedHKPattern(x: Any) =
-    x match {
-      case _: F[Int] => 1
-      case _         => 2
-    }
+  // dependent def typedHKPattern(x: Any) =
+  //   x match {
+  //     case _: F[Int] => 1
+  //     case _         => 2
+  //   }
   dependent def typedHKDesugared(x: Any) =
     if (x.isInstanceOf[F[Int]]) 1 else 2
 
@@ -75,11 +75,11 @@ object Test {
   typedHKDesugared("")              : 2 //-
 
   // --------------------------------------------------------------------------
-  dependent def alternativePattern(x: Any) =
-    x match {
-      case _: T | _: U => 1
-      case _           => 2
-    }
+  // dependent def alternativePattern(x: Any) =
+  //   x match {
+  //     case _: T | _: U => 1
+  //     case _           => 2
+  //   }
   dependent def alternativeDesugared(x: Any) =
     if (x.isInstanceOf[T] || x.isInstanceOf[U]) 1 else 2
 
@@ -92,11 +92,11 @@ object Test {
   alternativeDesugared("")      : 2 //-
 
   // --------------------------------------------------------------------------
-  dependent def stablePattern(x: Any) =
-    x match {
-      case NIL => 1
-      case _   => 2
-    }
+  // dependent def stablePattern(x: Any) =
+  //   x match {
+  //     case NIL => 1
+  //     case _   => 2
+  //   }
   dependent def stableDesugared(x: Any) =
     if (NIL == x) 1 else 2
 
@@ -109,11 +109,11 @@ object Test {
   // stableDesugared("")  : 2 //-
 
   // --------------------------------------------------------------------------
-  dependent def literalPattern(x: Any) =
-    x match {
-      case 0 => 1
-      case _ => 2
-    }
+  // dependent def literalPattern(x: Any) =
+  //   x match {
+  //     case 0 => 1
+  //     case _ => 2
+  //   }
   dependent def literalDesugared(x: Any) =
     if (0 == x) 1 else 2
 
@@ -167,11 +167,11 @@ object Test {
   // unapplyFalsePattern(new T{})   : 2 //-
   unapplyFalseDesugared(new T{}) : 2 //-
 
-  dependent def unapplyProductPattern(x: Any) =
-    x match {
-      case UnapplyProductT(_, _) => 1
-      case _                     => 2
-    }
+  // dependent def unapplyProductPattern(x: Any) =
+  //   x match {
+  //     case UnapplyProductT(_, _) => 1
+  //     case _                     => 2
+  //   }
   dependent def unapplyProductDesugared(x: Any) =
     if (x.isInstanceOf[T]) 1 else 2
 
