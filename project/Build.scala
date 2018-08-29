@@ -103,9 +103,7 @@ object Build {
   // Settings used to configure the test language server
   lazy val ideTestsCompilerVersion = taskKey[String]("Compiler version to use in IDE tests")
   lazy val ideTestsCompilerArguments = taskKey[Seq[String]]("Compiler arguments to use in IDE tests")
-  lazy val ideTestsSourceDirectories = taskKey[Seq[File]]("Source directories to use in IDE tests")
   lazy val ideTestsDependencyClasspath = taskKey[Seq[File]]("Dependency classpath to use in IDE tests")
-  lazy val ideTestsClassDirectory = taskKey[File]("Class directory to use in IDE tests")
 
   // Settings shared by the build (scoped in ThisBuild). Used in build.sbt
   lazy val thisBuildSettings = Def.settings(
@@ -883,7 +881,6 @@ object Build {
     settings(
       ideTestsCompilerVersion := (version in `dotty-compiler`).value,
       ideTestsCompilerArguments := (scalacOptions in `dotty-compiler`).value,
-      ideTestsSourceDirectories := Seq((baseDirectory in ThisBuild).value / "out" / "ide-tests" / "src"),
       ideTestsDependencyClasspath := {
         val dottyLib = (classDirectory in `dotty-library-bootstrapped` in Compile).value
         val scalaLib =
@@ -894,13 +891,10 @@ object Build {
             .toList
         dottyLib :: scalaLib
       },
-      ideTestsClassDirectory := (baseDirectory in ThisBuild).value / "out" / "ide-tests" / "out",
       buildInfoKeys in Test := Seq[BuildInfoKey](
         ideTestsCompilerVersion,
         ideTestsCompilerArguments,
-        ideTestsSourceDirectories,
-        ideTestsDependencyClasspath,
-        ideTestsClassDirectory
+        ideTestsDependencyClasspath
       ),
       buildInfoPackage in Test := "dotty.tools.languageserver.util.server",
       BuildInfoPlugin.buildInfoScopedSettings(Test),
