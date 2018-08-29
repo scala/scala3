@@ -64,4 +64,10 @@ object Test {
   checkSame[Concat[Unit, (String, Int)], (String, Int)]
   checkSame[Concat[(Boolean, Boolean), (String, Int)], Boolean *: Boolean *: (String, Int)]
   checkSub[(Boolean, Boolean, String, Int), Concat[(Boolean, Boolean), String *: Int *: Unit]]
+
+  rewrite def index[Xs <: NonEmptyTuple](xs: Xs, n: Int): Elem[Xs, n.type] = xs(n).asInstanceOf
+
+  val test = (1, "hi", true, 2.0)
+  index(test, 0): Int
+  index(test, 1): String
 }

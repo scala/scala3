@@ -166,8 +166,7 @@ object Tuple {
     }
 }
 
-@showAsInfix
-sealed class *:[+H, +T <: Tuple] extends Tuple {
+abstract sealed class NonEmptyTuple extends Tuple {
   import Tuple._
 
   rewrite def head: Any = {
@@ -252,6 +251,9 @@ sealed class *:[+H, +T <: Tuple] extends Tuple {
     }
   }
 }
+
+@showAsInfix
+sealed class *:[+H, +T <: Tuple] extends NonEmptyTuple
 
 object *: {
   rewrite def unapply[H, T <: Tuple](x: H *: T) = (x.head, x.tail)
