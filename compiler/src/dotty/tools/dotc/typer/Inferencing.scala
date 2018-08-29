@@ -101,6 +101,8 @@ object Inferencing {
     }
     private[this] var toMaximize: Boolean = false
     def apply(x: Boolean, tp: Type): Boolean = tp.dealias match {
+      case UnapplyPath(path) =>
+        apply(x, path)
       case _: WildcardType | _: ProtoType =>
         false
       case tvar: TypeVar

@@ -262,6 +262,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         return "?"
       case tp @ PolyProto(targs, resType) =>
         return "PolyProto(" ~ toTextGlobal(targs, ", ") ~ "): " ~ toText(resType)
+      case tp @ UnapplyPath(path) =>
+        return "UnapplyPath(" ~ toText(path) ~ ")"
       case _ =>
     }
     super.toText(tp)
