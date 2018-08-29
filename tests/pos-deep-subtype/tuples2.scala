@@ -15,6 +15,8 @@ object Test extends App {
   assert(xs3(127) == 16)
     // 3.416s
 
+/* The following operations exhaust the standard stack, but succeed with -Xs10m:
+
   val xs4 = xs3 ++ xs3
   assert(xs4(255) == 16)
     // 3.765s
@@ -22,8 +24,6 @@ object Test extends App {
   val xs5a = xs3 ++ xs4
   assert(xs5a(383) == 16)
     // 3.804s
-
-/* The following operations exhaust the standard 2MB stack, but succeed with -Xs10m:
 
   val xs5 = xs4 ++ xs4
   assert(xs5(511) == 16)
