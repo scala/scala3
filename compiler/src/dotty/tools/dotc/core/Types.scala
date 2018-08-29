@@ -276,6 +276,13 @@ object Types {
       case _ => false
     }
 
+    /** Is this (after widening and dealiasing) a type of the form `T | JavaNull`? */
+    def isJavaNullable(implicit ctx: Context): Boolean = this.widenDealias.normalizeJavaNull match {
+      case OrType(_, right) if right == defn.JavaNullType =>
+        true
+      case _ => false
+    }
+
     /** Is this type produced as a repair for an error? */
     final def isError(implicit ctx: Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]
 
@@ -961,6 +968,20 @@ object Types {
     /** Strip PolyType prefix */
     def stripPoly(implicit ctx: Context): Type = this match {
       case tp: PolyType => tp.resType.stripPoly
+      case _ => this
+    }
+
+    /** Strips the java nullability from a type: `T | JavaNull` goes to `T` */
+    def stripJavaNull(implicit ctx: Context): Type = this.widenDealias.normalizeJavaNull match {
+      case OrType(left, right) if right == defn.JavaNullType =>
+        left
+      case _ => this
+    }
+
+    /** Converts types of the form `JavaNull | T` to `T | JavaNull`. Does not do any widening or dealiasing. */
+    def normalizeJavaNull(implicit ctx: Context): Type = this match {
+      case OrType(left, right) if left == defn.JavaNullType =>
+        OrType(right, left)
       case _ => this
     }
 
@@ -4747,11 +4768,11 @@ object Types {
         case tp: TypeAlias =>
           mapOver(tp)
         case tp: TypeRef if shouldNullify(tp) =>
-          OrType(tp, defn.JavaNullType)
-        case tp@RefinedType(parent, name, info) =>
-          OrType(derivedRefinedType(tp, parent, this(info)), defn.JavaNullType)
+          defn.javaNullable(tp)
+        case tp@RefinedType(parent, name, info) => // TODO(abeln): does this ever happen for Java-sourced types?
+          defn.javaNullable(derivedRefinedType(tp, parent, this(info)))
         case AppliedType(tycons, targs) =>
-          OrType(AppliedType(tycons, targs map this), defn.JavaNullType)
+          defn.javaNullable(AppliedType(tycons, targs map this))
         case _ =>
           tp
       }
