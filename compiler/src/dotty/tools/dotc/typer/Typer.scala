@@ -2650,7 +2650,8 @@ class Typer extends Namer
     tree match {
       case _: RefTree | _: Literal
         if !isVarPattern(tree) &&
-          !(tree.tpe <:< pt) (ctx.addMode(Mode.GADTflexible)) =>
+           !(pt <:< tree.tpe) &&
+           !(tree.tpe <:< pt)(ctx.addMode(Mode.GADTflexible)) =>
         val cmp =
           untpd.Apply(
             untpd.Select(untpd.TypedSplice(tree), nme.EQ),
