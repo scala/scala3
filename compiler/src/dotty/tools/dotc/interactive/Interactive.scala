@@ -39,10 +39,15 @@ object Interactive {
     else path.head.tpe
   }
 
-  /** The closest enclosing tree with a symbol containing position `pos`.
+  /** The closest enclosing tree with a symbol containing position `pos`, or the `EmptyTree`.
    */
   def enclosingTree(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): Tree =
-    pathTo(trees, pos).dropWhile(!_.symbol.exists).headOption.getOrElse(tpd.EmptyTree)
+    enclosingTree(pathTo(trees, pos))
+
+  /** The closes enclosing tree with a symbol, or the `EmptyTree`.
+   */
+  def enclosingTree(path: List[Tree])(implicit ctx: Context): Tree =
+    path.dropWhile(!_.symbol.exists).headOption.getOrElse(tpd.EmptyTree)
 
   /** The source symbol of the closest enclosing tree with a symbol containing position `pos`.
    *
