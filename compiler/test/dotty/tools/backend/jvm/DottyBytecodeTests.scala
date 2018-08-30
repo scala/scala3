@@ -50,7 +50,7 @@ class TestBCode extends DottyBytecodeTest {
   /** This test verifies that simple matches with `@switch` annotations are
    *  indeed transformed to a switch
    */
-  @Test def basicTransfromAnnotated = {
+  @Test def basicSwitch = {
     val source = """
                  |object Foo {
                  |  import scala.annotation.switch
@@ -66,6 +66,71 @@ class TestBCode extends DottyBytecodeTest {
       val moduleNode = loadClassNode(moduleIn.input)
       val methodNode = getMethod(moduleNode, "foo")
       assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchWithAlternatives = {
+    val source =
+      """
+        |object Foo {
+        |  import scala.annotation.switch
+        |  def foo(i: Int) = (i: @switch) match {
+        |    case 2 => println(2)
+        |    case 1 | 3 | 5 => println(1)
+        |    case 0 => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchWithGuards = {
+    val source =
+      """
+        |object Foo {
+        |  import scala.annotation.switch
+        |  def foo(i: Int, b: Boolean) = (i: @switch) match {
+        |    case 2 => println(3)
+        |    case 1 if b => println(2)
+        |    case 1 => println(1)
+        |    case 0 => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def matchWithDefaultNoThrowMatchError = {
+    val source =
+      """class Test {
+        |  def test(s: String) = s match {
+        |    case "Hello" => 1
+        |    case _       => 2
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn = dir.lookupName("Test.class", directory = false)
+      val clsNode = loadClassNode(clsIn.input)
+      val method = getMethod(clsNode, "test")
+      val throwMatchError = instructionsFromMethod(method).exists {
+        case Op(Opcodes.ATHROW) => true
+        case _ => false
+      }
+      assertFalse(throwMatchError)
     }
   }
 
