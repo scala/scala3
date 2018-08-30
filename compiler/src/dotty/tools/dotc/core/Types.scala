@@ -4152,7 +4152,10 @@ object Types {
         TypeOf(underlyingTp, untpd.Match(
           dummyTreeOfType(selectorTp),
           caseTriples.map { case (patTp, guardTp, bodyTp) =>
-            ast.tpd.CaseDef(dummyTreeOfType(patTp), dummyTreeOfType(guardTp), dummyTreeOfType(bodyTp))
+            ast.tpd.CaseDef(
+              dummyTreeOfType(patTp),
+              if (guardTp.exists) dummyTreeOfType(guardTp) else EmptyTree,
+              dummyTreeOfType(bodyTp))
           }
         ))
 
