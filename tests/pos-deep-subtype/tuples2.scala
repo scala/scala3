@@ -15,7 +15,9 @@ object Test extends App {
   assert(xs3(127) == 16)
     // 3.416s
 
+
 /* The following operations exhaust the standard stack, but succeed with -Xs10m:
+  // they can be benchmarked with `dotty-bench/jmh:run tests/pos-deep-subtype/tuples2.scala`
 
   val xs4 = xs3 ++ xs3
   assert(xs4(255) == 16)
@@ -35,6 +37,37 @@ object Test extends App {
 
   val xs7 = xs6 ++ xs6
   assert(xs7(2047) == 16)
+
+  {
+    val xs7 = xs6 ++ xs6
+    assert(xs7(2047) == 16)
+  }
+
+  {
+    val xs7 = xs6 ++ xs6
+    assert(xs7(2047) == 16)
+  }
+
+  {
+    val xs7 = xs6 ++ xs6
+    assert(xs7(2047) == 16)
+  }
+
+
+  {
+    val xs7 = xs6 ++ xs6
+    assert(xs7(2047) == 16)
+  }
+
+  {
+    val xs7 = xs6 ++ xs6
+    assert(xs7(2047) == 16)
+  }
+
+  {
+    val xs7 = xs6 ++ xs6
+    assert(xs7(2047) == 16)
+  }
     // 4.846s
 */
 }
