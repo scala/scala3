@@ -25,7 +25,9 @@ object Interactive {
     type Set = Int
     val overridden = 1 // include trees whose symbol is overridden by `sym`
     val overriding = 2 // include trees whose symbol overrides `sym` (but for performance only in same source file)
-    val references = 4 // include references and not just definitions
+    val references = 4 // include references
+    val definitions = 8 // include definitions
+    val linkedClass = 16 // include `symbol.linkedClass`
   }
 
   /** Does this tree define a symbol ? */
@@ -302,6 +304,35 @@ object Interactive {
     }
 
     buf.toList
+  }
+
+  /**
+   * Find trees that match `symbol` in `trees`.
+   *
+   * @param trees    The trees to inspect.
+   * @param includes Whether to include references, definitions, etc.
+   * @param symbol   The symbol for which we want to find references.
+   */
+  def findTreesMatching(trees: List[SourceTree],
+                        includes: Include.Set,
+                        symbol: Symbol)(implicit ctx: Context): List[SourceTree] = {
+    val linkedSym = symbol.linkedClass
+    val includeReferences  = (includes & Include.references) != 0
+    val includeDeclaration = (includes & Include.definitions) != 0
+    val includeLinkedClass = (includes & Include.linkedClass) != 0
+    val predicate: NameTree => Boolean = tree =>
+      (  tree.pos.isSourceDerived
+      && !tree.symbol.isConstructor
+      && (includeDeclaration || !Interactive.isDefinition(tree))
+      && (  Interactive.matchSymbol(tree, symbol, includes)
+         || (  includeDeclaration
+            && includeLinkedClass
+            && linkedSym.exists
+            && Interactive.matchSymbol(tree, linkedSym, includes)
+            )
+         )
+      )
+    namedTrees(trees, includeReferences, predicate)
   }
 
   /** The reverse path to the node that closest encloses position `pos`,

@@ -296,7 +296,6 @@ class DottyLanguageServer extends LanguageServer
     val driver = driverFor(uri)
     implicit val ctx = driver.currentCtx
 
-    val includeDeclaration = params.getContext.isIncludeDeclaration
     val pos = sourcePosition(driver, uri, params.getPosition)
     val sym = Interactive.enclosingSourceSymbol(driver.openedTrees(uri), pos)
 
@@ -306,9 +305,10 @@ class DottyLanguageServer extends LanguageServer
       // only need to look for trees in the target directory if the symbol is defined in the
       // current project
       val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
-      val refs = Interactive.namedTrees(trees, includeReferences = true, (tree: tpd.NameTree) =>
-        (includeDeclaration || !Interactive.isDefinition(tree))
-          && Interactive.matchSymbol(tree, sym, Include.overriding))
+      val includeDeclaration = params.getContext.isIncludeDeclaration
+      val includes =
+        Include.references | Include.overriding | (if (includeDeclaration) Include.definitions else 0)
+      val refs = Interactive.findTreesMatching(trees, includes, sym)
 
       refs.map(ref => location(ref.namePos)).asJava
     }
@@ -325,13 +325,10 @@ class DottyLanguageServer extends LanguageServer
     if (sym == NoSymbol) new WorkspaceEdit()
     else {
       val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
-      val linkedSym = sym.linkedClass
       val newName = params.getNewName
-
-      val refs = Interactive.namedTrees(trees, includeReferences = true, tree =>
-        tree.pos.isSourceDerived
-          && (Interactive.matchSymbol(tree, sym, Include.overriding)
-            || (linkedSym != NoSymbol && Interactive.matchSymbol(tree, linkedSym, Include.overriding))))
+      val includes =
+        Include.references | Include.definitions | Include.linkedClass | Include.overriding
+      val refs = Interactive.findTreesMatching(trees, includes, sym)
 
       val changes = refs.groupBy(ref => toUri(ref.source).toString).mapValues(_.map(ref => new TextEdit(range(ref.namePos), newName)).asJava)
 
