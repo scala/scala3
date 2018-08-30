@@ -30,8 +30,9 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         implicit val ctx: Context = ictx
         assertMessageCount(1, messages)
         val errorMsg = messages.head
-        val CaseClassCannotExtendEnum(cls) :: Nil = messages
+        val CaseClassCannotExtendEnum(cls, parent) :: Nil = messages
         assertEquals("Bar", cls.name.show)
+        assertEquals("Foo", parent.name.show)
         assertEquals("<empty>", cls.owner.name.show)
       }
 

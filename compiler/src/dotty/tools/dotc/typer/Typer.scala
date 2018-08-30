@@ -1578,7 +1578,10 @@ class Typer extends Namer
         .withType(dummy.termRef)
       if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.namePos)
-      if (cls.is(Case) && cls.derivesFrom(defn.EnumClass)) checkEnum(cdef, cls)
+      if (cls.is(Case) && cls.derivesFrom(defn.EnumClass)) {
+        val firstParent = parents1.head.tpe.dealias.typeSymbol
+        checkEnum(cdef, cls, firstParent)
+      }
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
       checkVariance(cdef1)
       if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
