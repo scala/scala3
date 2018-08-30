@@ -276,10 +276,12 @@ object Types {
       case _ => false
     }
 
+    /** Is this type `JavaNullType` */
+    def isJavaNull(implicit ctx: Context): Boolean = this == defn.JavaNullType
+
     /** Is this (after widening and dealiasing) a type of the form `T | JavaNull`? */
     def isJavaNullable(implicit ctx: Context): Boolean = this.widenDealias.normalizeJavaNull match {
-      case OrType(_, right) if right == defn.JavaNullType =>
-        true
+      case OrType(_, right) if right.isJavaNull => true
       case _ => false
     }
 
@@ -590,11 +592,17 @@ object Types {
         case AndType(l, r) =>
           goAnd(l, r)
         case tp: OrType =>
-          // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
-          // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
-          // lots of places. The present strategy is instead of widen `tp` using `join` to be a
-          // supertype of `pre`.
-          go(tp.join)
+          if (tp.isJavaNullable) {
+            // We need to strip JavaNull from both the type and the prefix so that
+            // `pre <: tp` continues to hold.
+            tp.stripJavaNull.findMember(name, pre.stripJavaNull, required, excluded)
+          } else {
+            // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
+            // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
+            // lots of places. The present strategy is instead of widen `tp` using `join` to be a
+            // supertype of `pre`.
+            go(tp.join)
+          }
         case tp: JavaArrayType =>
           defn.ObjectType.findMember(name, pre, required, excluded)
         case err: ErrorType =>
@@ -973,16 +981,16 @@ object Types {
 
     /** Strips the java nullability from a type: `T | JavaNull` goes to `T` */
     def stripJavaNull(implicit ctx: Context): Type = this.widenDealias.normalizeJavaNull match {
-      case OrType(left, right) if right == defn.JavaNullType =>
-        left
+      case OrType(left, right) if right.isJavaNull => left.stripJavaNull
       case _ => this
     }
 
     /** Converts types of the form `JavaNull | T` to `T | JavaNull`. Does not do any widening or dealiasing. */
-    def normalizeJavaNull(implicit ctx: Context): Type = this match {
-      case OrType(left, right) if left == defn.JavaNullType =>
-        OrType(right, left)
-      case _ => this
+    def normalizeJavaNull(implicit ctx: Context): Type = {
+      this match {
+        case OrType(left, right) if left.isJavaNull => OrType(right, left)
+        case _ => this
+      }
     }
 
     /** Widen from singleton type to its underlying non-singleton
@@ -1003,10 +1011,8 @@ object Types {
      *  base type by applying one or more `underlying` dereferences.
      */
     final def widenSingleton(implicit ctx: Context): Type = {
-//      println(s"widenSingleton ${this.show}")
       stripTypeVar.stripAnnots match {
         case tp: SingletonType if !tp.isOverloaded =>
-//          println(s"underlying = ${tp.underlying}")
           tp.underlying.widenSingleton
         case _ => this
       }
@@ -2239,8 +2245,6 @@ object Types {
     //assert(name.toString != "<local Coder>")
     override def underlying(implicit ctx: Context): Type = {
       val d = denot
-//      println(s"${d.show}")
-//      println(s"underlying isoverloaded = ${d.isOverloaded} d.info = ${d.info}")
       if (d.isOverloaded) NoType else d.info
     }
 
@@ -4763,12 +4767,10 @@ object Types {
   class JavaNullMap(implicit ctx: Context) extends TypeMap {
     def shouldNullify(tp: TypeRef): Boolean = {
       val res = !tp.symbol.isValueClass && !tp.symbol.derivesFrom(defn.AnnotationClass)
-//      println(s"tp = ${tp.show} res = ${res}")
       res
     }
 
     override def apply(tp: Type): Type = {
-//      println(s"tp = ${tp.show} ${tp}")
       tp match {
         case tp: MethodType =>
           mapOver(tp)
