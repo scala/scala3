@@ -39,4 +39,5 @@ object Printers {
   val typr: Printer = noPrinter
   val unapp: Printer = noPrinter
   val variances: Printer = noPrinter
+  val nullability: Printer = noPrinter
 }

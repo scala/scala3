@@ -13,5 +13,8 @@ class Foo {
     // Test that we can select through "|JavaNull" (unsoundly).
     val x3 = new ArrayList[ArrayList[ArrayList[String]]]()
     val x4: Int = x3.get(0).get(0).get(0).length()
+
+    // Test that generic methods are also tagged as nullable.
+    java.util.Collections.max(null)
   }
 }
