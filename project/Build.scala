@@ -21,6 +21,8 @@ import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
 import sbtbuildinfo.BuildInfoPlugin
 import sbtbuildinfo.BuildInfoPlugin.autoImport._
 
+import scala.util.Properties.isJavaAtLeast
+
 /* In sbt 0.13 the Build trait would expose all vals to the shell, where you
  * can use them in "set a := b" like expressions. This re-exposes them.
  */
@@ -225,6 +227,14 @@ object Build {
     // non-bootstrapped dotty-library that will then take priority over
     // the bootstrapped dotty-library on the classpath or sourcepath.
     classpathOptions ~= (_.withAutoBoot(false)),
+    // ... but when running under Java 8, we still need a Scala bootclasspath that contains the JVM bootclasspath,
+    // otherwise sbt incremental compilation breaks.
+    scalacOptions ++= {
+      if (isJavaAtLeast("9"))
+        Seq()
+      else
+        Seq("-bootclasspath", sys.props("sun.boot.class.path"))
+    },
 
     // Enforce that the only Scala 2 classfiles we unpickle come from scala-library
     /*
