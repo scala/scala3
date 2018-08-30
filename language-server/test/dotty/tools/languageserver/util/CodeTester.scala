@@ -17,10 +17,13 @@ class CodeTester(workspaces: List[Workspace]) {
 
   private val sources = for { workspace <- workspaces
                               source <- workspace.sources } yield (workspace, source)
-  private val files = sources.zipWithIndex.map {
-    case ((workspace, ScalaSourceWithPositions(text, _)), i) => testServer.openCode(text, workspace, s"Source$i.scala")
-    case ((workspace, WorksheetWithPositions(text, _)), i) => testServer.openCode(text, workspace, s"Worksheet$i.sc")
-  }
+
+  private val files =
+    for { workspace <- workspaces
+          (source, id) <- workspace.sources.zipWithIndex } yield source match {
+      case ScalaSourceWithPositions(text, _) => testServer.openCode(text, workspace, s"Source$id.scala")
+      case WorksheetWithPositions(text, _) => testServer.openCode(text, workspace, s"Worksheet$id.sc")
+    }
 
   private val positions: PositionContext = getPositions(files)
 
