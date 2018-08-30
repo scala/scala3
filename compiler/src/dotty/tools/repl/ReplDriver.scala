@@ -167,7 +167,7 @@ class ReplDriver(settings: Array[String],
         unit.tpdTree = tree
         implicit val ctx = state.context.fresh.setCompilationUnit(unit)
         val srcPos = SourcePosition(file, Position(cursor))
-        val (_, completions) = Interactive.completions(srcPos)
+        val (_, completions) = Interactive.completions(srcPos, state.imports)
         completions.map(makeCandidate)
       }
       .getOrElse(Nil)
