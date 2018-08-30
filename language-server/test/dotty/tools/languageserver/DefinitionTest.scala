@@ -37,6 +37,20 @@ class DefinitionTest {
       .definition(m13 to m14, List(m3 to m4))
   }
 
+  @Test def classDefinitionDifferentWorkspace: Unit = {
+    val w0 = Workspace.withSources(
+      code"""class ${m1}Foo${m2}"""
+    )
+
+    val w1 = Workspace.dependingOn(w0).withSources(
+      code"""class Bar { new ${m3}Foo${m4} }"""
+    )
+
+    withWorkspaces(w0, w1)
+      .definition(m1 to m2, List(m1 to m2))
+      .definition(m3 to m4, List(m1 to m2))
+  }
+
   @Test def valDefinition0: Unit = {
     withSources(
       code"class Foo { val ${m1}x$m2 = 0; ${m3}x$m4 }",
