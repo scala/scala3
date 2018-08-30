@@ -281,4 +281,51 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
     }
   }
+
+    // Testing that a is not boxed
+    @Test def i4522 = {
+    val source = """class Foo {
+                  |  def fun: Int = {
+                  |    var a = 10
+                  |    rewrite def f(arg: => Unit) = {
+                  |      a += 1
+                  |      arg
+                  |    }
+                  |
+                  |    f {
+                  |      return a
+                  |    }
+                  |    a
+                  |  }
+                  |}
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "fun")
+      val instructions = instructionsFromMethod(fun)
+      val expected =
+        List(
+          IntOp(BIPUSH, 10)
+          , VarOp(ISTORE, 1)
+          , VarOp(ILOAD, 1)
+          , Op(ICONST_1)
+          , Op(IADD)
+          , VarOp(ISTORE, 1)
+          , VarOp(ILOAD, 1)
+          , Op(IRETURN)
+          , Label(8)
+          , FrameEntry(0, List(), List("java/lang/Throwable"))
+          , Op(ATHROW)
+          , Label(11)
+          , FrameEntry(4, List(), List("java/lang/Throwable"))
+          , Op(ATHROW)
+        )
+        assert(instructions == expected,
+          "`f` was not properly inlined in `fun`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
 }
