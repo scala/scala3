@@ -381,7 +381,7 @@ class DottyLanguageServer extends LanguageServer
     val uriTrees = driver.openedTrees(uri)
 
     val defs = Interactive.namedTrees(uriTrees, includeReferences = false, _ => true)
-    defs.map(d => symbolInfo(d.tree.symbol, d.namePos)).asJava
+    defs.map(d => JEither.forLeft(symbolInfo(d.tree.symbol, d.namePos))).asJava
   }
 
   override def symbol(params: WorkspaceSymbolParams) = computeAsync { cancelToken =>
