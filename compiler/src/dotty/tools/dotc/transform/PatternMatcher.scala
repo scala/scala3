@@ -910,5 +910,62 @@ object PatternMatcher {
       checkSwitch(tree, result)
       Labeled(resultLabel, result)
     }
+
+
+    /** Evaluate pattern match to a precise type, if possible, and return NoType otherwise. */
+    def evaluateMatch(tree: Match, evalBoolType: Type => Either[Type, Boolean]): Option[Type] = {
+      val plan = matchPlan(tree)
+      patmatch.println(i"Plan for $tree: ${show(plan)}")
+      val result = evaluate(plan, evalBoolType)
+      patmatch.println(i"Plan evaluation: $result")
+      result
+    }
+
+    private def evaluate(plan0: Plan, evalBoolType: Type => Either[Type, Boolean]): Option[Type] = {
+      assert(ctx.isDependent)
+
+      def nextPlan(label: Symbol): Plan = {
+        def rec(label: Symbol, cur: Plan, next: Option[Plan]): Option[Plan] = cur match {
+          case LabeledPlan(`label`, _) => next
+          case LabeledPlan(_, expr)    => rec(label, expr, next)
+          case SeqPlan(head, tail)     => rec(label, head, Some(tail)) orElse rec(label, tail, next)
+          case LetPlan(_, body)        => rec(label, body, next)
+          case TestPlan(_, _, _, ons)  => rec(label, ons, next)
+          case ReturnPlan(_)           => None
+          case ResultPlan(_)           => None
+        }
+        rec(label, plan0, None).get
+      }
+
+      def evalTest(testPlan: TestPlan): Option[Boolean] = testPlan match {
+        case TestPlan(test, scrut, _, _) =>
+          test match {
+            case TypeTest(tpt) => Normalize.erasedTypeTest(scrut.tpe, tpt.tpe)  // FIXME: unsound
+            case NonNullTest   => Some(false)
+            case _             => evalBoolType(emitCondition(testPlan).tpe).toOption
+          }
+      }
+
+      @tailrec def evalPlan(plan: Plan, nexts: List[Plan]): Option[Type] =
+        plan match {
+          case LetPlan(sym, body)       => evalPlan(body, nexts)
+          case LabeledPlan(label, expr) => evalPlan(expr, nexts)
+          case SeqPlan(head, tail)      => evalPlan(head, tail :: nexts)
+          case ReturnPlan(label)        => evalPlan(nextPlan(label), nexts)
+          case ResultPlan(tree)         => Some(tree.tpe)
+          case plan: TestPlan           =>
+            evalTest(plan) match {
+              case None        => None
+              case Some(true)  => evalPlan(plan.onSuccess, nexts)
+              case Some(false) =>
+                nexts match {
+                  case head :: tail => evalPlan(head, tail)
+                  case _            => throw new AssertionError("Malformed Plan")
+                }
+            }
+        }
+
+      evalPlan(plan0, Nil)
+    }
   }
 }

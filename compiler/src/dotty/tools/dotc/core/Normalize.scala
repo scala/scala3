@@ -12,6 +12,7 @@ import Symbols._
 import Types._
 import reporting.trace
 import reporting.diagnostic.Message
+import transform.PatternMatcher
 import typer.Inferencing._
 import typer.ErrorReporting.errorType
 import typer.ForceDegree
@@ -22,6 +23,23 @@ import scala.annotation.internal.sharable
 
 object Normalize {
   @sharable var track = true
+
+  // actual.isInstanceOf[testedTp], where actualTp and testedTp are erased
+  private def typeTest(actualTp: Type, testedTp: Type)(implicit ctx: Context): Option[Boolean] = {
+    val actualCls = actualTp.classSymbol
+    val testedCls = testedTp.classSymbol
+    if (!actualCls.isClass || !testedCls.isClass)         None
+    else if (!isFullyDefined(actualTp, ForceDegree.none)) None // Approximating for now... // TODO: does this even make sense on erased types?
+    else if (!isFullyDefined(testedTp, ForceDegree.none)) None
+    else if (actualTp.derivesFrom(testedCls))             Some(true)
+    else if (testedTp.derivesFrom(actualCls))             None
+    else                                                  Some(false)
+  }
+
+  def erasedTypeTest(actualTp: Type, testedType: Type)(implicit ctx: Context): Option[Boolean] = {
+    import TypeErasure.erasure
+    typeTest(erasure(actualTp), erasure(testedType))
+  }
 }
 
 private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
@@ -107,17 +125,11 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
 
   private def asType(b: Boolean) = ConstantType(Constants.Constant(b))
 
-  // actual.isInstanceOf[testedTp], where actualTp and testedTp are erased
-  private def typeTest(actualTp: Type, testedTp: Type): Option[Boolean] = {
-    val actualCls = actualTp.classSymbol
-    val testedCls = testedTp.classSymbol
-    if (!actualCls.isClass || !testedCls.isClass)         None
-    else if (!isFullyDefined(actualTp, ForceDegree.none)) None // Approximating for now... // TODO: does this even make sense on erased types?
-    else if (!isFullyDefined(testedTp, ForceDegree.none)) None
-    else if (actualTp.derivesFrom(testedCls))             Some(true)
-    else if (testedTp.derivesFrom(actualCls))             None
-    else                                                  Some(false)
-  }
+  private def normalizeBoolType(tp: Type): Either[Type, Boolean] =
+    apply(tp) match {
+      case ConstantType(c) if c.tag == Constants.BooleanTag => Right(c.value.asInstanceOf[Boolean])
+      case tp1 => Left(tp1)
+    }
 
   /** The body type of dependent method `sym` if the body itself is not currently being type-checked,
     * error otherwise.
@@ -177,9 +189,8 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
           NotApplicable
       }
       else if (realApplication && ((fnSym eq defn.Any_isInstanceOf) || (fnSym eq defn.Any_asInstanceOf))) {
-        import TypeErasure.erasure
         assertOneArg(argss)
-        val isSubTypeOpt = typeTest(erasure(fn.prefix), erasure(argss.head.head))
+        val isSubTypeOpt = Normalize.erasedTypeTest(fn.prefix, argss.head.head)
         if (fnSym eq defn.Any_isInstanceOf)
           isSubTypeOpt map asType getOrElse Stuck(tp)
         else
@@ -226,16 +237,15 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
       Stuck(tp)
 
     case tp @ TypeOf.If(cond, thenb, elseb) =>
-      apply(cond) match {
-        case ConstantType(c) if c.tag == Constants.BooleanTag =>
-          if (c.value.asInstanceOf[Boolean]) apply(thenb)
-          else                               apply(elseb)
-        case cond1 =>
-          Stuck( TypeOf.If.derived(tp)(cond1, thenb, elseb) )
+      normalizeBoolType(cond) match {
+        case Right(true)  => apply(thenb)
+        case Right(false) => apply(elseb)
+        case Left(cond1)  => Stuck( TypeOf.If.derived(tp)(cond1, thenb, elseb) )
       }
 
     case tp @ TypeOf.Match(selector, cases) =>
-      tp  // TODO
+      new PatternMatcher.Translator(NoType, null)(ctx.enterTypeOf())
+        .evaluateMatch(tp.tree.asInstanceOf[Match], normalizeBoolType).getOrElse(Stuck(tp))
 
     case tp =>
       mapOver(tp) match {

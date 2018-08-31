@@ -585,9 +585,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
     override def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = {
+      @tailrec
+      def sameCases(trees: List[CaseDef], trees1: List[CaseDef]): Boolean = {
+        if (trees.isEmpty) trees1.isEmpty
+        else if (trees1.isEmpty) trees.isEmpty
+        else {
+          val cd = trees.head
+          val cd1 = trees1.head
+          (cd.pat.tpe eq cd1.pat.tpe) && (cd.guard.tpe eq cd1.guard.tpe) && (cd.body.tpe eq cd1.body.tpe) &&
+            sameCases(trees.tail, trees1.tail)
+        }
+      }
+
       val tree1 = untpd.cpy.Match(tree)(selector, cases)
       tree match {
-        case tree: Match if (selector.tpe eq tree.selector.tpe) && sameTypes(cases, tree.cases) => tree1.withTypeUnchecked(tree.tpe)
+        case tree: Match if (selector.tpe eq tree.selector.tpe) && sameCases(cases, tree.cases) => tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, cases)
       }
     }
@@ -1022,7 +1034,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   @tailrec
   def sameTypes(trees: List[tpd.Tree], trees1: List[tpd.Tree]): Boolean = {
-    if (trees.isEmpty) trees.isEmpty
+    if (trees.isEmpty) trees1.isEmpty
     else if (trees1.isEmpty) trees.isEmpty
     else (trees.head.tpe eq trees1.head.tpe) && sameTypes(trees.tail, trees1.tail)
   }

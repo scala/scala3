@@ -4029,6 +4029,7 @@ object Types {
                 }
               case nil => args2.isEmpty
             }
+          // FIXME: compareArgs is incorrect for Match. Add compareCaseDef.
           (this.tree, that.tree) match {
             case (t1: Apply, t2: Apply) =>
               (t1.fun.tpe eql t2.fun.tpe) && compareArgs(t1.args, t2.args)
@@ -4836,7 +4837,13 @@ object Types {
 
       case tp: TypeOf =>
         @tailrec def foldTrees(x: T, ts: List[Tree]): T = ts match {
-          case t :: ts1 => foldTrees(apply(x, t.tpe), ts1)
+          case t :: ts1 => foldTrees(this(x, t.tpe), ts1)
+          case nil => x
+        }
+
+        @tailrec def foldCases(x: T, ts: List[CaseDef]): T = ts match {
+          case Trees.CaseDef(pat, guard, body) :: ts1 =>
+            foldCases(this(this(this(x, pat.tpe), guard.tpe), body.tpe), ts1)
           case nil => x
         }
 
@@ -4848,7 +4855,7 @@ object Types {
           case tree: If =>
             this(this(this(x, tree.cond.tpe), tree.thenp.tpe), tree.elsep.tpe)
           case tree: Match =>
-            foldTrees(this(x, tree.selector.tpe), tree.cases)
+            foldCases(this(x, tree.selector.tpe), tree.cases)
           case tree =>
             throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
         }
