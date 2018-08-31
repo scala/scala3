@@ -250,7 +250,7 @@ object Erasure {
       def unwrap(tycon: TypeRef) =
         ref(evt2u(tycon.typeSymbol.asClass)).appliedTo(tree)
 
-      assert(!pt.isInstanceOf[SingletonType], pt)
+//      assert(!pt.isInstanceOf[SingletonType], pt)  // FIXME
       if (pt isRef defn.UnitClass) unbox(tree, pt)
       else (tree.tpe.widen, pt) match {
         case (JavaArrayType(treeElem), JavaArrayType(ptElem))
