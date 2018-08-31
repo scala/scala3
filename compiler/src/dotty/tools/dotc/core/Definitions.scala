@@ -971,8 +971,16 @@ class Definitions {
       name.length > prefix.length &&
       name.drop(prefix.length).forall(_.isDigit))
 
-  def isBottomClass(cls: Symbol) = cls == NothingClass
-  def isBottomType(tp: Type) = tp.derivesFrom(NothingClass)
+  def isBottomClass(cls: Symbol) = {
+    // After erasure, reference types become nullable again.
+    if (ctx.phaseId <= ctx.erasurePhase.id) cls == NothingClass
+    else cls == NothingClass || cls == NullClass
+  }
+  def isBottomType(tp: Type) = {
+    // After erasure, reference types become nullable again.
+    if (ctx.phaseId <= ctx.erasurePhase.id) tp.derivesFrom(NothingClass)
+    else tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
+  }
 
   /** Is a function class.
    *   - FunctionN for N >= 0
