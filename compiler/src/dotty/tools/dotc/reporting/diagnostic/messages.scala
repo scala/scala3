@@ -2126,4 +2126,10 @@ object messages {
     override def msg: String = hl"""normal case class cannot extend an enum. case $cls in ${cls.owner} is extending enum ${parent.name}."""
     override def explanation: String = ""
   }
+
+  case class EnumCannotBeLazy(enumCls: String)(implicit ctx: Context) extends Message(EnumCannotBeLazyID) {
+    override def kind: String = "Syntax"
+    override def msg: String = hl"""enum $enumCls cannot be declared lazy."""
+    override def explanation: String = ""
+  }
 }

@@ -36,6 +36,20 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         assertEquals("<empty>", cls.owner.name.show)
       }
 
+  @Test def enumIsDeclaredLazy =
+    checkMessagesAfter(RefChecks.name) {
+      """
+        |lazy enum Foo
+      """.stripMargin
+    }
+      .expect { (ictx, messages) ⇒
+        implicit val ctx: Context = ictx
+        assertMessageCount(1, messages)
+        val errorMsg = messages.head
+        val EnumCannotBeLazy(enumName) :: Nil = messages
+        assertEquals("Foo", enumName)
+      }
+
   @Test def typeMismatch =
     checkMessagesAfter(FrontEnd.name) {
       """

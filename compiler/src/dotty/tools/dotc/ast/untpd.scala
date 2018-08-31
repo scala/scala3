@@ -206,6 +206,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
     def isEnumCase = isEnum && is(Case)
     def isEnumClass = isEnum && !is(Case)
+    def isLazyEnum = is(Lazy) && isEnum
   }
 
   @sharable val EmptyModifiers: Modifiers = new Modifiers()
