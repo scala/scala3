@@ -32,7 +32,7 @@ class ReplTest private (out: ByteArrayOutputStream) extends ReplDriver(
     storedOutput()
 
   def fromInitialState[A](op: State => A): A =
-    op(initState)
+    op(initialState)
 
   implicit class TestingState(state: State) {
     def andThen[A](op: State => A): A = op(state)
