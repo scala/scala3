@@ -236,6 +236,12 @@ object Types {
         }
       }
 
+    /** Is this type exactly Null (no vars, aliases, refinements etc allowed)? */
+    def isNullType(implicit ctx: Context): Boolean = this match {
+      case tp: TypeRef => tp.symbol eq defn.NullClass
+      case _ => false
+    }
+
     /** Is this type exactly Nothing (no vars, aliases, refinements etc allowed)? */
     def isBottomType(implicit ctx: Context): Boolean = this match {
       case tp: TypeRef => tp.symbol eq defn.NothingClass
