@@ -1082,28 +1082,6 @@ class ClassfileParser(
       getExternalName(in.getChar(start + 1))
     }
 
-    /** Return a name and a type at the given index.
-     */
-    private def getNameAndType(index: Int, ownerTpe: Type)(implicit ctx: Context): (Name, Type) = {
-      if (index <= 0 || len <= index) errorBadIndex(index)
-      var p = values(index).asInstanceOf[(Name, Type)]
-      if (p eq null) {
-        val start = starts(index)
-        if (in.buf(start).toInt != CONSTANT_NAMEANDTYPE) errorBadTag(start)
-        val name = getName(in.getChar(start + 1).toInt)
-        var tpe  = getType(in.getChar(start + 3).toInt)
-        // fix the return type, which is blindly set to the class currently parsed
-        if (name == nme.CONSTRUCTOR)
-          tpe match {
-            case tp: MethodType =>
-              tp.derivedLambdaType(tp.paramNames, tp.paramInfos, ownerTpe)
-          }
-        p = (name, tpe)
-        values(index) = p
-      }
-      p
-    }
-
     /** Return the type of a class constant entry. Since
      *  arrays are considered to be class types, they might
      *  appear as entries in 'newarray' or 'cast' opcodes.
