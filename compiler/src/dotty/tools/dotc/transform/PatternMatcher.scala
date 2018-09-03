@@ -457,6 +457,12 @@ object PatternMatcher {
             apply(initializer(plan.sym))
           plan
         }
+        override def apply(plan: SeqPlan): Plan = {
+          apply(plan.head)
+          if (canFallThrough(plan.head))
+            apply(plan.tail)
+          plan
+        }
       }
       refCounter(plan)
       refCounter.count
@@ -564,8 +570,10 @@ object PatternMatcher {
       new MergeTests()(plan)
     }
 
-    /** Inline let-bound trees that are referenced only once.
-     *  Drop all variables that are not referenced anymore after this.
+    /** Inline let-bound trees that are referenced only once and eliminate dead code.
+     *
+     *  - Drop all variables that are not referenced anymore after inlining.
+     *  - Drop the `tail` of `SeqPlan`s whose `head` cannot fall through.
      */
     private def inlineVars(plan: Plan): Plan = {
       val refCount = varRefCount(plan)
@@ -594,6 +602,18 @@ object PatternMatcher {
           else {
             initializer(plan.sym) = apply(initializer(plan.sym))
             plan.body = apply(plan.body)
+            plan
+          }
+        }
+        override def apply(plan: SeqPlan): Plan = {
+          val newHead = apply(plan.head)
+          if (!canFallThrough(newHead)) {
+            // If the head cannot fall through, the tail is dead code
+            newHead
+          }
+          else {
+            plan.head = newHead
+            plan.tail = apply(plan.tail)
             plan
           }
         }
