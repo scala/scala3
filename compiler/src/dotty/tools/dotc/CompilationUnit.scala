@@ -10,6 +10,8 @@ import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.SymUtils._
 
+import java.util.UUID
+
 class CompilationUnit(val source: SourceFile) {
 
   override def toString = source.toString
@@ -18,10 +20,13 @@ class CompilationUnit(val source: SourceFile) {
 
   var tpdTree: tpd.Tree = tpd.EmptyTree
 
-  def isJava = source.file.name.endsWith(".java")
+  def isJava: Boolean = source.file.name.endsWith(".java")
 
   /** Pickled TASTY binaries, indexed by class. */
   var pickled: Map[ClassSymbol, Array[Byte]] = Map()
+
+  /** UUID of the pickled TASTY, indexed by class. */
+  var tastyUUID: Map[ClassSymbol, UUID] = Map()
 
   /** Will be reset to `true` if `untpdTree` contains `Quote` trees. The information
    *  is used in phase ReifyQuotes in order to avoid traversing a quote-less tree.

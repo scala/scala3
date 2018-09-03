@@ -13,6 +13,7 @@ import Symbols._
 import Flags.Module
 import reporting.ThrowingReporter
 import collection.mutable
+import NameOps._
 
 object Pickler {
   val name = "pickler"
@@ -64,17 +65,29 @@ class Pickler extends Phase {
         new CommentPickler(pickler, treePkl.buf.addrOfTree).pickleComment(tree)
 
       // other pickle sections go here.
-      val pickled = pickler.assembleParts()
-      unit.pickled += (cls -> pickled)
+      val (uuid, pickled) = pickler.assembleParts()
 
-      def rawBytes = // not needed right now, but useful to print raw format.
-        pickled.iterator.grouped(10).toList.zipWithIndex.map {
-          case (row, i) => s"${i}0: ${row.mkString(" ")}"
-        }
+      if (ctx.settings.YemitTastyInClass.value) {
+        unit.pickled += (cls -> pickled)
+      } else {
+        unit.tastyUUID += (cls -> uuid)
+        val parts = cls.fullName.stripModuleClassSuffix.mangledString.split('.')
+        val name = parts.last
+        val tastyDirectory = parts.init.foldLeft(ctx.settings.outputDir.value)((dir, part) => dir.subdirectoryNamed(part))
+        val tastyFile = tastyDirectory.fileNamed(s"${name}.tasty")
+        val tastyOutput = tastyFile.output
+        try tastyOutput.write(pickled)
+        finally tastyOutput.close()
+      }
+
+//      def rawBytes = // not needed right now, but useful to print raw format.
+//        pickled.iterator.grouped(10).toList.zipWithIndex.map {
+//          case (row, i) => s"${i}0: ${row.mkString(" ")}"
+//        }
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
       if (pickling ne noPrinter) {
         println(i"**** pickled info of $cls")
-        new TastyPrinter(pickler.assembleParts()).printContents()
+        new TastyPrinter(pickled).printContents()
       }
     }
   }
@@ -97,7 +110,8 @@ class Pickler extends Phase {
     ctx.initialize()
     val unpicklers =
       for ((cls, pickler) <- picklers) yield {
-        val unpickler = new DottyUnpickler(pickler.assembleParts())
+        val bytes = pickler.assembleParts()._2
+        val unpickler = new DottyUnpickler(bytes)
         unpickler.enter(roots = Set.empty)
         cls -> unpickler
       }

@@ -92,7 +92,7 @@ object PickledQuotes {
     if (pickling ne noPrinter)
       println(i"**** pickling quote of \n${tree.show}")
 
-    val pickled = pickler.assembleParts()
+    val pickled = pickler.assembleParts()._2
 
     if (pickling ne noPrinter)
       new TastyPrinter(pickled).printContents()
