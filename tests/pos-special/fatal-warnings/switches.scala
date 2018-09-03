@@ -23,6 +23,16 @@ class Test {
     case 14 => 4
     case _ => 5
   }
+
+  def test4(x: Byte): Boolean = (x: @switch) match {
+    case 1 | 2 | 3 => true
+    case _ => false
+  }
+
+  def test5(x: Short): Boolean = (x: @switch) match {
+    case 1 | 2 | 3 => true
+    case _ => false
+  }
 }
 
 object Test {

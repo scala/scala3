@@ -25,24 +25,25 @@ object Main {
   }
 
   // has a guard, but since SI-5830 that's ok
-  def succ_guard(c: Char) = (c: @switch) match {
-    case 'A' | 'B' | 'C'  => true
-    case x if x == 'A'    => true
-    case _                => false
-  }
+  // PENDING: #5070
+  // def succ_guard(c: Char) = (c: @switch) match {
+  //   case 'A' | 'B' | 'C'  => true
+  //   case x if x == 'A'    => true
+  //   case _                => false
+  // }
 
   // throwing in @unchecked on the next two to make sure
   // multiple annotations are processed correctly
 
   // thinks a val in an object is constant... so naive
-  def fail2(c: Char) = (c: @switch @unchecked) match {
+  def fail1(c: Char) = (c: @switch @unchecked) match { // error: Could not emit switch for @switch annotated match
     case 'A'        => true
     case Other.C1   => true
     case _          => false
   }
 
   // more naivete
-  def fail3(c: Char) = (c: @unchecked @switch) match {
+  def fail2(c: Char) = (c: @unchecked @switch) match { // error: Could not emit switch for @switch annotated match
     case 'A'        => true
     case Other.C3   => true
     case _          => false
@@ -62,5 +63,15 @@ object Main {
     case  4 => 50
     case 5|6|7|8 => 100
     case _  => -1
+  }
+
+  def fail3(x: Any) = (x: @switch) match { // error: Could not emit switch for @switch annotated match
+    case 1 | 2 | 3 => true
+    case _ => false
+  }
+
+  def fail4(x: AnyVal) = (x: @switch) match { // error: Could not emit switch for @switch annotated match
+    case 1 | 2 | 3 => true
+    case _ => false
   }
 }
