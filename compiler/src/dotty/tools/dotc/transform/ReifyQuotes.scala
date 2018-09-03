@@ -237,7 +237,14 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     def levelOK(sym: Symbol)(implicit ctx: Context): Boolean = levelOf.get(sym) match {
       case Some(l) =>
         l == level ||
-        level == -1 && sym == defn.TastyTasty_macroContext
+        level == -1 && (
+          sym == defn.TastyTasty_macroContext ||
+          // here we assume that Splicer.canBeSpliced was true before going to level -1,
+          // this implies that all non-inline arguments are quoted and that the following two cases are checked
+          // on inline parameters or type parameters.
+          sym.is(Param) ||
+          sym.isClass // reference to this in inline methods
+        )
       case None =>
         !sym.is(Param) || levelOK(sym.owner)
     }
@@ -584,9 +591,10 @@ class ReifyQuotes extends MacroTransformWithImplicits {
                   """Malformed macro.
                     |
                     |Expected the ~ to be at the top of the RHS:
-                    |  inline def foo(x: X, ..., y: Y): Int = ~impl(x, ... '(y))
+                    |  inline def foo(inline x: X, ..., y: Y): Int = ~impl(x, ... '(y))
                     |
-                    |The contents of the splice must call a static method. Arguments must be quoted or inlined.
+                    | * The contents of the splice must call a static method
+                    | * All arguments must be quoted or inline
                   """.stripMargin, tree.rhs.pos)
                 EmptyTree
             }
