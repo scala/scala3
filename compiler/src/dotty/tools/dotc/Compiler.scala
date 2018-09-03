@@ -111,7 +111,7 @@ class Compiler {
     List(new Flatten,                // Lift all inner classes to package scope
          new RenameLifted,           // Renames lifted classes to local numbering scheme
          new TransformWildcards,     // Replace wildcards with default values
-         new MoveStatics,            // Move static methods to companion classes
+         new MoveStatics,            // Move static methods from companion to the class itself
          new ExpandPrivate,          // Widen private definitions accessed from nested classes
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic

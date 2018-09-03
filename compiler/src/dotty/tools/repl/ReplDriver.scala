@@ -44,12 +44,12 @@ import scala.collection.JavaConverters._
  *
  *  @param objectIndex the index of the next wrapper
  *  @param valIndex    the index of next value binding for free expressions
- *  @param imports     the list of user defined imports
+ *  @param imports     a map from object index to the list of user defined imports
  *  @param context     the latest compiler context
  */
 case class State(objectIndex: Int,
                  valIndex: Int,
-                 imports: List[untpd.Import],
+                 imports: Map[Int, List[tpd.Import]],
                  context: Context)
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
@@ -64,14 +64,14 @@ class ReplDriver(settings: Array[String],
 
   /** Create a fresh and initialized context with IDE mode enabled */
   private[this] def initialCtx = {
-    val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive).addMode(Mode.ReadComments)
+    val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive | Mode.ReadComments)
     val ictx = setup(settings, rootCtx)._2
     ictx.base.initialize()(ictx)
     ictx
   }
 
   /** the initial, empty state of the REPL session */
-  final def initialState = State(0, 0, Nil, rootCtx)
+  final def initialState = State(0, 0, Map.empty, rootCtx)
 
   /** Reset state of repl to the initial state
    *
@@ -144,7 +144,7 @@ class ReplDriver(settings: Array[String],
     Console.withOut(out) { Console.withErr(out) { op } }
 
   private def newRun(state: State) = {
-    val run = compiler.newRun(rootCtx.fresh.setReporter(newStoreReporter), state.objectIndex)
+    val run = compiler.newRun(rootCtx.fresh.setReporter(newStoreReporter), state)
     state.copy(context = run.runContext)
   }
 
@@ -177,9 +177,6 @@ class ReplDriver(settings: Array[String],
       .getOrElse(Nil)
   }
 
-  private def extractImports(trees: List[untpd.Tree]): List[untpd.Import] =
-    trees.collect { case imp: untpd.Import => imp }
-
   private def interpret(res: ParseResult)(implicit state: State): State = {
     val newState = res match {
       case parsed: Parsed if parsed.trees.nonEmpty =>
@@ -209,6 +206,9 @@ class ReplDriver(settings: Array[String],
       case _ => nme.NO_NAME
     }
 
+    def extractTopLevelImports(ctx: Context): List[tpd.Import] =
+      ctx.phases.collectFirst { case phase: CollectTopLevelImports => phase.imports }.get
+
     implicit val state = newRun(istate)
     compiler
       .compile(parsed)
@@ -217,8 +217,11 @@ class ReplDriver(settings: Array[String],
         {
           case (unit: CompilationUnit, newState: State) =>
             val newestWrapper = extractNewestWrapper(unit.untpdTree)
-            val newImports = newState.imports ++ extractImports(parsed.trees)
-            val newStateWithImports = newState.copy(imports = newImports)
+            val newImports = extractTopLevelImports(newState.context)
+            var allImports = newState.imports
+            if (newImports.nonEmpty)
+              allImports += (newState.objectIndex -> newImports)
+            val newStateWithImports = newState.copy(imports = allImports)
 
             val warnings = newState.context.reporter.removeBufferedMessages(newState.context)
             displayErrors(warnings)(newState) // display warnings
@@ -315,7 +318,10 @@ class ReplDriver(settings: Array[String],
       initialState
 
     case Imports =>
-      state.imports.foreach(i => out.println(SyntaxHighlighting(i.show(state.context))))
+      for {
+        objectIndex <- 1 to state.objectIndex
+        imp <- state.imports.getOrElse(objectIndex, Nil)
+      } out.println(imp.show(state.context))
       state
 
     case Load(path) =>

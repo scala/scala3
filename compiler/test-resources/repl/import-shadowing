@@ -1,0 +1,27 @@
+scala> object A { def f = 1 }
+// defined object A
+
+scala> object B { def f = 2 }
+// defined object B
+
+scala> import A._
+
+scala> val x0 = f
+val x0: Int = 1
+
+scala> import B._
+
+scala> val x1 = f
+val x1: Int = 2
+
+scala> def f = 3
+def f: Int
+
+scala> val x2 = f
+val x2: Int = 3
+
+scala> def f = 4; import A._
+def f: Int
+
+scala> val x3 = f
+val x3: Int = 1

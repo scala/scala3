@@ -12,7 +12,6 @@ import dotc.core.Contexts.Context
  *  compiler pipeline.
  */
 private[repl] class REPLFrontEnd extends FrontEnd {
-  override def phaseName = "frontend"
 
   override def isRunnable(implicit ctx: Context) = true
 
