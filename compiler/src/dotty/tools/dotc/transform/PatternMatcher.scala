@@ -265,8 +265,13 @@ object PatternMatcher {
       def unapplySeqPlan(getResult: Symbol, args: List[Tree]): Plan = args.lastOption match {
         case Some(VarArgPattern(arg)) =>
           val matchRemaining =
-            if (args.length == 1)
-              patternPlan(getResult, arg, onSuccess)
+            if (args.length == 1) {
+              val toSeq = ref(getResult)
+                .select(defn.Seq_toSeq.matchingMember(getResult.info))
+              letAbstract(toSeq) { toSeqResult =>
+                patternPlan(toSeqResult, arg, onSuccess)
+              }
+            }
             else {
               val dropped = ref(getResult)
                 .select(defn.Seq_drop.matchingMember(getResult.info))
