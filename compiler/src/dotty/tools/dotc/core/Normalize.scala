@@ -4,6 +4,7 @@ package core
 
 import config.Config
 import Contexts._
+import Constants.{Constant, BooleanTag}
 import Decorators._
 import Denotations._
 import Flags._
@@ -148,6 +149,7 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
   }
 
   /** Normalizes applications of various kinds:
+    *  - If `fn` is Boolean's && or ||, constant-folding with short-circuit evaluation.
     *  - If `fn` is a unary or binary method of a value class, perform constant-folding.
     *  - If `fn` is a dependent method, beta-reduce.
     *  - If `tp` is `pre.isInstanceOf[T]` and `pre: S`, evaluate to the outcome of `erased(S) <: erased(T)`.
@@ -166,7 +168,21 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
     val fnSym = fn.symbol
     // TODO: Replace `Stable` requirement by some other special case
     if (fnSym.is(Method)) {
-      if (defn.ScalaValueClasses().contains(fnSym.owner) || fnSym == defn.Any_== || fnSym == defn.Any_!=) {
+      if (fnSym == defn.Boolean_&& || fnSym == defn.Boolean_||) {
+        fn.prefix match {
+          case c: ConstantType =>
+            argss match {
+              case List(List(arg)) =>
+                if (fnSym == defn.Boolean_&&)
+                  if (c.value.booleanValue) arg else c
+                else
+                  if (c.value.booleanValue) c else arg
+              case _ => NoType
+            }
+          case _ => NoType
+        }
+      }
+      else if (defn.ScalaValueClasses().contains(fnSym.owner) || fnSym == defn.Any_== || fnSym == defn.Any_!=) {
         argss match {
           case List() if realApplication => ConstFold(fn)
           case List(List(arg))           => ConstFold(fn, arg)
