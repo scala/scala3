@@ -381,7 +381,9 @@ class ReifyQuotes extends MacroTransformWithImplicits {
                 //  - the call's position
                 // in the call field of an Inlined node.
                 // The trace has enough info to completely reconstruct positions.
-                val callTrace = Ident(ctx.owner.topLevelClass.typeRef).withPos(body1.pos)
+                //
+                // This is the same trace that is inserted in PostTyper.transform
+                val callTrace = Ident(ctx.owner.topLevelClass.typeRef).withPos(quote.pos)
                 Inlined(callTrace, Nil, body1)
               }
             pickledQuote(body2, splices, body.tpe, isType).withPos(quote.pos)
@@ -435,7 +437,8 @@ class ReifyQuotes extends MacroTransformWithImplicits {
       }
       else if (level == 1) {
         val (body1, quotes) = nested(isQuote = false).split(splice.qualifier)
-        makeHole(body1, quotes, splice.tpe).withPos(splice.pos)
+        val hole = makeHole(body1, quotes, splice.tpe).withPos(splice.pos)
+        if (splice.isType) hole else Inlined(EmptyTree, Nil, hole)
       }
       else if (enclosingInlineds.nonEmpty) { // level 0 in an inlined call
         val spliceCtx = ctx.outer // drop the last `inlineContext`
