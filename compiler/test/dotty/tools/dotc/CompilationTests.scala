@@ -183,7 +183,8 @@ class CompilationTests extends ParallelTesting {
   @Test def pickling: Unit = {
     implicit val testGroup: TestGroup = TestGroup("testPickling")
     compileFilesInDir("tests/new", picklingOptions) +
-    compileFilesInDir("tests/pickling", picklingOptions)
+    compileFilesInDir("tests/pos", picklingOptions, FileFilter.exclude(TestSources.posTestPicklingBlacklisted)) +
+    compileFilesInDir("tests/run", picklingOptions, FileFilter.exclude(TestSources.runTestPicklingBlacklisted))
   }.checkCompile()
 
   /** The purpose of this test is two-fold, being able to compile dotty
