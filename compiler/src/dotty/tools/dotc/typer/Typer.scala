@@ -85,8 +85,7 @@ class Typer extends Namer
                with Implicits
                with Inferencing
                with Dynamic
-               with Checking
-               with Docstrings {
+               with Checking {
 
   import Typer._
   import tpd.{cpy => _, _}
@@ -1567,11 +1566,6 @@ class Typer extends Namer
       val dummy = localDummy(cls, impl)
       val body1 = addAccessorDefs(cls,
         typedStats(impl.body, dummy)(ctx.inClassContext(self1.symbol)))
-
-      // Expand comments and type usecases if `-Ycook-comments` is set.
-      if (ctx.settings.YcookComments.value) {
-        cookComments(cls :: body1.map(_.symbol), self1.symbol)(ctx.localContext(cdef, cls).setNewScope)
-      }
 
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)

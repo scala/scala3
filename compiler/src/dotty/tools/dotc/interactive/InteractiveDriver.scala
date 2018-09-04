@@ -33,6 +33,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   private val myInitCtx: Context = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive).addMode(Mode.ReadComments)
     rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
+    rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     val ctx = setup(settings.toArray, rootCtx)._2
     ctx.initialize()(ctx)
     ctx

@@ -3,7 +3,7 @@ package model
 
 import comment._
 import references._
-import dotty.tools.dotc.core.Symbols.{ Symbol, NoSymbol }
+import dotty.tools.dotc.core.Symbols.Symbol
 
 trait Entity { entity =>
   def symbol: Symbol
@@ -17,7 +17,7 @@ trait Entity { entity =>
 
   def kind: String
 
-  def parent: Entity
+  def parent: Option[Entity]
 
   def annotations: List[String]
 
@@ -35,16 +35,7 @@ trait Entity { entity =>
   }
 
   /** All parents from package level i.e. Package to Object to Member etc */
-  def parents: List[Entity] = parent match {
-    case NonEntity => Nil
-    case e => e :: e.parents
-  }
-
-  /** Applies `f` to entity if != `NonEntity` */
-  def fold[A](nonEntity: A)(f: Entity => A) = this match {
-    case NonEntity => nonEntity
-    case x => f(x)
-  }
+  def parents: List[Entity] = this :: this.parents
 }
 
 trait SuperTypes {
@@ -134,31 +125,3 @@ trait Def extends Entity with Modifiers with TypeParams with ReturnValue with Im
 }
 
 trait Val extends Entity with Modifiers with ReturnValue with ImplicitlyAddedEntity
-
-sealed trait NonEntity extends Package with TypeAlias with Class with CaseClass with Trait with Object with Def with Val {
-  override val kind = ""
-  val annotations = Nil
-  val name = ""
-  val symbol = NoSymbol
-  val comment = None
-  val path = Nil
-  val parent = NonEntity
-  val constructors = Nil
-  val paramLists = Nil
-  val implicitlyAddedFrom = None
-  val members = Nil
-  val modifiers = Nil
-  val reference = EmptyReference
-  val returnValue = EmptyReference
-  val superTypes = Nil
-  val typeParams = Nil
-  val traitParams = Nil
-  val alias = None
-  val companionPath = Nil
-  def companionPath_=(xs: List[String]) = ()
-}
-
-final case object NonEntity extends NonEntity
-final case object RootEntity extends NonEntity {
-  override val name = "root"
-}

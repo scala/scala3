@@ -146,6 +146,20 @@ class DocTests extends ReplTest {
       assertEquals("/** doc0 */", doc("O.foo.bar"))
     }
 
+  @Test def docIsCooked =
+    eval(
+      """/**
+        | * An object
+        | * @define Variable some-value
+        | */
+        |object Foo {
+        |  /** Expansion: $Variable */
+        |  def hello = "world"
+        |}
+      """.stripMargin).andThen { implicit s =>
+      assertEquals("/** Expansion: some-value */", doc("Foo.hello"))
+    }
+
   private def eval(code: String): State =
     fromInitialState { implicit s => run(code) }
 

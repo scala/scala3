@@ -10,7 +10,10 @@ import model.internal._
 import model.references._
 import util.syntax._
 
-class UsecaseTest extends DottyDocTest {
+class UsecaseFromSourceTest extends UsecaseBase with CheckFromSource
+class UsecaseFromTastyTest extends UsecaseBase with CheckFromTasty
+
+abstract class UsecaseBase extends DottyDocTest {
   @Test def simpleUsecase = {
     val source = new SourceFile(
       "DefWithUseCase.scala",
@@ -27,7 +30,9 @@ class UsecaseTest extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Test"
+
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
@@ -71,7 +76,9 @@ class UsecaseTest extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Test"
+
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
@@ -116,7 +123,9 @@ class UsecaseTest extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Test"
+
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
@@ -164,7 +173,9 @@ class UsecaseTest extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Iterable"
+
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
       case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
         val List(map: Def) = trt.members
@@ -207,13 +218,15 @@ class UsecaseTest extends DottyDocTest {
       """.stripMargin
     )
 
-    checkSources(source :: Nil) { packages =>
+    val className = "scala.Iterable"
+
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
       case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
         val List(map: Def) = trt.members
         assert(map.comment.isDefined, "Lost comment in transformations")
 
-        val docstr = ctx.docbase.docstring(map.symbol).get.raw
+        val docstr = ctx.docbase.docstring(map.symbol).get.expandedBody.get
         assert(
           !docstr.contains("@usecase"),
           s"Comment should not contain usecase after stripping, but was:\n$docstr"
@@ -222,13 +235,41 @@ class UsecaseTest extends DottyDocTest {
     }
   }
 
+  @Test def multipleUseCases: Unit = {
+    val source = new SourceFile(
+      name = "MultipleUseCases.scala",
+      """
+        |package scala
+        |
+        |trait Test {
+        |  /** A first method
+        |   *  @usecase def foo(x: Int): Int
+        |   *  @usecase def foo(x: Double): Double
+        |   */
+        |   def foo(x: String): Unit
+        |}
+      """.stripMargin
+    )
+
+    val className = "scala.Test"
+
+    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+      packages("scala") match {
+        case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
+          val List(foo0: Def, foo1: Def) = trt.members
+          assertEquals(TypeReference("Int", NoLink("Int", "scala.Int"), Nil), foo0.returnValue)
+          assertEquals(TypeReference("Double", NoLink("Double", "scala.Double"), Nil), foo1.returnValue)
+      }
+    }
+  }
+
   @Test def checkIterator =
-    checkFiles("../scala2-library/src/library/scala/collection/Iterator.scala" :: Nil) { _ =>
+    checkFiles("../scala2-library/src/library/scala/collection/Iterator.scala" :: Nil) { case _ =>
       // success if typer throws no errors! :)
     }
 
   @Test def checkIterableLike =
-    checkFiles("../scala2-library/src/library/scala/collection/IterableLike.scala" :: Nil) { _ =>
+    checkFiles("../scala2-library/src/library/scala/collection/IterableLike.scala" :: Nil) { case _ =>
       // success if typer throws no errors! :)
     }
 }

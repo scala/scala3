@@ -22,6 +22,7 @@ import core._, core.Decorators.{sourcePos => _, _}
 import Comments._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.MessageContainer
+import typer.Typer
 import util._
 import interactive._, interactive.InteractiveDriver._
 import Interactive.Include
@@ -490,7 +491,7 @@ object DottyLanguageServer {
     val markup = new lsp4j.MarkupContent
     markup.setKind("markdown")
     markup.setValue((
-      comment.map(_.raw) match {
+      comment.flatMap(_.expandedBody) match {
         case Some(comment) =>
           s"""```scala
              |$typeInfo

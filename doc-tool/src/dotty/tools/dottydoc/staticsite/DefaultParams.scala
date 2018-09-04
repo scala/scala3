@@ -2,9 +2,9 @@ package dotty.tools
 package dottydoc
 package staticsite
 
-import model.{ Entity, Package, NonEntity }
+import model.{Entity, Package}
 
-import java.util.{ HashMap, List => JList, Map => JMap }
+import java.util.{HashMap, List => JList, Map => JMap}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import scala.collection.JavaConverters._
@@ -16,7 +16,7 @@ case class DefaultParams(
   page: PageInfo,
   site: SiteInfo,
   sidebar: Sidebar,
-  entity: Entity = NonEntity
+  entity: Option[Entity] = None
 ) {
   import model.JavaConverters._
 
@@ -46,8 +46,8 @@ case class DefaultParams(
       "sidebar" -> sidebar.toMap
     )
     val entityMap = entity match {
-      case NonEntity => Map.empty
-      case _ => Map(
+      case None => Map.empty
+      case Some(entity) => Map(
         "entity" -> entity.asJava
       )
     }
@@ -61,7 +61,7 @@ case class DefaultParams(
   def withUrl(url: String): DefaultParams =
     copy(page = PageInfo(url))
 
-  def withEntity(e: model.Entity) = copy(entity = e)
+  def withEntity(e: Option[model.Entity]) = copy(entity = e)
 
   def withDate(d: String) = copy(page = PageInfo(page.url, d))
 }
@@ -88,7 +88,7 @@ case class Sidebar(titles: List[Title]) {
 object Sidebar {
   def apply(map: HashMap[String, AnyRef]): Option[Sidebar] = Option(map.get("sidebar")).map {
     case list: JList[JMap[String, AnyRef]] @unchecked if !list.isEmpty =>
-      new Sidebar(list.asScala.map(Title.apply).flatMap(x => x).toList)
+      new Sidebar(list.asScala.map(Title.apply).flatten.toList)
     case _ => Sidebar.empty
   }
 
@@ -96,12 +96,11 @@ object Sidebar {
 }
 
 case class Title(title: String, url: Option[String], subsection: List[Title], description: Option[String]) {
-  import model.JavaConverters._
   def toMap: JMap[String, _] = Map(
     "title" -> title,
-    "url" -> url.getOrElse(null), // ugh, Java
+    "url" -> url.orNull, // ugh, Java
     "subsection" -> subsection.map(_.toMap).asJava,
-    "description" -> description.getOrElse(null)
+    "description" -> description.orNull
   ).asJava
 }
 
@@ -120,7 +119,7 @@ object Title {
 
     val subsection = Option(map.get("subsection")).collect {
       case xs: JList[JMap[String, AnyRef]] @unchecked =>
-        xs.asScala.map(Title.apply).toList.flatMap(x => x)
+        xs.asScala.map(Title.apply).toList.flatten
     }.getOrElse(Nil)
 
     title.map {

@@ -4,7 +4,6 @@ package core
 
 import dotc.CompilationUnit
 import dotc.core.Contexts.Context
-import dotc.core.Comments.ContextDocstrings
 import dotc.core.Phases.Phase
 import model._
 import model.internal._
@@ -14,8 +13,8 @@ import util.traversing._
 object transform {
   /**
    * The idea behind DocMiniTransformations is to fuse transformations to the
-   * doc AST, much like `MiniPhase` in dotty core - but in a much more
-   * simple implementation
+   * doc AST, much like `MiniPhase` in dotty core - but in a much simpler
+   * implementation
    *
    * Usage
    * -----
@@ -24,7 +23,7 @@ object transform {
    *
    * ```
    * override def transformDef(implicit ctx: Context) = {
-   *   case x if shouldTransform(x) => x.copy(newValue = ...)
+   *   case x if shouldTransform(x) => x.copy(newValue = ...) :: Nil
    * }
    * ```
    *
@@ -43,7 +42,7 @@ object transform {
    *
    * Deleting nodes in the AST
    * -------------------------
-   * To delete a node in the AST, simply return `NonEntity` from transforming method
+   * To delete a node in the AST, simply return an empty list from transforming method
    */
   trait DocMiniTransformations extends Phase {
     def transformations: List[DocMiniPhase]
@@ -52,32 +51,29 @@ object transform {
       for {
         pack <- rootPackages(ctx.docbase.packages)
         transformed =  performPackageTransform(pack)
-      } yield ctx.docbase.packagesMutable(pack.name) = transformed
-
-      ctx.docbase.packagesMutable.foreach { case (key, value) =>
-        if (value eq NonEntity) ctx.docbase.packagesMutable -= key
+      } {
+        ctx.docbase.packagesMutable -= pack.name
+        transformed.foreach(p => ctx.docbase.packagesMutable += p.name -> p)
       }
 
       units
     }
 
-    private def performPackageTransform(pack: Package)(implicit ctx: Context): Package = {
-      def transformEntity[E <: Entity](e: E, f: DocMiniPhase => E => E)(createNew: E => E): Entity = {
-        val transformedEntity = transformations.foldLeft(e) { case (oldE, transf) =>
-          f(transf)(oldE)
+    private def performPackageTransform(pack: Package)(implicit ctx: Context): List[Package] = {
+      def transformEntity[E <: Entity](e: E, f: DocMiniPhase => E => List[E])(createNew: E => E): List[Entity] = {
+        val transformEntities = transformations.foldLeft(e :: Nil) { case (oldEs, transf) =>
+          oldEs.flatMap(f(transf))
         }
-
-        if (transformedEntity eq NonEntity) NonEntity
-        else createNew(transformedEntity)
+        transformEntities.map(createNew)
       }
 
-      def traverse(ent: Entity): Entity = ent match {
+      def traverse(ent: Entity): List[Entity] = ent match {
         case p: Package => transformEntity(p, _.packageTransformation) { p =>
           val newPackage = PackageImpl(
             p.symbol,
             p.annotations,
             p.name,
-            p.members.map(traverse).filterNot(_ eq NonEntity),
+            p.members.flatMap(traverse),
             p.path,
             p.superTypes,
             p.comment,
@@ -107,7 +103,7 @@ object transform {
             cls.symbol,
             cls.annotations,
             cls.name,
-            cls.members.map(traverse).filterNot(_ eq NonEntity),
+            cls.members.flatMap(traverse),
             cls.modifiers,
             cls.path,
             cls.typeParams,
@@ -123,7 +119,7 @@ object transform {
             cc.symbol,
             cc.annotations,
             cc.name,
-            cc.members.map(traverse).filterNot(_ eq NonEntity),
+            cc.members.flatMap(traverse),
             cc.modifiers,
             cc.path,
             cc.typeParams,
@@ -139,7 +135,7 @@ object transform {
             trt.symbol,
             trt.annotations,
             trt.name,
-            trt.members.map(traverse).filterNot(_ eq NonEntity),
+            trt.members.flatMap(traverse),
             trt.modifiers,
             trt.path,
             trt.typeParams,
@@ -155,7 +151,7 @@ object transform {
             obj.symbol,
             obj.annotations,
             obj.name,
-            obj.members.map(traverse).filterNot(_ eq NonEntity),
+            obj.members.flatMap(traverse),
             obj.modifiers,
             obj.path,
             obj.superTypes,
@@ -195,7 +191,7 @@ object transform {
         }
       }
 
-      traverse(pack).asInstanceOf[Package]
+      traverse(pack).asInstanceOf[List[Package]]
     }
 
     override def run(implicit ctx: Context): Unit = ()
@@ -213,18 +209,18 @@ object transform {
   }
 
   trait DocMiniPhase { phase =>
-    private def identity[E]: PartialFunction[E, E] = {
-      case id: E @unchecked => id
+    private def identity[E]: PartialFunction[E, List[E]] = {
+      case id: E @unchecked => id :: Nil
     }
 
-    def transformPackage(implicit ctx: Context): PartialFunction[Package, Package] = identity
-    def transformTypeAlias(implicit ctx: Context): PartialFunction[TypeAlias, TypeAlias] = identity
-    def transformClass(implicit ctx: Context): PartialFunction[Class, Class] = identity
-    def transformCaseClass(implicit ctx: Context): PartialFunction[CaseClass, CaseClass] = identity
-    def transformTrait(implicit ctx: Context): PartialFunction[Trait, Trait] = identity
-    def transformObject(implicit ctx: Context): PartialFunction[Object, Object] = identity
-    def transformDef(implicit ctx: Context): PartialFunction[Def, Def] = identity
-    def transformVal(implicit ctx: Context): PartialFunction[Val, Val] = identity
+    def transformPackage(implicit ctx: Context): PartialFunction[Package, List[Package]] = identity
+    def transformTypeAlias(implicit ctx: Context): PartialFunction[TypeAlias, List[TypeAlias]] = identity
+    def transformClass(implicit ctx: Context): PartialFunction[Class, List[Class]] = identity
+    def transformCaseClass(implicit ctx: Context): PartialFunction[CaseClass, List[CaseClass]] = identity
+    def transformTrait(implicit ctx: Context): PartialFunction[Trait, List[Trait]] = identity
+    def transformObject(implicit ctx: Context): PartialFunction[Object, List[Object]] = identity
+    def transformDef(implicit ctx: Context): PartialFunction[Def, List[Def]] = identity
+    def transformVal(implicit ctx: Context): PartialFunction[Val, List[Val]] = identity
 
     private[transform] def packageTransformation(p: Package)(implicit ctx: Context) = (transformPackage orElse identity)(p)
     private[transform] def typeAliasTransformation(alias: TypeAlias)(implicit ctx: Context) = (transformTypeAlias orElse identity)(alias)

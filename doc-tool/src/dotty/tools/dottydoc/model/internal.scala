@@ -15,7 +15,7 @@ object internal {
     var path: List[String],
     var superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None,
-    var parent: Entity = NonEntity
+    var parent: Option[Entity] = None
   ) extends Package
 
   object EmptyPackage {
@@ -33,7 +33,7 @@ object internal {
     alias: Option[Reference],
     typeParams: List[String] = Nil,
     var comment: Option[Comment] = None,
-    var parent: Entity = NonEntity
+    var parent: Option[Entity] = None
   ) extends TypeAlias
 
   final case class ClassImpl(
@@ -48,7 +48,7 @@ object internal {
     superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None,
     var companionPath: List[String] = Nil,
-    var parent: Entity = NonEntity
+    var parent: Option[Entity] = None
   ) extends Class
 
   final case class CaseClassImpl(
@@ -63,7 +63,7 @@ object internal {
     superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None,
     var companionPath: List[String] = Nil,
-    var parent: Entity = NonEntity
+    var parent: Option[Entity] = None
   ) extends CaseClass
 
   final case class TraitImpl(
@@ -78,7 +78,7 @@ object internal {
     superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None,
     var companionPath: List[String] = Nil,
-    var parent: Entity = NonEntity
+    var parent: Option[Entity] = None
   ) extends Trait
 
   final case class ObjectImpl(
@@ -91,7 +91,7 @@ object internal {
     superTypes: List[MaterializableLink] = Nil,
     var comment: Option[Comment] = None,
     var companionPath: List[String] = Nil,
-    var parent: Entity = NonEntity
+    var parent: Option[Entity] = None
   ) extends Object {
     def modifiers: List[String] = mods.filterNot(_ == "final")
   }
@@ -107,7 +107,7 @@ object internal {
     paramLists: List[ParamList] = Nil,
     var comment: Option[Comment] = None,
     implicitlyAddedFrom: Option[Reference] = None,
-    var parent: Entity = NonEntity
+    var parent: Option[Entity] = None
   ) extends Def
 
   final case class ValImpl(
@@ -120,7 +120,7 @@ object internal {
     kind: String,
     var comment: Option[Comment] = None,
     implicitlyAddedFrom: Option[Reference] = None,
-    var parent: Entity = NonEntity
+    var parent: Option[Entity] = None
   ) extends Val
 
   final case class ParamListImpl(

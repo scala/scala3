@@ -3,7 +3,7 @@ package dotc
 package core
 
 import ast.{ untpd, tpd }
-import Decorators._, Symbols._, Contexts._, Flags.EmptyFlags
+import Decorators._, Symbols._, Contexts._
 import util.SourceFile
 import util.Positions._
 import util.CommentParsing._
@@ -33,41 +33,58 @@ object Comments {
     def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
 
     def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
-      doc.map(d => _docstrings.update(sym, d))
+      doc.foreach(d => _docstrings.update(sym, d))
   }
 
-  /** A `Comment` contains the unformatted docstring as well as a position
-    *
-    * The `Comment` contains functionality to create versions of itself without
-    * `@usecase` sections as well as functionality to map the `raw` docstring
-    */
-  abstract case class Comment(pos: Position, raw: String) { self =>
-    def isExpanded: Boolean
+  /**
+   * A `Comment` contains the unformatted docstring, it's position and potentially more
+   * information that is populated when the comment is "cooked".
+   *
+   * @param pos      The position of this `Comment`.
+   * @param raw      The raw comment, as seen in the source code, without any expansion.
+   * @param expanded If this comment has been expanded, it's expansion, otherwise `None`.
+   * @param usecases The usecases for this comment.
+   */
+  final case class Comment(pos: Position, raw: String, expanded: Option[String], usecases: List[UseCase]) {
 
-    def usecases: List[UseCase]
+    /** Has this comment been cooked or expanded? */
+    def isExpanded: Boolean = expanded.isDefined
 
-    val isDocComment = raw.startsWith("/**")
+    /** The body of this comment, without the `@usecase` and `@define` sections, after expansion. */
+    lazy val expandedBody: Option[String] =
+      expanded.map(removeSections(_, "@usecase", "@define"))
 
-    def expand(f: String => String): Comment = new Comment(pos, f(raw)) {
-      val isExpanded = true
-      val usecases = self.usecases
+    val isDocComment = Comment.isDocComment(raw)
+
+    /**
+     * Expands this comment by giving its content to `f`, and then parsing the `@usecase` sections.
+     * Typically, `f` will take care of expanding the variables.
+     *
+     * @param f The expansion function.
+     * @return The expanded comment, with the `usecases` populated.
+     */
+    def expand(f: String => String)(implicit ctx: Context): Comment = {
+      val expandedComment = f(raw)
+      val useCases = Comment.parseUsecases(expandedComment, pos)
+      Comment(pos, raw, Some(expandedComment), useCases)
     }
+  }
 
-    def withUsecases(implicit ctx: Context): Comment = new Comment(pos, stripUsecases) {
-      val isExpanded = self.isExpanded
-      val usecases = parseUsecases
-    }
+  object Comment {
 
-    private[this] lazy val stripUsecases: String =
-      removeSections(raw, "@usecase", "@define")
+    def isDocComment(comment: String): Boolean = comment.startsWith("/**")
 
-    private[this] def parseUsecases(implicit ctx: Context): List[UseCase] =
-      if (!raw.startsWith("/**"))
-        List.empty[UseCase]
-      else
-        tagIndex(raw)
-        .filter { startsWithTag(raw, _, "@usecase") }
-        .map { case (start, end) => decomposeUseCase(start, end) }
+    def apply(pos: Position, raw: String): Comment =
+      Comment(pos, raw, None, Nil)
+
+    private def parseUsecases(expandedComment: String, pos: Position)(implicit ctx: Context): List[UseCase] =
+      if (!isDocComment(expandedComment)) {
+        Nil
+      } else {
+        tagIndex(expandedComment)
+          .filter { startsWithTag(expandedComment, _, "@usecase") }
+          .map { case (start, end) => decomposeUseCase(expandedComment, pos, start, end) }
+      }
 
     /** Turns a usecase section into a UseCase, with code changed to:
      *  {{{
@@ -77,7 +94,7 @@ object Comments {
      *  def foo: A = ???
      *  }}}
      */
-    private[this] def decomposeUseCase(start: Int, end: Int)(implicit ctx: Context): UseCase = {
+    private[this] def decomposeUseCase(body: String, pos: Position, start: Int, end: Int)(implicit ctx: Context): UseCase = {
       def subPos(start: Int, end: Int) =
         if (pos == NoPosition) NoPosition
         else {
@@ -86,49 +103,34 @@ object Comments {
           pos withStart start1 withPoint start1 withEnd end1
         }
 
-      val codeStart    = skipWhitespace(raw, start + "@usecase".length)
-      val codeEnd      = skipToEol(raw, codeStart)
-      val code         = raw.substring(codeStart, codeEnd) + " = ???"
-      val codePos      = subPos(codeStart, codeEnd)
-      val commentStart = skipLineLead(raw, codeEnd + 1) min end
-      val commentStr   = "/** " + raw.substring(commentStart, end) + "*/"
-      val commentPos   = subPos(commentStart, end)
+      val codeStart = skipWhitespace(body, start + "@usecase".length)
+      val codeEnd   = skipToEol(body, codeStart)
+      val code      = body.substring(codeStart, codeEnd) + " = ???"
+      val codePos   = subPos(codeStart, codeEnd)
 
-      UseCase(Comment(commentPos, commentStr), code, codePos)
+      UseCase(code, codePos)
     }
   }
 
-  object Comment {
-    def apply(pos: Position, raw: String, expanded: Boolean = false, usc: List[UseCase] = Nil): Comment =
-      new Comment(pos, raw) {
-        val isExpanded = expanded
-        val usecases = usc
-      }
-  }
-
-  abstract case class UseCase(comment: Comment, code: String, codePos: Position) {
-    /** Set by typer */
-    var tpdCode: tpd.DefDef = _
-
-    def untpdCode: untpd.Tree
+  final case class UseCase(code: String, codePos: Position, untpdCode: untpd.Tree, tpdCode: Option[tpd.DefDef]) {
+    def typed(tpdCode: tpd.DefDef): UseCase = copy(tpdCode = Some(tpdCode))
   }
 
   object UseCase {
-    def apply(comment: Comment, code: String, codePos: Position)(implicit ctx: Context) =
-      new UseCase(comment, code, codePos) {
-        val untpdCode = {
-          val tree = new Parser(new SourceFile("<usecase>", code)).localDef(codePos.start)
-
-          tree match {
-            case tree: untpd.DefDef =>
-              val newName = ctx.freshNames.newName(tree.name, NameKinds.DocArtifactName)
-              untpd.DefDef(newName, tree.tparams, tree.vparamss, tree.tpt, tree.rhs)
-            case _ =>
-              ctx.error(ProperDefinitionNotFound(), codePos)
-              tree
-          }
+    def apply(code: String, codePos: Position)(implicit ctx: Context): UseCase = {
+      val tree = {
+        val tree = new Parser(new SourceFile("<usecase>", code)).localDef(codePos.start)
+        tree match {
+          case tree: untpd.DefDef =>
+            val newName = ctx.freshNames.newName(tree.name, NameKinds.DocArtifactName)
+            tree.copy(name = newName)
+          case _ =>
+            ctx.error(ProperDefinitionNotFound(), codePos)
+            tree
         }
       }
+      UseCase(code, codePos, tree, None)
+    }
   }
 
   /**

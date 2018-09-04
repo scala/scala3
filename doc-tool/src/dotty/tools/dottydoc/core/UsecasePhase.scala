@@ -13,7 +13,7 @@ import util.syntax._
 
 class UsecasePhase extends DocMiniPhase {
   private def defdefToDef(d: tpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
-    val name = d.name.show.split("\\$").head // UseCase defs get $pos appended to their names
+    val name = d.name.show.split("\\$").head
     DefImpl(
       sym,
       annotations(sym),
@@ -27,6 +27,12 @@ class UsecasePhase extends DocMiniPhase {
   }
 
   override def transformDef(implicit ctx: Context) = { case df: DefImpl =>
-    ctx.docbase.docstring(df.symbol).flatMap(_.usecases.headOption.map(_.tpdCode)).map(defdefToDef(_, df.symbol)).getOrElse(df)
+    val defdefs =
+      ctx.docbase.docstring(df.symbol)
+        .map(_.usecases.flatMap(_.tpdCode))
+        .getOrElse(Nil)
+
+    if (defdefs.isEmpty) df :: Nil
+    else defdefs.map(defdefToDef(_, df.symbol))
   }
 }

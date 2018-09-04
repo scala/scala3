@@ -5,7 +5,7 @@ package staticsite
 import java.nio.file.{ Files, FileSystems }
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.io.{ File => JFile, OutputStreamWriter, BufferedWriter, ByteArrayInputStream }
-import java.util.{ List => JList, Map => JMap, Arrays }
+import java.util.{ List => JList, Arrays }
 import java.nio.file.Path
 import java.nio.charset.StandardCharsets
 
@@ -29,11 +29,11 @@ import scala.collection.mutable.ArrayBuffer
 import util.syntax._
 
 case class Site(
-  val root: JFile,
-  val projectTitle: String,
-  val projectVersion: String,
-  val projectUrl: String,
-  val documentation: Map[String, Package]
+  root: JFile,
+  projectTitle: String,
+  projectVersion: String,
+  projectUrl: String,
+  documentation: Map[String, Package]
 ) extends ResourceFinder {
   /** Documentation serialized to java maps */
   private val docs: JList[_] = {
@@ -162,7 +162,6 @@ case class Site(
 
   /** Generate default params included in each page */
   private def defaultParams(pageLocation: JFile, additionalDepth: Int = 0): DefaultParams = {
-    import scala.collection.JavaConverters._
     val pathFromRoot = stripRoot(pageLocation)
     val baseUrl: String = {
       val rootLen = root.getAbsolutePath.split('/').length
@@ -200,7 +199,7 @@ case class Site(
           else (".html", 0)
 
         val target = mkdirs(fs.getPath(outDir.getAbsolutePath +  "/api/" + e.path.mkString("/") + suffix))
-        val params = defaultParams(target.toFile, -1).withPosts(blogInfo).withEntity(e).toMap
+        val params = defaultParams(target.toFile, -1).withPosts(blogInfo).withEntity(Some(e)).toMap
         val page = new HtmlPage("_layouts/api-page.html", layouts("api-page").content, params, includes)
 
         render(page).foreach { rendered =>
@@ -422,7 +421,6 @@ case class Site(
   def render(page: Page, params: Map[String, AnyRef] = Map.empty)(implicit ctx: Context): Option[String] =
     page.yaml.get("layout").flatMap(xs => layouts.get(xs.toString)) match {
       case Some(layout) if page.html.isDefined =>
-        import scala.collection.JavaConverters._
         val newParams = page.params ++ params ++ Map("page" -> page.yaml) ++ Map("content" -> page.html.get)
         val expandedTemplate = new HtmlPage(layout.path, layout.content, newParams, includes)
         render(expandedTemplate, params)

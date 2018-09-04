@@ -89,4 +89,16 @@ class HoverTest {
       .hover(m6 to m7, hoverContent("Int"))
   }
 
+  @Test def documentationIsCooked: Unit = {
+    code"""/** A class: $$Variable
+          | *  @define Variable Test
+          | */
+          |class ${m1}Foo${m2}
+          |/** $$Variable */
+          |class ${m3}Bar${m4} extends Foo
+        """.withSource
+      .hover(m1 to m2, hoverContent("Foo", "/** A class: Test\n *  */"))
+      .hover(m3 to m4, hoverContent("Bar", "/** Test */"))
+  }
+
 }
