@@ -102,9 +102,12 @@ class TestServer(testFolder: Path, workspaces: List[Workspace]) {
     path.toAbsolutePath
   }
 
-  private def dependencyClasspath(workspace: Workspace) =
+  private def dependencyClasspath(workspace: Workspace): Seq[String] = {
     BuildInfo.ideTestsDependencyClasspath.map(_.getAbsolutePath) ++
-      workspace.dependsOn.map(w => classDirectory(w, wipe = false).toString)
+      workspace.dependsOn.flatMap { dep =>
+        classDirectory(dep, wipe = false).toString +: dependencyClasspath(dep)
+      }
+  }.distinct
 
   private def sourceDirectory(workspace: Workspace, wipe: Boolean): Path = {
     val path = TestFile.sourceDir.resolve(workspace.name).toAbsolutePath
