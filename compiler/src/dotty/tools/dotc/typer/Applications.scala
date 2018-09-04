@@ -100,7 +100,7 @@ object Applications {
       Nil
     }
 
-    def vaidUnapplySeqType(getTp: Type): Boolean = {
+    def validUnapplySeqType(getTp: Type): Boolean = {
       def superType(elemTp: Type) = {
         val tps = List(
           MethodType(List("len".toTermName))(_ => defn.IntType :: Nil, _ => defn.IntType),
@@ -112,15 +112,15 @@ object Applications {
         RefinedType.make(defn.AnyType, names, tps)
       }
       getTp <:< superType(WildcardType)  && {
-        val seqArg = getTp.member(nme.toSeq).info.elemType.hiBound
+        val seqArg = extractorMemberType(getTp, nme.toSeq).elemType.hiBound
         getTp <:< superType(seqArg)
       }
     }
 
     if (unapplyName == nme.unapplySeq) {
       if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
-      else if (isGetMatch(unapplyResult, pos) && vaidUnapplySeqType(getTp)) {
-        val seqArg = getTp.member(nme.apply).info.finalResultType
+      else if (isGetMatch(unapplyResult, pos) && validUnapplySeqType(getTp)) {
+        val seqArg = extractorMemberType(getTp, nme.toSeq).elemType.hiBound
         if (seqArg.exists) args.map(Function.const(seqArg))
         else fail
       }
