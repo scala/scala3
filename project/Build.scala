@@ -289,10 +289,14 @@ object Build {
         compilerJar = jars.find(_.getName.startsWith("dotty-compiler_2.12")).get
       }
 
-      // All compiler dependencies except the library
-      val otherDependencies = dependencyClasspath.in(`dotty-compiler`, Compile).value
-        .filterNot(_.get(artifact.key).exists(_.name == "dotty-library"))
-        .map(_.data)
+      // All dotty-doc's and compiler's dependencies except the library.
+      // (we get the compiler's dependencies because dottydoc depends on the compiler)
+      val otherDependencies = {
+        val excluded = Set("dotty-library", "dotty-compiler")
+        fullClasspath.in(`dotty-doc`, Compile).value
+          .filterNot(_.get(artifact.key).exists(a => excluded.contains(a.name)))
+          .map(_.data)
+      }
 
       val allJars = libraryJar :: compilerJar :: otherDependencies.toList
       val classLoader = state.value.classLoaderCache(allJars)
@@ -785,7 +789,7 @@ object Build {
     description := "sbt compiler bridge for Dotty",
     resolvers += Resolver.typesafeIvyRepo("releases"), // For org.scala-sbt:api
     libraryDependencies ++= Seq(
-      Dependencies.compilerInterface(sbtVersion.value),
+      Dependencies.compilerInterface(sbtVersion.value) % Provided,
       (Dependencies.zincApiinfo(sbtVersion.value) % Test).withDottyCompat(scalaVersion.value)
     ),
     // The sources should be published with crossPaths := false since they
@@ -1269,6 +1273,7 @@ object Build {
     def asDottySbtBridge(implicit mode: Mode): Project = project.withCommonSettings.
       disablePlugins(ScriptedPlugin).
       dependsOn(dottyCompiler % Provided).
+      dependsOn(dottyDoc % Provided).
       settings(dottySbtBridgeSettings)
 
     def asDottyBench(implicit mode: Mode): Project = project.withCommonSettings.
