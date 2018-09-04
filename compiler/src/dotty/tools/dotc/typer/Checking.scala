@@ -407,6 +407,7 @@ object Checking {
     checkCombination(Final, Sealed)
     checkCombination(Private, Protected)
     checkCombination(Abstract, Override)
+    checkCombination(Private, Override)
     checkCombination(Lazy, Transparent)
     checkCombination(Rewrite, Transparent)
     checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
