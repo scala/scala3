@@ -15,6 +15,7 @@ import typer.Implicits.SearchFailureType
 import scala.collection.mutable
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
+import dotty.tools.dotc.typer.Inliner
 import dotty.tools.dotc.util.SourcePosition
 
 
@@ -375,17 +376,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           if (level == 0 && !ctx.inRewriteMethod) {
             val body2 =
               if (body1.isType) body1
-              else {
-                // Leave only a call trace consisting of
-                //  - a reference to the top-level class from which the call was inlined,
-                //  - the call's position
-                // in the call field of an Inlined node.
-                // The trace has enough info to completely reconstruct positions.
-                //
-                // This is the same trace that is inserted in PostTyper.transform
-                val callTrace = Ident(ctx.owner.topLevelClass.typeRef).withPos(quote.pos)
-                Inlined(callTrace, Nil, body1)
-              }
+              else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.pos), Nil, body1)
             pickledQuote(body2, splices, body.tpe, isType).withPos(quote.pos)
           }
           else {
