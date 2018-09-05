@@ -115,8 +115,9 @@ object Applications {
       def names2 = List(nme.length, nme.apply, nme.drop, nme.toSeq)
       def types2 = List(lengthTp, applyTp(elemTp), dropTp(elemTp), toSeqTp(elemTp))
 
-      val valid = getTp <:< RefinedType.make(defn.AnyType, names1, types1) ||
-                  getTp <:< RefinedType.make(defn.AnyType, names2, types2)
+      val valid = elemTp.exists &&
+                  (getTp <:< RefinedType.make(defn.AnyType, names1, types1) ||
+                  getTp <:< RefinedType.make(defn.AnyType, names2, types2))
 
       if (valid) elemTp else NoType
     }
