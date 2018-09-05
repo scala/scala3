@@ -401,4 +401,49 @@ class TestBCode extends DottyBytecodeTest {
     }
   }
 
+  @Test def returnThrowInPatternMatch = {
+    val source =
+      """class Test {
+        |  def test(a: Any): Int = {
+        |    a match {
+        |      case _: Test => 1
+        |    }
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn = dir.lookupName("Test.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val method = getMethod(moduleNode, "test")
+
+      val instructions = instructionsFromMethod(method)
+      val expected = List(
+        VarOp(Opcodes.ALOAD, 1),
+        VarOp(Opcodes.ASTORE, 2),
+        VarOp(Opcodes.ALOAD, 2),
+        TypeOp(Opcodes.INSTANCEOF, "Test"),
+        Jump(Opcodes.IFEQ, Label(10)),
+        VarOp(Opcodes.ALOAD, 2),
+        TypeOp(Opcodes.CHECKCAST, "Test"),
+        VarOp(Opcodes.ASTORE, 3),
+        Op(Opcodes.ICONST_1),
+        Jump(Opcodes.GOTO, Label(17)),
+        Label(10),
+        FrameEntry(1, List("java/lang/Object"), List()),
+        TypeOp(Opcodes.NEW, "scala/MatchError"),
+        Op(Opcodes.DUP),
+        VarOp(Opcodes.ALOAD, 2),
+        Invoke(Opcodes.INVOKESPECIAL, "scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false),
+        Op(Opcodes.ATHROW),
+        Label(17),
+        FrameEntry(0, List("Test", "java/lang/Object", "java/lang/Object", "Test"), List(1)),
+        Op(Opcodes.IRETURN)
+      )
+      assert(instructions == expected,
+        "`test` was not properly generated\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
 }
