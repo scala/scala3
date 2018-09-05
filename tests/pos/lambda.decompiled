@@ -1,11 +1,7 @@
 /** Decompiled from out/posTestFromTasty/pos/lambda/foo/Foo.class */
 package foo {
   class Foo() {
-    {
-      ((x: scala.Int) => {
-        2
-      })
-    }
+    ((x: scala.Int) => 2)
     val a: scala.Function1[scala.Int, scala.Int] = ((x: scala.Int) => x.*(x))
   }
 }

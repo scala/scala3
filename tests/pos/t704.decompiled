@@ -16,11 +16,8 @@ trait E() extends java.lang.Object with D {
       val x1: scala.AnyRef = E.this.get_xxxx
       scala.Console.println(y)
     }
-
-    {
-      yyyy
-      ()
-    }
+    yyyy
+    ()
   }
 }
 /** Decompiled from out/posTestFromTasty/pos/t704/Go.class */

@@ -30,17 +30,6 @@ class TreeCleaner extends tpd.TreeMap {
     }
 
     super.transform(tree0) match {
-      case Block(Nil, expr1) => expr1
-      case Block(stats1, expr1) =>
-        val flatStats = stats1.flatMap {
-          case Block(stats2, expr2) => stats2 ::: expr2 :: Nil
-          case Literal(Constant(())) => Nil
-          case stat => stat :: Nil
-        }
-        expr1 match {
-          case Block(stats3, expr3) => Block(flatStats ::: stats3, expr3)
-          case expr3 => Block(flatStats, expr3)
-        }
       case tree1: TypeTree => TypeTree(tree1.tpe.subst(aliasesSyms, aliasesTypes))
       case tree1: Ident => aliases.get(tree1.symbol).getOrElse(tree1)
       case tree1 => tree1
