@@ -949,6 +949,7 @@ object Build {
         publishLocal in `dotty-library-bootstrapped`,
         publishLocal in `scala-library`,
         publishLocal in `scala-reflect`,
+        publishLocal in `dotty-doc-bootstrapped`,
         publishLocal in `dotty-bootstrapped` // Needed because sbt currently hardcodes the dotty artifact
       ).evaluated
     )
