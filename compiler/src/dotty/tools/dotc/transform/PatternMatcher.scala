@@ -839,7 +839,8 @@ object PatternMatcher {
               default
           }
         case ResultPlan(tree) =>
-          Return(tree, ref(resultLabel))
+          if (tree.tpe <:< defn.NothingType) tree // For example MatchError
+          else Return(tree, ref(resultLabel))
       }
     }
 
