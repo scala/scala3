@@ -100,29 +100,34 @@ object Applications {
       Nil
     }
 
-    def validUnapplySeqType(getTp: Type): Boolean = {
-      def superType(elemTp: Type) = {
-        val tps = List(
-          MethodType(List("len".toTermName))(_ => defn.IntType :: Nil, _ => defn.IntType),
-          MethodType(List("i".toTermName))(_ => defn.IntType :: Nil, _ => elemTp),
-          MethodType(List("n".toTermName))(_ => defn.IntType :: Nil, _ => defn.SeqType.appliedTo(elemTp)),
-          ExprType(defn.SeqType.appliedTo(elemTp)),
-        )
-        val names = List(nme.lengthCompare, nme.apply, nme.drop, nme.toSeq)
-        RefinedType.make(defn.AnyType, names, tps)
-      }
-      getTp <:< superType(WildcardType)  && {
-        val seqArg = extractorMemberType(getTp, nme.toSeq).elemType.hiBound
-        getTp <:< superType(seqArg)
-      }
+    def unapplySeqTypeElemTp(getTp: Type): Type = {
+      val lengthTp = ExprType(defn.IntType)
+      val lengthCompareTp = MethodType(List("len".toTermName))(_ => defn.IntType :: Nil, _ => defn.IntType)
+      def applyTp(elemTp: Type) = MethodType(List("i".toTermName))(_ => defn.IntType :: Nil, _ => elemTp)
+      def dropTp(elemTp: Type) = MethodType(List("n".toTermName))(_ => defn.IntType :: Nil, _ => defn.SeqType.appliedTo(elemTp))
+      def toSeqTp(elemTp: Type) = ExprType(defn.SeqType.appliedTo(elemTp))
+
+      val elemTp = getTp.member(nme.apply).suchThat(_.info <:< applyTp(WildcardType)).info.resultType
+
+      def names1 = List(nme.lengthCompare, nme.apply, nme.drop, nme.toSeq)
+      def types1 = List(lengthCompareTp, applyTp(elemTp), dropTp(elemTp), toSeqTp(elemTp))
+
+      def names2 = List(nme.length, nme.apply, nme.drop, nme.toSeq)
+      def types2 = List(lengthTp, applyTp(elemTp), dropTp(elemTp), toSeqTp(elemTp))
+
+      val valid = getTp <:< RefinedType.make(defn.AnyType, names1, types1) ||
+                  getTp <:< RefinedType.make(defn.AnyType, names2, types2)
+
+      if (valid) elemTp else NoType
     }
+
+    def validUnapplySeqType(getTp: Type): Boolean = unapplySeqTypeElemTp(getTp).exists
 
     if (unapplyName == nme.unapplySeq) {
       if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
       else if (isGetMatch(unapplyResult, pos) && validUnapplySeqType(getTp)) {
-        val seqArg = extractorMemberType(getTp, nme.toSeq).elemType.hiBound
-        if (seqArg.exists) args.map(Function.const(seqArg))
-        else fail
+        val elemTp = unapplySeqTypeElemTp(getTp)
+        args.map(Function.const(elemTp))
       }
       else fail
     }

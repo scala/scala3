@@ -643,11 +643,18 @@ object PatternMatcher {
         case EqualTest(tree) =>
           tree.equal(scrutinee)
         case LengthTest(len, exact) =>
-          scrutinee
-            .select(defn.Seq_lengthCompare.matchingMember(scrutinee.tpe))
-            .appliedTo(Literal(Constant(len)))
-            .select(if (exact) defn.Int_== else defn.Int_>=)
-            .appliedTo(Literal(Constant(0)))
+          val lengthCompareSym = defn.Seq_lengthCompare.matchingMember(scrutinee.tpe)
+          if (lengthCompareSym.exists)
+            scrutinee
+              .select(defn.Seq_lengthCompare.matchingMember(scrutinee.tpe))
+              .appliedTo(Literal(Constant(len)))
+              .select(if (exact) defn.Int_== else defn.Int_>=)
+              .appliedTo(Literal(Constant(0)))
+          else // try length
+            scrutinee
+              .select(defn.Seq_length.matchingMember(scrutinee.tpe))
+              .select(if (exact) defn.Int_== else defn.Int_>=)
+              .appliedTo(Literal(Constant(len)))
         case TypeTest(tpt) =>
           val expectedTp = tpt.tpe
 
