@@ -406,7 +406,7 @@ class TestBCode extends DottyBytecodeTest {
       """class Test {
         |  def test(a: Any): Int = {
         |    a match {
-        |      case _: Test => 1
+        |      case _: Test => ???
         |    }
         |  }
         |}
@@ -423,22 +423,26 @@ class TestBCode extends DottyBytecodeTest {
         VarOp(Opcodes.ASTORE, 2),
         VarOp(Opcodes.ALOAD, 2),
         TypeOp(Opcodes.INSTANCEOF, "Test"),
-        Jump(Opcodes.IFEQ, Label(10)),
+        Jump(Opcodes.IFEQ, Label(11)),
         VarOp(Opcodes.ALOAD, 2),
         TypeOp(Opcodes.CHECKCAST, "Test"),
         VarOp(Opcodes.ASTORE, 3),
-        Op(Opcodes.ICONST_1),
-        Jump(Opcodes.GOTO, Label(17)),
-        Label(10),
+        Field(Opcodes.GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+        Invoke(Opcodes.INVOKEVIRTUAL, "scala/Predef$", "$qmark$qmark$qmark", "()Lscala/runtime/Nothing$;", false),
+        Op(Opcodes.ATHROW),
+        Label(11),
         FrameEntry(1, List("java/lang/Object"), List()),
         TypeOp(Opcodes.NEW, "scala/MatchError"),
         Op(Opcodes.DUP),
         VarOp(Opcodes.ALOAD, 2),
         Invoke(Opcodes.INVOKESPECIAL, "scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false),
         Op(Opcodes.ATHROW),
-        Label(17),
-        FrameEntry(0, List("Test", "java/lang/Object", "java/lang/Object", "Test"), List(1)),
-        Op(Opcodes.IRETURN)
+        Label(18),
+        FrameEntry(0, List(), List("java/lang/Throwable")),
+        Op(Opcodes.ATHROW),
+        Label(21),
+        FrameEntry(4, List(), List("java/lang/Throwable")),
+        Op(Opcodes.ATHROW)
       )
       assert(instructions == expected,
         "`test` was not properly generated\n" + diffInstructions(instructions, expected))
