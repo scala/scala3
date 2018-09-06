@@ -447,7 +447,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
 
     def issueError() = callValueArgss match {
-      case (msgArg :: Nil) :: Nil =>
+      case (msgArg :: rest) :: Nil =>
         msgArg.tpe match {
           case ConstantType(Constant(msg: String)) =>
             // Usually `error` is called from within a rewrite method. In this
@@ -456,7 +456,18 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             // report bad inputs at the point of call instead of revealing its internals.
             val callToReport = if (enclosingInlineds.nonEmpty) enclosingInlineds.last else call
             val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(_).nonEmpty).next
-            def issueInCtx(implicit ctx: Context) = ctx.error(msg, callToReport.pos)
+            def issueInCtx(implicit ctx: Context) = {
+              def decompose(arg: Tree): String = arg match {
+                case Typed(arg, _) => decompose(arg)
+                case SeqLiteral(elems, _) => elems.map(decompose).mkString(", ")
+                case arg =>
+                  arg.tpe.widenTermRefExpr match {
+                    case ConstantType(Constant(c)) => c.toString
+                    case _ => arg.show
+                  }
+              }
+              ctx.error(s"$msg${rest.map(decompose).mkString(", ")}", callToReport.pos)
+            }
             issueInCtx(ctxToReport)
           case _ =>
         }
