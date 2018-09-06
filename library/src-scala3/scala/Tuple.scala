@@ -98,25 +98,25 @@ object Tuple {
   transparent val $MaxSpecialized = 22
   transparent private val XXL = $MaxSpecialized + 1
 
-  type Head[X <: NonEmptyTuple] = X match {
+  type Head[+X <: NonEmptyTuple] = X match {
     case x *: _ => x
   }
 
-  type Tail[X <: NonEmptyTuple] <: Tuple = X match {
+  type Tail[+X <: NonEmptyTuple] <: Tuple = X match {
     case _ *: xs => xs
   }
 
-  type Concat[X <: Tuple, Y <: Tuple] <: Tuple = X match {
+  type Concat[+X <: Tuple, +Y <: Tuple] <: Tuple = X match {
     case Unit => Y
     case x1 *: xs1 => x1 *: Concat[xs1, Y]
   }
 
-  type Elem[X <: Tuple, N] = (X, N) match {
+  type Elem[+X <: Tuple, +N] = (X, N) match {
     case (x *: xs, 0) => x
     case (x *: xs, S[n1]) => Elem[xs, n1]
   }
 
-  type Size[X] <: Int = X match {
+  type Size[+X] <: Int = X match {
     case Unit => 0
     case x *: xs => S[Size[xs]]
   }
