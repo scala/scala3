@@ -125,8 +125,7 @@ object Applications {
     def validUnapplySeqType(getTp: Type): Boolean = unapplySeqTypeElemTp(getTp).exists
 
     if (unapplyName == nme.unapplySeq) {
-      if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
-      else if (isGetMatch(unapplyResult, pos) && validUnapplySeqType(getTp)) {
+      if (isGetMatch(unapplyResult, pos) && validUnapplySeqType(getTp)) {
         val elemTp = unapplySeqTypeElemTp(getTp)
         args.map(Function.const(elemTp))
       }
