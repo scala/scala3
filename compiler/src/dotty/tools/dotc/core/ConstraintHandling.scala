@@ -251,14 +251,13 @@ trait ConstraintHandling {
     }
   }
 
-  /** The instance type of `param` in the current constraint (which contains `param`).
-   *  If `fromBelow` is true, the instance type is the lub of the parameter's
-   *  lower bounds; otherwise it is the glb of its upper bounds. However,
-   *  a lower bound instantiation can be a singleton type only if the upper bound
-   *  is also a singleton type.
+  /** Widen inferred type `tp` with upper bound `bound`, according to the following rules:
+   *   1. If `tp` is a singleton type, yet `bound` is not a singleton type, nor a subtype
+   *      of `scala.Singleton`, widen `tp`.
+   *   2. If `tp` is a union type, yet upper bound is not a union type,
+   *      approximate the union type from above by an intersection of all common base types.
    */
-  def instanceType(param: TypeParamRef, fromBelow: Boolean): Type = {
-    def upperBound = constraint.fullUpperBound(param)
+  def widenInferred(tp: Type, bound: Type): Type = {
     def isMultiSingleton(tp: Type): Boolean = tp.stripAnnots match {
       case tp: SingletonType => true
       case AndType(tp1, tp2) => isMultiSingleton(tp1) | isMultiSingleton(tp2)
@@ -268,13 +267,6 @@ trait ConstraintHandling {
       case tp: TypeParamRef => isMultiSingleton(bounds(tp).hi)
       case _ => false
     }
-    def isFullyDefined(tp: Type): Boolean = tp match {
-      case tp: TypeVar => tp.isInstantiated && isFullyDefined(tp.instanceOpt)
-      case tp: TypeProxy => isFullyDefined(tp.underlying)
-      case tp: AndType => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
-      case tp: OrType  => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
-      case _ => true
-    }
     def isOrType(tp: Type): Boolean = tp.dealias match {
       case tp: OrType => true
       case tp: RefinedOrRecType => isOrType(tp.parent)
@@ -282,25 +274,25 @@ trait ConstraintHandling {
       case WildcardType(bounds: TypeBounds) => isOrType(bounds.hi)
       case _ => false
     }
+    def widenOr(tp: Type) =
+      if (isOrType(tp) && !isOrType(bound)) tp.widenUnion
+      else tp
+    def widenSingle(tp: Type) =
+      if (isMultiSingleton(tp) && !isMultiSingleton(bound) &&
+          !isSubTypeWhenFrozen(bound, defn.SingletonType)) tp.widen
+      else tp
+    widenOr(widenSingle(tp))
+  }
 
-    // First, solve the constraint.
-    var inst = approximation(param, fromBelow).simplified
-
-    // Then, approximate by (1.) - (3.) and simplify as follows.
-    // 1. If instance is from below and is a singleton type, yet upper bound is
-    // not a singleton type or a subtype of `scala.Singleton`, widen the
-    // instance.
-    if (fromBelow && isMultiSingleton(inst) && !isMultiSingleton(upperBound)
-        && !isSubTypeWhenFrozen(upperBound, defn.SingletonType))
-      inst = inst.widen
-
-    // 2. If instance is from below and is a fully-defined union type, yet upper bound
-    // is not a union type, approximate the union type from above by an intersection
-    // of all common base types.
-    if (fromBelow && isOrType(inst) && !isOrType(upperBound))
-      inst = inst.widenUnion
-
-    inst
+  /** The instance type of `param` in the current constraint (which contains `param`).
+   *  If `fromBelow` is true, the instance type is the lub of the parameter's
+   *  lower bounds; otherwise it is the glb of its upper bounds. However,
+   *  a lower bound instantiation can be a singleton type only if the upper bound
+   *  is also a singleton type.
+   */
+  def instanceType(param: TypeParamRef, fromBelow: Boolean): Type = {
+    val inst = approximation(param, fromBelow).simplified
+    if (fromBelow) widenInferred(inst, constraint.fullUpperBound(param)) else inst
   }
 
   /** Constraint `c1` subsumes constraint `c2`, if under `c2` as constraint we have

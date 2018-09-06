@@ -33,6 +33,7 @@ i4125.scala
 i4167
 i4586.scala
 i4734
+i4758
 implicit-dep.scala
 inline-access-levels
 macro-with-array
@@ -65,6 +66,7 @@ t5504
 t6028
 t6976
 t7264
+t7426.scala
 t7532b
 t8062
 typeclass-encoding2.scala

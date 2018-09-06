@@ -243,12 +243,23 @@ object PrepareInlineable {
             val typedBody =
               if (ctx.reporter.hasErrors) rawBody
               else ctx.compilationUnit.inlineAccessors.makeInlineable(rawBody)
+            if (inlined.isRewriteMethod)
+              checkRewriteMethod(inlined, typedBody)
             val inlineableBody = addReferences(inlined, originalBody, typedBody)
             inlining.println(i"Body to inline for $inlined: $inlineableBody")
             inlineableBody
           })
         }
     }
+  }
+
+  def checkRewriteMethod(inlined: Symbol, body: Tree)(implicit ctx: Context) = {
+    if (ctx.outer.inRewriteMethod)
+      ctx.error(ex"implementation restriction: nested rewrite methods are not supported", inlined.pos)
+    if (inlined.name == nme.unapply && tupleArgs(body).isEmpty)
+      ctx.warning(
+        em"rewrite unapply method can be rewritten only if its right hand side is a tuple (e1, ..., eN)",
+        body.pos)
   }
 
   /** Tweak untyped tree `original` so that all external references are typed
