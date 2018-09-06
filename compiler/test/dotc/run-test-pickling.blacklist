@@ -75,6 +75,7 @@ transparentAccess
 transparentByName.scala
 transparentForeach.scala
 transparentPower
+tuples1.scala
 Tuple.scala
 TupleAbstract.scala
 typelevel-numeric.scala
