@@ -12,6 +12,7 @@ import util.common._
 import Names._
 import NameOps._
 import NameKinds._
+import Constants.Constant
 import Flags._
 import StdNames.tpnme
 import util.Positions.Position
@@ -337,8 +338,8 @@ class TypeApplications(val self: Type) extends AnyVal {
             tl => arg.paramInfos.map(_.subst(arg, tl).bounds),
             tl => arg.resultType.subst(arg, tl)
           )
-        case arg @ TypeAlias(alias) =>
-          arg.derivedTypeAlias(adaptArg(alias))
+        case arg: AliasingBounds =>
+          arg.derivedAlias(adaptArg(arg.alias))
         case arg @ TypeBounds(lo, hi) =>
           arg.derivedTypeBounds(adaptArg(lo), adaptArg(hi))
         case _ =>
@@ -401,16 +402,23 @@ class TypeApplications(val self: Type) extends AnyVal {
         dealiased.derivedAndType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
       case dealiased: OrType =>
         dealiased.derivedOrType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
-      case dealiased: TypeAlias =>
-        dealiased.derivedTypeAlias(dealiased.alias.appliedTo(args))
+      case dealiased: AliasingBounds =>
+        dealiased.derivedAlias(dealiased.alias.appliedTo(args))
       case dealiased: TypeBounds =>
         dealiased.derivedTypeBounds(dealiased.lo.appliedTo(args), dealiased.hi.appliedTo(args))
       case dealiased: LazyRef =>
         LazyRef(c => dealiased.ref(c).appliedTo(args))
       case dealiased: WildcardType =>
         WildcardType(dealiased.optBounds.appliedTo(args).bounds)
-      case dealiased: TypeRef if dealiased.symbol == defn.NothingClass =>
-        dealiased
+      case dealiased: TypeRef =>
+        val sym = dealiased.symbol
+        if (sym == defn.NothingClass) return dealiased
+        if (defn.isTypelevel_S(sym) && args.length == 1)
+          args.head.safeDealias match {
+            case ConstantType(Constant(n: Int)) => return ConstantType(Constant(n + 1))
+            case none =>
+          }
+        AppliedType(self, args)
       case dealiased =>
         AppliedType(self, args)
     }
@@ -434,10 +442,13 @@ class TypeApplications(val self: Type) extends AnyVal {
       appliedTo(args)
   }
 
-  /** Turns non-bounds types to type aliases */
+  /** Turns non-bounds types to type bounds.
+   *  A (possible lambda abstracted) match type is turned into an abstract type.
+   *  Every other type is turned into a type alias
+   */
   final def toBounds(implicit ctx: Context): TypeBounds = self match {
     case self: TypeBounds => self // this can happen for wildcard args
-    case _ => TypeAlias(self)
+    case _ => if (self.isMatch) MatchAlias(self) else TypeAlias(self)
   }
 
   /** Translate a type of the form From[T] to To[T], keep other types as they are.

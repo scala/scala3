@@ -38,7 +38,7 @@ object Bench {
 
     val opts = new OptionsBuilder()
                .shouldFailOnError(true)
-               .jvmArgs("-Xms2G", "-Xmx2G")
+               .jvmArgs("-Xms2G", "-Xmx2G", "-Xss10m")
                .mode(Mode.AverageTime)
                .timeUnit(TimeUnit.MILLISECONDS)
                .warmupIterations(warmup)

@@ -99,8 +99,8 @@ trait TypeAssigner {
           }
         case tp: TypeRef if toAvoid(tp.symbol) =>
           tp.info match {
-            case TypeAlias(alias) =>
-              apply(alias)
+            case info: AliasingBounds =>
+              apply(info.alias)
             case TypeBounds(lo, hi) =>
               range(atVariance(-variance)(apply(lo)), apply(hi))
             case info: ClassInfo =>
@@ -460,10 +460,24 @@ trait TypeAssigner {
       if (target.isEmpty) meth.tpe.widen.toFunctionType(tree.env.length)
       else target.tpe)
 
-  def assignType(tree: untpd.CaseDef, body: Tree)(implicit ctx: Context) =
-    tree.withType(body.tpe)
+  def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(implicit ctx: Context) = {
+    val ownType =
+      if (body.isType) {
+        val params = new TreeAccumulator[mutable.ListBuffer[TypeSymbol]] {
+          def apply(ps: mutable.ListBuffer[TypeSymbol], t: Tree)(implicit ctx: Context) = t match {
+            case t: Bind if t.symbol.isType => foldOver(ps += t.symbol.asType, t)
+            case _ => foldOver(ps, t)
+          }
+        }
+        HKTypeLambda.fromParams(
+          params(new mutable.ListBuffer[TypeSymbol](), pat).toList,
+          defn.FunctionOf(pat.tpe :: Nil, body.tpe))
+      }
+      else body.tpe
+    tree.withType(ownType)
+  }
 
-  def assignType(tree: untpd.Match, cases: List[CaseDef])(implicit ctx: Context) =
+  def assignType(tree: untpd.Match, scrutinee: Tree, cases: List[CaseDef])(implicit ctx: Context) =
     tree.withType(ctx.typeComparer.lub(cases.tpes))
 
   def assignType(tree: untpd.Labeled)(implicit ctx: Context) =
@@ -519,6 +533,11 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.LambdaTypeTree, tparamDefs: List[TypeDef], body: Tree)(implicit ctx: Context) =
     tree.withType(HKTypeLambda.fromParams(tparamDefs.map(_.symbol.asType), body.tpe))
+
+  def assignType(tree: untpd.MatchTypeTree, bound: Tree, scrutinee: Tree, cases: List[CaseDef])(implicit ctx: Context) = {
+    val boundType = if (bound.isEmpty) defn.AnyType else bound.tpe
+    tree.withType(MatchType(boundType, scrutinee.tpe, cases.tpes))
+  }
 
   def assignType(tree: untpd.ByNameTypeTree, result: Tree)(implicit ctx: Context) =
     tree.withType(ExprType(result.tpe))

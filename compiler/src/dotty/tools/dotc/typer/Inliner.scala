@@ -132,7 +132,7 @@ object Inliner {
         tree,
         i"""|Maximal number of successive inlines (${ctx.settings.XmaxInlines.value}) exceeded,
             |Maybe this is caused by a recursive rewrite method?
-            |You can use -Xmax:inlines to change the limit.""",
+            |You can use -Xmax-inlines to change the limit.""",
         (tree :: enclosingInlineds).last.pos
       )
   }
@@ -349,8 +349,29 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     else result
   }
 
+  def tryConstValue: Tree =
+    ctx.typeComparer.constValue(callTypeArgs.head.tpe) match {
+      case Some(c) => Literal(c).withPos(call.pos)
+      case _ => EmptyTree
+    }
+
   /** The Inlined node representing the inlined call */
-  def inlined(pt: Type) = {
+  def inlined(pt: Type): Tree = {
+
+    if (callTypeArgs.length == 1)
+      if (inlinedMethod == defn.Typelevel_constValue) {
+        val constVal = tryConstValue
+        if (!constVal.isEmpty) return constVal
+        ctx.error(i"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.pos)
+      }
+      else if (inlinedMethod == defn.Typelevel_constValueOpt) {
+        val constVal = tryConstValue
+        return (
+          if (constVal.isEmpty) ref(defn.NoneModuleRef)
+          else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), constVal :: Nil)
+        )
+      }
+
     // Compute bindings for all parameters, appending them to bindingsBuf
     computeParamBindings(inlinedMethod.info, callTypeArgs, callValueArgss)
 
@@ -393,7 +414,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           }
         case tree: Ident =>
           paramProxy.get(tree.tpe) match {
-            case Some(t) if tree.isTerm && t.isSingleton => singleton(t).withPos(tree.pos)
+            case Some(t) if tree.isTerm && t.isSingleton => singleton(t.dealias).withPos(tree.pos)
             case Some(t) if tree.isType => TypeTree(t).withPos(tree.pos)
             case _ => tree
           }
@@ -425,6 +446,23 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         expansion
     }
 
+    def issueError() = callValueArgss match {
+      case (msgArg :: Nil) :: Nil =>
+        msgArg.tpe match {
+          case ConstantType(Constant(msg: String)) =>
+            // Usually `error` is called from within a rewrite method. In this
+            // case we need to report the error at the point of the outermost enclosing inline
+            // call. This way, a defensively written rewrite methid can always
+            // report bad inputs at the point of call instead of revealing its internals.
+            val callToReport = if (enclosingInlineds.nonEmpty) enclosingInlineds.last else call
+            val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(_).nonEmpty).next
+            def issueInCtx(implicit ctx: Context) = ctx.error(msg, callToReport.pos)
+            issueInCtx(ctxToReport)
+          case _ =>
+        }
+      case _ =>
+    }
+
     trace(i"inlining $call", inlining, show = true) {
 
       // The normalized bindings collected in `bindingsBuf`
@@ -443,6 +481,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       val matchBindings = reducer.matchBindingsBuf.toList
       val (finalBindings, finalExpansion) = dropUnusedDefs(bindingsBuf.toList ++ matchBindings, expansion1)
       val (finalMatchBindings, finalArgBindings) = finalBindings.partition(matchBindings.contains(_))
+
+      if (inlinedMethod == defn.Typelevel_error) issueError()
 
       // Take care that only argument bindings go into `bindings`, since positions are
       // different for bindings from arguments and bindings from body.
@@ -463,29 +503,35 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
      *             - the class `C`
      *             - the arguments `args`
      *             - any bindings that wrap the instance creation
+     *             - whether the instance creation is precomputed or by-name
      */
     private object NewInstance {
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Symbol, List[Tree], List[Tree])] = {
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Symbol, List[Tree], List[Tree], Boolean)] = {
         def unapplyLet(bindings: List[Tree], expr: Tree) =
           unapply(expr) map {
-            case (cls, reduced, prefix) => (cls, reduced, bindings ::: prefix)
+            case (cls, reduced, prefix, precomputed) => (cls, reduced, bindings ::: prefix, precomputed)
           }
         tree match {
           case Apply(fn, args) =>
             fn match {
               case Select(New(tpt), nme.CONSTRUCTOR) =>
-                Some((tpt.tpe.classSymbol, args, Nil))
+                Some((tpt.tpe.classSymbol, args, Nil, false))
               case TypeApply(Select(New(tpt), nme.CONSTRUCTOR), _) =>
-                Some((tpt.tpe.classSymbol, args, Nil))
+                Some((tpt.tpe.classSymbol, args, Nil, false))
               case _ =>
                 val meth = fn.symbol
                 if (meth.name == nme.apply &&
                     meth.flags.is(Synthetic) &&
-                    meth.owner.linkedClass.is(Case)) Some(meth.owner.linkedClass, args, Nil)
+                    meth.owner.linkedClass.is(Case))
+                  Some(meth.owner.linkedClass, args, Nil, false)
                 else None
             }
           case Ident(_) =>
-            inlineBindings.get(tree.symbol).flatMap(unapply)
+            for {
+              binding <- inlineBindings.get(tree.symbol)
+              (cls, reduced, prefix, precomputed) <- unapply(binding)
+            }
+            yield (cls, reduced, prefix, precomputed || binding.isInstanceOf[ValDef])
           case Inlined(_, bindings, expansion) =>
             unapplyLet(bindings, expansion)
           case Block(stats, expr) if isPureExpr(tree) =>
@@ -498,13 +544,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
 
     /** If `tree` is equivalent to `new C(args).x` where class `C` does not have
      *  initialization code and `x` is a parameter corresponding to one of the
-     *  arguments `args`, the corresponding argument, prefixed by the evaluation
-     *  of impure arguments, otherwise `tree` itself.
+     *  arguments `args`, the corresponding argument, otherwise `tree` itself.
+     *  Side effects of original arguments need to be preserved.
      */
     def reduceProjection(tree: Tree)(implicit ctx: Context): Tree = {
       if (ctx.debug) inlining.println(i"try reduce projection $tree")
       tree match {
-        case Select(NewInstance(cls, args, prefix), field) if cls.isNoInitsClass =>
+        case Select(NewInstance(cls, args, prefix, precomputed), field) if cls.isNoInitsClass =>
           def matches(param: Symbol, selection: Symbol): Boolean =
             param == selection || {
               selection.name match {
@@ -516,17 +562,25 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
             }
           val idx = cls.asClass.paramAccessors.indexWhere(matches(_, tree.symbol))
           if (idx >= 0 && idx < args.length) {
-            def collectImpure(from: Int, end: Int) =
-              (from until end).filterNot(i => isPureExpr(args(i))).toList.map(args)
-            val leading = collectImpure(0, idx)
-            val trailing = collectImpure(idx + 1, args.length)
+            def finish(arg: Tree) =
+              new TreeTypeMap().transform(arg) // make sure local bindings in argument have fresh symbols
+                .reporting(res => i"projecting $tree -> $res", inlining)
             val arg = args(idx)
-            val argInPlace =
-              if (trailing.isEmpty) arg
-              else letBindUnless(TreeInfo.Pure, arg)(seq(trailing, _))
-            val fullArg = seq(prefix, seq(leading, argInPlace))
-            new TreeTypeMap().transform(fullArg) // make sure local bindings in argument have fresh symbols
-              .reporting(res => i"projecting $tree -> $res", inlining)
+            if (precomputed)
+              if (isPureExpr(arg)) finish(arg)
+              else tree // nothing we can do here, projection would duplicate side effect
+            else {
+              // newInstance is evaluated in place, need to reflect side effects of
+              // arguments in the order they were written originally
+              def collectImpure(from: Int, end: Int) =
+                (from until end).filterNot(i => isPureExpr(args(i))).toList.map(args)
+              val leading = collectImpure(0, idx)
+              val trailing = collectImpure(idx + 1, args.length)
+              val argInPlace =
+                if (trailing.isEmpty) arg
+                else letBindUnless(TreeInfo.Pure, arg)(seq(trailing, _))
+              finish(seq(prefix, seq(leading, argInPlace)))
+            }
           }
           else tree
         case Block(stats, expr) if stats.forall(isPureBinding) =>
@@ -718,21 +772,34 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           case UnApply(unapp, _, pats) =>
             unapp.tpe.widen match {
               case mt: MethodType if mt.paramInfos.length == 1 =>
+
+                def reduceSubPatterns(pats: List[Tree], selectors: List[Tree]): Boolean = (pats, selectors) match {
+                  case (Nil, Nil) => true
+                  case (pat :: pats1, selector :: selectors1) =>
+                    val elem = newBinding(RewriteBinderName.fresh(), Synthetic, selector)
+                    reducePattern(bindingsBuf, elem.termRef, pat) &&
+                    reduceSubPatterns(pats1, selectors1)
+                  case _ => false
+                }
+
                 val paramType = mt.paramInfos.head
                 val paramCls = paramType.classSymbol
-                paramCls.is(Case) && unapp.symbol.is(Synthetic) && scrut <:< paramType && {
+                if (paramCls.is(Case) && unapp.symbol.is(Synthetic) && scrut <:< paramType) {
                   val caseAccessors =
                     if (paramCls.is(Scala2x)) paramCls.caseAccessors.filter(_.is(Method))
                     else paramCls.asClass.paramAccessors
-                  var subOK = caseAccessors.length == pats.length
-                  for ((pat, accessor) <- (pats, caseAccessors).zipped)
-                    subOK = subOK && {
-                      val rhs = constToLiteral(reduceProjection(ref(scrut).select(accessor).ensureApplied))
-                      val elem = newBinding(RewriteBinderName.fresh(), Synthetic, rhs)
-                      reducePattern(bindingsBuf, elem.termRef, pat)
-                    }
-                  subOK
+                  val selectors =
+                    for (accessor <- caseAccessors)
+                    yield constToLiteral(reduceProjection(ref(scrut).select(accessor).ensureApplied))
+                  caseAccessors.length == pats.length && reduceSubPatterns(pats, selectors)
                 }
+                else if (unapp.symbol.isRewriteMethod) {
+                  val app = untpd.Apply(untpd.TypedSplice(unapp), untpd.ref(scrut))
+                  val app1 = typer.typedExpr(app)
+                  val args = tupleArgs(app1)
+                  args.nonEmpty && reduceSubPatterns(pats, args)
+                }
+                else false
               case _ =>
                 false
             }

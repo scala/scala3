@@ -164,6 +164,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(AndTypePrec) { toText(tp1) ~ " & " ~ atPrec(AndTypePrec + 1) { toText(tp2) } }
       case OrType(tp1, tp2) =>
         changePrec(OrTypePrec) { toText(tp1) ~ " | " ~ atPrec(OrTypePrec + 1) { toText(tp2) } }
+      case MatchType(bound, scrutinee, cases) =>
+        changePrec(GlobalPrec) {
+          def caseText(tp: Type): Text = "case " ~ toText(tp)
+          def casesText = Text(cases.map(caseText), "\n")
+            atPrec(InfixPrec) { toText(scrutinee) } ~
+            keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
+            (" <: " ~ toText(bound) provided !bound.isRef(defn.AnyClass))
+        }.close
       case tp: ErrorType =>
         s"<error ${tp.msg.msg}>"
       case tp: WildcardType =>
@@ -198,7 +206,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           val bounds =
             if (constr.contains(tp)) constr.fullBounds(tp.origin)(ctx.addMode(Mode.Printing))
             else TypeBounds.empty
-          if (bounds.isAlias) toText(bounds.lo) ~ (Str("^") provided ctx.settings.YprintDebug.value)
+          if (bounds.isTypeAlias) toText(bounds.lo) ~ (Str("^") provided ctx.settings.YprintDebug.value)
           else if (ctx.settings.YshowVarBounds.value) "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
           else toText(tp.origin)
         }
@@ -310,7 +318,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** String representation of a definition's type following its name */
   protected def toTextRHS(tp: Type): Text = controlled {
     homogenize(tp) match {
-      case tp: TypeAlias =>
+      case tp: AliasingBounds =>
         " = " ~ toText(tp.alias)
       case tp @ TypeBounds(lo, hi) =>
         (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo)) ~

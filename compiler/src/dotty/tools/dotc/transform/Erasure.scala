@@ -135,12 +135,15 @@ class Erasure extends Phase with DenotTransformer {
       }
   }
 
-  def assertErased(tp: Type, tree: tpd.Tree = tpd.EmptyTree)(implicit ctx: Context): Unit =
-    if (tp.typeSymbol == defn.ArrayClass &&
-        ctx.compilationUnit.source.file.name == "Array.scala") {} // ok
-    else
-      assert(isErasedType(tp),
+  def assertErased(tp: Type, tree: tpd.Tree = tpd.EmptyTree)(implicit ctx: Context): Unit = {
+    def isAllowed(cls: Symbol, sourceName: String) =
+      tp.typeSymbol == cls && ctx.compilationUnit.source.file.name == sourceName
+    assert(isErasedType(tp) ||
+           isAllowed(defn.ArrayClass, "Array.scala") ||
+           isAllowed(defn.TupleClass, "Tuple.scala") ||
+           isAllowed(defn.PairClass, "Tuple.scala"),
         i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase.prev}")
+  }
 }
 
 object Erasure {
@@ -376,7 +379,7 @@ object Erasure {
      *  on selections `e.m`, where `OT` is the type of the owner of `m` and `ET`
      *  is the erased type of the selection's original qualifier expression.
      *
-     *      e.m1 -> e.m2          if `m1` is a member of Any or AnyVal and `m2` is
+     *      e.m1 -> e.m2          if `m1` is a member of a class that erases to object and `m2` is
      *                            the same-named member in Object.
      *      e.m -> box(e).m       if `e` is primitive and `m` is a member or a reference class
      *                            or `e` has an erased value class type.
@@ -396,7 +399,7 @@ object Erasure {
 
       def mapOwner(sym: Symbol): Symbol = {
         def recur(owner: Symbol): Symbol =
-          if ((owner eq defn.AnyClass) || (owner eq defn.AnyValClass)) {
+          if (defn.erasedToObject.contains(owner)) {
             assert(sym.isConstructor, s"${sym.showLocated}")
             defn.ObjectClass
           } else if (defn.isSyntheticFunctionClass(owner))

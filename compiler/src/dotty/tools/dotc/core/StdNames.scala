@@ -204,6 +204,7 @@ object StdNames {
     final val Object: N              = "Object"
     final val PartialFunction: N     = "PartialFunction"
     final val PrefixType: N          = "PrefixType"
+    final val S: N                   = "S"
     final val Serializable: N        = "Serializable"
     final val Singleton: N           = "Singleton"
     final val Throwable: N           = "Throwable"

@@ -749,7 +749,17 @@ object Build {
 
   // Settings shared between dotty-library and dotty-library-bootstrapped
   lazy val dottyLibrarySettings = Seq(
-      libraryDependencies += "org.scala-lang" % "scala-library" % scalacVersion
+    libraryDependencies += "org.scala-lang" % "scala-library" % scalacVersion,
+    // Add version-specific source directories:
+    // - files in src-scala3 will only be compiled by dotty
+    // - files in src-scala2 will only be compiled by scalac
+    unmanagedSourceDirectories in Compile += {
+      val baseDir = baseDirectory.value
+      if (isDotty.value)
+        baseDir / "src-scala3"
+      else
+        baseDir / "src-scala2"
+    }
   )
 
   lazy val `dotty-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)

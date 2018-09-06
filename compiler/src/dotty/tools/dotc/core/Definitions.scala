@@ -218,6 +218,15 @@ class Definitions {
     lazy val Sys_errorR = SysPackage.moduleClass.requiredMethodRef(nme.error)
     def Sys_error(implicit ctx: Context) = Sys_errorR.symbol
 
+  lazy val TypelevelPackageObjectRef = ctx.requiredModuleRef("scala.typelevel.package")
+  lazy val TypelevelPackageObject = TypelevelPackageObjectRef.symbol.moduleClass
+    lazy val Typelevel_errorR = TypelevelPackageObjectRef.symbol.requiredMethodRef(nme.error)
+    def Typelevel_error(implicit ctx: Context) = Typelevel_errorR.symbol
+    lazy val Typelevel_constValueR = TypelevelPackageObjectRef.symbol.requiredMethodRef("constValue")
+    def Typelevel_constValue(implicit ctx: Context) = Typelevel_constValueR.symbol
+    lazy val Typelevel_constValueOptR = TypelevelPackageObjectRef.symbol.requiredMethodRef("constValueOpt")
+    def Typelevel_constValueOpt(implicit ctx: Context) = Typelevel_constValueOptR.symbol
+
   /** The `scalaShadowing` package is used to safely modify classes and
    *  objects in scala so that they can be used from dotty. They will
    *  be visible as members of the `scala` package, replacing any objects
@@ -706,6 +715,18 @@ class Definitions {
 
   lazy val XMLTopScopeModuleRef = ctx.requiredModuleRef("scala.xml.TopScope")
 
+  lazy val TupleTypeRef = ctx.requiredClassRef("scala.Tuple")
+  def TupleClass(implicit ctx: Context) = TupleTypeRef.symbol.asClass
+
+  lazy val PairType = ctx.requiredClassRef("scala.*:")
+  def PairClass(implicit ctx: Context) = PairType.symbol.asClass
+  lazy val TupleXXLType = ctx.requiredClassRef("scala.TupleXXL")
+  def TupleXXLClass(implicit ctx: Context) = TupleXXLType.symbol.asClass
+  def TupleXXLModule(implicit ctx: Context) = TupleXXLClass.companionModule
+
+    def TupleXXL_apply(implicit ctx: Context) =
+      TupleXXLModule.info.member(nme.apply).requiredSymbol(_.info.isVarArgsMethod)
+
   // Annotation base classes
   lazy val AnnotationType              = ctx.requiredClassRef("scala.annotation.Annotation")
   def AnnotationClass(implicit ctx: Context) = AnnotationType.symbol.asClass
@@ -872,6 +893,9 @@ class Definitions {
     }
   }
 
+  final def isTypelevel_S(sym: Symbol)(implicit ctx: Context) =
+    sym.name == tpnme.S && sym.owner == TypelevelPackageObject
+
   // ----- Symbol sets ---------------------------------------------------
 
   lazy val AbstractFunctionType = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0)
@@ -880,7 +904,7 @@ class Definitions {
   private lazy val ImplementedFunctionType = mkArityArray("scala.Function", MaxImplementedFunctionArity, 0)
   def FunctionClassPerRun = new PerRun[Array[Symbol]](implicit ctx => ImplementedFunctionType.map(_.symbol.asClass))
 
-  lazy val TupleType = mkArityArray("scala.Tuple", MaxTupleArity, 2)
+  lazy val TupleType = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 
   def FunctionClass(n: Int, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: Context) =
     if (isImplicit && isErased)
@@ -900,8 +924,6 @@ class Definitions {
   def FunctionType(n: Int, isImplicit: Boolean = false, isErased: Boolean = false)(implicit ctx: Context): TypeRef =
     if (n <= MaxImplementedFunctionArity && (!isImplicit || ctx.erasedTypes) && !isErased) ImplementedFunctionType(n)
     else FunctionClass(n, isImplicit, isErased).typeRef
-
-  private lazy val TupleTypes: Set[TypeRef] = TupleType.toSet
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(cls: Symbol)(implicit ctx: Context): TypeName =
@@ -1127,6 +1149,10 @@ class Definitions {
   def isErasedFunctionType(tp: Type)(implicit ctx: Context) =
     isFunctionType(tp) && tp.dealias.typeSymbol.name.isErasedFunction
 
+  /** A whitelist of Scala-2 classes that are known to be pure */
+  def isAssuredNoInits(sym: Symbol) =
+    (sym `eq` SomeClass) || isTupleClass(sym)
+
   // ----- primitive value class machinery ------------------------------------------
 
   /** This class would also be obviated by the implicit function type design */
@@ -1199,6 +1225,8 @@ class Definitions {
   def isValueSubClass(sym1: Symbol, sym2: Symbol) =
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
 
+  lazy val erasedToObject = Set[Symbol](AnyClass, AnyValClass, TupleClass, SingletonClass)
+
   // ----- Initialization ---------------------------------------------------
 
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
@@ -1226,6 +1254,27 @@ class Definitions {
 
   private[this] var isInitialized = false
 
+  /** Add a `Tuple` as a parent to `Unit`.
+   *  Add the right `*:` instance as a parent to Tuple1..Tuple22
+   */
+  def fixTupleCompleter(cls: ClassSymbol): Unit = cls.infoOrCompleter match {
+    case completer: LazyType =>
+      cls.info = new LazyType {
+        def syntheticParent(tparams: List[TypeSymbol]): Type =
+          if (tparams.isEmpty) TupleTypeRef
+          else (tparams :\ (UnitType: Type)) ((tparam, tail) => PairType.appliedTo(tparam.typeRef, tail))
+        override def complete(denot: SymDenotation)(implicit ctx: Context) = {
+          completer.complete(denot)
+          denot.info match {
+            case info: ClassInfo =>
+              denot.info = info.derivedClassInfo(
+                classParents = info.classParents :+ syntheticParent(cls.typeParams))
+          }
+        }
+      }
+    case _ =>
+  }
+
   def init()(implicit ctx: Context) = {
     this.ctx = ctx
     if (!isInitialized) {
@@ -1242,6 +1291,10 @@ class Definitions {
 
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
+
+      fixTupleCompleter(UnitClass)
+      for (i <- 1 to MaxTupleArity)
+        fixTupleCompleter(TupleType(i).symbol.asClass)
 
       isInitialized = true
     }
