@@ -763,7 +763,7 @@ class ClassfileParser(
 
         if (allowed != "always") {
           failUnless(allowed != "never")
-          val allowedList = allowed.split(":").toList
+          val allowedList = allowed.split(java.io.File.pathSeparator).toList
           val file = classRoot.symbol.associatedFile
           // Using `.toString.contains` isn't great, but it's good enough for a debug flag.
           failUnless(file == null || allowedList.exists(path => file.toString.contains(path)))
