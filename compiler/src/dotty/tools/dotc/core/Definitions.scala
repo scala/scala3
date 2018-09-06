@@ -717,6 +717,8 @@ class Definitions {
 
   lazy val TupleTypeRef = ctx.requiredClassRef("scala.Tuple")
   def TupleClass(implicit ctx: Context) = TupleTypeRef.symbol.asClass
+  lazy val NonEmptyTupleTypeRef = ctx.requiredClassRef("scala.NonEmptyTuple")
+  def NonEmptyTupleClass(implicit ctx: Context) = NonEmptyTupleTypeRef.symbol.asClass
 
   lazy val PairType = ctx.requiredClassRef("scala.*:")
   def PairClass(implicit ctx: Context) = PairType.symbol.asClass
@@ -1225,7 +1227,7 @@ class Definitions {
   def isValueSubClass(sym1: Symbol, sym2: Symbol) =
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
 
-  lazy val erasedToObject = Set[Symbol](AnyClass, AnyValClass, TupleClass, SingletonClass)
+  lazy val erasedToObject = Set[Symbol](AnyClass, AnyValClass, TupleClass, NonEmptyTupleClass, SingletonClass)
 
   // ----- Initialization ---------------------------------------------------
 
