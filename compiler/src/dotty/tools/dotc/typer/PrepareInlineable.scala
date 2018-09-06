@@ -258,7 +258,7 @@ object PrepareInlineable {
       ctx.error(ex"implementation restriction: nested rewrite methods are not supported", inlined.pos)
     if (inlined.name == nme.unapply && tupleArgs(body).isEmpty)
       ctx.warning(
-        em"rewrite unapply method can be rewritten only if its tight hand side is a tuple (e1, ..., eN)",
+        em"rewrite unapply method can be rewritten only if its right hand side is a tuple (e1, ..., eN)",
         body.pos)
   }
 

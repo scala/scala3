@@ -379,7 +379,7 @@ object Erasure {
      *  on selections `e.m`, where `OT` is the type of the owner of `m` and `ET`
      *  is the erased type of the selection's original qualifier expression.
      *
-     *      e.m1 -> e.m2          if `m1` is a member of a class that erases to object and `m2` is
+     *      e.m1 -> e.m2          if `m1` is a member of a class that erases to Object and `m2` is
      *                            the same-named member in Object.
      *      e.m -> box(e).m       if `e` is primitive and `m` is a member or a reference class
      *                            or `e` has an erased value class type.
