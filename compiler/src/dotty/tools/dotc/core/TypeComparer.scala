@@ -12,6 +12,7 @@ import config.Printers.{typr, constr, subtyping, gadts, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import Constants.Constant
+import transform.TypeUtils._
 import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
 import reporting.trace
@@ -847,6 +848,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
               case info2: TypeBounds =>
                 compareLower(info2, tyconIsTypeRef = true)
               case info2: ClassInfo =>
+                tycon2.name.toString.startsWith("Tuple") &&
+                  defn.isTupleType(tp2) && isSubType(tp1, tp2.toNestedPairs) ||
                 tryBaseType(info2.cls)
               case _ =>
                 fourthTry
