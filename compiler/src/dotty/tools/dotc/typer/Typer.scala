@@ -1344,11 +1344,12 @@ class Typer extends Namer
       case _ =>
         if (tree.name == nme.WILDCARD) body1
         else {
-          // for a singleton pattern like `x @ Nil`, `x` should get the type from the scrutinee
+          // For a pattern like `x @ P`, x gets the type of the scrutinee and pattern.
+          // For a singleton pattern like `x @ Nil`, `x` should get the type from the scrutinee,
           // see tests/neg/i3200b.scala and SI-1503
           val symTp =
             if (body1.tpe.isInstanceOf[TermRef]) pt1
-            else body1.tpe.underlyingIfRepeated(isJava = false)
+            else AndType.make(body1.tpe.underlyingIfRepeated(isJava = false), pt1)
           val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.pos)
           if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Implicit)
           if (ctx.mode.is(Mode.InPatternAlternative))
