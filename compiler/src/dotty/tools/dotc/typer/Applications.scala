@@ -109,10 +109,12 @@ object Applications {
 
       val elemTp = getTp.member(nme.apply).suchThat(_.info <:< applyTp(WildcardType)).info.resultType
 
-      def test(name: Name, tp: Type) = getTp.member(name).suchThat(_.info <:< tp).exists
+      def test(name: Name, tp: Type) = getTp.member(name).suchThat(getTp.memberInfo(_) <:< tp).exists
 
-      val valid = elemTp.exists &&
-        (test(nme.lengthCompare, lengthCompareTp) || test(nme.length, lengthTp)) &&
+      val valid =
+        elemTp.exists &&
+        (test(nme.lengthCompare, lengthCompareTp) ||
+          test(nme.length, lengthTp)) &&
         test(nme.drop, dropTp(elemTp)) &&
         test(nme.toSeq, toSeqTp(elemTp))
 
