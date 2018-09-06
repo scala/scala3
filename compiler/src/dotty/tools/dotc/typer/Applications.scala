@@ -109,25 +109,21 @@ object Applications {
 
       val elemTp = getTp.member(nme.apply).suchThat(_.info <:< applyTp(WildcardType)).info.resultType
 
-      def names1 = List(nme.lengthCompare, nme.apply, nme.drop, nme.toSeq)
-      def types1 = List(lengthCompareTp, applyTp(elemTp), dropTp(elemTp), toSeqTp(elemTp))
-
-      def names2 = List(nme.length, nme.apply, nme.drop, nme.toSeq)
-      def types2 = List(lengthTp, applyTp(elemTp), dropTp(elemTp), toSeqTp(elemTp))
+      def test(name: Name, tp: Type) = getTp.member(name).suchThat(_.info <:< tp).exists
 
       val valid = elemTp.exists &&
-                  (getTp <:< RefinedType.make(defn.AnyType, names1, types1) ||
-                  getTp <:< RefinedType.make(defn.AnyType, names2, types2))
+        (test(nme.lengthCompare, lengthCompareTp) || test(nme.length, lengthTp)) &&
+        test(nme.drop, dropTp(elemTp)) &&
+        test(nme.toSeq, toSeqTp(elemTp))
 
       if (valid) elemTp else NoType
     }
 
-    def validUnapplySeqType(getTp: Type): Boolean = unapplySeqTypeElemTp(getTp).exists
-
     if (unapplyName == nme.unapplySeq) {
-      if (isGetMatch(unapplyResult, pos) && validUnapplySeqType(getTp)) {
+      if (isGetMatch(unapplyResult, pos)) {
         val elemTp = unapplySeqTypeElemTp(getTp)
-        args.map(Function.const(elemTp))
+        if (elemTp.exists) args.map(Function.const(elemTp))
+        else fail
       }
       else fail
     }
