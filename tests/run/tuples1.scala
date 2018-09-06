@@ -72,4 +72,47 @@ object Test extends App {
     val xsc: Unit = xs
     println(s"$x23 -> $x, $y, $xs")
   }
+
+  val x3s: 3 = x3.size
+  val us: 0 = ().size
+  val x23s: 23 = x23.size
+
+// dynamic operations
+
+  def head1(x: NonEmptyTuple): Tuple.Head[x.type] = x.head
+  def head2[X <: NonEmptyTuple](x: X): Tuple.Head[X] = x.head
+
+  val hd1: Int = head1(x3)
+  val hd2: Int = head2(x3)
+
+  def tail1(x: NonEmptyTuple): Tuple.Tail[x.type] = x.tail
+  def tail2[X <: NonEmptyTuple](x: X): Tuple.Tail[X] = x.tail
+
+  val tl1: (String, Int) = tail1(x3)
+  val tl2: (String, Int) = tail2(x3)
+
+  def elem[X <: NonEmptyTuple](x: X, n: Int): Tuple.Elem[X, n.type] = x(n)
+  val elem1: String = x3(1)
+
+  def toArray[X <: Tuple](x: X): Array[Object] = x.toArray
+  val toArray1 = x3.toArray
+
+  def cons[X, Y <: Tuple](x: X, y: Y): X *: Y = x *: y
+  val cons1: Boolean *: Int *: (String, Int) = cons(true, x3)
+
+  def concat[X <: Tuple, Y <: Tuple](x: X, y: Y): Tuple.Concat[X, Y] = x ++ y
+  def concat0(x: Tuple, y: Tuple): Tuple.Concat[x.type, y.type] = x ++ y
+  val conc1: String *: Int *: Unit = concat((), tl1)
+  val conc2: String *: Int *: Unit = concat(tl1, ())
+  val conc3: String *: Int *: String *: Int *: Unit = concat(tl1, tl1)
+  val conc4: String *: Int *: Unit = concat0((), tl1)
+  val conc5: String *: Int *: Unit = concat0(tl1, ())
+  val conc6: String *: Int *: String *: Int *: Unit = concat0(tl1, tl1)
+
+  def size[X <: Tuple](x: X): Tuple.Size[X] = x.size
+  def size0(x: Tuple): Tuple.Size[x.type] = x.size
+  val x3s0: 3 = size(x3)
+  val us0: 0 = size(())
+  val x3s1: 3 = size0(x3)
+  val us1: 0 = size0(())
 }
