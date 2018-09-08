@@ -25,6 +25,8 @@ sidebar:
               url: docs/reference/union-types.html
             - title: Type lambdas
               url: docs/reference/type-lambdas.html
+            - title: Match types
+              url: docs/reference/match-types.html
             - title: Implicit Function Types
               url: docs/reference/implicit-function-types.html
             - title: Dependent Function Types
