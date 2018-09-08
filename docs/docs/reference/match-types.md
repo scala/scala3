@@ -19,7 +19,7 @@ This defines a type that, depending on the scrutinee type `X`, can reduce to one
    Elem[List[Float]]  =:=  Float
    Elem[Nil]          =:=  Nothing
 ```
-Here `=:=` is understood to mean that left and right hand sides are mutatually subtypes of each other.
+Here `=:=` is understood to mean that left and right hand sides are mutually subtypes of each other.
 
 In general, a match type is of the form
 ```scala
@@ -182,6 +182,3 @@ A complete defininition of when two patterns or types overlap still needs to be 
 
  The last rule in particular is needed to detect non-overlaps for cases where the scrutinee and the patterns are tuples. I.e. `(Int, String)` does not overlap `(Int, Int)` since
 `String` does not overlap `Int`.
-
-
-
