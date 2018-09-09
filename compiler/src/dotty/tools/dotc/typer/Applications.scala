@@ -100,25 +100,37 @@ object Applications {
       Nil
     }
 
+    /** If `getType` is of the form:
+     *  ```
+     *  {
+     *    def lengthCompare(len: Int): Int // or, def length: Int
+     *    def apply(i: Int): T = a(i)
+     *    def drop(n: Int): scala.Seq[T]
+     *    def toSeq: scala.Seq[T]
+     *  }
+     *  ```
+     *  returns `T`, otherwise NoType.
+     */
     def unapplySeqTypeElemTp(getTp: Type): Type = {
-      val lengthTp = ExprType(defn.IntType)
-      val lengthCompareTp = MethodType(List("len".toTermName))(_ => defn.IntType :: Nil, _ => defn.IntType)
-      def applyTp(elemTp: Type) = MethodType(List("i".toTermName))(_ => defn.IntType :: Nil, _ => elemTp)
-      def dropTp(elemTp: Type) = MethodType(List("n".toTermName))(_ => defn.IntType :: Nil, _ => defn.SeqType.appliedTo(elemTp))
+      def lengthTp = ExprType(defn.IntType)
+      def lengthCompareTp = MethodType(List(defn.IntType), defn.IntType)
+      def applyTp(elemTp: Type) = MethodType(List(defn.IntType), elemTp)
+      def dropTp(elemTp: Type) = MethodType(List(defn.IntType), defn.SeqType.appliedTo(elemTp))
       def toSeqTp(elemTp: Type) = ExprType(defn.SeqType.appliedTo(elemTp))
 
+      // the result type of `def apply(i: Int): T`
       val elemTp = getTp.member(nme.apply).suchThat(_.info <:< applyTp(WildcardType)).info.resultType
 
-      def test(name: Name, tp: Type) = getTp.member(name).suchThat(getTp.memberInfo(_) <:< tp).exists
+      def hasMethod(name: Name, tp: Type) =
+        getTp.member(name).suchThat(getTp.memberInfo(_) <:< tp).exists
 
-      val valid =
+      val isValid =
         elemTp.exists &&
-        (test(nme.lengthCompare, lengthCompareTp) ||
-          test(nme.length, lengthTp)) &&
-        test(nme.drop, dropTp(elemTp)) &&
-        test(nme.toSeq, toSeqTp(elemTp))
+        (hasMethod(nme.lengthCompare, lengthCompareTp) || hasMethod(nme.length, lengthTp)) &&
+        hasMethod(nme.drop, dropTp(elemTp)) &&
+        hasMethod(nme.toSeq, toSeqTp(elemTp))
 
-      if (valid) elemTp else NoType
+      if (isValid) elemTp else NoType
     }
 
     if (unapplyName == nme.unapplySeq) {

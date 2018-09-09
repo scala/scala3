@@ -67,19 +67,12 @@ object FirstChars {
 
 - Extractor defines `def unapplySeq(x: T): U`
 - `U` has (parameterless `def` or `val`) members `isEmpty: Boolean` and `get: S`
-- `S` conforms to `X` or `Y`,  `T2` and `T3` conform to `T1`
+- `S` conforms to `X`, `T2` and `T3` conform to `T1`
 
 ```Scala
 type X = {
-  def lengthCompare(len: Int): Int
-  def apply(i: Int): T1 = a(i)
-  def drop(n: Int): scala.Seq[T2]
-  def toSeq: scala.Seq[T3]
-}
-
-type Y = {
-  def length: Int
-  def apply(i: Int): T1 = a(i)
+  def lengthCompare(len: Int): Int // or, `def length: Int`
+  def apply(i: Int): T1
   def drop(n: Int): scala.Seq[T2]
   def toSeq: scala.Seq[T3]
 }
