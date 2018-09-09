@@ -507,7 +507,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       // constructor method should not be semi-erased.
       else if (isConstructor && isDerivedValueClass(sym)) eraseNormalClassRef(tp)
       else this(tp)
-    case AppliedType(tycon, _) if !erasureDependsOnArgs(tycon) =>
+    case AppliedType(tycon, _) if tycon.typeSymbol.isClass && !erasureDependsOnArgs(tycon) =>
       eraseResult(tycon)
     case _ =>
       this(tp)
