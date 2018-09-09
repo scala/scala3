@@ -450,4 +450,29 @@ class TestBCode extends DottyBytecodeTest {
     }
   }
 
+  /** Test that type lambda applications are properly dealias */
+  @Test def i5090 = {
+    val source =
+      """class Test {
+        |  type T[X] = X
+        |
+        |  def test(i: T[Int]): T[Int] = i
+        |  def ref(i: Int): Int = i
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val test    = getMethod(clsNode, "test")
+      val ref     = getMethod(clsNode, "ref")
+
+      val testInstructions = instructionsFromMethod(test)
+      val refInstructions  = instructionsFromMethod(ref)
+
+      assert(testInstructions == refInstructions,
+        "`T[Int]` was not properly dealias" +
+        diffInstructions(testInstructions, refInstructions))
+    }
+  }
 }
