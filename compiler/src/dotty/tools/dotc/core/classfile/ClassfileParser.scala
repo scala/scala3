@@ -7,6 +7,7 @@ import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._,
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Positions._
 import NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.tasty.{TastyHeaderUnpickler, TastyReader}
+import dotty.tools.dotc.config.Printers
 import ast.tpd._
 import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, IOException }
 
@@ -263,17 +264,21 @@ class ClassfileParser(
           addConstructorTypeParams(denot)
         }
 
+        def nullifyTpe(): Unit = {
+          val old = denot.info
+          denot.info = nullifyMember(denot.symbol, denot.info)
+          Printers.nullability.println(s"nullified member type from classfile for ${denot.symbol.name.show} from ${old.show} into ${denot.info.show}")
+        }
+
         denot.info = pool.getType(in.nextChar)
         if (isEnum) denot.info = ConstantType(Constant(sym))
         if (isConstructor) normalizeConstructorParams()
         setPrivateWithin(denot, jflags)
         denot.info = translateTempPoly(parseAttributes(sym, denot.info))
         if (isConstructor) normalizeConstructorInfo()
-        val nullMap = new JavaNullMap
-        if (!isConstructor) denot.info = nullMap(denot.info)
         if ((denot is Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
           denot.info = arrayToRepeated(denot.info)
-
+        nullifyTpe()
         // seal java enums
         if (isEnum) {
           val enumClass = sym.owner.linkedClass

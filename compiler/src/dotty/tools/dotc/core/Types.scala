@@ -994,7 +994,7 @@ object Types {
     /** Converts types of the form `JavaNull | T` to `T | JavaNull`. Does not do any widening or dealiasing. */
     def normalizeJavaNull(implicit ctx: Context): Type = {
       this match {
-        case OrType(left, right) if left.isJavaNull => OrType(right, left)
+        case OrType(left, right) if left.isJavaNull => defn.javaNullable(right)
         case _ => this
       }
     }
@@ -4764,6 +4764,35 @@ object Types {
     protected def reapply(tp: Type): Type = apply(tp)
   }
 
+  /** Adds nullability annotations to a Java-defined member.
+   *  `tp` is the member type. The type inside `sym` shouldn't be used (might not be even set).
+   */
+  def nullifyMember(sym: Symbol, tp: Type)(implicit ctx: Context): Type = {
+    assert(sym.is(JavaDefined), s"can only nullify java-defined members")
+    if (sym.isConstructor) {
+      val constrMap = new ConstructorNullMap()
+      constrMap(tp)
+    } else {
+      val nullMap = new JavaNullMap()
+      nullMap(tp)
+    }
+  }
+
+  /** Adds nullability annotations to the arguments of a constructor, but not to the return type. */
+  class ConstructorNullMap(implicit ctx: Context) extends TypeMap {
+    override def apply(tp: Type): Type = {
+      tp match {
+        case tp: MethodType =>
+          val nullMap = new JavaNullMap()
+          derivedLambdaType(tp)(tp.paramInfos.mapConserve(nullMap), tp.resType)
+        case tp: PolyType =>
+          mapOver(tp)
+        case _ =>
+          tp
+      }
+    }
+  }
+
   /** Adds "| JavaNull" to the relevant places of a Java type to reflect the fact
    *  that Java types remain nullable by default.
    *
@@ -4772,8 +4801,10 @@ object Types {
    */
   class JavaNullMap(implicit ctx: Context) extends TypeMap {
     def shouldNullify(tp: TypeRef): Boolean = {
-      val res = !tp.symbol.isValueClass && !tp.symbol.derivesFrom(defn.AnnotationClass)
-      res
+      !tp.symbol.isValueClass &&
+        !tp.symbol.derivesFrom(defn.AnnotationClass) &&
+        !tp.isRef(defn.ObjectClass) &&
+        !tp.isRef(defn.AnyClass)
     }
 
     override def apply(tp: Type): Type = {
@@ -4786,6 +4817,8 @@ object Types {
           defn.javaNullable(tp)
         case tp@RefinedType(parent, name, info) => // TODO(abeln): does this ever happen for Java-sourced types?
           defn.javaNullable(derivedRefinedType(tp, parent, this(info)))
+        case tp: TypeParamRef =>
+          defn.javaNullable(tp)
         case AppliedType(tycons, targs) =>
           defn.javaNullable(AppliedType(tycons, targs map this))
         case _ =>
