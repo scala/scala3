@@ -683,7 +683,7 @@ object SymDenotations {
     /** Is this symbol a class with nullable values? */
     final def isNullableClass(implicit ctx: Context): Boolean = {
       // After erasure, reference types become nullable again.
-      if (ctx.phaseId <= ctx.erasurePhase.id) symbol == defn.NullClass || symbol == defn.AnyRefAlias || symbol == defn.AnyClass
+      if (!ctx.phase.erasedTypes) symbol == defn.NullClass || symbol == defn.AnyRefAlias || symbol == defn.AnyClass
       else isClass && !isValueClass && !is(ModuleClass) && symbol != defn.NothingClass
     }
 

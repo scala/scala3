@@ -973,12 +973,12 @@ class Definitions {
 
   def isBottomClass(cls: Symbol) = {
     // After erasure, reference types become nullable again.
-    if (ctx.phaseId <= ctx.erasurePhase.id) cls == NothingClass
+    if (!ctx.phase.erasedTypes) cls == NothingClass
     else cls == NothingClass || cls == NullClass
   }
   def isBottomType(tp: Type) = {
     // After erasure, reference types become nullable again.
-    if (ctx.phaseId <= ctx.erasurePhase.id) tp.derivesFrom(NothingClass)
+    if (!ctx.phase.erasedTypes) tp.derivesFrom(NothingClass)
     else tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
   }
 
