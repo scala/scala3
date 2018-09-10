@@ -81,7 +81,7 @@ class QuoteDriver extends Driver {
         // Loads the classes loaded by this class loader
         // When executing `run` or `test` in sbt the classpath is not in the property java.class.path
         val newClasspath = cl.getURLs.map(_.getFile())
-        classpath = newClasspath.mkString("", ":", if (classpath == "") "" else ":" + classpath)
+        classpath = newClasspath.mkString("", java.io.File.pathSeparator, if (classpath == "") "" else java.io.File.pathSeparator + classpath)
       case _ =>
     }
     ictx.settings.classpath.update(classpath)(ictx)

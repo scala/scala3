@@ -318,8 +318,8 @@ object Build {
   lazy val commonBenchmarkSettings = Seq(
     outputStrategy := Some(StdoutOutput),
     mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
-    javaOptions += "-DBENCH_COMPILER_CLASS_PATH=" + Attributed.data((fullClasspath in (`dotty-bootstrapped`, Compile)).value).mkString("", ":", ""),
-    javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in (`dotty-library-bootstrapped`, Compile)).value).mkString("", ":", "")
+    javaOptions += "-DBENCH_COMPILER_CLASS_PATH=" + Attributed.data((fullClasspath in (`dotty-bootstrapped`, Compile)).value).mkString("", File.pathSeparator, ""),
+    javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in (`dotty-library-bootstrapped`, Compile)).value).mkString("", File.pathSeparator, "")
   )
 
   // sbt >= 0.13.12 will automatically rewrite transitive dependencies on
@@ -453,7 +453,7 @@ object Build {
   def findLib(attList: Seq[Attributed[File]], name: String) = attList
     .map(_.data.getAbsolutePath)
     .find(_.contains(name))
-    .toList.mkString(":")
+    .toList.mkString(File.pathSeparator)
 
   // Settings shared between dotty-compiler and dotty-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
@@ -682,13 +682,13 @@ object Build {
       else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
       else "dotty.tools.dotc.Main"
 
-    var extraClasspath = s"$scalaLib:$dottyLib"
-    if ((decompile || printTasty) && !args.contains("-classpath")) extraClasspath += ":."
+    var extraClasspath = s"$scalaLib${File.pathSeparator}$dottyLib"
+    if ((decompile || printTasty) && !args.contains("-classpath")) extraClasspath += s"${File.pathSeparator}."
     if (args0.contains("-with-compiler")) {
       if (!isDotty.value) {
         throw new MessageOnlyException("-with-compiler can only be used with a bootstrapped compiler")
       }
-      extraClasspath += s":$dottyCompiler"
+      extraClasspath += s"${File.pathSeparator}$dottyCompiler"
     }
 
     val fullArgs = main :: insertClasspathInArgs(args, extraClasspath)
@@ -698,7 +698,7 @@ object Build {
 
   def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
     val (beforeCp, fromCp) = args.span(_ != "-classpath")
-    val classpath = fromCp.drop(1).headOption.fold(cp)(_ + ":" + cp)
+    val classpath = fromCp.drop(1).headOption.fold(cp)(_ + File.pathSeparator + cp)
     "-classpath" :: classpath :: beforeCp ::: fromCp.drop(2)
   }
 
@@ -1112,7 +1112,7 @@ object Build {
         // Discover classpaths
 
         def cpToString(cp: Seq[File]) =
-          cp.map(_.getAbsolutePath).mkString(java.io.File.pathSeparator)
+          cp.map(_.getAbsolutePath).mkString(File.pathSeparator)
 
         val compilerCp = Attributed.data((fullClasspath in (`dotty-compiler`, Compile)).value)
         val cpStr = cpToString(classpath ++ compilerCp)

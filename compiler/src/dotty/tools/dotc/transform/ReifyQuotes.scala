@@ -66,7 +66,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
   private[this] var myMacroClassLoader: java.lang.ClassLoader = _
   private def macroClassLoader(implicit ctx: Context): ClassLoader = {
     if (myMacroClassLoader == null) {
-      val urls = ctx.settings.classpath.value.split(':').map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
+      val urls = ctx.settings.classpath.value.split(java.io.File.pathSeparatorChar).map(cp => java.nio.file.Paths.get(cp).toUri.toURL)
       myMacroClassLoader = new java.net.URLClassLoader(urls, getClass.getClassLoader)
     }
     myMacroClassLoader
