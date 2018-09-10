@@ -182,3 +182,23 @@ A complete defininition of when two patterns or types overlap still needs to be 
 
  The last rule in particular is needed to detect non-overlaps for cases where the scrutinee and the patterns are tuples. I.e. `(Int, String)` does not overlap `(Int, Int)` since
 `String` does not overlap `Int`.
+
+## Related Work
+
+Match types have similarities with [closed type families](https://wiki.haskell.org/GHC/Type_families) in Haskell. Some differences are:
+
+  - Subtyping instead of type equalities.
+  - Match type reduction does not tighten the underlying constraint, whereas type family reduction does unify. This difference in approach mirrors the difference between local type inference in Scala and global type inference in Haskell.
+  - No a-priory requirement that cases are non-overlapping. Uses parallel reduction
+    instead of always chosing a unique branch.
+
+Match types are also similar to Typescript's [conditional types](https://github.com/Microsoft/TypeScript/pull/21316). The main differences here are:
+
+ - Conditional types only reduce if scrutinee and pattern are ground, whereas
+   match types also work for type parameters and abstract types.
+ - Match types can bind variables in type patterns.
+ - Match types support direct recursion.
+
+Conditional types on Typescript distribute through union types. We should evaluate whether match types should support this as well.
+
+
