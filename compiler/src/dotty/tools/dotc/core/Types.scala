@@ -4770,8 +4770,13 @@ object Types {
   def nullifyMember(sym: Symbol, tp: Type)(implicit ctx: Context): Type = {
     assert(sym.is(JavaDefined), s"can only nullify java-defined members")
     if (sym.isConstructor) {
+      // Constructors get special treatment because the return type isn't nullified.
       val constrMap = new ConstructorNullMap()
       constrMap(tp)
+    } else if (sym.name == nme.TYPE_) {
+      // The special TYPE field returns the Class object for a given class, so it's
+      // always non-null.
+      tp
     } else {
       val nullMap = new JavaNullMap()
       nullMap(tp)
@@ -4800,11 +4805,24 @@ object Types {
    *  nullify(C[S]) = C[nullify(S)] | JavaNull if C is a generic class
    */
   class JavaNullMap(implicit ctx: Context) extends TypeMap {
-    def shouldNullify(tp: TypeRef): Boolean = {
-      !tp.symbol.isValueClass &&
-        !tp.symbol.derivesFrom(defn.AnnotationClass) &&
-        !tp.isRef(defn.ObjectClass) &&
-        !tp.isRef(defn.AnyClass)
+    def shouldNullify(tp: Type): Boolean = {
+      tp match {
+        case tp: TypeRef =>
+          !tp.symbol.isValueClass &&
+            !tp.symbol.derivesFrom(defn.AnnotationClass) &&
+            !tp.isRef(defn.ObjectClass) &&
+            !tp.isRef(defn.AnyClass)
+        case _ =>
+          true
+      }
+    }
+
+    def shouldDescend(tp: AppliedType): Boolean = {
+      val AppliedType(tycons, _) = tp
+      // Since `Class` objects are runtime representations of _classes_, it doesn't make
+      // sense to talk about e.g. Class[String | JavaNull], so we don't recursive inside `Class`
+      // while nullifying things.
+      tycons != defn.ClassClass.typeRef
     }
 
     override def apply(tp: Type): Type = {
@@ -4819,8 +4837,9 @@ object Types {
           defn.javaNullable(derivedRefinedType(tp, parent, this(info)))
         case tp: TypeParamRef =>
           defn.javaNullable(tp)
-        case AppliedType(tycons, targs) =>
-          defn.javaNullable(AppliedType(tycons, targs map this))
+        case appTp@AppliedType(tycons, targs) if shouldNullify(tp) =>
+          val targs2 = if (shouldDescend(appTp)) targs map this else targs
+          defn.javaNullable(AppliedType(tycons, targs2))
         case _ =>
           tp
       }
