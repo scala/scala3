@@ -3636,8 +3636,10 @@ object Types {
 
   object MatchType {
     def apply(bound: Type, scrutinee: Type, cases: List[Type])(implicit ctx: Context) = {
-      val mt = unique(new CachedMatchType(bound, scrutinee, cases))
-      mt.reduced.orElse(mt)
+      unique(new CachedMatchType(bound, scrutinee, cases))
+        // TODO: maybe we should try to reduce match types immediately, but this risks creating illegal
+        // cycles. So we can do this only if we can prove that the redux is in some sense simpler than
+        // the original type.
     }
   }
 

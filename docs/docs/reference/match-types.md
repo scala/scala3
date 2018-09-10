@@ -183,13 +183,62 @@ A complete defininition of when two patterns or types overlap still needs to be 
  The last rule in particular is needed to detect non-overlaps for cases where the scrutinee and the patterns are tuples. I.e. `(Int, String)` does not overlap `(Int, Int)` since
 `String` does not overlap `Int`.
 
+## Handling Termination
+
+Match type definitions can be recursive, which raises the question whether and how to check
+that reduction terminates. This is currently an open question. We should investigate whether
+there are workable ways to enforce that recursion is primitive.
+
+Note that, since reduction is linked to subtyping, we already have a cycle dectection mechanism in place.
+So the following will already give a reasonable error message:
+```scala
+  type L[X] = X match {
+    case Int => L[X]
+  }
+  def g[X]: L[X] = ???
+```
+
+```
+   |  val x: Int = g[Int]
+   |               ^^^^^^
+   |               found:    Test.L[Int]
+   |               required: Int
+```
+
+The subtype cycle test can be circumvented by producing larger types in each recursive invocation, as in the following definitions:
+```scala
+  type LL[X] = X match {
+    case Int => LL[LL[X]]
+  }
+  def gg[X]: LL[X] = ???
+```
+In this case subtyping enters into an infinite recursion. This is not as bad as it looks, however, because
+`dotc` turns selected stack overflows into type errors. If there is a stackoverflow during subtyping,
+the exception will be caught and turned into a compile-time error that indicates
+a trace of the subtype tests that caused the overflow without showing a full stacktrace.
+Concretely:
+```
+   |  val xx: Int = gg[Int]
+   |                  ^
+   |Recursion limit exceeded.
+   |Maybe there is an illegal cyclic reference?
+   |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
+   |A recurring operation is (inner to outer):
+   |
+   |  subtype Test.LL[Int] <:< Int
+   |  subtype Test.LL[Int] <:< Int
+   |  ...
+   |  subtype Test.LL[Int] <:< Int
+```
+(The actual error message shows some additional lines in the stacktrace).
+
 ## Related Work
 
 Match types have similarities with [closed type families](https://wiki.haskell.org/GHC/Type_families) in Haskell. Some differences are:
 
   - Subtyping instead of type equalities.
   - Match type reduction does not tighten the underlying constraint, whereas type family reduction does unify. This difference in approach mirrors the difference between local type inference in Scala and global type inference in Haskell.
-  - No a-priory requirement that cases are non-overlapping. Uses parallel reduction
+  - No a-priori requirement that cases are non-overlapping. Uses parallel reduction
     instead of always chosing a unique branch.
 
 Match types are also similar to Typescript's [conditional types](https://github.com/Microsoft/TypeScript/pull/21316). The main differences here are:
@@ -199,6 +248,6 @@ Match types are also similar to Typescript's [conditional types](https://github.
  - Match types can bind variables in type patterns.
  - Match types support direct recursion.
 
-Conditional types on Typescript distribute through union types. We should evaluate whether match types should support this as well.
+Conditional types in Typescript distribute through union types. We should evaluate whether match types should support this as well.
 
 
