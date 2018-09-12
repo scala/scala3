@@ -179,13 +179,17 @@ class DottyLanguageServer extends LanguageServer
     val document = params.getTextDocument
     val uri = new URI(document.getUri)
     val driver = driverFor(uri)
+    val worksheetMode = isWorksheet(uri)
 
-    val text = document.getText
+    val (text, positionMapper) =
+      if (worksheetMode) (wrapWorksheet(document.getText), Some(worksheetPositionMapper _))
+      else (document.getText, None)
+
     val diags = driver.run(uri, text)
 
     client.publishDiagnostics(new PublishDiagnosticsParams(
       document.getUri,
-      diags.flatMap(diagnostic).asJava))
+      diags.flatMap(diagnostic(_, positionMapper)).asJava))
   }
 
   override def didChange(params: DidChangeTextDocumentParams): Unit = thisServer.synchronized {
@@ -193,16 +197,20 @@ class DottyLanguageServer extends LanguageServer
     val document = params.getTextDocument
     val uri = new URI(document.getUri)
     val driver = driverFor(uri)
+    val worksheetMode = isWorksheet(uri)
 
     val change = params.getContentChanges.get(0)
     assert(change.getRange == null, "TextDocumentSyncKind.Incremental support is not implemented")
 
-    val text = change.getText
+    val (text, positionMapper) =
+      if (worksheetMode) (wrapWorksheet(change.getText), Some(worksheetPositionMapper _))
+      else (change.getText, None)
+
     val diags = driver.run(uri, text)
 
     client.publishDiagnostics(new PublishDiagnosticsParams(
       document.getUri,
-      diags.flatMap(diagnostic).asJava))
+      diags.flatMap(diagnostic(_, positionMapper)).asJava))
   }
 
   override def didClose(params: DidCloseTextDocumentParams): Unit = thisServer.synchronized {
@@ -218,9 +226,16 @@ class DottyLanguageServer extends LanguageServer
   override def didChangeWatchedFiles(params: DidChangeWatchedFilesParams): Unit =
     /*thisServer.synchronized*/ {}
 
-  override def didSave(params: DidSaveTextDocumentParams): Unit =
-    /*thisServer.synchronized*/ {}
-
+  override def didSave(params: DidSaveTextDocumentParams): Unit = {
+    thisServer.synchronized {
+      val uri = new URI(params.getTextDocument.getUri)
+      if (isWorksheet(uri)) {
+        val driver = driverFor(uri)
+        val sendMessage = (msg: String) => client.logMessage(new MessageParams(MessageType.Info, msg))
+        evaluateWorksheet(driver, uri, sendMessage)(driver.currentCtx)
+      }
+    }
+  }
 
   // FIXME: share code with messages.NotAMember
   override def completion(params: CompletionParams) = computeAsync { cancelToken =>
@@ -417,6 +432,20 @@ class DottyLanguageServer extends LanguageServer
   override def resolveCodeLens(params: CodeLens) = null
   override def resolveCompletionItem(params: CompletionItem) = null
   override def signatureHelp(params: TextDocumentPositionParams) = null
+
+  /**
+   * Evaluate the worksheet at `uri`.
+   *
+   * @param driver      The driver for the project that contains the worksheet.
+   * @param uri         The URI of the worksheet.
+   * @param sendMessage A mean of communicating the results of evaluation back.
+   */
+  private def evaluateWorksheet(driver: InteractiveDriver, uri: URI, sendMessage: String => Unit)(implicit ctx: Context): Unit = {
+    val trees = driver.openedTrees(uri)
+    trees.headOption.foreach { tree =>
+      Worksheet.evaluate(tree, sendMessage)
+    }
+  }
 }
 
 object DottyLanguageServer {
@@ -434,21 +463,25 @@ object DottyLanguageServer {
   }
 
   /** Convert a SourcePosition to an lsp4j.Range */
-  def range(p: SourcePosition): Option[lsp4j.Range] =
-    if (p.exists)
+  def range(p: SourcePosition, positionMapper: Option[SourcePosition => SourcePosition] = None): Option[lsp4j.Range] =
+    if (p.exists) {
+      val mappedPosition = positionMapper.map(_(p)).getOrElse(p)
       Some(new lsp4j.Range(
-        new lsp4j.Position(p.startLine, p.startColumn),
-        new lsp4j.Position(p.endLine, p.endColumn)
+        new lsp4j.Position(mappedPosition.startLine, mappedPosition.startColumn),
+        new lsp4j.Position(mappedPosition.endLine, mappedPosition.endColumn)
       ))
-    else
+    } else
       None
 
   /** Convert a SourcePosition to an lsp4.Location */
-  def location(p: SourcePosition): Option[lsp4j.Location] =
-    range(p).map(r => new lsp4j.Location(toUri(p.source).toString, r))
+  def location(p: SourcePosition, positionMapper: Option[SourcePosition => SourcePosition] = None): Option[lsp4j.Location] =
+    range(p, positionMapper).map(r => new lsp4j.Location(toUri(p.source).toString, r))
 
-  /** Convert a MessageContainer to an lsp4j.Diagnostic */
-  def diagnostic(mc: MessageContainer): Option[lsp4j.Diagnostic] =
+  /**
+   * Convert a MessageContainer to an lsp4j.Diagnostic. The positions are transformed vy
+   * `positionMapper`.
+   */
+  def diagnostic(mc: MessageContainer, positionMapper: Option[SourcePosition => SourcePosition] = None): Option[lsp4j.Diagnostic] =
     if (!mc.pos.exists)
       None // diagnostics without positions are not supported: https://github.com/Microsoft/language-server-protocol/issues/249
     else {
@@ -467,10 +500,37 @@ object DottyLanguageServer {
       }
 
       val code = mc.contained().errorId.errorNumber.toString
-      range(mc.pos).map(r =>
+      range(mc.pos, positionMapper).map(r =>
         new lsp4j.Diagnostic(
           r, mc.message, severity(mc.level), /*source =*/ "", code))
     }
+
+  /** Does this URI represent a worksheet? */
+  private def isWorksheet(uri: URI): Boolean =
+    uri.toString.endsWith(".sc")
+
+  /** Wrap the source of a worksheet inside an `object`. */
+  private def wrapWorksheet(source: String): String =
+    s"""object Worksheet {
+       |$source
+       |}""".stripMargin
+
+  /**
+   * Map `position` in a wrapped worksheet to the same position in the unwrapped source.
+   *
+   * Because worksheet are wrapped in an `object`, the positions in the source are one line
+   * above from what the compiler sees.
+   *
+   * @see wrapWorksheet
+   * @param position The position as seen by the compiler (after wrapping)
+   * @return The position in the actual source file (before wrapping).
+   */
+  private def worksheetPositionMapper(position: SourcePosition): SourcePosition = {
+    new SourcePosition(position.source, position.pos, position.outer) {
+      override def startLine: Int = position.startLine - 1
+      override def endLine: Int = position.endLine - 1
+    }
+  }
 
   /** Create an lsp4j.CompletionItem from a Symbol */
   def completionItem(sym: Symbol)(implicit ctx: Context): lsp4j.CompletionItem = {

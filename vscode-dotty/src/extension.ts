@@ -12,6 +12,8 @@ import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn,
          ServerOptions } from 'vscode-languageclient';
 import { enableOldServerWorkaround } from './compat'
 
+import * as worksheet from './worksheet'
+
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
 
@@ -26,6 +28,8 @@ export function activate(context: ExtensionContext) {
   const languageServerArtifactFile = `${vscode.workspace.rootPath}/.dotty-ide-artifact`
   const languageServerDefaultConfigFile = path.join(extensionContext.extensionPath, './out/default-dotty-ide-config')
   const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
+
+  vscode.workspace.onWillSaveTextDocument(worksheet.prepareWorksheet)
 
   if (process.env['DLS_DEV_MODE']) {
     const portFile = `${vscode.workspace.rootPath}/.dotty-ide-dev-port`
@@ -156,8 +160,10 @@ function configureIDE(sbtClasspath: string, languageServerScalaVersion: string, 
 function run(serverOptions: ServerOptions, isOldServer: boolean) {
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
-      { language: 'scala', scheme: 'file', pattern: '**/*.scala' },
-      { language: 'scala', scheme: 'untitled', pattern: '**/*.scala' }
+      { scheme: 'file', pattern: '**/*.sc' },
+      { scheme: 'untitled', pattern: '**/*.sc' },
+      { scheme: 'file', pattern: '**/*.scala' },
+      { scheme: 'untitled', pattern: '**/*.scala' }
     ],
     synchronize: {
       configurationSection: 'dotty'
@@ -169,6 +175,14 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
   const client = new LanguageClient("dotty", "Dotty", serverOptions, clientOptions)
   if (isOldServer)
     enableOldServerWorkaround(client)
+
+  // We use the `window/logMessage` command to communicate back the result of evaluating
+  // a worksheet.
+  client.onReady().then(() => {
+    client.onNotification("window/logMessage", (params) => {
+      worksheet.worksheetHandleMessage(params.message)
+    })
+  })
 
   // Push the disposable to the context's subscriptions so that the
   // client can be deactivated on extension deactivation

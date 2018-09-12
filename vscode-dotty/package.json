@@ -25,13 +25,15 @@
   "main": "./out/src/extension",
   "activationEvents": [
     "onLanguage:scala",
-    "workspaceContains:.dotty-ide.json"
+    "workspaceContains:.dotty-ide.json",
+    "workspaceContains:**.sc"
   ],
   "languages": [
     {
       "id": "scala",
       "extensions": [
-        ".scala"
+        ".scala",
+        ".sc"
       ],
       "aliases": [
         "Scala"
@@ -44,6 +46,9 @@
         "editor.tabSize": 2,
         "editor.insertSpaces": true
       }
+    },
+    "files.associations": {
+      "*.sc": "scala"
     }
   },
   "scripts": {
