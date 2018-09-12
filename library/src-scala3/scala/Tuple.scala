@@ -342,7 +342,7 @@ abstract sealed class NonEmptyTuple extends Tuple {
 
   rewrite def apply(n: Int): Elem[this.type, n.type] = {
     type Result = Elem[this.type, n.type]
-    rewrite constValueOpt[BoundedSize[this.type]] match {
+    rewrite constValueOpt[Size[this.type]] match {
       case Some(1) =>
         val t = asInstanceOf[Tuple1[_]]
         rewrite constValueOpt[n.type] match {
