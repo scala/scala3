@@ -34,6 +34,7 @@ import annotation.tailrec
 import language.implicitConversions
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr}
+import reporting.trace
 import java.lang.ref.WeakReference
 
 import scala.annotation.internal.sharable
@@ -1073,6 +1074,20 @@ object Types {
 
     /** Like `dealiasKeepAnnots`, but keeps only refining annotations */
     final def dealiasKeepRefiningAnnots(implicit ctx: Context): Type = dealias1(keepIfRefining)
+
+    /** The result of normalization using `tryNormalize`, or the type itself if
+     *  tryNormlize yields NoType
+     */
+    final def normalized(implicit ctx: Context) = {
+      val normed = tryNormalize
+      if (normed.exists) normed else this
+    }
+
+    /** If this type can be normalized at the top-level by rewriting match types
+     *  of S[n] types, the result after applying all toplevel normalizations,
+     *  otherwise NoType
+     */
+    def tryNormalize(implicit ctx: Context): Type = NoType
 
     private def widenDealias1(keep: AnnotatedType => Context => Boolean)(implicit ctx: Context): Type = {
       val res = this.widen.dealias1(keep)
@@ -3264,6 +3279,29 @@ object Types {
       cachedSuper
     }
 
+    override def tryNormalize(implicit ctx: Context): Type = tycon match {
+      case tycon: TypeRef =>
+        def tryMatchAlias = tycon.info match {
+          case MatchAlias(alias) =>
+            trace("normalize $this", show = true) {
+              alias.applyIfParameterized(args).tryNormalize
+            }
+          case _ =>
+            NoType
+        }
+        if (defn.isTypelevel_S(tycon.symbol) && args.length == 1) {
+          trace("normalize S $this", show = true) {
+            args.head.normalized match {
+              case ConstantType(Constant(n: Int)) => ConstantType(Constant(n + 1))
+              case none => tryMatchAlias
+            }
+          }
+        }
+        else tryMatchAlias
+      case _ =>
+        NoType
+    }
+
     def lowerBound(implicit ctx: Context) = tycon.stripTypeVar match {
       case tycon: TypeRef =>
         tycon.info match {
@@ -3574,6 +3612,8 @@ object Types {
     private[this] var myReduced: Type = null
     private[this] var reductionContext: mutable.Map[Type, TypeBounds] = null
 
+    override def tryNormalize(implicit ctx: Context): Type = reduced.normalized
+
     def reduced(implicit ctx: Context): Type = {
       val trackingCtx = ctx.fresh.setTypeComparerFn(new TrackingTypeComparer(_))
       val cmp = trackingCtx.typeComparer.asInstanceOf[TrackingTypeComparer]
@@ -3617,7 +3657,8 @@ object Types {
       if (!Config.cacheMatchReduced || myReduced == null || !upToDate) {
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
-        myReduced = recur(cases)(trackingCtx)
+        myReduced =
+          trace(i"reduce match type $this", show = true) { recur(cases)(trackingCtx) }
         updateReductionContext()
       }
       myReduced
@@ -3635,12 +3676,8 @@ object Types {
   class CachedMatchType(bound: Type, scrutinee: Type, cases: List[Type]) extends MatchType(bound, scrutinee, cases)
 
   object MatchType {
-    def apply(bound: Type, scrutinee: Type, cases: List[Type])(implicit ctx: Context) = {
+    def apply(bound: Type, scrutinee: Type, cases: List[Type])(implicit ctx: Context) =
       unique(new CachedMatchType(bound, scrutinee, cases))
-        // TODO: maybe we should try to reduce match types immediately, but this risks creating illegal
-        // cycles. So we can do this only if we can prove that the redux is in some sense simpler than
-        // the original type.
-    }
   }
 
   // ------ ClassInfo, Type Bounds --------------------------------------------------

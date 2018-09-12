@@ -8,7 +8,7 @@ object Test {
   def a: L[Boolean] = ???
   def b: L[Int] = ???
   def g[X]: L[X] = ???
-  def g[X]: L[X] = ???   // error: found: L[Int], required: Int
+  val x: Int = g[Int]     // error: found: L[Int], required: Int
 
   def aa: LL[Boolean] = ???
   def bb: LL[Int] = ???   // error: recursion limit exceeded with  subtype LazyRef(Test.LL[Int]) <:< Int

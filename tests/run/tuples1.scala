@@ -34,24 +34,8 @@ object Test extends App {
   val c2_3 = x2 ++ x3; val c2_3c: (String, Int, Int, String, Int) = c2_3; println(s"c2_3 = $c2_3")
   val c3_3 = x3 ++ x3; val c3_3c: (Int, String, Int, Int, String, Int) = c3_3; println(s"c3_3 = $c3_3")
 
-  val x23 = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23)
-  type T23 = (Int, Int, Int, Int, Int,
-              Int, Int, Int, Int, Int,
-              Int, Int, Int, Int, Int,
-              Int, Int, Int, Int, Int,
-              Int, Int, Int)
-  val x23c: T23 = x23
-  println(x23)
-  assert(x23(0) == 1)
-  assert(x23(22) == 23)
-
-  x23 match {
-    case (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22, x23) =>
-      println(x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10 + x11 + x12 + x13 + x14 + x15 + x16 + x17 + x18 + x19 + x20 + x21 + x22 + x23)
-  }
   rewrite def decompose1 = rewrite x2 match { case x *: xs => (x, xs) }
   rewrite def decompose2 = rewrite x2 match { case x *: y *: xs => (x, y, xs) }
-  rewrite def decompose3 = rewrite x23 match { case x *: y *: xs => (x, y, xs) }
 
   { val (x, xs) = decompose1
     val xc: String = x
@@ -66,16 +50,8 @@ object Test extends App {
     println(s"$x2 -> $x, $y, $xs")
   }
 
-  { val (x, y, xs) = decompose3
-    val xc: Int = x
-    val yc: Int = y
-    val xsc: Unit = xs
-    println(s"$x23 -> $x, $y, $xs")
-  }
-
   val x3s: 3 = x3.size
   val us: 0 = ().size
-  val x23s: 23 = x23.size
 
 // dynamic operations
 
