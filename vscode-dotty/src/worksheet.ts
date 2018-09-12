@@ -3,13 +3,13 @@
 import * as vscode from 'vscode'
 
 /** All decorations that have been added so far */
-let worksheetDecorationTypes: vscode.TextEditorDecorationType[] = []
+let worksheetDecorationTypes: Map<vscode.TextDocument, vscode.TextEditorDecorationType[]> = new Map<vscode.TextDocument, vscode.TextEditorDecorationType[]>()
 
 /** The number of blank lines that have been inserted to fit the output so far. */
-let worksheetInsertedLines: number = 0
+let worksheetInsertedLines: Map<vscode.TextDocument, number> = new Map<vscode.TextDocument, number>()
 
 /** The minimum margin to add so that the decoration is shown after all text. */
-let worksheetMargin: number = 0
+let worksheetMargin: Map<vscode.TextDocument, number> = new Map<vscode.TextDocument, number>()
 
 /**
  * If the document that will be saved is a worksheet, resets the "worksheet state"
@@ -26,9 +26,9 @@ export function prepareWorksheet(event: vscode.TextDocumentWillSaveEvent) {
     const setup =
       removeRedundantBlankLines(document)
       .then(_ => {
-        removeDecorations()
-        worksheetMargin = longestLine(document) + 5
-        worksheetInsertedLines = 0
+        removeDecorations(document)
+        worksheetMargin.set(document, longestLine(document) + 5)
+        worksheetInsertedLines.set(document, 0)
       })
     event.waitUntil(setup)
   }
@@ -42,13 +42,15 @@ export function prepareWorksheet(event: vscode.TextDocumentWillSaveEvent) {
  */
 export function worksheetHandleMessage(message: string) {
 
-  const ed = vscode.window.activeTextEditor
+  const editor = vscode.window.visibleTextEditors.find(e => {
+    let uri = e.document.uri.toString()
+    return uri == message.slice(0, uri.length)
+  })
 
-  if (!ed) {
-    return;
+  if (editor) {
+    let payload = message.slice(editor.document.uri.toString().length)
+    worksheetDisplayResult(payload, editor)
   }
-
-  worksheetDisplayResult(message, ed)
 }
 
 /**
@@ -71,8 +73,6 @@ function worksheetCreateDecoration(margin: number, text: string) {
         color: "light gray",
       }
     })
-
-  worksheetDecorationTypes.push(decorationType)
 
   return decorationType
 }
@@ -97,8 +97,9 @@ function longestLine(document: vscode.TextDocument) {
 /**
  * Remove all decorations added by worksheet evaluation.
  */
-function removeDecorations() {
-  worksheetDecorationTypes.forEach(decoration =>
+function removeDecorations(document: vscode.TextDocument) {
+  const decorationTypes = worksheetDecorationTypes.get(document) || []
+  decorationTypes.forEach(decoration =>
     decoration.dispose()
   )
 }
@@ -169,17 +170,26 @@ function removeRedundantBlankLines(document: vscode.TextDocument) {
  * @return A `Thenable` that will insert necessary lines to fit the output
  *         and display the decorations upon completion.
  */
-function worksheetDisplayResult(message: string, ed: vscode.TextEditor) {
+function worksheetDisplayResult(message: string, editor: vscode.TextEditor) {
 
   const colonIndex = message.indexOf(":")
   const lineNumber = parseInt(message.slice(0, colonIndex)) - 1 // lines are 0-indexed
   const evalResult = message.slice(colonIndex + 1)
   const resultLines = evalResult.trim().split(/\r\n|\r|\n/g)
+  const margin = worksheetMargin.get(editor.document) || 0
+
+  let insertedLines = worksheetInsertedLines.get(editor.document) || 0
+
+  let decorationTypes = worksheetDecorationTypes.get(editor.document)
+  if (!decorationTypes) {
+    decorationTypes = []
+    worksheetDecorationTypes.set(editor.document, decorationTypes)
+  }
 
   // The line where the next decoration should be put.
   // It's the number of the line that produced the output, plus the number
   // of lines that we've inserted so far.
-  let actualLine = lineNumber + worksheetInsertedLines
+  let actualLine = lineNumber + insertedLines
 
   // If the output has more than one line, we need to insert blank lines
   // below the line that produced the output to fit the output.
@@ -187,17 +197,20 @@ function worksheetDisplayResult(message: string, ed: vscode.TextEditor) {
   if (resultLines.length > 1) {
     const linesToInsert = resultLines.length - 1
     const editPos = new vscode.Position(actualLine + 1, 0) // add after the line
-    addNewLinesEdit.insert(ed.document.uri, editPos, "\n".repeat(linesToInsert))
-    worksheetInsertedLines += linesToInsert
+    addNewLinesEdit.insert(editor.document.uri, editPos, "\n".repeat(linesToInsert))
+    insertedLines += linesToInsert
+    worksheetInsertedLines.set(editor.document, insertedLines)
   }
 
   return vscode.workspace.applyEdit(addNewLinesEdit).then(_ => {
     for (let line of resultLines) {
       const decorationPosition = new vscode.Position(actualLine, 0)
-      const decorationMargin = worksheetMargin - ed.document.lineAt(actualLine).text.length
+      const decorationMargin = margin - editor.document.lineAt(actualLine).text.length
       const decorationType = worksheetCreateDecoration(decorationMargin, line)
+      if (decorationTypes) decorationTypes.push(decorationType)
+
       const decoration = { range: new vscode.Range(decorationPosition, decorationPosition), hoverMessage: line }
-      ed.setDecorations(decorationType, [decoration])
+      editor.setDecorations(decorationType, [decoration])
       actualLine += 1
     }
   })
