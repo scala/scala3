@@ -3283,14 +3283,14 @@ object Types {
       case tycon: TypeRef =>
         def tryMatchAlias = tycon.info match {
           case MatchAlias(alias) =>
-            trace("normalize $this", show = true) {
+            trace("normalize $this", typr, show = true) {
               alias.applyIfParameterized(args).tryNormalize
             }
           case _ =>
             NoType
         }
         if (defn.isTypelevel_S(tycon.symbol) && args.length == 1) {
-          trace("normalize S $this", show = true) {
+          trace("normalize S $this", typr, show = true) {
             args.head.normalized match {
               case ConstantType(Constant(n: Int)) => ConstantType(Constant(n + 1))
               case none => tryMatchAlias
@@ -3590,25 +3590,6 @@ object Types {
     def alternatives(implicit ctx: Context): List[Type] = cases.map(caseType)
     def underlying(implicit ctx: Context): Type = bound
 
-    private def wildApproxMap(implicit ctx: Context) = new TypeMap {
-      def apply(t: Type) = t match {
-        case t: TypeRef =>
-          t.info match {
-            case TypeBounds(lo, hi) if lo `ne` hi => WildcardType
-            case _ => mapOver(t)
-          }
-        case t: ParamRef => WildcardType
-        case _ => mapOver(t)
-      }
-    }
-
-    private[this] var myApproxScrut: Type = null
-
-    def approximatedScrutinee(implicit ctx: Context): Type = {
-      if (myApproxScrut == null) myApproxScrut = wildApproxMap.apply(scrutinee)
-      myApproxScrut
-    }
-
     private[this] var myReduced: Type = null
     private[this] var reductionContext: mutable.Map[Type, TypeBounds] = null
 
@@ -3617,15 +3598,6 @@ object Types {
     def reduced(implicit ctx: Context): Type = {
       val trackingCtx = ctx.fresh.setTypeComparerFn(new TrackingTypeComparer(_))
       val cmp = trackingCtx.typeComparer.asInstanceOf[TrackingTypeComparer]
-
-      def recur(cases: List[Type])(implicit ctx: Context): Type = cases match {
-        case Nil => NoType
-        case cas :: cases1 =>
-          val r = cmp.matchCase(scrutinee, cas, instantiate = true)
-          if (r.exists) r
-          else if (cmp.matchCase(approximatedScrutinee, cas, instantiate = false).exists) NoType
-          else recur(cases1)
-      }
 
       def isRelevant(tp: Type) = tp match {
         case tp: TypeParamRef => ctx.typerState.constraint.entry(tp).exists
@@ -3658,7 +3630,21 @@ object Types {
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
-          trace(i"reduce match type $this", show = true) { recur(cases)(trackingCtx) }
+          trace(i"reduce match type $this", typr, show = true) {
+            if (defn.isBottomType(scrutinee)) defn.NothingType
+            else {
+              val applicableBranches = cases
+                .map(cmp.matchCase(scrutinee, _, instantiate = true)(trackingCtx))
+                .filter(_.exists)
+              applicableBranches match {
+                case Nil => NoType
+                case applicableBranch :: Nil => applicableBranch
+                case _ =>
+                  record(i"MatchType.multi-branch")
+                  ctx.typeComparer.glb(applicableBranches)
+              }
+            }
+          }
         updateReductionContext()
       }
       myReduced

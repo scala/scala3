@@ -119,9 +119,12 @@ object Tuple {
     case x1 *: xs1 => x1 *: Concat[xs1, Y]
   }
 
-  type Elem[+X <: Tuple, +N] = (X, N) match {
-    case (x *: xs, 0) => x
-    case (x *: xs, S[n1]) => Elem[xs, n1]
+  type Elem[+X <: Tuple, +N] = X match {
+    case x *: xs =>
+      N match {
+        case 0 => x
+        case S[n1] => Elem[xs, n1]
+      }
   }
 
   type Size[+X] <: Int = X match {
@@ -129,20 +132,16 @@ object Tuple {
     case x *: xs => S[Size[xs]]
   }
 
-  private type XXL = S[$MaxSpecialized.type]
-
-  private type BoundedS[N <: Int] = N match {
-    case XXL => XXL
-    case _ => S[N]
-  }
-
-  private[scala] type BoundedSize[X] <: Int = X match {
+  private[scala] type BoundedSizeRecur[X, L <: Int] <: Int = X match {
     case Unit => 0
-    case x *: xs => BoundedSize[xs] match {
-      case XXL => XXL
-      case _ => S[BoundedSize[xs]]
-    }
+    case x *: xs =>
+      L match {
+        case 0 => 0
+        case S[n] => S[BoundedSizeRecur[xs, n]]
+      }
   }
+
+  private[scala] type BoundedSize[X] = BoundedSizeRecur[X, 23]
 
   val $emptyArray = Array[Object]()
 
