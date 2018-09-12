@@ -339,14 +339,14 @@ class ReplDriver(settings: Array[String],
     case TypeOf(expr) =>
       compiler.typeOf(expr)(newRun(state)).fold(
         displayErrors,
-        res => out.println(SyntaxHighlighting(res))
+        res => out.println(SyntaxHighlighting(res)(state.context))
       )
       state
 
     case DocOf(expr) =>
       compiler.docOf(expr)(newRun(state)).fold(
         displayErrors,
-        res => out.println(SyntaxHighlighting(res))
+        res => out.println(SyntaxHighlighting(res)(state.context))
       )
       state
 

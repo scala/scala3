@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package printing
 
+import dotty.tools.dotc.core.Contexts.Context
+
 import parsing.Tokens._
 import scala.annotation.switch
 import scala.collection.mutable.StringBuilder
@@ -45,7 +47,12 @@ object SyntaxHighlighting {
    '{'  :: '}' :: ')' :: '(' :: '[' :: ']' :: '=' :: ' ' :: ',' :: '.' :: '|' ::
    '&' :: '\n' :: Nil
 
-  def apply(chars: Iterable[Char]): Iterable[Char] = {
+  def apply(chars: Iterable[Char])(implicit ctx: Context): Iterable[Char] = {
+    if (ctx.settings.color.value != "never") highlight(chars)
+    else chars
+  }
+
+  def highlight(chars: Iterable[Char]): Iterable[Char] = {
     var prev: Char = 0
     var remaining  = chars.toStream
     val newBuf     = new StringBuilder
