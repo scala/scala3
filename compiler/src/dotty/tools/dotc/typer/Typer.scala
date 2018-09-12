@@ -1317,7 +1317,9 @@ class Typer extends Namer
   }
 
   def typedMatchTypeTree(tree: untpd.MatchTypeTree, pt: Type)(implicit ctx: Context): Tree = {
-    val bound1 = typed(tree.bound)
+    val bound1 =
+      if (tree.bound.isEmpty && isFullyDefined(pt, ForceDegree.none)) TypeTree(pt)
+      else typed(tree.bound)
     val sel1 = typed(tree.selector)
     val pt1 = if (bound1.isEmpty) pt else bound1.tpe
     val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1.tpe, pt1))
