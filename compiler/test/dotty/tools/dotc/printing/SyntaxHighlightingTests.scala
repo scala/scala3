@@ -9,7 +9,7 @@ class SyntaxHighlightingTests {
   import SyntaxHighlighting._
 
   private def test(source: String, expected: String): Unit = {
-    val highlighted = SyntaxHighlighting.apply(source)
+    val highlighted = SyntaxHighlighting.highlight(source)
       .mkString
       .replace(NoColor,         ">")
       .replace(CommentColor,    "<C|")
