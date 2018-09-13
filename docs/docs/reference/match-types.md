@@ -84,15 +84,12 @@ Using `can-reduce`, we can now define match type reduction proper in the `reduce
 ```
   Match(S, C1, ..., Cn)  reduces-to  T
 ```
-if `Ci_1, ..., Ci_k` is a maximal non-empty subset of `C1, ..., Cn` such that for each `i_j`:
+if
 ```
-    Match(S, C1, ..., Cn)  can-reduce  i_j, Ti_j
+    Match(S, C1, ..., Cn)  can-reduce  i, T
 ```
-and
-```
-    T = Ti_1 & ... & Ti_k
-```
-In other words, a match reduces to the intersection of all right hand sides it can reduce to. This "parallel" notion of reduction was picked for its nice algebraic properties, even though it does not correspond directly to the operational semantics of pattern matching on terms, where the first matching case is chosen.
+and, for `j` in `1..i-1`: `C_j` is disjoint from `C_i`, or else `S` cannot possibly match `C_j`.
+See the section on overlapping patterns for an elaboration of "disjoint" and "cannot possibly match".
 
 ## Subtyping Rules for Match Types
 
@@ -159,26 +156,11 @@ the fact that `s.type` must conform to the pattern's type and derive a GADT cons
 this would be the constraint `x.type <: A`. The new aspect here is that we need GADT constraints over singleton types where
 before we just had constraints over type parameters.
 
-Assuming this extension, we can then try to typecheck as usual. E.g. to typecheck the first case `case _: A => 1` of the definition of `m` above, GADT matching will produce the constraint `x.type <: A`. Therefore, `M[x.type]` reduces to the singleton type `1`. The right hand side `1` of the case conforms to this type, so the case typechecks. Typechecking the second case proceeds similarly.
+Assuming this extension, we can then try to typecheck as usual. E.g. to typecheck the first case `case _: A => 1` of the definition of `m` above, GADT matching will produce the constraint `x.type <: A`. Therefore, `M[x.type]` reduces to the singleton type `1`. The right hand side `1` of the case conforms to this type, so the case typechecks.
 
-However, it turns out that these rules are not enough for type soundness. To see this, assume that `A` and `B` are traits that are both extended by a common class `C`. In this case, and assuming `c: C`, `M[c.type]` reduces to `1 & 2`, but `m(c)` reduces to `1`. So the type of the application `m(c)` does not match the reduced result type of `m`, which means soundness is violated.
-
-To plug the soundness hole, we have to tighten the typing rules for match expressions. In the example above we need to also consider the case where the scrutinee `x` conforms to `A` and `B`. In this case, the match expression still returns `1` but the match type `M[x.type]` reduces to `1 & 2`, which means there should be a type error. However, this second check can be omitted if `A` and `B` are types that don't overlap. We can omit the check because in that case there is no scrutinee value `x` that could reduce to `1`, so no discrepancy can arise at runtime.
-
-More generally, we proceeed as follows:
-
-When typechecking the `i`th case of a match expression
-```
-  x match { case P_1 => t_1 ... case P_n => t_n
-```
-where `t_i` has type `T_i` against an expected match type `R`:
-
- 1. Determine all maximal sequences of
-    patterns `P_j_1, ..., P_j_m` that follow `P_i` in the match expression and that do overlap with `P_i`. That is, `P_i, P_j_1, ..., P_j_m` all match at least one common value.
-
- 2. For each such sequence, verify that `T_i <: R` under the GADT constraint arising from matching the scrutinee `x` against all of the patterns `P_i, P_j_1, ..., P_j_m`.
-
-In the example above, `A` and `B` would be overlapping because they have the common subclass `C`. Hence, we have to check that the right-hand side `1` is a subtype of `M[x.type]` under the assumptions that `x.type <: A` and `x.type <: B`. Under these assumptions `M[x.type]` reduces to `1 & 2`, which gives a type error.
+Typechecking the second case hits a snag, though. In general, the assumption `x.type <: B` is not enough to prove that
+`M[x.type]` reduces to `2`. However we can reduce `M[x.type]` to `2` if the types `A` and `B` do not overlap.
+So correspondence of match terms to match types is feasible only in the case of non-overlapping patterns.
 
 For simplicity, we have disregarded the `null` value in this discussion. `null` does not cause a fundamental problem but complicates things somewhat because some forms of patterns do not match `null`.
 

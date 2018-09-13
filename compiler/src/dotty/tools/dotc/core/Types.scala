@@ -3595,9 +3595,37 @@ object Types {
 
     override def tryNormalize(implicit ctx: Context): Type = reduced.normalized
 
+    /** Switch to choose parallel or sequential reduction */
+    private final val reduceInParallel = false
+
+    final def cantPossiblyMatch(cas: Type)(implicit ctx: Context) =
+      true  // should be refined if we allow overlapping cases
+
     def reduced(implicit ctx: Context): Type = {
       val trackingCtx = ctx.fresh.setTypeComparerFn(new TrackingTypeComparer(_))
       val cmp = trackingCtx.typeComparer.asInstanceOf[TrackingTypeComparer]
+
+      def reduceSequential(cases: List[Type])(implicit ctx: Context): Type = cases match {
+        case Nil => NoType
+        case cas :: cases1 =>
+          val r = cmp.matchCase(scrutinee, cas, instantiate = true)
+          if (r.exists) r
+          else if (cantPossiblyMatch(cas)) reduceSequential(cases1)
+          else NoType
+      }
+
+      def reduceParallel(implicit ctx: Context) = {
+        val applicableBranches = cases
+          .map(cmp.matchCase(scrutinee, _, instantiate = true)(trackingCtx))
+          .filter(_.exists)
+        applicableBranches match {
+          case Nil => NoType
+          case applicableBranch :: Nil => applicableBranch
+          case _ =>
+            record(i"MatchType.multi-branch")
+            ctx.typeComparer.glb(applicableBranches)
+        }
+      }
 
       def isRelevant(tp: Type) = tp match {
         case tp: TypeParamRef => ctx.typerState.constraint.entry(tp).exists
@@ -3631,18 +3659,13 @@ object Types {
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
           trace(i"reduce match type $this", typr, show = true) {
-            if (defn.isBottomType(scrutinee)) defn.NothingType
-            else {
-              val applicableBranches = cases
-                .map(cmp.matchCase(scrutinee, _, instantiate = true)(trackingCtx))
-                .filter(_.exists)
-              applicableBranches match {
-                case Nil => NoType
-                case applicableBranch :: Nil => applicableBranch
-                case _ =>
-                  record(i"MatchType.multi-branch")
-                  ctx.typeComparer.glb(applicableBranches)
-              }
+            try
+              if (defn.isBottomType(scrutinee)) defn.NothingType
+              else if (reduceInParallel) reduceParallel(trackingCtx)
+              else reduceSequential(cases)(trackingCtx)
+            catch {
+              case ex: Throwable =>
+                handleRecursive("reduce type ", i"$scrutinee match ...", ex)
             }
           }
         updateReductionContext()

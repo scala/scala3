@@ -11,7 +11,7 @@ object Test {
   val x: Int = g[Int]     // error: found: L[Int], required: Int
 
   def aa: LL[Boolean] = ???
-  def bb: LL[Int] = ???   // error: recursion limit exceeded with  subtype LazyRef(Test.LL[Int]) <:< Int
+  def bb: LL[Int] = ???   // error: recursion limit exceeded with  reduce type  LazyRef(Test.LL[Int]) match ...
   def gg[X]: LL[X] = ???
-  val xx: Int = gg[Int]   // error: recursion limit exceeded with  subtype LazyRef(Test.LL[Int]) <:< Int
+  val xx: Int = gg[Int]   // error: recursion limit exceeded with  reduce type  LazyRef(Test.LL[Int]) match ...
 }
