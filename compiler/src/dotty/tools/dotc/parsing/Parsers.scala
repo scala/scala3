@@ -1404,7 +1404,8 @@ object Parsers {
           val (impl, missingBody) = template(emptyConstructor)
           impl.parents match {
             case parent :: Nil if missingBody =>
-              if (parent.isType) ensureApplied(wrapNew(parent)) else parent
+              if (parent.isType) ensureApplied(wrapNew(parent))
+              else parent.withPos(Position(start, in.lastOffset))
             case _ =>
               New(impl.withPos(Position(start, in.lastOffset)))
           }

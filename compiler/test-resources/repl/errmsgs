@@ -25,9 +25,9 @@ scala> val z: (List[String], List[Int]) = (List(1), List("a"))
   |
 scala> val a: Inv[String] = new Inv(new Inv(1))
 1 | val a: Inv[String] = new Inv(new Inv(1))
-  |                                  ^^^^^^
-  |                                  found:    Inv[Int]
-  |                                  required: String
+  |                              ^^^^^^^^^^
+  |                              found:    Inv[Int]
+  |                              required: String
   |
 scala> val b: Inv[String] = new Inv(1)
 1 | val b: Inv[String] = new Inv(1)
