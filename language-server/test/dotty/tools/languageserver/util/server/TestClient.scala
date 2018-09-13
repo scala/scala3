@@ -5,31 +5,42 @@ import java.util.concurrent.CompletableFuture
 import org.eclipse.lsp4j._
 import org.eclipse.lsp4j.services._
 
+import scala.collection.mutable.Buffer
+
 class TestClient extends LanguageClient {
 
-  private val log = new StringBuilder
+  class Log[T] {
+    private[this] val log = Buffer.empty[T]
 
-  def getLog: String = log.result()
+    def +=(elem: T): this.type = { log += elem; this }
+    def get: List[T] = log.toList
+    def clear(): Unit = log.clear()
+  }
+
+  val log = new Log[MessageParams]
+  val diagnostics = new Log[PublishDiagnosticsParams]
+  val telemetry = new Log[Any]
+
 
   override def logMessage(message: MessageParams) = {
-    log.append(message.toString)
+    log += message
   }
 
   override def showMessage(messageParams: MessageParams) = {
-    log.append(messageParams.toString)
+    log += messageParams
   }
 
   override def telemetryEvent(obj: scala.Any) = {
-    log.append(obj.toString)
+    telemetry += obj
   }
 
   override def showMessageRequest(requestParams: ShowMessageRequestParams) = {
-    log.append(requestParams.toString)
+    log += requestParams
     new CompletableFuture[MessageActionItem]
   }
 
-  override def publishDiagnostics(diagnostics: PublishDiagnosticsParams) = {
-    log.append(diagnostics.toString)
+  override def publishDiagnostics(diagnosticsParams: PublishDiagnosticsParams) = {
+    diagnostics += diagnosticsParams
   }
 
 }

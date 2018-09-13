@@ -1,9 +1,12 @@
 package dotty.tools.languageserver
 
-import dotty.tools.dotc.ast.tpd.{Template, Tree, TypeDef}
+import dotty.tools.dotc.ast.tpd.{DefTree, Template, Tree, TypeDef}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.interactive.SourceTree
+import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.util.SourceFile
+
+import dotty.tools.dotc.core.Flags.Synthetic
 
 import dotty.tools.repl.{ReplDriver, State}
 
@@ -22,14 +25,21 @@ object Worksheet {
       case td @ TypeDef(_, template: Template) =>
         val replOut = new ByteArrayOutputStream
         val repl = new ReplDriver(replOptions, out = new PrintStream(replOut))
+        val executed = collection.mutable.Set.empty[(Int, Int)]
 
         template.body.foldLeft(repl.initialState) {
-          case (state, statement) =>
+          case (state, statement: DefTree) if statement.symbol.is(Synthetic) =>
+            state
+
+          case (state, statement) if executed.add(bounds(statement.pos)) =>
             val (line, newState) = execute(repl, state, statement, tree.source)
             val result = new String(replOut.toByteArray())
-            sendMessage(encode(result, line))
+            if (result.trim.nonEmpty) sendMessage(encode(result, line))
             replOut.reset()
             newState
+
+          case (state, statement) =>
+            state
         }
     }
   }
@@ -54,4 +64,6 @@ object Worksheet {
 
   private def encode(message: String, line: Int): String =
     line + ":" + message
+
+  private def bounds(pos: Position): (Int, Int) = (pos.start, pos.end)
 }

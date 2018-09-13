@@ -11,6 +11,8 @@ import org.eclipse.lsp4j.{ DidOpenTextDocumentParams, InitializeParams, Initiali
 class TestServer(testFolder: Path) {
 
   val server = new DottyLanguageServer
+  var client: TestClient = _
+
   init()
 
   private[this] def init(): InitializeResult = {
@@ -39,7 +41,7 @@ class TestServer(testFolder: Path) {
       close()
     }
 
-    val client = new TestClient
+    client = new TestClient
     server.connect(client)
 
     val initParams = new InitializeParams()
