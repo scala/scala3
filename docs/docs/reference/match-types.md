@@ -129,41 +129,56 @@ Within a match type `Match(S, Cs) <: B`, all occurrences of type variables count
 
 ## Typing Rules for Match Expressions
 
-Typing rules for match expressions have to account for the difference between sequential match on the term level and parallel match on the type level. As a running example consider:
+Typing rules for match expressions are tricky. First, they need some new form of GADT matching for value parameters.
+Second, they have to account for the difference between sequential match on the term level and parallel match on the type level. As a running example consider:
 ```scala
-  type M[X] = X match {
+  type M[+X] = X match {
     case A => 1
     case B => 2
   }
+```
+We'd like to be able to typecheck
+```scala
   def m[X](x: X): M[X] = x match {
+    case _: A => 1 // type error
+    case _: B => 2 // type error
+  }
+```
+Unfortunately, this goes nowhere. Let's try the first case. We have: `x.type <: A` and `x.type <: X`. This tells
+us nothing useful about `X`, so we cannot reduce `M` in order to show that the right hand side of the case is valid.
+
+The following variant is more promising:
+```scala
+  def m(x: Any): M[x.type] = x match {
     case _: A => 1
     case _: B => 2
   }
 ```
-As a first approximation, the typing rules for match expressions are as usual. E.g. to typecheck the first case `case _: A => 1` of the definition of `m` above, GADT matching will produce the constraint `X <: A`. Therefore, `M[X]` reduces to the singleton type `1`.
-The right hand side `1` of the case conforms to this type, so the case typechecks. Typechecking the second case proceeds similarly.
+To make this work, we'd need a new form of GADT checking: If the scrutinee is a term variable `s`, we can make use of
+the fact that `s.type` must conform to the pattern's type and derive a GADT constraint from that. For the first case above,
+this would be the constraint `x.type <: A`. The new aspect here is that we need GADT constraints over singleton types where
+before we just had constraints over type parameters.
 
-However, it turns out that these rules are not enough for type soundness. To see this, assume that `A` and `B` are traits that are both extended by a common class `C`. In this case, `M[C]` reduces to `1 & 2`, but `m(new C)` reduces to `1`. So the type of the application `m(new C)` does not match the reduced result type of `m`, which means soundness is violated.
+Assuming this extension, we can then try to typecheck as usual. E.g. to typecheck the first case `case _: A => 1` of the definition of `m` above, GADT matching will produce the constraint `x.type <: A`. Therefore, `M[x.type]` reduces to the singleton type `1`. The right hand side `1` of the case conforms to this type, so the case typechecks. Typechecking the second case proceeds similarly.
 
-To plug the soundness hole, we have to tighten the typing rules for match expressions. In the example above we need to also consider the case where the scrutinee type `X` is a subtype of `A` and `B`. In this case, the match expression still returns `1` but the match type `M[X]` reduces to `1 & 2`, which means there should be a type error. However, this second check can be omitted if `A` and `B` are types that don't overlap. We can omit the check because in that case there is no scrutinee value `x` that could reduce to `1`, so no discrepancy can arise at runtime.
+However, it turns out that these rules are not enough for type soundness. To see this, assume that `A` and `B` are traits that are both extended by a common class `C`. In this case, and assuming `c: C`, `M[c.type]` reduces to `1 & 2`, but `m(c)` reduces to `1`. So the type of the application `m(c)` does not match the reduced result type of `m`, which means soundness is violated.
+
+To plug the soundness hole, we have to tighten the typing rules for match expressions. In the example above we need to also consider the case where the scrutinee `x` conforms to `A` and `B`. In this case, the match expression still returns `1` but the match type `M[x.type]` reduces to `1 & 2`, which means there should be a type error. However, this second check can be omitted if `A` and `B` are types that don't overlap. We can omit the check because in that case there is no scrutinee value `x` that could reduce to `1`, so no discrepancy can arise at runtime.
 
 More generally, we proceeed as follows:
 
 When typechecking the `i`th case of a match expression
 ```
-  t match { case P_1 => t_1 ... case P_n => t_n
+  x match { case P_1 => t_1 ... case P_n => t_n
 ```
-where `t` has type `T` and `t_i` has type `T_i`
-against an expected match type `R`:
+where `t_i` has type `T_i` against an expected match type `R`:
 
  1. Determine all maximal sequences of
     patterns `P_j_1, ..., P_j_m` that follow `P_i` in the match expression and that do overlap with `P_i`. That is, `P_i, P_j_1, ..., P_j_m` all match at least one common value.
 
- 2. For each such sequence, verify that `T_i <: R` under the GADT constraint arising from      matching the scrutinee type `T` against all of the patterns `P_i, P_j_1, ..., P_j_m`.
+ 2. For each such sequence, verify that `T_i <: R` under the GADT constraint arising from matching the scrutinee `x` against all of the patterns `P_i, P_j_1, ..., P_j_m`.
 
-In the example above, `A` and `B` would be overlapping because they have the common subclass `C`. Hence, we have to check that the right-hand side `1` is a subtype of `M[X]`
-under the assumptions that `X <: A` and `X <: B`. Under these assumptions `M[X]` reduces
-to `1 & 2`, which gives a type error.
+In the example above, `A` and `B` would be overlapping because they have the common subclass `C`. Hence, we have to check that the right-hand side `1` is a subtype of `M[x.type]` under the assumptions that `x.type <: A` and `x.type <: B`. Under these assumptions `M[x.type]` reduces to `1 & 2`, which gives a type error.
 
 For simplicity, we have disregarded the `null` value in this discussion. `null` does not cause a fundamental problem but complicates things somewhat because some forms of patterns do not match `null`.
 
