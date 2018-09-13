@@ -91,9 +91,19 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
         }
       }
 
+      /** Replace `NoPrefix` prefixes of references to symbols in superclasses by `cls.thisType` */
+      def fixPrefix(tp: Type): Type = tp match {
+        case tp @ TermRef(NoPrefix, _) if cls.derivesFrom(tp.symbol.owner) =>
+          tp.derivedSelect(cls.thisType)
+        case tp: NamedType =>
+          tp.derivedSelect(fixPrefix(tp.prefix))
+        case tp =>
+          tp
+      }
+
       for (parentTrait <- cls.mixins) {
         if (needsOuterIfReferenced(parentTrait)) {
-          val parentTp = cls.denot.thisType.baseType(parentTrait)
+          val parentTp = fixPrefix(cls.denot.thisType.baseType(parentTrait))
           val outerAccImpl = newOuterAccessor(cls, parentTrait).enteredAfter(thisPhase)
           newDefs += DefDef(outerAccImpl, singleton(fixThis(outerPrefix(parentTp))))
         }
