@@ -1,6 +1,6 @@
 class A {
   class Foo {
-    rewrite def inlineMeth: Unit = {
+    inline def inlineMeth: Unit = {
       new Bar
     }
   }

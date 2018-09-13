@@ -1,4 +1,4 @@
 object Test {
-  rewrite def foo(transparent n: Int) = bar(n)
-  rewrite def bar(transparent n: Int) = n
+  inline def foo(transparent n: Int) = bar(n)
+  inline def bar(transparent n: Int) = n
 }

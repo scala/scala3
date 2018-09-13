@@ -6,7 +6,7 @@ object Test {
 }
 
 object Foo extends Bar {
-  rewrite def foo: Unit = bar
+  inline def foo: Unit = bar
 }
 
 class Bar {

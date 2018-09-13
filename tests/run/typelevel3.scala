@@ -4,17 +4,17 @@ trait HList {
   def head: Any
   def tail: HList
 
-  rewrite def isEmpty: Boolean = length == 0
+  inline def isEmpty: Boolean = length == 0
 }
 
 case object HNil extends HList {
-  rewrite override def length = 0
+  inline override def length = 0
   def head: Nothing = ???
   def tail: Nothing = ???
 }
 
 case class HCons[H, T <: HList](hd: H, tl: T) extends HList {
-  rewrite override def length = 1 + tl.length
+  inline override def length = 1 + tl.length
   def head: H = this.hd
   def tail: T = this.tl
 }
@@ -24,7 +24,7 @@ case class Typed[T](val value: T) { type Type = T }
 object Test extends App {
   type HNil = HNil.type
 
-  rewrite def concat(xs: HList, ys: HList): Typed[_ <: HList] =
+  inline def concat(xs: HList, ys: HList): Typed[_ <: HList] =
     if xs.isEmpty then Typed(ys)
     else Typed(HCons(xs.head, concat(xs.tail, ys).value))
 
@@ -35,7 +35,7 @@ object Test extends App {
 
   val control: HCons[Int, HCons[String, HCons[String, HCons[Boolean, HCons[Double, HNil]]]]] = zs.value
 
-  rewrite def index(xs: HList, idx: Int): Typed[_] =
+  inline def index(xs: HList, idx: Int): Typed[_] =
     if idx == 0 then Typed(xs.head)
     else Typed(index(xs.tail, idx - 1).value)
 
@@ -51,7 +51,7 @@ object Test extends App {
     if xs.isEmpty then ys
     else HCons(xs.head, opaqueConcat(xs.tail, ys))
 
-  rewrite def compactConcat(xs: HList, ys: HList): HList = {
+  inline def compactConcat(xs: HList, ys: HList): HList = {
     erased val r = concat(xs, ys)
     opaqueConcat(xs, ys).asInstanceOf[r.Type]
   }

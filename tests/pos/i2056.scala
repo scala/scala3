@@ -1,5 +1,5 @@
 object Test {
-  rewrite def crash() = {
+  inline def crash() = {
     try {
       println("hi")
     } catch {

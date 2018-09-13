@@ -8,7 +8,7 @@ class LineNumber(val value: Int) {
 
 object LineNumber {
 
-  implicit rewrite def line[T >: Unit <: Unit]: LineNumber =
+  implicit inline def line[T >: Unit <: Unit]: LineNumber =
     ~lineImpl('[T])
 
   def lineImpl(x: Type[Unit])(implicit tasty: Tasty): Expr[LineNumber] = {

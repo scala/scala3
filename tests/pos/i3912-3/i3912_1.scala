@@ -1,7 +1,7 @@
 import scala.quoted._
 
 object Macros {
-  rewrite def foo3(): Int = {
+  inline def foo3(): Int = {
     {
       ~impl()
     }

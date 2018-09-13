@@ -1,3 +1,3 @@
 class Foo private() {
-  rewrite def foo = new Foo // error
+  inline def foo = new Foo // error
 }

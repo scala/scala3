@@ -4,7 +4,7 @@ import scala.tasty._
 
 object Macros {
 
-  implicit rewrite def printTree[T](x: => T): Unit =
+  implicit inline def printTree[T](x: => T): Unit =
     ~impl('(x))
 
   def impl[T](x: Expr[T])(implicit tasty: Tasty): Expr[Unit] = {

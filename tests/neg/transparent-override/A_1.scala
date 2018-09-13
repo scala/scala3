@@ -1,6 +1,6 @@
 abstract class A {
    def f(x: Int): Int
-   rewrite def g(x: Int): Int = x
+   inline def g(x: Int): Int = x
 }
 
 

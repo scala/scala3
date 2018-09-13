@@ -4,10 +4,10 @@ import scala.tasty._
 
 object Macros {
 
-  rewrite def isTypeEqual[T, U]: Boolean =
+  inline def isTypeEqual[T, U]: Boolean =
     ~isTypeEqualImpl('[T], '[U])
 
-  rewrite def isSubTypeOf[T, U]: Boolean =
+  inline def isSubTypeOf[T, U]: Boolean =
     ~isSubTypeOfImpl('[T], '[U])
 
   def isTypeEqualImpl[T, U](t: Type[T], u: Type[U])(implicit tasty: Tasty): Expr[Boolean] = {

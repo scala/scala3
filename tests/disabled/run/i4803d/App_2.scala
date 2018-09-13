@@ -10,8 +10,8 @@ object Test {
     println(power2(x3))
   }
 
-  rewrite def power2(x: Double) = {
-    rewrite def power(x: Double, transparent n: Long) = ~PowerMacro.powerCode('(x), n)
+  inline def power2(x: Double) = {
+    inline def power(x: Double, transparent n: Long) = ~PowerMacro.powerCode('(x), n)
     power(x, 2)
   }
 }

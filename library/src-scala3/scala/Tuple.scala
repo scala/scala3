@@ -5,7 +5,7 @@ import typelevel._
 sealed trait Tuple extends Any {
   import Tuple._
 
-  rewrite def toArray: Array[Object] = rewrite constValueOpt[BoundedSize[this.type]] match {
+  inline def toArray: Array[Object] = inline constValueOpt[BoundedSize[this.type]] match {
     case Some(0) =>
       $emptyArray
     case Some(1) =>
@@ -28,9 +28,9 @@ sealed trait Tuple extends Any {
       dynamicToArray(this)
   }
 
-  rewrite def *: [H] (x: H): H *: this.type = {
+  inline def *: [H] (x: H): H *: this.type = {
     type Result = H *: this.type
-    rewrite constValueOpt[BoundedSize[this.type]] match {
+    inline constValueOpt[BoundedSize[this.type]] match {
       case Some(0) =>
         Tuple1(x).asInstanceOf[Result]
       case Some(1) =>
@@ -51,9 +51,9 @@ sealed trait Tuple extends Any {
     }
   }
 
-  rewrite def ++(that: Tuple): Concat[this.type, that.type] = {
+  inline def ++(that: Tuple): Concat[this.type, that.type] = {
     type Result = Concat[this.type, that.type]
-    rewrite constValueOpt[BoundedSize[this.type]] match {
+    inline constValueOpt[BoundedSize[this.type]] match {
       case Some(0) =>
         that.asInstanceOf[Result]
       case Some(1) =>
@@ -61,7 +61,7 @@ sealed trait Tuple extends Any {
         else (asInstanceOf[Tuple1[_]]._1 *: that).asInstanceOf[Result]
       case Some(2) =>
         val t = asInstanceOf[Tuple2[_, _]]
-        rewrite constValue[BoundedSize[that.type]] match {
+        inline constValue[BoundedSize[that.type]] match {
           case 0 => this.asInstanceOf[Result]
           case 1 =>
             val u = that.asInstanceOf[Tuple1[_]]
@@ -74,7 +74,7 @@ sealed trait Tuple extends Any {
         }
       case Some(3) =>
         val t = asInstanceOf[Tuple3[_, _, _]]
-        rewrite constValue[BoundedSize[that.type]] match {
+        inline constValue[BoundedSize[that.type]] match {
           case 0 => this.asInstanceOf[Result]
           case 1 =>
             val u = that.asInstanceOf[Tuple1[_]]
@@ -90,12 +90,12 @@ sealed trait Tuple extends Any {
     }
   }
 
-  rewrite def genericConcat[T <: Tuple](xs: Tuple, ys: Tuple): Tuple =
+  inline def genericConcat[T <: Tuple](xs: Tuple, ys: Tuple): Tuple =
     fromArray[T](xs.toArray ++ ys.toArray)
 
-  rewrite def size: Size[this.type] = {
+  inline def size: Size[this.type] = {
     type Result = Size[this.type]
-    rewrite constValueOpt[BoundedSize[this.type]] match {
+    inline constValueOpt[BoundedSize[this.type]] match {
       case Some(n) => n.asInstanceOf[Result]
       case _ => dynamicSize(this).asInstanceOf[Result]
     }
@@ -163,8 +163,8 @@ object Tuple {
     elems1
   }
 
-  rewrite def fromArray[T <: Tuple](xs: Array[Object]): T =
-    rewrite constValue[BoundedSize[T]] match {
+  inline def fromArray[T <: Tuple](xs: Array[Object]): T =
+    inline constValue[BoundedSize[T]] match {
       case 0  => ().asInstanceOf[T]
       case 1  => Tuple1(xs(0)).asInstanceOf[T]
       case 2  => Tuple2(xs(0), xs(1)).asInstanceOf[T]
@@ -283,9 +283,9 @@ abstract sealed class NonEmptyTuple extends Tuple {
   import Tuple._
   import NonEmptyTuple._
 
-  rewrite def head: Head[this.type] = {
+  inline def head: Head[this.type] = {
     type Result = Head[this.type]
-    val resVal = rewrite constValueOpt[BoundedSize[this.type]] match {
+    val resVal = inline constValueOpt[BoundedSize[this.type]] match {
       case Some(1) =>
         val t = asInstanceOf[Tuple1[_]]
         t._1
@@ -309,9 +309,9 @@ abstract sealed class NonEmptyTuple extends Tuple {
     resVal.asInstanceOf[Result]
   }
 
-  rewrite def tail: Tail[this.type] = {
+  inline def tail: Tail[this.type] = {
     type Result = Tail[this.type]
-    rewrite constValueOpt[BoundedSize[this.type]]  match {
+    inline constValueOpt[BoundedSize[this.type]]  match {
       case Some(1) =>
         ().asInstanceOf[Result]
       case Some(2) =>
@@ -333,31 +333,31 @@ abstract sealed class NonEmptyTuple extends Tuple {
     }
   }
 
-  rewrite def fallbackApply(n: Int) =
-    rewrite constValueOpt[n.type] match {
+  inline def fallbackApply(n: Int) =
+    inline constValueOpt[n.type] match {
       case Some(n: Int) => error("index out of bounds", n)
       case None => dynamicApply[this.type](this, n)
     }
 
-  rewrite def apply(n: Int): Elem[this.type, n.type] = {
+  inline def apply(n: Int): Elem[this.type, n.type] = {
     type Result = Elem[this.type, n.type]
-    rewrite constValueOpt[Size[this.type]] match {
+    inline constValueOpt[Size[this.type]] match {
       case Some(1) =>
         val t = asInstanceOf[Tuple1[_]]
-        rewrite constValueOpt[n.type] match {
+        inline constValueOpt[n.type] match {
           case Some(0) => t._1.asInstanceOf[Result]
           case _ => fallbackApply(n).asInstanceOf[Result]
         }
       case Some(2) =>
         val t = asInstanceOf[Tuple2[_, _]]
-        rewrite constValueOpt[n.type] match {
+        inline constValueOpt[n.type] match {
           case Some(0) => t._1.asInstanceOf[Result]
           case Some(1) => t._2.asInstanceOf[Result]
           case _ => fallbackApply(n).asInstanceOf[Result]
         }
       case Some(3) =>
         val t = asInstanceOf[Tuple3[_, _, _]]
-        rewrite constValueOpt[n.type] match {
+        inline constValueOpt[n.type] match {
           case Some(0) => t._1.asInstanceOf[Result]
           case Some(1) => t._2.asInstanceOf[Result]
           case Some(2) => t._3.asInstanceOf[Result]
@@ -365,7 +365,7 @@ abstract sealed class NonEmptyTuple extends Tuple {
         }
       case Some(4) =>
         val t = asInstanceOf[Tuple4[_, _, _, _]]
-        rewrite constValueOpt[n.type] match {
+        inline constValueOpt[n.type] match {
           case Some(0) => t._1.asInstanceOf[Result]
           case Some(1) => t._2.asInstanceOf[Result]
           case Some(2) => t._3.asInstanceOf[Result]
@@ -374,13 +374,13 @@ abstract sealed class NonEmptyTuple extends Tuple {
         }
       case Some(s) if s > 4 && s <= $MaxSpecialized =>
         val t = asInstanceOf[Product]
-        rewrite constValueOpt[n.type] match {
+        inline constValueOpt[n.type] match {
           case Some(n) if n >= 0 && n < s => t.productElement(n).asInstanceOf[Result]
           case _ => fallbackApply(n).asInstanceOf[Result]
         }
       case Some(s) if s > $MaxSpecialized =>
         val t = asInstanceOf[TupleXXL]
-        rewrite constValueOpt[n.type] match {
+        inline constValueOpt[n.type] match {
           case Some(n) if n >= 0 && n < s => t.elems(n).asInstanceOf[Result]
           case _ => fallbackApply(n).asInstanceOf[Result]
         }
@@ -431,5 +431,5 @@ object NonEmptyTuple {
 sealed class *:[+H, +T <: Tuple] extends NonEmptyTuple
 
 object *: {
-  rewrite def unapply[H, T <: Tuple](x: H *: T) = (x.head, x.tail)
+  inline def unapply[H, T <: Tuple](x: H *: T) = (x.head, x.tail)
 }

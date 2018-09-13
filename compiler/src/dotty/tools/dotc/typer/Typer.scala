@@ -711,7 +711,7 @@ class Typer extends Namer
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
-    if (tree.isInstanceOf[untpd.RewriteIf]) checkInRewriteContext("rewrite if", tree.pos)
+    if (tree.isInstanceOf[untpd.InlineIf]) checkInInlineContext("inline if", tree.pos)
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp2 :: elsep2 :: Nil = harmonic(harmonize) {
       val thenp1 = typed(tree.thenp, pt.notApplied)
@@ -977,18 +977,18 @@ class Typer extends Namer
         val unchecked = pt.isRef(defn.PartialFunctionClass)
         typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
       case id @ untpd.ImplicitScrutinee() =>
-        checkInRewriteContext("implicit match", tree.pos)
+        checkInInlineContext("implicit match", tree.pos)
         val sel1 = id.withType(defn.ImplicitScrutineeTypeRef)
         typedMatchFinish(tree, sel1, sel1.tpe, pt)
       case _ =>
-        if (tree.isInstanceOf[untpd.RewriteMatch]) checkInRewriteContext("rewrite match", tree.pos)
+        if (tree.isInstanceOf[untpd.InlineMatch]) checkInInlineContext("inline match", tree.pos)
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
         typedMatchFinish(tree, sel1, selType, pt)
     }
   }
 
-  // Overridden in InlineTyper for rewrite matches
+  // Overridden in InlineTyper for inline matches
   def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context): Tree = {
     val cases1 = harmonic(harmonize)(typedCases(tree.cases, selType, pt.notApplied))
       .asInstanceOf[List[CaseDef]]
@@ -1438,7 +1438,7 @@ class Typer extends Namer
   private def patchIfLazy(vdef: ValDef)(implicit ctx: Context): Unit = {
     val sym = vdef.symbol
     if (sym.is(Lazy, butNot = Deferred | Module | Synthetic) && !sym.isVolatile &&
-        ctx.scala2Mode && ctx.settings.`rewrite`.value.isDefined &&
+        ctx.scala2Mode && ctx.settings.rewrite.value.isDefined &&
         !ctx.isAfterTyper)
       patch(Position(toUntyped(vdef).pos.start), "@volatile ")
   }
@@ -2408,7 +2408,7 @@ class Typer extends Namer
       //  - the current tree is a synthetic apply which is not expandable (eta-expasion would simply undo that)
       if (arity >= 0 &&
           !tree.symbol.isConstructor &&
-          !tree.symbol.is(RewriteMethod) &&
+          !tree.symbol.is(InlineMethod) &&
           !ctx.mode.is(Mode.Pattern) &&
           !(isSyntheticApply(tree) && !isExpandableApply))
         simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)

@@ -16,32 +16,32 @@ object Tuple {
   type Empty = Empty.type
 
   class TupleOps(val xs: Tuple) extends AnyVal {
-    rewrite def *: [H] (x: H): Tuple = new *:(x, xs)
-    rewrite def size: Int = rewrite xs match {
+    inline def *: [H] (x: H): Tuple = new *:(x, xs)
+    inline def size: Int = inline xs match {
       case Empty => 0
       case _ *: xs1 => xs1.size + 1
     }
-    rewrite def apply(n: Int): Any = rewrite xs match {
+    inline def apply(n: Int): Any = inline xs match {
       case x *: _   if n == 0 => x
       case _ *: xs1 if n > 0  => xs1.apply(n - 1)
     }
-    rewrite def **: (ys: Tuple): Tuple = rewrite ys match {
+    inline def **: (ys: Tuple): Tuple = inline ys match {
       case Empty    => xs
       case y *: ys1 => y *: (ys1 **: xs)
     }
-    rewrite def head = rewrite xs match {
+    inline def head = inline xs match {
       case x *: _ => x
     }
-    rewrite def tail = rewrite xs match {
+    inline def tail = inline xs match {
       case _ *: xs => xs
     }
   }
 
   val emptyArray = Array[Object]()
 
-  rewrite def toObj(t: Any) = t.asInstanceOf[Object]
+  inline def toObj(t: Any) = t.asInstanceOf[Object]
 
-  rewrite def toArray(t: Tuple): Array[Object] = rewrite t.size match {
+  inline def toArray(t: Tuple): Array[Object] = inline t.size match {
     case 0 => emptyArray
     case 1 => Array(toObj(t(0)))
     case 2 => Array(toObj(t(0)), toObj(t(1)))
@@ -49,12 +49,12 @@ object Tuple {
     case 4 => Array(toObj(t(0)), toObj(t(1)), toObj(t(2)), toObj(t(3)))
   }
 
-  rewrite implicit def tupleDeco(xs: Tuple): TupleOps = new TupleOps(xs)
+  inline implicit def tupleDeco(xs: Tuple): TupleOps = new TupleOps(xs)
 
-  rewrite def apply(): Tuple = Empty
-  rewrite def apply(x1: Any): Tuple = x1 *: Empty
-  rewrite def apply(x1: Any, x2: Any) = x1 *: x2 *: Empty
-  rewrite def apply(x1: Any, x2: Any, x3: Any) = x1 *: x2 *: x3 *: Empty
+  inline def apply(): Tuple = Empty
+  inline def apply(x1: Any): Tuple = x1 *: Empty
+  inline def apply(x1: Any, x2: Any) = x1 *: x2 *: Empty
+  inline def apply(x1: Any, x2: Any, x3: Any) = x1 *: x2 *: x3 *: Empty
 
   val xs0 = Tuple()
   val xs1 = Tuple(2)

@@ -621,14 +621,14 @@ trait Implicits { self: Typer =>
         val tag = bindFreeVars(arg)
         if (bindFreeVars.ok) ref(defn.QuotedType_apply).appliedToType(tag)
         else EmptyTree
-      case arg :: Nil if ctx.inRewriteMethod =>
+      case arg :: Nil if ctx.inInlineMethod =>
         ref(defn.QuotedType_apply).appliedToType(arg)
       case _ =>
         EmptyTree
     }
 
     def synthesizedTastyContext(formal: Type): Tree =
-      if (ctx.inRewriteMethod || enclosingInlineds.nonEmpty) ref(defn.TastyTasty_macroContext)
+      if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.TastyTasty_macroContext)
       else EmptyTree
 
     /** If `formal` is of the form Eq[T, U], where no `Eq` instance exists for

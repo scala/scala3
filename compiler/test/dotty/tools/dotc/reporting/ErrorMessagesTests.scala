@@ -996,7 +996,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
         |}
         |
         |class B extends A {
-        |  rewrite def bar(): Unit = super.foo()
+        |  inline def bar(): Unit = super.foo()
         |}
       """.stripMargin
     }
@@ -1105,7 +1105,7 @@ class ErrorMessagesTests extends ErrorMessagesTest {
   @Test def noReturnInInline =
     checkMessagesAfter(FrontEnd.name) {
       """class BadFunction {
-        |  rewrite def usesReturn: Int = { return 42 }
+        |  inline def usesReturn: Int = { return 42 }
         |}
       """.stripMargin
     }.expect { (ictx, messages) =>

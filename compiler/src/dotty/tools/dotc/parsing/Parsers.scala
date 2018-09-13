@@ -178,13 +178,13 @@ object Parsers {
 
     def isExprIntro =
       (canStartExpressionTokens `contains` in.token) &&
-        (in.token != REWRITE || lookaheadIn(canStartExpressionTokens))
+        (in.token != INLINE || lookaheadIn(canStartExpressionTokens))
 
     def isDefIntro(allowedMods: BitSet) =
       in.token == AT ||
       (defIntroTokens `contains` in.token) ||
       (allowedMods `contains` in.token) &&
-        (in.token != REWRITE || lookaheadIn(BitSet(AT) | defIntroTokens | allowedMods))
+        (in.token != INLINE || lookaheadIn(BitSet(AT) | defIntroTokens | allowedMods))
 
     def isStatSep: Boolean =
       in.token == NEWLINE || in.token == NEWLINES || in.token == SEMI
@@ -1103,8 +1103,8 @@ object Parsers {
      *                      |  Expr
      *  BlockResult       ::=  [FunArgMods] FunParams =>' Block
      *                      |  Expr1
-     *  Expr1             ::=  [‘rewrite’] `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
-     *                      |  [‘rewrite’] `if' Expr `then' Expr [[semi] else Expr]
+     *  Expr1             ::=  [‘inline’] `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
+     *                      |  [‘inline’] `if' Expr `then' Expr [[semi] else Expr]
      *                      |  `while' `(' Expr `)' {nl} Expr
      *                      |  `while' Expr `do' Expr
      *                      |  `do' Expr [semi] `while' Expr
@@ -1116,7 +1116,7 @@ object Parsers {
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  PostfixExpr [Ascription]
-     *                      |  [‘rewrite’] PostfixExpr `match' `{' CaseClauses `}'
+     *                      |  [‘inline’] PostfixExpr `match' `{' CaseClauses `}'
      *                      |  `implicit' `match' `{' ImplicitCaseClauses `}'
      *  Bindings          ::= `(' [Binding {`,' Binding}] `)'
      *  Binding           ::= (id | `_') [`:' Type]
@@ -1212,14 +1212,14 @@ object Parsers {
         atPos(in.skipToken()) { Return(if (isExprIntro) expr() else EmptyTree, EmptyTree) }
       case FOR =>
         forExpr()
-      case REWRITE =>
+      case INLINE =>
         val start = in.skipToken()
         in.token match {
           case IF =>
-            ifExpr(start, RewriteIf)
+            ifExpr(start, InlineIf)
           case _ =>
             val t = postfixExpr()
-            if (in.token == MATCH) matchExpr(t, start, RewriteMatch)
+            if (in.token == MATCH) matchExpr(t, start, InlineMatch)
             else {
               syntaxErrorOrIncomplete("`match` or `if` expected but ${in.token} found")
               t
@@ -1304,7 +1304,7 @@ object Parsers {
         case mods => markFirstIllegal(mods)
       }
       val result @ Match(t, cases) =
-        matchExpr(ImplicitScrutinee().withPos(implicitKwPos(start)), start, RewriteMatch)
+        matchExpr(ImplicitScrutinee().withPos(implicitKwPos(start)), start, InlineMatch)
       for (CaseDef(pat, _, _) <- cases) {
         def isImplicitPattern(pat: Tree) = pat match {
           case Typed(pat1, _) => isVarPattern(pat1)
@@ -1776,7 +1776,7 @@ object Parsers {
       case FINAL       => Mod.Final()
       case IMPLICIT    => Mod.Implicit()
       case ERASED      => Mod.Erased()
-      case REWRITE     => Mod.Rewrite()
+      case INLINE      => Mod.Inline()
       case TRANSPARENT => Mod.Transparent()
       case LAZY        => Mod.Lazy()
       case OVERRIDE    => Mod.Override()
@@ -1888,7 +1888,10 @@ object Parsers {
      */
     def annot() =
       adjustStart(accept(AT)) {
-        ensureApplied(parArgumentExprss(wrapNew(simpleType())))
+        val tpe =
+          if (in.token == INLINE) atPos(in.skipToken()) { BackquotedIdent(tpnme.INLINEkw) }
+          else simpleType()
+        ensureApplied(parArgumentExprss(wrapNew(tpe)))
       }
 
     def annotations(skipNewLines: Boolean = false): List[Tree] = {

@@ -2,18 +2,18 @@ object Test {
 
   def power0(x: Double, transparent n: Int): Double = ???  // error
 
-  rewrite def power(x: Double, transparent n: Int): Double = ???  // ok
+  inline def power(x: Double, transparent n: Int): Double = ???  // ok
 
   transparent val N = 10
   def X = 20
 
   transparent transparent val twice = 30 // error: repeated modifier
 
-  rewrite transparent val twice = 30 // error: rewrite & transparent
+  inline transparent val twice = 30 // error: inline & transparent
 
   class C(transparent x: Int, private transparent val y: Int) { // error // error
     transparent val foo: Int // error: abstract member may not be inline
-    rewrite def bar: Int // error: abstract member may not be inline
+    inline def bar: Int // error: abstract member may not be inline
   }
 
   power(2.0, N) // ok, since it's a by-name parameter
@@ -23,7 +23,7 @@ object Test {
 
   transparent val xs = List(1, 2, 3) // error: must be a constant expression
 
-  rewrite def foo(x: Int) = {
+  inline def foo(x: Int) = {
 
     def f(transparent xs: List[Int]) = xs // error
 
@@ -32,6 +32,6 @@ object Test {
 
   }
 
-  rewrite def byname(transparent f: => String): Int = ??? // ok
+  inline def byname(transparent f: => String): Int = ??? // ok
 
 }

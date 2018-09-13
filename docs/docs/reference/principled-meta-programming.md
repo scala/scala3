@@ -19,14 +19,14 @@ operations: quotation and splicing.  Quotation is expressed as
 `'(...)` or `'{...}` for expressions (both forms are equivalent) and
 as `'[...]` for types. Splicing is expressed as a prefix `~` operator.
 
-For example, the code below presents a rewrite function `assert`
+For example, the code below presents an inline function `assert`
 which calls at compile-time a method `assertImpl` with a boolean
 expression tree as argument. `assertImpl` evaluates the expression and
 prints it again in an error message if it evaluates to `false`.
 
     import scala.quoted._
 
-    rewrite def assert(expr: => Boolean): Unit =
+    inline def assert(expr: => Boolean): Unit =
       ~ assertImpl('(expr))
 
     def assertImpl(expr: Expr[Boolean]) =
@@ -220,10 +220,10 @@ is handled by the compiler, using the algorithm sketched above.
 
 ### Example Expansion
 
-Assume an `Array` class with a rewrite `map` method that forwards to a macro implementation.
+Assume an `Array` class with an inline `map` method that forwards to a macro implementation.
 
     class Array[T] {
-      rewrite def map[U](f: T => U): Array[U] = ~ Macros.mapImpl[T, U]('[U], '(this), '(f))
+      inline def map[U](f: T => U): Array[U] = ~ Macros.mapImpl[T, U]('[U], '(this), '(f))
     }
 
 Here’s the definition of the `mapImpl` macro, which takes quoted types and expressions to a quoted expression:
@@ -307,7 +307,7 @@ Here’s an application of `map` and how it rewrites to optimized code:
 
 Seen by itself, principled meta-programming looks more like a
 framework for staging than one for compile-time meta programming with
-macros. But combined with Dotty’s `rewrite` feature it can be turned into a
+macros. But combined with Dotty’s `inline` feature it can be turned into a
 compile-time system.  The idea is that macro elaboration can be
 understood as a combination of a macro library and a quoted
 program. For instance, here’s the `assert` macro again together with a
@@ -315,7 +315,7 @@ program that calls `assert`.
 
     object Macros {
 
-      rewrite def assert(expr: => Boolean): Unit =
+      inline def assert(expr: => Boolean): Unit =
         ~ assertImpl('(expr))
 
       def assertImpl(expr: Expr[Boolean]) =
@@ -363,7 +363,7 @@ If `program` is treated as a quoted expression, the call to
 program are conceptualized as local definitions.
 
 But what about the call from `assert` to `assertImpl`? Here, we need a
-tweak of the typing rules. A rewrite function such as `assert` that
+tweak of the typing rules. An inline function such as `assert` that
 contains a splice operation outside an enclosing quote is called a
 _macro_. Macros are supposed to be expanded in a subsequent phase,
 i.e. in a quoted context. Therefore, they are also type checked as if
@@ -378,7 +378,7 @@ aspect is also important for macro expansion.  To illustrate this,
 consider an implementation of the `power` function that makes use of a
 statically known exponent:
 
-    rewrite def power(transparent n: Int, x: Double) = ~powerCode(n, '(x))
+    inline def power(transparent n: Int, x: Double) = ~powerCode(n, '(x))
 
     private def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
       if (n == 0) '(1.0)
@@ -396,7 +396,7 @@ constant, so the value of `n` will in fact be known at this
 point. To reflect this, we loosen the phase consistency requirements
 as follows:
 
- - If `x` is a transparent value (or a transparent parameter of a rewrite
+ - If `x` is a transparent value (or a transparent parameter of an inline
    function) of type Boolean, Byte, Short, Int, Long, Float, Double,
    Char or String, it can be accessed in all contexts where the number
    of splices minus the number of quotes between use and definition
@@ -433,7 +433,7 @@ Providing an interpreter for the full language is quite difficult, and
 it is even more difficult to make that interpreter run efficiently. So
 we currently impose the following restrictions on the use of splices.
 
- 1. A top-level splice must appear in a rewrite method (turning that method
+ 1. A top-level splice must appear in an inline method (turning that method
     into a macro)
 
  2. The splice must call a previously compiled
@@ -770,7 +770,7 @@ version of `power` that generates the multiplications directly if the
 exponent is statically known and falls back to the dynamic
 implementation of power otherwise.
 
-    rewrite def power(n: Int, x: Double): Double = ~{
+    inline def power(n: Int, x: Double): Double = ~{
       '(n) match {
         case Constant(n1) => powerCode(n1, '(x))
         case _ => '{ dynamicPower(n, x) }

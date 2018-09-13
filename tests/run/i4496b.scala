@@ -24,7 +24,7 @@ object Test {
 
     // These accesses are also clearly well-typed
     def consume(v: T) = v.a
-    rewrite def consumeInl(v: T) = v.a
+    inline def consumeInl(v: T) = v.a
     def verify(v: T) = {
       assert(consume(v) == 10)
       assert(consumeInl(v) == 10)
@@ -58,7 +58,7 @@ object Test {
     def upcast2(v: Foo2): T = v
     def upcast3(v: Foo3): T = v
     def consume(v: T) = v.a
-    rewrite def consumeInl(v: T) = v.a
+    inline def consumeInl(v: T) = v.a
     def verify(v: T) = {
       assert(consume(v) == 10)
       assert(consumeInl(v) == 10)
@@ -88,7 +88,7 @@ object Test {
     type T = {val a: Int; def a_=(x: Int): Unit}
     def upcast3(v: Foo3): T = v
     def consume(v: T) = v.a
-    rewrite def consumeInl(v: T) = v.a
+    inline def consumeInl(v: T) = v.a
     def verify(v: T) = {
       assert(consume(v) == 10)
       assert(consumeInl(v) == 10)

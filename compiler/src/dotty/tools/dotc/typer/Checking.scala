@@ -372,7 +372,7 @@ object Checking {
 
     if (sym.is(Transparent) &&
           (  sym.is(ParamAccessor) && sym.owner.isClass
-          || sym.is(TermParam) && !sym.owner.isRewriteMethod
+          || sym.is(TermParam) && !sym.owner.isInlineMethod
           ))
       fail(ParamsNoTransparent(sym.owner))
 
@@ -401,7 +401,7 @@ object Checking {
       checkWithDeferred(Private)
       checkWithDeferred(Final)
       checkWithDeferred(Transparent)
-      checkWithDeferred(Rewrite)
+      checkWithDeferred(Inline)
     }
     if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
       fail(CannotExtendAnyVal(sym))
@@ -410,10 +410,10 @@ object Checking {
     checkCombination(Abstract, Override)
     checkCombination(Private, Override)
     checkCombination(Lazy, Transparent)
-    checkCombination(Rewrite, Transparent)
+    checkCombination(Inline, Transparent)
     checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
     if (sym.is(Transparent)) checkApplicable(Transparent, sym.isTerm && !sym.is(Mutable | Module))
-    if (sym.is(Rewrite)) checkApplicable(Rewrite, sym.is(Method, butNot = Accessor))
+    if (sym.is(Inline)) checkApplicable(Inline, sym.is(Method, butNot = Accessor))
     if (sym.is(Lazy)) checkApplicable(Lazy, !sym.is(Method | Mutable))
     if (sym.isType && !sym.is(Deferred))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
@@ -680,7 +680,7 @@ trait Checking {
     tree.tpe.widenTermRefExpr match {
       case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
       case _ =>
-        val allow = ctx.erasedTypes || ctx.inRewriteMethod
+        val allow = ctx.erasedTypes || ctx.inInlineMethod
         if (!allow) ctx.error(em"$what must be a constant expression", tree.pos)
     }
   }
@@ -849,10 +849,10 @@ trait Checking {
     checker.traverse(tree)
   }
 
-  /** Check that we are in a rewrite context (inside a rewrite method or in inlined code) */
-  def checkInRewriteContext(what: String, pos: Position)(implicit ctx: Context) =
-    if (!ctx.inRewriteMethod && !ctx.isInlineContext)
-      ctx.error(em"$what can only be used in a rewrite method", pos)
+  /** Check that we are in an inline context (inside an inline method or in inline code) */
+  def checkInInlineContext(what: String, pos: Position)(implicit ctx: Context) =
+    if (!ctx.inInlineMethod && !ctx.isInlineContext)
+      ctx.error(em"$what can only be used in an inline method", pos)
 
   /** Check that all case classes that extend `scala.Enum` are `enum` cases */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol, parent: Symbol)(implicit ctx: Context): Unit = {
@@ -965,6 +965,6 @@ trait NoChecking extends ReChecking {
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: Position)(implicit ctx: Context): Type = tp
-  override def checkInRewriteContext(what: String, pos: Position)(implicit ctx: Context) = ()
+  override def checkInInlineContext(what: String, pos: Position)(implicit ctx: Context) = ()
   override def checkFeature(base: ClassSymbol, name: TermName, description: => String, featureUseSite: Symbol, pos: Position)(implicit ctx: Context): Unit = ()
 }

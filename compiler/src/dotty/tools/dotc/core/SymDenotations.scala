@@ -782,14 +782,14 @@ object SymDenotations {
     def isTransparentMethod(implicit ctx: Context): Boolean =
       is(TransparentMethod, butNot = AccessorOrSynthetic)
 
-    def isRewriteMethod(implicit ctx: Context): Boolean =
-      is(RewriteMethod, butNot = AccessorOrSynthetic)
+    def isInlineMethod(implicit ctx: Context): Boolean =
+      is(InlineMethod, butNot = AccessorOrSynthetic)
 
-    /** A transparent or rewrite method */
+    /** A transparent or inline method */
     def isInlineable(implicit ctx: Context): Boolean =
-      is(TransparentMethod) || is(RewriteMethod)
+      is(TransparentMethod) || is(InlineMethod)
 
-    /** An erased value or a rewrite method, excluding @forceInline annotated methods.
+    /** An erased value or an inline method, excluding @forceInline annotated methods.
      *  The latter have to be kept around to get to parity with Scala.
      *  This is necessary at least until we have full bootstrap. Right now
      *  dotty-bootstrapped involves running the Dotty compiler compiled with Scala 2 with
@@ -799,7 +799,7 @@ object SymDenotations {
      */
     def isEffectivelyErased(implicit ctx: Context): Boolean =
       is(Erased) ||
-      isRewriteMethod && unforcedAnnotation(defn.ForceInlineAnnot).isEmpty
+      isInlineMethod && unforcedAnnotation(defn.ForceInlineAnnot).isEmpty
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,
