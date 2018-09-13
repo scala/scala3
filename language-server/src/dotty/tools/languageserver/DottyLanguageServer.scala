@@ -233,6 +233,7 @@ class DottyLanguageServer extends LanguageServer
         val driver = driverFor(uri)
         val sendMessage = (msg: String) => client.logMessage(new MessageParams(MessageType.Info, uri + msg))
         evaluateWorksheet(driver, uri, sendMessage)(driver.currentCtx)
+        sendMessage("FINISHED")
       }
     }
   }

@@ -16,6 +16,7 @@ import * as worksheet from './worksheet'
 
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
+let client: LanguageClient
 
 export function activate(context: ExtensionContext) {
   extensionContext = context
@@ -30,6 +31,15 @@ export function activate(context: ExtensionContext) {
   const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
 
   vscode.workspace.onWillSaveTextDocument(worksheet.prepareWorksheet)
+  vscode.workspace.onDidSaveTextDocument(document => {
+    if (worksheet.isWorksheet(document)) {
+      vscode.commands.executeCommand(worksheet.worksheetEvaluateAfterSaveKey)
+    }
+  })
+
+  vscode.commands.registerCommand(worksheet.worksheetEvaluateAfterSaveKey, () => {
+    worksheet.evaluateCommand()
+  })
 
   if (process.env['DLS_DEV_MODE']) {
     const portFile = `${vscode.workspace.rootPath}/.dotty-ide-dev-port`
@@ -172,7 +182,7 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
     revealOutputChannelOn: RevealOutputChannelOn.Never
   }
 
-  const client = new LanguageClient("dotty", "Dotty", serverOptions, clientOptions)
+  client = new LanguageClient("dotty", "Dotty", serverOptions, clientOptions)
   if (isOldServer)
     enableOldServerWorkaround(client)
 
@@ -182,6 +192,10 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
     client.onNotification("window/logMessage", (params) => {
       worksheet.worksheetHandleMessage(params.message)
     })
+  })
+
+  vscode.commands.registerCommand(worksheet.worksheetEvaluateKey, () => {
+    worksheet.worksheetSave(client)
   })
 
   // Push the disposable to the context's subscriptions so that the

@@ -41,6 +41,12 @@
     }
   ],
   "contributes": {
+    "commands": [
+      {
+        "command": "worksheet.evaluate",
+        "title": "Run worksheet"
+      }
+    ],
     "configurationDefaults": {
       "[scala]": {
         "editor.tabSize": 2,

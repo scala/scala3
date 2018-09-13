@@ -1,6 +1,7 @@
 'use strict'
 
 import * as vscode from 'vscode'
+import { LanguageClient } from 'vscode-languageclient'
 
 /** All decorations that have been added so far */
 let worksheetDecorationTypes: Map<vscode.TextDocument, vscode.TextEditorDecorationType[]> = new Map<vscode.TextDocument, vscode.TextEditorDecorationType[]>()
@@ -10,6 +11,75 @@ let worksheetInsertedLines: Map<vscode.TextDocument, number> = new Map<vscode.Te
 
 /** The minimum margin to add so that the decoration is shown after all text. */
 let worksheetMargin: Map<vscode.TextDocument, number> = new Map<vscode.TextDocument, number>()
+
+/** Whether the given worksheet has finished evaluating. */
+let worksheetFinished: Map<vscode.TextDocument, boolean> = new Map<vscode.TextDocument, boolean>()
+
+/**
+ * The command key for evaluating a worksheet. Exposed to users as
+ * `Run worksheet`.
+ */
+export const worksheetEvaluateKey = "worksheet.evaluate"
+
+/**
+ * The command that is called to evaluate a worksheet after it has been evaluated.
+ *
+ * This is not exposed as a standalone callable command; but this command is triggered
+ * when a worksheet is saved.
+ */
+export const worksheetEvaluateAfterSaveKey = "worksheet.evaluateAfterSave"
+
+/** Is this document a worksheet? */
+export function isWorksheet(document: vscode.TextDocument): boolean {
+  return document.fileName.endsWith(".sc")
+}
+
+/**
+ * This command is bound to `worksheetEvaluateAfterSaveKey`. This is implemented
+ * as a command, because we want to display a progress bar that may stay for a while, and
+ * VSCode will kill promises triggered by file save after some time.
+ */
+export function evaluateCommand() {
+  const editor = vscode.window.activeTextEditor
+  if (editor) {
+    const document = editor.document
+    if (isWorksheet(document)) {
+      showWorksheetProgress(document)
+    }
+  }
+}
+
+/**
+ * The VSCode command executed when the user select `Run worksheet`.
+ *
+ * We check whether the buffer is dirty, and if it is, we save it. Evaluation will then be
+ * triggered by file save.
+ * If the buffer is clean, we do the necessary preparation for worksheet (compute margin,
+ * remove blank lines, etc.) and check if the buffer has been changed by that. If it is, we save
+ * and the evaluation will be triggered by file save.
+ * If the buffer is still clean, we send a `textDocument/didSave` notification to the language
+ * server in order to start the execution of the worksheet.
+ */
+export function worksheetSave(client: LanguageClient) {
+  const editor = vscode.window.activeTextEditor
+  if (editor) {
+    const document = editor.document
+    if (isWorksheet(document)) {
+      if (document.isDirty) document.save()
+      else {
+        _prepareWorksheet(document).then(_ => {
+          if (document.isDirty) document.save()
+          else {
+            client.sendNotification("textDocument/didSave", {
+              textDocument: { uri: document.uri.toString() }
+            })
+            showWorksheetProgress(document)
+          }
+        })
+      }
+    }
+  }
+}
 
 /**
  * If the document that will be saved is a worksheet, resets the "worksheet state"
@@ -22,16 +92,43 @@ let worksheetMargin: Map<vscode.TextDocument, number> = new Map<vscode.TextDocum
  */
 export function prepareWorksheet(event: vscode.TextDocumentWillSaveEvent) {
   const document = event.document
-  if (document.fileName.endsWith(".sc")) {
-    const setup =
-      removeRedundantBlankLines(document)
+  const setup = _prepareWorksheet(document)
+  event.waitUntil(setup)
+}
+
+function _prepareWorksheet(document: vscode.TextDocument) {
+  if (isWorksheet(document)) {
+    return removeRedundantBlankLines(document)
       .then(_ => {
         removeDecorations(document)
         worksheetMargin.set(document, longestLine(document) + 5)
         worksheetInsertedLines.set(document, 0)
+        worksheetFinished.set(document, false)
       })
-    event.waitUntil(setup)
+  } else {
+    return Promise.resolve()
   }
+}
+
+function showWorksheetProgress(document: vscode.TextDocument) {
+  return vscode.window.withProgress({
+    location: vscode.ProgressLocation.Window,
+    title: "Evaluating worksheet"
+  }, _ => {
+    function isFinished() {
+      return worksheetFinished.get(document) || false
+    }
+    return wait(isFinished, 500)
+  })
+}
+
+/** Wait until `cond` evaluates to true; test every `delay` ms. */
+function wait(cond: () => boolean, delayMs: number): Promise<boolean> {
+  const isFinished = cond()
+  if (isFinished) {
+    return Promise.resolve(true)
+  }
+  else return new Promise(fn => setTimeout(fn, delayMs)).then(_ => wait(cond, delayMs))
 }
 
 /**
@@ -49,7 +146,11 @@ export function worksheetHandleMessage(message: string) {
 
   if (editor) {
     let payload = message.slice(editor.document.uri.toString().length)
-    worksheetDisplayResult(payload, editor)
+    if (payload == "FINISHED") {
+      worksheetFinished.set(editor.document, true)
+    } else {
+      worksheetDisplayResult(payload, editor)
+    }
   }
 }
 
