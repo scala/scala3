@@ -29,7 +29,7 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
       }
 
     val position =
-      if (false && cont.pos.exists) { // Disabled because it duplicates the information printed by Dotty
+      if (cont.pos.exists) {
         val pos = cont.pos
         val src = pos.source
         new Position {
@@ -46,13 +46,14 @@ final class DelegatingReporter(delegate: xsbti.Reporter) extends Reporter
       } else
         noPosition
 
-    val sb = new StringBuilder()
-    sb.append(messageAndPos(cont.contained(), cont.pos, diagnosticLevel(cont)))
-    if (ctx.shouldExplain(cont) && cont.contained().explanation.nonEmpty) {
-      sb.append(explanation(cont.contained()))
+    val message = cont.contained()
+    val rendered = new StringBuilder()
+    rendered.append(messageAndPos(message, cont.pos, diagnosticLevel(cont)))
+    if (ctx.shouldExplain(cont) && message.explanation.nonEmpty) {
+      rendered.append(explanation(message))
     }
 
-    delegate.log(Problem(position, sb.toString(), severity))
+    delegate.log(Problem(position, message.msg, severity, rendered.toString))
   }
 
   private[this] def maybe[T](opt: Option[T]): Optional[T] = opt match {
