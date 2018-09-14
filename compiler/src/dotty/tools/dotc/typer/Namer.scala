@@ -1159,8 +1159,9 @@ class Namer { typer: Typer =>
 
   /** The type signature of a DefDef with given symbol */
   def defDefSig(ddef: DefDef, sym: Symbol)(implicit ctx: Context) = {
-    val DefDef(name, tparams, vparamss, _, _) = ddef
-    val isConstructor = name == nme.CONSTRUCTOR
+    // Beware: ddef.name need not match sym.name if sym was freshened!
+    val DefDef(_, tparams, vparamss, _, _) = ddef
+    val isConstructor = sym.name == nme.CONSTRUCTOR
 
     // The following 3 lines replace what was previously just completeParams(tparams).
     // But that can cause bad bounds being computed, as witnessed by

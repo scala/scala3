@@ -149,18 +149,21 @@ object TypeTestsCasts {
         def derivedTree(expr1: Tree, sym: Symbol, tp: Type) =
           cpy.TypeApply(tree)(expr1.select(sym).withPos(expr.pos), List(TypeTree(tp)))
 
-        def foundCls = expr.tpe.widen.classSymbol
+        def effectiveClass(tp: Type): Symbol =
+          if (tp.isRef(defn.PairClass)) effectiveClass(erasure(tp))
+          else tp.classSymbol
+
+        def foundCls = effectiveClass(expr.tpe.widen)
         // println(i"ta $tree, found = $foundCls")
 
         def inMatch =
           fun.symbol == defn.Any_typeTest ||  // new scheme
           expr.symbol.is(Case)                // old scheme
 
-
         // `expr` is a typed unerased tree
         // `testType` is erased
         def transformIsInstanceOf(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = {
-          def testCls = testType.classSymbol
+          def testCls = effectiveClass(testType.widen)
 
           def unreachable(why: => String) =
             if (flagUnrelated)

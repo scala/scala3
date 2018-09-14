@@ -763,7 +763,7 @@ class ClassfileParser(
 
         if (allowed != "always") {
           failUnless(allowed != "never")
-          val allowedList = allowed.split(":").toList
+          val allowedList = allowed.split(java.io.File.pathSeparator).toList
           val file = classRoot.symbol.associatedFile
           // Using `.toString.contains` isn't great, but it's good enough for a debug flag.
           failUnless(file == null || allowedList.exists(path => file.toString.contains(path)))
@@ -1080,28 +1080,6 @@ class ClassfileParser(
       val start = starts(index)
       if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
       getExternalName(in.getChar(start + 1))
-    }
-
-    /** Return a name and a type at the given index.
-     */
-    private def getNameAndType(index: Int, ownerTpe: Type)(implicit ctx: Context): (Name, Type) = {
-      if (index <= 0 || len <= index) errorBadIndex(index)
-      var p = values(index).asInstanceOf[(Name, Type)]
-      if (p eq null) {
-        val start = starts(index)
-        if (in.buf(start).toInt != CONSTANT_NAMEANDTYPE) errorBadTag(start)
-        val name = getName(in.getChar(start + 1).toInt)
-        var tpe  = getType(in.getChar(start + 3).toInt)
-        // fix the return type, which is blindly set to the class currently parsed
-        if (name == nme.CONSTRUCTOR)
-          tpe match {
-            case tp: MethodType =>
-              tp.derivedLambdaType(tp.paramNames, tp.paramInfos, ownerTpe)
-          }
-        p = (name, tpe)
-        values(index) = p
-      }
-      p
     }
 
     /** Return the type of a class constant entry. Since

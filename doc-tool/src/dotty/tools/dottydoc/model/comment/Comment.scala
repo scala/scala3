@@ -6,12 +6,9 @@ package comment
 import dotty.tools.dottydoc.util.syntax._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.util.Positions._
-import dotty.tools.dotc.config.Printers.dottydoc
 import com.vladsch.flexmark.ast.{ Node => MarkdownNode }
 import HtmlParsers._
 import util.MemberLookup
-
-import dotc.util.SourceFile
 
 case class Comment (
   body:                    String,
@@ -161,7 +158,7 @@ extends MarkupConversion[Body] {
 
   def linkedExceptions(m: Map[String, String])(implicit ctx: Context) = {
     m.mapValues(_.toWiki(ent, ctx.docbase.packages, pos)).map { case (targetStr, body) =>
-      val link = lookup(ent, ctx.docbase.packages, targetStr)
+      val link = lookup(Some(ent), ctx.docbase.packages, targetStr)
       val newBody = body match {
         case Body(List(Paragraph(Chain(content)))) =>
           val descr = Text(" ") +: content

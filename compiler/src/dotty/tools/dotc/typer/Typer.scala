@@ -37,6 +37,7 @@ import config.Printers.{gadts, typr}
 import rewrites.Rewrites.patch
 import NavigateAST._
 import transform.SymUtils._
+import transform.TypeUtils._
 import reporting.trace
 import config.Config
 
@@ -85,8 +86,7 @@ class Typer extends Namer
                with Implicits
                with Inferencing
                with Dynamic
-               with Checking
-               with Docstrings {
+               with Checking {
 
   import Typer._
   import tpd.{cpy => _, _}
@@ -1547,9 +1547,10 @@ class Typer extends Namer
     def typedParent(tree: untpd.Tree): Tree = {
       var result = if (tree.isType) typedType(tree)(superCtx) else typedExpr(tree)(superCtx)
       val psym = result.tpe.dealias.typeSymbol
-      if (seenParents.contains(psym) && !cls.isRefinementClass)
-        ctx.error(i"$psym is extended twice", tree.pos)
-      seenParents += psym
+      if (seenParents.contains(psym) && !cls.isRefinementClass) {
+        if (!ctx.isAfterTyper) ctx.error(i"$psym is extended twice", tree.pos)
+      }
+      else seenParents += psym
       if (tree.isType) {
         if (psym.is(Trait) && !cls.is(Trait) && !cls.superClass.isSubClass(psym))
           result = maybeCall(result, psym, psym.primaryConstructor.info)
@@ -1591,17 +1592,15 @@ class Typer extends Namer
       val body1 = addAccessorDefs(cls,
         typedStats(impl.body, dummy)(ctx.inClassContext(self1.symbol)))
 
-      // Expand comments and type usecases if `-Ycook-comments` is set.
-      if (ctx.settings.YcookComments.value) {
-        cookComments(cls :: body1.map(_.symbol), self1.symbol)(ctx.localContext(cdef, cls).setNewScope)
-      }
-
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
         .withType(dummy.termRef)
       if (!cls.is(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.namePos)
-      if (cls.is(Case) && cls.derivesFrom(defn.EnumClass)) checkEnum(cdef, cls)
+      if (cls.is(Case) && cls.derivesFrom(defn.EnumClass)) {
+        val firstParent = parents1.head.tpe.dealias.typeSymbol
+        checkEnum(cdef, cls, firstParent)
+      }
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
       checkVariance(cdef1)
       if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
@@ -1792,6 +1791,37 @@ class Typer extends Namer
     }
   }
 
+  /** Translate tuples of all arities */
+  def typedTuple(tree: untpd.Tuple, pt: Type)(implicit ctx: Context) = {
+    val elems = tree.trees
+    val arity = elems.length
+    if (arity <= Definitions.MaxTupleArity)
+      typed(desugar.smallTuple(tree).withPos(tree.pos), pt)
+    else {
+      val pts =
+        if (arity == pt.tupleArity) pt.tupleElementTypes
+        else elems.map(_ => defn.AnyType)
+      val elems1 = (tree.trees, pts).zipped.map(typed(_, _))
+      if (ctx.mode.is(Mode.Type))
+        (elems1 :\ (TypeTree(defn.UnitType): Tree))((elemTpt, elemTpts) =>
+          AppliedTypeTree(TypeTree(defn.PairType), List(elemTpt, elemTpts)))
+          .withPos(tree.pos)
+      else {
+        val tupleXXLobj = untpd.ref(defn.TupleXXLModule.termRef)
+        val app = untpd.cpy.Apply(tree)(tupleXXLobj, elems1.map(untpd.TypedSplice(_)))
+          .withPos(tree.pos)
+        val app1 = typed(app, pt)
+        if (ctx.mode.is(Mode.Pattern)) app1
+        else {
+          val elemTpes = (elems, pts).zipped.map((elem, pt) =>
+            ctx.typeComparer.widenInferred(elem.tpe, pt))
+          val resTpe = (elemTpes :\ (defn.UnitType: Type))(defn.PairType.appliedTo(_, _))
+          app1.asInstance(resTpe)
+        }
+      }
+    }
+  }
+
   /** Retrieve symbol attached to given tree */
   protected def retrieveSym(tree: untpd.Tree)(implicit ctx: Context) = tree.removeAttachment(SymOfTree) match {
     case Some(sym) =>
@@ -1877,6 +1907,7 @@ class Typer extends Namer
           case tree: untpd.Annotated => typedAnnotated(tree, pt)
           case tree: untpd.TypedSplice => typedTypedSplice(tree)
           case tree: untpd.UnApply => typedUnApply(tree, pt)
+          case tree: untpd.Tuple => typedTuple(tree, pt)
           case tree: untpd.DependentTypeTree => typed(untpd.TypeTree().withPos(tree.pos), pt)
           case tree: untpd.InfixOp if ctx.mode.isExpr => typedInfixOp(tree, pt)
           case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)

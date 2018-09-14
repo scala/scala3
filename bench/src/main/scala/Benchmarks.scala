@@ -63,7 +63,7 @@ object Bench {
 
     var cpIndex = argsNorm.indexOf("-classpath")
     if (cpIndex == -1) cpIndex = argsNorm.indexOf("-cp")
-    if (cpIndex != -1) argsNorm(cpIndex + 1) = argsNorm(cpIndex + 1) + ":" + libs
+    if (cpIndex != -1) argsNorm(cpIndex + 1) = argsNorm(cpIndex + 1) + java.io.File.pathSeparator + libs
     else argsNorm = argsNorm :+ "-classpath" :+ libs
 
     val file = new File(COMPILE_OPTS_FILE)

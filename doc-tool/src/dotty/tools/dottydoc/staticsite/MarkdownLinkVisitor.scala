@@ -4,7 +4,7 @@ package staticsite
 
 import com.vladsch.flexmark.ast._
 import com.vladsch.flexmark.util.sequence.{BasedSequence, CharSubSequence}
-import model.{Def, NonEntity, Package, TypeAlias, Val}
+import model.{Def, Package, TypeAlias, Val}
 import dottydoc.util.MemberLookup
 
 object MarkdownLinkVisitor {
@@ -21,7 +21,7 @@ object MarkdownLinkVisitor {
             url.subSequence(0, url.lastIndexOf('.')).append(".html")
           }
           else if (EntityLink.unapplySeq(url.toString).isDefined) {
-            lookup(NonEntity, docs, url.toString).foreach { ent =>
+            lookup(None, docs, url.toString).foreach { ent =>
               val (path, suffix) = ent match {
                 case ent: Val => (ent.path.dropRight(1), ".html#" + ent.signature)
                 case ent: Def => (ent.path.dropRight(1), ".html#" + ent.signature)

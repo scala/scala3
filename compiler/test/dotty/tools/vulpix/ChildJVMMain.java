@@ -14,10 +14,11 @@ public class ChildJVMMain {
 
     private static void runMain(String dir) throws Exception {
         String jcp = System.getProperty("java.class.path");
-        System.setProperty("java.class.path", jcp == null ? dir : dir + ":" + jcp);
+        String sep = File.pathSeparator;
+        System.setProperty("java.class.path", jcp == null ? dir : dir + sep + jcp);
 
         ArrayList<URL> cp = new ArrayList<>();
-        for (String path : dir.split(":"))
+        for (String path : dir.split(sep))
             cp.add(new File(path).toURI().toURL());
 
         URLClassLoader ucl = new URLClassLoader(cp.toArray(new URL[cp.size()]));

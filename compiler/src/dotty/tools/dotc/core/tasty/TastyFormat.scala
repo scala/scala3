@@ -211,6 +211,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEDSPLICE Length splice_Term
                   FUNCTION    Length body_Term arg_Term*
                   INFIXOP     Length op_NameRef left_Term right_Term
+                  TUPLE       Length elem_Term*
                   PATDEF      Length type_Term rhs_Term pattern_Term* Modifier*
                   EMPTYTYPETREE
 
@@ -235,8 +236,7 @@ Standard Section: "Positions" Assoc*
 
 Standard Section: "Comments" Comment*
 
-  Comment       = Length Bytes Byte         // Raw comment's bytes encoded as UTF-8, plus a byte indicating
-                                            // whether the comment is expanded (1) or not expanded (0)
+  Comment       = Length Bytes LongInt      // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
 
 
 **************************************************************************************/
@@ -447,6 +447,7 @@ object TastyFormat {
   final val FUNCTION = 201
   final val INFIXOP = 202
   final val PATDEF = 203
+  final val TUPLE = 204
 
   def methodType(isImplicit: Boolean = false, isErased: Boolean = false) = {
     val implicitOffset = if (isImplicit) 1 else 0
@@ -668,6 +669,7 @@ object TastyFormat {
     case TYPEDSPLICE => "TYPEDSPLICE"
     case FUNCTION => "FUNCTION"
     case INFIXOP => "INFIXOP"
+    case TUPLE => "TUPLE"
     case PATDEF => "PATDEF"
   }
 

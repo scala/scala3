@@ -21,7 +21,7 @@ object references {
       case target: Package =>
         target.path.mkString("/") + "/index.html"
       case _: TypeAlias | _: Def | _: Val =>
-        target.parent.path.mkString("/") + ".html#" + target.signature
+        target.parent.map(_.path.mkString("/")).getOrElse("") + ".html#" + target.signature
       case _ =>
         target.path.mkString("/") + ".html"
     })
@@ -61,7 +61,7 @@ object references {
         s"$title: $byName${ref.showReference}$repeated"
 
       case ConstantReference(title) => title
-      case EmptyReference => 
+      case EmptyReference =>
         assert(false, "unexpected empty reference")
         "<empty reference>"
     }

@@ -596,7 +596,8 @@ object SymDenotations {
      *  initaliazion code?
      */
     def isNoInitsClass(implicit ctx: Context) =
-      isClass && asClass.baseClasses.forall(_.is(NoInits))
+      isClass &&
+      (asClass.baseClasses.forall(_.is(NoInits)) || defn.isAssuredNoInits(symbol))
 
     /** Is this a "real" method? A real method is a method which is:
      *  - not an accessor

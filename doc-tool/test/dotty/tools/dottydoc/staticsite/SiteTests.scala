@@ -5,7 +5,7 @@ package staticsite
 import org.junit.Test
 import org.junit.Assert._
 
-class SiteTests extends DottyDocTest with SourceFileOps {
+class SiteTests extends DottyDocTest with SourceFileOps with CheckFromSource {
   @Test def hasCorrectLayoutFiles = {
     assert(site.root.exists && site.root.isDirectory,
            s"'${site.root.getName}' is not a directory")

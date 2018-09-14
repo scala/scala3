@@ -50,7 +50,7 @@ class TestBCode extends DottyBytecodeTest {
   /** This test verifies that simple matches with `@switch` annotations are
    *  indeed transformed to a switch
    */
-  @Test def basicTransfromAnnotated = {
+  @Test def basicSwitch = {
     val source = """
                  |object Foo {
                  |  import scala.annotation.switch
@@ -66,6 +66,71 @@ class TestBCode extends DottyBytecodeTest {
       val moduleNode = loadClassNode(moduleIn.input)
       val methodNode = getMethod(moduleNode, "foo")
       assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchWithAlternatives = {
+    val source =
+      """
+        |object Foo {
+        |  import scala.annotation.switch
+        |  def foo(i: Int) = (i: @switch) match {
+        |    case 2 => println(2)
+        |    case 1 | 3 | 5 => println(1)
+        |    case 0 => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def switchWithGuards = {
+    val source =
+      """
+        |object Foo {
+        |  import scala.annotation.switch
+        |  def foo(i: Int, b: Boolean) = (i: @switch) match {
+        |    case 2 => println(3)
+        |    case 1 if b => println(2)
+        |    case 1 => println(1)
+        |    case 0 => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
+  @Test def matchWithDefaultNoThrowMatchError = {
+    val source =
+      """class Test {
+        |  def test(s: String) = s match {
+        |    case "Hello" => 1
+        |    case _       => 2
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn = dir.lookupName("Test.class", directory = false)
+      val clsNode = loadClassNode(clsIn.input)
+      val method = getMethod(clsNode, "test")
+      val throwMatchError = instructionsFromMethod(method).exists {
+        case Op(Opcodes.ATHROW) => true
+        case _ => false
+      }
+      assertFalse(throwMatchError)
     }
   }
 
@@ -336,4 +401,78 @@ class TestBCode extends DottyBytecodeTest {
     }
   }
 
+  @Test def returnThrowInPatternMatch = {
+    val source =
+      """class Test {
+        |  def test(a: Any): Int = {
+        |    a match {
+        |      case _: Test => ???
+        |    }
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn = dir.lookupName("Test.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val method = getMethod(moduleNode, "test")
+
+      val instructions = instructionsFromMethod(method)
+      val expected = List(
+        VarOp(Opcodes.ALOAD, 1),
+        VarOp(Opcodes.ASTORE, 2),
+        VarOp(Opcodes.ALOAD, 2),
+        TypeOp(Opcodes.INSTANCEOF, "Test"),
+        Jump(Opcodes.IFEQ, Label(11)),
+        VarOp(Opcodes.ALOAD, 2),
+        TypeOp(Opcodes.CHECKCAST, "Test"),
+        VarOp(Opcodes.ASTORE, 3),
+        Field(Opcodes.GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
+        Invoke(Opcodes.INVOKEVIRTUAL, "scala/Predef$", "$qmark$qmark$qmark", "()Lscala/runtime/Nothing$;", false),
+        Op(Opcodes.ATHROW),
+        Label(11),
+        FrameEntry(1, List("java/lang/Object"), List()),
+        TypeOp(Opcodes.NEW, "scala/MatchError"),
+        Op(Opcodes.DUP),
+        VarOp(Opcodes.ALOAD, 2),
+        Invoke(Opcodes.INVOKESPECIAL, "scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false),
+        Op(Opcodes.ATHROW),
+        Label(18),
+        FrameEntry(0, List(), List("java/lang/Throwable")),
+        Op(Opcodes.ATHROW),
+        Label(21),
+        FrameEntry(4, List(), List("java/lang/Throwable")),
+        Op(Opcodes.ATHROW)
+      )
+      assert(instructions == expected,
+        "`test` was not properly generated\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
+  /** Test that type lambda applications are properly dealias */
+  @Test def i5090 = {
+    val source =
+      """class Test {
+        |  type T[X] = X
+        |
+        |  def test(i: T[Int]): T[Int] = i
+        |  def ref(i: Int): Int = i
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val test    = getMethod(clsNode, "test")
+      val ref     = getMethod(clsNode, "ref")
+
+      val testInstructions = instructionsFromMethod(test)
+      val refInstructions  = instructionsFromMethod(ref)
+
+      assert(testInstructions == refInstructions,
+        "`T[Int]` was not properly dealias" +
+        diffInstructions(testInstructions, refInstructions))
+    }
+  }
 }

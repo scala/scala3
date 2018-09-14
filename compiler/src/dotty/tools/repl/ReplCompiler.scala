@@ -1,6 +1,5 @@
 package dotty.tools.repl
 
-import dotty.tools.backend.jvm.GenBCode
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.ast.tpd.TreeOps
@@ -14,51 +13,61 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.reporting.diagnostic.messages
-import dotty.tools.dotc.typer.{FrontEnd, ImportInfo}
+import dotty.tools.dotc.transform.PostTyper
+import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.Positions._
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
-import dotty.tools.io._
 import dotty.tools.repl.results._
 
 import scala.collection.mutable
 
-/** This subclass of `Compiler` replaces the appropriate phases in order to
- *  facilitate the REPL
+/** This subclass of `Compiler` is adapted for use in the REPL.
  *
- *  Specifically it replaces the front end with `REPLFrontEnd`, and adds a
- *  custom subclass of `GenBCode`. The custom `GenBCode`, `REPLGenBCode`, works
- *  in conjunction with a specialized class loader in order to load virtual
- *  classfiles.
+ *  - compiles parsed expression in the current REPL state:
+ *    - adds the appropriate imports in scope
+ *    - wraps expressions into a dummy object
+ *  - provides utility to query the type of an expression
+ *  - provides utility to query the documentation of an expression
  */
 class ReplCompiler extends Compiler {
-  override protected def frontendPhases: List[List[Phase]] =
-    Phases.replace(classOf[FrontEnd], _ => new REPLFrontEnd :: Nil, super.frontendPhases)
 
-  def newRun(initCtx: Context, objectIndex: Int) = new Run(this, initCtx) {
-    override protected[this] def rootContext(implicit ctx: Context) =
-      addMagicImports(super.rootContext)
+  override protected def frontendPhases: List[List[Phase]] = List(
+    List(new REPLFrontEnd),
+    List(new CollectTopLevelImports),
+    List(new PostTyper)
+  )
 
-    private def addMagicImports(initCtx: Context): Context = {
-      def addImport(path: TermName)(implicit ctx: Context) = {
-        val importInfo = ImportInfo.rootImport { () =>
-          ctx.requiredModuleRef(path)
-        }
-        ctx.fresh.setNewScope.setImportInfo(importInfo)
+  def newRun(initCtx: Context, state: State): Run = new Run(this, initCtx) {
+
+    /** Import previous runs and user defined imports */
+    override protected[this] def rootContext(implicit ctx: Context): Context = {
+      def importContext(imp: tpd.Import)(implicit ctx: Context) =
+        ctx.importContext(imp, imp.symbol)
+
+      def importPreviousRun(id: Int)(implicit ctx: Context) = {
+        // we first import the wrapper object id
+        val path = nme.EMPTY_PACKAGE ++ "." ++ objectNames(id)
+        val importInfo = ImportInfo.rootImport(() =>
+          ctx.requiredModuleRef(path))
+        val ctx0 = ctx.fresh.setNewScope.setImportInfo(importInfo)
+
+        // then its user defined imports
+        val imports = state.imports.getOrElse(id, Nil)
+        if (imports.isEmpty) ctx0
+        else imports.foldLeft(ctx0.fresh.setNewScope)((ctx, imp) =>
+          importContext(imp)(ctx))
       }
 
-      (1 to objectIndex)
-        .foldLeft(initCtx) { (ictx, i) =>
-          addImport(nme.EMPTY_PACKAGE ++ "." ++ objectNames(i))(ictx)
-        }
+      (1 to state.objectIndex).foldLeft(super.rootContext)((ctx, id) =>
+        importPreviousRun(id)(ctx))
     }
   }
 
   private[this] val objectNames = mutable.Map.empty[Int, TermName]
   private def objectName(state: State) =
-    objectNames.getOrElseUpdate(state.objectIndex, {
-      (str.REPL_SESSION_LINE + state.objectIndex).toTermName
-    })
+    objectNames.getOrElseUpdate(state.objectIndex,
+      (str.REPL_SESSION_LINE + state.objectIndex).toTermName)
 
   private case class Definitions(stats: List[untpd.Tree], state: State)
 
@@ -86,7 +95,7 @@ class ReplCompiler extends Compiler {
     }
 
     Definitions(
-      state.imports ++ defs,
+      defs,
       state.copy(
         objectIndex = state.objectIndex + (if (defs.isEmpty) 0 else 1),
         valIndex = valIdx
@@ -158,19 +167,18 @@ class ReplCompiler extends Compiler {
   def docOf(expr: String)(implicit state: State): Result[String] = {
     implicit val ctx: Context = state.context
 
-    /**
-     * Extract the "selected" symbol from `tree`.
+    /** Extract the "selected" symbol from `tree`.
      *
-     * Because the REPL typechecks an expression, special syntax is needed to get the documentation
-     * of certain symbols:
+     *  Because the REPL typechecks an expression, special syntax is needed to get the documentation
+     *  of certain symbols:
      *
-     * - To select the documentation of classes, the user needs to pass a call to the class' constructor
-     *   (e.g. `new Foo` to select `class Foo`)
-     * - When methods are overloaded, the user needs to enter a lambda to specify which functions he wants
-     *   (e.g. `foo(_: Int)` to select `def foo(x: Int)` instead of `def foo(x: String)`
+     *  - To select the documentation of classes, the user needs to pass a call to the class' constructor
+     *    (e.g. `new Foo` to select `class Foo`)
+     *  - When methods are overloaded, the user needs to enter a lambda to specify which functions he wants
+     *    (e.g. `foo(_: Int)` to select `def foo(x: Int)` instead of `def foo(x: String)`
      *
-     * This function returns the right symbol for the received expression, and all the symbols that are
-     * overridden.
+     *  This function returns the right symbol for the received expression, and all the symbols that are
+     *  overridden.
      */
     def extractSymbols(tree: tpd.Tree): Iterator[Symbol] = {
       val sym = tree match {
@@ -186,13 +194,16 @@ class ReplCompiler extends Compiler {
         val stat = stats.last.asInstanceOf[tpd.Tree]
         if (stat.tpe.isError) stat.tpe.show
         else {
-          val docCtx = ctx.docCtx.get
           val symbols = extractSymbols(stat)
-          val doc = symbols.collectFirst {
-            case sym if docCtx.docstrings.contains(sym) =>
-              docCtx.docstrings(sym).raw
-          }
-          doc.getOrElse(s"// No doc for `${expr}`")
+          val doc = for {
+            sym <- symbols
+            docCtx <- ctx.docCtx
+            comment <- docCtx.docstring(sym)
+            body <- comment.expandedBody
+          } yield body
+
+          if (doc.hasNext) doc.next()
+          else s"// No doc for `$expr`"
         }
 
       case _ =>
@@ -210,7 +221,7 @@ class ReplCompiler extends Compiler {
         import untpd._
 
         val valdef = ValDef("expr".toTermName, TypeTree(), Block(trees, unitLiteral))
-        val tmpl = Template(emptyConstructor, Nil, EmptyValDef, state.imports :+ valdef)
+        val tmpl = Template(emptyConstructor, Nil, EmptyValDef, List(valdef))
         val wrapper = TypeDef("$wrapper".toTypeName, tmpl)
           .withMods(Modifiers(Final))
           .withPos(Position(0, expr.length))
@@ -261,9 +272,8 @@ class ReplCompiler extends Compiler {
 
       if (errorsAllowed || !ctx.reporter.hasErrors)
         unwrapped(unit.tpdTree, src)
-      else {
-        ctx.reporter.removeBufferedMessages.errors
-      }
+      else
+        ctx.reporter.removeBufferedMessages.errors[tpd.ValDef] // Workaround #4988
     }
   }
 }

@@ -407,6 +407,7 @@ object Checking {
     checkCombination(Final, Sealed)
     checkCombination(Private, Protected)
     checkCombination(Abstract, Override)
+    checkCombination(Private, Override)
     checkCombination(Lazy, Transparent)
     checkCombination(Module, Transparent)
     checkCombination(Rewrite, Transparent)
@@ -856,14 +857,14 @@ trait Checking {
       ctx.error(em"$what can only be used in a rewrite method", pos)
 
   /** Check that all case classes that extend `scala.Enum` are `enum` cases */
-  def checkEnum(cdef: untpd.TypeDef, cls: Symbol)(implicit ctx: Context): Unit = {
+  def checkEnum(cdef: untpd.TypeDef, cls: Symbol, parent: Symbol)(implicit ctx: Context): Unit = {
     import untpd.modsDeco
     def isEnumAnonCls =
       cls.isAnonymousClass &&
       cls.owner.isTerm &&
       (cls.owner.flagsUNSAFE.is(Case) || cls.owner.name == nme.DOLLAR_NEW)
     if (!cdef.mods.isEnumCase && !isEnumAnonCls)
-      ctx.error(CaseClassCannotExtendEnum(cls), cdef.pos)
+      ctx.error(CaseClassCannotExtendEnum(cls, parent), cdef.pos)
   }
 
   /** Check that all references coming from enum cases in an enum companion object
@@ -941,7 +942,7 @@ trait Checking {
 
 trait ReChecking extends Checking {
   import tpd._
-  override def checkEnum(cdef: untpd.TypeDef, cls: Symbol)(implicit ctx: Context): Unit = ()
+  override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, parent: Symbol)(implicit ctx: Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(implicit ctx: Context): Unit = ()
   override def checkEnumCompanions(stats: List[Tree], enumContexts: collection.Map[Symbol, Context])(implicit ctx: Context): List[Tree] = stats
 }

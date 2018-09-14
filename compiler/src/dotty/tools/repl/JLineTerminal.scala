@@ -22,9 +22,11 @@ final class JLineTerminal extends java.io.Closeable {
     .build()
   private val history = new DefaultHistory
 
-  private def blue(str: String) = Console.BLUE + str + Console.RESET
-  private val prompt        = blue("scala> ")
-  private val newLinePrompt = blue("     | ")
+  private def blue(str: String)(implicit ctx: Context) =
+    if (ctx.settings.color.value != "never") Console.BLUE + str + Console.RESET
+    else str
+  private def prompt(implicit ctx: Context)        = blue("scala> ")
+  private def newLinePrompt(implicit ctx: Context) = blue("     | ")
 
   /** Blockingly read line from `System.in`
    *
@@ -64,7 +66,7 @@ final class JLineTerminal extends java.io.Closeable {
   def close() = terminal.close()
 
   /** Provide syntax highlighting */
-  private class Highlighter extends reader.Highlighter {
+  private class Highlighter(implicit ctx: Context) extends reader.Highlighter {
     def highlight(reader: LineReader, buffer: String): AttributedString = {
       val highlighted = SyntaxHighlighting(buffer).mkString
       AttributedString.fromAnsi(highlighted)

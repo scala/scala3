@@ -5,10 +5,8 @@ package core
 /** Dotty and Dottydoc imports */
 import dotc.ast.Trees._
 import dotc.CompilationUnit
-import dotc.config.Printers.dottydoc
 import dotc.core.Contexts.Context
-import dotc.core.Comments.ContextDocstrings
-import dotc.core.Types.{PolyType, NoType}
+import dotc.core.Types.PolyType
 import dotc.core.Phases.Phase
 import dotc.core.Symbols.{ Symbol, NoSymbol }
 import dotc.core.NameOps._
@@ -17,7 +15,6 @@ class DocASTPhase extends Phase {
   import model._
   import model.factories._
   import model.internal._
-  import model.comment.Comment
   import dotty.tools.dotc.core.Flags
   import dotty.tools.dotc.ast.tpd._
   import dotty.tools.dottydoc.util.syntax._
@@ -27,20 +24,20 @@ class DocASTPhase extends Phase {
   def phaseName = "docASTPhase"
 
   /** Build documentation hierarchy from existing tree */
-  def collect(tree: Tree)(implicit ctx: Context): Entity = {
+  def collect(tree: Tree)(implicit ctx: Context): List[Entity] = {
     val implicitConversions = ctx.docbase.defs(tree.symbol)
 
     def collectList(xs: List[Tree]): List[Entity] =
-      xs.map(collect).filter(_ != NonEntity)
+      xs.flatMap(collect)
 
     def collectEntityMembers(xs: List[Tree]) =
       collectList(xs).asInstanceOf[List[Entity with Members]]
 
     def collectMembers(tree: Tree)(implicit ctx: Context): List[Entity] = {
-      val defs = (tree match {
+      val defs = tree match {
         case t: Template => collectList(t.body)
         case _ => Nil
-      })
+      }
 
       defs ++ implicitConversions.flatMap(membersFromSymbol)
     }
@@ -83,55 +80,57 @@ class DocASTPhase extends Phase {
     }
 
 
-    if (tree.symbol.is(Flags.Synthetic) && !tree.symbol.is(Flags.Module)) NonEntity
+    if (tree.symbol.is(Flags.Synthetic) && !tree.symbol.is(Flags.Module)) Nil
     else tree match {
       /** package */
       case pd @ PackageDef(pid, st) =>
-        addPackage(PackageImpl(pd.symbol, annotations(pd.symbol), pd.symbol.showFullName, collectEntityMembers(st), path(pd.symbol)))
+        addPackage(PackageImpl(pd.symbol, annotations(pd.symbol), pd.symbol.showFullName, collectEntityMembers(st), path(pd.symbol))) :: Nil
 
       /** type alias */
       case t: TypeDef if !t.isClassDef =>
         val sym = t.symbol
         if (sym.is(Flags.Synthetic | Flags.Param))
-          NonEntity
+          Nil
         else {
           val tparams = t.rhs.tpe match {
             case tp: PolyType => tp.paramNames.map(_.show)
             case _ => Nil
           }
-          TypeAliasImpl(sym, annotations(sym), flags(t), t.name.show.split("\\$\\$").last, path(sym), alias(t.rhs.tpe), tparams)
+          TypeAliasImpl(sym, annotations(sym), flags(t), t.name.show.split("\\$\\$").last, path(sym), alias(t.rhs.tpe), tparams) :: Nil
         }
 
       /** trait */
       case t @ TypeDef(n, rhs) if t.symbol.is(Flags.Trait) =>
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        TraitImpl(t.symbol, annotations(t.symbol), n.show, collectMembers(rhs), flags(t), path(t.symbol), typeParams(t.symbol), traitParameters(t.symbol), superTypes(t))
+        TraitImpl(t.symbol, annotations(t.symbol), n.show, collectMembers(rhs), flags(t), path(t.symbol), typeParams(t.symbol), traitParameters(t.symbol), superTypes(t)) :: Nil
 
       /** objects, on the format "Object$" so drop the last letter */
       case o @ TypeDef(n, rhs) if o.symbol.is(Flags.Module) =>
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        ObjectImpl(o.symbol, annotations(o.symbol), o.name.stripModuleClassSuffix.show, collectMembers(rhs),  flags(o), path(o.symbol), superTypes(o))
+        ObjectImpl(o.symbol, annotations(o.symbol), o.name.stripModuleClassSuffix.show, collectMembers(rhs),  flags(o), path(o.symbol), superTypes(o)) :: Nil
 
       /** class / case class */
       case c @ TypeDef(n, rhs) if c.symbol.isClass =>
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        (c.symbol, annotations(c.symbol), n.show, collectMembers(rhs), flags(c), path(c.symbol), typeParams(c.symbol), constructors(c.symbol), superTypes(c), None, Nil, NonEntity) match {
-          case x if c.symbol.is(Flags.CaseClass) => CaseClassImpl.tupled(x)
-          case x => ClassImpl.tupled(x)
+        val parameters = (c.symbol, annotations(c.symbol), n.show, collectMembers(rhs), flags(c), path(c.symbol), typeParams(c.symbol), constructors(c.symbol), superTypes(c), None, Nil, None)
+        if (c.symbol.is(Flags.CaseClass)) {
+          CaseClassImpl.tupled(parameters) :: Nil
+        } else {
+          ClassImpl.tupled(parameters) :: Nil
         }
 
       /** def */
       case d: DefDef =>
-        DefImpl(d.symbol, annotations(d.symbol), d.name.decode.toString, flags(d), path(d.symbol), returnType(d.tpt.tpe), typeParams(d.symbol), paramLists(d.symbol.info))
+        DefImpl(d.symbol, annotations(d.symbol), d.name.decode.toString, flags(d), path(d.symbol), returnType(d.tpt.tpe), typeParams(d.symbol), paramLists(d.symbol.info)) :: Nil
 
       /** val */
       case v: ValDef if !v.symbol.is(Flags.ModuleVal) =>
         val kind = if (v.symbol.is(Flags.Mutable)) "var" else "val"
-        ValImpl(v.symbol, annotations(v.symbol), v.name.decode.toString, flags(v), path(v.symbol), returnType(v.tpt.tpe), kind)
+        ValImpl(v.symbol, annotations(v.symbol), v.name.decode.toString, flags(v), path(v.symbol), returnType(v.tpt.tpe), kind) :: Nil
 
       case x => {
         ctx.docbase.debug(s"Found unwanted entity: $x (${x.pos},\n${x.show}")
-        NonEntity
+        Nil
       }
     }
   }
@@ -158,7 +157,7 @@ class DocASTPhase extends Phase {
       if (old.annotations.isEmpty) old.annotations = newPkg.annotations
       mergeMembers(newPkg, old)
       if (old.superTypes.isEmpty) old.superTypes = newPkg.superTypes
-      if (!old.comment.isDefined) old.comment = newPkg.comment
+      if (old.comment.isEmpty) old.comment = newPkg.comment
       old
     }
 
@@ -178,9 +177,9 @@ class DocASTPhase extends Phase {
     def createAndInsert(currentPkg: PackageImpl, path: List[String]): PackageImpl = {
       (path: @unchecked) match {
         case x :: Nil => {
-          val existingPkg = currentPkg.members.collect {
+          val existingPkg = currentPkg.members.collectFirst {
             case p: PackageImpl if p.name == newPkg.name => p
-          }.headOption
+          }
 
           if (existingPkg.isDefined) mergedPackages(existingPkg.get, newPkg)
           else {
@@ -190,9 +189,9 @@ class DocASTPhase extends Phase {
         }
         case x :: xs => {
           val subPkg = s"${currentPkg.name}.$x"
-          val existingPkg = currentPkg.members.collect {
+          val existingPkg = currentPkg.members.collectFirst {
             case p: PackageImpl if p.name == subPkg => p
-          }.headOption
+          }
 
           if (existingPkg.isDefined) createAndInsert(existingPkg.get, xs)
           else {

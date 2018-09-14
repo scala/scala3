@@ -22,6 +22,7 @@ import core._, core.Decorators.{sourcePos => _, _}
 import Comments._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.MessageContainer
+import typer.Typer
 import util._
 import interactive._, interactive.InteractiveDriver._
 import Interactive.Include
@@ -248,8 +249,31 @@ class DottyLanguageServer extends LanguageServer
     implicit val ctx = driver.currentCtx
 
     val pos = sourcePosition(driver, uri, params.getPosition)
-    val enclTree = Interactive.enclosingTree(driver.openedTrees(uri), pos)
-    val sym = Interactive.sourceSymbol(enclTree.symbol)
+    val path = Interactive.pathTo(driver.openedTrees(uri), pos)
+    val enclTree = Interactive.enclosingTree(path)
+
+    val sym = {
+      val sym = path match {
+        // For a named arg, find the target `DefDef` and jump to the param
+        case NamedArg(name, _) :: Apply(fn, _) :: _ =>
+          val funSym = fn.symbol
+          if (funSym.name == StdNames.nme.copy
+            && funSym.is(Synthetic)
+            && funSym.owner.is(CaseClass)) {
+            funSym.owner.info.member(name).symbol
+          } else {
+            val classTree = funSym.topLevelClass.asClass.tree
+            tpd.defPath(funSym, classTree).lastOption.flatMap {
+              case DefDef(_, _, paramss, _, _) =>
+                paramss.flatten.find(_.name == name).map(_.symbol)
+            }.getOrElse(fn.symbol)
+          }
+
+        case _ =>
+          enclTree.symbol
+      }
+      Interactive.sourceSymbol(sym)
+    }
 
     if (sym == NoSymbol) Nil.asJava
     else {
@@ -273,7 +297,6 @@ class DottyLanguageServer extends LanguageServer
     val driver = driverFor(uri)
     implicit val ctx = driver.currentCtx
 
-    val includeDeclaration = params.getContext.isIncludeDeclaration
     val pos = sourcePosition(driver, uri, params.getPosition)
     val sym = Interactive.enclosingSourceSymbol(driver.openedTrees(uri), pos)
 
@@ -283,9 +306,10 @@ class DottyLanguageServer extends LanguageServer
       // only need to look for trees in the target directory if the symbol is defined in the
       // current project
       val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
-      val refs = Interactive.namedTrees(trees, includeReferences = true, (tree: tpd.NameTree) =>
-        (includeDeclaration || !Interactive.isDefinition(tree))
-          && Interactive.matchSymbol(tree, sym, Include.overriding))
+      val includeDeclaration = params.getContext.isIncludeDeclaration
+      val includes =
+        Include.references | Include.overriding | (if (includeDeclaration) Include.definitions else 0)
+      val refs = Interactive.findTreesMatching(trees, includes, sym)
 
       refs.map(ref => location(ref.namePos)).asJava
     }
@@ -302,13 +326,10 @@ class DottyLanguageServer extends LanguageServer
     if (sym == NoSymbol) new WorkspaceEdit()
     else {
       val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
-      val linkedSym = sym.linkedClass
       val newName = params.getNewName
-
-      val refs = Interactive.namedTrees(trees, includeReferences = true, tree =>
-        tree.pos.isSourceDerived
-          && (Interactive.matchSymbol(tree, sym, Include.overriding)
-            || (linkedSym != NoSymbol && Interactive.matchSymbol(tree, linkedSym, Include.overriding))))
+      val includes =
+        Include.references | Include.definitions | Include.linkedClass | Include.overriding
+      val refs = Interactive.findTreesMatching(trees, includes, sym)
 
       val changes = refs.groupBy(ref => toUri(ref.source).toString).mapValues(_.map(ref => new TextEdit(range(ref.namePos), newName)).asJava)
 
@@ -361,7 +382,7 @@ class DottyLanguageServer extends LanguageServer
     val uriTrees = driver.openedTrees(uri)
 
     val defs = Interactive.namedTrees(uriTrees, includeReferences = false, _ => true)
-    defs.map(d => symbolInfo(d.tree.symbol, d.namePos)).asJava
+    defs.map(d => JEither.forLeft(symbolInfo(d.tree.symbol, d.namePos))).asJava
   }
 
   override def symbol(params: WorkspaceSymbolParams) = computeAsync { cancelToken =>
@@ -470,7 +491,7 @@ object DottyLanguageServer {
     val markup = new lsp4j.MarkupContent
     markup.setKind("markdown")
     markup.setValue((
-      comment.map(_.raw) match {
+      comment.flatMap(_.expandedBody) match {
         case Some(comment) =>
           s"""```scala
              |$typeInfo

@@ -112,8 +112,8 @@ class Pickler extends Phase {
     if (previous != unpickled) {
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)
-      ctx.error(s"""pickling difference for ${cls} in ${cls.sourceFile}, for details:
+      ctx.error(s"""pickling difference for $cls in ${cls.sourceFile}, for details:
                    |
-                   |  diff before-pickling.txt after-pickling.txt""")
+                   |  diff before-pickling.txt after-pickling.txt""".stripMargin)
     }
 }

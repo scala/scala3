@@ -13,6 +13,7 @@ class InteractiveCompiler extends Compiler {
   // This could be improved by reporting errors back to the IDE
   // after each phase group instead of waiting for the pipeline to finish.
   override def phases: List[List[Phase]] = List(
-    List(new FrontEnd)
+    List(new FrontEnd),
+    List(new transform.CookComments)
   )
 }

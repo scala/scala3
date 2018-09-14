@@ -34,22 +34,22 @@ class SortMembers extends DocMiniPhase {
   }
 
   override def transformPackage(implicit ctx: Context) = { case p: PackageImpl =>
-    p.copy(members = sort(p.members))
+    p.copy(members = sort(p.members)) :: Nil
   }
 
   override def transformClass(implicit ctx: Context) = { case c: ClassImpl =>
-    c.copy(members = sort(c.members))
+    c.copy(members = sort(c.members)) :: Nil
   }
 
   override def transformCaseClass(implicit ctx: Context) = { case cc: CaseClassImpl =>
-    cc.copy(members = sort(cc.members))
+    cc.copy(members = sort(cc.members)) :: Nil
   }
 
   override def transformTrait(implicit ctx: Context) = { case t: TraitImpl =>
-    t.copy(members = sort(t.members))
+    t.copy(members = sort(t.members)) :: Nil
   }
 
   override def transformObject(implicit ctx: Context) = { case o: ObjectImpl =>
-    o.copy(members = sort(o.members))
+    o.copy(members = sort(o.members)) :: Nil
   }
 }
