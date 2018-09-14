@@ -91,7 +91,6 @@ abstract class TokensCommon {
   //final val LAZY = 59;             enter(LAZY, "lazy")
   //final val THEN = 60;             enter(THEN, "then")
   //final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
-  //final val INLINE = 62;           enter(INLINE, "inline")
   //final val TRANSPARENT = 63;      enter(TRANSPARENT, "transparent")
   //final val ENUM = 64;             enter(ENUM, "enum")
   //final val ERASED = 65;           enter(ERASED, "erased")
@@ -177,7 +176,6 @@ object Tokens extends TokensCommon {
   final val LAZY = 59;             enter(LAZY, "lazy")
   final val THEN = 60;             enter(THEN, "then")
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
-  final val INLINE = 62;           enter(INLINE, "inline")
   final val TRANSPARENT = 63;      enter(TRANSPARENT, "transparent")
   final val ENUM = 64;             enter(ENUM, "enum")
   final val ERASED = 65;           enter(ERASED, "erased")
@@ -215,7 +213,7 @@ object Tokens extends TokensCommon {
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, XMLSTART)
 
   final val canStartExpressionTokens = atomicExprTokens | BitSet(
-    LBRACE, LPAREN, QBRACE, QPAREN, IF, DO, WHILE, FOR, NEW, TRY, THROW, INLINE)
+    LBRACE, LPAREN, QBRACE, QPAREN, IF, DO, WHILE, FOR, NEW, TRY, THROW)
 
   final val canStartTypeTokens = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)
@@ -229,7 +227,7 @@ object Tokens extends TokensCommon {
   final val defIntroTokens = templateIntroTokens | dclIntroTokens
 
   final val localModifierTokens = BitSet(
-    ABSTRACT, FINAL, SEALED, IMPLICIT, INLINE, TRANSPARENT, LAZY, ERASED)
+    ABSTRACT, FINAL, SEALED, IMPLICIT, TRANSPARENT, LAZY, ERASED)
 
   final val accessModifierTokens = BitSet(
     PRIVATE, PROTECTED)
@@ -240,8 +238,7 @@ object Tokens extends TokensCommon {
   final val modifierTokensOrCase = modifierTokens | BitSet(CASE)
 
   /** Is token only legal as start of statement (eof also included)? */
-  final val mustStartStatTokens = defIntroTokens | (modifierTokens - INLINE) | BitSet(
-    IMPORT, PACKAGE)
+  final val mustStartStatTokens = defIntroTokens | modifierTokens | BitSet(IMPORT, PACKAGE)
 
   final val canStartStatTokens = canStartExpressionTokens | mustStartStatTokens | BitSet(
     AT, CASE)
