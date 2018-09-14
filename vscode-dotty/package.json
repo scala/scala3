@@ -25,22 +25,21 @@
   "main": "./out/src/extension",
   "activationEvents": [
     "onLanguage:scala",
-    "workspaceContains:.dotty-ide.json",
-    "workspaceContains:**.sc"
-  ],
-  "languages": [
-    {
-      "id": "scala",
-      "extensions": [
-        ".scala",
-        ".sc"
-      ],
-      "aliases": [
-        "Scala"
-      ]
-    }
+    "workspaceContains:.dotty-ide.json"
   ],
   "contributes": {
+    "languages": [
+      {
+        "id": "scala",
+        "extensions": [
+          ".scala",
+          ".sc"
+        ],
+        "aliases": [
+          "Scala"
+        ]
+      }
+    ],
     "commands": [
       {
         "command": "worksheet.evaluate",
