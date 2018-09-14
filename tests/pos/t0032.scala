@@ -1,6 +1,6 @@
 import java.io.{OutputStream, PrintStream};
 
-class PromptStream(s: OutputStream) extends PrintStream(s) {
+class PromptStream(s: OutputStream|Null) extends PrintStream(s) {
     override def println() = super.println();
 }
 
