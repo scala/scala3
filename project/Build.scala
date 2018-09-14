@@ -980,14 +980,13 @@ object Build {
         val defaultIDEConfig = baseDirectory.value / "out" / "default-dotty-ide-config"
         IO.write(defaultIDEConfig, dottyVersion)
         val dottyPluginSbtFile = baseDirectory.value / "out" / "dotty-plugin.sbt"
-        IO.write(dottyPluginSbtFile, s"""addSbtPlugin("$dottyOrganization" % $sbtDottyName % "$sbtDottyVersion")""")
+        IO.write(dottyPluginSbtFile, s"""addSbtPlugin("$dottyOrganization" % "$sbtDottyName" % "$sbtDottyVersion")""")
         Seq(defaultIDEConfig, dottyPluginSbtFile)
       },
       compile in Compile := Def.task {
         val workingDir = baseDirectory.value
         val coursier = workingDir / "out" / "coursier"
         val packageJson = workingDir / "package.json"
-        // val _ = (managedResources in Compile).value
         if (!coursier.exists || packageJson.lastModified > coursier.lastModified)
           runProcess(Seq("npm", "install"), wait = true, directory = workingDir)
         val tsc = workingDir / "node_modules" / ".bin" / "tsc"
