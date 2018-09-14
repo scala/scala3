@@ -93,7 +93,7 @@ object RefChecks {
   /** Check that self type of this class conforms to self types of parents.
    *  and required classes.
    */
-  private def checkParents(cls: Symbol)(implicit ctx: Context): Unit = cls.info match {
+  private def checkParents(cls: Symbol, tmpl: Template)(implicit ctx: Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
       def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
         val otherSelf = other.givenSelfType.asSeenFrom(cls.thisType, other.classSymbol)
@@ -101,12 +101,28 @@ object RefChecks {
           ctx.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other.classSymbol),
             cls.pos)
       }
-      for (parent <- cinfo.classParents)
-        checkSelfConforms(parent.classSymbol.asClass, "illegal inheritance", "parent")
+      for (parent <- tmpl.parents) {
+        checkSelfConforms(parent.tpe.classSymbol.asClass, "illegal inheritance", "parent")
+        checkParentPrefix(cls, parent)
+      }
       for (reqd <- cinfo.cls.givenSelfType.classSymbols)
         checkSelfConforms(reqd, "missing requirement", "required")
     case _ =>
   }
+
+  /** Disallow using trait parameters as prefix for its parents.
+   *
+   *  The rationale is to ensure outer-related NPE never happen in Scala.
+   *  Otherwise, outer NPE may happen, see tests/neg/i5083.scala
+   */
+  private def checkParentPrefix(cls: Symbol, parent: Tree)(implicit ctx: Context): Unit =
+    parent.tpe.typeConstructor match {
+      case TypeRef(ref: TermRef, _) =>
+        val paramRefs = ref.namedPartsWith(ntp => ntp.symbol.enclosingClass == cls)
+        if (paramRefs.nonEmpty && cls.is(Trait))
+          ctx.error("trait parameters cannot be used as parent prefixes", parent.pos)
+      case _ =>
+    }
 
   /** Check that a class and its companion object to not both define
    *  a class or module with same name
@@ -960,7 +976,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def transformTemplate(tree: Template)(implicit ctx: Context) = try {
     val cls = ctx.owner
     checkOverloadedRestrictions(cls)
-    checkParents(cls)
+    checkParents(cls, tree)
     checkCompanionNameClashes(cls)
     checkAllOverrides(cls)
     tree
