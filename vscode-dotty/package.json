@@ -24,6 +24,7 @@
   ],
   "main": "./out/src/extension",
   "activationEvents": [
+    "onLanguage:scala",
     "workspaceContains:.dotty-ide.json"
   ],
   "languages": [

@@ -16,73 +16,135 @@ export function activate(context: ExtensionContext) {
   extensionContext = context
   outputChannel = vscode.window.createOutputChannel('Dotty Language Client');
 
-  const artifactFile = `${vscode.workspace.rootPath}/.dotty-ide-artifact`
-  fs.readFile(artifactFile, (err, data) => {
-    if (err) {
-      outputChannel.append(`Unable to parse ${artifactFile}`)
-      throw err
-    }
-    const artifact = data.toString().trim()
+  const sbtArtifact = "org.scala-sbt:sbt-launch:1.2.3"
+  const buildSbtFile = `${vscode.workspace.rootPath}/build.sbt`
+  const dottyPluginSbtFile = path.join(extensionContext.extensionPath, './out/dotty-plugin.sbt')
+  const disableDottyIDEFile = `${vscode.workspace.rootPath}/.dotty-ide-disabled`
+  const languageServerArtifactFile = `${vscode.workspace.rootPath}/.dotty-ide-artifact`
+  const languageServerDefaultConfigFile = path.join(extensionContext.extensionPath, './out/default-dotty-ide-config')
+  const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
 
-    if (process.env['DLS_DEV_MODE']) {
-      const portFile = `${vscode.workspace.rootPath}/.dotty-ide-dev-port`
-      fs.readFile(portFile, (err, port) => {
-        if (err) {
-          outputChannel.append(`Unable to parse ${portFile}`)
-          throw err
+  if (process.env['DLS_DEV_MODE']) {
+    const portFile = `${vscode.workspace.rootPath}/.dotty-ide-dev-port`
+    fs.readFile(portFile, (err, port) => {
+      if (err) {
+        outputChannel.append(`Unable to parse ${portFile}`)
+        throw err
+      }
+
+      run({
+        module: context.asAbsolutePath('out/src/passthrough-server.js'),
+        args: [ port.toString() ]
+      })
+    })
+
+  } else {
+    // Check whether `.dotty-ide-artifact` exists. If it does, start the language server,
+    // otherwise, try propose to start it if there's no build.sbt
+    if (fs.existsSync(languageServerArtifactFile)) {
+      runLanguageServer(coursierPath, languageServerArtifactFile)
+    } else if (!fs.existsSync(disableDottyIDEFile) && !fs.existsSync(buildSbtFile)) {
+      vscode.window.showInformationMessage(
+          "This looks like an unconfigured Scala project. Would you like to start the Dotty IDE?",
+          "Yes", "No"
+      ).then(choice => {
+        if (choice == "Yes") {
+          fs.readFile(languageServerDefaultConfigFile, (err, data) => {
+            if (err) throw err
+            else {
+              const languageServerScalaVersion = data.toString().trim()
+              fetchAndConfigure(coursierPath, sbtArtifact, languageServerScalaVersion, dottyPluginSbtFile).then(() => {
+                runLanguageServer(coursierPath, languageServerArtifactFile)
+              })
+            }
+          })
+        } else {
+          fs.appendFile(disableDottyIDEFile, "", _ => {})
         }
+      })
+    }
+  }
+}
 
+function runLanguageServer(coursierPath: string, languageServerArtifactFile: string) {
+  fs.readFile(languageServerArtifactFile, (err, data) => {
+    if (err) throw err
+    else {
+      const languageServerArtifact = data.toString().trim()
+      fetchWithCoursier(coursierPath, languageServerArtifact).then((languageServerClasspath) => {
         run({
-          module: context.asAbsolutePath('out/src/passthrough-server.js'),
-          args: [ port.toString() ]
+          command: "java",
+          args: ["-classpath", languageServerClasspath, "dotty.tools.languageserver.Main", "-stdio"]
         })
       })
-    } else {
-      fetchAndRun(artifact)
     }
   })
 }
 
-function fetchAndRun(artifact: string) {
-  const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
+function fetchAndConfigure(coursierPath: string, sbtArtifact: string, languageServerScalaVersion: string, dottyPluginSbtFile: string) {
+    return fetchWithCoursier(coursierPath, sbtArtifact).then((sbtClasspath) => {
+        return configureIDE(sbtClasspath, languageServerScalaVersion, dottyPluginSbtFile)
+    })
+}
 
-  vscode.window.withProgress({
-    location: vscode.ProgressLocation.Window,
-    title: 'Fetching the Dotty Language Server'
-  }, (progress) => {
-
-    const coursierPromise =
-      cpp.spawn("java", [
+function fetchWithCoursier(coursierPath: string, artifact: string, extra: string[] = []) {
+  return vscode.window.withProgress({
+      location: vscode.ProgressLocation.Window,
+      title: `Fetching ${ artifact }`
+    }, (progress) => {
+      const args = [
         "-jar", coursierPath,
         "fetch",
         "-p",
         artifact
+      ].concat(extra)
+      const coursierPromise = cpp.spawn("java", args)
+      const coursierProc = coursierPromise.childProcess
+
+      let classPath = ""
+
+      coursierProc.stdout.on('data', (data: Buffer) => {
+        classPath += data.toString().trim()
+      })
+
+      coursierProc.on('close', (code: number) => {
+        if (code != 0) {
+          let msg = `Couldn't fetch '${ artifact }' (exit code ${ code }).`
+          outputChannel.append(msg)
+          throw new Error(msg)
+        }
+      })
+      return coursierPromise.then(() => { return classPath })
+    })
+}
+
+function configureIDE(sbtClasspath: string, languageServerScalaVersion: string, dottyPluginSbtFile: string) {
+  return vscode.window.withProgress({
+    location: vscode.ProgressLocation.Window,
+    title: 'Configuring the IDE for Dotty...'
+  }, (progress) => {
+
+    // Run sbt to configure the IDE. If the `DottyPlugin` is not present, dynamically load it and
+    // eventually run `configureIDE`.
+    const sbtPromise =
+      cpp.spawn("java", [
+        "-classpath", sbtClasspath,
+        "xsbt.boot.Boot",
+        `--addPluginSbtFile=${dottyPluginSbtFile}`,
+        `set every scalaVersion := "${languageServerScalaVersion}"`,
+        "configureIDE"
       ])
-    const coursierProc = coursierPromise.childProcess
 
-    let classPath = ""
-
-    coursierProc.stdout.on('data', (data: Buffer) => {
-      classPath += data.toString().trim()
-    })
-    coursierProc.stderr.on('data', (data: Buffer) => {
-      let msg = data.toString()
-      outputChannel.append(msg)
-    })
-
-    coursierProc.on('close', (code: number) => {
+    const sbtProc = sbtPromise.childProcess
+    sbtProc.on('close', (code: number) => {
       if (code != 0) {
-        let msg = "Fetching the language server failed."
+        const msg = "Configuring the IDE failed."
         outputChannel.append(msg)
         throw new Error(msg)
       }
-
-      run({
-        command: "java",
-        args: ["-classpath", classPath, "dotty.tools.languageserver.Main", "-stdio"]
-      })
     })
-    return coursierPromise
+
+      return sbtPromise
   })
 }
 
