@@ -992,10 +992,10 @@ object Build {
         val tsc = workingDir / "node_modules" / ".bin" / "tsc"
         runProcess(Seq(tsc.getAbsolutePath, "--pretty", "--project", workingDir.getAbsolutePath), wait = true)
 
-        // Currently, vscode-dotty depends on daltonjorge.scala for syntax highlighting,
+        // vscode-dotty depends on scala-lang.scala for syntax highlighting,
         // this is not automatically installed when starting the extension in development mode
         // (--extensionDevelopmentPath=...)
-        installCodeExtension(codeCommand.value, "daltonjorge.scala")
+        installCodeExtension(codeCommand.value, "scala-lang.scala")
 
         sbt.internal.inc.Analysis.Empty
       }.dependsOn(managedResources in Compile).value,
