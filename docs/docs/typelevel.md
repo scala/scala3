@@ -491,20 +491,20 @@ the method is itself inlined, just like if it had been marked `rewrite`.
 
 ## Transparent Values
 
-Value definitions can also be marked `transparent`. Examples:
+Value definitions can also be marked `inline`. Examples:
 ```scala
-transparent val label      = "url"
-transparent val pi: Double = 3.14159265359
+inline val label      = "url"
+inline val pi: Double = 3.14159265359
 ```
-The right hand side of a  `transparent` value definition must be a pure expression of constant type. The type of the value is then the type of its right hand side, without any widenings. For instance, the type of `label` above is the singleton type `"url"` instead of `String` and the type of `pi` is `3.14159265359` instead of `Double`.
+The right hand side of a  `inline` value definition must be a pure expression of constant type. The type of the value is then the type of its right hand side, without any widenings. For instance, the type of `label` above is the singleton type `"url"` instead of `String` and the type of `pi` is `3.14159265359` instead of `Double`.
 
 Transparent values are effectively final; they may not be overridden. In Scala-2, constant values had to be expressed using `final`, which gave an unfortunate double meaning to the modifier. The `final` syntax is still supported in Scala 3 for a limited time to support cross-building.
 
-The `transparent` modifier can also be used for value parameters of `rewrite` methods. Example
+The `inline` modifier can also be used for value parameters of `rewrite` methods. Example
 ```scala
-rewrite def power(x: Double, transparent n: Int) = ...
+rewrite def power(x: Double, inline n: Int) = ...
 ```
-If a `transparent` modifier is given, corresponding arguments must be pure expressions of constant type.
+If a `inline` modifier is given, corresponding arguments must be pure expressions of constant type.
 
 However, the restrictions on right-hand sides or arguments mentioned in this section do not apply in code that is
 itself in a `rewrite` method. In other words, constantness checking is performed only when a `transparent` method

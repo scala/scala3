@@ -19,6 +19,6 @@ object Test {
     assert(x == 1 && y == 2)
 
 
-    val z = f(setX)  // tests case where transparent arg is not applied
+    val z = f(setX)  // tests case where inline arg is not applied
   }
 }

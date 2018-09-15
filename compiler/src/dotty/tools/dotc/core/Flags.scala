@@ -329,9 +329,6 @@ object Flags {
   /** A method that has default params */
   final val DefaultParameterized = termFlag(27, "<defaultparam>")
 
-  /** Labelled with `transparent` modifier */
-  final val Transparent = commonFlag(29, "transparent")
-
   /** Symbol is defined by a Java class */
   final val JavaDefined = commonFlag(30, "<java>")
 
@@ -436,7 +433,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   final val SourceModifierFlags =
-    commonFlags(Private, Protected, Abstract, Final, Inline | Transparent,
+    commonFlags(Private, Protected, Abstract, Final, Inline,
      Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic, Erased)
 
   /** Flags representing modifiers that can appear in trees */
@@ -457,7 +454,7 @@ object Flags {
     Scala2ExistentialCommon | Mutable.toCommonFlags | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
     NonMember | ImplicitCommon | Permanent | Synthetic |
-    SuperAccessorOrScala2x | Inline | Transparent
+    SuperAccessorOrScala2x | Inline
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class
@@ -551,8 +548,8 @@ object Flags {
   /** Assumed to be pure */
   final val StableOrErased = Stable | Erased
 
-  /** Labeled `private`, `final`, `inline` or `transparent` */
-  final val EffectivelyFinal = Private | Final | Inline | Transparent
+  /** Labeled `private`, `final`, or `inline` */
+  final val EffectivelyFinal = Private | Final | Inline
 
   /** A private method */
   final val PrivateMethod = allOf(Private, Method)
@@ -560,17 +557,14 @@ object Flags {
   /** A private accessor */
   final val PrivateAccessor = allOf(Private, Accessor)
 
-  /** A transparent method */
-  final val TransparentMethod = allOf(Transparent, Method)
-
   /** An inline method */
   final val InlineMethod = allOf(Inline, Method)
 
   /** An implicit inline method */
   final val ImplicitInlineMethod = allOf(Inline, Implicit, Method)
 
-  /** A transparent parameter */
-  final val TransparentParam = allOf(Transparent, Param)
+  /** An inline parameter */
+  final val InlineParam = allOf(Inline, Param)
 
   /** An enum case */
   final val EnumCase = allOf(Enum, Case)
@@ -596,8 +590,8 @@ object Flags {
   /** A deferred type member or parameter (these don't have right hand sides) */
   final val DeferredOrTypeParam = Deferred | TypeParam
 
-  /** value that's final or transparent */
-  final val FinalOrTransparent = Final | Transparent
+  /** value that's final or inline */
+  final val FinalOrInline = Final | Inline
 
   /** A covariant type parameter instance */
   final val LocalCovariant = allOf(Local, Covariant)

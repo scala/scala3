@@ -1778,7 +1778,6 @@ object Parsers {
       case FINAL       => Mod.Final()
       case IMPLICIT    => Mod.Implicit()
       case ERASED      => Mod.Erased()
-      case TRANSPARENT => Mod.Transparent()
       case LAZY        => Mod.Lazy()
       case OVERRIDE    => Mod.Override()
       case PRIVATE     => Mod.Private()
@@ -1988,7 +1987,7 @@ object Parsers {
                 addMod(mods, mod)
               }
               else {
-                if (!(mods.flags &~ (ParamAccessor | Transparent)).isEmpty)
+                if (!(mods.flags &~ (ParamAccessor | Inline)).isEmpty)
                   syntaxError("`val' or `var' expected")
                 if (firstClauseOfCaseClass) mods
                 else mods | PrivateLocal
@@ -1996,7 +1995,7 @@ object Parsers {
             }
         }
         else {
-          if (in.token == TRANSPARENT) mods = addModifier(mods)
+          if (isIdent(nme.INLINEkw)) mods = addModifier(mods)
           mods = atPos(start) { mods | Param }
         }
         atPos(start, nameStart) {

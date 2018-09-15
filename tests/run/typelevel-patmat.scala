@@ -21,7 +21,7 @@ object Test extends App {
   type HNil = HNil.type
   type Z = Z.type
 
-  inline def ToNat(transparent n: Int): Typed[Nat] =
+  inline def ToNat(inline n: Int): Typed[Nat] =
     if n == 0 then Typed(Z)
     else Typed(S(ToNat(n - 1).value))
 
@@ -40,9 +40,9 @@ object Test extends App {
     case S(n1) => toInt(n1) + 1
   }
 
-  transparent val i0 = toInt(y0)
+  inline val i0 = toInt(y0)
   val j0: 0 = i0
-  transparent val i2 = toInt(y2)
+  inline val i2 = toInt(y2)
   val j2: 2 = i2
 
   inline def concat(xs: HList, ys: HList): HList = inline xs match {

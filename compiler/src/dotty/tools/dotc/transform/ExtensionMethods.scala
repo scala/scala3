@@ -21,7 +21,7 @@ import Decorators._
 import SymUtils._
 
 /**
- * Perform Step 1 in the transparent classes SIP: Creates extension methods for all
+ * Perform Step 1 in the inline classes SIP: Creates extension methods for all
  * methods in a value class, except parameter or super accessors, or constructors.
  *
  * Additionally, for a value class V, let U be the underlying type after erasure. We add

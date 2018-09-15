@@ -42,7 +42,7 @@ object Test extends App {
   type HNil = HNil.type
   type Z = Z.type
 
-  inline def ToNat(transparent n: Int): ToNat[Nat] =
+  inline def ToNat(inline n: Int): ToNat[Nat] =
     if n == 0 then new ToNat(Z)
     else {
       val n1 = ToNat(n - 1)
@@ -61,9 +61,9 @@ object Test extends App {
   println(x0)
   println(x1)
   println(x2)
-  transparent val i0 = y0.toInt
+  inline val i0 = y0.toInt
   val j0: 0 = i0
-  transparent val i2 = y2.toInt
+  inline val i2 = y2.toInt
   val j2: 2 = i2
 
   class HListDeco(private val as: HList) extends AnyVal {
@@ -96,12 +96,12 @@ object Test extends App {
 
   val s0 = size(HNil)
   val s1 = size(xs)
-  transparent val l0 = HNil.length
+  inline val l0 = HNil.length
   val l0a: 0 = l0
-  transparent val l1 = xs.length
+  inline val l1 = xs.length
   val l1a: 2 = l1
 
-  inline def index(xs: HList, transparent idx: Int): Any =
+  inline def index(xs: HList, inline idx: Int): Any =
     if idx == 0 then xs.head
     else index(xs.tail, idx - 1)
 

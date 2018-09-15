@@ -230,7 +230,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     }
 
     /** Does the level of `sym` match the current level?
-     *  An exception is made for transparent vals in macros. These are also OK if their level
+     *  An exception is made for inline vals in macros. These are also OK if their level
      *  is one higher than the current level, because on execution such values
      *  are constant expression trees and we can pull out the constant from the tree.
      */
@@ -439,7 +439,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
         splice
       }
       else { // level 0 inside an inline definition
-        ctx.error("Malformed macro call. The contents of the ~ must call a static method and arguments must be quoted or transparent.".stripMargin, splice.pos)
+        ctx.error("Malformed macro call. The contents of the ~ must call a static method and arguments must be quoted or inline.".stripMargin, splice.pos)
         splice
       }
     }
@@ -550,7 +550,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
             splice(ref(splicedType).select(tpnme.UNARY_~).withPos(tree.pos))
           case tree: Select if tree.symbol.isSplice =>
             splice(tree)
-          case tree: RefTree if tree.symbol.is(Transparent) && tree.symbol.is(Param) =>
+          case tree: RefTree if tree.symbol.is(Inline) && tree.symbol.is(Param) =>
             tree
           case tree: RefTree if isCaptured(tree.symbol, level) =>
             val t = capturers(tree.symbol).apply(tree)

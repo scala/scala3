@@ -12,7 +12,7 @@ object Macros {
 
   def showExpr[T](expr: Expr[T]): Expr[String] = expr.toString.toExpr
 
-  inline def power(transparent n: Int, x: Double) = ~powerCode(n, '(x))
+  inline def power(inline n: Int, x: Double) = ~powerCode(n, '(x))
 
   def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
     if (n == 0) '(1.0)

@@ -370,11 +370,11 @@ object Checking {
       if (!ok && !sym.is(Synthetic))
         fail(i"modifier `$flag` is not allowed for this definition")
 
-    if (sym.is(Transparent) &&
+    if (sym.is(Inline) &&
           (  sym.is(ParamAccessor) && sym.owner.isClass
           || sym.is(TermParam) && !sym.owner.isInlineMethod
           ))
-      fail(ParamsNoTransparent(sym.owner))
+      fail(ParamsNoInline(sym.owner))
 
     if (sym.is(ImplicitCommon)) {
       if (sym.owner.is(Package))
@@ -400,7 +400,6 @@ object Checking {
         fail(OnlyClassesCanHaveDeclaredButUndefinedMembers(sym))
       checkWithDeferred(Private)
       checkWithDeferred(Final)
-      checkWithDeferred(Transparent)
       checkWithDeferred(Inline)
     }
     if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
@@ -409,11 +408,9 @@ object Checking {
     checkCombination(Private, Protected)
     checkCombination(Abstract, Override)
     checkCombination(Private, Override)
-    checkCombination(Lazy, Transparent)
-    checkCombination(Inline, Transparent)
+    checkCombination(Lazy, Inline)
     checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
-    if (sym.is(Transparent)) checkApplicable(Transparent, sym.isTerm && !sym.is(Mutable | Module))
-    if (sym.is(Inline)) checkApplicable(Inline, sym.is(Method, butNot = Accessor))
+    if (sym.is(Inline)) checkApplicable(Inline, sym.isTerm && !sym.is(Mutable | Module))
     if (sym.is(Lazy)) checkApplicable(Lazy, !sym.is(Method | Mutable))
     if (sym.isType && !sym.is(Deferred))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
@@ -673,9 +670,9 @@ trait Checking {
     }
   }
 
-  /** Check that `tree` can right hand-side or argument to `transparent` value or parameter. */
-  def checkTransparentConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context): Unit = {
-    // final vals can be marked transparent even if they're not pure, see Typer#patchFinalVals
+  /** Check that `tree` can be right hand-side or argument to `inline` value or parameter. */
+  def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context): Unit = {
+    // final vals can be marked inline even if they're not pure, see Typer#patchFinalVals
     val purityLevel = if (isFinal) Idempotent else Pure
     tree.tpe.widenTermRefExpr match {
       case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
@@ -955,7 +952,7 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = ()
   override def checkImplicitConversionUseOK(sym: Symbol, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
-  override def checkTransparentConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context) = ()
+  override def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context) = ()
   override def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt

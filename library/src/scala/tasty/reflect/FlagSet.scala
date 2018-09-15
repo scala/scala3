@@ -10,7 +10,6 @@ trait FlagSet {
   def isErased: Boolean
   def isLazy: Boolean
   def isOverride: Boolean
-  def isTransparent: Boolean
   def isInline: Boolean
   def isMacro: Boolean                 // inline method containing toplevel splices
   def isStatic: Boolean                // mapped to static Java member

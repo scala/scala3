@@ -19,7 +19,7 @@ object Test0 {
       case 0 => 0
     }
     g(0)
-    transparent val Y = 0
+    inline val Y = 0
     g(Y)
 
     inline def h(x: Int) = inline x match {
@@ -39,7 +39,7 @@ object Test1 {
       case 0 => 0
     }
     g(0)
-    transparent val Y = 0
+    inline val Y = 0
     g(Y)
 
     inline def h(x: Int) = inline x match { // error: implementation restriction: nested inline methods are not supported

@@ -2,7 +2,7 @@ object Test {
 
   class Range(from: Int, end: Int) {
 
-    transparent
+    inline
     def foreach(op: => Int => Unit): Unit = {
       var i = from
       while (i < end) {

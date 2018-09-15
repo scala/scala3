@@ -1,7 +1,7 @@
 package inlines
 
 object Config {
-  transparent val logging = false
+  inline val logging = false
 }
 
 object Logger {

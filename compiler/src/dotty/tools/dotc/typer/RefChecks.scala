@@ -395,7 +395,7 @@ object RefChecks {
         overrideError("is erased, cannot override non-erased member")
       } else if (other.is(Erased) && !member.is(Erased)) { // (1.9)
         overrideError("is not erased, cannot override erased member")
-      } else if ((member.is(Inline) || member.is(Scala2Macro)) && other.is(Deferred) &&
+      } else if ((member.isInlineMethod || member.is(Scala2Macro)) && other.is(Deferred) &&
                  member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.10)
         overrideError("is an inline method, must override at least one concrete method")
       } else if (other.is(Scala2Macro) && !member.is(Scala2Macro)) { // (1.11)

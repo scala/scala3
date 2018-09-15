@@ -60,10 +60,10 @@ object Tuple {
   val xs1 = Tuple(2)
   val xs2 = Tuple(2, "a")
   val xs3 = Tuple(true, 1, 2.0)
-  transparent val s0 = xs0.size; val s0c: 0 = s0
-  transparent val s1 = xs1.size; val s1c: 1 = s1
-  transparent val s2 = xs2.size; val s2c: 2 = s2
-  transparent val s3 = xs3.size; val s3c: 3 = s3
+  inline val s0 = xs0.size; val s0c: 0 = s0
+  inline val s1 = xs1.size; val s1c: 1 = s1
+  inline val s2 = xs2.size; val s2c: 2 = s2
+  inline val s3 = xs3.size; val s3c: 3 = s3
   val e0 = xs3(0); val e0c: Boolean = e0
   val e1 = xs3(1); val e1c: Int = e1
   val e2 = xs3(2); val e2c: Double = e2

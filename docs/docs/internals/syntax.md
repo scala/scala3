@@ -271,7 +271,7 @@ ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [FunArgMods] ClsParams ‘
 ClsParamClause    ::=  [nl] ‘(’ [ClsParams] ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
-                       [{Modifier} (‘val’ | ‘var’) | ‘transparent’] Param
+                       [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
 Param             ::=  id ‘:’ ParamType [‘=’ Expr]
                     |  INT
 

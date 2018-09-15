@@ -779,15 +779,8 @@ object SymDenotations {
 
     def isSkolem: Boolean = name == nme.SKOLEM
 
-    def isTransparentMethod(implicit ctx: Context): Boolean =
-      is(TransparentMethod, butNot = AccessorOrSynthetic)
-
     def isInlineMethod(implicit ctx: Context): Boolean =
       is(InlineMethod, butNot = AccessorOrSynthetic)
-
-    /** A transparent or inline method */
-    def isInlineable(implicit ctx: Context): Boolean =
-      is(TransparentMethod) || is(InlineMethod)
 
     /** An erased value or an inline method, excluding @forceInline annotated methods.
      *  The latter have to be kept around to get to parity with Scala.

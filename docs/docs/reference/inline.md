@@ -1,13 +1,13 @@
 ---
 layout: doc-page
-title: Inline and Transparent
+title: Inline
 ---
 
 `inline` is a new modifier that guarantees that a definition will be
 inline at the point of use. Example:
 
     object Config {
-      transparent val logging = false
+      inline val logging = false
     }
 
     object Logger {
@@ -26,12 +26,12 @@ inline at the point of use. Example:
         else op
     }
 
-The `Config` object contains a definition of a `transparent` value
+The `Config` object contains a definition of a `inline` value
 `logging`. This means that `logging` is treated as a constant value,
 equivalent to its right-hand side `false`. The right-hand side of such
-a transparent val must itself be a [constant
+a inline val must itself be a [constant
 expression](#the-definition-of-constant-expression). Used in this way,
-`transparent` is equivalent to Java and Scala 2's `final`. `final` meaning
+`inline` is equivalent to Java and Scala 2's `final`. `final` meaning
 "constant" is still supported in Dotty, but will be phased out.
 
 The `Logger` object contains a definition of an `inline` method `log`.
@@ -89,7 +89,7 @@ overhead:
 
 By contrast, if `op` is a call-by-value parameter, it would be evaluated separately as a closure.
 
-Transparent methods can be recursive. For instance, when called with a constant
+Inline methods can be recursive. For instance, when called with a constant
 exponent `n`, the following method for `power` will be implemented by
 straight inline code without any loop or recursion.
 
@@ -110,7 +110,7 @@ straight inline code without any loop or recursion.
         //    val y3 = y2 * x  // ^5
         //    y3 * y3          // ^10
 
-Parameters of inline methods can be marked `transparent`. This means
+Parameters of inline methods can be marked `inline`. This means
 that actual arguments to these parameters must be constant expressions.
 
 ### Relationship to `@inline`.
@@ -129,7 +129,7 @@ for Scala 2 (i.e. `@forceInline @inline`).
 
 ### The definition of constant expression
 
-Right-hand sides of transparent values and of arguments for transparent parameters
+Right-hand sides of inline values and of arguments for inline parameters
 must be constant expressions in the sense defined by the [SLS §
 6.24](https://www.scala-lang.org/files/archive/spec/2.12/06-expressions.html#constant-expressions),
 including "platform-specific" extensions such as constant folding of

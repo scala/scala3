@@ -103,8 +103,8 @@ sealed trait Tuple extends Any {
 }
 
 object Tuple {
-  transparent val $MaxSpecialized = 22
-  transparent private val XXL = $MaxSpecialized + 1
+  inline val $MaxSpecialized = 22
+  inline private val XXL = $MaxSpecialized + 1
 
   type Head[+X <: NonEmptyTuple] = X match {
     case x *: _ => x

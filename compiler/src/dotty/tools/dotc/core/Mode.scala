@@ -95,7 +95,7 @@ object Mode {
   /** We are in the IDE */
   val Interactive = newMode(20, "Interactive")
 
-  /** We are typing the body of a transparent or inline method */
+  /** We are typing the body of an inline method */
   val InlineableBody = newMode(21, "InlineableBody")
 
   /** Read comments from definitions when unpickling from TASTY */

@@ -476,7 +476,7 @@ class Typer extends Namer
       case pt: SelectionProto if pt.name == nme.CONSTRUCTOR => true
       case _ => false
     }
-    val enclosingInlineable = ctx.owner.ownersIterator.findSymbol(_.isInlineable)
+    val enclosingInlineable = ctx.owner.ownersIterator.findSymbol(_.isInlineMethod)
     if (enclosingInlineable.exists && !PrepareInlineable.isLocal(qual1.symbol, enclosingInlineable))
       ctx.error(SuperCallsNotAllowedInlineable(enclosingInlineable), tree.pos)
     pt match {
@@ -1110,7 +1110,7 @@ class Typer extends Namer
         (EmptyTree, WildcardType)
       }
       else if (owner != cx.outer.owner && owner.isRealMethod) {
-        if (owner.isInlineable)
+        if (owner.isInlineMethod)
           (EmptyTree, errorType(NoReturnFromInlineable(owner), tree.pos))
         else if (!owner.isCompleted)
           (EmptyTree, errorType(MissingReturnTypeWithReturnStatement(owner), tree.pos))
@@ -1427,8 +1427,8 @@ class Typer extends Namer
       case rhs => typedExpr(rhs, tpt1.tpe)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
-    if (sym.is(Transparent, butNot = DeferredOrTermParamOrAccessor))
-      checkTransparentConformant(rhs1, isFinal = sym.is(Final), em"right-hand side of transparent $sym")
+    if (sym.is(Inline, butNot = DeferredOrTermParamOrAccessor))
+      checkInlineConformant(rhs1, isFinal = sym.is(Final), em"right-hand side of inline $sym")
     patchIfLazy(vdef1)
     patchFinalVals(vdef1)
     vdef1
@@ -1443,7 +1443,7 @@ class Typer extends Namer
       patch(Position(toUntyped(vdef).pos.start), "@volatile ")
   }
 
-  /** Adds transparent to final vals with idempotent rhs
+  /** Adds inline to final vals with idempotent rhs
    *
    *  duplicating scalac behavior: for final vals that have rhs as constant, we do not create a field
    *  and instead return the value. This seemingly minor optimization has huge effect on initialization
@@ -1459,7 +1459,7 @@ class Typer extends Namer
     }
     val sym = vdef.symbol
     sym.info match {
-      case info: ConstantType if isFinalInlinableVal(sym) && !ctx.settings.YnoInline.value => sym.setFlag(Transparent)
+      case info: ConstantType if isFinalInlinableVal(sym) && !ctx.settings.YnoInline.value => sym.setFlag(Inline)
       case _ =>
     }
   }
@@ -1487,10 +1487,10 @@ class Typer extends Namer
       (tparams1, sym.owner.typeParams).zipped.foreach ((tdef, tparam) =>
         rhsCtx.gadt.setBounds(tdef.symbol, TypeAlias(tparam.typeRef)))
     }
-    if (sym.isInlineable) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
+    if (sym.isInlineMethod) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
     val rhs1 = typedExpr(ddef.rhs, tpt1.tpe)(rhsCtx)
 
-    if (sym.isInlineable) PrepareInlineable.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
+    if (sym.isInlineMethod) PrepareInlineable.registerInlineInfo(sym, ddef.rhs, _ => rhs1)
 
     if (sym.isConstructor && !sym.isPrimaryConstructor)
       for (param <- tparams1 ::: vparamss1.flatten)
@@ -1992,7 +1992,7 @@ class Typer extends Namer
           case none =>
             typed(mdef) match {
               case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
-                assert(mdef1.symbol.isInlineable, mdef.symbol)
+                assert(mdef1.symbol.isInlineMethod, mdef.symbol)
                 Inliner.bodyToInline(mdef1.symbol) // just make sure accessors are computed,
                 buf += mdef1                       // but keep original definition, since inline-expanded code
                                                    // is pickled in this case.
@@ -2443,8 +2443,8 @@ class Typer extends Namer
         readaptSimplified(Inliner.inlineCall(tree, pt))
       }
       else if (tree.tpe <:< pt) {
-        if (pt.hasAnnotation(defn.TransparentParamAnnot))
-          checkTransparentConformant(tree, isFinal = false, "argument to transparent parameter")
+        if (pt.hasAnnotation(defn.InlineParamAnnot))
+          checkInlineConformant(tree, isFinal = false, "argument to inline parameter")
         if (ctx.typeComparer.GADTused && pt.isValueType)
           // Insert an explicit cast, so that -Ycheck in later phases succeeds.
           // I suspect, but am not 100% sure that this might affect inferred types,

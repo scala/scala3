@@ -43,11 +43,11 @@ object Inliner {
   def inlineBindings(implicit ctx: Context): MutableSymbolMap[Tree] =
     ctx.property(InlineBindings).get
 
-  /** `sym` is an inline or transparent method with a known body to inline (note: definitions coming
+  /** `sym` is an inline method with a known body to inline (note: definitions coming
    *  from Scala2x class files might be `@forceInline`, but still lack that body).
    */
   def hasBodyToInline(sym: SymDenotation)(implicit ctx: Context): Boolean =
-    sym.isInlineable && sym.hasAnnotation(defn.BodyAnnot)
+    sym.isInlineMethod && sym.hasAnnotation(defn.BodyAnnot)
 
   /** The body to inline for method `sym`.
    *  @pre  hasBodyToInline(sym)
@@ -57,9 +57,7 @@ object Inliner {
 
   /** Should call to method `meth` be inlined in this context? */
   def isInlineable(meth: Symbol)(implicit ctx: Context): Boolean =
-    (meth.is(Inline) || meth.is(Transparent) && ctx.isInlineContext) &&
-    hasBodyToInline(meth) &&
-    !ctx.inInlineMethod
+    meth.is(Inline) && hasBodyToInline(meth) && !ctx.inInlineMethod
 
   /** Should call be inlined in this context? */
   def isInlineable(tree: Tree)(implicit ctx: Context): Boolean = tree match {
@@ -67,7 +65,7 @@ object Inliner {
     case _ => isInlineable(tree.symbol)
   }
 
-  /** Try to inline a call to an inline or transparent method. Fail with error if the maximal
+  /** Try to inline a call to an inline method. Fail with error if the maximal
    *  inline depth is exceeded.
    *
    *  @param tree   The call to inline
@@ -236,7 +234,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                               bindingsBuf: mutable.ListBuffer[MemberDef]): MemberDef = {
     val argtpe = arg.tpe.dealiasKeepAnnots
     val isByName = paramtp.dealias.isInstanceOf[ExprType]
-    val inlineFlag = if (paramtp.hasAnnotation(defn.TransparentParamAnnot)) Transparent else EmptyFlags
+    val inlineFlag = if (paramtp.hasAnnotation(defn.InlineParamAnnot)) Inline else EmptyFlags
     val (bindingFlags, bindingType) =
       if (isByName) (Method, ExprType(argtpe.widen))
       else (inlineFlag, argtpe.widen)
@@ -630,7 +628,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         def search(buf: mutable.ListBuffer[MemberDef]) = buf.find(_.name == tree.name)
         if (paramProxies.contains(tree.typeOpt))
           search(bindingsBuf).orElse(search(matchBindingsBuf)) match {
-            case Some(vdef: ValDef) if vdef.symbol.is(Transparent) =>
+            case Some(vdef: ValDef) if vdef.symbol.is(Inline) =>
               Some(integrate(vdef.rhs, vdef.symbol))
             case Some(ddef: DefDef) =>
               Some(integrate(ddef.rhs, ddef.symbol))

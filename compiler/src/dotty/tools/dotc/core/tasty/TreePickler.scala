@@ -616,7 +616,6 @@ class TreePickler(pickler: TastyPickler) {
     if (flags.is(Final, butNot = Module)) writeByte(FINAL)
     if (flags is Case) writeByte(CASE)
     if (flags is Override) writeByte(OVERRIDE)
-    if (flags is Transparent) writeByte(TRANSPARENT)
     if (flags is Inline) writeByte(INLINE)
     if (flags is Macro) writeByte(MACRO)
     if (flags is JavaStatic) writeByte(STATIC)

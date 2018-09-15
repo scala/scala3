@@ -95,7 +95,7 @@ object PrepareInlineable {
       def preTransform(tree: Tree)(implicit ctx: Context): Tree = tree match {
         case tree: RefTree if needsAccessor(tree.symbol) =>
           if (tree.symbol.isConstructor) {
-            ctx.error("Implementation restriction: cannot use private constructors in transparent or inline methods", tree.pos)
+            ctx.error("Implementation restriction: cannot use private constructors in inlineinline methods", tree.pos)
             tree // TODO: create a proper accessor for the private constructor
           }
           else useAccessor(tree)
