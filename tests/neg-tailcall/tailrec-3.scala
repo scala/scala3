@@ -7,7 +7,7 @@ object Test {
     case _                => Nil
   }
   @tailrec private def quux3(xs: List[String]): Boolean = xs match {
-    case x :: xs if quux3(List("abc"))  => quux3(xs)
+    case x :: xs if quux3(List("abc"))  => quux3(xs) // error
     case _                              => false
   }
 }
