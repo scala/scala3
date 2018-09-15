@@ -45,7 +45,7 @@ export function activate(context: ExtensionContext) {
     const portFile = `${vscode.workspace.rootPath}/.dotty-ide-dev-port`
     fs.readFile(portFile, (err, port) => {
       if (err) {
-        outputChannel.append(`Unable to parse ${portFile}`)
+        outputChannel.appendLine(`Unable to parse ${portFile}`)
         throw err
       }
 
@@ -125,11 +125,15 @@ function fetchWithCoursier(coursierPath: string, artifact: string, extra: string
       coursierProc.stdout.on('data', (data: Buffer) => {
         classPath += data.toString().trim()
       })
+      coursierProc.stderr.on('data', (data: Buffer) => {
+        let msg = data.toString().trim()
+        outputChannel.appendLine(msg)
+      })
 
       coursierProc.on('close', (code: number) => {
         if (code != 0) {
           let msg = `Couldn't fetch '${ artifact }' (exit code ${ code }).`
-          outputChannel.append(msg)
+          outputChannel.appendLine(msg)
           throw new Error(msg)
         }
       })
@@ -147,6 +151,7 @@ function configureIDE(sbtClasspath: string, languageServerScalaVersion: string, 
     // eventually run `configureIDE`.
     const sbtPromise =
       cpp.spawn("java", [
+        "-Dsbt.log.noformat=true",
         "-classpath", sbtClasspath,
         "xsbt.boot.Boot",
         `--addPluginSbtFile=${dottyPluginSbtFile}`,
@@ -155,10 +160,23 @@ function configureIDE(sbtClasspath: string, languageServerScalaVersion: string, 
       ])
 
     const sbtProc = sbtPromise.childProcess
+    // Close stdin, otherwise in case of error sbt will block waiting for the
+    // user input to reload or exit the build.
+    sbtProc.stdin.end()
+
+    sbtProc.stdout.on('data', (data: Buffer) => {
+      let msg = data.toString().trim()
+      outputChannel.appendLine(msg)
+    })
+    sbtProc.stderr.on('data', (data: Buffer) => {
+      let msg = data.toString().trim()
+      outputChannel.appendLine(msg)
+    })
+
     sbtProc.on('close', (code: number) => {
       if (code != 0) {
         const msg = "Configuring the IDE failed."
-        outputChannel.append(msg)
+        outputChannel.appendLine(msg)
         throw new Error(msg)
       }
     })
