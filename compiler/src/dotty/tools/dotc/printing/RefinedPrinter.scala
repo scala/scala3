@@ -381,6 +381,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           changePrec(GlobalPrec) { keywordStr("return[") ~ toText(sym.name) ~ keywordStr("]") ~ optText(expr)(" " ~ _) }
         else
           changePrec(GlobalPrec) { keywordStr("return") ~ optText(expr)(" " ~ _) }
+      case WhileDo(cond, body) =>
+        changePrec(GlobalPrec) { keywordStr("while ") ~ toText(cond) ~ keywordStr(" do ") ~ toText(body) }
       case Try(expr, cases, finalizer) =>
         changePrec(GlobalPrec) {
           keywordStr("try ") ~ toText(expr) ~ optText(cases)(keywordStr(" catch ") ~ _) ~ optText(finalizer)(keywordStr(" finally ") ~ _)
@@ -524,8 +526,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "(" ~ toTextGlobal(t) ~ ")"
       case Tuple(ts) =>
         "(" ~ toTextGlobal(ts, ", ") ~ ")"
-      case WhileDo(cond, body) =>
-        changePrec(GlobalPrec) { keywordStr("while ") ~ toText(cond) ~ keywordStr(" do ") ~ toText(body) }
       case DoWhile(cond, body) =>
         changePrec(GlobalPrec) { keywordStr("do ") ~ toText(body) ~ keywordStr(" while ") ~ toText(cond) }
       case ForYield(enums, expr) =>

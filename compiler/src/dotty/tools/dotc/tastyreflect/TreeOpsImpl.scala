@@ -278,7 +278,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
 
     object Block extends BlockExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[(List[Statement], Term)] = normalizedLoops(x) match {
-        case Trees.Block(_, expr) if expr.symbol.is(Flags.Label) => None // while or doWhile loops
         case Trees.Block(stats, expr) => Some((stats, expr))
         case _ => None
       }
@@ -305,10 +304,10 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
         case _ => tree
       }
 
-      /** If it is the second statement of a loop or a closure. See: `normalizedLoops` */
+      /** If it is the second statement of a closure. See: `normalizedLoops` */
       private def needsNormalization(tree: tpd.Tree)(implicit ctx: Context): Boolean = tree match {
         case _: tpd.Closure => true
-        case _ => tree.symbol.is(Flags.Label)
+        case _ => false
       }
     }
 
@@ -375,25 +374,17 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
 
     object While extends WhileExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term)] = x match {
-        case Trees.Block((ddef: tpd.DefDef) :: Nil, expr) if expr.symbol.is(Flags.Label) && expr.symbol.name == nme.WHILE_PREFIX =>
-          val Trees.If(cond, Trees.Block(bodyStats, _), _) = ddef.rhs
-          Some((cond, loopBody(bodyStats)))
+        case x: tpd.WhileDo => Some((x.cond, x.body))
         case _ => None
       }
     }
 
     object DoWhile extends DoWhileExtractor {
       def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term)] = x match {
-        case Trees.Block((ddef: tpd.DefDef) :: Nil, expr) if expr.symbol.is(Flags.Label) && expr.symbol.name == nme.DO_WHILE_PREFIX =>
-          val Trees.Block(bodyStats, Trees.If(cond, _, _)) = ddef.rhs
-          Some((loopBody(bodyStats), cond))
+        case Trees.WhileDo(Trees.Block(Trees.Block(Nil, body) :: Nil, Trees.Block(Nil, cond)), Trees.Literal(Constants.Constant(()))) =>
+          Some((body, cond))
         case _ => None
       }
-    }
-
-    private def loopBody(stats: List[tpd.Tree])(implicit ctx: Context): tpd.Tree = stats match {
-      case body :: Nil => body
-      case stats => tpd.Block(stats.init, stats.last)
     }
   }
 

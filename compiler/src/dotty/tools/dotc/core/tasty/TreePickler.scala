@@ -436,6 +436,9 @@ class TreePickler(pickler: TastyPickler) {
         case Return(expr, from) =>
           writeByte(RETURN)
           withLength { pickleSymRef(from.symbol); pickleTreeUnlessEmpty(expr) }
+        case WhileDo(cond, body) =>
+          writeByte(WHILE)
+          withLength { pickleTree(cond); pickleTree(body) }
         case Try(block, cases, finalizer) =>
           writeByte(TRY)
           withLength { pickleTree(block); cases.foreach(pickleTree); pickleTreeUnlessEmpty(finalizer) }
@@ -796,6 +799,9 @@ class TreePickler(pickler: TastyPickler) {
       case Return(expr, from) =>
         writeByte(RETURN)
         withLength { pickleDummyRef(); pickleUnlessEmpty(expr) }
+      case WhileDo(cond, body) =>
+        writeByte(WHILE)
+        withLength { pickleUntyped(cond); pickleUntyped(body) }
       case Try(block, cases, finalizer) =>
         writeByte(TRY)
         withLength { pickleUntyped(block); cases.foreach(pickleUntyped); pickleUnlessEmpty(finalizer) }

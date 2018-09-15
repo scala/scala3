@@ -63,6 +63,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   type Throw           = tpd.Apply
   type Labeled         = tpd.Labeled
   type Return          = tpd.Return
+  type WhileDo         = tpd.WhileDo
   type Block           = tpd.Block
   type Typed           = tpd.Typed
   type Match           = tpd.Match
@@ -196,6 +197,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   implicit val ThrowTag: ClassTag[Throw] = ClassTag[Throw](classOf[Throw])
   implicit val LabeledTag: ClassTag[Labeled] = ClassTag[Labeled](classOf[Labeled])
   implicit val ReturnTag: ClassTag[Return] = ClassTag[Return](classOf[Return])
+  implicit val WhileDoTag: ClassTag[WhileDo] = ClassTag[WhileDo](classOf[WhileDo])
   implicit val LiteralTag: ClassTag[Literal] = ClassTag[Literal](classOf[Literal])
   implicit val BlockTag: ClassTag[Block] = ClassTag[Block](classOf[Block])
   implicit val TypedTag: ClassTag[Typed] = ClassTag[Typed](classOf[Typed])
@@ -1086,6 +1088,11 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   object Return extends ReturnDeconstructor {
     def _1: Tree = field.expr
     def _2: Symbol = if (field.from.symbol.isLabel) field.from.symbol else NoSymbol
+  }
+
+  object WhileDo extends WhileDoDeconstructor {
+    def _1: Tree = field.cond
+    def _2: Tree = field.body
   }
 
   object Ident extends IdentDeconstructor {

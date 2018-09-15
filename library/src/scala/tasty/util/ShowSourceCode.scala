@@ -227,15 +227,15 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this
         }
 
+      case Term.DoWhile(body, cond) => // DoWhile must come before While
+        this += "do "
+        printTree(body) += " while "
+        inParens(printTree(cond))
+
       case Term.While(cond, body) =>
         this += "while "
         inParens(printTree(cond)) += " "
         printTree(body)
-
-      case Term.DoWhile(body, cond) =>
-        this += "do "
-        printTree(body) += " while "
-        inParens(printTree(cond))
 
       case IsDefDef(ddef @ DefDef(name, targs, argss, tpt, rhs)) =>
         printDefAnnotations(ddef)
