@@ -113,7 +113,7 @@ class DottyLanguageServer extends LanguageServer
         drivers(config)
       case None =>
         val config = drivers.keys.head
-        println(s"No configuration contains $uri as a source file, arbitrarily choosing ${config.id}")
+        // println(s"No configuration contains $uri as a source file, arbitrarily choosing ${config.id}")
         drivers(config)
     }
   }
