@@ -334,6 +334,9 @@ object Flags {
   /** A method that has default params */
   final val DefaultParameterized: FlagSet = termFlag(27, "<defaultparam>")
 
+  /** An extension method */
+  final val Extension = termFlag(28, "<extension>")
+
   /** Symbol is defined by a Java class */
   final val JavaDefined: FlagSet = commonFlag(30, "<java>")
 
@@ -466,7 +469,7 @@ object Flags {
     HigherKinded.toCommonFlags | Param | ParamAccessor.toCommonFlags |
     Scala2ExistentialCommon | MutableOrOpaque | Touched | JavaStatic |
     CovariantOrOuter | ContravariantOrLabel | CaseAccessor.toCommonFlags |
-    NonMember | ImplicitCommon | Permanent | Synthetic |
+    Extension.toCommonFlags | NonMember | ImplicitCommon | Permanent | Synthetic |
     SuperAccessorOrScala2x | Inline
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is

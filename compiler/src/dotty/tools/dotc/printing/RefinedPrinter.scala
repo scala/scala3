@@ -662,9 +662,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   def tparamsText[T >: Untyped](params: List[Tree[T]]): Text =
     "[" ~ toText(params, ", ") ~ "]" provided params.nonEmpty
 
-  def addVparamssText[T >: Untyped](txt: Text, vparamss: List[List[ValDef[T]]]): Text =
-    (txt /: vparamss)((txt, vparams) => txt ~ "(" ~ toText(vparams, ", ") ~ ")")
-
+  def addVparamssText[T >: Untyped](txt: Text, vparamss: List[List[ValDef[T]]], isExtension: Boolean = false): Text = {
+    def paramsText(params: List[ValDef[T]]) = "(" ~ toText(params, ", ") ~ ")"
+    val (leading, paramss) =
+      if (isExtension && vparamss.nonEmpty) (paramsText(vparamss.head) ~ "." ~ txt, vparamss.tail)
+      else (txt, vparamss)
+    (txt /: paramss)((txt, params) => txt ~ paramsText(params))
+  }
   protected def valDefToText[T >: Untyped](tree: ValDef[T]): Text = {
     import untpd.{modsDeco => _}
     dclTextOr(tree) {
@@ -678,9 +682,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     import untpd.{modsDeco => _}
     dclTextOr(tree) {
       val prefix = modText(tree.mods, tree.symbol, keywordStr("def"), isType = false) ~~ valDefText(nameIdText(tree))
+      val isExtension = tree.hasType && tree.symbol.is(Extension)
       withEnclosingDef(tree) {
-          addVparamssText(prefix ~ tparamsText(tree.tparams), tree.vparamss) ~ optAscription(tree.tpt) ~
-            optText(tree.rhs)(" = " ~ _)
+        addVparamssText(prefix ~ tparamsText(tree.tparams), tree.vparamss, isExtension) ~
+          optAscription(tree.tpt) ~
+          optText(tree.rhs)(" = " ~ _)
       }
     }
   }

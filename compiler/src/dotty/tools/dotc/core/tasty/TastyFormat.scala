@@ -202,6 +202,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SCALA2X                             // Imported from Scala2.x
                   DEFAULTparameterized                // Method with default parameters
                   STABLE                              // Method that is assumed to be stable
+                  EXTENSION                           // An extension method
                   PARAMsetter                         // A setter without a body named `x_=` where `x` is pickled as a PARAM
                   Annotation
 
@@ -309,7 +310,8 @@ object TastyFormat {
   final val MACRO = 33
   final val ERASED = 34
   final val OPAQUE = 35
-  final val PARAMsetter = 36
+  final val EXTENSION = 36
+  final val PARAMsetter = 37
 
   // Cat. 2:    tag Nat
 
@@ -479,6 +481,7 @@ object TastyFormat {
        | SCALA2X
        | DEFAULTparameterized
        | STABLE
+       | EXTENSION
        | PARAMsetter
        | ANNOTATION
        | PRIVATEqualified
@@ -538,6 +541,7 @@ object TastyFormat {
     case SCALA2X => "SCALA2X"
     case DEFAULTparameterized => "DEFAULTparameterized"
     case STABLE => "STABLE"
+    case EXTENSION => "EXTENSION"
     case PARAMsetter => "PARAMsetter"
 
     case SHAREDterm => "SHAREDterm"
