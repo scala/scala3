@@ -50,7 +50,7 @@ object adds a `longestStrings` extension method to a `Seq[String]`:
 
 ```scala
 implicit object StringOps {
-  def (xs: Seq[String).longestStrings = {
+  def (xs: Seq[String]).longestStrings = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
@@ -97,9 +97,9 @@ object PostConditions {
 
   implicit object Ensuring {
     def (x: T).ensuring(condition: implicit WrappedResult[T] => Boolean): T = {
-      implicit val wrapped = WrappedResult.wrap(this)
+      implicit val wrapped = WrappedResult.wrap(x)
       assert(condition)
-      this
+      x
     }
   }
 }
