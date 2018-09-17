@@ -4780,13 +4780,16 @@ object Types {
    */
   def nullifyMember(sym: Symbol, tp: Type)(implicit ctx: Context): Type = {
     assert(sym.is(JavaDefined), s"can only nullify java-defined members")
+    // A list of members that aren't nullified.
+    val whitelist = Seq(
+      nme.TYPE_, // the special TYPE field returns the Class object for a given class, so it's always non-null.
+      nme.toString_ // toString has a non-nullable return type that is later dynamically checked
+    )
     if (sym.isConstructor) {
       // Constructors get special treatment because the return type isn't nullified.
       val constrMap = new ConstructorNullMap()
       constrMap(tp)
-    } else if (sym.name == nme.TYPE_) {
-      // The special TYPE field returns the Class object for a given class, so it's
-      // always non-null.
+    } else if (whitelist.contains(sym.name)) {
       tp
     } else {
       val nullMap = new JavaNullMap()
