@@ -279,9 +279,9 @@ object Test {
     def inject[A](x: List[A]): Impl[A] = new Impl[A](x)
   }
 
-  def g[F[_], A, B](x: A, f: A => B)(implicit ev: Functor.Common { type This[A] = F[A] })
+  def g[F[_], A, B](x: A, f: A => B)(implicit ev: Monad.Common { type This[A] = F[A] })
     : ev.This[B] =
-    ev.inject(Functor.by[F].pure(x)).map(f)
+    ev.inject(Monad.by[F].pure(x)).map(f)
 
   def h[F[_], A, B](x: A)(implicit ev: Monad.Common { type This[A] = F[A] })
     : (A => ev.This[B]) => ev.This[B] =
