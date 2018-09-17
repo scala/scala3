@@ -35,9 +35,9 @@ assert(circle.circumference == CircleOps.circumference(circle))
 ### Translation of Calls to Extension Methods
 
 The rules for resolving a selection `e.m` are augmented as follows: If `m` is not a
-member of the type `T` of `e`, and there is an implicit value `i` that defines `m`
-in either the current scope or in the implicit scope of `T`, then `e.m` is expanded
-to `i.m(e)`. This expansion is attempted at the time where the compiler also tries an implicit conversion from `T` to a type containing `m`. If there is more than one way
+member of the type `T` of `e`, and there is an implicit value `i`
+in either the current scope or in the implicit scope of `T`, and `i` defines an extension
+method named `m`, then `e.m` is expanded to `i.m(e)`. This expansion is attempted at the time where the compiler also tries an implicit conversion from `T` to a type containing `m`. If there is more than one way
 of expanding, an ambiguity error results.
 
 So `circle.circumference` translates to `CircleOps.circumference(circle)`, provided
@@ -236,8 +236,8 @@ Extension methods generalize to higher-kinded types without requiring special pr
   implicit class ReaderMonad[Ctx] extends Monad[[X] => Ctx => X] {
     def (r: Ctx => A).flatMap[A, B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
-    def pure[A](x: A): Ctx =>
-      A = ctx => x
+    def pure[A](x: A): Ctx => A =
+      ctx => x
   }
 ```
 ### Syntax
