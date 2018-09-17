@@ -285,7 +285,7 @@ object Test {
 
   def h[F[_], A, B](x: A)(implicit ev: Monad.Common { type This[A] = F[A] })
     : (A => ev.This[B]) => ev.This[B] =
-    f => ev.inject(Functor.by[F].pure(x)).flatMap(f)
+    f => ev.inject(Monad.by[F].pure(x)).flatMap(f)
 
   val r = g[F = List](1, _.toString)
 
