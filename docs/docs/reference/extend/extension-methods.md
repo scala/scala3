@@ -96,7 +96,7 @@ object PostConditions {
   def result[T](implicit er: WrappedResult[T]): T = WrappedResult.unwrap(er)
 
   implicit object Ensuring {
-    def (x: T).ensuring(condition: implicit WrappedResult[T] => Boolean): T = {
+    def (x: T).ensuring[T](condition: implicit WrappedResult[T] => Boolean): T = {
       implicit val wrapped = WrappedResult.wrap(x)
       assert(condition)
       x
