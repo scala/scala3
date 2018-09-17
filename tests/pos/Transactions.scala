@@ -25,7 +25,7 @@ class Transaction {
   var id: Long = _  // only for real transactions
 
   var head: Transaction = this
-  var next: Transaction = ???
+  var next: Transaction|Null = null
 
   def this(hd: Transaction, tl: Transaction) = { this(); this.head = head; this.next = next }
 
@@ -52,6 +52,8 @@ class Transaction {
 }
 
 trait Transactional {
+  // TODO(abeln): replace by stdlib function.
+  implicit def denullify[T](x: T|Null): T = x.asInstanceOf[T]
 
   /** create a new snapshot */
   def checkPoint(): Unit
@@ -60,9 +62,9 @@ trait Transactional {
   def rollBack(): Unit
 
   var readers: Transaction
-  var writer: Transaction
+  var writer: Transaction|Null
 
-  def currentWriter(): Transaction = ???
+  def currentWriter(): Transaction|Null = null
     if (writer == null) null
     else if (writer.status == Transaction.Running) writer
     else {
@@ -83,7 +85,7 @@ trait Transactional {
     }
     synchronized {
       if (thisTrans.status == Transaction.Abortable) throw new AbortException
-      val w = currentWriter()
+      val w: Transaction|Null = currentWriter()
       if (w != null)
         if (thisTrans.id < w.id) { w.makeAbort(); rollBack(); writer = null }
         else throw new AbortException
@@ -94,7 +96,8 @@ trait Transactional {
   def setter(thisTrans: Transaction): Unit = {
     if (writer == thisTrans) return
     synchronized {
-      val w = currentWriter()
+      // TODO(abeln): remove type annotation once type inference works.
+      val w: Transaction|Null = currentWriter()
       if (w != null)
         if (thisTrans.id < w.id) { w.makeAbort(); rollBack() }
         else throw new AbortException
