@@ -321,8 +321,12 @@ object Types {
       (new isGroundAccumulator).apply(true, this)
 
     /** Is this a type of a repeated parameter? */
-    def isRepeatedParam(implicit ctx: Context): Boolean =
-      typeSymbol eq defn.RepeatedParamClass
+    def isRepeatedParam(implicit ctx: Context): Boolean = {
+      def isRep(tpe: Type) = tpe.typeSymbol eq defn.RepeatedParamClass
+      // A repeated param is represented as either RepeatedParamClass[ElemTpe] or
+      // RepeatedParamClass[ElemTpe]|JavaNull, if it comes from Java.
+      isRep(this) || isRep(stripJavaNull)
+    }
 
     /** Is this the type of a method that has a repeated parameter type as
      *  last parameter type?
@@ -1231,7 +1235,14 @@ object Types {
     /** If this is a repeated type, its element type, otherwise the type itself */
     def repeatedToSingle(implicit ctx: Context): Type = this match {
       case tp @ ExprType(tp1) => tp.derivedExprType(tp1.repeatedToSingle)
-      case _                  => if (isRepeatedParam) this.argTypesHi.head else this
+      case _                  =>
+        if (isRepeatedParam) {
+          val repTpe = stripJavaNull
+          assert(repTpe.argTypesLo.size == 1, s"Found repeated parameter type with more than one argument: ${this.show}")
+          repTpe.argTypesLo.head
+        } else {
+          this
+        }
     }
 
     /** If this is a FunProto or PolyProto, WildcardType, otherwise this. */
