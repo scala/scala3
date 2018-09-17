@@ -7,7 +7,7 @@ object Test {
   inline val N = 10
   def X = 20
 
-  inline inline val twice = 30 // error: repeated modifier
+  inline inline val twice = 30 // error: repeated modifier // error: not found: inline
 
   class C(inline x: Int, private inline val y: Int) { // error // error
     inline val foo: Int // error: abstract member may not be inline
