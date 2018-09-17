@@ -3,16 +3,16 @@ trait ::[H, T]
 trait Foo[A, R]
 
 trait FooLowPrio {
-  implicit def caseOther[A]: Foo[A, A :: Any] = null
+  implicit def caseOther[A]: Foo[A, A :: Any] = ???
 }
 object Foo extends FooLowPrio {
   implicit def caseCons[H, HR, T, TR]
     (implicit // It's a bit artificial: the by name is not required in this example...
       t: => Foo[T, TR],
       h: => Foo[H, HR]
-    ): Foo[H :: T, TR] = null
+    ): Foo[H :: T, TR] = ???
 
-  implicit def caseAny: Foo[Any, Any] = null
+  implicit def caseAny: Foo[Any, Any] = ???
 }
 
 object Test {

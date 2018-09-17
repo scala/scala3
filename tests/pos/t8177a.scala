@@ -4,6 +4,6 @@ class AA[T](final val x: Thing { type A = T }) {
   def foo: x.A = ???
 }
 
-class B extends AA[Int](null) {
+class B extends AA[Int](???) {
   override def foo: B.this.x.A = super.foo
 }
