@@ -25,6 +25,8 @@ pipeline:
     group: test
     image: lampepfl/dotty:2018-09-14-2
     commands:
+      - export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
+      - export PATH="$JAVA_HOME/bin:$PATH"
       - cp -R . /tmp/1/ && cd /tmp/1/
       - ./project/scripts/sbt ";compile ;test"
       - ./project/scripts/cmdTests
@@ -33,6 +35,8 @@ pipeline:
     group: test
     image: lampepfl/dotty:2018-09-14-2
     commands:
+      - export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
+      - export PATH="$JAVA_HOME/bin:$PATH"
       - cp -R . /tmp/2/ && cd /tmp/2/
       - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
       - ./project/scripts/bootstrapCmdTests
@@ -41,11 +45,13 @@ pipeline:
     group: test
     image: lampepfl/dotty:2018-09-14-2
     commands:
+      - export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
+      - export PATH="$JAVA_HOME/bin:$PATH"
       - cp -R . /tmp/4/ && cd /tmp/4/
       - ./project/scripts/sbt sbt-dotty/scripted
-    when:
-      # sbt scripted tests are slow and only run on nightly or deployment
-      event: [ tag, deployment ]
+    # when:
+    #   # sbt scripted tests are slow and only run on nightly or deployment
+    #   event: [ tag, deployment ]
 
   # DOCUMENTATION:
   documentation:
