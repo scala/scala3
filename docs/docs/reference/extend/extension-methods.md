@@ -162,8 +162,8 @@ The rules for expanding extension methods make sure that they work seamlessly wi
 
   // An instance declaration:
   implicit object StringMonoid extends Monoid[String] {
-    def (x: String).combine(y: String): String
-    def unit: String
+    def (x: String).combine(y: String): String = x.concat(y)
+    def unit: String = ""
   }
 
   // Abstracting over a typeclass with a context bound:
@@ -223,14 +223,14 @@ Extension methods generalize to higher-kinded types without requiring special pr
     def (x: F[A]).flatMap[A, B](f: A => F[B]): F[B]
     def (x: F[A]).map[A, B](f: A => B) = x.flatMap(f `andThen` pure)
 
-    def pure[A]: F[A]
+    def pure[A](x: A): F[A]
   }
 
   implicit object ListMonad extends Monad[List] {
     def (xs: List[A]).flatMap[A, B](f: A => List[B]): List[B] =
       xs.flatMap(f)
-    def pure[A]: List[A] =
-      List.Nil
+    def pure[A](x: A): List[A] =
+      List(x)
   }
 
   implicit class ReaderMonad[Ctx] extends Monad[[X] => Ctx => X] {
@@ -246,7 +246,7 @@ The required syntax extension just adds one clause for extension methods relativ
 to the [current syntax](https://github.com/lampepfl/dotty/blob/master/docs/docs/internals/syntax.md).
 ```
 DefSig            ::=  ...
-                    |  DefParamClause [‘.’] id [DefTypeParamClause] DefParamClauses
+                    |  ‘(’ DefParam ‘)’ [‘.’] id [DefTypeParamClause] DefParamClauses
 ```
 
 
