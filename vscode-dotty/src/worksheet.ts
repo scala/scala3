@@ -29,6 +29,11 @@ export const worksheetEvaluateKey = "worksheet.evaluate"
  */
 export const worksheetEvaluateAfterSaveKey = "worksheet.evaluateAfterSave"
 
+/**
+ * The command key for cancelling worksheet evaluation.
+ */
+export const worksheetCancelEvaluationKey = "worksheet.cancel"
+
 /** Is this document a worksheet? */
 export function isWorksheet(document: vscode.TextDocument): boolean {
   return document.fileName.endsWith(".sc")
@@ -112,14 +117,36 @@ function _prepareWorksheet(document: vscode.TextDocument) {
 
 function showWorksheetProgress(document: vscode.TextDocument) {
   return vscode.window.withProgress({
-    location: vscode.ProgressLocation.Window,
-    title: "Evaluating worksheet"
-  }, _ => {
+    location: vscode.ProgressLocation.Notification,
+    title: "Evaluating worksheet",
+    cancellable: true
+  }, (_, token) => {
+    token.onCancellationRequested(_ => {
+      vscode.commands.executeCommand(worksheetCancelEvaluationKey)
+    })
+
     function isFinished() {
       return worksheetFinished.get(document) || false
     }
     return wait(isFinished, 500)
   })
+}
+
+/**
+ * Cancel the execution of the worksheet.
+ *
+ * This sends a `textDocument/didSave` message to the language server
+ * with the scheme of the URI set to `cancel`. The language server
+ * interprets that as a request to cancel the execution of the specified worksheet.
+ */
+export function cancelExecution(client: LanguageClient) {
+  const editor = vscode.window.activeTextEditor
+  if (editor) {
+    const document = editor.document
+    client.sendNotification("textDocument/didSave", {
+      textDocument: { uri: document.uri.with({ scheme: "cancel" }).toString() }
+    })
+  }
 }
 
 /** Wait until `cond` evaluates to true; test every `delay` ms. */

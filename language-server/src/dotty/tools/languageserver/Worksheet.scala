@@ -10,17 +10,27 @@ import dotty.tools.dotc.core.Flags.Synthetic
 
 import dotty.tools.repl.{ReplDriver, State}
 
+import org.eclipse.lsp4j.jsonrpc.CancelChecker
+
 import java.io.{ByteArrayOutputStream, PrintStream}
+import java.util.concurrent.{Callable, CancellationException, Executors, TimeUnit}
 
 object Worksheet {
+
+  private val executor = Executors.newFixedThreadPool(1)
+  private final val checkCancelledDelayMs = 50
 
   /**
    * Evaluate `tree` as a worksheet using the REPL.
    *
-   * @param tree        The top level object wrapping the worksheet.
-   * @param sendMessage A mean of communicating the results of evaluation back.
+   * @param tree          The top level object wrapping the worksheet.
+   * @param sendMessage   A mean of communicating the results of evaluation back.
+   * @param cancelChecker A token to check whether execution should be cancelled.
    */
-  def evaluate(tree: SourceTree, sendMessage: String => Unit)(implicit ctx: Context): Unit = {
+  def evaluate(tree: SourceTree,
+               sendMessage: String => Unit,
+               cancelChecker: CancelChecker)(
+      implicit ctx: Context): Unit = {
     tree.tree match {
       case td @ TypeDef(_, template: Template) =>
         val replOut = new ByteArrayOutputStream
@@ -32,11 +42,28 @@ object Worksheet {
             state
 
           case (state, statement) if executed.add(bounds(statement.pos)) =>
-            val (line, newState) = execute(repl, state, statement, tree.source)
-            val result = new String(replOut.toByteArray())
-            if (result.trim.nonEmpty) sendMessage(encode(result, line))
-            replOut.reset()
-            newState
+            val task = executor.submit(new Callable[State] {
+              override def call(): State = {
+                  val (line, newState) = execute(repl, state, statement, tree.source)
+                  val result = new String(replOut.toByteArray())
+                  if (result.trim.nonEmpty) sendMessage(encode(result, line))
+                  replOut.reset()
+                  newState
+              }
+            })
+
+            while (!task.isDone()) {
+              try {
+                cancelChecker.checkCanceled()
+                Thread.sleep(checkCancelledDelayMs)
+              } catch {
+                case _: CancellationException =>
+                  task.cancel(true)
+              }
+            }
+
+            try task.get(0, TimeUnit.SECONDS)
+            catch { case _: Throwable => state }
 
           case (state, statement) =>
             state

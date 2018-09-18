@@ -216,6 +216,10 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
     worksheet.worksheetSave(client)
   })
 
+  vscode.commands.registerCommand(worksheet.worksheetCancelEvaluationKey, () => {
+    worksheet.cancelExecution(client)
+  })
+
   // Push the disposable to the context's subscriptions so that the
   // client can be deactivated on extension deactivation
   extensionContext.subscriptions.push(client.start());

@@ -54,6 +54,7 @@ class DottyLanguageServer extends LanguageServer
 
   private[this] var rootUri: String = _
   private[this] var client: LanguageClient = _
+  private[this] val worksheets: mutable.Map[URI, CompletableFuture[_]] = mutable.Map.empty
 
   private[this] var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = _
 
@@ -227,13 +228,25 @@ class DottyLanguageServer extends LanguageServer
     /*thisServer.synchronized*/ {}
 
   override def didSave(params: DidSaveTextDocumentParams): Unit = {
-    thisServer.synchronized {
-      val uri = new URI(params.getTextDocument.getUri)
-      if (isWorksheet(uri)) {
-        val driver = driverFor(uri)
+    val uri = new URI(params.getTextDocument.getUri)
+    if (isWorksheet(uri)) {
+      if (uri.getScheme == "cancel") {
+        val fileURI = new URI("file", uri.getUserInfo, uri.getHost, uri.getPort, uri.getPath, uri.getQuery, uri.getFragment)
+        worksheets.get(fileURI).foreach(_.cancel(true))
+      } else {
         val sendMessage = (msg: String) => client.logMessage(new MessageParams(MessageType.Info, uri + msg))
-        evaluateWorksheet(driver, uri, sendMessage)(driver.currentCtx)
-        sendMessage("FINISHED")
+        worksheets.put(
+          uri,
+          computeAsync { cancelChecker =>
+            try {
+              val driver = driverFor(uri)
+              evaluateWorksheet(driver, uri, sendMessage, cancelChecker)(driver.currentCtx)
+            } finally {
+              worksheets.remove(uri)
+              sendMessage("FINISHED")
+            }
+          }
+        )
       }
     }
   }
@@ -437,14 +450,19 @@ class DottyLanguageServer extends LanguageServer
   /**
    * Evaluate the worksheet at `uri`.
    *
-   * @param driver      The driver for the project that contains the worksheet.
-   * @param uri         The URI of the worksheet.
-   * @param sendMessage A mean of communicating the results of evaluation back.
+   * @param driver        The driver for the project that contains the worksheet.
+   * @param uri           The URI of the worksheet.
+   * @param sendMessage   A mean of communicating the results of evaluation back.
+   * @param cancelChecker Token to check whether evaluation was cancelled
    */
-  private def evaluateWorksheet(driver: InteractiveDriver, uri: URI, sendMessage: String => Unit)(implicit ctx: Context): Unit = {
+  private def evaluateWorksheet(driver: InteractiveDriver,
+                                uri: URI,
+                                sendMessage: String => Unit,
+                                cancelChecker: CancelChecker)(
+      implicit ctx: Context): Unit = {
     val trees = driver.openedTrees(uri)
     trees.headOption.foreach { tree =>
-      Worksheet.evaluate(tree, sendMessage)
+      Worksheet.evaluate(tree, sendMessage, cancelChecker)
     }
   }
 }
