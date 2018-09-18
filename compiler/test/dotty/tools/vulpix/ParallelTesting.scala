@@ -8,6 +8,7 @@ import java.util.HashMap
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Path, Paths}
 import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
+import java.util.{Timer, TimerTask}
 
 import scala.io.Source
 import scala.util.control.NonFatal
@@ -285,11 +286,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       realStderr.println(msg + paddingRight)
     }
 
-    /** A single `Runnable` that prints a progress bar for the curent `Test` */
-    private def createProgressMonitor: Runnable = () => {
+    /** A `TimerTask` that prints a progress bar for the curent `Test` */
+    private def updateProgressMonitor: Unit = {
       val start = System.currentTimeMillis
       var tCompiled = testSourcesCompleted
-      while (tCompiled < sourceCount) {
+      if (tCompiled < sourceCount) {
         val timestamp = (System.currentTimeMillis - start) / 1000
         val progress = (tCompiled.toDouble / sourceCount * 40).toInt
 
@@ -299,16 +300,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             (" " * (39 - progress)) +
             s"] completed ($tCompiled/$sourceCount, $failureCount failed, ${timestamp}s)\r"
         )
-
-        Thread.sleep(100)
-        tCompiled = testSourcesCompleted
       }
-
-      val timestamp = (System.currentTimeMillis - start) / 1000
-      // println, otherwise no newline and cursor at start of line
-      realStdout.println(
-        s"[=======================================] completed ($sourceCount/$sourceCount, $failureCount failed, ${timestamp}s)"
-      )
+      else {
+        val timestamp = (System.currentTimeMillis - start) / 1000
+        // println, otherwise no newline and cursor at start of line
+        realStdout.print(
+          s"[=======================================] completed ($sourceCount/$sourceCount, $failureCount failed, ${timestamp}s)\r"
+        )
+      }
     }
 
     /** Wrapper function to make sure that the compiler itself did not crash -
@@ -465,7 +464,13 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           case None => JExecutors.newWorkStealingPool()
         }
 
-        if (isInteractive && !suppressAllOutput) pool.submit(createProgressMonitor)
+        val timer = new Timer()
+        if (isInteractive && !suppressAllOutput) {
+          val task = new TimerTask {
+            def run() = updateProgressMonitor
+          }
+          timer.schedule(task, 100, 200)
+        }
 
         val eventualResults = filteredSources.map { target =>
           pool.submit(encapsulatedCompilation(target))
@@ -478,6 +483,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           System.setErr(realStderr)
           throw new TimeoutException("Compiling targets timed out")
         }
+
+        // wait for the timer task to execute once
+        Thread.sleep(300)
+        timer.cancel()
 
         eventualResults.foreach(_.get)
 
