@@ -170,27 +170,29 @@ The rules for expanding extension methods make sure that they work seamlessly wi
   def sum[T: Monoid](xs: List[T]): T =
     xs.foldLeft(implicitly[Monoid[T]].unit)(_.combine(_))
 ```
-In the last line, the call to `_combine(_)` expands to `(x1, x2) => x1.combine(x)`,
+In the last line, the call to `_.combine(_)` expands to `(x1, x2) => x1.combine(x2)`,
 which expands in turn to `(x1, x2) => ev.combine(x1, x2)` where `ev` is the implicit
 evidence parameter summoned by the context bound `[T: Monoid]`. This works since
 extension methods apply everywhere their enclosing object is available as an implicit.
 
 ### Generic Extension Classes
 
-As another example, consider implementations of an `Ord` type class:
+As another example, consider implementations of an `Ord` type class with a `minimum` value:
 ```scala
   trait Ord[T]
     def (x: T).compareTo(y: T): Int
     def (x: T) < (that: T) = x.compareTo(y) < 0
     def (x: T) > (that: T) = x.compareTo(y) > 0
+    val minimum: T
   }
 
-  implicit object IntOrd {
+  implicit object IntOrd extends Ord[Int] {
     def (x: Int).compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
+    val minimum = Int.MinValue
   }
 
-  implicit class ListOrd[T: Ord] {
+  implicit class ListOrd[T: Ord] extends Ord[List[T]] {
     def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys) match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -198,9 +200,12 @@ As another example, consider implementations of an `Ord` type class:
       case (x :: xs1, y :: ys1) =>
         val fst = x.compareTo(y)
         if (fst != 0) fst else xs1.compareTo(ys1)
+    val minimum: T
   }
 
-  def max[T: Ord](x: T, y: T) = if (x < y) y else x
+  def max[T: Ord](x: T, y: T): T = if (x < y) y else x
+
+  def max[T: Ord](xs: List[T]): T = (implicitly[Ord[T]].minimum /: xs)(max(_, _))
 ```
 The `ListOrd` class is generic - it works for any type argument `T` that is itself an instance of `Ord`. In current Scala, we could not define `ListOrd` as an implicit class since
 implicit classes can only define implicit converions that take exactly one non-implicit
