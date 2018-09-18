@@ -353,7 +353,7 @@ class DottyLanguageServer extends LanguageServer
     val tp = Interactive.enclosingType(trees, pos)
     val tpw = tp.widenTermRefExpr
 
-    if (tpw == NoType) null // null here indicates that no response should be sent
+    if (tp.isError || tpw == NoType) null // null here indicates that no response should be sent
     else {
       val symbol = Interactive.enclosingSourceSymbol(trees, pos)
       val docComment = ctx.docCtx.flatMap(_.docstring(symbol))
