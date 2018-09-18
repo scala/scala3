@@ -91,6 +91,7 @@ object Macros {
     printout(definitions.ObjectType.show)
     printout(definitions.NothingType.show)
     printout(definitions.NullType.show)
+    printout(definitions.StringType.show)
 
 
     '(println(~buff.result().mkString("\n").toExpr))

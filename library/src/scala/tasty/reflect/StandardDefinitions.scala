@@ -212,5 +212,8 @@ trait StandardDefinitions extends TastyCore {
 
     /** The type of core type `Null`. */
     def NullType: Type
+
+    /** The type for `scala.String`. */
+    def StringType: Type
   }
 }
