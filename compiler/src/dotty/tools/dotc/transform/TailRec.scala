@@ -75,20 +75,6 @@ class TailRec extends MiniPhase {
 
   final val labelFlags = Flags.Synthetic | Flags.Label | Flags.Method
 
-  /** Symbols of methods that have @tailrec annotatios inside */
-  private val methodsWithInnerAnnots = new collection.mutable.HashSet[Symbol]()
-
-  override def transformUnit(tree: Tree)(implicit ctx: Context): Tree = {
-    methodsWithInnerAnnots.clear()
-    tree
-  }
-
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
-    if (tree.getAttachment(TailRecCallSiteKey).isDefined)
-      methodsWithInnerAnnots += ctx.owner.enclosingMethod
-    tree
-  }
-
   private def mkLabel(method: Symbol)(implicit ctx: Context): TermSymbol = {
     val name = TailLabelName.fresh()
 
@@ -181,7 +167,7 @@ class TailRec extends MiniPhase {
             dd.rhs
           }
         })
-      case d: DefDef if d.symbol.hasAnnotation(defn.TailrecAnnot) || methodsWithInnerAnnots.contains(d.symbol) =>
+      case d: DefDef if d.symbol.hasAnnotation(defn.TailrecAnnot) =>
         ctx.error(TailrecNotApplicable(sym), sym.pos)
         d
       case _ => tree
@@ -239,8 +225,7 @@ class TailRec extends MiniPhase {
           tpd.cpy.Apply(tree)(noTailTransform(call), arguments)
 
         def fail(reason: String) = {
-          def required = tree.getAttachment(TailRecCallSiteKey).isDefined
-          if (isMandatory || required) c.error(s"Cannot rewrite recursive call: $reason", tree.pos)
+          if (isMandatory) c.error(s"Cannot rewrite recursive call: $reason", tree.pos)
           else c.debuglog("Cannot rewrite recursive call at: " + tree.pos + " because: " + reason)
           continue
         }
@@ -360,6 +345,4 @@ object TailRec {
 
   final val noTailContext = new TailContext(false)
   final val yesTailContext = new TailContext(true)
-
-  object TailRecCallSiteKey extends Property.StickyKey[Unit]
 }
