@@ -18,17 +18,31 @@ let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
 export let client: LanguageClient
 
+const sbtVersion = "1.2.3"
+const sbtArtifact = `org.scala-sbt:sbt-launch:${sbtVersion}`
+const workspaceRoot = `${vscode.workspace.rootPath}`
+const disableDottyIDEFile = path.join(workspaceRoot, ".dotty-ide-disabled")
+const sbtProjectDir = path.join(workspaceRoot, "project")
+const sbtPluginFile = path.join(sbtProjectDir, "dotty-plugin.sbt")
+const sbtBuildPropertiesFile = path.join(sbtProjectDir, "build.properties")
+const sbtBuildSbtFile = path.join(workspaceRoot, "build.sbt")
+const languageServerArtifactFile = path.join(workspaceRoot, ".dotty-ide-artifact")
+
+function isUnconfiguredProject() {
+  return !(   fs.existsSync(disableDottyIDEFile)
+           || fs.existsSync(sbtPluginFile)
+           || fs.existsSync(sbtBuildPropertiesFile)
+           || fs.existsSync(sbtBuildSbtFile)
+  )
+}
+
 export function activate(context: ExtensionContext) {
   extensionContext = context
   outputChannel = vscode.window.createOutputChannel("Dotty");
 
-  const sbtArtifact = "org.scala-sbt:sbt-launch:1.2.3"
-  const buildSbtFile = `${vscode.workspace.rootPath}/build.sbt`
-  const dottyPluginSbtFile = path.join(extensionContext.extensionPath, './out/dotty-plugin.sbt')
-  const disableDottyIDEFile = `${vscode.workspace.rootPath}/.dotty-ide-disabled`
-  const languageServerArtifactFile = `${vscode.workspace.rootPath}/.dotty-ide-artifact`
-  const languageServerDefaultConfigFile = path.join(extensionContext.extensionPath, './out/default-dotty-ide-config')
-  const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
+  const coursierPath = path.join(extensionContext.extensionPath, "out", "coursier");
+  const dottyPluginSbtFileSource = path.join(extensionContext.extensionPath, "out", "dotty-plugin.sbt")
+  const buildSbtFileSource = path.join(extensionContext.extensionPath, "out", "build.sbt")
 
   vscode.workspace.onWillSaveTextDocument(worksheet.prepareWorksheet)
   vscode.workspace.onDidSaveTextDocument(document => {
@@ -43,7 +57,7 @@ export function activate(context: ExtensionContext) {
   })
 
   if (process.env['DLS_DEV_MODE']) {
-    const portFile = `${vscode.workspace.rootPath}/.dotty-ide-dev-port`
+    const portFile = path.join(workspaceRoot, ".dotty-ide-dev-port")
     fs.readFile(portFile, (err, port) => {
       if (err) {
         outputChannel.appendLine(`Unable to parse ${portFile}`)
@@ -51,7 +65,7 @@ export function activate(context: ExtensionContext) {
       }
 
       run({
-        module: context.asAbsolutePath('out/src/passthrough-server.js'),
+        module: context.asAbsolutePath(path.join("out", "src", "passthrough-server.js")),
         args: [ port.toString() ]
       }, false)
     })
@@ -61,20 +75,14 @@ export function activate(context: ExtensionContext) {
     // otherwise, try propose to start it if there's no build.sbt
     if (fs.existsSync(languageServerArtifactFile)) {
       runLanguageServer(coursierPath, languageServerArtifactFile)
-    } else if (!fs.existsSync(disableDottyIDEFile) && !fs.existsSync(buildSbtFile)) {
+    } else if (isUnconfiguredProject()) {
       vscode.window.showInformationMessage(
           "This looks like an unconfigured Scala project. Would you like to start the Dotty IDE?",
           "Yes", "No"
       ).then(choice => {
         if (choice == "Yes") {
-          fs.readFile(languageServerDefaultConfigFile, (err, data) => {
-            if (err) throw err
-            else {
-              const languageServerScalaVersion = data.toString().trim()
-              fetchAndConfigure(coursierPath, sbtArtifact, languageServerScalaVersion, dottyPluginSbtFile).then(() => {
-                runLanguageServer(coursierPath, languageServerArtifactFile)
-              })
-            }
+          fetchAndConfigure(coursierPath, sbtArtifact, buildSbtFileSource, dottyPluginSbtFileSource).then(() => {
+            runLanguageServer(coursierPath, languageServerArtifactFile)
           })
         } else {
           fs.appendFile(disableDottyIDEFile, "", _ => {})
@@ -101,9 +109,9 @@ function runLanguageServer(coursierPath: string, languageServerArtifactFile: str
   })
 }
 
-function fetchAndConfigure(coursierPath: string, sbtArtifact: string, languageServerScalaVersion: string, dottyPluginSbtFile: string) {
+function fetchAndConfigure(coursierPath: string, sbtArtifact: string, buildSbtFileSource: string, dottyPluginSbtFileSource: string) {
     return fetchWithCoursier(coursierPath, sbtArtifact).then((sbtClasspath) => {
-        return configureIDE(sbtClasspath, languageServerScalaVersion, dottyPluginSbtFile)
+        return configureIDE(sbtClasspath, buildSbtFileSource, dottyPluginSbtFileSource)
     })
 }
 
@@ -111,7 +119,7 @@ function fetchWithCoursier(coursierPath: string, artifact: string, extra: string
   return vscode.window.withProgress({
       location: vscode.ProgressLocation.Window,
       title: `Fetching ${ artifact }`
-    }, (progress) => {
+    }, _ => {
       const args = [
         "-jar", coursierPath,
         "fetch",
@@ -142,21 +150,27 @@ function fetchWithCoursier(coursierPath: string, artifact: string, extra: string
     })
 }
 
-function configureIDE(sbtClasspath: string, languageServerScalaVersion: string, dottyPluginSbtFile: string) {
+function configureIDE(sbtClasspath: string,
+                      buildSbtFileSource: string,
+                      dottyPluginSbtFileSource: string) {
+
   return vscode.window.withProgress({
     location: vscode.ProgressLocation.Window,
     title: 'Configuring the IDE for Dotty...'
-  }, (progress) => {
+  }, _ => {
 
-    // Run sbt to configure the IDE. If the `DottyPlugin` is not present, dynamically load it and
-    // eventually run `configureIDE`.
+    // Bootstrap an sbt build
+    fs.mkdirSync(sbtProjectDir)
+    fs.appendFileSync(sbtBuildPropertiesFile, `sbt.version=${sbtVersion}`)
+    fs.copyFileSync(buildSbtFileSource, sbtBuildSbtFile)
+    fs.copyFileSync(dottyPluginSbtFileSource, path.join(sbtProjectDir, "plugins.sbt"))
+
+    // Run sbt to configure the IDE.
     const sbtPromise =
       cpp.spawn("java", [
         "-Dsbt.log.noformat=true",
         "-classpath", sbtClasspath,
         "xsbt.boot.Boot",
-        `--addPluginSbtFile=${dottyPluginSbtFile}`,
-        `set every scalaVersion := "${languageServerScalaVersion}"`,
         "configureIDE"
       ])
 
@@ -182,7 +196,7 @@ function configureIDE(sbtClasspath: string, languageServerScalaVersion: string, 
       }
     })
 
-      return sbtPromise
+    return sbtPromise
   })
 }
 

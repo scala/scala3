@@ -985,11 +985,12 @@ object Build {
       includeFilter in unmanagedSources := NothingFilter | "*.ts" | "**.json",
       watchSources in Global ++= (unmanagedSources in Compile).value,
       resourceGenerators in Compile += Def.task {
-        val defaultIDEConfig = baseDirectory.value / "out" / "default-dotty-ide-config"
-        IO.write(defaultIDEConfig, dottyVersion)
+        // Resources that will be copied when bootstrapping a new project
+        val buildSbtFile = baseDirectory.value / "out" / "build.sbt"
+        IO.write(buildSbtFile, s"""scalaVersion := "$dottyVersion"""")
         val dottyPluginSbtFile = baseDirectory.value / "out" / "dotty-plugin.sbt"
         IO.write(dottyPluginSbtFile, s"""addSbtPlugin("$dottyOrganization" % "$sbtDottyName" % "$sbtDottyVersion")""")
-        Seq(defaultIDEConfig, dottyPluginSbtFile)
+        Seq(buildSbtFile, dottyPluginSbtFile)
       },
       compile in Compile := Def.task {
         val workingDir = baseDirectory.value
