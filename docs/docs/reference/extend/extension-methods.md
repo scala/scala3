@@ -64,7 +64,7 @@ to extend a generic type by adding type parameters to an extension method:
 
 ```scala
 implicit object ListOps {
-  def (xs: List[T]).second[T] = xs.tail.head
+  def [T](xs: List[T]).second = xs.tail.head
 }
 ```
 
@@ -73,7 +73,7 @@ or:
 
 ```scala
 implicit object ListListOps {
-  def (xs: List[List[T]]).flattened[T] = xs.foldLeft[List[T]](Nil)(_ ++ _)
+  def [T](xs: List[List[T]]).flattened = xs.foldLeft[List[T]](Nil)(_ ++ _)
 }
 ```
 
@@ -96,7 +96,7 @@ object PostConditions {
   def result[T](implicit er: WrappedResult[T]): T = WrappedResult.unwrap(er)
 
   implicit object Ensuring {
-    def (x: T).ensuring[T](condition: implicit WrappedResult[T] => Boolean): T = {
+    def [T](x: T).ensuring(condition: implicit WrappedResult[T] => Boolean): T = {
       implicit val wrapped = WrappedResult.wrap(x)
       assert(condition)
       x
@@ -126,7 +126,7 @@ syntax that resembles the intended usage pattern:
 
 ```scala
 implicit object NumericOps {
-  def (x: T) + [T : Numeric](y: T): T = implicitly[Numeric[T]].plus(x, y)
+  def [T : Numeric](x: T) + (y: T): T = implicitly[Numeric[T]].plus(x, y)
 }
 ```
 
@@ -135,7 +135,7 @@ here is the "domino"-operator brought back as an extension method:
 
 ```scala
 implicit object SeqOps {
-  def (x: A) /: [A, B](xs: Seq[B])(op: (A, B) => A): A =
+  def [A](x: A) /: [B](xs: Seq[B])(op: (A, B) => A): A =
     xs.foldLeft(x)(op)
 }
 ```
@@ -221,25 +221,25 @@ Extension methods generalize to higher-kinded types without requiring special pr
 
 ```scala
   trait Functor[F[_]] {
-    def (x: F[A]).map[A, B](f: A => B): F[B]
+    def [A](x: F[A]).map[B](f: A => B): F[B]
   }
 
   trait Monad[F[_]] extends Functor[F] {
-    def (x: F[A]).flatMap[A, B](f: A => F[B]): F[B]
-    def (x: F[A]).map[A, B](f: A => B) = x.flatMap(f `andThen` pure)
+    def [A](x: F[A]).flatMap[B](f: A => F[B]): F[B]
+    def [A](x: F[A]).map[B](f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
   }
 
   implicit object ListMonad extends Monad[List] {
-    def (xs: List[A]).flatMap[A, B](f: A => List[B]): List[B] =
+    def [A](xs: List[A]).flatMap[B](f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
   implicit class ReaderMonad[Ctx] extends Monad[[X] => Ctx => X] {
-    def (r: Ctx => A).flatMap[A, B](f: A => Ctx => B): Ctx => B =
+    def [A](r: Ctx => A).flatMap[B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
       ctx => x
@@ -251,7 +251,8 @@ The required syntax extension just adds one clause for extension methods relativ
 to the [current syntax](https://github.com/lampepfl/dotty/blob/master/docs/docs/internals/syntax.md).
 ```
 DefSig            ::=  ...
-                    |  ‘(’ DefParam ‘)’ [‘.’] id [DefTypeParamClause] DefParamClauses
+                    |  [DefTypeParamClause] ‘(’ DefParam ‘)’ [‘.’]
+                       id [DefTypeParamClause] DefParamClauses
 ```
 
 
