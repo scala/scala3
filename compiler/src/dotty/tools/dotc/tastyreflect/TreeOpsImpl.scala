@@ -378,14 +378,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
         case _ => None
       }
     }
-
-    object DoWhile extends DoWhileExtractor {
-      def unapply(x: Term)(implicit ctx: Context): Option[(Term, Term)] = x match {
-        case Trees.WhileDo(Trees.Block(Trees.Block(Nil, body) :: Nil, Trees.Block(Nil, cond)), Trees.Literal(Constants.Constant(()))) =>
-          Some((body, cond))
-        case _ => None
-      }
-    }
   }
 
   def termAsParent(term: Term): Parent = term
