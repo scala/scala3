@@ -465,7 +465,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         }
 
         val timer = new Timer()
-        if (isInteractive && !suppressAllOutput) {
+        val logProgress = isInteractive && !suppressAllOutput
+        if (logProgress) {
           val task = new TimerTask {
             def run() = updateProgressMonitor()
           }
@@ -486,9 +487,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         eventualResults.foreach(_.get)
 
-        // update progress one last time
-        updateProgressMonitor()
-        timer.cancel()
+        if (logProgress) {
+          timer.cancel()
+          // update progress one last time
+          updateProgressMonitor()
+        }
 
         if (didFail) {
           reportFailed()
