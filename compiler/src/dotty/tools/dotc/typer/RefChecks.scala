@@ -108,6 +108,20 @@ object RefChecks {
     case _ =>
   }
 
+  /** Disallow using trait parameters as prefix for its parents.
+   *
+   *  The rationale is to ensure outer-related NPE never happen in Scala.
+   *  Otherwise, outer NPE may happen, see tests/neg/i5083.scala
+   */
+  private def checkParentPrefix(cls: Symbol, parent: Tree)(implicit ctx: Context): Unit =
+    parent.tpe.typeConstructor match {
+      case TypeRef(ref: TermRef, _) =>
+        val paramRefs = ref.namedPartsWith(ntp => ntp.symbol.enclosingClass == cls)
+        if (paramRefs.nonEmpty)
+          ctx.error("trait parameters cannot be used as parent prefixes", parent.pos)
+      case _ =>
+    }
+
   /** Check that a class and its companion object to not both define
    *  a class or module with same name
    */
@@ -961,6 +975,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     val cls = ctx.owner
     checkOverloadedRestrictions(cls)
     checkParents(cls)
+    if (cls.is(Trait)) tree.parents.foreach(checkParentPrefix(cls, _))
     checkCompanionNameClashes(cls)
     checkAllOverrides(cls)
     tree
