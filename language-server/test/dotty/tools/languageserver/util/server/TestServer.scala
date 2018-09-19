@@ -15,7 +15,10 @@ class TestServer(testFolder: Path) {
 
   private[this] def init(): InitializeResult = {
     // Fill the configuration with values populated by sbt
-    def showSeq[T](lst: Seq[T]): String = lst.map(elem => '"' + elem.toString + '"').mkString("[ ", ", ", " ]")
+    def showSeq[T](lst: Seq[T]): String =
+      lst
+        .map(elem => '"' + elem.toString.replace('\\', '/') + '"')
+        .mkString("[ ", ", ", " ]")
     val dottyIdeJson: String =
       s"""[ {
          |  "id" : "dotty-ide-test",
@@ -23,7 +26,7 @@ class TestServer(testFolder: Path) {
          |  "compilerArguments" : ${showSeq(BuildInfo.ideTestsCompilerArguments)},
          |  "sourceDirectories" : ${showSeq(BuildInfo.ideTestsSourceDirectories)},
          |  "dependencyClasspath" : ${showSeq(BuildInfo.ideTestsDependencyClasspath)},
-         |  "classDirectory" : "${BuildInfo.ideTestsClassDirectory}"
+         |  "classDirectory" : "${BuildInfo.ideTestsClassDirectory.toString().replace('\\','/')}"
          |}
          |]""".stripMargin
     val configFile = testFolder.resolve(DottyLanguageServer.IDE_CONFIG_FILE)
