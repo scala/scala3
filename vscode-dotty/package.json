@@ -2,7 +2,7 @@
   "name": "dotty",
   "displayName": "Dotty Language Server",
   "description": "IDE integration for Dotty, the experimental Scala compiler",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "license": "BSD-3-Clause",
   "publisher": "lampepfl",
   "repository": {
@@ -50,7 +50,7 @@
     "vscode:prepublish": "npm install && ./node_modules/.bin/tsc -p ./",
     "compile": "./node_modules/.bin/tsc -p ./",
     "test": "node ./node_modules/vscode/bin/test",
-    "postinstall": "node ./node_modules/vscode/bin/install && curl -L -o out/coursier https://github.com/coursier/coursier/raw/v1.0.0/coursier"
+    "postinstall": "node ./node_modules/vscode/bin/install && curl -L -o out/coursier https://github.com/coursier/coursier/raw/v1.1.0-M7/coursier"
   },
   "extensionDependencies": [
     "daltonjorge.scala"
