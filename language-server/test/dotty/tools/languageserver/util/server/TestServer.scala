@@ -26,7 +26,7 @@ class TestServer(testFolder: Path) {
          |  "compilerArguments" : ${showSeq(BuildInfo.ideTestsCompilerArguments)},
          |  "sourceDirectories" : ${showSeq(BuildInfo.ideTestsSourceDirectories)},
          |  "dependencyClasspath" : ${showSeq(BuildInfo.ideTestsDependencyClasspath)},
-         |  "classDirectory" : "${BuildInfo.ideTestsClassDirectory.toString().replace('\\','/')}"
+         |  "classDirectory" : "${BuildInfo.ideTestsClassDirectory.toString.replace('\\','/')}"
          |}
          |]""".stripMargin
     val configFile = testFolder.resolve(DottyLanguageServer.IDE_CONFIG_FILE)
