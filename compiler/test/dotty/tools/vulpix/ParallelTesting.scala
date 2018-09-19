@@ -286,8 +286,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       realStderr.println(msg + paddingRight)
     }
 
-    /** A `TimerTask` that prints a progress bar for the curent `Test` */
-    private def updateProgressMonitor: Unit = {
+    /** Print a progress bar for the curent `Test` */
+    private def updateProgressMonitor(): Unit = {
       val start = System.currentTimeMillis
       var tCompiled = testSourcesCompleted
       if (tCompiled < sourceCount) {
@@ -467,7 +467,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         val timer = new Timer()
         if (isInteractive && !suppressAllOutput) {
           val task = new TimerTask {
-            def run() = updateProgressMonitor
+            def run() = updateProgressMonitor()
           }
           timer.schedule(task, 100, 200)
         }
@@ -484,11 +484,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           throw new TimeoutException("Compiling targets timed out")
         }
 
-        // wait for the timer task to execute once
-        Thread.sleep(300)
-        timer.cancel()
-
         eventualResults.foreach(_.get)
+
+        // update progress one last time
+        updateProgressMonitor()
+        timer.cancel()
 
         if (didFail) {
           reportFailed()
