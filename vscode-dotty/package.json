@@ -48,6 +48,14 @@
           "type": "boolean",
           "default": true,
           "description": "If true, saving a worksheet will also run it."
+        },
+        "dotty.tracing.machineId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "ID of your machine used when Dotty Language Server tracing is turned on."
         }
       }
     },

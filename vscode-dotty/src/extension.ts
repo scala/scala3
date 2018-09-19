@@ -19,9 +19,14 @@ export let client: LanguageClient
 
 import * as rpc from 'vscode-jsonrpc'
 import * as sbtserver from './sbt-server'
+import { Tracer } from './tracer';
+
+const extensionName = 'dotty';
+const extensionConfig = vscode.workspace.getConfiguration(extensionName);
 
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
+let tracer: Tracer;
 
 /** The sbt process that may have been started by this extension */
 let sbtProcess: ChildProcess | undefined
@@ -46,6 +51,11 @@ function isConfiguredProject() {
 export function activate(context: ExtensionContext) {
   extensionContext = context
   outputChannel = vscode.window.createOutputChannel("Dotty");
+  tracer = new Tracer({
+    extensionContext,
+    extensionConfig,
+    extensionOut: outputChannel,
+  })
 
   const coursierPath = path.join(extensionContext.extensionPath, "out", "coursier");
   const dottyPluginSbtFileSource = path.join(extensionContext.extensionPath, "out", "dotty-plugin.sbt")
@@ -297,6 +307,10 @@ function bootstrapSbtProject(buildSbtFileSource: string,
 }
 
 function run(serverOptions: ServerOptions, isOldServer: boolean) {
+
+  tracer.initializeAsyncWorkspaceDump();
+  const tracingOutputChannel = tracer.createLspOutputChannel();
+
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
       { scheme: 'file', pattern: '**/*.sc' },
@@ -307,11 +321,11 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
     synchronize: {
       configurationSection: 'dotty'
     },
-    outputChannel: outputChannel,
+    outputChannel: tracingOutputChannel,
     revealOutputChannelOn: RevealOutputChannelOn.Never
   }
 
-  client = new LanguageClient("dotty", "Dotty", serverOptions, clientOptions)
+  client = new LanguageClient(extensionName, "Dotty", serverOptions, clientOptions)
   client.registerFeature(new features.WorksheetRunFeature(client))
 
   if (isOldServer)
@@ -320,4 +334,5 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
   // Push the disposable to the context's subscriptions so that the
   // client can be deactivated on extension deactivation
   extensionContext.subscriptions.push(client.start())
+  if (tracingOutputChannel) extensionContext.subscriptions.push(tracingOutputChannel);
 }
