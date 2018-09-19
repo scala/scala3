@@ -170,6 +170,9 @@ object DottyIDEPlugin extends AutoPlugin {
   override def requires: Plugins = plugins.JvmPlugin
   override def trigger = allRequirements
 
+  private val artifactFile = new File(".dotty-ide-artifact")
+  private val configFile = new File(".dotty-ide.json")
+
   def configureIDE = Command.command("configureIDE") { origState =>
     val (dottyVersion, projRefs, dottyState) = dottySetup(origState)
     val configs0 = runInAllIDEConfigurations(projectConfig, projRefs, dottyState).flatten
@@ -184,7 +187,7 @@ object DottyIDEPlugin extends AutoPlugin {
     val dlsVersion = dottyVersion
       .replace("-nonbootstrapped", "") // The language server is only published bootstrapped
     val dlsBinaryVersion = dlsVersion.split("\\.").take(2).mkString(".")
-    val pwArtifact = new PrintWriter(".dotty-ide-artifact")
+    val pwArtifact = new PrintWriter(artifactFile)
     try {
       pwArtifact.println(s"ch.epfl.lamp:dotty-language-server_${dlsBinaryVersion}:${dlsVersion}")
     } finally {
@@ -193,7 +196,7 @@ object DottyIDEPlugin extends AutoPlugin {
 
     val mapper = new ObjectMapper
     mapper.writerWithDefaultPrettyPrinter()
-      .writeValue(new File(".dotty-ide.json"), configs.toArray)
+      .writeValue(configFile, configs.toArray)
 
     origState
   }
@@ -203,6 +206,23 @@ object DottyIDEPlugin extends AutoPlugin {
     runInAllIDEConfigurations(compile, projRefs, dottyState)
 
     origState
+  }
+
+  def launchIDE = Command.command("launchIDE") { state0 =>
+    val state1 = try {
+      Command.process("configureIDE", state0)
+    } catch {
+      case i: Incomplete =>
+        if (artifactFile.exists && configFile.exists) {
+          state0.log.error("IDE configuration failed, launching the IDE using the previous configuration")
+          state0: State
+        } else {
+          state0.log.error("IDE configuration failed and no previous configuration found")
+          state0.log.error("Please fix the compilation errors then run 'launchIDE' again")
+          throw i
+        }
+    }
+    Command.process("runCode", state1)
   }
 
   private def projectConfigTask(config: Configuration): Initialize[Task[Option[ProjectConfig]]] = Def.taskDyn {
@@ -240,7 +260,7 @@ object DottyIDEPlugin extends AutoPlugin {
   )
 
   override def buildSettings: Seq[Setting[_]] = Seq(
-    commands ++= Seq(configureIDE, compileForIDE),
+    commands ++= Seq(configureIDE, compileForIDE, launchIDE),
 
     excludeFromIDE := false,
 
