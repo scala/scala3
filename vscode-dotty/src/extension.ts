@@ -7,7 +7,8 @@ import * as cpp from 'child-process-promise';
 
 import { ExtensionContext } from 'vscode';
 import * as vscode from 'vscode';
-import { LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-languageclient';
+import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn,
+         ServerOptions } from 'vscode-languageclient';
 
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
@@ -94,7 +95,8 @@ function run(serverOptions: ServerOptions) {
     ],
     synchronize: {
       configurationSection: 'dotty'
-    }
+    },
+    revealOutputChannelOn: RevealOutputChannelOn.Never
   }
 
   outputChannel.dispose()
