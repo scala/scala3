@@ -10,7 +10,8 @@ class SyntaxHighlightingTests extends DottyTest {
   import SyntaxHighlighting._
 
   private def test(source: String, expected: String): Unit = {
-    val highlighted = SyntaxHighlighting.highlight(source)(ctx)
+    val testCtx = ctx.fresh.setSetting(ctx.settings.color, "always")
+    val highlighted = SyntaxHighlighting.highlight(source)(testCtx)
       .replace(NoColor,         ">")
       .replace(CommentColor,    "<C|")
       .replace(KeywordColor,    "<K|")
