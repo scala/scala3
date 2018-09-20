@@ -254,7 +254,7 @@ object PatternMatcher {
        */
       def matchElemsPlan(seqSym: Symbol, args: List[Tree], exact: Boolean, onSuccess: Plan) = {
         val selectors = args.indices.toList.map(idx =>
-          ref(seqSym).select(nme.apply).appliedTo(Literal(Constant(idx))))
+          ref(seqSym).select(defn.Seq_apply.matchingMember(seqSym.info)).appliedTo(Literal(Constant(idx))))
         TestPlan(LengthTest(args.length, exact), seqSym, seqSym.pos,
           matchArgsPlan(selectors, args, onSuccess))
       }
@@ -265,8 +265,13 @@ object PatternMatcher {
       def unapplySeqPlan(getResult: Symbol, args: List[Tree]): Plan = args.lastOption match {
         case Some(VarArgPattern(arg)) =>
           val matchRemaining =
-            if (args.length == 1)
-              patternPlan(getResult, arg, onSuccess)
+            if (args.length == 1) {
+              val toSeq = ref(getResult)
+                .select(defn.Seq_toSeq.matchingMember(getResult.info))
+              letAbstract(toSeq) { toSeqResult =>
+                patternPlan(toSeqResult, arg, onSuccess)
+              }
+            }
             else {
               val dropped = ref(getResult)
                 .select(defn.Seq_drop.matchingMember(getResult.info))
@@ -638,11 +643,18 @@ object PatternMatcher {
         case EqualTest(tree) =>
           tree.equal(scrutinee)
         case LengthTest(len, exact) =>
-          scrutinee
-            .select(defn.Seq_lengthCompare.matchingMember(scrutinee.tpe))
-            .appliedTo(Literal(Constant(len)))
-            .select(if (exact) defn.Int_== else defn.Int_>=)
-            .appliedTo(Literal(Constant(0)))
+          val lengthCompareSym = defn.Seq_lengthCompare.matchingMember(scrutinee.tpe)
+          if (lengthCompareSym.exists)
+            scrutinee
+              .select(defn.Seq_lengthCompare.matchingMember(scrutinee.tpe))
+              .appliedTo(Literal(Constant(len)))
+              .select(if (exact) defn.Int_== else defn.Int_>=)
+              .appliedTo(Literal(Constant(0)))
+          else // try length
+            scrutinee
+              .select(defn.Seq_length.matchingMember(scrutinee.tpe))
+              .select(if (exact) defn.Int_== else defn.Int_>=)
+              .appliedTo(Literal(Constant(len)))
         case TypeTest(tpt) =>
           val expectedTp = tpt.tpe
 
