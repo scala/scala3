@@ -53,7 +53,7 @@ object SourceTree {
           Some(SourceTree(tree, sourceFile))
         case _ => None
       }
-      sourceTreeOfClass(sym.treeContaining(id))
+      sourceTreeOfClass(sym.rootTreeContaining(id))
     }
   }
 }
