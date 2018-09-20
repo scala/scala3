@@ -194,7 +194,28 @@ object DottyPlugin extends AutoPlugin {
         } else {
           Def.task { si }
         }
-      }.value
+      }.value,
+
+      scalaModuleInfo := {
+        val old = scalaModuleInfo.value
+        if (isDotty.value) {
+          // Turns off the warning:
+          // [warn] Binary version (0.9.0-RC1) for dependency ...;0.9.0-RC1
+          // [warn]  in ... differs from Scala binary version in project (0.9).
+          old.map(_.withCheckExplicit(false))
+        } else old
+      },
+
+      updateOptions := {
+        val old = updateOptions.value
+        if (isDotty.value) {
+          // Turn off the warning:
+          //  circular dependency found:
+          //    ch.epfl.lamp#scala-library;0.9.0-RC1->ch.epfl.lamp#dotty-library_0.9;0.9.0-RC1->...
+          // (This should go away once we merge dotty-library and scala-library in one artefact)
+          old.withCircularDependencyLevel(sbt.librarymanagement.ivy.CircularDependencyLevel.Ignore)
+        } else old
+      }
     )
   }
 

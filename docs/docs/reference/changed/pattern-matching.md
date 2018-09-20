@@ -63,12 +63,23 @@ object FirstChars {
 ```
 
 
-## Seq Pattern
+## Name-based Seq Pattern
 
 - Extractor defines `def unapplySeq(x: T): U`
 - `U` has (parameterless `def` or `val`) members `isEmpty: Boolean` and `get: S`
-- `S <: Seq[V]`
-- Pattern-matching on `N` pattern with types `V, V, ..., V`, where `N` is the runtime size of the `Seq`.
+- `S` conforms to `X`, `T2` and `T3` conform to `T1`
+
+```Scala
+type X = {
+  def lengthCompare(len: Int): Int // or, `def length: Int`
+  def apply(i: Int): T1
+  def drop(n: Int): scala.Seq[T2]
+  def toSeq: scala.Seq[T3]
+}
+```
+
+- Pattern-matching on _exactly_ `N` simple patterns with types `T1, T1, ..., T1`, where `N` is the runtime size of the sequence, or
+- Pattern-matching on `>= N` simple patterns and _a vararg pattern_ (e.g., `xs: _*`) with types `T1, T1, ..., T1, Seq[T1]`, where `N` is the minimum size of the sequence.
 
 <!-- To be kept in sync with tests/new/patmat-spec.scala -->
 
@@ -87,7 +98,7 @@ object CharList {
 ```
 
 
-## Name Based Pattern
+## Name-based Pattern
 
 - Extractor defines `def unapply(x: T): U`
 - `U` has (parameterless `def` or `val`) members `isEmpty: Boolean` and `get: S`

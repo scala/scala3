@@ -101,13 +101,44 @@ object Applications {
       Nil
     }
 
+    /** If `getType` is of the form:
+     *  ```
+     *  {
+     *    def lengthCompare(len: Int): Int // or, def length: Int
+     *    def apply(i: Int): T = a(i)
+     *    def drop(n: Int): scala.Seq[T]
+     *    def toSeq: scala.Seq[T]
+     *  }
+     *  ```
+     *  returns `T`, otherwise NoType.
+     */
+    def unapplySeqTypeElemTp(getTp: Type): Type = {
+      def lengthTp = ExprType(defn.IntType)
+      def lengthCompareTp = MethodType(List(defn.IntType), defn.IntType)
+      def applyTp(elemTp: Type) = MethodType(List(defn.IntType), elemTp)
+      def dropTp(elemTp: Type) = MethodType(List(defn.IntType), defn.SeqType.appliedTo(elemTp))
+      def toSeqTp(elemTp: Type) = ExprType(defn.SeqType.appliedTo(elemTp))
+
+      // the result type of `def apply(i: Int): T`
+      val elemTp = getTp.member(nme.apply).suchThat(_.info <:< applyTp(WildcardType)).info.resultType
+
+      def hasMethod(name: Name, tp: Type) =
+        getTp.member(name).suchThat(getTp.memberInfo(_) <:< tp).exists
+
+      val isValid =
+        elemTp.exists &&
+        (hasMethod(nme.lengthCompare, lengthCompareTp) || hasMethod(nme.length, lengthTp)) &&
+        hasMethod(nme.drop, dropTp(elemTp)) &&
+        hasMethod(nme.toSeq, toSeqTp(elemTp))
+
+      if (isValid) elemTp else NoType
+    }
+
     if (unapplyName == nme.unapplySeq) {
-      if (unapplyResult derivesFrom defn.SeqClass)
-        seqSelector :: Nil
-      else if (isGetMatch(unapplyResult, pos) && getTp.derivesFrom(defn.SeqClass)) {
-        val seqArg = (if (ctx.isDependent) getTp.widenTermRefExpr.annotatedToRepeated.dealiasKeepAnnots else getTp)
-          .elemType.hiBound
-        if (seqArg.exists) args.map(Function.const(seqArg))
+      if (isGetMatch(unapplyResult, pos)) {
+        val depGetTp = if (ctx.isDependent) getTp.widenTermRefExpr.annotatedToRepeated.dealiasKeepAnnots else getTp
+        val elemTp = unapplySeqTypeElemTp(depGetTp)
+        if (elemTp.exists) args.map(Function.const(elemTp))
         else fail
       }
       else fail
