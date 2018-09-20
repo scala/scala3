@@ -431,6 +431,25 @@ object Symbols {
       myCoord = c
     }
 
+    private[this] var myDefTree: Tree = null
+
+    /** The tree defining the symbol at pickler time, EmptyTree if none was retained */
+    def defTree: Tree =
+      if (myDefTree == null) tpd.EmptyTree else myDefTree
+
+    /** Set defining tree if this symbol retains its definition tree */
+    def defTree_=(tree: Tree)(implicit ctx: Context) =
+      if (retainsDefTree) myDefTree = tree
+
+    /** Does this symbol retain its definition tree?
+     *  A good policy for this needs to balance costs and benefits, where
+     *  costs are mainly memoty leaks, in particular across runs.
+     */
+    def retainsDefTree(implicit ctx: Context): Boolean =
+      ctx.settings.YretainTrees.value ||
+      denot.owner.isTerm || // no risk of leaking memory after a run for these
+      denot.is(Inline)      // need to keep inline info
+
     /** The last denotation of this symbol */
     private[this] var lastDenot: SymDenotation = _
     private[this] var checkedPeriod: Period = Nowhere

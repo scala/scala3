@@ -832,6 +832,7 @@ class TreeUnpickler(reader: TastyReader,
         // Child annotations for local classes and enum values are not pickled, so
         // need to be re-established here.
         sym.registerIfChild(late = true)
+      sym.defTree = tree
 
       if (ctx.mode.is(Mode.ReadComments)) {
         assert(ctx.docCtx.isDefined, "Mode is `ReadComments`, but no `docCtx` is set.")
