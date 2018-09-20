@@ -16,7 +16,7 @@ import xerial.sbt.pack.PackPlugin
 import xerial.sbt.pack.PackPlugin.autoImport._
 
 import dotty.tools.sbtplugin.DottyPlugin.autoImport._
-import dotty.tools.sbtplugin.DottyIDEPlugin.{ prepareCommand, runProcess }
+import dotty.tools.sbtplugin.DottyIDEPlugin.{ installCodeExtension, prepareCommand, runProcess }
 import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
 
 import sbtbuildinfo.BuildInfoPlugin
@@ -988,27 +988,27 @@ object Build {
         val coursier = workingDir / "out" / "coursier"
         val packageJson = workingDir / "package.json"
         if (!coursier.exists || packageJson.lastModified > coursier.lastModified)
-          runProcess(Seq("npm", "install"), wait = true, directory = workingDir)
+          runProcess(Seq("npm", "install"), wait = true, directory = Some(workingDir))
         val tsc = workingDir / "node_modules" / ".bin" / "tsc"
         runProcess(Seq(tsc.getAbsolutePath, "--pretty", "--project", workingDir.getAbsolutePath), wait = true)
 
         // Currently, vscode-dotty depends on daltonjorge.scala for syntax highlighting,
         // this is not automatically installed when starting the extension in development mode
         // (--extensionDevelopmentPath=...)
-        runProcess(codeCommand.value ++ Seq("--install-extension", "daltonjorge.scala"), wait = true)
+        installCodeExtension(codeCommand.value, "daltonjorge.scala")
 
         sbt.internal.inc.Analysis.Empty
       }.dependsOn(managedResources in Compile).value,
       sbt.Keys.`package`:= {
-        runProcess(Seq("vsce", "package"), wait = true, directory = baseDirectory.value)
+        runProcess(Seq("vsce", "package"), wait = true, directory = Some(baseDirectory.value))
 
         baseDirectory.value / s"dotty-${version.value}.vsix"
       },
       unpublish := {
-        runProcess(Seq("vsce", "unpublish"), wait = true, directory = baseDirectory.value)
+        runProcess(Seq("vsce", "unpublish"), wait = true, directory = Some(baseDirectory.value))
       },
       publish := {
-        runProcess(Seq("vsce", "publish"), wait = true, directory = baseDirectory.value)
+        runProcess(Seq("vsce", "publish"), wait = true, directory = Some(baseDirectory.value))
       },
       run := Def.inputTask {
         val inputArgs = spaceDelimited("<arg>").parsed
