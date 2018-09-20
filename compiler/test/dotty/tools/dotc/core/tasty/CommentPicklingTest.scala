@@ -112,7 +112,7 @@ class CommentPicklingTest {
       val trees = files.flatMap { f =>
         val unpickler = new DottyUnpickler(f.bytes().toArray)
         unpickler.enter(roots = Set.empty)
-        unpickler.trees(ctx)
+        unpickler.rootTrees(ctx)
       }
       fn(trees, ctx)
     }

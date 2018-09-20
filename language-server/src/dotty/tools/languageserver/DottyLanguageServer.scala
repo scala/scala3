@@ -262,7 +262,7 @@ class DottyLanguageServer extends LanguageServer
             && funSym.owner.is(CaseClass)) {
             funSym.owner.info.member(name).symbol
           } else {
-            val classTree = funSym.topLevelClass.asClass.tree
+            val classTree = funSym.topLevelClass.asClass.rootTree
             tpd.defPath(funSym, classTree).lastOption.flatMap {
               case DefDef(_, _, paramss, _, _) =>
                 paramss.flatten.find(_.name == name).map(_.symbol)
