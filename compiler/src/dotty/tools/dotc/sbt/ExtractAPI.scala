@@ -166,7 +166,7 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     api.Annotation.of(api.Constant.of(Constants.emptyType, name), Array())
   val orMarker = marker("Or")
   val byNameMarker = marker("ByName")
-
+  val matchMarker = marker("Match")
 
   /** Extract the API representation of a source file */
   def apiSource(tree: Tree): Seq[api.ClassLike] = {
@@ -507,6 +507,9 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
         withMarker(s, orMarker)
       case ExprType(resultType) =>
         withMarker(apiType(resultType), byNameMarker)
+      case MatchType(bound, scrut, cases) =>
+        val s = combineApiTypes(apiType(bound) :: apiType(scrut) :: cases.map(apiType): _*)
+        withMarker(s, matchMarker)
       case ConstantType(constant) =>
         api.Constant.of(apiType(constant.tpe), constant.stringValue)
       case AnnotatedType(tpe, annot) =>

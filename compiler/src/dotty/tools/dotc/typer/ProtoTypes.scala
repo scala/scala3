@@ -447,14 +447,17 @@ object ProtoTypes {
    *  If the constraint contains already some of these parameters in its domain,
    *  make a copy of the type lambda and add the copy's type parameters instead.
    *  Return either the original type lambda, or the copy, if one was made.
-   *  Also, if `owningTree` is non-empty, add a type variable for each parameter.
+   *  Also, if `owningTree` is non-empty ot `alwaysAddTypeVars` is true, add a type variable
+   *  for each parameter.
    *  @return  The added type lambda, and the list of created type variables.
    */
   def constrained(tl: TypeLambda, owningTree: untpd.Tree, alwaysAddTypeVars: Boolean = false)(implicit ctx: Context): (TypeLambda, List[TypeTree]) = {
     val state = ctx.typerState
     val addTypeVars = alwaysAddTypeVars || !owningTree.isEmpty
-    assert(!(ctx.typerState.isCommittable && !addTypeVars),
-      s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
+    if (tl.isInstanceOf[PolyType])
+      assert(!(ctx.typerState.isCommittable && !addTypeVars),
+        s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
+      // hk type lambdas can be added to constraints without typevars during match reduction
 
     def newTypeVars(tl: TypeLambda): List[TypeTree] =
       for (paramRef <- tl.paramRefs)
@@ -573,8 +576,8 @@ object ProtoTypes {
           wildApprox(tp.parent, theMap, seen),
           tp.refinedName,
           wildApprox(tp.refinedInfo, theMap, seen))
-    case tp: TypeAlias => // default case, inlined for speed
-      tp.derivedTypeAlias(wildApprox(tp.alias, theMap, seen))
+    case tp: AliasingBounds => // default case, inlined for speed
+      tp.derivedAlias(wildApprox(tp.alias, theMap, seen))
     case tp @ TypeParamRef(poly, pnum) =>
       def wildApproxBounds(bounds: TypeBounds) =
         if (seen.contains(tp)) WildcardType

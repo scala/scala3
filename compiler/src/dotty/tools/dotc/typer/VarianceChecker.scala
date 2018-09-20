@@ -95,6 +95,8 @@ class VarianceChecker()(implicit ctx: Context) {
             this(status, tp.resultType) // params will be checked in their TypeDef or ValDef nodes.
           case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
             status
+          case tp: MatchType =>
+            apply(status, tp.bound)
           case tp: ClassInfo =>
             foldOver(status, tp.classParents)
           case _ =>

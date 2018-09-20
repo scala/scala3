@@ -101,11 +101,12 @@ Standard-Section: "ASTs" TopLevelStat*
                   SINGLETONtpt          ref_Term
                   REFINEDtpt     Length underlying_Term refinement_Stat*
                   APPLIEDtpt     Length tycon_Term arg_Term*
-                  POLYtpt        Length TypeParam* body_Term
+                  LAMBDAtpt      Length TypeParam* body_Term
                   TYPEBOUNDStpt  Length low_Term high_Term?
                   ANNOTATEDtpt   Length underlying_Term fullAnnotation_Term
                   ANDtpt         Length left_Term right_Term
                   ORtpt          Length left_Term right_Term
+                  MATCHtpt       Length bound_Term? sel_Term CaseDef*
                   BYNAMEtpt             underlying_Term
                   EMPTYTREE
                   SHAREDterm            term_ASTRef
@@ -157,6 +158,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   ANNOTATEDtype  Length underlying_Type fullAnnotation_Term
                   ANDtype        Length left_Type right_Type
                   ORtype         Length left_Type right_Type
+                  MATCHtype      Length bound_Type sel_Type case_Type*
                   BIND           Length boundName_NameRef bounds_Type
                                         // for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type
@@ -431,6 +433,9 @@ object TastyFormat {
   final val ERASEDMETHODtype = 178
   final val ERASEDIMPLICITMETHODtype = 179
 
+  final val MATCHtype = 180
+  final val MATCHtpt = 181
+
   final val UNTYPEDSPLICE = 199
 
   // Tags for untyped trees only:
@@ -459,7 +464,7 @@ object TastyFormat {
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
-    firstLengthTreeTag <= tag && tag <= TYPEREFin ||
+    firstLengthTreeTag <= tag && tag <= MATCHtpt ||
     tag == HOLE
 
   def isParamTag(tag: Int) = tag == PARAM || tag == TYPEPARAM
@@ -513,6 +518,7 @@ object TastyFormat {
        | ANDtpt
        | ORtpt
        | BYNAMEtpt
+       | MATCHtpt
        | BIND => true
     case _ => false
   }
@@ -648,6 +654,8 @@ object TastyFormat {
     case ERASEDIMPLICITMETHODtype => "ERASEDIMPLICITMETHODtype"
     case TYPELAMBDAtype => "TYPELAMBDAtype"
     case LAMBDAtpt => "LAMBDAtpt"
+    case MATCHtype => "MATCHtype"
+    case MATCHtpt => "MATCHtpt"
     case PARAMtype => "PARAMtype"
     case ANNOTATION => "ANNOTATION"
     case PRIVATEqualified => "PRIVATEqualified"

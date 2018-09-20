@@ -141,6 +141,7 @@ class Erasure extends Phase with DenotTransformer {
     assert(isErasedType(tp) ||
            isAllowed(defn.ArrayClass, "Array.scala") ||
            isAllowed(defn.TupleClass, "Tuple.scala") ||
+           isAllowed(defn.NonEmptyTupleClass, "Tuple.scala") ||
            isAllowed(defn.PairClass, "Tuple.scala"),
         i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase.prev}")
   }

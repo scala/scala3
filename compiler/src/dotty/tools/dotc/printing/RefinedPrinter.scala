@@ -24,7 +24,8 @@ import TypeApplications._
 import Decorators._
 import config.Config
 import util.Positions._
-import dotty.tools.dotc.transform.SymUtils._
+import transform.SymUtils._
+import transform.TypeUtils._
 import dotty.tools.dotc.transform.FirstTransform
 
 import scala.annotation.switch
@@ -176,11 +177,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     homogenize(tp) match {
-      case AppliedType(tycon, args) =>
+      case tp @ AppliedType(tycon, args) =>
         val cls = tycon.typeSymbol
         if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
         if (defn.isFunctionClass(cls)) return toTextFunction(args, cls.name.isImplicitFunction, cls.name.isErasedFunction)
-        if (defn.isTupleClass(cls)) return toTextTuple(args)
+        if (tp.tupleArity >= 2) return toTextTuple(tp.tupleElementTypes)
         if (isInfixType(tp)) {
           val l :: r :: Nil = args
           val opName = tyconName(tycon)
@@ -411,6 +412,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case LambdaTypeTree(tparams, body) =>
         changePrec(GlobalPrec) {
           tparamsText(tparams) ~ " -> " ~ toText(body)
+        }
+      case MatchTypeTree(bound, sel, cases) =>
+        changePrec(GlobalPrec) {
+          toText(sel) ~ keywordStr(" match ") ~ blockText(cases) ~
+          (" <: " ~ toText(bound) provided !bound.isEmpty)
         }
       case ByNameTypeTree(tpt) =>
         "=> " ~ toTextLocal(tpt)

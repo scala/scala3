@@ -349,8 +349,29 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     else result
   }
 
+  def tryConstValue: Tree =
+    ctx.typeComparer.constValue(callTypeArgs.head.tpe) match {
+      case Some(c) => Literal(c).withPos(call.pos)
+      case _ => EmptyTree
+    }
+
   /** The Inlined node representing the inlined call */
-  def inlined(pt: Type) = {
+  def inlined(pt: Type): Tree = {
+
+    if (callTypeArgs.length == 1)
+      if (inlinedMethod == defn.Typelevel_constValue) {
+        val constVal = tryConstValue
+        if (!constVal.isEmpty) return constVal
+        ctx.error(i"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.pos)
+      }
+      else if (inlinedMethod == defn.Typelevel_constValueOpt) {
+        val constVal = tryConstValue
+        return (
+          if (constVal.isEmpty) ref(defn.NoneModuleRef)
+          else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), constVal :: Nil)
+        )
+      }
+
     // Compute bindings for all parameters, appending them to bindingsBuf
     computeParamBindings(inlinedMethod.info, callTypeArgs, callValueArgss)
 
@@ -393,7 +414,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           }
         case tree: Ident =>
           paramProxy.get(tree.tpe) match {
-            case Some(t) if tree.isTerm && t.isSingleton => singleton(t).withPos(tree.pos)
+            case Some(t) if tree.isTerm && t.isSingleton => singleton(t.dealias).withPos(tree.pos)
             case Some(t) if tree.isType => TypeTree(t).withPos(tree.pos)
             case _ => tree
           }
@@ -425,6 +446,34 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         expansion
     }
 
+    def issueError() = callValueArgss match {
+      case (msgArg :: rest) :: Nil =>
+        msgArg.tpe match {
+          case ConstantType(Constant(msg: String)) =>
+            // Usually `error` is called from within a rewrite method. In this
+            // case we need to report the error at the point of the outermost enclosing inline
+            // call. This way, a defensively written rewrite methid can always
+            // report bad inputs at the point of call instead of revealing its internals.
+            val callToReport = if (enclosingInlineds.nonEmpty) enclosingInlineds.last else call
+            val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(_).nonEmpty).next
+            def issueInCtx(implicit ctx: Context) = {
+              def decompose(arg: Tree): String = arg match {
+                case Typed(arg, _) => decompose(arg)
+                case SeqLiteral(elems, _) => elems.map(decompose).mkString(", ")
+                case arg =>
+                  arg.tpe.widenTermRefExpr match {
+                    case ConstantType(Constant(c)) => c.toString
+                    case _ => arg.show
+                  }
+              }
+              ctx.error(s"$msg${rest.map(decompose).mkString(", ")}", callToReport.pos)
+            }
+            issueInCtx(ctxToReport)
+          case _ =>
+        }
+      case _ =>
+    }
+
     trace(i"inlining $call", inlining, show = true) {
 
       // The normalized bindings collected in `bindingsBuf`
@@ -443,6 +492,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       val matchBindings = reducer.matchBindingsBuf.toList
       val (finalBindings, finalExpansion) = dropUnusedDefs(bindingsBuf.toList ++ matchBindings, expansion1)
       val (finalMatchBindings, finalArgBindings) = finalBindings.partition(matchBindings.contains(_))
+
+      if (inlinedMethod == defn.Typelevel_error) issueError()
 
       // Take care that only argument bindings go into `bindings`, since positions are
       // different for bindings from arguments and bindings from body.

@@ -263,7 +263,7 @@ class ReplDriver(settings: Array[String],
           .filter(_.symbol.name.is(SimpleNameKind))
 
       val typeAliases =
-        info.bounds.hi.typeMembers.filter(_.symbol.info.isInstanceOf[TypeAlias])
+        info.bounds.hi.typeMembers.filter(_.symbol.info.isTypeAlias)
 
       (
         typeAliases.map("// defined alias " + _.symbol.showUser) ++
