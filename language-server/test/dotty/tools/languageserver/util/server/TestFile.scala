@@ -5,7 +5,7 @@ import java.nio.file.{Path, Paths}
 import org.eclipse.lsp4j.TextDocumentIdentifier
 
 class TestFile(val file: String) extends AnyVal {
-  def uri: String = s"file://${TestFile.sourceDir}/$file"
+  def uri: String = TestFile.sourceDir.resolve(file).toUri.toString
 }
 
 object TestFile {
