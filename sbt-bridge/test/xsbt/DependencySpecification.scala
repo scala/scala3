@@ -92,7 +92,7 @@ class DependencySpecification {
       """object A {
         |   def foo = { B; () }
         |}""".stripMargin
-    val srcB = "object B { println("foo") }"
+    val srcB = """object B { println("foo") }"""
 
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val classDependencies =
