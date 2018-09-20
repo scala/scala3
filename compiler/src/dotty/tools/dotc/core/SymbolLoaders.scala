@@ -382,8 +382,8 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
     if (mayLoadTreesFromTasty) {
       result match {
         case Some(unpickler: tasty.DottyUnpickler) =>
-          classRoot.classSymbol.treeOrProvider = unpickler
-          moduleRoot.classSymbol.treeOrProvider = unpickler
+          classRoot.classSymbol.rootTreeOrProvider = unpickler
+          moduleRoot.classSymbol.rootTreeOrProvider = unpickler
         case _ =>
       }
     }
