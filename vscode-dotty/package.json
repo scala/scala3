@@ -74,7 +74,8 @@
     "child-process-promise": "^2.2.1",
     "compare-versions": "^3.4.0",
     "vscode-languageclient": "^5.1.0",
-    "vscode-languageserver": "^5.1.0"
+    "vscode-languageserver": "^5.1.0",
+    "vscode-jsonrpc": "4.0.0"
   },
   "devDependencies": {
     "@types/compare-versions": "^3.0.0",
