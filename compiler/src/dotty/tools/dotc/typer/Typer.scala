@@ -1137,6 +1137,12 @@ class Typer extends Namer
     assignType(cpy.Return(tree)(expr1, from))
   }
 
+  def typedWhileDo(tree: untpd.WhileDo)(implicit ctx: Context): Tree = track("typedWhileDo") {
+    val cond1 = typed(tree.cond, defn.BooleanType)
+    val body1 = typed(tree.body, defn.UnitType)
+    assignType(cpy.WhileDo(tree)(cond1, body1))
+  }
+
   def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = track("typedTry") {
     val expr2 :: cases2x = harmonic(harmonize) {
       val expr1 = typed(tree.expr, pt.notApplied)
@@ -1889,6 +1895,7 @@ class Typer extends Namer
           case tree: untpd.Import => typedImport(tree, retrieveSym(tree))
           case tree: untpd.Match => typedMatch(tree, pt)
           case tree: untpd.Return => typedReturn(tree)
+          case tree: untpd.WhileDo => typedWhileDo(tree)
           case tree: untpd.Try => typedTry(tree, pt)
           case tree: untpd.Throw => typedThrow(tree)
           case tree: untpd.TypeApply => typedTypeApply(tree, pt)

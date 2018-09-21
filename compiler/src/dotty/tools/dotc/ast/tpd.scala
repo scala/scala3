@@ -129,6 +129,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Return(expr: Tree, from: Tree)(implicit ctx: Context): Return =
     ta.assignType(untpd.Return(expr, from))
 
+  def WhileDo(cond: Tree, body: Tree)(implicit ctx: Context): WhileDo =
+    ta.assignType(untpd.WhileDo(cond, body))
+
   def Try(block: Tree, cases: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try =
     ta.assignType(untpd.Try(block, cases, finalizer), block, cases)
 
@@ -608,6 +611,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def Return(tree: Tree)(expr: Tree, from: Tree)(implicit ctx: Context): Return =
       ta.assignType(untpd.cpy.Return(tree)(expr, from))
+
+    override def WhileDo(tree: Tree)(cond: Tree, body: Tree)(implicit ctx: Context): WhileDo =
+      ta.assignType(untpd.cpy.WhileDo(tree)(cond, body))
 
     override def Try(tree: Tree)(expr: Tree, cases: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try = {
       val tree1 = untpd.cpy.Try(tree)(expr, cases, finalizer)

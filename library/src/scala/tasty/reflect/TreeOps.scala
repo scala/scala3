@@ -298,12 +298,6 @@ trait TreeOps extends TastyCore {
       /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
       def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)]
     }
-
-    val DoWhile: DoWhileExtractor
-    abstract class DoWhileExtractor {
-      /** Extractor for do while loops. Matches `do <body> while (<cond>)` and returns (<body>, <cond>) */
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Term, Term)]
-    }
   }
 
   implicit def termAsParent(term: Term): Parent

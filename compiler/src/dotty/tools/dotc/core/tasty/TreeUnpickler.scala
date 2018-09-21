@@ -1080,6 +1080,8 @@ class TreeUnpickler(reader: TastyReader,
               val from = readSymRef()
               val expr = ifBefore(end)(readTerm(), EmptyTree)
               Return(expr, Ident(from.termRef))
+            case WHILE =>
+              WhileDo(readTerm(), readTerm())
             case TRY =>
               Try(readTerm(), readCases(end), ifBefore(end)(readTerm(), EmptyTree))
             case SELECTouter =>
@@ -1331,6 +1333,8 @@ class TreeUnpickler(reader: TastyReader,
             readNat()
             val expr = ifBefore(end)(readUntyped(), untpd.EmptyTree)
             untpd.Return(expr, untpd.EmptyTree)
+          case WHILE =>
+            untpd.WhileDo(readUntyped(), readUntyped())
           case TRY =>
             untpd.Try(readUntyped(), readCases(end), ifBefore(end)(readUntyped(), untpd.EmptyTree))
           case BIND =>
