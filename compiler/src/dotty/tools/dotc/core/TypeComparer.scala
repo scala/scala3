@@ -325,7 +325,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
           true
         }
         def compareTypeParamRef =
-          ctx.mode.is(Mode.TypevarsMissContext) ||
+          assumedTrue(tp1) ||
           isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
             if (canConstrain(tp1) && !approx.high)
               addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
@@ -428,7 +428,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         thirdTryNamed(tp2)
       case tp2: TypeParamRef =>
         def compareTypeParamRef =
-          (ctx.mode is Mode.TypevarsMissContext) || {
+          assumedTrue(tp2) || {
           val alwaysTrue =
             // The following condition is carefully formulated to catch all cases
             // where the subtype relation is true without needing to add a constraint
@@ -787,9 +787,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
                     tl => tparams1.map(tparam => tl.integrate(tparams, tparam.paramInfo).bounds),
                     tl => tp1base.tycon.appliedTo(args1.take(lengthDiff) ++
                             tparams1.indices.toList.map(tl.paramRefs(_))))
-                (ctx.mode.is(Mode.TypevarsMissContext) ||
-                  tryInstantiate(tycon2, tycon1.ensureLambdaSub)) &&
-                  recur(tp1, tycon1.appliedTo(args2))
+                (assumedTrue(tycon2) || tryInstantiate(tycon2, tycon1.ensureLambdaSub)) &&
+                recur(tp1, tycon1.appliedTo(args2))
               }
             }
           case _ => false

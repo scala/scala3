@@ -363,6 +363,13 @@ trait ConstraintHandling {
   final def canConstrain(param: TypeParamRef): Boolean =
     (!frozenConstraint || (caseLambda `eq` param.binder)) && constraint.contains(param)
 
+  /** Is `param` assumed to be a sub- and super-type of any other type?
+   *  This holds if `TypeVarsMissContext` is set unless `param` is a part
+   *  of a MatchType that is currently normalized.
+   */
+  final def assumedTrue(param: TypeParamRef): Boolean =
+    ctx.mode.is(Mode.TypevarsMissContext) && (caseLambda `ne` param.binder)
+
   /** Add constraint `param <: bound` if `fromBelow` is false, `param >: bound` otherwise.
    *  `bound` is assumed to be in normalized form, as specified in `firstTry` and
    *  `secondTry` of `TypeComparer`. In particular, it should not be an alias type,
