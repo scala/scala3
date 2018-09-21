@@ -30,7 +30,7 @@ class SyntaxHighlightingTests extends DottyTest {
   @Test
   @Ignore("Comments are currently not supported")
   def comments = {
-    test("//a", "<C|//a>")
+    test("// a", "<C|// a>")
     test("/** a */", "<C|/** a */>")
     test("/* a */", "<C|/* a */>")
   }
@@ -50,7 +50,7 @@ class SyntaxHighlightingTests extends DottyTest {
     test("1.1", "<L|1.1>")
     test("1.1.toString", "<L|1.1>.toString")
     test("1L", "<L|1L>")
-    test("1Lx", "1Lx")
+    test("1Lx", "<L|1L>x")
     test("1f", "<L|1f>")
     test("1.1f", "<L|1.1f>")
     test("1.1fx", "1.1fx")
@@ -94,9 +94,9 @@ class SyntaxHighlightingTests extends DottyTest {
     test("var",                "<K|var>")
     test("var foo",            "<K|var> <V|foo>")
     test("var foo:",           "<K|var> <V|foo>:")
-    test("var foo: Int",       "<K|var> <V|foo>: <T|int>")
-    test("var foo: Int =",     "<K|var> <V|foo>: <T|int> =")
-    test("var foo: Int = 123", "<K|var> <V|foo>: <T|int> = <L|123>")
+    test("var foo: Int",       "<K|var> <V|foo>: <T|Int>")
+    test("var foo: Int =",     "<K|var> <V|foo>: <T|Int> =")
+    test("var foo: Int = 123", "<K|var> <V|foo>: <T|Int> = <L|123>")
 
     test("def",                          "<K|def>")
     test("def foo",                      "<K|def> <V|foo>")

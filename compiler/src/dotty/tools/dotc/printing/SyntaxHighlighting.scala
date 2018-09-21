@@ -57,13 +57,17 @@ object SyntaxHighlighting {
         scanner.nextToken()
         val end = scanner.lastOffset
 
-        if (alphaKeywords.contains(token))
+        // Branch order is important. For example,
+        // `true` is at the same time a keyword and a literal
+        if (literalTokens.contains(token))
+          highlightRange(start, end, LiteralColor)
+        else if (alphaKeywords.contains(token))
           highlightRange(start, end, KeywordColor)
         else if (token == IDENTIFIER && name == nme.???)
           highlightRange(start, end, Console.RED_B)
       }
 
-      val treeHighlighter = new untpd.UntypedTreeTraverser {
+      object TreeHighlighter extends untpd.UntypedTreeTraverser {
         import untpd._
 
         def ignored(tree: NameTree) = {
@@ -71,6 +75,9 @@ object SyntaxHighlighting {
           // trees named <error> and <init> have weird positions
           name == nme.ERROR || name == nme.CONSTRUCTOR
         }
+
+        def highlight(trees: List[Tree])(implicit ctx: Context): Unit =
+          trees.foreach(traverse)
 
         def traverse(tree: Tree)(implicit ctx: Context): Unit = {
           tree match {
@@ -85,8 +92,6 @@ object SyntaxHighlighting {
               highlightPosition(tree.pos, TypeColor)
             case _: TypTree =>
               highlightPosition(tree.pos, TypeColor)
-            case _: Literal =>
-              highlightPosition(tree.pos, LiteralColor)
             case _ =>
           }
           traverseChildren(tree)
@@ -95,8 +100,7 @@ object SyntaxHighlighting {
 
       val parser = new Parser(source)
       val trees = parser.blockStatSeq()
-      for (tree <- trees)
-        treeHighlighter.traverse(tree)
+      TreeHighlighter.highlight(trees)
 
       val highlighted = new StringBuilder()
 
