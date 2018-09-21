@@ -81,7 +81,7 @@ object ProtoTypes {
      *  achieved by replacing expected type parameters with wildcards.
      */
     def constrainResult(meth: Symbol, mt: Type, pt: Type)(implicit ctx: Context): Boolean =
-      if (Inliner.isInlineable(meth)) {
+      if (Inliner.isInlineable(meth) && !Inliner.typedInline) {
         constrainResult(mt, wildApprox(pt))
         true
       }

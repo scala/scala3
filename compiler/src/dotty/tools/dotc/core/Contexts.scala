@@ -309,7 +309,7 @@ object Contexts {
 
     /** Is this a context for typechecking an inlined body? */
     def isInlineContext: Boolean =
-      typer.isInstanceOf[Inliner#InlineTyper]
+      typer.isInstanceOf[Inliner#InlineTyping]
 
     /** The next outer context whose tree is a template or package definition
      *  Note: Currently unused

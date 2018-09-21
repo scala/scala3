@@ -34,6 +34,8 @@ import ast.TreeInfo
 object Inliner {
   import tpd._
 
+  val typedInline = true
+
   /** A key to be used in a context property that provides a map from enclosing implicit
    *  value bindings to their right hand sides.
    */
@@ -382,7 +384,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     // Compute bindings for all this-proxies, appending them to bindingsBuf
     computeThisBindings()
 
-    val inlineTyper = new InlineTyper
+    val inlineTyper =
+      if (typedInline) new InlineReTyper else new TransparentTyper
+
     val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
 
     // A tree type map to prepare the inlined body for typechecked.
@@ -857,7 +861,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    *  4. Make sure inlined code is type-correct.
    *  5. Make sure that the tree's typing is idempotent (so that future -Ycheck passes succeed)
    */
-  class InlineTyper extends Typer {
+  trait InlineTyping extends Typer {
     import reducer._
 
     override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
@@ -872,12 +876,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       }
       super.ensureAccessible(tpe, superAccess, pos)
     }
-
-    override def typedTypedSplice(tree: untpd.TypedSplice)(implicit ctx: Context): Tree =
-      reduceProjection(tryInline(tree.splice) `orElse` super.typedTypedSplice(tree))
-
-    override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context) =
-      constToLiteral(reduceProjection(super.typedSelect(tree, pt)))
 
     override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) =
       typed(tree.cond, defn.BooleanType) match {
@@ -894,6 +892,19 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
           super.typedIf(if1, pt)
       }
+
+    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) =
+      constToLiteral(betaReduce(super.typedApply(tree, pt)))
+  }
+
+  private class TransparentTyper extends Typer with InlineTyping {
+    import reducer._
+
+    override def typedTypedSplice(tree: untpd.TypedSplice)(implicit ctx: Context): Tree =
+      reduceProjection(tryInline(tree.splice) `orElse` super.typedTypedSplice(tree))
+
+    override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context) =
+      constToLiteral(reduceProjection(super.typedSelect(tree, pt)))
 
     override def typedMatchFinish(tree: untpd.Match, sel: Tree, selType: Type, pt: Type)(implicit ctx: Context) = tree match {
       case _: untpd.InlineMatch if !ctx.owner.isInlineMethod => // don't reduce match of nested inline method yet
@@ -916,10 +927,24 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
         super.typedMatchFinish(tree, sel, selType, pt)
     }
 
-    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) =
-      constToLiteral(betaReduce(super.typedApply(tree, pt)))
+    override def newLikeThis: Typer = new TransparentTyper
+  }
 
-    override def newLikeThis: Typer = new InlineTyper
+  private class InlineReTyper extends ReTyper with InlineTyping {
+    import reducer._
+
+    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context) =
+      tryInline(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt)
+
+    override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
+      assert(tree.hasType, tree)
+      val qual1 = typed(tree.qualifier, selectionProto(tree.name, pt, this))
+      val res = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
+      ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.pos)
+      res
+    }
+
+    override def newLikeThis: Typer = new InlineReTyper
   }
 
   /** Drop any side-effect-free bindings that are unused in expansion or other reachable bindings.

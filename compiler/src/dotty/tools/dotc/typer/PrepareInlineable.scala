@@ -243,9 +243,10 @@ object PrepareInlineable {
             val typedBody =
               if (ctx.reporter.hasErrors) rawBody
               else ctx.compilationUnit.inlineAccessors.makeInlineable(rawBody)
-            if (inlined.isInlineMethod)
-              checkInlineMethod(inlined, typedBody)
-            val inlineableBody = addReferences(inlined, originalBody, typedBody)
+            checkInlineMethod(inlined, typedBody)
+            val inlineableBody =
+              if (Inliner.typedInline) typedBody
+              else addReferences(inlined, originalBody, typedBody)
             inlining.println(i"Body to inline for $inlined: $inlineableBody")
             inlineableBody
           })
