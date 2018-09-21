@@ -551,8 +551,12 @@ object Types {
           }
         case tp: AppliedType =>
           tp.tycon match {
-            case tc: TypeRef if tc.symbol.isClass =>
-              go(tc)
+            case tc: TypeRef =>
+              if (tc.symbol.isClass) go(tc)
+              else {
+                val normed = tp.tryNormalize
+                go(if (normed.exists) normed else tp.superType)
+              }
             case tc: HKTypeLambda =>
               goApplied(tp, tc)
             case _ =>
@@ -568,6 +572,9 @@ object Types {
           goParam(tp)
         case tp: SuperType =>
           goSuper(tp)
+        case tp: MatchType =>
+          val normed = tp.tryNormalize
+          go(if (normed.exists) normed else tp.underlying)
         case tp: TypeProxy =>
           go(tp.underlying)
         case tp: ClassInfo =>
@@ -3283,14 +3290,14 @@ object Types {
       case tycon: TypeRef =>
         def tryMatchAlias = tycon.info match {
           case MatchAlias(alias) =>
-            trace("normalize $this", typr, show = true) {
+            trace(i"normalize $this", typr, show = true) {
               alias.applyIfParameterized(args).tryNormalize
             }
           case _ =>
             NoType
         }
         if (defn.isTypelevel_S(tycon.symbol) && args.length == 1) {
-          trace("normalize S $this", typr, show = true) {
+          trace(i"normalize S $this", typr, show = true) {
             args.head.normalized match {
               case ConstantType(Constant(n: Int)) => ConstantType(Constant(n + 1))
               case none => tryMatchAlias
