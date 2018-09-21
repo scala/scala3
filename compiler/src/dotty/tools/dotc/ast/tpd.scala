@@ -919,7 +919,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def outerSelect(levels: Int, tp: Type)(implicit ctx: Context): Tree =
       untpd.Select(tree, OuterSelectName(EmptyTermName, levels)).withType(SkolemType(tp))
 
-    def underlyingArgument(implicit ctx: Context): Tree = mapToUnderlying.transform(tree)
+    /** Replace Inlined nodes and InlineProxy references to underlying arguments */
+    def underlyingArgument(implicit ctx: Context): Tree = mapToUnderlyingArgument.transform(tree)
+
+    /** Replace Ident nodes references to the underlying tree that defined them */
+    def underlying(implicit ctx: Context): Tree = mapToUnderlying.transform(tree)
 
     // --- Higher order traversal methods -------------------------------
 
@@ -948,7 +952,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   /** Map Inlined nodes, InlineProxy references and Synthetic val references to underlying arguments */
-  object mapToUnderlying extends TreeMap {
+  object mapToUnderlyingArgument extends TreeMap {
     override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case tree: Ident if tree.symbol.is(InlineProxy) || (tree.symbol.is(Synthetic) && !tree.symbol.owner.isClass) =>
         tree.symbol.defTree match {
@@ -956,6 +960,23 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           case _ => tree
         }
       case Inlined(_, _, arg) => transform(arg)
+      case NamedArg(_, arg) => transform(arg)
+      case tree => super.transform(tree)
+    }
+  }
+
+  /** Map Ident nodes references to underlying tree that defined them.
+   *  Also drops Inline and Block with no statements
+   */
+  object mapToUnderlying extends TreeMap {
+    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      case tree: Ident if !tree.symbol.owner.isClass =>
+        tree.symbol.defTree match {
+          case defTree: ValOrDefDef => transform(defTree.rhs)
+          case _ => tree
+        }
+      case Inlined(_, _, arg) => transform(arg)
+      case Block(Nil, arg) => transform(arg)
       case NamedArg(_, arg) => transform(arg)
       case tree => super.transform(tree)
     }
