@@ -154,7 +154,7 @@ object DottyIDEPlugin extends AutoPlugin {
    *  @param outputCallback If not None, pass the command output to this callback instead of writing it to stdout.
    */
   def runProcess(cmd: Seq[String], wait: Boolean = false, directory: Option[File] = None, outputCallback: Option[BufferedReader => Unit] = None): Unit = {
-    val pb = new ProcessBuilder(prepareCommand(cmd): _*).inheritIO()
+    val pb = new ProcessBuilder(prepareCommand(cmd): _*)
 
     directory match {
       case Some(dir) =>
