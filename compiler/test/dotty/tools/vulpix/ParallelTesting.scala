@@ -286,10 +286,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       realStderr.println(msg + paddingRight)
     }
 
-    /** Print a progress bar for the curent `Test` */
-    private def updateProgressMonitor(): Unit = {
-      val start = System.currentTimeMillis
-      var tCompiled = testSourcesCompleted
+    /** Print a progress bar for the current `Test` */
+    private def updateProgressMonitor(start: Long): Unit = {
+      val tCompiled = testSourcesCompleted
       if (tCompiled < sourceCount) {
         val timestamp = (System.currentTimeMillis - start) / 1000
         val progress = (tCompiled.toDouble / sourceCount * 40).toInt
@@ -299,13 +298,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             (if (progress > 0) ">" else "") +
             (" " * (39 - progress)) +
             s"] completed ($tCompiled/$sourceCount, $failureCount failed, ${timestamp}s)\r"
-        )
-      }
-      else {
-        val timestamp = (System.currentTimeMillis - start) / 1000
-        // println, otherwise no newline and cursor at start of line
-        realStdout.print(
-          s"[=======================================] completed ($sourceCount/$sourceCount, $failureCount failed, ${timestamp}s)\r"
         )
       }
     }
@@ -466,9 +458,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         val timer = new Timer()
         val logProgress = isInteractive && !suppressAllOutput
+        val start = System.currentTimeMillis()
         if (logProgress) {
           val task = new TimerTask {
-            def run() = updateProgressMonitor()
+            def run(): Unit = updateProgressMonitor(start)
           }
           timer.schedule(task, 100, 200)
         }
@@ -489,8 +482,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         if (logProgress) {
           timer.cancel()
-          // update progress one last time
-          updateProgressMonitor()
+          val timestamp = (System.currentTimeMillis - start) / 1000
+          realStdout.println(
+            s"[=======================================] completed ($sourceCount/$sourceCount, $failureCount failed, ${timestamp}s)"
+          )
         }
 
         if (didFail) {
