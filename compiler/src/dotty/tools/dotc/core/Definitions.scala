@@ -939,7 +939,8 @@ class Definitions {
   def scalaClassName(ref: Type)(implicit ctx: Context): TypeName = scalaClassName(ref.classSymbol)
 
   private def isVarArityClass(cls: Symbol, prefix: String) =
-    scalaClassName(cls).testSimple(name =>
+    cls.isClass && cls.owner.eq(ScalaPackageClass) &&
+    cls.name.testSimple(name =>
       name.startsWith(prefix) &&
       name.length > prefix.length &&
       name.drop(prefix.length).forall(_.isDigit))
@@ -1159,6 +1160,14 @@ class Definitions {
   def isAssuredNoInits(sym: Symbol) =
     (sym `eq` SomeClass) || isTupleClass(sym)
 
+  /** If `cls` is Tuple1..Tuple22, add the corresponding *: type as last parent to `parents` */
+  def adjustForTuple(cls: ClassSymbol, tparams: List[TypeSymbol], parents: List[Type]): List[Type] = {
+    def syntheticParent(tparams: List[TypeSymbol]): Type =
+      if (tparams.isEmpty) TupleTypeRef
+      else (tparams :\ (UnitType: Type)) ((tparam, tail) => PairType.appliedTo(tparam.typeRef, tail))
+    if (isTupleClass(cls) || cls == UnitClass) parents :+ syntheticParent(tparams) else parents
+  }
+
   // ----- primitive value class machinery ------------------------------------------
 
   /** This class would also be obviated by the implicit function type design */
@@ -1260,27 +1269,6 @@ class Definitions {
 
   private[this] var isInitialized = false
 
-  /** Add a `Tuple` as a parent to `Unit`.
-   *  Add the right `*:` instance as a parent to Tuple1..Tuple22
-   */
-  def fixTupleCompleter(cls: ClassSymbol): Unit = cls.infoOrCompleter match {
-    case completer: LazyType =>
-      cls.info = new LazyType {
-        def syntheticParent(tparams: List[TypeSymbol]): Type =
-          if (tparams.isEmpty) TupleTypeRef
-          else (tparams :\ (UnitType: Type)) ((tparam, tail) => PairType.appliedTo(tparam.typeRef, tail))
-        override def complete(denot: SymDenotation)(implicit ctx: Context) = {
-          completer.complete(denot)
-          denot.info match {
-            case info: ClassInfo =>
-              denot.info = info.derivedClassInfo(
-                classParents = info.classParents :+ syntheticParent(cls.typeParams))
-          }
-        }
-      }
-    case _ =>
-  }
-
   def init()(implicit ctx: Context) = {
     this.ctx = ctx
     if (!isInitialized) {
@@ -1297,10 +1285,6 @@ class Definitions {
 
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses()
-
-      fixTupleCompleter(UnitClass)
-      for (i <- 1 to MaxTupleArity)
-        fixTupleCompleter(TupleType(i).symbol.asClass)
 
       isInitialized = true
     }

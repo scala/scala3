@@ -107,9 +107,9 @@ object Scala2Unpickler {
       else selfInfo
     val tempInfo = new TempClassInfo(denot.owner.thisType, cls, decls, ost)
     denot.info = tempInfo // first rough info to avoid CyclicReferences
-    val normalizedParents =
-    	if (parents.isEmpty) defn.ObjectType :: Nil
-    	else parents.map(_.dealias)
+    var normalizedParents =
+      defn.adjustForTuple(cls, tparams,
+      	if (parents.isEmpty) defn.ObjectType :: Nil else parents.map(_.dealias))
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
       if (tsym.exists) tsym.setFlag(TypeParam)

@@ -865,7 +865,7 @@ class TreeUnpickler(reader: TastyReader,
           case _ => readTpt()(parentCtx)
         }
       }
-      val parentTypes = parents.map(_.tpe.dealias)
+      val parentTypes = defn.adjustForTuple(cls, cls.typeParams, parents.map(_.tpe.dealias))
       val self =
         if (nextByte == SELFDEF) {
           readByte()

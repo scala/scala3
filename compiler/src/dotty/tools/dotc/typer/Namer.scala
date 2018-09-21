@@ -939,7 +939,8 @@ class Namer { typer: Typer =>
       index(rest)(ctx.inClassContext(selfInfo))
       symbolOfTree(constr).ensureCompleted()
 
-      val parentTypes = ensureFirstIsClass(parents.map(checkedParentType(_)), cls.pos)
+      val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
+        ensureFirstIsClass(parents.map(checkedParentType(_)), cls.pos))
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
 
       tempInfo.finalize(denot, parentTypes)
