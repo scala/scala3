@@ -9,7 +9,7 @@ case class Positioned[T](value: T, position: Position)
 
 object Positioned {
 
-  implicit rewrite def apply[T](x: => T): Positioned[T] = ~impl('(x))
+  implicit inline def apply[T](x: => T): Positioned[T] = ~impl('(x))
 
   def impl[T](x: Expr[T])(implicit ev: Type[T], tasty: Tasty): Expr[Positioned[T]] = {
     import tasty.{Position => _, _}

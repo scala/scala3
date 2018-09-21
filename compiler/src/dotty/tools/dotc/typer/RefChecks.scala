@@ -158,7 +158,7 @@ object RefChecks {
    *    1.8.2  M is of type []S, O is of type ()T and S <: T, or
    *    1.8.3  M is of type ()S, O is of type []T and S <: T, or
    *    1.9    If M or O are erased, they must be both erased
-   *    1.10   If M is a rewrite or Scala-2 macro method, O cannot be deferred unless
+   *    1.10   If M is an inline or Scala-2 macro method, O cannot be deferred unless
    *           there's also a concrete method that M overrides.
    *    1.11.  If O is a Scala-2 macro, M must be a Scala-2 macro.
    *  2. Check that only abstract classes have deferred members
@@ -395,9 +395,9 @@ object RefChecks {
         overrideError("is erased, cannot override non-erased member")
       } else if (other.is(Erased) && !member.is(Erased)) { // (1.9)
         overrideError("is not erased, cannot override erased member")
-      } else if ((member.is(Rewrite) || member.is(Scala2Macro)) && other.is(Deferred) &&
+      } else if ((member.isInlineMethod || member.is(Scala2Macro)) && other.is(Deferred) &&
                  member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.10)
-        overrideError("is a rewrite method, must override at least one concrete method")
+        overrideError("is an inline method, must override at least one concrete method")
       } else if (other.is(Scala2Macro) && !member.is(Scala2Macro)) { // (1.11)
         overrideError("cannot be used here - only Scala-2 macros can override Scala-2 macros")
       } else if (!compatibleTypes(memberTp(self), otherTp(self)) &&

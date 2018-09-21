@@ -169,7 +169,7 @@ object Parsers {
     def isSimpleLiteral = simpleLiteralTokens contains in.token
     def isLiteral = literalTokens contains in.token
     def isNumericLit = numericLitTokens contains in.token
-    def isModifier = modifierTokens contains in.token
+    def isModifier = modifierTokens.contains(in.token) || isIdent(nme.INLINEkw)
     def isBindingIntro = canStartBindingTokens contains in.token
     def isTemplateIntro = templateIntroTokens contains in.token
     def isDclIntro = dclIntroTokens contains in.token
@@ -178,13 +178,13 @@ object Parsers {
 
     def isExprIntro =
       (canStartExpressionTokens `contains` in.token) &&
-        (in.token != REWRITE || lookaheadIn(canStartExpressionTokens))
+        (!isIdent(nme.INLINEkw) || lookaheadIn(canStartExpressionTokens))
 
     def isDefIntro(allowedMods: BitSet) =
       in.token == AT ||
       (defIntroTokens `contains` in.token) ||
-      (allowedMods `contains` in.token) &&
-        (in.token != REWRITE || lookaheadIn(BitSet(AT) | defIntroTokens | allowedMods))
+      (allowedMods `contains` in.token) ||
+      isIdent(nme.INLINEkw) && lookaheadIn(BitSet(AT) | defIntroTokens | allowedMods)
 
     def isStatSep: Boolean =
       in.token == NEWLINE || in.token == NEWLINES || in.token == SEMI
@@ -461,7 +461,8 @@ object Parsers {
     /** Is the token following the current one in `tokens`? */
     def lookaheadIn(tokens: BitSet): Boolean = {
       val lookahead = in.lookaheadScanner
-      lookahead.nextToken()
+      do lookahead.nextToken()
+      while (lookahead.token == NEWLINE || lookahead.token == NEWLINES)
       tokens.contains(lookahead.token)
     }
 
@@ -1103,8 +1104,8 @@ object Parsers {
      *                      |  Expr
      *  BlockResult       ::=  [FunArgMods] FunParams =>' Block
      *                      |  Expr1
-     *  Expr1             ::=  [‘rewrite’] `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
-     *                      |  [‘rewrite’] `if' Expr `then' Expr [[semi] else Expr]
+     *  Expr1             ::=  [‘inline’] `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
+     *                      |  [‘inline’] `if' Expr `then' Expr [[semi] else Expr]
      *                      |  `while' `(' Expr `)' {nl} Expr
      *                      |  `while' Expr `do' Expr
      *                      |  `do' Expr [semi] `while' Expr
@@ -1116,7 +1117,7 @@ object Parsers {
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  PostfixExpr [Ascription]
-     *                      |  [‘rewrite’] PostfixExpr `match' `{' CaseClauses `}'
+     *                      |  [‘inline’] PostfixExpr `match' `{' CaseClauses `}'
      *                      |  `implicit' `match' `{' ImplicitCaseClauses `}'
      *  Bindings          ::= `(' [Binding {`,' Binding}] `)'
      *  Binding           ::= (id | `_') [`:' Type]
@@ -1212,21 +1213,22 @@ object Parsers {
         atPos(in.skipToken()) { Return(if (isExprIntro) expr() else EmptyTree, EmptyTree) }
       case FOR =>
         forExpr()
-      case REWRITE =>
-        val start = in.skipToken()
-        in.token match {
-          case IF =>
-            ifExpr(start, RewriteIf)
-          case _ =>
-            val t = postfixExpr()
-            if (in.token == MATCH) matchExpr(t, start, RewriteMatch)
-            else {
-              syntaxErrorOrIncomplete("`match` or `if` expected but ${in.token} found")
-              t
-            }
-        }
       case _ =>
-        expr1Rest(postfixExpr(), location)
+        if (isIdent(nme.INLINEkw)) {
+          val start = in.skipToken()
+          in.token match {
+            case IF =>
+              ifExpr(start, InlineIf)
+            case _ =>
+              val t = postfixExpr()
+              if (in.token == MATCH) matchExpr(t, start, InlineMatch)
+              else {
+                syntaxErrorOrIncomplete("`match` or `if` expected but ${in.token} found")
+                t
+              }
+          }
+        }
+        else expr1Rest(postfixExpr(), location)
     }
 
     def expr1Rest(t: Tree, location: Location.Value) = in.token match {
@@ -1304,7 +1306,7 @@ object Parsers {
         case mods => markFirstIllegal(mods)
       }
       val result @ Match(t, cases) =
-        matchExpr(ImplicitScrutinee().withPos(implicitKwPos(start)), start, RewriteMatch)
+        matchExpr(ImplicitScrutinee().withPos(implicitKwPos(start)), start, InlineMatch)
       for (CaseDef(pat, _, _) <- cases) {
         def isImplicitPattern(pat: Tree) = pat match {
           case Typed(pat1, _) => isVarPattern(pat1)
@@ -1771,18 +1773,17 @@ object Parsers {
 
 /* -------- MODIFIERS and ANNOTATIONS ------------------------------------------- */
 
-    private def modOfToken(tok: Int): Mod = tok match {
+    private def modOfToken(tok: Int, name: Name): Mod = tok match {
       case ABSTRACT    => Mod.Abstract()
       case FINAL       => Mod.Final()
       case IMPLICIT    => Mod.Implicit()
       case ERASED      => Mod.Erased()
-      case REWRITE     => Mod.Rewrite()
-      case TRANSPARENT => Mod.Transparent()
       case LAZY        => Mod.Lazy()
       case OVERRIDE    => Mod.Override()
       case PRIVATE     => Mod.Private()
       case PROTECTED   => Mod.Protected()
       case SEALED      => Mod.Sealed()
+      case IDENTIFIER if name == nme.INLINEkw => Mod.Inline()
     }
 
     /** Drop `private' modifier when followed by a qualifier.
@@ -1798,7 +1799,8 @@ object Parsers {
 
     private def addModifier(mods: Modifiers): Modifiers = {
       val tok = in.token
-      val mod = atPos(in.skipToken()) { modOfToken(tok) }
+      val name = in.name
+      val mod = atPos(in.skipToken()) { modOfToken(tok, name) }
 
       if (mods is mod.flags) syntaxError(RepeatedModifier(mod.flags.toString))
       addMod(mods, mod)
@@ -1846,12 +1848,13 @@ object Parsers {
      *  Modifier       ::= LocalModifier
      *                  |  AccessModifier
      *                  |  override
-     *  LocalModifier  ::= abstract | final | sealed | implicit | lazy
+     *  LocalModifier  ::= abstract | final | sealed | implicit | lazy | erased | inline
      */
     def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers()): Modifiers = {
       @tailrec
       def loop(mods: Modifiers): Modifiers = {
-        if (allowed contains in.token) {
+        if (allowed.contains(in.token) ||
+            isIdent(nme.INLINEkw) && localModifierTokens.subsetOf(allowed)) {
           val isAccessMod = accessModifierTokens contains in.token
           val mods1 = addModifier(mods)
           loop(if (isAccessMod) accessQualifierOpt(mods1) else mods1)
@@ -1984,7 +1987,7 @@ object Parsers {
                 addMod(mods, mod)
               }
               else {
-                if (!(mods.flags &~ (ParamAccessor | Transparent)).isEmpty)
+                if (!(mods.flags &~ (ParamAccessor | Inline)).isEmpty)
                   syntaxError("`val' or `var' expected")
                 if (firstClauseOfCaseClass) mods
                 else mods | PrivateLocal
@@ -1992,7 +1995,7 @@ object Parsers {
             }
         }
         else {
-          if (in.token == TRANSPARENT) mods = addModifier(mods)
+          if (isIdent(nme.INLINEkw)) mods = addModifier(mods)
           mods = atPos(start) { mods | Param }
         }
         atPos(start, nameStart) {
@@ -2645,7 +2648,7 @@ object Parsers {
           if (in.token == IMPLICIT || in.token == ERASED) {
             val start = in.offset
             var imods = modifiers(funArgMods)
-            if (isBindingIntro)
+            if (isBindingIntro && !isIdent(nme.INLINEkw))
               stats += implicitClosure(start, Location.InBlock, imods)
             else if (in.token == MATCH)
               stats += implicitMatch(start, imods)

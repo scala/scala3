@@ -1,6 +1,6 @@
 
 class Num2(x: Double) {
-  rewrite def power(transparent n: Long) = ~PowerMacro.powerCode('(x), n)
+  inline def power(inline n: Long) = ~PowerMacro.powerCode('(x), n)
 }
 
 object Test {

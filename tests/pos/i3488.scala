@@ -4,7 +4,7 @@ class Sett[A] {
 
   def incl(elem: A): Sett[A] = ???
 
-  rewrite final def + (elem: A): Sett[A] = incl(elem)
+  inline final def + (elem: A): Sett[A] = incl(elem)
 }
 
 object Sett {

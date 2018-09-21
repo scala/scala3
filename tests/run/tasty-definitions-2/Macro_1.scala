@@ -3,7 +3,7 @@ import scala.tasty._
 
 object Foo {
 
-  rewrite def inspectBody(i: => Int): String =
+  inline def inspectBody(i: => Int): String =
     ~inspectBodyImpl('(i))
 
   def inspectBodyImpl(x: Expr[Int])(implicit tasty: Tasty): Expr[String] = {

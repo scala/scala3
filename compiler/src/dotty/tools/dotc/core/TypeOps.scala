@@ -279,8 +279,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     violations.toList
   }
 
-  /** Are we in a rewrite method body? */
-  def inRewriteMethod = owner.ownersIterator.exists(_.isRewriteMethod)
+  /** Are we in an inline method body? */
+  def inInlineMethod = owner.ownersIterator.exists(_.isInlineMethod)
 
   /** Is `feature` enabled in class `owner`?
    *  This is the case if one of the following two alternatives holds:

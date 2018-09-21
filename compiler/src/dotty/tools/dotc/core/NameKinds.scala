@@ -294,8 +294,8 @@ object NameKinds {
   val SuperArgName             = new UniqueNameKind("$superArg$")
   val DocArtifactName          = new UniqueNameKind("$doc")
   val UniqueInlineName         = new UniqueNameKind("$i")
-  val RewriteScrutineeName     = new UniqueNameKind("$scrutinee")
-  val RewriteBinderName        = new UniqueNameKind("$elem")
+  val InlineScrutineeName      = new UniqueNameKind("$scrutinee")
+  val InlineBinderName         = new UniqueNameKind("$elem")
 
   /** A kind of unique extension methods; Unlike other unique names, these can be
    *  unmangled.

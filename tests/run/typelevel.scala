@@ -4,24 +4,24 @@ trait Nat {
 }
 
 case object Z extends Nat {
-  rewrite override def toInt = 0
+  inline override def toInt = 0
 }
 
 case class S[N <: Nat](n: N) extends Nat {
-  rewrite override def toInt = n.toInt + 1
+  inline override def toInt = n.toInt + 1
 }
 
 trait HList {
   def length: Int = ???
   def head: Any
   def tail: HList
-  rewrite def isEmpty: Boolean =
+  inline def isEmpty: Boolean =
     length == 0
 }
 
 // ()
 case object HNil extends HList {
-  rewrite override def length = 0
+  inline override def length = 0
   def head: Nothing = ???
   def tail: Nothing = ???
 }
@@ -29,7 +29,7 @@ case object HNil extends HList {
 // (H, T)
 @annotation.showAsInfix(true)
 case class HCons [H, T <: HList](hd: H, tl: T) extends HList {
-  rewrite override def length = 1 + tl.length
+  inline override def length = 1 + tl.length
   def head: H = this.hd
   def tail: T = this.tl
 }
@@ -42,7 +42,7 @@ object Test extends App {
   type HNil = HNil.type
   type Z = Z.type
 
-  rewrite def ToNat(transparent n: Int): ToNat[Nat] =
+  inline def ToNat(inline n: Int): ToNat[Nat] =
     if n == 0 then new ToNat(Z)
     else {
       val n1 = ToNat(n - 1)
@@ -61,16 +61,16 @@ object Test extends App {
   println(x0)
   println(x1)
   println(x2)
-  transparent val i0 = y0.toInt
+  inline val i0 = y0.toInt
   val j0: 0 = i0
-  transparent val i2 = y2.toInt
+  inline val i2 = y2.toInt
   val j2: 2 = i2
 
   class HListDeco(private val as: HList) extends AnyVal {
-    rewrite def :: [H] (a: H) = HCons(a, as)
-    rewrite def ++ (bs: HList) = concat(as, bs)
+    inline def :: [H] (a: H) = HCons(a, as)
+    inline def ++ (bs: HList) = concat(as, bs)
   }
-  rewrite def concat(xs: HList, ys: HList): HList =
+  inline def concat(xs: HList, ys: HList): HList =
     if xs.isEmpty then ys
     else HCons(xs.head, concat(xs.tail, ys))
 
@@ -85,23 +85,23 @@ object Test extends App {
   val r5 = concat(HCons(1, HCons("a", HNil)) , HNil)
   val r6 = concat(HCons(1, HCons("a", HNil)), HCons(true, HCons(1.0, HNil)))
 
-  rewrite def size(xs: HList): Nat =
+  inline def size(xs: HList): Nat =
     if xs.isEmpty then Z
     else S(size(xs.tail))
 
-  rewrite def sizeDefensive(xs: HList): Nat = rewrite xs.isEmpty match {
+  inline def sizeDefensive(xs: HList): Nat = inline xs.isEmpty match {
     case true => Z
     case false => S(sizeDefensive(xs.tail))
   }
 
   val s0 = size(HNil)
   val s1 = size(xs)
-  transparent val l0 = HNil.length
+  inline val l0 = HNil.length
   val l0a: 0 = l0
-  transparent val l1 = xs.length
+  inline val l1 = xs.length
   val l1a: 2 = l1
 
-  rewrite def index(xs: HList, transparent idx: Int): Any =
+  inline def index(xs: HList, inline idx: Int): Any =
     if idx == 0 then xs.head
     else index(xs.tail, idx - 1)
 
@@ -117,7 +117,7 @@ object Test extends App {
 
   //val ys = 1 :: "a" :: HNil
 
-  rewrite implicit def hlistDeco(xs: HList): HListDeco = new HListDeco(xs)
+  inline implicit def hlistDeco(xs: HList): HListDeco = new HListDeco(xs)
 
   val rr0 = new HListDeco(HNil).++(HNil)
   val rr1 = HNil ++ xs
@@ -125,7 +125,7 @@ object Test extends App {
   val rr3 = xs ++ xs
   val rr3a: HCons[Int, HCons[String, HCons[Int, HCons[String, HNil]]]] = rr3
 
-  rewrite def f(c: Boolean): Nat = {
+  inline def f(c: Boolean): Nat = {
     def g[X <: Nat](x: X): X = x
     g(if (c) Z else S(Z))
   }
@@ -133,8 +133,8 @@ object Test extends App {
   val f1: Z = f(true)
   val f2: S[Z] = f(false)
 
-  rewrite def mapHead[T, R](t: T)(implicit fh: T => R): R = fh(t)
-  rewrite def map(xs: HList): HList = {
+  inline def mapHead[T, R](t: T)(implicit fh: T => R): R = fh(t)
+  inline def map(xs: HList): HList = {
 
     if (xs.isEmpty) HNil
     else HCons(mapHead(xs.head), map(xs.tail))
@@ -148,12 +148,12 @@ object Test extends App {
   val res1: Boolean `HCons` (Int `HCons` (String `HCons` HNil)) = res
 
 /*
-  rewrite def toInt1[T]: Int = type T match {
+  inline def toInt1[T]: Int = type T match {
     case Z => 0
     case S[type N] => toInt[N] + 1
   }
 
-  rewrite def toInt1[T]: Nat = implicit match {
+  inline def toInt1[T]: Nat = implicit match {
     case C[type T, type U], T =:= U =>
     case T <:< S[type N] => toInt[N] + 1
   }

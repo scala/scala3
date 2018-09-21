@@ -156,7 +156,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         }
     }
 
-    /** 1. If we are in a rewrite method but not in a nested quote, mark the rewrite method
+    /** 1. If we are in an inline method but not in a nested quote, mark the inline method
      *  as a macro.
      *
      *  2. If selection is a quote or splice node, record that fact in the current compilation unit.
@@ -165,7 +165,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
       def markAsMacro(c: Context): Unit =
         if (c.owner eq c.outer.owner) markAsMacro(c.outer)
-        else if (c.owner.isRewriteMethod) {
+        else if (c.owner.isInlineMethod) {
           c.owner.setFlag(Macro)
         }
         else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)

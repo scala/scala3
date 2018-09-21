@@ -66,7 +66,7 @@ assigning a type to a constant expression. The new rule is:
 
 __Examples:__
 
-    transparent val b = 33
+    inline val b = 33
     def f(): Int = b + 1
     List(b, 33, 'a')      : List[Int]
     List(b, 33, 'a', f()) : List[Int]

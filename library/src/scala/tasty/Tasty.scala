@@ -21,6 +21,6 @@ abstract class Tasty
     with TypeOrBoundsOps
 
 object Tasty {
-  /** Compiler tasty context available in a top level ~ of a transparent macro */
-  def macroContext: Tasty = throw new Exception("Not in transparent macro.")
+  /** Compiler tasty context available in a top level ~ of an inline macro */
+  def macroContext: Tasty = throw new Exception("Not in inline macro.")
 }

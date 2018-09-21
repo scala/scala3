@@ -3,7 +3,7 @@ import scala.tasty.Tasty
 
 object SourceFiles {
 
-  implicit rewrite def getThisFile: String =
+  implicit inline def getThisFile: String =
     ~getThisFileImpl
 
   private def getThisFileImpl(implicit tasty: Tasty): Expr[String] = {

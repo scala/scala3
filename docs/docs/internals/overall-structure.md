@@ -35,7 +35,7 @@ list of sub-packages and their focus.
 ├── printing            // Pretty-printing trees, types and other data
 ├── repl                // The interactive REPL
 ├── reporting           // Reporting of error messages, warnings and other info.
-├── rewrite             // Helpers for rewriting Scala 2's constructs into dotty's.
+├── rewrites            // Helpers for rewriting Scala 2's constructs into dotty's.
 ├── transform           // Miniphases and helpers for tree transformations.
 ├── typer               // Type-checking and other frontend phases
 └── util                // General purpose utility classes and modules.

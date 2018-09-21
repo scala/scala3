@@ -14,7 +14,7 @@ object Test {
   object O3a extends D(3)
   object O3b extends D(3)
 
-  rewrite def f(): Unit = {
+  inline def f(): Unit = {
     println(new C(
       { println(1); 1 },
       { println(2); 2 },

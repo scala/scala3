@@ -183,9 +183,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   ERASED
                   LAZY
                   OVERRIDE
-                  TRANSPARENT
-                  REWRITE
-                  MACRO                               // rewrite method containing toplevel splices
+                  INLINE
+                  MACRO                               // inline method containing toplevel splices
                   STATIC                              // mapped to static Java member
                   OBJECT                              // an object or its class
                   TRAIT                               // a trait
@@ -299,8 +298,8 @@ object TastyFormat {
   final val IMPLICIT = 13
   final val LAZY = 14
   final val OVERRIDE = 15
-  final val TRANSPARENT = 16
-  final val REWRITE = 17
+
+  final val INLINE = 17
   final val STATIC = 18
   final val OBJECT = 19
   final val TRAIT = 20
@@ -481,8 +480,7 @@ object TastyFormat {
        | ERASED
        | LAZY
        | OVERRIDE
-       | TRANSPARENT
-       | REWRITE
+       | INLINE
        | MACRO
        | STATIC
        | OBJECT
@@ -539,8 +537,7 @@ object TastyFormat {
     case ERASED => "ERASED"
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
-    case TRANSPARENT => "TRANSPARENT"
-    case REWRITE => "REWRITE"
+    case INLINE => "INLINE"
     case MACRO => "MACRO"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"

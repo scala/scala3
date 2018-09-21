@@ -6,19 +6,19 @@ object Test {
 
     private var y: T = _
 
-    rewrite def get1 = x
-    rewrite def get2[U](c: C[U]) = c.x
+    inline def get1 = x
+    inline def get2[U](c: C[U]) = c.x
 
-    rewrite def foo1(x: Int) = foo(x)
-    rewrite def foo2[U](c: C[U]) = c.foo(x)
+    inline def foo1(x: Int) = foo(x)
+    inline def foo2[U](c: C[U]) = c.foo(x)
 
-    rewrite def set1(z: T) = { y = z; y }
-    rewrite def set2[U](c: C[U]) = { c.y = c.x; c.y }
+    inline def set1(z: T) = { y = z; y }
+    inline def set2[U](c: C[U]) = { c.y = c.x; c.y }
   }
 
   object CC {
     private val x = 3
-    rewrite def get1 = x
+    inline def get1 = x
   }
 
   def main(args: Array[String]) = {

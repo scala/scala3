@@ -616,8 +616,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags.is(Final, butNot = Module)) writeByte(FINAL)
     if (flags is Case) writeByte(CASE)
     if (flags is Override) writeByte(OVERRIDE)
-    if (flags is Transparent) writeByte(TRANSPARENT)
-    if (flags is Rewrite) writeByte(REWRITE)
+    if (flags is Inline) writeByte(INLINE)
     if (flags is Macro) writeByte(MACRO)
     if (flags is JavaStatic) writeByte(STATIC)
     if (flags is Module) writeByte(OBJECT)
@@ -782,13 +781,13 @@ class TreePickler(pickler: TastyPickler) {
       case If(cond, thenp, elsep) =>
         writeByte(IF)
         withLength {
-          if (tree.isInstanceOf[untpd.RewriteIf]) writeByte(REWRITE)
+          if (tree.isInstanceOf[untpd.InlineIf]) writeByte(INLINE)
           pickleUntyped(cond); pickleUntyped(thenp); pickleUntyped(elsep)
         }
       case Match(selector, cases) =>
         writeByte(MATCH)
         withLength {
-          if (tree.isInstanceOf[untpd.RewriteMatch]) writeByte(REWRITE)
+          if (tree.isInstanceOf[untpd.InlineMatch]) writeByte(INLINE)
           pickleUntyped(selector); cases.foreach(pickleUntyped)
         }
       case CaseDef(pat, guard, rhs) =>

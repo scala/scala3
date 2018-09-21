@@ -370,11 +370,11 @@ object Checking {
       if (!ok && !sym.is(Synthetic))
         fail(i"modifier `$flag` is not allowed for this definition")
 
-    if (sym.is(Transparent) &&
+    if (sym.is(Inline) &&
           (  sym.is(ParamAccessor) && sym.owner.isClass
-          || sym.is(TermParam) && !sym.owner.isRewriteMethod
+          || sym.is(TermParam) && !sym.owner.isInlineMethod
           ))
-      fail(ParamsNoTransparent(sym.owner))
+      fail(ParamsNoInline(sym.owner))
 
     if (sym.is(ImplicitCommon)) {
       if (sym.owner.is(Package))
@@ -400,8 +400,7 @@ object Checking {
         fail(OnlyClassesCanHaveDeclaredButUndefinedMembers(sym))
       checkWithDeferred(Private)
       checkWithDeferred(Final)
-      checkWithDeferred(Transparent)
-      checkWithDeferred(Rewrite)
+      checkWithDeferred(Inline)
     }
     if (sym.isValueClass && sym.is(Trait) && !sym.isRefinementClass)
       fail(CannotExtendAnyVal(sym))
@@ -409,11 +408,9 @@ object Checking {
     checkCombination(Private, Protected)
     checkCombination(Abstract, Override)
     checkCombination(Private, Override)
-    checkCombination(Lazy, Transparent)
-    checkCombination(Rewrite, Transparent)
+    checkCombination(Lazy, Inline)
     checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
-    if (sym.is(Transparent)) checkApplicable(Transparent, sym.isTerm && !sym.is(Mutable | Module))
-    if (sym.is(Rewrite)) checkApplicable(Rewrite, sym.is(Method, butNot = Accessor))
+    if (sym.is(Inline)) checkApplicable(Inline, sym.isTerm && !sym.is(Mutable | Module))
     if (sym.is(Lazy)) checkApplicable(Lazy, !sym.is(Method | Mutable))
     if (sym.isType && !sym.is(Deferred))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
@@ -673,14 +670,14 @@ trait Checking {
     }
   }
 
-  /** Check that `tree` can right hand-side or argument to `transparent` value or parameter. */
-  def checkTransparentConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context): Unit = {
-    // final vals can be marked transparent even if they're not pure, see Typer#patchFinalVals
+  /** Check that `tree` can be right hand-side or argument to `inline` value or parameter. */
+  def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context): Unit = {
+    // final vals can be marked inline even if they're not pure, see Typer#patchFinalVals
     val purityLevel = if (isFinal) Idempotent else Pure
     tree.tpe.widenTermRefExpr match {
       case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
       case _ =>
-        val allow = ctx.erasedTypes || ctx.inRewriteMethod
+        val allow = ctx.erasedTypes || ctx.inInlineMethod
         if (!allow) ctx.error(em"$what must be a constant expression", tree.pos)
     }
   }
@@ -849,10 +846,10 @@ trait Checking {
     checker.traverse(tree)
   }
 
-  /** Check that we are in a rewrite context (inside a rewrite method or in inlined code) */
-  def checkInRewriteContext(what: String, pos: Position)(implicit ctx: Context) =
-    if (!ctx.inRewriteMethod && !ctx.isInlineContext)
-      ctx.error(em"$what can only be used in a rewrite method", pos)
+  /** Check that we are in an inline context (inside an inline method or in inline code) */
+  def checkInInlineContext(what: String, pos: Position)(implicit ctx: Context) =
+    if (!ctx.inInlineMethod && !ctx.isInlineContext)
+      ctx.error(em"$what can only be used in an inline method", pos)
 
   /** Check that all case classes that extend `scala.Enum` are `enum` cases */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol, parent: Symbol)(implicit ctx: Context): Unit = {
@@ -955,7 +952,7 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = ()
   override def checkImplicitConversionUseOK(sym: Symbol, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
-  override def checkTransparentConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context) = ()
+  override def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context) = ()
   override def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt
@@ -965,6 +962,6 @@ trait NoChecking extends ReChecking {
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: Position)(implicit ctx: Context): Type = tp
-  override def checkInRewriteContext(what: String, pos: Position)(implicit ctx: Context) = ()
+  override def checkInInlineContext(what: String, pos: Position)(implicit ctx: Context) = ()
   override def checkFeature(base: ClassSymbol, name: TermName, description: => String, featureUseSite: Symbol, pos: Position)(implicit ctx: Context): Unit = ()
 }

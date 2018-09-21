@@ -6,13 +6,13 @@ import scala.language.implicitConversions
 case class Xml(parts: String, args: List[Any])
 
 // Ideally should be an implicit class but the implicit conversion
-// has to be a rewrite method
+// has to be a inline method
 class XmlQuote(ctx: => StringContext) {
-  rewrite def xml(args: => Any*): Xml = ~XmlQuote.impl('(ctx), '(args))
+  inline def xml(args: => Any*): Xml = ~XmlQuote.impl('(ctx), '(args))
 }
 
 object XmlQuote {
-  implicit rewrite def XmlQuote(ctx: => StringContext): XmlQuote = new XmlQuote(ctx)
+  implicit inline def XmlQuote(ctx: => StringContext): XmlQuote = new XmlQuote(ctx)
 
   def impl(ctx: Expr[StringContext], args: Expr[Seq[Any]])
           (implicit tasty: Tasty): Expr[Xml] = {

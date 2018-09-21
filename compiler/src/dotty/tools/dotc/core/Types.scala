@@ -3031,18 +3031,18 @@ object Types {
   abstract class MethodTypeCompanion extends TermLambdaCompanion[MethodType] { self =>
 
     /** Produce method type from parameter symbols, with special mappings for repeated
-     *  and transparent parameters:
+     *  and inline parameters:
      *   - replace @repeated annotations on Seq or Array types by <repeated> types
-     *   - add @inlineParam to transparent call-by-value parameters
+     *   - add @inlineParam to inline call-by-value parameters
      */
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
-      def translateTransparent(tp: Type): Type = tp match {
+      def translateInline(tp: Type): Type = tp match {
         case _: ExprType => tp
-        case _ => AnnotatedType(tp, Annotation(defn.TransparentParamAnnot))
+        case _ => AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
       }
       def paramInfo(param: Symbol) = {
         val paramType = param.info.annotatedToRepeated
-        if (param.is(Transparent)) translateTransparent(paramType) else paramType
+        if (param.is(Inline)) translateInline(paramType) else paramType
       }
 
       apply(params.map(_.name.asTermName))(

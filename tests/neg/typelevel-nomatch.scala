@@ -2,7 +2,7 @@
 object Test {
   def anyValue[T]: T = ???
 
-  rewrite def test[T] = rewrite anyValue[T] match {  // error
+  inline def test[T] = inline anyValue[T] match {  // error
     case _: Byte =>
     case _: Char =>
   }

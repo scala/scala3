@@ -3,7 +3,7 @@ import scala.quoted._
 
 object Macro {
 
-  rewrite def unrolledForeach(transparent unrollSize: Int, seq: Array[Int], f: => Int => Unit): Unit = // or f: Int => Unit
+  inline def unrolledForeach(inline unrollSize: Int, seq: Array[Int], f: => Int => Unit): Unit = // or f: Int => Unit
     ~unrolledForeachImpl(unrollSize, '(seq), '(f))
 
   private def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit]): Expr[Unit] = '{

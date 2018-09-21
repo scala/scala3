@@ -1,11 +1,11 @@
 object Test {
 
-  rewrite def swap[T](x: T, x_= : => T => Unit, y: T, y_= : => T => Unit) = {
+  inline def swap[T](x: T, x_= : => T => Unit, y: T, y_= : => T => Unit) = {
     x_=(y)
     y_=(x)
   }
 
-  rewrite def f(x: Int => Unit) = x
+  inline def f(x: Int => Unit) = x
 
   def main(args: Array[String]) = {
     var x = 1
@@ -19,6 +19,6 @@ object Test {
     assert(x == 1 && y == 2)
 
 
-    val z = f(setX)  // tests case where transparent arg is not applied
+    val z = f(setX)  // tests case where inline arg is not applied
   }
 }

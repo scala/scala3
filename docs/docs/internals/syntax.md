@@ -163,9 +163,9 @@ BlockResult       ::=  [FunArgMods] FunParams ‘=>’ Block
 FunParams         ::=  Bindings
                     |  id
                     |  ‘_’
-Expr1             ::=  [‘rewrite’] ‘if’ ‘(’ Expr ‘)’ {nl}
+Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl}
                        Expr [[semi] ‘else’ Expr]                                If(Parens(cond), thenp, elsep?)
-                    |  [‘rewrite’] ‘if’ Expr ‘then’ Expr [[semi] ‘else’ Expr]   If(cond, thenp, elsep?)
+                    |  [‘inline’] ‘if’ Expr ‘then’ Expr [[semi] ‘else’ Expr]    If(cond, thenp, elsep?)
                     |  ‘while’ ‘(’ Expr ‘)’ {nl} Expr                           WhileDo(Parens(cond), body)
                     |  ‘while’ Expr ‘do’ Expr                                   WhileDo(cond, body)
                     |  ‘do’ Expr [semi] ‘while’ Expr                            DoWhile(expr, cond)
@@ -177,7 +177,7 @@ Expr1             ::=  [‘rewrite’] ‘if’ ‘(’ Expr ‘)’ {nl}
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
                     |  PostfixExpr [Ascription]
-                    |  [‘rewrite’] PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’      Match(expr, cases) -- point on match
+                    |  [‘inline’] PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’       Match(expr, cases) -- point on match
                     |  ‘implicit’ ‘match’ ‘{’ ImplicitCaseClauses ‘}’
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
@@ -271,7 +271,7 @@ ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [FunArgMods] ClsParams ‘
 ClsParamClause    ::=  [nl] ‘(’ [ClsParams] ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation}                                             ValDef(mods, id, tpe, expr) -- point of mods on val/var
-                       [{Modifier} (‘val’ | ‘var’) | ‘transparent’] Param
+                       [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
 Param             ::=  id ‘:’ ParamType [‘=’ Expr]
                     |  INT
 
@@ -295,7 +295,7 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘implicit’
                     |  ‘lazy’
                     |  ‘transparent’
-                    |  ‘rewrite’
+                    |  ‘inline’
                     |  ‘erased’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’

@@ -63,7 +63,7 @@ object Rewrites {
    *  given by `pos` in `source` by `replacement`
    */
   def patch(source: SourceFile, pos: Position, replacement: String)(implicit ctx: Context): Unit =
-    for (rewrites <- ctx.settings.`rewrite`.value)
+    for (rewrites <- ctx.settings.rewrite.value)
       rewrites.patched
         .getOrElseUpdate(source, new Patches(source))
         .addPatch(pos, replacement)
@@ -75,7 +75,7 @@ object Rewrites {
   /** If -rewrite is set, apply all patches and overwrite patched source files.
    */
   def writeBack()(implicit ctx: Context) =
-    for (rewrites <- ctx.settings.`rewrite`.value; source <- rewrites.patched.keys) {
+    for (rewrites <- ctx.settings.rewrite.value; source <- rewrites.patched.keys) {
       ctx.echo(s"[patched file ${source.file.path}]")
       rewrites.patched(source).writeBack()
     }
