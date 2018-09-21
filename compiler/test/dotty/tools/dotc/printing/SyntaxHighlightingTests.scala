@@ -62,11 +62,10 @@ class SyntaxHighlightingTests extends DottyTest {
     test("\"Hello\"", "<L|\"Hello\">")
     test("\"\"\"Hello\"\"\"", "<L|\"\"\"Hello\"\"\">")
 
-    // FIXME: '$' should not be colored (literal position is off by one)
-    // test("s\"Hello\"", "s<L|\"Hello\">")
-    // test("s\"Hello $name\"", "s<L|\"Hello <V|$name<L|\">")
-    // test("raw\"Hello\"", "raw<L|\"Hello\">")
-    // test("raw\"\"\"Hello\"\"\"", "raw<L|\"\"\"Hello\"\"\">")
+    test("s\"Hello\"", "<L|s\"Hello\">")
+    test("s\"Hello $name\"", "<L|s\"Hello >$name<L|\">")
+    test("s\"Hello ${name}\"", "<L|s\"Hello >${name}<L|\">")
+    test("raw\"Hello\"", "<L|raw\"Hello\">")
   }
 
   @Test

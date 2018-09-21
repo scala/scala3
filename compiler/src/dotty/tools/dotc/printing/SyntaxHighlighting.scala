@@ -59,12 +59,19 @@ object SyntaxHighlighting {
 
         // Branch order is important. For example,
         // `true` is at the same time a keyword and a literal
-        if (literalTokens.contains(token))
-          highlightRange(start, end, LiteralColor)
-        else if (alphaKeywords.contains(token))
-          highlightRange(start, end, KeywordColor)
-        else if (token == IDENTIFIER && name == nme.???)
-          highlightRange(start, end, Console.RED_B)
+        token match {
+          case _ if literalTokens.contains(token) =>
+            highlightRange(start, end, LiteralColor)
+          case STRINGPART =>
+            // String interpolation parts include `$` but
+            // we don't highlight it, hence the `-1`
+            highlightRange(start, end - 1, LiteralColor)
+          case _ if alphaKeywords.contains(token) =>
+            highlightRange(start, end, KeywordColor)
+          case IDENTIFIER if name == nme.??? =>
+            highlightRange(start, end, Console.RED_B)
+          case _ =>
+        }
       }
 
       object TreeHighlighter extends untpd.UntypedTreeTraverser {
