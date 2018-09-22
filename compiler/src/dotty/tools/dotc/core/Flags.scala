@@ -291,7 +291,7 @@ object Flags {
   final val Covariant: FlagSet = typeFlag(20, "<covariant>")
   final val OuterAccessor: FlagSet = termFlag(20, "<outer accessor>")
 
-  /** A contravariant type variable / a label method */
+  /** A contravariant type variable / the label of a labeled block */
   final val ContravariantOrLabel: FlagSet = commonFlag(21, "")
   final val Contravariant: FlagSet = typeFlag(21, "<contravariant>")
   final val Label: FlagSet = termFlag(21, "<label>")
@@ -580,9 +580,6 @@ object Flags {
 
   /** A lazy or deferred value */
   final val LazyOrDeferred: FlagSet = Lazy | Deferred
-
-  /** An accessor or label */
-  final val AccessorOrLabel: FlagSet = Accessor | Label
 
   /** An accessor or a synthetic symbol */
   final val AccessorOrSynthetic: FlagSet = Accessor | Synthetic

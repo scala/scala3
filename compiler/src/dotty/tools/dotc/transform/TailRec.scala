@@ -114,7 +114,7 @@ class TailRec extends MiniPhase {
     val sym = tree.symbol
     tree match {
       case dd@DefDef(name, Nil, vparams :: Nil, tpt, _)
-        if (sym.isEffectivelyFinal) && !((sym is Flags.Accessor) || (dd.rhs eq EmptyTree) || (sym is Flags.Label)) =>
+        if (sym.isEffectivelyFinal) && !((sym is Flags.Accessor) || (dd.rhs eq EmptyTree)) =>
         val mandatory = sym.hasAnnotation(defn.TailrecAnnot)
         cpy.DefDef(dd)(rhs = {
           val defIsTopLevel = sym.owner.isClass
@@ -393,10 +393,7 @@ class TailRec extends MiniPhase {
           assert(false, "We should never have gotten inside a pattern")
           tree
 
-        case t @ DefDef(_, _, _, _, _) =>
-          t // todo: could improve to handle DefDef's with a label flag calls to which are in tail position
-
-        case ValDef(_, _, _) | EmptyTree | Super(_, _) | This(_) |
+        case ValDef(_, _, _) | DefDef(_, _, _, _, _) | EmptyTree | Super(_, _) | This(_) |
              Literal(_) | TypeTree() | TypeDef(_, _) =>
           tree
 

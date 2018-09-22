@@ -181,7 +181,7 @@ object TypeErasure {
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
-    else if (sym.is(Label, butNot = Method)) erase.eraseResult(sym.info)(erasureCtx)
+    else if (sym.is(Label)) erase.eraseResult(sym.info)(erasureCtx)
     else erase.eraseInfo(tp, sym)(erasureCtx) match {
       case einfo: MethodType =>
         if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))

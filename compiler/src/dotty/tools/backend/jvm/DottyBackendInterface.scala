@@ -73,7 +73,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   type ArrayValue      = tpd.JavaSeqLiteral
   type ApplyDynamic    = Null
   type ModuleDef       = Null
-  type LabelDef        = tpd.DefDef
+  type LabelDef        = Null
   type Closure         = tpd.Closure
 
   val NoSymbol: Symbol = Symbols.NoSymbol
@@ -392,7 +392,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
 
   def emitAsmp: Option[String] = None
 
-  def shouldEmitJumpAfterLabels: Boolean = true
+  def hasLabelDefs: Boolean = false
 
   def dumpClasses: Option[String] =
     if (ctx.settings.Ydumpclasses.isDefault) None
@@ -449,26 +449,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
     if (found == null) None else Some(found)
   }
 
-  def getLabelDefOwners(tree: Tree): Map[Tree, List[LabelDef]] = {
-    // for each rhs of a defdef returns LabelDefs inside this DefDef
-    val res = new collection.mutable.HashMap[Tree, List[LabelDef]]()
-
-    val t = new TreeTraverser {
-      var outerRhs: Tree = tree
-
-      def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = tree match {
-        case t: DefDef =>
-          if (t.symbol is Flags.Label)
-            res.put(outerRhs, t :: res.getOrElse(outerRhs, Nil))
-          else outerRhs = t
-          traverseChildren(t)
-        case _ => traverseChildren(tree)
-      }
-    }
-
-    t.traverse(tree)
-    res.toMap
-  }
+  def getLabelDefOwners(tree: Tree): Map[Tree, List[LabelDef]] = Map.empty
 
   // todo: remove
   def isMaybeBoxed(sym: Symbol): Boolean = {
@@ -939,9 +920,6 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
           }
         case Types.ClassInfo(_, sym, _, _, _)           => primitiveOrClassToBType(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
 
-        case t: MethodType => // triggers for LabelDefs
-          t.resultType.toTypeKind(ct)(storage)
-
         /* AnnotatedType should (probably) be eliminated by erasure. However we know it happens for
          * meta-annotated annotations (@(ann @getter) val x = 0), so we don't emit a warning.
          * The type in the AnnotationInfo is an AnnotatedTpe. Tested in jvm/annotations.scala.
@@ -1109,15 +1087,9 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   }
 
   object LabelDef extends LabelDeconstructor {
-    def _1: Name = field.name
-    def _2: List[Symbol] = field.vparamss.flatMap(_.map(_.symbol))
-    def _3: Tree = field.rhs
-
-    override def unapply(s: LabelDef): LabelDef.type = {
-      if (s.symbol is Flags.Label) this.field = s
-      else this.field = null
-      this
-    }
+    def _1: Name = ???
+    def _2: List[Symbol] = ???
+    def _3: Tree = ???
   }
 
   object Typed extends TypedDeconstrutor {

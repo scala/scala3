@@ -4,7 +4,7 @@ package core
 
 import Periods._
 import Contexts._
-import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
+import dotty.tools.backend.jvm.GenBCode
 import DenotTransformers._
 import Denotations._
 import Decorators._
@@ -329,7 +329,6 @@ object Phases {
     private[this] var myErasedTypes = false
     private[this] var myFlatClasses = false
     private[this] var myRefChecked = false
-    private[this] var myLabelsReordered = false
 
     private[this] var mySameMembersStartId = NoPhaseId
     private[this] var mySameParentsStartId = NoPhaseId
@@ -347,7 +346,6 @@ object Phases {
     final def erasedTypes: Boolean = myErasedTypes   // Phase is after erasure
     final def flatClasses: Boolean = myFlatClasses   // Phase is after flatten
     final def refChecked: Boolean = myRefChecked     // Phase is after RefChecks
-    final def labelsReordered: Boolean = myLabelsReordered // Phase is after LabelDefs, labels are flattened and owner chains don't mirror this
 
     final def sameMembersStartId: Int = mySameMembersStartId
       // id of first phase where all symbols are guaranteed to have the same members as in this phase
@@ -363,7 +361,6 @@ object Phases {
       myErasedTypes  = prev.getClass == classOf[Erasure]      || prev.erasedTypes
       myFlatClasses  = prev.getClass == classOf[Flatten]      || prev.flatClasses
       myRefChecked   = prev.getClass == classOf[RefChecks]    || prev.refChecked
-      myLabelsReordered = prev.getClass == classOf[LabelDefs] || prev.labelsReordered
       mySameMembersStartId = if (changesMembers) id else prev.sameMembersStartId
       mySameParentsStartId = if (changesParents) id else prev.sameParentsStartId
     }

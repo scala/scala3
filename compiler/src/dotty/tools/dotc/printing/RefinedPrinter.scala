@@ -67,7 +67,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override protected def recursionLimitExceeded(): Unit = {}
 
-  protected val PrintableFlags: FlagSet = (SourceModifierFlags | Label | Module | Local).toCommonFlags
+  protected val PrintableFlags: FlagSet = (SourceModifierFlags | Module | Local).toCommonFlags
 
   override def nameString(name: Name): String =
     if (ctx.settings.YdebugNames.value) name.debugString else name.toString

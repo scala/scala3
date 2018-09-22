@@ -6,7 +6,7 @@ import Contexts._
 import typer.{FrontEnd, RefChecks}
 import Phases.Phase
 import transform._
-import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode, LabelDefs}
+import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode}
 import dotty.tools.dotc.transform.localopt.StringInterpolatorOpt
 
 /** The central class of the dotc compiler. The job of a compiler is to create
@@ -108,8 +108,7 @@ class Compiler {
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
          new CollectEntryPoints,     // Find classes with main methods
-         new CollectSuperCalls,      // Find classes that are called with super
-         new LabelDefs) ::           // Converts calls to labels to jumps
+         new CollectSuperCalls) ::   // Find classes that are called with super
     Nil
 
   /** Generate the output of the compilation */

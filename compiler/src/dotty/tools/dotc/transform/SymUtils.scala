@@ -70,7 +70,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   /** The closest enclosing method or class of this symbol */
   @tailrec final def enclosingMethodOrClass(implicit ctx: Context): Symbol =
-    if (self.is(Method, butNot = Label) || self.isClass) self
+    if (self.is(Method) || self.isClass) self
     else if (self.exists) self.owner.enclosingMethodOrClass
     else NoSymbol
 
