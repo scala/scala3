@@ -38,6 +38,7 @@ implicit-dep.scala
 inline-access-levels
 macro-with-array
 macro-with-type
+matchtype.scala
 phantom-Eq2
 power-macro
 quote-lift-inline-params

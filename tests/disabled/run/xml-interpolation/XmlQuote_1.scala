@@ -49,7 +49,7 @@ object XmlQuote {
           List(Typed(Repeated(values), _)))) if values.forall(isStringConstant) =>
         values.collect { case Literal(Constant.String(value)) => value }
       case tree =>
-        abort("String literal expected")
+        abort(s"String literal expected, but $tree found")
     }
 
     // [a0, ...]: Any*

@@ -427,7 +427,7 @@ object NonEmptyTuple {
   def dynamicTail[This <: NonEmptyTuple] (self: This): Tail[This] = {
     type Result = Tail[This]
     val res = (self: Any) match {
-      case self: Tuple1[_] => self._1
+      case self: Tuple1[_] => ()
       case self: Tuple2[_, _] => Tuple1(self._2)
       case self: Tuple3[_, _, _] => Tuple2(self._2, self._3)
       case self: Tuple4[_, _, _, _] => Tuple3(self._2, self._3, self._4)
