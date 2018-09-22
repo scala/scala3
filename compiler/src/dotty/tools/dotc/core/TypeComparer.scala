@@ -108,6 +108,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
   protected def gadtBounds(sym: Symbol)(implicit ctx: Context) = ctx.gadt.bounds(sym)
   protected def gadtSetBounds(sym: Symbol, b: TypeBounds) = ctx.gadt.setBounds(sym, b)
 
+  protected def typeVarInstance(tvar: TypeVar)(implicit ctx: Context) = tvar.underlying
+
   // Subtype testing `<:<`
 
   def topLevelSubType(tp1: Type, tp2: Type): Boolean = {
@@ -233,7 +235,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
       case tp2: BoundType =>
         tp2 == tp1 || secondTry
       case tp2: TypeVar =>
-        recur(tp1, tp2.underlying)
+        recur(tp1, typeVarInstance(tp2))
       case tp2: WildcardType =>
         def compareWild = tp2.optBounds match {
           case TypeBounds(_, hi) => recur(tp1, hi)
@@ -348,7 +350,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
           case _ => thirdTry
         }
       case tp1: TypeVar =>
-        recur(tp1.underlying, tp2)
+        recur(typeVarInstance(tp1), tp2)
       case tp1: WildcardType =>
         def compareWild = tp1.optBounds match {
           case bounds: TypeBounds => recur(bounds.lo, tp2)
@@ -1826,6 +1828,11 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   override def gadtSetBounds(sym: Symbol, b: TypeBounds) = {
     footprint += sym.typeRef
     super.gadtSetBounds(sym, b)
+  }
+
+  override def typeVarInstance(tvar: TypeVar)(implicit ctx: Context) = {
+    footprint += tvar
+    super.typeVarInstance(tvar)
   }
 
   def matchCase(scrut: Type, cas: Type, instantiate: Boolean)(implicit ctx: Context): Type = {

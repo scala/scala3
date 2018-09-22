@@ -3598,7 +3598,7 @@ object Types {
     def underlying(implicit ctx: Context): Type = bound
 
     private[this] var myReduced: Type = null
-    private[this] var reductionContext: mutable.Map[Type, TypeBounds] = null
+    private[this] var reductionContext: mutable.Map[Type, Type] = null
 
     override def tryNormalize(implicit ctx: Context): Type = reduced.normalized
 
@@ -3634,30 +3634,33 @@ object Types {
         }
       }
 
-      def isRelevant(tp: Type) = tp match {
-        case tp: TypeParamRef => ctx.typerState.constraint.entry(tp).exists
+      def isBounded(tp: Type) = tp match {
+        case tp: TypeParamRef =>
         case tp: TypeRef => ctx.gadt.bounds.contains(tp.symbol)
       }
 
-      def contextBounds(tp: Type): TypeBounds = tp match {
-        case tp: TypeParamRef => ctx.typerState.constraint.fullBounds(tp)
-        case tp: TypeRef => ctx.gadt.bounds(tp.symbol)
+      def contextInfo(tp: Type): Type = tp match {
+        case tp: TypeParamRef =>
+          val constraint = ctx.typerState.constraint
+          if (constraint.entry(tp).exists) constraint.fullBounds(tp)
+          else NoType
+        case tp: TypeRef =>
+          val bounds = ctx.gadt.bounds(tp.symbol)
+          if (bounds == null) NoType else bounds
+        case tp: TypeVar =>
+          tp.underlying
       }
 
       def updateReductionContext() = {
         reductionContext = new mutable.HashMap
-        for (tp <- cmp.footprint if isRelevant(tp))
-          reductionContext(tp) = contextBounds(tp)
+        for (tp <- cmp.footprint)
+          reductionContext(tp) = contextInfo(tp)
+        typr.println(i"footprint for $this $hashCode: ${cmp.footprint.toList.map(x => (x, contextInfo(x)))}%, %")
       }
 
       def upToDate =
-        cmp.footprint.forall { tp =>
-          !isRelevant(tp) || {
-            reductionContext.get(tp) match {
-              case Some(bounds) => bounds `eq` contextBounds(tp)
-              case None => false
-            }
-          }
+        reductionContext.keysIterator.forall { tp =>
+          reductionContext(tp) `eq` contextInfo(tp)
         }
 
       record("MatchType.reduce called")
@@ -3665,7 +3668,7 @@ object Types {
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
-          trace(i"reduce match type $this", typr, show = true) {
+          trace(i"reduce match type $this $hashCode", typr, show = true) {
             try
               if (defn.isBottomType(scrutinee)) defn.NothingType
               else if (reduceInParallel) reduceParallel(trackingCtx)
