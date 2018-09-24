@@ -5,7 +5,7 @@ object typelevel {
 
 object Test extends App {
 
-  rewrite def defaultValue[T]: Option[Any] = rewrite typelevel.erasedValue[T] match {
+  inline def defaultValue[T]: Option[Any] = inline typelevel.erasedValue[T] match {
     case _: Byte => Some(0: Byte)
     case c: Char => Some(0: Char)
     case d @ (_: Short) => Some(0: Short)

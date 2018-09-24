@@ -239,14 +239,14 @@ object Splicer {
     def interpretStaticMethodCall(fn: tpd.Tree, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
 
     def unexpectedTree(tree: tpd.Tree)(implicit env: Env): Boolean = {
-      // Assuming that top-level splices can only be in rewrite methods
-      // and splices are expanded at inline site, references to transparent values
+      // Assuming that top-level splices can only be in inline methods
+      // and splices are expanded at inline site, references to inline values
       // will be known literal constant trees.
-      tree.symbol.is(Transparent)
+      tree.symbol.is(Inline)
     }
   }
 
-  /** Abstract Tree interpreter that can interpret calls to static methods with quoted or transparent arguments */
+  /** Abstract Tree interpreter that can interpret calls to static methods with quoted or inline arguments */
   private abstract class AbstractInterpreter(implicit ctx: Context) {
     type Env = Map[Name, Result]
     type Result

@@ -38,7 +38,7 @@ class Literalize extends MiniPhase { thisTransform =>
    *  Singleton type bounds (see SIP 23). Presumably
    *
    *     object O1 { val x: Singleton = 42; println("43") }
-   *     object O2 { transparent val x = 42; println("43") }
+   *     object O2 { inline val x = 42; println("43") }
    *
    *  should behave differently.
    *

@@ -5,7 +5,7 @@ object typelevel {
 
 object Test {
 
-  rewrite def test[T] = rewrite typelevel.erasedValue[T] match {  // error
+  inline def test[T] = inline typelevel.erasedValue[T] match {  // error
     case b: Byte => b
     case c: Char => "A"
   }

@@ -2,12 +2,12 @@
 object Test {
   def anyValue[T]: T = ???
 
-  rewrite def test(x: Int) = rewrite x match {
+  inline def test(x: Int) = inline x match {
     case _: Byte =>
     case _: Char =>
   }
 
-  rewrite def test2() = rewrite 1 match {
+  inline def test2() = inline 1 match {
     case _: Byte =>
     case _: Char =>
   }

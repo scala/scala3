@@ -1,6 +1,6 @@
 object Test {
 
-  rewrite def fact[T](transparent i: Int)(f: => T): Int = {
+  inline def fact[T](inline i: Int)(f: => T): Int = {
     printStack("track", i)
     printStack("track", i)
     f

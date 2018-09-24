@@ -1,4 +1,4 @@
 object B {
-  rewrite def getInline: String =
+  inline def getInline: String =
     A.get.toString
 }

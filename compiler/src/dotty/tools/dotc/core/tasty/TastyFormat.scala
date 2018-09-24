@@ -91,6 +91,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   MATCH          Length sel_Term CaseDef*
                   TRY            Length expr_Term CaseDef* finalizer_Term?
                   RETURN         Length meth_ASTRef expr_Term?
+                  WHILE          Length cond_Term body_Term
                   REPEATED       Length elem_Type elem_Term*
                   SELECTouter    Length levels_Nat qual_Term underlying_Type
                   BIND           Length boundName_NameRef patType_Type pat_Term
@@ -101,11 +102,12 @@ Standard-Section: "ASTs" TopLevelStat*
                   SINGLETONtpt          ref_Term
                   REFINEDtpt     Length underlying_Term refinement_Stat*
                   APPLIEDtpt     Length tycon_Term arg_Term*
-                  POLYtpt        Length TypeParam* body_Term
+                  LAMBDAtpt      Length TypeParam* body_Term
                   TYPEBOUNDStpt  Length low_Term high_Term?
                   ANNOTATEDtpt   Length underlying_Term fullAnnotation_Term
                   ANDtpt         Length left_Term right_Term
                   ORtpt          Length left_Term right_Term
+                  MATCHtpt       Length bound_Term? sel_Term CaseDef*
                   BYNAMEtpt             underlying_Term
                   EMPTYTREE
                   SHAREDterm            term_ASTRef
@@ -157,6 +159,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   ANNOTATEDtype  Length underlying_Type fullAnnotation_Term
                   ANDtype        Length left_Type right_Type
                   ORtype         Length left_Type right_Type
+                  MATCHtype      Length bound_Type sel_Type case_Type*
                   BIND           Length boundName_NameRef bounds_Type
                                         // for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type
@@ -181,9 +184,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   ERASED
                   LAZY
                   OVERRIDE
-                  TRANSPARENT
-                  REWRITE
-                  MACRO                               // rewrite method containing toplevel splices
+                  INLINE
+                  MACRO                               // inline method containing toplevel splices
                   STATIC                              // mapped to static Java member
                   OBJECT                              // an object or its class
                   TRAIT                               // a trait
@@ -244,7 +246,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion = 10
+  val MajorVersion = 11
   val MinorVersion = 0
 
   /** Tags used to serialize names */
@@ -304,8 +306,8 @@ object TastyFormat {
   final val IMPLICIT = 13
   final val LAZY = 14
   final val OVERRIDE = 15
-  final val TRANSPARENT = 16
-  final val REWRITE = 17
+
+  final val INLINE = 17
   final val STATIC = 18
   final val OBJECT = 19
   final val TRAIT = 20
@@ -399,46 +401,51 @@ object TastyFormat {
   final val LAMBDA = 142
   final val MATCH = 143
   final val RETURN = 144
-  final val TRY = 145
-  final val INLINED = 146
-  final val SELECTouter = 147
-  final val REPEATED = 148
-  final val BIND = 149
-  final val ALTERNATIVE = 150
-  final val UNAPPLY = 151
-  final val ANNOTATEDtype = 152
-  final val ANNOTATEDtpt = 153
-  final val CASEDEF = 154
-  final val TEMPLATE = 155
-  final val SUPER = 156
-  final val SUPERtype = 157
-  final val REFINEDtype = 158
-  final val REFINEDtpt = 159
-  final val APPLIEDtype = 160
-  final val APPLIEDtpt = 161
-  final val TYPEBOUNDS = 162
-  final val TYPEBOUNDStpt = 163
-  final val ANDtype = 164
-  final val ANDtpt = 165
-  final val ORtype = 166
-  final val ORtpt = 167
-  final val POLYtype = 168
-  final val TYPELAMBDAtype = 169
-  final val LAMBDAtpt = 170
-  final val PARAMtype = 171
-  final val ANNOTATION = 172
-  final val TERMREFin = 173
-  final val TYPEREFin = 174
-  final val OBJECTDEF = 175
+  final val WHILE = 145
+  final val TRY = 146
+  final val INLINED = 147
+  final val SELECTouter = 148
+  final val REPEATED = 149
+  final val BIND = 150
+  final val ALTERNATIVE = 151
+  final val UNAPPLY = 152
+  final val ANNOTATEDtype = 153
+  final val ANNOTATEDtpt = 154
+  final val CASEDEF = 155
+  final val TEMPLATE = 156
+  final val SUPER = 157
+  final val SUPERtype = 158
+  final val REFINEDtype = 159
+  final val REFINEDtpt = 160
+  final val APPLIEDtype = 161
+  final val APPLIEDtpt = 162
+  final val TYPEBOUNDS = 163
+  final val TYPEBOUNDStpt = 164
+  final val ANDtype = 165
+  final val ANDtpt = 166
+  final val ORtype = 167
+  final val ORtpt = 168
+  final val POLYtype = 169
+  final val TYPELAMBDAtype = 170
+  final val LAMBDAtpt = 171
+  final val PARAMtype = 172
+  final val ANNOTATION = 173
+  final val TERMREFin = 174
+  final val TYPEREFin = 175
+  final val OBJECTDEF = 176
 
-  // In binary: 101100EI
+  final val TYPEOF = 179
+
+  // In binary: 101101EI
   // I = implicit method type
   // E = erased method type
-  final val METHODtype = 176
-  final val IMPLICITMETHODtype = 177
-  final val ERASEDMETHODtype = 178
-  final val ERASEDIMPLICITMETHODtype = 179
-  final val TYPEOF = 180
+  final val METHODtype = 180
+  final val IMPLICITMETHODtype = 181
+  final val ERASEDMETHODtype = 182
+  final val ERASEDIMPLICITMETHODtype = 183
+
+  final val MATCHtype = 190
+  final val MATCHtpt = 191
 
   final val UNTYPEDSPLICE = 199
 
@@ -468,7 +475,7 @@ object TastyFormat {
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
-    firstLengthTreeTag <= tag && tag <= TYPEOF ||
+    firstLengthTreeTag <= tag && tag <= MATCHtpt ||
     tag == HOLE
 
   def isParamTag(tag: Int) = tag == PARAM || tag == TYPEPARAM
@@ -485,8 +492,7 @@ object TastyFormat {
        | ERASED
        | LAZY
        | OVERRIDE
-       | TRANSPARENT
-       | REWRITE
+       | INLINE
        | MACRO
        | STATIC
        | OBJECT
@@ -522,6 +528,7 @@ object TastyFormat {
        | ANDtpt
        | ORtpt
        | BYNAMEtpt
+       | MATCHtpt
        | BIND => true
     case _ => false
   }
@@ -542,8 +549,7 @@ object TastyFormat {
     case ERASED => "ERASED"
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
-    case TRANSPARENT => "TRANSPARENT"
-    case REWRITE => "REWRITE"
+    case INLINE => "INLINE"
     case MACRO => "MACRO"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
@@ -614,6 +620,7 @@ object TastyFormat {
     case LAMBDA => "LAMBDA"
     case MATCH => "MATCH"
     case RETURN => "RETURN"
+    case WHILE => "WHILE"
     case INLINED => "INLINED"
     case SELECTouter => "SELECTouter"
     case TRY => "TRY"
@@ -659,6 +666,8 @@ object TastyFormat {
     case ERASEDIMPLICITMETHODtype => "ERASEDIMPLICITMETHODtype"
     case TYPELAMBDAtype => "TYPELAMBDAtype"
     case LAMBDAtpt => "LAMBDAtpt"
+    case MATCHtype => "MATCHtype"
+    case MATCHtpt => "MATCHtpt"
     case PARAMtype => "PARAMtype"
     case ANNOTATION => "ANNOTATION"
     case PRIVATEqualified => "PRIVATEqualified"

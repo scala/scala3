@@ -228,14 +228,16 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
 
       case Term.While(cond, body) =>
-        this += "while "
-        inParens(printTree(cond)) += " "
-        printTree(body)
-
-      case Term.DoWhile(body, cond) =>
-        this += "do "
-        printTree(body) += " while "
-        inParens(printTree(cond))
+        (cond, body) match {
+          case (Term.Block(Term.Block(Nil, body1) :: Nil, Term.Block(Nil, cond1)), Term.Literal(Constant.Unit())) =>
+            this += "do "
+            printTree(body1) += " while "
+            inParens(printTree(cond1))
+          case _ =>
+            this += "while "
+            inParens(printTree(cond)) += " "
+            printTree(body)
+        }
 
       case IsDefDef(ddef @ DefDef(name, targs, argss, tpt, rhs)) =>
         printDefAnnotations(ddef)
@@ -244,8 +246,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
         val flags = ddef.symbol.flags
         if (flags.isImplicit) this += "implicit "
-        if (flags.isTransparent) this += "transparent "
-        if (flags.isRewrite) this += "rewrite "
+        if (flags.isInline) this += "inline "
         if (flags.isOverride) this += "override "
 
         printProtectedOrPrivate(ddef)

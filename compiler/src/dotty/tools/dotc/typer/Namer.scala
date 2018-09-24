@@ -754,7 +754,7 @@ class Namer { typer: Typer =>
           val ann = Annotation.deferred(cls, implicit ctx => typedAnnotation(annotTree))
           sym.addAnnotation(ann)
           if (cls == defn.ForceInlineAnnot && sym.is(Method, butNot = Accessor))
-            sym.setFlag(Rewrite)
+            sym.setFlag(Inline)
         }
       case _ =>
     }
@@ -1075,7 +1075,7 @@ class Namer { typer: Typer =>
 
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      def isTransparentVal = sym.is(FinalOrTransparent, butNot = Method | Mutable)
+      def isInlineVal = sym.is(FinalOrInline, butNot = Method | Mutable)
 
       // Widen rhs type and eliminate `|' but keep ConstantTypes if
       // definition is inline (i.e. final in Scala2) and keep module singleton types
@@ -1085,7 +1085,7 @@ class Namer { typer: Typer =>
           tp
         else
           tp.widenTermRefExpr match {
-            case ctp: ConstantType if isTransparentVal => ctp
+            case ctp: ConstantType if isInlineVal => ctp
             case ref: TypeRef if ref.symbol.is(ModuleClass) => tp
             case _ => tp.widen.widenUnion
           }
@@ -1095,7 +1095,7 @@ class Namer { typer: Typer =>
       def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
       var rhsCtx = ctx.addMode(Mode.InferringReturnType)
-      if (sym.isInlineable) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
+      if (sym.isInlineMethod) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
       def rhsType = typedAheadExpr(mdef.rhs, inherited orElse rhsProto)(rhsCtx).tpe
 
       // Approximate a type `tp` with a type that does not contain skolem types.
@@ -1115,7 +1115,7 @@ class Namer { typer: Typer =>
         if (sym.is(Final, butNot = Method)) {
           val tp = lhsType
           if (tp.isInstanceOf[ConstantType])
-            tp // keep constant types that fill in for a non-constant (to be revised when transparent has landed).
+            tp // keep constant types that fill in for a non-constant (to be revised when inline has landed).
           else inherited
         }
         else inherited

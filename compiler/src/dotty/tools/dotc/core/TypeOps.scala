@@ -80,35 +80,41 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     pre.isStable || !ctx.phase.isTyper
 
   /** Implementation of Types#simplified */
-  final def simplify(tp: Type, theMap: SimplifyMap): Type = tp match {
-    case tp: NamedType =>
-      if (tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
-      else tp.derivedSelect(simplify(tp.prefix, theMap)) match {
-        case tp1: NamedType if tp1.denotationIsCurrent =>
-          val tp2 = tp1.reduceProjection
-          //if (tp2 ne tp1) println(i"simplified $tp1 -> $tp2")
-          tp2
-        case tp1 => tp1
-      }
-    case tp: TypeParamRef =>
-      if (tp.paramName.is(DepParamName)) {
-        val bounds = ctx.typeComparer.bounds(tp)
-        if (bounds.lo.isRef(defn.NothingClass)) bounds.hi else bounds.lo
-      }
-      else {
-        val tvar = typerState.constraint.typeVarOfParam(tp)
-        if (tvar.exists) tvar else tp
-      }
-    case  _: ThisType | _: BoundType =>
-      tp
-    case tp: TypeAlias =>
-      tp.derivedTypeAlias(simplify(tp.alias, theMap))
-    case AndType(l, r) if !ctx.mode.is(Mode.Type) =>
-      simplify(l, theMap) & simplify(r, theMap)
-    case OrType(l, r) if !ctx.mode.is(Mode.Type) =>
-      simplify(l, theMap) | simplify(r, theMap)
-    case _ =>
-      (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
+  final def simplify(tp: Type, theMap: SimplifyMap): Type = {
+    def mapOver = (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
+    tp match {
+      case tp: NamedType =>
+        if (tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
+        else tp.derivedSelect(simplify(tp.prefix, theMap)) match {
+          case tp1: NamedType if tp1.denotationIsCurrent =>
+            val tp2 = tp1.reduceProjection
+            //if (tp2 ne tp1) println(i"simplified $tp1 -> $tp2")
+            tp2
+          case tp1 => tp1
+        }
+      case tp: TypeParamRef =>
+        if (tp.paramName.is(DepParamName)) {
+          val bounds = ctx.typeComparer.bounds(tp)
+          if (bounds.lo.isRef(defn.NothingClass)) bounds.hi else bounds.lo
+        }
+        else {
+          val tvar = typerState.constraint.typeVarOfParam(tp)
+          if (tvar.exists) tvar else tp
+        }
+      case  _: ThisType | _: BoundType =>
+        tp
+      case tp: AliasingBounds =>
+        tp.derivedAlias(simplify(tp.alias, theMap))
+      case AndType(l, r) if !ctx.mode.is(Mode.Type) =>
+        simplify(l, theMap) & simplify(r, theMap)
+      case OrType(l, r) if !ctx.mode.is(Mode.Type) =>
+        simplify(l, theMap) | simplify(r, theMap)
+      case _: AppliedType | _: MatchType =>
+        val normed = tp.tryNormalize
+        if (normed.exists) normed else mapOver
+      case _ =>
+        mapOver
+    }
   }
 
   class SimplifyMap extends TypeMap {
@@ -281,8 +287,8 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     violations.toList
   }
 
-  /** Are we in a rewrite method body? */
-  def inRewriteMethod = owner.ownersIterator.exists(_.isRewriteMethod)
+  /** Are we in an inline method body? */
+  def inInlineMethod = owner.ownersIterator.exists(_.isInlineMethod)
 
   /** Is `feature` enabled in class `owner`?
    *  This is the case if one of the following two alternatives holds:

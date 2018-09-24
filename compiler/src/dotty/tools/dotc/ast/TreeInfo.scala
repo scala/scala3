@@ -306,6 +306,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case mdef: TypeDef =>
       def isBounds(rhs: Tree): Boolean = rhs match {
         case _: TypeBoundsTree => true
+        case _: MatchTypeTree => true // Typedefs with Match rhs classify as abstract
         case LambdaTypeTree(_, body) => isBounds(body)
         case _ => false
       }
@@ -392,11 +393,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case Ident(_) =>
       refPurity(tree)
     case Select(qual, _) =>
-      refPurity(tree).min(exprPurity(qual))
+      if (tree.symbol.is(Erased)) Pure
+      else refPurity(tree).min(exprPurity(qual))
     case New(_) =>
       SimplyPure
     case TypeApply(fn, _) =>
-      exprPurity(fn)
+      if (fn.symbol.is(Erased)) Pure else exprPurity(fn)
     case Apply(fn, args) =>
       def isKnownPureOp(sym: Symbol) =
         sym.owner.isPrimitiveValueClass || sym.owner == defn.StringClass
@@ -404,8 +406,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
              // A constant expression with pure arguments is pure.
           || fn.symbol.isStable)
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Pure
-      else
-        Impure
+      else if (fn.symbol.is(Erased)) Pure
+      else Impure
     case Typed(expr, _) =>
       exprPurity(expr)
     case Block(stats, expr) =>
@@ -462,11 +464,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  Strictly speaking we can't replace `O.x` with `42`.  But this would make
    *  most expressions non-constant. Maybe we can change the spec to accept this
    *  kind of eliding behavior. Or else enforce true purity in the compiler.
-   *  The choice will be affected by what we will do with `transparent` and with
+   *  The choice will be affected by what we will do with `inline` and with
    *  Singleton type bounds (see SIP 23). Presumably
    *
    *     object O1 { val x: Singleton = 42; println("43") }
-   *     object O2 { transparent val x = 42; println("43") }
+   *     object O2 { inline val x = 42; println("43") }
    *
    *  should behave differently.
    *
@@ -476,8 +478,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *
    *     O2.x = 42
    *
-   *  Revisit this issue once we have standardized on `transparent`. Then we can demand
-   *  purity of the prefix unless the selection goes to a transparent val.
+   *  Revisit this issue once we have standardized on `inline`. Then we can demand
+   *  purity of the prefix unless the selection goes to a inline val.
    *
    *  Note: This method should be applied to all term tree nodes that are not literals,
    *        that can be idempotent, and that can have constant types. So far, only nodes

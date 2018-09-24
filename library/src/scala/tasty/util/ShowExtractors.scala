@@ -62,6 +62,8 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "Term.Match(" += selector += ", " ++= cases += ")"
       case Term.Return(expr) =>
         this += "Term.Return(" += expr += ")"
+      case Term.While(cond, body) =>
+        this += "Term.While(" += cond += ", " += body += ")"
       case Term.Try(block, handlers, finalizer) =>
         this += "Term.Try(" += block += ", " ++= handlers += ", " += finalizer += ")"
       case Term.Repeated(elems) =>

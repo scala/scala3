@@ -61,17 +61,17 @@ object PrepareInlineable {
 
       /** A definition needs an accessor if it is private, protected, or qualified private
        *  and it is not part of the tree that gets inlined. The latter test is implemented
-       *  by excluding all symbols properly contained in the inlined method.
+       *  by excluding all symbols properly contained in the inline method.
        *
        *  Constant vals don't need accessors since they are inlined in FirstTransform.
-       *  Rewrite methods don't need accessors since they are inlined in Typer.
+       *  Inline methods don't need accessors since they are inlined in Typer.
        */
       def needsAccessor(sym: Symbol)(implicit ctx: Context) =
         sym.isTerm &&
         (sym.is(AccessFlags) || sym.privateWithin.exists) &&
         !sym.isContainedIn(inlineSym) &&
         !(sym.isStable && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
-        !sym.isRewriteMethod
+        !sym.isInlineMethod
 
       def preTransform(tree: Tree)(implicit ctx: Context): Tree
 
@@ -95,7 +95,7 @@ object PrepareInlineable {
       def preTransform(tree: Tree)(implicit ctx: Context): Tree = tree match {
         case tree: RefTree if needsAccessor(tree.symbol) =>
           if (tree.symbol.isConstructor) {
-            ctx.error("Implementation restriction: cannot use private constructors in transparent or rewrite methods", tree.pos)
+            ctx.error("Implementation restriction: cannot use private constructors in inlineinline methods", tree.pos)
             tree // TODO: create a proper accessor for the private constructor
           }
           else useAccessor(tree)
@@ -106,7 +106,7 @@ object PrepareInlineable {
     }
 
     /** Fallback approach if the direct approach does not work: Place the accessor method
-     *  in the same class as the inlined method, and let it take the receiver as parameter.
+     *  in the same class as the inline method, and let it take the receiver as parameter.
      *  This is tricky, since we have to find a suitable type for the parameter, which might
      *  require additional type parameters for the inline accessor. An example is in the
      *  `TestPassing` class in test `run/inline/inlines_1`:
@@ -115,11 +115,11 @@ object PrepareInlineable {
      *      private[inlines] def next[U](y: U): (T, U) = (x, y)
      *    }
      *    class TestPassing {
-     *      rewrite def foo[A](x: A): (A, Int) = {
+     *      inline def foo[A](x: A): (A, Int) = {
      *      val c = new C[A](x)
      *      c.next(1)
      *    }
-     *    rewrite def bar[A](x: A): (A, String) = {
+     *    inline def bar[A](x: A): (A, String) = {
      *      val c = new C[A](x)
      *      c.next("")
      *    }
@@ -150,8 +150,8 @@ object PrepareInlineable {
           }
           val qualType = dealiasMap(qual.tpe.widen)
 
-          // The types that are local to the inlined method, and that therefore have
-          // to be abstracted out in the accessor, which is external to the inlined method
+          // The types that are local to the inline method, and that therefore have
+          // to be abstracted out in the accessor, which is external to the inline method
           val localRefs = qualType.namedPartsWith(ref =>
             ref.isType && ref.symbol.isContainedIn(inlineSym)).toList
 
@@ -227,7 +227,7 @@ object PrepareInlineable {
    *  @param treeExpr    A function that computes the tree to be inlined, given a context
    *                     This tree may still refer to non-public members.
    *  @param ctx         The context to use for evaluating `treeExpr`. It needs
-   *                     to have the inlined method as owner.
+   *                     to have the inline method as owner.
    */
   def registerInlineInfo(
       inlined: Symbol, originalBody: untpd.Tree, treeExpr: Context => Tree)(implicit ctx: Context): Unit = {
@@ -240,12 +240,12 @@ object PrepareInlineable {
           inlined.updateAnnotation(LazyBodyAnnotation { _ =>
             implicit val ctx = inlineCtx
             val rawBody = treeExpr(ctx)
-            if (inlined.is(Transparent | Rewrite)) {
+            if (inlined.is(Inline)) {
               val typedBody =
                 if (ctx.reporter.hasErrors) rawBody
                 else ctx.compilationUnit.inlineAccessors.makeInlineable(rawBody)
-              if (inlined.isRewriteMethod)
-                checkRewriteMethod(inlined, typedBody)
+              if (inlined.isInlineMethod)
+                checkInlineMethod(inlined, typedBody)
               val inlineableBody = addReferences(inlined, originalBody, typedBody)
               inlining.println(i"Body to inline for $inlined: $inlineableBody")
               inlineableBody
@@ -258,12 +258,12 @@ object PrepareInlineable {
     }
   }
 
-  def checkRewriteMethod(inlined: Symbol, body: Tree)(implicit ctx: Context) = {
-    if (ctx.outer.inRewriteMethod)
-      ctx.error(ex"implementation restriction: nested rewrite methods are not supported", inlined.pos)
+  def checkInlineMethod(inlined: Symbol, body: Tree)(implicit ctx: Context) = {
+    if (ctx.outer.inInlineMethod)
+      ctx.error(ex"implementation restriction: nested inline methods are not supported", inlined.pos)
     if (inlined.name == nme.unapply && tupleArgs(body).isEmpty)
       ctx.warning(
-        em"rewrite unapply method can be rewritten only if its right hand side is a tuple (e1, ..., eN)",
+        em"inline unapply method can be rewritten only if its right hand side is a tuple (e1, ..., eN)",
         body.pos)
   }
 
@@ -423,12 +423,12 @@ object PrepareInlineable {
         val localImplicit = iref.symbol.asTerm.copy(
           owner = inlineMethod,
           name = UniqueInlineName.fresh(iref.symbol.name.asTermName),
-          flags = Implicit | Method | Stable | iref.symbol.flags & (Rewrite | Erased),
+          flags = Implicit | Method | Stable | iref.symbol.flags & (Inline | Erased),
           info = iref.tpe.widen.ensureMethodic,
           coord = inlineMethod.pos).asTerm
         val idef = polyDefDef(localImplicit, tps => vrefss =>
             iref.appliedToTypes(tps).appliedToArgss(vrefss))
-        if (localImplicit.is(Rewrite)) {
+        if (localImplicit.is(Inline)) {
           // produce a Body annotation for inlining
           def untype(tree: Tree): untpd.Tree = tree match {
             case Apply(fn, args) => untpd.cpy.Apply(tree)(untype(fn), args)

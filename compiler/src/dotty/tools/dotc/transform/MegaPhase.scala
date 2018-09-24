@@ -68,6 +68,7 @@ object MegaPhase {
     def prepareForCaseDef(tree: CaseDef)(implicit ctx: Context) = ctx
     def prepareForLabeled(tree: Labeled)(implicit ctx: Context) = ctx
     def prepareForReturn(tree: Return)(implicit ctx: Context) = ctx
+    def prepareForWhileDo(tree: WhileDo)(implicit ctx: Context) = ctx
     def prepareForTry(tree: Try)(implicit ctx: Context) = ctx
     def prepareForSeqLiteral(tree: SeqLiteral)(implicit ctx: Context) = ctx
     def prepareForInlined(tree: Inlined)(implicit ctx: Context) = ctx
@@ -101,6 +102,7 @@ object MegaPhase {
     def transformCaseDef(tree: CaseDef)(implicit ctx: Context): Tree = tree
     def transformLabeled(tree: Labeled)(implicit ctx: Context): Tree = tree
     def transformReturn(tree: Return)(implicit ctx: Context): Tree = tree
+    def transformWhileDo(tree: WhileDo)(implicit ctx: Context): Tree = tree
     def transformTry(tree: Try)(implicit ctx: Context): Tree = tree
     def transformSeqLiteral(tree: SeqLiteral)(implicit ctx: Context): Tree = tree
     def transformInlined(tree: Inlined)(implicit ctx: Context): Tree = tree
@@ -202,6 +204,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
           case tree: Try => goTry(tree, start)
           case tree: Inlined => goInlined(tree, start)
           case tree: Return => goReturn(tree, start)
+          case tree: WhileDo => goWhileDo(tree, start)
           case tree: Alternative => goAlternative(tree, start)
           case tree => goOther(tree, start)
         }
@@ -376,6 +379,11 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         goReturn(cpy.Return(tree)(expr, tree.from), start)
           // don't transform `tree.from`, as this is not a normal ident, but
           // a pointer to the enclosing method.
+      case tree: WhileDo =>
+        implicit val ctx = prepWhileDo(tree, start)(outerCtx)
+        val cond = transformTree(tree.cond, start)
+        val body = transformTree(tree.body, start)
+        goWhileDo(cpy.WhileDo(tree)(cond, body), start)
       case tree: Alternative =>
         implicit val ctx = prepAlternative(tree, start)(outerCtx)
         val trees = transformTrees(tree.trees, start)
@@ -493,8 +501,12 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   private val nxMatchTransPhase = init("transformMatch")
   private val nxCaseDefPrepPhase = init("prepareForCaseDef")
   private val nxCaseDefTransPhase = init("transformCaseDef")
+  private val nxLabeledPrepPhase = init("prepareForLabeled")
+  private val nxLabeledTransPhase = init("transformLabeled")
   private val nxReturnPrepPhase = init("prepareForReturn")
   private val nxReturnTransPhase = init("transformReturn")
+  private val nxWhileDoPrepPhase = init("prepareForWhileDo")
+  private val nxWhileDoTransPhase = init("transformWhileDo")
   private val nxTryPrepPhase = init("prepareForTry")
   private val nxTryTransPhase = init("transformTry")
   private val nxSeqLiteralPrepPhase = init("prepareForSeqLiteral")
@@ -754,13 +766,13 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   }
 
   def prepLabeled(tree: Labeled, start: Int)(implicit ctx: Context): Context = {
-    val phase = nxReturnPrepPhase(start)
+    val phase = nxLabeledPrepPhase(start)
     if (phase == null) ctx
     else prepLabeled(tree, phase.idxInGroup + 1)(phase.prepareForLabeled(tree))
   }
 
   def goLabeled(tree: Labeled, start: Int)(implicit ctx: Context): Tree = {
-    val phase = nxReturnTransPhase(start)
+    val phase = nxLabeledTransPhase(start)
     if (phase == null) tree
     else phase.transformLabeled(tree)(ctx) match {
       case tree1: Labeled => goLabeled(tree1, phase.idxInGroup + 1)
@@ -779,6 +791,21 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     if (phase == null) tree
     else phase.transformReturn(tree)(ctx) match {
       case tree1: Return => goReturn(tree1, phase.idxInGroup + 1)
+      case tree1 => transformNode(tree1, phase.idxInGroup + 1)
+    }
+  }
+
+  def prepWhileDo(tree: WhileDo, start: Int)(implicit ctx: Context): Context = {
+    val phase = nxWhileDoPrepPhase(start)
+    if (phase == null) ctx
+    else prepWhileDo(tree, phase.idxInGroup + 1)(phase.prepareForWhileDo(tree))
+  }
+
+  def goWhileDo(tree: WhileDo, start: Int)(implicit ctx: Context): Tree = {
+    val phase = nxWhileDoTransPhase(start)
+    if (phase == null) tree
+    else phase.transformWhileDo(tree)(ctx) match {
+      case tree1: WhileDo => goWhileDo(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }

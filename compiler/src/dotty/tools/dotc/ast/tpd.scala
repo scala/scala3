@@ -115,10 +115,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef =
-    ta.assignType(untpd.CaseDef(pat, guard, body), body)
+    ta.assignType(untpd.CaseDef(pat, guard, body), pat, body)
 
   def Match(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =
-    ta.assignType(untpd.Match(selector, cases), cases)
+    ta.assignType(untpd.Match(selector, cases), selector, cases)
 
   def Labeled(bind: Bind, expr: Tree)(implicit ctx: Context): Labeled =
     ta.assignType(untpd.Labeled(bind, expr))
@@ -128,6 +128,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def Return(expr: Tree, from: Tree)(implicit ctx: Context): Return =
     ta.assignType(untpd.Return(expr, from))
+
+  def WhileDo(cond: Tree, body: Tree)(implicit ctx: Context): WhileDo =
+    ta.assignType(untpd.WhileDo(cond, body))
 
   def Try(block: Tree, cases: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try =
     ta.assignType(untpd.Try(block, cases, finalizer), block, cases)
@@ -164,6 +167,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def LambdaTypeTree(tparams: List[TypeDef], body: Tree)(implicit ctx: Context): LambdaTypeTree =
     ta.assignType(untpd.LambdaTypeTree(tparams, body), tparams, body)
+
+  def MatchTypeTree(bound: Tree, selector: Tree, cases: List[CaseDef])(implicit ctx: Context): MatchTypeTree =
+    ta.assignType(untpd.MatchTypeTree(bound, selector, cases), bound, selector, cases)
 
   def TypeBoundsTree(lo: Tree, hi: Tree)(implicit ctx: Context): TypeBoundsTree =
     ta.assignType(untpd.TypeBoundsTree(lo, hi), lo, hi)
@@ -575,7 +581,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-
     override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure = {
       val tree1 = untpd.cpy.Closure(tree)(env, meth, tpt)
       tree match {
@@ -584,6 +589,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         case _ => ta.assignType(tree1, meth, tpt)
       }
     }
+
     override def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = {
       @tailrec
       def sameCases(trees: List[CaseDef], trees1: List[CaseDef]): Boolean = {
@@ -600,7 +606,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val tree1 = untpd.cpy.Match(tree)(selector, cases)
       tree match {
         case tree: Match if (selector.tpe eq tree.selector.tpe) && sameCases(cases, tree.cases) => tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, cases)
+        case _ => ta.assignType(tree1, selector, cases)
       }
     }
 
@@ -608,7 +614,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val tree1 = untpd.cpy.CaseDef(tree)(pat, guard, body)
       tree match {
         case tree: CaseDef if body.tpe eq tree.body.tpe => tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, body)
+        case _ => ta.assignType(tree1, pat, body)
       }
     }
 
@@ -617,6 +623,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def Return(tree: Tree)(expr: Tree, from: Tree)(implicit ctx: Context): Return =
       ta.assignType(untpd.cpy.Return(tree)(expr, from))
+
+    override def WhileDo(tree: Tree)(cond: Tree, body: Tree)(implicit ctx: Context): WhileDo =
+      ta.assignType(untpd.cpy.WhileDo(tree)(cond, body))
 
     override def Try(tree: Tree)(expr: Tree, cases: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try = {
       val tree1 = untpd.cpy.Try(tree)(expr, cases, finalizer)
@@ -833,7 +842,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** `tree == that` */
     def equal(that: Tree)(implicit ctx: Context) =
-      applyOverloaded(tree, nme.EQ, that :: Nil, Nil, defn.BooleanType)
+      if (that.tpe.widen.isRef(defn.NothingClass))
+        Literal(Constant(false))
+      else
+        applyOverloaded(tree, nme.EQ, that :: Nil, Nil, defn.BooleanType)
 
     /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
     def isInstance(tp: Type)(implicit ctx: Context): Tree = tp.dealias match {

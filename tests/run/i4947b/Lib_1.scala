@@ -1,5 +1,5 @@
 object Lib {
-  rewrite def track[T](f: => T): T = {
+  inline def track[T](f: => T): T = {
     printStack("track")
     printStack("track")
     f
@@ -12,7 +12,7 @@ object Lib {
     println(s"$tag (i = $i): ${new Exception().getStackTrace().apply(1)}")
   }
 
-  rewrite def fact[T](transparent i: Int)(f: => T): Int = {
+  inline def fact[T](inline i: Int)(f: => T): Int = {
     printStack("track", i)
     printStack("track", i)
     track {

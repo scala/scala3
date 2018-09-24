@@ -11,11 +11,11 @@ object Nat {
   val Z = new Z
 }
 
-type NatOf(transparent x: Int where x >= 0) =
+type NatOf(inline x: Int where x >= 0) =
   if (x == 0) Z
   else S[NatOf(x - 1)]
 
-inline def natOf(transparent x: Int where x >= 0): NatOf(x) =
+inline def natOf(inline x: Int where x >= 0): NatOf(x) =
   if (x == 0) Z
   else S(natOf(x - 1))
 

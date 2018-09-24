@@ -1,7 +1,7 @@
 object Test {
 
   class Range(from: Int, end: Int) {
-    rewrite def foreach(op: => Int => Unit): Unit = {
+    inline def foreach(op: => Int => Unit): Unit = {
       var i = from
       while (i < end) {
         op(i)
@@ -9,11 +9,11 @@ object Test {
       }
     }
   }
-  rewrite def twice(op: => Int => Unit): Unit = {
+  inline def twice(op: => Int => Unit): Unit = {
     op(1)
     op(2)
   }
-  rewrite def thrice(op: => Unit): Unit = {
+  inline def thrice(op: => Unit): Unit = {
     op
     op
     op

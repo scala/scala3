@@ -59,7 +59,6 @@ trait StandardDefinitions extends scala.tasty.reflect.StandardDefinitions {
       defn.FunctionClass(arity, isImplicit, isErased).asClass
     def TupleClass(arity: Int): Symbol = defn.TupleType(arity).classSymbol.asClass
 
-
     def ScalaPrimitiveValueClasses: List[Symbol] =
       UnitClass :: BooleanClass :: ScalaNumericValueClasses
     def ScalaNumericValueClasses: List[Symbol] =

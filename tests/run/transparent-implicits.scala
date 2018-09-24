@@ -11,7 +11,7 @@ object inlines {
   class C {
     implicit val x: X = new X()
 
-    rewrite
+    inline
     def f(): (X, Y) =
       (implicitly[X], implicitly[Y])
   }

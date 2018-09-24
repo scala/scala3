@@ -1,5 +1,5 @@
 object Test {
-  transparent val x = true
+  inline val x = true
   val y = if (x) 1 else 2  // reduced to val y = 1
 
   def main(args: Array[String]): Unit  =

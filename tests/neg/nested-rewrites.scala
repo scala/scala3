@@ -1,13 +1,13 @@
 object Test {
 
-  rewrite def f1(x: Int) = {
-    rewrite def g(x: Int) = x // error: implementation restriction: nested rewrite methods are not supported
+  inline def f1(x: Int) = {
+    inline def g(x: Int) = x // error: implementation restriction: nested inline methods are not supported
     g(x)
   }
 
-  rewrite def f2(x: Int) = {
+  inline def f2(x: Int) = {
     object o {
-      rewrite def g(x: Int) = x // error: implementation restriction: nested rewrite methods are not supported
+      inline def g(x: Int) = x // error: implementation restriction: nested inline methods are not supported
     }
     o.g(x)
   }
@@ -15,14 +15,14 @@ object Test {
 object Test0 {
 
   def f(x: Int) = {
-    rewrite def g(x: Int) = rewrite x match {
+    inline def g(x: Int) = inline x match {
       case 0 => 0
     }
     g(0)
-    transparent val Y = 0
+    inline val Y = 0
     g(Y)
 
-    rewrite def h(x: Int) = rewrite x match {
+    inline def h(x: Int) = inline x match {
       case Y => 0
     }
     h(0)
@@ -34,15 +34,15 @@ object Test0 {
 
 object Test1 {
 
-  erased rewrite def f(x: Int) = {
-    erased rewrite def g(x: Int) = rewrite x match { // error: implementation restriction: nested rewrite methods are not supported
+  erased inline def f(x: Int) = {
+    erased inline def g(x: Int) = inline x match { // error: implementation restriction: nested inline methods are not supported
       case 0 => 0
     }
     g(0)
-    transparent val Y = 0
+    inline val Y = 0
     g(Y)
 
-    rewrite def h(x: Int) = rewrite x match { // error: implementation restriction: nested rewrite methods are not supported
+    inline def h(x: Int) = inline x match { // error: implementation restriction: nested inline methods are not supported
       case Y => 0
     }
     h(0)

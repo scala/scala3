@@ -1,6 +1,6 @@
 object Aux {
 
-  rewrite def track[T](f: => T): T = {
+  inline def track[T](f: => T): T = {
     printStack("track")
     printStack("track")
     f

@@ -5,7 +5,7 @@ import scala.tasty.util.TreeTraverser
 
 object Macros {
 
-  implicit rewrite def printOwners[T](x: => T): Unit =
+  implicit inline def printOwners[T](x: => T): Unit =
     ~impl('(x))
 
   def impl[T](x: Expr[T])(implicit tasty: Tasty): Expr[Unit] = {

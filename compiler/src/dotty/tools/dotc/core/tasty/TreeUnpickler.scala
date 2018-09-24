@@ -352,7 +352,10 @@ class TreeUnpickler(reader: TastyReader,
             case APPLIEDtype =>
               readType().appliedTo(until(end)(readType()))
             case TYPEBOUNDS =>
-              TypeBounds(readType(), readType())
+              val lo = readType()
+              val hi = readType()
+              if (lo.isMatch && (lo `eq` hi)) MatchAlias(lo)
+              else TypeBounds(lo, hi)
             case ANNOTATEDtype =>
               AnnotatedType(readType(), Annotation(readTerm()))
             case TYPEOF =>
@@ -363,6 +366,8 @@ class TreeUnpickler(reader: TastyReader,
               OrType(readType(), readType())
             case SUPERtype =>
               SuperType(readType(), readType())
+            case MATCHtype =>
+              MatchType(readType(), readType(), until(end)(readType()))
             case POLYtype =>
               readMethodic(PolyType, _.toTypeName)
             case METHODtype =>
@@ -615,9 +620,8 @@ class TreeUnpickler(reader: TastyReader,
           case ERASED => addFlag(Erased)
           case LAZY => addFlag(Lazy)
           case OVERRIDE => addFlag(Override)
-          case TRANSPARENT => addFlag(Transparent)
           case DEPENDENT => addFlag(Dependent)
-          case REWRITE => addFlag(Rewrite)
+          case INLINE => addFlag(Inline)
           case MACRO => addFlag(Macro)
           case STATIC => addFlag(JavaStatic)
           case OBJECT => addFlag(Module)
@@ -825,7 +829,7 @@ class TreeUnpickler(reader: TastyReader,
             }
             sym.info = rhs.tpe match {
               case _: TypeBounds | _: ClassInfo => checkNonCyclic(sym, rhs.tpe, reportErrors = false)
-              case _ => TypeAlias(rhs.tpe)
+              case _ => rhs.tpe.toBounds
             }
             sym.resetFlag(Provisional)
             TypeDef(rhs)
@@ -1106,6 +1110,8 @@ class TreeUnpickler(reader: TastyReader,
               val from = readSymRef()
               val expr = ifBefore(end)(readTerm(), EmptyTree)
               Return(expr, Ident(from.termRef))
+            case WHILE =>
+              WhileDo(readTerm(), readTerm())
             case TRY =>
               Try(readTerm(), readCases(end), ifBefore(end)(readTerm(), EmptyTree))
             case SELECTouter =>
@@ -1157,6 +1163,11 @@ class TreeUnpickler(reader: TastyReader,
               val tparams = readParams[TypeDef](TYPEPARAM)
               val body = readTpt()
               LambdaTypeTree(tparams, body)
+            case MATCHtpt =>
+              val fst = readTpt()
+              val (bound, scrut) =
+                if (nextUnsharedTag == CASEDEF) (EmptyTree, fst) else (fst, readTpt())
+              MatchTypeTree(bound, scrut, readCases(end))
             case TYPEBOUNDStpt =>
               val lo = readTpt()
               val hi = if (currentAddr == end) lo else readTpt()
@@ -1339,12 +1350,12 @@ class TreeUnpickler(reader: TastyReader,
             val stats = until(end)(readUntyped())
             untpd.Block(stats, expr)
           case IF =>
-            val mkIf = if (nextByte == REWRITE) { readByte(); untpd.RewriteIf(_, _, _) }
+            val mkIf = if (nextByte == INLINE) { readByte(); untpd.InlineIf(_, _, _) }
               else untpd.If(_, _, _)
             mkIf(readUntyped(), readUntyped(), readUntyped())
           case MATCH =>
             val mkMatch =
-              if (nextByte == REWRITE) { readByte(); untpd.RewriteMatch(_, _) }
+              if (nextByte == INLINE) { readByte(); untpd.InlineMatch(_, _) }
               else untpd.Match(_, _)
             mkMatch(readUntyped(), readCases(end))
           case CASEDEF =>
@@ -1356,6 +1367,8 @@ class TreeUnpickler(reader: TastyReader,
             readNat()
             val expr = ifBefore(end)(readUntyped(), untpd.EmptyTree)
             untpd.Return(expr, untpd.EmptyTree)
+          case WHILE =>
+            untpd.WhileDo(readUntyped(), readUntyped())
           case TRY =>
             untpd.Try(readUntyped(), readCases(end), ifBefore(end)(readUntyped(), untpd.EmptyTree))
           case BIND =>
@@ -1403,6 +1416,11 @@ class TreeUnpickler(reader: TastyReader,
             val tparams = readParams[TypeDef](TYPEPARAM)
             val body = readUntyped()
             untpd.LambdaTypeTree(tparams, body)
+          case MATCHtpt =>
+            val fst = readUntyped()
+            val (bound, scrut) =
+              if (nextUnsharedTag == CASEDEF) (EmptyTree, fst) else (fst, readUntyped())
+            untpd.MatchTypeTree(bound, scrut, readCases(end))
           case TYPEBOUNDStpt =>
             val lo = readUntyped()
             val hi = ifBefore(end)(readUntyped(), lo)

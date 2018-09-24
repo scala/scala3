@@ -4,8 +4,8 @@ import scala.quoted.Toolbox.Default._
 
 object Macros {
 
-  rewrite def foreach1(start: Int, end: Int, f: Int => Unit): String = ~impl('(start), '(end), '(f))
-  rewrite def foreach2(start: Int, end: Int, f: => Int => Unit): String = ~impl('(start), '(end), '(f))
+  inline def foreach1(start: Int, end: Int, f: Int => Unit): String = ~impl('(start), '(end), '(f))
+  inline def foreach2(start: Int, end: Int, f: => Int => Unit): String = ~impl('(start), '(end), '(f))
 
   def impl(start: Expr[Int], end: Expr[Int], f: Expr[Int => Unit]): Expr[String] = {
     val res = '{

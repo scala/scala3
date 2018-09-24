@@ -928,13 +928,6 @@ object desugar {
   /** Main desugaring method */
   def apply(tree: Tree)(implicit ctx: Context): Tree = {
 
-    /**    { label def lname(): Unit = rhs; call }
-     */
-    def labelDefAndCall(lname: TermName, rhs: Tree, call: Tree) = {
-      val ldef = DefDef(lname, Nil, ListOfNil, TypeTree(defn.UnitType), rhs).withFlags(Label | Synthetic)
-      Block(ldef, call)
-    }
-
     /** Create tree for for-comprehension `<for (enums) do body>` or
      *   `<for (enums) yield body>` where mapName and flatMapName are chosen
      *  corresponding to whether this is a for-do or a for-yield.
@@ -1159,16 +1152,10 @@ object desugar {
       case PrefixOp(op, t) =>
         val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
         Select(t, nspace.UNARY_PREFIX ++ op.name)
-      case WhileDo(cond, body) =>
-        // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }
-        val call = Apply(Ident(nme.WHILE_PREFIX), Nil).withPos(tree.pos)
-        val rhs = If(cond, Block(body, call), unitLiteral)
-        labelDefAndCall(nme.WHILE_PREFIX, rhs, call)
       case DoWhile(body, cond) =>
-        // { label def doWhile$(): Unit = { body; if (cond) doWhile$() } ; doWhile$() }
-        val call = Apply(Ident(nme.DO_WHILE_PREFIX), Nil).withPos(tree.pos)
-        val rhs = Block(body, If(cond, call, unitLiteral))
-        labelDefAndCall(nme.DO_WHILE_PREFIX, rhs, call)
+        // while ({ { body }; { cond } }) { () }
+        // the inner blocks are there to protect the scopes of body and cond from each other
+        WhileDo(Block(Block(Nil, body), Block(Nil, cond)), Literal(Constant(())))
       case ForDo(enums, body) =>
         makeFor(nme.foreach, nme.foreach, enums, body) orElse tree
       case ForYield(enums, body) =>

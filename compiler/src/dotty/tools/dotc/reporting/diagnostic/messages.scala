@@ -1736,7 +1736,7 @@ object messages {
     val kind = "Syntax"
     val msg = hl"no explicit ${"return"} allowed from inlineable $owner"
     val explanation =
-      hl"""Methods marked with ${"rewrite"} or  ${"transparent"} modifier may not use ${"return"} statements.
+      hl"""Methods marked with ${"inline"} modifier may not use ${"return"} statements.
           |Instead, you should rely on the last expression's value being
           |returned from a method.
           |"""
@@ -2042,10 +2042,10 @@ object messages {
           |polymorphic methods."""
   }
 
-  case class ParamsNoTransparent(owner: Symbol)(implicit ctx: Context)
-    extends Message(ParamsNoTransparentID) {
+  case class ParamsNoInline(owner: Symbol)(implicit ctx: Context)
+    extends Message(ParamsNoInlineID) {
     val kind = "Syntax"
-    val msg = hl"""${"transparent"} modifier can only be used for parameters of rewrite methods"""
+    val msg = hl"""${"inline"} modifier can only be used for parameters of inline methods"""
     val explanation = ""
   }
 

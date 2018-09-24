@@ -6,7 +6,7 @@ case class Location(owners: List[String])
 
 object Location {
 
-  implicit rewrite def location: Location = ~impl
+  implicit inline def location: Location = ~impl
 
   def impl(implicit tasty: Tasty): Expr[Location] = {
     import tasty._

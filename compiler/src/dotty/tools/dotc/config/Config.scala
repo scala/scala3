@@ -6,6 +6,7 @@ object Config {
   final val cacheAsSeenFrom = true
   final val cacheMemberNames = true
   final val cacheImplicitScopes = true
+  final val cacheMatchReduced = true
   final val cacheNormalizedTypes = true
 
   final val checkCacheMembersNamed = false

@@ -198,7 +198,7 @@ object GenericSignatures {
             assert(!sym.isAliasType, "Unexpected alias type: " + sym)
             typeParamSig(sym.name.lastPart)
           }
-          else if (sym == defn.AnyClass || sym == defn.AnyValClass || sym == defn.SingletonClass)
+          else if (defn.erasedToObject.contains(sym))
             jsig(defn.ObjectType)
           else if (sym == defn.UnitClass || sym == defn.BoxedUnitModule)
             jsig(defn.BoxedUnitType)

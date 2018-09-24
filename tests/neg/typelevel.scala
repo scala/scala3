@@ -2,43 +2,43 @@ trait HList {
   def length: Int
   def head: Any
   def tail: HList
-  rewrite def isEmpty: Boolean =
+  inline def isEmpty: Boolean =
     length == 0
 }
 
 // ()
 case object HNil extends HList {
-  rewrite def length = 0
+  inline def length = 0
   def head: Nothing = ???
   def tail: Nothing = ???
 }
 
 // (H, T)
 case class HCons[H, T <: HList](hd: H, tl: T) extends HList {
-  rewrite def length = 1 + tl.length
+  inline def length = 1 + tl.length
   def head: H = this.hd
   def tail: T = this.tl
 }
 
 object Test {
-  rewrite def concat(xs: HList, ys: HList): HList =
+  inline def concat(xs: HList, ys: HList): HList =
     if xs.isEmpty then ys
     else HCons(xs.head, concat(xs.tail, ys))
 
   class Deco(private val as: HList) {
-    rewrite def ++ (bs: HList) = concat(as, bs)
+    inline def ++ (bs: HList) = concat(as, bs)
   }
 
   class Deco0(val as: HList) {
     println("HI")
-    rewrite def ++ (bs: HList) = concat(as, bs)
+    inline def ++ (bs: HList) = concat(as, bs)
   }
 
   class Eff {
     println("HI")
   }
   class Deco1(val as: HList) extends Eff {
-    rewrite def ++ (bs: HList) = concat(as, bs)
+    inline def ++ (bs: HList) = concat(as, bs)
   }
 
   // Test that selections from impure classes cannot be projected away
@@ -53,6 +53,6 @@ object Test {
   val rr1a: HCons[Int, HNil.type] = rr1   // error (type error because no inline)
 
   class Deco2(val as: HList) extends java.lang.Cloneable with java.lang.Comparable[Deco2] {
-    rewrite def ++ (bs: HList) = concat(as, bs)
+    inline def ++ (bs: HList) = concat(as, bs)
   }
 }

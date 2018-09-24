@@ -914,7 +914,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
           val ttree =
             typedType(untpd.rename(tree, tree.name.toTypeName))(nestedCtx)
           ttree.tpe match {
-            case alias: TypeRef if alias.info.isAlias && !nestedCtx.reporter.hasErrors =>
+            case alias: TypeRef if alias.info.isTypeAlias && !nestedCtx.reporter.hasErrors =>
               companionRef(alias) match {
                 case companion: TermRef => return untpd.ref(companion) withPos tree.pos
                 case _ =>
@@ -972,8 +972,8 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       else trySelectUnapply(qual1)(_ => notAnExtractor(sel))
     }
 
-    if (unapplyFn.symbol.isRewriteMethod)
-      checkInRewriteContext("implementation restriction: call to rewrite unapply", tree.pos)
+    if (unapplyFn.symbol.isInlineMethod)
+      checkInInlineContext("implementation restriction: call to inline unapply", tree.pos)
 
     /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
     def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {

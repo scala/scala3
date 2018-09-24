@@ -35,34 +35,34 @@ object Tuples {
 
   private final val MaxSpecialized = 7   // 22 in real life
 
-  private rewrite def _empty: Tuple = erasedValue[Empty]
-  private rewrite def _pair[H, T <: Tuple] (x: H, xs: T): Tuple = erasedValue[H *: T]
+  private inline def _empty: Tuple = erasedValue[Empty]
+  private inline def _pair[H, T <: Tuple] (x: H, xs: T): Tuple = erasedValue[H *: T]
 
-  private rewrite def _size(xs: Tuple): Int = rewrite xs match {
+  private inline def _size(xs: Tuple): Int = inline xs match {
     case _: Empty => 0
     case _: (_ *: xs1) => _size(erasedValue[xs1]) + 1
   }
 
-  private rewrite def _index(xs: Tuple, n: Int): Any = rewrite xs match {
+  private inline def _index(xs: Tuple, n: Int): Any = inline xs match {
     case _: (x *: _)   if n == 0 => erasedValue[x]
     case _: (_ *: xs1) if n > 0  => _index(erasedValue[xs1], n - 1)
   }
 
-  private rewrite def _head(xs: Tuple): Any = rewrite xs match {
+  private inline def _head(xs: Tuple): Any = inline xs match {
     case _: (x *: _) => erasedValue[x]
   }
 
-  private rewrite def _tail(xs: Tuple): Tuple = rewrite xs match {
+  private inline def _tail(xs: Tuple): Tuple = inline xs match {
     case _: (_ *: xs1) => erasedValue[xs1]
   }
 
-  private rewrite def _concat(xs: Tuple, ys: Tuple): Tuple = rewrite xs match {
+  private inline def _concat(xs: Tuple, ys: Tuple): Tuple = inline xs match {
     case _: Empty => ys
     case _: (x1 *: xs1) => _pair(erasedValue[x1], _concat(erasedValue[xs1], ys))
   }
 
-  rewrite def fromArray[T <: Tuple](xs: Array[Object]): T =
-    rewrite _size(erasedValue[T]) match {
+  inline def fromArray[T <: Tuple](xs: Array[Object]): T =
+    inline _size(erasedValue[T]) match {
       case 0 => ().asInstanceOf[T]
       case 1 => Tuple1(xs(0)).asInstanceOf[T]
       case 2 => Tuple2(xs(0), xs(1)).asInstanceOf[T]
@@ -76,11 +76,11 @@ object Tuples {
 
   val emptyArray = Array[Object]()
 
-  rewrite implicit def tupleDeco(xs: Tuple): TupleOps = new TupleOps(xs)
+  inline implicit def tupleDeco(xs: Tuple): TupleOps = new TupleOps(xs)
 
   class TupleOps(val xs: Tuple) extends AnyVal {
 
-    rewrite def toArray: Array[Object] = rewrite _size(xs) match {
+    inline def toArray: Array[Object] = inline _size(xs) match {
       case 0 =>
         emptyArray
       case 1 =>
@@ -108,9 +108,9 @@ object Tuples {
         xs.asInstanceOf[TupleXXL].elems
     }
 
-    rewrite def *: [H] (x: H): Tuple = {
+    inline def *: [H] (x: H): Tuple = {
       erased val resTpe = Typed(_pair(x, xs))
-      rewrite _size(xs) match {
+      inline _size(xs) match {
         case 0 =>
           Tuple1(x).asInstanceOf[resTpe.Type]
         case 1 =>
@@ -136,9 +136,9 @@ object Tuples {
       elems1
     }
 
-    rewrite def head: Any = {
+    inline def head: Any = {
       erased val resTpe = Typed(_head(xs))
-      val resVal = rewrite _size(xs) match {
+      val resVal = inline _size(xs) match {
         case 1 =>
           val t = xs.asInstanceOf[Tuple1[_]]
           t._1
@@ -160,9 +160,9 @@ object Tuples {
       resVal.asInstanceOf[resTpe.Type]
     }
 
-    rewrite def tail: Any = {
+    inline def tail: Any = {
       erased val resTpe = Typed(_tail(xs))
-      rewrite _size(xs) match {
+      inline _size(xs) match {
         case 1 =>
           unit
         case 2 =>
@@ -182,30 +182,30 @@ object Tuples {
       }
     }
 
-    rewrite def apply(n: Int): Any = {
+    inline def apply(n: Int): Any = {
       erased val resTpe = Typed(_index(xs, n))
-      rewrite _size(xs) match {
+      inline _size(xs) match {
         case 1 =>
           val t = xs.asInstanceOf[Tuple1[_]]
-          rewrite n match {
+          inline n match {
             case 0 => t._1.asInstanceOf[resTpe.Type]
           }
         case 2 =>
           val t = xs.asInstanceOf[Tuple2[_, _]]
-          rewrite n match {
+          inline n match {
             case 0 => t._1.asInstanceOf[resTpe.Type]
             case 1 => t._2.asInstanceOf[resTpe.Type]
           }
         case 3 =>
           val t = xs.asInstanceOf[Tuple3[_, _, _]]
-          rewrite n match {
+          inline n match {
             case 0 => t._1.asInstanceOf[resTpe.Type]
             case 1 => t._2.asInstanceOf[resTpe.Type]
             case 2 => t._3.asInstanceOf[resTpe.Type]
           }
         case 4 =>
           val t = xs.asInstanceOf[Tuple4[_, _, _, _]]
-          rewrite n match {
+          inline n match {
             case 0 => t._1.asInstanceOf[resTpe.Type]
             case 1 => t._2.asInstanceOf[resTpe.Type]
             case 2 => t._3.asInstanceOf[resTpe.Type]
@@ -218,16 +218,16 @@ object Tuples {
       }
     }
 
-    rewrite def ++(ys: Tuple): Tuple = {
+    inline def ++(ys: Tuple): Tuple = {
       erased val resTpe = Typed(_concat(xs, ys))
-      rewrite _size(xs) match {
+      inline _size(xs) match {
         case 0 => ys
         case 1 =>
           if (_size(ys) == 0) xs
           else xs.head *: ys
         case 2 =>
           val t = xs.asInstanceOf[Tuple2[_, _]]
-          rewrite _size(ys) match {
+          inline _size(ys) match {
             case 0 => xs
             case 1 =>
               val u = ys.asInstanceOf[Tuple1[_]]
@@ -240,7 +240,7 @@ object Tuples {
           }
         case 3 =>
           val t = xs.asInstanceOf[Tuple3[_, _, _]]
-          rewrite _size(ys) match {
+          inline _size(ys) match {
             case 0 => xs
             case 1 =>
               val u = ys.asInstanceOf[Tuple1[_]]
@@ -254,7 +254,7 @@ object Tuples {
       }
     }
 
-    rewrite def genericConcat[T <: Tuple](xs: Tuple, ys: Tuple): Tuple =
+    inline def genericConcat[T <: Tuple](xs: Tuple, ys: Tuple): Tuple =
       fromArray[T](xs.toArray ++ ys.toArray)
   }
 }

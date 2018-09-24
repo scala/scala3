@@ -125,7 +125,7 @@ public enum ErrorMessageID {
     UnableToEmitSwitchID,
     MissingCompanionForStaticID,
     PolymorphicMethodMissingTypeInParentID,
-    ParamsNoTransparentID,
+    ParamsNoInlineID,
     JavaSymbolIsNotAValueID,
     DoubleDeclarationID,
     MatchCaseOnlyNullWarningID,

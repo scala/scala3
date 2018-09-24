@@ -4,8 +4,8 @@ object Test {
   def f(x: String): String = x
   def f(x: Any): Any = x
 
-  rewrite def g(x: Any) = f(x)
-  rewrite def h(x: Any) = this.f(x)
+  inline def g(x: Any) = f(x)
+  inline def h(x: Any) = this.f(x)
 
   locally {
     val x1 = g(1)

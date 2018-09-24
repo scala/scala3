@@ -1,6 +1,6 @@
 trait A { self =>
   class Foo {
-    rewrite def inlineMeth: Unit = {
+    inline def inlineMeth: Unit = {
       println(self)
     }
   }

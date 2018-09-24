@@ -7,7 +7,7 @@ package P {
 package Q {
   class D extends P.C {
     class Inner {
-      rewrite def g() = f()
+      inline def g() = f()
     }
   }
 }
