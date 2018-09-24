@@ -301,8 +301,11 @@ object Types {
     }
 
     /** Does this type occur as a part of type `that`? */
-    final def occursIn(that: Type)(implicit ctx: Context): Boolean =
-      that existsPart (this == _)
+    def occursIn(that: Type)(implicit ctx: Context): Boolean =
+      that.existsPart(this == _)
+
+    /** Does this type not refer to TypeParamRefs or uninstantiated TypeVars? */
+    final def isGround(implicit ctx: Context): Boolean = true
 
     /** Is this a type of a repeated parameter? */
     def isRepeatedParam(implicit ctx: Context): Boolean =
@@ -3271,6 +3274,17 @@ object Types {
     private[this] var cachedSuper: Type = _
     private[this] var myStableHash: Byte = 0
 
+    private[this] var isGroundKnown: Boolean = false
+    private[this] var isGroundCache: Boolean = _
+
+    def isGround(acc: TypeAccumulator[Boolean])(implicit ctx: Context): Boolean = {
+      if (!isGroundKnown) {
+        isGroundCache = acc.foldOver(false, this)
+        isGroundKnown = true
+      }
+      isGroundCache
+    }
+
     override def underlying(implicit ctx: Context): Type = tycon
 
     override def superType(implicit ctx: Context): Type = {
@@ -3413,6 +3427,11 @@ object Types {
     type BT = TypeLambda
     def kindString = "Type"
     def copyBoundType(bt: BT) = bt.paramRefs(paramNum)
+
+    /** Optimized version of occursIn, avoid quadratic blowup when solving
+     *  constraints over large ground types.
+     */
+    override def occursIn(that: Type)(implicit ctx: Context) = !that.isGround && super.occursIn(that)
 
     /** Looking only at the structure of `bound`, is one of the following true?
      *     - fromBelow and param <:< bound
@@ -4775,6 +4794,17 @@ object Types {
             foldOver(x, tp)
         }
       }
+  }
+
+  class isGroundAccumulator(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+    def apply(x: Boolean, tp: Type) = x || {
+      tp match {
+        case _: TypeParamRef => false
+        case tp: TypeVar => apply(x, tp.underlying)
+        case tp: AppliedType => tp.isGround(this)
+        case _ => foldOver(x, tp)
+      }
+    }
   }
 
   //   ----- Name Filters --------------------------------------------------
