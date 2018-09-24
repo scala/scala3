@@ -5,16 +5,13 @@ import scala.language.implicitConversions
 
 case class Xml(parts: String, args: List[Any])
 
-// Ideally should be an implicit class but the implicit conversion
-// has to be a inline method
-class XmlQuote(val ctx: StringContext) {
-  inline def xml(args: => Any*): Xml = ~XmlQuote.impl('(this), '(args))
-}
-
 object XmlQuote {
-  implicit inline def XmlQuote(ctx: StringContext): XmlQuote = new XmlQuote(ctx)
 
-  def impl(receiver: Expr[XmlQuote], args: Expr[Seq[Any]])
+  implicit class SCOps(ctx: StringContext) {
+    inline def xml(args: => Any*): Xml = ~XmlQuote.impl('(this), '(args))
+  }
+
+  def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
           (implicit tasty: Tasty): Expr[Xml] = {
     import tasty._
     import Term._
@@ -41,17 +38,21 @@ object XmlQuote {
       case _ => false
     }
 
-    // _root_.scala.StringContext.apply([p0, ...]: String*)
+    def isSCOpsConversion(tree: Term) =
+      tree.symbol.fullName == "XmlQuote$.SCOps"
+
+    def isStringContextApply(tree: Term) =
+      tree.symbol.fullName == "scala.StringContext$.apply"
+
+    // XmlQuote.SCOps(StringContext.apply([p0, ...]: String*)
     val parts = receiver.toTasty.underlyingArgument match {
-      case Apply(
-            Select(New(_), _, _),
-            List(
-              Apply(
-                Select(Select(Select(Ident("_root_"), "scala", _), "StringContext", _), "apply", _),
-                List(Typed(Repeated(values), _))))) if values.forall(isStringConstant) =>
+      case Apply(conv, List(Apply(fun, List(Typed(Repeated(values), _)))))
+          if isSCOpsConversion(conv) &&
+             isStringContextApply(fun) &&
+             values.forall(isStringConstant) =>
         values.collect { case Literal(Constant.String(value)) => value }
       case tree =>
-        abort(s"String literal expected, but $tree found")
+        abort(s"String literal expected, but ${tree.show} found")
     }
 
     // [a0, ...]: Any*
