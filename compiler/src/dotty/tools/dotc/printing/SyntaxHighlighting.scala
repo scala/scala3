@@ -62,14 +62,22 @@ object SyntaxHighlighting {
         token match {
           case _ if literalTokens.contains(token) =>
             highlightRange(start, end, LiteralColor)
+
           case STRINGPART =>
             // String interpolation parts include `$` but
             // we don't highlight it, hence the `-1`
             highlightRange(start, end - 1, LiteralColor)
+
           case _ if alphaKeywords.contains(token) =>
             highlightRange(start, end, KeywordColor)
+
+          case IDENTIFIER if name == nme.INLINEkw =>
+            // `inline` is a "soft" keyword
+            highlightRange(start, end, KeywordColor)
+
           case IDENTIFIER if name == nme.??? =>
             highlightRange(start, end, Console.RED_B)
+
           case _ =>
         }
       }

@@ -120,4 +120,11 @@ class SyntaxHighlightingTests extends DottyTest {
     test("val foo @ Foo(x) = bar", ???)
     test("x match { case Foo | Bar => 1 }", ???)
   }
+
+  @Test
+  def softKeywords = {
+    test("inline def foo = 1", "<K|inline> <K|def> <V|foo> = <L|1>")
+    test("@inline def foo = 1", "<T|@inline> <K|def> <V|foo> = <L|1>")
+    test("class inline", "<K|class> <T|inline>")
+  }
 }
