@@ -24,7 +24,16 @@ let outputChannel: vscode.OutputChannel
 export let client: LanguageClient
 
 /** The sbt process that may have been started by this extension */
-let sbtProcess: ChildProcess
+let sbtProcess: ChildProcess | undefined
+
+/** The status bar where the show the status of sbt server */
+let sbtStatusBar: vscode.StatusBarItem
+
+/** Interval in ms to check that sbt is alive */
+const sbtCheckIntervalMs = 10 * 1000
+
+/** A command that we use to check that sbt is still alive. */
+export const nopCommand = "nop"
 
 const sbtVersion = "1.2.3"
 const sbtArtifact = `org.scala-sbt:sbt-launch:${sbtVersion}`
@@ -96,9 +105,54 @@ export function activate(context: ExtensionContext) {
     }
 
     configuredProject
-      .then(_ => withProgress("Configuring Dotty IDE...", configureIDE(coursierPath)))
+      .then(_ => connectToSbt(coursierPath))
+      .then(sbt => withProgress("Configuring Dotty IDE...", configureIDE(sbt)))
       .then(_ => runLanguageServer(coursierPath, languageServerArtifactFile))
   }
+}
+
+/**
+ * Connect to sbt server (possibly by starting a new instance) and keep verifying that the
+ * connection is still alive. If it dies, restart sbt server.
+ */
+function connectToSbt(coursierPath: string): Thenable<rpc.MessageConnection> {
+  if (!sbtStatusBar) sbtStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right)
+  sbtStatusBar.text = "sbt server: connecting $(sync)"
+  sbtStatusBar.show()
+
+  return offeringToRetry(() => {
+    return withSbtInstance(outputChannel, coursierPath).then(connection => {
+      markSbtUp()
+      const interval = setInterval(() => checkSbt(interval, connection, coursierPath), sbtCheckIntervalMs)
+      return connection
+    })
+  }, "Couldn't connect to sbt server (see log for details)")
+}
+
+/** Mark sbt server as alive in the status bar */
+function markSbtUp(timeout?: NodeJS.Timer) {
+  sbtStatusBar.text = "sbt server: up $(check)"
+  if (timeout) clearTimeout(timeout)
+}
+
+/** Mark sbt server as dead and try to reconnect */
+function markSbtDownAndReconnect(coursierPath: string) {
+  sbtStatusBar.text = "sbt server: down $(x)"
+  if (sbtProcess) {
+    sbtProcess.kill()
+    sbtProcess = undefined
+  }
+  connectToSbt(coursierPath)
+}
+
+/** Check that sbt is alive, try to reconnect if it is dead. */
+function checkSbt(interval: NodeJS.Timer, connection: rpc.MessageConnection, coursierPath: string) {
+  sbtserver.tellSbt(outputChannel, connection, nopCommand)
+  .then(_ => markSbtUp(),
+    _ => {
+      clearInterval(interval)
+      markSbtDownAndReconnect(coursierPath)
+    })
 }
 
 export function deactivate() {
@@ -123,33 +177,45 @@ function withProgress<T>(title: string, op: Thenable<T>): Thenable<T> {
 }
 
 /** Connect to an sbt server and run `configureIDE`. */
-function configureIDE(coursierPath: string): Thenable<sbtserver.ExecResult> {
+function configureIDE(sbt: rpc.MessageConnection): Thenable<sbtserver.ExecResult> {
 
-  function offeringToRetry(client: rpc.MessageConnection, command: string): Thenable<sbtserver.ExecResult> {
-    return sbtserver.tellSbt(outputChannel, client, command)
-      .then(success => Promise.resolve(success),
-        _ => {
-          outputChannel.show()
-          return vscode.window.showErrorMessage("IDE configuration failed (see logs for details)", "Retry?")
-            .then(retry => {
-              if (retry) return offeringToRetry(client, command)
-              else return Promise.reject()
-            })
-        })
+  const tellSbt = (command: string) => {
+    return () => sbtserver.tellSbt(outputChannel, sbt, command)
   }
 
-  return withSbtInstance(outputChannel, coursierPath)
-    .then(client => {
-      // `configureIDE` is a command, which means that upon failure, sbt won't tell us anything
-      // until sbt/sbt#4370 is fixed.
-      // We run `compile` and `test:compile` first because they're tasks (so we get feedback from sbt
-      // in case of failure), and we're pretty sure configureIDE will pass if they passed.
-      return offeringToRetry(client, "compile").then(_ => {
-        return offeringToRetry(client, "test:compile").then(_ => {
-          return offeringToRetry(client, "configureIDE")
-        })
-      })
+  const failMessage = "`configureIDE` failed (see log for details)"
+
+  // `configureIDE` is a command, which means that upon failure, sbt won't tell us anything
+  // until sbt/sbt#4370 is fixed.
+  // We run `compile` and `test:compile` first because they're tasks (so we get feedback from sbt
+  // in case of failure), and we're pretty sure configureIDE will pass if they passed.
+  return offeringToRetry(tellSbt("compile"), failMessage).then(_ => {
+    return offeringToRetry(tellSbt("test:compile"), failMessage).then(_ => {
+      return offeringToRetry(tellSbt("configureIDE"), failMessage)
     })
+  })
+}
+
+/**
+ * Present the user with a dialog to retry `op` after a failure, returns its result in case of
+ * success.
+ *
+ * @param op The operation to perform
+ * @param failMessage The message to display in the dialog offering to retry `op`.
+ * @return A promise that will either resolve to the result of `op`, or a dialog that will let
+ * the user retry the operation.
+ */
+function offeringToRetry<T>(op: () => Thenable<T>, failMessage: string): Thenable<T> {
+  return op()
+    .then(success => Promise.resolve(success),
+      _ => {
+        outputChannel.show()
+        return vscode.window.showErrorMessage(failMessage, "Retry?")
+          .then(retry => {
+            if (retry) return offeringToRetry(op, failMessage)
+            else return Promise.reject()
+          })
+      })
 }
 
 function runLanguageServer(coursierPath: string, languageServerArtifactFile: string) {
@@ -169,6 +235,27 @@ function runLanguageServer(coursierPath: string, languageServerArtifactFile: str
   })
 }
 
+function startNewSbtInstance(log: vscode.OutputChannel, coursierPath: string) {
+  fetchWithCoursier(coursierPath, sbtArtifact).then((sbtClasspath) => {
+    sbtProcess = cpp.spawn("java", [
+      "-Dsbt.log.noformat=true",
+      "-classpath", sbtClasspath,
+      "xsbt.boot.Boot"
+    ]).childProcess
+
+    // Close stdin, otherwise in case of error sbt will block waiting for the
+    // user input to reload or exit the build.
+    sbtProcess.stdin.end()
+
+    sbtProcess.stdout.on('data', data => {
+      log.append(data.toString())
+    })
+    sbtProcess.stderr.on('data', data => {
+      log.append(data.toString())
+    })
+  })
+}
+
 /**
  * Connects to an existing sbt server, or boots up one instance and connects to it.
  */
@@ -176,24 +263,7 @@ function withSbtInstance(log: vscode.OutputChannel, coursierPath: string): Thena
   const serverSocketInfo = path.join(workspaceRoot, "project", "target", "active.json")
 
   if (!fs.existsSync(serverSocketInfo)) {
-    fetchWithCoursier(coursierPath, sbtArtifact).then((sbtClasspath) => {
-      sbtProcess = cpp.spawn("java", [
-        "-Dsbt.log.noformat=true",
-        "-classpath", sbtClasspath,
-        "xsbt.boot.Boot"
-      ]).childProcess
-
-      // Close stdin, otherwise in case of error sbt will block waiting for the
-      // user input to reload or exit the build.
-      sbtProcess.stdin.end()
-
-      sbtProcess.stdout.on('data', data => {
-        log.appendLine(data.toString())
-      })
-      sbtProcess.stderr.on('data', data => {
-        log.appendLine(data.toString())
-      })
-    })
+    startNewSbtInstance(log, coursierPath)
   }
 
   return sbtserver.connectToSbtServer(log)

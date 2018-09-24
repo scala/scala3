@@ -269,6 +269,9 @@ object DottyIDEPlugin extends AutoPlugin {
     Command.process("runCode", state1)
   }
 
+  /** An sbt command that does nothing. We use it to check that sbt server is still alive. */
+  def nopCommand = Command.command("nop")(state => state)
+
   private def projectConfigTask(config: Configuration): Initialize[Task[Option[ProjectConfig]]] = Def.taskDyn {
     val depClasspath = Attributed.data((dependencyClasspath in config).value)
 
@@ -311,7 +314,7 @@ object DottyIDEPlugin extends AutoPlugin {
   )
 
   override def buildSettings: Seq[Setting[_]] = Seq(
-    commands ++= Seq(configureIDE, compileForIDE, launchIDE),
+    commands ++= Seq(configureIDE, compileForIDE, launchIDE, nopCommand),
 
     excludeFromIDE := false,
 

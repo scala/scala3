@@ -18,6 +18,8 @@ import * as rpc from 'vscode-jsonrpc'
 
 import * as vscode from 'vscode'
 
+import { nopCommand } from './extension'
+
 /** The result of successful `sbt/exec` call. */
 export interface ExecResult {
   status: string
@@ -43,45 +45,32 @@ class CommandLine {
  *
  * @return The result of executing `command`.
  */
-export function tellSbt(log: vscode.OutputChannel,
-                        connection: rpc.MessageConnection,
-                        command: string): Thenable<ExecResult> {
+export async function tellSbt(log: vscode.OutputChannel,
+                              connection: rpc.MessageConnection,
+                              command: string): Promise<ExecResult> {
   log.appendLine(`>>> ${command}`)
-  let req = new rpc.RequestType<CommandLine, ExecResult, any, any>("sbt/exec")
-  return connection.sendRequest(req, new CommandLine(command))
+  const req = new rpc.RequestType<CommandLine, ExecResult, any, any>("sbt/exec")
+  return await connection.sendRequest(req, new CommandLine(command))
 }
 
 /**
  * Attempts to connect to an sbt server running in this workspace.
  *
- * If connection fails, shows an error message and ask the user to retry.
- *
  * @param log Where to log messages between VSCode and sbt server.
  */
 export function connectToSbtServer(log: vscode.OutputChannel): Promise<rpc.MessageConnection> {
   return waitForServer().then(socket => {
-    if (socket) {
-      let connection = rpc.createMessageConnection(
-        new rpc.StreamMessageReader(socket),
-        new rpc.StreamMessageWriter(socket))
+    let connection = rpc.createMessageConnection(
+      new rpc.StreamMessageReader(socket),
+      new rpc.StreamMessageWriter(socket))
 
-      connection.listen()
+    connection.listen()
 
-      connection.onNotification("window/logMessage", (params) => {
-        log.appendLine(`<<< [${messageTypeToString(params.type)}] ${params.message}`)
-      })
+    connection.onNotification("window/logMessage", (params) => {
+      log.appendLine(`<<< [${messageTypeToString(params.type)}] ${params.message}`)
+    })
 
-      return connection
-    } else {
-      return vscode.window.showErrorMessage("Couldn't connect to sbt server.", "Retry?").then(answer => {
-        if (answer) {
-          return connectToSbtServer(log)
-        } else {
-          log.show()
-          return Promise.reject()
-        }
-      })
-    }
+    return tellSbt(log, connection, nopCommand).then(_ => connection)
   })
 }
 
@@ -111,8 +100,8 @@ function delay(ms: number) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function waitForServer(): Promise<net.Socket | null> {
-  let socket: net.Socket | null = null
+async function waitForServer(): Promise<net.Socket> {
+  let socket: net.Socket
   return vscode.window.withProgress({
     location: vscode.ProgressLocation.Window,
     title: "Connecting to sbt server..."
@@ -125,8 +114,9 @@ async function waitForServer(): Promise<net.Socket | null> {
         await delay(1000);
       }
     }
-    return socket
-  }).then(_ => socket)
+    if (socket) return Promise.resolve(socket)
+    else return Promise.reject()
+  })
 }
 
 function messageTypeToString(messageType: number): string {
