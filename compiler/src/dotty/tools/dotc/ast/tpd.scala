@@ -916,6 +916,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def outerSelect(levels: Int, tp: Type)(implicit ctx: Context): Tree =
       untpd.Select(tree, OuterSelectName(EmptyTermName, levels)).withType(SkolemType(tp))
 
+    def underlyingArgument(implicit ctx: Context): Tree = mapToUnderlying.transform(tree)
+
     // --- Higher order traversal methods -------------------------------
 
     /** Apply `f` to each subtree of this tree */
@@ -939,6 +941,18 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val buf = new mutable.ListBuffer[Tree]
       foreachSubTree { tree => if (f(tree)) buf += tree }
       buf.toList
+    }
+  }
+
+  /** Map Inlined nodes and InlineProxy references to underlying arguments */
+  object mapToUnderlying extends TreeMap {
+    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      case tree: Ident if tree.symbol.is(InlineProxy) =>
+        tree.symbol.defTree.asInstanceOf[ValOrDefDef].rhs.underlyingArgument
+      case Inlined(_, _, arg) =>
+        arg.underlyingArgument
+      case tree =>
+        super.transform(tree)
     }
   }
 
