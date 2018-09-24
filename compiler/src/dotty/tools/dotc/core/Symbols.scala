@@ -447,8 +447,8 @@ object Symbols {
      */
     def retainsDefTree(implicit ctx: Context): Boolean =
       ctx.settings.YretainTrees.value ||
-      denot.owner.isTerm || // no risk of leaking memory after a run for these
-      denot.is(Inline)      // need to keep inline info
+      denot.owner.isTerm ||        // no risk of leaking memory after a run for these
+      denot.is(InlineOrProxy)      // need to keep inline info
 
     /** The last denotation of this symbol */
     private[this] var lastDenot: SymDenotation = _

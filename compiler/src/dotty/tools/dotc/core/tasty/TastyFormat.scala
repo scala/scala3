@@ -186,6 +186,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   OVERRIDE
                   INLINE
                   MACRO                               // inline method containing toplevel splices
+                  INLINEPROXY                         // symbol of binding representing an inline parameter
                   STATIC                              // mapped to static Java member
                   OBJECT                              // an object or its class
                   TRAIT                               // a trait
@@ -299,7 +300,7 @@ object TastyFormat {
   final val IMPLICIT = 13
   final val LAZY = 14
   final val OVERRIDE = 15
-
+  final val INLINEPROXY = 16
   final val INLINE = 17
   final val STATIC = 18
   final val OBJECT = 19
@@ -483,6 +484,7 @@ object TastyFormat {
        | LAZY
        | OVERRIDE
        | INLINE
+       | INLINEPROXY
        | MACRO
        | STATIC
        | OBJECT
@@ -540,6 +542,7 @@ object TastyFormat {
     case LAZY => "LAZY"
     case OVERRIDE => "OVERRIDE"
     case INLINE => "INLINE"
+    case INLINEPROXY => "INLINEPROXY"
     case MACRO => "MACRO"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"

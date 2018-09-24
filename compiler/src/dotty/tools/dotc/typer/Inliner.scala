@@ -236,14 +236,16 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
                               bindingsBuf: mutable.ListBuffer[MemberDef]): MemberDef = {
     val argtpe = arg.tpe.dealiasKeepAnnots
     val isByName = paramtp.dealias.isInstanceOf[ExprType]
-    val inlineFlag = if (paramtp.hasAnnotation(defn.InlineParamAnnot)) Inline else EmptyFlags
+    var inlineFlag = InlineProxy
+    if (paramtp.hasAnnotation(defn.InlineParamAnnot)) inlineFlag |= Inline
     val (bindingFlags, bindingType) =
-      if (isByName) (Method, ExprType(argtpe.widen))
+      if (isByName) (Method | InlineProxy, ExprType(argtpe.widen))
       else (inlineFlag, argtpe.widen)
     val boundSym = newSym(name, bindingFlags, bindingType).asTerm
     val binding =
       if (isByName) DefDef(boundSym, arg.changeOwner(ctx.owner, boundSym))
       else ValDef(boundSym, arg)
+    boundSym.defTree = binding
     bindingsBuf += binding
     binding
   }
@@ -295,7 +297,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           ref(rhsClsSym.sourceModule)
         else
           inlineCallPrefix
-      bindingsBuf += ValDef(selfSym.asTerm, rhs)
+      val binding = ValDef(selfSym.asTerm, rhs)
+      bindingsBuf += binding
+      selfSym.defTree = binding
       inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
       lastSelf = selfSym
       lastLevel = level
@@ -323,7 +327,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) =>
       val proxyName = s"${tpe.cls.name}_this".toTermName
       val proxyType = tpe.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner)
-      thisProxy(tpe.cls) = newSym(proxyName, Synthetic, proxyType).termRef
+      thisProxy(tpe.cls) = newSym(proxyName, InlineProxy, proxyType).termRef
       if (!tpe.cls.isStaticOwner)
         registerType(inlinedMethod.owner.thisType) // make sure we have a base from which to outer-select
     case tpe: NamedType
