@@ -305,7 +305,8 @@ object Types {
       that.existsPart(this == _)
 
     /** Does this type not refer to TypeParamRefs or uninstantiated TypeVars? */
-    final def isGround(implicit ctx: Context): Boolean = true
+    final def isGround(implicit ctx: Context): Boolean =
+      (new isGroundAccumulator).apply(true, this)
 
     /** Is this a type of a repeated parameter? */
     def isRepeatedParam(implicit ctx: Context): Boolean =
@@ -3279,7 +3280,7 @@ object Types {
 
     def isGround(acc: TypeAccumulator[Boolean])(implicit ctx: Context): Boolean = {
       if (!isGroundKnown) {
-        isGroundCache = acc.foldOver(false, this)
+        isGroundCache = acc.foldOver(true, this)
         isGroundKnown = true
       }
       isGroundCache
@@ -4797,7 +4798,7 @@ object Types {
   }
 
   class isGroundAccumulator(implicit ctx: Context) extends TypeAccumulator[Boolean] {
-    def apply(x: Boolean, tp: Type) = x || {
+    def apply(x: Boolean, tp: Type) = x && {
       tp match {
         case _: TypeParamRef => false
         case tp: TypeVar => apply(x, tp.underlying)
