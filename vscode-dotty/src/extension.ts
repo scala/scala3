@@ -15,7 +15,7 @@ let outputChannel: vscode.OutputChannel
 
 export function activate(context: ExtensionContext) {
   extensionContext = context
-  outputChannel = vscode.window.createOutputChannel('Dotty Language Client');
+  outputChannel = vscode.window.createOutputChannel("Dotty");
 
   const sbtArtifact = "org.scala-sbt:sbt-launch:1.2.3"
   const buildSbtFile = `${vscode.workspace.rootPath}/build.sbt`
@@ -158,12 +158,11 @@ function run(serverOptions: ServerOptions) {
     synchronize: {
       configurationSection: 'dotty'
     },
+    outputChannel: outputChannel,
     revealOutputChannelOn: RevealOutputChannelOn.Never
   }
 
-  outputChannel.dispose()
-
-  const client = new LanguageClient('dotty', 'Dotty Language Server', serverOptions, clientOptions);
+  const client = new LanguageClient("dotty", "Dotty", serverOptions, clientOptions)
 
   // Push the disposable to the context's subscriptions so that the
   // client can be deactivated on extension deactivation
