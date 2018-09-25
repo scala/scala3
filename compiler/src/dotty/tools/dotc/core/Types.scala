@@ -1002,6 +1002,12 @@ object Types {
       case _ => this
     }
 
+    /** Widen from TypeOf type to its underlying type. */
+    final def widenTypeOf: Type = this match {
+      case tp: TypeOf => tp.underlyingTp
+      case _ => this
+    }
+
     /** Widen type if it is unstable (i.e. an ExprType, or TermRef to unstable symbol */
     final def widenIfUnstable(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ExprType => tp.resultType.widenIfUnstable

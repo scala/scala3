@@ -25,8 +25,8 @@ object Test {
     }
 
   // def f1[T <: Foo](t: T): "a" = test(t) // Do we want this?
-  //def f1[T <: Foo](t: T): Any = test(t)
-  def f2(x: Foo): "a"  = test(x, 123)  // error: matches are not supported yet
+  // def f1[T <: Foo](t: T): Any = test(t)
+  def f2(x: Foo): "a" = test(x, 123)
   // def f3(x: String): 1 = test(x)
   test2(1): "a"
   test2(2): "b"
