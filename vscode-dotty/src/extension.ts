@@ -130,9 +130,8 @@ function connectToSbt(coursierPath: string): Thenable<rpc.MessageConnection> {
 }
 
 /** Mark sbt server as alive in the status bar */
-function markSbtUp(timeout?: NodeJS.Timer) {
+function markSbtUp() {
   sbtStatusBar.text = "sbt server: up $(check)"
-  if (timeout) clearTimeout(timeout)
 }
 
 /** Mark sbt server as dead and try to reconnect */
