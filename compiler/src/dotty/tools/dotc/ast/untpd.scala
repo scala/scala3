@@ -272,10 +272,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Assign(lhs: Tree, rhs: Tree): Assign = new Assign(lhs, rhs)
   def Block(stats: List[Tree], expr: Tree): Block = new Block(stats, expr)
   def If(cond: Tree, thenp: Tree, elsep: Tree): If = new If(cond, thenp, elsep)
-  def InlineIf(cond: Tree, thenp: Tree, elsep: Tree): If = new InlineIf(cond, thenp, elsep)
   def Closure(env: List[Tree], meth: Tree, tpt: Tree): Closure = new Closure(env, meth, tpt)
   def Match(selector: Tree, cases: List[CaseDef]): Match = new Match(selector, cases)
-  def InlineMatch(selector: Tree, cases: List[CaseDef]): Match = new InlineMatch(selector, cases)
   def CaseDef(pat: Tree, guard: Tree, body: Tree): CaseDef = new CaseDef(pat, guard, body)
   def Labeled(bind: Bind, expr: Tree): Labeled = new Labeled(bind, expr)
   def Return(expr: Tree, from: Tree): Return = new Return(expr, from)
@@ -544,8 +542,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.ContextBounds(tree)(transformSub(bounds), transform(cxBounds))
       case PatDef(mods, pats, tpt, rhs) =>
         cpy.PatDef(tree)(mods, transform(pats), transform(tpt), transform(rhs))
-      case tpd.UntypedSplice(splice) =>
-        cpy.UntypedSplice(tree)(transform(splice))
       case TypedSplice(_) =>
         tree
       case _ =>
@@ -594,8 +590,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case PatDef(mods, pats, tpt, rhs) =>
         this(this(this(x, pats), tpt), rhs)
       case TypedSplice(splice) =>
-        this(x, splice)
-      case tpd.UntypedSplice(splice) =>
         this(x, splice)
       case _ =>
         super.foldMoreCases(x, tree)

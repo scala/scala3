@@ -6,7 +6,7 @@ sealed trait Tuple extends Any {
   import Tuple._
 
   inline def toArray: Array[Object] =
-    if (specialize)
+    /*if (specialize)
       inline constValueOpt[BoundedSize[this.type]] match {
       case Some(0) =>
         $emptyArray
@@ -29,10 +29,10 @@ sealed trait Tuple extends Any {
       case None =>
         dynamicToArray(this)
     }
-    else dynamicToArray(this)
+    else*/ dynamicToArray(this)
 
   inline def *: [H] (x: H): H *: this.type =
-    if (specialize) {
+    /*if (specialize) {
       type Result = H *: this.type
       inline constValueOpt[BoundedSize[this.type]] match {
         case Some(0) =>
@@ -54,10 +54,10 @@ sealed trait Tuple extends Any {
           dynamic_*:[this.type, H](this, x)
       }
     }
-    else dynamic_*:[this.type, H](this, x)
+    else*/ dynamic_*:[this.type, H](this, x)
 
   inline def ++(that: Tuple): Concat[this.type, that.type] =
-    if (specialize) {
+    /*if (specialize) {
       type Result = Concat[this.type, that.type]
       inline constValueOpt[BoundedSize[this.type]] match {
         case Some(0) =>
@@ -95,20 +95,20 @@ sealed trait Tuple extends Any {
           dynamic_++[this.type, that.type](this, that)
       }
     }
-  else dynamic_++[this.type, that.type](this, that)
+  else*/ dynamic_++[this.type, that.type](this, that)
 
   inline def genericConcat[T <: Tuple](xs: Tuple, ys: Tuple): Tuple =
     fromArray[T](xs.toArray ++ ys.toArray)
 
   inline def size: Size[this.type] =
-    if (specialize) {
+    /*if (specialize) {
       type Result = Size[this.type]
       inline constValueOpt[BoundedSize[this.type]] match {
         case Some(n) => n.asInstanceOf[Result]
         case _ => dynamicSize(this)
       }
     }
-    else dynamicSize(this)
+    else*/ dynamicSize(this)
 }
 
 object Tuple {
@@ -175,7 +175,7 @@ object Tuple {
   }
 
   inline def fromArray[T <: Tuple](xs: Array[Object]): T =
-    if (specialize)
+    /*if (specialize)
       inline constValue[BoundedSize[T]] match {
         case 0  => ().asInstanceOf[T]
         case 1  => Tuple1(xs(0)).asInstanceOf[T]
@@ -202,7 +202,7 @@ object Tuple {
         case 22 => Tuple22(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20), xs(21)).asInstanceOf[T]
         case _ => TupleXXL(xs).asInstanceOf[T]
       }
-    else dynamicFromArray[T](xs)
+    else */dynamicFromArray[T](xs)
 
   def dynamicFromArray[T <: Tuple](xs: Array[Object]): T = xs.length match {
     case 0  => ().asInstanceOf[T]
@@ -297,7 +297,7 @@ abstract sealed class NonEmptyTuple extends Tuple {
   import NonEmptyTuple._
 
   inline def head: Head[this.type] =
-    if (specialize) {
+    /*if (specialize) {
       type Result = Head[this.type]
       val resVal = inline constValueOpt[BoundedSize[this.type]] match {
         case Some(1) =>
@@ -322,10 +322,10 @@ abstract sealed class NonEmptyTuple extends Tuple {
       }
       resVal.asInstanceOf[Result]
     }
-    else dynamicHead[this.type](this)
+    else*/ dynamicHead[this.type](this)
 
   inline def tail: Tail[this.type] =
-    if (specialize) {
+    /*if (specialize) {
       type Result = Tail[this.type]
       inline constValueOpt[BoundedSize[this.type]]  match {
         case Some(1) =>
@@ -348,16 +348,18 @@ abstract sealed class NonEmptyTuple extends Tuple {
           dynamicTail[this.type](this)
       }
     }
-    else dynamicTail[this.type](this)
+    else*/ dynamicTail[this.type](this)
 
+  /*
   inline def fallbackApply(n: Int) =
     inline constValueOpt[n.type] match {
       case Some(n: Int) => error("index out of bounds: ", n)
       case None => dynamicApply[this.type](this, n)
     }
+  */
 
   inline def apply(n: Int): Elem[this.type, n.type] =
-    if (specialize) {
+    /*if (specialize) {
       type Result = Elem[this.type, n.type]
       inline constValueOpt[Size[this.type]] match {
         case Some(1) =>
@@ -405,7 +407,7 @@ abstract sealed class NonEmptyTuple extends Tuple {
         case _ => fallbackApply(n).asInstanceOf[Result]
       }
     }
-    else dynamicApply[this.type](this, n)
+    else*/ dynamicApply[this.type](this, n)
 }
 
 object NonEmptyTuple {

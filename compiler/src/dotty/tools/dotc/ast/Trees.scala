@@ -497,10 +497,6 @@ object Trees {
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = If[T]
   }
-  class InlineIf[T >: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])
-    extends If(cond, thenp, elsep) {
-    override def toString = s"InlineIf($cond, $thenp, $elsep)"
-  }
 
   /** A closure with an environment and a reference to a method.
    *  @param env    The captured parameters of the closure
@@ -520,10 +516,6 @@ object Trees {
   case class Match[-T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Match[T]
-  }
-  class InlineMatch[T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])
-    extends Match(selector, cases) {
-    override def toString = s"InlineMatch($selector, $cases)"
   }
 
   /** case pat if guard => body; only appears as child of a Match */
@@ -910,10 +902,8 @@ object Trees {
     type Assign = Trees.Assign[T]
     type Block = Trees.Block[T]
     type If = Trees.If[T]
-    type InlineIf = Trees.InlineIf[T]
     type Closure = Trees.Closure[T]
     type Match = Trees.Match[T]
-    type InlineMatch = Trees.InlineMatch[T]
     type CaseDef = Trees.CaseDef[T]
     type Labeled = Trees.Labeled[T]
     type Return = Trees.Return[T]
@@ -1045,9 +1035,6 @@ object Trees {
         case _ => finalize(tree, untpd.Block(stats, expr))
       }
       def If(tree: Tree)(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If = tree match {
-        case tree: InlineIf =>
-          if ((cond eq tree.cond) && (thenp eq tree.thenp) && (elsep eq tree.elsep)) tree
-          else finalize(tree, untpd.InlineIf(cond, thenp, elsep))
         case tree: If if (cond eq tree.cond) && (thenp eq tree.thenp) && (elsep eq tree.elsep) => tree
         case _ => finalize(tree, untpd.If(cond, thenp, elsep))
       }
@@ -1056,9 +1043,6 @@ object Trees {
         case _ => finalize(tree, untpd.Closure(env, meth, tpt))
       }
       def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = tree match {
-        case tree: InlineMatch =>
-          if ((selector eq tree.selector) && (cases eq tree.cases)) tree
-          else finalize(tree, untpd.InlineMatch(selector, cases))
         case tree: Match if (selector eq tree.selector) && (cases eq tree.cases) => tree
         case _ => finalize(tree, untpd.Match(selector, cases))
       }

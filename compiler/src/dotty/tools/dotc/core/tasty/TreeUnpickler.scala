@@ -1332,13 +1332,10 @@ class TreeUnpickler(reader: TastyReader,
             val stats = until(end)(readUntyped())
             untpd.Block(stats, expr)
           case IF =>
-            val mkIf = if (nextByte == INLINE) { readByte(); untpd.InlineIf(_, _, _) }
-              else untpd.If(_, _, _)
+            val mkIf = untpd.If(_, _, _)
             mkIf(readUntyped(), readUntyped(), readUntyped())
           case MATCH =>
-            val mkMatch =
-              if (nextByte == INLINE) { readByte(); untpd.InlineMatch(_, _) }
-              else untpd.Match(_, _)
+            val mkMatch = untpd.Match(_, _)
             mkMatch(readUntyped(), readCases(end))
           case CASEDEF =>
             val pat = readUntyped()

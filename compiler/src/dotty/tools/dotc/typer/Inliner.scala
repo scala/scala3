@@ -587,10 +587,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           if (isIdempotentExpr(cond1)) selected
           else Block(cond1 :: Nil, selected)
         case cond1 =>
-          if (tree.isInstanceOf[untpd.InlineIf])
-            errorTree(tree, em"""cannot reduce inline if
-                                | its condition   ${tree.cond}
-                                | is not a constant value.""")
           val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
           super.typedIf(if1, pt)
       }

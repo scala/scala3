@@ -786,16 +786,10 @@ class TreePickler(pickler: TastyPickler) {
         withLength { pickleUntyped(expr); stats.foreach(pickleUntyped) }
       case If(cond, thenp, elsep) =>
         writeByte(IF)
-        withLength {
-          if (tree.isInstanceOf[untpd.InlineIf]) writeByte(INLINE)
-          pickleUntyped(cond); pickleUntyped(thenp); pickleUntyped(elsep)
-        }
+        withLength { pickleUntyped(cond); pickleUntyped(thenp); pickleUntyped(elsep) }
       case Match(selector, cases) =>
         writeByte(MATCH)
-        withLength {
-          if (tree.isInstanceOf[untpd.InlineMatch]) writeByte(INLINE)
-          pickleUntyped(selector); cases.foreach(pickleUntyped)
-        }
+        withLength { pickleUntyped(selector); cases.foreach(pickleUntyped) }
       case CaseDef(pat, guard, rhs) =>
         writeByte(CASEDEF)
         withLength { pickleUntyped(pat); pickleUntyped(rhs); pickleUnlessEmpty(guard) }

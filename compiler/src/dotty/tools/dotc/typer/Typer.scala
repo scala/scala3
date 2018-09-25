@@ -711,7 +711,6 @@ class Typer extends Namer
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
-    if (tree.isInstanceOf[untpd.InlineIf] && !Inliner.typedInline) checkInInlineContext("inline if", tree.pos)
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp2 :: elsep2 :: Nil = harmonic(harmonize) {
       val thenp1 = typed(tree.thenp, pt.notApplied)
@@ -981,7 +980,6 @@ class Typer extends Namer
         val sel1 = id.withType(defn.ImplicitScrutineeTypeRef)
         typedMatchFinish(tree, sel1, sel1.tpe, pt)
       case _ =>
-        if (tree.isInstanceOf[untpd.InlineMatch] && !Inliner.typedInline) checkInInlineContext("inline match", tree.pos)
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
         typedMatchFinish(tree, sel1, selType, pt)

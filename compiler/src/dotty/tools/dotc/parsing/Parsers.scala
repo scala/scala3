@@ -1214,21 +1214,7 @@ object Parsers {
       case FOR =>
         forExpr()
       case _ =>
-        if (isIdent(nme.INLINEkw)) {
-          val start = in.skipToken()
-          in.token match {
-            case IF =>
-              ifExpr(start, InlineIf)
-            case _ =>
-              val t = postfixExpr()
-              if (in.token == MATCH) matchExpr(t, start, InlineMatch)
-              else {
-                syntaxErrorOrIncomplete("`match` or `if` expected but ${in.token} found")
-                t
-              }
-          }
-        }
-        else expr1Rest(postfixExpr(), location)
+        expr1Rest(postfixExpr(), location)
     }
 
     def expr1Rest(t: Tree, location: Location.Value) = in.token match {
@@ -1242,7 +1228,7 @@ object Parsers {
       case COLON =>
         ascription(t, location)
       case MATCH =>
-        matchExpr(t, startOffset(t), Match)
+        matchExpr(t, startOffset(t))
       case _ =>
         t
     }
@@ -1289,9 +1275,9 @@ object Parsers {
     /**    `match' { CaseClauses }
      *     `match' { ImplicitCaseClauses }
      */
-    def matchExpr(t: Tree, start: Offset, mkMatch: (Tree, List[CaseDef]) => Match) =
+    def matchExpr(t: Tree, start: Offset) =
       atPos(start, in.skipToken()) {
-        inBraces(mkMatch(t, caseClauses(caseClause)))
+        inBraces(Match(t, caseClauses(caseClause)))
       }
 
     /**    `match' { ImplicitCaseClauses }
@@ -1306,7 +1292,7 @@ object Parsers {
         case mods => markFirstIllegal(mods)
       }
       val result @ Match(t, cases) =
-        matchExpr(ImplicitScrutinee().withPos(implicitKwPos(start)), start, InlineMatch)
+        matchExpr(ImplicitScrutinee().withPos(implicitKwPos(start)), start)
       for (CaseDef(pat, _, _) <- cases) {
         def isImplicitPattern(pat: Tree) = pat match {
           case Typed(pat1, _) => isVarPattern(pat1)
