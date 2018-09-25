@@ -722,7 +722,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           new TreeTypeMap(oldOwners = from :: froms, newOwners = tos).apply(tree)
         }
       }
-      loop(from, Nil, to :: Nil)
+      if (from == to) tree else loop(from, Nil, to :: Nil)
     }
 
     /** After phase `trans`, set the owner of every definition in this tree that was formerly

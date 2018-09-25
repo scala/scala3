@@ -36,15 +36,6 @@ object Inliner {
 
   val typedInline = true
 
-  /** A key to be used in a context property that provides a map from enclosing implicit
-   *  value bindings to their right hand sides.
-   */
-  private val InlineBindings = new Property.Key[MutableSymbolMap[Tree]]
-
-  /** A map from the symbols of all enclosing inline value bindings to their right hand sides */
-  def inlineBindings(implicit ctx: Context): MutableSymbolMap[Tree] =
-    ctx.property(InlineBindings).get
-
   /** `sym` is an inline method with a known body to inline (note: definitions coming
    *  from Scala2x class files might be `@forceInline`, but still lack that body).
    */
@@ -120,12 +111,7 @@ object Inliner {
     else if (enclosingInlineds.length < ctx.settings.XmaxInlines.value) {
       val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
       if (ctx.reporter.hasErrors) tree
-      else {
-        val inlinerCtx =
-          if (ctx.property(InlineBindings).isDefined) ctx
-          else ctx.fresh.setProperty(InlineBindings, newMutableSymbolMap[Tree])
-        new Inliner(tree, body)(inlinerCtx).inlined(pt)
-      }
+      else new Inliner(tree, body).inlined(pt)
     }
     else
       errorTree(
@@ -218,7 +204,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private val thisProxy = new mutable.HashMap[ClassSymbol, TermRef]
 
   /** A buffer for bindings that define proxies for actual arguments */
-  private val bindingsBuf = new mutable.ListBuffer[MemberDef]
+  private val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
 
   private def newSym(name: Name, flags: FlagSet, info: Type): Symbol =
     ctx.newSymbol(ctx.owner, name, flags, info, coord = call.pos)
@@ -233,7 +219,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    *  @param bindingsBuf the buffer to which the definition should be appended
    */
   private def paramBindingDef(name: Name, paramtp: Type, arg: Tree,
-                              bindingsBuf: mutable.ListBuffer[MemberDef]): MemberDef = {
+                              bindingsBuf: mutable.ListBuffer[ValOrDefDef]): ValOrDefDef = {
     val argtpe = arg.tpe.dealiasKeepAnnots
     val isByName = paramtp.dealias.isInstanceOf[ExprType]
     var inlineFlag = InlineProxy
@@ -431,26 +417,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     )(inlineCtx)
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
-    // make them part of `bindingsBuf`. The expansion is then the untyped tree that remains.
-    val expansion = inliner.transform(rhsToInline.withPos(call.pos)) match {
-      case Block(implicits, tpd.UntypedSplice(expansion)) =>
-        val prevOwners = implicits.map(_.symbol.owner).distinct
-        val localizer = new TreeTypeMap(oldOwners = prevOwners, newOwners = prevOwners.map(_ => ctx.owner))
-        val (_, implicits1) = localizer.transformDefs(implicits)
-        for (idef <- implicits1) {
-          bindingsBuf += idef.withType(idef.symbol.typeRef).asInstanceOf[ValOrDefDef]
-            // Note: Substituting new symbols does not automatically lead to good prefixes
-            // if the previous symbol was owned by a class. That's why we need to set the type
-            // of `idef` explicitly. It would be nice if substituters were smarter, but
-            // it seems non-trivial to come up with rules that work in all cases.
-          inlineCtx.enter(idef.symbol)
-        }
-        expansion
-      case tpd.UntypedSplice(expansion) =>
-        expansion
-      case expansion =>
-        expansion
-    }
+    // make them part of `bindingsBuf`. The expansion is then the tree that remains.
+    val expansion = inliner.transform(rhsToInline.withPos(call.pos))
 
     def issueError() = callValueArgss match {
       case (msgArg :: rest) :: Nil =>
@@ -512,7 +480,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     private object InlineableArg {
       lazy val paramProxies = paramProxy.values.toSet
       def unapply(tree: Trees.Ident[_])(implicit ctx: Context): Option[Tree] = {
-        def search(buf: mutable.ListBuffer[MemberDef]) = buf.find(_.name == tree.name)
+        def search(buf: mutable.ListBuffer[ValOrDefDef]) = buf.find(_.name == tree.name)
         if (paramProxies.contains(tree.typeOpt))
           search(bindingsBuf) match {
             case Some(vdef: ValDef) if vdef.symbol.is(Inline) =>
@@ -555,7 +523,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       case Apply(Select(cl @ closureDef(ddef), nme.apply), args) if defn.isFunctionType(cl.tpe) =>
         ddef.tpe.widen match {
           case mt: MethodType if ddef.vparamss.head.length == args.length =>
-            val bindingsBuf = new mutable.ListBuffer[MemberDef]
+            val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
             val argSyms = (mt.paramNames, mt.paramInfos, args).zipped.map { (name, paramtp, arg) =>
               arg.tpe.dealias match {
                 case ref @ TermRef(NoPrefix, _) => ref.symbol
@@ -636,12 +604,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   /** Drop any side-effect-free bindings that are unused in expansion or other reachable bindings.
    *  Inline def bindings that are used only once.
    */
-  def dropUnusedDefs(bindings: List[MemberDef], tree: Tree)(implicit ctx: Context): (List[MemberDef], Tree) = {
+  def dropUnusedDefs(bindings: List[ValOrDefDef], tree: Tree)(implicit ctx: Context): (List[ValOrDefDef], Tree) = {
     val refCount = newMutableSymbolMap[Int]
-    val bindingOfSym = newMutableSymbolMap[MemberDef]
+    val bindingOfSym = newMutableSymbolMap[ValOrDefDef]
     val dealiased = new java.util.IdentityHashMap[Type, Type]()
 
-    def isInlineable(binding: MemberDef) = binding match {
+    def isInlineable(binding: ValOrDefDef) = binding match {
       case DefDef(_, Nil, Nil, _, _) => true
       case vdef @ ValDef(_, _, _) => isPureExpr(vdef.rhs)
       case _ => false
@@ -739,7 +707,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
 
     val dealiasedTermBindings =
-      termBindings.mapconserve(dealiasTypeBindings.transform).asInstanceOf[List[MemberDef]]
+      termBindings.mapconserve(dealiasTypeBindings.transform).asInstanceOf[List[ValOrDefDef]]
     val dealiasedTree = dealiasTypeBindings.transform(tree)
 
     val retained = dealiasedTermBindings.filterConserve(binding => retain(binding.symbol))
