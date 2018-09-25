@@ -20,7 +20,7 @@ import config.Config
 
 object TreePickler {
 
-  case class Hole(idx: Int, args: List[tpd.Tree]) extends tpd.TermTree {
+  case class Hole(idx: Int, args: List[tpd.Tree]) extends tpd.Tree {
     override def fallbackToText(printer: Printer): Text =
       s"[[$idx|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]"
   }
