@@ -58,8 +58,8 @@
   ],
   "dependencies": {
     "child-process-promise": "^2.2.1",
-    "vscode-languageclient": "^5.0.1",
-    "vscode-languageserver": "^5.0.3"
+    "vscode-languageclient": "^5.1.0",
+    "vscode-languageserver": "^5.1.0"
   },
   "devDependencies": {
     "@types/mocha": "^5.2.5",
