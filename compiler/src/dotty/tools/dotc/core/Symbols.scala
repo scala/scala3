@@ -643,7 +643,7 @@ object Symbols {
      *  the implicit conversion `sourcePos` will return the wrong result, careful!
      *  TODO: Consider changing this method return type to `SourcePosition`.
      */
-    def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
+    final def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
 
     // ParamInfo types and methods
     def isTypeParam(implicit ctx: Context) = denot.is(TypeParam)
