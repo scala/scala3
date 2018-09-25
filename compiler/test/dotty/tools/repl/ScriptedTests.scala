@@ -67,7 +67,7 @@ class ScriptedTests extends ReplTest with MessageRendering {
       val buf = new ArrayBuffer[String]
       inputRes.foldLeft(initialState) { (state, input) =>
         val (out, nstate) = evaluate(state, input, prompt)
-        buf.append(out)
+        buf.append(out.replace("\r",""))
         nstate
       }
       buf.flatMap(filterEmpties).mkString("\n")

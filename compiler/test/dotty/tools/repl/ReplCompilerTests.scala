@@ -51,7 +51,7 @@ class ReplCompilerTests extends ReplTest {
       "val res1: Int = 20"
     )
 
-    assertEquals(expected, storedOutput().split("\n").toList)
+    assertEquals(expected, lines())
   }
 
   @Test def testImportMutable =
@@ -122,6 +122,9 @@ class ReplCompilerTests extends ReplTest {
     )
 
     run(source)
-    assertEquals(expected, storedOutput().split("\n").toList)
+    assertEquals(expected, lines())
   }
+
+  private def lines() = storedOutput().trim().lines.toList
+
 }
