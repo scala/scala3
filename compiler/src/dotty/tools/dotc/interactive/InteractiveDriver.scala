@@ -119,10 +119,11 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 
   private val (zipClassPaths, dirClassPaths) = currentCtx.platform.classPath(currentCtx) match {
     case AggregateClassPath(cps) =>
-      val (zipCps, dirCps) = cps.partition(_.isInstanceOf[ZipArchiveFileLookup[_]])
-      // This will be wrong if any other subclass of ClassPath is either used,
-      // like `JrtClassPath` once we get Java 9 support
-      (zipCps.asInstanceOf[Seq[ZipArchiveFileLookup[_]]], dirCps.asInstanceOf[Seq[JFileDirectoryLookup[_]]])
+      // FIXME: We shouldn't ignore other subclasses of ClassPath, like
+      // JrtClassPath on Java 9+.
+      val zipCps = cps.collect { case cp: ZipArchiveFileLookup[_] => cp }
+      val dirCps = cps.collect { case cp: JFileDirectoryLookup[_] => cp }
+      (zipCps, dirCps)
     case _ =>
       (Seq(), Seq())
   }
