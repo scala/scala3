@@ -121,7 +121,7 @@ function connectToSbt(coursierPath: string): Thenable<rpc.MessageConnection> {
   sbtStatusBar.show()
 
   return offeringToRetry(() => {
-    return withSbtInstance(outputChannel, coursierPath).then(connection => {
+    return withSbtInstance(coursierPath).then(connection => {
       markSbtUp()
       const interval = setInterval(() => checkSbt(interval, connection, coursierPath), sbtCheckIntervalMs)
       return connection
@@ -235,7 +235,7 @@ function runLanguageServer(coursierPath: string, languageServerArtifactFile: str
   })
 }
 
-function startNewSbtInstance(log: vscode.OutputChannel, coursierPath: string) {
+function startNewSbtInstance(coursierPath: string) {
   fetchWithCoursier(coursierPath, sbtArtifact).then((sbtClasspath) => {
     sbtProcess = cpp.spawn("java", [
       "-Dsbt.log.noformat=true",
@@ -248,10 +248,10 @@ function startNewSbtInstance(log: vscode.OutputChannel, coursierPath: string) {
     sbtProcess.stdin.end()
 
     sbtProcess.stdout.on('data', data => {
-      log.append(data.toString())
+      outputChannel.append(data.toString())
     })
     sbtProcess.stderr.on('data', data => {
-      log.append(data.toString())
+      outputChannel.append(data.toString())
     })
   })
 }
@@ -259,14 +259,14 @@ function startNewSbtInstance(log: vscode.OutputChannel, coursierPath: string) {
 /**
  * Connects to an existing sbt server, or boots up one instance and connects to it.
  */
-function withSbtInstance(log: vscode.OutputChannel, coursierPath: string): Thenable<rpc.MessageConnection> {
+function withSbtInstance(coursierPath: string): Thenable<rpc.MessageConnection> {
   const serverSocketInfo = path.join(workspaceRoot, "project", "target", "active.json")
 
   if (!fs.existsSync(serverSocketInfo)) {
-    startNewSbtInstance(log, coursierPath)
+    startNewSbtInstance(coursierPath)
   }
 
-  return sbtserver.connectToSbtServer(log)
+  return sbtserver.connectToSbtServer(outputChannel)
 }
 
 function fetchWithCoursier(coursierPath: string, artifact: string, extra: string[] = []) {
