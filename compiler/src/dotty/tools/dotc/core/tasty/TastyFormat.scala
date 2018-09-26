@@ -207,16 +207,6 @@ Standard-Section: "ASTs" TopLevelStat*
 
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term
 
-// --------------- untyped additions ------------------------------------------
-
-  TermUntyped   = Term
-                  TYPEDSPLICE Length splice_Term
-                  FUNCTION    Length body_Term arg_Term*
-                  INFIXOP     Length op_NameRef left_Term right_Term
-                  TUPLE       Length elem_Term*
-                  PATDEF      Length type_Term rhs_Term pattern_Term* Modifier*
-                  EMPTYTYPETREE
-
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 
   Category 1 (tags 1-49)   :  tag
@@ -321,7 +311,6 @@ object TastyFormat {
   final val ERASED = 35
   final val PARAMsetter = 36
   final val EMPTYTREE = 37
-  final val EMPTYTYPETREE = 38
 
   // Cat. 2:    tag Nat
 
@@ -437,13 +426,6 @@ object TastyFormat {
   final val MATCHtype = 190
   final val MATCHtpt = 191
 
-  // Tags for untyped trees only:
-  final val TYPEDSPLICE = 200
-  final val FUNCTION = 201
-  final val INFIXOP = 202
-  final val PATDEF = 203
-  final val TUPLE = 204
-
   def methodType(isImplicit: Boolean = false, isErased: Boolean = false) = {
     val implicitOffset = if (isImplicit) 1 else 0
     val erasedOffset = if (isErased) 2 else 0
@@ -459,7 +441,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= EMPTYTYPETREE ||
+    firstSimpleTreeTag <= tag && tag <= EMPTYTREE ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -558,7 +540,6 @@ object TastyFormat {
     case STABLE => "STABLE"
     case PARAMsetter => "PARAMsetter"
     case EMPTYTREE => "EMPTYTREE"
-    case EMPTYTYPETREE => "EMPTYTYPETREE"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"
@@ -661,12 +642,6 @@ object TastyFormat {
     case PRIVATEqualified => "PRIVATEqualified"
     case PROTECTEDqualified => "PROTECTEDqualified"
     case HOLE => "HOLE"
-
-    case TYPEDSPLICE => "TYPEDSPLICE"
-    case FUNCTION => "FUNCTION"
-    case INFIXOP => "INFIXOP"
-    case TUPLE => "TUPLE"
-    case PATDEF => "PATDEF"
   }
 
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.
