@@ -91,7 +91,7 @@ trait MessageRendering {
     * @return aligned error message
     */
   def errorMsg(pos: SourcePosition, msg: String, offset: Int)(implicit ctx: Context): String = {
-    val padding = msg.lines.foldLeft(pos.startColumnPadding) { (pad, line) =>
+    val padding = msg.linesIterator.foldLeft(pos.startColumnPadding) { (pad, line) =>
       val lineLength = stripColor(line).length
       val maxPad = math.max(0, ctx.settings.pageWidth.value - offset - lineLength) - offset
 
@@ -99,7 +99,7 @@ trait MessageRendering {
       else pad
     }
 
-    msg.lines
+    msg.linesIterator
       .map { line => " " * (offset - 1) + "|" + padding + line}
       .mkString(sys.props("line.separator"))
   }
