@@ -344,7 +344,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Term.Typed(term, tpt) =>
         tpt.tpe match {
           case Types.Repeated(_) =>
-            printTree(term)
+            term match {
+              case Term.Repeated(_) =>
+                printTree(term)
+              case _ =>
+                printTree(term)
+                this += ": " += highlightTypeDef("_*", color)
+            }
           case _ =>
             inParens {
               printTree(term)
@@ -790,9 +796,16 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case TypeTree.Annotated(tpt, annot) =>
         val Annotation(ref, args) = annot
-        printTypeTree(tpt)
-        this += " "
-        printAnnotation(annot)
+        ref.tpe match {
+          case Types.RepeatedAnnotation() =>
+            val Types.Sequence(tp) = tpt.tpe
+            printType(tp)
+            this += highlightTypeDef("*", color)
+          case _ =>
+            printTypeTree(tpt)
+            this += " "
+            printAnnotation(annot)
+        }
 
       case TypeTree.And(left, right) =>
         printTypeTree(left)
@@ -1156,6 +1169,20 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     object JavaLangObject {
       def unapply(tpe: Type)(implicit ctx: Context): Boolean = tpe match {
         case Type.TypeRef("Object", Type.SymRef(sym, _)) if sym.fullName == "java.lang" => true
+        case _ => false
+      }
+    }
+
+    object Sequence {
+      def unapply(tpe: Type)(implicit ctx: Context): Option[Type] = tpe match {
+        case Type.AppliedType(Type.TypeRef("Seq", Type.SymRef(sym, _)), IsType(tp) :: Nil) if sym.fullName == "scala.collection" => Some(tp)
+        case _ => None
+      }
+    }
+
+    object RepeatedAnnotation {
+      def unapply(tpe: Type)(implicit ctx: Context): Boolean = tpe match {
+        case Type.TypeRef("Repeated", Type.SymRef(sym, _)) if sym.fullName == "scala.annotation.internal" => true
         case _ => false
       }
     }
