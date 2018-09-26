@@ -251,7 +251,7 @@ object Test {
       type This[A]
       def inject[A](x: This[A]): Functor[A] { val common: self.type }
     }
-    transparent def by[F[_]](implicit ev: Functor.Common { type This[A] = F[A] }): ev.type = ev
+    inline def by[F[_]](implicit ev: Functor.Common { type This[A] = F[A] }): ev.type = ev
   }
 
   trait Monad[A] extends Functor[A] { self =>
