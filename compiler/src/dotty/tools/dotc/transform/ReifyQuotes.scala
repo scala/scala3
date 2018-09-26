@@ -494,8 +494,12 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           }
         )
       }
-
+      /* Lambdas are generated outside the quote that is beeing reified (i.e. in outer.rctx.owner).
+       * In case the case that level == -1 the code is not in a quote, it is in an inline method,
+       * hence we should take that as owner directly.
+       */
       val lambdaOwner = if (level == -1) ctx.owner else outer.rctx.owner
+
       val tpe = MethodType(defn.SeqType.appliedTo(defn.AnyType) :: Nil, tree.tpe.widen)
       val meth = ctx.newSymbol(lambdaOwner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
       Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth))
