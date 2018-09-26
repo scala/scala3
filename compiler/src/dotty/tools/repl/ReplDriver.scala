@@ -102,8 +102,8 @@ class ReplDriver(settings: Array[String],
    *  observable outside of the CLI, for this reason, most helper methods are
    *  `protected final` to facilitate testing.
    */
-  final def runUntilQuit(initialState: State = initialState): State = {
-    val terminal = new JLineTerminal()
+  final def runUntilQuit(needsTerminal: Boolean, initialState: State = initialState): State = {
+    val terminal = new JLineTerminal(needsTerminal)
 
     /** Blockingly read a line, getting back a parse result */
     def readLine(state: State): ParseResult = {
