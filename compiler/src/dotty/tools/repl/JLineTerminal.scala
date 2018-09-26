@@ -68,7 +68,7 @@ final class JLineTerminal extends java.io.Closeable {
   /** Provide syntax highlighting */
   private class Highlighter(implicit ctx: Context) extends reader.Highlighter {
     def highlight(reader: LineReader, buffer: String): AttributedString = {
-      val highlighted = SyntaxHighlighting(buffer).mkString
+      val highlighted = SyntaxHighlighting.highlight(buffer)
       AttributedString.fromAnsi(highlighted)
     }
   }

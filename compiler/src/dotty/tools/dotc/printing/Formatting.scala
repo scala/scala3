@@ -83,8 +83,8 @@ object Formatting {
           hl.show
         case hb: HighlightBuffer =>
           hb.toString
-        case str: String if ctx.settings.color.value != "never" =>
-          new String(SyntaxHighlighting(str).toArray)
+        case str: String =>
+          SyntaxHighlighting.highlight(str)
         case _ => super.showArg(arg)
       }
   }
