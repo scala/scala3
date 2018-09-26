@@ -9,7 +9,7 @@ Extension methods allow one to add methods to a type after the type is defined. 
 case class Circle(x: Double, y: Double, radius: Double)
 
 implicit object CircleOps {
-  def (c: Circle).circumference: Double = c.radius * math.Pi * 2
+  def circumference(this c: Circle): Double = c.radius * math.Pi * 2
 }
 ```
 
@@ -20,15 +20,9 @@ implicit object CircleOps {
   circle.circumference
 ```
 
-### Translation of Extension Methods
-
-Extension methods are methods that have a parameter clause in front of the defined
-identifier. They translate to methods where the leading parameter section is moved
-to after the defined identifier. So, the definition of `circumference` above translates
-to the plain method, and can also be invoked as such:
+Extension methods are methods that have a `this` modifier for the first parameter.
+They can also be invoked as plain methods. So the following holds:
 ```scala
-def circumference(c: Circle): Double = c.radius * math.Pi * 2
-
 assert(circle.circumference == CircleOps.circumference(circle))
 ```
 
@@ -50,7 +44,7 @@ object adds a `longestStrings` extension method to a `Seq[String]`:
 
 ```scala
 implicit object StringOps {
-  def (xs: Seq[String]).longestStrings = {
+  def longestStrings(this xs: Seq[String]) = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
@@ -64,7 +58,7 @@ to extend a generic type by adding type parameters to an extension method:
 
 ```scala
 implicit object ListOps {
-  def [T](xs: List[T]).second = xs.tail.head
+  def second[T](this xs: List[T]) = xs.tail.head
 }
 ```
 
@@ -73,12 +67,11 @@ or:
 
 ```scala
 implicit object ListListOps {
-  def [T](xs: List[List[T]]).flattened = xs.foldLeft[List[T]](Nil)(_ ++ _)
+  def flattened[T](this xs: List[List[T]]) = xs.foldLeft[List[T]](Nil)(_ ++ _)
 }
 ```
 
-As usual, type parameters of the extension method follow the defined method name. Nevertheless, such type parameters can already be used in the parameter clause that precedes
-the defined method name.
+As usual, type parameters of the extension method follow the defined method name. Nevertheless, such type parameters can already be used in the parameter clause that precedes the defined method name.
 
 ### A Larger Example
 
@@ -96,7 +89,7 @@ object PostConditions {
   def result[T](implicit er: WrappedResult[T]): T = WrappedResult.unwrap(er)
 
   implicit object Ensuring {
-    def [T](x: T).ensuring(condition: implicit WrappedResult[T] => Boolean): T = {
+    def ensuring[T](this x: T)(condition: implicit WrappedResult[T] => Boolean): T = {
       implicit val wrapped = WrappedResult.wrap(x)
       assert(condition)
       x
@@ -119,34 +112,9 @@ to pass along to the `result` method. `WrappedResult` is a fresh type, to make s
       result
     }
 
-### Extension Operators
+### Rules for Overriding Extension Methods
 
-The `.` between leading parameter section and defined name in an extension method is optional. If the extension method is an operator, leaving out the dot leads to clearer
-syntax that resembles the intended usage pattern:
-
-```scala
-implicit object NumericOps {
-  def [T : Numeric](x: T) + (y: T): T = implicitly[Numeric[T]].plus(x, y)
-}
-```
-
-An infix operation `x op y` of an extension method `op` coming from `z` is always translated to `z.op(x)(y)`, irrespective of whether `op` is right-associative or not. So, no implicit swapping of arguments takes place for extension methods ending in a `:`. For instance,
-here is the "domino"-operator brought back as an extension method:
-
-```scala
-implicit object SeqOps {
-  def [A](x: A) /: [B](xs: Seq[B])(op: (A, B) => A): A =
-    xs.foldLeft(x)(op)
-}
-```
-A call like
-```scala
-(0 /: List(1, 2, 3)) (_ + _)
-```
-is translated to
-```scala
-SeqOps./: (0) (List(1, 2, 3)) (_ + _)
-```
+Extension methods may override only extension methods and can be overridden only by extension methods.
 
 ### Extension Methods and TypeClasses
 
@@ -154,7 +122,7 @@ The rules for expanding extension methods make sure that they work seamlessly wi
 ```scala
   // Two typeclasses:
   trait SemiGroup[T] {
-    def (x: T).combine(y: T): T
+    def combine(this x: T)(y: T): T
   }
   trait Monoid[T] extends SemiGroup[T] {
     def unit: T
@@ -162,7 +130,7 @@ The rules for expanding extension methods make sure that they work seamlessly wi
 
   // An instance declaration:
   implicit object StringMonoid extends Monoid[String] {
-    def (x: String).combine(y: String): String = x.concat(y)
+    def combine(this x: String)(y: String): String = x.concat(y)
     def unit: String = ""
   }
 
@@ -180,20 +148,20 @@ extension methods apply everywhere their enclosing object is available as an imp
 As another example, consider implementations of an `Ord` type class with a `minimum` value:
 ```scala
   trait Ord[T]
-    def (x: T).compareTo(y: T): Int
-    def (x: T) < (that: T) = x.compareTo(y) < 0
-    def (x: T) > (that: T) = x.compareTo(y) > 0
+    def compareTo(this x: T)(y: T): Int
+    def < (this x: T)(y: T) = x.compareTo(y) < 0
+    def > (this x: T)(y: T) = x.compareTo(y) > 0
     val minimum: T
   }
 
   implicit object IntOrd extends Ord[Int] {
-    def (x: Int).compareTo(y: Int) =
+    def compareTo(this x: Int)(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
   }
 
   implicit class ListOrd[T: Ord] extends Ord[List[T]] {
-    def (xs: List[T]).compareTo(ys: List[T]): Int = (xs, ys) match
+    def compareTo(this xs: List[T])(ys: List[T]): Int = (xs, ys) match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1
@@ -207,10 +175,7 @@ As another example, consider implementations of an `Ord` type class with a `mini
 
   def max[T: Ord](xs: List[T]): T = (implicitly[Ord[T]].minimum /: xs)(max(_, _))
 ```
-The `ListOrd` class is generic - it works for any type argument `T` that is itself an instance of `Ord`. In current Scala, we could not define `ListOrd` as an implicit class since
-implicit classes can only define implicit converions that take exactly one non-implicit
-value parameter. We propose to drop this requirement and to also allow implicit classes
-without any value parameters, or with only implicit value parameters. The generated implicit method would in each case follow the signature of the class. That is, for `ListOrd` we'd generate the method:
+The `ListOrd` class is generic - it works for any type argument `T` that is itself an instance of `Ord`. In current Scala, we could not define `ListOrd` as an implicit class since implicit classes can only define implicit converions that take exactly one non-implicit value parameter. We propose to drop this requirement and to also allow implicit classes without any value parameters, or with only implicit value parameters. The generated implicit method would in each case follow the signature of the class. That is, for `ListOrd` we'd generate the method:
 ```scala
   implicit def ListOrd[T: Ord]: ListOrd[T] = new ListOrd[T]
 ```
@@ -221,25 +186,25 @@ Extension methods generalize to higher-kinded types without requiring special pr
 
 ```scala
   trait Functor[F[_]] {
-    def [A](x: F[A]).map[B](f: A => B): F[B]
+    def map[A, B](this x: F[A])(f: A => B): F[B]
   }
 
   trait Monad[F[_]] extends Functor[F] {
-    def [A](x: F[A]).flatMap[B](f: A => F[B]): F[B]
-    def [A](x: F[A]).map[B](f: A => B) = x.flatMap(f `andThen` pure)
+    def flatMap[A, B](this x: F[A])(f: A => F[B]): F[B]
+    def map[A, B](this x: F[A])(f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
   }
 
   implicit object ListMonad extends Monad[List] {
-    def [A](xs: List[A]).flatMap[B](f: A => List[B]): List[B] =
+    def flatMap[A, B](this xs: List[A])(f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
   implicit class ReaderMonad[Ctx] extends Monad[[X] => Ctx => X] {
-    def [A](r: Ctx => A).flatMap[B](f: A => Ctx => B): Ctx => B =
+    def flatMap[A, B](this r: Ctx => A)(f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
       ctx => x
@@ -250,9 +215,8 @@ Extension methods generalize to higher-kinded types without requiring special pr
 The required syntax extension just adds one clause for extension methods relative
 to the [current syntax](https://github.com/lampepfl/dotty/blob/master/docs/docs/internals/syntax.md).
 ```
-DefSig            ::=  ...
-                    |  [DefTypeParamClause] ‘(’ DefParam ‘)’ [‘.’]
-                       id [DefTypeParamClause] DefParamClauses
+DefSig          ::=  id [DefTypeParamClause] [ExtParamClause] DefParamClauses
+ExtParamClause  ::=  [nl] ‘(’ ‘this’ DefParam ‘)’
 ```
 
 
