@@ -90,7 +90,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
     if (ctx.compilationUnit.containsQuotesOrSplices) super.run
 
   protected def newTransformer(implicit ctx: Context): Transformer =
-    new Reifier(inQuote = false, null, 0, new LevelInfo, new mutable.ListBuffer[Tree])
+    new Reifier(inQuote = false, null, 0, new LevelInfo, new mutable.ListBuffer, ctx)
 
   private class LevelInfo {
     /** A map from locally defined symbols to the staging levels of their definitions */
@@ -120,16 +120,17 @@ class ReifyQuotes extends MacroTransformWithImplicits {
    *                     and `l == -1` is code inside a top level splice (in an inline method).
    *  @param  levels     a stacked map from symbols to the levels in which they were defined
    *  @param  embedded   a list of embedded quotes (if `inSplice = true`) or splices (if `inQuote = true`
+   *  @param  rctx       the contex in the destination lifted lambda
    */
   private class Reifier(inQuote: Boolean, val outer: Reifier, val level: Int, levels: LevelInfo,
-      val embedded: mutable.ListBuffer[Tree]) extends ImplicitsTransformer {
+      val embedded: mutable.ListBuffer[Tree], val rctx: Context) extends ImplicitsTransformer {
     import levels._
     assert(level >= -1)
 
     /** A nested reifier for a quote (if `isQuote = true`) or a splice (if not) */
-    def nested(isQuote: Boolean): Reifier = {
+    def nested(isQuote: Boolean)(implicit ctx: Context): Reifier = {
       val nestedEmbedded = if (level > 1 || (level == 1 && isQuote)) embedded else new mutable.ListBuffer[Tree]
-      new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, levels, nestedEmbedded)
+      new Reifier(isQuote, this, if (isQuote) level + 1 else level - 1, levels, nestedEmbedded, ctx)
     }
 
     /** We are in a `~(...)` context that is not shadowed by a nested `'(...)` */
@@ -493,8 +494,12 @@ class ReifyQuotes extends MacroTransformWithImplicits {
           }
         )
       }
+      /* Lambdas are generated outside the quote that is beeing reified (i.e. in outer.rctx.owner).
+       * In case the case that level == -1 the code is not in a quote, it is in an inline method,
+       * hence we should take that as owner directly.
+       */
+      val lambdaOwner = if (level == -1) ctx.owner else outer.rctx.owner
 
-      val lambdaOwner = ctx.owner.ownersIterator.find(o => levelOf.getOrElse(o, level) == level).get
       val tpe = MethodType(defn.SeqType.appliedTo(defn.AnyType) :: Nil, tree.tpe.widen)
       val meth = ctx.newSymbol(lambdaOwner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
       Closure(meth, tss => body(tss.head.head)(ctx.withOwner(meth)).changeOwner(ctx.owner, meth))
