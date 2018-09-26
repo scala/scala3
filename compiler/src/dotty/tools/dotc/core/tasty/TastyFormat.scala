@@ -112,7 +112,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   EMPTYTREE
                   SHAREDterm            term_ASTRef
                   HOLE           Length idx_Nat arg_Tree*
-                  UNTYPEDSPLICE  Length splice_TermUntyped splice_Type
 
   CaseDef       = CASEDEF        Length pat_Term rhs_Tree guard_Tree?
   ImplicitArg   = IMPLICITARG           arg_Term
@@ -438,8 +437,6 @@ object TastyFormat {
   final val MATCHtype = 190
   final val MATCHtpt = 191
 
-  final val UNTYPEDSPLICE = 199
-
   // Tags for untyped trees only:
   final val TYPEDSPLICE = 200
   final val FUNCTION = 201
@@ -665,7 +662,6 @@ object TastyFormat {
     case PROTECTEDqualified => "PROTECTEDqualified"
     case HOLE => "HOLE"
 
-    case UNTYPEDSPLICE => "UNTYPEDSPLICE"
     case TYPEDSPLICE => "TYPEDSPLICE"
     case FUNCTION => "FUNCTION"
     case INFIXOP => "INFIXOP"

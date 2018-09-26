@@ -565,9 +565,6 @@ class TreePickler(pickler: TastyPickler) {
           }
         case EmptyTree =>
           writeByte(EMPTYTREE)
-        case tpd.UntypedSplice(splice) =>
-          writeByte(UNTYPEDSPLICE)
-          withLength { pickleUntyped(splice); pickleType(tree.tpe) }
         case Hole(idx, args) =>
           writeByte(HOLE)
           withLength {

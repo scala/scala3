@@ -1160,8 +1160,6 @@ class TreeUnpickler(reader: TastyReader,
               TypeBoundsTree(lo, hi)
             case HOLE =>
               readHole(end, isType = false)
-            case UNTYPEDSPLICE =>
-              tpd.UntypedSplice(readUntyped()).withType(readType())
             case _ =>
               readPathTerm()
           }
