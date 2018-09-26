@@ -342,10 +342,6 @@ class Definitions {
   def NullType = NullClass.typeRef
   lazy val RuntimeNullModuleRef = ctx.requiredModuleRef("scala.runtime.Null")
 
-  lazy val ImplicitScrutineeTypeSym =
-    newSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
-  def ImplicitScrutineeTypeRef: TypeRef = ImplicitScrutineeTypeSym.typeRef
-
   lazy val ScalaPredefModuleRef = ctx.requiredModuleRef("scala.Predef")
   def ScalaPredefModule(implicit ctx: Context) = ScalaPredefModuleRef.symbol
 
@@ -1263,7 +1259,7 @@ class Definitions {
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticCoreMethods =
-    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod, ImplicitScrutineeTypeSym)
+    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
 
   lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 
