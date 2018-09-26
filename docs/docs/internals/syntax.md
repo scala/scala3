@@ -277,6 +277,7 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [FunArgMods] DefParams ‘)’]
 DefParamClause    ::=  [nl] ‘(’ [DefParams] ‘)’
+ExtParamClause    ::=  [nl] ‘(’ ‘this’ DefParam] ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘transparent’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
 ```
@@ -319,7 +320,7 @@ Dcl               ::=  RefineDcl
 ValDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
 DefDcl            ::=  DefSig [‘:’ Type]                                        DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
-DefSig            ::=  id [DefTypeParamClause] DefParamClauses
+DefSig            ::=  id [DefTypeParamClause] [ExtParamClause] DefParamClauses
 TypeDcl           ::=  id [TypeParamClause] (TypeBounds | ‘=’ Type)             TypeDefTree(_, name, tparams, bounds)
                     |  id [TypeParamClause] <: Type = MatchType
 
