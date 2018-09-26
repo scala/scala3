@@ -217,7 +217,11 @@ class TailRec extends MiniPhase {
           case x: Ident if x.symbol eq method => EmptyTree
           case x => x
         }
+
         val isRecursiveCall = call eq method
+        def isRecursiveSuperCall = (method.name eq call.name) &&
+          method.matches(call) &&
+          enclosingClass.appliedRef.widen <:< prefix.tpe.widenDealias
 
         if (isRecursiveCall) {
           if (inTailPosition) {
@@ -235,13 +239,11 @@ class TailRec extends MiniPhase {
             cpy.Apply(tree)(ref(label), argumentsWithReceiver)
           }
           else fail("it is not in tail position")
-        } else {
-          // FIXME `(method.name eq call)` is always false (Name vs Symbol). What is this trying to do?
-          val receiverIsSuper = (method.name eq call) && enclosingClass.appliedRef.widen <:< prefix.tpe.widenDealias
-
-          if (receiverIsSuper) fail("it contains a recursive call targeting a supertype")
-          else continue
         }
+        else if (isRecursiveSuperCall)
+          fail("it contains a recursive call targeting a supertype")
+        else
+          continue
       }
 
       def rewriteTry(tree: Try): Try = {
