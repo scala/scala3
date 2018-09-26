@@ -1804,7 +1804,7 @@ object messages {
     val symbolKind: String = symbol.showKind
     val msg: String =
       if (symbol.is(Method))
-        hl"TailRec optimisation not applicable, $symbol is neither ${"private"} nor ${"final"}."
+        hl"TailRec optimisation not applicable, method not tail recursive"
       else
         hl"TailRec optimisation not applicable, ${symbolKind} isn't a method."
     val explanation: String =
