@@ -91,6 +91,10 @@ object SyntaxHighlighting {
           name == nme.ERROR || name == nme.CONSTRUCTOR
         }
 
+        def highlightAnnotations(tree: MemberDef): Unit =
+          for (annotation <- tree.rawMods.annotations)
+            highlightPosition(annotation.pos, AnnotationColor)
+
         def highlight(trees: List[Tree])(implicit ctx: Context): Unit =
           trees.foreach(traverse)
 
@@ -98,11 +102,12 @@ object SyntaxHighlighting {
           tree match {
             case tree: NameTree if ignored(tree) =>
               ()
-            case tree: MemberDef /* ValOrDefDef | ModuleDef | TypeDef */ =>
-              for (annotation <- tree.rawMods.annotations)
-                highlightPosition(annotation.pos, AnnotationColor)
-              val color = if (tree.isInstanceOf[ValOrDefDef]) ValDefColor else TypeColor
-              highlightPosition(tree.namePos, color)
+            case tree: ValOrDefDef =>
+              highlightAnnotations(tree)
+              highlightPosition(tree.namePos, ValDefColor)
+            case tree: MemberDef /* ModuleDef | TypeDef */ =>
+              highlightAnnotations(tree)
+              highlightPosition(tree.namePos, TypeColor)
             case tree: Ident if tree.isType =>
               highlightPosition(tree.pos, TypeColor)
             case _: TypTree =>
