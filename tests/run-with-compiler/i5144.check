@@ -1,0 +1,4 @@
+{
+  def f(x: scala.Int): scala.Int = ((x: scala.Int) => f(x)).apply(42)
+  ()
+}
