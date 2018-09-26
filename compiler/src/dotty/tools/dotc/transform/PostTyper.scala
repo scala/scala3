@@ -105,6 +105,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       val sym = tree.symbol
       sym.registerIfChild()
       sym.transformAnnotations(transformAnnot)
+      sym.defTree = tree
     }
 
     private def transformSelect(tree: Select, targs: List[Tree])(implicit ctx: Context): Tree = {

@@ -61,7 +61,7 @@ class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLe
     new TreeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)
   }
 
-  protected def computeTrees(implicit ctx: Context) = treeUnpickler.unpickle(mode)
+  protected def computeRootTrees(implicit ctx: Context) = treeUnpickler.unpickle(mode)
 
   private[this] var ids: Array[String] = null
 

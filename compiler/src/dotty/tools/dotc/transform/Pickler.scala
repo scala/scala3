@@ -103,7 +103,7 @@ class Pickler extends Phase {
       }
     pickling.println("************* entered toplevel ***********")
     for ((cls, unpickler) <- unpicklers) {
-      val unpickled = unpickler.trees
+      val unpickled = unpickler.rootTrees
       testSame(i"$unpickled%\n%", beforePickling(cls), cls)
     }
   }
