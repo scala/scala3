@@ -208,17 +208,17 @@ object Types {
       def loop(tp: Type): Boolean = tp match {
         case tp: TypeRef =>
           val sym = tp.symbol
-          if (sym.isClass) sym.derivesFrom(cls) else loop(tp.superType): @tailrec
+          if (sym.isClass) sym.derivesFrom(cls) else loop(tp.superType)
         case tp: AppliedType =>
           tp.superType.derivesFrom(cls)
         case tp: MatchType =>
           tp.bound.derivesFrom(cls) || tp.reduced.derivesFrom(cls)
         case tp: TypeProxy =>
-          loop(tp.underlying): @tailrec
+          loop(tp.underlying)
         case tp: AndType =>
-          loop(tp.tp1) || loop(tp.tp2): @tailrec
+          loop(tp.tp1) || loop(tp.tp2)
         case tp: OrType =>
-          loop(tp.tp1) && loop(tp.tp2): @tailrec
+          loop(tp.tp1) && loop(tp.tp2)
         case tp: JavaArrayType =>
           cls == defn.ObjectClass
         case _ =>
@@ -403,16 +403,16 @@ object Types {
      */
     final def classSymbol(implicit ctx: Context): Symbol = this match {
       case ConstantType(constant) =>
-        constant.tpe.classSymbol: @tailrec
+        constant.tpe.classSymbol
       case tp: TypeRef =>
         val sym = tp.symbol
-        if (sym.isClass) sym else tp.superType.classSymbol: @tailrec
+        if (sym.isClass) sym else tp.superType.classSymbol
       case tp: ClassInfo =>
         tp.cls
       case tp: SingletonType =>
         NoSymbol
       case tp: TypeProxy =>
-        tp.underlying.classSymbol: @tailrec
+        tp.underlying.classSymbol
       case AndType(l, r) =>
         val lsym = l.classSymbol
         val rsym = r.classSymbol
@@ -436,9 +436,9 @@ object Types {
         tp.cls :: Nil
       case tp: TypeRef =>
         val sym = tp.symbol
-        if (sym.isClass) sym.asClass :: Nil else tp.superType.classSymbols: @tailrec
+        if (sym.isClass) sym.asClass :: Nil else tp.superType.classSymbols
       case tp: TypeProxy =>
-        tp.underlying.classSymbols: @tailrec
+        tp.underlying.classSymbols
       case AndType(l, r) =>
         l.classSymbols union r.classSymbols
       case OrType(l, r) =>
@@ -479,7 +479,7 @@ object Types {
       case tp: ClassInfo =>
         tp.decls
       case tp: TypeProxy =>
-        tp.underlying.decls: @tailrec
+        tp.underlying.decls
       case _ =>
         EmptyScope
     }
@@ -725,7 +725,7 @@ object Types {
         val ns = tp.parent.memberNames(keepOnly, pre)
         if (keepOnly(pre, tp.refinedName)) ns + tp.refinedName else ns
       case tp: TypeProxy =>
-        tp.underlying.memberNames(keepOnly, pre): @tailrec
+        tp.underlying.memberNames(keepOnly, pre)
       case tp: AndType =>
         tp.tp1.memberNames(keepOnly, pre) | tp.tp2.memberNames(keepOnly, pre)
       case tp: OrType =>
@@ -1042,21 +1042,21 @@ object Types {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else tp.info match {
-          case TypeAlias(alias) => alias.dealias1(keep): @tailrec
+          case TypeAlias(alias) => alias.dealias1(keep)
           case _ => tp
         }
       case app @ AppliedType(tycon, args) =>
         val tycon1 = tycon.dealias1(keep)
-        if (tycon1 ne tycon) app.superType.dealias1(keep): @tailrec
+        if (tycon1 ne tycon) app.superType.dealias1(keep)
         else this
       case tp: TypeVar =>
         val tp1 = tp.instanceOpt
-        if (tp1.exists) tp1.dealias1(keep): @tailrec else tp
+        if (tp1.exists) tp1.dealias1(keep) else tp
       case tp: AnnotatedType =>
         val tp1 = tp.parent.dealias1(keep)
         if (keep(tp)(ctx)) tp.derivedAnnotatedType(tp1, tp.annot) else tp1
       case tp: LazyRef =>
-        tp.ref.dealias1(keep): @tailrec
+        tp.ref.dealias1(keep)
       case _ => this
     }
 

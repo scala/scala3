@@ -24,7 +24,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
       name = member.name.stripScala2LocalSuffix,
       flags = member.flags &~ Deferred,
       info = cls.thisType.memberInfo(member)).enteredAfter(thisPhase).asTerm
-    res.addAnnotations(member.annotations)
+    res.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
     res
   }
 

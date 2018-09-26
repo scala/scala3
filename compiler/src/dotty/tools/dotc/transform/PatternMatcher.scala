@@ -27,7 +27,6 @@ class PatternMatcher extends MiniPhase {
 
   override def phaseName = PatternMatcher.name
   override def runsAfter = Set(ElimRepeated.name)
-  override def runsAfterGroupsOf = Set(TailRec.name) // tailrec is not capable of reversing the patmat tranformation made for tree
 
   override def transformMatch(tree: Match)(implicit ctx: Context): Tree = {
     val translated = new Translator(tree.tpe, this).translateMatch(tree)
