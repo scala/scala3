@@ -277,7 +277,7 @@ Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [FunArgMods] DefParams ‘)’]
 DefParamClause    ::=  [nl] ‘(’ [DefParams] ‘)’
-ExtParamClause    ::=  [nl] ‘(’ ‘this’ DefParam] ‘)’
+ExtParamClause    ::=  [nl] ‘(’ ‘this’ DefParam ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘transparent’] Param                            ValDef(mods, id, tpe, expr) -- point of mods at id.
 ```
