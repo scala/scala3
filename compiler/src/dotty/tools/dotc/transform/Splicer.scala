@@ -161,13 +161,18 @@ object Splicer {
           sw.write("\n")
           throw new StopInterpretation(sw.toString, pos)
         case ex: InvocationTargetException =>
-          val sw = new StringWriter()
-          sw.write("An exception occurred while executing macro expansion\n")
-          sw.write(ex.getTargetException.getMessage)
-          sw.write("\n")
-          ex.getTargetException.printStackTrace(new PrintWriter(sw))
-          sw.write("\n")
-          throw new StopInterpretation(sw.toString, pos)
+          ex.getCause match {
+            case cause: scala.quoted.QuoteError =>
+              throw cause
+            case _ =>
+              val sw = new StringWriter()
+              sw.write("An exception occurred while executing macro expansion\n")
+              sw.write(ex.getTargetException.getMessage)
+              sw.write("\n")
+              ex.getTargetException.printStackTrace(new PrintWriter(sw))
+              sw.write("\n")
+              throw new StopInterpretation(sw.toString, pos)
+          }
 
       }
     }
