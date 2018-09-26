@@ -1133,8 +1133,7 @@ object Parsers {
       val start = in.offset
       if (in.token == IMPLICIT || in.token == ERASED) {
         val imods = modifiers(funArgMods)
-        if (in.token == MATCH) implicitMatch(start, imods)
-        else implicitClosure(start, location, imods)
+        implicitClosure(start, location, imods)
       } else {
         val saved = placeholderParams
         placeholderParams = Nil
@@ -1214,21 +1213,7 @@ object Parsers {
       case FOR =>
         forExpr()
       case _ =>
-        if (isIdent(nme.INLINEkw)) {
-          val start = in.skipToken()
-          in.token match {
-            case IF =>
-              ifExpr(start, InlineIf)
-            case _ =>
-              val t = postfixExpr()
-              if (in.token == MATCH) matchExpr(t, start, InlineMatch)
-              else {
-                syntaxErrorOrIncomplete("`match` or `if` expected but ${in.token} found")
-                t
-              }
-          }
-        }
-        else expr1Rest(postfixExpr(), location)
+        expr1Rest(postfixExpr(), location)
     }
 
     def expr1Rest(t: Tree, location: Location.Value) = in.token match {
@@ -1242,7 +1227,7 @@ object Parsers {
       case COLON =>
         ascription(t, location)
       case MATCH =>
-        matchExpr(t, startOffset(t), Match)
+        matchExpr(t, startOffset(t))
       case _ =>
         t
     }
@@ -1289,34 +1274,10 @@ object Parsers {
     /**    `match' { CaseClauses }
      *     `match' { ImplicitCaseClauses }
      */
-    def matchExpr(t: Tree, start: Offset, mkMatch: (Tree, List[CaseDef]) => Match) =
+    def matchExpr(t: Tree, start: Offset) =
       atPos(start, in.skipToken()) {
-        inBraces(mkMatch(t, caseClauses(caseClause)))
+        inBraces(Match(t, caseClauses(caseClause)))
       }
-
-    /**    `match' { ImplicitCaseClauses }
-     */
-    def implicitMatch(start: Int, imods: Modifiers) = {
-      def markFirstIllegal(mods: List[Mod]) = mods match {
-        case mod :: _ => syntaxError(em"illegal modifier for implicit match", mod.pos)
-        case _ =>
-      }
-      imods.mods match {
-        case Mod.Implicit() :: mods => markFirstIllegal(mods)
-        case mods => markFirstIllegal(mods)
-      }
-      val result @ Match(t, cases) =
-        matchExpr(ImplicitScrutinee().withPos(implicitKwPos(start)), start, InlineMatch)
-      for (CaseDef(pat, _, _) <- cases) {
-        def isImplicitPattern(pat: Tree) = pat match {
-          case Typed(pat1, _) => isVarPattern(pat1)
-          case pat => isVarPattern(pat)
-        }
-        if (!isImplicitPattern(pat))
-          syntaxError(em"not a legal pattern for an implicit match", pat.pos)
-      }
-      result
-    }
 
     /**    `match' { TypeCaseClauses }
      */
@@ -2650,8 +2611,6 @@ object Parsers {
             var imods = modifiers(funArgMods)
             if (isBindingIntro && !isIdent(nme.INLINEkw))
               stats += implicitClosure(start, Location.InBlock, imods)
-            else if (in.token == MATCH)
-              stats += implicitMatch(start, imods)
             else
               stats +++= localDef(start, imods)
           } else {

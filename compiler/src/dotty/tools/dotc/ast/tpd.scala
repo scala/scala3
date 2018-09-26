@@ -21,8 +21,6 @@ import scala.io.Codec
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
-  case class UntypedSplice(splice: untpd.Tree) extends Tree
-
   private def ta(implicit ctx: Context) = ctx.typeAssigner
 
   def Ident(tp: NamedType)(implicit ctx: Context): Ident =
@@ -722,7 +720,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           new TreeTypeMap(oldOwners = from :: froms, newOwners = tos).apply(tree)
         }
       }
-      loop(from, Nil, to :: Nil)
+      if (from == to) tree else loop(from, Nil, to :: Nil)
     }
 
     /** After phase `trans`, set the owner of every definition in this tree that was formerly
@@ -916,6 +914,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def outerSelect(levels: Int, tp: Type)(implicit ctx: Context): Tree =
       untpd.Select(tree, OuterSelectName(EmptyTermName, levels)).withType(SkolemType(tp))
 
+    def underlyingArgument(implicit ctx: Context): Tree = mapToUnderlying.transform(tree)
+
     // --- Higher order traversal methods -------------------------------
 
     /** Apply `f` to each subtree of this tree */
@@ -942,26 +942,38 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
+  /** Map Inlined nodes and InlineProxy references to underlying arguments */
+  object mapToUnderlying extends TreeMap {
+    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      case tree: Ident if tree.symbol.is(InlineProxy) =>
+        tree.symbol.defTree.asInstanceOf[ValOrDefDef].rhs.underlyingArgument
+      case Inlined(_, _, arg) =>
+        arg.underlyingArgument
+      case tree =>
+        super.transform(tree)
+    }
+  }
+
   implicit class ListOfTreeDecorator(val xs: List[tpd.Tree]) extends AnyVal {
     def tpes: List[Type] = xs map (_.tpe)
   }
 
   /** A trait for loaders that compute trees. Currently implemented just by DottyUnpickler. */
   trait TreeProvider {
-    protected def computeTrees(implicit ctx: Context): List[Tree]
+    protected def computeRootTrees(implicit ctx: Context): List[Tree]
 
     private[this] var myTrees: List[Tree] = null
 
     /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
-    def trees(implicit ctx: Context): List[Tree] =
+    def rootTrees(implicit ctx: Context): List[Tree] =
       if (ctx.settings.YretainTrees.value) {
-        if (myTrees == null) myTrees = computeTrees
+        if (myTrees == null) myTrees = computeRootTrees
         myTrees
-      } else computeTrees
+      } else computeRootTrees
 
     /** Get first tree defined by this provider, or EmptyTree if none exists */
     def tree(implicit ctx: Context): Tree =
-      trees.headOption.getOrElse(EmptyTree)
+      rootTrees.headOption.getOrElse(EmptyTree)
 
     /** Is it possible that the tree to load contains a definition of or reference to `id`? */
     def mightContain(id: String)(implicit ctx: Context) = true

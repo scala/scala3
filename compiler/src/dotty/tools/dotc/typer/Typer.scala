@@ -569,8 +569,7 @@ class Typer extends Namer
       def typedTpt = checkSimpleKinded(typedType(tree.tpt))
       def handlePattern: Tree = {
         val tpt1 = typedTpt
-        if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
-          constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
+        if (!ctx.isAfterTyper) constrainPatternType(tpt1.tpe, pt)(ctx.addMode(Mode.GADTflexible))
         // special case for an abstract type that comes with a class tag
         tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
       }
@@ -711,7 +710,6 @@ class Typer extends Namer
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree = track("typedIf") {
-    if (tree.isInstanceOf[untpd.InlineIf]) checkInInlineContext("inline if", tree.pos)
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp2 :: elsep2 :: Nil = harmonic(harmonize) {
       val thenp1 = typed(tree.thenp, pt.notApplied)
@@ -976,12 +974,7 @@ class Typer extends Namer
         val (protoFormals, _) = decomposeProtoFunction(pt, 1)
         val unchecked = pt.isRef(defn.PartialFunctionClass)
         typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
-      case id @ untpd.ImplicitScrutinee() =>
-        checkInInlineContext("implicit match", tree.pos)
-        val sel1 = id.withType(defn.ImplicitScrutineeTypeRef)
-        typedMatchFinish(tree, sel1, sel1.tpe, pt)
       case _ =>
-        if (tree.isInstanceOf[untpd.InlineMatch]) checkInInlineContext("inline match", tree.pos)
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos).widen
         typedMatchFinish(tree, sel1, selType, pt)
@@ -1382,7 +1375,6 @@ class Typer extends Namer
             if (body1.tpe.isInstanceOf[TermRef]) pt1
             else body1.tpe.underlyingIfRepeated(isJava = false)
           val sym = ctx.newPatternBoundSymbol(tree.name, symTp, tree.pos)
-          if (pt == defn.ImplicitScrutineeTypeRef) sym.setFlag(Implicit)
           if (ctx.mode.is(Mode.InPatternAlternative))
             ctx.error(i"Illegal variable ${sym.name} in pattern alternative", tree.pos)
           assignType(cpy.Bind(tree)(tree.name, body1), sym)
@@ -1622,7 +1614,7 @@ class Typer extends Namer
       // check value class constraints
       checkDerivedValueClass(cls, body1)
 
-      if (ctx.settings.YretainTrees.value) cls.treeOrProvider = cdef1
+      if (ctx.settings.YretainTrees.value) cls.rootTreeOrProvider = cdef1
 
       cdef1
 
@@ -1999,10 +1991,17 @@ class Typer extends Namer
           case none =>
             typed(mdef) match {
               case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
-                assert(mdef1.symbol.isInlineMethod, mdef.symbol)
-                Inliner.bodyToInline(mdef1.symbol) // just make sure accessors are computed,
-                buf += mdef1                       // but keep original definition, since inline-expanded code
-                                                   // is pickled in this case.
+                if (Inliner.typedInline) {
+                  buf += inlineExpansion(mdef1)
+                    // replace body with expansion, because it will be used as inlined body
+                    // from separately compiled files - the original BodyAnnotation is not kept.
+                }
+                else {
+                  assert(mdef1.symbol.isInlineMethod, mdef.symbol)
+                  Inliner.bodyToInline(mdef1.symbol) // just make sure accessors are computed,
+                  buf += mdef1                       // but keep original definition, since inline-expanded code
+                                                     // is pickled in this case.
+                }
               case mdef1 =>
                 import untpd.modsDeco
                 mdef match {
@@ -2033,6 +2032,13 @@ class Typer extends Namer
     }
     checkEnumCompanions(traverse(stats)(localCtx), enumContexts)
   }
+
+  /** Given an inline method `mdef`, the method rewritten so that its body
+   *  uses accessors to access non-public members.
+   *  Overwritten in Retyper to return `mdef` unchanged.
+   */
+  protected def inlineExpansion(mdef: DefDef)(implicit ctx: Context): Tree =
+    tpd.cpy.DefDef(mdef)(rhs = Inliner.bodyToInline(mdef.symbol))
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, pt)(ctx retractMode Mode.PatternOrTypeBits)
@@ -2445,8 +2451,9 @@ class Typer extends Namer
       else if (Inliner.isInlineable(tree) &&
                !ctx.settings.YnoInline.value &&
                !ctx.isAfterTyper &&
-               !ctx.reporter.hasErrors) {
-        tree.tpe <:< wildApprox(pt)
+               !ctx.reporter.hasErrors &&
+               (!Inliner.typedInline || tree.tpe <:< pt)) {
+        if (!Inliner.typedInline) tree.tpe <:< wildApprox(pt)
         readaptSimplified(Inliner.inlineCall(tree, pt))
       }
       else if (tree.tpe <:< pt) {

@@ -101,10 +101,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     private def transformAnnot(annot: Annotation)(implicit ctx: Context): Annotation =
       annot.derivedAnnotation(transformAnnot(annot.tree))
 
-    private def transformMemberDef(tree: MemberDef)(implicit ctx: Context): Unit = {
+    private def processMemberDef(tree: Tree)(implicit ctx: Context): tree.type = {
       val sym = tree.symbol
       sym.registerIfChild()
       sym.transformAnnotations(transformAnnot)
+      sym.defTree = tree
+      tree
     }
 
     private def transformSelect(tree: Select, targs: List[Tree])(implicit ctx: Context): Tree = {
@@ -256,14 +258,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           }
         case tree: ValDef =>
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
-          transformMemberDef(tree1)
-          super.transform(tree1)
+          processMemberDef(super.transform(tree1))
         case tree: DefDef =>
           val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
-          transformMemberDef(tree1)
-          superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef])
+          processMemberDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
-          transformMemberDef(tree)
           val sym = tree.symbol
           if (sym.isClass) {
             // Add SourceFile annotation to top-level classes
@@ -273,7 +272,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
             tree
           }
-          super.transform(tree)
+          processMemberDef(super.transform(tree))
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.pos)
           super.transform(tree)

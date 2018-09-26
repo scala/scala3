@@ -351,6 +351,9 @@ object Flags {
   /** A bridge method. Set by Erasure */
   final val Bridge = termFlag(34, "<bridge>")
 
+  /** A proxy for an argument to an inline method */
+  final val InlineProxy = termFlag(35, "<inline proxy>")
+
   /** Symbol is a method which should be marked ACC_SYNCHRONIZED */
   final val Synchronized = termFlag(36, "<synchronized>")
 
@@ -544,6 +547,9 @@ object Flags {
 
   /** Either method or lazy or deferred */
   final val MethodOrLazyOrDeferred = Method | Lazy | Deferred
+
+  /** An inline method or inline argument proxy */
+  final val InlineOrProxy = Inline | InlineProxy
 
   /** Assumed to be pure */
   final val StableOrErased = Stable | Erased

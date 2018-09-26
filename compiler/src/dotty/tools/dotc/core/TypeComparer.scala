@@ -108,6 +108,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
   protected def gadtBounds(sym: Symbol)(implicit ctx: Context) = ctx.gadt.bounds(sym)
   protected def gadtSetBounds(sym: Symbol, b: TypeBounds) = ctx.gadt.setBounds(sym, b)
 
+  protected def typeVarInstance(tvar: TypeVar)(implicit ctx: Context) = tvar.underlying
+
   // Subtype testing `<:<`
 
   def topLevelSubType(tp1: Type, tp2: Type): Boolean = {
@@ -233,7 +235,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
       case tp2: BoundType =>
         tp2 == tp1 || secondTry
       case tp2: TypeVar =>
-        recur(tp1, tp2.underlying)
+        recur(tp1, typeVarInstance(tp2))
       case tp2: WildcardType =>
         def compareWild = tp2.optBounds match {
           case TypeBounds(_, hi) => recur(tp1, hi)
@@ -325,7 +327,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
           true
         }
         def compareTypeParamRef =
-          ctx.mode.is(Mode.TypevarsMissContext) ||
+          assumedTrue(tp1) ||
           isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
             if (canConstrain(tp1) && !approx.high)
               addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
@@ -348,7 +350,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
           case _ => thirdTry
         }
       case tp1: TypeVar =>
-        recur(tp1.underlying, tp2)
+        recur(typeVarInstance(tp1), tp2)
       case tp1: WildcardType =>
         def compareWild = tp1.optBounds match {
           case bounds: TypeBounds => recur(bounds.lo, tp2)
@@ -428,7 +430,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
         thirdTryNamed(tp2)
       case tp2: TypeParamRef =>
         def compareTypeParamRef =
-          (ctx.mode is Mode.TypevarsMissContext) || {
+          assumedTrue(tp2) || {
           val alwaysTrue =
             // The following condition is carefully formulated to catch all cases
             // where the subtype relation is true without needing to add a constraint
@@ -787,9 +789,8 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
                     tl => tparams1.map(tparam => tl.integrate(tparams, tparam.paramInfo).bounds),
                     tl => tp1base.tycon.appliedTo(args1.take(lengthDiff) ++
                             tparams1.indices.toList.map(tl.paramRefs(_))))
-                (ctx.mode.is(Mode.TypevarsMissContext) ||
-                  tryInstantiate(tycon2, tycon1.ensureLambdaSub)) &&
-                  recur(tp1, tycon1.appliedTo(args2))
+                (assumedTrue(tycon2) || tryInstantiate(tycon2, tycon1.ensureLambdaSub)) &&
+                recur(tp1, tycon1.appliedTo(args2))
               }
             }
           case _ => false
@@ -1827,6 +1828,11 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   override def gadtSetBounds(sym: Symbol, b: TypeBounds) = {
     footprint += sym.typeRef
     super.gadtSetBounds(sym, b)
+  }
+
+  override def typeVarInstance(tvar: TypeVar)(implicit ctx: Context) = {
+    footprint += tvar
+    super.typeVarInstance(tvar)
   }
 
   def matchCase(scrut: Type, cas: Type, instantiate: Boolean)(implicit ctx: Context): Type = {

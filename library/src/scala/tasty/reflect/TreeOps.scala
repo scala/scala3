@@ -147,6 +147,7 @@ trait TreeOps extends TastyCore {
   trait TermAPI {
     def tpe(implicit ctx: Context): Type
     def pos(implicit ctx: Context): Position
+    def underlyingArgument(implicit ctx: Context): Term
   }
   implicit def TermDeco(term: Term): TermAPI
 
