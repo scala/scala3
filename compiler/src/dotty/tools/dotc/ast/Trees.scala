@@ -949,11 +949,6 @@ object Trees {
       case ys => Thicket(ys)
     }
 
-    /** Extractor for the synthetic scrutinee tree of an implicit match */
-    object ImplicitScrutinee {
-      def apply() = Ident(nme.IMPLICITkw)
-      def unapply(id: Ident): Boolean = id.name == nme.IMPLICITkw && !id.isInstanceOf[BackquotedIdent]
-    }
     // ----- Helper classes for copying, transforming, accumulating -----------------
 
     val cpy: TreeCopier

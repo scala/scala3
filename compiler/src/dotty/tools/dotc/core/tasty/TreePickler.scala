@@ -448,7 +448,14 @@ class TreePickler(pickler: TastyPickler) {
         case Inlined(call, bindings, expansion) =>
           writeByte(INLINED)
           bindings.foreach(preRegister)
-          withLength { pickleTree(call); pickleTree(expansion); bindings.foreach(pickleTree) }
+          withLength {
+            pickleTree(expansion)
+            if (!call.isEmpty) pickleTree(call)
+            bindings.foreach { b =>
+              assert(b.isInstanceOf[DefDef] || b.isInstanceOf[ValDef])
+              pickleTree(b)
+            }
+          }
         case Bind(name, body) =>
           registerDef(tree.symbol)
           writeByte(BIND)
@@ -563,8 +570,6 @@ class TreePickler(pickler: TastyPickler) {
             pickleTree(lo);
             if (hi ne lo) pickleTree(hi)
           }
-        case EmptyTree =>
-          writeByte(EMPTYTREE)
         case Hole(idx, args) =>
           writeByte(HOLE)
           withLength {

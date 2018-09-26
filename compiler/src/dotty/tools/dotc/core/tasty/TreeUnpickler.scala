@@ -1045,23 +1045,12 @@ class TreeUnpickler(reader: TastyReader,
           ByNameTypeTree(readTpt())
         case NAMEDARG =>
           NamedArg(readName(), readTerm())
-        case EMPTYTREE =>
-          EmptyTree
         case _ =>
           readPathTerm()
       }
 
       def readLengthTerm(): Tree = {
         val end = readEnd()
-
-        def readBlock(mkTree: (List[Tree], Tree) => Tree): Tree = {
-          val exprReader = fork
-          skipTree()
-          val stats = readStats(ctx.owner, end)
-          val expr = exprReader.readTerm()
-          mkTree(stats, expr)
-        }
-
         val result =
           (tag: @switch) match {
             case SUPER =>
@@ -1080,10 +1069,22 @@ class TreeUnpickler(reader: TastyReader,
             case ASSIGN =>
               Assign(readTerm(), readTerm())
             case BLOCK =>
-              readBlock(Block)
+              val exprReader = fork
+              skipTree()
+              val stats = readStats(ctx.owner, end)
+              val expr = exprReader.readTerm()
+              Block(stats, expr)
             case INLINED =>
-              val call = readTerm()
-              readBlock((defs, expr) => Inlined(call, defs.asInstanceOf[List[MemberDef]], expr))
+              val exprReader = fork
+              skipTree()
+              def maybeCall = nextUnsharedTag match {
+                case VALDEF | DEFDEF => EmptyTree
+                case _ => readTerm()
+              }
+              val call = ifBefore(end)(maybeCall, EmptyTree)
+              val bindings = readStats(ctx.owner, end).asInstanceOf[List[ValOrDefDef]]
+              val expansion = exprReader.readTerm() // need bindings in scope, so needs to be read before
+              Inlined(call, bindings, expansion)
             case IF =>
               If(readTerm(), readTerm(), readTerm())
             case LAMBDA =>
@@ -1298,8 +1299,10 @@ class TreeUnpickler(reader: TastyReader,
       def search(cs: List[OwnerTree], current: Symbol): Symbol =
         try cs match {
         case ot :: cs1 =>
-          if (ot.addr.index == addr.index)
+          if (ot.addr.index == addr.index) {
+            assert(current.exists, i"no symbol at $addr")
             current
+          }
           else if (ot.addr.index < addr.index && addr.index < ot.end.index)
             search(ot.children, reader.symbolAt(ot.addr))
           else

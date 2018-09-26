@@ -55,12 +55,13 @@ Standard-Section: "ASTs" TopLevelStat*
                   Stat
 
   Stat          = Term
-                  VALDEF         Length NameRef type_Term rhs_Term? Modifier*
-                  DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
-                                        Modifier*
+                  ValOrDefDef
                   TYPEDEF        Length NameRef (type_Term | Template) Modifier*
                   OBJECTDEF      Length NameRef Template Modifier*
                   IMPORT         Length qual_Term Selector*
+  ValOrDefDef   = VALDEF         Length NameRef type_Term rhs_Term? Modifier*
+                  DEFDEF         Length NameRef TypeParam* Params* returnType_Term rhs_Term?
+                                        Modifier*
   Selector      = IMPORTED              name_NameRef
                   RENAMED               to_NameRef
 
@@ -85,7 +86,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPED          Length expr_Term ascriptionType_Tern
                   ASSIGN         Length lhs_Term rhs_Term
                   BLOCK          Length expr_Term Stat*
-                  INLINED        Length call_Term expr_Term Stat*
+                  INLINED        Length expr_Term call_Term? ValOrDefDef*
                   LAMBDA         Length meth_Term target_Type?
                   IF             Length cond_Term then_Term else_Term
                   MATCH          Length sel_Term CaseDef*
@@ -109,7 +110,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   ORtpt          Length left_Term right_Term
                   MATCHtpt       Length bound_Term? sel_Term CaseDef*
                   BYNAMEtpt             underlying_Term
-                  EMPTYTREE
                   SHAREDterm            term_ASTRef
                   HOLE           Length idx_Nat arg_Tree*
 
@@ -310,7 +310,6 @@ object TastyFormat {
   final val MACRO = 34
   final val ERASED = 35
   final val PARAMsetter = 36
-  final val EMPTYTREE = 37
 
   // Cat. 2:    tag Nat
 
@@ -441,7 +440,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int) =
-    firstSimpleTreeTag <= tag && tag <= EMPTYTREE ||
+    firstSimpleTreeTag <= tag && tag <= PARAMsetter ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -539,7 +538,6 @@ object TastyFormat {
     case DEFAULTparameterized => "DEFAULTparameterized"
     case STABLE => "STABLE"
     case PARAMsetter => "PARAMsetter"
-    case EMPTYTREE => "EMPTYTREE"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"
