@@ -58,10 +58,12 @@
   ],
   "dependencies": {
     "child-process-promise": "^2.2.1",
-    "vscode-languageclient": "^5.0.1",
-    "vscode-languageserver": "^5.0.3"
+    "compare-versions": "^3.4.0",
+    "vscode-languageclient": "^5.1.0",
+    "vscode-languageserver": "^5.1.0"
   },
   "devDependencies": {
+    "@types/compare-versions": "^3.0.0",
     "@types/mocha": "^5.2.5",
     "@types/node": "^8.10.28",
     "typescript": "^2.9.2",
