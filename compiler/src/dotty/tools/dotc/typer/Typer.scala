@@ -428,14 +428,17 @@ class Typer extends Namer
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
 
-    def typeSelectOnTerm(implicit ctx: Context): Tree = {
-      val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
-      if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
-      val select = typedSelect(tree, pt, qual1)
-      if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
-      else if (pt.isInstanceOf[PolyProto] || pt.isInstanceOf[FunProto] || pt == AssignProto) select
-      else typedDynamicSelect(tree, Nil, pt)
-    }
+    def typeSelectOnTerm(implicit ctx: Context): Tree =
+      typedExpr(tree.qualifier, selectionProto(tree.name, pt, this)) match {
+        case ExtMethodResult(app) =>
+          app
+        case qual1 =>
+          if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
+          val select = typedSelect(tree, pt, qual1)
+          if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
+          else if (pt.isInstanceOf[PolyProto] || pt.isInstanceOf[FunProto] || pt == AssignProto) select
+          else typedDynamicSelect(tree, Nil, pt)
+      }
 
     def typeSelectOnType(qual: untpd.Tree)(implicit ctx: Context) =
       typedSelect(untpd.cpy.Select(tree)(qual, tree.name.toTypeName), pt)
@@ -2600,6 +2603,8 @@ class Typer extends Namer
         else err.typeMismatch(tree, pt, failure)
       if (ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType)
         inferView(tree, pt) match {
+          case SearchSuccess(inferred: ExtMethodResult, _, _) =>
+            inferred // nothing to check or adapt for extension method applications
           case SearchSuccess(inferred, _, _) =>
             checkImplicitConversionUseOK(inferred.symbol, tree.pos)
             readapt(inferred)(ctx.retractMode(Mode.ImplicitsEnabled))

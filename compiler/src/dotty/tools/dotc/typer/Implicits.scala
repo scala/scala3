@@ -41,6 +41,13 @@ import scala.annotation.internal.sharable
 object Implicits {
   import tpd._
 
+  /** A flag indicating that this an application of an extension method
+   *  with the given name
+   */
+  case class ExtMethodResult(app: Tree) extends tpd.Tree {
+    override def pos = app.pos
+  }
+
   /** An implicit definition `implicitRef` that is visible under a different name, `alias`.
    *  Gets generated if an implicit ref is imported via a renaming import.
    */
@@ -936,9 +943,10 @@ trait Implicits { self: Typer =>
             typed(untpd.Apply(untpdGenerated, untpdArguments), pt, locked)
           else {
             assert(cand.isExtension)
-            val SelectionProto(name, mbrType, _, _) = pt
+            val SelectionProto(name: TermName, mbrType, _, _) = pt
             typed(untpd.Apply(untpd.Select(untpdGenerated, name), untpdArguments), mbrType, locked)
           }
+          // TODO disambiguate if candidate can be an extension or a conversion
         }
       lazy val shadowing =
         typedUnadapted(untpd.Ident(cand.implicitRef.implicitName) withPos pos.toSynthetic)(
@@ -980,8 +988,12 @@ trait Implicits { self: Typer =>
         SearchFailure(generated1.withTypeUnchecked(
           new ShadowedImplicit(ref, methPart(shadowing).tpe, pt, argument)))
       }
-      else
-        SearchSuccess(generated1, ref, cand.level)(ctx.typerState)
+      else {
+        val generated2 =
+          if (cand.isExtension) ExtMethodResult(generated1).withType(generated1.tpe)
+          else generated1
+        SearchSuccess(generated2, ref, cand.level)(ctx.typerState)
+      }
     }}
 
     /** Try to type-check implicit reference, after checking that this is not
