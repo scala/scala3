@@ -51,6 +51,9 @@ object Implicits {
   /** An eligible implicit candidate, consisting of an implicit reference and a nesting level */
   case class Candidate(implicitRef: ImplicitRef, kind: Candidate.Kind, level: Int) {
     def ref: TermRef = implicitRef.underlyingRef
+
+    def isExtension = (kind & Candidate.Extension) != 0
+    def isConversion = (kind & Candidate.Conversion) != 0
   }
   object Candidate {
     type Kind = Int
@@ -923,12 +926,20 @@ trait Implicits { self: Typer =>
       val ref = cand.ref
       var generated: Tree = tpd.ref(ref).withPos(pos.startPos)
       val locked = ctx.typerState.ownedVars
-      if (!argument.isEmpty)
-        generated = typedUnadapted(
-          untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),
-          pt, locked)
-      val generated1 = adapt(generated, pt, locked)
-
+      val generated1 =
+        if (argument.isEmpty)
+          adapt(generated, pt, locked)
+        else {
+          val untpdGenerated = untpd.TypedSplice(generated)
+          val untpdArguments = untpd.TypedSplice(argument) :: Nil
+          if (cand.isConversion)
+            typed(untpd.Apply(untpdGenerated, untpdArguments), pt, locked)
+          else {
+            assert(cand.isExtension)
+            val SelectionProto(name, mbrType, _, _) = pt
+            typed(untpd.Apply(untpd.Select(untpdGenerated, name), untpdArguments), mbrType, locked)
+          }
+        }
       lazy val shadowing =
         typedUnadapted(untpd.Ident(cand.implicitRef.implicitName) withPos pos.toSynthetic)(
           nestedContext().addMode(Mode.ImplicitShadowing).setExploreTyperState())
