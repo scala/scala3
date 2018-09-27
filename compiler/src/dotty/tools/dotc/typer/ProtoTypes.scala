@@ -376,7 +376,15 @@ object ProtoTypes {
     override def resultType(implicit ctx: Context): Type = resType
 
     def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean =
-      ctx.typer.isApplicable(tp, argType :: Nil, resultType)
+      ctx.typer.isApplicable(tp, argType :: Nil, resultType) || {
+        resType match {
+          case SelectionProto(name: TermName, mbrType, _, _) =>
+            ctx.typer.hasExtensionMethod(tp, name, argType, mbrType)
+              //.reporting(res => i"has ext $tp $name $argType $mbrType: $res")
+          case _ =>
+            false
+        }
+      }
 
     def derivedViewProto(argType: Type, resultType: Type)(implicit ctx: Context): ViewProto =
       if ((argType eq this.argType) && (resultType eq this.resultType)) this

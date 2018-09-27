@@ -591,6 +591,9 @@ object Flags {
   /** An inline parameter */
   final val InlineParam: FlagConjunction = allOf(Inline, Param)
 
+  /** An extension method */
+  final val ExtensionMethod = allOf(Method, Extension)
+
   /** An enum case */
   final val EnumCase: FlagConjunction = allOf(Enum, Case)
 

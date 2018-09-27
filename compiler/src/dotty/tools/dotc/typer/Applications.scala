@@ -1123,6 +1123,14 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
   }
 
+  /** Does `tp` have an extension method named `name` with this-argument `argType` and
+   *  result matching `resultType`?
+   */
+  def hasExtensionMethod(tp: Type, name: TermName, argType: Type, resultType: Type)(implicit ctx: Context) = {
+    val mbr = tp.member(name).suchThat(_.is(ExtensionMethod))
+    mbr.exists && isApplicable(argType.select(name, mbr), argType :: Nil, resultType)
+  }
+
   /** Compare owner inheritance level.
     *  @param    sym1 The first owner
     *  @param    sym2 The second owner
