@@ -84,6 +84,13 @@ class WorksheetTest {
       .evaluate(m1, "1:val foo: Int = 1\nval bar: Int = 2")
   }
 
+  @Test def evaluationException: Unit = {
+    ws"""${m1}val foo = 1 / 0
+         val bar = 2""".withSource
+      .evaluateNonStrict(m1, "1:java.lang.ArithmeticException: / by zero",
+                             "2:val bar: Int = 2")
+  }
+
   @Test def worksheetCompletion(): Unit = {
     ws"""class Foo { def bar = 123 }
          val x = new Foo

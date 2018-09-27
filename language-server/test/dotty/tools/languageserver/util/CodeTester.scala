@@ -127,7 +127,19 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    * @see dotty.tools.languageserver.util.actions.WorksheetEvaluate
    */
   def evaluate(marker: CodeMarker, expected: String*): this.type =
-    doAction(new WorksheetEvaluate(marker, expected))
+    doAction(new WorksheetEvaluate(marker, expected, strict = true))
+
+  /**
+   * Triggers evaluation of the worksheet specified by `marker`, verifies that each line of output
+   * starts with `expected`.
+   *
+   * @param marker   A marker a identifies the worksheet to evaluate.
+   * @param expected The expected starts of output.
+   *
+   * @see dotty.tools.languageserver.util.actions.WorksheetEvaluate
+   */
+  def evaluateNonStrict(marker: CodeMarker, expected: String*): this.type =
+    doAction(new WorksheetEvaluate(marker, expected, strict = false))
 
   /**
    * Triggers evaluation of the worksheet specified by `marker`, then verifies that execution can be

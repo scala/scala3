@@ -3,9 +3,9 @@ package dotty.tools.languageserver.util.actions
 import dotty.tools.languageserver.util.PositionContext
 import dotty.tools.languageserver.util.embedded.CodeMarker
 
-import org.junit.Assert.{assertEquals, fail}
+import org.junit.Assert.{assertEquals, assertTrue, fail}
 
-class WorksheetEvaluate(marker: CodeMarker, expected: Seq[String]) extends WorksheetAction {
+class WorksheetEvaluate(marker: CodeMarker, expected: Seq[String], strict: Boolean) extends WorksheetAction {
 
   private final val evaluationTimeoutMs = 30 * 1000
 
@@ -20,7 +20,13 @@ class WorksheetEvaluate(marker: CodeMarker, expected: Seq[String]) extends Works
       Thread.sleep(100)
     }
 
-    assertEquals(expected, getLogs(marker).init)
+    if (strict) {
+      assertEquals(expected, getLogs(marker).init)
+    } else {
+      expected.zip(getLogs(marker).init).foreach {
+        case (expected, message) => assertTrue(s"'$message' didn't start with '$expected'", message.startsWith(expected))
+      }
+    }
     client.log.clear()
   }
 
