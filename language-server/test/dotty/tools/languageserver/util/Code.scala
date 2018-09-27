@@ -20,6 +20,12 @@ object Code {
   val m6 = new CodeMarker("m6")
   val m7 = new CodeMarker("m7")
   val m8 = new CodeMarker("m8")
+  val m9 = new CodeMarker("m9")
+  val m10 = new CodeMarker("m10")
+  val m11 = new CodeMarker("m11")
+  val m12 = new CodeMarker("m12")
+  val m13 = new CodeMarker("m13")
+  val m14 = new CodeMarker("m14")
 
   implicit class CodeHelper(val sc: StringContext) extends AnyVal {
 

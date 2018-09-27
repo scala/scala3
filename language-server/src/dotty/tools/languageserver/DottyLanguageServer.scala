@@ -183,7 +183,7 @@ class DottyLanguageServer extends LanguageServer
     val worksheetMode = isWorksheet(uri)
 
     val (text, positionMapper) =
-      if (worksheetMode) (wrapWorksheet(document.getText), Some(worksheetPositionMapper _))
+      if (worksheetMode) (wrapWorksheet(document.getText), Some(toUnwrappedPosition _))
       else (document.getText, None)
 
     val diags = driver.run(uri, text)
@@ -204,7 +204,7 @@ class DottyLanguageServer extends LanguageServer
     assert(change.getRange == null, "TextDocumentSyncKind.Incremental support is not implemented")
 
     val (text, positionMapper) =
-      if (worksheetMode) (wrapWorksheet(change.getText), Some(worksheetPositionMapper _))
+      if (worksheetMode) (wrapWorksheet(change.getText), Some(toUnwrappedPosition _))
       else (change.getText, None)
 
     val diags = driver.run(uri, text)
@@ -317,7 +317,7 @@ class DottyLanguageServer extends LanguageServer
             (Nil, Include.overriding)
         }
       val defs = Interactive.namedTrees(trees, include, sym)
-      defs.flatMap(d => location(d.namePos)).asJava
+      defs.flatMap(d => location(d.namePos, positionMapperFor(d.source))).asJava
     }
   }
 
@@ -340,7 +340,7 @@ class DottyLanguageServer extends LanguageServer
         Include.references | Include.overriding | (if (includeDeclaration) Include.definitions else 0)
       val refs = Interactive.findTreesMatching(trees, includes, sym)
 
-      refs.flatMap(ref => location(ref.namePos)).asJava
+      refs.flatMap(ref => location(ref.namePos, positionMapperFor(ref.source))).asJava
     }
   }
 
@@ -363,7 +363,7 @@ class DottyLanguageServer extends LanguageServer
       val changes = refs.groupBy(ref => toUri(ref.source).toString)
         .mapValues(refs =>
           refs.flatMap(ref =>
-            range(ref.namePos).map(nameRange => new TextEdit(nameRange, newName))).asJava)
+            range(ref.namePos, positionMapperFor(ref.source)).map(nameRange => new TextEdit(nameRange, newName))).asJava)
 
       new WorkspaceEdit(changes.asJava)
     }
@@ -383,7 +383,7 @@ class DottyLanguageServer extends LanguageServer
       val refs = Interactive.namedTrees(uriTrees, Include.references | Include.overriding, sym)
       (for {
         ref <- refs if !ref.tree.symbol.isConstructor
-        nameRange <- range(ref.namePos)
+        nameRange <- range(ref.namePos, positionMapperFor(ref.source))
       } yield new DocumentHighlight(nameRange, DocumentHighlightKind.Read)).asJava
     }
   }
@@ -416,8 +416,8 @@ class DottyLanguageServer extends LanguageServer
 
     val defs = Interactive.namedTrees(uriTrees, includeReferences = false, _ => true)
     (for {
-      d <- defs
-      info <- symbolInfo(d.tree.symbol, d.namePos)
+      d <- defs if !isWorksheetWrapper(d)
+      info <- symbolInfo(d.tree.symbol, d.namePos, positionMapperFor(d.source))
     } yield JEither.forLeft(info)).asJava
   }
 
@@ -429,7 +429,7 @@ class DottyLanguageServer extends LanguageServer
 
       val trees = driver.allTrees
       val defs = Interactive.namedTrees(trees, includeReferences = false, nameSubstring = query)
-      defs.flatMap(d => symbolInfo(d.tree.symbol, d.namePos))
+      defs.flatMap(d => symbolInfo(d.tree.symbol, d.namePos, positionMapperFor(d.source)))
     }.asJava
   }
 
@@ -473,9 +473,12 @@ object DottyLanguageServer {
 
   /** Convert an lsp4j.Position to a SourcePosition */
   def sourcePosition(driver: InteractiveDriver, uri: URI, pos: lsp4j.Position): SourcePosition = {
+    val actualPosition =
+      if (isWorksheet(uri)) toWrappedPosition(pos)
+      else pos
     val source = driver.openedFiles(uri)
     if (source.exists) {
-      val p = Positions.Position(source.lineToOffset(pos.getLine) + pos.getCharacter)
+      val p = Positions.Position(source.lineToOffset(actualPosition.getLine) + actualPosition.getCharacter)
       new SourcePosition(source, p)
     }
     else NoSourcePosition
@@ -528,6 +531,10 @@ object DottyLanguageServer {
   private def isWorksheet(uri: URI): Boolean =
     uri.toString.endsWith(".sc")
 
+  /** Does this sourcefile represent a worksheet? */
+  private def isWorksheet(sourcefile: SourceFile): Boolean =
+    sourcefile.file.extension == "sc"
+
   /** Wrap the source of a worksheet inside an `object`. */
   private def wrapWorksheet(source: String): String =
     s"""object Worksheet {
@@ -544,11 +551,46 @@ object DottyLanguageServer {
    * @param position The position as seen by the compiler (after wrapping)
    * @return The position in the actual source file (before wrapping).
    */
-  private def worksheetPositionMapper(position: SourcePosition): SourcePosition = {
+  private def toUnwrappedPosition(position: SourcePosition): SourcePosition = {
     new SourcePosition(position.source, position.pos, position.outer) {
       override def startLine: Int = position.startLine - 1
       override def endLine: Int = position.endLine - 1
     }
+  }
+
+  /**
+   * Map `position` in an unwrapped worksheet to the same position in the wrapped source.
+   *
+   * Because worksheet are wrapped in an `object`, the positions in the source are one line
+   * above from what the compiler sees.
+   *
+   * @see wrapWorksheet
+   * @param position The position as seen by VSCode (before wrapping)
+   * @return The position as seen by the compiler (after wrapping)
+   */
+  private def toWrappedPosition(position: lsp4j.Position): lsp4j.Position = {
+    new lsp4j.Position(position.getLine + 1, position.getCharacter)
+  }
+
+  /**
+   * Returns the position mapper necessary to unwrap positions for `sourcefile`. If `sourcefile` is
+   * not a worksheet, no mapper is necessary. Otherwise, return `toUnwrappedPosition`.
+   */
+  private def positionMapperFor(sourcefile: SourceFile): Option[SourcePosition => SourcePosition] = {
+    if (isWorksheet(sourcefile)) Some(toUnwrappedPosition _)
+    else None
+  }
+
+  /**
+   * Is `sourceTree` the wrapper object that we put around worksheet sources?
+   *
+   * @see wrapWorksheet
+   */
+  def isWorksheetWrapper(sourceTree: SourceTree)(implicit ctx: Context): Boolean = {
+    val symbol = sourceTree.tree.symbol
+    isWorksheet(sourceTree.source) &&
+      symbol.name.toString == "Worksheet$" &&
+      symbol.owner == ctx.definitions.EmptyPackageClass
   }
 
   /** Create an lsp4j.CompletionItem from a Symbol */
@@ -596,7 +638,7 @@ object DottyLanguageServer {
   }
 
   /** Create an lsp4j.SymbolInfo from a Symbol and a SourcePosition */
-  def symbolInfo(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): Option[lsp4j.SymbolInformation] = {
+  def symbolInfo(sym: Symbol, pos: SourcePosition, positionMapper: Option[SourcePosition => SourcePosition])(implicit ctx: Context): Option[lsp4j.SymbolInformation] = {
     def symbolKind(sym: Symbol)(implicit ctx: Context): lsp4j.SymbolKind = {
       import lsp4j.{SymbolKind => SK}
 
@@ -621,6 +663,6 @@ object DottyLanguageServer {
       else
         null
 
-    location(pos).map(l => new lsp4j.SymbolInformation(name, symbolKind(sym), l, containerName))
+    location(pos, positionMapper).map(l => new lsp4j.SymbolInformation(name, symbolKind(sym), l, containerName))
   }
 }
