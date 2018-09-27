@@ -44,7 +44,7 @@ class ScriptedTests extends ReplTest with MessageRendering {
     def evaluate(state: State, input: String, prompt: String) =
       try {
         val nstate = run(input.drop(prompt.length))(state)
-        val out = input + "\n" + storedOutput()
+        val out = (input :: storedOutput().trim().lines.toList).mkString(System.lineSeparator())
         (out, nstate)
       }
       catch {
@@ -60,17 +60,17 @@ class ScriptedTests extends ReplTest with MessageRendering {
       }
 
     val expectedOutput =
-      Source.fromFile(f).getLines().flatMap(filterEmpties).mkString("\n")
+      Source.fromFile(f).getLines().flatMap(filterEmpties).mkString(System.lineSeparator)
     val actualOutput = {
       resetToInitial()
       val inputRes = extractInputs(prompt)
       val buf = new ArrayBuffer[String]
       inputRes.foldLeft(initialState) { (state, input) =>
         val (out, nstate) = evaluate(state, input, prompt)
-        buf.append(out.replace("\r",""))
+        buf.append(out)
         nstate
       }
-      buf.flatMap(filterEmpties).mkString("\n")
+      buf.flatMap(filterEmpties).mkString(System.lineSeparator)
     }
 
     if (expectedOutput != actualOutput) {
