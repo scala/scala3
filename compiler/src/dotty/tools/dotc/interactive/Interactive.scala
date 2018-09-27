@@ -269,8 +269,12 @@ object Interactive {
    *  @param includeReferences  If true, include references and not just definitions
    */
   def namedTrees(trees: List[SourceTree], includeReferences: Boolean, nameSubstring: String)
-   (implicit ctx: Context): List[SourceTree] =
-    namedTrees(trees, includeReferences, _.show.toString.contains(nameSubstring))
+   (implicit ctx: Context): List[SourceTree] = {
+    val predicate: NameTree => Boolean =
+      if (includeReferences) _.show.contains(nameSubstring)
+      else _.name.toString.contains(nameSubstring)
+    namedTrees(trees, includeReferences, predicate)
+  }
 
   /** Find named trees with a non-empty position satisfying `treePredicate` in `trees`.
    *
