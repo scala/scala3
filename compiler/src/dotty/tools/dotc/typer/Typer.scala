@@ -1603,7 +1603,13 @@ class Typer extends Namer
       }
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
       checkVariance(cdef1)
-      if (ctx.phase.isTyper && cdef1.tpe.derivesFrom(defn.DynamicClass) && !ctx.dynamicsEnabled) {
+
+      val reportDynamicInheritance =
+        ctx.phase.isTyper &&
+        cdef1.symbol.ne(defn.DynamicClass) &&
+        cdef1.tpe.derivesFrom(defn.DynamicClass) &&
+        !ctx.dynamicsEnabled
+      if (reportDynamicInheritance) {
         val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
         ctx.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", isScala2Feature = true,
           cls, isRequired, cdef.pos)

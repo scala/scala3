@@ -48,7 +48,7 @@ class CompilationTests extends ParallelTesting {
     compileFile("tests/pos-special/completeFromSource/Test2.scala", defaultOptions.and("-sourcepath", "tests/pos-special")) +
     compileFile("tests/pos-special/completeFromSource/Test3.scala", defaultOptions.and("-sourcepath", "tests/pos-special", "-scansource")) +
     compileFile("tests/pos-special/completeFromSource/nested/Test4.scala", defaultOptions.and("-sourcepath", "tests/pos-special", "-scansource")) +
-    compileFilesInDir("tests/pos-special/fatal-warnings", defaultOptions.and("-Xfatal-warnings")) +
+    compileFilesInDir("tests/pos-special/fatal-warnings", defaultOptions.and("-Xfatal-warnings", "-feature")) +
     compileList(
       "compileMixed",
       List(
