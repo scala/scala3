@@ -202,7 +202,8 @@ object ProtoTypes {
   /** A prototype for selections in pattern constructors */
   class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType, NoViewsAllowed, true)
 
-  trait ApplyingProto extends ProtoType
+  trait ApplyingProto extends ProtoType   // common trait of ViewProto and FunProto
+  trait FunOrPolyProto extends ProtoType  // common trait of PolyProto and FunProto
 
   class FunProtoState {
 
@@ -227,7 +228,7 @@ object ProtoTypes {
    *  [](args): resultType
    */
   case class FunProto(args: List[untpd.Tree], resType: Type)(typer: Typer, state: FunProtoState = new FunProtoState)(implicit ctx: Context)
-  extends UncachedGroundType with ApplyingProto {
+  extends UncachedGroundType with ApplyingProto with FunOrPolyProto {
     override def resultType(implicit ctx: Context): Type = resType
 
     def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean =
@@ -414,7 +415,7 @@ object ProtoTypes {
    *
    *    [] [targs] resultType
    */
-  case class PolyProto(targs: List[Type], resType: Type) extends UncachedGroundType with ProtoType {
+  case class PolyProto(targs: List[Type], resType: Type) extends UncachedGroundType with FunOrPolyProto {
 
     override def resultType(implicit ctx: Context): Type = resType
 

@@ -149,8 +149,8 @@ As another example, consider implementations of an `Ord` type class with a `mini
 ```scala
   trait Ord[T] {
     def compareTo(this x: T)(y: T): Int
-    def < (this x: T)(y: T) = compareTo(x)(y) < 0
-    def > (this x: T)(y: T) = compareTo(x)(y) < 0
+    def < (this x: T)(y: T) = x.compareTo(y) < 0
+    def > (this x: T)(y: T) = x.compareTo(y) > 0
     val minimum: T
   }
 

@@ -2523,6 +2523,11 @@ class Typer extends Namer
       val ptNorm = underlyingApplied(pt)
       lazy val functionExpected = defn.isFunctionType(ptNorm)
       lazy val resultMatch = constrainResult(tree.symbol, wtp, followAlias(pt))
+      def needsEta = pt match {
+        case _: SingletonType => false
+        case IgnoredProto(_: FunOrPolyProto) => false
+        case _ => true
+      }
       wtp match {
         case wtp: ExprType =>
           readaptSimplified(tree.withType(wtp.resultType))
@@ -2534,7 +2539,7 @@ class Typer extends Namer
             // is tried. See strawman-contrib MapDecoratorTest.scala for an example where this happens.
             err.typeMismatch(tree, pt)
           }
-        case wtp: MethodType if !pt.isSingleton =>
+        case wtp: MethodType if needsEta =>
           val arity =
             if (functionExpected)
               if (!isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none))
