@@ -8,23 +8,12 @@ import dotty.tools.dotc.util.SourceFile
 
 import dotty.tools.dotc.core.Flags.Synthetic
 
-import dotty.tools.repl.{ReplDriver, State}
-
 import org.eclipse.lsp4j.jsonrpc.CancelChecker
 
 import java.io.{File, InputStream, InputStreamReader, PrintStream}
 import java.util.concurrent.CancellationException
 
 object Worksheet {
-
-  private val javaExec: Option[String] = {
-    val isWindows = sys.props("os.name").toLowerCase().indexOf("win") >= 0
-    val bin = new File(sys.props("java.home"), "bin")
-    val java = new File(bin, if (isWindows) "java.exe" else "java")
-
-    if (java.exists()) Some(java.getAbsolutePath())
-    else None
-  }
 
   /**
    * Evaluate `tree` as a worksheet using the REPL.
@@ -36,42 +25,30 @@ object Worksheet {
   def evaluate(tree: SourceTree,
                sendMessage: String => Unit,
                cancelChecker: CancelChecker)(
-      implicit ctx: Context): Unit = {
+      implicit ctx: Context): Unit = synchronized {
 
-    val replMain = dotty.tools.repl.WorksheetMain.getClass.getName.init
-    val classpath = sys.props("java.class.path")
-    val options = Array(javaExec.get, "-classpath", classpath, replMain) ++ replOptions
-    val replProcess = new ProcessBuilder(options: _*).redirectErrorStream(true).start()
+    Evaluator.get(cancelChecker) match {
+      case None =>
+        sendMessage(encode("Couldn't start JVM.", 1))
+      case Some(evaluator) =>
+        tree.tree match {
+          case td @ TypeDef(_, template: Template) =>
+            val executed = collection.mutable.Set.empty[(Int, Int)]
 
-    // The stream that we use to send commands to the REPL
-    val replIn = new PrintStream(replProcess.getOutputStream())
+            template.body.foreach {
+              case statement: DefTree if statement.symbol.is(Synthetic) =>
+                ()
 
-    // Messages coming out of the REPL
-    val replOut = new ReplReader(replProcess.getInputStream())
-    replOut.start()
+              case statement if executed.add(bounds(statement.pos)) =>
+                try {
+                  cancelChecker.checkCanceled()
+                  val (line, result) = execute(evaluator, statement, tree.source)
+                  if (result.nonEmpty) sendMessage(encode(result, line))
+                } catch { case _: CancellationException => () }
 
-    // The thread that monitors cancellation
-    val cancellationThread = new CancellationThread(replOut, replProcess, cancelChecker)
-    cancellationThread.start()
-
-    // Wait for the REPL to be ready
-    replOut.next()
-
-    tree.tree match {
-      case td @ TypeDef(_, template: Template) =>
-        val executed = collection.mutable.Set.empty[(Int, Int)]
-
-        template.body.foreach {
-          case statement: DefTree if statement.symbol.is(Synthetic) =>
-            ()
-
-          case statement if executed.add(bounds(statement.pos)) =>
-            val line = execute(replIn, statement, tree.source)
-            val result = replOut.next().trim
-            if (result.nonEmpty) sendMessage(encode(result, line))
-
-          case _ =>
-            ()
+              case _ =>
+                ()
+            }
         }
     }
   }
@@ -79,89 +56,189 @@ object Worksheet {
   /**
    * Extract `tree` from the source and evaluate it in the REPL.
    *
-   * @param replIn     A stream to send commands to the REPL.
+   * @param evaluator  The JVM that runs the REPL.
    * @param tree       The compiled tree to evaluate.
    * @param sourcefile The sourcefile of the worksheet.
-   * @return The line in the sourcefile that corresponds to `tree`.
+   * @return The line in the sourcefile that corresponds to `tree`, and the result.
    */
-  private def execute(replIn: PrintStream, tree: Tree, sourcefile: SourceFile): Int = {
+  private def execute(evaluator: Evaluator, tree: Tree, sourcefile: SourceFile): (Int, String) = {
     val source = sourcefile.content.slice(tree.pos.start, tree.pos.end).mkString
     val line = sourcefile.offsetToLine(tree.pos.end)
-    replIn.println(source)
-    replIn.flush()
-    line
+    (line, evaluator.eval(source))
   }
-
-  private def replOptions(implicit ctx: Context): Array[String] =
-    Array("-color:never", "-classpath", ctx.settings.classpath.value)
 
   private def encode(message: String, line: Int): String =
     line + ":" + message
 
   private def bounds(pos: Position): (Int, Int) = (pos.start, pos.end)
 
-  /**
-   * Regularly check whether execution has been cancelled, kill REPL if it is.
-   *
-   * @param replReader    The ReplReader that reads the output of the REPL
-   * @param process       The forked JVM that runs the REPL.
-   * @param cancelChecker The token that reports cancellation.
-   */
-  private class CancellationThread(replReader: ReplReader, process: Process, cancelChecker: CancelChecker) extends Thread {
-    private final val checkCancelledDelayMs = 50
+}
 
-    override def run(): Unit = {
-      try {
-        while (!Thread.interrupted()) {
-          cancelChecker.checkCanceled()
-          Thread.sleep(checkCancelledDelayMs)
-        }
-      } catch {
-        case _: CancellationException =>
-          replReader.interrupt()
-          process.destroyForcibly()
-      }
-    }
+private object Evaluator {
+
+  private val javaExec: Option[String] = {
+    val isWindows = sys.props("os.name").toLowerCase().indexOf("win") >= 0
+    val bin = new File(sys.props("java.home"), "bin")
+    val java = new File(bin, if (isWindows) "java.exe" else "java")
+
+    if (java.exists()) Some(java.getAbsolutePath())
+    else None
   }
 
   /**
-   * Reads the output from the REPL and makes it available via `next()`.
-   *
-   * @param stream The stream of messages coming out of the REPL.
+   * The most recent Evaluator that was used. It can be reused if the user classpath hasn't changed
+   * between two calls.
    */
-  private class ReplReader(stream: InputStream) extends Thread {
-    private val in = new InputStreamReader(stream)
+  private[this] var previousEvaluator: Option[(String, Evaluator)] = None
 
-    private[this] var output: Option[String] = None
-
-    override def run(): Unit = synchronized {
-      val prompt = "scala> "
-      val buffer = new StringBuilder
-      val chars = new Array[Char](256)
-      var read = 0
-
-      while (!Thread.interrupted() && { read = in.read(chars); read >= 0 }) {
-        buffer.appendAll(chars, 0, read)
-        if (buffer.endsWith(prompt)) {
-          output = Some(buffer.toString.stripSuffix(prompt))
-          buffer.clear()
-          notify()
-          wait()
-        }
-      }
+  /**
+   * Get a (possibly reused) Evaluator and set cancel checker.
+   *
+   * @param cancelChecker The token that indicates whether evaluation has been cancelled.
+   * @return A JVM running the REPL.
+   */
+  def get(cancelChecker: CancelChecker)(implicit ctx: Context): Option[Evaluator] = {
+    val classpath = ctx.settings.classpath.value
+    previousEvaluator match {
+      case Some(cp, evaluator) if cp == classpath =>
+        evaluator.reset(cancelChecker)
+        Some(evaluator)
+      case _ =>
+        previousEvaluator.foreach(_._2.exit())
+        val newEvaluator = javaExec.map(new Evaluator(_, ctx.settings.classpath.value, cancelChecker))
+        previousEvaluator = newEvaluator.map(jvm => (classpath, jvm))
+        newEvaluator
     }
+  }
+}
 
-    /** Block until the next message is ready. */
-    def next(): String = synchronized {
-      while (output.isEmpty) {
+/**
+ * Represents a JVM running the REPL, ready for evaluation.
+ *
+ * @param javaExec      The path to the `java` executable.
+ * @param userClasspath The REPL classpath
+ * @param cancelChecker The token that indicates whether evaluation has been cancelled.
+ */
+private class Evaluator private (javaExec: String,
+                                 userClasspath: String,
+                                 cancelChecker: CancelChecker) {
+  private val process =
+    new ProcessBuilder(
+      javaExec,
+      "-classpath", sys.props("java.class.path"),
+      dotty.tools.repl.WorksheetMain.getClass.getName.init,
+      "-classpath", userClasspath,
+      "-color:never")
+       .redirectErrorStream(true)
+       .start()
+
+  // The stream that we use to send commands to the REPL
+  private val processInput = new PrintStream(process.getOutputStream())
+
+  // Messages coming out of the REPL
+  private val processOutput = new ReplReader(process.getInputStream())
+  processOutput.start()
+
+  // The thread that monitors cancellation
+  private val cancellationThread = new CancellationThread(cancelChecker, this)
+  cancellationThread.start()
+
+  // Wait for the REPL to be ready
+  processOutput.next()
+
+  /**
+   * Submit `command` to the REPL, wait for the result.
+   *
+   * @param command The command to evaluate.
+   * @return The result from the REPL.
+   */
+  def eval(command: String): String = {
+    processInput.println(command)
+    processInput.flush()
+    processOutput.next().trim
+  }
+
+  /**
+   * Reset the REPL to its initial state, update the cancel checker.
+   */
+  def reset(cancelChecker: CancelChecker): Unit = {
+    cancellationThread.setCancelChecker(cancelChecker)
+    eval(":reset")
+  }
+
+  /** Terminate this JVM. */
+  def exit(): Unit = {
+    processOutput.interrupt()
+    process.destroyForcibly()
+    Evaluator.previousEvaluator = None
+    cancellationThread.interrupt()
+  }
+
+}
+
+/**
+ * Regularly check whether execution has been cancelled, kill REPL if it is.
+ */
+private class CancellationThread(private[this] var cancelChecker: CancelChecker,
+                                 evaluator: Evaluator) extends Thread {
+  private final val checkCancelledDelayMs = 50
+
+  override def run(): Unit = {
+    try {
+      while (!Thread.interrupted()) {
+        cancelChecker.checkCanceled()
+        Thread.sleep(checkCancelledDelayMs)
+      }
+    } catch {
+      case _: CancellationException => evaluator.exit()
+      case _: InterruptedException => evaluator.exit()
+    }
+  }
+
+  def setCancelChecker(cancelChecker: CancelChecker): Unit = {
+    this.cancelChecker = cancelChecker
+  }
+}
+
+/**
+ * Reads the output from the REPL and makes it available via `next()`.
+ *
+ * @param stream The stream of messages coming out of the REPL.
+ */
+private class ReplReader(stream: InputStream) extends Thread {
+  private val in = new InputStreamReader(stream)
+
+  private[this] var output: Option[String] = None
+
+  override def run(): Unit = synchronized {
+    val prompt = "scala> "
+    val buffer = new StringBuilder
+    val chars = new Array[Char](256)
+    var read = 0
+
+    while (!Thread.interrupted() && { read = in.read(chars); read >= 0 }) {
+      buffer.appendAll(chars, 0, read)
+      if (buffer.endsWith(prompt)) {
+        output = Some(buffer.toString.stripSuffix(prompt))
+        buffer.clear()
+        notify()
         wait()
       }
-
-      val result = output.get
-      notify()
-      output = None
-      result
     }
+    output = Some("")
+    notify()
   }
 
+  /** Block until the next message is ready. */
+  def next(): String = synchronized {
+
+    while (output.isEmpty) {
+      wait()
+    }
+
+    val result = output.get
+    notify()
+    output = None
+    result
+  }
 }
