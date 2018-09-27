@@ -2,20 +2,26 @@ package dotty.tools
 package dotc
 package ast
 
-import core._
-import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
-import Decorators._
-import collection.mutable.ListBuffer
-import util.Property
-import typer.ErrorReporting._
+import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Names._
+import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core._
+import dotty.tools.dotc.reporting.diagnostic.messages.EnumCannotBeLazy
+import dotty.tools.dotc.typer.ErrorReporting._
+import dotty.tools.dotc.util.Positions._
+import dotty.tools.dotc.util.Property
 
 import scala.annotation.internal.sharable
 
 /** Helper methods to desugar enums */
 object DesugarEnums {
   import untpd._
-  import desugar.DerivedFromParamTree
 
   @sharable object CaseKind extends Enumeration {
     val Simple, Object, Class = Value
@@ -71,7 +77,11 @@ object DesugarEnums {
 
   /** Add implied flags to an enum class or an enum case */
   def addEnumFlags(cdef: TypeDef)(implicit ctx: Context) =
-    if (cdef.mods.isEnumClass) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Abstract | Sealed))
+    if (cdef.mods.isLazyEnum) {
+      errorType(EnumCannotBeLazy(cdef.name.show), cdef.pos)
+      cdef
+    }
+    else if (cdef.mods.isEnumClass) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Abstract | Sealed))
     else if (isEnumCase(cdef)) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Final))
     else cdef
 
