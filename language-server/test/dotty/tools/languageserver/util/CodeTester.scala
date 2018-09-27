@@ -117,8 +117,29 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
   def symbol(query: String, symbols: SymInfo*): this.type =
     doAction(new CodeSymbol(query, symbols))
 
+  /**
+   * Triggers evaluation of the worksheet specified by `marker`, verifies that the results of
+   * evaluation match `expected.
+   *
+   * @param marker   A marker a identifies the worksheet to evaluate.
+   * @param expected The expected output.
+   *
+   * @see dotty.tools.languageserver.util.actions.WorksheetEvaluate
+   */
   def evaluate(marker: CodeMarker, expected: String*): this.type =
     doAction(new WorksheetEvaluate(marker, expected))
+
+  /**
+   * Triggers evaluation of the worksheet specified by `marker`, then verifies that execution can be
+   * cancelled after `afterMs` milliseconds.
+   *
+   * @param marker   A marker that identifier the worksheet to evaluate.
+   * @param afterMs  The delay in milliseconds before cancelling execution.
+   *
+   * @see dotty.tools.languageserver.util.actions.WorksheetCancel
+   */
+  def cancelEvaluation(marker: CodeMarker, afterMs: Long): this.type =
+    doAction(new WorksheetCancel(marker, afterMs))
 
   private def doAction(action: Action): this.type = {
     try {

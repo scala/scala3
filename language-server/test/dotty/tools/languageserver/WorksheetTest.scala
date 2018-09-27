@@ -184,4 +184,12 @@ class WorksheetTest {
      .symbol("Baz", (m5 to m6).symInfo("Baz", SymbolKind.Class))
   }
 
+  @Test def worksheetCancel(): Unit = {
+    ws"""${m1}val foo = 1
+         val bar = 2
+         while (true) {}
+         val baz = 3""".withSource
+      .cancelEvaluation(m1, afterMs = 5000)
+  }
+
 }
