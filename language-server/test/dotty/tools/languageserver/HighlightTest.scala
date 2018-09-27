@@ -19,4 +19,10 @@ class HighlightTest {
       .highlight(xRef.range, (xDef.range, DocumentHighlightKind.Read), (xRef.range, DocumentHighlightKind.Read))
   }
 
+  @Test def highlightClass(): Unit = {
+    code"""class ${m1}Foo${m2} { new ${m3}Foo${m4} }""".withSource
+      .highlight(m1 to m2, (m1 to m2, DocumentHighlightKind.Read), (m3 to m4, DocumentHighlightKind.Read))
+      .highlight(m3 to m4, (m1 to m2, DocumentHighlightKind.Read), (m3 to m4, DocumentHighlightKind.Read))
+  }
+
 }
