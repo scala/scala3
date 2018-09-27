@@ -452,6 +452,11 @@ class TreeChecker extends Phase with SymTransformer {
       tree1
     }
 
+    override def typedWhileDo(tree: untpd.WhileDo)(implicit ctx: Context): Tree = {
+      assert((tree.cond ne EmptyTree) || ctx.phase.refChecked, i"invalid empty condition in while at $tree")
+      super.typedWhileDo(tree)
+    }
+
     override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(implicit ctx: Context): Tree =
       tree
 

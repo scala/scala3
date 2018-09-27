@@ -32,7 +32,7 @@ import reporting.diagnostic.messages.TailrecNotApplicable
  *  {{{
  *  var localForParam1: T1 = param1
  *  ...
- *  while (true) {
+ *  while (<empty>) {
  *    tailResult[ResultType]: {
  *      return {
  *        // original rhs with tail recursive calls transformed (see below)
@@ -60,7 +60,7 @@ import reporting.diagnostic.messages.TailrecNotApplicable
  *  def fact(n: Int, acc: Int): Int = {
  *    var acc$tailLocal1: Int = acc
  *    var n$tailLocal1: Int = n
- *    while (true) {
+ *    while (<empty>) {
  *      tailLabel1[Unit]: {
  *        return {
  *          if (n$tailLocal1 == 0)
@@ -75,7 +75,6 @@ import reporting.diagnostic.messages.TailrecNotApplicable
  *        }
  *      }
  *    }
- *    throw null // unreachable
  *  }
  *  }}}
  *
@@ -163,14 +162,12 @@ class TailRec extends MiniPhase {
             }
 
             Block(
-              initialVarDefs :::
-              WhileDo(Literal(Constant(true)), {
+              initialVarDefs,
+              WhileDo(EmptyTree, {
                 Labeled(transformer.continueLabel.asTerm, {
                   Return(rhsFullyTransformed, origMeth)
                 })
-              }) ::
-              Nil,
-              Throw(Literal(Constant(null))) // unreachable code
+              })
             )
           } else {
             if (mandatory) ctx.error(
