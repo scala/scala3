@@ -36,7 +36,7 @@ object ExposedValues extends AutoPlugin {
 object Build {
 
   val baseVersion = "0.10.0"
-  val scalacVersion = "2.12.6"
+  val scalacVersion = "2.12.7"
 
   val dottyOrganization = "ch.epfl.lamp"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
