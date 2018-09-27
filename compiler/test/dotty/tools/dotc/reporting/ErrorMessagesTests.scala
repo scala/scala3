@@ -935,6 +935,18 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals("class MyValue", valueClass.show)
     }
 
+  @Test def valueClassParameterMayNotBeCallByName =
+    checkMessagesAfter(RefChecks.name) {
+      """class MyValue(a: => Int) extends AnyVal"""
+    }
+    .expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val ValueClassParameterMayNotBeCallByName(valueClass, param) :: Nil = messages
+      assertEquals("class MyValue", valueClass.show)
+      assertEquals("value a", param.show)
+    }
+
   @Test def onlyCaseClassOrCaseObjectAllowed =
     checkMessagesAfter(FrontEnd.name) {
       """case Foobar"""
