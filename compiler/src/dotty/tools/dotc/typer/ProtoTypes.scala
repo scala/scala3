@@ -416,7 +416,7 @@ object ProtoTypes {
    *
    *    [] [targs] resultType
    */
-  case class PolyProto(targs: List[Type], resType: Type) extends UncachedGroundType with FunOrPolyProto {
+  case class PolyProto(targs: List[Tree], resType: Type) extends UncachedGroundType with FunOrPolyProto {
 
     override def resultType(implicit ctx: Context): Type = resType
 
@@ -428,17 +428,17 @@ object ProtoTypes {
       isInstantiatable(tp) || tp.member(nme.apply).hasAltWith(d => isInstantiatable(d.info))
     }
 
-    def derivedPolyProto(targs: List[Type], resultType: Type): PolyProto =
+    def derivedPolyProto(targs: List[Tree], resultType: Type): PolyProto =
       if ((targs eq this.targs) && (resType eq this.resType)) this
       else PolyProto(targs, resType)
 
     override def notApplied: Type = WildcardType
 
     def map(tm: TypeMap)(implicit ctx: Context): PolyProto =
-      derivedPolyProto(targs mapConserve tm, tm(resultType))
+      derivedPolyProto(targs, tm(resultType))
 
     def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T =
-      ta(ta.foldOver(x, targs), resultType)
+      ta(ta.foldOver(x, targs.tpes), resultType)
 
     override def deepenProto(implicit ctx: Context): PolyProto = derivedPolyProto(targs, resultType.deepenProto)
   }

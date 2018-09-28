@@ -870,7 +870,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
     val isNamed = hasNamedArg(tree.args)
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
-    typedExpr(tree.fun, PolyProto(typedArgs.tpes, pt)) match {
+    typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
       case Implicits.ExtMethodResult(app) =>
         app
       case typedFn =>
@@ -1484,7 +1484,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
       case pt @ PolyProto(targs1, pt1) if targs.isEmpty =>
         val alts1 = alts filter pt.isMatchedBy
-        resolveOverloaded(alts1, pt1, targs1)
+        resolveOverloaded(alts1, pt1, targs1.tpes)
 
       case defn.FunctionOf(args, resultType, _, _) =>
         narrowByTypes(alts, args, resultType)

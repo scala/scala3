@@ -439,7 +439,7 @@ class Typer extends Namer
           if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
           val select = typedSelect(tree, pt, qual1)
           if (select.tpe ne TryDynamicCallType) ConstFold(checkStableIdentPattern(select, pt))
-          else if (pt.isInstanceOf[PolyProto] || pt.isInstanceOf[FunProto] || pt == AssignProto) select
+          else if (pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto) select
           else typedDynamicSelect(tree, Nil, pt)
       }
 

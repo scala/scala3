@@ -946,7 +946,7 @@ trait Implicits { self: Typer =>
             val SelectionProto(name: TermName, mbrType, _, _) = pt
             val sel = untpd.Select(untpdGenerated, name)
             val core = mbrType.revealIgnored match {
-              case PolyProto(targs, _) => untpd.TypeApply(sel, targs.map(untpd.TypeTree))
+              case PolyProto(targs, _) => untpd.TypeApply(sel, targs)
               case _ => sel
             }
             typed(untpd.Apply(core, untpdArguments), mbrType, locked)
