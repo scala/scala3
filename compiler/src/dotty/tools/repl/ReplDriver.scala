@@ -285,7 +285,12 @@ class ReplDriver(settings: Array[String],
       .foreach { sym =>
         // FIXME syntax highlighting on comment is currently not working
         // out.println(SyntaxHighlighting.highlight("// defined " + sym.showUser))
-        out.println(SyntaxHighlighting.CommentColor + "// defined " + sym.showUser + SyntaxHighlighting.NoColor)
+        val message = "// defined " + sym.showUser
+        if (ctx.settings.color.value != "never") {
+          println(SyntaxHighlighting.CommentColor + message + SyntaxHighlighting.NoColor)
+        } else {
+          println(message)
+        }
       }
 
 
