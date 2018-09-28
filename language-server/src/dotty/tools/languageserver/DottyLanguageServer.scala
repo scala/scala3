@@ -382,7 +382,7 @@ class DottyLanguageServer extends LanguageServer
     else {
       val refs = Interactive.namedTrees(uriTrees, Include.references | Include.overriding, sym)
       (for {
-        ref <- refs if !ref.tree.symbol.isConstructor
+        ref <- refs if !ref.tree.symbol.isPrimaryConstructor
         nameRange <- range(ref.namePos, positionMapperFor(ref.source))
       } yield new DocumentHighlight(nameRange, DocumentHighlightKind.Read)).asJava
     }
