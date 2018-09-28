@@ -430,9 +430,9 @@ class Typer extends Namer
 
     def typeSelectOnTerm(implicit ctx: Context): Tree =
       typedExpr(tree.qualifier, selectionProto(tree.name, pt, this)) match {
-        case qual1 @ ExtMethodResult(app) =>
+        case qual1 @ Applications.ExtMethodApply(app) =>
           pt.revealIgnored match {
-            case _: PolyProto => qual1 // keep the ExtMethodResult to strip at next typedTypeApply
+            case _: PolyProto => qual1 // keep the ExtMethodApply to strip at next typedTypeApply
             case _ => app
           }
         case qual1 =>
@@ -2610,7 +2610,7 @@ class Typer extends Namer
         else err.typeMismatch(tree, pt, failure)
       if (ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType)
         inferView(tree, pt) match {
-          case SearchSuccess(inferred: ExtMethodResult, _, _) =>
+          case SearchSuccess(inferred: Applications.ExtMethodApply, _, _) =>
             inferred // nothing to check or adapt for extension method applications
           case SearchSuccess(inferred, _, _) =>
             checkImplicitConversionUseOK(inferred.symbol, tree.pos)
@@ -2690,7 +2690,7 @@ class Typer extends Namer
               adaptToArgs(wtp, pt)
             case pt: PolyProto =>
               tree match {
-                case _: ExtMethodResult => tree
+                case _: Applications.ExtMethodApply => tree
                 case _ =>  tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
               }
             case _ =>

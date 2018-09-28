@@ -164,6 +164,12 @@ object Applications {
 
   def wrapDefs(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree =
     if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
+
+  /** A wrapper indicating that its argument is an application of an extension method.
+   */
+  case class ExtMethodApply(app: Tree) extends tpd.Tree {
+    override def pos = app.pos
+  }
 }
 
 
@@ -871,7 +877,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
     val isNamed = hasNamedArg(tree.args)
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
-      case Implicits.ExtMethodResult(app) =>
+      case ExtMethodApply(app) =>
         app
       case typedFn =>
         typedFn.tpe.widen match {
@@ -1634,5 +1640,23 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    */
   private def harmonizeTypes(tpes: List[Type])(implicit ctx: Context): List[Type] =
     harmonizeWith(tpes)(identity, (tp, pt) => pt)
+
+  /** The typed application
+   *
+   *   <provider>.<name>(<receiver>)    or
+   *   <provider>.<name>[<type-args>](<receiver>)
+   *
+   *  where <name> and possibly <type-args> come from the expected type `pt`, which must be
+   *  a SelectionProto
+   */
+  def extMethodApply(provider: Tree, receiver: Tree, pt: Type)(implicit ctx: Context) = {
+    val SelectionProto(name: TermName, mbrType, _, _) = pt
+    val sel = untpd.Select(untpd.TypedSplice(provider), name)
+    val (core, pt1) = mbrType.revealIgnored match {
+      case PolyProto(targs, restpe) => (untpd.TypeApply(sel, targs.map(untpd.TypedSplice(_))), restpe)
+      case _ => (sel, mbrType)
+    }
+    typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)
+  }
 }
 

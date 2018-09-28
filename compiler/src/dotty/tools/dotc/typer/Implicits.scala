@@ -937,19 +937,13 @@ trait Implicits { self: Typer =>
         if (argument.isEmpty)
           adapt(generated, pt, locked)
         else {
-          val untpdGenerated = untpd.TypedSplice(generated)
-          val untpdArguments = untpd.TypedSplice(argument) :: Nil
           if (cand.isConversion)
-            typed(untpd.Apply(untpdGenerated, untpdArguments), pt, locked)
+            typed(
+              untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),
+              pt, locked)
           else {
             assert(cand.isExtension)
-            val SelectionProto(name: TermName, mbrType, _, _) = pt
-            val sel = untpd.Select(untpdGenerated, name)
-            val core = mbrType.revealIgnored match {
-              case PolyProto(targs, _) => untpd.TypeApply(sel, targs)
-              case _ => sel
-            }
-            typed(untpd.Apply(core, untpdArguments), mbrType, locked)
+            extMethodApply(generated, argument, pt)
           }
           // TODO disambiguate if candidate can be an extension or a conversion
         }
@@ -995,7 +989,7 @@ trait Implicits { self: Typer =>
       }
       else {
         val generated2 =
-          if (cand.isExtension) ExtMethodResult(generated1).withType(generated1.tpe)
+          if (cand.isExtension) ExtMethodApply(generated1).withType(generated1.tpe)
           else generated1
         SearchSuccess(generated2, ref, cand.level)(ctx.typerState)
       }
