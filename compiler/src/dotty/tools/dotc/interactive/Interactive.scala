@@ -265,15 +265,11 @@ object Interactive {
       namedTrees(trees, (include & Include.references) != 0, matchSymbol(_, sym, include))
 
   /** Find named trees with a non-empty position whose name contains `nameSubstring` in `trees`.
-   *
-   *  @param includeReferences  If true, include references and not just definitions
    */
-  def namedTrees(trees: List[SourceTree], includeReferences: Boolean, nameSubstring: String)
+  def namedTrees(trees: List[SourceTree], nameSubstring: String)
    (implicit ctx: Context): List[SourceTree] = {
-    val predicate: NameTree => Boolean =
-      if (includeReferences) _.show.contains(nameSubstring)
-      else _.name.toString.contains(nameSubstring)
-    namedTrees(trees, includeReferences, predicate)
+    val predicate: NameTree => Boolean = _.name.toString.contains(nameSubstring)
+    namedTrees(trees, includeReferences = false, predicate)
   }
 
   /** Find named trees with a non-empty position satisfying `treePredicate` in `trees`.

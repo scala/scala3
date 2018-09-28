@@ -428,7 +428,7 @@ class DottyLanguageServer extends LanguageServer
       implicit val ctx = driver.currentCtx
 
       val trees = driver.allTrees
-      val defs = Interactive.namedTrees(trees, includeReferences = false, nameSubstring = query)
+      val defs = Interactive.namedTrees(trees, nameSubstring = query)
       defs.flatMap(d => symbolInfo(d.tree.symbol, d.namePos, positionMapperFor(d.source)))
     }.asJava
   }
