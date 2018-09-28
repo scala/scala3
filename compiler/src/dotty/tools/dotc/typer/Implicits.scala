@@ -944,7 +944,12 @@ trait Implicits { self: Typer =>
           else {
             assert(cand.isExtension)
             val SelectionProto(name: TermName, mbrType, _, _) = pt
-            typed(untpd.Apply(untpd.Select(untpdGenerated, name), untpdArguments), mbrType, locked)
+            val sel = untpd.Select(untpdGenerated, name)
+            val core = mbrType.revealIgnored match {
+              case PolyProto(targs, _) => untpd.TypeApply(sel, targs.map(untpd.TypeTree))
+              case _ => sel
+            }
+            typed(untpd.Apply(core, untpdArguments), mbrType, locked)
           }
           // TODO disambiguate if candidate can be an extension or a conversion
         }

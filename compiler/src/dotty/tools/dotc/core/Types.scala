@@ -1379,6 +1379,9 @@ object Types {
      */
     def deepenProto(implicit ctx: Context): Type = this
 
+    /** If this is an ignored proto type, its underlying type, otherwise the type itself */
+    def revealIgnored: Type = this
+
 // ----- Substitutions -----------------------------------------------------
 
     /** Substitute all types that refer in their symbol attribute to

@@ -121,7 +121,7 @@ object Test extends App {
   def mappAll[F[_]: Monad, T](x: T, fs: List[T => T]): F[T] =
     fs.foldLeft(implicitly[Monad[F]].pure(x))((x: F[T], f: T => T) =>
       if (true) implicitly[Monad[F]].map(x)(f)
-      else x.map(f)
-        // does not work yet: x.map[T, T](f)
+      else if (true) x.map(f)
+      else x.map[T, T](f)
     )
 }

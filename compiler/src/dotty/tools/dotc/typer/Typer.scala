@@ -430,8 +430,11 @@ class Typer extends Namer
 
     def typeSelectOnTerm(implicit ctx: Context): Tree =
       typedExpr(tree.qualifier, selectionProto(tree.name, pt, this)) match {
-        case ExtMethodResult(app) =>
-          app
+        case qual1 @ ExtMethodResult(app) =>
+          pt.revealIgnored match {
+            case _: PolyProto => qual1 // keep the ExtMethodResult to strip at next typedTypeApply
+            case _ => app
+          }
         case qual1 =>
           if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
           val select = typedSelect(tree, pt, qual1)
@@ -2096,10 +2099,9 @@ class Typer extends Namer
     }
 
   /** Is `pt` a prototype of an `apply` selection, or a parameterless function yielding one? */
-  def isApplyProto(pt: Type)(implicit ctx: Context): Boolean = pt match {
+  def isApplyProto(pt: Type)(implicit ctx: Context): Boolean = pt.revealIgnored match {
     case pt: SelectionProto => pt.name == nme.apply
     case pt: FunProto       => pt.args.isEmpty && isApplyProto(pt.resultType)
-    case pt: IgnoredProto   => isApplyProto(pt.ignored)
     case _                  => false
   }
 
@@ -2687,7 +2689,10 @@ class Typer extends Namer
             case pt: FunProto =>
               adaptToArgs(wtp, pt)
             case pt: PolyProto =>
-              tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
+              tree match {
+                case _: ExtMethodResult => tree
+                case _ =>  tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
+              }
             case _ =>
               if (ctx.mode is Mode.Type) adaptType(tree.tpe)
               else adaptNoArgs(wtp)

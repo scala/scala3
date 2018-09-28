@@ -870,22 +870,26 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
     val isNamed = hasNamedArg(tree.args)
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
-    val typedFn = typedExpr(tree.fun, PolyProto(typedArgs.tpes, pt))
-    typedFn.tpe.widen match {
-      case pt: PolyType =>
-        if (typedArgs.length <= pt.paramInfos.length && !isNamed)
-          if (typedFn.symbol == defn.Predef_classOf && typedArgs.nonEmpty) {
-            val arg = typedArgs.head
-            checkClassType(arg.tpe, arg.pos, traitReq = false, stablePrefixReq = false)
-          }
-      case _ =>
+    typedExpr(tree.fun, PolyProto(typedArgs.tpes, pt)) match {
+      case Implicits.ExtMethodResult(app) =>
+        app
+      case typedFn =>
+        typedFn.tpe.widen match {
+          case pt: PolyType =>
+            if (typedArgs.length <= pt.paramInfos.length && !isNamed)
+              if (typedFn.symbol == defn.Predef_classOf && typedArgs.nonEmpty) {
+                val arg = typedArgs.head
+                checkClassType(arg.tpe, arg.pos, traitReq = false, stablePrefixReq = false)
+              }
+          case _ =>
+        }
+        def tryDynamicTypeApply(): Tree = typedFn match {
+          case typedFn: Select if !pt.isInstanceOf[FunProto] => typedDynamicSelect(typedFn, typedArgs, pt)
+          case _                                             => tree.withType(TryDynamicCallType)
+        }
+        if (typedFn.tpe eq TryDynamicCallType) tryDynamicTypeApply()
+        else assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
     }
-    def tryDynamicTypeApply(): Tree = typedFn match {
-      case typedFn: Select if !pt.isInstanceOf[FunProto] => typedDynamicSelect(typedFn, typedArgs, pt)
-      case _                                             => tree.withType(TryDynamicCallType)
-    }
-    if (typedFn.tpe eq TryDynamicCallType) tryDynamicTypeApply()
-    else assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
   }
 
   /** Rewrite `new Array[T](....)` if T is an unbounded generic to calls to newGenericArray.
@@ -1339,16 +1343,16 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
      *  section conforms to the expected type `resultType`? If `resultType`
      *  is a `IgnoredProto`, pick the underlying type instead.
      */
-    def resultConforms(altSym: Symbol, altType: Type, resultType: Type)(implicit ctx: Context): Boolean = resultType match {
-      case IgnoredProto(ignored) => resultConforms(altSym, altType, ignored)
-      case _: ValueType =>
-        altType.widen match {
-          case tp: PolyType => resultConforms(altSym, constrained(tp).resultType, resultType)
-          case tp: MethodType => constrainResult(altSym, tp.resultType, resultType)
-          case _ => true
-        }
-      case _ => true
-    }
+    def resultConforms(altSym: Symbol, altType: Type, resultType: Type)(implicit ctx: Context): Boolean =
+      resultType.revealIgnored match {
+        case resultType: ValueType =>
+          altType.widen match {
+            case tp: PolyType => resultConforms(altSym, constrained(tp).resultType, resultType)
+            case tp: MethodType => constrainResult(altSym, tp.resultType, resultType)
+            case _ => true
+          }
+        case _ => true
+      }
 
     /** If the `chosen` alternative has a result type incompatible with the expected result
      *  type `pt`, run overloading resolution again on all alternatives that do match `pt`.
