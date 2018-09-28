@@ -206,4 +206,9 @@ class WorksheetTest {
       .evaluate(m1, "1:Hello, world!")
   }
 
+  @Test def outputOnStdErr(): Unit = {
+    ws"""${m1}System.err.println("Oh no")""".withSource
+      .evaluate(m1, "1:Oh no")
+  }
+
 }
