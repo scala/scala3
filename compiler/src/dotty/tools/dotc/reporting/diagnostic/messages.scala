@@ -1666,6 +1666,13 @@ object messages {
     val explanation = ""
   }
 
+  case class ValueClassParameterMayNotBeCallByName(valueClass: Symbol, param: Symbol)(implicit ctx: Context)
+    extends Message(ValueClassParameterMayNotBeCallByNameID) {
+    val msg = s"value class parameter `${param.name}` may not be call-by-name"
+    val kind = "Syntax"
+    val explanation = ""
+  }
+
   case class OnlyCaseClassOrCaseObjectAllowed()(implicit ctx: Context)
     extends Message(OnlyCaseClassOrCaseObjectAllowedID) {
     val msg = "only `case class` or `case object` allowed"
