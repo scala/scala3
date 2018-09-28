@@ -199,4 +199,11 @@ class WorksheetTest {
       .cancelEvaluation(m1, afterMs = 5000)
   }
 
+  @Test def systemExit(): Unit = {
+    ws"""${m1}println("Hello, world!")
+         System.exit(0)
+         println("Goodbye!")""".withSource
+      .evaluate(m1, "1:Hello, world!")
+  }
+
 }

@@ -39,7 +39,7 @@ object Worksheet {
               case statement: DefTree if statement.symbol.is(Synthetic) =>
                 ()
 
-              case statement if executed.add(bounds(statement.pos)) =>
+              case statement if evaluator.isAlive() && executed.add(bounds(statement.pos)) =>
                 try {
                   cancelChecker.checkCanceled()
                   val (line, result) = execute(evaluator, statement, tree.source)
@@ -100,7 +100,7 @@ private object Evaluator {
   def get(cancelChecker: CancelChecker)(implicit ctx: Context): Option[Evaluator] = {
     val classpath = ctx.settings.classpath.value
     previousEvaluator match {
-      case Some(cp, evaluator) if cp == classpath =>
+      case Some(cp, evaluator) if evaluator.isAlive() && cp == classpath =>
         evaluator.reset(cancelChecker)
         Some(evaluator)
       case _ =>
@@ -146,6 +146,9 @@ private class Evaluator private (javaExec: String,
   // Wait for the REPL to be ready
   processOutput.next()
 
+  /** Is the process that runs the REPL still alive? */
+  def isAlive(): Boolean = process.isAlive()
+
   /**
    * Submit `command` to the REPL, wait for the result.
    *
@@ -185,7 +188,7 @@ private class CancellationThread(private[this] var cancelChecker: CancelChecker,
 
   override def run(): Unit = {
     try {
-      while (!Thread.interrupted()) {
+      while (evaluator.isAlive() && !Thread.interrupted()) {
         cancelChecker.checkCanceled()
         Thread.sleep(checkCancelledDelayMs)
       }
