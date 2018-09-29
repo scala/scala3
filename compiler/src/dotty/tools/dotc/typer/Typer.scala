@@ -2606,14 +2606,18 @@ class Typer extends Namer
       // try an extension method in scope
       pt match {
         case SelectionProto(name, mbrType, _, _) =>
-          def tryExtension(implicit ctx: Context): Tree = {
-            val id = typedUnadapted(untpd.Ident(name).withPos(tree.pos))
-            id.tpe match {
-              case ref: TermRef if ref.denot.hasAltWith(_.symbol.is(ExtensionMethod)) =>
-                extMethodApply(untpd.TypedSplice(id), tree, mbrType)
-              case _ => EmptyTree
+          def tryExtension(implicit ctx: Context): Tree =
+            try {
+              val id = typedUnadapted(untpd.Ident(name).withPos(tree.pos))
+              id.tpe match {
+                case ref: TermRef if ref.denot.hasAltWith(_.symbol.is(ExtensionMethod)) =>
+                  extMethodApply(untpd.TypedSplice(id), tree, mbrType)
+                case _ => EmptyTree
+              }
             }
-          }
+            catch {
+              case ex: TypeError => errorTree(tree, ex.toMessage, tree.pos)
+            }
           val nestedCtx = ctx.fresh.setNewTyperState()
           val app = tryExtension(nestedCtx)
           if (!app.isEmpty && !nestedCtx.reporter.hasErrors) {
