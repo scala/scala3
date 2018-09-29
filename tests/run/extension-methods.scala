@@ -59,8 +59,8 @@ object Test extends App {
 
   trait Ord[T] {
     def compareTo(this x: T)(y: T): Int
-    def < (this x: T)(y: T) = compareTo(x)(y) < 0
-    def > (this x: T)(y: T) = compareTo(x)(y) > 0
+    def < (this x: T)(y: T) = x.compareTo(y) < 0
+    def > (this x: T)(y: T) = x.compareTo(y) > 0
     val minimum: T
   }
 
@@ -77,7 +77,7 @@ object Test extends App {
       case (_, Nil) => +1
       case (x :: xs1, y :: ys1) =>
         val fst = x.compareTo(y)
-        if (fst != 0) fst else compareTo(xs1)(ys1)
+        if (fst != 0) fst else xs1.compareTo(ys1)
     }
     val minimum: List[T] = Nil
   }
@@ -98,7 +98,7 @@ object Test extends App {
 
   trait Monad[F[_]] extends Functor[F] {
     def flatMap[A, B](this x: F[A])(f: A => F[B]): F[B]
-    def map[A, B](this x: F[A])(f: A => B) = flatMap(x)(f `andThen` pure)
+    def map[A, B](this x: F[A])(f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
   }

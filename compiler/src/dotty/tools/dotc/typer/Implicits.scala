@@ -937,13 +937,15 @@ trait Implicits { self: Typer =>
         if (argument.isEmpty)
           adapt(generated, pt, locked)
         else {
+          val untpdGenerated = untpd.TypedSplice(generated)
           if (cand.isConversion)
             typed(
-              untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),
+              untpd.Apply(untpdGenerated, untpd.TypedSplice(argument) :: Nil),
               pt, locked)
           else {
             assert(cand.isExtension)
-            extMethodApply(generated, argument, pt)
+            val SelectionProto(name: TermName, mbrType, _, _) = pt
+            extMethodApply(untpd.Select(untpdGenerated, name), argument, mbrType)
           }
           // TODO disambiguate if candidate can be an extension or a conversion
         }

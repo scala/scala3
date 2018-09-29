@@ -784,13 +784,15 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
        *  part. Return an optional value to indicate success.
        */
       def tryWithImplicitOnQualifier(fun1: Tree, proto: FunProto)(implicit ctx: Context): Option[Tree] =
-        tryInsertImplicitOnQualifier(fun1, proto, ctx.typerState.ownedVars) flatMap { fun2 =>
-          tryEither {
-            implicit ctx => Some(simpleApply(fun2, proto)): Option[Tree]
-          } {
-            (_, _) => None
+        if (ctx.mode.is(Mode.FixedQualifier)) None
+        else
+          tryInsertImplicitOnQualifier(fun1, proto, ctx.typerState.ownedVars) flatMap { fun2 =>
+            tryEither {
+              implicit ctx => Some(simpleApply(fun2, proto)): Option[Tree]
+            } {
+              (_, _) => None
+            }
           }
-        }
 
       fun1.tpe match {
         case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs).withType(err)
@@ -1643,20 +1645,22 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
   /** The typed application
    *
-   *   <provider>.<name>(<receiver>)    or
-   *   <provider>.<name>[<type-args>](<receiver>)
+   *   <nethodRef>(<receiver>)    or
+   *   <methodRef>[<type-args>](<receiver>)
    *
-   *  where <name> and possibly <type-args> come from the expected type `pt`, which must be
-   *  a SelectionProto
+   *  where <type-args> comes from `pt` if it is a PolyProto.
    */
-  def extMethodApply(provider: Tree, receiver: Tree, pt: Type)(implicit ctx: Context) = {
-    val SelectionProto(name: TermName, mbrType, _, _) = pt
-    val sel = untpd.Select(untpd.TypedSplice(provider), name)
-    val (core, pt1) = mbrType.revealIgnored match {
-      case PolyProto(targs, restpe) => (untpd.TypeApply(sel, targs.map(untpd.TypedSplice(_))), restpe)
-      case _ => (sel, mbrType)
+  def extMethodApply(methodRef: untpd.Tree, receiver: Tree, pt: Type)(implicit ctx: Context) = {
+    val (core, pt1) = pt.revealIgnored match {
+      case PolyProto(targs, restpe) => (untpd.TypeApply(methodRef, targs.map(untpd.TypedSplice(_))), restpe)
+      case _ => (methodRef, pt)
     }
-    typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)
+    val app =
+      typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)(
+        ctx.addMode(Mode.FixedQualifier))
+    if (!app.symbol.is(Extension))
+      ctx.error(em"not an extension method: $methodRef", receiver.pos)
+    app
   }
 }
 
