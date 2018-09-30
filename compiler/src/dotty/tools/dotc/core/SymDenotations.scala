@@ -177,6 +177,9 @@ object SymDenotations {
         if (myInfo.isInstanceOf[SymbolLoader]) FromStartFlags
         else AfterLoadFlags)
 
+    final def relevantFlagsFor(fs: FlagSet)(implicit ctx: Context) =
+      if (isCurrent(fs)) myFlags else flags
+
     /** Has this denotation one of the flags in `fs` set? */
     final def is(fs: FlagSet)(implicit ctx: Context): Boolean =
       (if (isCurrent(fs)) myFlags else flags) is fs

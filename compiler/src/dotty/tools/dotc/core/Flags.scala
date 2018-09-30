@@ -37,6 +37,9 @@ object Flags {
       else FlagSet(tbits | ((this.bits & ~that.bits) & ~KINDFLAGS))
     }
 
+    def ^ (that: FlagSet) =
+      FlagSet((bits | that.bits) & KINDFLAGS | (bits ^ that.bits) & ~KINDFLAGS)
+
     /** Does this flag set have a non-empty intersection with the given flag set?
      *  This means that both the kind flags and the carrier bits have non-empty intersection.
      */
@@ -593,6 +596,9 @@ object Flags {
 
   /** An extension method */
   final val ExtensionMethod = allOf(Method, Extension)
+
+  /** Flags that are required rather than excluded when mentioned in member search */
+  final val FlippedMemberFlags = Extension
 
   /** An enum case */
   final val EnumCase: FlagConjunction = allOf(Enum, Case)

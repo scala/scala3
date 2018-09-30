@@ -1085,7 +1085,7 @@ object Denotations {
       else if (isType) filterDisjoint(ownDenots).asSeenFrom(pre)
       else asSeenFrom(pre).filterDisjoint(ownDenots)
     final def filterExcluded(excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
-      if (excluded.isEmpty || !(this overlaps excluded)) this else NoDenotation
+      if (excluded.isEmpty || !this.clashes(excluded)) this else NoDenotation
 
     type AsSeenFromResult = SingleDenotation
     protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = {
@@ -1098,9 +1098,15 @@ object Denotations {
       else derivedSingleDenotation(symbol, symbol.info.asSeenFrom(pre, owner))
     }
 
-    private def overlaps(fs: FlagSet)(implicit ctx: Context): Boolean = this match {
-      case sd: SymDenotation => sd is fs
-      case _ => symbol is fs
+    /** Does this denotation have any of the normal flags in `fs`, or alternatively,
+     *  does it lack any of the "flipped member" flags in fs?
+     */
+    private def clashes(fs: FlagSet)(implicit ctx: Context): Boolean = {
+      val symd: SymDenotation = this match {
+        case symd: SymDenotation => symd
+        case _ => symbol.denot
+      }
+      (symd.relevantFlagsFor(fs) ^ FlippedMemberFlags).is(fs)
     }
   }
 
