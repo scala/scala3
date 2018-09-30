@@ -107,8 +107,13 @@ class Typer extends Namer
 
   def newLikeThis: Typer = new Typer
 
-  /** Find the denotation of enclosing `name` in given context `ctx`. */
-  def findRef(name: Name, pt: Type, pos: Position)(implicit ctx: Context): Type = {
+  /** Find the denotation of enclosing `name` in given context `ctx`.
+   *   @param name       the name of the denotation
+   *   @param pt         the expected type
+   *   @param exclusive  flags to require (if in Flags.FlippedMemberFlags) or exclude (otherwise)
+   *   @param pos        position to use for error reporting
+   */
+  def findRef(name: Name, pt: Type, exclusive: FlagSet, pos: Position)(implicit ctx: Context): Type = {
     val refctx = ctx
     val noImports = ctx.mode.is(Mode.InPackageClauseName)
 
@@ -171,7 +176,7 @@ class Typer extends Namer
           NoType
         else {
           val pre = imp.site
-          val denot = pre.member(name).accessibleFrom(pre)(refctx)
+          val denot = pre.memberExcluding(name, exclusive).accessibleFrom(pre)(refctx)
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the
           if (reallyExists(denot)) pre.select(name, denot) else NoType
@@ -261,7 +266,7 @@ class Typer extends Namer
             else (ctx.scope ne lastCtx.scope) || (curOwner ne lastCtx.owner)
 
           if (isNewDefScope) {
-            val defDenot = ctx.denotNamed(name)
+            val defDenot = ctx.denotNamed(name, exclusive)
             if (qualifies(defDenot)) {
               val found =
                 if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
@@ -356,7 +361,7 @@ class Typer extends Namer
       unimported = Set.empty
       foundUnderScala2 = NoType
       try {
-        var found = findRef(name, pt, tree.pos)
+        var found = findRef(name, pt, EmptyFlags, tree.pos)
         if (foundUnderScala2.exists && !(foundUnderScala2 =:= found)) {
           ctx.migrationWarning(
             ex"""Name resolution will change.
@@ -2599,10 +2604,9 @@ class Typer extends Namer
         case SelectionProto(name, mbrType, _, _) =>
           def tryExtension(implicit ctx: Context): Tree =
             try {
-              val id = typedUnadapted(untpd.Ident(name).withPos(tree.pos))
-              id.tpe match {
-                case ref: TermRef if ref.denot.hasAltWith(_.symbol.is(ExtensionMethod)) =>
-                  extMethodApply(untpd.TypedSplice(id), tree, mbrType)
+              findRef(name, WildcardType, Extension, tree.pos) match {
+                case ref: TermRef =>
+                  extMethodApply(untpd.ref(ref).withPos(tree.pos), tree, mbrType)
                 case _ => EmptyTree
               }
             }

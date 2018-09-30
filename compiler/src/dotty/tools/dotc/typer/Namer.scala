@@ -41,20 +41,23 @@ trait NamerContextOps { this: Context =>
     sym
   }
 
-  /** The denotation with the given name in current context */
-  def denotNamed(name: Name): Denotation =
+  /** The denotation with the given name in current context
+   *  @param exclusive  flags to require (if in Flags.FlippedMemberFlags) or exclude (otherwise)
+   */
+  def denotNamed(name: Name, exclusive: FlagSet = EmptyFlags): Denotation =
     if (owner.isClass)
       if (outer.owner == owner) { // inner class scope; check whether we are referring to self
         if (scope.size == 1) {
           val elem = scope.lastEntry
           if (elem.name == name) return elem.sym.denot // return self
         }
-        owner.thisType.member(name)
+        val pre = owner.thisType
+        pre.findMember(name, pre, exclusive)
       }
       else // we are in the outermost context belonging to a class; self is invisible here. See inClassContext.
-        owner.findMember(name, owner.thisType, EmptyFlags)
+        owner.findMember(name, owner.thisType, exclusive)
     else
-      scope.denotsNamed(name).toDenot(NoPrefix)
+      scope.denotsNamed(name).filterExcluded(exclusive).toDenot(NoPrefix)
 
   /** Either the current scope, or, if the current context owner is a class,
    *  the declarations of the current class.
