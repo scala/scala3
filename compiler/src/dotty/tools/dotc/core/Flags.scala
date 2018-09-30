@@ -58,7 +58,7 @@ object Flags {
      */
     def is(flags: FlagConjunction): Boolean = {
       val fs = bits & flags.bits
-      (fs & KINDFLAGS) != 0 &&
+      ((fs & KINDFLAGS) != 0 || flags.bits == 0) &&
       (fs >>> TYPESHIFT) == (flags.bits >>> TYPESHIFT)
     }
 
@@ -122,6 +122,8 @@ object Flags {
     override def toString: String = flagStrings.mkString(" ")
   }
 
+  def termFlagSet(x: Long) = FlagSet(TERMS | x)
+
   /** A class representing flag sets that should be tested
    *  conjunctively. I.e. for a flag conjunction `fc`,
    *  `x is fc` tests whether `x` contains all flags in `fc`.
@@ -129,6 +131,8 @@ object Flags {
   case class FlagConjunction(bits: Long) {
     override def toString: String = FlagSet(bits).toString
   }
+
+  def termFlagConjunction(x: Long) = FlagConjunction(TERMS | x)
 
   private final val TYPESHIFT = 2
   private final val TERMindex = 0
@@ -182,6 +186,8 @@ object Flags {
     flag
   }
 
+  def allOf(flags: FlagSet) = FlagConjunction(flags.bits)
+
   /** The conjunction of all flags in given flag set */
   def allOf(flags1: FlagSet, flags2: FlagSet): FlagConjunction = {
     assert(flags1.numFlags == 1 && flags2.numFlags == 1, "Flags.allOf doesn't support flag " + (if (flags1.numFlags != 1) flags1 else flags2))
@@ -199,6 +205,8 @@ object Flags {
 
   /** The empty flag set */
   final val EmptyFlags: FlagSet = FlagSet(0)
+
+  final val EmptyFlagConjunction = FlagConjunction(0)
 
   /** The undefined flag set */
   final val UndefinedFlags: FlagSet = FlagSet(~KINDFLAGS)
@@ -596,9 +604,6 @@ object Flags {
 
   /** An extension method */
   final val ExtensionMethod = allOf(Method, Extension)
-
-  /** Flags that are required rather than excluded when mentioned in member search */
-  final val FlippedMemberFlags = Extension
 
   /** An enum case */
   final val EnumCase: FlagConjunction = allOf(Enum, Case)

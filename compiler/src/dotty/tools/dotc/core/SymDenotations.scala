@@ -1671,9 +1671,9 @@ object SymDenotations {
       else collect(ownDenots, classParents)
     }
 
-    override final def findMember(name: Name, pre: Type, exclusive: FlagSet)(implicit ctx: Context): Denotation = {
-      val raw = if (exclusive is Private) nonPrivateMembersNamed(name) else membersNamed(name)
-      raw.filterExclusive(exclusive).asSeenFrom(pre).toDenot(pre)
+    override final def findMember(name: Name, pre: Type, required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Denotation = {
+      val raw = if (excluded is Private) nonPrivateMembersNamed(name) else membersNamed(name)
+      raw.filterWithFlags(required, excluded).asSeenFrom(pre).toDenot(pre)
     }
 
     /** Compute tp.baseType(this) */
@@ -1920,7 +1920,7 @@ object SymDenotations {
       if (packageObjRunId != ctx.runId) {
         packageObjRunId = ctx.runId
         packageObjCache = NoDenotation // break cycle in case we are looking for package object itself
-        packageObjCache = findMember(nme.PACKAGE, thisType, EmptyFlags).asSymDenotation
+        packageObjCache = findMember(nme.PACKAGE, thisType, EmptyFlagConjunction, EmptyFlags).asSymDenotation
       }
       packageObjCache
     }

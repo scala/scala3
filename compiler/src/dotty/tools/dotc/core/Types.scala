@@ -504,7 +504,7 @@ object Types {
      */
     @tailrec final def findDecl(name: Name, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: ClassInfo =>
-        tp.decls.denotsNamed(name).filterExclusive(excluded).toDenot(NoPrefix)
+        tp.decls.denotsNamed(name).filterWithFlags(EmptyFlagConjunction, excluded).toDenot(NoPrefix)
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, excluded)
       case err: ErrorType =>
@@ -515,32 +515,29 @@ object Types {
 
     /** The member of this type with the given name  */
     final def member(name: Name)(implicit ctx: Context): Denotation = /*>|>*/ track("member") /*<|<*/ {
-      memberExclusive(name, EmptyFlags)
+      memberBasedOnFlags(name, required = EmptyFlagConjunction, excluded = EmptyFlags)
     }
 
     /** The non-private member of this type with the given name. */
     final def nonPrivateMember(name: Name)(implicit ctx: Context): Denotation = track("nonPrivateMember") {
-      memberExclusive(name, Flags.Private)
+      memberBasedOnFlags(name, required = EmptyFlagConjunction, excluded = Flags.Private)
     }
 
-    /** The member with given `name` and required and/or excluded flags
-     *   @param exclusive  flags to require (if in Flags.FlippedMemberFlags) or exclude (otherwise)
-     */
-    final def memberExclusive(name: Name, exclusive: FlagSet)(implicit ctx: Context): Denotation = {
+    /** The member with given `name` and required and/or excluded flags */
+    final def memberBasedOnFlags(name: Name, required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Denotation = {
       // We need a valid prefix for `asSeenFrom`
       val pre = this match {
         case tp: ClassInfo => tp.appliedRef
         case _ => widenIfUnstable
       }
-      findMember(name, pre, exclusive)
+      findMember(name, pre, required, excluded)
     }
 
-    /** Find member of this type with given name and
-     *  produce a denotation that contains the type of the member
-     *  as seen from given prefix `pre`.
-     *  @param exclusive  flags to require (if in Flags.FlippedMemberFlags) or exclude (otherwise)
+    /** Find member of this type with given `name`, all `required`
+     *  flags and no `excluded` flag and produce a denotation that contains
+     *  the type of the member as seen from given prefix `pre`.
      */
-    final def findMember(name: Name, pre: Type, exclusive: FlagSet)(implicit ctx: Context): Denotation = {
+    final def findMember(name: Name, pre: Type, required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Denotation = {
       @tailrec def go(tp: Type): Denotation = tp match {
         case tp: TermRef =>
           go (tp.underlying match {
@@ -550,7 +547,7 @@ object Types {
           })
         case tp: TypeRef =>
           tp.denot match {
-            case d: ClassDenotation => d.findMember(name, pre, exclusive)
+            case d: ClassDenotation => d.findMember(name, pre, required, excluded)
             case d => go(d.info)
           }
         case tp: AppliedType =>
@@ -582,7 +579,7 @@ object Types {
         case tp: TypeProxy =>
           go(tp.underlying)
         case tp: ClassInfo =>
-          tp.cls.findMember(name, pre, exclusive)
+          tp.cls.findMember(name, pre, required, excluded)
         case AndType(l, r) =>
           goAnd(l, r)
         case tp: OrType =>
@@ -592,7 +589,7 @@ object Types {
           // supertype of `pre`.
           go(tp.join)
         case tp: JavaArrayType =>
-          defn.ObjectType.findMember(name, pre, exclusive)
+          defn.ObjectType.findMember(name, pre, required, excluded)
         case err: ErrorType =>
           ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name, err.msg)
         case _ =>
@@ -799,10 +796,10 @@ object Types {
         (name, buf) => buf ++= member(name).altsWith(x => !x.is(Method)))
     }
 
-    /** The set of members of this type having at least one of `requiredFlags` but none of `excludedFlags` set */
-    final def membersBasedOnFlags(requiredFlags: FlagSet, excludedFlags: FlagSet)(implicit ctx: Context): Seq[SingleDenotation] = track("membersBasedOnFlags") {
+    /** The set of members of this type that have all of `required` flags but none of `excluded` flags set. */
+    final def membersBasedOnFlags(required: FlagConjunction, excluded: FlagSet)(implicit ctx: Context): Seq[SingleDenotation] = track("membersBasedOnFlags") {
       memberDenots(takeAllFilter,
-        (name, buf) => buf ++= memberExclusive(name, excludedFlags).altsWith(x => x.is(requiredFlags)))
+        (name, buf) => buf ++= memberBasedOnFlags(name, required, excluded).alternatives)
     }
 
     /** All members of this type. Warning: this can be expensive to compute! */
