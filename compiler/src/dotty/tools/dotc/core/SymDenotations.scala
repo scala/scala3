@@ -1671,9 +1671,9 @@ object SymDenotations {
       else collect(ownDenots, classParents)
     }
 
-    override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
-      val raw = if (excluded is Private) nonPrivateMembersNamed(name) else membersNamed(name)
-      raw.filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
+    override final def findMember(name: Name, pre: Type, exclusive: FlagSet)(implicit ctx: Context): Denotation = {
+      val raw = if (exclusive is Private) nonPrivateMembersNamed(name) else membersNamed(name)
+      raw.filterExclusive(exclusive).asSeenFrom(pre).toDenot(pre)
     }
 
     /** Compute tp.baseType(this) */

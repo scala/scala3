@@ -110,10 +110,11 @@ object Denotations {
      */
     def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(implicit ctx: Context): PreDenotation
 
-    /** Keep only those denotations in this group whose flags do not intersect
-     *  with `excluded`.
+    /** Keep only those denotations in this group whose flags do not clash with `exclusive`.
+     *  "clash" means have one of the flags in `exclusive & ~FlippedMemberFlags` or
+     *  not have one of the flags in `exclusive & FlippedMemberFlags`.
      */
-    def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation
+    def filterExclusive(exclusive: FlagSet)(implicit ctx: Context): PreDenotation
 
     private[this] var cachedPrefix: Type = _
     private[this] var cachedAsSeenFrom: AsSeenFromResult = _
@@ -256,11 +257,11 @@ object Denotations {
 
     /** Find member of this denotation with given name and
      *  produce a denotation that contains the type of the member
-     *  as seen from given prefix `pre`. Exclude all members that have
-     *  flags in `excluded` from consideration.
+     *  as seen from given prefix `pre`.
+     *  @param exclusive  flags to require (if in Flags.FlippedMemberFlags) or exclude (otherwise)
      */
-    def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation =
-      info.findMember(name, pre, excluded)
+    def findMember(name: Name, pre: Type, exclusive: FlagSet)(implicit ctx: Context): Denotation =
+      info.findMember(name, pre, exclusive)
 
     /** If this denotation is overloaded, filter with given predicate.
      *  If result is still overloaded throw a TypeError.
@@ -1084,8 +1085,8 @@ object Denotations {
       if (hasUniqueSym && prevDenots.containsSym(symbol)) NoDenotation
       else if (isType) filterDisjoint(ownDenots).asSeenFrom(pre)
       else asSeenFrom(pre).filterDisjoint(ownDenots)
-    final def filterExcluded(excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
-      if (excluded.isEmpty || !this.clashes(excluded)) this else NoDenotation
+    final def filterExclusive(exclusive: FlagSet)(implicit ctx: Context): SingleDenotation =
+      if (exclusive.isEmpty || !this.clashes(exclusive)) this else NoDenotation
 
     type AsSeenFromResult = SingleDenotation
     protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = {
@@ -1191,8 +1192,8 @@ object Denotations {
       derivedUnion(denot1 filterDisjoint denot, denot2 filterDisjoint denot)
     def mapInherited(owndenot: PreDenotation, prevdenot: PreDenotation, pre: Type)(implicit ctx: Context): PreDenotation =
       derivedUnion(denot1.mapInherited(owndenot, prevdenot, pre), denot2.mapInherited(owndenot, prevdenot, pre))
-    def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation =
-      derivedUnion(denot1.filterExcluded(excluded), denot2.filterExcluded(excluded))
+    def filterExclusive(exclusive: FlagSet)(implicit ctx: Context): PreDenotation =
+      derivedUnion(denot1.filterExclusive(exclusive), denot2.filterExclusive(exclusive))
     protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation): PreDenotation =
       if ((denot1 eq this.denot1) && (denot2 eq this.denot2)) this
       else denot1 union denot2

@@ -176,7 +176,7 @@ class Typer extends Namer
           NoType
         else {
           val pre = imp.site
-          val denot = pre.memberExcluding(name, exclusive).accessibleFrom(pre)(refctx)
+          val denot = pre.memberExclusive(name, exclusive).accessibleFrom(pre)(refctx)
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the
           if (reallyExists(denot)) pre.select(name, denot) else NoType
