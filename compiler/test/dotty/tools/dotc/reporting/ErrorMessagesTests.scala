@@ -1511,4 +1511,20 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       assertEquals(tailRegMessages, Set("variable", "value", "object", "class"))
     }
 
+  @Test def notAnExtractor() =
+    checkMessagesAfter(FrontEnd.name) {
+      """
+        | class Foo
+        | object Test {
+        |   def test(foo: Foo) = foo match {
+        |       case Foo(name) => ???
+        |   }
+        | }
+      """.stripMargin
+    }.expect { (ictx, messages) =>
+      implicit val ctx: Context = ictx
+      assertMessageCount(1, messages)
+      val NotAnExtractor(tree) = messages.head
+      assertEquals("Foo", tree.show)
+    }
 }
