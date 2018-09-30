@@ -107,31 +107,10 @@ class Typer extends Namer
 
   def newLikeThis: Typer = new Typer
 
-  /** Attribute an identifier consisting of a simple name or wildcard
-   *
-   *  @param tree      The tree representing the identifier.
-   *  Transformations: (1) Prefix class members with this.
-   *                   (2) Change imported symbols to selections.
-   *                   (3) Change pattern Idents id (but not wildcards) to id @ _
-   */
-  def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = track("typedIdent") {
+  /** Find the denotation of enclosing `name` in given context `ctx`. */
+  def findRef(name: Name, pt: Type, pos: Position)(implicit ctx: Context): Type = {
     val refctx = ctx
-    val name = tree.name
     val noImports = ctx.mode.is(Mode.InPackageClauseName)
-
-    /** Method is necessary because error messages need to bind to
-     *  to typedIdent's context which is lost in nested calls to findRef
-     */
-    def error(msg: => Message, pos: Position) = ctx.error(msg, pos)
-
-    /** Does this identifier appear as a constructor of a pattern? */
-    def isPatternConstr =
-      if (ctx.mode.isExpr && (ctx.outer.mode is Mode.Pattern))
-        ctx.outer.tree match {
-          case Apply(`tree`, _) => true
-          case _ => false
-        }
-      else false
 
     /** A symbol qualifies if it really exists and is not a package class.
      *  In addition, if we are in a constructor of a pattern, we ignore all definitions
@@ -156,7 +135,7 @@ class Typer extends Namer
      *  @param prevCtx     The context of the previous denotation,
      *                     or else `NoContext` if nothing was found yet.
      */
-    def findRef(previous: Type, prevPrec: Int, prevCtx: Context)(implicit ctx: Context): Type = {
+    def findRefRecur(previous: Type, prevPrec: Int, prevCtx: Context)(implicit ctx: Context): Type = {
       import BindingPrec._
 
       /** Check that any previously found result from an inner context
@@ -179,14 +158,14 @@ class Typer extends Namer
         }
         else {
           if (!scala2pkg && !previous.isError && !found.isError) {
-            error(AmbiguousImport(name, newPrec, prevPrec, prevCtx), tree.pos)
+            refctx.error(AmbiguousImport(name, newPrec, prevPrec, prevCtx), pos)
           }
           previous
         }
 
       def selection(imp: ImportInfo, name: Name) =
         if (imp.sym.isCompleting) {
-          ctx.warning(i"cyclic ${imp.sym}, ignored", tree.pos)
+          ctx.warning(i"cyclic ${imp.sym}, ignored", pos)
           NoType
         } else if (unimported.nonEmpty && unimported.contains(imp.site.termSymbol))
           NoType
@@ -208,8 +187,7 @@ class Typer extends Namer
             def checkUnambiguous(found: Type) = {
               val other = recur(selectors.tail)
               if (other.exists && found.exists && (found != other))
-                error(em"reference to `$name` is ambiguous; it is imported twice in ${ctx.tree}",
-                      tree.pos)
+                refctx.error(em"reference to `$name` is ambiguous; it is imported twice", pos)
               found
             }
 
@@ -309,7 +287,7 @@ class Typer extends Namer
                 if (defDenot.symbol is Package)
                   result = checkNewOrShadowed(previous orElse found, packageClause)
                 else if (prevPrec < packageClause)
-                  result = findRef(found, packageClause, ctx)(ctx.outer)
+                  result = findRefRecur(found, packageClause, ctx)(ctx.outer)
               }
             }
           }
@@ -325,11 +303,11 @@ class Typer extends Namer
             else if (isPossibleImport(namedImport) && (curImport ne outer.importInfo)) {
               val namedImp = namedImportRef(curImport)
               if (namedImp.exists)
-                findRef(checkNewOrShadowed(namedImp, namedImport), namedImport, ctx)(outer)
+                findRefRecur(checkNewOrShadowed(namedImp, namedImport), namedImport, ctx)(outer)
               else if (isPossibleImport(wildImport) && !curImport.sym.isCompleting) {
                 val wildImp = wildImportRef(curImport)
                 if (wildImp.exists)
-                  findRef(checkNewOrShadowed(wildImp, wildImport), wildImport, ctx)(outer)
+                  findRefRecur(checkNewOrShadowed(wildImp, wildImport), wildImport, ctx)(outer)
                 else {
                   updateUnimported()
                   loop(ctx)(outer)
@@ -345,9 +323,22 @@ class Typer extends Namer
         }
       }
 
-      // begin findRef
+      // begin findRefRecur
       loop(NoContext)(ctx)
     }
+
+    findRefRecur(NoType, BindingPrec.nothingBound, NoContext)
+  }
+
+  /** Attribute an identifier consisting of a simple name or wildcard
+   *
+   *  @param tree      The tree representing the identifier.
+   *  Transformations: (1) Prefix class members with this.
+   *                   (2) Change imported symbols to selections.
+   *                   (3) Change pattern Idents id (but not wildcards) to id @ _
+   */
+  def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = track("typedIdent") {
+    val name = tree.name
 
     // begin typedIdent
     def kind = if (name.isTermName) "" else "type "
@@ -365,7 +356,7 @@ class Typer extends Namer
       unimported = Set.empty
       foundUnderScala2 = NoType
       try {
-        var found = findRef(NoType, BindingPrec.nothingBound, NoContext)
+        var found = findRef(name, pt, tree.pos)
         if (foundUnderScala2.exists && !(foundUnderScala2 =:= found)) {
           ctx.migrationWarning(
             ex"""Name resolution will change.
