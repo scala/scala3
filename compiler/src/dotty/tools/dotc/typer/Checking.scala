@@ -679,13 +679,28 @@ trait Checking {
     tree.tpe.widenTermRefExpr match {
       case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
       case tp =>
+        // TODO: Make None and Some constant types?
+        def isCaseClassApply(sym: Symbol): Boolean = {
+          sym.name == nme.apply && (
+            tree.symbol.owner == defn.SomeClass.companionModule.moduleClass ||
+            defn.isTupleClass(tree.symbol.owner.companionClass)
+          )
+        }
+        def isCaseClassNew(sym: Symbol): Boolean = {
+          sym.isPrimaryConstructor && (
+            sym.eq(defn.SomeClass.primaryConstructor) ||
+            defn.isTupleClass(tree.symbol.owner)
+          )
+        }
+        def isCaseObject(sym: Symbol): Boolean = {
+          tree.symbol.eq(defn.NoneModuleRef.termSymbol)
+        }
         val allow =
           ctx.erasedTypes ||
           ctx.inInlineMethod ||
-          // TODO: Make None and Some constant types?
-          tree.symbol.eq(defn.NoneModuleRef.termSymbol) ||
-          tree.symbol.eq(defn.SomeClass.primaryConstructor) ||
-          (tree.symbol.name == nme.apply && tree.symbol.owner == defn.SomeClass.companionModule.moduleClass)
+          isCaseClassApply(tree.symbol) ||
+          isCaseClassNew(tree.symbol) ||
+          isCaseObject(tree.symbol)
         if (!allow) ctx.error(em"$what must be a constant expression", tree.pos)
         else tree match {
           // TODO: add cases for type apply and multiple applies
