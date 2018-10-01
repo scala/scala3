@@ -9,9 +9,8 @@ import org.eclipse.lsp4j.jsonrpc.CancelChecker
 private object Evaluator {
 
   private val javaExec: Option[String] = {
-    val isWindows = sys.props("os.name").toLowerCase().indexOf("win") >= 0
     val bin = new File(sys.props("java.home"), "bin")
-    val java = new File(bin, if (isWindows) "java.exe" else "java")
+    val java = new File(bin, if (scala.util.Properties.isWin) "java.exe" else "java")
 
     if (java.exists()) Some(java.getAbsolutePath())
     else None
