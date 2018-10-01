@@ -29,6 +29,7 @@ import Interactive.Include
 import config.Printers.interactiv
 
 import languageserver.config.ProjectConfig
+import languageserver.worksheet.Worksheet
 
 import lsp4j.services._
 
