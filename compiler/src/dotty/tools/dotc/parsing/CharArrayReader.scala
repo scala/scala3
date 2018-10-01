@@ -39,12 +39,12 @@ abstract class CharArrayReader { self =>
   final def nextChar(): Unit = {
     val idx = charOffset
     lastCharOffset = idx
+    charOffset = idx + 1
     if (idx >= buf.length) {
       ch = SU
     } else {
       val c = buf(idx)
       ch = c
-      charOffset = idx + 1
       if (c == '\\') potentialUnicode()
       else if (c < ' ') { skipCR(); potentialLineEnd() }
     }
@@ -59,12 +59,12 @@ abstract class CharArrayReader { self =>
   final def nextRawChar(): Unit = {
     val idx = charOffset
     lastCharOffset = idx
+    charOffset = idx + 1
     if (idx >= buf.length) {
       ch = SU
     } else {
-      val c = buf(charOffset)
+      val c = buf(idx)
       ch = c
-      charOffset = idx + 1
       if (c == '\\') potentialUnicode()
     }
   }
