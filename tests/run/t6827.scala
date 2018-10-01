@@ -8,6 +8,16 @@ object Test extends App {
       it.copyToArray(arr, start, len)
       "ok"
     } catch {
+      case e: ArrayIndexOutOfBoundsException =>
+        // Special-case printing this exception because the toString changed in Java 11
+        val java11toString = """java.lang.ArrayIndexOutOfBoundsException: Index (-?\d+).*""".r
+
+        e.toString match {
+          case java11toString(index) =>
+            s"java.lang.ArrayIndexOutOfBoundsException: $index"
+          case str =>
+            str
+        }
       case e: Exception => e.toString
     }
     println("%s: %s" format (label, status))

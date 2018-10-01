@@ -613,7 +613,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       else runMain(testSource.runClassPath) match {
         case Success(_) if !checkFile.isDefined || !checkFile.get.exists => // success!
         case Success(output) => {
-          val outputLines = output.lines.toArray :+ DiffUtil.EOF
+          val outputLines = output.linesIterator.toArray :+ DiffUtil.EOF
           val checkLines: Array[String] = Source.fromFile(checkFile.get).getLines().toArray :+ DiffUtil.EOF
           val sourceTitle = testSource.title
 
@@ -1027,7 +1027,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         case test.TimeoutFailure(title) =>
           s"  - test '$title' timed out"
         case test.JavaCompilationFailure(msg) =>
-          s"  - java compilation failed with:\n${ msg.lines.map("      " + _).mkString("\n") }"
+          s"  - java compilation failed with:\n${ msg.linesIterator.map("      " + _).mkString("\n") }"
       }.mkString("\n")
     }
 
