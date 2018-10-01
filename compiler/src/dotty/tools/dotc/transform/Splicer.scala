@@ -102,6 +102,9 @@ object Splicer {
     protected def interpretLiteral(value: Any)(implicit env: Env): Object =
       value.asInstanceOf[Object]
 
+    protected def interpretVarargs(args: List[Object])(implicit env: Env): Object =
+      args.toSeq
+
     protected def interpretTastyContext()(implicit env: Env): Object =
       new TastyImpl(ctx) {
         override def rootPosition: SourcePosition = pos
@@ -240,6 +243,7 @@ object Splicer {
     def interpretQuote(tree: tpd.Tree)(implicit env: Env): Boolean = true
     def interpretTypeQuote(tree: tpd.Tree)(implicit env: Env): Boolean = true
     def interpretLiteral(value: Any)(implicit env: Env): Boolean = true
+    def interpretVarargs(args: List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
     def interpretTastyContext()(implicit env: Env): Boolean = true
     def interpretStaticMethodCall(fn: tpd.Tree, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
 
@@ -259,6 +263,7 @@ object Splicer {
     protected def interpretQuote(tree: Tree)(implicit env: Env): Result
     protected def interpretTypeQuote(tree: Tree)(implicit env: Env): Result
     protected def interpretLiteral(value: Any)(implicit env: Env): Result
+    protected def interpretVarargs(args: List[Result])(implicit env: Env): Result
     protected def interpretTastyContext()(implicit env: Env): Result
     protected def interpretStaticMethodCall(fn: Tree, args: => List[Result])(implicit env: Env): Result
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Result
@@ -293,7 +298,10 @@ object Splicer {
 
       case Inlined(EmptyTree, Nil, expansion) => interpretTree(expansion)
 
-      case _ => unexpectedTree(tree)
+      case Typed(SeqLiteral(elems, _), _) => interpretVarargs(elems.map(e => interpretTree(e)))
+
+      case _ =>
+        unexpectedTree(tree)
     }
 
     object StaticMethodCall {
