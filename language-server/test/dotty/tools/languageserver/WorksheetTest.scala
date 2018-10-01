@@ -6,6 +6,8 @@ import org.eclipse.lsp4j.{CompletionItemKind, DocumentHighlightKind, SymbolKind}
 import dotty.tools.languageserver.util.Code._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 
+import java.lang.System.{lineSeparator => nl}
+
 class WorksheetTest {
 
   @Test def evaluateExpression: Unit = {
@@ -68,7 +70,7 @@ class WorksheetTest {
 
   @Test def produceMultilineOutput: Unit = {
     ws"""${m1}1 to 3 foreach println""".withSource
-      .evaluate(m1, "1:1\n2\n3")
+      .evaluate(m1, s"1:1${nl}2${nl}3")
   }
 
   @Test def patternMatching0: Unit = {
@@ -81,7 +83,7 @@ class WorksheetTest {
 
   @Test def patternMatching1: Unit = {
     ws"""${m1}val (foo, bar) = (1, 2)""".withSource
-      .evaluate(m1, "1:val foo: Int = 1\nval bar: Int = 2")
+      .evaluate(m1, s"1:val foo: Int = 1${nl}val bar: Int = 2")
   }
 
   @Test def evaluationException: Unit = {
