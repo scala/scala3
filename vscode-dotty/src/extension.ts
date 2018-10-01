@@ -29,12 +29,6 @@ let sbtProcess: ChildProcess | undefined
 /** The status bar where the show the status of sbt server */
 let sbtStatusBar: vscode.StatusBarItem
 
-/** Interval in ms to check that sbt is alive */
-const sbtCheckIntervalMs = 10 * 1000
-
-/** A command that we use to check that sbt is still alive. */
-export const nopCommand = "nop"
-
 const sbtVersion = "1.2.3"
 const sbtArtifact = `org.scala-sbt:sbt-launch:${sbtVersion}`
 const workspaceRoot = `${vscode.workspace.rootPath}`
@@ -122,8 +116,8 @@ function connectToSbt(coursierPath: string): Thenable<rpc.MessageConnection> {
 
   return offeringToRetry(() => {
     return withSbtInstance(coursierPath).then(connection => {
+      connection.onClose(() => markSbtDownAndReconnect(coursierPath))
       markSbtUp()
-      const interval = setInterval(() => checkSbt(interval, connection, coursierPath), sbtCheckIntervalMs)
       return connection
     })
   }, "Couldn't connect to sbt server (see log for details)")
@@ -142,16 +136,6 @@ function markSbtDownAndReconnect(coursierPath: string) {
     sbtProcess = undefined
   }
   connectToSbt(coursierPath)
-}
-
-/** Check that sbt is alive, try to reconnect if it is dead. */
-function checkSbt(interval: NodeJS.Timer, connection: rpc.MessageConnection, coursierPath: string) {
-  sbtserver.tellSbt(outputChannel, connection, nopCommand)
-  .then(_ => markSbtUp(),
-    _ => {
-      clearInterval(interval)
-      markSbtDownAndReconnect(coursierPath)
-    })
 }
 
 export function deactivate() {

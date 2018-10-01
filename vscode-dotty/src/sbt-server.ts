@@ -18,8 +18,6 @@ import * as rpc from 'vscode-jsonrpc'
 
 import * as vscode from 'vscode'
 
-import { nopCommand } from './extension'
-
 /** The result of successful `sbt/exec` call. */
 export interface ExecResult {
   status: string
@@ -70,7 +68,7 @@ export function connectToSbtServer(log: vscode.OutputChannel): Promise<rpc.Messa
       log.appendLine(`<<< [${messageTypeToString(params.type)}] ${params.message}`)
     })
 
-    return tellSbt(log, connection, nopCommand).then(_ => connection)
+    return connection
   })
 }
 
