@@ -276,7 +276,7 @@ class TailRec extends MiniPhase {
         case tree@Apply(fun, args) =>
           val meth = fun.symbol
           if (meth == defn.Boolean_|| || meth == defn.Boolean_&&)
-            tpd.cpy.Apply(tree)(fun, transform(args))
+            tpd.cpy.Apply(tree)(noTailTransform(fun), transform(args))
           else
             rewriteApply(tree)
 
