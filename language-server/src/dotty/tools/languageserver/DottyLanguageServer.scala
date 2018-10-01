@@ -4,7 +4,7 @@ package languageserver
 import java.net.URI
 import java.io._
 import java.nio.file._
-import java.util.concurrent.CompletableFuture
+import java.util.concurrent.{CompletableFuture, ConcurrentHashMap}
 import java.util.function.Function
 
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -54,7 +54,7 @@ class DottyLanguageServer extends LanguageServer
 
   private[this] var rootUri: String = _
   private[this] var client: LanguageClient = _
-  private[this] val worksheets: mutable.Map[URI, CompletableFuture[_]] = mutable.Map.empty
+  private[this] val worksheets: ConcurrentHashMap[URI, CompletableFuture[_]] = new ConcurrentHashMap()
 
   private[this] var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = _
 
@@ -232,8 +232,8 @@ class DottyLanguageServer extends LanguageServer
     if (isWorksheet(uri)) {
       if (uri.getScheme == "cancel") {
         val fileURI = new URI("file", uri.getUserInfo, uri.getHost, uri.getPort, uri.getPath, uri.getQuery, uri.getFragment)
-        worksheets.get(fileURI).foreach(_.cancel(true))
-      } else {
+        Option(worksheets.get(fileURI)).foreach(_.cancel(true))
+      } else thisServer.synchronized {
         val sendMessage = (msg: String) => client.logMessage(new MessageParams(MessageType.Info, uri + msg))
         worksheets.put(
           uri,
