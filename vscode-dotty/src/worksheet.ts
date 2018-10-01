@@ -1,19 +1,40 @@
-'use strict'
-
 import * as vscode from 'vscode'
 import { LanguageClient } from 'vscode-languageclient'
 
-/** All decorations that have been added so far */
-let worksheetDecorationTypes: Map<vscode.TextDocument, vscode.TextEditorDecorationType[]> = new Map<vscode.TextDocument, vscode.TextEditorDecorationType[]>()
+/** A worksheet managed by vscode */
+class Worksheet {
 
-/** The number of blank lines that have been inserted to fit the output so far. */
-let worksheetInsertedLines: Map<vscode.TextDocument, number> = new Map<vscode.TextDocument, number>()
+  constructor(document: vscode.TextDocument) {
+    this.document = document
+  }
 
-/** The minimum margin to add so that the decoration is shown after all text. */
-let worksheetMargin: Map<vscode.TextDocument, number> = new Map<vscode.TextDocument, number>()
+  /** The text document that this worksheet represents. */
+  readonly document: vscode.TextDocument
 
-/** Whether the given worksheet has finished evaluating. */
-let worksheetFinished: Map<vscode.TextDocument, boolean> = new Map<vscode.TextDocument, boolean>()
+  /** All decorations that have been added so far */
+  decorationTypes: vscode.TextEditorDecorationType[] = []
+
+  /** The number of blank lines that have been inserted to fit the output so far. */
+  insertedLines: number = 0
+
+  /** The minimum margin to add so that the decoration is shown after all text. */
+  margin: number = 0
+
+  /** Whether this worksheet has finished evaluating. */
+  finished: boolean = false
+
+  /** Remove all decorations and resets this worksheet. */
+  reset() {
+    this.decorationTypes.forEach(decoration => decoration.dispose())
+    this.insertedLines = 0
+    this.margin = longestLine(this.document) + 5
+    this.finished = false
+  }
+
+}
+
+/** All the worksheets */
+let worksheets: Map<vscode.TextDocument, Worksheet> = new Map<vscode.TextDocument, Worksheet>()
 
 /**
  * The command key for evaluating a worksheet. Exposed to users as
@@ -47,9 +68,9 @@ export function isWorksheet(document: vscode.TextDocument): boolean {
 export function evaluateCommand() {
   const editor = vscode.window.activeTextEditor
   if (editor) {
-    const document = editor.document
-    if (isWorksheet(document)) {
-      showWorksheetProgress(document)
+    const worksheet = worksheets.get(editor.document)
+    if (worksheet) {
+      showWorksheetProgress(worksheet)
     }
   }
 }
@@ -69,19 +90,20 @@ export function worksheetSave(client: LanguageClient) {
   const editor = vscode.window.activeTextEditor
   if (editor) {
     const document = editor.document
-    if (isWorksheet(document)) {
-      if (document.isDirty) document.save()
-      else {
-        _prepareWorksheet(document).then(_ => {
-          if (document.isDirty) document.save()
-          else {
-            client.sendNotification("textDocument/didSave", {
-              textDocument: { uri: document.uri.toString() }
-            })
-            showWorksheetProgress(document)
-          }
-        })
-      }
+    const worksheet = worksheets.get(document) || new Worksheet(document)
+    worksheets.set(document, worksheet)
+
+    if (document.isDirty) document.save()
+    else {
+      _prepareWorksheet(worksheet).then(_ => {
+        if (document.isDirty) document.save()
+        else {
+          client.sendNotification("textDocument/didSave", {
+            textDocument: { uri: document.uri.toString() }
+          })
+          showWorksheetProgress(worksheet)
+        }
+      })
     }
   }
 }
@@ -96,26 +118,18 @@ export function worksheetSave(client: LanguageClient) {
  * @param event `TextDocumentWillSaveEvent`.
  */
 export function prepareWorksheet(event: vscode.TextDocumentWillSaveEvent) {
-  const document = event.document
-  const setup = _prepareWorksheet(document)
-  event.waitUntil(setup)
-}
-
-function _prepareWorksheet(document: vscode.TextDocument) {
-  if (isWorksheet(document)) {
-    return removeRedundantBlankLines(document)
-      .then(_ => {
-        removeDecorations(document)
-        worksheetMargin.set(document, longestLine(document) + 5)
-        worksheetInsertedLines.set(document, 0)
-        worksheetFinished.set(document, false)
-      })
-  } else {
-    return Promise.resolve()
+  const worksheet = worksheets.get(event.document)
+  if (worksheet) {
+    const setup = _prepareWorksheet(worksheet)
+    event.waitUntil(setup)
   }
 }
 
-function showWorksheetProgress(document: vscode.TextDocument) {
+function _prepareWorksheet(worksheet: Worksheet) {
+  return removeRedundantBlankLines(worksheet.document).then(_ => worksheet.reset())
+}
+
+function showWorksheetProgress(worksheet: Worksheet) {
   return vscode.window.withProgress({
     location: vscode.ProgressLocation.Notification,
     title: "Evaluating worksheet",
@@ -125,10 +139,7 @@ function showWorksheetProgress(document: vscode.TextDocument) {
       vscode.commands.executeCommand(worksheetCancelEvaluationKey)
     })
 
-    function isFinished() {
-      return worksheetFinished.get(document) || false
-    }
-    return wait(isFinished, 500)
+    return wait(() => worksheet.finished, 500)
   })
 }
 
@@ -172,11 +183,15 @@ export function worksheetHandleMessage(message: string) {
   })
 
   if (editor) {
-    let payload = message.slice(editor.document.uri.toString().length)
-    if (payload == "FINISHED") {
-      worksheetFinished.set(editor.document, true)
-    } else {
-      worksheetDisplayResult(payload, editor)
+    const worksheet = worksheets.get(editor.document)
+
+    if (worksheet) {
+      let payload = message.slice(editor.document.uri.toString().length)
+      if (payload == "FINISHED") {
+        worksheet.finished = true
+      } else {
+        worksheetDisplayResult(payload, worksheet, editor)
+      }
     }
   }
 }
@@ -220,16 +235,6 @@ function longestLine(document: vscode.TextDocument) {
   }
 
   return maxLength
-}
-
-/**
- * Remove all decorations added by worksheet evaluation.
- */
-function removeDecorations(document: vscode.TextDocument) {
-  const decorationTypes = worksheetDecorationTypes.get(document) || []
-  decorationTypes.forEach(decoration =>
-    decoration.dispose()
-  )
 }
 
 /**
@@ -293,31 +298,24 @@ function removeRedundantBlankLines(document: vscode.TextDocument) {
  *
  * @see worksheetCreateDecoration
  *
- * @param message The message to parse.
- * @param ed      The editor where to display the result.
+ * @param message   The message to parse.
+ * @param worksheet The worksheet that receives the result.
+ * @param editor    The editor where to display the result.
  * @return A `Thenable` that will insert necessary lines to fit the output
  *         and display the decorations upon completion.
  */
-function worksheetDisplayResult(message: string, editor: vscode.TextEditor) {
+function worksheetDisplayResult(message: string, worksheet: Worksheet, editor: vscode.TextEditor) {
 
   const colonIndex = message.indexOf(":")
   const lineNumber = parseInt(message.slice(0, colonIndex)) - 1 // lines are 0-indexed
   const evalResult = message.slice(colonIndex + 1)
   const resultLines = evalResult.trim().split(/\r\n|\r|\n/g)
-  const margin = worksheetMargin.get(editor.document) || 0
-
-  let insertedLines = worksheetInsertedLines.get(editor.document) || 0
-
-  let decorationTypes = worksheetDecorationTypes.get(editor.document)
-  if (!decorationTypes) {
-    decorationTypes = []
-    worksheetDecorationTypes.set(editor.document, decorationTypes)
-  }
+  const margin = worksheet.margin
 
   // The line where the next decoration should be put.
   // It's the number of the line that produced the output, plus the number
   // of lines that we've inserted so far.
-  let actualLine = lineNumber + insertedLines
+  let actualLine = lineNumber + worksheet.insertedLines
 
   // If the output has more than one line, we need to insert blank lines
   // below the line that produced the output to fit the output.
@@ -326,8 +324,7 @@ function worksheetDisplayResult(message: string, editor: vscode.TextEditor) {
     const linesToInsert = resultLines.length - 1
     const editPos = new vscode.Position(actualLine + 1, 0) // add after the line
     addNewLinesEdit.insert(editor.document.uri, editPos, "\n".repeat(linesToInsert))
-    insertedLines += linesToInsert
-    worksheetInsertedLines.set(editor.document, insertedLines)
+    worksheet.insertedLines += linesToInsert
   }
 
   return vscode.workspace.applyEdit(addNewLinesEdit).then(_ => {
@@ -335,7 +332,7 @@ function worksheetDisplayResult(message: string, editor: vscode.TextEditor) {
       const decorationPosition = new vscode.Position(actualLine, 0)
       const decorationMargin = margin - editor.document.lineAt(actualLine).text.length
       const decorationType = worksheetCreateDecoration(decorationMargin, line)
-      if (decorationTypes) decorationTypes.push(decorationType)
+      worksheet.decorationTypes.push(decorationType)
 
       const decoration = { range: new vscode.Range(decorationPosition, decorationPosition), hoverMessage: line }
       editor.setDecorations(decorationType, [decoration])
