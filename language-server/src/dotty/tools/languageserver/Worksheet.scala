@@ -64,7 +64,7 @@ object Worksheet {
   private def execute(evaluator: Evaluator, tree: Tree, sourcefile: SourceFile): (Int, String) = {
     val source = sourcefile.content.slice(tree.pos.start, tree.pos.end).mkString
     val line = sourcefile.offsetToLine(tree.pos.end)
-    (line, evaluator.eval(source))
+    (line, evaluator.eval(source).getOrElse(""))
   }
 
   private def encode(message: String, line: Int): String =
@@ -155,10 +155,10 @@ private class Evaluator private (javaExec: String,
    * @param command The command to evaluate.
    * @return The result from the REPL.
    */
-  def eval(command: String): String = {
+  def eval(command: String): Option[String] = {
     processInput.println(command)
     processInput.flush()
-    processOutput.next().trim
+    processOutput.next().map(_.trim)
   }
 
   /**
@@ -212,6 +212,7 @@ private class ReplReader(stream: InputStream) extends Thread {
   private val in = new InputStreamReader(stream)
 
   private[this] var output: Option[String] = None
+  private[this] var closed: Boolean = false
 
   override def run(): Unit = synchronized {
     val prompt = "scala> "
@@ -228,18 +229,18 @@ private class ReplReader(stream: InputStream) extends Thread {
         wait()
       }
     }
-    output = Some("")
+    closed = true
     notify()
   }
 
   /** Block until the next message is ready. */
-  def next(): String = synchronized {
+  def next(): Option[String] = synchronized {
 
-    while (output.isEmpty) {
+    while (!closed && output.isEmpty) {
       wait()
     }
 
-    val result = output.get
+    val result = output
     notify()
     output = None
     result
