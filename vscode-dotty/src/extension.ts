@@ -36,6 +36,11 @@ export function activate(context: ExtensionContext) {
       vscode.commands.executeCommand(worksheet.worksheetEvaluateAfterSaveKey)
     }
   })
+  vscode.workspace.onDidCloseTextDocument(document => {
+    if (worksheet.isWorksheet(document)) {
+      worksheet.removeWorksheet(document)
+    }
+  })
 
   vscode.commands.registerCommand(worksheet.worksheetEvaluateAfterSaveKey, () => {
     worksheet.evaluateCommand()

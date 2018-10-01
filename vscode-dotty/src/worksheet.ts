@@ -55,6 +55,11 @@ export const worksheetEvaluateAfterSaveKey = "worksheet.evaluateAfterSave"
  */
 export const worksheetCancelEvaluationKey = "worksheet.cancel"
 
+/** Remove the worksheet corresponding to the given document. */
+export function removeWorksheet(document: vscode.TextDocument) {
+  worksheets.delete(document)
+}
+
 /** Is this document a worksheet? */
 export function isWorksheet(document: vscode.TextDocument): boolean {
   return document.fileName.endsWith(".sc")
