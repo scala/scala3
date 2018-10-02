@@ -947,15 +947,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case tree: Ident if tree.symbol.is(InlineProxy) || (tree.symbol.is(Synthetic) && !tree.symbol.owner.isClass) =>
         tree.symbol.defTree match {
-          case defTree: ValOrDefDef => defTree.rhs.underlyingArgument
+          case defTree: ValOrDefDef => transform(defTree.rhs)
           case _ => tree
         }
-      case Inlined(_, _, arg) =>
-        arg.underlyingArgument
-      case NamedArg(_, arg) =>
-        arg.underlyingArgument
-      case tree =>
-        super.transform(tree)
+      case Inlined(_, _, arg) => transform(arg)
+      case NamedArg(_, arg) => transform(arg)
+      case tree => super.transform(tree)
     }
   }
 
