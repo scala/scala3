@@ -1,6 +1,7 @@
 package dotty.tools
 package vulpix
 
+import java.io.{File => JFile}
 import org.junit.Assert._
 import org.junit.Test
 
@@ -86,12 +87,13 @@ class VulpixUnitTests extends ParallelTesting {
     }
 
   @Test def runTimeout: Unit = {
+    val fileName = s"tests${JFile.separatorChar}vulpix-tests${JFile.separatorChar}unit${JFile.separatorChar}timeout.scala"
     try {
-      compileFile("tests/vulpix-tests/unit/timeout.scala", defaultOptions).checkRuns()
+      compileFile(fileName, defaultOptions).checkRuns()
       fail()
     } catch {
       case ae: AssertionError =>
-        assertEquals("Run test failed, but should not, reasons:\n\n  - encountered 1 test failures(s)  - test 'tests/vulpix-tests/unit/timeout.scala' timed out",
+        assertEquals(s"Run test failed, but should not, reasons:\n\n  - encountered 1 test failures(s)  - test '${fileName}' timed out",
           ae.getMessage)
     }
   }

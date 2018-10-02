@@ -1,5 +1,7 @@
 package dotty.tools.vulpix
 
+import java.io.{File => JFile}
+
 final case class TestFlags(
   defaultClassPath: String,
   runClassPath: String, // class path that is used when running `run` tests (not compiling)
@@ -12,10 +14,10 @@ final case class TestFlags(
     TestFlags(defaultClassPath, runClassPath, options diff flags)
 
   def withClasspath(classPath: String): TestFlags =
-    TestFlags(s"$defaultClassPath:$classPath", runClassPath, options)
+    TestFlags(s"$defaultClassPath${JFile.pathSeparator}$classPath", runClassPath, options)
 
   def withRunClasspath(classPath: String): TestFlags =
-    TestFlags(defaultClassPath, s"$runClassPath:$classPath", options)
+    TestFlags(defaultClassPath, s"$runClassPath${JFile.pathSeparator}$classPath", options)
 
   def all: Array[String] = Array("-classpath", defaultClassPath) ++ options
 }
