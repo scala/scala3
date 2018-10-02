@@ -2365,7 +2365,12 @@ class Typer extends Namer
             }
           } else issueErrors()
         }
-        else readaptSimplified(tpd.Apply(tree, args))
+        else tree match {
+          case tree: Block =>
+            readaptSimplified(tpd.Block(tree.stats, tpd.Apply(tree.expr, args)))
+          case _ =>
+            readaptSimplified(tpd.Apply(tree, args))
+        }
       }
       addImplicitArgs(argCtx(tree))
     }

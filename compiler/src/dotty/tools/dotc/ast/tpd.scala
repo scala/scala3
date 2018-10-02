@@ -40,11 +40,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Super(qual: Tree, mixName: TypeName, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context): Super =
     Super(qual, if (mixName.isEmpty) untpd.EmptyTypeIdent else untpd.Ident(mixName), inConstrCall, mixinClass)
 
-  def Apply(fn: Tree, args: List[Tree])(implicit ctx: Context): Apply =
+  def Apply(fn: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
+    assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply[_]])
     ta.assignType(untpd.Apply(fn, args), fn, args)
+  }
 
-  def TypeApply(fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply =
+  def TypeApply(fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
+    assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply[_]])
     ta.assignType(untpd.TypeApply(fn, args), fn, args)
+  }
 
   def Literal(const: Constant)(implicit ctx: Context): Literal =
     ta.assignType(untpd.Literal(const))
@@ -181,8 +185,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Alternative(trees: List[Tree])(implicit ctx: Context): Alternative =
     ta.assignType(untpd.Alternative(trees), trees)
 
-  def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree], proto: Type)(implicit ctx: Context): UnApply =
+  def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree], proto: Type)(implicit ctx: Context): UnApply = {
+    assert(fun.isInstanceOf[RefTree] || fun.isInstanceOf[GenericApply[_]])
     ta.assignType(untpd.UnApply(fun, implicits, patterns), proto)
+  }
 
   def ValDef(sym: TermSymbol, rhs: LazyTree = EmptyTree)(implicit ctx: Context): ValDef =
     ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info), rhs), sym)
