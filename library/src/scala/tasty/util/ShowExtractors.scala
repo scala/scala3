@@ -69,7 +69,9 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Term.Repeated(elems) =>
         this += "Term.Repeated(" ++= elems += ")"
       case Term.Inlined(call, bindings, expansion) =>
-        this += "Term.Inlined(" += call += ", " ++= bindings += ", " += expansion += ")"
+        this += "Term.Inlined("
+        visitOption(call, visitParent)
+        this += ", " ++= bindings += ", " += expansion += ")"
       case ValDef(name, tpt, rhs) =>
         this += "ValDef(\"" += name += "\", " += tpt += ", " += rhs += ")"
       case DefDef(name, typeParams, paramss, returnTpt, rhs) =>
@@ -78,10 +80,7 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "TypeDef(\"" += name += "\", " += rhs += ")"
       case ClassDef(name, constr, parents, self, body) =>
         this += "ClassDef(\"" += name += "\", " += constr += ", "
-        visitList[Parent](parents, {
-          case IsTerm(parent) => this += parent
-          case IsTypeTree(parent) => this += parent
-        })
+        visitList[Parent](parents, visitParent)
         this += ", " += self += ", " ++= body += ")"
       case PackageDef(name, owner) =>
         this += "PackageDef(\"" += name += "\", " += owner += ")"
@@ -140,6 +139,11 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += "Pattern.Alternative(" ++= patterns += ")"
       case Pattern.TypeTest(tpt) =>
         this += "Pattern.TypeTest(" += tpt += ")"
+    }
+
+    def visitParent(x: Parent): Buffer = x match {
+      case IsTerm(parent) => this += parent
+      case IsTypeTree(parent) => this += parent
     }
 
     def visitConstant(x: Constant): Buffer = x match {

@@ -1,2 +1,0 @@
-DefDef("foo", Nil, Nil, TypeTree.Synthetic(), None)
-ValDef("bar", TypeTree.Synthetic(), None)
