@@ -1010,9 +1010,14 @@ class RefChecks extends MiniPhase { thisPhase =>
   }
 
   override def transformNew(tree: New)(implicit ctx: Context) = {
-    val sym = tree.tpe.typeSymbol
+    val tpe = tree.tpe
+    val sym = tpe.typeSymbol
     checkUndesiredProperties(sym, tree.pos)
     currentLevel.enterReference(sym, tree.pos)
+    tpe.dealias.foreachPart {
+      case TermRef(_, s: Symbol) => currentLevel.enterReference(s, tree.pos)
+      case _ =>
+    }
     tree
   }
 }
@@ -1643,4 +1648,3 @@ class RefChecks extends MiniPhase { thisPhase =>
       }
     }
 */
-
