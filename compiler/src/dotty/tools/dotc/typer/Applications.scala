@@ -228,9 +228,23 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
 
     /** Whether `liftFun` is needed? It is the case if default arguments are used.
      */
-    protected def needLiftFun: Boolean =
+    protected def needLiftFun: Boolean = {
+      def requiredArgNum(tp: Type): Int = tp.widen match {
+        case funType: MethodType =>
+          val paramInfos = funType.paramInfos
+          val argsNum = paramInfos.size
+          if (argsNum >= 1 && paramInfos.last.isRepeatedParam)
+            // Repeated arguments do not count as required arguments
+            argsNum - 1
+          else
+            argsNum
+        case funType: PolyType => requiredArgNum(funType.resultType)
+        case tp => args.size
+      }
+
       !isJavaAnnotConstr(methRef.symbol) &&
-      args.size < reqiredArgNum(funType)
+      args.size < requiredArgNum(funType)
+    }
 
     /** A flag signalling that the typechecking the application was so far successful */
     private[this] var _ok = true
@@ -248,12 +262,6 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
       case funType: MethodType => funType
       case funType: PolyType => constrained(funType).resultType
       case tp => tp //was: funType
-    }
-
-    def reqiredArgNum(tp: Type): Int = tp.widen match {
-      case funType: MethodType => funType.paramInfos.size
-      case funType: PolyType => reqiredArgNum(funType.resultType)
-      case tp => args.size
     }
 
     lazy val liftedFunType =
