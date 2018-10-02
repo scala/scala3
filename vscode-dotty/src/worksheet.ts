@@ -1,10 +1,12 @@
 import * as vscode from 'vscode'
 import { LanguageClient } from 'vscode-languageclient'
+import * as rpc from 'vscode-jsonrpc'
+import { client } from './extension'
 
 /** A worksheet managed by vscode */
 class Worksheet {
 
-  constructor(document: vscode.TextDocument) {
+  private constructor(document: vscode.TextDocument) {
     this.document = document
   }
 
@@ -31,10 +33,52 @@ class Worksheet {
     this.finished = false
   }
 
+  /** All the worksheets */
+  private static worksheets: Map<vscode.TextDocument, Worksheet> = new Map<vscode.TextDocument, Worksheet>()
+
+  /**
+   * If `document` is a worksheet, create a new worksheet for it, or return the existing one. */
+  static getOrNewWorksheet(document: vscode.TextDocument): Worksheet | undefined {
+    if (!isWorksheet(document)) return
+    else {
+      const existing = Worksheet.worksheets.get(document)
+      if (existing) {
+        return existing
+      } else {
+        const newWorksheet = new Worksheet(document)
+        Worksheet.worksheets.set(document, newWorksheet)
+        return newWorksheet
+      }
+    }
+  }
+
+  /** If it exists, remove the worksheet representing `document`. */
+  static delete(document: vscode.TextDocument) {
+    Worksheet.worksheets.delete(document)
+  }
 }
 
-/** All the worksheets */
-let worksheets: Map<vscode.TextDocument, Worksheet> = new Map<vscode.TextDocument, Worksheet>()
+/** The parameter for the `worksheet/exec` request. */
+class WorksheetExec {
+  constructor(uri: string) {
+    this.uri = uri
+  }
+
+  readonly uri: string
+}
+
+/** The parameter for the `worksheet/publishOutput` notification. */
+class WorksheetOutput {
+  constructor(uri: vscode.Uri, line: number, content: string) {
+    this.uri = uri
+    this.line = line
+    this.content = content
+  }
+
+  readonly uri: vscode.Uri
+  readonly line: number
+  readonly content: string
+}
 
 /**
  * The command key for evaluating a worksheet. Exposed to users as
@@ -42,42 +86,14 @@ let worksheets: Map<vscode.TextDocument, Worksheet> = new Map<vscode.TextDocumen
  */
 export const worksheetEvaluateKey = "worksheet.evaluate"
 
-/**
- * The command that is called to evaluate a worksheet after it has been evaluated.
- *
- * This is not exposed as a standalone callable command; but this command is triggered
- * when a worksheet is saved.
- */
-export const worksheetEvaluateAfterSaveKey = "worksheet.evaluateAfterSave"
-
-/**
- * The command key for cancelling worksheet evaluation.
- */
-export const worksheetCancelEvaluationKey = "worksheet.cancel"
-
 /** Remove the worksheet corresponding to the given document. */
 export function removeWorksheet(document: vscode.TextDocument) {
-  worksheets.delete(document)
+  Worksheet.delete(document)
 }
 
 /** Is this document a worksheet? */
 export function isWorksheet(document: vscode.TextDocument): boolean {
   return document.fileName.endsWith(".sc")
-}
-
-/**
- * This command is bound to `worksheetEvaluateAfterSaveKey`. This is implemented
- * as a command, because we want to display a progress bar that may stay for a while, and
- * VSCode will kill promises triggered by file save after some time.
- */
-export function evaluateCommand() {
-  const editor = vscode.window.activeTextEditor
-  if (editor) {
-    const worksheet = worksheets.get(editor.document)
-    if (worksheet) {
-      showWorksheetProgress(worksheet)
-    }
-  }
 }
 
 /**
@@ -88,28 +104,42 @@ export function evaluateCommand() {
  * If the buffer is clean, we do the necessary preparation for worksheet (compute margin,
  * remove blank lines, etc.) and check if the buffer has been changed by that. If it is, we save
  * and the evaluation will be triggered by file save.
- * If the buffer is still clean, we send a `textDocument/didSave` notification to the language
- * server in order to start the execution of the worksheet.
+ * If the buffer is still clean, call `evaluateWorksheet`.
  */
-export function worksheetSave(client: LanguageClient) {
+export function evaluateWorksheetCommand() {
   const editor = vscode.window.activeTextEditor
   if (editor) {
     const document = editor.document
-    const worksheet = worksheets.get(document) || new Worksheet(document)
-    worksheets.set(document, worksheet)
 
-    if (document.isDirty) document.save()
+    if (document.isDirty) document.save() // This will trigger evaluation
     else {
-      _prepareWorksheet(worksheet).then(_ => {
-        if (document.isDirty) document.save()
-        else {
-          client.sendNotification("textDocument/didSave", {
-            textDocument: { uri: document.uri.toString() }
-          })
-          showWorksheetProgress(worksheet)
-        }
-      })
+      const worksheet = Worksheet.getOrNewWorksheet(document)
+      if (worksheet) {
+        _prepareWorksheet(worksheet).then(_ => {
+          if (document.isDirty) document.save() // This will trigger evaluation
+          else evaluateWorksheet(document)
+        })
+      }
     }
+  }
+}
+
+/**
+ * Evaluate the worksheet in `document`, display a progress bar during evaluation.
+ */
+export function evaluateWorksheet(document: vscode.TextDocument): Thenable<{}> {
+
+  const worksheet = Worksheet.getOrNewWorksheet(document)
+  if (worksheet) {
+    return vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: "Evaluating worksheet",
+      cancellable: true
+    }, (_, token) => {
+      return client.sendRequest("worksheet/exec", new WorksheetExec(worksheet.document.uri.toString()), token)
+    })
+  } else {
+    return Promise.reject()
   }
 }
 
@@ -123,7 +153,7 @@ export function worksheetSave(client: LanguageClient) {
  * @param event `TextDocumentWillSaveEvent`.
  */
 export function prepareWorksheet(event: vscode.TextDocumentWillSaveEvent) {
-  const worksheet = worksheets.get(event.document)
+  const worksheet = Worksheet.getOrNewWorksheet(event.document)
   if (worksheet) {
     const setup = _prepareWorksheet(worksheet)
     event.waitUntil(setup)
@@ -134,69 +164,24 @@ function _prepareWorksheet(worksheet: Worksheet) {
   return removeRedundantBlankLines(worksheet.document).then(_ => worksheet.reset())
 }
 
-function showWorksheetProgress(worksheet: Worksheet) {
-  return vscode.window.withProgress({
-    location: vscode.ProgressLocation.Notification,
-    title: "Evaluating worksheet",
-    cancellable: true
-  }, (_, token) => {
-    token.onCancellationRequested(_ => {
-      vscode.commands.executeCommand(worksheetCancelEvaluationKey)
-    })
-
-    return wait(() => worksheet.finished, 500)
-  })
-}
-
-/**
- * Cancel the execution of the worksheet.
- *
- * This sends a `textDocument/didSave` message to the language server
- * with the scheme of the URI set to `cancel`. The language server
- * interprets that as a request to cancel the execution of the specified worksheet.
- */
-export function cancelExecution(client: LanguageClient) {
-  const editor = vscode.window.activeTextEditor
-  if (editor) {
-    const document = editor.document
-    client.sendNotification("textDocument/didSave", {
-      textDocument: { uri: document.uri.with({ scheme: "cancel" }).toString() }
-    })
-  }
-}
-
-/** Wait until `cond` evaluates to true; test every `delay` ms. */
-function wait(cond: () => boolean, delayMs: number): Promise<boolean> {
-  const isFinished = cond()
-  if (isFinished) {
-    return Promise.resolve(true)
-  }
-  else return new Promise(fn => setTimeout(fn, delayMs)).then(_ => wait(cond, delayMs))
-}
-
 /**
  * Handle the result of evaluating part of a worksheet.
  * This is called when we receive a `window/logMessage`.
  *
  * @param message The result of evaluating part of a worksheet.
  */
-export function worksheetHandleMessage(message: string) {
+export function handleMessage(output: WorksheetOutput) {
 
   const editor = vscode.window.visibleTextEditors.find(e => {
-    let uri = e.document.uri.toString()
-    return uri == message.slice(0, uri.length)
+    let uri = e.document.uri
+    return uri == output.uri
   })
 
   if (editor) {
-    const worksheet = worksheets.get(editor.document)
+    const worksheet = Worksheet.getOrNewWorksheet(editor.document)
 
     if (worksheet) {
-      let payload = message.slice(editor.document.uri.toString().length)
-      if (payload == "FINISHED") {
-        worksheet.finished = true
-      } else {
-        worksheetDisplayResult(payload, worksheet, editor)
-      }
+      worksheetDisplayResult(output.line - 1, output.content, worksheet, editor)
     }
   }
 }
@@ -303,17 +288,15 @@ function removeRedundantBlankLines(document: vscode.TextDocument) {
  *
  * @see worksheetCreateDecoration
  *
- * @param message   The message to parse.
- * @param worksheet The worksheet that receives the result.
- * @param editor    The editor where to display the result.
+ * @param lineNumber The number of the line in the source that produced the result.
+ * @param evalResult The evaluation result.
+ * @param worksheet  The worksheet that receives the result.
+ * @param editor     The editor where to display the result.
  * @return A `Thenable` that will insert necessary lines to fit the output
  *         and display the decorations upon completion.
  */
-function worksheetDisplayResult(message: string, worksheet: Worksheet, editor: vscode.TextEditor) {
+function worksheetDisplayResult(lineNumber: number, evalResult: string, worksheet: Worksheet, editor: vscode.TextEditor) {
 
-  const colonIndex = message.indexOf(":")
-  const lineNumber = parseInt(message.slice(0, colonIndex)) - 1 // lines are 0-indexed
-  const evalResult = message.slice(colonIndex + 1)
   const resultLines = evalResult.trim().split(/\r\n|\r|\n/g)
   const margin = worksheet.margin
 

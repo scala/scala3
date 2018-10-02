@@ -29,7 +29,7 @@ import Interactive.Include
 import config.Printers.interactiv
 
 import languageserver.config.ProjectConfig
-import languageserver.worksheet.Worksheet
+import languageserver.worksheet.{Worksheet, WorksheetClient, WorksheetService}
 
 import lsp4j.services._
 
@@ -42,7 +42,8 @@ import lsp4j.services._
  *  - This implementation is based on the LSP4J library: https://github.com/eclipse/lsp4j
  */
 class DottyLanguageServer extends LanguageServer
-    with LanguageClientAware with TextDocumentService with WorkspaceService { thisServer =>
+    with LanguageClientAware with TextDocumentService with WorkspaceService
+    with WorksheetService { thisServer =>
   import ast.tpd._
 
   import DottyLanguageServer._
@@ -54,7 +55,10 @@ class DottyLanguageServer extends LanguageServer
 
 
   private[this] var rootUri: String = _
-  private[this] var client: LanguageClient = _
+
+  private[this] var myClient: WorksheetClient = _
+  def client: WorksheetClient = myClient
+
   private[this] val worksheets: ConcurrentHashMap[URI, CompletableFuture[_]] = new ConcurrentHashMap()
 
   private[this] var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = _
@@ -121,7 +125,7 @@ class DottyLanguageServer extends LanguageServer
   }
 
   override def connect(client: LanguageClient): Unit = {
-    this.client = client
+    myClient = client.asInstanceOf[WorksheetClient]
   }
 
   override def exit(): Unit = {
@@ -132,7 +136,7 @@ class DottyLanguageServer extends LanguageServer
     CompletableFuture.completedFuture(new Object)
   }
 
-  private[this] def computeAsync[R](fun: CancelChecker => R): CompletableFuture[R] =
+  def computeAsync[R](fun: CancelChecker => R): CompletableFuture[R] =
     CompletableFutures.computeAsync { cancelToken =>
       // We do not support any concurrent use of the compiler currently.
       thisServer.synchronized {
@@ -229,27 +233,7 @@ class DottyLanguageServer extends LanguageServer
     /*thisServer.synchronized*/ {}
 
   override def didSave(params: DidSaveTextDocumentParams): Unit = {
-    val uri = new URI(params.getTextDocument.getUri)
-    if (isWorksheet(uri)) {
-      if (uri.getScheme == "cancel") {
-        val fileURI = new URI("file", uri.getUserInfo, uri.getHost, uri.getPort, uri.getPath, uri.getQuery, uri.getFragment)
-        Option(worksheets.get(fileURI)).foreach(_.cancel(true))
-      } else thisServer.synchronized {
-        val sendMessage = (msg: String) => client.logMessage(new MessageParams(MessageType.Info, uri + msg))
-        worksheets.put(
-          uri,
-          computeAsync { cancelChecker =>
-            try {
-              val driver = driverFor(uri)
-              evaluateWorksheet(driver, uri, sendMessage, cancelChecker)(driver.currentCtx)
-            } finally {
-              worksheets.remove(uri)
-              sendMessage("FINISHED")
-            }
-          }
-        )
-      }
-    }
+    /*thisServer.synchronized*/ {}
   }
 
   // FIXME: share code with messages.NotAMember
@@ -447,25 +431,6 @@ class DottyLanguageServer extends LanguageServer
   override def resolveCodeLens(params: CodeLens) = null
   override def resolveCompletionItem(params: CompletionItem) = null
   override def signatureHelp(params: TextDocumentPositionParams) = null
-
-  /**
-   * Evaluate the worksheet at `uri`.
-   *
-   * @param driver        The driver for the project that contains the worksheet.
-   * @param uri           The URI of the worksheet.
-   * @param sendMessage   A mean of communicating the results of evaluation back.
-   * @param cancelChecker Token to check whether evaluation was cancelled
-   */
-  private def evaluateWorksheet(driver: InteractiveDriver,
-                                uri: URI,
-                                sendMessage: String => Unit,
-                                cancelChecker: CancelChecker)(
-      implicit ctx: Context): Unit = {
-    val trees = driver.openedTrees(uri)
-    trees.headOption.foreach { tree =>
-      Worksheet.evaluate(tree, sendMessage, cancelChecker)
-    }
-  }
 }
 
 object DottyLanguageServer {

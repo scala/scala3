@@ -22,13 +22,13 @@ object Worksheet {
    * @param cancelChecker A token to check whether execution should be cancelled.
    */
   def evaluate(tree: SourceTree,
-               sendMessage: String => Unit,
+               sendMessage: (Int, String) => Unit,
                cancelChecker: CancelChecker)(
       implicit ctx: Context): Unit = synchronized {
 
     Evaluator.get(cancelChecker) match {
       case None =>
-        sendMessage(encode("Couldn't start JVM.", 1))
+        sendMessage(1, "Couldn't start JVM.")
       case Some(evaluator) =>
         tree.tree match {
           case td @ TypeDef(_, template: Template) =>
@@ -42,7 +42,7 @@ object Worksheet {
                 try {
                   cancelChecker.checkCanceled()
                   val (line, result) = execute(evaluator, statement, tree.source)
-                  if (result.nonEmpty) sendMessage(encode(result, line))
+                  if (result.nonEmpty) sendMessage(line, result)
                 } catch { case _: CancellationException => () }
 
               case _ =>
@@ -65,9 +65,6 @@ object Worksheet {
     val line = sourcefile.offsetToLine(tree.pos.end)
     (line, evaluator.eval(source).getOrElse(""))
   }
-
-  private def encode(message: String, line: Int): String =
-    line + ":" + message
 
   private def bounds(pos: Position): (Int, Int) = (pos.start, pos.end)
 

@@ -1,31 +1,26 @@
 package dotty.tools.languageserver.util.actions
 
+import dotty.tools.languageserver.worksheet.{WorksheetExecOutput, WorksheetExecParams, WorksheetExecResponse}
 import dotty.tools.languageserver.util.embedded.CodeMarker
 
-import org.eclipse.lsp4j.{DidSaveTextDocumentParams, MessageParams, MessageType}
+import java.net.URI
+import java.util.concurrent.CompletableFuture
 
 abstract class WorksheetAction extends Action {
 
-  def triggerEvaluation(marker: CodeMarker): Exec[Unit] = {
-    val file = marker.toTextDocumentIdentifier
-    server.didSave(new DidSaveTextDocumentParams(file))
+  /** Get the URI of the worksheet that contains `marker`. */
+  def getUri(marker: CodeMarker): Exec[URI] = new URI(marker.toTextDocumentIdentifier.getUri)
+
+  /** Triggers the evaluation of the worksheet. */
+  def triggerEvaluation(marker: CodeMarker): Exec[CompletableFuture[WorksheetExecResponse]] = {
+    val uri = getUri(marker)
+    server.exec(WorksheetExecParams(uri))
   }
 
-  def triggerCancellation(marker: CodeMarker): Exec[Unit] = {
-    val file = {
-      val file = marker.toTextDocumentIdentifier
-      file.setUri(file.getUri.replaceFirst("file:", "cancel:"))
-      file
-    }
-    server.didSave(new DidSaveTextDocumentParams(file))
+  /** The output of the worksheet that contains `marker`. */
+  def worksheetOutput(marker: CodeMarker): Exec[List[WorksheetExecOutput]] = {
+    val uri = getUri(marker)
+    client.worksheetOutput.get.filter(_.uri == uri)
   }
 
-  def getLogs(marker: CodeMarker): Exec[List[String]] = {
-    def matches(params: MessageParams): Boolean =
-      params.getType == MessageType.Info && params.getMessage.startsWith(marker.file.uri)
-    client.log.get.collect {
-      case params: MessageParams if matches(params) =>
-        params.getMessage.substring(marker.file.uri.length).trim
-    }
-  }
 }

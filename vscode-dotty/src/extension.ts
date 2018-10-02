@@ -16,7 +16,7 @@ import * as worksheet from './worksheet'
 
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
-let client: LanguageClient
+export let client: LanguageClient
 
 export function activate(context: ExtensionContext) {
   extensionContext = context
@@ -33,17 +33,13 @@ export function activate(context: ExtensionContext) {
   vscode.workspace.onWillSaveTextDocument(worksheet.prepareWorksheet)
   vscode.workspace.onDidSaveTextDocument(document => {
     if (worksheet.isWorksheet(document)) {
-      vscode.commands.executeCommand(worksheet.worksheetEvaluateAfterSaveKey)
+      worksheet.evaluateWorksheet(document)
     }
   })
   vscode.workspace.onDidCloseTextDocument(document => {
     if (worksheet.isWorksheet(document)) {
       worksheet.removeWorksheet(document)
     }
-  })
-
-  vscode.commands.registerCommand(worksheet.worksheetEvaluateAfterSaveKey, () => {
-    worksheet.evaluateCommand()
   })
 
   if (process.env['DLS_DEV_MODE']) {
@@ -209,20 +205,14 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
   if (isOldServer)
     enableOldServerWorkaround(client)
 
-  // We use the `window/logMessage` command to communicate back the result of evaluating
-  // a worksheet.
   client.onReady().then(() => {
-    client.onNotification("window/logMessage", (params) => {
-      worksheet.worksheetHandleMessage(params.message)
+    client.onNotification("worksheet/publishOutput", (params) => {
+      worksheet.handleMessage(params)
     })
   })
 
   vscode.commands.registerCommand(worksheet.worksheetEvaluateKey, () => {
-    worksheet.worksheetSave(client)
-  })
-
-  vscode.commands.registerCommand(worksheet.worksheetCancelEvaluationKey, () => {
-    worksheet.cancelExecution(client)
+    worksheet.evaluateWorksheetCommand()
   })
 
   // Push the disposable to the context's subscriptions so that the

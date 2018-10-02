@@ -3,26 +3,20 @@ package dotty.tools.languageserver.util.actions
 import dotty.tools.languageserver.util.PositionContext
 import dotty.tools.languageserver.util.embedded.CodeMarker
 
-import org.junit.Assert.{assertEquals, fail}
+import org.junit.Assert.assertTrue
+
+import java.util.concurrent.TimeUnit
 
 class WorksheetCancel(marker: CodeMarker, afterMs: Long) extends WorksheetAction {
 
-  private final val cancellationTimeoutMs = 10 * 1000
-
   override def execute(): Exec[Unit] = {
-    triggerEvaluation(marker)
+    val futureResult = triggerEvaluation(marker)
     Thread.sleep(afterMs)
-    triggerCancellation(marker)
+    val cancelled = futureResult.cancel(true)
 
-    val timeAtCancellation = System.currentTimeMillis()
-    while (!getLogs(marker).contains("FINISHED")) {
-      if (System.currentTimeMillis() - timeAtCancellation > cancellationTimeoutMs) {
-        fail(s"Couldn't cancel worksheet evaluation after ${cancellationTimeoutMs} ms.")
-      }
-      Thread.sleep(100)
-    }
+    assertTrue(cancelled)
 
-    client.log.clear()
+    client.worksheetOutput.clear()
   }
 
   override def show: PositionContext.PosCtx[String] =
