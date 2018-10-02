@@ -952,6 +952,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         }
       case Inlined(_, _, arg) =>
         arg.underlyingArgument
+      case NamedArg(_, arg) =>
+        arg.underlyingArgument
       case tree =>
         super.transform(tree)
     }
