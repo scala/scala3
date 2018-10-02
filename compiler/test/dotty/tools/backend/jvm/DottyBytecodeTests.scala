@@ -475,4 +475,29 @@ class TestBCode extends DottyBytecodeTest {
         diffInstructions(testInstructions, refInstructions))
     }
   }
+
+  /** Test that the receiver of a call to a method with varargs is not unnecessarily lifted */
+  @Test def i5191 = {
+    val source =
+      """class Test {
+        |  def foo(args: String*): String = ""
+        |  def self = this
+        |
+        |  def test = self.foo()
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val method  = getMethod(clsNode, "test")
+
+      val liftReceiver = instructionsFromMethod(method).exists {
+        case VarOp(Opcodes.ASTORE, _) => true // receiver lifted in local val
+        case _ => false
+      }
+      assertFalse("Receiver of a call to a method with varargs is unnecessarily lifted",
+        liftReceiver)
+    }
+  }
 }
