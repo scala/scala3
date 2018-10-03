@@ -5,19 +5,14 @@ import MegaPhase._
 import core.DenotTransformers._
 import core.Symbols._
 import core.Contexts._
-import core.Types._
 import core.Flags._
 import core.Decorators._
-import core.SymDenotations._
 import core.StdNames.nme
 import core.Names._
-import core.NameOps._
 import core.NameKinds.TempResultName
 import ast.Trees._
-import SymUtils._
 import util.Store
-import collection.{ mutable, immutable }
-import collection.mutable.{ LinkedHashMap, LinkedHashSet, TreeSet }
+import collection.mutable
 
 /** This phase translates variables that are captured in closures to
  *  heap-allocated refs.

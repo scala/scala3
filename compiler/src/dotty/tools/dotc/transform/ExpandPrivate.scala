@@ -2,24 +2,18 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.DenotTransformers.{IdentityDenotTransformer, SymTransformer}
+import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 import Contexts.Context
 import Symbols._
-import Scopes._
 import Flags._
-import StdNames._
 import SymDenotations._
-import Types._
 
-import collection.mutable
 import Decorators._
 import ast.Trees._
 import MegaPhase._
 import java.io.File.separatorChar
 
 import ValueClasses._
-import dotty.tools.dotc.core.Phases.Phase
 
 /** Make private term members that are accessed from another class
  *  non-private by resetting the Private flag and expanding their name.

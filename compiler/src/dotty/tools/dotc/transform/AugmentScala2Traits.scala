@@ -7,7 +7,6 @@ import Contexts.Context
 import Flags._
 import SymUtils._
 import Symbols._
-import SymDenotations._
 import Types._
 import Decorators._
 import DenotTransformers._
@@ -15,7 +14,6 @@ import Annotations._
 import StdNames._
 import NameOps._
 import NameKinds.{ExpandedName, TraitSetterName}
-import ast.Trees._
 
 object AugmentScala2Traits {
   val name = "augmentScala2Traits"

@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package quoted
 
-import dotty.tools.backend.jvm.GenBCode
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators._
@@ -18,7 +17,7 @@ import dotty.tools.dotc.transform.ReifyQuotes
 import dotty.tools.dotc.typer.FrontEnd
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.io.{AbstractFile, Path, PlainFile}
+import dotty.tools.io.{Path, PlainFile}
 
 import scala.quoted.{Expr, Type}
 
@@ -26,7 +25,6 @@ import scala.quoted.{Expr, Type}
  *  a class file with `class ' { def apply: Object = expr }`.
  */
 class QuoteCompiler extends Compiler {
-  import tpd._
 
   override protected def frontendPhases: List[List[Phase]] =
     List(List(new QuotedFrontend(putInClass = true)))

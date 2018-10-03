@@ -4,20 +4,14 @@ package typer
 
 import core._
 import ast._
-import Contexts._, Types._, Flags._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
+import Contexts._, Types._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
 import NameKinds.DepParamName
 import Trees._
 import Constants._
-import Scopes._
-import annotation.unchecked
-import util.Positions._
 import util.{Stats, SimpleIdentityMap}
-import util.common._
 import Decorators._
 import Uniques._
-import ErrorReporting.errorType
 import config.Printers.typr
-import collection.mutable
 
 import scala.annotation.internal.sharable
 

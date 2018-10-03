@@ -7,7 +7,7 @@ import scala.collection._
 
 import ast.{NavigateAST, Trees, tpd, untpd}
 import core._, core.Decorators.{sourcePos => _, _}
-import Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
 import util.Positions._, util.SourcePosition
 import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
@@ -367,7 +367,6 @@ object Interactive {
     case Nil | _ :: Nil =>
       ctx.run.runContext.fresh.setCompilationUnit(ctx.compilationUnit)
     case nested :: encl :: rest =>
-      import typer.Typer._
       val outer = contextOfPath(encl :: rest)
       try encl match {
         case tree @ PackageDef(pkg, stats) =>

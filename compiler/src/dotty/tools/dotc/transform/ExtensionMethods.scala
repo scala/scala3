@@ -7,18 +7,14 @@ package transform
 
 import dotty.tools.dotc.transform.MegaPhase._
 import ValueClasses._
-import dotty.tools.dotc.ast.{Trees, tpd}
-import scala.collection.{ mutable, immutable }
+import dotty.tools.dotc.ast.tpd
+import scala.collection.mutable
 import core._
-import dotty.tools.dotc.core.Phases.Phase
-import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
+import Types._, Contexts._, Names._, Flags._, DenotTransformers._
+import SymDenotations._, Symbols._, StdNames._, Denotations._
 import TypeErasure.{ valueErasure, ErasedValueType }
-import TypeUtils._
 import NameKinds.{ExtMethName, UniqueExtMethName}
-import util.Positions._
 import Decorators._
-import SymUtils._
 
 /**
  * Perform Step 1 in the inline classes SIP: Creates extension methods for all

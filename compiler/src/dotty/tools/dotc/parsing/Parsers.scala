@@ -16,14 +16,11 @@ import Names._
 import NameKinds.WildcardParamName
 import ast.{Positioned, Trees, untpd}
 import ast.Trees._
-import Decorators._
 import StdNames._
 import util.Positions._
 import Constants._
 import ScriptParsers._
-import Comments._
 import scala.annotation.{tailrec, switch}
-import util.DotClass
 import rewrites.Rewrites.patch
 
 object Parsers {

@@ -3,12 +3,10 @@ package dotc
 package transform
 
 import core._
-import Symbols._, Types._, Contexts._, Decorators._, SymDenotations._, Flags._, Scopes._
+import Symbols._, Types._, Contexts._, Decorators._, Flags._, Scopes._
 import DenotTransformers._
 import ast.untpd
 import collection.{mutable, immutable}
-import TypeErasure._
-import ValueClasses.isDerivedValueClass
 import ShortcutImplicits._
 
 /** A helper class for generating bridge methods in class `root`. */

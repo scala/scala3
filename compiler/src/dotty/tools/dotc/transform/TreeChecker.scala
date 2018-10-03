@@ -1,37 +1,27 @@
 package dotty.tools.dotc
 package transform
 
-import MegaPhase._
 import core.Names.Name
 import core.DenotTransformers._
-import core.Denotations._
 import core.SymDenotations._
 import core.Contexts._
 import core.Symbols._
 import core.Types._
 import core.Flags._
-import core.Constants._
 import core.StdNames._
-import core.NameOps._
 import core.NameKinds.{DocArtifactName, OuterSelectName}
 import core.Decorators._
-import core.TypeErasure.isErasedType
 import core.Phases.Phase
 import core.Mode
-import SymUtils._
 import typer._
 import typer.ErrorReporting._
 import reporting.ThrowingReporter
 import ast.Trees._
 import ast.{tpd, untpd}
-import util.SourcePosition
 import util.Chars._
 import collection.mutable
 import ProtoTypes._
-import config.Printers
-import java.lang.AssertionError
 
-import dotty.tools.dotc.core.Names
 
 import scala.util.control.NonFatal
 

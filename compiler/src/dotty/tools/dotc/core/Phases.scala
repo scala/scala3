@@ -5,13 +5,11 @@ package core
 import Periods._
 import Contexts._
 import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
-import dotty.tools.dotc.core.Symbols.ClassSymbol
-import util.DotClass
 import DenotTransformers._
 import Denotations._
 import Decorators._
 import config.Printers.config
-import scala.collection.mutable.{ListBuffer, ArrayBuffer}
+import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.transform._
 import Periods._

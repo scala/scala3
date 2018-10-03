@@ -3,7 +3,6 @@ package transform
 
 import core._
 import DenotTransformers.SymTransformer
-import Phases.Phase
 import Contexts.{Context, FreshContext}
 import Flags._
 import SymDenotations.SymDenotation

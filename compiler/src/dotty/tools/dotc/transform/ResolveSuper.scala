@@ -7,17 +7,10 @@ import Contexts.Context
 import Flags._
 import SymUtils._
 import Symbols._
-import SymDenotations._
-import Types._
 import Decorators._
 import DenotTransformers._
-import StdNames._
 import NameOps._
 import NameKinds._
-import ast.Trees._
-import util.Positions._
-import Names._
-import collection.mutable
 import ResolveSuper._
 
 /** This phase adds super accessors and method overrides where

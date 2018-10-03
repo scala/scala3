@@ -11,7 +11,6 @@ import Names._, StdNames._, ast.Trees._, ast.{tpd, untpd}
 import Symbols._, Contexts._
 import util.Positions._
 import Parsers.Parser
-import scala.language.implicitConversions
 
 /** This class builds instance of `Tree` that represent XML.
  *

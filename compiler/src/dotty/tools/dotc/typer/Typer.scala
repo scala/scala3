@@ -11,7 +11,6 @@ import Scopes._
 import Denotations._
 import ProtoTypes._
 import Contexts._
-import Comments._
 import Symbols._
 import Types._
 import SymDenotations._
@@ -27,7 +26,7 @@ import Inferencing._
 import EtaExpansion.etaExpand
 import util.Positions._
 import util.common._
-import util.{Property, SourcePosition}
+import util.Property
 
 import collection.mutable
 import annotation.tailrec
@@ -39,10 +38,7 @@ import NavigateAST._
 import transform.SymUtils._
 import transform.TypeUtils._
 import reporting.trace
-import config.Config
 
-import language.implicitConversions
-import printing.SyntaxHighlighting._
 
 object Typer {
 
@@ -91,7 +87,6 @@ class Typer extends Namer
   import Typer._
   import tpd.{cpy => _, _}
   import untpd.cpy
-  import Dynamic.isDynamicMethod
   import reporting.diagnostic.Message
   import reporting.diagnostic.messages._
 

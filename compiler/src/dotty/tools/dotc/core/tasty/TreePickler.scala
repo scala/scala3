@@ -4,19 +4,16 @@ package core
 package tasty
 
 import ast.Trees._
-import ast.{untpd, tpd, desugar}
+import ast.{untpd, tpd}
 import TastyFormat._
-import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
-import collection.mutable
+import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._
 import typer.Inliner
-import NameOps._, NameKinds._
+import NameKinds._
 import StdNames.nme
 import TastyBuffer._
-import TypeApplications._
 import transform.SymUtils._
 import printing.Printer
 import printing.Texts._
-import config.Config
 
 object TreePickler {
 

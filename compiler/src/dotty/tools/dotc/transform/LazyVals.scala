@@ -8,22 +8,14 @@ import core._
 import Contexts._
 import Symbols._
 import Decorators._
-import NameOps._
 import NameKinds._
 import StdNames.nme
-import rewrites.Rewrites.patch
-import util.Positions.Position
 import dotty.tools.dotc.transform.MegaPhase._
-import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.{untpd, tpd}
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Types.{ExprType, NoType, MethodType}
-import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.Types.MethodType
 import SymUtils._
-import scala.collection.mutable.ListBuffer
-import dotty.tools.dotc.core.Denotations.SingleDenotation
-import dotty.tools.dotc.core.SymDenotations.SymDenotation
-import dotty.tools.dotc.core.DenotTransformers.{SymTransformer, IdentityDenotTransformer, DenotTransformer}
+import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 import Erasure.Boxing.adaptToType
 
 import java.util.IdentityHashMap

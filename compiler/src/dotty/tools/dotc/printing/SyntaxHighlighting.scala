@@ -7,7 +7,6 @@ import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.parsing.Scanners.Scanner
 import dotty.tools.dotc.parsing.Tokens._
 import dotty.tools.dotc.reporting.Reporter
-import dotty.tools.dotc.reporting.diagnostic.MessageContainer
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.util.SourceFile
 

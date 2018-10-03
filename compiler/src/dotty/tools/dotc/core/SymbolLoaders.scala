@@ -6,16 +6,14 @@ import java.io.{IOException, File}
 import scala.compat.Platform.currentTime
 import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
 import config.Config
-import classpath._
-import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, util.Positions._, Names._
-import StdNames._, NameOps._
+import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, Names._
+import NameOps._
 import Decorators.{PreNamedString, StringInterpolators}
 import classfile.ClassfileParser
 import util.Stats
 import Decorators._
 import scala.util.control.NonFatal
 import ast.Trees._
-import ast.tpd
 import parsing.JavaParsers.OutlineJavaParser
 import parsing.Parsers.OutlineParser
 import reporting.trace

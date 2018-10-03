@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package util
 
-import core.Names.Name
 import core.Types.WildcardType
 
 /** Common values hoisted out for performance */

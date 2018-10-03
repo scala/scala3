@@ -7,7 +7,7 @@ import Symbols._
 import Flags._
 import Names._
 import StdNames._, NameOps._
-import NameKinds.{SkolemName, SignedName}
+import NameKinds.SkolemName
 import Scopes._
 import Constants._
 import Contexts._
@@ -16,15 +16,12 @@ import SymDenotations._
 import Decorators._
 import Denotations._
 import Periods._
-import util.Positions.{Position, NoPosition}
 import util.Stats._
-import util.{DotClass, SimpleIdentitySet}
+import util.SimpleIdentitySet
 import reporting.diagnostic.Message
 import ast.tpd._
 import ast.TreeTypeMap
 import printing.Texts._
-import ast.untpd
-import dotty.tools.dotc.transform.Erasure
 import printing.Printer
 import Hashable._
 import Uniques._
@@ -2971,7 +2968,6 @@ object Types {
       paramInfosExp: MethodType => List[Type],
       resultTypeExp: MethodType => Type)
     extends MethodOrPoly with TermLambda with NarrowCached { thisMethodType =>
-    import MethodType._
 
     type This = MethodType
 

@@ -3,13 +3,10 @@ package core
 package tasty
 
 import Contexts._, Decorators._
-import printing.Texts._
 import Names.Name
-import StdNames._
 import TastyUnpickler._
-import TastyBuffer.{Addr, NameRef}
-import util.Positions.{Position, offsetToInt}
-import collection.mutable
+import TastyBuffer.NameRef
+import util.Positions.offsetToInt
 import printing.Highlighting._
 
 class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {

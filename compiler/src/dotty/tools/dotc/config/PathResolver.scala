@@ -2,11 +2,10 @@ package dotty.tools
 package dotc
 package config
 
-import java.net.{ URL, MalformedURLException }
 import WrappedProperties.AccessControl
-import io.{ ClassPath, File, Directory, Path, AbstractFile }
+import io.{ ClassPath, Directory, Path }
 import classpath.{AggregateClassPath, ClassPathFactory, JrtClassPath }
-import ClassPath.{ JavaContext, join, split }
+import ClassPath.split
 import PartialFunction.condOpt
 import scala.language.postfixOps
 import core.Contexts._
@@ -159,7 +158,7 @@ object PathResolver {
     }
   }
 }
-import PathResolver.{ Defaults, Environment, firstNonEmpty, ppcp }
+import PathResolver.{ Defaults, ppcp }
 
 class PathResolver(implicit ctx: Context) {
   import ctx.base.settings

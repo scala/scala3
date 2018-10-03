@@ -2,12 +2,9 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import typer._
 import ast.Trees._
 import Contexts._
 import Symbols._
-import Decorators._
-import collection.mutable
 import annotation.tailrec
 
 /** A Macrotransform that maintains the necessary infrastructore to support

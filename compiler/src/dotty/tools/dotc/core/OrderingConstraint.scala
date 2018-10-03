@@ -5,10 +5,9 @@ package core
 import Types._, Contexts._, Symbols._, Decorators._
 import util.SimpleIdentityMap
 import collection.mutable
-import printing.{Printer, Showable}
+import printing.Printer
 import printing.Texts._
 import config.Config
-import collection.immutable.BitSet
 import reflect.ClassTag
 import annotation.tailrec
 

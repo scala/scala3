@@ -6,7 +6,6 @@ import dotty.tools.dotc.core.DenotTransformers.SymTransformer
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Names._
-import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase

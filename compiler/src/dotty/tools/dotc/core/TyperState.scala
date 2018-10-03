@@ -3,16 +3,12 @@ package dotc
 package core
 
 import Types._
-import Flags._
 import Contexts._
-import util.{SimpleIdentityMap, SimpleIdentitySet, DotClass}
+import util.{SimpleIdentityMap, SimpleIdentitySet}
 import reporting._
-import printing.{Showable, Printer}
-import printing.Texts._
 import config.Config
 import collection.mutable
 import java.lang.ref.WeakReference
-import Decorators._
 
 import scala.annotation.internal.sharable
 

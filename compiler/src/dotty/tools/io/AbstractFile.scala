@@ -10,7 +10,7 @@ import java.io.{
   ByteArrayOutputStream
 }
 import java.net.URL
-import java.nio.file.{FileAlreadyExistsException, Files, Paths}
+import java.nio.file.{Files, Paths}
 
 /**
  * An abstraction over files for use in the reflection/compiler libraries.

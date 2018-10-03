@@ -3,9 +3,9 @@ package transform
 
 import ast.{Trees, tpd}
 import core._, core.Decorators._
-import MegaPhase._, Phases.Phase
-import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
+import MegaPhase._
+import Types._, Contexts._, Flags._, DenotTransformers._
+import Symbols._, StdNames._, Trees._
 import TypeErasure.ErasedValueType, ValueClasses._
 
 object ElimErasedValueType {

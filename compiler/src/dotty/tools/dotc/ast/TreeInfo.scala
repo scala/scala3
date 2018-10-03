@@ -4,15 +4,13 @@ package ast
 
 import core._
 import Flags._, Trees._, Types._, Contexts._
-import Names._, StdNames._, NameOps._, Decorators._, Symbols._
-import util.HashSet
+import Names._, StdNames._, NameOps._, Symbols._
 import typer.ConstFold
 import reporting.trace
 
 import scala.annotation.tailrec
 
 trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
-  import TreeInfo._
 
   // Note: the <: Type constraint looks necessary (and is needed to make the file compile in dotc).
   // But Scalac accepts the program happily without it. Need to find out why.
@@ -287,7 +285,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 }
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
-  import TreeInfo._
   import untpd._
 
   /** The underlying tree when stripping any TypedSplice or Parens nodes */

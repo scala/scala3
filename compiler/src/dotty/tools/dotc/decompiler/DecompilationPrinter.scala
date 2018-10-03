@@ -6,9 +6,8 @@ import java.io.{OutputStream, PrintStream}
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.tasty.TastyPrinter
-import dotty.tools.dotc.printing.DecompilerPrinter
 import dotty.tools.dotc.tastyreflect.TastyImpl
-import dotty.tools.io.{File, Path}
+import dotty.tools.io.File
 
 /** Phase that prints the trees in all loaded compilation units.
  *

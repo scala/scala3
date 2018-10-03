@@ -2,14 +2,11 @@ package dotty.tools.dotc
 package core
 
 import java.security.MessageDigest
-import scala.annotation.switch
 import scala.io.Codec
 import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._
-import Decorators.PreNamedString
-import util.{Chars, NameTransformer}
+import util.Chars
 import Chars.isOperatorPart
 import Definitions._
-import config.Config
 
 object NameOps {
 

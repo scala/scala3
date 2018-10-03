@@ -5,7 +5,6 @@ import config.CompilerCommand
 import core.Comments.{ContextDoc, ContextDocstrings}
 import core.Contexts.{Context, ContextBase}
 import core.Mode
-import util.DotClass
 import reporting._
 import scala.util.control.NonFatal
 import fromtasty.TASTYCompiler

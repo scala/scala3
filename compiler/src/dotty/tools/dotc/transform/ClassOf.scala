@@ -2,11 +2,8 @@ package dotty.tools.dotc
 package transform
 
 import ast.tpd
-import core.Constants.Constant
 import core.Contexts.Context
-import core.StdNames.nme
-import core.Symbols.{defn,TermSymbol}
-import core.TypeErasure
+import core.Symbols.defn
 import MegaPhase._
 
 /** Rewrite `classOf` calls as follow:

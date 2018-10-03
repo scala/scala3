@@ -5,9 +5,7 @@ package core
 import Names._
 import NameOps._
 import StdNames._
-import util.DotClass
 import NameTags._
-import Decorators._
 import Contexts.Context
 import collection.mutable
 

@@ -18,12 +18,10 @@ import core.Definitions._
 import typer.NoChecking
 import typer.Inliner
 import typer.ProtoTypes._
-import typer.ErrorReporting._
 import core.TypeErasure._
 import core.Decorators._
-import dotty.tools.dotc.ast.{Trees, tpd, untpd}
+import dotty.tools.dotc.ast.{tpd, untpd}
 import ast.Trees._
-import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.{Constants, Flags}
 import ValueClasses._
 import TypeUtils._

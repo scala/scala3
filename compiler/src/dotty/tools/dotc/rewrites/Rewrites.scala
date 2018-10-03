@@ -3,7 +3,7 @@ package rewrites
 
 import util.{SourceFile, Positions}
 import Positions.Position
-import core.Contexts.{Context, FreshContext}
+import core.Contexts.Context
 import collection.mutable
 import scala.annotation.tailrec
 

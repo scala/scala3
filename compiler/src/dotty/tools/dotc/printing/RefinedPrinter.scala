@@ -8,30 +8,21 @@ import Flags._
 import Names._
 import Symbols._
 import NameOps._
-import Constants._
 import TypeErasure.ErasedValueType
 import Contexts.Context
-import Scopes.Scope
 import Denotations._
 import SymDenotations._
-import Annotations.Annotation
 import StdNames.{nme, tpnme}
-import ast.{Trees, tpd, untpd}
-import typer.{Implicits, Inliner, Namer}
+import ast.{Trees, untpd}
+import typer.{Implicits, Namer}
 import typer.ProtoTypes._
 import Trees._
 import TypeApplications._
 import Decorators._
-import config.Config
-import util.Positions._
-import transform.SymUtils._
 import transform.TypeUtils._
-import dotty.tools.dotc.transform.FirstTransform
 
-import scala.annotation.switch
 import language.implicitConversions
 import dotty.tools.dotc.util.SourcePosition
-import Highlighting._
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
@@ -660,7 +651,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     (txt /: vparamss)((txt, vparams) => txt ~ "(" ~ toText(vparams, ", ") ~ ")")
 
   protected def valDefToText[T >: Untyped](tree: ValDef[T]): Text = {
-    import untpd.{modsDeco => _, _}
+    import untpd.{modsDeco => _}
     dclTextOr(tree) {
       modText(tree.mods, tree.symbol, keywordStr(if (tree.mods is Mutable) "var" else "val")) ~~
         valDefText(nameIdText(tree)) ~ optAscription(tree.tpt) ~
@@ -669,7 +660,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   protected def defDefToText[T >: Untyped](tree: DefDef[T]): Text = {
-    import untpd.{modsDeco => _, _}
+    import untpd.{modsDeco => _}
     dclTextOr(tree) {
       val prefix = modText(tree.mods, tree.symbol, keywordStr("def")) ~~ valDefText(nameIdText(tree))
       withEnclosingDef(tree) {

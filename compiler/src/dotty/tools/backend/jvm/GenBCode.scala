@@ -20,13 +20,12 @@ import Decorators._
 
 import java.io.DataOutputStream
 
-import dotty.tools.io.Directory
 
 import scala.tools.asm
 import scala.tools.asm.tree._
 import tpd._
 import StdNames._
-import dotty.tools.dotc.core.tasty.{TastyBuffer, TastyHeaderUnpickler, TastyPickler}
+import dotty.tools.dotc.core.tasty.{TastyBuffer, TastyHeaderUnpickler}
 import dotty.tools.io._
 
 class GenBCode extends Phase {

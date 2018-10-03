@@ -2,14 +2,10 @@ package dotty.tools
 package dotc
 package core
 
-import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
-import SymDenotations._, Denotations.SingleDenotation
-import util.Positions._
+import Contexts._, Types._, Symbols._, Names._, Flags._
+import Denotations.SingleDenotation
 import Decorators._
-import StdNames._
-import Annotations._
 import collection.mutable
-import ast.tpd._
 
 /** Realizability status */
 object CheckRealizable {

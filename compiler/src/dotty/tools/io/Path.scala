@@ -5,7 +5,6 @@
 
 package dotty.tools.io
 
-import scala.language.implicitConversions
 import java.io.RandomAccessFile
 import java.nio.file._
 import java.net.{URI, URL}

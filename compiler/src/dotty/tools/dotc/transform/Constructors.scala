@@ -6,17 +6,13 @@ import MegaPhase._
 import dotty.tools.dotc.ast.tpd._
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames._
-import Phases._
 import ast._
 import Trees._
 import Flags._
 import SymUtils._
 import Symbols._
-import SymDenotations._
-import Types._
 import Decorators._
 import DenotTransformers._
-import util.Positions._
 import Constants.Constant
 import collection.mutable
 

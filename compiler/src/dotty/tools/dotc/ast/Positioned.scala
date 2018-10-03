@@ -2,7 +2,6 @@ package dotty.tools.dotc
 package ast
 
 import util.Positions._
-import util.DotClass
 import core.Contexts.Context
 import core.Decorators._
 import core.Flags.JavaDefined

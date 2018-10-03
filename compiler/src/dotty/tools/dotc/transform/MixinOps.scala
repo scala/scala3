@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Symbols._, Types._, Contexts._, SymDenotations._, DenotTransformers._, Flags._
+import Symbols._, Types._, Contexts._, DenotTransformers._, Flags._
 import util.Positions._
 import SymUtils._
 import StdNames._, NameOps._

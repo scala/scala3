@@ -10,11 +10,7 @@ import Phases._
 import Types._
 import Symbols._
 import Scopes._
-import NameOps._
 import Uniques._
-import SymDenotations._
-import Comments._
-import util.Positions._
 import ast.Trees._
 import ast.untpd
 import util.{FreshNameCreator, NoSource, SimpleIdentityMap, SourceFile}
@@ -25,13 +21,11 @@ import config.Config
 import reporting._
 import reporting.diagnostic.Message
 import collection.mutable
-import collection.immutable.BitSet
 import printing._
-import config.{JavaPlatform, Platform, ScalaSettings, Settings}
+import config.{JavaPlatform, Platform, ScalaSettings}
 
 import scala.annotation.internal.sharable
 
-import language.implicitConversions
 import DenotTransformers.DenotTransformer
 import dotty.tools.dotc.profile.Profiler
 import util.Property.Key

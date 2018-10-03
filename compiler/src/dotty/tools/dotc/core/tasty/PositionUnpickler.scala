@@ -6,7 +6,7 @@ package tasty
 
 import util.Positions._
 import collection.mutable
-import TastyBuffer.{Addr, NoAddr}
+import TastyBuffer.Addr
 
 /** Unpickler for tree positions */
 class PositionUnpickler(reader: TastyReader) {

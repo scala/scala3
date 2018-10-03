@@ -9,11 +9,9 @@ import Names._
 import NameOps._
 import Decorators._
 import TypeUtils._
-import Annotations.Annotation
 import Types._
 import NameKinds.ClassifiedNameKind
 import ast.Trees._
-import util.Property
 import util.Positions.Position
 import config.Printers.transforms
 

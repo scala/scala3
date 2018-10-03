@@ -3,10 +3,8 @@ package transform
 
 import core._
 import Contexts._, Symbols._, Types._, Flags._, Decorators._, StdNames._, Constants._
-import SymDenotations.SymDenotation
 import MegaPhase._
 import SymUtils._
-import ast.untpd
 import ast.Trees._
 import dotty.tools.dotc.reporting.diagnostic.messages.TypeMismatch
 import dotty.tools.dotc.util.Positions.Position

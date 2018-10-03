@@ -3,21 +3,17 @@ package dotc
 package typer
 
 import core._
-import ast.{TreeInfo, Trees, tpd, untpd}
+import ast.{Trees, tpd, untpd}
 import util.Positions._
 import util.Stats.track
 import Trees.Untyped
-import Mode.ImplicitsEnabled
 import Contexts._
 import Flags._
-import Denotations._
-import NameOps._
 import Symbols._
 import Types._
 import Decorators._
 import ErrorReporting._
 import Trees._
-import config.Config
 import Names._
 import StdNames._
 import NameKinds.DefaultGetterName
@@ -28,13 +24,11 @@ import collection.mutable
 import config.Printers.{overload, typr, unapp}
 import TypeApplications._
 
-import language.implicitConversions
 import reporting.diagnostic.Message
 import reporting.trace
 import Constants.{Constant, IntTag, LongTag}
 import dotty.tools.dotc.reporting.diagnostic.messages.{NotAnExtractor, UnapplyInvalidNumberOfArguments}
 
-import scala.collection.mutable.ListBuffer
 
 object Applications {
   import tpd._
@@ -161,14 +155,12 @@ object Applications {
     if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
 }
 
-import Applications._
 
 trait Applications extends Compatibility { self: Typer with Dynamic =>
 
   import Applications._
   import tpd.{ cpy => _, _ }
   import untpd.cpy
-  import Dynamic.isDynamicMethod
 
   /** @tparam Arg       the type of arguments, could be tpd.Tree, untpd.Tree, or Type
    *  @param methRef    the reference to the method of the application

@@ -4,7 +4,7 @@ package printing
 
 import core._
 import Texts._, ast.Trees._
-import Types.Type, Symbols.Symbol, Contexts.Context, Scopes.Scope, Constants.Constant,
+import Types.Type, Symbols.Symbol, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation
 import typer.Implicits.SearchResult
 import typer.ImportInfo

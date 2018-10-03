@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core._
-import ast.{Trees, untpd, tpd, TreeInfo}
+import ast.{Trees, untpd, tpd}
 import util.Positions._
 import util.Stats.{track, record, monitored}
 import printing.{Showable, Printer}
@@ -13,27 +13,23 @@ import Types._
 import Flags._
 import TypeErasure.{erasure, hasStableErasure}
 import Mode.ImplicitsEnabled
-import Denotations._
 import NameOps._
 import NameKinds.LazyImplicitName
-import SymDenotations._
 import Symbols._
 import Types._
 import Decorators._
 import Names._
 import StdNames._
 import Constants._
-import Applications._
 import ProtoTypes._
 import ErrorReporting._
-import Annotations.Annotation
-import reporting.diagnostic.{Message, MessageContainer}
+import reporting.diagnostic.Message
 import Inferencing.fullyDefinedType
 import Trees._
 import Hashable._
 import util.Property
 import config.Config
-import config.Printers.{implicits, implicitsDetailed, typr}
+import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 import reporting.trace
 

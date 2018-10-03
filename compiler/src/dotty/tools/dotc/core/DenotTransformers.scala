@@ -8,8 +8,6 @@ import Types._
 import Symbols._
 import Denotations._
 import Phases._
-import java.lang.AssertionError
-import dotty.tools.dotc.util.DotClass
 
 object DenotTransformers {
 

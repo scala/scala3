@@ -5,7 +5,6 @@ package dotty.tools
 package dotc.classpath
 
 import java.net.URL
-import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation }
 

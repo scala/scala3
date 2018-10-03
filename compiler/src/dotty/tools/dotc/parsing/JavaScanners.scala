@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package parsing
 
-import core.Names._, core.Contexts._, core.Decorators._, util.Positions._
+import core.Contexts._
 import Scanners._
 import util.SourceFile
 import JavaTokens._

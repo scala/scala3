@@ -8,11 +8,10 @@ import transform.SymUtils._
 import transform.TypeUtils._
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Symbols._
-import Denotations._, Decorators._, DenotTransformers._
+import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
+import Decorators._, DenotTransformers._
 import collection.mutable
 import util.{Property, SourceFile, NoSource}
-import typer.ErrorReporting._
 import NameKinds.{TempResultName, OuterSelectName}
 
 import scala.annotation.tailrec

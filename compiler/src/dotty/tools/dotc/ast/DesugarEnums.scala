@@ -4,9 +4,8 @@ package ast
 
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
+import Symbols._, StdNames._, Trees._
 import Decorators._
-import collection.mutable.ListBuffer
 import util.Property
 import typer.ErrorReporting._
 
@@ -15,7 +14,6 @@ import scala.annotation.internal.sharable
 /** Helper methods to desugar enums */
 object DesugarEnums {
   import untpd._
-  import desugar.DerivedFromParamTree
 
   @sharable object CaseKind extends Enumeration {
     val Simple, Object, Class = Value

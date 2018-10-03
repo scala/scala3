@@ -5,7 +5,7 @@ package tasty
 
 import Comments.CommentsContext
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
-import StdNames._, Denotations._, Flags._, Constants._, Annotations._
+import StdNames._, Flags._, Constants._, Annotations._
 import NameKinds._
 import typer.Checking.checkNonCyclic
 import util.Positions._
@@ -13,13 +13,11 @@ import ast.{tpd, untpd, Trees}
 import Trees._
 import Decorators._
 import transform.SymUtils._
-import TastyUnpickler._, TastyBuffer._
+import TastyBuffer._
 import scala.annotation.{tailrec, switch}
 import scala.collection.mutable.ListBuffer
-import scala.collection.{ mutable, immutable }
+import scala.collection.mutable
 import config.Printers.pickling
-import typer.Checking
-import config.Config
 import core.quoted.PickledQuotes
 import scala.quoted
 import scala.quoted.Types.TreeType

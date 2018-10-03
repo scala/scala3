@@ -6,13 +6,9 @@ import scala.io.Codec
 import util.NameTransformer
 import printing.{Showable, Texts, Printer}
 import Texts.Text
-import Decorators._
-import Contexts.Context
 import StdNames.str
 import util.Chars.isIdentifierStart
-import collection.IndexedSeqOptimized
 import collection.immutable
-import util.{DotClass}
 import config.Config
 import java.util.HashMap
 

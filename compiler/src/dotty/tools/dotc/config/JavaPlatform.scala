@@ -5,8 +5,8 @@ package config
 import io._
 import classpath.AggregateClassPath
 import core._
-import Symbols._, Types._, Contexts._, Denotations._, SymDenotations._, StdNames._, Names._
-import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._
+import Symbols._, Types._, Contexts._, SymDenotations._, StdNames._
+import Flags._
 import transform.ExplicitOuter, transform.SymUtils._
 
 class JavaPlatform extends Platform {

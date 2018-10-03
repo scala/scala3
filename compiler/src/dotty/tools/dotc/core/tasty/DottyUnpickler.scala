@@ -3,12 +3,9 @@ package dotc
 package core
 package tasty
 
-import Contexts._, SymDenotations._, Symbols._,  Decorators._
+import Contexts._, SymDenotations._,  Decorators._
 import dotty.tools.dotc.ast.tpd
-import TastyUnpickler._, TastyBuffer._
-import util.Positions._
-import util.{SourceFile, NoSource}
-import Annotations.Annotation
+import TastyUnpickler._
 import classfile.ClassfileParser
 import Names.SimpleName
 import TreeUnpickler.UnpickleMode

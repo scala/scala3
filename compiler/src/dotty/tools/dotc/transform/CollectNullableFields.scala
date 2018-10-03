@@ -4,11 +4,9 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.core.Types.{Type, ExprType}
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.transform.SymUtils._
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 import java.util.IdentityHashMap

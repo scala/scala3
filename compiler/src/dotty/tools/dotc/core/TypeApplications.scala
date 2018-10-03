@@ -5,21 +5,12 @@ package core
 import Types._
 import Contexts._
 import Symbols._
-import SymDenotations.{LazyType, TypeParamsCompleter}
+import SymDenotations.LazyType
 import Decorators._
 import util.Stats._
-import util.common._
 import Names._
 import NameOps._
-import NameKinds._
-import Constants.Constant
-import Flags._
-import StdNames.tpnme
-import util.Positions.Position
-import config.Printers.{core, typr}
-import collection.mutable
 import dotty.tools.dotc.config.Config
-import java.util.NoSuchElementException
 
 object TypeApplications {
 

@@ -5,9 +5,7 @@ import core._
 import Contexts.Context
 import Types._
 import MegaPhase._
-import Decorators._
 import ast.Trees._
-import Flags._
 
 /** Transform references of the form
  *

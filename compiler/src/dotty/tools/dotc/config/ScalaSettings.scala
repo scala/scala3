@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package config
 
-import java.io.File
 import dotty.tools.io.{ Directory, PlainDirectory }
 
 import PathResolver.Defaults

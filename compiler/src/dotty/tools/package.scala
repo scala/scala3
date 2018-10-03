@@ -1,5 +1,4 @@
 package dotty
-import scala.annotation.Annotation
 
 package object tools {
   // Ensure this object is already classloaded, since it's only actually used

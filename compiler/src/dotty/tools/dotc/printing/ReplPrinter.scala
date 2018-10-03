@@ -7,10 +7,9 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types.{ExprType, TypeAlias}
+import dotty.tools.dotc.core.Types.ExprType
 import dotty.tools.dotc.printing.Texts._
 
-import scala.language.implicitConversions
 
 class ReplPrinter(_ctx: Context) extends DecompilerPrinter(_ctx) {
 

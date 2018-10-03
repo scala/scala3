@@ -6,7 +6,6 @@
 package dotty.tools
 package io
 
-import java.nio.file.{Files, NotDirectoryException}
 
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {

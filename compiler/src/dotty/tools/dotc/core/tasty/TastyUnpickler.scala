@@ -3,12 +3,10 @@ package core
 package tasty
 
 import scala.collection.mutable
-import TastyFormat._
 import TastyFormat.NameTags._
 import TastyBuffer.NameRef
-import Names.{Name, TermName, termName, EmptyTermName}
+import Names.{TermName, termName, EmptyTermName}
 import NameKinds._
-import java.util.UUID
 
 object TastyUnpickler {
   class UnpickleException(msg: String) extends RuntimeException(msg)

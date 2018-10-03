@@ -2,7 +2,6 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Names._
 import StdNames.nme
 import Types._
 import dotty.tools.dotc.transform.MegaPhase._
@@ -13,14 +12,8 @@ import Symbols._
 import Constants._
 import Decorators._
 import Denotations._, SymDenotations._
-import Decorators.StringInterpolators
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
-import scala.collection.mutable
 import DenotTransformers._
-import Names.Name
-import NameOps._
-import TypeUtils._
 
 object ElimRepeated {
   val name = "elimRepeated"

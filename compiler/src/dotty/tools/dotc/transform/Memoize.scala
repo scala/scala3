@@ -3,11 +3,9 @@ package transform
 
 import core._
 import DenotTransformers._
-import Phases.Phase
 import Contexts.Context
 import SymDenotations.SymDenotation
 import Denotations._
-import Types._
 import Symbols._
 import SymUtils._
 import Constants._

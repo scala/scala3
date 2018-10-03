@@ -6,9 +6,7 @@ import Types._
 import Contexts._
 import Symbols._
 import SymDenotations._
-import Decorators._
 import Names._
-import StdNames._
 import NameOps._
 import NameKinds._
 import Flags._

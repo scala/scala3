@@ -5,15 +5,14 @@ import scala.annotation.tailrec
 import core._
 import MegaPhase._
 import collection.mutable
-import SymDenotations._, Symbols._, Contexts._, Types._, Names._, StdNames._, NameOps._
+import Symbols._, Contexts._, Types._, StdNames._, NameOps._
 import ast.Trees._
 import util.Positions._
 import typer.Applications.{isProductMatch, isGetMatch, productSelectors}
 import SymUtils._
 import Flags._, Constants._
 import Decorators._
-import patmat.Space
-import NameKinds.{UniqueNameKind, PatMatStdBinderName, PatMatAltsName, PatMatResultName}
+import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}
 import config.Printers.patmatch
 import reporting.diagnostic.messages._
 

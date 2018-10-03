@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package core
 
-import util.common._
 import Types._
 import Symbols._
 import Flags._

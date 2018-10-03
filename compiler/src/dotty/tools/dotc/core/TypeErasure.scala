@@ -2,13 +2,11 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Decorators._
+import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._
 import Flags.JavaDefined
-import NameOps._
 import Uniques.unique
 import dotc.transform.ExplicitOuter._
 import dotc.transform.ValueClasses._
-import util.DotClass
 import transform.TypeUtils._
 import Definitions.MaxImplementedFunctionArity
 import scala.annotation.tailrec

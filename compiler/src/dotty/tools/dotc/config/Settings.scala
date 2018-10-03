@@ -2,11 +2,11 @@ package dotty.tools.dotc
 package config
 
 import collection.mutable.{ ArrayBuffer }
-import scala.util.{ Try, Success, Failure }
+import scala.util.{ Success, Failure }
 import reflect.ClassTag
 import core.Contexts._
 import scala.annotation.tailrec
-import dotty.tools.io.{ AbstractFile, Directory, JarArchive, PlainDirectory, File, Path }
+import dotty.tools.io.{ AbstractFile, Directory, JarArchive, PlainDirectory }
 
 // import annotation.unchecked
   // Dotty deviation: Imports take precedence over definitions in enclosing package

@@ -7,11 +7,11 @@
 package dotty.tools
 package io
 
-import java.io.{ InputStream, OutputStream, IOException, FileNotFoundException, FileInputStream, DataOutputStream }
+import java.io.{ InputStream, OutputStream, DataOutputStream }
 import java.util.jar._
 import scala.collection.JavaConverters._
 import Attributes.Name
-import scala.language.{postfixOps, implicitConversions}
+import scala.language.postfixOps
 import scala.annotation.tailrec
 
 // Attributes.Name instances:

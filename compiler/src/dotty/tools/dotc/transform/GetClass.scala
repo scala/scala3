@@ -4,7 +4,6 @@ package transform
 import ast.tpd
 import core.Contexts.Context
 import core.StdNames.nme
-import core.Phases.Phase
 import TypeUtils._
 import MegaPhase.MiniPhase
 

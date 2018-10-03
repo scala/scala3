@@ -5,7 +5,6 @@ package core
 import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation }
 import Contexts.{Context, ContextBase}
 import Names._
-import NameOps._
 import NameKinds._
 import StdNames._
 import Symbols.NoSymbol
@@ -15,14 +14,12 @@ import Periods._
 import Flags._
 import DenotTransformers._
 import Decorators._
-import dotc.transform.Erasure
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
 import config.Config
 import util.common._
 import collection.mutable.ListBuffer
-import Decorators.SymbolIteratorDecorator
 import SymDenotations.LazyType
 
 /** Denotations represent the meaning of symbols and named types.

@@ -4,11 +4,10 @@ package printing
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, Denotations._
 import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
-import StdNames.{nme, tpnme}
-import ast.Trees._, ast._
+import StdNames.nme
+import ast.Trees._
 import typer.Implicits._
 import typer.ImportInfo
-import config.Config
 import java.lang.Integer.toOctalString
 import config.Config.summarizeDepth
 import scala.util.control.NonFatal

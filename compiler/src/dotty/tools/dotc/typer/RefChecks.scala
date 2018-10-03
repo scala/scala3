@@ -14,7 +14,6 @@ import ast._
 import Trees._
 import MegaPhase._
 import config.Printers.{checks, noPrinter}
-import util.DotClass
 import scala.util.Failure
 import config.NoScalaVersion
 import Decorators._

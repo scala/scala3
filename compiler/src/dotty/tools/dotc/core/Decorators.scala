@@ -3,7 +3,7 @@ package core
 
 import annotation.tailrec
 import Symbols._
-import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer, printing.Showable
+import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer
 import util.Positions.Position, util.SourcePosition
 import collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase

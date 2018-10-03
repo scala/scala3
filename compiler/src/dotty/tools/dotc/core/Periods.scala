@@ -1,7 +1,6 @@
 package dotty.tools.dotc.core
 
 import Contexts._
-import dotty.tools.dotc.util.DotClass
 
 /** Periods are the central "clock" of the compiler.
  *  A period consists of a run id and a phase id.

@@ -5,9 +5,7 @@ import core._
 import MegaPhase.MiniPhase
 import Contexts.Context
 import Types._
-import Decorators._
 import NameKinds.OuterSelectName
-import ast.Trees._
 
 /** This phase rewrites outer selects `E.n_<outer>` which were introduced by
  *  inlining to outer paths.

@@ -11,7 +11,6 @@ import core.Flags._
 import core.Decorators._
 import collection.mutable
 import ast.Trees._
-import core.Names.TermName
 import core.NameKinds.SuperArgName
 import SymUtils._
 

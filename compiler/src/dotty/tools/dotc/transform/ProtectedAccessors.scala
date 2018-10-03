@@ -7,7 +7,6 @@ import core.Symbols._
 import core.Flags._
 import core.Decorators._
 import MegaPhase.MiniPhase
-import ast.Trees._
 import config.Printers.transforms
 
 /** Add accessors for all protected accesses. An accessor is needed if
@@ -49,7 +48,6 @@ object ProtectedAccessors {
 
 class ProtectedAccessors extends MiniPhase {
   import ast.tpd._
-  import ProtectedAccessors._
 
   override def phaseName = ProtectedAccessors.name
 

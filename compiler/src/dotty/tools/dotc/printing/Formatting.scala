@@ -2,16 +2,13 @@ package dotty.tools.dotc
 package printing
 
 import core._
-import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Contexts._
+import Texts._, Types._, Flags._, Symbols._, Contexts._
 import collection.mutable
-import collection.Map
 import Decorators._
-import scala.annotation.switch
 import scala.util.control.NonFatal
 import reporting.diagnostic.MessageContainer
 import util.DiffUtil
 import Highlighting._
-import SyntaxHighlighting._
 
 object Formatting {
 

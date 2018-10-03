@@ -11,15 +11,12 @@ import Symbols._
 import Types.{TermRef, NoPrefix}
 import Flags.Implicit
 import Names._
-import Periods._
-import Decorators._
 import Contexts._
 import Denotations._
 import SymDenotations._
 import printing.Texts._
 import printing.Printer
 import util.common._
-import util.DotClass
 import SymDenotations.NoDenotation
 import collection.mutable
 

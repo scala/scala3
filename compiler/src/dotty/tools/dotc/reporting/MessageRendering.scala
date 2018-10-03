@@ -6,7 +6,7 @@ import core.Contexts.Context
 import core.Decorators._
 import printing.Highlighting.{Blue, Red}
 import printing.SyntaxHighlighting
-import diagnostic.{ErrorMessageID, Message, MessageContainer, NoExplanation}
+import diagnostic.{ErrorMessageID, Message, MessageContainer}
 import diagnostic.messages._
 import util.SourcePosition
 import util.Chars.{ LF, CR, FF, SU }

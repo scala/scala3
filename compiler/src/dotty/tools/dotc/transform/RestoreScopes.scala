@@ -6,11 +6,8 @@ import DenotTransformers.IdentityDenotTransformer
 import Contexts.Context
 import Symbols._
 import Scopes._
-import collection.mutable
 import MegaPhase.MiniPhase
-import SymDenotations._
 import ast.Trees._
-import NameOps._
 import StdNames._
 
 /** The preceding lambda lift and flatten phases move symbols to different scopes

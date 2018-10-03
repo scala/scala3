@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package typer
 
-import dotty.tools.dotc.ast.Trees.NamedArg
 import dotty.tools.dotc.ast.{Trees, untpd, tpd, TreeTypeMap}
 import Trees._
 import core._
@@ -13,23 +12,15 @@ import Decorators._
 import Constants._
 import StdNames._
 import Contexts.Context
-import Names.{Name, TermName, EmptyTermName}
-import NameOps._
-import NameKinds.{ClassifiedNameKind, InlineAccessorName, UniqueInlineName, InlineScrutineeName, InlineBinderName}
+import Names.Name
 import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
-import Annotations._
-import transform.{ExplicitOuter, AccessProxies}
 import Inferencing.fullyDefinedType
 import config.Printers.inlining
 import ErrorReporting.errorTree
 import collection.mutable
-import transform.TypeUtils._
-import transform.SymUtils._
 import reporting.trace
 import util.Positions.Position
-import util.Property
-import ast.TreeInfo
 
 object Inliner {
   import tpd._
@@ -166,7 +157,6 @@ object Inliner {
  */
 class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   import tpd._
-  import Inliner._
 
   private val (methPart, callTypeArgs, callValueArgss) = decomposeCall(call)
   private val inlinedMethod = methPart.symbol

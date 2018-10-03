@@ -3,13 +3,10 @@ package dotc
 package ast
 
 import core._
-import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
-import Denotations._, SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
-import Decorators._
+import Types._, Contexts._, Constants._, Names._, Flags._
+import Symbols._, StdNames._, Trees._
 import util.Property
 import language.higherKinds
-import collection.mutable.ListBuffer
-import reflect.ClassTag
 
 import scala.annotation.internal.sharable
 

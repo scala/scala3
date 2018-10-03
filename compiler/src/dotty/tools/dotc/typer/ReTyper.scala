@@ -9,10 +9,8 @@ import StdNames._
 import Decorators._
 import typer.ProtoTypes._
 import ast.{tpd, untpd}
-import ast.Trees._
 import scala.util.control.NonFatal
 import util.Positions.Position
-import config.Printers.typr
 
 /** A version of Typer that keeps all symbols defined and referenced in a
  *  previously typed tree.

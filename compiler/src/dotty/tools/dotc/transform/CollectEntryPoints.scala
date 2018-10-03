@@ -2,20 +2,13 @@ package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
-import scala.collection.mutable.ListBuffer
-import dotty.tools.dotc.core.{Scopes, Flags}
-import dotty.tools.dotc.core.Symbols.NoSymbol
-import scala.annotation.tailrec
+import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core._
 import Symbols._
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
-import scala.collection.mutable
-import dotty.tools.dotc.core.Names.Name
-import NameOps._
 import Types._
-import scala.collection.SortedSet
 import Decorators._
 import StdNames._
 import dotty.tools.dotc.util.Positions.Position

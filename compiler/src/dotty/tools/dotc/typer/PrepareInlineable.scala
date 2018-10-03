@@ -2,33 +2,21 @@ package dotty.tools
 package dotc
 package typer
 
-import dotty.tools.dotc.ast.Trees.NamedArg
-import dotty.tools.dotc.ast.{Trees, untpd, tpd, TreeTypeMap}
+import dotty.tools.dotc.ast.{Trees, untpd, tpd}
 import Trees._
 import core._
 import Flags._
 import Symbols._
 import Types._
 import Decorators._
-import Constants._
 import StdNames.nme
 import Contexts.Context
-import Names.{Name, TermName, EmptyTermName}
-import NameOps._
-import NameKinds.{ClassifiedNameKind, InlineAccessorName, UniqueInlineName}
-import ProtoTypes.selectionProto
-import SymDenotations.SymDenotation
+import Names.Name
+import NameKinds.{InlineAccessorName, UniqueInlineName}
 import Annotations._
-import transform.{ExplicitOuter, AccessProxies}
-import Inferencing.fullyDefinedType
+import transform.AccessProxies
 import config.Printers.inlining
-import ErrorReporting.errorTree
-import collection.mutable
-import transform.TypeUtils._
-import reporting.trace
-import util.Positions.Position
 import util.Property
-import ast.TreeInfo
 
 object PrepareInlineable {
   import tpd._

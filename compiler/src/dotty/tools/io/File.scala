@@ -9,7 +9,7 @@
 package dotty.tools.io
 
 import java.io.{
-  FileInputStream, FileOutputStream, BufferedWriter, OutputStreamWriter,
+  BufferedWriter, OutputStreamWriter,
   BufferedOutputStream, IOException, PrintWriter
 }
 import java.nio.file.{Files, Paths}

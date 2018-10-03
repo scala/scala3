@@ -2,7 +2,6 @@ package dotty.tools.dotc.tastyreflect
 
 import dotty.tools.dotc.core.Symbols._
 
-import dotty.tools.dotc.tastyreflect.FromSymbol._
 
 trait StandardDefinitions extends scala.tasty.reflect.StandardDefinitions {
     tasty: TastyImpl =>

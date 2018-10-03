@@ -3,9 +3,9 @@ package dotc
 package ast
 
 import core._
-import Types._, Contexts._, Constants._, Names._, Flags._
-import SymDenotations._, Symbols._, Annotations._, Trees._, Symbols._
-import Denotations._, Decorators._
+import Types._, Contexts._
+import Symbols._, Annotations._, Trees._, Symbols._
+import Decorators._
 import dotty.tools.dotc.transform.SymUtils._
 import core.tasty.TreePickler.Hole
 

@@ -2,13 +2,11 @@ package dotty.tools.dotc
 package core
 
 import scala.language.implicitConversions
-import scala.collection.{mutable, immutable}
+import scala.collection.mutable
 import scala.annotation.switch
 import Names._
 import Symbols._
 import Contexts._
-import Decorators.PreNamedString
-import util.NameTransformer
 
 object StdNames {
 

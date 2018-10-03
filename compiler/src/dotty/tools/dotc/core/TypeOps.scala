@@ -2,18 +2,12 @@ package dotty.tools
 package dotc
 package core
 
-import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
-import SymDenotations._, Denotations.SingleDenotation
-import config.Printers.typr
+import Contexts._, Types._, Symbols._, Names._, Flags._
+import SymDenotations._
 import util.Positions._
-import NameOps._
 import NameKinds.DepParamName
 import Decorators._
 import StdNames._
-import Annotations._
-import annotation.tailrec
-import config.Config
-import util.Property
 import collection.mutable
 import ast.tpd._
 import reporting.trace

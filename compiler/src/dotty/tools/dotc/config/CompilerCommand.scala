@@ -5,7 +5,6 @@ import java.nio.file.{Files, Paths}
 
 import Settings._
 import core.Contexts._
-import util.DotClass
 import Properties._
 
 import scala.collection.JavaConverters._

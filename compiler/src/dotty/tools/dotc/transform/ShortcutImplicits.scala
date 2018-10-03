@@ -7,15 +7,11 @@ import core.Symbols._
 import core.Contexts._
 import core.Types._
 import core.Flags._
-import core.Decorators._
 import core.StdNames.nme
-import core.Names._
-import core.NameOps._
 import core.NameKinds.DirectMethodName
 import ast.Trees._
 import ast.tpd
 import util.Store
-import collection.mutable
 
 /** This phase optimizes code using implicit function types, by applying two rewrite rules.
  *  Let IF be the implicit function type

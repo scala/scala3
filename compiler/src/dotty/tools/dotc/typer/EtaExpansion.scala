@@ -3,17 +3,14 @@ package dotc
 package typer
 
 import core._
-import ast.{Trees, untpd, tpd, TreeInfo}
+import ast.{Trees, untpd, tpd}
 import Contexts._
 import Types._
 import Flags._
-import NameOps._
 import Symbols._
-import Decorators._
 import Names._
 import StdNames._
 import NameKinds.UniqueName
-import Inferencing._
 import util.Positions._
 import collection.mutable
 import Trees._

@@ -5,17 +5,15 @@ import core._
 import Contexts._
 import Periods._
 import Symbols._
-import Phases._
 import Types._
 import Scopes._
-import typer.{FrontEnd, ImportInfo, RefChecks, Typer}
+import typer.{ImportInfo, Typer}
 import Decorators._
 import io.{AbstractFile, PlainFile}
 
 import scala.io.Codec
 import util.{Set => _, _}
 import reporting.Reporter
-import transform.TreeChecker
 import rewrites.Rewrites
 import java.io.{BufferedWriter, OutputStreamWriter}
 
@@ -26,7 +24,6 @@ import parsing.JavaParsers.JavaParser
 import typer.ImplicitRunInfo
 import collection.mutable
 
-import scala.annotation.tailrec
 import dotty.tools.io.VirtualFile
 
 import scala.util.control.NonFatal

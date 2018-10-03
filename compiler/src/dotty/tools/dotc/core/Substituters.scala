@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core
 
-import Types._, Symbols._, Contexts._, Names._
+import Types._, Symbols._, Contexts._
 
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.

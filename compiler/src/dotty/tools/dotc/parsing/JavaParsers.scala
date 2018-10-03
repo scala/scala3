@@ -6,7 +6,6 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.FlagSet
 
-import scala.language.implicitConversions
 
 import JavaTokens._
 import JavaScanners._
@@ -15,7 +14,6 @@ import Parsers._
 import core._
 import Contexts._
 import Names._
-import NameOps._
 import Types._
 import Symbols._
 import ast.Trees._
@@ -24,7 +22,6 @@ import StdNames._
 import dotty.tools.dotc.reporting.diagnostic.messages.IdentifierExpected
 import dotty.tools.dotc.util.SourceFile
 import util.Positions._
-import annotation.switch
 import scala.collection.mutable.ListBuffer
 
 object JavaParsers {

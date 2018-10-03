@@ -1,17 +1,11 @@
 package dotty.tools.dotc
 package transform
 
-import MegaPhase._
 import core._
 import DenotTransformers.InfoTransformer
 import Symbols._
-import SymDenotations._
 import Contexts._
 import Types._
-import Flags._
-import Decorators._
-import SymUtils._
-import util.Attachment
 import core.StdNames.nme
 import ast.Trees._
 

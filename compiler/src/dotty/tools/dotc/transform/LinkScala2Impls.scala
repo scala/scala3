@@ -7,17 +7,12 @@ import Contexts.Context
 import Flags._
 import SymUtils._
 import Symbols._
-import SymDenotations._
 import Types._
 import Decorators._
 import DenotTransformers._
 import StdNames._
-import NameOps._
-import Phases._
-import ast.untpd
 import ast.Trees._
 import NameKinds.ImplMethName
-import collection.mutable
 
 /** Rewrite calls
  *

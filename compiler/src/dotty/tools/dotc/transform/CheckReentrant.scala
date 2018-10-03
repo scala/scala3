@@ -2,24 +2,11 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Names._
 import dotty.tools.dotc.transform.MegaPhase._
-import ast.Trees._
 import Flags._
-import Types._
-import Constants.Constant
 import Contexts.Context
 import Symbols._
-import SymDenotations._
 import Decorators._
-import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
-import dotty.tools.dotc.core.Denotations.SingleDenotation
-import scala.collection.mutable
-import DenotTransformers._
-import typer.Checking
-import Names.Name
-import NameOps._
-import StdNames._
 
 
 /** A no-op transform that checks whether the compiled sources are re-entrant.

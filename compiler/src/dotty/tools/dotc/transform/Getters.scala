@@ -7,11 +7,8 @@ import Contexts.Context
 import SymDenotations.SymDenotation
 import Types._
 import Symbols._
-import SymUtils._
-import Constants._
 import MegaPhase._
 import Flags._
-import Decorators._
 import ValueClasses._
 
 /** Performs the following rewritings for fields of a class:

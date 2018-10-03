@@ -4,11 +4,8 @@
 package dotty.tools.dotc.classpath
 
 import java.io.{File => JFile}
-import java.net.{URI, URL}
-import java.nio.file.{FileSystems, Files, SimpleFileVisitor}
-import java.util.function.IntFunction
-import java.util
-import java.util.Comparator
+import java.net.URL
+import java.nio.file.{FileSystems, Files}
 
 import dotty.tools.io.{AbstractFile, PlainFile, ClassPath, ClassRepresentation}
 import FileUtils._

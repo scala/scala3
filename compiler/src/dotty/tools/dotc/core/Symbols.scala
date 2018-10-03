@@ -6,7 +6,6 @@ import Periods._
 import Names._
 import Scopes._
 import Flags._
-import java.lang.AssertionError
 import Decorators._
 import Symbols._
 import Contexts._
@@ -14,7 +13,6 @@ import SymDenotations._
 import printing.Texts._
 import printing.Printer
 import Types._
-import Annotations._
 import util.Positions._
 import DenotTransformers._
 import StdNames._
@@ -25,11 +23,10 @@ import tpd.{Tree, TreeProvider, TreeOps}
 import ast.TreeTypeMap
 import Constants.Constant
 import reporting.diagnostic.Message
-import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
-import util.{NoSource, DotClass, Property}
+import util.{NoSource, Property}
 import scala.collection.JavaConverters._
 import scala.annotation.internal.sharable
 import config.Printers.typr

@@ -3,7 +3,6 @@ package transform
 
 import core._
 import Names._
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.transform.MegaPhase._
 import ast.Trees._
 import ast.untpd
@@ -12,15 +11,11 @@ import Types._
 import Constants.Constant
 import Contexts.Context
 import Symbols._
-import SymDenotations._
 import Decorators._
-import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
-import dotty.tools.dotc.core.Denotations.SingleDenotation
 import scala.collection.mutable
 import DenotTransformers._
-import typer.Checking
 import NameOps._
-import NameKinds.{AvoidClashName, OuterSelectName}
+import NameKinds.OuterSelectName
 import StdNames._
 
 object FirstTransform {

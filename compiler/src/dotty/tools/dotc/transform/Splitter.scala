@@ -4,7 +4,7 @@ package transform
 import MegaPhase._
 import ast.Trees._
 import core._
-import Contexts._, Types._, Decorators._, Denotations._, Symbols._, SymDenotations._, Names._
+import Contexts._, Types._
 
 object Splitter {
   val name = "splitter"

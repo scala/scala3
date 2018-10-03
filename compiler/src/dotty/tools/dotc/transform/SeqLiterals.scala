@@ -2,12 +2,8 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Types._
 import dotty.tools.dotc.transform.MegaPhase._
 import Contexts.Context
-import Symbols._
-import Phases._
-import Decorators._
 
 /** A transformer that eliminates SeqLiteral's, transforming `SeqLiteral(elems)` to an operation
  *  equivalent to

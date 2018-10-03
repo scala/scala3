@@ -1,13 +1,10 @@
 package dotty.tools.dotc
 package typer
 
-import dotty.tools.dotc.ast.{Trees, tpd}
 import core._
-import Types._, Contexts._, Flags._, Symbols._, Annotations._, Trees._
-import Decorators._
+import Types._, Contexts._, Flags._, Symbols._, Annotations._
 
 object Variances {
-  import tpd._
 
   type Variance = FlagSet
   val Bivariant = VarianceFlags

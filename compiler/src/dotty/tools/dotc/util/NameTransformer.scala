@@ -3,7 +3,6 @@ package dotc
 package util
 
 import core.Names._
-import core.Decorators._
 import collection.mutable
 import util.Chars.isValidJVMMethodChar
 

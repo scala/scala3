@@ -14,7 +14,6 @@ import core.NameOps._
 import ast.Trees._
 import SymUtils._
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Phases.Phase
 
 import collection.mutable
 import scala.annotation.tailrec

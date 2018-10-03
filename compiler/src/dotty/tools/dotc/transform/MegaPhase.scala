@@ -4,13 +4,8 @@ package transform
 
 import core._
 import ast.Trees._
-import Contexts._, Phases._, Periods._, Symbols._, Decorators._
+import Contexts._, Phases._, Symbols._, Decorators._
 import Flags.PackageVal
-import scala.annotation.tailrec
-import config.Printers.transforms
-import scala.util.control.NonFatal
-import reporting.trace
-import annotation.switch
 
 /** A MegaPhase combines a number of mini-phases which are all executed in
  *  a single tree traversal.

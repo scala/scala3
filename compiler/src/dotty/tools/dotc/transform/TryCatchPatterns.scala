@@ -6,7 +6,6 @@ import core.StdNames._
 import ast.Trees._
 import core.Types._
 import core.NameKinds.ExceptionBinderName
-import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase

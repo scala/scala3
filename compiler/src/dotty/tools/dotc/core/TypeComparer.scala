@@ -4,11 +4,11 @@ package core
 
 import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
 import Decorators._
-import StdNames.{nme, tpnme}
+import StdNames.nme
 import collection.mutable
-import util.{Stats, DotClass}
+import util.Stats
 import config.Config
-import config.Printers.{typr, constr, subtyping, gadts, noPrinter}
+import config.Printers.{constr, subtyping, gadts, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import Constants.Constant
@@ -21,7 +21,7 @@ import reporting.trace
  */
 class TypeComparer(initctx: Context) extends ConstraintHandling {
   import TypeComparer._
-  implicit val ctx = initctx
+  implicit val ctx: _root_.dotty.tools.dotc.core.Contexts.Context = initctx
 
   val state = ctx.typerState
   import state.constraint

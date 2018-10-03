@@ -8,7 +8,6 @@ import dotty.tools.io._
 import Phases._
 import config.Printers.plugins.{ println => debug }
 
-import scala.collection.mutable.ListBuffer
 
 /** Support for run-time loading of compiler plugins.
  *

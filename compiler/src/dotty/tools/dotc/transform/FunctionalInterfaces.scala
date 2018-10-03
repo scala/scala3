@@ -2,21 +2,11 @@ package dotty.tools.dotc
 package transform
 
 import MegaPhase._
-import core.DenotTransformers._
 import core.Symbols._
 import core.Contexts._
-import core.Types._
-import core.Flags._
 import core.Decorators._
-import core.SymDenotations._
-import core.StdNames.nme
-import core.Names._
 import core.NameOps._
-import ast.Trees._
-import SymUtils._
 import dotty.tools.dotc.ast.tpd
-import collection.{ mutable, immutable }
-import collection.mutable.{ LinkedHashMap, LinkedHashSet, TreeSet }
 
 
 object FunctionalInterfaces {

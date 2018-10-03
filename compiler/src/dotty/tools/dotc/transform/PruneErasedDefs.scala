@@ -7,7 +7,6 @@ import DenotTransformers.SymTransformer
 import Flags._
 import SymDenotations._
 import Symbols._
-import Types._
 import typer.RefChecks
 import MegaPhase.MiniPhase
 import ast.tpd

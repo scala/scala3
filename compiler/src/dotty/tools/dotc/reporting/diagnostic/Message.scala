@@ -4,7 +4,6 @@ package reporting
 package diagnostic
 
 import util.SourcePosition
-import core.Contexts.Context
 
 import messages._
 

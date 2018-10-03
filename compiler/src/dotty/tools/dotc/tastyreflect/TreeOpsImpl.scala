@@ -3,7 +3,6 @@ package dotty.tools.dotc.tastyreflect
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFromSym}
 

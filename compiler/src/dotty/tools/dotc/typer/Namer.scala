@@ -4,24 +4,20 @@ package typer
 
 import core._
 import ast._
-import Trees._, Constants._, StdNames._, Scopes._, Denotations._, Comments._
+import Trees._, StdNames._, Scopes._, Denotations._, Comments._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import NameKinds.DefaultGetterName
 import ast.desugar, ast.desugar._
 import ProtoTypes._
 import util.Positions._
-import util.{Property, SourcePosition, DotClass}
+import util.Property
 import collection.mutable
-import annotation.tailrec
-import ErrorReporting._
 import tpd.ListOfTreeDecorator
 import config.Config
-import config.Printers.{typr, noPrinter}
+import config.Printers.typr
 import Annotations._
 import Inferencing._
 import transform.ValueClasses._
-import TypeApplications._
-import language.implicitConversions
 import reporting.diagnostic.messages._
 
 trait NamerContextOps { this: Context =>

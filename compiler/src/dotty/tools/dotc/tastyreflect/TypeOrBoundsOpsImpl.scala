@@ -1,8 +1,6 @@
 package dotty.tools.dotc.tastyreflect
 
-import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.{Names, Types}
-import dotty.tools.dotc.tastyreflect.FromSymbol.definitionFromSym
 
 trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with TastyCoreImpl {
 

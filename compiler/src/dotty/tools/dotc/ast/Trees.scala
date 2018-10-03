@@ -5,18 +5,13 @@ package ast
 import core._
 import Types._, Names._, NameOps._, Flags._, util.Positions._, Contexts._, Constants._
 import SymDenotations._, Symbols._, Denotations._, StdNames._, Comments._
-import annotation.tailrec
 import language.higherKinds
-import collection.IndexedSeqOptimized
-import collection.immutable.IndexedSeq
 import collection.mutable.ListBuffer
-import parsing.Tokens.Token
 import printing.Printer
-import util.{Stats, Attachment, Property, DotClass}
+import util.{Stats, Attachment, Property}
 import config.Config
 import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
-import language.implicitConversions
 
 object Trees {
 

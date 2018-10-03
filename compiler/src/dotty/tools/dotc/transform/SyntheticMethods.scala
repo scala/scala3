@@ -2,19 +2,13 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Symbols._, Types._, Contexts._, Names._, StdNames._, Constants._, SymUtils._
-import scala.collection.{ mutable, immutable }
+import Symbols._, Types._, Contexts._, StdNames._, Constants._, SymUtils._
 import Flags._
-import MegaPhase._
 import DenotTransformers._
-import ast.Trees._
-import ast.untpd
 import Decorators._
 import NameOps._
 import Annotations.Annotation
 import ValueClasses.isDerivedValueClass
-import scala.collection.mutable.ListBuffer
-import scala.language.postfixOps
 
 /** Synthetic method implementations for case classes, case objects,
  *  and value classes.

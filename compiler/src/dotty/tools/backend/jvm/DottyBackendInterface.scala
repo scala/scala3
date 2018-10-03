@@ -6,37 +6,29 @@ import dotty.tools.dotc
 import dotty.tools.dotc.core.Flags.FlagSet
 import dotty.tools.dotc.transform.{Erasure, GenericSignatures}
 import dotty.tools.dotc.transform.SymUtils._
-import java.io.{File => JFile}
+import java.io.{File => _}
 
 import scala.collection.generic.Clearable
 import scala.collection.mutable
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.WeakHashSet
-import dotty.tools.io.{AbstractFile, Directory, PlainDirectory}
-import scala.tools.asm.{AnnotationVisitor, ClassVisitor, FieldVisitor, MethodVisitor}
+import dotty.tools.io.AbstractFile
+import scala.tools.asm.AnnotationVisitor
 import scala.tools.nsc.backend.jvm.{BCodeHelpers, BackendInterface}
 import dotty.tools.dotc.core._
-import Periods._
-import SymDenotations._
 import Contexts._
 import Types._
 import Symbols._
-import Denotations._
 import Phases._
-import java.lang.AssertionError
 
-import dotty.tools.dotc.util.{DotClass, Positions}
+import dotty.tools.dotc.util.Positions
 import Decorators._
 import tpd._
 
 import scala.tools.asm
 import StdNames.{nme, str}
-import NameOps._
 import NameKinds.{DefaultGetterName, ExpandedName}
-import dotty.tools.dotc.core
-import dotty.tools.dotc.core.Names.TypeName
 
-import scala.annotation.tailrec
 
 class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(implicit ctx: Context) extends BackendInterface{
   import Symbols.{toDenot, toClassDenot}

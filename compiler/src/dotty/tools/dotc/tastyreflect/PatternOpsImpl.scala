@@ -4,7 +4,6 @@ import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Types
 
-import scala.tasty.util.Show
 
 trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with TastyCoreImpl {
 

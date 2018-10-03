@@ -6,13 +6,12 @@
 package dotty.tools.io
 
 import java.net.URL
-import java.io.{ IOException, InputStream, ByteArrayInputStream, FilterInputStream }
+import java.io.{ IOException, InputStream, FilterInputStream }
 import java.nio.file.Files
-import java.util.zip.{ ZipEntry, ZipFile, ZipInputStream }
+import java.util.zip.{ ZipEntry, ZipFile }
 import java.util.jar.Manifest
 import scala.collection.mutable
 import scala.collection.JavaConverters._
-import scala.annotation.tailrec
 
 /** An abstraction for zip files and streams.  Everything is written the way
  *  it is for performance: we come through here a lot on every run.  Be careful

@@ -33,7 +33,6 @@ object Reporter {
   }
 }
 
-import Reporter._
 
 trait Reporting { this: Context =>
 

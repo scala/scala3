@@ -7,8 +7,7 @@ import ast.Trees._
 import core._
 import printing.{Printer, Showable}
 import util.SimpleIdentityMap
-import Symbols._, Names._, Denotations._, Types._, Contexts._, StdNames._, Flags._
-import Decorators.StringInterpolators
+import Symbols._, Names._, Types._, Contexts._, StdNames._, Flags._
 import Implicits.RenamedImplicitRef
 
 object ImportInfo {

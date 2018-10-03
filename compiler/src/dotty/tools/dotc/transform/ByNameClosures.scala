@@ -2,12 +2,9 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Symbols._
-import SymDenotations._
 import Contexts._
 import Types._
 import Flags._
-import Decorators._
 import DenotTransformers.IdentityDenotTransformer
 import core.StdNames.nme
 

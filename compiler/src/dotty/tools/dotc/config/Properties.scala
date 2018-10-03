@@ -4,7 +4,7 @@ package config
 
 import scala.annotation.internal.sharable
 
-import java.io.{ IOException, PrintWriter }
+import java.io.IOException
 import java.util.jar.Attributes.{ Name => AttributeName }
 
 /** Loads `library.properties` from the jar. */

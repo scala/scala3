@@ -6,8 +6,6 @@ import Types._, Contexts._, Symbols._
 import Decorators._
 import config.Config
 import config.Printers.{constr, typr}
-import TypeApplications.{EtaExpansion, TypeParamInfo}
-import collection.mutable
 
 /** Methods for adding constraints and solving them.
  *

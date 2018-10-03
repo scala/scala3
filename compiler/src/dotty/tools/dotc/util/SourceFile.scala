@@ -4,11 +4,9 @@ package util
 
 import scala.collection.mutable.ArrayBuffer
 import dotty.tools.io._
-import annotation.tailrec
 import java.util.regex.Pattern
 import java.io.IOException
 import Chars._
-import ScriptSourceFile._
 import Positions._
 import scala.io.Codec
 import scala.annotation.internal.sharable

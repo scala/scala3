@@ -10,9 +10,7 @@ import util.Chars._
 import util.NameTransformer.avoidIllegalChars
 import Tokens._
 import scala.annotation.{ switch, tailrec }
-import scala.collection.mutable
 import scala.collection.immutable.SortedMap
-import mutable.ListBuffer
 import rewrites.Rewrites.patch
 
 object Scanners {

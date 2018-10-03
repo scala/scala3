@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 
 import core.StdNames.{nme,tpnme}
-import parsing.{precedence, minPrec, maxPrec, minInfixPrec}
 import util.Property.Key
 
 package object printing {

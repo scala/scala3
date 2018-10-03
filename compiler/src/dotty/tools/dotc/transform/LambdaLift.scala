@@ -8,18 +8,16 @@ import core.Contexts._
 import core.Types._
 import core.Flags._
 import core.Decorators._
-import core.StdNames.{nme, str}
+import core.StdNames.nme
 import core.Names._
 import core.NameOps._
 import core.NameKinds.ExpandPrefixName
-import core.Phases._
 import ast.Trees._
 import SymUtils._
 import ExplicitOuter.outer
 import util.Store
-import util.Positions._
-import collection.{ mutable, immutable }
-import collection.mutable.{ HashMap, HashSet, LinkedHashMap, LinkedHashSet, TreeSet }
+import collection.mutable
+import collection.mutable.{ HashMap, HashSet, LinkedHashMap, TreeSet }
 
 object LambdaLift {
   import ast.tpd._

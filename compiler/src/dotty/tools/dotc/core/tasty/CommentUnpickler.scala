@@ -1,7 +1,6 @@
 package dotty.tools.dotc.core.tasty
 
 import dotty.tools.dotc.core.Comments.Comment
-import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.tasty.TastyBuffer.Addr
 import dotty.tools.dotc.util.Positions.Position
 

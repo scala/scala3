@@ -7,9 +7,7 @@ import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
 import dotc.util.SourceFile
 import dotc.ast.untpd
-import dotc.reporting._
 
-import results._
 
 import scala.annotation.internal.sharable
 

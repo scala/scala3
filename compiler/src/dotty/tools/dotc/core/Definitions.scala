@@ -2,13 +2,11 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
-import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._, Periods._
+import Types._, Contexts._, Symbols._, SymDenotations._, StdNames._, Names._
+import Flags._, Scopes._, Decorators._, NameOps._, Periods._
 import unpickleScala2.Scala2Unpickler.ensureConstructor
-import scala.collection.{ mutable, immutable }
-import PartialFunction._
+import scala.collection.mutable
 import collection.mutable
-import util.common.alwaysZero
 
 object Definitions {
 
