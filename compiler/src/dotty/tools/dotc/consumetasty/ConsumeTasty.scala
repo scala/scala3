@@ -2,6 +2,7 @@ package dotty.tools.dotc.consumetasty
 
 import dotty.tools.dotc
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.quoted.QuoteDriver
 
 import scala.tasty.file.TastyConsumer
 
@@ -15,7 +16,7 @@ object ConsumeTasty {
         new TastyFromClass(tastyConsumer)
     }
 
-    val currentClasspath = System.getProperty("java.class.path")
+    val currentClasspath = QuoteDriver.currentClasspath
     val args = "-from-tasty" +: "-classpath" +: s"$classpath:$currentClasspath" +: classes
     (new Consume).process(args.toArray)
   }
