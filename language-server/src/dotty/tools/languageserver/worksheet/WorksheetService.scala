@@ -17,12 +17,12 @@ trait WorksheetService { thisServer: DottyLanguageServer =>
 
   @JsonRequest
   def exec(params: WorksheetExecParams): CompletableFuture[WorksheetExecResponse] = thisServer.synchronized {
-    val uri = params.uri
+    val uri = new URI(params.textDocument.getUri)
     val future =
       computeAsync { cancelChecker =>
         try {
           val driver = driverFor(uri)
-          val sendMessage = (line: Int, msg: String) => client.publishOutput(WorksheetExecOutput(uri, line, msg))
+          val sendMessage = (line: Int, msg: String) => client.publishOutput(WorksheetExecOutput(params.textDocument, line, msg))
           evaluateWorksheet(driver, uri, sendMessage, cancelChecker)(driver.currentCtx)
           WorksheetExecResponse(success = true)
         } catch {

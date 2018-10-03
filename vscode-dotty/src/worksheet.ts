@@ -1,7 +1,6 @@
 import * as vscode from 'vscode'
-import { LanguageClient } from 'vscode-languageclient'
-import * as rpc from 'vscode-jsonrpc'
 import { client } from './extension'
+import { VersionedTextDocumentIdentifier } from 'vscode-languageserver-protocol'
 
 /** A worksheet managed by vscode */
 class Worksheet {
@@ -59,23 +58,23 @@ class Worksheet {
 }
 
 /** The parameter for the `worksheet/exec` request. */
-class WorksheetExec {
-  constructor(uri: string) {
-    this.uri = uri
+class WorksheetExecParams {
+  constructor(textDocument: vscode.TextDocument) {
+    this.textDocument = VersionedTextDocumentIdentifier.create(textDocument.uri.toString(), textDocument.version)
   }
 
-  readonly uri: string
+  readonly textDocument: VersionedTextDocumentIdentifier
 }
 
 /** The parameter for the `worksheet/publishOutput` notification. */
 class WorksheetOutput {
-  constructor(uri: vscode.Uri, line: number, content: string) {
-    this.uri = uri
+  constructor(textDocument: VersionedTextDocumentIdentifier, line: number, content: string) {
+    this.textDocument = textDocument
     this.line = line
     this.content = content
   }
 
-  readonly uri: vscode.Uri
+  readonly textDocument: VersionedTextDocumentIdentifier
   readonly line: number
   readonly content: string
 }
@@ -136,7 +135,7 @@ export function evaluateWorksheet(document: vscode.TextDocument): Thenable<{}> {
       title: "Evaluating worksheet",
       cancellable: true
     }, (_, token) => {
-      return client.sendRequest("worksheet/exec", new WorksheetExec(worksheet.document.uri.toString()), token)
+      return client.sendRequest("worksheet/exec", new WorksheetExecParams(worksheet.document), token)
     })
   } else {
     return Promise.reject()
@@ -173,8 +172,8 @@ function _prepareWorksheet(worksheet: Worksheet) {
 export function handleMessage(output: WorksheetOutput) {
 
   const editor = vscode.window.visibleTextEditors.find(e => {
-    let uri = e.document.uri
-    return uri == output.uri
+    let uri = e.document.uri.toString()
+    return uri == output.textDocument.uri
   })
 
   if (editor) {
@@ -196,18 +195,15 @@ export function handleMessage(output: WorksheetOutput) {
  * @return a new `TextEditorDecorationType`.
  */
 function worksheetCreateDecoration(margin: number, text: string) {
-  const decorationType =
-    vscode.window.createTextEditorDecorationType({
-      isWholeLine: true,
-      after: {
-        contentText: text,
-        margin: `0px 0px 0px ${margin}ch`,
-        fontStyle: "italic",
-        color: "light gray",
-      }
-    })
-
-  return decorationType
+  return vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    after: {
+      contentText: text,
+      margin: `0px 0px 0px ${margin}ch`,
+      fontStyle: "italic",
+      color: "light gray",
+    }
+  })
 }
 
 /**

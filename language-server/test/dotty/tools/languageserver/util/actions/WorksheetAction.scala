@@ -6,21 +6,19 @@ import dotty.tools.languageserver.util.embedded.CodeMarker
 import java.net.URI
 import java.util.concurrent.CompletableFuture
 
-abstract class WorksheetAction extends Action {
+import org.eclipse.lsp4j.VersionedTextDocumentIdentifier
 
-  /** Get the URI of the worksheet that contains `marker`. */
-  def getUri(marker: CodeMarker): Exec[URI] = new URI(marker.toTextDocumentIdentifier.getUri)
+abstract class WorksheetAction extends Action {
 
   /** Triggers the evaluation of the worksheet. */
   def triggerEvaluation(marker: CodeMarker): Exec[CompletableFuture[WorksheetExecResponse]] = {
-    val uri = getUri(marker)
-    server.exec(WorksheetExecParams(uri))
+    server.exec(WorksheetExecParams(marker.toVersionedTextDocumentIdentifier))
   }
 
   /** The output of the worksheet that contains `marker`. */
   def worksheetOutput(marker: CodeMarker): Exec[List[WorksheetExecOutput]] = {
-    val uri = getUri(marker)
-    client.worksheetOutput.get.filter(_.uri == uri)
+    val textDocument = marker.toVersionedTextDocumentIdentifier
+    client.worksheetOutput.get.filter(_.textDocument.getUri == textDocument.getUri)
   }
 
 }

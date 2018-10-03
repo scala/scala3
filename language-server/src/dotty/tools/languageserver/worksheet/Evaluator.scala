@@ -9,7 +9,7 @@ import org.eclipse.lsp4j.jsonrpc.CancelChecker
 private object Evaluator {
 
   private val javaExec: Option[String] = {
-    val bin = new File(sys.props("java.home"), "bin")
+    val bin = new File(scala.util.Properties.javaHome, "bin")
     val java = new File(bin, if (scala.util.Properties.isWin) "java.exe" else "java")
 
     if (java.exists()) Some(java.getAbsolutePath())
@@ -56,8 +56,8 @@ private class Evaluator private (javaExec: String,
   private val process =
     new ProcessBuilder(
       javaExec,
-      "-classpath", sys.props("java.class.path"),
-      dotty.tools.repl.WorksheetMain.getClass.getName.init,
+      "-classpath", scala.util.Properties.javaClassPath,
+      dotty.tools.repl.WorksheetMain.getClass.getName.stripSuffix("$"),
       "-classpath", userClasspath,
       "-color:never")
        .redirectErrorStream(true)

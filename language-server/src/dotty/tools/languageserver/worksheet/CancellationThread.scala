@@ -7,7 +7,7 @@ import java.util.concurrent.CancellationException
 /**
  * Regularly check whether execution has been cancelled, kill REPL if it is.
  */
-private class CancellationThread(private[this] var cancelChecker: CancelChecker,
+private class CancellationThread(@volatile private[this] var cancelChecker: CancelChecker,
                                  evaluator: Evaluator) extends Thread {
   private final val checkCancelledDelayMs = 50
 
