@@ -499,12 +499,13 @@ trait TypeAssigner {
     tree.withType(ownType)
   }
 
-  def assignType(tree: untpd.Match, scrutinee: Tree, cases: List[CaseDef])(implicit ctx: Context) = {
+  def assignType(tree: untpd.Match, scrutinee: Tree, cases: List[CaseDef])(implicit ctx: Context): Match  = {
     val underlying = ctx.typeComparer.lub(cases.tpes)
+    val typed = tree.withType(underlying)
     if (!ctx.erasedTypes && ctx.isDependent)
-      tree.withType(TypeOf(underlying, tree))
+      tree.clone.withType(TypeOf.Match(underlying, typed))
     else
-      tree.withType(underlying)
+      typed
   }
 
   def assignType(tree: untpd.Labeled)(implicit ctx: Context) =

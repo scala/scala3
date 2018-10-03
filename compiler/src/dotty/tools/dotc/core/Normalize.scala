@@ -259,9 +259,10 @@ private final class NormalizeMap(implicit ctx: Context) extends TypeMap {
         case Left(cond1)  => Stuck( TypeOf.If.derived(tp)(cond1, thenb, elseb) )
       }
 
-    case tp @ TypeOf.Match(selector, cases) =>
-      new PatternMatcher.Translator(NoType, null)(ctx.enterTypeOf())
-        .evaluateMatch(tp.tree.asInstanceOf[Match], normalizeBoolType).getOrElse(Stuck(tp))
+    // case tp @ TypeOf.Match(_, _) =>
+    //   apply(tp.translated)
+      // new PatternMatcher.Translator(NoType, null)(ctx.enterTypeOf())
+      //   .evaluateMatch(tp.tree.asInstanceOf[Match], normalizeBoolType).getOrElse(Stuck(tp))
 
     case tp =>
       mapOver(tp) match {
