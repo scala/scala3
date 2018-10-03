@@ -2117,4 +2117,18 @@ object messages {
     override def msg: String = hl"""normal case class cannot extend an enum. case $cls in ${cls.owner} is extending enum ${parent.name}."""
     override def explanation: String = ""
   }
+
+  case class NotAnExtractor(tree: untpd.Tree)(implicit ctx: Context) extends Message(NotAnExtractorID) {
+    override def msg: String = hl"$tree cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method"
+    override def kind: String = "Syntax"
+    override def explanation: String =
+      hl"""|An `unapply` method should be defined in an `object` as follow:
+           |  - If it is just a test, return a `Boolean`. For example `case even()`
+           |  - If it returns a single sub-value of type T, return an `Option[T]`
+           |  - If it returns several sub-values T1,...,Tn, group them in an optional tuple `Option[(T1,...,Tn)]`
+           |
+           |Sometimes, the number of sub-values isn’t fixed and we would like to return a sequence.
+           |For this reason, you can also define patterns through `unapplySeq` which returns `Option[Seq[T]]`.
+           |This mechanism is used for instance in pattern `case List(x1, ..., xn)`""".stripMargin
+  }
 }
