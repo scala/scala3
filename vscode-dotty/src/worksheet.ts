@@ -18,6 +18,9 @@ class Worksheet {
   /** The number of blank lines that have been inserted to fit the output so far. */
   insertedLines: number = 0
 
+  /** The lines that contain decorations */
+  decoratedLines: Set<number> = new Set<number>()
+
   /** The minimum margin to add so that the decoration is shown after all text. */
   margin: number = 0
 
@@ -28,6 +31,7 @@ class Worksheet {
   reset() {
     this.decorationTypes.forEach(decoration => decoration.dispose())
     this.insertedLines = 0
+    this.decoratedLines.clear()
     this.margin = longestLine(this.document) + 5
     this.finished = false
   }
@@ -160,7 +164,7 @@ export function prepareWorksheet(event: vscode.TextDocumentWillSaveEvent) {
 }
 
 function _prepareWorksheet(worksheet: Worksheet) {
-  return removeRedundantBlankLines(worksheet.document).then(_ => worksheet.reset())
+  return removeRedundantBlankLines(worksheet).then(_ => worksheet.reset())
 }
 
 /**
@@ -228,14 +232,18 @@ function longestLine(document: vscode.TextDocument) {
  *
  * Evaluating a worksheet can insert new lines in the worksheet so that the
  * output of a line fits below the line. Before evaluation, we remove blank
- * lines in the worksheet to keep its length under control. This could potentially
- * remove manually added blank lines.
+ * lines in the worksheet to keep its length under control.
  *
- * @param document The document where blank lines must be removed.
+ * @param worksheet The worksheet where blank lines must be removed.
  * @return A `Thenable` removing the blank lines upon completion.
  */
-function removeRedundantBlankLines(document: vscode.TextDocument) {
+function removeRedundantBlankLines(worksheet: Worksheet) {
 
+  function hasDecoration(line: number): boolean {
+    return worksheet.decoratedLines.has(line)
+  }
+
+  const document = worksheet.document
   const lineCount = document.lineCount
   let rangesToRemove: vscode.Range[] = []
   let rangeStart = 0
@@ -245,14 +253,13 @@ function removeRedundantBlankLines(document: vscode.TextDocument) {
   function addRange() {
     inRange = false
     if (rangeStart < rangeEnd) {
-      // Keep one line between separate chunks of code
-      rangesToRemove.push(new vscode.Range(rangeStart, 0, rangeEnd - 1, 0))
+      rangesToRemove.push(new vscode.Range(rangeStart, 0, rangeEnd, 0))
     }
     return
   }
 
   for (let i = 0; i < lineCount; ++i) {
-    const isEmpty = document.lineAt(i).isEmptyOrWhitespace
+    const isEmpty = document.lineAt(i).isEmptyOrWhitespace && hasDecoration(i)
     if (inRange) {
       if (isEmpty) rangeEnd += 1
       else addRange()
@@ -317,6 +324,7 @@ function worksheetDisplayResult(lineNumber: number, evalResult: string, workshee
       const decorationMargin = margin - editor.document.lineAt(actualLine).text.length
       const decorationType = worksheetCreateDecoration(decorationMargin, line)
       worksheet.decorationTypes.push(decorationType)
+      worksheet.decoratedLines.add(actualLine)
 
       const decoration = { range: new vscode.Range(decorationPosition, decorationPosition), hoverMessage: line }
       editor.setDecorations(decorationType, [decoration])
