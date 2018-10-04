@@ -155,7 +155,7 @@ So the end result of the expansion is the expression `throw new IndexOutOfBounds
 
 ## Rewrite Conditionals
 
-Like matches, if-then-else expressions can also be prefixed with the `rewrite` modifier. Such rewrite conditional must have conditions that with a compile-time boolean result. The conditional then recuces to one of its branches depending on whether the condition is knwon to be `true` or to be `false`.
+Like matches, if-then-else expressions can also be prefixed with the `rewrite` modifier. Such rewrite conditional must have conditions that with a compile-time boolean result. The conditional then recuces to one of its branches depending on whether the condition is known to be `true` or to be `false`.
 
 For instance, here is an alternative version of `toNat` formulated with a conditional instead of a `match`.
 ```scala
