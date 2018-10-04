@@ -135,7 +135,8 @@ public enum ErrorMessageID {
     CaseClassCannotExtendEnumID,
     ValueClassParameterMayNotBeCallByNameID,
     NotAnExtractorID,
-    MemberWithSameNameAsStaticID
+    MemberWithSameNameAsStaticID,
+    PureExpressionInStatementPositionID
     ;
 
     public int errorNumber() {

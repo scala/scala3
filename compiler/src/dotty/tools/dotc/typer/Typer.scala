@@ -2013,7 +2013,7 @@ class Typer extends Namer
         val stat1 = typed(stat)(ctx.exprContext(stat, exprOwner))
         if (!ctx.isAfterTyper && isPureExpr(stat1) &&
             !stat1.tpe.isRef(defn.UnitClass) && !isSelfOrSuperConstrCall(stat1))
-          ctx.warning(em"a pure expression does nothing in statement position", stat.pos)
+          ctx.warning(PureExpressionInStatementPosition(stat, exprOwner), stat.pos)
         buf += stat1
         traverse(rest)
       case nil =>

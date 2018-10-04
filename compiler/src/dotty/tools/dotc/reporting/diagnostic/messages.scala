@@ -2139,4 +2139,14 @@ object messages {
     override def kind: String = "Syntax"
     override def explanation: String = ""
   }
+
+  case class PureExpressionInStatementPosition(stat: untpd.Tree, exprOwner: Symbol)(implicit ctx: Context)
+    extends Message(PureExpressionInStatementPositionID) {
+
+    val kind = "Potential Issue"
+    val msg = "a pure expression does nothing in statement position; you may be omitting necessary parentheses"
+    val explanation =
+      hl"""The pure expression `$stat` doesn't have any side effect and its result is not assigned elsewhere.
+          |It can be removed without changing the semantics of the program. This may indicate an error.""".stripMargin
+  }
 }
