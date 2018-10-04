@@ -15,7 +15,7 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
   def foldTypeTrees(x: X, trees: Iterable[TypeOrBoundsTree])(implicit ctx: Context): X = (x /: trees)(foldTypeTree)
   def foldCaseDefs(x: X, trees: Iterable[CaseDef])(implicit ctx: Context): X = (x /: trees)(foldCaseDef)
   def foldPatterns(x: X, trees: Iterable[Pattern])(implicit ctx: Context): X = (x /: trees)(foldPattern)
-  private def foldParents(x: X, trees: Iterable[Parent])(implicit ctx: Context): X = (x /: trees)(foldOverParent)
+  private def foldParents(x: X, trees: Iterable[TermOrTypeTree])(implicit ctx: Context): X = (x /: trees)(foldOverTermOrTypeTree)
 
   def foldOverTree(x: X, tree: Tree)(implicit ctx: Context): X = {
     def localCtx(definition: Definition): Context = definition.symbol.localContext
@@ -80,9 +80,9 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
 
   def foldOverTypeTree(x: X, tree: TypeOrBoundsTree)(implicit ctx: Context): X = tree match {
     case TypeTree.Synthetic() => x
-    case TypeTree.TypeIdent(_) => x
-    case TypeTree.TermSelect(qualifier, _) => foldTree(x, qualifier)
-    case TypeTree.TypeSelect(qualifier, _) => foldTypeTree(x, qualifier)
+    case TypeTree.Ident(_) => x
+    case TypeTree.Select(qualifier, _) => foldTree(x, qualifier)
+    case TypeTree.Project(qualifier, _) => foldTypeTree(x, qualifier)
     case TypeTree.Singleton(ref) => foldTree(x, ref)
     case TypeTree.And(left, right) => foldTypeTree(foldTypeTree(x, left), right)
     case TypeTree.Or(left, right) => foldTypeTree(foldTypeTree(x, left), right)
@@ -105,9 +105,9 @@ abstract class TreeAccumulator[X, T <: Tasty with Singleton](val tasty: T) {
     case Pattern.TypeTest(tpt) => foldTypeTree(x, tpt)
   }
 
-  private def foldOverParent(x: X, tree: Parent)(implicit ctx: Context): X = tree match {
-    case IsTerm(tree) => foldOverTree(x, tree)
-    case IsTypeTree(tree) => foldOverTypeTree(x, tree)
+  private def foldOverTermOrTypeTree(x: X, tree: TermOrTypeTree)(implicit ctx: Context): X = tree match {
+    case IsTerm(termOrTypeTree) => foldOverTree(x, termOrTypeTree)
+    case IsTypeTree(termOrTypeTree) => foldOverTypeTree(x, termOrTypeTree)
   }
 
 }

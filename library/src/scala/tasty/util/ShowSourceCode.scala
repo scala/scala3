@@ -116,13 +116,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
         val parents1 = parents.filter {
           case IsTerm(Term.Apply(Term.Select(Term.New(tpt), _, _), _)) => !Types.JavaLangObject.unapply(tpt.tpe)
-          case IsTypeTree(TypeTree.TermSelect(Term.Select(Term.Ident("_root_"), "scala", _), "Product")) => false
+          case IsTypeTree(TypeTree.Select(Term.Select(Term.Ident("_root_"), "scala", _), "Product")) => false
           case _ => true
         }
         if (parents1.nonEmpty)
           this += " extends "
 
-        def printParent(parent: Parent): Unit = parent match {
+        def printParent(parent: TermOrTypeTree): Unit = parent match {
           case IsTypeTree(parent) =>
             printTypeTree(parent)
           case IsTerm(Term.TypeApply(fun, targs)) =>
@@ -137,7 +137,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             throw new MatchError(parent.show)
         }
 
-        def printSeparated(list: List[Parent]): Unit = list match {
+        def printSeparated(list: List[TermOrTypeTree]): Unit = list match {
           case Nil =>
           case x :: Nil => printParent(x)
           case x :: xs =>
@@ -755,13 +755,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         }
         printTypeAndAnnots(tree.tpe)
 
-      case TypeTree.TypeIdent(name) =>
+      case TypeTree.Ident(name) =>
         printType(tree.tpe)
 
-      case TypeTree.TermSelect(qual, name) =>
+      case TypeTree.Select(qual, name) =>
         printTree(qual) += "." += name
 
-      case TypeTree.TypeSelect(qual, name) =>
+      case TypeTree.Project(qual, name) =>
         printTypeTree(qual) += "#" += name
 
       case TypeTree.Singleton(ref) =>

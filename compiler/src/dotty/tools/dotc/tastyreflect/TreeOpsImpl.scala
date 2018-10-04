@@ -71,7 +71,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
   }
 
   object ClassDef extends ClassDefExtractor {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[Parent],  Option[ValDef], List[Statement])] = tree match {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree],  Option[ValDef], List[Statement])] = tree match {
       case Trees.TypeDef(name, impl: tpd.Template) =>
         Some((name.toString, impl.constr, impl.parents, optional(impl.self), impl.body))
       case _ => None
@@ -193,8 +193,8 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
   object IsTerm extends IsTermExtractor {
     def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
       if (tree.isTerm) Some(tree) else None
-    def unapply(parent: Parent)(implicit ctx: Context, dummy: DummyImplicit): Option[Term] =
-      if (parent.isTerm) Some(parent) else None
+    def unapply(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[Term] =
+      if (termOrTypeTree.isTerm) Some(termOrTypeTree) else None
   }
 
   object Term extends TermModule {
@@ -316,7 +316,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
     }
 
     object Inlined extends InlinedExtractor {
-      def unapply(x: Term)(implicit ctx: Context): Option[(Option[Parent], List[Statement], Term)] = x match {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Option[TermOrTypeTree], List[Statement], Term)] = x match {
         case x: tpd.Inlined =>
           Some((optional(x.call), x.bindings, x.expansion))
         case _ => None
@@ -384,5 +384,5 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
     }
   }
 
-  def termAsParent(term: Term): Parent = term
+  def termAsTermOrTypeTree(term: Term): TermOrTypeTree = term
 }
