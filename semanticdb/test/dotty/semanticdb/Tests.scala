@@ -10,7 +10,7 @@ import org.junit.Assert._
 class Tests {
 
   // TODO: update scala-0.10 on version change (or resolve automatically)
-  final def testClasspath = "out/bootstrap/dotty-semantic-db/scala-0.10/test-classes"
+  final def testClasspath = "out/bootstrap/dotty-semanticdb/scala-0.10/test-classes"
 
   @Test def testMain(): Unit = {
     testOutput(

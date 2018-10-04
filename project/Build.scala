@@ -910,7 +910,7 @@ object Build {
   lazy val `dotty-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
   lazy val `dotty-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
 
-  lazy val `dotty-semantic-db` = project.in(file("semantic-db")).asDottySemanticDB(Bootstrapped)
+  lazy val `dotty-semanticdb` = project.in(file("semanticdb")).asDottySemanticDB(Bootstrapped)
 
   // Depend on dotty-library so that sbt projects using dotty automatically
   // depend on the dotty-library
