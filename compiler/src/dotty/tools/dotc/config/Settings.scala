@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package config
 
-import collection.mutable.{ ArrayBuffer }
+import collection.mutable.ArrayBuffer
 import scala.util.{ Success, Failure }
 import reflect.ClassTag
 import core.Contexts._
@@ -16,19 +16,19 @@ import language.existentials
 
 object Settings {
 
-  val BooleanTag = ClassTag.Boolean
-  val IntTag = ClassTag.Int
-  val StringTag = ClassTag(classOf[String])
-  val ListTag = ClassTag(classOf[List[_]])
-  val VersionTag = ClassTag(classOf[ScalaVersion])
-  val OptionTag = ClassTag(classOf[Option[_]])
-  val OutputTag = ClassTag(classOf[AbstractFile])
+  val BooleanTag: ClassTag[Boolean] = ClassTag.Boolean
+  val IntTag: ClassTag[Int] = ClassTag.Int
+  val StringTag: ClassTag[Nothing] = ClassTag(classOf[String])
+  val ListTag: ClassTag[Nothing] = ClassTag(classOf[List[_]])
+  val VersionTag: ClassTag[Nothing] = ClassTag(classOf[ScalaVersion])
+  val OptionTag: ClassTag[Nothing] = ClassTag(classOf[Option[_]])
+  val OutputTag: ClassTag[Nothing] = ClassTag(classOf[AbstractFile])
 
   class SettingsState(initialValues: Seq[Any]) {
     private[this] var values = ArrayBuffer(initialValues: _*)
     private[this] var _wasRead: Boolean = false
 
-    override def toString = s"SettingsState(values: ${values.toList})"
+    override def toString: String = s"SettingsState(values: ${values.toList})"
 
     def value(idx: Int): Any = {
       _wasRead = true
@@ -50,10 +50,10 @@ object Settings {
     errors: List[String],
     warnings: List[String]) {
 
-    def fail(msg: String) =
+    def fail(msg: String): Settings.ArgsSummary =
       ArgsSummary(sstate, arguments.tail, errors :+ msg, warnings)
 
-    def warn(msg: String) =
+    def warn(msg: String): Settings.ArgsSummary =
       ArgsSummary(sstate, arguments.tail, errors, warnings :+ msg)
   }
 
@@ -193,15 +193,15 @@ object Settings {
 
   class SettingGroup {
 
-    val _allSettings = new ArrayBuffer[Setting[_]]
+    val _allSettings: ArrayBuffer[Setting[T1] forSome { type T1 }] = new ArrayBuffer[Setting[_]]
     def allSettings: Seq[Setting[_]] = _allSettings
 
-    def defaultState = new SettingsState(allSettings map (_.default))
+    def defaultState: SettingsState = new SettingsState(allSettings map (_.default))
 
-    def userSetSettings(state: SettingsState) =
+    def userSetSettings(state: SettingsState): Seq[Setting[T1] forSome { type T1 }] =
       allSettings filterNot (_.isDefaultIn(state))
 
-    def toConciseString(state: SettingsState) =
+    def toConciseString(state: SettingsState): String =
       userSetSettings(state).mkString("(", " ", ")")
 
     private def checkDependencies(state: ArgsSummary): ArgsSummary =

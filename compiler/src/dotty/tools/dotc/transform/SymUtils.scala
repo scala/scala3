@@ -64,7 +64,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
     if (self.isConstructor) self.owner else self
 
   /** The closest properly enclosing method or class of this symbol. */
-  final def enclosure(implicit ctx: Context) = {
+  final def enclosure(implicit ctx: Context): Symbol = {
     self.owner.enclosingMethodOrClass
   }
 
@@ -121,7 +121,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
     self
   }
 
-  def registerCompanionMethod(name: Name, target: Symbol)(implicit ctx: Context) = {
+  def registerCompanionMethod(name: Name, target: Symbol)(implicit ctx: Context): Any = {
     if (!self.unforcedDecls.lookup(name).exists) {
       val companionMethod = ctx.synthesizeCompanionMethod(name, target, self)
       if (companionMethod.exists) {

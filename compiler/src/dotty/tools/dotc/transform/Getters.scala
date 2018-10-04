@@ -49,7 +49,7 @@ import ValueClasses._
 class Getters extends MiniPhase with SymTransformer {
   import ast.tpd._
 
-  override def phaseName = Getters.name
+  override def phaseName: String = Getters.name
 
   override def transformSym(d: SymDenotation)(implicit ctx: Context): SymDenotation = {
     def noGetterNeeded =
@@ -85,5 +85,5 @@ class Getters extends MiniPhase with SymTransformer {
 }
 
 object Getters {
-  val name = "getters"
+  val name: String = "getters"
 }

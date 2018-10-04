@@ -28,7 +28,7 @@ abstract class AccessProxies {
   /** Given the name of an accessor, is the receiver of the call to accessed obtained
    *  as a parameterer?
    */
-  protected def passReceiverAsArg(accessorName: Name)(implicit ctx: Context) = false
+  protected def passReceiverAsArg(accessorName: Name)(implicit ctx: Context): Boolean = false
 
   /** The accessor definitions that need to be added to class `cls`
    *  As a side-effect, this method removes entries from the `accessedBy` map.
@@ -82,7 +82,7 @@ abstract class AccessProxies {
     }
 
     /** An accessor symbol, create a fresh one unless one exists already */
-    protected def accessorSymbol(owner: Symbol, accessorName: TermName, accessorInfo: Type, accessed: Symbol)(implicit ctx: Context) = {
+    protected def accessorSymbol(owner: Symbol, accessorName: TermName, accessorInfo: Type, accessed: Symbol)(implicit ctx: Context): Symbol = {
       def refersToAccessed(sym: Symbol) = accessedBy.get(sym).contains(accessed)
       owner.info.decl(accessorName).suchThat(refersToAccessed).symbol.orElse {
         val acc = newAccessorSymbol(owner, accessorName, accessorInfo, accessed.pos)

@@ -16,7 +16,7 @@ import NameOps._
 import NameKinds.{ExpandedName, TraitSetterName}
 
 object AugmentScala2Traits {
-  val name = "augmentScala2Traits"
+  val name: String = "augmentScala2Traits"
 }
 
 /** This phase augments Scala2 traits with implementation classes and with additional members
@@ -33,13 +33,13 @@ object AugmentScala2Traits {
 class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer with FullParameterization { thisPhase =>
   import ast.tpd._
 
-  override def changesMembers = true
+  override def changesMembers: Boolean = true
 
   override def phaseName: String = AugmentScala2Traits.name
 
-  override def rewiredTarget(referenced: Symbol, derived: Symbol)(implicit ctx: Context) = NoSymbol
+  override def rewiredTarget(referenced: Symbol, derived: Symbol)(implicit ctx: Context): Symbols.NoSymbol.type = NoSymbol
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context) = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
     val cls = impl.symbol.owner.asClass
     for (mixin <- cls.mixins)
       if (mixin.is(Scala2x))

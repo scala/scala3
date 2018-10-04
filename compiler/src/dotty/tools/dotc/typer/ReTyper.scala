@@ -81,14 +81,14 @@ class ReTyper extends Typer with ReChecking {
     typedApply(tree, selType)
   }
 
-  override def localDummy(cls: ClassSymbol, impl: untpd.Template)(implicit ctx: Context) = impl.symbol
+  override def localDummy(cls: ClassSymbol, impl: untpd.Template)(implicit ctx: Context): Symbol = impl.symbol
 
   override def retrieveSym(tree: untpd.Tree)(implicit ctx: Context): Symbol = tree.symbol
   override def symbolOfTree(tree: untpd.Tree)(implicit ctx: Context): Symbol = tree.symbol
 
-  override def localTyper(sym: Symbol) = this
+  override def localTyper(sym: Symbol): ReTyper = this
 
-  override def index(trees: List[untpd.Tree])(implicit ctx: Context) = ctx
+  override def index(trees: List[untpd.Tree])(implicit ctx: Context): Context = ctx
 
   override def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType, locked: TypeVars)(fallBack: => Tree)(implicit ctx: Context): Tree =
     fallBack
@@ -106,7 +106,7 @@ class ReTyper extends Typer with ReChecking {
       super.handleUnexpectedFunType(tree, fun)
   }
 
-  override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(implicit ctx: Context) =
+  override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree =
     try super.typedUnadapted(tree, pt, locked)
     catch {
       case NonFatal(ex) =>
@@ -117,7 +117,7 @@ class ReTyper extends Typer with ReChecking {
 
   override def inlineExpansion(mdef: DefDef)(implicit ctx: Context): Tree = mdef
 
-  override def checkVariance(tree: Tree)(implicit ctx: Context) = ()
+  override def checkVariance(tree: Tree)(implicit ctx: Context): Unit = ()
   override def inferView(from: Tree, to: Type)(implicit ctx: Context): Implicits.SearchResult =
     Implicits.NoMatchingImplicitsFailure
   override def checkCanEqual(ltp: Type, rtp: Type, pos: Position)(implicit ctx: Context): Unit = ()

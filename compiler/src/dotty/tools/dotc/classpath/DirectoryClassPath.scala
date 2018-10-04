@@ -42,7 +42,7 @@ trait DirectoryLookup[FileEntryType <: ClassRepresentation] extends ClassPath {
     }
   }
 
-  override private[dotty] def hasPackage(pkg: String) = getDirectory(pkg).isDefined
+  override private[dotty] def hasPackage(pkg: String): Boolean = getDirectory(pkg).isDefined
 
   private[dotty] def packages(inPackage: String): Seq[PackageEntry] = {
     val dirForPackage = getDirectory(inPackage)
@@ -161,7 +161,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
   }
 
   /** Empty string represents root package */
-  override private[dotty] def hasPackage(pkg: String) = packageToModuleBases.contains(pkg)
+  override private[dotty] def hasPackage(pkg: String): Boolean = packageToModuleBases.contains(pkg)
 
   override private[dotty] def packages(inPackage: String): Seq[PackageEntry] = {
     def matches(packageDottedName: String) =

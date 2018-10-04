@@ -21,7 +21,7 @@ object Positions {
   /** Convert offset `x` to an integer by sign extending the original
    *  field of `StartEndBits` width.
    */
-  def offsetToInt(x: Int) =
+  def offsetToInt(x: Int): Int =
     x << (32 - StartEndBits) >> (32 - StartEndBits)
 
   /** A position indicates a range between a start offset and an end offset.
@@ -33,7 +33,7 @@ object Positions {
   class Position(val coords: Long) extends AnyVal {
 
     /** Is this position different from NoPosition? */
-    def exists = this != NoPosition
+    def exists: Boolean = this != NoPosition
 
     /** The start of this position. */
     def start: Int = {
@@ -55,16 +55,16 @@ object Positions {
     }
 
     /** The difference between point and start in this position */
-    def pointDelta =
+    def pointDelta: Int =
       (coords >>> (StartEndBits * 2)).toInt
 
-    def orElse(that: Position) =
+    def orElse(that: Position): Position =
       if (this.exists) this else that
 
     /** The union of two positions. This is the least range that encloses
      *  both positions. It is always a synthetic position.
      */
-    def union(that: Position) =
+    def union(that: Position): Position =
       if (!this.exists) that
       else if (!that.exists) this
       else Position(this.start min that.start, this.end max that.end, this.point)
@@ -74,49 +74,49 @@ object Positions {
       !that.exists || exists && (start <= that.start && end >= that.end)
 
     /** Is this position synthetic? */
-    def isSynthetic = pointDelta == SyntheticPointDelta
+    def isSynthetic: Boolean = pointDelta == SyntheticPointDelta
 
     /** Is this position source-derived? */
-    def isSourceDerived = !isSynthetic
+    def isSourceDerived: Boolean = !isSynthetic
 
     /** Is this a zero-extent position? */
-    def isZeroExtent = start == end
+    def isZeroExtent: Boolean = start == end
 
      /** A position where all components are shifted by a given `offset`
      *  relative to this position.
      */
-    def shift(offset: Int) =
+    def shift(offset: Int): Position =
       if (exists) fromOffsets(start + offset, end + offset, pointDelta)
       else this
 
     /** The zero-extent position with start and end at the point of this position */
-    def focus = if (exists) Position(point) else NoPosition
+    def focus: Position = if (exists) Position(point) else NoPosition
 
     /** The zero-extent position with start and end at the start of this position */
-    def startPos = if (exists) Position(start) else NoPosition
+    def startPos: Position = if (exists) Position(start) else NoPosition
 
     /** The zero-extent position with start and end at the end of this position */
-    def endPos = if (exists) Position(end) else NoPosition
+    def endPos: Position = if (exists) Position(end) else NoPosition
 
     /** A copy of this position with a different start */
-    def withStart(start: Int) =
+    def withStart(start: Int): Position =
       if (exists) fromOffsets(start, this.end, if (isSynthetic) SyntheticPointDelta else this.point - start)
       else this
 
     /** A copy of this position with a different end */
-    def withEnd(end: Int) =
+    def withEnd(end: Int): Position =
       if (exists) fromOffsets(this.start, end, pointDelta)
       else this
 
     /** A copy of this position with a different point */
-    def withPoint(point: Int) =
+    def withPoint(point: Int): Position =
       if (exists) fromOffsets(this.start, this.end, point - this.start)
       else this
 
     /** A synthetic copy of this position */
-    def toSynthetic = if (isSynthetic) this else Position(start, end)
+    def toSynthetic: Position = if (isSynthetic) this else Position(start, end)
 
-    override def toString = {
+    override def toString: String = {
       val (left, right) = if (isSynthetic) ("<", ">") else ("[", "]")
       if (exists)
         s"$left$start..${if (point == start) "" else s"$point.."}$end$right"
@@ -147,19 +147,19 @@ object Positions {
   def Position(start: Int): Position = Position(start, start)
 
   /** A sentinel for a non-existing position */
-  val NoPosition = Position(1, 0)
+  val NoPosition: Position = Position(1, 0)
 
   /** The coordinate of a symbol. This is either an index or
    *  a zero-range position.
    */
   class Coord(val encoding: Int) extends AnyVal {
-    def isIndex = encoding > 0
-    def isPosition = encoding <= 0
+    def isIndex: Boolean = encoding > 0
+    def isPosition: Boolean = encoding <= 0
     def toIndex: Int = {
       assert(isIndex)
       encoding - 1
     }
-    def toPosition = {
+    def toPosition: Position = {
       assert(isPosition)
       if (this == NoCoord) NoPosition else Position(-1 - encoding)
     }
@@ -172,5 +172,5 @@ object Positions {
     else NoCoord
 
   /** A sentinel for a missing coordinate */
-  val NoCoord = new Coord(0)
+  val NoCoord: Coord = new Coord(0)
 }

@@ -12,24 +12,24 @@ object ShowPickled {
   import core.unpickleScala2.PickleFormat._
 
   case class PickleBufferEntry(num: Int, startIndex: Int, tag: Int, bytes: Array[Byte]) {
-    def isName = tag == TERMname || tag == TYPEname
-    def hasName = tag match {
+    def isName: Boolean = tag == TERMname || tag == TYPEname
+    def hasName: Boolean = tag match {
       case TYPEsym | ALIASsym | CLASSsym | MODULEsym | VALsym | EXTref | EXTMODCLASSref => true
       case _                                                                            => false
     }
-    def readName =
+    def readName: String =
       if (isName) new String(bytes, "UTF-8")
       else sys.error("%s is no name" format tagName)
-    def nameIndex =
+    def nameIndex: Int =
       if (hasName) readNat(bytes, 0)
       else sys.error("%s has no name" format tagName)
 
-    def tagName = tag2string(tag)
-    override def toString = "%d,%d: %s".format(num, startIndex, tagName)
+    def tagName: String = tag2string(tag)
+    override def toString: String = "%d,%d: %s".format(num, startIndex, tagName)
   }
 
   case class PickleBufferEntryList(entries: IndexedSeq[PickleBufferEntry]) {
-    def nameAt(idx: Int) = {
+    def nameAt(idx: Int): String = {
       val entry = entries(idx)
       if (entry.isName) entry.readName
       else if (entry.hasName) entries(entry.nameIndex).readName
@@ -37,7 +37,7 @@ object ShowPickled {
     }
   }
 
-  def makeEntryList(buf: PickleBuffer, index: Array[Int]) = {
+  def makeEntryList(buf: PickleBuffer, index: Array[Int]): PickleBufferEntryList = {
     val entries = buf.toIndexedSeq.zipWithIndex map {
       case ((tag, data), num) => PickleBufferEntry(num, index(num), tag, data)
     }

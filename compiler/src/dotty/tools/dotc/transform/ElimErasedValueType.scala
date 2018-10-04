@@ -9,7 +9,7 @@ import Symbols._, StdNames._, Trees._
 import TypeErasure.ErasedValueType, ValueClasses._
 
 object ElimErasedValueType {
-  val name = "elimErasedValueType"
+  val name: String = "elimErasedValueType"
 }
 
 /** This phase erases ErasedValueType to their underlying type.
@@ -25,7 +25,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer {
 
   override def phaseName: String = ElimErasedValueType.name
 
-  override def runsAfter = Set(Erasure.name)
+  override def runsAfter: Set[String] = Set(Erasure.name)
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = sym match {
     case sym: ClassSymbol if sym is ModuleClass =>

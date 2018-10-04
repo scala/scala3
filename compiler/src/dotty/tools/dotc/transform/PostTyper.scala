@@ -5,14 +5,14 @@ import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import scala.collection.mutable
 import core._
 import typer.Checking
-import Types._, Contexts._, Names._, Flags._, DenotTransformers._
+import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
 import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
 import Decorators._
 import Symbols._, SymUtils._
 import reporting.diagnostic.messages._
 
 object PostTyper {
-  val name = "posttyper"
+  val name: String = "posttyper"
 }
 
 /** A macro transform that runs immediately after typer and that performs the following functions:
@@ -56,16 +56,16 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
   /** the following two members override abstract members in Transform */
   override def phaseName: String = PostTyper.name
 
-  override def changesMembers = true // the phase adds super accessors and synthetic methods
+  override def changesMembers: Boolean = true // the phase adds super accessors and synthetic methods
 
-  override def transformPhase(implicit ctx: Context) = thisPhase.next
+  override def transformPhase(implicit ctx: Context): Phase = thisPhase.next
 
   protected def newTransformer(implicit ctx: Context): Transformer =
     new PostTyperTransformer
 
-  val superAcc = new SuperAccessors(thisPhase)
-  val paramFwd = new ParamForwarding(thisPhase)
-  val synthMth = new SyntheticMethods(thisPhase)
+  val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
+  val paramFwd: ParamForwarding = new ParamForwarding(thisPhase)
+  val synthMth: SyntheticMethods = new SyntheticMethods(thisPhase)
 
   private def newPart(tree: Tree): Option[New] = methPart(tree) match {
     case Select(nu: New, _) => Some(nu)
@@ -88,7 +88,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       try op finally noCheckNews = saved
     }
 
-    def isCheckable(t: New) = !inJavaAnnot && !noCheckNews.contains(t)
+    def isCheckable(t: New): Boolean = !inJavaAnnot && !noCheckNews.contains(t)
 
     private def transformAnnot(annot: Tree)(implicit ctx: Context): Tree = {
       val saved = inJavaAnnot

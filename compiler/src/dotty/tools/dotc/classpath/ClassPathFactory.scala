@@ -42,14 +42,14 @@ class ClassPathFactory {
   def classesInExpandedPath(path: String)(implicit ctx: Context): IndexedSeq[ClassPath] =
     classesInPathImpl(path, expand = true).toIndexedSeq
 
-  def classesInPath(path: String)(implicit ctx: Context) = classesInPathImpl(path, expand = false)
+  def classesInPath(path: String)(implicit ctx: Context): List[ClassPath] = classesInPathImpl(path, expand = false)
 
-  def classesInManifest(useManifestClassPath: Boolean)(implicit ctx: Context) =
+  def classesInManifest(useManifestClassPath: Boolean)(implicit ctx: Context): List[ClassPath] =
     if (useManifestClassPath) dotty.tools.io.ClassPath.manifests.map(url => newClassPath(AbstractFile getResources url))
     else Nil
 
   // Internal
-  protected def classesInPathImpl(path: String, expand: Boolean)(implicit ctx: Context) =
+  protected def classesInPathImpl(path: String, expand: Boolean)(implicit ctx: Context): List[ClassPath] =
     for {
       file <- expandPath(path, expand)
       dir <- {

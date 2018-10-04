@@ -44,7 +44,7 @@ class TryCatchPatterns extends MiniPhase {
 
   def phaseName: String = "tryCatchPatterns"
 
-  override def runsAfter = Set(ElimRepeated.name)
+  override def runsAfter: Set[String] = Set(ElimRepeated.name)
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case Try(_, cases, _) =>

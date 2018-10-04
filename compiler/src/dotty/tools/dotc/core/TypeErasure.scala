@@ -81,14 +81,14 @@ object TypeErasure {
    */
   abstract case class ErasedValueType(tycon: TypeRef, erasedUnderlying: Type)
   extends CachedGroundType with ValueType {
-    override def computeHash(bs: Hashable.Binders) = doHash(bs, tycon, erasedUnderlying)
+    override def computeHash(bs: Hashable.Binders): Int = doHash(bs, tycon, erasedUnderlying)
   }
 
   final class CachedErasedValueType(tycon: TypeRef, erasedUnderlying: Type)
     extends ErasedValueType(tycon, erasedUnderlying)
 
   object ErasedValueType {
-    def apply(tycon: TypeRef, erasedUnderlying: Type)(implicit ctx: Context) = {
+    def apply(tycon: TypeRef, erasedUnderlying: Type)(implicit ctx: Context): CachedErasedValueType = {
       assert(erasedUnderlying.exists)
       unique(new CachedErasedValueType(tycon, erasedUnderlying))
     }
@@ -467,7 +467,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
    *  `PolyType`s are treated. `eraseInfo` maps them them to method types, whereas `apply` maps them
    *  to the underlying type.
    */
-  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
+  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
     case ExprType(rt) =>
       if (sym is Param) apply(tp)
         // Note that params with ExprTypes are eliminated by ElimByName,

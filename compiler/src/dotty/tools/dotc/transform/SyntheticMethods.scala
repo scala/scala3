@@ -46,9 +46,9 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
     }
 
-  def valueSymbols(implicit ctx: Context) = { initSymbols; myValueSymbols }
-  def caseSymbols(implicit ctx: Context) = { initSymbols; myCaseSymbols }
-  def caseModuleSymbols(implicit ctx: Context) = { initSymbols; myCaseModuleSymbols }
+  def valueSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myValueSymbols }
+  def caseSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myCaseSymbols }
+  def caseModuleSymbols(implicit ctx: Context): List[Symbol] = { initSymbols; myCaseModuleSymbols }
 
   /** The synthetic methods of the case or value class `clazz`. */
   def syntheticMethods(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
@@ -258,7 +258,7 @@ class SyntheticMethods(thisPhase: DenotTransformer) {
     symbolsToSynthesize flatMap syntheticDefIfMissing
   }
 
-  def addSyntheticMethods(impl: Template)(implicit ctx: Context) =
+  def addSyntheticMethods(impl: Template)(implicit ctx: Context): Template =
     if (ctx.owner.is(Case) || isDerivedValueClass(ctx.owner))
       cpy.Template(impl)(body = impl.body ++ syntheticMethods(ctx.owner.asClass))
     else

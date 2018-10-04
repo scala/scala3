@@ -19,7 +19,7 @@ import util.Chars.SU
  *  All members should be accessed through those.
  */
 private[dotty] trait MarkupParserCommon {
-  protected def unreachable = scala.sys.error("Cannot be reached.")
+  protected def unreachable: Nothing = scala.sys.error("Cannot be reached.")
 
   // type HandleType       // MarkupHandler, SymbolicXMLBuilder
   type InputType        // Source, CharArrayReader
@@ -199,13 +199,13 @@ private[dotty] trait MarkupParserCommon {
   def xToken(that: Seq[Char]): Unit = { that foreach xToken }
 
   /** scan [S] '=' [S]*/
-  def xEQ() = { xSpaceOpt(); xToken('='); xSpaceOpt() }
+  def xEQ(): Unit = { xSpaceOpt(); xToken('='); xSpaceOpt() }
 
   /** skip optional space S? */
-  def xSpaceOpt() = while (isSpace(ch) && !eof) nextch()
+  def xSpaceOpt(): Unit = while (isSpace(ch) && !eof) nextch()
 
   /** scan [3] S ::= (#x20 | #x9 | #xD | #xA)+ */
-  def xSpace() =
+  def xSpace(): Unit =
     if (isSpace(ch)) { nextch(); xSpaceOpt() }
     else xHandleError(ch, "whitespace expected")
 

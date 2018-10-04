@@ -8,7 +8,7 @@ package dotty.tools.io
 import java.io.RandomAccessFile
 import java.nio.file._
 import java.net.{URI, URL}
-import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.{BasicFileAttributes, FileTime}
 import java.io.IOException
 
 import scala.collection.JavaConverters._
@@ -60,8 +60,8 @@ object Path {
   } catch { case ex: SecurityException => new Path(jpath) }
 
   /** Avoiding any shell/path issues by only using alphanumerics. */
-  private[io] def randomPrefix = alphanumeric take 6 mkString ""
-  private[io] def fail(msg: String) = throw FileOperationException(msg)
+  private[io] def randomPrefix: String = alphanumeric take 6 mkString ""
+  private[io] def fail(msg: String): Nothing = throw FileOperationException(msg)
 }
 import Path._
 
@@ -71,8 +71,8 @@ import Path._
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 class Path private[io] (val jpath: JPath) {
-  val separator = java.io.File.separatorChar
-  val separatorStr = java.io.File.separator
+  val separator: Char = java.io.File.separatorChar
+  val separatorStr: String = java.io.File.separator
 
   // conversions
   def toFile: File = new File(jpath)
@@ -85,7 +85,7 @@ class Path private[io] (val jpath: JPath) {
   /** If this path is absolute, returns it: otherwise, returns an absolute
    *  path made up of root / this.
    */
-  def toAbsoluteWithRoot(root: Path) = if (isAbsolute) this else root.toAbsolute / this
+  def toAbsoluteWithRoot(root: Path): Path = if (isAbsolute) this else root.toAbsolute / this
 
   /** Creates a new Path with the specified path appended.  Assumes
    *  the type of the new component implies the type of the result.
@@ -120,8 +120,8 @@ class Path private[io] (val jpath: JPath) {
   def path: String = jpath.toString
   def normalize: Path = new Path(jpath.normalize)
 
-  def resolve(other: Path) = new Path(jpath.resolve(other.jpath))
-  def relativize(other: Path) = new Path(jpath.relativize(other.jpath))
+  def resolve(other: Path): Path = new Path(jpath.resolve(other.jpath))
+  def relativize(other: Path): Path = new Path(jpath.relativize(other.jpath))
 
   def segments: List[String] = (path split separator).toList filterNot (_.length == 0)
 
@@ -139,7 +139,7 @@ class Path private[io] (val jpath: JPath) {
   // if name ends with an extension (e.g. "foo.jpg") returns the extension ("jpg"), otherwise ""
   def extension: String = Path.extension(name)
   // compares against extensions in a CASE INSENSITIVE way.
-  def hasExtension(ext: String, exts: String*) = {
+  def hasExtension(ext: String, exts: String*): Boolean = {
     val lower = extension.toLowerCase
     ext.toLowerCase == lower || exts.exists(_.toLowerCase == lower)
   }
@@ -158,24 +158,24 @@ class Path private[io] (val jpath: JPath) {
   def ifDirectory[T](f: Directory => T): Option[T] = if (isDirectory) Some(f(toDirectory)) else None
 
   // Boolean tests
-  def canRead = Files.isReadable(jpath)
-  def canWrite = Files.isWritable(jpath)
-  def exists = try Files.exists(jpath)  catch { case ex: SecurityException => false }
-  def isFile = try Files.isRegularFile(jpath)  catch { case ex: SecurityException => false }
-  def isDirectory =
+  def canRead: Boolean = Files.isReadable(jpath)
+  def canWrite: Boolean = Files.isWritable(jpath)
+  def exists: Boolean = try Files.exists(jpath)  catch { case ex: SecurityException => false }
+  def isFile: Boolean = try Files.isRegularFile(jpath)  catch { case ex: SecurityException => false }
+  def isDirectory: Boolean =
     try Files.isDirectory(jpath)
     catch { case ex: SecurityException => jpath.toString == "." }
-  def isAbsolute = jpath.isAbsolute()
-  def isEmpty = path.length == 0
+  def isAbsolute: Boolean = jpath.isAbsolute()
+  def isEmpty: Boolean = path.length == 0
 
   // Information
-  def lastModified = Files.getLastModifiedTime(jpath)
-  def length = Files.size(jpath)
+  def lastModified: FileTime = Files.getLastModifiedTime(jpath)
+  def length: Long = Files.size(jpath)
 
   // Boolean path comparisons
-  def endsWith(other: Path) = segments endsWith other.segments
-  def isSame(other: Path) = toCanonical == other.toCanonical
-  def isFresher(other: Path) = lastModified.compareTo(other.lastModified) > 0
+  def endsWith(other: Path): Boolean = segments endsWith other.segments
+  def isSame(other: Path): Boolean = toCanonical == other.toCanonical
+  def isFresher(other: Path): Boolean = lastModified.compareTo(other.lastModified) > 0
 
   // creations
   def createDirectory(force: Boolean = true, failIfExists: Boolean = false): Directory = {
@@ -220,7 +220,7 @@ class Path private[io] (val jpath: JPath) {
     }
   }
 
-  def truncate() =
+  def truncate(): Boolean =
     isFile && {
       val raf = new RandomAccessFile(jpath.toFile, "rw")
       raf setLength 0
@@ -228,10 +228,10 @@ class Path private[io] (val jpath: JPath) {
       length == 0
     }
 
-  override def toString() = path
-  override def equals(other: Any) = other match {
+  override def toString(): String = path
+  override def equals(other: Any): Boolean = other match {
     case x: Path  => path == x.path
     case _        => false
   }
-  override def hashCode() = path.hashCode()
+  override def hashCode(): Int = path.hashCode()
 }

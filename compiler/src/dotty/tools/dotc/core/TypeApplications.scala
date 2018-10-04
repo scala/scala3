@@ -17,7 +17,7 @@ object TypeApplications {
   type TypeParamInfo = ParamInfo.Of[TypeName]
 
   /** Assert type is not a TypeBounds instance and return it unchanged */
-  def noBounds(tp: Type) = tp match {
+  def noBounds(tp: Type): Type = tp match {
     case tp: TypeBounds => throw new AssertionError("no TypeBounds allowed")
     case _ => tp
   }
@@ -50,7 +50,7 @@ object TypeApplications {
    *  @param tycon     C
    */
   object EtaExpansion {
-    def apply(tycon: Type)(implicit ctx: Context) = {
+    def apply(tycon: Type)(implicit ctx: Context): Type = {
       assert(tycon.typeParams.nonEmpty, tycon)
       tycon.EtaExpand(tycon.typeParamSymbols)
     }
@@ -104,10 +104,10 @@ object TypeApplications {
    */
   class Reducer(tycon: TypeLambda, args: List[Type])(implicit ctx: Context) extends TypeMap {
     private[this] var available = (0 until args.length).toSet
-    var allReplaced = true
-    def hasWildcardArg(p: TypeParamRef) =
+    var allReplaced: Boolean = true
+    def hasWildcardArg(p: TypeParamRef): Boolean =
       p.binder == tycon && args(p.paramNum).isInstanceOf[TypeBounds]
-    def canReduceWildcard(p: TypeParamRef) =
+    def canReduceWildcard(p: TypeParamRef): Boolean =
       !ctx.mode.is(Mode.AllowLambdaWildcardApply) || available.contains(p.paramNum)
     def atNestedLevel(op: => Type): Type = {
       val saved = available
@@ -126,7 +126,7 @@ object TypeApplications {
         atNestedLevel(apply(arg))
     }
 
-    def apply(t: Type) = t match {
+    def apply(t: Type): Type = t match {
       case t @ AppliedType(tycon, args1) if tycon.typeSymbol.isClass =>
         t.derivedAppliedType(apply(tycon), args1.mapConserve(applyArg))
       case p: TypeParamRef if p.binder == tycon =>
@@ -419,7 +419,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  up hk type parameters matching the arguments. This is needed when unpickling
    *  Scala2 files such as `scala.collection.generic.Mapfactory`.
    */
-  final def safeAppliedTo(args: List[Type])(implicit ctx: Context) = self match {
+  final def safeAppliedTo(args: List[Type])(implicit ctx: Context): Type = self match {
     case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
       AppliedType(self, args)
     case _ =>
@@ -467,13 +467,13 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** Argument types where existential types in arguments are disallowed */
-  def argTypes(implicit ctx: Context) = argInfos mapConserve noBounds
+  def argTypes(implicit ctx: Context): List[Type] = argInfos mapConserve noBounds
 
   /** Argument types where existential types in arguments are approximated by their lower bound */
-  def argTypesLo(implicit ctx: Context) = argInfos.mapConserve(_.loBound)
+  def argTypesLo(implicit ctx: Context): List[Type] = argInfos.mapConserve(_.loBound)
 
   /** Argument types where existential types in arguments are approximated by their upper bound  */
-  def argTypesHi(implicit ctx: Context) = argInfos.mapConserve(_.hiBound)
+  def argTypesHi(implicit ctx: Context): List[Type] = argInfos.mapConserve(_.hiBound)
 
   /** If this is the image of a type argument; recover the type argument,
    *  otherwise NoType.

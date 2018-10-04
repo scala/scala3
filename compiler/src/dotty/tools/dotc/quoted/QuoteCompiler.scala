@@ -43,7 +43,7 @@ class QuoteCompiler extends Compiler {
   class QuotedFrontend(putInClass: Boolean) extends FrontEnd {
     import tpd._
 
-    override def isTyper = false
+    override def isTyper: Boolean = false
 
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
       units.map {

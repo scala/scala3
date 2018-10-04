@@ -1,11 +1,10 @@
 package dotty.tools.dotc.tastyreflect
 
-import dotty.tools.dotc.core.Contexts
 import dotty.tools.dotc.util.{Positions, SourcePosition}
 
 trait ContextOpsImpl extends scala.tasty.reflect.ContextOps with TastyCoreImpl {
 
-  val rootContext: Contexts.Context
+  val rootContext: Context
 
   def ContextDeco(ctx: Context): ContextAPI = new ContextAPI {
     def owner: Symbol = ctx.owner

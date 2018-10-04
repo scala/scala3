@@ -2,8 +2,6 @@ package dotty.tools.dotc.tastyreflect
 
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Types
-
 
 trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with TastyCoreImpl {
 
@@ -11,7 +9,7 @@ trait PatternOpsImpl extends scala.tasty.reflect.PatternOps with TastyCoreImpl {
 
   def PatternDeco(pattern: Pattern): PatternAPI = new PatternAPI {
     def pos(implicit ctx: Context): Position = pattern.pos
-    def tpe(implicit ctx: Context): Types.Type = pattern.tpe.stripTypeVar
+    def tpe(implicit ctx: Context): Type = pattern.tpe.stripTypeVar
   }
 
   object Pattern extends PatternModule {

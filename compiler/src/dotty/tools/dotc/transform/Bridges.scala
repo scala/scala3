@@ -8,6 +8,7 @@ import DenotTransformers._
 import ast.untpd
 import collection.{mutable, immutable}
 import ShortcutImplicits._
+import util.Positions.Position
 
 /** A helper class for generating bridge methods in class `root`. */
 class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Context) {
@@ -25,7 +26,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
      *  only in classes, never in traits.
      */
     override def parents = Array(root.superClass)
-    
+
     override def exclude(sym: Symbol) =
       !sym.is(MethodOrModule) ||
       isImplicitShortcut(sym) ||
@@ -39,7 +40,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   private val bridgesScope = newScope
   private val bridgeTarget = newMutableSymbolMap[Symbol]
 
-  def bridgePosFor(member: Symbol) =
+  def bridgePosFor(member: Symbol): Position =
     if (member.owner == root && member.pos.exists) member.pos else root.pos
 
   /** Add a bridge between `member` and `other`, where `member` overrides `other`
@@ -117,7 +118,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
     while (opc.hasNext) {
       if (!opc.overriding.is(Deferred)) {
         addBridgeIfNeeded(opc.overriding, opc.overridden)
-        
+
         if (needsImplicitShortcut(opc.overriding)(ectx))
           // implicit shortcuts do not show up in the Bridges cursor, since they
           // are created only when referenced. Therefore we need to generate a bridge

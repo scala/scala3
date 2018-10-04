@@ -15,7 +15,7 @@ import reporting.ThrowingReporter
 import collection.mutable
 
 object Pickler {
-  val name = "pickler"
+  val name: String = "pickler"
 }
 
 /** This phase pickles trees */

@@ -6,7 +6,7 @@ import core.Contexts.Context
 trait Printers { this: Context =>
 
   /** A function creating a printer */
-  def printer = {
+  def printer: Printer = {
     val pr = printerFn(this)
     if (this.settings.YplainPrinter.value) pr.plain else pr
   }

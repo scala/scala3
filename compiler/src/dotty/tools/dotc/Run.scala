@@ -64,7 +64,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private[this] var myCtx = rootContext(ictx)
 
   /** The context created for this run */
-  def runContext = myCtx
+  def runContext: Context = myCtx
 
   protected[this] implicit def ctx: Context = myCtx
   assert(ctx.runId <= Periods.MaxPossibleRunId)
@@ -128,7 +128,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *  or we need to assemble phases on each run, and take -Yskip, -Ystop into
    *  account. I think the latter would be preferable.
    */
-  def compileSources(sources: List[SourceFile]) =
+  def compileSources(sources: List[SourceFile]): Unit =
     if (sources forall (_.exists)) {
       units = sources map (new CompilationUnit(_))
       compileUnits()
@@ -264,7 +264,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     r
   }
 
-  override def reset() = {
+  override def reset(): Unit = {
     super[ImplicitRunInfo].reset()
     super[ConstraintRunInfo].reset()
     myCtx = null

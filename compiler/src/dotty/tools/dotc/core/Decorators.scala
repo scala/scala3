@@ -143,7 +143,7 @@ object Decorators {
   }
 
   implicit class TextToString(val text: Text) extends AnyVal {
-    def show(implicit ctx: Context) = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
+    def show(implicit ctx: Context): String = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
   }
 
   /** Test whether a list of strings representing phases contains

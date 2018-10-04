@@ -45,7 +45,7 @@ case class UnknownCommand(cmd: String) extends Command
  */
 case class Load(path: String) extends Command
 object Load {
-  val command = ":load"
+  val command: String = ":load"
 }
 
 /** To find out the type of an expression you may simply do:
@@ -57,7 +57,7 @@ object Load {
  */
 case class TypeOf(expr: String) extends Command
 object TypeOf {
-  val command = ":type"
+  val command: String = ":type"
 }
 
 /**
@@ -66,32 +66,32 @@ object TypeOf {
  */
 case class DocOf(expr: String) extends Command
 object DocOf {
-  val command = ":doc"
+  val command: String = ":doc"
 }
 
 /** `:imports` lists the imports that have been explicitly imported during the
  *  session
  */
 case object Imports extends Command {
-  val command = ":imports"
+  val command: String = ":imports"
 }
 
 /** Reset the session to the initial state from when the repl program was
  *  started
  */
 case object Reset extends Command {
-  val command = ":reset"
+  val command: String = ":reset"
 }
 
 /** `:quit` exits the repl */
 case object Quit extends Command {
-  val command = ":quit"
+  val command: String = ":quit"
 }
 
 /** `:help` shows the different commands implemented by the Dotty repl */
 case object Help extends Command {
-  val command = ":help"
-  val text =
+  val command: String = ":help"
+  val text: String =
     """The REPL has several commands available:
       |
       |:help                    print this summary

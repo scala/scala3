@@ -30,7 +30,7 @@ import Decorators._
 class CheckReentrant extends MiniPhase {
   import ast.tpd._
 
-  override def phaseName = "checkReentrant"
+  override def phaseName: String = "checkReentrant"
 
   private[this] var shared: Set[Symbol] = Set()
   private[this] var seen: Set[ClassSymbol] = Set()
@@ -41,7 +41,7 @@ class CheckReentrant extends MiniPhase {
   private val unsharedAnnot = new CtxLazy(implicit ctx =>
     ctx.requiredClass("scala.annotation.internal.unshared"))
 
-  def isIgnored(sym: Symbol)(implicit ctx: Context) =
+  def isIgnored(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||
     sym.hasAnnotation(unsharedAnnot())
 

@@ -12,7 +12,7 @@ import parsing.Parsers.Parser
 import reporting.diagnostic.messages.ProperDefinitionNotFound
 
 object Comments {
-  val ContextDoc = new Key[ContextDocstrings]
+  val ContextDoc: Key[ContextDocstrings] = new Key[ContextDocstrings]
 
   /** Decorator for getting docbase out of context */
   implicit class CommentsContext(val ctx: Context) extends AnyVal {
@@ -26,7 +26,7 @@ object Comments {
 
     private[this] val _docstrings: MutableSymbolMap[Comment] = newMutableSymbolMap
 
-    val templateExpander = new CommentExpander
+    val templateExpander: CommentExpander = new CommentExpander
 
     def docstrings: Map[Symbol, Comment] = _docstrings.toMap
 
@@ -54,7 +54,7 @@ object Comments {
     lazy val expandedBody: Option[String] =
       expanded.map(removeSections(_, "@usecase", "@define"))
 
-    val isDocComment = Comment.isDocComment(raw)
+    val isDocComment: Boolean = Comment.isDocComment(raw)
 
     /**
      * Expands this comment by giving its content to `f`, and then parsing the `@usecase` sections.
@@ -398,7 +398,7 @@ object Comments {
       expandInternal(initialStr, 0).replaceAllLiterally("""\$""", "$")
     }
 
-    def defineVariables(sym: Symbol)(implicit ctx: Context) = {
+    def defineVariables(sym: Symbol)(implicit ctx: Context): Unit = {
       val Trim = "(?s)^[\\s&&[^\n\r]]*(.*?)\\s*$".r
 
       val raw = ctx.docCtx.flatMap(_.docstring(sym).map(_.raw)).getOrElse("")

@@ -13,7 +13,7 @@ import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 /** Renames lifted classes to local numbering scheme */
 class RenameLifted extends MiniPhase with SymTransformer {
 
-  override def phaseName = "renameLifted"
+  override def phaseName: String = "renameLifted"
 
   // Not clear why this should run after restoreScopes
   // override def runsAfterGroupsOf = Set(RestoreScopes.name)

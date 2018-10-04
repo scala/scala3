@@ -22,7 +22,7 @@ object Message {
   * consumed by a subclass of `Reporter`. However, the error position is only
   * part of `MessageContainer`, not `Message`.
   *
-  * NOTE: you should not be persisting messages. Most messages take an implicit
+  * NOTE: you should not be persisting  Most messages take an implicit
   * `Context` and these contexts weigh in at about 4mb per instance, as such
   * persisting these will result in a memory leak.
   *
@@ -79,10 +79,10 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
   * message.
   */
 class ExtendMessage(_msg: () => Message)(f: String => String) { self =>
-  lazy val msg = f(_msg().msg)
-  lazy val kind = _msg().kind
-  lazy val explanation = _msg().explanation
-  lazy val errorId = _msg().errorId
+  lazy val msg: String = f(_msg().msg)
+  lazy val kind: String = _msg().kind
+  lazy val explanation: String = _msg().explanation
+  lazy val errorId: ErrorMessageID = _msg().errorId
 
   private def toMessage = new Message(errorId) {
     val msg = self.msg
@@ -91,38 +91,38 @@ class ExtendMessage(_msg: () => Message)(f: String => String) { self =>
   }
 
   /** Enclose this message in an `Error` container */
-  def error(pos: SourcePosition) =
+  def error(pos: SourcePosition): Error =
     new Error(toMessage, pos)
 
   /** Enclose this message in an `Warning` container */
-  def warning(pos: SourcePosition) =
+  def warning(pos: SourcePosition): Warning =
     new Warning(toMessage, pos)
 
   /** Enclose this message in an `Info` container */
-  def info(pos: SourcePosition) =
+  def info(pos: SourcePosition): Info =
     new Info(toMessage, pos)
 
   /** Enclose this message in an `FeatureWarning` container */
-  def featureWarning(pos: SourcePosition) =
+  def featureWarning(pos: SourcePosition): FeatureWarning =
     new FeatureWarning(toMessage, pos)
 
   /** Enclose this message in an `UncheckedWarning` container */
-  def uncheckedWarning(pos: SourcePosition) =
+  def uncheckedWarning(pos: SourcePosition): UncheckedWarning =
     new UncheckedWarning(toMessage, pos)
 
   /** Enclose this message in an `DeprecationWarning` container */
-  def deprecationWarning(pos: SourcePosition) =
+  def deprecationWarning(pos: SourcePosition): DeprecationWarning =
     new DeprecationWarning(toMessage, pos)
 
   /** Enclose this message in an `MigrationWarning` container */
-  def migrationWarning(pos: SourcePosition) =
+  def migrationWarning(pos: SourcePosition): MigrationWarning =
     new MigrationWarning(toMessage, pos)
 }
 
 /** The fallback `Message` containing no explanation and having no `kind` */
 class NoExplanation(val msg: String) extends Message(ErrorMessageID.NoExplanationID) {
-  val explanation = ""
-  val kind = ""
+  val explanation: String = ""
+  val kind: String = ""
 
   override def toString(): String = s"NoExplanation($msg)"
 }

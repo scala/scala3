@@ -24,9 +24,9 @@ import ast.Trees._
 class ExplicitSelf extends MiniPhase {
   import ast.tpd._
 
-  override def phaseName = "explicitSelf"
+  override def phaseName: String = "explicitSelf"
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context) = tree.tpe match {
+  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree = tree.tpe match {
     case tp: ThisType =>
       ctx.debuglog(s"owner = ${ctx.owner}, context = ${ctx}")
       This(tp.cls) withPos tree.pos

@@ -16,7 +16,7 @@ import dotty.tools.dotc.ast.tpd
 import DenotTransformers._
 
 object ElimRepeated {
-  val name = "elimRepeated"
+  val name: String = "elimRepeated"
 }
 
 /** A transformer that removes repeated parameters (T*) from all types, replacing
@@ -25,9 +25,9 @@ object ElimRepeated {
 class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   import ast.tpd._
 
-  override def phaseName = ElimRepeated.name
+  override def phaseName: String = ElimRepeated.name
 
-  override def changesMembers = true // the phase adds vararg bridges
+  override def changesMembers: Boolean = true // the phase adds vararg bridges
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
     elimRepeated(tp)

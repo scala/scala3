@@ -12,7 +12,7 @@ import scala.collection.mutable
 import java.util.IdentityHashMap
 
 object CollectNullableFields {
-  val name = "collectNullableFields"
+  val name: String = "collectNullableFields"
 }
 
 /** Collect fields that can be nulled out after use in lazy initialization.
@@ -41,10 +41,10 @@ object CollectNullableFields {
 class CollectNullableFields extends MiniPhase {
   import tpd._
 
-  override def phaseName = CollectNullableFields.name
+  override def phaseName: String = CollectNullableFields.name
 
   /** Running after `ElimByName` to see by names as nullable types. */
-  override def runsAfter = Set(ElimByName.name)
+  override def runsAfter: Set[String] = Set(ElimByName.name)
 
   private[this] sealed trait FieldInfo
   private[this] case object NotNullable extends FieldInfo
@@ -53,7 +53,7 @@ class CollectNullableFields extends MiniPhase {
   /** Whether or not a field is nullable */
   private[this] var nullability: IdentityHashMap[Symbol, FieldInfo] = _
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context = {
     if (nullability == null) nullability = new IdentityHashMap
     ctx
   }
@@ -88,10 +88,10 @@ class CollectNullableFields extends MiniPhase {
     tree
   }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context) =
+  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
     recordUse(tree)
 
-  override def transformSelect(tree: Select)(implicit ctx: Context) =
+  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
     recordUse(tree)
 
   /** Map lazy values to the fields they should null after initialization. */

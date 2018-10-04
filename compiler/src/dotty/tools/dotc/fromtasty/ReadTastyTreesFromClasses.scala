@@ -14,7 +14,7 @@ import CompilationUnit.mkCompilationUnit
 
 class ReadTastyTreesFromClasses extends FrontEnd {
 
-  override def isTyper = false
+  override def isTyper: Boolean = false
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
     units.flatMap(readTASTY(_)(ctx.addMode(Mode.ReadPositions)))

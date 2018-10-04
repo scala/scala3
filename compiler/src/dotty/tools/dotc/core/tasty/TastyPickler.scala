@@ -14,9 +14,9 @@ class TastyPickler(val rootCls: ClassSymbol) {
 
   private val sections = new mutable.ArrayBuffer[(NameRef, TastyBuffer)]
 
-  val nameBuffer = new NameBuffer
+  val nameBuffer: NameBuffer = new NameBuffer
 
-  def newSection(name: String, buf: TastyBuffer) =
+  def newSection(name: String, buf: TastyBuffer): mutable.ArrayBuffer[(NameRef, TastyBuffer)] =
     sections += ((nameBuffer.nameIndex(name.toTermName), buf))
 
   def assembleParts(): Array[Byte] = {
@@ -76,6 +76,6 @@ class TastyPickler(val rootCls: ClassSymbol) {
    */
   var addrOfSym: Symbol => Option[Addr] = (_ => None)
 
-  val treePkl = new TreePickler(this)
+  val treePkl: TreePickler = new TreePickler(this)
 
 }

@@ -9,12 +9,12 @@ import java.util.jar.Attributes.{ Name => AttributeName }
 
 /** Loads `library.properties` from the jar. */
 object Properties extends PropertiesTrait {
-  protected def propCategory    = "compiler"
-  protected def pickJarBasedOn  = classOf[Option[_]]
+  protected def propCategory: String = "compiler"
+  protected def pickJarBasedOn: Class[Option[_]] = classOf[Option[_]]
 
   /** Scala manifest attributes.
    */
-  @sharable val ScalaCompilerVersion = new AttributeName("Scala-Compiler-Version")
+  @sharable val ScalaCompilerVersion: java.util.jar.Attributes.Name = new AttributeName("Scala-Compiler-Version")
 }
 
 trait PropertiesTrait {
@@ -22,7 +22,7 @@ trait PropertiesTrait {
   protected def pickJarBasedOn: Class[_]  // props file comes from jar containing this
 
   /** The name of the properties file */
-  protected val propFilename = "/" + propCategory + ".properties"
+  protected val propFilename: String = "/" + propCategory + ".properties"
 
   /** The loaded properties */
   @sharable protected lazy val scalaProps: java.util.Properties = {
@@ -41,18 +41,18 @@ trait PropertiesTrait {
         catch   { case _: IOException => }
     }
 
-  def propIsSet(name: String)                   = System.getProperty(name) != null
-  def propIsSetTo(name: String, value: String)  = propOrNull(name) == value
-  def propOrElse(name: String, alt: String)     = System.getProperty(name, alt)
-  def propOrEmpty(name: String)                 = propOrElse(name, "")
-  def propOrNull(name: String)                  = propOrElse(name, null)
-  def propOrNone(name: String)                  = Option(propOrNull(name))
-  def propOrFalse(name: String)                 = propOrNone(name) exists (x => List("yes", "on", "true") contains x.toLowerCase)
-  def setProp(name: String, value: String)      = System.setProperty(name, value)
-  def clearProp(name: String)                   = System.clearProperty(name)
+  def propIsSet(name: String): Boolean                  = System.getProperty(name) != null
+  def propIsSetTo(name: String, value: String): Boolean = propOrNull(name) == value
+  def propOrElse(name: String, alt: String): String     = System.getProperty(name, alt)
+  def propOrEmpty(name: String): String                 = propOrElse(name, "")
+  def propOrNull(name: String): String                  = propOrElse(name, null)
+  def propOrNone(name: String): Option[String]          = Option(propOrNull(name))
+  def propOrFalse(name: String): Boolean                = propOrNone(name) exists (x => List("yes", "on", "true") contains x.toLowerCase)
+  def setProp(name: String, value: String): String      = System.setProperty(name, value)
+  def clearProp(name: String): String                   = System.clearProperty(name)
 
-  def envOrElse(name: String, alt: String)      = Option(System getenv name) getOrElse alt
-  def envOrNone(name: String)                   = Option(System getenv name)
+  def envOrElse(name: String, alt: String): String      = Option(System getenv name) getOrElse alt
+  def envOrNone(name: String): Option[String]           = Option(System getenv name)
 
   // for values based on propFilename
   def scalaPropOrElse(name: String, alt: String): String = scalaProps.getProperty(name, alt)
@@ -62,12 +62,12 @@ trait PropertiesTrait {
   /** Either the development or release version if known, otherwise
    *  the empty string.
    */
-  def versionNumberString = scalaPropOrEmpty("version.number")
+  def versionNumberString: String = scalaPropOrEmpty("version.number")
 
   /** The version number of the jar this was loaded from plus "version " prefix,
    *  or "version (unknown)" if it cannot be determined.
    */
-  val versionString = {
+  val versionString: String = {
     val v = scalaPropOrElse("version.number", "(unknown)")
     "version " + scalaPropOrElse("version.number", "(unknown)") + {
       if (v.contains("SNAPSHOT") || v.contains("NIGHTLY")) {
@@ -82,53 +82,53 @@ trait PropertiesTrait {
    *  2. Features supported by experimental versions of the compiler:
    *     - research plugins
    */
-  val experimental = versionString.contains("SNAPSHOT") || versionString.contains("NIGHTLY")
+  val experimental: Boolean = versionString.contains("SNAPSHOT") || versionString.contains("NIGHTLY")
 
-  val copyrightString       = scalaPropOrElse("copyright.string", "(c) 2002-2017 LAMP/EPFL")
+  val copyrightString: String       = scalaPropOrElse("copyright.string", "(c) 2002-2017 LAMP/EPFL")
 
   /** This is the encoding to use reading in source files, overridden with -encoding
    *  Note that it uses "prop" i.e. looks in the scala jar, not the system properties.
    */
-  def sourceEncoding        = scalaPropOrElse("file.encoding", "UTF-8")
-  def sourceReader          = scalaPropOrElse("source.reader", "scala.tools.nsc.io.SourceReader")
+  def sourceEncoding: String        = scalaPropOrElse("file.encoding", "UTF-8")
+  def sourceReader: String          = scalaPropOrElse("source.reader", "scala.tools.nsc.io.SourceReader")
 
   /** This is the default text encoding, overridden (unreliably) with
    *  `JAVA_OPTS="-Dfile.encoding=Foo"`
    */
-  def encodingString        = propOrElse("file.encoding", "UTF-8")
+  def encodingString: String        = propOrElse("file.encoding", "UTF-8")
 
   /** The default end of line character.
    */
-  def lineSeparator         = propOrElse("line.separator", "\n")
+  def lineSeparator: String         = propOrElse("line.separator", "\n")
 
   /** Various well-known properties.
    */
-  def javaClassPath         = propOrEmpty("java.class.path")
-  def javaHome              = propOrEmpty("java.home")
-  def javaVendor            = propOrEmpty("java.vendor")
-  def javaVersion           = propOrEmpty("java.version")
-  def javaVmInfo            = propOrEmpty("java.vm.info")
-  def javaVmName            = propOrEmpty("java.vm.name")
-  def javaVmVendor          = propOrEmpty("java.vm.vendor")
-  def javaVmVersion         = propOrEmpty("java.vm.version")
-  def osName                = propOrEmpty("os.name")
-  def scalaHome             = propOrEmpty("scala.home")
-  def tmpDir                = propOrEmpty("java.io.tmpdir")
-  def userDir               = propOrEmpty("user.dir")
-  def userHome              = propOrEmpty("user.home")
-  def userName              = propOrEmpty("user.name")
+  def javaClassPath: String         = propOrEmpty("java.class.path")
+  def javaHome: String              = propOrEmpty("java.home")
+  def javaVendor: String            = propOrEmpty("java.vendor")
+  def javaVersion: String           = propOrEmpty("java.version")
+  def javaVmInfo: String            = propOrEmpty("java.vm.info")
+  def javaVmName: String            = propOrEmpty("java.vm.name")
+  def javaVmVendor: String          = propOrEmpty("java.vm.vendor")
+  def javaVmVersion: String         = propOrEmpty("java.vm.version")
+  def osName: String                = propOrEmpty("os.name")
+  def scalaHome: String             = propOrEmpty("scala.home")
+  def tmpDir: String                = propOrEmpty("java.io.tmpdir")
+  def userDir: String               = propOrEmpty("user.dir")
+  def userHome: String              = propOrEmpty("user.home")
+  def userName: String              = propOrEmpty("user.name")
 
   /** Some derived values.
    */
-  def isWin                 = osName startsWith "Windows"
-  def isMac                 = javaVendor startsWith "Apple"
+  def isWin: Boolean                = osName startsWith "Windows"
+  def isMac: Boolean                = javaVendor startsWith "Apple"
 
   // This is looking for javac, tools.jar, etc.
   // Tries JDK_HOME first, then the more common but likely jre JAVA_HOME,
   // and finally the system property based javaHome.
-  def jdkHome              = envOrElse("JDK_HOME", envOrElse("JAVA_HOME", javaHome))
+  def jdkHome: String               = envOrElse("JDK_HOME", envOrElse("JAVA_HOME", javaHome))
 
-  def versionMsg            = "Scala %s %s -- %s".format(propCategory, versionString, copyrightString)
-  def scalaCmd              = if (isWin) "dotr.bat" else "dotr"
-  def scalacCmd             = if (isWin) "dotc.bat" else "dotc"
+  def versionMsg: String            = "Scala %s %s -- %s".format(propCategory, versionString, copyrightString)
+  def scalaCmd: String              = if (isWin) "dotr.bat" else "dotr"
+  def scalacCmd: String             = if (isWin) "dotc.bat" else "dotc"
 }

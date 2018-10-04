@@ -1,16 +1,18 @@
 package dotty.tools.dotc
 package transform
 
+import core._
 import MegaPhase._
-import core.Symbols._
-import core.Contexts._
-import core.Decorators._
-import core.NameOps._
+import Names._
+import Symbols._
+import Contexts._
+import Decorators._
+import NameOps._
 import dotty.tools.dotc.ast.tpd
 
 
 object FunctionalInterfaces {
-  val name = "functionalInterfaces"
+  val name: String = "functionalInterfaces"
 }
 
 /**
@@ -21,8 +23,8 @@ class FunctionalInterfaces extends MiniPhase {
 
   def phaseName: String = FunctionalInterfaces.name
 
-  val functionName = "JFunction".toTermName
-  val functionPackage = "scala.compat.java8.".toTermName
+  val functionName: TermName = "JFunction".toTermName
+  val functionPackage: TermName = "scala.compat.java8.".toTermName
 
   override def transformClosure(tree: Closure)(implicit ctx: Context): Tree = {
     val cls = tree.tpe.widen.classSymbol.asClass

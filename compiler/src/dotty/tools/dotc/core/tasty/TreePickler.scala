@@ -6,7 +6,7 @@ package tasty
 import ast.Trees._
 import ast.{untpd, tpd}
 import TastyFormat._
-import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._
+import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, Flags._
 import typer.Inliner
 import NameKinds._
 import StdNames.nme
@@ -24,7 +24,7 @@ object TreePickler {
 }
 
 class TreePickler(pickler: TastyPickler) {
-  val buf = new TreeBuffer
+  val buf: TreeBuffer = new TreeBuffer
   pickler.newSection("ASTs", buf)
   import TreePickler._
   import buf._
@@ -262,7 +262,7 @@ class TreePickler(pickler: TastyPickler) {
       pickleType(tpe.ref)
   }
 
-  def pickleMethodic(tag: Int, tpe: LambdaType)(implicit ctx: Context) = {
+  def pickleMethodic(tag: Int, tpe: LambdaType)(implicit ctx: Context): Unit = {
     writeByte(tag)
     withLength {
       pickleType(tpe.resultType, richTypes = true)
@@ -288,7 +288,7 @@ class TreePickler(pickler: TastyPickler) {
   def pickleTreeUnlessEmpty(tree: Tree)(implicit ctx: Context): Unit =
     if (!tree.isEmpty) pickleTree(tree)
 
-  def pickleDef(tag: Int, sym: Symbol, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(implicit ctx: Context) = {
+  def pickleDef(tag: Int, sym: Symbol, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(implicit ctx: Context): Unit = {
     assert(symRefs(sym) == NoAddr, sym)
     registerDef(sym)
     writeByte(tag)
@@ -318,7 +318,7 @@ class TreePickler(pickler: TastyPickler) {
     trees.foreach(pickleParam)
   }
 
-  def pickleStats(stats: List[Tree])(implicit ctx: Context) = {
+  def pickleStats(stats: List[Tree])(implicit ctx: Context): Unit = {
     stats.foreach(preRegister)
     stats.foreach(stat => if (!stat.isEmpty) pickleTree(stat))
   }
@@ -611,7 +611,7 @@ class TreePickler(pickler: TastyPickler) {
     sym.annotations.foreach(pickleAnnotation(sym, _))
   }
 
-  def pickleFlags(flags: Flags.FlagSet, isTerm: Boolean)(implicit ctx: Context): Unit = {
+  def pickleFlags(flags: FlagSet, isTerm: Boolean)(implicit ctx: Context): Unit = {
     import Flags._
     if (flags is Private) writeByte(PRIVATE)
     if (flags is Protected) writeByte(PROTECTED)
@@ -660,7 +660,7 @@ class TreePickler(pickler: TastyPickler) {
       else false
   }
 
-  def pickleAnnotation(owner: Symbol, ann: Annotation)(implicit ctx: Context) =
+  def pickleAnnotation(owner: Symbol, ann: Annotation)(implicit ctx: Context): Unit =
     if (!isUnpicklable(owner, ann)) {
       writeByte(ANNOTATION)
       withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
@@ -668,13 +668,13 @@ class TreePickler(pickler: TastyPickler) {
 
 // ---- main entry points ---------------------------------------
 
-  def pickle(trees: List[Tree])(implicit ctx: Context) = {
+  def pickle(trees: List[Tree])(implicit ctx: Context): Unit = {
     trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
     def missing = forwardSymRefs.keysIterator.map(_.showLocated).toList
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: $missing%, % when pickling ${ctx.source}")
   }
 
-  def compactify() = {
+  def compactify(): Unit = {
     buf.compactify()
 
     def updateMapWithDeltas(mp: MutableSymbolMap[Addr]) =

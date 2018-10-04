@@ -33,5 +33,5 @@ class ByNameClosures extends TransformByNameApply with IdentityDenotTransformer 
 }
 
 object ByNameClosures {
-  val name = "byNameClosures"
+  val name: String = "byNameClosures"
 }

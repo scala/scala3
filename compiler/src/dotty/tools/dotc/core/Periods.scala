@@ -29,7 +29,7 @@ abstract class Periods { self: Context =>
    *  the current phase that has the same "nextTransformerId". As last phase
    *  we take the next transformer id following the current phase.
    */
-  def stablePeriod = {
+  def stablePeriod: Period = {
     var first = phaseId
     val nxTrans = ctx.base.nextDenotTransformerId(first)
     while (first - 1 > NoPhaseId && (ctx.base.nextDenotTransformerId(first - 1) == nxTrans)) {
@@ -39,7 +39,7 @@ abstract class Periods { self: Context =>
   }
 
   /** Are all base types in the current period guaranteed to be the same as in period `p`? */
-  def hasSameBaseTypesAs(p: Period) = {
+  def hasSameBaseTypesAs(p: Period): Boolean = {
     val period = this.period
     period == p ||
     period.runId == p.runId &&
@@ -73,9 +73,9 @@ object Periods {
       (code >>> PhaseWidth) & PhaseMask
 
     /** The first phase of this period */
-    def firstPhaseId = lastPhaseId - (code & PhaseMask)
+    def firstPhaseId: Int = lastPhaseId - (code & PhaseMask)
 
-    def containsPhaseId(id: PhaseId) = firstPhaseId <= id && id <= lastPhaseId
+    def containsPhaseId(id: PhaseId): Boolean = firstPhaseId <= id && id <= lastPhaseId
 
     /** Does this period contain given period? */
     def contains(that: Period): Boolean = {
@@ -122,7 +122,7 @@ object Periods {
           this.firstPhaseId min that.firstPhaseId,
           this.lastPhaseId max that.lastPhaseId)
 
-    override def toString = s"Period($firstPhaseId..$lastPhaseId, run = $runId)"
+    override def toString: String = s"Period($firstPhaseId..$lastPhaseId, run = $runId)"
   }
 
   object Period {
@@ -138,16 +138,16 @@ object Periods {
     }
 
     /** The interval consisting of all periods of given run id */
-    def allInRun(rid: RunId) = {
+    def allInRun(rid: RunId): Period = {
       apply(rid, 0, PhaseMask)
     }
   }
 
-  final val Nowhere = new Period(0)
+  final val Nowhere: Period = new Period(0)
 
-  final val InitialPeriod = Period(InitialRunId, FirstPhaseId)
+  final val InitialPeriod: Period = Period(InitialRunId, FirstPhaseId)
 
-  final val InvalidPeriod = Period(NoRunId, NoPhaseId)
+  final val InvalidPeriod: Period = Period(NoRunId, NoPhaseId)
 
   /** An ordinal number for compiler runs. First run has number 1. */
   type RunId = Int

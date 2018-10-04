@@ -11,7 +11,7 @@ import java.nio.charset.Charset
 class CommentUnpickler(reader: TastyReader) {
   import reader._
 
-  private[tasty] lazy val comments = {
+  private[tasty] lazy val comments: Map[Addr, Comment] = {
     val comments = new HashMap[Addr, Comment]
     while (!isAtEnd) {
       val addr = readAddr()

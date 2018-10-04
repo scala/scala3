@@ -7,7 +7,7 @@ import core._
 import Contexts._, Types._
 
 object Splitter {
-  val name = "splitter"
+  val name: String = "splitter"
 }
 
 /** Distribute applications into Block and If nodes
@@ -18,7 +18,7 @@ class Splitter extends MiniPhase {
   override def phaseName: String = Splitter.name
 
   /** Distribute arguments among splitted branches */
-  def distribute(tree: GenericApply[Type], rebuild: (Tree, List[Tree]) => Context => Tree)(implicit ctx: Context) = {
+  def distribute(tree: GenericApply[Type], rebuild: (Tree, List[Tree]) => Context => Tree)(implicit ctx: Context): Tree = {
     def recur(fn: Tree): Tree = fn match {
       case Block(stats, expr) => Block(stats, recur(expr))
       case If(cond, thenp, elsep) => If(cond, recur(thenp), recur(elsep))
@@ -32,13 +32,13 @@ class Splitter extends MiniPhase {
     case _ => false
   }
 
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context) =
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree =
     if (needsDistribution(tree.fun))
       distribute(tree, typeApply)
     else
       tree
 
-  override def transformApply(tree: Apply)(implicit ctx: Context) =
+  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
     if (needsDistribution(tree.fun))
       distribute(tree, apply)
     else

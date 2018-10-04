@@ -23,7 +23,7 @@ import dotty.tools.dotc.util.Positions.Position
  *  However, implicit function types do not count as SAM types.
  */
 class ExpandSAMs extends MiniPhase {
-  override def phaseName = "expandSAMs"
+  override def phaseName: String = "expandSAMs"
 
   import ast.tpd._
 

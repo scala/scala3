@@ -16,16 +16,16 @@ import StdNames._
  */
 class RestoreScopes extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
-  override def phaseName = "restoreScopes"
+  override def phaseName: String = "restoreScopes"
 
-  override def changesMembers = true // the phase affects scopes, applying tree transformations of previous phases
+  override def changesMembers: Boolean = true // the phase affects scopes, applying tree transformations of previous phases
 
   /* Note: We need to wait until we see a package definition because
    * DropEmptyConstructors changes template members when analyzing the
    * enclosing package definitions. So by the time RestoreScopes gets to
    * see a typedef or template, it still might be changed by DropEmptyConstructors.
    */
-  override def transformPackageDef(pdef: PackageDef)(implicit ctx: Context) = {
+  override def transformPackageDef(pdef: PackageDef)(implicit ctx: Context): PackageDef = {
     pdef.stats.foreach(restoreScope)
     pdef
   }

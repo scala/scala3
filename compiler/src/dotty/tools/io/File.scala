@@ -8,10 +8,7 @@
 
 package dotty.tools.io
 
-import java.io.{
-  BufferedWriter, OutputStreamWriter,
-  BufferedOutputStream, IOException, PrintWriter
-}
+import java.io._
 import java.nio.file.{Files, Paths}
 import java.nio.file.StandardOpenOption._
 
@@ -20,8 +17,8 @@ import scala.io.Codec
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 object File {
-  def pathSeparator = java.io.File.pathSeparator
-  def separator     = java.io.File.separator
+  def pathSeparator: String = File.pathSeparator
+  def separator: String     = File.separator
 
   def apply(path: String)(implicit codec: Codec): File = apply(Paths.get(path))
   def apply(path: JPath)(implicit codec: Codec): File = new File(path)
@@ -39,25 +36,25 @@ object File {
  *  ''Note:  This is library is considered experimental and should not be used unless you know what you are doing.''
  */
 class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) with Streamable.Chars {
-  override val creationCodec = constructorCodec
+  override val creationCodec: io.Codec = constructorCodec
 
   override def addExtension(ext: String): File = super.addExtension(ext).toFile
   override def toAbsolute: File = if (isAbsolute) this else super.toAbsolute.toFile
   override def toDirectory: Directory = new Directory(jpath)
   override def toFile: File = this
   override def normalize: File = super.normalize.toFile
-  override def length = super[Path].length
+  override def length: Long = super[Path].length
   override def walkFilter(cond: Path => Boolean): Iterator[Path] =
     if (cond(this)) Iterator.single(this) else Iterator.empty
 
   /** Obtains an InputStream. */
-  def inputStream() = Files.newInputStream(jpath)
+  def inputStream(): InputStream = Files.newInputStream(jpath)
 
   /** Obtains a OutputStream. */
-  def outputStream(append: Boolean = false) =
+  def outputStream(append: Boolean = false): OutputStream =
     if (append) Files.newOutputStream(jpath, CREATE, APPEND)
     else Files.newOutputStream(jpath, CREATE, TRUNCATE_EXISTING)
-  def bufferedOutput(append: Boolean = false) = new BufferedOutputStream(outputStream(append))
+  def bufferedOutput(append: Boolean = false): BufferedOutputStream = new BufferedOutputStream(outputStream(append))
 
   /** Obtains an OutputStreamWriter wrapped around a FileOutputStream.
    *  This should behave like a less broken version of java.io.FileWriter,

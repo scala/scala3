@@ -355,7 +355,7 @@ class SpaceEngine(implicit ctx: Context) extends SpaceLogic {
   }
 
   /* Erase pattern bound types with WildcardType */
-  def erase(tp: Type) = {
+  def erase(tp: Type): Type = {
     def isPatternTypeSymbol(sym: Symbol) = !sym.isClass && sym.is(Case)
 
     val map = new TypeMap {

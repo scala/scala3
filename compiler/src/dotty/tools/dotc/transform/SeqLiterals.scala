@@ -17,8 +17,8 @@ import Contexts.Context
 class SeqLiterals extends MiniPhase {
   import ast.tpd._
 
-  override def phaseName = "seqLiterals"
-  override def runsAfter = Set(PatternMatcher.name)
+  override def phaseName: String = "seqLiterals"
+  override def runsAfter: Set[String] = Set(PatternMatcher.name)
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case tpd: SeqLiteral => assert(tpd.isInstanceOf[JavaSeqLiteral])

@@ -43,14 +43,14 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
   /** the following two members override abstract members in Transform */
   override def phaseName: String = ExtensionMethods.name
 
-  override def runsAfter = Set(
+  override def runsAfter: Set[String] = Set(
     ElimRepeated.name,
     ProtectedAccessors.name,  // protected accessors cannot handle code that is moved from class to companion object
   )
 
-  override def runsAfterGroupsOf = Set(FirstTransform.name) // need companion objects to exist
+  override def runsAfterGroupsOf: Set[String] = Set(FirstTransform.name) // need companion objects to exist
 
-  override def changesMembers = true // the phase adds extension methods
+  override def changesMembers: Boolean = true // the phase adds extension methods
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
     case moduleClassSym: ClassDenotation if moduleClassSym is ModuleClass =>
@@ -169,7 +169,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
 }
 
 object ExtensionMethods {
-  val name = "extmethods"
+  val name: String = "extmethods"
 
   /** Generate stream of possible names for the extension version of given instance method `imeth`.
    *  If the method is not overloaded, this stream consists of just "imeth$extension".

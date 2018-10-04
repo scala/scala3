@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation }
+import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation, LazyType }
 import Contexts.{Context, ContextBase}
 import Names._
 import NameKinds._
@@ -20,7 +20,6 @@ import io.AbstractFile
 import config.Config
 import util.common._
 import collection.mutable.ListBuffer
-import SymDenotations.LazyType
 
 /** Denotations represent the meaning of symbols and named types.
  *  The following diagram shows how the principal types of denotations
@@ -198,7 +197,7 @@ object Denotations {
     def isTerm: Boolean = !isType
 
     /** Is this denotation overloaded? */
-    final def isOverloaded = isInstanceOf[MultiDenotation]
+    final def isOverloaded: Boolean = isInstanceOf[MultiDenotation]
 
     /** Denotation points to unique symbol; false for overloaded denotations
      * and JointRef denotations.
@@ -230,7 +229,7 @@ object Denotations {
     def mapInfo(f: Type => Type)(implicit ctx: Context): Denotation
 
     /** If this denotation does not exist, fallback to alternative */
-    final def orElse(that: => Denotation) = if (this.exists) this else that
+    final def orElse(that: => Denotation): Denotation = if (this.exists) this else that
 
     /** The set of alternative single-denotations making up this denotation */
     final def alternatives: List[SingleDenotation] = altsWith(alwaysTrue)
@@ -669,8 +668,8 @@ object Denotations {
       }
     }
 
-    final def asSingleDenotation = asInstanceOf[SingleDenotation]
-    final def asSymDenotation = asInstanceOf[SymDenotation]
+    final def asSingleDenotation: SingleDenotation = asInstanceOf[SingleDenotation]
+    final def asSymDenotation: SymDenotation = asInstanceOf[SymDenotation]
 
     def toText(printer: Printer): Text = printer.toText(this)
 
@@ -706,7 +705,7 @@ object Denotations {
     def mapInfo(f: Type => Type)(implicit ctx: Context): SingleDenotation =
       derivedSingleDenotation(symbol, f(info))
 
-    def orElse(that: => SingleDenotation) = if (this.exists) this else that
+    def orElse(that: => SingleDenotation): SingleDenotation = if (this.exists) this else that
 
     def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
       if (exists && p(symbol)) this :: Nil else Nil
@@ -751,8 +750,8 @@ object Denotations {
 
     private[this] var myValidFor: Period = Nowhere
 
-    def validFor = myValidFor
-    def validFor_=(p: Period) = {
+    def validFor: Period = myValidFor
+    def validFor_=(p: Period): Unit = {
       myValidFor = p
       symbol.invalidateDenotCache()
     }
@@ -1017,7 +1016,7 @@ object Denotations {
       nextInRun = newd
     }
 
-    def staleSymbolError(implicit ctx: Context) =
+    def staleSymbolError(implicit ctx: Context): Nothing =
       throw new StaleSymbol(staleSymbolMsg)
 
     def staleSymbolMsg(implicit ctx: Context): String = {
@@ -1049,7 +1048,7 @@ object Denotations {
      */
     def showDcl(implicit ctx: Context): String = ctx.printer.dclText(this).show
 
-    override def toString =
+    override def toString: String =
       if (symbol == NoSymbol) symbol.toString
       else s"<SingleDenotation of type $infoOrCompleter>"
 
@@ -1068,8 +1067,8 @@ object Denotations {
 
     // ------ PreDenotation ops ----------------------------------------------
 
-    final def first = this
-    final def last = this
+    final def first: SingleDenotation = this
+    final def last: SingleDenotation = this
 
     final def matches(other: SingleDenotation)(implicit ctx: Context): Boolean = {
       val d = signature.matchDegree(other.signature)
@@ -1107,7 +1106,7 @@ object Denotations {
 
   abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type) extends SingleDenotation(symbol, initInfo) {
     def infoOrCompleter: Type = initInfo
-    def isType = infoOrCompleter.isInstanceOf[TypeType]
+    def isType: Boolean = infoOrCompleter.isInstanceOf[TypeType]
   }
 
   class UniqueRefDenotation(
@@ -1124,13 +1123,13 @@ object Denotations {
     initInfo: Type,
     initValidFor: Period) extends NonSymSingleDenotation(symbol, initInfo) {
     validFor = initValidFor
-    override def hasUniqueSym = false
+    override def hasUniqueSym: Boolean = false
     protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
   }
 
   class ErrorDenotation(implicit ctx: Context) extends NonSymSingleDenotation(NoSymbol, NoType) {
-    override def exists = false
-    override def hasUniqueSym = false
+    override def exists: Boolean = false
+    override def hasUniqueSym: Boolean = false
     validFor = Period.allInRun(ctx.runId)
     protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = this
   }
@@ -1176,8 +1175,8 @@ object Denotations {
     def denot2: PreDenotation
 
     assert(denot1.exists && denot2.exists, s"Union of non-existing denotations ($denot1) and ($denot2)")
-    def first = denot1.first
-    def last = denot2.last
+    def first: Denotation = denot1.first
+    def last: Denotation = denot2.last
     def matches(other: SingleDenotation)(implicit ctx: Context): Boolean =
       denot1.matches(other) || denot2.matches(other)
     def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation =
@@ -1188,16 +1187,16 @@ object Denotations {
       derivedUnion(denot1.mapInherited(owndenot, prevdenot, pre), denot2.mapInherited(owndenot, prevdenot, pre))
     def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation =
       derivedUnion(denot1.filterExcluded(excluded), denot2.filterExcluded(excluded))
-    protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation) =
+    protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation): PreDenotation =
       if ((denot1 eq this.denot1) && (denot2 eq this.denot2)) this
       else denot1 union denot2
   }
 
   final case class DenotUnion(denot1: PreDenotation, denot2: PreDenotation) extends MultiPreDenotation {
-    def exists = true
-    def toDenot(pre: Type)(implicit ctx: Context) =
+    def exists: Boolean = true
+    def toDenot(pre: Type)(implicit ctx: Context): Denotation =
       (denot1 toDenot pre) & (denot2 toDenot pre, pre)
-    def containsSym(sym: Symbol) =
+    def containsSym(sym: Symbol): Boolean =
       (denot1 containsSym sym) || (denot2 containsSym sym)
     type AsSeenFromResult = PreDenotation
     def computeAsSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation =
@@ -1207,12 +1206,12 @@ object Denotations {
   /** An overloaded denotation consisting of the alternatives of both given denotations.
    */
   case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol, NoType) with MultiPreDenotation {
-    final def infoOrCompleter = multiHasNot("info")
-    final def validFor = denot1.validFor & denot2.validFor
-    final def isType = false
-    final def hasUniqueSym = false
-    final def name(implicit ctx: Context) = denot1.name
-    final def signature(implicit ctx: Context) = Signature.OverloadedSignature
+    final def infoOrCompleter: Nothing = multiHasNot("info")
+    final def validFor: Period = denot1.validFor & denot2.validFor
+    final def isType: Boolean = false
+    final def hasUniqueSym: Boolean = false
+    final def name(implicit ctx: Context): Name = denot1.name
+    final def signature(implicit ctx: Context): Signature = Signature.OverloadedSignature
     def atSignature(sig: Signature, site: Type, relaxed: Boolean)(implicit ctx: Context): Denotation =
       if (sig eq Signature.OverloadedSignature) this
       else derivedUnionDenotation(denot1.atSignature(sig, site, relaxed), denot2.atSignature(sig, site, relaxed))
@@ -1249,7 +1248,7 @@ object Denotations {
     type AsSeenFromResult = Denotation
     def computeAsSeenFrom(pre: Type)(implicit ctx: Context): Denotation =
       derivedUnionDenotation(denot1.asSeenFrom(pre), denot2.asSeenFrom(pre))
-    override def toString = alternatives.mkString(" <and> ")
+    override def toString: String = alternatives.mkString(" <and> ")
 
     private def multiHasNot(op: String): Nothing =
       throw new UnsupportedOperationException(
@@ -1326,6 +1325,6 @@ object Denotations {
   /** An exception for accessing symbols that are no longer valid in current run */
   class StaleSymbol(msg: => String) extends Exception {
     util.Stats.record("stale symbol")
-    override def getMessage() = msg
+    override def getMessage(): String = msg
   }
 }

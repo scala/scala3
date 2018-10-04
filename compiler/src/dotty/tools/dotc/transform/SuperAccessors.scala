@@ -139,7 +139,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       (sym eq defn.Any_##)
 
     /** Transform select node, adding super and protected accessors as needed */
-    def transformSelect(tree: Tree, targs: List[Tree])(implicit ctx: Context) = {
+    def transformSelect(tree: Tree, targs: List[Tree])(implicit ctx: Context): Tree = {
       val sel @ Select(qual, name) = tree
       val sym = sel.symbol
 
@@ -172,7 +172,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     }
 
     /** Wrap template to template transform `op` with needed initialization and finalization */
-    def wrapTemplate(tree: Template)(op: Template => Template)(implicit ctx: Context) = {
+    def wrapTemplate(tree: Template)(op: Template => Template)(implicit ctx: Context): Template = {
       accDefs(currentClass) = new mutable.ListBuffer[Tree]
       val impl = op(tree)
       val accessors = accDefs.remove(currentClass).get
@@ -188,6 +188,6 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     }
 
     /** Wrap `DefDef` producing operation `op`, potentially setting `invalidClass` info */
-    def wrapDefDef(ddef: DefDef)(op: => DefDef)(implicit ctx: Context) =
+    def wrapDefDef(ddef: DefDef)(op: => DefDef)(implicit ctx: Context): DefDef =
       if (isMethodWithExtension(ddef.symbol)) withInvalidCurrentClass(op) else op
 }

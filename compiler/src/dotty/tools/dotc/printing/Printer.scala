@@ -22,7 +22,7 @@ abstract class Printer {
    *  so that pretty-printing expressions using lower-precedence operators can insert parentheses automatically
    *  by calling `changePrec`.
    */
-  def currentPrecedence = prec
+  def currentPrecedence: Precedence = prec
 
   /** Generate text using `op`, assuming a given precedence level `prec`.
    *
@@ -149,15 +149,15 @@ abstract class Printer {
     atPrec(GlobalPrec) { elem.toText(this) }
 
   /** Render elements alternating with `sep` string */
-  def toText(elems: Traversable[Showable], sep: String) =
+  def toText(elems: Traversable[Showable], sep: String): Text =
     Text(elems map (_ toText this), sep)
 
   /** Render elements within highest precedence */
-  def toTextLocal(elems: Traversable[Showable], sep: String) =
+  def toTextLocal(elems: Traversable[Showable], sep: String): Text =
     atPrec(DotPrec) { toText(elems, sep) }
 
   /** Render elements within lowest precedence */
-  def toTextGlobal(elems: Traversable[Showable], sep: String) =
+  def toTextGlobal(elems: Traversable[Showable], sep: String): Text =
     atPrec(GlobalPrec) { toText(elems, sep) }
 
   /** Perform string or text-producing operation `op` so that only a

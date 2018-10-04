@@ -45,7 +45,7 @@ object NameTransformer {
   /** Expand characters that are illegal as JVM method names by `$u`, followed
    *  by the character's unicode expansion.
    */
-  def avoidIllegalChars(name: SimpleName) = {
+  def avoidIllegalChars(name: SimpleName): SimpleName = {
     var i = name.length - 1
     while (i >= 0 && isValidJVMMethodChar(name(i))) i -= 1
     if (i >= 0)

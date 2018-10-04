@@ -30,7 +30,7 @@ object ClassfileParser {
   object NoEmbedded extends Embedded
 
   /** Replace raw types with wildcard applications */
-  def cook(implicit ctx: Context) = new TypeMap {
+  def cook(implicit ctx: Context): TypeMap = new TypeMap {
     def apply(tp: Type): Type = tp match {
       case tp: TypeRef if tp.symbol.typeParams.nonEmpty =>
         AppliedType(tp, tp.symbol.typeParams.map(Function.const(TypeBounds.empty)))
@@ -59,7 +59,7 @@ class ClassfileParser(
   import ClassfileConstants._
   import ClassfileParser._
 
-  protected val in = new AbstractFileReader(classfile)
+  protected val in: AbstractFileReader = new AbstractFileReader(classfile)
 
   protected val staticModule: Symbol = moduleRoot.sourceModule(ictx)
 
@@ -68,7 +68,7 @@ class ClassfileParser(
   protected var pool: ConstantPool = _              // the classfile's constant pool
 
   protected var currentClassName: SimpleName = _      // JVM name of the current class
-  protected var classTParams = Map[Name,Symbol]()
+  protected var classTParams: Map[Name, Symbol] = Map[Name, Symbol]()
 
   private[this] var Scala2UnpicklingMode = Mode.Scala2Unpickling
 
@@ -114,7 +114,7 @@ class ClassfileParser(
     case None => ctx.requiredClass(name)
   }
 
-  var sawPrivateConstructor = false
+  var sawPrivateConstructor: Boolean = false
 
   def parseClass()(implicit ctx: Context): Option[Embedded] = {
     val jflags       = in.nextChar
@@ -225,7 +225,7 @@ class ClassfileParser(
     skipAttributes()
   }
 
-  val memberCompleter = new LazyType {
+  val memberCompleter: LazyType = new LazyType {
 
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
       val oldbp = in.bp
@@ -292,7 +292,7 @@ class ClassfileParser(
   }
 
   /** Map direct references to Object to references to Any */
-  final def objToAny(tp: Type)(implicit ctx: Context) =
+  final def objToAny(tp: Type)(implicit ctx: Context): Type =
     if (tp.isDirectRef(defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else tp
 
   private def sigToType(sig: SimpleName, owner: Symbol = null)(implicit ctx: Context): Type = {
@@ -903,11 +903,11 @@ class ClassfileParser(
 
   /** An entry in the InnerClasses attribute of this class file. */
   case class InnerClassEntry(external: Int, outer: Int, name: Int, jflags: Int) {
-    def externalName = pool.getClassName(external)
-    def outerName    = pool.getClassName(outer)
-    def originalName = pool.getName(name)
+    def externalName: SimpleName = pool.getClassName(external)
+    def outerName: SimpleName    = pool.getClassName(outer)
+    def originalName: SimpleName = pool.getName(name)
 
-    override def toString =
+    override def toString: String =
       originalName + " in " + outerName + "(" + externalName + ")"
   }
 

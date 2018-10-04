@@ -7,7 +7,7 @@ import dotty.tools.io.AbstractFile
 import dotty.tools.io.ClassRepresentation
 
 case class ClassPathEntries(packages: Seq[PackageEntry], classesAndSources: Seq[ClassRepresentation]) {
-  def toTuple = (packages, classesAndSources)
+  def toTuple: (Seq[PackageEntry], Seq[ClassRepresentation]) = (packages, classesAndSources)
 }
 
 trait ClassFileEntry extends ClassRepresentation {
@@ -23,21 +23,21 @@ trait PackageEntry {
 }
 
 private[dotty] case class ClassFileEntryImpl(file: AbstractFile) extends ClassFileEntry {
-  override def name = FileUtils.stripClassExtension(file.name) // class name
+  override def name: String = FileUtils.stripClassExtension(file.name) // class name
 
   override def binary: Option[AbstractFile] = Some(file)
   override def source: Option[AbstractFile] = None
 }
 
 private[dotty] case class SourceFileEntryImpl(file: AbstractFile) extends SourceFileEntry {
-  override def name = FileUtils.stripSourceExtension(file.name)
+  override def name: String = FileUtils.stripSourceExtension(file.name)
 
   override def binary: Option[AbstractFile] = None
   override def source: Option[AbstractFile] = Some(file)
 }
 
 private[dotty] case class ClassAndSourceFilesEntry(classFile: AbstractFile, srcFile: AbstractFile) extends ClassRepresentation {
-  override def name = FileUtils.stripClassExtension(classFile.name)
+  override def name: String = FileUtils.stripClassExtension(classFile.name)
 
   override def binary: Option[AbstractFile] = Some(classFile)
   override def source: Option[AbstractFile] = Some(srcFile)

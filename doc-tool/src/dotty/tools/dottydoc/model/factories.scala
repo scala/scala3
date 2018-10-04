@@ -146,7 +146,7 @@ object factories {
             prefix + tp.name.show.split("\\$").last
           }
           .toList
-      case tp: Types.TypeAlias =>
+      case tp: TypeAlias =>
         typeParams(tp.alias.typeSymbol)
       case _ =>
         Nil

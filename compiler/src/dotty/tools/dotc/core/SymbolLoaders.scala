@@ -192,15 +192,15 @@ object SymbolLoaders {
     }
   }
 
-  def needCompile(bin: AbstractFile, src: AbstractFile) =
+  def needCompile(bin: AbstractFile, src: AbstractFile): Boolean =
     src.lastModified >= bin.lastModified
 
   /** Load contents of a package
    */
   class PackageLoader(_sourceModule: TermSymbol, classPath: ClassPath)
       extends SymbolLoader {
-    override def sourceModule(implicit ctx: Context) = _sourceModule
-    def description(implicit ctx: Context) = "package loader " + sourceModule.fullName
+    override def sourceModule(implicit ctx: Context): TermSymbol = _sourceModule
+    def description(implicit ctx: Context): String = "package loader " + sourceModule.fullName
 
     private[this] var enterFlatClasses: Option[Context => Unit] = None
 
@@ -228,22 +228,22 @@ object SymbolLoaders {
         else e
       }
 
-      override def ensureComplete()(implicit ctx: Context) =
+      override def ensureComplete()(implicit ctx: Context): Unit =
         for (enter <- enterFlatClasses) enter(ctx)
 
-      override def newScopeLikeThis() = new PackageScope
+      override def newScopeLikeThis(): PackageScope = new PackageScope
     }
 
     private[core] val currentDecls: MutableScope = new PackageScope()
 
-    def isFlatName(name: SimpleName) = name.lastIndexOf('$', name.length - 2) >= 0
+    def isFlatName(name: SimpleName): Boolean = name.lastIndexOf('$', name.length - 2) >= 0
 
-    def isFlatName(classRep: ClassRepresentation) = {
+    def isFlatName(classRep: ClassRepresentation): Boolean = {
       val idx = classRep.name.indexOf('$')
       idx >= 0 && idx < classRep.name.length - 1
     }
 
-    def maybeModuleClass(classRep: ClassRepresentation) = classRep.name.last == '$'
+    def maybeModuleClass(classRep: ClassRepresentation): Boolean = classRep.name.last == '$'
 
     private def enterClasses(root: SymDenotation, packageName: String, flat: Boolean)(implicit ctx: Context) = {
       def isAbsent(classRep: ClassRepresentation) =
@@ -368,7 +368,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 
   override def sourceFileOrNull: AbstractFile = classfile
 
-  def description(implicit ctx: Context) = "class file " + classfile.toString
+  def description(implicit ctx: Context): String = "class file " + classfile.toString
 
   override def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
     load(root)
@@ -392,8 +392,8 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 }
 
 class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
-  def description(implicit ctx: Context) = "source file " + srcfile.toString
-  override def sourceFileOrNull = srcfile
+  def description(implicit ctx: Context): String = "source file " + srcfile.toString
+  override def sourceFileOrNull: AbstractFile = srcfile
   def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
     ctx.run.lateCompile(srcfile, typeCheck = ctx.settings.YretainTrees.value)
 }

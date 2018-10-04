@@ -24,7 +24,7 @@ import util._
 class InteractiveDriver(val settings: List[String]) extends Driver {
   import tpd._
 
-  override def sourcesRequired = false
+  override def sourcesRequired: Boolean = false
 
   private val myInitCtx: Context = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive).addMode(Mode.ReadComments)
@@ -265,6 +265,6 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 }
 
 object InteractiveDriver {
-  def toUri(source: SourceFile) = Paths.get(source.file.path).toUri
+  def toUri(source: SourceFile): java.net.URI = Paths.get(source.file.path).toUri
 }
 

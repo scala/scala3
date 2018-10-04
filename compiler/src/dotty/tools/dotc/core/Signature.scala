@@ -90,32 +90,32 @@ case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
    *
    *  Like Signature#apply, the result is only cacheable if `isUnderDefined == false`.
    */
-  def prepend(params: List[Type], isJava: Boolean)(implicit ctx: Context) =
+  def prepend(params: List[Type], isJava: Boolean)(implicit ctx: Context): Signature =
     Signature(params.map(p => sigName(p, isJava)) ++ paramsSig, resSig)
 
   /** A signature is under-defined if its paramsSig part contains at least one
    *  `tpnme.Uninstantiated`. Under-defined signatures arise when taking a signature
    *  of a type that still contains uninstantiated type variables.
    */
-  def isUnderDefined(implicit ctx: Context) =
+  def isUnderDefined(implicit ctx: Context): Boolean =
     paramsSig.contains(tpnme.Uninstantiated) || resSig == tpnme.Uninstantiated
 }
 
 object Signature {
 
   type MatchDegree = Int
-  val NoMatch = 0
-  val ParamMatch = 1
-  val FullMatch = 2
+  val NoMatch: Int = 0
+  val ParamMatch: Int = 1
+  val FullMatch: Int = 2
 
   /** The signature of everything that's not a method, i.e. that has
    *  a type different from PolyType, MethodType, or ExprType.
    */
-  val NotAMethod = Signature(List(), EmptyTypeName)
+  val NotAMethod: Signature = Signature(List(), EmptyTypeName)
 
   /** The signature of an overloaded denotation.
    */
-  val OverloadedSignature = Signature(List(tpnme.OVERLOADED), EmptyTypeName)
+  val OverloadedSignature: Signature = Signature(List(tpnme.OVERLOADED), EmptyTypeName)
 
   /** The signature of a method with no parameters and result type `resultType`.
    *

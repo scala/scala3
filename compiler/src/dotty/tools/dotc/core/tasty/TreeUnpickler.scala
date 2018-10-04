@@ -113,8 +113,8 @@ class TreeUnpickler(reader: TastyReader,
   class TreeReader(val reader: TastyReader) {
     import reader._
 
-    def forkAt(start: Addr) = new TreeReader(subReader(start, endAddr))
-    def fork = forkAt(currentAddr)
+    def forkAt(start: Addr): TreeReader = new TreeReader(subReader(start, endAddr))
+    def fork: TreeReader = forkAt(currentAddr)
 
     def skipTree(tag: Int): Unit =
       if (tag >= firstLengthTreeTag) goto(readEnd())
@@ -698,7 +698,7 @@ class TreeUnpickler(reader: TastyReader,
     /** Create symbols the longest consecutive sequence of parameters with given
      *  `tag` starting at current address.
      */
-    def indexParams(tag: Int)(implicit ctx: Context) =
+    def indexParams(tag: Int)(implicit ctx: Context): Unit =
       while (nextByte == tag) {
         symbolAtCurrent()
         skipTree()
@@ -707,7 +707,7 @@ class TreeUnpickler(reader: TastyReader,
     /** Create symbols for all type and value parameters of template starting
      *  at current address.
      */
-    def indexTemplateParams()(implicit ctx: Context) = {
+    def indexTemplateParams()(implicit ctx: Context): Unit = {
       assert(readByte() == TEMPLATE)
       readEnd()
       indexParams(TYPEPARAM)
@@ -1321,7 +1321,7 @@ class TreeUnpickler(reader: TastyReader,
       }
     }
 
-    override def toString =
+    override def toString: String =
       s"OwnerTree(${addr.index}, ${end.index}, ${if (myChildren == null) "?" else myChildren.mkString(" ")})"
   }
 }

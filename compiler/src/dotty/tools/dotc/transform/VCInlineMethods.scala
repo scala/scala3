@@ -43,7 +43,7 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
 
   override def phaseName: String = "vcInlineMethods"
 
-  override def runsAfter =
+  override def runsAfter: Set[String] =
     Set(ExtensionMethods.name, PatternMatcher.name)
 
   /** Replace a value class method call by a call to the corresponding extension method.

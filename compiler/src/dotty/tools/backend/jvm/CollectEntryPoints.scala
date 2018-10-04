@@ -31,7 +31,7 @@ class CollectEntryPoints extends MiniPhase {
 }
 
 object CollectEntryPoints{
-  def isJavaMainMethod(sym: Symbol)(implicit ctx: Context) = {
+  def isJavaMainMethod(sym: Symbol)(implicit ctx: Context): Boolean = {
     (sym.name == nme.main) && (sym.info match {
       case r@MethodTpe(_, List(defn.ArrayOf(t)), _) =>
         (t.widenDealias =:= defn.StringType) && (

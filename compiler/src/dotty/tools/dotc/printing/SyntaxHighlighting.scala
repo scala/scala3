@@ -19,14 +19,14 @@ object SyntaxHighlighting {
   private final val debug = true
 
   // Keep in sync with SyntaxHighlightingTests
-  val NoColor         = Console.RESET
-  val CommentColor    = Console.BLUE
-  val KeywordColor    = Console.YELLOW
-  val ValDefColor     = Console.CYAN
-  val LiteralColor    = Console.RED
-  val StringColor     = Console.GREEN
-  val TypeColor       = Console.MAGENTA
-  val AnnotationColor = Console.MAGENTA
+  val NoColor: String         = Console.RESET
+  val CommentColor: String    = Console.BLUE
+  val KeywordColor: String    = Console.YELLOW
+  val ValDefColor: String     = Console.CYAN
+  val LiteralColor: String    = Console.RED
+  val StringColor: String     = Console.GREEN
+  val TypeColor: String       = Console.MAGENTA
+  val AnnotationColor: String = Console.MAGENTA
 
   def highlight(in: String)(implicit ctx: Context): String = {
     def freshCtx = ctx.fresh.setReporter(Reporter.NoReporter)

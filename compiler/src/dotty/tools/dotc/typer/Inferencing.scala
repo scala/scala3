@@ -38,7 +38,7 @@ object Inferencing {
   /** The fully defined type, where all type variables are forced.
    *  Throws an error if type contains wildcards.
    */
-  def fullyDefinedType(tp: Type, what: String, pos: Position)(implicit ctx: Context) =
+  def fullyDefinedType(tp: Type, what: String, pos: Position)(implicit ctx: Context): Type =
     if (isFullyDefined(tp, ForceDegree.all)) tp
     else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos") // !!! DEBUG
 
@@ -461,8 +461,8 @@ trait Inferencing { this: Typer =>
 /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
 @sharable object ForceDegree {
   class Value(val appliesTo: TypeVar => Boolean, val minimizeAll: Boolean, val allowBottom: Boolean = true)
-  val none = new Value(_ => false, minimizeAll = false)
-  val all = new Value(_ => true, minimizeAll = false)
-  val noBottom = new Value(_ => true, minimizeAll = false, allowBottom = false)
+  val none: ForceDegree.Value = new Value(_ => false, minimizeAll = false)
+  val all: ForceDegree.Value = new Value(_ => true, minimizeAll = false)
+  val noBottom: ForceDegree.Value = new Value(_ => true, minimizeAll = false, allowBottom = false)
 }
 

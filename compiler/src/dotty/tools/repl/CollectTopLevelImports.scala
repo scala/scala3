@@ -13,10 +13,10 @@ import dotty.tools.dotc.core.Phases.Phase
 class CollectTopLevelImports extends Phase {
   import tpd._
 
-  def phaseName = "collectTopLevelImports"
+  def phaseName: String = "collectTopLevelImports"
 
   private[this] var myImports: List[Import] = _
-  def imports = myImports
+  def imports: List[Import] = myImports
 
   def run(implicit ctx: Context): Unit = {
     def topLevelImports(tree: Tree) = {

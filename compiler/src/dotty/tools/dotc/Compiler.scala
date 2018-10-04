@@ -118,8 +118,8 @@ class Compiler {
     List(new GenBCode) ::            // Generate JVM bytecode
     Nil
 
-  var runId = 1
-  def nextRunId = {
+  var runId: Int = 1
+  def nextRunId: Int = {
     runId += 1; runId
   }
 

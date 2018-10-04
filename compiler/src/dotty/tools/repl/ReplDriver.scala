@@ -59,7 +59,7 @@ class ReplDriver(settings: Array[String],
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
    */
-  override def sourcesRequired = false
+  override def sourcesRequired: Boolean = false
 
   /** Create a fresh and initialized context with IDE mode enabled */
   private[this] def initialCtx = {
@@ -71,7 +71,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** the initial, empty state of the REPL session */
-  final def initialState = State(0, 0, Map.empty, rootCtx)
+  final def initialState: State = State(0, 0, Map.empty, rootCtx)
 
   /** Reset state of repl to the initial state
    *

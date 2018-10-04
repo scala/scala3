@@ -17,7 +17,7 @@ import reporting.trace
  */
 object VarianceChecker {
   case class VarianceError(tvar: Symbol, required: Variance)
-  def check(tree: tpd.Tree)(implicit ctx: Context) =
+  def check(tree: tpd.Tree)(implicit ctx: Context): Unit =
     new VarianceChecker()(ctx).Traverser.traverse(tree)
 }
 

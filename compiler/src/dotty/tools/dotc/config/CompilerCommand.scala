@@ -12,7 +12,7 @@ import scala.collection.JavaConverters._
 object CompilerCommand {
 
   /** The name of the command */
-  def cmdName = "dotc"
+  def cmdName: String = "dotc"
 
   private def explainAdvanced = """
     |-- Notes on option parsing --
@@ -29,9 +29,9 @@ object CompilerCommand {
     |           already are in phase X + 1.
   """
 
-  def shortUsage = s"Usage: $cmdName <options> <source files>"
+  def shortUsage: String = s"Usage: $cmdName <options> <source files>"
 
-  def versionMsg = s"Dotty compiler $versionString -- $copyrightString"
+  def versionMsg: String = s"Dotty compiler $versionString -- $copyrightString"
 
   /** Distill arguments into summary detailing settings, errors and files to compiler */
   def distill(args: Array[String])(implicit ctx: Context): ArgsSummary = {

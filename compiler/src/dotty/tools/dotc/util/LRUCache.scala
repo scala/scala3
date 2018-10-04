@@ -17,13 +17,13 @@ import annotation.tailrec
  */
 class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
   import LRUCache._
-  val keys = new Array[Key](Retained)
-  val values = new Array[Value](Retained)
-  var next = new SixteenNibbles(initialRing.bits)
-  var last = Retained - 1 // value is arbitrary
+  val keys: Array[Key] = new Array[Key](Retained)
+  val values: Array[Value] = new Array[Value](Retained)
+  var next: SixteenNibbles = new SixteenNibbles(initialRing.bits)
+  var last: Int = Retained - 1 // value is arbitrary
   var lastButOne: Int = last - 1
 
-  def first = next(last)
+  def first: Int = next(last)
 
   /** Lookup key, returning value or `null` for not found.
    *  As a side effect, sets `lastButOne` to the element before `last`
@@ -78,7 +78,7 @@ class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
   def keysIterator: Iterator[Key] =
     indices take Retained map keys filter (_ != null)
 
-  override def toString = {
+  override def toString: String = {
     val assocs = keysIterator
       .toList  // double reverse so that lookups do not perturb order
       .reverse
@@ -91,10 +91,10 @@ class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
 object LRUCache {
 
   /** The number of retained elements in the cache; must be at most 16. */
-  val Retained = 16
+  val Retained: Int = 16
 
   /** The initial ring: 0 -> 1 -> ... -> 7 -> 0 */
-  val initialRing =
+  val initialRing: SixteenNibbles =
     (new SixteenNibbles(0L) /: (0 until Retained))((nibbles, idx) =>
       nibbles.updated(idx, (idx + 1) % Retained))
 }

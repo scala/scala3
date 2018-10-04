@@ -17,7 +17,7 @@ import ast.Trees._
 import collection.mutable
 
 object Mixin {
-  val name = "mixin"
+  val name: String = "mixin"
 }
 
 /** This phase performs the following transformations:
@@ -97,12 +97,12 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
   override def phaseName: String = Mixin.name
 
-  override def relaxedTypingInGroup = true
+  override def relaxedTypingInGroup: Boolean = true
     // Because it changes number of parameters in trait initializers
 
-  override def runsAfter = Set(Erasure.name)
+  override def runsAfter: Set[String] = Set(Erasure.name)
 
-  override def changesMembers = true  // the phase adds implementions of mixin accessors
+  override def changesMembers: Boolean = true  // the phase adds implementions of mixin accessors
 
   override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (sym.is(Accessor, butNot = Deferred) && sym.owner.is(Trait)) {
@@ -133,7 +133,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     }
   }.asTerm
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context) = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisPhase)
     import ops._

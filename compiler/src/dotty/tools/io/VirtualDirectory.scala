@@ -21,22 +21,22 @@ extends AbstractFile {
       case Some(parent) => parent.path+'/'+ name
     }
 
-  def absolute = this
+  def absolute: VirtualDirectory = this
 
-  def container = maybeContainer.get
-  def isDirectory = true
-  override def isVirtual = true
+  def container: VirtualDirectory = maybeContainer.get
+  def isDirectory: Boolean = true
+  override def isVirtual: Boolean = true
   val lastModified: Long = System.currentTimeMillis
 
-  override def jpath = null
-  override def input = sys.error("directories cannot be read")
-  override def output = sys.error("directories cannot be written")
+  override def jpath: Null = null
+  override def input: Nothing = sys.error("directories cannot be read")
+  override def output: Nothing = sys.error("directories cannot be written")
 
   /** Does this abstract file denote an existing file? */
-  def create() = { unsupported() }
+  def create(): Nothing = { unsupported() }
 
   /** Delete the underlying file or directory (recursively). */
-  def delete() = { unsupported() }
+  def delete(): Nothing = { unsupported() }
 
   /** Returns an abstract file with the given name. It does not
    *  check that it exists.
@@ -47,7 +47,7 @@ extends AbstractFile {
 
   // the toList is so that the directory may continue to be
   // modified while its elements are iterated
-  def iterator() = files.values.toList.iterator
+  def iterator(): Iterator[AbstractFile] = files.values.toList.iterator
 
   override def lookupName(name: String, directory: Boolean): AbstractFile =
     (files get name filter (_.isDirectory == directory)).orNull
@@ -66,7 +66,7 @@ extends AbstractFile {
       dir
     }
 
-  def clear() = {
+  def clear(): Unit = {
     files.clear()
   }
 }

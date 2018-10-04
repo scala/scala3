@@ -77,7 +77,7 @@ abstract class Lifter {
   /** Lift arguments that are not-idempotent into ValDefs in buffer `defs`
    *  and replace by the idents of so created ValDefs.
    */
-  def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(implicit ctx: Context) =
+  def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(implicit ctx: Context): List[tpd.Tree] =
     methRef.widen match {
       case mt: MethodType =>
         (args, mt.paramNames, mt.paramInfos).zipped.map { (arg, name, tp) =>
@@ -131,26 +131,26 @@ abstract class Lifter {
 
 /** No lifting at all */
 object NoLift extends Lifter {
-  def noLift(expr: tpd.Tree)(implicit ctx: Context) = true
+  def noLift(expr: tpd.Tree)(implicit ctx: Context): Boolean = true
 }
 
 /** Lift all impure arguments */
 class LiftImpure extends Lifter {
-  def noLift(expr: tpd.Tree)(implicit ctx: Context) = tpd.isPureExpr(expr)
+  def noLift(expr: tpd.Tree)(implicit ctx: Context): Boolean = tpd.isPureExpr(expr)
 }
 object LiftImpure extends LiftImpure
 
 /** Lift all impure or complex arguments */
 class LiftComplex extends Lifter {
-  def noLift(expr: tpd.Tree)(implicit ctx: Context) = tpd.isSimplyPure(expr)
-  override def exprLifter = LiftToDefs
+  def noLift(expr: tpd.Tree)(implicit ctx: Context): Boolean = tpd.isSimplyPure(expr)
+  override def exprLifter: LiftToDefs.type = LiftToDefs
 }
 object LiftComplex extends LiftComplex
 
 /** Lift all impure or complex arguments to `def`s */
 object LiftToDefs extends LiftComplex {
   override def liftedFlags: FlagSet = Method
-  override def liftedDef(sym: TermSymbol, rhs: tpd.Tree)(implicit ctx: Context) = tpd.DefDef(sym, rhs)
+  override def liftedDef(sym: TermSymbol, rhs: tpd.Tree)(implicit ctx: Context): tpd.DefDef = tpd.DefDef(sym, rhs)
 }
 
 /** Lifter for eta expansion */

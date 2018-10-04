@@ -43,13 +43,13 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
   override def phaseName: String = ResolveSuper.name
 
-  override def runsAfter = Set(ElimByName.name, // verified empirically, need to figure out what the reason is.
+  override def runsAfter: Set[String] = Set(ElimByName.name, // verified empirically, need to figure out what the reason is.
                                AugmentScala2Traits.name,
                                PruneErasedDefs.name) // Erased decls make `isCurrent` work incorrectly
 
-  override def changesMembers = true // the phase adds super accessors and method forwarders
+  override def changesMembers: Boolean = true // the phase adds super accessors and method forwarders
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context) = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisPhase)
     import ops._
@@ -73,7 +73,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
     cpy.Template(impl)(body = overrides ::: impl.body)
   }
 
-  override def transformDefDef(ddef: DefDef)(implicit ctx: Context) = {
+  override def transformDefDef(ddef: DefDef)(implicit ctx: Context): Tree = {
     val meth = ddef.symbol.asTerm
     if (meth.isSuperAccessor && !meth.is(Deferred)) {
       assert(ddef.rhs.isEmpty)
@@ -87,7 +87,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
 }
 
 object ResolveSuper {
-  val name = "resolveSuper"
+  val name: String = "resolveSuper"
 
   /** Returns the symbol that is accessed by a super-accessor in a mixin composition.
    *

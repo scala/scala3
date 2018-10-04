@@ -37,15 +37,15 @@ object desugar {
 // ----- DerivedTypeTrees -----------------------------------
 
   class SetterParamTree extends DerivedTypeTree {
-    def derivedTree(sym: Symbol)(implicit ctx: Context) = tpd.TypeTree(sym.info.resultType)
+    def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.TypeTree = tpd.TypeTree(sym.info.resultType)
   }
 
   class TypeRefTree extends DerivedTypeTree {
-    def derivedTree(sym: Symbol)(implicit ctx: Context) = tpd.TypeTree(sym.typeRef)
+    def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.TypeTree = tpd.TypeTree(sym.typeRef)
   }
 
   class TermRefTree extends DerivedTypeTree {
-    def derivedTree(sym: Symbol)(implicit ctx: Context) = tpd.ref(sym)
+    def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.Tree = tpd.ref(sym)
   }
 
   /** A type tree that computes its type from an existing parameter.
@@ -59,7 +59,7 @@ object desugar {
      *  be completed so that OriginalSymbol attachments are pushed to DerivedTypeTrees
      *  in apply/unapply methods.
      */
-    override def ensureCompletions(implicit ctx: Context) =
+    override def ensureCompletions(implicit ctx: Context): Unit =
       if (!(ctx.owner is Package))
         if (ctx.owner.isClass) {
           ctx.owner.ensureCompleted()
@@ -81,7 +81,7 @@ object desugar {
      *
      *       parameter name  ==  reference name ++ suffix
      */
-    def derivedTree(sym: Symbol)(implicit ctx: Context) = {
+    def derivedTree(sym: Symbol)(implicit ctx: Context): tpd.TypeTree = {
       val relocate = new TypeMap {
         val originalOwner = sym.owner
         def apply(tp: Type) = tp match {
@@ -114,7 +114,7 @@ object desugar {
     TypeDef(sym.name, new DerivedFromParamTree("").watching(sym)).withFlags(TypeParam)
 
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
-  def derivedTermParam(vdef: ValDef) =
+  def derivedTermParam(vdef: ValDef): ValDef =
     cpy.ValDef(vdef)(
       tpt = new DerivedFromParamTree("") withPos vdef.tpt.pos watching vdef)
 
@@ -150,7 +150,7 @@ object desugar {
     else vdef
   }
 
-  def makeImplicitParameters(tpts: List[Tree], forPrimaryConstructor: Boolean = false)(implicit ctx: Context) =
+  def makeImplicitParameters(tpts: List[Tree], forPrimaryConstructor: Boolean = false)(implicit ctx: Context): List[ValDef] =
     for (tpt <- tpts) yield {
        val paramFlags: FlagSet = if (forPrimaryConstructor) PrivateLocalParamAccessor else Param
        val epname = EvidenceParamName.fresh()
@@ -609,7 +609,7 @@ object desugar {
       else cpy.ValDef(self)(tpt = selfType).withMods(self.mods | SelfName)
     }
 
-    val cdef1 = addEnumFlags {
+    val cdef1: DefTree = addEnumFlags {
       val originalTparamsIt = impliedTparams.toIterator
       val originalVparamsIt = originalVparamss.toIterator.flatten
       val tparamAccessors = derivedTparams.map(_.withMods(originalTparamsIt.next().mods))
@@ -621,10 +621,10 @@ object desugar {
         case _ =>
           Nil
       }
-      cpy.TypeDef(cdef)(
+      cpy.TypeDef(cdef: TypeDef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, self1,
-          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths))
+          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths)): TypeDef
     }
 
     // install the watch on classTycon
@@ -636,7 +636,7 @@ object desugar {
     flatTree(cdef1 :: companions ::: implicitWrappers)
   }
 
-  val AccessOrSynthetic = AccessFlags | Synthetic
+  val AccessOrSynthetic: FlagSet = AccessFlags | Synthetic
 
   /** Expand
    *
@@ -762,7 +762,7 @@ object desugar {
   }
 
   /** Expand variable identifier x to x @ _ */
-  def patternVar(tree: Tree)(implicit ctx: Context) = {
+  def patternVar(tree: Tree)(implicit ctx: Context): Bind = {
     val Ident(name) = tree
     Bind(name, Ident(nme.WILDCARD)).withPos(tree.pos)
   }
@@ -837,7 +837,7 @@ object desugar {
    *      def $anonfun(params) = body
    *      Closure($anonfun)
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), isImplicit: Boolean)(implicit ctx: Context) =
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree(), isImplicit: Boolean)(implicit ctx: Context): Block =
     Block(
       DefDef(nme.ANON_FUN, Nil, params :: Nil, tpt, body).withMods(synthetic | Artifact),
       Closure(Nil, Ident(nme.ANON_FUN), if (isImplicit) ImplicitEmptyTree else EmptyTree))
@@ -852,7 +852,7 @@ object desugar {
    *
    *       (x$1, ..., x$n) => (x$0, ..., x${n-1} @unchecked) match { cases }
    */
-  def makeCaseLambda(cases: List[CaseDef], nparams: Int = 1, unchecked: Boolean = true)(implicit ctx: Context) = {
+  def makeCaseLambda(cases: List[CaseDef], nparams: Int = 1, unchecked: Boolean = true)(implicit ctx: Context): Function = {
     val params = (1 to nparams).toList.map(makeSyntheticParameter(_))
     val selector = makeTuple(params.map(p => Ident(p.name)))
 
@@ -896,7 +896,7 @@ object desugar {
    *  following `fullName`. This is necessary so that we avoid reading an annotation from
    *  the classpath that is also compiled from source.
    */
-  def makeAnnotated(fullName: String, tree: Tree)(implicit ctx: Context) = {
+  def makeAnnotated(fullName: String, tree: Tree)(implicit ctx: Context): Annotated = {
     val parts = fullName.split('.')
     val ttree = ctx.typerPhase match {
       case phase: FrontEnd if phase.stillToBeEntered(parts.last) =>
@@ -907,7 +907,7 @@ object desugar {
       case _ =>
         TypeTree(ctx.requiredClass(fullName).typeRef)
     }
-    Annotated(tree, untpd.New(ttree, Nil))
+    Annotated(tree, New(ttree, Nil))
   }
 
   private def derivedValDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit ctx: Context) = {

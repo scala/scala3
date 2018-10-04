@@ -13,7 +13,7 @@ import annotation.tailrec
 abstract class MacroTransformWithImplicits extends MacroTransform {
   import ast.tpd._
 
-  override def allowsImplicitSearch = true
+  override def allowsImplicitSearch: Boolean = true
 
   class ImplicitsTransformer extends Transformer {
 

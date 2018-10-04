@@ -50,7 +50,7 @@ abstract class Positioned extends Product {
    *  any checks of consistency with - or updates of - other positions.
    *  Called from Unpickler when entering positions.
    */
-  private[dotc] def setPosUnchecked(pos: Position) = curPos = pos
+  private[dotc] def setPosUnchecked(pos: Position): Unit = curPos = pos
 
   /** If any children of this node do not have positions,
    *  fit their positions between the positions of the known subtrees

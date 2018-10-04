@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 object QuoteUnpickler {
   class QuotedTreeSectionUnpickler(posUnpickler: Option[PositionUnpickler], splices: Seq[Any])
     extends DottyUnpickler.TreeSectionUnpickler(posUnpickler, None) {
-    override def unpickle(reader: TastyReader, nameAtRef: NameTable) =
+    override def unpickle(reader: TastyReader, nameAtRef: NameTable): TreeUnpickler =
       new TreeUnpickler(reader, nameAtRef, posUnpickler, None, splices)
   }
 }

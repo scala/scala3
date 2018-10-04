@@ -35,9 +35,9 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
   override def phaseName: String = "expandPrivate"
 
   // This phase moves methods around (in infotransform) so it may need to make other methods public
-  override def runsAfter = Set(MoveStatics.name)
+  override def runsAfter: Set[String] = Set(MoveStatics.name)
 
-  override def changesMembers = true // the phase introduces new members with mangled names
+  override def changesMembers: Boolean = true // the phase introduces new members with mangled names
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
@@ -90,17 +90,17 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
       d.ensureNotPrivate.installAfter(thisPhase)
     }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context) = {
+  override def transformIdent(tree: Ident)(implicit ctx: Context): Ident = {
     ensurePrivateAccessible(tree.symbol)
     tree
   }
 
-  override def transformSelect(tree: Select)(implicit ctx: Context) = {
+  override def transformSelect(tree: Select)(implicit ctx: Context): Select = {
     ensurePrivateAccessible(tree.symbol)
     tree
   }
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context) = {
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context): DefDef = {
     val sym = tree.symbol
     tree.rhs match {
       case Apply(sel @ Select(_: Super, _), _)

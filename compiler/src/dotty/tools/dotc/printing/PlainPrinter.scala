@@ -18,7 +18,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   private[this] var openRecs: List[RecType] = Nil
 
-  protected def maxToTextRecursions = 100
+  protected def maxToTextRecursions: Int = 100
 
   protected final def controlled(op: => Text): Text =
     if (ctx.base.toTextRecursions < maxToTextRecursions && ctx.base.toTextRecursions < maxSummarized)
@@ -34,7 +34,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       "..."
     }
 
-  protected def recursionLimitExceeded() = {
+  protected def recursionLimitExceeded(): Unit = {
     ctx.warning("Exceeded recursion depth attempting to print.")
     if (ctx.debug) Thread.dumpStack()
   }
@@ -81,7 +81,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    *  "package", etc.  The kind string, if non-empty, will be phrased relative
    *  to the name of the owner.
    */
-  protected def hasMeaninglessName(sym: Symbol) = (
+  protected def hasMeaninglessName(sym: Symbol): Boolean = (
        (sym is Param) && sym.owner.isSetter    // x$1
     || sym.isClassConstructor                  // this
     || (sym.name == nme.PACKAGE)               // package
@@ -94,10 +94,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** String representation of a name used in a refinement
    *  In refined printing this undoes type parameter expansion
    */
-  protected def refinementNameString(tp: RefinedType) = nameString(tp.refinedName)
+  protected def refinementNameString(tp: RefinedType): String = nameString(tp.refinedName)
 
   /** String representation of a refinement */
-  protected def toTextRefinement(rt: RefinedType) =
+  protected def toTextRefinement(rt: RefinedType): Closed =
     (refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
   protected def argText(arg: Type): Text = homogenizeArg(arg) match {
@@ -256,13 +256,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def fullNameOwner(sym: Symbol): Symbol = sym.effectiveOwner.enclosingClass
 
-  protected def objectPrefix = "object "
-  protected def packagePrefix = "package "
+  protected def objectPrefix: String = "object "
+  protected def packagePrefix: String = "package "
 
-  protected def trimPrefix(text: Text) =
+  protected def trimPrefix(text: Text): Text =
     text.stripPrefix(objectPrefix).stripPrefix(packagePrefix)
 
-  protected def selectionString(tp: NamedType) = {
+  protected def selectionString(tp: NamedType): String = {
     val sym = if (homogenizedView) tp.symbol else tp.currentSymbol
     if (sym.exists) nameString(sym) else nameString(tp.name)
   }
@@ -541,7 +541,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def summarized[T](op: => T): T = summarized(summarizeDepth)(op)
 
-  def plain = this
+  def plain: PlainPrinter = this
 
   protected def keywordStr(text: String): String = coloredStr(text, SyntaxHighlighting.KeywordColor)
   protected def keywordText(text: String): Text = coloredStr(text, SyntaxHighlighting.KeywordColor)

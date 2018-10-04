@@ -59,15 +59,15 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     try op finally printPos = savedPrintPos
   }
 
-  protected def enclDefIsClass = enclosingDef match {
+  protected def enclDefIsClass: Boolean = enclosingDef match {
     case owner: TypeDef => owner.isClassDef
     case owner: untpd.ModuleDef => true
     case _ => false
   }
 
-  override protected def recursionLimitExceeded() = {}
+  override protected def recursionLimitExceeded(): Unit = {}
 
-  protected val PrintableFlags = (SourceModifierFlags | Label | Module | Local).toCommonFlags
+  protected val PrintableFlags: FlagSet = (SourceModifierFlags | Label | Module | Local).toCommonFlags
 
   override def nameString(name: Name): String =
     if (ctx.settings.YdebugNames.value) name.debugString else name.toString
@@ -79,7 +79,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (isEmptyPrefix(sym.maybeOwner)) nameString(sym)
     else super.fullNameString(sym)
 
-  override protected def fullNameOwner(sym: Symbol) = {
+  override protected def fullNameOwner(sym: Symbol): Symbol = {
     val owner = super.fullNameOwner(sym)
     if (owner is ModuleClass) owner.sourceModule else owner
   }
@@ -614,7 +614,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (sym.privateWithin.exists) sym.privateWithin.asType.name else tpnme.EMPTY,
     sym.annotations map (_.tree))
 
-  protected def optAscription[T >: Untyped](tpt: Tree[T]) = optText(tpt)(": " ~ _)
+  protected def optAscription[T >: Untyped](tpt: Tree[T]): Text = optText(tpt)(": " ~ _)
 
   private def idText(tree: untpd.Tree): Text = {
     if ((ctx.settings.uniqid.value || Printer.debugPrintUnique) && tree.hasType && tree.symbol.exists) s"#${tree.symbol.id}" else ""
@@ -638,7 +638,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   private def toTextOwner(tree: Tree[_]) =
     "[owner = " ~ tree.symbol.maybeOwner.show ~ "]" provided ctx.settings.YprintDebugOwners.value
 
-  protected def dclTextOr[T >: Untyped](tree: Tree[T])(treeText: => Text) =
+  protected def dclTextOr[T >: Untyped](tree: Tree[T])(treeText: => Text): Text =
     toTextOwner(tree) ~ {
       if (useSymbol(tree)) annotsText(tree.symbol) ~~ dclText(tree.symbol)
       else treeText
@@ -758,7 +758,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override protected def treatAsTypeParam(sym: Symbol): Boolean = sym is TypeParam
 
-  override protected def treatAsTypeArg(sym: Symbol) =
+  override protected def treatAsTypeArg(sym: Symbol): Boolean =
     sym.isType && (sym is ProtectedLocal) &&
       (sym.allOverriddenSymbols exists (_ is TypeParam))
 
@@ -779,7 +779,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       super.toText(sym)
   }
 
-  override def kindString(sym: Symbol) = {
+  override def kindString(sym: Symbol): String = {
     val flags = sym.flagsUNSAFE
     if (flags is Package) "package"
     else if (sym.isPackageObject) "package object"
@@ -801,7 +801,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else super.keyString(sym)
   }
 
-  override def toTextFlags(sym: Symbol) =
+  override def toTextFlags(sym: Symbol): Text =
     if (ctx.settings.YdebugFlags.value)
       super.toTextFlags(sym)
     else {
@@ -818,7 +818,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else "some " ~ toText(denot.info)
   }
 
-  override def plain = new PlainPrinter(_ctx)
+  override def plain: PlainPrinter = new PlainPrinter(_ctx)
 
   private def withPos(txt: Text, pos: SourcePosition): Text = {
     if (!printLines || !pos.exists) txt
