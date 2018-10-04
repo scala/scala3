@@ -9,7 +9,7 @@ trait TastyCoreImpl extends scala.tasty.reflect.TastyCore {
 
   type Context = core.Contexts.Context
 
-  type Parent = tpd.Tree
+  type TermOrTypeTree = tpd.Tree
 
   type Tree = tpd.Tree
     type PackageClause = tpd.PackageDef

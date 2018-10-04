@@ -58,12 +58,12 @@ trait TreeOps extends TastyCore {
 
   val ClassDef: ClassDefExtractor
   abstract class ClassDefExtractor {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[Parent], Option[ValDef], List[Statement])]
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree], Option[ValDef], List[Statement])]
   }
 
   trait ClassDefAPI {
     def constructor(implicit ctx: Context): DefDef
-    def parents(implicit ctx: Context): List[Parent]
+    def parents(implicit ctx: Context): List[TermOrTypeTree]
     def self(implicit ctx: Context): Option[ValDef]
     def body(implicit ctx: Context): List[Statement]
   }
@@ -156,7 +156,7 @@ trait TreeOps extends TastyCore {
     /** Matches any term */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Term]
     /** Matches any term */
-    def unapply(parent: Parent)(implicit ctx: Context, dummy: DummyImplicit): Option[Term]
+    def unapply(parent: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[Term]
   }
 
   /** Scala term. Any tree that can go in expression position. */
@@ -286,7 +286,7 @@ trait TreeOps extends TastyCore {
 
     val Inlined: InlinedExtractor
     abstract class InlinedExtractor {
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[Parent], List[Definition], Term)]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[TermOrTypeTree], List[Definition], Term)]
     }
 
     val SelectOuter: SelectOuterExtractor
@@ -301,5 +301,5 @@ trait TreeOps extends TastyCore {
     }
   }
 
-  implicit def termAsParent(term: Term): Parent
+  implicit def termAsTermOrTypeTree(term: Term): TermOrTypeTree
 }

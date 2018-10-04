@@ -99,7 +99,7 @@ package scala.tasty.reflect
  *  +- Symbol
  *
  *  Aliases:
- *   # Parent = Term | TypeTree
+ *   # TermOrTypeTree = Term | TypeTree
  *
  *  ```
  */
@@ -110,7 +110,7 @@ trait TastyCore {
 
   // TODO: When bootstrapped, remove and use `Term | TypeTree` type directly in other files
   /** Workaround missing `|` types in Scala 2 to represent `Term | TypeTree` */
-  type Parent /* Term | TypeTree */
+  type TermOrTypeTree /* Term | TypeTree */
 
   /** Tree representing executable code written in the source */
   type Tree

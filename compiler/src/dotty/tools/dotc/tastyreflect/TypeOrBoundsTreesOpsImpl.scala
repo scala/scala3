@@ -25,8 +25,8 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
   object IsTypeTree extends IsTypeTreeExtractor {
     def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree] =
       if (x.isType) Some(x) else None
-    def unapply(x: Parent)(implicit ctx: Context, dummy: DummyImplicit): Option[TypeTree] =
-      if (x.isType) Some(x) else None
+    def unapply(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[TypeTree] =
+      if (termOrTypeTree.isType) Some(termOrTypeTree) else None
   }
 
   object TypeTree extends TypeTreeModule {
@@ -153,5 +153,5 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
   }
 
-  def typeTreeAsParent(typeTree: TypeTree): Parent = typeTree
+  def typeTreeAsParent(typeTree: TypeTree): TermOrTypeTree = typeTree
 }

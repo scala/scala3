@@ -122,7 +122,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         if (parents1.nonEmpty)
           this += " extends "
 
-        def printParent(parent: Parent): Unit = parent match {
+        def printParent(parent: TermOrTypeTree): Unit = parent match {
           case IsTypeTree(parent) =>
             printTypeTree(parent)
           case IsTerm(Term.TypeApply(fun, targs)) =>
@@ -137,7 +137,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             throw new MatchError(parent.show)
         }
 
-        def printSeparated(list: List[Parent]): Unit = list match {
+        def printSeparated(list: List[TermOrTypeTree]): Unit = list match {
           case Nil =>
           case x :: Nil => printParent(x)
           case x :: xs =>
