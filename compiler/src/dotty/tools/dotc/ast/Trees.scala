@@ -28,7 +28,7 @@ object Trees {
   @sharable var ntrees: Int = 0
 
   /** Property key for trees with documentation strings attached */
-  val DocComment: Property.StickyKey[Comments.Comment] = new Property.StickyKey[Comment]
+  val DocComment: Property.StickyKey[Comments.Comment] = new Property.StickyKey
 
   @sharable private[this] var nextId = 0 // for debugging
 

@@ -171,7 +171,7 @@ object NameKinds {
   /** The kind of numbered names consisting of an underlying name and a number */
   abstract class NumberedNameKind(tag: Int, val infoString: String) extends NameKind(tag) { self =>
     type ThisInfo = NumberedInfo
-    case class NumberedInfo(val num: Int) extends Info {
+    case class NumberedInfo(val num: Int) extends Info with NameKinds.NumberedInfo {
       override def toString: String = s"$infoString $num"
     }
     def apply(qual: TermName, num: Int): TermName =

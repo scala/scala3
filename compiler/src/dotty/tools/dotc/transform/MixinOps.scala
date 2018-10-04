@@ -98,7 +98,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
   final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
   def forwarder(target: Symbol): List[Type] => List[List[Tree]] => Tree =
-    (targs: List[Type]) => (vrefss: List[List[Tree]]) =>
+    targs => vrefss =>
       superRef(target).appliedToTypes(targs).appliedToArgss(vrefss)
 
   private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] = {

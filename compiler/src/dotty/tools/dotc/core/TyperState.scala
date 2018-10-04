@@ -72,7 +72,7 @@ class TyperState(previous: TyperState /* | Null */) {
     new TyperState(this).setReporter(new StoreReporter(reporter)).setCommittable(isCommittable)
 
   /** The uninstantiated variables */
-  def uninstVars: Seq[Types.TypeVar] = constraint.uninstVars
+  def uninstVars: Seq[TypeVar] = constraint.uninstVars
 
   /** The set of uninstantiated type variables which have this state as their owning state */
   private[this] var myOwnedVars: TypeVars = SimpleIdentitySet.empty

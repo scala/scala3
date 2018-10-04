@@ -1,7 +1,7 @@
 package dotty.tools.dotc.profile
 
 import java.io.{FileWriter, PrintWriter}
-import java.lang.management.{ManagementFactory, GarbageCollectorMXBean}
+import java.lang.management.{ManagementFactory, GarbageCollectorMXBean, RuntimeMXBean, MemoryMXBean, ClassLoadingMXBean, CompilationMXBean}
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import javax.management.openmbean.CompositeData
@@ -81,11 +81,11 @@ private [profile] object NoOpProfiler extends Profiler {
 }
 private [profile] object RealProfiler {
   import scala.collection.JavaConverters._
-  val runtimeMx: management.RuntimeMXBean = ManagementFactory.getRuntimeMXBean
-  val memoryMx: management.MemoryMXBean = ManagementFactory.getMemoryMXBean
+  val runtimeMx: RuntimeMXBean = ManagementFactory.getRuntimeMXBean
+  val memoryMx: MemoryMXBean = ManagementFactory.getMemoryMXBean
   val gcMx: List[GarbageCollectorMXBean] = ManagementFactory.getGarbageCollectorMXBeans.asScala.toList
-  val classLoaderMx: management.ClassLoadingMXBean = ManagementFactory.getClassLoadingMXBean
-  val compileMx: management.CompilationMXBean = ManagementFactory.getCompilationMXBean
+  val classLoaderMx: ClassLoadingMXBean = ManagementFactory.getClassLoadingMXBean
+  val compileMx: CompilationMXBean = ManagementFactory.getCompilationMXBean
   val threadMx: ExtendedThreadMxBean = ExtendedThreadMxBean.proxy
   if (threadMx.isThreadCpuTimeSupported) threadMx.setThreadCpuTimeEnabled(true)
   private val idGen = new AtomicInteger()

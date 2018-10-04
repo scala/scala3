@@ -221,7 +221,7 @@ trait Symbols { this: Context =>
   /** Define a new symbol associated with a Bind or pattern wildcard and
    *  make it gadt narrowable.
    */
-  def newPatternBoundSymbol(name: Name, info: Type, pos: Position): Symbol { type ThisName = Names.Name } = {
+  def newPatternBoundSymbol(name: Name, info: Type, pos: Position): Symbol = {
     val sym = newSymbol(owner, name, Case, info, coord = pos)
     if (name.isTypeName) gadt.setBounds(sym, info.bounds)
     sym
@@ -254,7 +254,7 @@ trait Symbols { this: Context =>
    *  dummy is then the class of the template itself. By contrast, the owner of `y`
    *  would be `fld2`. There is a single local dummy per template.
    */
-  def newLocalDummy(cls: Symbol, coord: Coord = NoCoord): Symbol { type ThisName = Names.TermName } =
+  def newLocalDummy(cls: Symbol, coord: Coord = NoCoord): TermSymbol =
     newSymbol(cls, nme.localDummyName(cls), NonMember, NoType)
 
   /** Create an import symbol pointing back to given qualifier `expr`. */
@@ -266,15 +266,15 @@ trait Symbols { this: Context =>
     newSymbol(owner, nme.IMPORT, Synthetic | NonMember, info, coord = coord)
 
   /** Create a class constructor symbol for given class `cls`. */
-  def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord): Symbol { type ThisName = Names.TermName } =
+  def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord): TermSymbol =
     newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes, cls.typeRef), privateWithin, coord)
 
   /** Create an empty default constructor symbol for given class `cls`. */
-  def newDefaultConstructor(cls: ClassSymbol): Symbol { type ThisName = Names.TermName } =
+  def newDefaultConstructor(cls: ClassSymbol): Symbol =
     newConstructor(cls, EmptyFlags, Nil, Nil)
 
   /** Create a synthetic lazy implicit value */
-  def newLazyImplicit(info: Type): Symbol { type ThisName = Names.TermName } =
+  def newLazyImplicit(info: Type): Symbol =
     newSymbol(owner, LazyImplicitName.fresh(), Lazy, info)
 
   /** Create a symbol representing a selftype declaration for class `cls`. */
@@ -308,9 +308,9 @@ trait Symbols { this: Context =>
   /** Create a new skolem symbol. This is not the same as SkolemType, even though the
    *  motivation (create a singleton referencing to a type) is similar.
    */
-  def newSkolem(tp: Type): Symbol { type ThisName = Names.TermName } = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
+  def newSkolem(tp: Type): Symbol = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
 
-  def newErrorSymbol(owner: Symbol, name: Name, msg: => Message): Symbol { type ThisName = Names.Name } = {
+  def newErrorSymbol(owner: Symbol, name: Name, msg: => Message): Symbol = {
     val errType = ErrorType(msg)
     newSymbol(owner, name, SyntheticArtifact,
         if (name.isTypeName) TypeAlias(errType) else errType)
@@ -404,7 +404,7 @@ object Symbols {
   implicit def eqSymbol: Eq[Symbol, Symbol] = Eq
 
   /** Tree attachment containing the identifiers in a tree as a sorted array */
-  val Ids: Property.Key[Array[String]] = new Property.Key[Array[String]]
+  val Ids: Property.Key[Array[String]] = new Property.Key
 
   /** A Symbol represents a Scala definition/declaration or a package.
    *  @param coord  The coordinates of the symbol (a position or an index)

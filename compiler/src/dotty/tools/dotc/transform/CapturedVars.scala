@@ -71,7 +71,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
     }
   }
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context): FreshContext = {
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context = {
     val captured = (new CollectCaptured)
       .runOver(ctx.compilationUnit.tpdTree)(ctx.withPhase(thisPhase))
     ctx.fresh.updateStore(Captured, captured)

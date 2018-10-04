@@ -223,7 +223,7 @@ class PathResolver(implicit ctx: Context) {
 
     // Assemble the elements!
     // priority class path takes precedence
-    def basis: List[Traversable[ClassPath]] = List[Traversable[ClassPath]](
+    def basis: List[Traversable[ClassPath]] = List(
       classesInExpandedPath(priorityClassPath),     // 0. The priority class path (for testing).
       JrtClassPath.apply(),                         // 1. The Java 9 classpath (backed by the jrt:/ virtual system, if available)
       classesInPath(javaBootClassPath),             // 2. The Java bootstrap class path.

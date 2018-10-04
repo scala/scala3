@@ -77,7 +77,7 @@ abstract class Lifter {
   /** Lift arguments that are not-idempotent into ValDefs in buffer `defs`
    *  and replace by the idents of so created ValDefs.
    */
-  def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(implicit ctx: Context): List[tpd.Tree] =
+  def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(implicit ctx: Context): List[Tree] =
     methRef.widen match {
       case mt: MethodType =>
         (args, mt.paramNames, mt.paramInfos).zipped.map { (arg, name, tp) =>
@@ -143,7 +143,7 @@ object LiftImpure extends LiftImpure
 /** Lift all impure or complex arguments */
 class LiftComplex extends Lifter {
   def noLift(expr: tpd.Tree)(implicit ctx: Context): Boolean = tpd.isSimplyPure(expr)
-  override def exprLifter: LiftToDefs.type = LiftToDefs
+  override def exprLifter: Lifter = LiftToDefs
 }
 object LiftComplex extends LiftComplex
 

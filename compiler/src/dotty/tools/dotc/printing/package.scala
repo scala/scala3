@@ -19,7 +19,7 @@ package object printing {
    *
    *  -Xprint will print `sym.name` instead of `sym.originalName`
    */
-  val XprintMode: Key[Unit] = new Key[Unit]
+  val XprintMode: Key[Unit] = new Key
 
   /** @pre `nel` is non-empty list */
   private[printing] implicit class ListOps[A](val nel: List[A]) extends AnyVal {

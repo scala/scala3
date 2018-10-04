@@ -609,7 +609,7 @@ object desugar {
       else cpy.ValDef(self)(tpt = selfType).withMods(self.mods | SelfName)
     }
 
-    val cdef1: DefTree = addEnumFlags {
+    val cdef1 = addEnumFlags {
       val originalTparamsIt = impliedTparams.toIterator
       val originalVparamsIt = originalVparamss.toIterator.flatten
       val tparamAccessors = derivedTparams.map(_.withMods(originalTparamsIt.next().mods))

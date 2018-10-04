@@ -86,7 +86,7 @@ class ReTyper extends Typer with ReChecking {
   override def retrieveSym(tree: untpd.Tree)(implicit ctx: Context): Symbol = tree.symbol
   override def symbolOfTree(tree: untpd.Tree)(implicit ctx: Context): Symbol = tree.symbol
 
-  override def localTyper(sym: Symbol): ReTyper = this
+  override def localTyper(sym: Symbol): Typer = this
 
   override def index(trees: List[untpd.Tree])(implicit ctx: Context): Context = ctx
 

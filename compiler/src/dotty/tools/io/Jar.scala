@@ -43,7 +43,7 @@ class Jar(file: File) extends Iterable[JarEntry] {
 
   import Jar._
 
-  lazy val jarFile: java.util.jar.JarFile  = new JarFile(file.jpath.toFile)
+  lazy val jarFile: JarFile  = new JarFile(file.jpath.toFile)
   lazy val manifest: Option[Manifest] = withJarInput(s => Option(s.getManifest))
 
   def mainClass: Option[String]     = manifest map (f => f(Name.MAIN_CLASS))
@@ -139,7 +139,7 @@ object Jar {
       this(k) = v
 
     def underlying: JManifest = manifest
-    def attrs: mutable.Map[java.util.jar.Attributes.Name, String] = manifest.getMainAttributes().asInstanceOf[AttributeMap].asScala withDefaultValue null
+    def attrs: mutable.Map[Name, String] = manifest.getMainAttributes().asInstanceOf[AttributeMap].asScala withDefaultValue null
     def initialMainAttrs: Map[Attributes.Name, String] = {
       import scala.util.Properties._
       Map(

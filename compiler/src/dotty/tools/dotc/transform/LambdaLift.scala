@@ -29,7 +29,7 @@ object LambdaLift {
     private type SymSet = TreeSet[Symbol]
 
     /** A map storing free variables of functions and classes */
-    val free: mutable.LinkedHashMap[Symbol, SymSet] = new LinkedHashMap[Symbol, SymSet]
+    val free: mutable.LinkedHashMap[Symbol, SymSet] = new LinkedHashMap
 
     /** A map storing the free variable proxies of functions and classes.
      *  For every function and class, this is a map from the free variables
@@ -56,7 +56,7 @@ object LambdaLift {
     private val outerParam = new HashMap[Symbol, Symbol]
 
     /** Buffers for lifted out classes and methods, indexed by owner */
-    val liftedDefs: mutable.HashMap[Symbol, mutable.ListBuffer[Tree]] = new HashMap[Symbol, mutable.ListBuffer[Tree]]
+    val liftedDefs: mutable.HashMap[Symbol, mutable.ListBuffer[Tree]] = new HashMap
 
     /** A flag to indicate whether new free variables have been found */
     private[this] var changedFreeVars: Boolean = _
@@ -516,7 +516,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   override def initContext(ctx: FreshContext): Unit =
     Lifter = ctx.addLocation[Lifter]()
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context): FreshContext =
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context =
     ctx.fresh.updateStore(Lifter, new Lifter(thisPhase))
 
   override def transformIdent(tree: Ident)(implicit ctx: Context): Tree = {

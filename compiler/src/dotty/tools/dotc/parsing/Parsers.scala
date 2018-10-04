@@ -299,7 +299,7 @@ object Parsers {
       case _                  => accept(SEMI)
     }
 
-    def acceptStatSepUnlessAtEnd(altEnd: Token = EOF): AnyVal =
+    def acceptStatSepUnlessAtEnd(altEnd: Token = EOF): Unit =
       if (!isStatSeqEnd)
         in.token match {
           case EOF =>

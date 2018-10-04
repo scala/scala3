@@ -461,8 +461,8 @@ trait Inferencing { this: Typer =>
 /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
 @sharable object ForceDegree {
   class Value(val appliesTo: TypeVar => Boolean, val minimizeAll: Boolean, val allowBottom: Boolean = true)
-  val none: ForceDegree.Value = new Value(_ => false, minimizeAll = false)
-  val all: ForceDegree.Value = new Value(_ => true, minimizeAll = false)
-  val noBottom: ForceDegree.Value = new Value(_ => true, minimizeAll = false, allowBottom = false)
+  val none: Value = new Value(_ => false, minimizeAll = false)
+  val all: Value = new Value(_ => true, minimizeAll = false)
+  val noBottom: Value = new Value(_ => true, minimizeAll = false, allowBottom = false)
 }
 

@@ -145,7 +145,7 @@ object ProtoTypes {
       }
     }
 
-    def underlying(implicit ctx: Context): WildcardType.type = WildcardType
+    def underlying(implicit ctx: Context): Type = WildcardType
 
     def derivedSelectionProto(name: Name, memberProto: Type, compat: Compatibility)(implicit ctx: Context): SelectionProto =
       if ((name eq this.name) && (memberProto eq this.memberProto) && (compat eq this.compat)) this
@@ -237,7 +237,7 @@ object ProtoTypes {
       if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
       else new FunProto(args, resultType)(typer)
 
-    override def notApplied: WildcardType.type = WildcardType
+    override def notApplied: Type = WildcardType
 
     /** Forget the types of any arguments that have been typed producing a constraint
      *    - that is in a typer state that is not yet committed into the one of the current context `ctx`,
@@ -390,7 +390,7 @@ object ProtoTypes {
   }
 
   object ViewProto {
-    def apply(argType: Type, resultType: Type)(implicit ctx: Context): CachedViewProto =
+    def apply(argType: Type, resultType: Type)(implicit ctx: Context): ViewProto =
       unique(new CachedViewProto(argType, resultType))
   }
 
@@ -417,7 +417,7 @@ object ProtoTypes {
       if ((targs eq this.targs) && (resType eq this.resType)) this
       else PolyProto(targs, resType)
 
-    override def notApplied: WildcardType.type = WildcardType
+    override def notApplied: Type = WildcardType
 
     def map(tm: TypeMap)(implicit ctx: Context): PolyProto =
       derivedPolyProto(targs mapConserve tm, tm(resultType))

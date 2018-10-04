@@ -912,7 +912,7 @@ object JavaParsers {
    *  classname alone.
    */
   class OutlineJavaParser(source: SourceFile)(implicit ctx: Context) extends JavaParser(source) with OutlineParserCommon {
-    override def skipBracesHook(): None.type = None
+    override def skipBracesHook(): Option[Tree] = None
     override def typeBody(leadingToken: Int, parentName: Name, parentTParams: List[TypeDef]): (List[Tree], List[Tree]) = {
       skipBraces()
       (List(EmptyValDef), List(EmptyTree))

@@ -37,7 +37,7 @@ class AugmentScala2Traits extends MiniPhase with IdentityDenotTransformer with F
 
   override def phaseName: String = AugmentScala2Traits.name
 
-  override def rewiredTarget(referenced: Symbol, derived: Symbol)(implicit ctx: Context): Symbols.NoSymbol.type = NoSymbol
+  override def rewiredTarget(referenced: Symbol, derived: Symbol)(implicit ctx: Context): Symbol = NoSymbol
 
   override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
     val cls = impl.symbol.owner.asClass

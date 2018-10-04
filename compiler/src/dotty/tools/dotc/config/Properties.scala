@@ -14,7 +14,7 @@ object Properties extends PropertiesTrait {
 
   /** Scala manifest attributes.
    */
-  @sharable val ScalaCompilerVersion: java.util.jar.Attributes.Name = new AttributeName("Scala-Compiler-Version")
+  @sharable val ScalaCompilerVersion: AttributeName = new AttributeName("Scala-Compiler-Version")
 }
 
 trait PropertiesTrait {

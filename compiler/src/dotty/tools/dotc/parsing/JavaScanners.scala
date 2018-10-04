@@ -534,5 +534,5 @@ object JavaScanners {
     nextToken()
   }
 
-  val ((lastKeywordStart: Int), (kwArray: Array[Int])) = buildKeywordArray(keywords)
+  private val ((lastKeywordStart: Int), (kwArray: Array[Int])) = buildKeywordArray(keywords)
 }

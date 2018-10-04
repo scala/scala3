@@ -137,7 +137,7 @@ trait NamerContextOps { this: Context =>
         if (isJava)
           for (param <- params)
             if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
-        make.fromSymbols(params.asInstanceOf[List[TermSymbol]], resultType)
+        make.fromSymbols(params.asInstanceOf[List[Symbol]], resultType)
       }
     if (typeParams.nonEmpty) PolyType.fromParams(typeParams.asInstanceOf[List[TypeSymbol]], monotpe)
     else if (valueParamss.isEmpty) ExprType(monotpe)
@@ -189,9 +189,9 @@ class Namer { typer: Typer =>
 
   import untpd._
 
-  val TypedAhead: Property.Key[tpd.Tree] = new Property.Key[tpd.Tree]
-  val ExpandedTree: Property.Key[untpd.Tree] = new Property.Key[Tree]
-  val SymOfTree: Property.Key[Symbol] = new Property.Key[Symbol]
+  val TypedAhead: Property.Key[tpd.Tree] = new Property.Key
+  val ExpandedTree: Property.Key[untpd.Tree] = new Property.Key
+  val SymOfTree: Property.Key[Symbol] = new Property.Key
 
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
@@ -219,7 +219,7 @@ class Namer { typer: Typer =>
    *  one, so that trees that are shared between different DefDefs can be independently
    *  used as indices. It also contains a scope that contains nested parameters.
    */
-  lazy val nestedTyper: mutable.AnyRefMap[Symbol, Typer] = new mutable.AnyRefMap[Symbol, Typer]
+  lazy val nestedTyper: mutable.AnyRefMap[Symbol, Typer] = new mutable.AnyRefMap
 
   /** The scope of the typer.
    *  For nested typers this is a place parameters are entered during completion
@@ -840,7 +840,7 @@ class Namer { typer: Typer =>
 
     val TypeDef(name, impl @ Template(constr, parents, self, _)) = original
 
-    val ((params: List[Tree]), (rest: List[Tree])) = impl.body span {
+    private val ((params: List[Tree]), (rest: List[Tree])) = impl.body span {
       case td: TypeDef => td.mods is Param
       case vd: ValDef => vd.mods is ParamAccessor
       case _ => false

@@ -10,6 +10,7 @@ import Symbols._
 import Decorators._
 import NameKinds._
 import Types._
+import Flags.FlagSet
 import StdNames.nme
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.tpd
@@ -28,7 +29,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   /** this map contains mutable state of transformation: OffsetDefs to be appended to companion object definitions,
     * and number of bits currently used */
   class OffsetInfo(var defs: List[Tree], var ord:Int)
-  val appendOffsetDefs: mutable.Map[Symbol, OffsetInfo] = mutable.Map.empty[Symbol, OffsetInfo]
+  private[this] val appendOffsetDefs: mutable.Map[Symbol, OffsetInfo] = mutable.Map.empty[Symbol, OffsetInfo]
 
   override def phaseName: String = "lazyVals"
 
@@ -40,10 +41,10 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   def transformer: LazyVals = new LazyVals
 
-  val containerFlags: Flags.FlagSet = Flags.Synthetic | Flags.Mutable | Flags.Lazy
-  val initFlags: Flags.FlagSet      = Flags.Synthetic | Flags.Method
+  val containerFlags: FlagSet = Flags.Synthetic | Flags.Mutable | Flags.Lazy
+  val initFlags: FlagSet      = Flags.Synthetic | Flags.Method
 
-  val containerFlagsMask: Flags.FlagSet = Flags.Method | Flags.Lazy | Flags.Accessor | Flags.Module
+  val containerFlagsMask: FlagSet = Flags.Method | Flags.Lazy | Flags.Accessor | Flags.Module
 
   /** A map of lazy values to the fields they should null after initialization. */
   private[this] var lazyValNullables: IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = _

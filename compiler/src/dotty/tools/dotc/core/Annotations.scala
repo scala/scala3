@@ -65,7 +65,7 @@ object Annotations {
     override def symbol(implicit ctx: Context): ClassSymbol = defn.BodyAnnot
     override def derivedAnnotation(tree: Tree)(implicit ctx: Context): Annotation =
       if (tree eq this.tree) this else ConcreteBodyAnnotation(tree)
-    override def arguments(implicit ctx: Context): Nil.type = Nil
+    override def arguments(implicit ctx: Context): List[Tree] = Nil
     override def ensureCompleted(implicit ctx: Context): Unit = ()
   }
 
@@ -90,7 +90,7 @@ object Annotations {
 
   object Annotation {
 
-    def apply(tree: Tree): Annotations.ConcreteAnnotation = ConcreteAnnotation(tree)
+    def apply(tree: Tree): ConcreteAnnotation = ConcreteAnnotation(tree)
 
     def apply(cls: ClassSymbol)(implicit ctx: Context): Annotation =
       apply(cls, Nil)

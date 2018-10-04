@@ -32,7 +32,7 @@ import dotty.tools.io._
 class GenBCode extends Phase {
   def phaseName: String = GenBCode.name
   private val entryPoints = new mutable.HashSet[Symbol]()
-  def registerEntryPoint(sym: Symbol): mutable.HashSet[Symbol] = entryPoints += sym
+  def registerEntryPoint(sym: Symbol): Unit = entryPoints += sym
 
   private val superCallsMap = newMutableSymbolMap[Set[ClassSymbol]]
   def registerSuperCall(sym: Symbol, calls: ClassSymbol): Unit = {
@@ -70,9 +70,9 @@ object GenBCode {
 
 class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInterface)(implicit val ctx: Context) extends BCodeSyncAndTry {
 
-  var tree: Tree = _
+  private[this] var tree: Tree = _
 
-  val sourceFile: SourceFile = ctx.compilationUnit.source
+  private[this] val sourceFile: SourceFile = ctx.compilationUnit.source
 
   /** Convert a `dotty.tools.io.AbstractFile` into a
    *  `dotty.tools.dotc.interfaces.AbstractFile`.

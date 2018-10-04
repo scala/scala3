@@ -1206,7 +1206,7 @@ object Denotations {
   /** An overloaded denotation consisting of the alternatives of both given denotations.
    */
   case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol, NoType) with MultiPreDenotation {
-    final def infoOrCompleter: Nothing = multiHasNot("info")
+    final def infoOrCompleter: Type = multiHasNot("info")
     final def validFor: Period = denot1.validFor & denot2.validFor
     final def isType: Boolean = false
     final def hasUniqueSym: Boolean = false

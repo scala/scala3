@@ -265,6 +265,6 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 }
 
 object InteractiveDriver {
-  def toUri(source: SourceFile): java.net.URI = Paths.get(source.file.path).toUri
+  def toUri(source: SourceFile): URI = Paths.get(source.file.path).toUri
 }
 

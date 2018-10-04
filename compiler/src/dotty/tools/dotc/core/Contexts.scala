@@ -81,7 +81,7 @@ object Contexts {
     val base: ContextBase
 
     /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
-    def outersIterator: AnyRef with Iterator[Context] { var current: Context;  } = new Iterator[Context] {
+    def outersIterator: Iterator[Context] = new Iterator[Context] {
       var current = thiscontext
       def hasNext = current != NoContext
       def next = { val c = current; current = current.outer; c }
@@ -523,7 +523,7 @@ object Contexts {
     def setSetting[T](setting: Setting[T], value: T): this.type =
       setSettings(setting.updateIn(settingsState, value))
 
-    def setDebug: FreshContext = setSetting(base.settings.Ydebug, true)
+    def setDebug: this.type = setSetting(base.settings.Ydebug, true)
   }
 
   implicit class ModeChanges(val c: Context) extends AnyVal {
@@ -666,7 +666,7 @@ object Contexts {
      *  instead of storing message computations directly in ErrorTypes in order
      *  to avoid space leaks - the message computation usually captures a context.
      */
-    private[core] val errorTypeMsg: mutable.Map[Types.ErrorType, () => Message] = mutable.Map[ErrorType, () => Message]()
+    private[core] val errorTypeMsg: mutable.Map[Types.ErrorType, () => Message] = mutable.Map()
 
     // Phases state
 
@@ -716,6 +716,6 @@ object Contexts {
   }
 
   @sharable object EmptyGADTMap extends GADTMap(SimpleIdentityMap.Empty) {
-    override def setBounds(sym: Symbol, b: TypeBounds): Nothing = unsupported("EmptyGADTMap.setBounds")
+    override def setBounds(sym: Symbol, b: TypeBounds): Unit = unsupported("EmptyGADTMap.setBounds")
   }
 }

@@ -611,8 +611,6 @@ object StdNames {
     val toCharacter: N = "toCharacter"
     val toInteger: N   = "toInteger"
 
-    def newLazyValSlowComputeName(lzyValName: N): lzyValName.ThisName = lzyValName ++ LAZY_SLOW_SUFFIX
-
     // ASCII names for operators
     val ADD      : N = "+"
     val AND      : N = "&"
@@ -646,11 +644,11 @@ object StdNames {
     val UNARY_! : N = "unary_!"
 
     // Grouped here so Cleanup knows what tests to perform.
-    val CommonOpNames: Set[Name]   = Set[Name](OR, XOR, AND, EQ, NE)
-    val ConversionNames: Set[Name] = Set[Name](toByte, toChar, toDouble, toFloat, toInt, toLong, toShort)
-    val BooleanOpNames: Set[Name]  = Set[Name](ZOR, ZAND, UNARY_!) ++ CommonOpNames
+    val CommonOpNames: Set[Name]   = Set(OR, XOR, AND, EQ, NE)
+    val ConversionNames: Set[Name] = Set(toByte, toChar, toDouble, toFloat, toInt, toLong, toShort)
+    val BooleanOpNames: Set[Name]  = Set(ZOR, ZAND, UNARY_!) ++ CommonOpNames
     val NumberOpNames: Set[Name]   = (
-         Set[Name](ADD, SUB, MUL, DIV, MOD, LSL, LSR, ASR, LT, LE, GE, GT)
+         Set(ADD, SUB, MUL, DIV, MOD, LSL, LSR, ASR, LT, LE, GE, GT)
       ++ Set(UNARY_+, UNARY_-, UNARY_!)
       ++ ConversionNames
       ++ CommonOpNames

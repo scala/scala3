@@ -22,7 +22,7 @@ object TastyBuffer {
     def relativeTo(base: Addr): Addr = this - base.index - AddrWidth
   }
 
-  val NoAddr: TastyBuffer.Addr = Addr(-1)
+  val NoAddr: Addr = Addr(-1)
 
   /** The maximal number of address bytes.
    *  Since addresses are written as base-128 natural numbers,
@@ -41,7 +41,7 @@ import TastyBuffer._
 class TastyBuffer(initialSize: Int) {
 
   /** The current byte array, will be expanded as needed */
-  var bytes: Array[Byte] = new Array[Byte](initialSize)
+  var bytes: Array[Byte] = new Array(initialSize)
 
   /** The number of bytes written */
   var length: Int = 0
@@ -155,7 +155,7 @@ class TastyBuffer(initialSize: Int) {
   }
 
   /** The address (represented as a natural number) at address `at` */
-  def getAddr(at: Addr): TastyBuffer.Addr = Addr(getNat(at))
+  def getAddr(at: Addr): Addr = Addr(getNat(at))
 
   /** The smallest address equal to or following `at` which points to a non-zero byte */
   final def skipZeroes(at: Addr): Addr =

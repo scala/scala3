@@ -82,7 +82,7 @@ object Scanners {
 
     /** A character buffer for literals
       */
-    val litBuf: mutable.StringBuilder = new StringBuilder
+    protected val litBuf: mutable.StringBuilder = new StringBuilder
 
     /** append Unicode character to "litBuf" buffer
       */
@@ -194,7 +194,7 @@ object Scanners {
     def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
 
     /** A buffer for comments */
-    val commentBuf: mutable.StringBuilder = new StringBuilder
+    private[this] val commentBuf: mutable.StringBuilder = new StringBuilder
 
     private def handleMigration(keyword: Token): Token =
       if (!isScala2Mode) keyword
@@ -1003,5 +1003,5 @@ object Scanners {
 
   // ------------- keyword configuration -----------------------------------
 
-  val ((lastKeywordStart: Int), (kwArray: Array[Int])) = buildKeywordArray(keywords)
+  private val ((lastKeywordStart: Int), (kwArray: Array[Int])) = buildKeywordArray(keywords)
 }

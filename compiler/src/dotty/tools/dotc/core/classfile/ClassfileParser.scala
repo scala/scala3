@@ -68,7 +68,7 @@ class ClassfileParser(
   protected var pool: ConstantPool = _              // the classfile's constant pool
 
   protected var currentClassName: SimpleName = _      // JVM name of the current class
-  protected var classTParams: Map[Name, Symbol] = Map[Name, Symbol]()
+  protected var classTParams: Map[Name, Symbol] = Map()
 
   private[this] var Scala2UnpicklingMode = Mode.Scala2Unpickling
 

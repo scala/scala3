@@ -18,7 +18,7 @@ import annotation.tailrec
 class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
   import LRUCache._
   val keys: Array[Key] = new Array[Key](Retained)
-  val values: Array[Value] = new Array[Value](Retained)
+  val values: Array[Value] = new Array(Retained)
   var next: SixteenNibbles = new SixteenNibbles(initialRing.bits)
   var last: Int = Retained - 1 // value is arbitrary
   var lastButOne: Int = last - 1

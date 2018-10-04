@@ -1985,7 +1985,7 @@ object SymDenotations {
       unsupported("completerTypeParams") // should be abstract, but Scala-2 will then compute the wrong type for it
   }
 
-  val NoSymbolFn: Context => Symbols.NoSymbol.type = (ctx: Context) => NoSymbol
+  val NoSymbolFn: Context => Symbol = (ctx: Context) => NoSymbol
 
   /** A missing completer */
   @sharable class NoCompleter extends LazyType {

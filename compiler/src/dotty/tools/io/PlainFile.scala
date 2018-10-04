@@ -6,6 +6,8 @@
 package dotty.tools
 package io
 
+import java.io.{InputStream, OutputStream}
+
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {
   override def isDirectory: Boolean = true
@@ -35,9 +37,9 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
   def absolute: PlainFile = new PlainFile(givenPath.toAbsolute)
 
   override def container: AbstractFile = new PlainFile(givenPath.parent)
-  override def input: java.io.InputStream = givenPath.toFile.inputStream()
-  override def output: java.io.OutputStream = givenPath.toFile.outputStream()
-  override def sizeOption: Some[Int] = Some(givenPath.length.toInt)
+  override def input: InputStream = givenPath.toFile.inputStream()
+  override def output: OutputStream = givenPath.toFile.outputStream()
+  override def sizeOption: Option[Int] = Some(givenPath.length.toInt)
 
   override def hashCode(): Int = fpath.hashCode()
   override def equals(that: Any): Boolean = that match {

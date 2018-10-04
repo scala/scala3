@@ -462,10 +462,10 @@ object Scopes {
   /** The empty scope (immutable).
    */
   object EmptyScope extends Scope {
-    override private[dotc] def lastEntry: Null = null
+    override private[dotc] def lastEntry: ScopeEntry = null
     override def size: Int = 0
     override def nestingLevel: Int = 0
-    override def toList(implicit ctx: Context): Nil.type = Nil
+    override def toList(implicit ctx: Context): List[Symbol] = Nil
     override def cloneScope(implicit ctx: Context): MutableScope = unsupported("cloneScope")
     override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = null
     override def lookupNextEntry(entry: ScopeEntry)(implicit ctx: Context): ScopeEntry = null

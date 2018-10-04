@@ -4,14 +4,14 @@ package core
 package tasty
 
 import util.Positions._
-import collection.mutable
+import collection.{mutable, Map}
 import TastyBuffer.Addr
 
 /** Unpickler for tree positions */
 class PositionUnpickler(reader: TastyReader) {
   import reader._
 
-  private[tasty] lazy val positions: mutable.HashMap[Addr, Position] = {
+  private[tasty] lazy val positions: Map[Addr, Position] = {
     val positions = new mutable.HashMap[Addr, Position]
     var curIndex = 0
     var curStart = 0

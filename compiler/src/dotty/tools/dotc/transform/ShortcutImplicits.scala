@@ -71,7 +71,7 @@ class ShortcutImplicits extends MiniPhase with IdentityDenotTransformer { thisPh
     DirectMeth = ctx.addLocation[MutableSymbolMap[Symbol]]()
 
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context): FreshContext =
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context =
     ctx.fresh.updateStore(DirectMeth, newMutableSymbolMap[Symbol])
 
 

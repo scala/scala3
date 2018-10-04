@@ -17,7 +17,7 @@ object ScriptSourceFile {
   @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
   private val headerStarts  = List("#!", "::#!")
 
-  def apply(file: AbstractFile, content: Array[Char]): SourceFile { val underlying: SourceFile } = {
+  def apply(file: AbstractFile, content: Array[Char]): SourceFile = {
     /** Length of the script header from the given content, if there is one.
      *  The header begins with "#!" or "::#!" and ends with a line starting
      *  with "!#" or "::!#".

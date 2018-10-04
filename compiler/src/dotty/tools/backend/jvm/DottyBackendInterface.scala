@@ -76,7 +76,7 @@ class DottyBackendInterface(outputDirectory: AbstractFile, val superCallsMap: Ma
   type LabelDef        = tpd.DefDef
   type Closure         = tpd.Closure
 
-  val NoSymbol: Symbols.NoSymbol.type = Symbols.NoSymbol
+  val NoSymbol: Symbol = Symbols.NoSymbol
   val NoPosition: Position = Positions.NoPosition
   val EmptyTree: Tree = tpd.EmptyTree
 

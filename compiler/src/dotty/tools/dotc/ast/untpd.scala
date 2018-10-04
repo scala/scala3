@@ -36,7 +36,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class ModuleDef(name: TermName, impl: Template)
     extends MemberDef {
     type ThisTree[-T >: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
-    def withName(name: Name)(implicit ctx: Context): untpd.ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
+    def withName(name: Name)(implicit ctx: Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
   case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree) extends TermTree
@@ -157,7 +157,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def toTypeFlags: Modifiers = withFlags(flags.toTypeFlags)
     def toTermFlags: Modifiers = withFlags(flags.toTermFlags)
 
-    def withFlags(flags: FlagSet): untpd.Modifiers =
+    def withFlags(flags: FlagSet): Modifiers =
       if (this.flags == flags) this
       else copy(flags = flags)
 
@@ -188,7 +188,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       if (annots eq annotations) this
       else copy(annotations = annots)
 
-    def withPrivateWithin(pw: TypeName): untpd.Modifiers =
+    def withPrivateWithin(pw: TypeName): Modifiers =
       if (pw.isEmpty) this
       else copy(privateWithin = pw)
 
@@ -243,13 +243,13 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  from the symbol in this type. These type trees have marker trees
    *  TypeRefOfSym or InfoOfSym as their originals.
    */
-  val References: Property.Key[List[DerivedTypeTree]] = new Property.Key[List[DerivedTypeTree]]
+  val References: Property.Key[List[DerivedTypeTree]] = new Property.Key
 
   /** Property key for TypeTrees marked with TypeRefOfSym or InfoOfSym
    *  which contains the symbol of the original tree from which this
    *  TypeTree is derived.
    */
-  val OriginalSymbol: Property.Key[Symbol] = new Property.Key[Symbol]
+  val OriginalSymbol: Property.Key[Symbol] = new Property.Key
 
   // ------ Creation methods for untyped only -----------------
 
@@ -296,7 +296,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def DefDef(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree): DefDef = new DefDef(name, tparams, vparamss, tpt, rhs)
   def TypeDef(name: TypeName, rhs: Tree): TypeDef = new TypeDef(name, rhs)
   def Template(constr: DefDef, parents: List[Tree], self: ValDef, body: LazyTreeList): Template = new Template(constr, parents, self, body)
-  def Import(expr: Tree, selectors: List[untpd.Tree]): Import = new Import(expr, selectors)
+  def Import(expr: Tree, selectors: List[Tree]): Import = new Import(expr, selectors)
   def PackageDef(pid: RefTree, stats: List[Tree]): PackageDef = new PackageDef(pid, stats)
   def Annotated(arg: Tree, annot: Tree): Annotated = new Annotated(arg, annot)
 
@@ -397,7 +397,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   abstract class ModsDecorator { def mods: Modifiers }
 
   implicit class modsDeco(val mdef: MemberDef)(implicit ctx: Context) {
-    def mods: untpd.Modifiers = mdef.rawMods
+    def mods: Modifiers = mdef.rawMods
   }
 
 // --------- Copier/Transformer/Accumulator classes for untyped trees -----
@@ -416,7 +416,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       }
     }.asInstanceOf[copied.ThisTree[Untyped]]
 
-    def ModuleDef(tree: Tree)(name: TermName, impl: Template): untpd.ModuleDef = tree match {
+    def ModuleDef(tree: Tree)(name: TermName, impl: Template): ModuleDef = tree match {
       case tree: ModuleDef if (name eq tree.name) && (impl eq tree.impl) => tree
       case _ => finalize(tree, untpd.ModuleDef(name, impl))
     }

@@ -16,7 +16,7 @@ class TastyPickler(val rootCls: ClassSymbol) {
 
   val nameBuffer: NameBuffer = new NameBuffer
 
-  def newSection(name: String, buf: TastyBuffer): mutable.ArrayBuffer[(NameRef, TastyBuffer)] =
+  def newSection(name: String, buf: TastyBuffer): Unit =
     sections += ((nameBuffer.nameIndex(name.toTermName), buf))
 
   def assembleParts(): Array[Byte] = {

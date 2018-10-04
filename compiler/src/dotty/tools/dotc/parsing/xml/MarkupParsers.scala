@@ -58,7 +58,7 @@ object MarkupParsers {
 
     def mkAttributes(name: String, other: NamespaceType): AttributesType = xAttributes
 
-    val eof: Boolean = false
+    def eof: Boolean = false
 
     def truncatedError(msg: String): Nothing = throw TruncatedXMLControl
     def xHandleError(that: Char, msg: String): Unit =

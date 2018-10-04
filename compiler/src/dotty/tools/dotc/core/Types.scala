@@ -3412,7 +3412,7 @@ object Types {
   abstract case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef with SingletonType {
     type BT = TermLambda
     def kindString: String = "Term"
-    def copyBoundType(bt: BT): bt.ParamRefType = bt.paramRefs(paramNum)
+    def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)
@@ -3423,7 +3423,7 @@ object Types {
   abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int) extends ParamRef {
     type BT = TypeLambda
     def kindString: String = "Type"
-    def copyBoundType(bt: BT): bt.ParamRefType = bt.paramRefs(paramNum)
+    def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
 
     /** Optimized version of occursIn, avoid quadratic blowup when solving
      *  constraints over large ground types.
@@ -4875,7 +4875,7 @@ object Types {
 
   @sharable var debugTrace: Boolean = false
 
-  val watchList: List[Names.TypeName] = List[String](
+  val watchList: List[TypeName] = List[String](
   ) map (_.toTypeName)
 
   def isWatched(tp: Type)(implicit ctx: Context): Boolean = tp match {

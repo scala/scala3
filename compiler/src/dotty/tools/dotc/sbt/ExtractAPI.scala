@@ -164,9 +164,9 @@ private class ExtractAPICollector(implicit val ctx: Context) extends ThunkHolder
     api.Annotated.of(tp, Array(marker))
   private def marker(name: String) =
     api.Annotation.of(api.Constant.of(Constants.emptyType, name), Array())
-  val orMarker: xsbti.api.Annotation = marker("Or")
-  val byNameMarker: xsbti.api.Annotation = marker("ByName")
-  val matchMarker: xsbti.api.Annotation = marker("Match")
+  private val orMarker = marker("Or")
+  private val byNameMarker = marker("ByName")
+  private val matchMarker = marker("Match")
 
   /** Extract the API representation of a source file */
   def apiSource(tree: Tree): Seq[api.ClassLike] = {

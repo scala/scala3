@@ -5,7 +5,7 @@
 package dotty.tools.io
 
 import scala.collection.mutable
-
+import java.io.{InputStream, OutputStream}
 /**
  * An in-memory directory.
  *
@@ -21,22 +21,22 @@ extends AbstractFile {
       case Some(parent) => parent.path+'/'+ name
     }
 
-  def absolute: VirtualDirectory = this
+  def absolute: AbstractFile = this
 
   def container: VirtualDirectory = maybeContainer.get
   def isDirectory: Boolean = true
   override def isVirtual: Boolean = true
   val lastModified: Long = System.currentTimeMillis
 
-  override def jpath: Null = null
-  override def input: Nothing = sys.error("directories cannot be read")
-  override def output: Nothing = sys.error("directories cannot be written")
+  override def jpath: JPath = null
+  override def input: InputStream = sys.error("directories cannot be read")
+  override def output: OutputStream = sys.error("directories cannot be written")
 
   /** Does this abstract file denote an existing file? */
-  def create(): Nothing = { unsupported() }
+  def create(): Unit = { unsupported() }
 
   /** Delete the underlying file or directory (recursively). */
-  def delete(): Nothing = { unsupported() }
+  def delete(): Unit = { unsupported() }
 
   /** Returns an abstract file with the given name. It does not
    *  check that it exists.

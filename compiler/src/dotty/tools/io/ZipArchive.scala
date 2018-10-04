@@ -6,7 +6,7 @@
 package dotty.tools.io
 
 import java.net.URL
-import java.io.{ IOException, InputStream, FilterInputStream }
+import java.io.{ IOException, InputStream, OutputStream, FilterInputStream }
 import java.nio.file.Files
 import java.util.zip.{ ZipEntry, ZipFile }
 import java.util.jar.Manifest
@@ -55,27 +55,27 @@ import ZipArchive._
 abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with Equals {
   self =>
 
-  override def underlyingSource: Some[ZipArchive] = Some(this)
+  override def underlyingSource: Option[ZipArchive] = Some(this)
   def isDirectory: Boolean = true
-  def lookupName(name: String, directory: Boolean): Nothing = unsupported()
-  def lookupNameUnchecked(name: String, directory: Boolean): Nothing = unsupported()
-  def create(): Nothing  = unsupported()
-  def delete(): Nothing  = unsupported()
-  def output: Nothing    = unsupported()
-  def container: Nothing = unsupported()
-  def absolute: Nothing  = unsupported()
+  def lookupName(name: String, directory: Boolean): AbstractFile = unsupported()
+  def lookupNameUnchecked(name: String, directory: Boolean): AbstractFile = unsupported()
+  def create(): Unit = unsupported()
+  def delete(): Unit = unsupported()
+  def output: OutputStream    = unsupported()
+  def container: AbstractFile = unsupported()
+  def absolute: AbstractFile  = unsupported()
 
   /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
   sealed abstract class Entry(path: String) extends VirtualFile(baseName(path), path) {
     // have to keep this name for compat with sbt's compiler-interface
     def getArchive: ZipFile = null
-    override def underlyingSource: Some[ZipArchive] = Some(self)
+    override def underlyingSource: Option[ZipArchive] = Some(self)
     override def toString: String = self.path + "(" + path + ")"
   }
 
   /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
   class DirEntry(path: String) extends Entry(path) {
-    val entries: mutable.HashMap[String, Entry] = mutable.HashMap[String, Entry]()
+    val entries: mutable.HashMap[String, Entry] = mutable.HashMap()
 
     override def isDirectory: Boolean = true
     override def iterator: Iterator[Entry] = entries.valuesIterator
@@ -147,7 +147,7 @@ final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
     override def sizeOption: Option[Int] = Some(zipEntry.getSize.toInt)
   }
 
-  @volatile lazy val ((root: DirEntry), (allDirs: mutable.HashMap[String, DirEntry])) = {
+  @volatile lazy val (root, allDirs): (DirEntry, collection.Map[String, DirEntry]) = {
     val root = new DirEntry("/")
     val dirs = mutable.HashMap[String, DirEntry]("/" -> root)
     val zipFile = openZipFile()
@@ -180,12 +180,12 @@ final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
 
   def iterator: Iterator[Entry] = root.iterator
 
-  def name: String               = jpath.getFileName.toString
-  def path: String               = jpath.toString
-  def input: java.io.InputStream = Files.newInputStream(jpath)
-  def lastModified: Long         = Files.getLastModifiedTime(jpath).toMillis
+  def name: String       = jpath.getFileName.toString
+  def path: String       = jpath.toString
+  def input: InputStream = Files.newInputStream(jpath)
+  def lastModified: Long = Files.getLastModifiedTime(jpath).toMillis
 
-  override def sizeOption: Some[Int] = Some(Files.size(jpath).toInt)
+  override def sizeOption: Option[Int] = Some(Files.size(jpath).toInt)
   override def canEqual(other: Any): Boolean = other.isInstanceOf[FileZipArchive]
   override def hashCode(): Int = jpath.hashCode
   override def equals(that: Any): Boolean = that match {

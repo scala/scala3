@@ -16,13 +16,13 @@ import language.existentials
 
 object Settings {
 
-  val BooleanTag: ClassTag[Boolean] = ClassTag.Boolean
-  val IntTag: ClassTag[Int] = ClassTag.Int
-  val StringTag: ClassTag[Nothing] = ClassTag(classOf[String])
-  val ListTag: ClassTag[Nothing] = ClassTag(classOf[List[_]])
-  val VersionTag: ClassTag[Nothing] = ClassTag(classOf[ScalaVersion])
-  val OptionTag: ClassTag[Nothing] = ClassTag(classOf[Option[_]])
-  val OutputTag: ClassTag[Nothing] = ClassTag(classOf[AbstractFile])
+  val BooleanTag: ClassTag[Boolean]      = ClassTag.Boolean
+  val IntTag: ClassTag[Int]              = ClassTag.Int
+  val StringTag: ClassTag[String]        = ClassTag(classOf[String])
+  val ListTag: ClassTag[List[_]]         = ClassTag(classOf[List[_]])
+  val VersionTag: ClassTag[ScalaVersion] = ClassTag(classOf[ScalaVersion])
+  val OptionTag: ClassTag[Option[_]]     = ClassTag(classOf[Option[_]])
+  val OutputTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
 
   class SettingsState(initialValues: Seq[Any]) {
     private[this] var values = ArrayBuffer(initialValues: _*)
@@ -193,12 +193,12 @@ object Settings {
 
   class SettingGroup {
 
-    val _allSettings: ArrayBuffer[Setting[T1] forSome { type T1 }] = new ArrayBuffer[Setting[_]]
+    private[this] val _allSettings: ArrayBuffer[Setting[_]] = new ArrayBuffer[Setting[_]]
     def allSettings: Seq[Setting[_]] = _allSettings
 
     def defaultState: SettingsState = new SettingsState(allSettings map (_.default))
 
-    def userSetSettings(state: SettingsState): Seq[Setting[T1] forSome { type T1 }] =
+    def userSetSettings(state: SettingsState): Seq[Setting[_]] =
       allSettings filterNot (_.isDefaultIn(state))
 
     def toConciseString(state: SettingsState): String =

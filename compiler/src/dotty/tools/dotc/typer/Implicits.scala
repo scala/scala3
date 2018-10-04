@@ -42,7 +42,7 @@ object Implicits {
   /** A reference to an implicit value to be made visible on the next nested call to
    *  inferImplicitArg with a by-name expected type.
    */
-  val DelayedImplicit: Property.Key[TermRef] = new Property.Key[TermRef]
+  val DelayedImplicit: Property.Key[TermRef] = new Property.Key
 
   /** An implicit definition `implicitRef` that is visible under a different name, `alias`.
    *  Gets generated if an implicit ref is imported via a renaming import.
