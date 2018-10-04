@@ -8,7 +8,7 @@ import Contexts.Context
 import Symbols._
 import dotty.tools.dotc.ast.tpd
 import Decorators._
-import reporting.diagnostic.messages.{MissingCompanionForStatic, StaticFieldsOnlyAllowedInObjects}
+import reporting.diagnostic.messages.{MemberWithSameNameAsStatic, MissingCompanionForStatic, StaticFieldsOnlyAllowedInObjects}
 
 /** A transformer that check that requirements of Static fields\methods are implemented:
   *  1. Only objects can have members annotated with `@static`
@@ -46,7 +46,7 @@ class CheckStatic extends MiniPhase {
         if (!companion.exists) {
           ctx.error(MissingCompanionForStatic(defn.symbol), defn.pos)
         } else if (clashes.exists) {
-          ctx.error("companion classes cannot define members with same name as @static member", defn.pos)
+          ctx.error(MemberWithSameNameAsStatic(), defn.pos)
          } else if (defn.symbol.is(Flags.Mutable) && companion.is(Flags.Trait)) {
           ctx.error("Companions of traits cannot define mutable @static fields", defn.pos)
         } else if (defn.symbol.is(Flags.Lazy)) {

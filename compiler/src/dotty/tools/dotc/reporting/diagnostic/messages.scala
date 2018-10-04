@@ -2131,4 +2131,12 @@ object messages {
            |For this reason, you can also define patterns through `unapplySeq` which returns `Option[Seq[T]]`.
            |This mechanism is used for instance in pattern `case List(x1, ..., xn)`""".stripMargin
   }
+
+  case class MemberWithSameNameAsStatic()(implicit val ctx: Context)
+    extends Message(MemberWithSameNameAsStaticID) {
+
+    override def msg: String = hl"Companion classes cannot define members with same name as a @static member"
+    override def kind: String = "Syntax"
+    override def explanation: String = ""
+  }
 }

@@ -1527,4 +1527,22 @@ class ErrorMessagesTests extends ErrorMessagesTest {
       val NotAnExtractor(tree) = messages.head
       assertEquals("Foo", tree.show)
     }
+
+  @Test def memberWithSameNameAsStatic() =
+    checkMessagesAfter(CheckStatic.name) {
+      """
+        |import scala.annotation.static
+        |class Camp {
+        |  val name = ""
+        |}
+        |object Camp {
+        |  @static val name = ""
+        |}
+      """.stripMargin
+    }.expect { (_, messages) =>
+      assertMessageCount(1, messages)
+      val message = messages.head
+      assertTrue(message.isInstanceOf[MemberWithSameNameAsStatic])
+      assertEquals(message.msg, "Companion classes cannot define members with same name as a @static member")
+    }
 }
