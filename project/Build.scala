@@ -23,7 +23,6 @@ import sbtbuildinfo.BuildInfoPlugin
 import sbtbuildinfo.BuildInfoPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
-import scalafix.sbt.ScalafixPlugin.autoImport._
 
 /* In sbt 0.13 the Build trait would expose all vals to the shell, where you
  * can use them in "set a := b" like expressions. This re-exposes them.
@@ -89,6 +88,7 @@ object Build {
   lazy val dotr =
     inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
 
+
   // Compiles the documentation and static site
   lazy val genDocs = taskKey[Unit]("run dottydoc to generate static documentation site")
 
@@ -114,12 +114,10 @@ object Build {
     organizationHomepage := Some(url("http://lamp.epfl.ch")),
 
     scalacOptions ++= Seq(
-      "-Yrangepos",
       "-feature",
       "-deprecation",
-      "-Ywarn-unused-import",
       "-unchecked",
-      // "-Xfatal-warnings",
+      "-Xfatal-warnings",
       "-encoding", "UTF8",
       "-language:existentials,higherKinds,implicitConversions"
     ),
@@ -747,14 +745,7 @@ object Build {
   def dottyCompilerSettings(implicit mode: Mode): sbt.Def.SettingsDefinition =
     if (mode == NonBootstrapped) nonBootstrapedDottyCompilerSettings else bootstrapedDottyCompilerSettings
 
-  lazy val `dotty-compiler` = project
-    .settings(addCompilerPlugin(scalafixSemanticdb))
-    .settings(scalafixDependencies in ThisBuild +=
-      // "com.geirsson" %% "example-scalafix-rule" % "1.3.0"
-      "com.twitter" %% "rsc-rules" % "0.0.0-406-6829ec44-20181004-1416"
-    )
-    .in(file("compiler")).asDottyCompiler(NonBootstrapped)
-
+  lazy val `dotty-compiler` = project.in(file("compiler")).asDottyCompiler(NonBootstrapped)
   lazy val `dotty-compiler-bootstrapped` = project.in(file("compiler")).asDottyCompiler(Bootstrapped)
 
   def dottyCompiler(implicit mode: Mode): Project = mode match {
