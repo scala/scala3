@@ -93,12 +93,12 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     def visitTypeTree(x: TypeOrBoundsTree): Buffer = x match {
       case TypeTree.Synthetic() =>
         this += "TypeTree.Synthetic()"
-      case TypeTree.TypeIdent(name) =>
-        this += "TypeTree.TypeIdent(\"" += name += "\")"
-      case TypeTree.TermSelect(qualifier, name) =>
-        this += "TypeTree.TermSelect(" += qualifier += ", \"" += name += "\")"
-      case TypeTree.TypeSelect(qualifier, name) =>
-        this += "TypeTree.TypeSelect(" += qualifier += ", \"" += name += "\")"
+      case TypeTree.Ident(name) =>
+        this += "TypeTree.Ident(\"" += name += "\")"
+      case TypeTree.Select(qualifier, name) =>
+        this += "TypeTree.Select(" += qualifier += ", \"" += name += "\")"
+      case TypeTree.Project(qualifier, name) =>
+        this += "TypeTree.Project(" += qualifier += ", \"" += name += "\")"
       case TypeTree.Singleton(ref) =>
         this += "TypeTree.Singleton(" += ref += ")"
       case TypeTree.And(left, right) =>

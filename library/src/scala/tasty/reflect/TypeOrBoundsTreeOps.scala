@@ -32,18 +32,18 @@ trait TypeOrBoundsTreeOps extends TastyCore {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean
     }
 
-    val TypeIdent: TypeIdentExtractor
-    abstract class TypeIdentExtractor {
+    val Ident: IdentExtractor
+    abstract class IdentExtractor {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[String]
     }
 
-    val TermSelect: TermSelectExtractor
-    abstract class TermSelectExtractor {
+    val Select: SelectExtractor
+    abstract class SelectExtractor {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(Term, String)]
     }
 
-    val TypeSelect: TypeSelectExtractor
-    abstract class TypeSelectExtractor {
+    val Project: ProjectExtractor
+    abstract class ProjectExtractor {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, String)]
     }
 

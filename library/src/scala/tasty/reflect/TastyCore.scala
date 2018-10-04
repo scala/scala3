@@ -37,9 +37,9 @@ package scala.tasty.reflect
  *
  *
  *                         +- TypeTree ----+- Synthetic
- *                         |               +- TypeIdent
- *                         |               +- TermSelect
- *                         |               +- TypeSelect
+ *                         |               +- Ident
+ *                         |               +- Select
+ *                         |               +- Project
  *                         |               +- Singleton
  *  +- TypeOrBoundsTree ---+               +- Refined
  *                         |               +- Applied

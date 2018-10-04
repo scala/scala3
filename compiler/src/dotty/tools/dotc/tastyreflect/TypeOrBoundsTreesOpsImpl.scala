@@ -38,21 +38,21 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
       }
     }
 
-    object TypeIdent extends TypeIdentExtractor {
+    object Ident extends IdentExtractor {
       def unapply(x: TypeTree)(implicit ctx: Context): Option[String] = x match {
         case x: tpd.Ident if x.isType => Some(x.name.toString)
         case _ => None
       }
     }
 
-    object TermSelect extends TermSelectExtractor {
+    object Select extends SelectExtractor {
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(Term, String)] = x match {
         case x: tpd.Select if x.isType && x.qualifier.isTerm => Some(x.qualifier, x.name.toString)
         case _ => None
       }
     }
 
-    object TypeSelect extends TypeSelectExtractor {
+    object Project extends ProjectExtractor {
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, String)] = x match {
         case x: tpd.Select if x.isType && x.qualifier.isType => Some(x.qualifier, x.name.toString)
         case _ => None
