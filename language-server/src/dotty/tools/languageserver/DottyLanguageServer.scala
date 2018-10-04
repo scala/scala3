@@ -59,8 +59,6 @@ class DottyLanguageServer extends LanguageServer
   private[this] var myClient: WorksheetClient = _
   def client: WorksheetClient = myClient
 
-  private[this] val worksheets: ConcurrentHashMap[URI, CompletableFuture[_]] = new ConcurrentHashMap()
-
   private[this] var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = _
 
   def drivers: Map[ProjectConfig, InteractiveDriver] = thisServer.synchronized {
@@ -198,25 +196,33 @@ class DottyLanguageServer extends LanguageServer
       diags.flatMap(diagnostic(_, positionMapper)).asJava))
   }
 
-  override def didChange(params: DidChangeTextDocumentParams): Unit = thisServer.synchronized {
-    checkMemory()
+  override def didChange(params: DidChangeTextDocumentParams): Unit = {
     val document = params.getTextDocument
     val uri = new URI(document.getUri)
-    val driver = driverFor(uri)
     val worksheetMode = isWorksheet(uri)
 
-    val change = params.getContentChanges.get(0)
-    assert(change.getRange == null, "TextDocumentSyncKind.Incremental support is not implemented")
+    if (worksheetMode) {
+      Option(worksheets.get(uri)).foreach(_.cancel(true))
+    }
 
-    val (text, positionMapper) =
-      if (worksheetMode) (wrapWorksheet(change.getText), Some(toUnwrappedPosition _))
-      else (change.getText, None)
+    thisServer.synchronized  {
+      checkMemory()
 
-    val diags = driver.run(uri, text)
+      val driver = driverFor(uri)
 
-    client.publishDiagnostics(new PublishDiagnosticsParams(
-      document.getUri,
-      diags.flatMap(diagnostic(_, positionMapper)).asJava))
+      val change = params.getContentChanges.get(0)
+      assert(change.getRange == null, "TextDocumentSyncKind.Incremental support is not implemented")
+
+      val (text, positionMapper) =
+        if (worksheetMode) (wrapWorksheet(change.getText), Some(toUnwrappedPosition _))
+        else (change.getText, None)
+
+      val diags = driver.run(uri, text)
+
+      client.publishDiagnostics(new PublishDiagnosticsParams(
+        document.getUri,
+        diags.flatMap(diagnostic(_, positionMapper)).asJava))
+    }
   }
 
   override def didClose(params: DidCloseTextDocumentParams): Unit = thisServer.synchronized {
