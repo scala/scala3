@@ -111,14 +111,13 @@ object Splicer {
       }
 
     protected def interpretStaticMethodCall(fn: Tree, args: => List[Object])(implicit env: Env): Object = {
-      val (clazz, instance) = loadModule(fn.symbol.owner)
-      val method = getMethod(clazz, fn.symbol.name, paramsSig(fn.symbol))
+      val instance = loadModule(fn.symbol.owner)
+      val method = getMethod(instance.getClass, fn.symbol.name, paramsSig(fn.symbol))
       stopIfRuntimeException(method.invoke(instance, args: _*))
     }
 
-    protected def interpretModuleAccess(fn: Tree)(implicit env: Env): Object = {
-      loadModule(fn.symbol.moduleClass)._2
-    }
+    protected def interpretModuleAccess(fn: Tree)(implicit env: Env): Object =
+      loadModule(fn.symbol.moduleClass)
 
     protected def interpretNew(fn: RefTree, args: => List[Result])(implicit env: Env): Object = {
       val clazz = loadClass(fn.symbol.owner.fullName)
@@ -129,16 +128,15 @@ object Splicer {
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Object =
       throw new StopInterpretation("Unexpected tree could not be interpreted: " + tree, tree.pos)
 
-    private def loadModule(sym: Symbol): (Class[_], Object) = {
+    private def loadModule(sym: Symbol): Object = {
       if (sym.owner.is(Package)) {
         // is top level object
         val moduleClass = loadClass(sym.fullName)
-        val moduleInstance = moduleClass.getField(MODULE_INSTANCE_FIELD).get(null)
-        (moduleClass, moduleInstance)
+        moduleClass.getField(MODULE_INSTANCE_FIELD).get(null)
       } else {
         // nested object in an object
         val clazz = loadClass(sym.fullNameSeparated(FlatName))
-        (clazz, clazz.getConstructor().newInstance().asInstanceOf[Object])
+        clazz.getConstructor().newInstance().asInstanceOf[Object]
       }
     }
 
