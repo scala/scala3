@@ -107,8 +107,8 @@ class TestServer(testFolder: Path, projects: List[Project]) {
     val path = testFolder.resolve(project.name).resolve("out")
     if (wipe) {
       Directory(path).deleteRecursively()
-      Files.createDirectories(path)
     }
+    Files.createDirectories(path)
     path.toAbsolutePath
   }
 

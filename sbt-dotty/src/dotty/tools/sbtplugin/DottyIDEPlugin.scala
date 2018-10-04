@@ -317,6 +317,10 @@ object DottyIDEPlugin extends AutoPlugin {
        (classpathProjectDependencies ++ configDependencies).distinct.toList
       }
 
+      // For projects without sources, we need to create it. Otherwise `InteractiveDriver`
+      // complains that the target directory doesn't exist.
+      if (!classDir.exists) IO.createDirectory(classDir)
+
       Some(new ProjectConfig(
         id,
         compilerVersion,

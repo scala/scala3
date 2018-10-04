@@ -53,60 +53,84 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   def openedTrees: Map[URI, List[SourceTree]] = myOpenedTrees
   def compilationUnits: Map[URI, CompilationUnit] = myCompilationUnits
 
+  /**
+   * The trees for all the source files in this project.
+   *
+   * This includes the trees for the buffers that are presently open in the IDE, and the trees
+   * from the target directory.
+   */
+  def sourceTrees(implicit ctx: Context): List[SourceTree] = sourceTreesContaining("")
+
+  /**
+   * The trees for all the source files in this project that contain `id`.
+   *
+   * This includes the trees for the buffers that are presently open in the IDE, and the trees
+   * from the target directory.
+   */
+  def sourceTreesContaining(id: String)(implicit ctx: Context): List[SourceTree] = {
+    val fromBuffers = openedTrees.values.flatten.toList
+    val fromCompilationOutput = {
+      val classNames = new mutable.ListBuffer[String]
+      val output = ctx.settings.outputDir.value
+      if (output.isDirectory) {
+        classesFromDir(output.jpath, classNames)
+      } else {
+        val zipFile = new ZipFile(output.file)
+        classesFromZip(zipFile, classNames)
+      }
+      classNames.flatMap { cls =>
+        val className = cls.toTypeName
+        treesFromClassName(className, id = "")
+      }
+    }
+    (fromBuffers ++ fromCompilationOutput).distinct
+  }
+
+  /**
+   * All the trees for this project.
+   *
+   * This includes the trees of the sources of this project, along with the trees that are found
+   * on this project's classpath.
+   */
   def allTrees(implicit ctx: Context): List[SourceTree] = allTreesContaining("")
 
+  /**
+   * All the trees for this project that contain `id`.
+   *
+   * This includes the trees of the sources of this project, along with the trees that are found
+   * on this project's classpath.
+   */
   def allTreesContaining(id: String)(implicit ctx: Context): List[SourceTree] = {
     val fromSource = openedTrees.values.flatten.toList
     val fromClassPath = (dirClassPathClasses ++ zipClassPathClasses).flatMap { cls =>
       val className = cls.toTypeName
-      List(tree(className, id), tree(className.moduleClassName, id)).flatten
+      treesFromClassName(className, id)
     }
     (fromSource ++ fromClassPath).distinct
   }
 
-  private def tree(className: TypeName, id: String)(implicit ctx: Context): Option[SourceTree] = {
-    val clsd = ctx.base.staticRef(className)
-    clsd match {
-      case clsd: ClassDenotation =>
-        clsd.ensureCompleted()
-        SourceTree.fromSymbol(clsd.symbol.asClass, id)
-      case _ =>
-        None
+  /**
+   * The `SourceTree`s that define the class `className` and/or module `className`.
+   *
+   * @see SourceTree.fromSymbol
+   */
+  private def treesFromClassName(className: TypeName, id: String)(implicit ctx: Context): List[SourceTree] = {
+    def tree(className: TypeName, id: String): Option[SourceTree] = {
+      val clsd = ctx.base.staticRef(className)
+      clsd match {
+        case clsd: ClassDenotation =>
+          clsd.ensureCompleted()
+          SourceTree.fromSymbol(clsd.symbol.asClass, id)
+        case _ =>
+          None
+      }
     }
+    List(tree(className, id), tree(className.moduleClassName, id)).flatten
   }
 
   // Presence of a file with one of these suffixes indicates that the
   // corresponding class has been pickled with TASTY.
   private val tastySuffixes = List(".hasTasty", ".tasty")
-
-  private def classNames(cp: ClassPath, packageName: String): List[String] = {
-    def className(classSegments: List[String]) =
-      classSegments.mkString(".").stripSuffix(".class")
-
-    val ClassPathEntries(pkgs, classReps) = cp.list(packageName)
-
-    classReps
-      .filter((classRep: ClassRepresentation) => classRep.binary match {
-        case None =>
-          true
-        case Some(binFile) =>
-          val prefix =
-            if (binFile.name.endsWith(".class"))
-              binFile.name.stripSuffix(".class")
-            else
-              null
-          prefix != null && {
-            binFile match {
-              case pf: PlainFile =>
-                tastySuffixes.map(suffix => pf.givenPath.parent / (prefix + suffix)).exists(_.exists)
-              case _ =>
-                sys.error(s"Unhandled file type: $binFile [getClass = ${binFile.getClass}]")
-            }
-          }
-      })
-      .map(classRep => (packageName ++ (if (packageName != "") "." else "") ++ classRep.name)).toList ++
-    pkgs.flatMap(pkg => classNames(cp, pkg.name))
-  }
 
   // FIXME: All the code doing classpath handling is very fragile and ugly,
   // improving this requires changing the dotty classpath APIs to handle our usecases.
@@ -128,17 +152,13 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   }
 
   // Like in `ZipArchiveFileLookup` we assume that zips are immutable
-  private val zipClassPathClasses: Seq[String] = zipClassPaths.flatMap { zipCp =>
-    val zipFile = new ZipFile(zipCp.zipFile)
-
-    try {
-      for {
-        entry <- zipFile.stream.toArray((size: Int) => new Array[ZipEntry](size))
-        name = entry.getName
-        tastySuffix <- tastySuffixes.find(name.endsWith)
-      } yield name.replace("/", ".").stripSuffix(tastySuffix)
+  private val zipClassPathClasses: Seq[String] = {
+    val names = new mutable.ListBuffer[String]
+    zipClassPaths.foreach { zipCp =>
+      val zipFile = new ZipFile(zipCp.zipFile)
+      classesFromZip(zipFile, names)
     }
-    finally zipFile.close()
+    names
   }
 
   // FIXME: classfiles in directories may change at any point, so we retraverse
@@ -148,26 +168,43 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     val names = new mutable.ListBuffer[String]
     dirClassPaths.foreach { dirCp =>
       val root = dirCp.dir.toPath
-      try
-        Files.walkFileTree(root, new SimpleFileVisitor[Path] {
-          override def visitFile(path: Path, attrs: BasicFileAttributes) = {
-            if (!attrs.isDirectory) {
-              val name = path.getFileName.toString
-              for {
-                tastySuffix <- tastySuffixes
-                if name.endsWith(tastySuffix)
-              } {
-                names += root.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix)
-              }
-            }
-            FileVisitResult.CONTINUE
-          }
-        })
-      catch {
-        case _: NoSuchFileException =>
-      }
+      classesFromDir(root, names)
     }
-    names.toList
+    names
+  }
+
+  /** Adds the names of the classes that are defined in `zipFile` to `buffer`. */
+  private def classesFromZip(zipFile: ZipFile, buffer: mutable.ListBuffer[String]): Unit = {
+    try {
+      for {
+        entry <- zipFile.stream.toArray((size: Int) => new Array[ZipEntry](size))
+        name = entry.getName
+        tastySuffix <- tastySuffixes.find(name.endsWith)
+      } buffer += name.replace("/", ".").stripSuffix(tastySuffix)
+    }
+  finally zipFile.close()
+  }
+
+  /** Adds the names of the classes that are defined in `dir` to `buffer`. */
+  private def classesFromDir(dir: Path, buffer: mutable.ListBuffer[String]): Unit = {
+    try
+      Files.walkFileTree(dir, new SimpleFileVisitor[Path] {
+        override def visitFile(path: Path, attrs: BasicFileAttributes) = {
+          if (!attrs.isDirectory) {
+            val name = path.getFileName.toString
+            for {
+              tastySuffix <- tastySuffixes
+              if name.endsWith(tastySuffix)
+            } {
+              buffer += dir.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix)
+            }
+          }
+          FileVisitResult.CONTINUE
+        }
+      })
+    catch {
+      case _: NoSuchFileException =>
+    }
   }
 
   private def topLevelClassTrees(topTree: Tree, source: SourceFile): List[SourceTree] = {
