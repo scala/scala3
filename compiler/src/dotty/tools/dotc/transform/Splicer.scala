@@ -111,9 +111,20 @@ object Splicer {
       }
 
     protected def interpretStaticMethodCall(fn: Tree, args: => List[Object])(implicit env: Env): Object = {
-      val (clazz, instance) = loadModule(fn.symbol.owner)
-      val method = getMethod(clazz, fn.symbol.name, paramsSig(fn.symbol))
-      stopIfRuntimeException(method.invoke(instance, args: _*))
+      if (fn.symbol == defn.NoneModuleRef.termSymbol) {
+        // TODO generalize
+        None
+      } else {
+        val (clazz, instance) = loadModule(fn.symbol.owner)
+        val method = getMethod(clazz, fn.symbol.name, paramsSig(fn.symbol))
+        stopIfRuntimeException(method.invoke(instance, args: _*))
+      }
+    }
+
+    protected def interpretNew(fn: RefTree, args: => List[Result])(implicit env: Env): Object = {
+      val clazz = loadClass(fn.symbol.owner.fullName)
+      val constr = clazz.getConstructor(paramsSig(fn.symbol): _*)
+      constr.newInstance(args: _*).asInstanceOf[Object]
     }
 
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Object =
@@ -240,12 +251,13 @@ object Splicer {
 
     def apply(tree: Tree): Boolean = interpretTree(tree)(Map.empty)
 
-    def interpretQuote(tree: tpd.Tree)(implicit env: Env): Boolean = true
-    def interpretTypeQuote(tree: tpd.Tree)(implicit env: Env): Boolean = true
-    def interpretLiteral(value: Any)(implicit env: Env): Boolean = true
-    def interpretVarargs(args: List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
-    def interpretTastyContext()(implicit env: Env): Boolean = true
-    def interpretStaticMethodCall(fn: tpd.Tree, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
+    protected def interpretQuote(tree: tpd.Tree)(implicit env: Env): Boolean = true
+    protected def interpretTypeQuote(tree: tpd.Tree)(implicit env: Env): Boolean = true
+    protected def interpretLiteral(value: Any)(implicit env: Env): Boolean = true
+    protected def interpretVarargs(args: List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
+    protected def interpretTastyContext()(implicit env: Env): Boolean = true
+    protected def interpretStaticMethodCall(fn: tpd.Tree, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
+    protected def interpretNew(fn: RefTree, args: => List[Result])(implicit env: Env): Boolean = args.forall(identity)
 
     def unexpectedTree(tree: tpd.Tree)(implicit env: Env): Boolean = {
       // Assuming that top-level splices can only be in inline methods
@@ -266,6 +278,7 @@ object Splicer {
     protected def interpretVarargs(args: List[Result])(implicit env: Env): Result
     protected def interpretTastyContext()(implicit env: Env): Result
     protected def interpretStaticMethodCall(fn: Tree, args: => List[Result])(implicit env: Env): Result
+    protected def interpretNew(fn: RefTree, args: => List[Result])(implicit env: Env): Result
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Result
 
     protected final def interpretTree(tree: Tree)(implicit env: Env): Result = tree match {
@@ -298,7 +311,14 @@ object Splicer {
 
       case Inlined(EmptyTree, Nil, expansion) => interpretTree(expansion)
 
-      case Typed(SeqLiteral(elems, _), _) => interpretVarargs(elems.map(e => interpretTree(e)))
+      case Apply(TypeApply(fun: RefTree, _), args) if fun.symbol.isConstructor && fun.symbol.owner.owner.is(Package) =>
+        interpretNew(fun, args.map(interpretTree))
+
+      case Apply(fun: RefTree, args) if fun.symbol.isConstructor && fun.symbol.owner.owner.is(Package)=>
+        interpretNew(fun, args.map(interpretTree))
+
+      case Typed(SeqLiteral(elems, _), _) =>
+        interpretVarargs(elems.map(e => interpretTree(e)))
 
       case _ =>
         unexpectedTree(tree)

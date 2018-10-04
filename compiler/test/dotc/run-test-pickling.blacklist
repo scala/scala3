@@ -24,6 +24,7 @@ i5119
 i5119b
 inline-varargs-1
 implicitShortcut
+inline-option
 lazy-implicit-lists.scala
 lazy-implicit-nums.scala
 lazy-traits.scala

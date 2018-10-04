@@ -678,9 +678,22 @@ trait Checking {
     val purityLevel = if (isFinal) Idempotent else Pure
     tree.tpe.widenTermRefExpr match {
       case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
-      case _ =>
-        val allow = ctx.erasedTypes || ctx.inInlineMethod
+      case tp =>
+        val allow =
+          ctx.erasedTypes ||
+          ctx.inInlineMethod ||
+          // TODO: Make None and Some constant types?
+          tree.symbol.eq(defn.NoneModuleRef.termSymbol) ||
+          tree.symbol.eq(defn.SomeClass.primaryConstructor) ||
+          (tree.symbol.name == nme.apply && tree.symbol.owner == defn.SomeClass.companionModule.moduleClass)
         if (!allow) ctx.error(em"$what must be a constant expression", tree.pos)
+        else tree match {
+          // TODO: add cases for type apply and multiple applies
+          case Apply(_, args) =>
+            for (arg <- args)
+              checkInlineConformant(arg, isFinal, what)
+          case _ =>
+        }
     }
   }
 
