@@ -679,7 +679,6 @@ trait Checking {
     tree.tpe.widenTermRefExpr match {
       case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
       case tp =>
-        // TODO: Make None and Some constant types?
         def isCaseClassApply(sym: Symbol): Boolean = {
           sym.name == nme.apply && (
             tree.symbol.owner == defn.SomeClass.companionModule.moduleClass ||
@@ -693,7 +692,8 @@ trait Checking {
           )
         }
         def isCaseObject(sym: Symbol): Boolean = {
-          tree.symbol.eq(defn.NoneModuleRef.termSymbol)
+          // TODO add alias to Nil in scala package
+          sym.is(Case) && sym.is(Module) && sym.isStatic
         }
         val allow =
           ctx.erasedTypes ||
