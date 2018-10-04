@@ -295,12 +295,16 @@ object Splicer {
       case _ if tree.symbol == defn.TastyTasty_macroContext =>
         interpretTastyContext()
 
-      case StaticCall(fn, args) =>
-        if (fn.symbol.is(Module)) {
-          assert(args.isEmpty)
-          interpretModuleAccess(fn)
+      case Call(fn, args) =>
+        if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) {
+          interpretNew(fn, args.map(interpretTree))
+        } else if (fn.symbol.isStatic) {
+          if (fn.symbol.is(Module)) interpretModuleAccess(fn)
+          else interpretStaticMethodCall(fn, args.map(arg => interpretTree(arg)))
+        } else if (env.contains(fn.name)) {
+          env(fn.name)
         } else {
-          interpretStaticMethodCall(fn, args.map(arg => interpretTree(arg)))
+          unexpectedTree(tree)
         }
 
       // Interpret `foo(j = x, i = y)` which it is expanded to
@@ -313,15 +317,8 @@ object Splicer {
         })
         interpretTree(expr)(newEnv)
       case NamedArg(_, arg) => interpretTree(arg)
-      case Ident(name) if env.contains(name) => env(name)
 
       case Inlined(EmptyTree, Nil, expansion) => interpretTree(expansion)
-
-      case Apply(TypeApply(fun: RefTree, _), args) if fun.symbol.isConstructor && fun.symbol.owner.owner.is(Package) =>
-        interpretNew(fun, args.map(interpretTree))
-
-      case Apply(fun: RefTree, args) if fun.symbol.isConstructor && fun.symbol.owner.owner.is(Package)=>
-        interpretNew(fun, args.map(interpretTree))
 
       case Typed(SeqLiteral(elems, _), _) =>
         interpretVarargs(elems.map(e => interpretTree(e)))
@@ -330,11 +327,11 @@ object Splicer {
         unexpectedTree(tree)
     }
 
-    object StaticCall {
+    object Call {
       def unapply(arg: Tree): Option[(RefTree, List[Tree])] = arg match {
-        case fn: RefTree if fn.symbol.isStatic => Some((fn, Nil))
-        case Apply(StaticCall(fn, args1), args2) => Some((fn, args1 ::: args2)) // TODO improve performance
-        case TypeApply(StaticCall(fn, args), _) => Some((fn, args))
+        case fn: RefTree => Some((fn, Nil))
+        case Apply(Call(fn, args1), args2) => Some((fn, args1 ::: args2)) // TODO improve performance
+        case TypeApply(Call(fn, args), _) => Some((fn, args))
         case _ => None
       }
     }

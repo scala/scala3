@@ -26,6 +26,7 @@ inline-varargs-1
 implicitShortcut
 inline-case-objects
 inline-option
+inline-macro-staged-interpreter
 inline-tuples-1
 inline-tuples-2
 lazy-implicit-lists.scala
