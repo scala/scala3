@@ -269,46 +269,9 @@ class DottyLanguageServer extends LanguageServer
 
     val pos = sourcePosition(driver, uri, params.getPosition)
     val path = Interactive.pathTo(driver.openedTrees(uri), pos)
-    val enclTree = Interactive.enclosingTree(path)
 
-    val sym = {
-      val sym = path match {
-        // For a named arg, find the target `DefDef` and jump to the param
-        case NamedArg(name, _) :: Apply(fn, _) :: _ =>
-          val funSym = fn.symbol
-          if (funSym.name == StdNames.nme.copy
-            && funSym.is(Synthetic)
-            && funSym.owner.is(CaseClass)) {
-            funSym.owner.info.member(name).symbol
-          } else {
-            val classTree = funSym.topLevelClass.asClass.rootTree
-            tpd.defPath(funSym, classTree).lastOption.flatMap {
-              case DefDef(_, _, paramss, _, _) =>
-                paramss.flatten.find(_.name == name).map(_.symbol)
-            }.getOrElse(fn.symbol)
-          }
-
-        case _ =>
-          enclTree.symbol
-      }
-      Interactive.sourceSymbol(sym)
-    }
-
-    if (sym == NoSymbol) Nil.asJava
-    else {
-      val (trees, include) =
-        if (enclTree.isInstanceOf[MemberDef])
-          (driver.allTreesContaining(sym.name.sourceModuleName.toString),
-           Include.overriding | Include.overridden)
-        else sym.topLevelClass match {
-          case cls: ClassSymbol =>
-            (SourceTree.fromSymbol(cls).toList, Include.overriding)
-          case _ =>
-            (Nil, Include.overriding)
-        }
-      val defs = Interactive.namedTrees(trees, include, sym)
-      defs.flatMap(d => location(d.namePos, positionMapperFor(d.source))).asJava
-    }
+    val definitions = Interactive.findDefinitions(path, driver).toList
+    definitions.flatMap(d => location(d.namePos, positionMapperFor(d.source))).asJava
   }
 
   override def references(params: ReferenceParams) = computeAsync { cancelToken =>

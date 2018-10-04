@@ -11,7 +11,7 @@ import java.util.zip._
 import scala.collection._
 import scala.io.Codec
 
-import dotty.tools.io.{ ClassPath, ClassRepresentation, PlainFile, VirtualFile }
+import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation, PlainFile, VirtualFile }
 
 import ast.{Trees, tpd}
 import core._, core.Decorators._
@@ -265,6 +265,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 }
 
 object InteractiveDriver {
-  def toUri(source: SourceFile): URI = Paths.get(source.file.path).toUri
+  def toUri(file: AbstractFile): URI = Paths.get(file.path).toUri
+  def toUri(source: SourceFile): URI = toUri(source.file)
 }
 
