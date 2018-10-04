@@ -21,7 +21,7 @@ import ast.{Trees, tpd}
 import core._, core.Decorators.{sourcePos => _, _}
 import Comments._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
-import reporting._, reporting.diagnostic.MessageContainer
+import reporting._, reporting.diagnostic.{Message, MessageContainer, messages}
 import typer.Typer
 import util._
 import interactive._, interactive.InteractiveDriver._
@@ -193,7 +193,7 @@ class DottyLanguageServer extends LanguageServer
 
     client.publishDiagnostics(new PublishDiagnosticsParams(
       document.getUri,
-      diags.flatMap(diagnostic(_, positionMapper)).asJava))
+      diags.flatMap(diagnostic(_, positionMapper)(driver.currentCtx)).asJava))
   }
 
   override def didChange(params: DidChangeTextDocumentParams): Unit = {
@@ -221,7 +221,7 @@ class DottyLanguageServer extends LanguageServer
 
       client.publishDiagnostics(new PublishDiagnosticsParams(
         document.getUri,
-        diags.flatMap(diagnostic(_, positionMapper)).asJava))
+        diags.flatMap(diagnostic(_, positionMapper)(driver.currentCtx)).asJava))
     }
   }
 
@@ -475,7 +475,9 @@ object DottyLanguageServer {
    * Convert a MessageContainer to an lsp4j.Diagnostic. The positions are transformed vy
    * `positionMapper`.
    */
-  def diagnostic(mc: MessageContainer, positionMapper: Option[SourcePosition => SourcePosition] = None): Option[lsp4j.Diagnostic] =
+  def diagnostic(mc: MessageContainer,
+                 positionMapper: Option[SourcePosition => SourcePosition] = None
+                )(implicit ctx: Context): Option[lsp4j.Diagnostic] =
     if (!mc.pos.exists)
       None // diagnostics without positions are not supported: https://github.com/Microsoft/language-server-protocol/issues/249
     else {
@@ -493,11 +495,40 @@ object DottyLanguageServer {
         }
       }
 
-      val code = mc.contained().errorId.errorNumber.toString
-      range(mc.pos, positionMapper).map(r =>
-        new lsp4j.Diagnostic(
-          r, mc.message, severity(mc.level), /*source =*/ "", code))
+      val message = mc.contained()
+      if (displayMessage(message, mc.pos.source)) {
+        val code = message.errorId.errorNumber.toString
+        range(mc.pos, positionMapper).map(r =>
+            new lsp4j.Diagnostic(
+              r, mc.message, severity(mc.level), /*source =*/ "", code))
+      } else {
+        None
+      }
     }
+
+  /**
+   * Check whether `message` should be displayed in the IDE.
+   *
+   * Currently we only filter out the warning about pure expressions in statement position when they
+   * are immediate children of the worksheet wrapper.
+   *
+   * @param message    The message to filter.
+   * @param sourceFile The sourcefile from which `message` originates.
+   * @return true if the message should be displayed in the IDE, false otherwise.
+   */
+  private def displayMessage(message: Message, sourceFile: SourceFile)(implicit ctx: Context): Boolean = {
+    if (isWorksheet(sourceFile)) {
+      message match {
+        case messages.PureExpressionInStatementPosition(_, exprOwner) =>
+          val ownerSym = if (exprOwner.isLocalDummy) exprOwner.owner else exprOwner
+          !isWorksheetWrapper(ownerSym)
+        case _ =>
+          true
+      }
+    } else {
+      true
+    }
+  }
 
   /** Does this URI represent a worksheet? */
   private def isWorksheet(uri: URI): Boolean =
@@ -559,8 +590,15 @@ object DottyLanguageServer {
    * @see wrapWorksheet
    */
   def isWorksheetWrapper(sourceTree: SourceTree)(implicit ctx: Context): Boolean = {
-    val symbol = sourceTree.tree.symbol
-    isWorksheet(sourceTree.source) &&
+    isWorksheet(sourceTree.source) && isWorksheetWrapper(sourceTree.tree.symbol)
+  }
+
+  /**
+   * Is this symbol the wrapper object that we put around worksheet sources?
+   *
+   * @see wrapWorksheet
+   */
+  def isWorksheetWrapper(symbol: Symbol)(implicit ctx: Context): Boolean = {
       symbol.name.toString == "Worksheet$" &&
       symbol.owner == ctx.definitions.EmptyPackageClass
   }
