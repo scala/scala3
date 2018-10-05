@@ -20,15 +20,15 @@ def f(x: Resettable & Growable[String]) = {
 
 The value `x` is required to be _both_ a `Resettable` and a
 `Growable[String]`.  Intersection types `A & B` replace compound types
-`A with B` in Scala 2 (for the moment, `A with B` is still allowed, but
-it will be deprecated and removed in the future).
-
-Unlike `with` types, `&` is _commutative_: `A & B` is the same type as
-`B & A`.
+`A with B` in Scala 2. For the moment, `A with B` is still allowed, but
+its usage as a type (as opposed to in a `new` or `extends` clause) will be deprecated and removed in the future.
 
 The members of an intersection type `A & B` are all the members of `A`
 and all the members of `B`. For instance `Resettable & Growable[String]`
 has member methods `reset` and `add`.
+
+`&` is _commutative_: `A & B` is the same type as `B & A`, in that sense that the two types
+have the same values and are subtypes of each other.
 
 If a member appears in both `A` and `B`, its type in `A & B` is the
 intersection of its type in `A` and its type in `B`. For instance, assume the definitions:
