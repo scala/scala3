@@ -23,6 +23,9 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
   def showConstant(const: Constant)(implicit ctx: Context): String =
     new Buffer().visitConstant(const).result()
 
+  def showSymbol(symbol: Symbol)(implicit ctx: Context): String =
+    new Buffer().visitSymbol(symbol).result()
+
   private class Buffer(implicit ctx: Context) { self =>
 
     private val sb: StringBuilder = new StringBuilder
@@ -166,9 +169,7 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Type.ConstantType(value) =>
         this += "Type.ConstantType(" += value += ")"
       case Type.SymRef(sym, qual) =>
-        this += "Type.SymRef("
-        this += "<" += sym.fullName += ">"
-        this += ", " += qual += ")"
+        this += "Type.SymRef(" += sym += ", " += qual += ")"
       case Type.TermRef(name, qual) =>
         this += "Type.TermRef(\"" += name += "\", " += qual += ")"
       case Type.TypeRef(name, qual) =>
@@ -222,6 +223,15 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case SimpleSelector(id) => this += "SimpleSelector(" += id += ")"
       case RenameSelector(id1, id2) => this += "RenameSelector(" += id1 += ", " += id2 += ")"
       case OmitSelector(id) => this += "OmitSelector(" += id += ")"
+    }
+
+    def visitSymbol(x: Symbol): Buffer = x match {
+      case IsPackageSymbol(x) => this += "IsPackageSymbol(<" += x.fullName += ">)"
+      case IsClassSymbol(x) => this += "IsClassSymbol(<" += x.fullName += ">)"
+      case IsDefSymbol(x) => this += "IsDefSymbol(<" += x.fullName += ">)"
+      case IsValSymbol(x) => this += "IsValSymbol(<" += x.fullName += ">)"
+      case IsTypeSymbol(x) => this += "IsTypeSymbol(<" += x.fullName += ">)"
+      case NoSymbol() => this += "NoSymbol()"
     }
 
     def +=(x: Boolean): Buffer = { sb.append(x); this }
@@ -279,6 +289,10 @@ class ShowExtractors[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
     private implicit class ImportSelectorOps(buff: Buffer) {
       def ++=(x: List[ImportSelector]): Buffer = { visitList(x, visitImportSelector); buff }
+    }
+
+    private implicit class SymbolOps(buff: Buffer) {
+      def +=(x: Symbol): Buffer = { visitSymbol(x); buff }
     }
 
     private def visitOption[U](opt: Option[U], visit: U => Buffer): Buffer = opt match {

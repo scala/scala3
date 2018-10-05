@@ -1,6 +1,7 @@
 package dotty.tools.dotc.tastyreflect
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames._
@@ -15,6 +16,7 @@ object FromSymbol {
     else if (sym.isClass) classDef(sym.asClass)
     else if (sym.isType) typeDefFromSym(sym.asType)
     else if (sym.is(Method)) defDefFromSym(sym.asTerm)
+    else if (sym.is(Case)) bindFromSym(sym.asTerm)
     else valDefFromSym(sym.asTerm)
   }
 
@@ -48,4 +50,8 @@ object FromSymbol {
     case tpd.EmptyTree => tpd.ValDef(sym)
   }
 
+  def bindFromSym(sym: TermSymbol)(implicit ctx: Context): tpd.Bind = sym.defTree match {
+    case tree: tpd.Bind => tree
+    case tpd.EmptyTree => tpd.Bind(sym, untpd.Ident(nme.WILDCARD).withType(sym.typeRef))
+  }
 }
