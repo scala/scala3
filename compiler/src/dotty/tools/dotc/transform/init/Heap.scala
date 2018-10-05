@@ -210,8 +210,8 @@ class Env(outerId: Int) extends HeapEntry {
       }
       else {
         var effs = Vector.empty[Effect]
-        if (value == NoValue) Res(effects = effs :+ Uninit(sym, pos))
-        else Res(value = value)
+        assert(value != NoValue)
+        Res(value = value)
       }
     }
     else if (sym.isClass && this.containsClass(sym.asClass)) Res()
@@ -310,7 +310,7 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
     def isPartialOrFilled(value: Value): Boolean =
       value == PartialValue || value == FilledValue
 
-    if (symbols.exists { case (sym, value) => sym.isField && value == NoValue }) PartialValue
+    if (symbols.exists { case (sym, value) => sym.isField && !sym.is(Flags.PrivateOrLocal) && value == NoValue }) PartialValue
     else if (symbols.exists { case (sym, value) => sym.isField && (sym.info.isPartial || sym.info.isFilled) }) FilledValue
     else {
       // check outer

@@ -1,5 +1,5 @@
 final class Foo(x: Int) {
-  var title: String = _         // error
+  var title: String = _
 
   def get(msg: String): () => String = () => {
     title = "Mr."

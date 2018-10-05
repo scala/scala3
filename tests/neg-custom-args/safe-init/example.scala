@@ -2,7 +2,7 @@ import scala.annotation.filled
 
 class Parent(x: Int) {
   var name: String = _
-  var addr: String = _                       // error: addr is not initialized
+  var addr: String = _
 
   val len = name.size                        // error: name not initialized
   lazy val l1 = name.size                    // ok: l1 is lazy

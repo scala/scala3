@@ -98,5 +98,6 @@ private[scala] trait PropertiesTrait {
   val versionString         = "version " + scalaPropOrElse("version.number", "(unknown)")
   val copyrightString       = scalaPropOrElse("copyright.string", "Copyright 2002-2017, LAMP/EPFL and Lightbend, Inc.")
 
-  var x: Int = _  // error
+  x + 5  // error
+  var x: Int = 5
 }

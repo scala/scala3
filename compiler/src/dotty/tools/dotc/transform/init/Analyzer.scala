@@ -118,11 +118,12 @@ class Analyzer extends Indexer { analyzer =>
   }
 
   def checkValDef(vdef: ValDef, env: Env)(implicit ctx: Context): Res = {
-    val rhsRes = apply(vdef.rhs, env)
+    val rhsRes =
+      if (tpd.isWildcardArg(vdef.rhs)) Res(value = NoValue)
+      else apply(vdef.rhs, env)
     val sym = vdef.symbol
 
-    // take `_` as uninitialized, otherwise it's initialized
-    if (!tpd.isWildcardArg(vdef.rhs)) sym.termRef match {
+    sym.termRef match {
       case tp @ TermRef(NoPrefix, _) =>
         env.assign(tp.symbol, rhsRes.value, vdef.rhs.pos)
       case tp @ TermRef(prefix, _) =>

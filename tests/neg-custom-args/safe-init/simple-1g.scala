@@ -1,3 +1,4 @@
 class Foo {
-  var name: String = _  // error: name is not initialized
+  var name: String = _
+  println(name)          // error: name is not initialized
 }
