@@ -11,15 +11,15 @@ import java.security.AccessControlException
 trait WrappedProperties extends PropertiesTrait {
   def wrap[T](body: => T): Option[T]
 
-  protected def propCategory   = "wrapped"
-  protected def pickJarBasedOn = this.getClass
+  protected def propCategory: String     = "wrapped"
+  protected def pickJarBasedOn: Class[_] = this.getClass
 
-  override def propIsSet(name: String)               = wrap(super.propIsSet(name)) exists (x => x)
-  override def propOrElse(name: String, alt: String) = wrap(super.propOrElse(name, alt)) getOrElse alt
-  override def setProp(name: String, value: String)  = wrap(super.setProp(name, value)).orNull
-  override def clearProp(name: String)               = wrap(super.clearProp(name)).orNull
-  override def envOrElse(name: String, alt: String)  = wrap(super.envOrElse(name, alt)) getOrElse alt
-  override def envOrNone(name: String)               = wrap(super.envOrNone(name)).flatten
+  override def propIsSet(name: String): Boolean              = wrap(super.propIsSet(name)) exists (x => x)
+  override def propOrElse(name: String, alt: String): String = wrap(super.propOrElse(name, alt)) getOrElse alt
+  override def setProp(name: String, value: String): String  = wrap(super.setProp(name, value)).orNull
+  override def clearProp(name: String): String               = wrap(super.clearProp(name)).orNull
+  override def envOrElse(name: String, alt: String): String  = wrap(super.envOrElse(name, alt)) getOrElse alt
+  override def envOrNone(name: String): Option[String]       = wrap(super.envOrNone(name)).flatten
 
   def systemProperties: Iterator[(String, String)] = {
     import scala.collection.JavaConverters._
@@ -29,6 +29,6 @@ trait WrappedProperties extends PropertiesTrait {
 
 object WrappedProperties {
   object AccessControl extends WrappedProperties {
-    def wrap[T](body: => T) = try Some(body) catch { case _: AccessControlException => None }
+    def wrap[T](body: => T): Option[T] = try Some(body) catch { case _: AccessControlException => None }
   }
 }

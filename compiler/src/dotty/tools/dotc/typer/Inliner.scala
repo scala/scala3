@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package typer
 
-import dotty.tools.dotc.ast.Trees.NamedArg
 import dotty.tools.dotc.ast.{Trees, untpd, tpd, TreeTypeMap}
 import Trees._
 import core._
@@ -13,28 +12,20 @@ import Decorators._
 import Constants._
 import StdNames._
 import Contexts.Context
-import Names.{Name, TermName, EmptyTermName}
-import NameOps._
-import NameKinds.{ClassifiedNameKind, InlineAccessorName, UniqueInlineName, InlineScrutineeName, InlineBinderName}
+import Names.Name
 import ProtoTypes.selectionProto
 import SymDenotations.SymDenotation
-import Annotations._
-import transform.{ExplicitOuter, AccessProxies}
 import Inferencing.fullyDefinedType
 import config.Printers.inlining
 import ErrorReporting.errorTree
 import collection.mutable
-import transform.TypeUtils._
-import transform.SymUtils._
 import reporting.trace
 import util.Positions.Position
-import util.Property
-import ast.TreeInfo
 
 object Inliner {
   import tpd._
 
-  val typedInline = true
+  val typedInline: Boolean = true
 
   /** `sym` is an inline method with a known body to inline (note: definitions coming
    *  from Scala2x class files might be `@forceInline`, but still lack that body).
@@ -124,7 +115,7 @@ object Inliner {
   }
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
-  def dropInlined(inlined: tpd.Inlined)(implicit ctx: Context): Tree = {
+  def dropInlined(inlined: Inlined)(implicit ctx: Context): Tree = {
     if (enclosingInlineds.nonEmpty) inlined // Remove in the outer most inlined call
     else {
       val inlinedAtPos = inlined.call.pos
@@ -149,7 +140,7 @@ object Inliner {
               }
           }
         }
-        def transformInline(tree: tpd.Inlined)(implicit ctx: Context): Tree = {
+        def transformInline(tree: Inlined)(implicit ctx: Context): Tree = {
           tpd.seq(transformSub(tree.bindings), transform(tree.expansion)(inlineContext(tree.call)))
         }
       }
@@ -166,7 +157,6 @@ object Inliner {
  */
 class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   import tpd._
-  import Inliner._
 
   private val (methPart, callTypeArgs, callValueArgss) = decomposeCall(call)
   private val inlinedMethod = methPart.symbol
@@ -334,7 +324,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
    *  from its `originalOwner`, and, if it comes from outside the inlined method
    *  itself, it has to be marked as an inlined argument.
    */
-  def integrate(tree: Tree, originalOwner: Symbol)(implicit ctx: Context) = {
+  def integrate(tree: Tree, originalOwner: Symbol)(implicit ctx: Context): Tree = {
     val result = tree.changeOwner(originalOwner, ctx.owner)
     if (!originalOwner.isContainedIn(inlinedMethod)) Inlined(EmptyTree, Nil, result)
     else result
@@ -494,13 +484,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
 
     object ConstantValue {
-      def unapply(tree: Tree)(implicit ctx: Context) = tree.tpe.widenTermRefExpr match {
+      def unapply(tree: Tree)(implicit ctx: Context): Option[Any] = tree.tpe.widenTermRefExpr match {
         case ConstantType(Constant(x)) => Some(x)
         case _ => None
       }
     }
 
-    def tryInline(tree: tpd.Tree)(implicit ctx: Context) = tree match {
+    def tryInline(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case InlineableArg(rhs) =>
         inlining.println(i"inline arg $tree -> $rhs")
         rhs
@@ -519,7 +509,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       *  where `def` is used for call-by-name parameters. However, we shortcut any NoPrefix
       *  refs among the ei's directly without creating an intermediate binding.
       */
-    def betaReduce(tree: Tree)(implicit ctx: Context) = tree match {
+    def betaReduce(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case Apply(Select(cl @ closureDef(ddef), nme.apply), args) if defn.isFunctionType(cl.tpe) =>
         ddef.tpe.widen match {
           case mt: MethodType if ddef.vparamss.head.length == args.length =>
@@ -568,7 +558,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
     }
 
 
-    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context) =
+    override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree =
       tryInline(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt)
 
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
@@ -579,7 +569,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       res
     }
 
-    override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) =
+    override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): Tree =
       typed(tree.cond, defn.BooleanType) match {
         case cond1 @ ConstantValue(b: Boolean) =>
           val selected0 = if (b) tree.thenp else tree.elsep
@@ -591,7 +581,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
           super.typedIf(if1, pt)
       }
 
-    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context) =
+    override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree =
       constToLiteral(betaReduce(super.typedApply(tree, pt)))
 
     override def newLikeThis: Typer = new InlineTyper

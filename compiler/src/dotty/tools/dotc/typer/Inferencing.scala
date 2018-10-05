@@ -4,23 +4,17 @@ package typer
 
 import core._
 import ast._
-import Contexts._, Types._, Flags._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
+import Contexts._, Types._, Flags._, Symbols._
 import Trees._
-import Constants._
-import Scopes._
 import ProtoTypes._
 import NameKinds.UniqueName
-import annotation.unchecked
 import util.Positions._
 import util.{Stats, SimpleIdentityMap}
-import util.common._
 import Decorators._
-import Uniques._
-import config.Printers.{typr, constr}
+import config.Printers.typr
 import annotation.tailrec
 import reporting._
 import collection.mutable
-import config.Config
 
 import scala.annotation.internal.sharable
 
@@ -44,7 +38,7 @@ object Inferencing {
   /** The fully defined type, where all type variables are forced.
    *  Throws an error if type contains wildcards.
    */
-  def fullyDefinedType(tp: Type, what: String, pos: Position)(implicit ctx: Context) =
+  def fullyDefinedType(tp: Type, what: String, pos: Position)(implicit ctx: Context): Type =
     if (isFullyDefined(tp, ForceDegree.all)) tp
     else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos") // !!! DEBUG
 
@@ -467,8 +461,8 @@ trait Inferencing { this: Typer =>
 /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
 @sharable object ForceDegree {
   class Value(val appliesTo: TypeVar => Boolean, val minimizeAll: Boolean, val allowBottom: Boolean = true)
-  val none = new Value(_ => false, minimizeAll = false)
-  val all = new Value(_ => true, minimizeAll = false)
-  val noBottom = new Value(_ => true, minimizeAll = false, allowBottom = false)
+  val none: Value = new Value(_ => false, minimizeAll = false)
+  val all: Value = new Value(_ => true, minimizeAll = false)
+  val noBottom: Value = new Value(_ => true, minimizeAll = false, allowBottom = false)
 }
 

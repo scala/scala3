@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core
 
-import Types._, Symbols._, Contexts._, Names._
+import Types._, Symbols._, Contexts._
 
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.
@@ -161,15 +161,15 @@ trait Substituters { this: Context =>
     }
 
   final class SubstBindingMap(from: BindingType, to: BindingType) extends DeepTypeMap {
-    def apply(tp: Type) = subst(tp, from, to, this)
+    def apply(tp: Type): Type = subst(tp, from, to, this)
   }
 
   final class Subst1Map(from: Symbol, to: Type) extends DeepTypeMap {
-    def apply(tp: Type) = subst1(tp, from, to, this)
+    def apply(tp: Type): Type = subst1(tp, from, to, this)
   }
 
   final class Subst2Map(from1: Symbol, to1: Type, from2: Symbol, to2: Type) extends DeepTypeMap {
-    def apply(tp: Type) = subst2(tp, from1, to1, from2, to2, this)
+    def apply(tp: Type): Type = subst2(tp, from1, to1, from2, to2, this)
   }
 
   final class SubstMap(from: List[Symbol], to: List[Type]) extends DeepTypeMap {
@@ -189,10 +189,10 @@ trait Substituters { this: Context =>
   }
 
   final class SubstParamMap(from: ParamRef, to: Type) extends DeepTypeMap {
-    def apply(tp: Type) = substParam(tp, from, to, this)
+    def apply(tp: Type): Type = substParam(tp, from, to, this)
   }
 
   final class SubstParamsMap(from: BindingType, to: List[Type]) extends DeepTypeMap {
-    def apply(tp: Type) = substParams(tp, from, to, this)
+    def apply(tp: Type): Type = substParams(tp, from, to, this)
   }
 }

@@ -2,12 +2,8 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._
-import collection.mutable
-import printing.{Printer, Showable}
-import printing.Texts._
-import config.Config
-import config.Printers.constr
+import Types._, Contexts._
+import printing.Showable
 
 /** Constraint over undetermined type parameters. Constraints are built
  *  over values of the following types:

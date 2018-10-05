@@ -6,13 +6,12 @@
 package dotty.tools.io
 
 import java.net.URL
-import java.io.{ IOException, InputStream, ByteArrayInputStream, FilterInputStream }
+import java.io.{ IOException, InputStream, OutputStream, FilterInputStream }
 import java.nio.file.Files
-import java.util.zip.{ ZipEntry, ZipFile, ZipInputStream }
+import java.util.zip.{ ZipEntry, ZipFile }
 import java.util.jar.Manifest
 import scala.collection.mutable
 import scala.collection.JavaConverters._
-import scala.annotation.tailrec
 
 /** An abstraction for zip files and streams.  Everything is written the way
  *  it is for performance: we come through here a lot on every run.  Be careful
@@ -25,7 +24,7 @@ import scala.annotation.tailrec
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 object ZipArchive {
-  private[io] val closeZipFile = sys.props.get("scala.classpath.closeZip").exists(_.toBoolean)
+  private[io] val closeZipFile: Boolean = sys.props.get("scala.classpath.closeZip").exists(_.toBoolean)
 
   /**
    * @param   file  a File
@@ -56,29 +55,29 @@ import ZipArchive._
 abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with Equals {
   self =>
 
-  override def underlyingSource = Some(this)
-  def isDirectory = true
-  def lookupName(name: String, directory: Boolean) = unsupported()
-  def lookupNameUnchecked(name: String, directory: Boolean) = unsupported()
-  def create()  = unsupported()
-  def delete()  = unsupported()
-  def output    = unsupported()
-  def container = unsupported()
-  def absolute  = unsupported()
+  override def underlyingSource: Option[ZipArchive] = Some(this)
+  def isDirectory: Boolean = true
+  def lookupName(name: String, directory: Boolean): AbstractFile = unsupported()
+  def lookupNameUnchecked(name: String, directory: Boolean): AbstractFile = unsupported()
+  def create(): Unit = unsupported()
+  def delete(): Unit = unsupported()
+  def output: OutputStream    = unsupported()
+  def container: AbstractFile = unsupported()
+  def absolute: AbstractFile  = unsupported()
 
   /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
   sealed abstract class Entry(path: String) extends VirtualFile(baseName(path), path) {
     // have to keep this name for compat with sbt's compiler-interface
     def getArchive: ZipFile = null
-    override def underlyingSource = Some(self)
-    override def toString = self.path + "(" + path + ")"
+    override def underlyingSource: Option[ZipArchive] = Some(self)
+    override def toString: String = self.path + "(" + path + ")"
   }
 
   /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
   class DirEntry(path: String) extends Entry(path) {
-    val entries = mutable.HashMap[String, Entry]()
+    val entries: mutable.HashMap[String, Entry] = mutable.HashMap()
 
-    override def isDirectory = true
+    override def isDirectory: Boolean = true
     override def iterator: Iterator[Entry] = entries.valuesIterator
     override def lookupName(name: String, directory: Boolean): Entry = {
       if (directory) entries.get(name + "/").orNull
@@ -148,7 +147,7 @@ final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
     override def sizeOption: Option[Int] = Some(zipEntry.getSize.toInt)
   }
 
-  @volatile lazy val (root, allDirs) = {
+  @volatile lazy val (root, allDirs): (DirEntry, collection.Map[String, DirEntry]) = {
     val root = new DirEntry("/")
     val dirs = mutable.HashMap[String, DirEntry]("/" -> root)
     val zipFile = openZipFile()
@@ -181,22 +180,22 @@ final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
 
   def iterator: Iterator[Entry] = root.iterator
 
-  def name         = jpath.getFileName.toString
-  def path         = jpath.toString
-  def input        = Files.newInputStream(jpath)
-  def lastModified = Files.getLastModifiedTime(jpath).toMillis
+  def name: String       = jpath.getFileName.toString
+  def path: String       = jpath.toString
+  def input: InputStream = Files.newInputStream(jpath)
+  def lastModified: Long = Files.getLastModifiedTime(jpath).toMillis
 
-  override def sizeOption = Some(Files.size(jpath).toInt)
-  override def canEqual(other: Any) = other.isInstanceOf[FileZipArchive]
-  override def hashCode() = jpath.hashCode
-  override def equals(that: Any) = that match {
+  override def sizeOption: Option[Int] = Some(Files.size(jpath).toInt)
+  override def canEqual(other: Any): Boolean = other.isInstanceOf[FileZipArchive]
+  override def hashCode(): Int = jpath.hashCode
+  override def equals(that: Any): Boolean = that match {
     case x: FileZipArchive => jpath.toAbsolutePath == x.jpath.toAbsolutePath
     case _                 => false
   }
 }
 
 final class ManifestResources(val url: URL) extends ZipArchive(null) {
-  def iterator() = {
+  def iterator(): Iterator[AbstractFile] = {
     val root     = new DirEntry("/")
     val dirs     = mutable.HashMap[String, DirEntry]("/" -> root)
     val manifest = new Manifest(input)
@@ -218,20 +217,20 @@ final class ManifestResources(val url: URL) extends ZipArchive(null) {
     finally dirs.clear()
   }
 
-  def name  = path
+  def name: String  = path
   def path: String = {
     val s = url.getPath
     val n = s.lastIndexOf('!')
     s.substring(0, n)
   }
-  def input = url.openStream()
-  def lastModified =
+  def input: InputStream = url.openStream()
+  def lastModified: Long =
     try url.openConnection().getLastModified()
     catch { case _: IOException => 0 }
 
-  override def canEqual(other: Any) = other.isInstanceOf[ManifestResources]
-  override def hashCode() = url.hashCode
-  override def equals(that: Any) = that match {
+  override def canEqual(other: Any): Boolean = other.isInstanceOf[ManifestResources]
+  override def hashCode(): Int = url.hashCode
+  override def equals(that: Any): Boolean = that match {
     case x: ManifestResources => url == x.url
     case _                => false
   }

@@ -3,7 +3,7 @@ package rewrites
 
 import util.{SourceFile, Positions}
 import Positions.Position
-import core.Contexts.{Context, FreshContext}
+import core.Contexts.Context
 import collection.mutable
 import scala.annotation.tailrec
 
@@ -74,7 +74,7 @@ object Rewrites {
 
   /** If -rewrite is set, apply all patches and overwrite patched source files.
    */
-  def writeBack()(implicit ctx: Context) =
+  def writeBack()(implicit ctx: Context): Unit =
     for (rewrites <- ctx.settings.rewrite.value; source <- rewrites.patched.keys) {
       ctx.echo(s"[patched file ${source.file.path}]")
       rewrites.patched(source).writeBack()

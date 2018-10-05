@@ -18,7 +18,7 @@ sealed abstract class ScalaVersion extends Ordered[ScalaVersion] {
  * A scala version that sorts higher than all actual versions
  */
 @sharable case object NoScalaVersion extends ScalaVersion {
-  def unparse = "none"
+  def unparse: String = "none"
 
   def compare(that: ScalaVersion): Int = that match {
     case NoScalaVersion => 0
@@ -33,7 +33,7 @@ sealed abstract class ScalaVersion extends Ordered[ScalaVersion] {
  * to segregate builds
  */
 case class SpecificScalaVersion(major: Int, minor: Int, rev: Int, build: ScalaBuild) extends ScalaVersion {
-  def unparse = s"${major}.${minor}.${rev}.${build.unparse}"
+  def unparse: String = s"${major}.${minor}.${rev}.${build.unparse}"
 
   def compare(that: ScalaVersion): Int =  that match {
     case SpecificScalaVersion(thatMajor, thatMinor, thatRev, thatBuild) =>
@@ -55,7 +55,7 @@ case class SpecificScalaVersion(major: Int, minor: Int, rev: Int, build: ScalaBu
  * A Scala version that sorts lower than all actual versions
  */
 @sharable case object AnyScalaVersion extends ScalaVersion {
-  def unparse = "any"
+  def unparse: String = "any"
 
   def compare(that: ScalaVersion): Int = that match {
     case AnyScalaVersion => 0
@@ -110,7 +110,7 @@ case class SpecificScalaVersion(major: Int, minor: Int, rev: Int, build: ScalaBu
   /**
    * The version of the compiler running now
    */
-  val current = parse(util.Properties.versionNumberString).get
+  val current: ScalaVersion = parse(util.Properties.versionNumberString).get
 }
 
 /**
@@ -129,9 +129,9 @@ object ScalaBuild {
   /** A development, test, nightly, snapshot or other "unofficial" build
    */
   case class Development(id: String) extends ScalaBuild {
-    def unparse = s"-${id}"
+    def unparse: String = s"-${id}"
 
-    def compare(that: ScalaBuild) = that match {
+    def compare(that: ScalaBuild): Int = that match {
       // sorting two development builds based on id is reasonably valid for two versions created with the same schema
       // otherwise it's not correct, but since it's impossible to put a total ordering on development build versions
       // this is a pragmatic compromise
@@ -145,9 +145,9 @@ object ScalaBuild {
   /** A final build
    */
   case object Final extends ScalaBuild {
-    def unparse = ""
+    def unparse: String = ""
 
-    def compare(that: ScalaBuild) = that match {
+    def compare(that: ScalaBuild): Int = that match {
       case Final => 0
       // a final is newer than anything other than a development build or another final
       case Development(_) => -1
@@ -158,9 +158,9 @@ object ScalaBuild {
   /** A candidate for final release
    */
   case class RC(n: Int) extends ScalaBuild {
-    def unparse = s"-RC${n}"
+    def unparse: String = s"-RC${n}"
 
-    def compare(that: ScalaBuild) = that match {
+    def compare(that: ScalaBuild): Int = that match {
       // compare two rcs based on their RC numbers
       case RC(thatN) => n - thatN
       // an rc is older than anything other than a milestone or another rc
@@ -172,9 +172,9 @@ object ScalaBuild {
   /** An intermediate release
    */
   case class Milestone(n: Int) extends ScalaBuild {
-    def unparse = s"-M${n}"
+    def unparse: String = s"-M${n}"
 
-    def compare(that: ScalaBuild) = that match {
+    def compare(that: ScalaBuild): Int = that match {
       // compare two milestones based on their milestone numbers
       case Milestone(thatN) => n - thatN
       // a milestone is older than anything other than another milestone

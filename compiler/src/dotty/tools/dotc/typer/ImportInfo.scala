@@ -7,13 +7,13 @@ import ast.Trees._
 import core._
 import printing.{Printer, Showable}
 import util.SimpleIdentityMap
-import Symbols._, Names._, Denotations._, Types._, Contexts._, StdNames._, Flags._
-import Decorators.StringInterpolators
+import Symbols._, Names._, Types._, Contexts._, StdNames._, Flags._
 import Implicits.RenamedImplicitRef
+import printing.Texts.Text
 
 object ImportInfo {
   /** The import info for a root import from given symbol `sym` */
-  def rootImport(refFn: () => TermRef)(implicit ctx: Context) = {
+  def rootImport(refFn: () => TermRef)(implicit ctx: Context): ImportInfo = {
     val selectors = untpd.Ident(nme.WILDCARD) :: Nil
     def expr(implicit ctx: Context) = tpd.Ident(refFn())
     def imp(implicit ctx: Context) = tpd.Import(expr, selectors)
@@ -34,7 +34,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
 
   // Dotty deviation: we cannot use a lazy val here for the same reason
   // that we cannot use one for `DottyPredefModuleRef`.
-  def sym(implicit ctx: Context) = {
+  def sym(implicit ctx: Context): Symbol = {
     if (mySym == null) {
       mySym = symf(ctx)
       assert(mySym != null)
@@ -59,7 +59,7 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   def originals: Set[TermName] = { ensureInitialized(); myOriginals }
 
   /** Does the import clause end with wildcard? */
-  def isWildcardImport = { ensureInitialized(); myWildcardImport }
+  def isWildcardImport: Boolean = { ensureInitialized(); myWildcardImport }
 
   private[this] var myExcluded: Set[TermName] = null
   private[this] var myMapped: SimpleIdentityMap[TermName, TermName] = null
@@ -160,5 +160,5 @@ class ImportInfo(symf: Context => Symbol, val selectors: List[untpd.Tree],
   private[this] var lastOwner: Symbol = null
   private[this] var lastResults: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.Empty
 
-  def toText(printer: Printer) = printer.toText(this)
+  def toText(printer: Printer): Text = printer.toText(this)
 }

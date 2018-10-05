@@ -13,7 +13,6 @@ import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
-import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.printing.SyntaxHighlighting
 import dotty.tools.dotc.reporting.MessageRendering
@@ -60,7 +59,7 @@ class ReplDriver(settings: Array[String],
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
    */
-  override def sourcesRequired = false
+  override def sourcesRequired: Boolean = false
 
   /** Create a fresh and initialized context with IDE mode enabled */
   private[this] def initialCtx = {
@@ -72,7 +71,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** the initial, empty state of the REPL session */
-  final def initialState = State(0, 0, Map.empty, rootCtx)
+  final def initialState: State = State(0, 0, Map.empty, rootCtx)
 
   /** Reset state of repl to the initial state
    *

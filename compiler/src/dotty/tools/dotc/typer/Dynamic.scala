@@ -14,7 +14,6 @@ import dotty.tools.dotc.core.Decorators._
 import util.Positions._
 import core.Symbols._
 import core.Definitions
-import Inferencing._
 import ErrorReporting._
 import dotty.tools.dotc.reporting.diagnostic.messages.ReassignmentToVal
 

@@ -4,22 +4,12 @@ package transform
 import core._
 import MegaPhase._
 import Contexts.Context
-import Flags._
-import SymUtils._
 import Symbols._
-import SymDenotations._
 import Types._
-import Decorators._
-import DenotTransformers._
 import StdNames._
-import NameOps._
 import ast.Trees._
 import dotty.tools.dotc.ast.tpd
-import util.Positions._
-import Names._
 
-import collection.mutable
-import ResolveSuper._
 
 import scala.collection.immutable.::
 

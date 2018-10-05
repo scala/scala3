@@ -7,11 +7,12 @@
 package dotty.tools
 package io
 
-import java.io.{ InputStream, OutputStream, IOException, FileNotFoundException, FileInputStream, DataOutputStream }
+import java.io.{ InputStream, OutputStream, DataOutputStream }
 import java.util.jar._
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import Attributes.Name
-import scala.language.{postfixOps, implicitConversions}
+import scala.language.postfixOps
 import scala.annotation.tailrec
 
 // Attributes.Name instances:
@@ -42,10 +43,10 @@ class Jar(file: File) extends Iterable[JarEntry] {
 
   import Jar._
 
-  lazy val jarFile  = new JarFile(file.jpath.toFile)
-  lazy val manifest = withJarInput(s => Option(s.getManifest))
+  lazy val jarFile: JarFile  = new JarFile(file.jpath.toFile)
+  lazy val manifest: Option[Manifest] = withJarInput(s => Option(s.getManifest))
 
-  def mainClass     = manifest map (f => f(Name.MAIN_CLASS))
+  def mainClass: Option[String]     = manifest map (f => f(Name.MAIN_CLASS))
   /** The manifest-defined classpath String if available. */
   def classPathString: Option[String] =
     for (m <- manifest ; cp <- m.attrs get Name.CLASS_PATH) yield cp
@@ -59,7 +60,7 @@ class Jar(file: File) extends Iterable[JarEntry] {
     try f(in)
     finally in.close()
   }
-  def jarWriter(mainAttrs: (Attributes.Name, String)*) = {
+  def jarWriter(mainAttrs: (Attributes.Name, String)*): JarWriter = {
     new JarWriter(file, Jar.WManifest.apply(mainAttrs: _*).underlying)
   }
 
@@ -68,11 +69,11 @@ class Jar(file: File) extends Iterable[JarEntry] {
   }
   override def iterator: Iterator[JarEntry] = this.toList.iterator
 
-  def getEntryStream(entry: JarEntry) = jarFile getInputStream entry match {
+  def getEntryStream(entry: JarEntry): java.io.InputStream = jarFile getInputStream entry match {
     case null   => errorFn("No such entry: " + entry) ; null
     case x      => x
   }
-  override def toString = "" + file
+  override def toString: String = "" + file
 }
 
 class JarWriter(val file: File, val manifest: Manifest) {
@@ -118,7 +119,7 @@ class JarWriter(val file: File, val manifest: Manifest) {
     loop()
   }
 
-  def close() = out.close()
+  def close(): Unit = out.close()
 }
 
 object Jar {
@@ -137,8 +138,8 @@ object Jar {
     for ((k, v) <- initialMainAttrs)
       this(k) = v
 
-    def underlying = manifest
-    def attrs = manifest.getMainAttributes().asInstanceOf[AttributeMap].asScala withDefaultValue null
+    def underlying: JManifest = manifest
+    def attrs: mutable.Map[Name, String] = manifest.getMainAttributes().asInstanceOf[AttributeMap].asScala withDefaultValue null
     def initialMainAttrs: Map[Attributes.Name, String] = {
       import scala.util.Properties._
       Map(
@@ -149,11 +150,11 @@ object Jar {
 
     def apply(name: Attributes.Name): String        = attrs(name)
     def apply(name: String): String                 = apply(new Attributes.Name(name))
-    def update(key: Attributes.Name, value: String) = attrs.put(key, value)
-    def update(key: String, value: String)          = attrs.put(new Attributes.Name(key), value)
+    def update(key: Attributes.Name, value: String): Option[String] = attrs.put(key, value)
+    def update(key: String, value: String): Option[String]          = attrs.put(new Attributes.Name(key), value)
 
     def mainClass: String = apply(Name.MAIN_CLASS)
-    def mainClass_=(value: String) = update(Name.MAIN_CLASS, value)
+    def mainClass_=(value: String): Option[String] = update(Name.MAIN_CLASS, value)
   }
 
   // See http://download.java.net/jdk7/docs/api/java/nio/file/Path.html

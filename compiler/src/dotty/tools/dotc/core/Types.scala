@@ -7,7 +7,7 @@ import Symbols._
 import Flags._
 import Names._
 import StdNames._, NameOps._
-import NameKinds.{SkolemName, SignedName}
+import NameKinds.SkolemName
 import Scopes._
 import Constants._
 import Contexts._
@@ -16,15 +16,12 @@ import SymDenotations._
 import Decorators._
 import Denotations._
 import Periods._
-import util.Positions.{Position, NoPosition}
 import util.Stats._
-import util.{DotClass, SimpleIdentitySet}
+import util.SimpleIdentitySet
 import reporting.diagnostic.Message
 import ast.tpd._
 import ast.TreeTypeMap
 import printing.Texts._
-import ast.untpd
-import dotty.tools.dotc.transform.Erasure
 import printing.Printer
 import Hashable._
 import Uniques._
@@ -105,7 +102,7 @@ object Types {
      *  uninstantiated type variables or type symbols that have the Provisional flag set.
      *  This is an antimonotonic property - once a type is not provisional, it stays so forever.
      */
-    def isProvisional(implicit ctx: Context) = mightBeProvisional && testProvisional
+    def isProvisional(implicit ctx: Context): Boolean = mightBeProvisional && testProvisional
 
     private def testProvisional(implicit ctx: Context) = {
       val accu = new TypeAccumulator[Boolean] {
@@ -139,7 +136,7 @@ object Types {
     final def exists: Boolean = this.ne(NoType)
 
     /** This type, if it exists, otherwise `that` type */
-    def orElse(that: => Type) = if (exists) this else that
+    def orElse(that: => Type): Type = if (exists) this else that
 
     /** Is this type a value type? */
     final def isValueType: Boolean = this.isInstanceOf[ValueType]
@@ -231,7 +228,7 @@ object Types {
      *  `<this> . <symd>` is an actual argument reference, i.e. `this` is different
      *  from the ThisType of `symd`'s owner.
      */
-    def isArgPrefixOf(symd: SymDenotation)(implicit ctx: Context) =
+    def isArgPrefixOf(symd: SymDenotation)(implicit ctx: Context): Boolean =
       symd.is(ClassTypeParam) && {
         this match {
           case tp: ThisType => tp.cls ne symd.owner
@@ -252,7 +249,7 @@ object Types {
     }
 
     /** Is this type a (possibly aliased) singleton type? */
-    def isSingleton(implicit ctx: Context) = dealias.isInstanceOf[SingletonType]
+    def isSingleton(implicit ctx: Context): Boolean = dealias.isInstanceOf[SingletonType]
 
     /** Is this type of kind `AnyKind`? */
     def hasAnyKind(implicit ctx: Context): Boolean = {
@@ -842,7 +839,7 @@ object Types {
     }
 
     /** Is this type a primitive value type which can be widened to the primitive value type `that`? */
-    def isValueSubType(that: Type)(implicit ctx: Context) = widen match {
+    def isValueSubType(that: Type)(implicit ctx: Context): Boolean = widen match {
       case self: TypeRef if self.symbol.isPrimitiveValueClass =>
         that.widenExpr match {
           case that: TypeRef if that.symbol.isPrimitiveValueClass =>
@@ -854,7 +851,7 @@ object Types {
         false
     }
 
-    def relaxed_<:<(that: Type)(implicit ctx: Context) =
+    def relaxed_<:<(that: Type)(implicit ctx: Context): Boolean =
       (this <:< that) || (this isValueSubType that)
 
     /** Is this type a legal type for member `sym1` that overrides another
@@ -1089,7 +1086,7 @@ object Types {
     /** The result of normalization using `tryNormalize`, or the type itself if
      *  tryNormlize yields NoType
      */
-    final def normalized(implicit ctx: Context) = {
+    final def normalized(implicit ctx: Context): Type = {
       val normed = tryNormalize
       if (normed.exists) normed else this
     }
@@ -1178,7 +1175,7 @@ object Types {
     /** Useful for diagnostics: The underlying type if this type is a type proxy,
      *  otherwise NoType
      */
-    def underlyingIfProxy(implicit ctx: Context) = this match {
+    def underlyingIfProxy(implicit ctx: Context): Type = this match {
       case this1: TypeProxy => this1.underlying
       case _ => NoType
     }
@@ -1347,13 +1344,13 @@ object Types {
     }
 
     /** The lower bound of a TypeBounds type, the type itself otherwise */
-    def loBound = this match {
+    def loBound: Type = this match {
       case tp: TypeBounds => tp.lo
       case _ => this
     }
 
     /** The upper bound of a TypeBounds type, the type itself otherwise */
-    def hiBound = this match {
+    def hiBound: Type = this match {
       case tp: TypeBounds => tp.hi
       case _ => this
     }
@@ -1473,7 +1470,7 @@ object Types {
      *  after the type variables are instantiated. Finally, it
      *  maps poly params in the current constraint set back to their type vars.
      */
-    def simplified(implicit ctx: Context) = ctx.simplify(this, null)
+    def simplified(implicit ctx: Context): Type = ctx.simplify(this, null)
 
     /** Compare `this == that`, assuming corresponding binders in `bs` are equal.
      *  The normal `equals` should be equivalent to `equals(that, null`)`.
@@ -1539,35 +1536,35 @@ object Types {
   /**  Instances of this class are cached and are not proxies. */
   abstract class CachedGroundType extends Type with CachedType {
     private[this] var myHash = HashUnknown
-    final def hash = {
+    final def hash: Int = {
       if (myHash == HashUnknown) {
         myHash = computeHash(null)
         assert(myHash != HashUnknown)
       }
       myHash
     }
-    override final def hashCode =
+    override final def hashCode: Int =
       if (hash == NotCached) System.identityHashCode(this) else hash
   }
 
   /**  Instances of this class are cached and are proxies. */
   abstract class CachedProxyType extends TypeProxy with CachedType {
-    protected[this] var myHash = HashUnknown
-    final def hash = {
+    protected[this] var myHash: Int = HashUnknown
+    final def hash: Int = {
       if (myHash == HashUnknown) {
         myHash = computeHash(null)
         assert(myHash != HashUnknown)
       }
       myHash
     }
-    override final def hashCode =
+    override final def hashCode: Int =
       if (hash == NotCached) System.identityHashCode(this) else hash
   }
 
   /**  Instances of this class are uncached and are not proxies. */
   abstract class UncachedGroundType extends Type {
-    final def hash = NotCached
-    final def computeHash(bs: Binders) = NotCached
+    final def hash: Int = NotCached
+    final def computeHash(bs: Binders): Int = NotCached
     if (monitored) {
       record(s"uncachable")
       record(s"uncachable: $getClass")
@@ -1576,8 +1573,8 @@ object Types {
 
   /**  Instances of this class are uncached and are proxies. */
   abstract class UncachedProxyType extends TypeProxy {
-    final def hash = NotCached
-    final def computeHash(bs: Binders) = NotCached
+    final def hash: Int = NotCached
+    final def computeHash(bs: Binders): Int = NotCached
     if (monitored) {
       record(s"uncachable")
       record(s"uncachable: $getClass")
@@ -1602,7 +1599,7 @@ object Types {
    *  single non-null value (they might contain null in addition).
    */
   trait SingletonType extends TypeProxy with ValueType {
-    def isOverloaded(implicit ctx: Context) = false
+    def isOverloaded(implicit ctx: Context): Boolean = false
   }
 
   /** A trait for types that bind other types that refer to them.
@@ -1613,7 +1610,7 @@ object Types {
     /** If this type is in `bs`, a hashcode based on its position in `bs`.
      *  Otherise the standard identity hash.
      */
-    override def identityHash(bs: Binders) = {
+    override def identityHash(bs: Binders): Int = {
       def recur(n: Int, tp: BindingType, rest: Binders): Int =
         if (this `eq` tp) finishHash(hashing.mix(hashSeed, n), 1)
         else if (rest == null) System.identityHashCode(this)
@@ -1672,8 +1669,8 @@ object Types {
     // (2) lastDenotation != null    =>  lastSymbol != null
     // (3) mySigRunId != NoRunId     =>  mySig != null
 
-    def isType = isInstanceOf[TypeRef]
-    def isTerm = isInstanceOf[TermRef]
+    def isType: Boolean = isInstanceOf[TypeRef]
+    def isTerm: Boolean = isInstanceOf[TermRef]
 
     /** If designator is a name, this name. Otherwise, the original name
      *  of the designator symbol.
@@ -1729,7 +1726,7 @@ object Types {
     /** There is a denotation computed which is valid (somewhere in) the
      *  current run.
      */
-    def denotationIsCurrent(implicit ctx: Context) =
+    def denotationIsCurrent(implicit ctx: Context): Boolean =
       lastDenotation != null && lastDenotation.validFor.runId == ctx.runId
 
     /** If the reference is symbolic or the denotation is current, its symbol, otherwise NoDenotation.
@@ -1741,7 +1738,7 @@ object Types {
      *  type accumulators, as well as to be safe in diagnostic printing.
      *  Normally, it's better to use `symbol`, not `currentSymbol`.
      */
-    final def currentSymbol(implicit ctx: Context) = designator match {
+    final def currentSymbol(implicit ctx: Context): Symbol = designator match {
       case sym: Symbol => sym
       case _ => if (denotationIsCurrent) lastDenotation.symbol else NoSymbol
     }
@@ -1885,7 +1882,7 @@ object Types {
     /** Reload denotation by computing the member with the reference's name as seen
      *  from the reference's prefix.
      */
-    def recomputeDenot()(implicit ctx: Context) =
+    def recomputeDenot()(implicit ctx: Context): Unit =
       setDenot(memberDenot(name, allowPrivate = !symbol.exists || symbol.is(Private)))
 
     private def setDenot(denot: Denotation)(implicit ctx: Context): Unit = {
@@ -1944,7 +1941,7 @@ object Types {
       symd.maybeOwner.membersNeedAsSeenFrom(prefix) && !symd.is(NonMember)
 
     /** Is this a reference to a class or object member? */
-    def isMemberRef(implicit ctx: Context) = designator match {
+    def isMemberRef(implicit ctx: Context): Boolean = designator match {
       case sym: Symbol => infoDependsOnPrefix(sym, prefix)
       case _ => true
     }
@@ -2117,7 +2114,7 @@ object Types {
       }
     }
 
-    override def equals(that: Any) = equals(that, null)
+    override def equals(that: Any): Boolean = equals(that, null)
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: NamedType =>
@@ -2127,14 +2124,14 @@ object Types {
         false
     }
 
-    override def computeHash(bs: Binders) = doHash(bs, designator, prefix)
+    override def computeHash(bs: Binders): Int = doHash(bs, designator, prefix)
 
-    override def stableHash = {
+    override def stableHash: Boolean = {
       if (myStableHash == 0) myStableHash = if (prefix.stableHash) 1 else -1
       myStableHash > 0
     }
 
-    override def eql(that: Type) = this eq that // safe because named types are hash-consed separately
+    override def eql(that: Type): Boolean = this eq that // safe because named types are hash-consed separately
   }
 
   /** A reference to an implicit definition. This can be either a TermRef or a
@@ -2152,8 +2149,8 @@ object Types {
     type ThisType = TermRef
     type ThisName = TermName
 
-    override def designator = myDesignator
-    override protected def designator_=(d: Designator) = myDesignator = d
+    override def designator: Designator = myDesignator
+    override protected def designator_=(d: Designator): Unit = myDesignator = d
 
     //assert(name.toString != "<local Coder>")
     override def underlying(implicit ctx: Context): Type = {
@@ -2161,7 +2158,7 @@ object Types {
       if (d.isOverloaded) NoType else d.info
     }
 
-    override def isOverloaded(implicit ctx: Context) = denot.isOverloaded
+    override def isOverloaded(implicit ctx: Context): Boolean = denot.isOverloaded
 
     def alternatives(implicit ctx: Context): List[TermRef] =
       denot.alternatives.map(withDenot(_))
@@ -2170,7 +2167,7 @@ object Types {
       denot.altsWith(p).map(withDenot(_))
 
     def implicitName(implicit ctx: Context): TermName = name
-    def underlyingRef = this
+    def underlyingRef: TermRef = this
   }
 
   abstract case class TypeRef(override val prefix: Type,
@@ -2180,8 +2177,8 @@ object Types {
     type ThisType = TypeRef
     type ThisName = TypeName
 
-    override def designator = myDesignator
-    override protected def designator_=(d: Designator) = myDesignator = d
+    override def designator: Designator = myDesignator
+    override protected def designator_=(d: Designator): Unit = myDesignator = d
 
     override def underlying(implicit ctx: Context): Type = info
   }
@@ -2201,14 +2198,14 @@ object Types {
     if (Config.checkUnerased) assert(!ctx.phase.erasedTypes)
 
   object NamedType {
-    def isType(desig: Designator)(implicit ctx: Context) = desig match {
+    def isType(desig: Designator)(implicit ctx: Context): Boolean = desig match {
       case sym: Symbol => sym.isType
       case name: Name => name.isTypeName
     }
-    def apply(prefix: Type, designator: Designator)(implicit ctx: Context) =
+    def apply(prefix: Type, designator: Designator)(implicit ctx: Context): NamedType =
       if (isType(designator)) TypeRef.apply(prefix, designator)
       else TermRef.apply(prefix, designator)
-    def apply(prefix: Type, designator: Name, denot: Denotation)(implicit ctx: Context) =
+    def apply(prefix: Type, designator: Name, denot: Denotation)(implicit ctx: Context): NamedType =
       if (designator.isTermName) TermRef.apply(prefix, designator.asTermName, denot)
       else TypeRef.apply(prefix, designator.asTypeName, denot)
   }
@@ -2260,9 +2257,9 @@ object Types {
           // can happen in IDE if `cls` is stale
       }
 
-    override def computeHash(bs: Binders) = doHash(bs, tref)
+    override def computeHash(bs: Binders): Int = doHash(bs, tref)
 
-    override def eql(that: Type) = that match {
+    override def eql(that: Type): Boolean = that match {
       case that: ThisType => tref.eq(that.tref)
       case _ => false
     }
@@ -2272,7 +2269,7 @@ object Types {
 
   object ThisType {
     /** Normally one should use ClassSymbol#thisType instead */
-    def raw(tref: TypeRef)(implicit ctx: Context) =
+    def raw(tref: TypeRef)(implicit ctx: Context): CachedThisType =
       unique(new CachedThisType(tref))
   }
 
@@ -2281,16 +2278,16 @@ object Types {
    *  by `super`.
    */
   abstract case class SuperType(thistpe: Type, supertpe: Type) extends CachedProxyType with SingletonType {
-    override def underlying(implicit ctx: Context) = supertpe
-    override def superType(implicit ctx: Context) =
+    override def underlying(implicit ctx: Context): Type = supertpe
+    override def superType(implicit ctx: Context): Type =
       thistpe.baseType(supertpe.typeSymbol)
-    def derivedSuperType(thistpe: Type, supertpe: Type)(implicit ctx: Context) =
+    def derivedSuperType(thistpe: Type, supertpe: Type)(implicit ctx: Context): Type =
       if ((thistpe eq this.thistpe) && (supertpe eq this.supertpe)) this
       else SuperType(thistpe, supertpe)
 
-    override def computeHash(bs: Binders) = doHash(bs, thistpe, supertpe)
+    override def computeHash(bs: Binders): Int = doHash(bs, thistpe, supertpe)
 
-    override def eql(that: Type) = that match {
+    override def eql(that: Type): Boolean = that match {
       case that: SuperType => thistpe.eq(that.thistpe) && supertpe.eq(that.supertpe)
       case _ => false
     }
@@ -2307,15 +2304,15 @@ object Types {
 
   /** A constant type with  single `value`. */
   abstract case class ConstantType(value: Constant) extends CachedProxyType with SingletonType {
-    override def underlying(implicit ctx: Context) = value.tpe
+    override def underlying(implicit ctx: Context): Type = value.tpe
 
-    override def computeHash(bs: Binders) = doHash(value)
+    override def computeHash(bs: Binders): Int = doHash(value)
   }
 
   final class CachedConstantType(value: Constant) extends ConstantType(value)
 
   object ConstantType {
-    def apply(value: Constant)(implicit ctx: Context) = {
+    def apply(value: Constant)(implicit ctx: Context): ConstantType = {
       assertUnerased()
       unique(new CachedConstantType(value))
     }
@@ -2324,7 +2321,7 @@ object Types {
   case class LazyRef(private var refFn: Context => Type) extends UncachedProxyType with ValueType {
     private[this] var myRef: Type = null
     private[this] var computed = false
-    def ref(implicit ctx: Context) = {
+    def ref(implicit ctx: Context): Type = {
       if (computed) assert(myRef != null)
       else {
         computed = true
@@ -2333,12 +2330,12 @@ object Types {
       }
       myRef
     }
-    def evaluating = computed && myRef == null
-    def completed = myRef != null
-    override def underlying(implicit ctx: Context) = ref
-    override def toString = s"LazyRef(${if (computed) myRef else "..."})"
-    override def equals(other: Any) = this.eq(other.asInstanceOf[AnyRef])
-    override def hashCode = System.identityHashCode(this)
+    def evaluating: Boolean = computed && myRef == null
+    def completed: Boolean = myRef != null
+    override def underlying(implicit ctx: Context): Type = ref
+    override def toString: String = s"LazyRef(${if (computed) myRef else "..."})"
+    override def equals(other: Any): Boolean = this.eq(other.asInstanceOf[AnyRef])
+    override def hashCode: Int = System.identityHashCode(this)
   }
 
   // --- Refined Type and RecType ------------------------------------------------
@@ -2358,7 +2355,7 @@ object Types {
     else assert(refinedInfo.isInstanceOf[TypeType], this)
     assert(!refinedName.is(NameKinds.ExpandedName), this)
 
-    override def underlying(implicit ctx: Context) = parent
+    override def underlying(implicit ctx: Context): Type = parent
 
     private def badInst =
       throw new AssertionError(s"bad instantiation: $this")
@@ -2374,10 +2371,10 @@ object Types {
       if (parent.member(refinedName).exists) derivedRefinedType(parent, refinedName, refinedInfo)
       else parent
 
-    override def computeHash(bs: Binders) = doHash(bs, refinedName, refinedInfo, parent)
-    override def stableHash = refinedInfo.stableHash && parent.stableHash
+    override def computeHash(bs: Binders): Int = doHash(bs, refinedName, refinedInfo, parent)
+    override def stableHash: Boolean = refinedInfo.stableHash && parent.stableHash
 
-    override def eql(that: Type) = that match {
+    override def eql(that: Type): Boolean = that match {
       case that: RefinedType =>
         refinedName.eq(that.refinedName) &&
         refinedInfo.eq(that.refinedInfo) &&
@@ -2440,7 +2437,7 @@ object Types {
     private[Types] var opened: Boolean = false
     private[Types] var openedTwice: Boolean = false
 
-    val parent = parentExp(this)
+    val parent: Type = parentExp(this)
 
     private[this] var myRecThis: RecThis = null
 
@@ -2473,9 +2470,9 @@ object Types {
       refacc.apply(false, tp)
     }
 
-    override def computeHash(bs: Binders) = doHash(new Binders(this, bs), parent)
+    override def computeHash(bs: Binders): Int = doHash(new Binders(this, bs), parent)
 
-    override def stableHash = false
+    override def stableHash: Boolean = false
       // this is a conservative observation. By construction RecTypes contain at least
       // one RecThis occurrence. Since `stableHash` does not keep track of enclosing
       // bound types, it will return "unstable" for this occurrence and this would propagate.
@@ -2484,13 +2481,13 @@ object Types {
 
     override def equals(that: Any): Boolean = equals(that, null)
 
-    override def iso(that: Any, bs: BinderPairs) = that match {
+    override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: RecType =>
         parent.equals(that.parent, new BinderPairs(this, that, bs))
       case _ => false
     }
 
-    override def toString = s"RecType($parent | $hashCode)"
+    override def toString: String = s"RecType($parent | $hashCode)"
 
     private def checkInst(implicit ctx: Context): this.type = this // debug hook
   }
@@ -2525,7 +2522,7 @@ object Types {
     }
 
     /** Create a `RecType`, but only if the type generated by `parentExp` is indeed recursive. */
-    def closeOver(parentExp: RecType => Type)(implicit ctx: Context) = {
+    def closeOver(parentExp: RecType => Type)(implicit ctx: Context): Type = {
       val rt = this(parentExp)
       if (rt.isReferredToBy(rt.parent)) rt else rt.parent
     }
@@ -2540,11 +2537,11 @@ object Types {
   }
 
   abstract case class AndType(tp1: Type, tp2: Type) extends AndOrType {
-    def isAnd = true
+    def isAnd: Boolean = true
     private[this] var myBaseClassesPeriod: Period = Nowhere
     private[this] var myBaseClasses: List[ClassSymbol] = _
     /** Base classes of are the merge of the operand base classes. */
-    override final def baseClasses(implicit ctx: Context) = {
+    override final def baseClasses(implicit ctx: Context): List[ClassSymbol] = {
       if (myBaseClassesPeriod != ctx.period) {
         val bcs1 = tp1.baseClasses
         val bcs1set = BaseClassSet(bcs1)
@@ -2570,9 +2567,9 @@ object Types {
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else tp1 & tp2
 
-    override def computeHash(bs: Binders) = doHash(bs, tp1, tp2)
+    override def computeHash(bs: Binders): Int = doHash(bs, tp1, tp2)
 
-    override def eql(that: Type) = that match {
+    override def eql(that: Type): Boolean = that match {
       case that: AndType => tp1.eq(that.tp1) && tp2.eq(that.tp2)
       case _ => false
     }
@@ -2605,11 +2602,11 @@ object Types {
   }
 
   abstract case class OrType(tp1: Type, tp2: Type) extends AndOrType {
-    def isAnd = false
+    def isAnd: Boolean = false
     private[this] var myBaseClassesPeriod: Period = Nowhere
     private[this] var myBaseClasses: List[ClassSymbol] = _
     /** Base classes of are the intersection of the operand base classes. */
-    override final def baseClasses(implicit ctx: Context) = {
+    override final def baseClasses(implicit ctx: Context): List[ClassSymbol] = {
       if (myBaseClassesPeriod != ctx.period) {
         val bcs1 = tp1.baseClasses
         val bcs1set = BaseClassSet(bcs1)
@@ -2649,9 +2646,9 @@ object Types {
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else OrType.make(tp1, tp2)
 
-    override def computeHash(bs: Binders) = doHash(bs, tp1, tp2)
+    override def computeHash(bs: Binders): Int = doHash(bs, tp1, tp2)
 
-    override def eql(that: Type) = that match {
+    override def eql(that: Type): Boolean = that match {
       case that: OrType => tp1.eq(that.tp1) && tp2.eq(that.tp2)
       case _ => false
     }
@@ -2660,7 +2657,7 @@ object Types {
   final class CachedOrType(tp1: Type, tp2: Type) extends OrType(tp1, tp2)
 
   object OrType {
-    def apply(tp1: Type, tp2: Type)(implicit ctx: Context) = {
+    def apply(tp1: Type, tp2: Type)(implicit ctx: Context): OrType = {
       assertUnerased()
       unique(new CachedOrType(tp1, tp2))
     }
@@ -2692,7 +2689,7 @@ object Types {
   }
 
   trait MethodicType extends SignatureCachingType {
-    protected def resultSignature(implicit ctx: Context) = try resultType match {
+    protected def resultSignature(implicit ctx: Context): Signature = try resultType match {
       case rtp: MethodicType => rtp.signature
       case tp =>
         if (tp.isRef(defn.UnitClass)) Signature(Nil, defn.UnitClass.fullName.asTypeName)
@@ -2713,18 +2710,18 @@ object Types {
 
     def computeSignature(implicit ctx: Context): Signature = resultSignature
 
-    def derivedExprType(resType: Type)(implicit ctx: Context) =
+    def derivedExprType(resType: Type)(implicit ctx: Context): ExprType =
       if (resType eq this.resType) this else ExprType(resType)
 
-    override def computeHash(bs: Binders) = doHash(bs, resType)
-    override def stableHash = resType.stableHash
+    override def computeHash(bs: Binders): Int = doHash(bs, resType)
+    override def stableHash: Boolean = resType.stableHash
 
-    override def eql(that: Type) = that match {
+    override def eql(that: Type): Boolean = that match {
       case that: ExprType => resType.eq(that.resType)
       case _ => false
     }
 
-    override def iso(that: Any, bs: BinderPairs) = that match {
+    override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: ExprType => resType.equals(that.resType, bs)
       case _ => false
     }
@@ -2734,7 +2731,7 @@ object Types {
   final class CachedExprType(resultType: Type) extends ExprType(resultType)
 
   object ExprType {
-    def apply(resultType: Type)(implicit ctx: Context) = {
+    def apply(resultType: Type)(implicit ctx: Context): ExprType = {
       assertUnerased()
       unique(new CachedExprType(resultType))
     }
@@ -2758,14 +2755,14 @@ object Types {
     def resType: Type
     protected def newParamRef(n: Int): ParamRefType
 
-    override def resultType(implicit ctx: Context) = resType
+    override def resultType(implicit ctx: Context): Type = resType
 
     def isResultDependent(implicit ctx: Context): Boolean
     def isParamDependent(implicit ctx: Context): Boolean
 
-    final def isTermLambda = isInstanceOf[TermLambda]
-    final def isTypeLambda = isInstanceOf[TypeLambda]
-    final def isHigherKinded = isInstanceOf[TypeProxy]
+    final def isTermLambda: Boolean = isInstanceOf[TermLambda]
+    final def isTypeLambda: Boolean = isInstanceOf[TypeLambda]
+    final def isHigherKinded: Boolean = isInstanceOf[TypeProxy]
 
     private[this] var myParamRefs: List[ParamRefType] = null
 
@@ -2797,7 +2794,7 @@ object Types {
 
     final def derivedLambdaType(paramNames: List[ThisName] = this.paramNames,
                           paramInfos: List[PInfo] = this.paramInfos,
-                          resType: Type = this.resType)(implicit ctx: Context) =
+                          resType: Type = this.resType)(implicit ctx: Context): LambdaType =
       if ((paramNames eq this.paramNames) && (paramInfos eq this.paramInfos) && (resType eq this.resType)) this
       else newLikeThis(paramNames, paramInfos, resType)
 
@@ -2807,22 +2804,22 @@ object Types {
           x => resType.subst(this, x))
 
     protected def prefixString: String
-    final override def toString = s"$prefixString($paramNames, $paramInfos, $resType)"
+    final override def toString: String = s"$prefixString($paramNames, $paramInfos, $resType)"
   }
 
   abstract class HKLambda extends CachedProxyType with LambdaType {
-    final override def underlying(implicit ctx: Context) = resType
+    final override def underlying(implicit ctx: Context): Type = resType
 
-    override def computeHash(bs: Binders) =
+    override def computeHash(bs: Binders): Int =
       doHash(new Binders(this, bs), paramNames, resType, paramInfos)
 
-    override def stableHash = resType.stableHash && paramInfos.stableHash
+    override def stableHash: Boolean = resType.stableHash && paramInfos.stableHash
 
-    final override def equals(that: Any) = equals(that, null)
+    final override def equals(that: Any): Boolean = equals(that, null)
 
     // No definition of `eql` --> fall back on equals, which calls iso
 
-    final override def iso(that: Any, bs: BinderPairs) = that match {
+    final override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: HKLambda =>
         paramNames.eqElements(that.paramNames) &&
         companion.eq(that.companion) && {
@@ -2836,13 +2833,13 @@ object Types {
   }
 
   abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType {
-    final override def hashCode = System.identityHashCode(this)
+    final override def hashCode: Int = System.identityHashCode(this)
 
-    final override def equals(that: Any) = equals(that, null)
+    final override def equals(that: Any): Boolean = equals(that, null)
 
     // No definition of `eql` --> fall back on equals, which is `eq`
 
-    final override def iso(that: Any, bs: BinderPairs) = that match {
+    final override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: MethodOrPoly =>
         paramNames.eqElements(that.paramNames) &&
         companion.eq(that.companion) && {
@@ -2971,12 +2968,11 @@ object Types {
       paramInfosExp: MethodType => List[Type],
       resultTypeExp: MethodType => Type)
     extends MethodOrPoly with TermLambda with NarrowCached { thisMethodType =>
-    import MethodType._
 
     type This = MethodType
 
-    val paramInfos = paramInfosExp(this)
-    val resType = resultTypeExp(this)
+    val paramInfos: List[Type] = paramInfosExp(this)
+    val resType: Type = resultTypeExp(this)
     assert(resType.exists)
 
     def companion: MethodTypeCompanion
@@ -2990,7 +2986,7 @@ object Types {
       resultSignature.prepend(params, isJavaMethod)
     }
 
-    protected def prefixString = "MethodType"
+    protected def prefixString: String = "MethodType"
   }
 
   final class CachedMethodType(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type, val companion: MethodTypeCompanion)
@@ -3027,7 +3023,7 @@ object Types {
   abstract class TermLambdaCompanion[LT <: TermLambda]
   extends LambdaTypeCompanion[TermName, Type, LT] {
     def toPInfo(tp: Type)(implicit ctx: Context): Type = tp
-    def syntheticParamName(n: Int) = nme.syntheticParamName(n)
+    def syntheticParamName(n: Int): TermName = nme.syntheticParamName(n)
   }
 
   abstract class TypeLambdaCompanion[LT <: TypeLambda]
@@ -3036,7 +3032,7 @@ object Types {
       case tp: TypeBounds => tp
       case tp: ErrorType => TypeAlias(tp)
     }
-    def syntheticParamName(n: Int) = tpnme.syntheticTypeParamName(n)
+    def syntheticParamName(n: Int): TypeName = tpnme.syntheticTypeParamName(n)
   }
 
   abstract class MethodTypeCompanion extends TermLambdaCompanion[MethodType] { self =>
@@ -3046,7 +3042,7 @@ object Types {
      *   - replace @repeated annotations on Seq or Array types by <repeated> types
      *   - add @inlineParam to inline call-by-value parameters
      */
-    def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
+    def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context): MethodType = {
       def translateInline(tp: Type): Type = tp match {
         case _: ExprType => tp
         case _ => AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
@@ -3095,7 +3091,7 @@ object Types {
 
   /** A ternary extractor for MethodType */
   object MethodTpe {
-    def unapply(mt: MethodType)(implicit ctx: Context) =
+    def unapply(mt: MethodType)(implicit ctx: Context): Some[(List[TermName], List[Type], Type)] =
       Some((mt.paramNames, mt.paramInfos, mt.resultType))
   }
 
@@ -3141,7 +3137,7 @@ object Types {
       paramInfosExp: HKTypeLambda => List[TypeBounds], resultTypeExp: HKTypeLambda => Type)
   extends HKLambda with TypeLambda {
     type This = HKTypeLambda
-    def companion = HKTypeLambda
+    def companion: HKTypeLambda.type = HKTypeLambda
 
     val paramInfos: List[TypeBounds] = paramInfosExp(this)
     val resType: Type = resultTypeExp(this)
@@ -3149,7 +3145,7 @@ object Types {
     assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
 
-    protected def prefixString = "HKTypeLambda"
+    protected def prefixString: String = "HKTypeLambda"
   }
 
   /** The type of a polymorphic method. It has the same form as HKTypeLambda,
@@ -3160,7 +3156,7 @@ object Types {
   extends MethodOrPoly with TypeLambda {
 
     type This = PolyType
-    def companion = PolyType
+    def companion: PolyType.type = PolyType
 
     val paramInfos: List[TypeBounds] = paramInfosExp(this)
     val resType: Type = resultTypeExp(this)
@@ -3168,7 +3164,7 @@ object Types {
     assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
 
-    def computeSignature(implicit ctx: Context) = resultSignature
+    def computeSignature(implicit ctx: Context): Signature = resultSignature
 
     /** Merge nested polytypes into one polytype. nested polytypes are normally not supported
      *  but can arise as temporary data structures.
@@ -3188,7 +3184,7 @@ object Types {
       case _ => this
     }
 
-    protected def prefixString = "PolyType"
+    protected def prefixString: String = "PolyType"
   }
 
   object HKTypeLambda extends TypeLambdaCompanion[HKTypeLambda] {
@@ -3201,7 +3197,7 @@ object Types {
     def unapply(tl: HKTypeLambda): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
 
-    def any(n: Int)(implicit ctx: Context) =
+    def any(n: Int)(implicit ctx: Context): HKTypeLambda =
       apply(syntheticParamNames(n))(
         pt => List.fill(n)(TypeBounds.empty), pt => defn.AnyType)
 
@@ -3238,7 +3234,7 @@ object Types {
     def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
 
-    def any(n: Int)(implicit ctx: Context) =
+    def any(n: Int)(implicit ctx: Context): PolyType =
       apply(syntheticParamNames(n))(
         pt => List.fill(n)(TypeBounds.empty), pt => defn.AnyType)
   }
@@ -3258,10 +3254,10 @@ object Types {
   /** The parameter of a type lambda */
   case class LambdaParam(tl: TypeLambda, n: Int) extends ParamInfo {
     type ThisName = TypeName
-    def isTypeParam(implicit ctx: Context) = tl.paramNames.head.isTypeName
-    def paramName(implicit ctx: Context) = tl.paramNames(n)
-    def paramInfo(implicit ctx: Context) = tl.paramInfos(n)
-    def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = paramInfo
+    def isTypeParam(implicit ctx: Context): Boolean = tl.paramNames.head.isTypeName
+    def paramName(implicit ctx: Context): tl.ThisName = tl.paramNames(n)
+    def paramInfo(implicit ctx: Context): tl.PInfo = tl.paramInfos(n)
+    def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context): tl.PInfo = paramInfo
     def paramInfoOrCompleter(implicit ctx: Context): Type = paramInfo
     def paramVariance(implicit ctx: Context): Int = tl.paramNames(n).variance
     def paramRef(implicit ctx: Context): Type = tl.paramRefs(n)
@@ -3324,7 +3320,7 @@ object Types {
         NoType
     }
 
-    def lowerBound(implicit ctx: Context) = tycon.stripTypeVar match {
+    def lowerBound(implicit ctx: Context): Type = tycon.stripTypeVar match {
       case tycon: TypeRef =>
         tycon.info match {
           case TypeBounds(lo, hi) =>
@@ -3345,16 +3341,16 @@ object Types {
       if ((tycon eq this.tycon) && (args eq this.args)) this
       else tycon.appliedTo(args)
 
-    override def computeHash(bs: Binders) = doHash(bs, tycon, args)
+    override def computeHash(bs: Binders): Int = doHash(bs, tycon, args)
 
-    override def stableHash = {
+    override def stableHash: Boolean = {
       if (myStableHash == 0) myStableHash = if (tycon.stableHash && args.stableHash) 1 else -1
       myStableHash > 0
     }
 
-    override def eql(that: Type) = this `eq` that // safe because applied types are hash-consed separately
+    override def eql(that: Type): Boolean = this `eq` that // safe because applied types are hash-consed separately
 
-    final override def iso(that: Any, bs: BinderPairs) = that match {
+    final override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: AppliedType => tycon.equals(that.tycon, bs) && args.equalElements(that.args, bs)
       case _ => false
     }
@@ -3366,7 +3362,7 @@ object Types {
   }
 
   object AppliedType {
-    def apply(tycon: Type, args: List[Type])(implicit ctx: Context) = {
+    def apply(tycon: Type, args: List[Type])(implicit ctx: Context): AppliedType = {
       assertUnerased()
       ctx.base.uniqueAppliedTypes.enterIfNew(tycon, args)
     }
@@ -3378,7 +3374,7 @@ object Types {
     type BT <: Type
     val binder: BT
     def copyBoundType(bt: BT): Type
-    override def stableHash = false
+    override def stableHash: Boolean = false
   }
 
   abstract class ParamRef extends BoundType {
@@ -3392,18 +3388,18 @@ object Types {
       else infos(paramNum)
     }
 
-    override def computeHash(bs: Binders) = doHash(paramNum, binder.identityHash(bs))
+    override def computeHash(bs: Binders): Int = doHash(paramNum, binder.identityHash(bs))
 
-    override def equals(that: Any) = equals(that, null)
+    override def equals(that: Any): Boolean = equals(that, null)
 
-    override def iso(that: Any, bs: BinderPairs) = that match {
+    override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: ParamRef => paramNum == that.paramNum && binder.equalBinder(that.binder, bs)
       case _ => false
     }
 
     protected def kindString: String
 
-    override def toString =
+    override def toString: String =
       try s"${kindString}ParamRef($paramName)"
       catch {
         case ex: IndexOutOfBoundsException => s"ParamRef(<bad index: $paramNum>)"
@@ -3415,8 +3411,8 @@ object Types {
    */
   abstract case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef with SingletonType {
     type BT = TermLambda
-    def kindString = "Term"
-    def copyBoundType(bt: BT) = bt.paramRefs(paramNum)
+    def kindString: String = "Term"
+    def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)
@@ -3426,13 +3422,13 @@ object Types {
    */
   abstract case class TypeParamRef(binder: TypeLambda, paramNum: Int) extends ParamRef {
     type BT = TypeLambda
-    def kindString = "Type"
-    def copyBoundType(bt: BT) = bt.paramRefs(paramNum)
+    def kindString: String = "Type"
+    def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
 
     /** Optimized version of occursIn, avoid quadratic blowup when solving
      *  constraints over large ground types.
      */
-    override def occursIn(that: Type)(implicit ctx: Context) = !that.isGround && super.occursIn(that)
+    override def occursIn(that: Type)(implicit ctx: Context): Boolean = !that.isGround && super.occursIn(that)
 
     /** Looking only at the structure of `bound`, is one of the following true?
      *     - fromBelow and param <:< bound
@@ -3453,21 +3449,21 @@ object Types {
    */
   abstract case class RecThis(binder: RecType) extends BoundType with SingletonType {
     type BT = RecType
-    override def underlying(implicit ctx: Context) = binder
-    def copyBoundType(bt: BT) = bt.recThis
+    override def underlying(implicit ctx: Context): RecType = binder
+    def copyBoundType(bt: BT): RecThis = bt.recThis
 
     // need to customize hashCode and equals to prevent infinite recursion
     // between RecTypes and RecRefs.
-    override def computeHash(bs: Binders) = addDelta(binder.identityHash(bs), 41)
+    override def computeHash(bs: Binders): Int = addDelta(binder.identityHash(bs), 41)
 
-    override def equals(that: Any) = equals(that, null)
+    override def equals(that: Any): Boolean = equals(that, null)
 
-    override def iso(that: Any, bs: BinderPairs) = that match {
+    override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: RecThis => binder.equalBinder(that.binder, bs)
       case _ => false
     }
 
-    override def toString =
+    override def toString: String =
       try s"RecThis(${binder.hashCode})"
       catch {
         case ex: NullPointerException => s"RecThis(<under construction>)"
@@ -3480,11 +3476,11 @@ object Types {
 
   /** A skolem type reference with underlying type `binder`. */
   case class SkolemType(info: Type) extends UncachedProxyType with ValueType with SingletonType {
-    override def underlying(implicit ctx: Context) = info
-    def derivedSkolemType(info: Type)(implicit ctx: Context) =
+    override def underlying(implicit ctx: Context): Type = info
+    def derivedSkolemType(info: Type)(implicit ctx: Context): SkolemType =
       if (info eq this.info) this else SkolemType(info)
     override def hashCode: Int = System.identityHashCode(this)
-    override def equals(that: Any) = this.eq(that.asInstanceOf[AnyRef])
+    override def equals(that: Any): Boolean = this.eq(that.asInstanceOf[AnyRef])
 
     def withName(name: Name): this.type = { myRepr = name; this }
 
@@ -3494,7 +3490,7 @@ object Types {
       myRepr
     }
 
-    override def toString = s"Skolem($hashCode)"
+    override def toString: String = s"Skolem($hashCode)"
   }
 
   // ------------ Type variables ----------------------------------------
@@ -3521,8 +3517,8 @@ object Types {
     /** The permanent instance type of the variable, or NoType is none is given yet */
     private[this] var myInst: Type = NoType
 
-    private[core] def inst = myInst
-    private[core] def inst_=(tp: Type) = {
+    private[core] def inst: Type = myInst
+    private[core] def inst_=(tp: Type): Unit = {
       myInst = tp
       if (tp.exists) {
         owningState.get.ownedVars -= this
@@ -3533,7 +3529,7 @@ object Types {
     /** The state owning the variable. This is at first `creatorState`, but it can
      *  be changed to an enclosing state on a commit.
      */
-    private[core] var owningState = new WeakReference(creatorState)
+    private[core] var owningState: WeakReference[TyperState] = new WeakReference(creatorState)
 
     /** The instance type of this variable, or NoType if the variable is currently
      *  uninstantiated
@@ -3542,7 +3538,7 @@ object Types {
       if (inst.exists) inst else ctx.typerState.instType(this)
 
     /** Is the variable already instantiated? */
-    def isInstantiated(implicit ctx: Context) = instanceOpt.exists
+    def isInstantiated(implicit ctx: Context): Boolean = instanceOpt.exists
 
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
@@ -3565,7 +3561,7 @@ object Types {
       instantiateWith(ctx.typeComparer.instanceType(origin, fromBelow))
 
     /** For uninstantiated type variables: Is the lower bound different from Nothing? */
-    def hasLowerBound(implicit ctx: Context) =
+    def hasLowerBound(implicit ctx: Context): Boolean =
       !ctx.typerState.constraint.entry(origin).loBound.isBottomType
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
@@ -3583,9 +3579,9 @@ object Types {
     }
 
     override def computeHash(bs: Binders): Int = identityHash(bs)
-    override def equals(that: Any) = this.eq(that.asInstanceOf[AnyRef])
+    override def equals(that: Any): Boolean = this.eq(that.asInstanceOf[AnyRef])
 
-    override def toString = {
+    override def toString: String = {
       def instStr = if (inst.exists) s" -> $inst" else ""
       s"TypeVar($origin$instStr)"
     }
@@ -3605,7 +3601,7 @@ object Types {
    */
   abstract case class MatchType(bound: Type, scrutinee: Type, cases: List[Type]) extends CachedProxyType with ValueType {
 
-    def derivedMatchType(bound: Type, scrutinee: Type, cases: List[Type])(implicit ctx: Context) =
+    def derivedMatchType(bound: Type, scrutinee: Type, cases: List[Type])(implicit ctx: Context): MatchType =
       if (bound.eq(this.bound) && scrutinee.eq(this.scrutinee) && cases.eqElements(this.cases)) this
       else MatchType(bound, scrutinee, cases)
 
@@ -3625,7 +3621,7 @@ object Types {
     /** Switch to choose parallel or sequential reduction */
     private final val reduceInParallel = false
 
-    final def cantPossiblyMatch(cas: Type)(implicit ctx: Context) =
+    final def cantPossiblyMatch(cas: Type)(implicit ctx: Context): Boolean =
       true  // should be refined if we allow overlapping cases
 
     def reduced(implicit ctx: Context): Type = {
@@ -3703,9 +3699,9 @@ object Types {
       myReduced
     }
 
-    override def computeHash(bs: Binders) = doHash(bs, scrutinee, bound :: cases)
+    override def computeHash(bs: Binders): Int = doHash(bs, scrutinee, bound :: cases)
 
-    override def eql(that: Type) = that match {
+    override def eql(that: Type): Boolean = that match {
       case that: MatchType =>
         bound.eq(that.bound) && scrutinee.eq(that.scrutinee) && cases.eqElements(that.cases)
       case _ => false
@@ -3715,7 +3711,7 @@ object Types {
   class CachedMatchType(bound: Type, scrutinee: Type, cases: List[Type]) extends MatchType(bound, scrutinee, cases)
 
   object MatchType {
-    def apply(bound: Type, scrutinee: Type, cases: List[Type])(implicit ctx: Context) =
+    def apply(bound: Type, scrutinee: Type, cases: List[Type])(implicit ctx: Context): MatchType =
       unique(new CachedMatchType(bound, scrutinee, cases))
   }
 
@@ -3776,18 +3772,18 @@ object Types {
       parentsCache
     }
 
-    def derivedClassInfo(prefix: Type)(implicit ctx: Context) =
+    def derivedClassInfo(prefix: Type)(implicit ctx: Context): ClassInfo =
       if (prefix eq this.prefix) this
       else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
-    def derivedClassInfo(prefix: Type = this.prefix, classParents: List[Type] = this.classParents, decls: Scope = this.decls, selfInfo: TypeOrSymbol = this.selfInfo)(implicit ctx: Context) =
+    def derivedClassInfo(prefix: Type = this.prefix, classParents: List[Type] = this.classParents, decls: Scope = this.decls, selfInfo: TypeOrSymbol = this.selfInfo)(implicit ctx: Context): ClassInfo =
       if ((prefix eq this.prefix) && (classParents eq this.classParents) && (decls eq this.decls) && (selfInfo eq this.selfInfo)) this
       else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
-    override def computeHash(bs: Binders) = doHash(bs, cls, prefix)
-    override def stableHash = prefix.stableHash && classParents.stableHash
+    override def computeHash(bs: Binders): Int = doHash(bs, cls, prefix)
+    override def stableHash: Boolean = prefix.stableHash && classParents.stableHash
 
-    override def eql(that: Type) = that match {
+    override def eql(that: Type): Boolean = that match {
       case that: ClassInfo =>
         prefix.eq(that.prefix) &&
         cls.eq(that.cls) &&
@@ -3799,7 +3795,7 @@ object Types {
 
     override def equals(that: Any): Boolean = equals(that, null)
 
-    override def iso(that: Any, bs: BinderPairs) = that match {
+    override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: ClassInfo =>
         prefix.equals(that.prefix, bs) &&
         cls.eq(that.cls) &&
@@ -3809,7 +3805,7 @@ object Types {
       case _ => false
     }
 
-    override def toString = s"ClassInfo($prefix, $cls, $classParents)"
+    override def toString: String = s"ClassInfo($prefix, $cls, $classParents)"
   }
 
   class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)
@@ -3820,18 +3816,18 @@ object Types {
   extends CachedClassInfo(prefix, cls, Nil, decls, selfInfo) {
 
     /** Install classinfo with known parents in `denot` s */
-    def finalize(denot: SymDenotation, parents: List[Type])(implicit ctx: Context) =
+    def finalize(denot: SymDenotation, parents: List[Type])(implicit ctx: Context): Unit =
       denot.info = ClassInfo(prefix, cls, parents, decls, selfInfo)
 
-    override def derivedClassInfo(prefix: Type)(implicit ctx: Context) =
+    override def derivedClassInfo(prefix: Type)(implicit ctx: Context): ClassInfo =
       if (prefix eq this.prefix) this
       else new TempClassInfo(prefix, cls, decls, selfInfo)
 
-    override def toString = s"TempClassInfo($prefix, $cls)"
+    override def toString: String = s"TempClassInfo($prefix, $cls)"
   }
 
   object ClassInfo {
-    def apply(prefix: Type, cls: ClassSymbol, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol = NoType)(implicit ctx: Context) =
+    def apply(prefix: Type, cls: ClassSymbol, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol = NoType)(implicit ctx: Context): ClassInfo =
       unique(new CachedClassInfo(prefix, cls, classParents, decls, selfInfo))
   }
 
@@ -3844,7 +3840,7 @@ object Types {
     override def underlying(implicit ctx: Context): Type = hi
 
     /** The non-alias type bounds type with given bounds */
-    def derivedTypeBounds(lo: Type, hi: Type)(implicit ctx: Context) =
+    def derivedTypeBounds(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
       if ((lo eq this.lo) && (hi eq this.hi)) this
       else TypeBounds(lo, hi)
 
@@ -3870,18 +3866,18 @@ object Types {
       else if ((that.lo frozen_<:< this.lo) && (this.hi frozen_<:< that.hi)) that
       else TypeBounds(this.lo & that.lo, this.hi | that.hi)
 
-    override def & (that: Type)(implicit ctx: Context) = that match {
+    override def & (that: Type)(implicit ctx: Context): Type = that match {
       case that: TypeBounds => this & that
       case _ => super.& (that)
     }
 
-    override def | (that: Type)(implicit ctx: Context) = that match {
+    override def | (that: Type)(implicit ctx: Context): Type = that match {
       case that: TypeBounds => this | that
       case _ => super.| (that)
     }
 
-    override def computeHash(bs: Binders) = doHash(bs, lo, hi)
-    override def stableHash = lo.stableHash && hi.stableHash
+    override def computeHash(bs: Binders): Int = doHash(bs, lo, hi)
+    override def stableHash: Boolean = lo.stableHash && hi.stableHash
 
     override def equals(that: Any): Boolean = equals(that, null)
 
@@ -3891,7 +3887,7 @@ object Types {
       case _ => false
     }
 
-    override def eql(that: Type) = that match {
+    override def eql(that: Type): Boolean = that match {
       case that: AliasingBounds => false
       case that: TypeBounds => lo.eq(that.lo) && hi.eq(that.hi)
       case _ => false
@@ -3905,8 +3901,8 @@ object Types {
 
     def derivedAlias(alias: Type)(implicit ctx: Context): AliasingBounds
 
-    override def computeHash(bs: Binders) = doHash(bs, alias)
-    override def stableHash = alias.stableHash
+    override def computeHash(bs: Binders): Int = doHash(bs, alias)
+    override def stableHash: Boolean = alias.stableHash
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: AliasingBounds => this.isTypeAlias == that.isTypeAlias && alias.equals(that.alias, bs)
@@ -3923,7 +3919,7 @@ object Types {
   /**    = T
    */
   class TypeAlias(alias: Type) extends AliasingBounds(alias) {
-    def derivedAlias(alias: Type)(implicit ctx: Context) =
+    def derivedAlias(alias: Type)(implicit ctx: Context): AliasingBounds =
       if (alias eq this.alias) this else TypeAlias(alias)
   }
 
@@ -3935,25 +3931,25 @@ object Types {
    *  aliases (or else take the jump and allow full recursive types).
    */
   class MatchAlias(alias: Type) extends AliasingBounds(alias) {
-    def derivedAlias(alias: Type)(implicit ctx: Context) =
+    def derivedAlias(alias: Type)(implicit ctx: Context): AliasingBounds =
       if (alias eq this.alias) this else MatchAlias(alias)
   }
 
   object TypeBounds {
     def apply(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
       unique(new RealTypeBounds(lo, hi))
-    def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
-    def upper(hi: Type)(implicit ctx: Context) = apply(defn.NothingType, hi)
-    def lower(lo: Type)(implicit ctx: Context) = apply(lo, defn.AnyType)
+    def empty(implicit ctx: Context): TypeBounds = apply(defn.NothingType, defn.AnyType)
+    def upper(hi: Type)(implicit ctx: Context): TypeBounds = apply(defn.NothingType, hi)
+    def lower(lo: Type)(implicit ctx: Context): TypeBounds = apply(lo, defn.AnyType)
   }
 
   object TypeAlias {
-    def apply(alias: Type)(implicit ctx: Context) = unique(new TypeAlias(alias))
+    def apply(alias: Type)(implicit ctx: Context): TypeAlias = unique(new TypeAlias(alias))
     def unapply(tp: TypeAlias): Option[Type] = Some(tp.alias)
   }
 
   object MatchAlias {
-    def apply(alias: Type)(implicit ctx: Context) = unique(new MatchAlias(alias))
+    def apply(alias: Type)(implicit ctx: Context): MatchAlias = unique(new MatchAlias(alias))
     def unapply(tp: MatchAlias): Option[Type] = Some(tp.alias)
   }
 
@@ -3965,7 +3961,7 @@ object Types {
 
     override def underlying(implicit ctx: Context): Type = parent
 
-    def derivedAnnotatedType(parent: Type, annot: Annotation) =
+    def derivedAnnotatedType(parent: Type, annot: Annotation): AnnotatedType =
       if ((parent eq this.parent) && (annot eq this.annot)) this
       else AnnotatedType(parent, annot)
 
@@ -3977,7 +3973,7 @@ object Types {
     private[this] var isRefiningKnown = false
     private[this] var isRefiningCache: Boolean = _
 
-    def isRefining(implicit ctx: Context) = {
+    def isRefining(implicit ctx: Context): Boolean = {
       if (!isRefiningKnown) {
         isRefiningCache = annot.symbol.derivesFrom(defn.RefiningAnnotationClass)
         isRefiningKnown = true
@@ -3993,7 +3989,7 @@ object Types {
   }
 
   object AnnotatedType {
-    def make(underlying: Type, annots: List[Annotation]) =
+    def make(underlying: Type, annots: List[Annotation]): Type =
       (underlying /: annots)(AnnotatedType(_, _))
   }
 
@@ -4001,20 +3997,20 @@ object Types {
 
   /** The type of an erased array */
   abstract case class JavaArrayType(elemType: Type) extends CachedGroundType with ValueType {
-    def derivedJavaArrayType(elemtp: Type)(implicit ctx: Context) =
+    def derivedJavaArrayType(elemtp: Type)(implicit ctx: Context): JavaArrayType =
       if (elemtp eq this.elemType) this else JavaArrayType(elemtp)
 
-    override def computeHash(bs: Binders) = doHash(bs, elemType)
-    override def stableHash = elemType.stableHash
+    override def computeHash(bs: Binders): Int = doHash(bs, elemType)
+    override def stableHash: Boolean = elemType.stableHash
 
-    override def eql(that: Type) = that match {
+    override def eql(that: Type): Boolean = that match {
       case that: JavaArrayType => elemType.eq(that.elemType)
       case _ => false
     }
   }
   final class CachedJavaArrayType(elemType: Type) extends JavaArrayType(elemType)
   object JavaArrayType {
-    def apply(elemType: Type)(implicit ctx: Context) = unique(new CachedJavaArrayType(elemType))
+    def apply(elemType: Type)(implicit ctx: Context): JavaArrayType = unique(new CachedJavaArrayType(elemType))
   }
 
   /** The type of an import clause tree */
@@ -4022,12 +4018,12 @@ object Types {
 
   /** Sentinel for "missing type" */
   @sharable case object NoType extends CachedGroundType {
-    override def computeHash(bs: Binders) = hashSeed
+    override def computeHash(bs: Binders): Int = hashSeed
   }
 
   /** Missing prefix */
   @sharable case object NoPrefix extends CachedGroundType {
-    override def computeHash(bs: Binders) = hashSeed
+    override def computeHash(bs: Binders): Int = hashSeed
   }
 
   /** A common superclass of `ErrorType` and `TryDynamicCallSite`. Instances of this
@@ -4062,20 +4058,20 @@ object Types {
 
   /** Wildcard type, possibly with bounds */
   abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermType {
-    def derivedWildcardType(optBounds: Type)(implicit ctx: Context) =
+    def derivedWildcardType(optBounds: Type)(implicit ctx: Context): WildcardType =
       if (optBounds eq this.optBounds) this
       else if (!optBounds.exists) WildcardType
       else WildcardType(optBounds.asInstanceOf[TypeBounds])
 
-    override def computeHash(bs: Binders) = doHash(bs, optBounds)
-    override def stableHash = optBounds.stableHash
+    override def computeHash(bs: Binders): Int = doHash(bs, optBounds)
+    override def stableHash: Boolean = optBounds.stableHash
 
-    override def eql(that: Type) = that match {
+    override def eql(that: Type): Boolean = that match {
       case that: WildcardType => optBounds.eq(that.optBounds)
       case _ => false
     }
 
-    override def iso(that: Any, bs: BinderPairs) = that match {
+    override def iso(that: Any, bs: BinderPairs): Boolean = that match {
       case that: WildcardType => optBounds.equals(that.optBounds, bs)
       case _ => false
     }
@@ -4085,7 +4081,7 @@ object Types {
   final class CachedWildcardType(optBounds: Type) extends WildcardType(optBounds)
 
   @sharable object WildcardType extends WildcardType(NoType) {
-    def apply(bounds: TypeBounds)(implicit ctx: Context) = unique(new CachedWildcardType(bounds))
+    def apply(bounds: TypeBounds)(implicit ctx: Context): WildcardType = unique(new CachedWildcardType(bounds))
   }
 
   /** An extractor for single abstract method types.
@@ -4191,7 +4187,7 @@ object Types {
 
   /** Common base class of TypeMap and TypeAccumulator */
   abstract class VariantTraversal {
-    protected[core] var variance = 1
+    protected[core] var variance: Int = 1
 
     @forceInline protected def atVariance[T](v: Int)(op: => T): T = {
       val saved = variance
@@ -4205,7 +4201,7 @@ object Types {
   abstract class TypeMap(implicit protected val ctx: Context)
   extends VariantTraversal with (Type => Type) { thisMap =>
 
-    protected def stopAtStatic = true
+    protected def stopAtStatic: Boolean = true
 
     def apply(tp: Type): Type
 
@@ -4372,7 +4368,7 @@ object Types {
       derivedClassInfo(tp, this(tp.prefix))
 
     /** A version of mapClassInfo which also maps parents and self type */
-    protected def mapFullClassInfo(tp: ClassInfo) =
+    protected def mapFullClassInfo(tp: ClassInfo): ClassInfo =
       tp.derivedClassInfo(
         prefix = this(tp.prefix),
         classParents = tp.classParents.mapConserve(this),
@@ -4390,7 +4386,7 @@ object Types {
 
   /** A type map that maps also parents and self type of a ClassInfo */
   abstract class DeepTypeMap(implicit ctx: Context) extends TypeMap {
-    override def mapClassInfo(tp: ClassInfo) = {
+    override def mapClassInfo(tp: ClassInfo): ClassInfo = {
       val prefix1 = this(tp.prefix)
       val parents1 = tp.parents mapConserve this
       val selfInfo1 = tp.selfInfo match {
@@ -4402,8 +4398,8 @@ object Types {
   }
 
   @sharable object IdentityTypeMap extends TypeMap()(NoContext) {
-    override def stopAtStatic = true
-    def apply(tp: Type) = tp
+    override def stopAtStatic: Boolean = true
+    def apply(tp: Type): Type = tp
   }
 
   /** A type map that approximates TypeBounds types depending on
@@ -4415,24 +4411,24 @@ object Types {
    */
   abstract class ApproximatingTypeMap(implicit ctx: Context) extends TypeMap { thisMap =>
 
-    protected def range(lo: Type, hi: Type) =
+    protected def range(lo: Type, hi: Type): Type =
       if (variance > 0) hi
       else if (variance < 0) lo
       else Range(lower(lo), upper(hi))
 
-    protected def isRange(tp: Type) = tp.isInstanceOf[Range]
+    protected def isRange(tp: Type): Boolean = tp.isInstanceOf[Range]
 
-    protected def lower(tp: Type) = tp match {
+    protected def lower(tp: Type): Type = tp match {
       case tp: Range => tp.lo
       case _ => tp
     }
 
-    protected def upper(tp: Type) = tp match {
+    protected def upper(tp: Type): Type = tp match {
       case tp: Range => tp.hi
       case _ => tp
     }
 
-    protected def rangeToBounds(tp: Type) = tp match {
+    protected def rangeToBounds(tp: Type): Type = tp match {
       case Range(lo, hi) => TypeBounds(lo, hi)
       case _ => tp
     }
@@ -4466,7 +4462,7 @@ object Types {
      *  If the expansion is a wildcard parameter reference, convert its
      *  underlying bounds to a range, otherwise return the expansion.
      */
-    def expandParam(tp: NamedType, pre: Type) = tp.argForParam(pre) match {
+    def expandParam(tp: NamedType, pre: Type): Type = tp.argForParam(pre) match {
       case arg @ TypeRef(pre, _) if pre.isArgPrefixOf(arg.symbol) =>
         arg.info match {
           case TypeBounds(lo, hi) => range(atVariance(-variance)(reapply(lo)), reapply(hi))
@@ -4478,7 +4474,7 @@ object Types {
     /** Derived selection.
      *  @pre   the (upper bound of) prefix `pre` has a member named `tp.name`.
      */
-    override protected def derivedSelect(tp: NamedType, pre: Type) =
+    override protected def derivedSelect(tp: NamedType, pre: Type): Type =
       if (pre eq tp.prefix) tp
       else pre match {
         case Range(preLo, preHi) =>
@@ -4491,7 +4487,7 @@ object Types {
           super.derivedSelect(tp, pre)
       }
 
-    override protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type) =
+    override protected def derivedRefinedType(tp: RefinedType, parent: Type, info: Type): Type =
       if ((parent eq tp.parent) && (info eq tp.refinedInfo)) tp
       else parent match {
         case Range(parentLo, parentHi) =>
@@ -4512,14 +4508,14 @@ object Types {
           }
         }
 
-    override protected def derivedRecType(tp: RecType, parent: Type) =
+    override protected def derivedRecType(tp: RecType, parent: Type): Type =
       if (parent eq tp.parent) tp
       else parent match {
         case Range(lo, hi) => range(tp.rebind(lo), tp.rebind(hi))
         case _ => tp.rebind(parent)
       }
 
-    override protected def derivedAlias(tp: AliasingBounds, alias: Type) =
+    override protected def derivedAlias(tp: AliasingBounds, alias: Type): Type =
       if (alias eq tp.alias) tp
       else alias match {
         case Range(lo, hi) =>
@@ -4528,14 +4524,14 @@ object Types {
         case _ => tp.derivedAlias(alias)
       }
 
-    override protected def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type) =
+    override protected def derivedTypeBounds(tp: TypeBounds, lo: Type, hi: Type): Type =
       if ((lo eq tp.lo) && (hi eq tp.hi)) tp
       else if (isRange(lo) || isRange(hi))
         if (variance > 0) TypeBounds(lower(lo), upper(hi))
         else range(TypeBounds(upper(lo), lower(hi)), TypeBounds(lower(lo), upper(hi)))
       else tp.derivedTypeBounds(lo, hi)
 
-    override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type) =
+    override protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type): Type =
       if (isRange(thistp) || isRange(supertp)) range(defn.NothingType, defn.AnyType)
       else tp.derivedSuperType(thistp, supertp)
 
@@ -4580,15 +4576,15 @@ object Types {
           else tp.derivedAppliedType(tycon, args)
       }
 
-    override protected def derivedAndType(tp: AndType, tp1: Type, tp2: Type) =
+    override protected def derivedAndType(tp: AndType, tp1: Type, tp2: Type): Type =
       if (isRange(tp1) || isRange(tp2)) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))
       else tp.derivedAndType(tp1, tp2)
 
-    override protected def derivedOrType(tp: OrType, tp1: Type, tp2: Type) =
+    override protected def derivedOrType(tp: OrType, tp1: Type, tp2: Type): Type =
       if (isRange(tp1) || isRange(tp2)) range(lower(tp1) | lower(tp2), upper(tp1) | upper(tp2))
       else tp.derivedOrType(tp1, tp2)
 
-    override protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation) =
+    override protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =
       underlying match {
         case Range(lo, hi) =>
           range(tp.derivedAnnotatedType(lo, annot), tp.derivedAnnotatedType(hi, annot))
@@ -4596,7 +4592,7 @@ object Types {
           if (underlying.isBottomType) underlying
           else tp.derivedAnnotatedType(underlying, annot)
       }
-    override protected def derivedWildcardType(tp: WildcardType, bounds: Type) = {
+    override protected def derivedWildcardType(tp: WildcardType, bounds: Type): WildcardType = {
       tp.derivedWildcardType(rangeToBounds(bounds))
     }
 
@@ -4634,13 +4630,13 @@ object Types {
   abstract class TypeAccumulator[T](implicit protected val ctx: Context)
   extends VariantTraversal with ((T, Type) => T) {
 
-    protected def stopAtStatic = true
+    protected def stopAtStatic: Boolean = true
 
     def apply(x: T, tp: Type): T
 
     protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
 
-    protected final def applyToPrefix(x: T, tp: NamedType) =
+    protected final def applyToPrefix(x: T, tp: NamedType): T =
       atVariance(variance max 0)(this(x, tp.prefix)) // see remark on NamedType case in TypeMap
 
     def foldOver(x: T, tp: Type): T = {
@@ -4748,12 +4744,12 @@ object Types {
   abstract class TypeTraverser(implicit ctx: Context) extends TypeAccumulator[Unit] {
     def traverse(tp: Type): Unit
     def apply(x: Unit, tp: Type): Unit = traverse(tp)
-    protected def traverseChildren(tp: Type) = foldOver((), tp)
+    protected def traverseChildren(tp: Type): Unit = foldOver((), tp)
   }
 
   class ExistsAccumulator(p: Type => Boolean, forceLazy: Boolean = true)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
-    override def stopAtStatic = false
-    def apply(x: Boolean, tp: Type) =
+    override def stopAtStatic: Boolean = false
+    def apply(x: Boolean, tp: Type): Boolean =
       x || p(tp) || (forceLazy || !tp.isInstanceOf[LazyRef]) && foldOver(x, tp)
   }
 
@@ -4763,9 +4759,9 @@ object Types {
 
   class NamedPartsAccumulator(p: NamedType => Boolean, excludeLowerBounds: Boolean = false)
     (implicit ctx: Context) extends TypeAccumulator[mutable.Set[NamedType]] {
-    override def stopAtStatic = false
-    def maybeAdd(x: mutable.Set[NamedType], tp: NamedType) = if (p(tp)) x += tp else x
-    val seen = new util.HashSet[Type](64) {
+    override def stopAtStatic: Boolean = false
+    def maybeAdd(x: mutable.Set[NamedType], tp: NamedType): mutable.Set[NamedType] = if (p(tp)) x += tp else x
+    val seen: util.HashSet[Type] = new util.HashSet[Type](64) {
       override def hash(x: Type): Int = System.identityHashCode(x)
       override def isEqual(x: Type, y: Type) = x.eq(y)
     }
@@ -4798,7 +4794,7 @@ object Types {
   }
 
   class isGroundAccumulator(implicit ctx: Context) extends TypeAccumulator[Boolean] {
-    def apply(x: Boolean, tp: Type) = x && {
+    def apply(x: Boolean, tp: Type): Boolean = x && {
       tp match {
         case _: TypeParamRef => false
         case tp: TypeVar => apply(x, tp.underlying)
@@ -4877,12 +4873,12 @@ object Types {
 
   // ----- Debug ---------------------------------------------------------
 
-  @sharable var debugTrace = false
+  @sharable var debugTrace: Boolean = false
 
-  val watchList = List[String](
+  val watchList: List[TypeName] = List[String](
   ) map (_.toTypeName)
 
-  def isWatched(tp: Type)(implicit ctx: Context) = tp match {
+  def isWatched(tp: Type)(implicit ctx: Context): Boolean = tp match {
     case ref: TypeRef => watchList contains ref.name
     case _ => false
   }

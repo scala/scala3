@@ -6,8 +6,6 @@ import Types._, Contexts._, Symbols._
 import Decorators._
 import config.Config
 import config.Printers.{constr, typr}
-import TypeApplications.{EtaExpansion, TypeParamInfo}
-import collection.mutable
 
 /** Methods for adding constraints and solving them.
  *
@@ -33,7 +31,7 @@ trait ConstraintHandling {
   private[this] var addConstraintInvocations = 0
 
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
-  protected var frozenConstraint = false
+  protected var frozenConstraint: Boolean = false
 
   /** Potentially a type lambda that is still instantiatable, even though the constraint
    *  is generally frozen.
@@ -45,7 +43,7 @@ trait ConstraintHandling {
    *  Aligning means computing `S1 =:= S2` which may change the current constraint.
    *  See note in TypeComparer#distributeAnd.
    */
-  protected var homogenizeArgs = false
+  protected var homogenizeArgs: Boolean = false
 
   /** We are currently comparing type lambdas. Used as a flag for
    *  optimization: when `false`, no need to do an expensive `pruneLambdaParams`

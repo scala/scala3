@@ -33,8 +33,8 @@ package object parsing {
       }
     }
 
-  def minPrec = 0
-  def minInfixPrec = 1
-  def maxPrec = 11
+  def minPrec: Int = 0
+  def minInfixPrec: Int = 1
+  def maxPrec: Int = 11
 
 }

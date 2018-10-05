@@ -1,10 +1,11 @@
 package dotty.tools.dotc
 package core
 
-import Symbols._, Types._, util.Positions._, Contexts._, Constants._, ast.tpd._
+import Symbols._, Types._, Contexts._, Constants._, ast.tpd._
 import config.ScalaVersion
 import StdNames._
-import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.ast.tpd
+import scala.util.Try
 
 object Annotations {
 
@@ -19,10 +20,10 @@ object Annotations {
 
     def appliesToModule: Boolean = true // for now; see remark in SymDenotations
 
-    def derivedAnnotation(tree: Tree)(implicit ctx: Context) =
+    def derivedAnnotation(tree: Tree)(implicit ctx: Context): Annotation =
       if (tree eq this.tree) this else Annotation(tree)
 
-    def arguments(implicit ctx: Context) = ast.tpd.arguments(tree)
+    def arguments(implicit ctx: Context): List[Tree] = ast.tpd.arguments(tree)
 
     def argument(i: Int)(implicit ctx: Context): Option[Tree] = {
       val args = arguments
@@ -35,7 +36,7 @@ object Annotations {
 
     def ensureCompleted(implicit ctx: Context): Unit = tree
 
-    def sameAnnotation(that: Annotation)(implicit ctx: Context) =
+    def sameAnnotation(that: Annotation)(implicit ctx: Context): Boolean =
       symbol == that.symbol && tree.sameTree(that.tree)
   }
 
@@ -48,12 +49,12 @@ object Annotations {
     def complete(implicit ctx: Context): Tree
 
     private[this] var myTree: Tree = null
-    def tree(implicit ctx: Context) = {
+    def tree(implicit ctx: Context): Tree = {
       if (myTree == null) myTree = complete(ctx)
       myTree
     }
 
-    override def isEvaluated = myTree != null
+    override def isEvaluated: Boolean = myTree != null
   }
 
   /** An annotation indicating the body of a right-hand side,
@@ -61,21 +62,21 @@ object Annotations {
    *  pickling/unpickling and TypeTreeMaps
    */
   abstract class BodyAnnotation extends Annotation {
-    override def symbol(implicit ctx: Context) = defn.BodyAnnot
-    override def derivedAnnotation(tree: Tree)(implicit ctx: Context) =
+    override def symbol(implicit ctx: Context): ClassSymbol = defn.BodyAnnot
+    override def derivedAnnotation(tree: Tree)(implicit ctx: Context): Annotation =
       if (tree eq this.tree) this else ConcreteBodyAnnotation(tree)
-    override def arguments(implicit ctx: Context) = Nil
-    override def ensureCompleted(implicit ctx: Context) = ()
+    override def arguments(implicit ctx: Context): List[Tree] = Nil
+    override def ensureCompleted(implicit ctx: Context): Unit = ()
   }
 
   case class ConcreteBodyAnnotation(body: Tree) extends BodyAnnotation {
-    def tree(implicit ctx: Context) = body
+    def tree(implicit ctx: Context): Tree = body
   }
 
   case class LazyBodyAnnotation(private var bodyExpr: Context => Tree) extends BodyAnnotation {
     private[this] var evaluated = false
     private[this] var myBody: Tree = _
-    def tree(implicit ctx: Context) = {
+    def tree(implicit ctx: Context): Tree = {
       if (evaluated) assert(myBody != null)
       else {
         evaluated = true
@@ -84,12 +85,12 @@ object Annotations {
       }
       myBody
     }
-    override def isEvaluated = evaluated
+    override def isEvaluated: Boolean = evaluated
   }
 
   object Annotation {
 
-    def apply(tree: Tree) = ConcreteAnnotation(tree)
+    def apply(tree: Tree): ConcreteAnnotation = ConcreteAnnotation(tree)
 
     def apply(cls: ClassSymbol)(implicit ctx: Context): Annotation =
       apply(cls, Nil)
@@ -149,7 +150,7 @@ object Annotations {
     def deferredResolve(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
       deferred(atp.classSymbol, implicit ctx => resolveConstructor(atp, args))
 
-    def makeAlias(sym: TermSymbol)(implicit ctx: Context) =
+    def makeAlias(sym: TermSymbol)(implicit ctx: Context): Annotation =
       apply(defn.AliasAnnot, List(
         ref(TermRef(sym.owner.thisType, sym.name, sym))))
 
@@ -176,11 +177,11 @@ object Annotations {
         else None
     }
 
-    def makeSourceFile(path: String)(implicit ctx: Context) =
+    def makeSourceFile(path: String)(implicit ctx: Context): Annotation =
       apply(defn.SourceFileAnnot, Literal(Constant(path)))
   }
 
-  def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context) = {
+  def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context): Annotation = {
     val tref = cls.typeRef
     Annotation(defn.ThrowsAnnotType.appliedTo(tref), Ident(tref))
   }
@@ -190,20 +191,20 @@ object Annotations {
    */
   implicit class AnnotInfo(val sym: Symbol) extends AnyVal {
 
-    def isDeprecated(implicit ctx: Context) =
+    def isDeprecated(implicit ctx: Context): Boolean =
       sym.hasAnnotation(defn.DeprecatedAnnot)
 
-    def deprecationMessage(implicit ctx: Context) =
+    def deprecationMessage(implicit ctx: Context): Option[String] =
       for (annot <- sym.getAnnotation(defn.DeprecatedAnnot);
            arg <- annot.argumentConstant(0))
       yield arg.stringValue
 
-    def migrationVersion(implicit ctx: Context) =
+    def migrationVersion(implicit ctx: Context): Option[Try[ScalaVersion]] =
       for (annot <- sym.getAnnotation(defn.MigrationAnnot);
            arg <- annot.argumentConstant(1))
       yield ScalaVersion.parse(arg.stringValue)
 
-    def migrationMessage(implicit ctx: Context) =
+    def migrationMessage(implicit ctx: Context): Option[Try[ScalaVersion]] =
       for (annot <- sym.getAnnotation(defn.MigrationAnnot);
            arg <- annot.argumentConstant(0))
       yield ScalaVersion.parse(arg.stringValue)

@@ -3,7 +3,6 @@ package dotty.tools.dotc.tastyreflect
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFromSym}
 
@@ -188,7 +187,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
 
   def TermDeco(term: Term): TermAPI = new TermAPI {
     def pos(implicit ctx: Context): Position = term.pos
-    def tpe(implicit ctx: Context): Types.Type = term.tpe
+    def tpe(implicit ctx: Context): Type = term.tpe
     def underlyingArgument(implicit ctx: Context): Term = {
       import tpd._
       term.underlyingArgument

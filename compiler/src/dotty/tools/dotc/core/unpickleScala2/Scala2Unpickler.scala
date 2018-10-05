@@ -10,9 +10,8 @@ import java.lang.Double.longBitsToDouble
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
 import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
-import dotty.tools.dotc.typer.ProtoTypes.{FunProtoTyped, FunProto}
 import util.Positions._
-import dotty.tools.dotc.ast.{tpd, Trees, untpd}, ast.tpd._
+import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd._
 import ast.untpd.Modifiers
 import printing.Texts._
 import printing.Printer
@@ -25,7 +24,7 @@ import PickleFormat._
 import Decorators._
 import TypeApplications._
 import classfile.ClassfileParser
-import scala.collection.{ mutable, immutable }
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
 import reporting.trace
@@ -52,7 +51,7 @@ object Scala2Unpickler {
     case tp => tp
   }
 
-  def addConstructorTypeParams(denot: SymDenotation)(implicit ctx: Context) = {
+  def addConstructorTypeParams(denot: SymDenotation)(implicit ctx: Context): Unit = {
     assert(denot.isConstructor)
     denot.info = PolyType.fromParams(denot.owner.typeParams, denot.info)
   }
@@ -85,7 +84,7 @@ object Scala2Unpickler {
       tp.derivedLambdaType(tp.paramNames, tp.paramInfos, arrayToRepeated(tp.resultType))
   }
 
-  def ensureConstructor(cls: ClassSymbol, scope: Scope)(implicit ctx: Context) =
+  def ensureConstructor(cls: ClassSymbol, scope: Scope)(implicit ctx: Context): Unit =
     if (scope.lookup(nme.CONSTRUCTOR) == NoSymbol) {
       val constr = ctx.newDefaultConstructor(cls)
       addConstructorTypeParams(constr)
@@ -148,7 +147,7 @@ object Scala2Unpickler {
 class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(ictx: Context)
   extends PickleBuffer(bytes, 0, -1) with ClassfileParser.Embedded {
 
-  def showPickled() = {
+  def showPickled(): Unit = {
     atReadPos(0, () => {
       println(s"classRoot = ${classRoot.debugString}, moduleClassRoot = ${moduleClassRoot.debugString}")
       util.ShowPickled.printFile(this)
@@ -159,7 +158,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   import Scala2Unpickler._
 
-  val moduleRoot = moduleClassRoot.sourceModule(ictx).denot(ictx)
+  val moduleRoot: SymDenotation = moduleClassRoot.sourceModule(ictx).denot(ictx)
   assert(moduleRoot.isTerm)
 
   checkVersion(ictx)
@@ -175,7 +174,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   /** A map from symbols to their associated `decls` scopes */
   private val symScopes = mutable.AnyRefMap[Symbol, Scope]()
 
-  protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(implicit ctx: Context) = {
+  protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(implicit ctx: Context): Nothing = {
     val ex = new BadSignature(
       i"""error reading Scala signature of $classRoot from $source:
          |error occurred at position $readIndex: $msg""")
@@ -183,12 +182,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     throw ex
   }
 
-  protected def handleRuntimeException(ex: RuntimeException)(implicit ctx: Context) = ex match {
+  protected def handleRuntimeException(ex: RuntimeException)(implicit ctx: Context): Nothing = ex match {
     case ex: BadSignature => throw ex
     case _ => errorBadSignature(s"a runtime exception occurred: $ex", Some(ex))
   }
 
-  def run()(implicit ctx: Context) =
+  def run()(implicit ctx: Context): Unit =
     try {
       var i = 0
       while (i < index.length) {
@@ -244,7 +243,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   }
 
   /** The `decls` scope associated with given symbol */
-  protected def symScope(sym: Symbol) = symScopes.getOrElseUpdate(sym, newScope)
+  protected def symScope(sym: Symbol): Scope = symScopes.getOrElseUpdate(sym, newScope)
 
   /** Does entry represent an (internal) symbol */
   protected def isSymbolEntry(i: Int)(implicit ctx: Context): Boolean = {
@@ -295,9 +294,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   protected def isRefinementClass(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.name == tpnme.REFINE_CLASS
 
-  protected def isLocal(sym: Symbol)(implicit ctx: Context) = isUnpickleRoot(sym.topLevelClass)
+  protected def isLocal(sym: Symbol)(implicit ctx: Context): Boolean = isUnpickleRoot(sym.topLevelClass)
 
-  protected def isUnpickleRoot(sym: Symbol)(implicit ctx: Context) = {
+  protected def isUnpickleRoot(sym: Symbol)(implicit ctx: Context): Boolean = {
     val d = sym.denot
     d == moduleRoot || d == moduleClassRoot || d == classRoot
   }
@@ -606,13 +605,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       atReadPos(index(infoRef), () => readTypeParams()(ctx))
 
     /** Force reading type params early, we need them in setClassInfo of subclasses. */
-    def init()(implicit ctx: Context) = loadTypeParams
+    def init()(implicit ctx: Context): List[TypeSymbol] = loadTypeParams
 
     override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
       loadTypeParams
   }
 
-  def rootClassUnpickler(start: Coord, cls: Symbol, module: Symbol, infoRef: Int) =
+  def rootClassUnpickler(start: Coord, cls: Symbol, module: Symbol, infoRef: Int): ClassUnpickler =
     (new ClassUnpickler(infoRef) with SymbolLoaders.SecondCompleter {
       override def startCoord(denot: SymDenotation): Coord = start
     }) withDecls symScope(cls) withSourceModule (_ => module)
@@ -759,7 +758,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         TempClassInfoType(until(end, () => readTypeRef()), symScope(clazz), clazz)
       case METHODtpe | IMPLICITMETHODtpe =>
         val restpe = readTypeRef()
-        val params = until(end, () => readSymbolRef()).asInstanceOf[List[TermSymbol]]
+        val params = until(end, () => readSymbolRef()).asInstanceOf[List[Symbol]]
         def isImplicit =
           tag == IMPLICITMETHODtpe ||
           params.nonEmpty && (params.head is Implicit)
@@ -1227,10 +1226,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     }
   }
 
-  def noSuchTreeTag(tag: Int, end: Int)(implicit ctx: Context) =
+  def noSuchTreeTag(tag: Int, end: Int)(implicit ctx: Context): Nothing =
     errorBadSignature("unknown tree type (" + tag + ")")
 
-  def unimplementedTree(what: String)(implicit ctx: Context) =
+  def unimplementedTree(what: String)(implicit ctx: Context): Nothing =
     errorBadSignature(s"cannot read $what trees from Scala 2.x signatures")
 
   def readModifiers(isType: Boolean)(implicit ctx: Context): Modifiers = {

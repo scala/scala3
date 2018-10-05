@@ -6,13 +6,13 @@ import collection.immutable.BitSet
 
 object JavaTokens extends TokensCommon {
   final val minToken = EMPTY
-  final def maxToken = DOUBLE
+  final def maxToken: Int = DOUBLE
 
-  final val javaOnlyKeywords = tokenRange(INSTANCEOF, ASSERT)
-  final val sharedKeywords = BitSet( IF, FOR, ELSE, THIS, NULL, NEW, SUPER, ABSTRACT, FINAL, PRIVATE, PROTECTED,
+  final val javaOnlyKeywords: TokenSet = tokenRange(INSTANCEOF, ASSERT)
+  final val sharedKeywords: BitSet = BitSet( IF, FOR, ELSE, THIS, NULL, NEW, SUPER, ABSTRACT, FINAL, PRIVATE, PROTECTED,
     OVERRIDE, EXTENDS, TRUE, FALSE, CLASS, IMPORT, PACKAGE, DO, THROW, TRY, CATCH, FINALLY, WHILE, RETURN )
-  final val primTypes = tokenRange(VOID, DOUBLE)
-  final val keywords = sharedKeywords | javaOnlyKeywords | primTypes
+  final val primTypes: TokenSet = tokenRange(VOID, DOUBLE)
+  final val keywords: BitSet = sharedKeywords | javaOnlyKeywords | primTypes
 
   /** keywords */
   final val INSTANCEOF = 101;       enter(INSTANCEOF, "instanceof")

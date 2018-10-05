@@ -6,7 +6,6 @@ import core.StdNames._
 import ast.Trees._
 import core.Types._
 import core.NameKinds.ExceptionBinderName
-import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
@@ -45,7 +44,7 @@ class TryCatchPatterns extends MiniPhase {
 
   def phaseName: String = "tryCatchPatterns"
 
-  override def runsAfter = Set(ElimRepeated.name)
+  override def runsAfter: Set[String] = Set(ElimRepeated.name)
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case Try(_, cases, _) =>

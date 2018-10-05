@@ -2,18 +2,12 @@ package dotty.tools
 package dotc
 package core
 
-import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
-import SymDenotations._, Denotations.SingleDenotation
-import config.Printers.typr
+import Contexts._, Types._, Symbols._, Names._, Flags._
+import SymDenotations._
 import util.Positions._
-import NameOps._
 import NameKinds.DepParamName
 import Decorators._
 import StdNames._
-import Annotations._
-import annotation.tailrec
-import config.Config
-import util.Property
 import collection.mutable
 import ast.tpd._
 import reporting.trace
@@ -71,7 +65,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
       }
     }
 
-    override def reapply(tp: Type) =
+    override def reapply(tp: Type): Type =
       // derived infos have already been subjected to asSeenFrom, hence to need to apply the map again.
       tp
   }
@@ -118,7 +112,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   }
 
   class SimplifyMap extends TypeMap {
-    def apply(tp: Type) = simplify(tp, this)
+    def apply(tp: Type): Type = simplify(tp, this)
   }
 
   /** Approximate union type by intersection of its dominators.
@@ -280,7 +274,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   }
 
   /** Are we in an inline method body? */
-  def inInlineMethod = owner.ownersIterator.exists(_.isInlineMethod)
+  def inInlineMethod: Boolean = owner.ownersIterator.exists(_.isInlineMethod)
 
   /** Is `feature` enabled in class `owner`?
    *  This is the case if one of the following two alternatives holds:
@@ -317,16 +311,16 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   }
 
   /** Is auto-tupling enabled? */
-  def canAutoTuple =
+  def canAutoTuple: Boolean =
     !featureEnabled(defn.LanguageModuleClass, nme.noAutoTupling)
 
-  def scala2Mode =
+  def scala2Mode: Boolean =
     featureEnabled(defn.LanguageModuleClass, nme.Scala2)
 
-  def dynamicsEnabled =
+  def dynamicsEnabled: Boolean =
     featureEnabled(defn.LanguageModuleClass, nme.dynamics)
 
-  def testScala2Mode(msg: => Message, pos: Position, replace: => Unit = ()) = {
+  def testScala2Mode(msg: => Message, pos: Position, replace: => Unit = ()): Boolean = {
     if (scala2Mode) {
       migrationWarning(msg, pos)
       replace
@@ -336,5 +330,5 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
 }
 
 object TypeOps {
-  @sharable var track = false // !!!DEBUG
+  @sharable var track: Boolean = false // !!!DEBUG
 }

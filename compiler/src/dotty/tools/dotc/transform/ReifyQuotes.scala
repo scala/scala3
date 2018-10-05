@@ -635,7 +635,7 @@ class ReifyQuotes extends MacroTransformWithImplicits {
 }
 
 object ReifyQuotes {
-  val name = "reifyQuotes"
+  val name: String = "reifyQuotes"
 
   def toValue(tree: tpd.Tree): Option[Any] = tree match {
     case Literal(Constant(c)) => Some(c)

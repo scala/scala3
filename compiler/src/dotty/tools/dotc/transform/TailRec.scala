@@ -12,7 +12,6 @@ import Types._
 import NameKinds.TailLabelName
 import MegaPhase.MiniPhase
 import reporting.diagnostic.messages.TailrecNotApplicable
-import util.Property
 
 /**
  * A Tail Rec Transformer
@@ -71,9 +70,9 @@ class TailRec extends MiniPhase {
 
   override def phaseName: String = TailRec.name
 
-  override def runsAfter = Set(Erasure.name) // tailrec assumes erased types
+  override def runsAfter: Set[String] = Set(Erasure.name) // tailrec assumes erased types
 
-  final val labelFlags = Flags.Synthetic | Flags.Label | Flags.Method
+  final val labelFlags: Flags.FlagSet = Flags.Synthetic | Flags.Label | Flags.Method
 
   private def mkLabel(method: Symbol)(implicit ctx: Context): TermSymbol = {
     val name = TailLabelName.fresh()
@@ -179,7 +178,7 @@ class TailRec extends MiniPhase {
 
     import dotty.tools.dotc.ast.tpd._
 
-    var rewrote = false
+    var rewrote: Boolean = false
 
     /** Symbols of Labeled blocks that are in tail position. */
     private val tailPositionLabeledSyms = new collection.mutable.HashSet[Symbol]()
@@ -339,10 +338,10 @@ class TailRec extends MiniPhase {
 }
 
 object TailRec {
-  val name = "tailrec"
+  val name: String = "tailrec"
 
   final class TailContext(val tailPos: Boolean) extends AnyVal
 
-  final val noTailContext = new TailContext(false)
-  final val yesTailContext = new TailContext(true)
+  final val noTailContext: TailRec.TailContext = new TailContext(false)
+  final val yesTailContext: TailRec.TailContext = new TailContext(true)
 }

@@ -16,9 +16,9 @@ import scala.util.Try
 object DefaultShowAPI {
   private lazy val defaultNesting = Try { java.lang.Integer.parseInt(sys.props.get("sbt.inc.apidiff.depth").get) } getOrElse 2
 
-  def apply(d: Definition) = ShowAPI.showDefinition(d)(defaultNesting)
-  def apply(d: Type) = ShowAPI.showType(d)(defaultNesting)
-  def apply(a: ClassLike) = ShowAPI.showApi(a)(defaultNesting)
+  def apply(d: Definition): String = ShowAPI.showDefinition(d)(defaultNesting)
+  def apply(d: Type): String = ShowAPI.showType(d)(defaultNesting)
+  def apply(a: ClassLike): String = ShowAPI.showApi(a)(defaultNesting)
 }
 
 object ShowAPI {
@@ -27,7 +27,7 @@ object ShowAPI {
   private def truncateDecls(decls: Array[ClassDefinition]): Array[ClassDefinition] = if (numDecls <= 0) decls else decls.take(numDecls)
   private def lines(ls: Seq[String]): String = ls.mkString("\n", "\n", "\n")
 
-  def showApi(c: ClassLike)(implicit nesting: Int) =
+  def showApi(c: ClassLike)(implicit nesting: Int): String =
     showDefinition(c)
 
   def showDefinition(d: Definition)(implicit nesting: Int): String = d match {

@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package core
 
-import util.common._
 import Types._
 import Symbols._
 import Flags._
@@ -42,7 +41,7 @@ class MissingType(pre: Type, name: Name) extends TypeError {
 
 class RecursionOverflow(val op: String, details: => String, previous: Throwable, val weight: Int) extends TypeError {
 
-  def explanation = s"$op $details"
+  def explanation: String = s"$op $details"
 
   private def recursions: List[RecursionOverflow] = {
     val nested = previous match {
@@ -72,7 +71,7 @@ class RecursionOverflow(val op: String, details: => String, previous: Throwable,
   }
 
   override def fillInStackTrace(): Throwable = this
-  override def getStackTrace() = previous.getStackTrace()
+  override def getStackTrace(): Array[StackTraceElement] = previous.getStackTrace()
 }
 
 /** Post-process exceptions that might result from StackOverflow to add
@@ -169,7 +168,7 @@ class MergeError(val sym1: Symbol, val sym2: Symbol, val tp1: Type, val tp2: Typ
     case _ => tp.show
   }
 
-  protected def addendum(implicit ctx: Context) =
+  protected def addendum(implicit ctx: Context): String =
     if (prefix `eq` NoPrefix) "" else i"\nas members of type $prefix"
 
   override def toMessage(implicit ctx: Context): Message = {

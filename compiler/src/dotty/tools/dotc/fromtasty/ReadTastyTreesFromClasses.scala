@@ -6,19 +6,15 @@ import core._
 import Decorators._
 import Contexts.Context
 import Symbols.{Symbol, ClassSymbol}
-import SymDenotations.{SymDenotation, ClassDenotation, LazyType}
+import SymDenotations.ClassDenotation
 import typer.FrontEnd
-import Names.TypeName
 import NameOps._
-import Types.Type
-import ast.tpd
 import ast.Trees.Tree
-import util.SourceFile
 import CompilationUnit.mkCompilationUnit
 
 class ReadTastyTreesFromClasses extends FrontEnd {
 
-  override def isTyper = false
+  override def isTyper: Boolean = false
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
     units.flatMap(readTASTY(_)(ctx.addMode(Mode.ReadPositions)))

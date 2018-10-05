@@ -2,8 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Flags._, Symbols._, Contexts._, Types._, Scopes._, Decorators._
-import util.HashSet
+import Flags._, Symbols._, Contexts._, Scopes._, Decorators._
 import collection.mutable
 import collection.immutable.BitSet
 import scala.annotation.tailrec

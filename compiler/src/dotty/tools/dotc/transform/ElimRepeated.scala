@@ -2,7 +2,6 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Names._
 import StdNames.nme
 import Types._
 import dotty.tools.dotc.transform.MegaPhase._
@@ -13,17 +12,11 @@ import Symbols._
 import Constants._
 import Decorators._
 import Denotations._, SymDenotations._
-import Decorators.StringInterpolators
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
-import scala.collection.mutable
 import DenotTransformers._
-import Names.Name
-import NameOps._
-import TypeUtils._
 
 object ElimRepeated {
-  val name = "elimRepeated"
+  val name: String = "elimRepeated"
 }
 
 /** A transformer that removes repeated parameters (T*) from all types, replacing
@@ -32,9 +25,9 @@ object ElimRepeated {
 class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   import ast.tpd._
 
-  override def phaseName = ElimRepeated.name
+  override def phaseName: String = ElimRepeated.name
 
-  override def changesMembers = true // the phase adds vararg bridges
+  override def changesMembers: Boolean = true // the phase adds vararg bridges
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
     elimRepeated(tp)

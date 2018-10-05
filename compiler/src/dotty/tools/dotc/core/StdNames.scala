@@ -2,13 +2,11 @@ package dotty.tools.dotc
 package core
 
 import scala.language.implicitConversions
-import scala.collection.{mutable, immutable}
+import scala.collection.mutable
 import scala.annotation.switch
 import Names._
 import Symbols._
 import Contexts._
-import Decorators.PreNamedString
-import util.NameTransformer
 
 object StdNames {
 
@@ -42,7 +40,7 @@ object StdNames {
     final val Tuple                      = "Tuple"
     final val Product                    = "Product"
 
-    def sanitize(str: String) = str.replaceAll("""[<>]""", """\$""")
+    def sanitize(str: String): String = str.replaceAll("""[<>]""", """\$""")
   }
 
   abstract class DefinedNames[N <: Name] {
@@ -50,7 +48,7 @@ object StdNames {
     protected def fromName(name: Name): N = fromString(name.toString)
 
     private val kws = mutable.Set[N]()
-    protected def kw(name: N) = { kws += name; name }
+    protected def kw(name: N): N = { kws += name; name }
 
     final val keywords: collection.Set[N] = kws
   }
@@ -562,7 +560,7 @@ object StdNames {
     val nothingClass: N         = "Nothing$"
     val nullClass: N            = "Null$"
 
-    val falseModuleClassNames = Set(nothingClass, nullClass, nothingRuntimeClass, nullRuntimeClass)
+    val falseModuleClassNames: Set[N] = Set(nothingClass, nullClass, nothingRuntimeClass, nullRuntimeClass)
 
     // unencoded operators
     object raw {
@@ -613,8 +611,6 @@ object StdNames {
     val toCharacter: N = "toCharacter"
     val toInteger: N   = "toInteger"
 
-    def newLazyValSlowComputeName(lzyValName: N) = lzyValName ++ LAZY_SLOW_SUFFIX
-
     // ASCII names for operators
     val ADD      : N = "+"
     val AND      : N = "&"
@@ -634,8 +630,8 @@ object StdNames {
     val MUL      : N = "*"
     val NE       : N = "!="
     val OR       : N = "|"
-    val PLUS     = ADD    // technically redundant, but ADD looks funny with MINUS
-    val SUB      = MINUS  // ... as does SUB with PLUS
+    val PLUS     : N = ADD    // technically redundant, but ADD looks funny with MINUS
+    val SUB      : N = MINUS  // ... as does SUB with PLUS
     val XOR      : N = "^"
     val ZAND     : N = "&&"
     val ZOR      : N = "||"
@@ -648,11 +644,11 @@ object StdNames {
     val UNARY_! : N = "unary_!"
 
     // Grouped here so Cleanup knows what tests to perform.
-    val CommonOpNames   = Set[Name](OR, XOR, AND, EQ, NE)
-    val ConversionNames = Set[Name](toByte, toChar, toDouble, toFloat, toInt, toLong, toShort)
-    val BooleanOpNames  = Set[Name](ZOR, ZAND, UNARY_!) ++ CommonOpNames
-    val NumberOpNames   = (
-         Set[Name](ADD, SUB, MUL, DIV, MOD, LSL, LSR, ASR, LT, LE, GE, GT)
+    val CommonOpNames: Set[Name]   = Set(OR, XOR, AND, EQ, NE)
+    val ConversionNames: Set[Name] = Set(toByte, toChar, toDouble, toFloat, toInt, toLong, toShort)
+    val BooleanOpNames: Set[Name]  = Set(ZOR, ZAND, UNARY_!) ++ CommonOpNames
+    val NumberOpNames: Set[Name]   = (
+         Set(ADD, SUB, MUL, DIV, MOD, LSL, LSR, ASR, LT, LE, GE, GT)
       ++ Set(UNARY_+, UNARY_-, UNARY_!)
       ++ ConversionNames
       ++ CommonOpNames
@@ -743,7 +739,7 @@ object StdNames {
       val names: Set[Name] = Set(arrayApply, arrayUpdate, arrayLength)
     }
 
-    def isPrimitiveName(name: Name) = primitive.names.contains(name)
+    def isPrimitiveName(name: Name): Boolean = primitive.names.contains(name)
   }
 
   class ScalaTypeNames extends ScalaNames[TypeName] {
@@ -751,7 +747,7 @@ object StdNames {
 
     def syntheticTypeParamName(i: Int): TypeName = "X" + i
 
-    final val Conforms = encode("<:<")
+    final val Conforms: TypeName = encode("<:<")
 
     final val Uninstantiated: TypeName = "?$"
   }
@@ -847,8 +843,8 @@ object StdNames {
     protected def fromString(s: String): TypeName = typeName(s)
   }
 
-  val nme = new ScalaTermNames
-  val tpnme = new ScalaTypeNames
-  val jnme = new JavaTermNames
-  val jtpnme = new JavaTypeNames
+  val nme:    ScalaTermNames = new ScalaTermNames
+  val tpnme:  ScalaTypeNames = new ScalaTypeNames
+  val jnme:   JavaTermNames  = new JavaTermNames
+  val jtpnme: JavaTypeNames  = new JavaTypeNames
 }

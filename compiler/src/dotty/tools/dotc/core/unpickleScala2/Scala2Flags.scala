@@ -8,7 +8,6 @@ package dotc
 package core
 package unpickleScala2
 
-import scala.collection.{ mutable, immutable }
 
 /** Scala2 flags, adapted from https://github.com/scala/scala/blob/2.11.x/src/reflect/scala/reflect/internal/Flags.scala
  */

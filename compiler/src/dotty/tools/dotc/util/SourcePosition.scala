@@ -14,7 +14,7 @@ extends interfaces.SourcePosition {
   def contains(that: SourcePosition): Boolean =
     this.source == that.source && this.pos.contains(that.pos)
 
-  def exists = pos.exists
+  def exists: Boolean = pos.exists
 
   def lineContent: String = source.lineContent(point)
 
@@ -53,16 +53,16 @@ extends interfaces.SourcePosition {
   def endLine: Int = source.offsetToLine(end)
   def endColumn: Int = source.column(end)
 
-  def withOuter(outer: SourcePosition) = new SourcePosition(source, pos, outer)
+  def withOuter(outer: SourcePosition): SourcePosition = new SourcePosition(source, pos, outer)
 
-  override def toString =
+  override def toString: String =
     if (source.exists) s"${source.file}:${line + 1}"
     else s"(no source file, offset = ${pos.point})"
 }
 
 /** A sentinel for a non-existing source position */
 @sharable object NoSourcePosition extends SourcePosition(NoSource, NoPosition) {
-  override def toString = "?"
-  override def withOuter(outer: SourcePosition) = outer
+  override def toString: String = "?"
+  override def withOuter(outer: SourcePosition): SourcePosition = outer
 }
 

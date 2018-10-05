@@ -14,7 +14,6 @@ import ast._
 import Trees._
 import MegaPhase._
 import config.Printers.{checks, noPrinter}
-import util.DotClass
 import scala.util.Failure
 import config.NoScalaVersion
 import Decorators._
@@ -24,7 +23,7 @@ object RefChecks {
   import tpd._
   import reporting.diagnostic.messages._
 
-  val name = "refchecks"
+  val name: String = "refchecks"
 
   private val defaultMethodFilter = new NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = name.is(DefaultGetterName)
@@ -891,7 +890,7 @@ object RefChecks {
         }
   }
 
-  val NoLevelInfo = new OptLevelInfo()
+  val NoLevelInfo: RefChecks.OptLevelInfo = new OptLevelInfo()
 }
 import RefChecks._
 
@@ -934,20 +933,20 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def phaseName: String = RefChecks.name
 
   // Needs to run after ElimRepeated for override checks involving varargs methods
-  override def runsAfter = Set(ElimRepeated.name)
+  override def runsAfter: Set[String] = Set(ElimRepeated.name)
 
   private var LevelInfo: Store.Location[OptLevelInfo] = _
   private def currentLevel(implicit ctx: Context): OptLevelInfo = ctx.store(LevelInfo)
 
-  override def initContext(ctx: FreshContext) =
+  override def initContext(ctx: FreshContext): Unit =
     LevelInfo = ctx.addLocation(NoLevelInfo)
 
-  override def prepareForStats(trees: List[Tree])(implicit ctx: Context) =
+  override def prepareForStats(trees: List[Tree])(implicit ctx: Context): Context =
     if (ctx.owner.isTerm)
       ctx.fresh.updateStore(LevelInfo, new LevelInfo(currentLevel.levelAndIndex, trees))
     else ctx
 
-  override def transformValDef(tree: ValDef)(implicit ctx: Context) = {
+  override def transformValDef(tree: ValDef)(implicit ctx: Context): ValDef = {
     checkDeprecatedOvers(tree)
     val sym = tree.symbol
     if (sym.exists && sym.owner.isTerm) {
@@ -966,12 +965,12 @@ class RefChecks extends MiniPhase { thisPhase =>
     tree
   }
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context) = {
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context): DefDef = {
     checkDeprecatedOvers(tree)
     tree
   }
 
-  override def transformTemplate(tree: Template)(implicit ctx: Context) = try {
+  override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = try {
     val cls = ctx.owner
     checkOverloadedRestrictions(cls)
     checkParents(cls)
@@ -985,18 +984,18 @@ class RefChecks extends MiniPhase { thisPhase =>
       tree
   }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context) = {
+  override def transformIdent(tree: Ident)(implicit ctx: Context): Ident = {
     checkUndesiredProperties(tree.symbol, tree.pos)
     currentLevel.enterReference(tree.symbol, tree.pos)
     tree
   }
 
-  override def transformSelect(tree: Select)(implicit ctx: Context) = {
+  override def transformSelect(tree: Select)(implicit ctx: Context): Select = {
     checkUndesiredProperties(tree.symbol, tree.pos)
     tree
   }
 
-  override def transformApply(tree: Apply)(implicit ctx: Context) = {
+  override def transformApply(tree: Apply)(implicit ctx: Context): Apply = {
     if (isSelfConstrCall(tree)) {
       assert(currentLevel.isInstanceOf[LevelInfo], ctx.owner + "/" + i"$tree")
       val level = currentLevel.asInstanceOf[LevelInfo]
@@ -1009,7 +1008,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     tree
   }
 
-  override def transformNew(tree: New)(implicit ctx: Context) = {
+  override def transformNew(tree: New)(implicit ctx: Context): New = {
     val tpe = tree.tpe
     val sym = tpe.typeSymbol
     checkUndesiredProperties(sym, tree.pos)

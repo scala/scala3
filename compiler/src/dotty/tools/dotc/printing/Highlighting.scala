@@ -10,11 +10,11 @@ object Highlighting {
   abstract class Highlight(private val highlight: String) {
     def text: String
 
-    def show(implicit ctx: Context) =
+    def show(implicit ctx: Context): String =
       if (ctx.settings.color.value == "never") text
       else highlight + text + Console.RESET
 
-    override def toString =
+    override def toString: String =
       highlight + text + Console.RESET
 
     def +(other: Highlight)(implicit ctx: Context): HighlightBuffer =
@@ -25,13 +25,13 @@ object Highlighting {
   }
 
   abstract class Modifier(private val mod: String, text: String) extends Highlight(Console.RESET) {
-    override def show(implicit ctx: Context) =
+    override def show(implicit ctx: Context): String =
       if (ctx.settings.color.value == "never") ""
       else mod + super.show
   }
 
   case class HighlightBuffer(hl: Highlight)(implicit ctx: Context) {
-    val buffer = new mutable.ListBuffer[String]
+    private[this] val buffer: mutable.ListBuffer[String] = new mutable.ListBuffer[String]
 
     buffer += hl.show
 
@@ -45,7 +45,7 @@ object Highlighting {
       this
     }
 
-    override def toString =
+    override def toString: String =
       buffer.mkString
   }
 

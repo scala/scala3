@@ -2,27 +2,25 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts._, Symbols._, Types._, Flags._, Decorators._, StdNames._, Constants._, Phases._
+import Contexts._, Symbols._, Types._, Flags._, StdNames._
 import MegaPhase._
-import ast.Trees._
 import NameKinds.NonLocalReturnKeyName
-import collection.mutable
 
 object NonLocalReturns {
   import ast.tpd._
-  def isNonLocalReturn(ret: Return)(implicit ctx: Context) =
+  def isNonLocalReturn(ret: Return)(implicit ctx: Context): Boolean =
     !ret.from.symbol.is(Label) && (ret.from.symbol != ctx.owner.enclosingMethod || ctx.owner.is(Lazy))
 }
 
 /** Implement non-local returns using NonLocalReturnControl exceptions.
  */
 class NonLocalReturns extends MiniPhase {
-  override def phaseName = "nonLocalReturns"
+  override def phaseName: String = "nonLocalReturns"
 
   import NonLocalReturns._
   import ast.tpd._
 
-  override def runsAfter = Set(ElimByName.name)
+  override def runsAfter: Set[String] = Set(ElimByName.name)
 
   private def ensureConforms(tree: Tree, pt: Type)(implicit ctx: Context) =
     if (tree.tpe <:< pt) tree

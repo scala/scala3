@@ -235,9 +235,9 @@ Standard Section: "Comments" Comment*
 
 object TastyFormat {
 
-  final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion = 11
-  val MinorVersion = 0
+  final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
+  val MajorVersion: Int = 11
+  val MinorVersion: Int = 0
 
   /** Tags used to serialize names */
   class NameTags {
@@ -425,7 +425,7 @@ object TastyFormat {
   final val MATCHtype = 190
   final val MATCHtpt = 191
 
-  def methodType(isImplicit: Boolean = false, isErased: Boolean = false) = {
+  def methodType(isImplicit: Boolean = false, isErased: Boolean = false): Int = {
     val implicitOffset = if (isImplicit) 1 else 0
     val erasedOffset = if (isErased) 2 else 0
     METHODtype + implicitOffset + erasedOffset
@@ -439,7 +439,7 @@ object TastyFormat {
   final val firstLengthTreeTag = PACKAGE
 
   /** Useful for debugging */
-  def isLegalTag(tag: Int) =
+  def isLegalTag(tag: Int): Boolean =
     firstSimpleTreeTag <= tag && tag <= PARAMsetter ||
     firstNatTreeTag <= tag && tag <= SYMBOLconst ||
     firstASTTreeTag <= tag && tag <= SINGLETONtpt ||
@@ -447,9 +447,9 @@ object TastyFormat {
     firstLengthTreeTag <= tag && tag <= MATCHtpt ||
     tag == HOLE
 
-  def isParamTag(tag: Int) = tag == PARAM || tag == TYPEPARAM
+  def isParamTag(tag: Int): Boolean = tag == PARAM || tag == TYPEPARAM
 
-  def isModifierTag(tag: Int) = tag match {
+  def isModifierTag(tag: Int): Boolean = tag match {
     case PRIVATE
        | INTERNAL
        | PROTECTED
@@ -486,7 +486,7 @@ object TastyFormat {
     case _ => false
   }
 
-  def isTypeTreeTag(tag: Int) = tag match {
+  def isTypeTreeTag(tag: Int): Boolean = tag match {
     case IDENTtpt
        | SELECTtpt
        | SINGLETONtpt
@@ -645,7 +645,7 @@ object TastyFormat {
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.
    *          If negative, minus the number of leading non-reference trees.
    */
-  def numRefs(tag: Int) = tag match {
+  def numRefs(tag: Int): Int = tag match {
     case VALDEF | DEFDEF | TYPEDEF | OBJECTDEF | TYPEPARAM | PARAM | NAMEDARG | RETURN | BIND |
          SELFDEF | REFINEDtype | TERMREFin | TYPEREFin | HOLE => 1
     case RENAMED | PARAMtype => 2

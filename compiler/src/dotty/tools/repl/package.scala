@@ -2,7 +2,6 @@ package dotty.tools
 
 import dotc.core.Contexts.Context
 import dotc.core.Symbols.Symbol
-import dotc.reporting.diagnostic.MessageContainer
 import dotc.printing.ReplPrinter
 import dotc.reporting.{HideNonSensicalMessages, StoreReporter, UniqueMessagePositions}
 

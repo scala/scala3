@@ -1,11 +1,11 @@
 package dotty.tools.dotc
 package transform
 
-import ast.{Trees, tpd}
-import core._, core.Decorators._
-import Contexts._, Trees._, StdNames._, Symbols._
-import DenotTransformers._, MegaPhase._, Phases.Phase
-import ExtensionMethods._, TreeExtractors._, ValueClasses._
+import ast.tpd
+import core._
+import Contexts._, Symbols._
+import DenotTransformers._, MegaPhase._
+import TreeExtractors._, ValueClasses._
 
 /** This phase elides unnecessary value class allocations
  *
@@ -20,7 +20,7 @@ class VCElideAllocations extends MiniPhase with IdentityDenotTransformer {
 
   override def phaseName: String = "vcElideAllocations"
 
-  override def runsAfter = Set(ElimErasedValueType.name)
+  override def runsAfter: Set[String] = Set(ElimErasedValueType.name)
 
   override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
     tree match {

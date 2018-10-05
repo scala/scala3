@@ -11,8 +11,8 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
   protected def isEqual(x: T, y: T): Boolean = x.equals(y)
 
   // Counters for Stats
-  var accesses = 0
-  var misses = 0
+  var accesses: Int = 0
+  var misses: Int = 0
 
   clear()
 
@@ -99,7 +99,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
   }
 
   /** The iterator of all elements in the set */
-  def iterator = new Iterator[T] {
+  def iterator: Iterator[T] = new Iterator[T] {
     private[this] var i = 0
     def hasNext: Boolean = {
       while (i < table.length && (table(i) eq null)) i += 1
@@ -159,5 +159,5 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: F
     }
   }
 
-  override def toString() = "HashSet(%d / %d)".format(used, table.length)
+  override def toString(): String = "HashSet(%d / %d)".format(used, table.length)
 }

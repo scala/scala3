@@ -5,7 +5,6 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Types
 
-import scala.tasty.util.Show
 
 trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps with TastyCoreImpl {
 
@@ -19,7 +18,7 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
   def TypeTreeDeco(tpt: TypeTree): TypeTreeAPI = new TypeTreeAPI {
     def pos(implicit ctx: Context): Position = tpt.pos
-    def tpe(implicit ctx: Context): Types.Type = tpt.tpe.stripTypeVar
+    def tpe(implicit ctx: Context): Type = tpt.tpe.stripTypeVar
   }
 
   object IsTypeTree extends IsTypeTreeExtractor {

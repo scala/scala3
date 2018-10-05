@@ -6,19 +6,16 @@ import java.net.URI
 import java.io._
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
-import java.util.stream._
 import java.util.zip._
-import java.util.function._
 
 import scala.collection._
-import JavaConverters._
 import scala.io.Codec
 
 import dotty.tools.io.{ ClassPath, ClassRepresentation, PlainFile, VirtualFile }
 
 import ast.{Trees, tpd}
 import core._, core.Decorators._
-import Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import Contexts._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath._
 import reporting._, reporting.diagnostic.MessageContainer
 import util._
@@ -26,9 +23,8 @@ import util._
 /** A Driver subclass designed to be used from IDEs */
 class InteractiveDriver(val settings: List[String]) extends Driver {
   import tpd._
-  import InteractiveDriver._
 
-  override def sourcesRequired = false
+  override def sourcesRequired: Boolean = false
 
   private val myInitCtx: Context = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive).addMode(Mode.ReadComments)
@@ -269,6 +265,6 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 }
 
 object InteractiveDriver {
-  def toUri(source: SourceFile) = Paths.get(source.file.path).toUri
+  def toUri(source: SourceFile): URI = Paths.get(source.file.path).toUri
 }
 

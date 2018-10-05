@@ -3,25 +3,22 @@ package core
 package tasty
 
 import Contexts._, Decorators._
-import printing.Texts._
 import Names.Name
-import StdNames._
 import TastyUnpickler._
-import TastyBuffer.{Addr, NameRef}
-import util.Positions.{Position, offsetToInt}
-import collection.mutable
+import TastyBuffer.NameRef
+import util.Positions.offsetToInt
 import printing.Highlighting._
 
 class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
-  val unpickler = new TastyUnpickler(bytes)
+  val unpickler: TastyUnpickler = new TastyUnpickler(bytes)
   import unpickler.{nameAtRef, unpickle}
 
   def nameToString(name: Name): String = name.debugString
 
   def nameRefToString(ref: NameRef): String = nameToString(nameAtRef(ref))
 
-  def printNames() =
+  def printNames(): Unit =
     for ((name, idx) <- nameAtRef.contents.zipWithIndex) {
       val index = nameColor("%4d".format(idx))
       println(index + ": " + nameToString(name))

@@ -7,17 +7,12 @@ import Contexts.Context
 import Flags._
 import SymUtils._
 import Symbols._
-import SymDenotations._
 import Types._
 import Decorators._
 import DenotTransformers._
 import StdNames._
-import NameOps._
-import Phases._
-import ast.untpd
 import ast.Trees._
 import NameKinds.ImplMethName
-import collection.mutable
 
 /** Rewrite calls
  *
@@ -38,9 +33,9 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
   import ast.tpd._
 
   override def phaseName: String = "linkScala2Impls"
-  override def changesMembers = true
+  override def changesMembers: Boolean = true
 
-  override def runsAfterGroupsOf = Set(Mixin.name)
+  override def runsAfterGroupsOf: Set[String] = Set(Mixin.name)
     // Adds as a side effect static members to traits which can confuse Mixin,
     // that's why it is runsAfterGroupOf
 
@@ -63,7 +58,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
       newImpl(sym.asTerm).enteredAfter(thisPhase)
   }
 
-  override def prepareForTemplate(impl: Template)(implicit ctx: Context) = {
+  override def prepareForTemplate(impl: Template)(implicit ctx: Context): Context = {
     val cls = impl.symbol.owner.asClass
     for (mixin <- cls.mixins)
       if (mixin.is(Scala_2_12_Trait, butNot = Scala_2_12_Augmented)) {
@@ -73,7 +68,7 @@ class LinkScala2Impls extends MiniPhase with IdentityDenotTransformer { thisPhas
     ctx
   }
 
-  override def transformApply(app: Apply)(implicit ctx: Context) = {
+  override def transformApply(app: Apply)(implicit ctx: Context): Tree = {
     def currentClass = ctx.owner.enclosingClass.asClass
     app match {
       case Apply(sel @ Select(Super(_, _), _), args)

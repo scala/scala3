@@ -5,7 +5,6 @@ import core._
 
 import Contexts._, Texts._, Decorators._
 import config.Config.summarizeDepth
-import scala.util.control.NonFatal
 
 trait Showable extends Any {
 

@@ -25,7 +25,7 @@ import reporting.diagnostic.messages.{MissingCompanionForStatic, StaticFieldsOnl
 class CheckStatic extends MiniPhase {
   import ast.tpd._
 
-  override def phaseName = CheckStatic.name
+  override def phaseName: String = CheckStatic.name
 
   override def transformTemplate(tree: tpd.Template)(implicit ctx: Context): tpd.Tree = {
     val defns = tree.body.collect{case t: ValOrDefDef => t}
@@ -79,5 +79,5 @@ class CheckStatic extends MiniPhase {
 }
 
 object CheckStatic {
-  val name = "checkStatic"
+  val name: String = "checkStatic"
 }

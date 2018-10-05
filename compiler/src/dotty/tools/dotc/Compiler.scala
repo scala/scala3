@@ -3,17 +3,9 @@ package dotc
 
 import core._
 import Contexts._
-import Periods._
-import Symbols._
-import Types._
-import Scopes._
-import typer.{FrontEnd, ImportInfo, RefChecks, Typer}
-import reporting.{ConsoleReporter, Reporter}
+import typer.{FrontEnd, RefChecks}
 import Phases.Phase
 import transform._
-import util.FreshNameCreator
-import core.DenotTransformers.DenotTransformer
-import core.Denotations.SingleDenotation
 import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode, LabelDefs}
 import dotty.tools.dotc.transform.localopt.StringInterpolatorOpt
 
@@ -126,8 +118,8 @@ class Compiler {
     List(new GenBCode) ::            // Generate JVM bytecode
     Nil
 
-  var runId = 1
-  def nextRunId = {
+  var runId: Int = 1
+  def nextRunId: Int = {
     runId += 1; runId
   }
 

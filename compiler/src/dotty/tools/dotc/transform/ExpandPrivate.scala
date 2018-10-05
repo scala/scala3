@@ -2,24 +2,18 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.DenotTransformers.{IdentityDenotTransformer, SymTransformer}
+import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 import Contexts.Context
 import Symbols._
-import Scopes._
 import Flags._
-import StdNames._
 import SymDenotations._
-import Types._
 
-import collection.mutable
 import Decorators._
 import ast.Trees._
 import MegaPhase._
 import java.io.File.separatorChar
 
 import ValueClasses._
-import dotty.tools.dotc.core.Phases.Phase
 
 /** Make private term members that are accessed from another class
  *  non-private by resetting the Private flag and expanding their name.
@@ -41,9 +35,9 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
   override def phaseName: String = "expandPrivate"
 
   // This phase moves methods around (in infotransform) so it may need to make other methods public
-  override def runsAfter = Set(MoveStatics.name)
+  override def runsAfter: Set[String] = Set(MoveStatics.name)
 
-  override def changesMembers = true // the phase introduces new members with mangled names
+  override def changesMembers: Boolean = true // the phase introduces new members with mangled names
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
@@ -96,17 +90,17 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
       d.ensureNotPrivate.installAfter(thisPhase)
     }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context) = {
+  override def transformIdent(tree: Ident)(implicit ctx: Context): Ident = {
     ensurePrivateAccessible(tree.symbol)
     tree
   }
 
-  override def transformSelect(tree: Select)(implicit ctx: Context) = {
+  override def transformSelect(tree: Select)(implicit ctx: Context): Select = {
     ensurePrivateAccessible(tree.symbol)
     tree
   }
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context) = {
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context): DefDef = {
     val sym = tree.symbol
     tree.rhs match {
       case Apply(sel @ Select(_: Super, _), _)

@@ -11,7 +11,7 @@ import org.scalajs.core.ir
 class JSPositions()(implicit ctx: Context) {
 
   /** Implicit conversion from dotty Position to ir.Position. */
-  implicit def pos2irPos(pos: Positions.Position): ir.Position = {
+  implicit def pos2irPos(pos: Position): ir.Position = {
     if (!pos.exists) ir.Position.NoPosition
     else {
       val source = pos2irPosCache.toIRSource(ctx.compilationUnit.source)
@@ -23,7 +23,7 @@ class JSPositions()(implicit ctx: Context) {
 
   /** Implicitly materializes an ir.Position from an implicit dotty Position. */
   implicit def implicitPos2irPos(
-      implicit pos: Positions.Position): ir.Position = {
+      implicit pos: Position): ir.Position = {
     pos2irPos(pos)
   }
 

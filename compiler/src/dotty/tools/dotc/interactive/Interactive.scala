@@ -7,7 +7,7 @@ import scala.collection._
 
 import ast.{NavigateAST, Trees, tpd, untpd}
 import core._, core.Decorators.{sourcePos => _, _}
-import Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
 import util.Positions._, util.SourcePosition
 import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
@@ -23,15 +23,15 @@ object Interactive {
 
   object Include { // should be an enum, really.
     type Set = Int
-    val overridden = 1 // include trees whose symbol is overridden by `sym`
-    val overriding = 2 // include trees whose symbol overrides `sym` (but for performance only in same source file)
-    val references = 4 // include references
-    val definitions = 8 // include definitions
-    val linkedClass = 16 // include `symbol.linkedClass`
+    val overridden: Int = 1 // include trees whose symbol is overridden by `sym`
+    val overriding: Int = 2 // include trees whose symbol overrides `sym` (but for performance only in same source file)
+    val references: Int = 4 // include references
+    val definitions: Int = 8 // include definitions
+    val linkedClass: Int = 16 // include `symbol.linkedClass`
   }
 
   /** Does this tree define a symbol ? */
-  def isDefinition(tree: Tree) =
+  def isDefinition(tree: Tree): Boolean =
     tree.isInstanceOf[DefTree with NameTree]
 
   /** The type of the closest enclosing tree with a type containing position `pos`. */
@@ -367,7 +367,6 @@ object Interactive {
     case Nil | _ :: Nil =>
       ctx.run.runContext.fresh.setCompilationUnit(ctx.compilationUnit)
     case nested :: encl :: rest =>
-      import typer.Typer._
       val outer = contextOfPath(encl :: rest)
       try encl match {
         case tree @ PackageDef(pkg, stats) =>

@@ -11,17 +11,17 @@ package scala.tools.nsc
  */
 package object io {
   type AbstractFile = dotty.tools.io.AbstractFile
-  val AbstractFile = dotty.tools.io.AbstractFile
+  val AbstractFile: dotty.tools.io.AbstractFile.type = dotty.tools.io.AbstractFile
 
   type Directory = dotty.tools.io.Directory
-  val Directory = dotty.tools.io.Directory
+  val Directory: dotty.tools.io.Directory.type = dotty.tools.io.Directory
 
   type Path = dotty.tools.io.Path
-  val Path = dotty.tools.io.Path
+  val Path: dotty.tools.io.Path.type = dotty.tools.io.Path
 
   type File = dotty.tools.io.File
-  val File = dotty.tools.io.File
+  val File: dotty.tools.io.File.type = dotty.tools.io.File
 
   type Jar = dotty.tools.io.Jar
-  val Jar = dotty.tools.io.Jar
+  val Jar: dotty.tools.io.Jar.type = dotty.tools.io.Jar
 }

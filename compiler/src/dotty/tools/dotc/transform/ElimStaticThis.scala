@@ -5,8 +5,6 @@ import core._
 import Contexts.Context
 import Flags._
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import MegaPhase.MiniPhase
 import dotty.tools.dotc.core.Types.{ThisType, TermRef}
 

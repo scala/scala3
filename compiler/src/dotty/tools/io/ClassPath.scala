@@ -95,7 +95,7 @@ trait ClassPath {
 }
 
 object ClassPath {
-  val RootPackage = ""
+  val RootPackage: String = ""
 
   /** Expand single path entry */
   private def expandS(pattern: String): List[String] = {

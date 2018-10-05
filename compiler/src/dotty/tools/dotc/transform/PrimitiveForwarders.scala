@@ -4,20 +4,8 @@ package transform
 import core._
 import MegaPhase._
 import Contexts.Context
-import Flags._
-import SymUtils._
 import Symbols._
-import SymDenotations._
-import Types._
-import Decorators._
 import DenotTransformers._
-import StdNames._
-import NameOps._
-import ast.Trees._
-import util.Positions._
-import Names._
-import collection.mutable
-import ResolveSuper._
 
 /** This phase adds forwarder where mixedin generic and primitive typed methods have a missmatch.
   *  In particular for every method that is declared both as generic with a primitive type and with a primitive type
@@ -35,11 +23,11 @@ class PrimitiveForwarders extends MiniPhase with IdentityDenotTransformer { this
 
   override def phaseName: String = "primitiveForwarders"
 
-  override def runsAfter = Set(ResolveSuper.name)
+  override def runsAfter: Set[String] = Set(ResolveSuper.name)
 
-  override def changesMembers = true   // the phase adds primitive forwarders
+  override def changesMembers: Boolean = true   // the phase adds primitive forwarders
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context) = {
+  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisPhase)
     import ops._

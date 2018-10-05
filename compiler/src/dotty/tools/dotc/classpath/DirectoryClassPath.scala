@@ -4,11 +4,8 @@
 package dotty.tools.dotc.classpath
 
 import java.io.{File => JFile}
-import java.net.{URI, URL}
-import java.nio.file.{FileSystems, Files, SimpleFileVisitor}
-import java.util.function.IntFunction
-import java.util
-import java.util.Comparator
+import java.net.URL
+import java.nio.file.{FileSystems, Files}
 
 import dotty.tools.io.{AbstractFile, PlainFile, ClassPath, ClassRepresentation}
 import FileUtils._
@@ -45,7 +42,7 @@ trait DirectoryLookup[FileEntryType <: ClassRepresentation] extends ClassPath {
     }
   }
 
-  override private[dotty] def hasPackage(pkg: String) = getDirectory(pkg).isDefined
+  override private[dotty] def hasPackage(pkg: String): Boolean = getDirectory(pkg).isDefined
 
   private[dotty] def packages(inPackage: String): Seq[PackageEntry] = {
     val dirForPackage = getDirectory(inPackage)
@@ -164,7 +161,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
   }
 
   /** Empty string represents root package */
-  override private[dotty] def hasPackage(pkg: String) = packageToModuleBases.contains(pkg)
+  override private[dotty] def hasPackage(pkg: String): Boolean = packageToModuleBases.contains(pkg)
 
   override private[dotty] def packages(inPackage: String): Seq[PackageEntry] = {
     def matches(packageDottedName: String) =

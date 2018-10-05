@@ -11,15 +11,12 @@ import Symbols._
 import Types.{TermRef, NoPrefix}
 import Flags.Implicit
 import Names._
-import Periods._
-import Decorators._
 import Contexts._
 import Denotations._
 import SymDenotations._
 import printing.Texts._
 import printing.Printer
 import util.common._
-import util.DotClass
 import SymDenotations.NoDenotation
 import collection.mutable
 
@@ -175,7 +172,7 @@ object Scopes {
 
     final def toText(printer: Printer): Text = printer.toText(this)
 
-    def checkConsistent()(implicit ctx: Context) = ()
+    def checkConsistent()(implicit ctx: Context): Unit = ()
 
     /** Ensure that all elements of this scope have been entered.
      *  Overridden by SymbolLoaders.PackageLoader#PackageScope, where it
@@ -206,7 +203,7 @@ object Scopes {
     /** The size of the scope */
     private[this] var _size = initSize
 
-    override final def size = _size
+    override final def size: Int = _size
     private def size_= (x: Int) = _size = x
 
     /** the hash table
@@ -223,7 +220,7 @@ object Scopes {
     /** Use specified synthesize for this scope */
     def useSynthesizer(s: SymbolSynthesizer): Unit = synthesize = s
 
-    protected def newScopeLikeThis() = new MutableScope()
+    protected def newScopeLikeThis(): MutableScope = new MutableScope()
 
     /** Clone scope, taking care not to force the denotations of any symbols in the scope.
      */
@@ -428,7 +425,7 @@ object Scopes {
     override def openForMutations: MutableScope = this
 
     /** Check that all symbols in this scope are in their correct hashtable buckets. */
-    override def checkConsistent()(implicit ctx: Context) = {
+    override def checkConsistent()(implicit ctx: Context): Unit = {
       ensureComplete()
       var e = lastEntry
       while (e != null) {
@@ -465,10 +462,10 @@ object Scopes {
   /** The empty scope (immutable).
    */
   object EmptyScope extends Scope {
-    override private[dotc] def lastEntry = null
-    override def size = 0
-    override def nestingLevel = 0
-    override def toList(implicit ctx: Context) = Nil
+    override private[dotc] def lastEntry: ScopeEntry = null
+    override def size: Int = 0
+    override def nestingLevel: Int = 0
+    override def toList(implicit ctx: Context): List[Symbol] = Nil
     override def cloneScope(implicit ctx: Context): MutableScope = unsupported("cloneScope")
     override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = null
     override def lookupNextEntry(entry: ScopeEntry)(implicit ctx: Context): ScopeEntry = null

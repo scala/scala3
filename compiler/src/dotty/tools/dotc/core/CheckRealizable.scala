@@ -2,22 +2,18 @@ package dotty.tools
 package dotc
 package core
 
-import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
-import SymDenotations._, Denotations.SingleDenotation
-import util.Positions._
+import Contexts._, Types._, Symbols._, Names._, Flags._
+import Denotations.SingleDenotation
 import Decorators._
-import StdNames._
-import Annotations._
 import collection.mutable
-import ast.tpd._
 
 /** Realizability status */
 object CheckRealizable {
 
   abstract class Realizability(val msg: String) {
-    def andAlso(other: => Realizability) =
+    def andAlso(other: => Realizability): Realizability =
       if (this == Realizable) other else this
-    def mapError(f: Realizability => Realizability) =
+    def mapError(f: Realizability => Realizability): Realizability =
       if (this == Realizable) this else f(this)
   }
 
@@ -47,10 +43,10 @@ object CheckRealizable {
     assert(problem != Realizable)
   }
 
-  def realizability(tp: Type)(implicit ctx: Context) =
+  def realizability(tp: Type)(implicit ctx: Context): Realizability =
     new CheckRealizable().realizability(tp)
 
-  def boundsRealizability(tp: Type)(implicit ctx: Context) =
+  def boundsRealizability(tp: Type)(implicit ctx: Context): Realizability =
     new CheckRealizable().boundsRealizability(tp)
 
   private val LateInitialized = Lazy | Erased,

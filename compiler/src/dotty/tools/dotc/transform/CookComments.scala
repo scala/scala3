@@ -5,7 +5,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.typer.Docstrings
 
 class CookComments extends MegaPhase.MiniPhase {
-  override def phaseName = "cookComments"
+  override def phaseName: String = "cookComments"
 
   override def transformTypeDef(tree: tpd.TypeDef)(implicit ctx: Context): tpd.Tree = {
     if (ctx.settings.YcookComments.value && tree.isClassDef) {

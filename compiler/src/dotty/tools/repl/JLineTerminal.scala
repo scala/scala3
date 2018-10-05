@@ -63,7 +63,7 @@ final class JLineTerminal extends java.io.Closeable {
     lineReader.readLine(prompt)
   }
 
-  def close() = terminal.close()
+  def close(): Unit = terminal.close()
 
   /** Provide syntax highlighting */
   private class Highlighter(implicit ctx: Context) extends reader.Highlighter {

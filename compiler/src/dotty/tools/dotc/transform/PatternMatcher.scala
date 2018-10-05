@@ -5,17 +5,17 @@ import scala.annotation.tailrec
 import core._
 import MegaPhase._
 import collection.mutable
-import SymDenotations._, Symbols._, Contexts._, Types._, Names._, StdNames._, NameOps._
+import Symbols._, Contexts._, Types._, StdNames._, NameOps._
 import ast.Trees._
 import util.Positions._
 import typer.Applications.{isProductMatch, isGetMatch, productSelectors}
 import SymUtils._
 import Flags._, Constants._
 import Decorators._
-import patmat.Space
-import NameKinds.{UniqueNameKind, PatMatStdBinderName, PatMatAltsName, PatMatResultName}
+import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}
 import config.Printers.patmatch
 import reporting.diagnostic.messages._
+import dotty.tools.dotc.ast._
 
 /** The pattern matching transform.
  *  After this phase, the only Match nodes remaining in the code are simple switches
@@ -25,8 +25,8 @@ class PatternMatcher extends MiniPhase {
   import ast.tpd._
   import PatternMatcher._
 
-  override def phaseName = PatternMatcher.name
-  override def runsAfter = Set(ElimRepeated.name)
+  override def phaseName: String = PatternMatcher.name
+  override def runsAfter: Set[String] = Set(ElimRepeated.name)
 
   override def transformMatch(tree: Match)(implicit ctx: Context): Tree = {
     val translated = new Translator(tree.tpe, this).translateMatch(tree)
@@ -43,7 +43,7 @@ class PatternMatcher extends MiniPhase {
 object PatternMatcher {
   import ast.tpd._
 
-  val name = "patternMatcher"
+  val name: String = "patternMatcher"
 
   final val selfCheck = false // debug option, if on we check that no case gets generated twice
 
@@ -127,15 +127,15 @@ object PatternMatcher {
     private[this] var nxId = 0
 
     /** The different kinds of plans */
-    sealed abstract class Plan { val id = nxId; nxId += 1 }
+    sealed abstract class Plan { val id: Int = nxId; nxId += 1 }
 
     case class TestPlan(test: Test, var scrutinee: Tree, pos: Position,
                         var onSuccess: Plan) extends Plan {
-      override def equals(that: Any) = that match {
+      override def equals(that: Any): Boolean = that match {
         case that: TestPlan => this.scrutinee === that.scrutinee && this.test == that.test
         case _ => false
       }
-      override def hashCode = scrutinee.hash * 41 + test.hashCode
+      override def hashCode: Int = scrutinee.hash * 41 + test.hashCode
     }
 
     case class LetPlan(sym: TermSymbol, var body: Plan) extends Plan
@@ -152,18 +152,18 @@ object PatternMatcher {
     /** The different kinds of tests */
     sealed abstract class Test
     case class TypeTest(tpt: Tree) extends Test {                 // scrutinee.isInstanceOf[tpt]
-      override def equals(that: Any) = that match {
+      override def equals(that: Any): Boolean = that match {
         case that: TypeTest => this.tpt.tpe =:= that.tpt.tpe
         case _ => false
       }
-      override def hashCode = tpt.tpe.hash
+      override def hashCode: Int = tpt.tpe.hash
     }
     case class EqualTest(tree: Tree) extends Test {               // scrutinee == tree
-      override def equals(that: Any) = that match {
+      override def equals(that: Any): Boolean = that match {
         case that: EqualTest => this.tree === that.tree
         case _ => false
       }
-      override def hashCode = tree.hash
+      override def hashCode: Int = tree.hash
     }
     case class LengthTest(len: Int, exact: Boolean) extends Test  // scrutinee (== | >=) len
     case object NonEmptyTest extends Test                         // !scrutinee.isEmpty
@@ -387,7 +387,7 @@ object PatternMatcher {
 
     /** A superclass for plan transforms */
     class PlanTransform extends (Plan => Plan) {
-      protected val treeMap = new TreeMap {
+      protected val treeMap: TreeMap = new TreeMap {
         override def transform(tree: Tree)(implicit ctx: Context) = tree
       }
       def apply(tree: Tree): Tree = treeMap.transform(tree)

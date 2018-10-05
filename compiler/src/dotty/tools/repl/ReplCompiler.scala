@@ -8,7 +8,6 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names._
-import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
