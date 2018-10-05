@@ -1003,5 +1003,5 @@ object Scanners {
 
   // ------------- keyword configuration -----------------------------------
 
-  private val ((lastKeywordStart: Int), (kwArray: Array[Int])) = buildKeywordArray(keywords)
+  private val (lastKeywordStart, kwArray) = buildKeywordArray(keywords)
 }
