@@ -22,7 +22,6 @@ import core.quoted.PickledQuotes
 import scala.quoted
 import scala.quoted.Types.TreeType
 import scala.quoted.Exprs.TastyTreeExpr
-import typer.Inliner.typedInline
 
 import scala.annotation.internal.sharable
 
@@ -555,7 +554,7 @@ class TreeUnpickler(reader: TastyReader,
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
-      else if (typedInline && sym.isInlineMethod)
+      else if (sym.isInlineMethod)
         sym.addAnnotation(LazyBodyAnnotation { ctx0 =>
           implicit val ctx: Context = localContext(sym)(ctx0).addMode(Mode.ReadPositions)
             // avoids space leaks by not capturing the current context
@@ -643,14 +642,9 @@ class TreeUnpickler(reader: TastyReader,
         val lazyAnnotTree = readLaterWithOwner(end, rdr => ctx => rdr.readTerm()(ctx))
 
         owner =>
-          if (tp.isRef(defn.BodyAnnot)) {
-            assert(!typedInline)
-            LazyBodyAnnotation(implicit ctx => lazyAnnotTree(owner).complete)
-          }
-          else
-            Annotation.deferredSymAndTree(
-              implicit ctx => tp.typeSymbol,
-              implicit ctx => lazyAnnotTree(owner).complete)
+          Annotation.deferredSymAndTree(
+            implicit ctx => tp.typeSymbol,
+            implicit ctx => lazyAnnotTree(owner).complete)
     }
 
     /** Create symbols for the definitions in the statement sequence between
@@ -749,7 +743,7 @@ class TreeUnpickler(reader: TastyReader,
       def readRhs(implicit ctx: Context) =
         if (nothingButMods(end))
           EmptyTree
-        else if (sym.isInlineMethod && typedInline)
+        else if (sym.isInlineMethod)
           // The body of an inline method is stored in an annotation, so no need to unpickle it again
           new Trees.Lazy[Tree] {
             def complete(implicit ctx: Context) = typer.Inliner.bodyToInline(sym)

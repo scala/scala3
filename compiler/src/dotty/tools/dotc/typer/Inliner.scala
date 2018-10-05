@@ -25,8 +25,6 @@ import util.Positions.Position
 object Inliner {
   import tpd._
 
-  val typedInline: Boolean = true
-
   /** `sym` is an inline method with a known body to inline (note: definitions coming
    *  from Scala2x class files might be `@forceInline`, but still lack that body).
    */

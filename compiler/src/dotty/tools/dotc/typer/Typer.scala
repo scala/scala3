@@ -1992,17 +1992,9 @@ class Typer extends Namer
           case none =>
             typed(mdef) match {
               case mdef1: DefDef if Inliner.hasBodyToInline(mdef1.symbol) =>
-                if (Inliner.typedInline) {
-                  buf += inlineExpansion(mdef1)
-                    // replace body with expansion, because it will be used as inlined body
-                    // from separately compiled files - the original BodyAnnotation is not kept.
-                }
-                else {
-                  assert(mdef1.symbol.isInlineMethod, mdef.symbol)
-                  Inliner.bodyToInline(mdef1.symbol) // just make sure accessors are computed,
-                  buf += mdef1                       // but keep original definition, since inline-expanded code
-                                                     // is pickled in this case.
-                }
+                buf += inlineExpansion(mdef1)
+                  // replace body with expansion, because it will be used as inlined body
+                  // from separately compiled files - the original BodyAnnotation is not kept.
               case mdef1 =>
                 import untpd.modsDeco
                 mdef match {
@@ -2453,8 +2445,7 @@ class Typer extends Namer
                !ctx.settings.YnoInline.value &&
                !ctx.isAfterTyper &&
                !ctx.reporter.hasErrors &&
-               (!Inliner.typedInline || tree.tpe <:< pt)) {
-        if (!Inliner.typedInline) tree.tpe <:< wildApprox(pt)
+               tree.tpe <:< pt) {
         readaptSimplified(Inliner.inlineCall(tree, pt))
       }
       else if (tree.tpe <:< pt) {

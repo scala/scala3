@@ -656,8 +656,7 @@ class TreePickler(pickler: TastyPickler) {
       // Such annotations will be reconstituted when unpickling the child class.
       // See tests/pickling/i3149.scala
     case _ =>
-      if (Inliner.typedInline) ann.symbol == defn.BodyAnnot // inline bodies are reconstituted automatically when unpickling
-      else false
+      ann.symbol == defn.BodyAnnot // inline bodies are reconstituted automatically when unpickling
   }
 
   def pickleAnnotation(owner: Symbol, ann: Annotation)(implicit ctx: Context): Unit =
