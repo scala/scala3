@@ -758,7 +758,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         TempClassInfoType(until(end, () => readTypeRef()), symScope(clazz), clazz)
       case METHODtpe | IMPLICITMETHODtpe =>
         val restpe = readTypeRef()
-        val params = until(end, () => readSymbolRef()).asInstanceOf[List[Symbol]]
+        val params = until(end, () => readSymbolRef())
         def isImplicit =
           tag == IMPLICITMETHODtpe ||
           params.nonEmpty && (params.head is Implicit)

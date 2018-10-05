@@ -29,7 +29,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   /** this map contains mutable state of transformation: OffsetDefs to be appended to companion object definitions,
     * and number of bits currently used */
   class OffsetInfo(var defs: List[Tree], var ord:Int)
-  private[this] val appendOffsetDefs: mutable.Map[Symbol, OffsetInfo] = mutable.Map.empty[Symbol, OffsetInfo]
+  private[this] val appendOffsetDefs = mutable.Map.empty[Symbol, OffsetInfo]
 
   override def phaseName: String = "lazyVals"
 

@@ -193,7 +193,7 @@ object Settings {
 
   class SettingGroup {
 
-    private[this] val _allSettings: ArrayBuffer[Setting[_]] = new ArrayBuffer[Setting[_]]
+    private[this] val _allSettings = new ArrayBuffer[Setting[_]]
     def allSettings: Seq[Setting[_]] = _allSettings
 
     def defaultState: SettingsState = new SettingsState(allSettings map (_.default))
