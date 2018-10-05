@@ -8,7 +8,7 @@
 
 package dotty.tools.io
 
-import java.io._
+import java.io.{File => JavaIoFile, _}
 import java.nio.file.{Files, Paths}
 import java.nio.file.StandardOpenOption._
 
@@ -17,8 +17,8 @@ import scala.io.Codec
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 object File {
-  def pathSeparator: String = File.pathSeparator
-  def separator: String     = File.separator
+  def pathSeparator: String = JavaIoFile.pathSeparator
+  def separator: String     = JavaIoFile.separator
 
   def apply(path: String)(implicit codec: Codec): File = apply(Paths.get(path))
   def apply(path: JPath)(implicit codec: Codec): File = new File(path)
