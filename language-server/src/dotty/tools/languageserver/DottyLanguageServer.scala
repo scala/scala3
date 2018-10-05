@@ -23,7 +23,7 @@ import Comments._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenota
 import classpath.ClassPathEntries
 import reporting._, reporting.diagnostic.{Message, MessageContainer, messages}
 import typer.Typer
-import util._
+import util.{Set => _, _}
 import interactive._, interactive.InteractiveDriver._
 import Interactive.Include
 import config.Printers.interactiv
@@ -59,6 +59,8 @@ class DottyLanguageServer extends LanguageServer
   def client: WorksheetClient = myClient
 
   private[this] var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = _
+
+  private[this] var myDependentProjects: mutable.Map[ProjectConfig, mutable.Set[ProjectConfig]] = _
 
   def drivers: Map[ProjectConfig, InteractiveDriver] = thisServer.synchronized {
     if (myDrivers == null) {
@@ -125,17 +127,24 @@ class DottyLanguageServer extends LanguageServer
     drivers(configFor(uri))
   }
 
-  /** The set of projects that transitively depend on `config` */
-  def transitivelyDependentProjects(config: ProjectConfig): immutable.Set[ProjectConfig] = {
-    val allProjects = drivers.keySet.toSet
-    allProjects.filter(transitiveDependencies(_).contains(config))
-  }
+  /** A mapping from project `p` to the set of projects that transitively depend on `p`. */
+  def dependentProjects: Map[ProjectConfig, Set[ProjectConfig]] = thisServer.synchronized {
+    if (myDependentProjects == null) {
+      val idToConfig = drivers.keys.map(k => k.id -> k).toMap
+      val allProjects = drivers.keySet
 
-  /** The set of transitive dependencies of `config`. */
-  def transitiveDependencies(config: ProjectConfig): immutable.Set[ProjectConfig] = {
-    val idToConfig = drivers.keys.map(k => k.id -> k).toMap
-    val dependencies = config.dependencies.map(idToConfig).toSet
-    dependencies ++ dependencies.flatMap(transitiveDependencies)
+      def transitiveDependencies(config: ProjectConfig): Set[ProjectConfig] = {
+        val dependencies = config.dependencies.map(idToConfig).toSet
+        dependencies ++ dependencies.flatMap(transitiveDependencies)
+      }
+
+      myDependentProjects = new mutable.HashMap().withDefaultValue(mutable.Set.empty)
+      for { project <- allProjects
+            dependency <- transitiveDependencies(project) } {
+        myDependentProjects(dependency) += project
+      }
+    }
+    myDependentProjects
   }
 
   def connect(client: WorksheetClient): Unit = {
@@ -317,7 +326,7 @@ class DottyLanguageServer extends LanguageServer
           definition <- definitions
           uri <- toUriOption(definition.pos.source).toSet
           config = configFor(uri)
-          project <- transitivelyDependentProjects(config) + config
+          project <- dependentProjects(config) + config
         } yield project
       }
 
