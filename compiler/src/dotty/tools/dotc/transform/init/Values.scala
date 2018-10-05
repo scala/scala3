@@ -46,7 +46,7 @@ object Value {
 /** Abstract values in analysis */
 sealed trait Value {
   /** Select a member on a value */
-  def select(sym: Symbol, heap: Heap, pos: Position)(implicit ctx: Context): Res
+  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean = false)(implicit ctx: Context): Res
 
   /** Assign on a value */
   def assign(sym: Symbol, value: Value, heap: Heap, pos: Position)(implicit ctx: Context): Res
@@ -124,7 +124,7 @@ sealed trait Value {
 /** The value is absent */
 object NoValue extends Value {
   def apply(values: Int => Value, argPos: Int => Position, pos: Position, heap: Heap)(implicit ctx: Context): Res = ???
-  def select(sym: Symbol, heap: Heap, pos: Position)(implicit ctx: Context): Res = ???
+  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = ???
   def assign(sym: Symbol, value: Value, heap: Heap, pos: Position)(implicit ctx: Context): Res = ???
   def init(constr: Symbol, values: List[Value], argPos: List[Position], pos: Position, obj: ObjectValue, heap: Heap, indexer: Indexer)(implicit ctx: Context): Res = ???
 
@@ -142,9 +142,9 @@ case class UnionValue(val values: Set[SingleValue]) extends Value {
     }
   }
 
-  def select(sym: Symbol, heap: Heap, pos: Position)(implicit ctx: Context): Res = {
+  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = {
     values.foldLeft(Res()) { (acc, value) =>
-      value.select(sym, heap, pos).join(acc)
+      value.select(sym, heap, pos, isSuper).join(acc)
     }
   }
 
@@ -187,7 +187,7 @@ abstract sealed class OpaqueValue extends SingleValue {
 }
 
 object FullValue extends OpaqueValue {
-  def select(sym: Symbol, heap: Heap, pos: Position)(implicit ctx: Context): Res =
+  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res =
     if (sym.is(Flags.Method)) Res(value = Value.defaultFunctionValue(sym))
     else Res()
 
@@ -214,7 +214,7 @@ object FullValue extends OpaqueValue {
 }
 
 object PartialValue extends OpaqueValue {
-  def select(sym: Symbol, heap: Heap, pos: Position)(implicit ctx: Context): Res = {
+  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = {
     // set state to Full, don't report same error message again
     val res = Res(value = FullValue)
 
@@ -266,7 +266,7 @@ object PartialValue extends OpaqueValue {
 }
 
 object FilledValue extends OpaqueValue {
-  def select(sym: Symbol, heap: Heap, pos: Position)(implicit ctx: Context): Res = {
+  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = {
     val res = Res()
     if (sym.is(Flags.Method)) {
       if (!sym.isPartial && !sym.isFilled && !sym.name.is(DefaultGetterName))
@@ -318,7 +318,7 @@ object FilledValue extends OpaqueValue {
 abstract class FunctionValue extends SingleValue { self =>
   def apply(values: Int => Value, argPos: Int => Position, pos: Position, heap: Heap)(implicit ctx: Context): Res
 
-  def select(sym: Symbol, heap: Heap, pos: Position)(implicit ctx: Context): Res = sym.name match {
+  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = sym.name match {
     case nme.apply | nme.lift => Res(value = this)
     case nme.compose =>
       val selectedFun = new FunctionValue() {
@@ -429,7 +429,7 @@ abstract class FunctionValue extends SingleValue { self =>
 /** A lazy value */
 abstract class LazyValue extends SingleValue {
   // not supported
-  def select(sym: Symbol, heap: Heap, pos: Position)(implicit ctx: Context): Res = ???
+  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = ???
   def assign(sym: Symbol, value: Value, heap: Heap, pos: Position)(implicit ctx: Context): Res = ???
   def init(constr: Symbol, values: List[Value], argPos: List[Position], pos: Position, obj: ObjectValue, heap: Heap, indexer: Indexer)(implicit ctx: Context): Res = ???
 
@@ -443,7 +443,7 @@ class SliceValue(val id: Int) extends SingleValue {
   /** not supported, impossible to apply an object value */
   def apply(values: Int => Value, argPos: Int => Position, pos: Position, heap: Heap)(implicit ctx: Context): Res = ???
 
-  def select(sym: Symbol, heap: Heap, pos: Position)(implicit ctx: Context): Res = {
+  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = {
     val slice = heap(id).asSlice
     val value = slice(sym)
 
@@ -524,8 +524,8 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   /** not supported, impossible to apply an object value */
   def apply(values: Int => Value, argPos: Int => Position, pos: Position, heap: Heap)(implicit ctx: Context): Res = ???
 
-  def select(sym: Symbol, heap: Heap, pos: Position)(implicit ctx: Context): Res = {
-    val target = resolve(sym)
+  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = {
+    val target = if (isSuper) sym else resolve(sym)
 
     // select on self type
     if (!target.exists) {
@@ -542,7 +542,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
       val res = slices(cls).select(target, heap, pos)
       // ignore field access, but field access in Scala
       // are method calls, thus is unsafe as well
-      if (open && target.is(Flags.Method, butNot = Flags.Lazy) &&
+      if (!isSuper && open && target.is(Flags.Method, butNot = Flags.Lazy) &&
           !target.isPartial &&
           !target.isFilled &&
           !target.isOverride &&

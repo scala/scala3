@@ -88,9 +88,6 @@ class Analyzer extends Indexer { analyzer =>
         assert(cls.is(Flags.Module) && !enclosedIn(ctx.owner, cls))
         Res()
       }
-    case tp @ SuperType(thistpe, supertpe) =>
-      // TODO : handle `supertpe`
-      checkRef(thistpe, env, pos)
   })
 
   def checkClosure(sym: Symbol, tree: Tree, env: Env)(implicit ctx: Context): Res = {
@@ -263,6 +260,12 @@ class Analyzer extends Indexer { analyzer =>
     }
   }
 
+  def checkSuper(tree: Tree, supert: Super, env: Env)(implicit ctx: Context): Res = {
+    val SuperType(thistpe, supertpe) = supert.tpe
+    val thisRef = checkRef(thistpe, env, tree.pos)
+    thisRef.value.select(tree.symbol, env.heap, tree.pos, isSuper = true)
+  }
+
   object NewEx {
     def extract(tp: Type)(implicit ctx: Context): TypeRef = tp.dealias match {
       case tref: TypeRef => tref
@@ -290,8 +293,8 @@ class Analyzer extends Indexer { analyzer =>
       checkRef(tree.tpe, env, tree.pos)
     case tree: This =>
       checkRef(tree.tpe, env, tree.pos)
-    case tree: Super =>
-      checkRef(tree.tpe, env, tree.pos)
+    case tree @ Select(supert: Super, _) =>
+      checkSuper(tree, supert, env)
     case tree: Select if tree.symbol.isTerm =>
       checkSelect(tree, env)
     case tree: If =>
