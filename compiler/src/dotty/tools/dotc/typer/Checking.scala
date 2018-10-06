@@ -680,7 +680,7 @@ trait Checking {
       case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
       case tp =>
         def isCaseClassApply(sym: Symbol): Boolean =
-          sym.name == nme.apply && sym.owner.is(Module) && sym.owner.companionClass.is(Case)
+          sym.name == nme.apply && sym.is(Synthetic) && sym.owner.is(Module) && sym.owner.companionClass.is(Case)
         def isCaseClassNew(sym: Symbol): Boolean =
           sym.isPrimaryConstructor && sym.owner.is(Case) && sym.owner.isStatic
         def isCaseObject(sym: Symbol): Boolean = {
@@ -691,7 +691,7 @@ trait Checking {
           ctx.erasedTypes ||
           ctx.inInlineMethod ||
           (tree.symbol.isStatic && isCaseObject(tree.symbol) || isCaseClassApply(tree.symbol)) ||
-          (tree.symbol.owner.isStatic && isCaseClassNew(tree.symbol))
+          isCaseClassNew(tree.symbol)
         if (!allow) ctx.error(em"$what must be a known value", tree.pos)
         else {
           def checkArgs(tree: Tree): Unit = tree match {
