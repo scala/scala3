@@ -679,20 +679,28 @@ trait Checking {
     tree.tpe.widenTermRefExpr match {
       case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
       case tp =>
+        def isCaseClassApply(sym: Symbol): Boolean =
+          sym.name == nme.apply && sym.is(Synthetic) && sym.owner.is(Module) && sym.owner.companionClass.is(Case)
+        def isCaseClassNew(sym: Symbol): Boolean =
+          sym.isPrimaryConstructor && sym.owner.is(Case) && sym.owner.isStatic
+        def isCaseObject(sym: Symbol): Boolean = {
+          // TODO add alias to Nil in scala package
+          sym.is(Case) && sym.is(Module)
+        }
         val allow =
           ctx.erasedTypes ||
           ctx.inInlineMethod ||
-          // TODO: Make None and Some constant types?
-          tree.symbol.eq(defn.NoneModuleRef.termSymbol) ||
-          tree.symbol.eq(defn.SomeClass.primaryConstructor) ||
-          (tree.symbol.name == nme.apply && tree.symbol.owner == defn.SomeClass.companionModule.moduleClass)
-        if (!allow) ctx.error(em"$what must be a constant expression", tree.pos)
-        else tree match {
-          // TODO: add cases for type apply and multiple applies
-          case Apply(_, args) =>
-            for (arg <- args)
-              checkInlineConformant(arg, isFinal, what)
-          case _ =>
+          (tree.symbol.isStatic && isCaseObject(tree.symbol) || isCaseClassApply(tree.symbol)) ||
+          isCaseClassNew(tree.symbol)
+        if (!allow) ctx.error(em"$what must be a known value", tree.pos)
+        else {
+          def checkArgs(tree: Tree): Unit = tree match {
+            case Apply(fn, args) =>
+              args.foreach(arg => checkInlineConformant(arg, isFinal, what))
+              checkArgs(fn)
+            case _ =>
+          }
+          checkArgs(tree)
         }
     }
   }
