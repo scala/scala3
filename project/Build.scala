@@ -381,6 +381,12 @@ object Build {
     dottyLib + File.pathSeparator + dottyInterfaces + File.pathSeparator + otherDeps
   }
 
+  lazy val semanticDBSettings = Seq(
+    baseDirectory in (Compile, run) := baseDirectory.value / "..",
+    baseDirectory in Test := baseDirectory.value / "..",
+    libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test
+  )
+
   // Settings shared between dotty-doc and dotty-doc-bootstrapped
   lazy val dottyDocSettings = Seq(
     baseDirectory in (Compile, run) := baseDirectory.value / "..",
@@ -904,6 +910,8 @@ object Build {
   lazy val `dotty-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
   lazy val `dotty-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
 
+  lazy val `dotty-semanticdb` = project.in(file("semanticdb")).asDottySemanticDB(Bootstrapped)
+
   // Depend on dotty-library so that sbt projects using dotty automatically
   // depend on the dotty-library
   lazy val `scala-library` = project.
@@ -1296,6 +1304,10 @@ object Build {
       dependsOn(dottyCompiler).
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
+
+    def asDottySemanticDB(implicit mode: Mode): Project = project.withCommonSettings.
+      dependsOn(dottyCompiler).
+      settings(semanticDBSettings)
 
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).
