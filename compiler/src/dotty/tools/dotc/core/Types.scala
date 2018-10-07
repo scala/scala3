@@ -4422,6 +4422,7 @@ object Types {
     protected def range(lo: Type, hi: Type): Type =
       if (variance > 0) hi
       else if (variance < 0) lo
+      else if (lo `eq` hi) lo
       else Range(lower(lo), upper(hi))
 
     protected def isRange(tp: Type): Boolean = tp.isInstanceOf[Range]
