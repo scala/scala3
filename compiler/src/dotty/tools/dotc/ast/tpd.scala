@@ -920,10 +920,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       untpd.Select(tree, OuterSelectName(EmptyTermName, levels)).withType(SkolemType(tp))
 
     /** Replace Inlined nodes and InlineProxy references to underlying arguments */
-    def underlyingArgument(implicit ctx: Context): Tree = mapToUnderlyingArgument.transform(tree)
+    def underlyingArgument(implicit ctx: Context): Tree = {
+      val mapToUnderlying = new MapToUnderlying {
+        override def skipLocal(sym: Symbol): Boolean =
+          sym.is(InlineProxy) || sym.is(Synthetic)
+      }
+      mapToUnderlying.transform(tree)
+    }
 
     /** Replace Ident nodes references to the underlying tree that defined them */
-    def underlying(implicit ctx: Context): Tree = mapToUnderlying.transform(tree)
+    def underlying(implicit ctx: Context): Tree = new MapToUnderlying().transform(tree)
 
     // --- Higher order traversal methods -------------------------------
 
@@ -951,26 +957,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  /** Map Inlined nodes, InlineProxy references and Synthetic val references to underlying arguments */
-  object mapToUnderlyingArgument extends TreeMap {
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree: Ident if tree.symbol.is(InlineProxy) || (tree.symbol.is(Synthetic) && !tree.symbol.owner.isClass) =>
-        tree.symbol.defTree match {
-          case defTree: ValOrDefDef => transform(defTree.rhs)
-          case _ => tree
-        }
-      case Inlined(_, _, arg) => transform(arg)
-      case NamedArg(_, arg) => transform(arg)
-      case tree => super.transform(tree)
-    }
-  }
-
-  /** Map Ident nodes references to underlying tree that defined them.
-   *  Also drops Inline and Block with no statements
+  /** Map Inlined nodes, NamedArgs, Blocks with no statements and local references to underlying arguments.
+   *  Also drops Inline and Block with no statements.
    */
-  object mapToUnderlying extends TreeMap {
+  class MapToUnderlying extends TreeMap {
     override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-      case tree: Ident if !tree.symbol.owner.isClass =>
+      case tree: Ident if !tree.symbol.owner.isClass && skipLocal(tree.symbol) =>
         tree.symbol.defTree match {
           case defTree: ValOrDefDef => transform(defTree.rhs)
           case _ => tree
@@ -980,6 +972,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case NamedArg(_, arg) => transform(arg)
       case tree => super.transform(tree)
     }
+    def skipLocal(sym: Symbol): Boolean = true
   }
 
   implicit class ListOfTreeDecorator(val xs: List[tpd.Tree]) extends AnyVal {
