@@ -178,6 +178,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       }
     }
 
+    private def handleInlineCall(sym: Symbol)(implicit ctx: Context): Unit = {
+      if (sym.is(Inline))
+        ctx.compilationUnit.containsQuotesOrSplices = true
+    }
+
     private object dropInlines extends TreeMap {
       override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
         case Inlined(call, _, _) =>
@@ -189,12 +194,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
+          handleInlineCall(tree.symbol)
           handleMeta(tree.symbol)
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
             case _ => tree
           }
         case tree @ Select(qual, name) =>
+          handleInlineCall(tree.symbol)
           handleMeta(tree.symbol)
           if (name.isTypeName) {
             Checking.checkRealizable(qual.tpe, qual.pos.focus)
@@ -203,6 +210,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           else
             transformSelect(tree, Nil)
         case tree: Apply =>
+          handleInlineCall(tree.symbol)
           val methType = tree.fun.tpe.widen
           val app =
             if (methType.isErasedMethod)
@@ -223,6 +231,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               super.transform(app)
           }
         case tree: TypeApply =>
+          handleInlineCall(tree.symbol)
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           if (fn.symbol != defn.ChildAnnot.primaryConstructor) {
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
@@ -236,19 +245,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case _ =>
               super.transform(tree1)
           }
-        case Inlined(call, bindings, expansion) if !call.isEmpty =>
-          // Leave only a call trace consisting of
-          //  - a reference to the top-level class from which the call was inlined,
-          //  - the call's position
-          // in the call field of an Inlined node.
-          // The trace has enough info to completely reconstruct positions.
-          // The minimization is done for two reasons:
-          //  1. To save space (calls might contain large inline arguments, which would otherwise
-          //     be duplicated
-          //  2. To enable correct pickling (calls can share symbols with the inlined code, which
-          //     would trigger an assertion when pickling).
-          val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
-          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {
             val templ1 = paramFwd.forwardParamAccessors(tree)
