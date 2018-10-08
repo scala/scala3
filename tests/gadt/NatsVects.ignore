@@ -1,0 +1,90 @@
+object NatsVects {
+  sealed trait TNat
+  case class TZero() extends TNat
+  case class TSucc[N <: TNat] extends TNat
+
+  object TNatSum {
+    sealed trait TSum[M, N, R]
+    case class TSumZero[N]() extends TSum[TZero, N, N]
+    case class TSumM[M <: TNat, N, R <: TNat](sum: TSum[M, N, R]) extends TSum[TSucc[M], N, TSucc[R]]
+  }
+  import TNatSum._
+
+  implicit def tSumZero[N]: TSum[TZero, N, N] =
+    TSumZero()
+    //new TSum[TZero, N, N]() {}
+  implicit def tSumM[M <: TNat, N, R <: TNat](implicit sum: TSum[M, N, R]): TSum[TSucc[M], N, TSucc[R]] =
+    TSumM(sum)
+    //new TSum[TSucc[M], N, TSucc[R]] {}
+
+  sealed trait Vec[+T, N <: TNat]
+  case object VNil extends Vec[Nothing, TZero] // fails but in refchecks
+  case class VCons[T, N <: TNat](x: T, xs: Vec[T, N]) extends Vec[T, TSucc[N]]
+
+  implicit class vecOps[T, M <: TNat]($this: Vec[T, M]) extends AnyVal {
+    def append[N <: TNat, R <: TNat](that: Vec[T, N])(implicit tsum: TSum[M, N, R]): Vec[T, R] = {
+      // tsum match {
+      //   case _: TSumZero[N] => // Here N = R
+      //     $this match {
+      //       case VNil =>
+      //         //that
+      //         that.asInstanceOf[Vec[T, R]]
+      //       case VCons(x, xs) =>
+      //         ???
+      //     }
+      //   case TSumM(sum) =>
+      //     ???
+      // }
+      $this match {
+        case VNil => // M = TZero
+          tsum match {
+            case TSumZero() => that
+            //* case _: TSumZero[TZero] =>
+            //*   that
+            //*   // that.asInstanceOf[Vec[T, R]]
+            case _: TSumM[_, _, _] => // Impossible, this forces M = TSucc[M1]
+              ???
+          }
+        //* case vxs: VCons[T, m1] => // M = TSucc[m1], xs: Vec[T, m1]
+        //*   val x = vxs.x
+        //*   val xs = vxs.xs
+        //* //case VCons(x, xs) =>
+        //*   tsum match {
+        //*     case _: TSumZero[TZero] => // impossible, since this forces M = TZero.
+        //*       ???
+        //*     // fails
+        //*     // case tsum1: TSumM[`m1`, n, r] => // M = TSucc[m1], R = TSucc[r]
+        //*     //   implicit val tsum2 = tsum1.sum
+        //*     //   val appended = xs append that
+        //*     //   VCons(x, appended) // Vec[T, TSucc[r]]
+        //*     //works
+        //*     case tsum1: TSumM[`m1`, N, r] => // M = TSucc[m1], R = TSucc[r]
+        //*       implicit val tsum2 = tsum1.sum
+        //*       // I should be able to return:
+        //*       VCons(x, xs append that) // Vec[T, TSucc[r]] = Vec[T, R]
+
+        //*       // val vxs1 = xs append that
+        //*       // val vxs2 = VCons(x, vxs1)
+        //*       // vxs1
+        //*       // [error] -- [E007] Type Mismatch Error: /Users/pgiarrusso/git/dotty-example-project/src/main/scala/playground/gadtVect.scala:65:14
+        //*       // [error] 65 |              vxs1
+        //*       // [error]    |              ^^^^
+        //*       // [error]    |    found:    NatsVects.Vec[T, r](vxs1)
+        //*       // [error]    |    required: NatsVects.Vec[T, R]
+        //*       // [error]    |
+        //*       // [error]    |    where:    r is a type in method append with bounds <: NatsVects.TNat
+        //*       // vxs2
+        //*       // [error] -- [E007] Type Mismatch Error: /Users/pgiarrusso/git/dotty-example-project/src/main/scala/playground/gadtVect.scala:71:14
+        //*       // [error] 71 |              vxs2
+        //*       // [error]    |              ^^^^
+        //*       // [error]    |    found:    NatsVects.VCons[T, r](vxs2)
+        //*       // [error]    |    required: NatsVects.Vec[T, R]
+        //*       // [error]    |
+        //*       // [error]    |    where:    r is a type in method append with bounds <: NatsVects.TNat
+
+        //*       // vxs2.asInstanceOf // sorry this works
+        //*  }
+      }
+    }
+  }
+}
