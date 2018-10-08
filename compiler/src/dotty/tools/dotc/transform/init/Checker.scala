@@ -144,7 +144,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     // }
 
     // filled check: try commit early
-    if (obj.open || slice.widen != FullValue) filledCheck(obj, tmpl, root.heap)
+    if (obj.open) filledCheck(obj, tmpl, root.heap)
   }
 
   def partialCheck(cls: ClassSymbol, tmpl: tpd.Template, analyzer: Analyzer)(implicit ctx: Context) = {
@@ -240,6 +240,8 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     }
 
     def checkValDef(sym: Symbol): Unit = {
+      if (sym.is(Flags.PrivateOrLocal) || sym.hasAnnotation(defn.UncheckedAnnot)) return
+
       val isOverride = sym.allOverriddenSymbols.exists(sym => sym.isInit)
       val expected: OpaqueValue =
         if (isOverride) FullValue
@@ -254,7 +256,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         checkMethod(ddef.symbol)
       case vdef: ValDef if vdef.symbol.is(Lazy)  =>
         checkLazy(vdef.symbol)
-      case vdef: ValDef if !vdef.symbol.hasAnnotation(defn.UncheckedAnnot) =>
+      case vdef: ValDef =>
         checkValDef(vdef.symbol)
       case _ =>
     }

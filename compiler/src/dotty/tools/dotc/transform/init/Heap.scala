@@ -310,7 +310,7 @@ class SliceRep(val cls: ClassSymbol, innerEnvId: Int) extends HeapEntry with Clo
     def isPartialOrFilled(value: Value): Boolean =
       value == PartialValue || value == FilledValue
 
-    if (symbols.exists { case (sym, value) => sym.isField && !sym.is(Flags.PrivateOrLocal) && value == NoValue }) PartialValue
+    if (symbols.exists { case (sym, value) => sym.isField && value == NoValue }) PartialValue
     else if (symbols.exists { case (sym, value) => sym.isField && (sym.info.isPartial || sym.info.isFilled) }) FilledValue
     else {
       // check outer
