@@ -1952,6 +1952,7 @@ object SymDenotations {
     def apply(sym: Symbol): LazyType = this
     def apply(module: TermSymbol, modcls: ClassSymbol): LazyType = this
 
+    private[this] val NoSymbolFn = (_: Context) => NoSymbol
     private[this] var myDecls: Scope = EmptyScope
     private[this] var mySourceModuleFn: Context => Symbol = NoSymbolFn
     private[this] var myModuleClassFn: Context => Symbol = NoSymbolFn
@@ -1984,8 +1985,6 @@ object SymDenotations {
     override def completerTypeParams(sym: Symbol)(implicit ctx: Context): List[TypeSymbol] =
       unsupported("completerTypeParams") // should be abstract, but Scala-2 will then compute the wrong type for it
   }
-
-  val NoSymbolFn: Context => Symbol = (ctx: Context) => NoSymbol
 
   /** A missing completer */
   @sharable class NoCompleter extends LazyType {

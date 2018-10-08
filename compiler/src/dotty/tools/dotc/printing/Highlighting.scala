@@ -31,7 +31,7 @@ object Highlighting {
   }
 
   case class HighlightBuffer(hl: Highlight)(implicit ctx: Context) {
-    private[this] val buffer: mutable.ListBuffer[String] = new mutable.ListBuffer[String]
+    private[this] val buffer = new mutable.ListBuffer[String]
 
     buffer += hl.show
 

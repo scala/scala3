@@ -137,7 +137,7 @@ trait NamerContextOps { this: Context =>
         if (isJava)
           for (param <- params)
             if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
-        make.fromSymbols(params.asInstanceOf[List[Symbol]], resultType)
+        make.fromSymbols(params, resultType)
       }
     if (typeParams.nonEmpty) PolyType.fromParams(typeParams.asInstanceOf[List[TypeSymbol]], monotpe)
     else if (valueParamss.isEmpty) ExprType(monotpe)
@@ -840,7 +840,7 @@ class Namer { typer: Typer =>
 
     val TypeDef(name, impl @ Template(constr, parents, self, _)) = original
 
-    private val ((params: List[Tree]), (rest: List[Tree])) = impl.body span {
+    private val (params, rest): (List[Tree], List[Tree]) = impl.body.span {
       case td: TypeDef => td.mods is Param
       case vd: ValDef => vd.mods is ParamAccessor
       case _ => false

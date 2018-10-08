@@ -270,11 +270,11 @@ trait Symbols { this: Context =>
     newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes, cls.typeRef), privateWithin, coord)
 
   /** Create an empty default constructor symbol for given class `cls`. */
-  def newDefaultConstructor(cls: ClassSymbol): Symbol =
+  def newDefaultConstructor(cls: ClassSymbol): TermSymbol =
     newConstructor(cls, EmptyFlags, Nil, Nil)
 
   /** Create a synthetic lazy implicit value */
-  def newLazyImplicit(info: Type): Symbol =
+  def newLazyImplicit(info: Type): TermSymbol =
     newSymbol(owner, LazyImplicitName.fresh(), Lazy, info)
 
   /** Create a symbol representing a selftype declaration for class `cls`. */
@@ -308,7 +308,7 @@ trait Symbols { this: Context =>
   /** Create a new skolem symbol. This is not the same as SkolemType, even though the
    *  motivation (create a singleton referencing to a type) is similar.
    */
-  def newSkolem(tp: Type): Symbol = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
+  def newSkolem(tp: Type): TermSymbol = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
 
   def newErrorSymbol(owner: Symbol, name: Name, msg: => Message): Symbol = {
     val errType = ErrorType(msg)
