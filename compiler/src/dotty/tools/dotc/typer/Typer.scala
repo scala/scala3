@@ -1307,7 +1307,8 @@ class Typer extends Namer
     index(tparams)
     val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
     val body1 = typedType(tree.body)
-    assignType(cpy.LambdaTypeTree(tree)(tparams1, body1), tparams1, body1)
+    VarianceChecker.checkLambda(
+      assignType(cpy.LambdaTypeTree(tree)(tparams1, body1), tparams1, body1))
   }
 
   def typedMatchTypeTree(tree: untpd.MatchTypeTree, pt: Type)(implicit ctx: Context): Tree = {
@@ -1500,7 +1501,8 @@ class Typer extends Namer
       case rhs @ LambdaTypeTree(tparams, body) =>
         val tparams1 = tparams.map(typed(_)).asInstanceOf[List[TypeDef]]
         val body1 = typedType(body)
-        assignType(cpy.LambdaTypeTree(rhs)(tparams1, body1), tparams1, body1)
+        VarianceChecker.checkLambda(
+          assignType(cpy.LambdaTypeTree(rhs)(tparams1, body1), tparams1, body1))
       case rhs =>
         typedType(rhs)
     }

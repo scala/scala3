@@ -3,7 +3,7 @@ object Test extends App {
   trait Ord[X]
 
   type TL1 = [X <: Ord[X]] => (X, X) // OK
-  type TL2 = [X >: Ord[X]] => (X, X) // error
+  type TL2 = [X >: Ord[X]] => (X, X) // error: illegal cyclic reference: lower bound Test.Ord[X] of type X refers back to the type itself
 
   class C extends Ord[C]
 
@@ -14,7 +14,8 @@ object Test extends App {
     var x: X = init
   }
 
-  type TL3 = [+X] => Ref[X]
+  type TL3 = [+X] => Ref[X] // error: covariant type parameter X occurs in nonvariant position in Test.Ref[X]
+  type TL4[-X] = X => X // error: contravariant type parameter X occurs in covariant position in X => X
 
   def f[F <: [+X] => Any](x: F[String]): F[Any] = x
 
