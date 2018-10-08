@@ -3729,7 +3729,7 @@ object Types {
 
       def isBounded(tp: Type) = tp match {
         case tp: TypeParamRef =>
-        case tp: TypeRef => ctx.gadt.bounds.contains(tp.symbol)
+        case tp: TypeRef => ctx.gadt.contains(tp.symbol)
       }
 
       def contextInfo(tp: Type): Type = tp match {

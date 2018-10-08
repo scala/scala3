@@ -480,7 +480,7 @@ object Contexts {
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
     def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
     def setGadt(gadt: GADTMap): this.type = { this.gadt = gadt; this }
-    def setFreshGADTBounds: this.type = setGadt(new GADTMap(gadt.bounds))
+    def setFreshGADTBounds: this.type = setGadt(gadt.derived)
     def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
     def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     private def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type = { this.moreProperties = moreProperties; this }
@@ -708,14 +708,88 @@ object Contexts {
       else assert(thread == Thread.currentThread(), "illegal multithreaded access to ContextBase")
   }
 
-  class GADTMap(initBounds: SimpleIdentityMap[Symbol, TypeBounds]) {
-    private[this] var myBounds = initBounds
-    def setBounds(sym: Symbol, b: TypeBounds): Unit =
-      myBounds = myBounds.updated(sym, b)
-    def bounds: SimpleIdentityMap[Symbol, TypeBounds] = myBounds
+  sealed abstract class GADTMap {
+    def setBounds(sym: Symbol, b: TypeBounds)(implicit ctx: Context): Unit
+    def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds
+    def contains(sym: Symbol)(implicit ctx: Context): Boolean
+    def derived: GADTMap
   }
 
-  @sharable object EmptyGADTMap extends GADTMap(SimpleIdentityMap.Empty) {
-    override def setBounds(sym: Symbol, b: TypeBounds): Unit = unsupported("EmptyGADTMap.setBounds")
+  class SmartGADTMap(
+    private[this] var myConstraint: Constraint = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty),
+    private[this] var mapping: SimpleIdentityMap[Symbol, TypeVar] = SimpleIdentityMap.Empty
+  ) extends GADTMap with ConstraintHandling {
+    def log(str: String): Unit = {
+      import dotty.tools.dotc.config.Printers.gadts
+      gadts.println(s"GADTMap: $str")
+    }
+
+    // TODO: dirty kludge - should this class be an inner class of TyperState instead?
+    private[this] var myCtx: Context = null
+    implicit override def ctx = myCtx
+    @forceInline private[this] final def inCtx[T](_ctx: Context)(op: => T) = {
+      val savedCtx = myCtx
+      myCtx = _ctx
+      try op finally myCtx = savedCtx
+    }
+
+    override protected def constraint = myConstraint
+    override protected def constraint_=(c: Constraint) = myConstraint = c
+
+    override def isSubType(tp1: Type, tp2: Type): Boolean = ctx.typeComparer.isSubType(tp1, tp2)
+    override def isSameType(tp1: Type, tp2: Type): Boolean = ctx.typeComparer.isSameType(tp1, tp2)
+
+    private[this] def tvar(sym: Symbol)(implicit ctx: Context) = inCtx(ctx) {
+      val res = mapping(sym) match {
+        case tv: TypeVar => tv
+        case null =>
+          log(i"creating tvar for: $sym")
+          val res = {
+            import NameKinds.DepParamName
+            // do not use newTypeVar:
+            // it registers the TypeVar with TyperState, we don't want that since it instantiates them (TODO: when?)
+            // (see pos/i3500.scala)
+            // it registers the TypeVar with TyperState Constraint, which we don't care for but it's needless
+            val poly = PolyType(DepParamName.fresh().toTypeName :: Nil)(
+              pt => TypeBounds.empty :: Nil,
+              pt => defn.AnyType)
+            // null out creatorState, we don't need it anyway (and TypeVar can null it too)
+            new TypeVar(poly.paramRefs.head, creatorState = null)
+          }
+          constraint = constraint.add(res.origin.binder, res :: Nil)
+          mapping = mapping.updated(sym, res)
+          res
+      }
+      log(i"tvar: $sym -> $res")
+      res
+    }
+
+    override def setBounds(sym: Symbol, b: TypeBounds)(implicit ctx: Context): Unit = inCtx(ctx) {
+      val tv = tvar(sym)
+      log(i"setBounds `$sym` `$tv`: `$b`")
+      addUpperBound(tv.origin, b.hi)
+      addLowerBound(tv.origin, b.lo)
+    }
+
+    override def bounds(sym: Symbol)(implicit ctx: Context): TypeBounds = inCtx(ctx) {
+      mapping(sym) match {
+        case null => null
+        case tv => constraint.fullBounds(tv.origin)
+      }
+    }
+
+    override def contains(sym: Symbol)(implicit ctx: Context) = mapping(sym) ne null
+
+    override def derived: GADTMap = new SmartGADTMap(
+      this.myConstraint,
+      this.mapping
+    )
+  }
+
+  @sharable object EmptyGADTMap extends GADTMap {
+    override def setBounds(sym: Symbol, b: TypeBounds)(implicit ctx: Context) = unsupported("EmptyGADTMap.setBounds")
+    override def bounds(sym: Symbol)(implicit ctx: Context) = null
+    override def contains(sym: Symbol)(implicit ctx: Context) = false
+    override def derived = new SmartGADTMap
   }
 }

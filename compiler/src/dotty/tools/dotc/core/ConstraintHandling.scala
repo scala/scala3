@@ -20,13 +20,14 @@ import config.Printers.{constr, typr}
  */
 trait ConstraintHandling {
 
-  implicit val ctx: Context
+  implicit def ctx: Context
 
   protected def isSubType(tp1: Type, tp2: Type): Boolean
   protected def isSameType(tp1: Type, tp2: Type): Boolean
 
-  val state: TyperState
-  import state.constraint
+  // val state: TyperState
+  protected def constraint: Constraint
+  protected def constraint_=(c: Constraint): Unit
 
   private[this] var addConstraintInvocations = 0
 
@@ -98,7 +99,7 @@ trait ConstraintHandling {
       }
     }
 
-  private def location(implicit ctx: Context) = "" // i"in ${ctx.typerState.stateChainStr}" // use for debugging
+  private def location(implicit ctx: Context) =  i"in ${ctx.typerState.stateChainStr}" // use for debugging
 
   protected def addUpperBound(param: TypeParamRef, bound: Type): Boolean = {
     def description = i"constraint $param <: $bound to\n$constraint"

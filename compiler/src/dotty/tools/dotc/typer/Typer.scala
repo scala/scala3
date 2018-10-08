@@ -1023,7 +1023,7 @@ class Typer extends Namer
   def gadtContext(gadtSyms: Set[Symbol])(implicit ctx: Context): Context = {
     val gadtCtx = ctx.fresh.setFreshGADTBounds
     for (sym <- gadtSyms)
-      if (!gadtCtx.gadt.bounds.contains(sym))
+      if (!gadtCtx.gadt.contains(sym))
         gadtCtx.gadt.setBounds(sym, TypeBounds.empty)
     gadtCtx
   }

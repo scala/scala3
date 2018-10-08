@@ -23,8 +23,9 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
   import TypeComparer._
   implicit val ctx: Context = initctx
 
-  val state: TyperState = ctx.typerState
-  import state.constraint
+  val state = ctx.typerState
+  def constraint: Constraint = state.constraint
+  def constraint_=(c: Constraint): Unit = state.constraint = c
 
   private[this] var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private[this] var recCount = 0
@@ -136,7 +137,7 @@ class TypeComparer(initctx: Context) extends ConstraintHandling {
     finally this.approx = saved
   }
 
-  protected def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, NoApprox)
+  def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, NoApprox)
 
   protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} $approx", subtyping) {
 
