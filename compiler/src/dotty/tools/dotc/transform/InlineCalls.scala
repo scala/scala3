@@ -4,7 +4,8 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.typer.Inliner
+import dotty.tools.dotc.core.Types.MethodicType
+import dotty.tools.dotc.typer.{ConstFold, Inliner}
 
 
 class InlineCalls extends MacroTransform { thisPhase =>
@@ -22,14 +23,15 @@ class InlineCalls extends MacroTransform { thisPhase =>
 
   class InlineCallsTransformer extends Transformer {
     override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-      case _: RefTree | _: GenericApply[_] if Inliner.isInlineable(tree) && !ctx.reporter.hasErrors =>
-        transform(Inliner.inlineCall(tree, tree.tpe.widen))
+      case _: RefTree | _: GenericApply[_] if !tree.tpe.widenDealias.isInstanceOf[MethodicType] && Inliner.isInlineable(tree) && !ctx.reporter.hasErrors =>
+        val tree2 = super.transform(tree) // transform arguments before inlining (inline arguments and constant fold arguments)
+        transform(Inliner.inlineCall(tree2, tree.tpe.widen))
       case _: MemberDef =>
         val newTree = super.transform(tree)
         newTree.symbol.defTree = newTree // update tree set in PostTyper or set for inlined members
         newTree
       case _ =>
-        super.transform(tree)
+        ConstFold(super.transform(tree))
     }
   }
 
