@@ -42,6 +42,42 @@ where `v1` and `v2` are optional variance annotations: `+`, `-`, or absent.
 Then `TL1 <: TL2`, if the type interval `L2..U2` is contained in the type interval `L1..U1` (i.e.
 `L1 <: L2` and `U2 <: U1`), and either `v2` is absent or `v1 = v2`.
 
+## Relationship with Parameterized Type Definitions
+
+A parameterized type definition
+```
+type T[X] = R
+```
+is regarded as a shorthand for an unparameterized definition with a type lambda as right-hand side:
+```
+type T = [X] => R
+```
+
+A parameterized abstract type
+```
+type T[X] >: L <: U
+```
+is regarded as shorthand for an unparameterized abstract type with type lambdas as bounds.
+```
+type T >: ([X] => L) <: ([X] => U)
+```
+However, if `L` is `Nothing` it is not parameterized, since `Nothing` is treated as a bottom type for all kinds. For instance,
+```
+type T[-X] <: X => ()
+```
+is expanded to
+```
+type T >: Nothing <: ([-X] => X => ())
+```
+instead of
+```
+type T >: ([X] => Nothing) <: ([-X] => X => ())
+```
+
+**Note**: The decision to treat `Nothing` as universal bottom type is provisional, and might be changed afer further discussion.
+
+**Note**: Scala 2 and 3 differ in that Scala 2 also treats `Any` as universal top-type. This is not done in Scala 3. See also the discussion on [kind polymorphism](./kind-polymorphism.html)
+
 
 
 
