@@ -39,12 +39,12 @@ class Compiler {
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
-    List(new InlineCalls) ::        // β-reduce inline calls
     Nil
 
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
+    List(new InlineCalls) ::        // β-reduce inline calls
     List(new ReifyQuotes) ::        // Turn quoted trees into explicit run-time data structures
     Nil
 
