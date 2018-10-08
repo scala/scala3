@@ -2441,13 +2441,6 @@ class Typer extends Namer
         checkEqualityEvidence(tree, pt)
         tree
       }
-      else if (Inliner.isInlineable(tree) &&
-               !ctx.settings.YnoInline.value &&
-               !ctx.isAfterTyper &&
-               !ctx.reporter.hasErrors &&
-               tree.tpe <:< pt) {
-        readaptSimplified(Inliner.inlineCall(tree, pt))
-      }
       else if (tree.tpe <:< pt) {
         if (pt.hasAnnotation(defn.InlineParamAnnot))
           checkInlineConformant(tree, isFinal = false, "argument to inline parameter")
