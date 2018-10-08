@@ -25,38 +25,35 @@ object VarianceChecker {
    *  Note: this is achieved by a mechanism separate from checking class type parameters.
    *  Question: Can the two mechanisms be combined in one?
    */
-  def checkLambda(tree: tpd.LambdaTypeTree)(implicit ctx: Context): tree.type = {
-    tree.tpe match {
-      case tl: HKTypeLambda =>
-        val checkOK = new TypeAccumulator[Boolean] {
-          def error(tref: TypeParamRef) = {
-            val VariantName(paramName, v) = tl.paramNames(tref.paramNum).toTermName
-            val paramVarianceStr = if (v == 0) "contra" else "co"
-            val occursStr = variance match {
-              case -1 => "contra"
-              case 0 => "non"
-              case 1 => "co"
-            }
-            val pos = tree.tparams
-              .find(_.name.toTermName == paramName)
-              .map(_.pos)
-              .getOrElse(tree.pos)
-            ctx.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
+  def checkLambda(tree: tpd.LambdaTypeTree)(implicit ctx: Context): Unit = tree.tpe match {
+    case tl: HKTypeLambda =>
+      val checkOK = new TypeAccumulator[Boolean] {
+        def error(tref: TypeParamRef) = {
+          val VariantName(paramName, v) = tl.paramNames(tref.paramNum).toTermName
+          val paramVarianceStr = if (v == 0) "contra" else "co"
+          val occursStr = variance match {
+            case -1 => "contra"
+            case 0 => "non"
+            case 1 => "co"
           }
-          def apply(x: Boolean, t: Type) = x && {
-            t match {
-              case tref: TypeParamRef if tref.binder `eq` tl =>
-                val v = tl.typeParams(tref.paramNum).paramVariance
-                varianceConforms(variance, v) || { error(tref); false }
-              case _ =>
-                foldOver(x, t)
-            }
+          val pos = tree.tparams
+            .find(_.name.toTermName == paramName)
+            .map(_.pos)
+            .getOrElse(tree.pos)
+          ctx.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
+        }
+        def apply(x: Boolean, t: Type) = x && {
+          t match {
+            case tref: TypeParamRef if tref.binder `eq` tl =>
+              val v = tl.typeParams(tref.paramNum).paramVariance
+              varianceConforms(variance, v) || { error(tref); false }
+            case _ =>
+              foldOver(x, t)
           }
         }
-        checkOK.apply(true, tl.resType)
-      case _ =>
-    }
-    tree
+      }
+      checkOK.apply(true, tl.resType)
+    case _ =>
   }
 }
 

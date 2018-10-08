@@ -3,6 +3,6 @@ package object scala {
   type Throwable = java.lang.Throwable
   type IndexOutOfBoundsException = java.lang.IndexOutOfBoundsException
 
-  type Seq[+A] = scala.collection.Seq[A]
+  type Seq[A] = scala.collection.Seq[A]
   val Seq = scala.collection.Seq
 }
