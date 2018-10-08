@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Types.MethodicType
 import dotty.tools.dotc.typer.{ConstFold, Inliner}
 
-
+/** β-reduce all calls to inline methods and preform constant folding */
 class InlineCalls extends MacroTransform { thisPhase =>
   import tpd._
 
