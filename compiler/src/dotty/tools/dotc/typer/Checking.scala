@@ -288,7 +288,7 @@ object Checking {
   def checkRefinementNonCyclic(refinement: Tree, refineCls: ClassSymbol, seen: mutable.Set[Symbol])
     (implicit ctx: Context): Unit = {
     def flag(what: String, tree: Tree) =
-      ctx.deprecationWarning(i"$what reference in refinement is deprecated", tree.pos)
+      ctx.warning(i"$what reference in refinement is deprecated", tree.pos)
     def forwardRef(tree: Tree) = flag("forward", tree)
     def selfRef(tree: Tree) = flag("self", tree)
     val checkTree = new TreeAccumulator[Unit] {
