@@ -180,7 +180,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     private def handleInlineCall(sym: Symbol)(implicit ctx: Context): Unit = {
       if (sym.is(Inline))
-        ctx.compilationUnit.containsQuotesOrSplices = true
+        ctx.compilationUnit.containsInlineCalls = true
     }
 
     private object dropInlines extends TreeMap {

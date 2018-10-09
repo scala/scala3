@@ -5,6 +5,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Types.MethodicType
+import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.typer.{ConstFold, Inliner}
 
 /** β-reduce all calls to inline methods and preform constant folding */
@@ -14,7 +15,7 @@ class InlineCalls extends MacroTransform { thisPhase =>
   override def phaseName: String = InlineCalls.name
 
   override def run(implicit ctx: Context): Unit =
-    if (!ctx.settings.YnoInline.value) super.run
+    if (ctx.compilationUnit.containsInlineCalls && !ctx.settings.YnoInline.value) super.run
 
   override def transformPhase(implicit ctx: Context): Phase = thisPhase.next
 
@@ -31,6 +32,8 @@ class InlineCalls extends MacroTransform { thisPhase =>
         newTree.symbol.defTree = newTree // update tree set in PostTyper or set for inlined members
         newTree
       case _ =>
+        if (tree.symbol.isQuote || tree.symbol.isSplice)
+          ctx.compilationUnit.containsQuotesOrSplices = true
         ConstFold(super.transform(tree))
     }
   }
