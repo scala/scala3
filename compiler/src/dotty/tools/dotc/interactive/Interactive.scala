@@ -321,8 +321,7 @@ object Interactive {
     val includeDeclaration = (includes & Include.definitions) != 0
     val includeLinkedClass = (includes & Include.linkedClass) != 0
     val predicate: NameTree => Boolean = tree =>
-      (  tree.pos.isSourceDerived
-      && !tree.symbol.isPrimaryConstructor
+      (  !tree.symbol.isPrimaryConstructor
       && (includeDeclaration || !Interactive.isDefinition(tree))
       && (  Interactive.matchSymbol(tree, symbol, includes)
          || (  includeDeclaration
