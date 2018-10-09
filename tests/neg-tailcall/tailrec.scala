@@ -37,10 +37,11 @@ class Winners {
     case x :: xs  => succ3(xs, x :: acc)
   }
 
-  @tailrec final def fail3[T](x: Int): Int = fail3(x - 1)
+  @tailrec final def succ4[T](x: Int): Int = succ4(x - 1)
 
-  class Tom[T](x: Int) {
-    @tailrec final def fail4[U](other: Tom[U], x: Int): Int = other.fail4[U](other, x - 1)
+  class Tom[T] {
+    @tailrec final def succ5[U](other: Tom[U], x: Int): Int = other.succ5[U](other, x - 1)
+    @tailrec final def succ6(x: Int): Int = (new Tom[Int]).succ6(x - 1)
   }
 }
 
