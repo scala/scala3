@@ -11,8 +11,9 @@ import * as vscode from 'vscode';
 import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn,
          ServerOptions } from 'vscode-languageclient';
 import { enableOldServerWorkaround } from './compat'
-
+import { WorksheetPublishOutputNotification } from './protocol'
 import * as worksheet from './worksheet'
+
 
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
@@ -206,7 +207,7 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
     enableOldServerWorkaround(client)
 
   client.onReady().then(() => {
-    client.onNotification("worksheet/publishOutput", (params) => {
+    client.onNotification(WorksheetPublishOutputNotification.type, params => {
       worksheet.handleMessage(params)
     })
   })

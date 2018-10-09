@@ -1,6 +1,6 @@
 package dotty.tools.languageserver.util.actions
 
-import dotty.tools.languageserver.worksheet.{WorksheetExecOutput, WorksheetExecParams, WorksheetExecResponse}
+import dotty.tools.languageserver.worksheet.{WorksheetExecOutput, WorksheetExecParams, WorksheetExecResult}
 import dotty.tools.languageserver.util.embedded.CodeMarker
 
 import java.net.URI
@@ -11,7 +11,7 @@ import org.eclipse.lsp4j.VersionedTextDocumentIdentifier
 abstract class WorksheetAction extends Action {
 
   /** Triggers the evaluation of the worksheet. */
-  def triggerEvaluation(marker: CodeMarker): Exec[CompletableFuture[WorksheetExecResponse]] = {
+  def triggerEvaluation(marker: CodeMarker): Exec[CompletableFuture[WorksheetExecResult]] = {
     server.exec(WorksheetExecParams(marker.toVersionedTextDocumentIdentifier))
   }
 

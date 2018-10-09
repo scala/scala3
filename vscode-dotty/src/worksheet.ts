@@ -1,6 +1,9 @@
 import * as vscode from 'vscode'
+
 import { client } from './extension'
-import { VersionedTextDocumentIdentifier } from 'vscode-languageserver-protocol'
+import {
+  asWorksheetExecParams, WorksheetExecRequest, WorksheetExecParams, WorksheetPublishOutputParams
+} from './protocol'
 
 /** A worksheet managed by vscode */
 class Worksheet {
@@ -61,28 +64,6 @@ class Worksheet {
   }
 }
 
-/** The parameter for the `worksheet/exec` request. */
-class WorksheetExecParams {
-  constructor(textDocument: vscode.TextDocument) {
-    this.textDocument = VersionedTextDocumentIdentifier.create(textDocument.uri.toString(), textDocument.version)
-  }
-
-  readonly textDocument: VersionedTextDocumentIdentifier
-}
-
-/** The parameter for the `worksheet/publishOutput` notification. */
-class WorksheetOutput {
-  constructor(textDocument: VersionedTextDocumentIdentifier, line: number, content: string) {
-    this.textDocument = textDocument
-    this.line = line
-    this.content = content
-  }
-
-  readonly textDocument: VersionedTextDocumentIdentifier
-  readonly line: number
-  readonly content: string
-}
-
 /**
  * The command key for evaluating a worksheet. Exposed to users as
  * `Run worksheet`.
@@ -139,7 +120,7 @@ export function evaluateWorksheet(document: vscode.TextDocument): Thenable<{}> {
       title: "Evaluating worksheet",
       cancellable: true
     }, (_, token) => {
-      return client.sendRequest("worksheet/exec", new WorksheetExecParams(worksheet.document), token)
+      return client.sendRequest(WorksheetExecRequest.type, asWorksheetExecParams(document), token)
     })
   } else {
     return Promise.reject()
@@ -173,7 +154,7 @@ function _prepareWorksheet(worksheet: Worksheet) {
  *
  * @param message The result of evaluating part of a worksheet.
  */
-export function handleMessage(output: WorksheetOutput) {
+export function handleMessage(output: WorksheetPublishOutputParams) {
 
   const editor = vscode.window.visibleTextEditors.find(e => {
     let uri = e.document.uri.toString()

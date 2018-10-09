@@ -16,7 +16,7 @@ trait WorksheetService { thisServer: DottyLanguageServer =>
   val worksheets: ConcurrentHashMap[URI, CompletableFuture[_]] = new ConcurrentHashMap()
 
   @JsonRequest
-  def exec(params: WorksheetExecParams): CompletableFuture[WorksheetExecResponse] = thisServer.synchronized {
+  def exec(params: WorksheetExecParams): CompletableFuture[WorksheetExecResult] = thisServer.synchronized {
     val uri = new URI(params.textDocument.getUri)
     val future =
       computeAsync { cancelChecker =>
@@ -24,10 +24,10 @@ trait WorksheetService { thisServer: DottyLanguageServer =>
           val driver = driverFor(uri)
           val sendMessage = (line: Int, msg: String) => client.publishOutput(WorksheetExecOutput(params.textDocument, line, msg))
           evaluateWorksheet(driver, uri, sendMessage, cancelChecker)(driver.currentCtx)
-          WorksheetExecResponse(success = true)
+          WorksheetExecResult(success = true)
         } catch {
           case _: Throwable =>
-            WorksheetExecResponse(success = false)
+            WorksheetExecResult(success = false)
         } finally {
           worksheets.remove(uri)
         }
