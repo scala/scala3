@@ -3,6 +3,8 @@ package dotty.tools.languageserver
 import org.junit.Test
 import org.eclipse.lsp4j.{CompletionItemKind, DocumentHighlightKind, SymbolKind}
 
+import dotty.tools.dotc.core.StdNames.nme.WorksheetWrapper
+import dotty.tools.dotc.core.NameOps.NameDecorator
 import dotty.tools.languageserver.util.Code._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 
@@ -168,9 +170,9 @@ class WorksheetTest {
     ws"""/** A class */ class ${m1}Foo${m2} { /** A method */ def ${m3}bar${m4} = 123  }
          val x = new ${m5}Foo${m6}
          x.${m7}bar${m8}""".withSource
-      .hover(m1 to m2, hoverContent("Worksheet.Foo", "/** A class */"))
+      .hover(m1 to m2, hoverContent(s"${WorksheetWrapper}.Foo", "/** A class */"))
       .hover(m3 to m4, hoverContent("Int", "/** A method */"))
-      .hover(m5 to m6, hoverContent("Worksheet.Foo", "/** A class */"))
+      .hover(m5 to m6, hoverContent(s"${WorksheetWrapper}.Foo", "/** A class */"))
       .hover(m7 to m8, hoverContent("Int", "/** A method */"))
   }
 
@@ -178,7 +180,7 @@ class WorksheetTest {
     ws"""class ${m1}Foo${m2} {
            def ${m3}bar${m4} = 123
          }""".withSource
-      .documentSymbol(m1, (m1 to m2).symInfo("Foo", SymbolKind.Class, "Worksheet$"),
+      .documentSymbol(m1, (m1 to m2).symInfo("Foo", SymbolKind.Class, WorksheetWrapper.moduleClassName.toString),
                           (m3 to m4).symInfo("bar", SymbolKind.Method, "Foo"))
   }
 
@@ -188,7 +190,7 @@ class WorksheetTest {
              def ${m3}bar${m4} = 123
            }""",
       code"""class ${m5}Baz${m6}"""
-    ).symbol("Foo", (m1 to m2).symInfo("Foo", SymbolKind.Class, "Worksheet$"))
+    ).symbol("Foo", (m1 to m2).symInfo("Foo", SymbolKind.Class, WorksheetWrapper.moduleClassName.toString))
      .symbol("bar", (m3 to m4).symInfo("bar", SymbolKind.Method, "Foo"))
      .symbol("Baz", (m5 to m6).symInfo("Baz", SymbolKind.Class))
   }

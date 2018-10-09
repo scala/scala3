@@ -540,7 +540,7 @@ object DottyLanguageServer {
 
   /** Wrap the source of a worksheet inside an `object`. */
   private def wrapWorksheet(source: String): String =
-    s"""object Worksheet {
+    s"""object ${StdNames.nme.WorksheetWrapper} {
        |$source
        |}""".stripMargin
 
@@ -599,7 +599,7 @@ object DottyLanguageServer {
    * @see wrapWorksheet
    */
   def isWorksheetWrapper(symbol: Symbol)(implicit ctx: Context): Boolean = {
-      symbol.name.toString == "Worksheet$" &&
+      symbol.name == StdNames.nme.WorksheetWrapper.moduleClassName &&
       symbol.owner == ctx.definitions.EmptyPackageClass
   }
 
