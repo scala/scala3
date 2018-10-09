@@ -50,7 +50,7 @@ trait Reporting { this: Context =>
     }
 
   def deprecationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
-    reportWarning(new DeprecationWarning(msg, pos))
+    if (this.settings.deprecation.value) reportWarning(new DeprecationWarning(msg, pos))
 
   def migrationWarning(msg: => Message, pos: SourcePosition = NoSourcePosition): Unit =
     reportWarning(new MigrationWarning(msg, pos))
