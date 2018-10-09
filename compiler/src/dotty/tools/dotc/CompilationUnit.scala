@@ -3,12 +3,14 @@ package dotc
 
 import util.SourceFile
 import ast.{tpd, untpd}
-import tpd.{ Tree, TreeTraverser }
+import dotty.tools.dotc.ast.Trees
+import tpd.{Tree, TreeTraverser}
 import typer.PrepareInlineable.InlineAccessors
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.SymDenotations.ClassDenotation
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.typer.Inliner
 
 class CompilationUnit(val source: SourceFile) {
 
@@ -57,6 +59,11 @@ object CompilationUnit {
     def traverse(tree: Tree)(implicit ctx: Context): Unit = {
       if (tree.symbol.isQuote)
         containsQuotes = true
+      tree match {
+        case _: tpd.RefTree | _: Trees.GenericApply[_] if Inliner.isInlineable(tree) =>
+          containsQuotes = true // May inline a quote
+        case _ =>
+      }
       traverseChildren(tree)
     }
   }
