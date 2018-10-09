@@ -55,12 +55,6 @@ class DefinitionTest {
   }
 
   @Test def goToDefNamedArgOverload: Unit = {
-    val m9 = new CodeMarker("m9")
-    val m10 = new CodeMarker("m10")
-    val m11 = new CodeMarker("m11")
-    val m12 = new CodeMarker("m12")
-    val m13 = new CodeMarker("m13")
-    val m14 = new CodeMarker("m14")
 
     code"""object Foo {
              def foo(${m1}x${m2}: String): String = ${m3}x${m4}
@@ -88,10 +82,6 @@ class DefinitionTest {
   }
 
   @Test def goToConstructorNamedArgOverload: Unit = {
-    val m9 = new CodeMarker("m9")
-    val m10 = new CodeMarker("m10")
-    val m11 = new CodeMarker("m11")
-    val m12 = new CodeMarker("m12")
 
     withSources(
       code"""class Foo(${m1}x${m2}: String) {
@@ -110,8 +100,6 @@ class DefinitionTest {
   }
 
   @Test def goToParamCopyMethod: Unit = {
-    val m9 = new CodeMarker("m9")
-    val m10 = new CodeMarker("m10")
 
     withSources(
       code"""case class Foo(${m1}x${m2}: Int, ${m3}y${m4}: String)""",

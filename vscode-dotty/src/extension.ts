@@ -12,8 +12,11 @@ import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn,
          ServerOptions } from 'vscode-languageclient';
 import { enableOldServerWorkaround } from './compat'
 
+import * as worksheet from './worksheet'
+
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
+export let client: LanguageClient
 
 export function activate(context: ExtensionContext) {
   extensionContext = context
@@ -27,11 +30,23 @@ export function activate(context: ExtensionContext) {
   const languageServerDefaultConfigFile = path.join(extensionContext.extensionPath, './out/default-dotty-ide-config')
   const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
 
+  vscode.workspace.onWillSaveTextDocument(worksheet.prepareWorksheet)
+  vscode.workspace.onDidSaveTextDocument(document => {
+    if (worksheet.isWorksheet(document)) {
+      worksheet.evaluateWorksheet(document)
+    }
+  })
+  vscode.workspace.onDidCloseTextDocument(document => {
+    if (worksheet.isWorksheet(document)) {
+      worksheet.removeWorksheet(document)
+    }
+  })
+
   if (process.env['DLS_DEV_MODE']) {
     const portFile = `${vscode.workspace.rootPath}/.dotty-ide-dev-port`
     fs.readFile(portFile, (err, port) => {
       if (err) {
-        outputChannel.append(`Unable to parse ${portFile}`)
+        outputChannel.appendLine(`Unable to parse ${portFile}`)
         throw err
       }
 
@@ -111,11 +126,15 @@ function fetchWithCoursier(coursierPath: string, artifact: string, extra: string
       coursierProc.stdout.on('data', (data: Buffer) => {
         classPath += data.toString().trim()
       })
+      coursierProc.stderr.on('data', (data: Buffer) => {
+        let msg = data.toString().trim()
+        outputChannel.appendLine(msg)
+      })
 
       coursierProc.on('close', (code: number) => {
         if (code != 0) {
           let msg = `Couldn't fetch '${ artifact }' (exit code ${ code }).`
-          outputChannel.append(msg)
+          outputChannel.appendLine(msg)
           throw new Error(msg)
         }
       })
@@ -133,6 +152,7 @@ function configureIDE(sbtClasspath: string, languageServerScalaVersion: string, 
     // eventually run `configureIDE`.
     const sbtPromise =
       cpp.spawn("java", [
+        "-Dsbt.log.noformat=true",
         "-classpath", sbtClasspath,
         "xsbt.boot.Boot",
         `--addPluginSbtFile=${dottyPluginSbtFile}`,
@@ -141,10 +161,23 @@ function configureIDE(sbtClasspath: string, languageServerScalaVersion: string, 
       ])
 
     const sbtProc = sbtPromise.childProcess
+    // Close stdin, otherwise in case of error sbt will block waiting for the
+    // user input to reload or exit the build.
+    sbtProc.stdin.end()
+
+    sbtProc.stdout.on('data', (data: Buffer) => {
+      let msg = data.toString().trim()
+      outputChannel.appendLine(msg)
+    })
+    sbtProc.stderr.on('data', (data: Buffer) => {
+      let msg = data.toString().trim()
+      outputChannel.appendLine(msg)
+    })
+
     sbtProc.on('close', (code: number) => {
       if (code != 0) {
         const msg = "Configuring the IDE failed."
-        outputChannel.append(msg)
+        outputChannel.appendLine(msg)
         throw new Error(msg)
       }
     })
@@ -156,8 +189,10 @@ function configureIDE(sbtClasspath: string, languageServerScalaVersion: string, 
 function run(serverOptions: ServerOptions, isOldServer: boolean) {
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
-      { language: 'scala', scheme: 'file', pattern: '**/*.scala' },
-      { language: 'scala', scheme: 'untitled', pattern: '**/*.scala' }
+      { scheme: 'file', pattern: '**/*.sc' },
+      { scheme: 'untitled', pattern: '**/*.sc' },
+      { scheme: 'file', pattern: '**/*.scala' },
+      { scheme: 'untitled', pattern: '**/*.scala' }
     ],
     synchronize: {
       configurationSection: 'dotty'
@@ -166,9 +201,19 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
     revealOutputChannelOn: RevealOutputChannelOn.Never
   }
 
-  const client = new LanguageClient("dotty", "Dotty", serverOptions, clientOptions)
+  client = new LanguageClient("dotty", "Dotty", serverOptions, clientOptions)
   if (isOldServer)
     enableOldServerWorkaround(client)
+
+  client.onReady().then(() => {
+    client.onNotification("worksheet/publishOutput", (params) => {
+      worksheet.handleMessage(params)
+    })
+  })
+
+  vscode.commands.registerCommand(worksheet.worksheetEvaluateKey, () => {
+    worksheet.evaluateWorksheetCommand()
+  })
 
   // Push the disposable to the context's subscriptions so that the
   // client can be deactivated on extension deactivation

@@ -1,6 +1,6 @@
 package dotty.tools.languageserver.util
 
-import dotty.tools.languageserver.util.Code.SourceWithPositions
+import dotty.tools.languageserver.util.Code._
 import dotty.tools.languageserver.util.actions._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.{TestFile, TestServer}
@@ -16,8 +16,9 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
 
   private val testServer = new TestServer(TestFile.testDir)
 
-  private val files = sources.zipWithIndex.map { case (code, i) =>
-    testServer.openCode(code.text, s"Source$i.scala")
+  private val files = sources.zipWithIndex.map {
+    case (ScalaSourceWithPositions(text, _), i) => testServer.openCode(text, s"Source$i.scala")
+    case (WorksheetWithPositions(text, _), i) => testServer.openCode(text, s"Worksheet$i.sc")
   }
   private val positions: PositionContext = getPositions(files)
 
@@ -116,9 +117,45 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
   def symbol(query: String, symbols: SymInfo*): this.type =
     doAction(new CodeSymbol(query, symbols))
 
+  /**
+   * Triggers evaluation of the worksheet specified by `marker`, verifies that the results of
+   * evaluation match `expected.
+   *
+   * @param marker   A marker a identifies the worksheet to evaluate.
+   * @param expected The expected output.
+   *
+   * @see dotty.tools.languageserver.util.actions.WorksheetEvaluate
+   */
+  def evaluate(marker: CodeMarker, expected: String*): this.type =
+    doAction(new WorksheetEvaluate(marker, expected, strict = true))
+
+  /**
+   * Triggers evaluation of the worksheet specified by `marker`, verifies that each line of output
+   * starts with `expected`.
+   *
+   * @param marker   A marker a identifies the worksheet to evaluate.
+   * @param expected The expected starts of output.
+   *
+   * @see dotty.tools.languageserver.util.actions.WorksheetEvaluate
+   */
+  def evaluateNonStrict(marker: CodeMarker, expected: String*): this.type =
+    doAction(new WorksheetEvaluate(marker, expected, strict = false))
+
+  /**
+   * Triggers evaluation of the worksheet specified by `marker`, then verifies that execution can be
+   * cancelled after `afterMs` milliseconds.
+   *
+   * @param marker   A marker that identifier the worksheet to evaluate.
+   * @param afterMs  The delay in milliseconds before cancelling execution.
+   *
+   * @see dotty.tools.languageserver.util.actions.WorksheetCancel
+   */
+  def cancelEvaluation(marker: CodeMarker, afterMs: Long): this.type =
+    doAction(new WorksheetCancel(marker, afterMs))
+
   private def doAction(action: Action): this.type = {
     try {
-      action.execute()(testServer, positions)
+      action.execute()(testServer, testServer.client, positions)
     } catch {
       case ex: AssertionError =>
         val sourcesStr = sources.zip(files).map{ case (source, file) => "// " + file.file + "\n" + source.text}.mkString("\n")

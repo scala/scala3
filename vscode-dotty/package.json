@@ -27,23 +27,37 @@
     "onLanguage:scala",
     "workspaceContains:.dotty-ide.json"
   ],
-  "languages": [
-    {
-      "id": "scala",
-      "extensions": [
-        ".scala"
-      ],
-      "aliases": [
-        "Scala"
-      ]
-    }
-  ],
   "contributes": {
+    "languages": [
+      {
+        "id": "scala",
+        "extensions": [
+          ".scala",
+          ".sc"
+        ],
+        "aliases": [
+          "Scala"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "worksheet.evaluate",
+        "title": "Run worksheet"
+      },
+      {
+        "command": "worksheet.cancel",
+        "title": "Cancel worksheet evaluation"
+      }
+    ],
     "configurationDefaults": {
       "[scala]": {
         "editor.tabSize": 2,
         "editor.insertSpaces": true
       }
+    },
+    "files.associations": {
+      "*.sc": "scala"
     }
   },
   "scripts": {

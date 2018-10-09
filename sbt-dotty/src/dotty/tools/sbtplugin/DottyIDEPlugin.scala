@@ -270,7 +270,15 @@ object DottyIDEPlugin extends AutoPlugin {
   }
 
   private def projectConfigTask(config: Configuration): Initialize[Task[Option[ProjectConfig]]] = Def.taskDyn {
-    if ((sources in config).value.isEmpty) Def.task { None }
+    val depClasspath = Attributed.data((dependencyClasspath in config).value)
+
+    // Try to detect if this is a real Scala project or not. This is pretty
+    // fragile because sbt simply does not keep track of this information. We
+    // could check if at least one source file ends with ".scala" but that
+    // doesn't work for empty projects.
+    val isScalaProject = depClasspath.exists(_.getAbsolutePath.contains("dotty-library")) && depClasspath.exists(_.getAbsolutePath.contains("scala-library"))
+
+    if (!isScalaProject) Def.task { None }
     else Def.task {
       // Not needed to generate the config, but this guarantees that the
       // generated config is usable by an IDE without any extra compilation
@@ -281,7 +289,6 @@ object DottyIDEPlugin extends AutoPlugin {
       val compilerVersion = (scalaVersion in config).value
       val compilerArguments = (scalacOptions in config).value
       val sourceDirectories = (unmanagedSourceDirectories in config).value ++ (managedSourceDirectories in config).value
-      val depClasspath = Attributed.data((dependencyClasspath in config).value)
       val classDir = (classDirectory in config).value
 
       Some(new ProjectConfig(

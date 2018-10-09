@@ -20,6 +20,12 @@ object Code {
   val m6 = new CodeMarker("m6")
   val m7 = new CodeMarker("m7")
   val m8 = new CodeMarker("m8")
+  val m9 = new CodeMarker("m9")
+  val m10 = new CodeMarker("m10")
+  val m11 = new CodeMarker("m11")
+  val m12 = new CodeMarker("m12")
+  val m13 = new CodeMarker("m13")
+  val m14 = new CodeMarker("m14")
 
   implicit class CodeHelper(val sc: StringContext) extends AnyVal {
 
@@ -35,7 +41,22 @@ object Code {
      * and `m3` and `m4` enclose the identifier `Hello`. These positions can then be used to ask to
      * perform actions such as finding all references, etc.
      */
-    def code(args: Embedded*): SourceWithPositions = {
+    def code(args: Embedded*): ScalaSourceWithPositions = {
+      val (text, positions) = textAndPositions(args: _*)
+      ScalaSourceWithPositions(text, positions)
+    }
+
+    /**
+     * An interpolator similar to `code`, but used for defining a worksheet.
+     *
+     * @see code
+     */
+    def ws(args: Embedded*): WorksheetWithPositions = {
+      val (text, positions) = textAndPositions(args: _*)
+      WorksheetWithPositions(text, positions)
+    }
+
+    private def textAndPositions(args: Embedded*): (String, List[(CodeMarker, Int, Int)]) = {
       val pi = sc.parts.iterator
       val ai = args.iterator
 
@@ -70,22 +91,40 @@ object Code {
       if (pi.hasNext)
         stringBuilder.append(pi.next())
 
-      SourceWithPositions(stringBuilder.result(), positions.result())
+      (stringBuilder.result(), positions.result())
     }
   }
 
   /** A new `CodeTester` working with `sources` in the workspace. */
   def withSources(sources: SourceWithPositions*): CodeTester = new CodeTester(sources.toList, Nil)
 
+  sealed trait SourceWithPositions {
+
+     /** The code contained within the virtual source file. */
+    def text: String
+
+    /** The positions of the markers that have been set. */
+    def positions: List[(CodeMarker, Int, Int)]
+
+    /** A new `CodeTester` with only this source in the workspace. */
+    def withSource: CodeTester = new CodeTester(this :: Nil, Nil)
+
+  }
+
   /**
-   * A virtual source file where several markers have been set.
+   * A virtual Scala source file where several markers have been set.
    *
    * @param text      The code contained within the virtual source file.
    * @param positions The positions of the markers that have been set.
    */
-  case class SourceWithPositions(text: String, positions: List[(CodeMarker, Int, Int)]) {
-    /** A new `CodeTester` with only this source in the workspace. */
-    def withSource: CodeTester = new CodeTester(this :: Nil, Nil)
-  }
+  case class ScalaSourceWithPositions(text: String, positions: List[(CodeMarker, Int, Int)]) extends SourceWithPositions
+
+  /**
+   * A virtual worksheet where several markers have been set.
+   *
+   * @param text      The code contained within the virtual source file.
+   * @param positions The positions of the markers that have been set.
+   */
+  case class WorksheetWithPositions(text: String, positions: List[(CodeMarker, Int, Int)]) extends SourceWithPositions
 
 }
