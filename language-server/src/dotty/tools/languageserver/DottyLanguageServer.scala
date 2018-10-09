@@ -42,8 +42,7 @@ import lsp4j.services._
  *  - This implementation is based on the LSP4J library: https://github.com/eclipse/lsp4j
  */
 class DottyLanguageServer extends LanguageServer
-    with LanguageClientAware with TextDocumentService with WorkspaceService
-    with WorksheetService { thisServer =>
+    with TextDocumentService with WorkspaceService with WorksheetService { thisServer =>
   import ast.tpd._
 
   import DottyLanguageServer._
@@ -122,8 +121,8 @@ class DottyLanguageServer extends LanguageServer
     }
   }
 
-  override def connect(client: LanguageClient): Unit = {
-    myClient = client.asInstanceOf[WorksheetClient]
+  def connect(client: WorksheetClient): Unit = {
+    myClient = client
   }
 
   override def exit(): Unit = {
