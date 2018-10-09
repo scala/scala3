@@ -261,7 +261,7 @@ object PatternMatcher {
       /** Plan for matching the sequence in `getResult` against sequence elements
        *  and a possible last varargs argument `args`.
        */
-      def unapplySeqPlan(getResult: Symbol, args: List[Tree]): Plan = args.lastOption match { //XXXX
+      def unapplySeqPlan(getResult: Symbol, args: List[Tree]): Plan = args.lastOption match {
         case Some(VarArgPattern(arg)) =>
           val matchRemaining =
             if (args.length == 1) {
@@ -325,7 +325,7 @@ object PatternMatcher {
       }
 
       // begin patternPlan
-      swapBind(tree) match { //XXXX
+      swapBind(tree) match {
         case Typed(pat, tpt) =>
           TestPlan(TypeTest(tpt), scrutinee, tree.pos,
             letAbstract(ref(scrutinee).asInstance(tpt.tpe)) { casted =>
@@ -509,7 +509,7 @@ object PatternMatcher {
     def mergeTests(plan: Plan): Plan = {
       class SubstituteIdent(from: TermSymbol, to: TermSymbol) extends PlanTransform {
         override val treeMap = new TreeMap {
-          override def transform(tree: Tree)(implicit ctx: Context) = tree match { //XXXX
+          override def transform(tree: Tree)(implicit ctx: Context) = tree match {
             case tree: Ident if tree.symbol == from => ref(to)
             case _ => super.transform(tree)
           }
@@ -592,7 +592,7 @@ object PatternMatcher {
 
       object Inliner extends PlanTransform {
         override val treeMap = new TreeMap {
-          override def transform(tree: Tree)(implicit ctx: Context) = tree match { //XXXX
+          override def transform(tree: Tree)(implicit ctx: Context) = tree match {
             case tree: Ident =>
               val sym = tree.symbol
               if (toDrop(sym)) transform(initializer(sym))
@@ -692,8 +692,8 @@ object PatternMatcher {
 
     @tailrec
     private def canFallThrough(plan: Plan): Boolean = plan match {
-      case _: ReturnPlan | _: ResultPlan => false
-      case _: TestPlan | _: LabeledPlan => true
+      case _:ReturnPlan | _:ResultPlan => false
+      case _:TestPlan | _:LabeledPlan => true
       case LetPlan(_, body) => canFallThrough(body)
       case SeqPlan(_, tail) => canFallThrough(tail)
     }
@@ -709,7 +709,7 @@ object PatternMatcher {
         (tpe isRef defn.ShortClass) ||
         (tpe isRef defn.CharClass)
 
-      def isIntConst(tree: Tree) = tree match { ///XXXX
+      def isIntConst(tree: Tree) = tree match {
         case Literal(const) => const.isIntRange
         case _ => false
       }
@@ -943,21 +943,17 @@ object PatternMatcher {
       Labeled(resultLabel, result)
     }
 
+
     /** Evaluate pattern match to a precise type, if possible, and return NoType otherwise. */
-    // def evaluateMatch(tree: Match, evalBoolType: Type => Either[Type, Boolean]): Option[Type] = {
-    //   val plan = matchPlan(tree)
-    //   println
-    //   println
-    //   patmatch.println(i"Plan for $tree: ${show(plan)}")
-    //   val result = evaluate(plan, evalBoolType)
-    //   /*patmatch.*/println(i"Plan evaluation: $result")
-    //   result
-    // }
+    def evaluateMatch(tree: Match, evalBoolType: Type => Either[Type, Boolean]): Option[Type] = {
+      val plan = matchPlan(tree)
+      patmatch.println(i"Plan for $tree: ${show(plan)}")
+      val result = evaluate(plan, evalBoolType)
+      patmatch.println(i"Plan evaluation: $result")
+      result
+    }
 
-    def typeTranslateMatch(tree: Match): Type =
-      typeTranslatePlan(matchPlan(tree))
-
-    private def typeTranslatePlan(plan0: Plan): Type = {
+    private def evaluate(plan0: Plan, evalBoolType: Type => Either[Type, Boolean]): Option[Type] = {
       assert(ctx.isDependent)
 
       def nextPlan(label: Symbol): Plan = {
@@ -973,40 +969,32 @@ object PatternMatcher {
         rec(label, plan0, None).get
       }
 
-      def evalTest(testPlan: TestPlan): Type = testPlan match {
-        case TestPlan(test, scrutinee, _, _) =>
+      def evalTest(testPlan: TestPlan): Option[Boolean] = testPlan match {
+        case TestPlan(test, scrut, _, _) =>
           test match {
-            case TypeTest(tpt) =>
-              // Like emitCondition(test) with the crazy outer stuff and
-              // patmet specific isInstanceOfPM gone.
-              val expectedTp = tpt.tpe
-              expectedTp.dealias match {
-                case expectedTp: SingletonType =>
-                  scrutinee.isInstance(expectedTp).tpe
-                case _ =>
-                  scrutinee.select(defn.Any_isInstanceOf).appliedToType(expectedTp).tpe
-              }
-            case NonNullTest => ConstantType(Constants.Constant(false))
-            case _           => emitCondition(testPlan).tpe
+            case TypeTest(tpt) => Normalize.erasedTypeTest(scrut.tpe, tpt.tpe)  // FIXME: unsound
+            case NonNullTest   => Some(false)
+            case _             => evalBoolType(emitCondition(testPlan).tpe).toOption
           }
       }
 
-      def evalPlan(plan: Plan, nexts: List[Plan]): Type =
+      @tailrec def evalPlan(plan: Plan, nexts: List[Plan]): Option[Type] =
         plan match {
           case LetPlan(sym, body)       => evalPlan(body, nexts)
           case LabeledPlan(label, expr) => evalPlan(expr, nexts)
           case SeqPlan(head, tail)      => evalPlan(head, tail :: nexts)
           case ReturnPlan(label)        => evalPlan(nextPlan(label), nexts)
-          case ResultPlan(tree)         => tree.tpe
+          case ResultPlan(tree)         => Some(tree.tpe)
           case plan: TestPlan           =>
-            val condTp = evalTest(plan)
-            val thenTp = evalPlan(plan.onSuccess, nexts)
-            val elseTp =
-              nexts match {
-                case head :: tail => evalPlan(head, tail)
-                case _            => throw new AssertionError("Malformed Plan")
-              }
-            TypeOf.If(condTp, thenTp, elseTp)
+            evalTest(plan) match {
+              case None        => None
+              case Some(true)  => evalPlan(plan.onSuccess, nexts)
+              case Some(false) =>
+                nexts match {
+                  case head :: tail => evalPlan(head, tail)
+                  case _            => throw new AssertionError("Malformed Plan")
+                }
+            }
         }
 
       evalPlan(plan0, Nil)

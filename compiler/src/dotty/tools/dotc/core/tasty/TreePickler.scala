@@ -158,12 +158,19 @@ class TreePickler(pickler: TastyPickler) {
     withLength {
       val treeKind = to.tree match {
         case _: If        => TypeOfTags.If
+        case _: Match     => TypeOfTags.Match
         case _: Apply     => TypeOfTags.Apply
         case _: TypeApply => TypeOfTags.TypeApply
       }
       writeByte(treeKind)
       pickleType(to.underlying, richTypes = true)
       to match {
+        case TypeOf.Match(selectorTp, caseTriples) =>
+          pickleType(selectorTp, richTypes = true)
+          caseTriples.foreach {
+            case (patTp, NoType, bodyTp)  => writeByte(2); pickleTypes(patTp :: bodyTp :: Nil)
+            case (patTp, guardTp, bodyTp) => writeByte(3); pickleTypes(patTp :: guardTp :: bodyTp :: Nil)
+          }
         case TypeOf.Generic(types) =>
           pickleTypes(types)
       }

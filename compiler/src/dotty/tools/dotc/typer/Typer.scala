@@ -978,7 +978,7 @@ class Typer extends Namer
         typed(desugar.makeCaseLambda(tree.cases, protoFormals.length, unchecked) withPos tree.pos, pt)
       case _ =>
         val selectProto = pt match {
-          // case TypeOf.Match(s, _) => s
+          case TypeOf.Match(s, _) => s
           case _ => WildcardType
         }
 
@@ -1027,8 +1027,8 @@ class Typer extends Namer
   def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context): List[CaseDef] = {
     val gadts = gadtSyms(selType.widen)
     pt match {
-      // case TypeOf.Match(_, cs) if cs.length == cases.length =>
-      //   cases.zip(cs).mapconserve { case (c, (_, _, p)) => typedCase(c, selType, p, gadts) }
+      case TypeOf.Match(_, cs) if cs.length == cases.length =>
+        cases.zip(cs).mapconserve { case (c, (_, _, p)) => typedCase(c, selType, p, gadts) }
       case _ =>
         cases.mapconserve(typedCase(_, selType, pt, gadts))
     }

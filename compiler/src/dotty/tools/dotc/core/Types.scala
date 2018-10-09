@@ -4212,7 +4212,7 @@ object Types {
   // ----- TypeOf -------------------------------------------------------------------------
 
   /** Type that represents the precise type of a given term.
-   *  Precision is only kept for Apply, TypeApply and If trees.
+   *  Precision is only kept for Apply, TypeApply, If and Match trees.
    *
    *  The idea behind this type is to be able to compute more precise types
    *  when more information is available.
@@ -4226,6 +4226,7 @@ object Types {
    *  TypeOf(u, Apply(fun, args))       ~ SuspendedApply(u, fun, args)
    *  TypeOf(u, TypeApply(fun, args))   ~ SuspendedTypeApply(u, fun, args)
    *  TypeOf(u, If(cond, thenp, elsep)) ~ SuspendedIf(u, cond, thenp, elsep)
+   *  TypeOf(u, Match(selector, cases)) ~ SuspendedMatch(u, selector, cases)
    *
    *  Where u is the type that the tree would have had otherwise.
    *
@@ -4254,6 +4255,7 @@ object Types {
                 }
               case nil => args2.isEmpty
             }
+          // FIXME: compareArgs is incorrect for Match. Add compareCaseDef.
           (this.tree, that.tree) match {
             case (t1: Apply, t2: Apply) =>
               (t1.fun.tpe eql t2.fun.tpe) && compareArgs(t1.args, t2.args)
@@ -4261,6 +4263,8 @@ object Types {
               (t1.fun.tpe eql t2.fun.tpe) && compareArgs(t1.args, t2.args)
             case (t1: If, t2: If) =>
               (t1.cond.tpe eql t2.cond.tpe) && (t1.thenp.tpe eql t2.thenp.tpe) && (t1.elsep.tpe eql t2.elsep.tpe)
+            case (t1: Match, t2: Match) =>
+              (t1.selector.tpe eql t2.selector.tpe) && compareArgs(t1.cases, t2.cases)
             case (t1, t2) =>
               false
           }
@@ -4273,6 +4277,7 @@ object Types {
     override def computeHash(bs: Hashable.Binders) = {
       val delta = tree match {
         case _: If        => 11
+        case _: Match     => 17
         case _: Apply     => 23
         case _: TypeApply => 29
       }
@@ -4290,7 +4295,6 @@ object Types {
 
     def apply(underlyingTp: Type, tree: untpd.Tree)(implicit ctx: Context): TypeOf = {
       assert(!ctx.erasedTypes)
-      assert(isLegalTopLevelTree(tree.asInstanceOf[Tree]))
       val tree1 = tree.clone.asInstanceOf[Tree]
       // This is a safety net to keep us from touching a TypeOf's tree's type.
       // Assuming we never look at this type, it would be safe to simply reuse
@@ -4304,7 +4308,7 @@ object Types {
     def unapply(to: TypeOf): Option[(Type, Tree)] = Some((to.underlyingTp, to.tree))
 
     def isLegalTopLevelTree(tree: Tree): Boolean = tree match {
-      case _: TypeApply | _: Apply | _: If => true
+      case _: TypeApply | _: Apply | _: If | _: Match => true
       case _ => false
     }
 
@@ -4346,16 +4350,6 @@ object Types {
         tp
 
     object If {
-      /** For explicit creation in patmat */
-      def apply(condTp: Type, thenTp: Type, elseTp: Type)(implicit ctx: Context): TypeOf = {
-        val thenTree = dummyTreeOfType(thenTp)
-        val elseTree = dummyTreeOfType(elseTp)
-        val ifTree   = untpd.If(dummyTreeOfType(condTp), thenTree, elseTree)
-        ctx.typeAssigner.assignType(ifTree, thenTree, elseTree)(ctx.enterTypeOf()).tpe
-          .asInstanceOf[TypeOf]
-      }
-
-      /** For unpickling */
       def apply(underlyingTp: Type, condTp: Type, thenTp: Type, elseTp: Type)(implicit ctx: Context): TypeOf =
         TypeOf(underlyingTp, untpd.If(
           dummyTreeOfType(condTp),
@@ -4380,35 +4374,32 @@ object Types {
     }
 
     object Match {
-      def apply(underlyingTp: Type, tree: Match)(implicit ctx: Context): Type =
-        new transform.PatternMatcher.Translator(NoType, null)(ctx.enterTypeOf())
-          .typeTranslateMatch(tree)
-      // def apply(underlyingTp: Type, selectorTp: Type,
-      //           caseTriples: List[(Type, Type, Type)])(implicit ctx: Context): TypeOf =
-      //   TypeOf(underlyingTp, untpd.Match(
-      //     dummyTreeOfType(selectorTp),
-      //     caseTriples.map { case (patTp, guardTp, bodyTp) =>
-      //       ast.tpd.CaseDef(
-      //         dummyTreeOfType(patTp),
-      //         if (guardTp.exists) dummyTreeOfType(guardTp) else EmptyTree,
-      //         dummyTreeOfType(bodyTp))
-      //     }
-      //   ))
+      def apply(underlyingTp: Type, selectorTp: Type,
+                caseTriples: List[(Type, Type, Type)])(implicit ctx: Context): TypeOf =
+        TypeOf(underlyingTp, untpd.Match(
+          dummyTreeOfType(selectorTp),
+          caseTriples.map { case (patTp, guardTp, bodyTp) =>
+            ast.tpd.CaseDef(
+              dummyTreeOfType(patTp),
+              if (guardTp.exists) dummyTreeOfType(guardTp) else EmptyTree,
+              dummyTreeOfType(bodyTp))
+          }
+        ))
 
-      // def unapply(to: TypeOf): Option[(Type, List[(Type, Type, Type)])] = to.tree match {
-      //   case Trees.Match(selector, cases) =>
-      //     val caseTriples = cases.map { cse => (cse.pat.tpe, cse.guard.tpe, cse.body.tpe) }
-      //     Some((selector.tpe, caseTriples))
-      //   case _ => None
-      // }
+      def unapply(to: TypeOf): Option[(Type, List[(Type, Type, Type)])] = to.tree match {
+        case Trees.Match(selector, cases) =>
+          val caseTriples = cases.map { cse => (cse.pat.tpe, cse.guard.tpe, cse.body.tpe) }
+          Some((selector.tpe, caseTriples))
+        case _ => None
+      }
 
-      // def derived(to: TypeOf)(selectorTp: Type, caseTriples: List[(Type, Type, Type)])(implicit ctx: Context): Type =
-      //   finalizeDerived(to, to.tree match {
-      //     case Trees.Match(selector, cases) =>
-      //       val ctx1 = ctx.enterTypeOf()
-      //       val cases1 = casesWithTpes(cases, caseTriples)(ctx1)
-      //       cpy.Match(to.tree)(treeWithTpe(selector, selectorTp), cases1)(ctx1)
-      //   })
+      def derived(to: TypeOf)(selectorTp: Type, caseTriples: List[(Type, Type, Type)])(implicit ctx: Context): Type =
+        finalizeDerived(to, to.tree match {
+          case Trees.Match(selector, cases) =>
+            val ctx1 = ctx.enterTypeOf()
+            val cases1 = casesWithTpes(cases, caseTriples)(ctx1)
+            cpy.Match(to.tree)(treeWithTpe(selector, selectorTp), cases1)(ctx1)
+        })
     }
 
     object Apply {
@@ -4527,6 +4518,9 @@ object Types {
     object Generic {
       def unapply(to: TypeOf): Option[List[Type]] = to.tree match {
         case Trees.If(cond, thenb, elseb) => Some(cond.tpe :: thenb.tpe :: elseb.tpe :: Nil)
+        case Trees.Match(selector, cases) =>
+          val caseTriplesFlattened = cases.flatMap { cse => List(cse.pat.tpe, cse.guard.tpe, cse.body.tpe) }
+          Some(selector.tpe :: caseTriplesFlattened)
         case Trees.Apply(fn, args)        => Some(fn.tpe :: args.map(_.tpe))
         case Trees.TypeApply(fn, args)    => Some(fn.tpe :: args.map(_.tpe))
       }
@@ -4693,6 +4687,9 @@ object Types {
               TypeOf.Apply.derived(tp)(this(tree.fun.tpe), tree.args.map(t => this(t.tpe)))
             case tree: If =>
               TypeOf.If.derived(tp)(this(tree.cond.tpe), this(tree.thenp.tpe), this(tree.elsep.tpe))
+            case tree: Match =>
+              val caseTriples = tree.cases.map { cse => (this(cse.pat.tpe), this(cse.guard.tpe), this(cse.body.tpe)) }
+              TypeOf.Match.derived(tp)(this(tree.selector.tpe), caseTriples)
             case tree =>
               throw new AssertionError(s"TypeOf shouldn't contain $tree as top-level node.")
           }
