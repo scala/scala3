@@ -240,7 +240,7 @@ object Trees {
     override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
 
     override def clone: this.type = {
-      val tree = super.clone.asInstanceOf[this.type]
+      val tree: this.type = super.clone.asInstanceOf[this.type]
       tree.myUniqueId = nxId
       tree
     }
