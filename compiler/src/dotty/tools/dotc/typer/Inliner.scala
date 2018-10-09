@@ -460,11 +460,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
       //  - the call's position
       // in the call field of an Inlined node.
       // The trace has enough info to completely reconstruct positions.
-      // The minimization is done for two reasons:
-      //  1. To save space (calls might contain large inline arguments, which would otherwise
-      //     be duplicated
-      //  2. To enable correct pickling (calls can share symbols with the inlined code, which
-      //     would trigger an assertion when pickling).
+      // The minimization is done for the following reason:
+      //   * To save space (calls might contain large inline arguments, which would otherwise be duplicated
       val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
 
       // Take care that only argument bindings go into `bindings`, since positions are
