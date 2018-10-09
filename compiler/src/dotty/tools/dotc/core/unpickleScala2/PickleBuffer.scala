@@ -13,9 +13,9 @@ import Flags._
  */
 class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
 
-  var bytes = data
-  var readIndex = from
-  var writeIndex = to
+  var bytes: Array[Byte] = data
+  var readIndex: Int = from
+  var writeIndex: Int = to
 
   /** Double bytes array */
   private def dble(): Unit = {
@@ -24,7 +24,7 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
     bytes = bytes1
   }
 
-  def ensureCapacity(capacity: Int) =
+  def ensureCapacity(capacity: Int): Unit =
     while (bytes.length < writeIndex + capacity) dble()
 
   // -- Basic output routines --------------------------------------------

@@ -14,7 +14,7 @@ import ast.tpd
 class TransformWildcards extends MiniPhase with IdentityDenotTransformer {
   import tpd._
 
-  override def phaseName = "transformWildcards"
+  override def phaseName: String = "transformWildcards"
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {

@@ -5,16 +5,13 @@ import scala.language.implicitConversions
 
 case class Xml(parts: String, args: List[Any])
 
-// Ideally should be an implicit class but the implicit conversion
-// has to be a inline method
-class XmlQuote(ctx: => StringContext) {
-  inline def xml(args: => Any*): Xml = ~XmlQuote.impl('(ctx), '(args))
-}
-
 object XmlQuote {
-  implicit inline def XmlQuote(ctx: => StringContext): XmlQuote = new XmlQuote(ctx)
 
-  def impl(ctx: Expr[StringContext], args: Expr[Seq[Any]])
+  implicit class SCOps(ctx: StringContext) {
+    inline def xml(args: => Any*): Xml = ~XmlQuote.impl('(this), '(args))
+  }
+
+  def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
           (implicit tasty: Tasty): Expr[Xml] = {
     import tasty._
     import Term._
@@ -41,19 +38,25 @@ object XmlQuote {
       case _ => false
     }
 
-    // _root_.scala.StringContext.apply([p0, ...]: String*)
-    val parts = ctx.toTasty match {
-      case Inlined(_, _,
-        Apply(
-          Select(Select(Select(Ident("_root_"), "scala", _), "StringContext", _), "apply", _),
-          List(Typed(Repeated(values), _)))) if values.forall(isStringConstant) =>
+    def isSCOpsConversion(tree: Term) =
+      tree.symbol.fullName == "XmlQuote$.SCOps"
+
+    def isStringContextApply(tree: Term) =
+      tree.symbol.fullName == "scala.StringContext$.apply"
+
+    // XmlQuote.SCOps(StringContext.apply([p0, ...]: String*)
+    val parts = receiver.toTasty.underlyingArgument match {
+      case Apply(conv, List(Apply(fun, List(Typed(Repeated(values), _)))))
+          if isSCOpsConversion(conv) &&
+             isStringContextApply(fun) &&
+             values.forall(isStringConstant) =>
         values.collect { case Literal(Constant.String(value)) => value }
       case tree =>
-        abort("String literal expected")
+        abort(s"String literal expected, but ${tree.show} found")
     }
 
     // [a0, ...]: Any*
-    val Inlined(_, _, Typed(Repeated(args0), _)) = args.toTasty
+    val Typed(Repeated(args0), _) = args.toTasty.underlyingArgument
 
     val string = parts.mkString("??")
     '(new Xml(~string.toExpr, ~liftListOfAny(args0)))

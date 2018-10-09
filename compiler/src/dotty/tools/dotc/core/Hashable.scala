@@ -43,10 +43,10 @@ trait Hashable {
   protected final def finishHash(hashCode: Int, arity: Int): Int =
     avoidSpecialHashes(hashing.finalizeHash(hashCode, arity))
 
-  final def typeHash(bs: Binders, tp: Type) =
+  final def typeHash(bs: Binders, tp: Type): Int =
     if (bs == null || tp.stableHash) tp.hash else tp.computeHash(bs)
 
-  def identityHash(bs: Binders) = avoidSpecialHashes(System.identityHashCode(this))
+  def identityHash(bs: Binders): Int = avoidSpecialHashes(System.identityHashCode(this))
 
   protected def finishHash(bs: Binders, seed: Int, arity: Int, tp: Type): Int = {
     val elemHash = typeHash(bs, tp)
@@ -105,11 +105,11 @@ trait Hashable {
   protected final def doHash(x1: Int, x2: Int): Int =
     finishHash(hashing.mix(hashing.mix(hashSeed, x1), x2), 1)
 
-  protected final def addDelta(elemHash: Int, delta: Int) =
+  protected final def addDelta(elemHash: Int, delta: Int): Int =
     if (elemHash == NotCached) NotCached
     else avoidSpecialHashes(elemHash + delta)
 
-  protected def avoidSpecialHashes(h: Int) =
+  protected def avoidSpecialHashes(h: Int): Int =
     if (h == NotCached) NotCachedAlt
     else if (h == HashUnknown) HashUnknownAlt
     else h

@@ -1,8 +1,6 @@
 package dotty.tools.dotc.tastyreflect
 
-import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.{Names, Types}
-import dotty.tools.dotc.tastyreflect.FromSymbol.definitionFromSym
 
 trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with TastyCoreImpl {
 
@@ -27,7 +25,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with Tasty
     def resultTpe(implicit ctx: Context): Type = tpe.resType
   }
 
-  def TypeLambdaDeco(tpe: Types.TypeLambda): TypeLambdaAPI = new TypeLambdaAPI {
+  def TypeLambdaDeco(tpe: TypeLambda): TypeLambdaAPI = new TypeLambdaAPI {
     def paramNames(implicit ctx: Context): List[String] = tpe.paramNames.map(_.toString)
     def paramTypes(implicit ctx: Context): List[TypeBounds] = tpe.paramInfos
     def resultTpe(implicit ctx: Context): Type = tpe.resType
@@ -35,7 +33,7 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with Tasty
 
   object IsType extends IsTypeExtractor {
     def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[Type] = x match {
-      case x: Types.TypeBounds => None
+      case x: TypeBounds => None
       case x if x == Types.NoPrefix => None
       case _ => Some(x)
     }
@@ -198,14 +196,14 @@ trait TypeOrBoundsOpsImpl extends scala.tasty.reflect.TypeOrBoundsOps with Tasty
 
   object IsTypeBounds extends IsTypeBoundsExtractor {
     def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[TypeBounds] = x match {
-      case x: Types.TypeBounds => Some(x)
+      case x: TypeBounds => Some(x)
       case _ => None
     }
   }
 
   object TypeBounds extends TypeBoundsExtractor {
     def unapply(x: TypeOrBounds)(implicit ctx: Context): Option[(Type, Type)] = x match {
-      case x: Types.TypeBounds => Some(x.lo, x.hi)
+      case x: TypeBounds => Some(x.lo, x.hi)
       case _ => None
     }
   }

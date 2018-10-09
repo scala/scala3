@@ -6,10 +6,6 @@ import TypeErasure.ErasedValueType
 import Types._
 import Contexts._
 import Symbols._
-import Decorators._
-import StdNames.nme
-import NameOps._
-import language.implicitConversions
 
 object TypeUtils {
   /** A decorator that provides methods on types

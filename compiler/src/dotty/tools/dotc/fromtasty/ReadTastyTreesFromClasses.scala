@@ -6,19 +6,15 @@ import core._
 import Decorators._
 import Contexts.Context
 import Symbols.{Symbol, ClassSymbol}
-import SymDenotations.{SymDenotation, ClassDenotation, LazyType}
+import SymDenotations.ClassDenotation
 import typer.FrontEnd
-import Names.TypeName
 import NameOps._
-import Types.Type
-import ast.tpd
 import ast.Trees.Tree
-import util.SourceFile
 import CompilationUnit.mkCompilationUnit
 
 class ReadTastyTreesFromClasses extends FrontEnd {
 
-  override def isTyper = false
+  override def isTyper: Boolean = false
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
     units.flatMap(readTASTY(_)(ctx.addMode(Mode.ReadPositions)))
@@ -39,11 +35,11 @@ class ReadTastyTreesFromClasses extends FrontEnd {
 
       def compilationUnit(cls: Symbol): Option[CompilationUnit] = cls match {
         case cls: ClassSymbol =>
-          (cls.treeOrProvider: @unchecked) match {
+          (cls.rootTreeOrProvider: @unchecked) match {
             case unpickler: tasty.DottyUnpickler =>
-              if (cls.tree.isEmpty) None
+              if (cls.rootTree.isEmpty) None
               else {
-                val unit = mkCompilationUnit(cls, cls.tree, forceTrees = true)
+                val unit = mkCompilationUnit(cls, cls.rootTree, forceTrees = true)
                 unit.pickled += (cls -> unpickler.unpickler.bytes)
                 Some(unit)
               }
@@ -64,7 +60,7 @@ class ReadTastyTreesFromClasses extends FrontEnd {
         case clsd: ClassDenotation =>
           clsd.infoOrCompleter match {
             case info: ClassfileLoader =>
-              info.load(clsd) // sets cls.treeOrProvider and cls.moduleClass.treeProvider as a side-effect
+              info.load(clsd) // sets cls.rootTreeOrProvider and cls.moduleClass.treeProvider as a side-effect
             case _ =>
           }
           def moduleClass = clsd.owner.info.member(className.moduleClassName).symbol

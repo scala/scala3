@@ -7,7 +7,6 @@ import DenotTransformers.SymTransformer
 import Flags._
 import SymDenotations._
 import Symbols._
-import Types._
 import typer.RefChecks
 import MegaPhase.MiniPhase
 import ast.tpd
@@ -22,32 +21,32 @@ import ast.tpd
 class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
   import tpd._
 
-  override def phaseName = PruneErasedDefs.name
+  override def phaseName: String = PruneErasedDefs.name
 
-  override def changesMembers = true   // makes erased members private
+  override def changesMembers: Boolean = true   // makes erased members private
 
-  override def runsAfterGroupsOf = Set(RefChecks.name, ExplicitOuter.name)
+  override def runsAfterGroupsOf: Set[String] = Set(RefChecks.name, ExplicitOuter.name)
 
   override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (sym.isEffectivelyErased && !sym.is(Private) && sym.owner.isClass)
       sym.copySymDenotation(initFlags = sym.flags | Private)
     else sym
 
-  override def transformApply(tree: Apply)(implicit ctx: Context) =
+  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
     if (tree.fun.tpe.widen.isErasedMethod)
       cpy.Apply(tree)(tree.fun, tree.args.map(arg => ref(defn.Predef_undefined)))
     else tree
 
-  override def transformValDef(tree: ValDef)(implicit ctx: Context) =
+  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
     if (tree.symbol.isEffectivelyErased && !tree.rhs.isEmpty)
       cpy.ValDef(tree)(rhs = ref(defn.Predef_undefined))
     else tree
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context) =
+  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree =
     if (tree.symbol.isEffectivelyErased && !tree.rhs.isEmpty)
       cpy.DefDef(tree)(rhs = ref(defn.Predef_undefined))
     else tree
 }
 object PruneErasedDefs {
-  val name = "pruneErasedDefs"
+  val name: String = "pruneErasedDefs"
 }

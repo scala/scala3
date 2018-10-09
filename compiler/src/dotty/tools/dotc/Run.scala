@@ -5,17 +5,15 @@ import core._
 import Contexts._
 import Periods._
 import Symbols._
-import Phases._
 import Types._
 import Scopes._
-import typer.{FrontEnd, ImportInfo, RefChecks, Typer}
+import typer.{ImportInfo, Typer}
 import Decorators._
 import io.{AbstractFile, PlainFile}
 
 import scala.io.Codec
 import util.{Set => _, _}
 import reporting.Reporter
-import transform.TreeChecker
 import rewrites.Rewrites
 import java.io.{BufferedWriter, OutputStreamWriter}
 
@@ -26,7 +24,6 @@ import parsing.JavaParsers.JavaParser
 import typer.ImplicitRunInfo
 import collection.mutable
 
-import scala.annotation.tailrec
 import dotty.tools.io.VirtualFile
 
 import scala.util.control.NonFatal
@@ -67,7 +64,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private[this] var myCtx = rootContext(ictx)
 
   /** The context created for this run */
-  def runContext = myCtx
+  def runContext: Context = myCtx
 
   protected[this] implicit def ctx: Context = myCtx
   assert(ctx.runId <= Periods.MaxPossibleRunId)
@@ -131,7 +128,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *  or we need to assemble phases on each run, and take -Yskip, -Ystop into
    *  account. I think the latter would be preferable.
    */
-  def compileSources(sources: List[SourceFile]) =
+  def compileSources(sources: List[SourceFile]): Unit =
     if (sources forall (_.exists)) {
       units = sources map (new CompilationUnit(_))
       compileUnits()
@@ -267,7 +264,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     r
   }
 
-  override def reset() = {
+  override def reset(): Unit = {
     super[ImplicitRunInfo].reset()
     super[ConstraintRunInfo].reset()
     myCtx = null

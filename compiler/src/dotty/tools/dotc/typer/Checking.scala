@@ -64,7 +64,7 @@ object Checking {
    *     Unreducible applications correspond to general existentials, and we
    *     cannot handle those.
    */
-  def checkAppliedType(tree: AppliedTypeTree, boundsCheck: Boolean)(implicit ctx: Context) = {
+  def checkAppliedType(tree: AppliedTypeTree, boundsCheck: Boolean)(implicit ctx: Context): Unit = {
     val AppliedTypeTree(tycon, args) = tree
     // If `args` is a list of named arguments, return corresponding type parameters,
     // otherwise return type parameters unchanged
@@ -508,7 +508,7 @@ object Checking {
   }
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = {
+  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context): Unit = {
     def checkValueClassMember(stat: Tree) = stat match {
       case _: TypeDef if stat.symbol.isClass =>
         ctx.error(ValueClassesMayNotDefineInner(clazz, stat.symbol), stat.pos)
@@ -538,6 +538,8 @@ object Checking {
           case param :: params =>
             if (param.is(Mutable))
               ctx.error(ValueClassParameterMayNotBeAVar(clazz, param), param.pos)
+            if (param.info.isInstanceOf[ExprType])
+              ctx.error(ValueClassParameterMayNotBeCallByName(clazz, param), param.pos)
             if (param.is(Erased))
               ctx.error("value class first parameter cannot be `erased`", param.pos)
             else {
@@ -677,14 +679,35 @@ trait Checking {
     val purityLevel = if (isFinal) Idempotent else Pure
     tree.tpe.widenTermRefExpr match {
       case tp: ConstantType if exprPurity(tree) >= purityLevel => // ok
-      case _ =>
-        val allow = ctx.erasedTypes || ctx.inInlineMethod
-        if (!allow) ctx.error(em"$what must be a constant expression", tree.pos)
+      case tp =>
+        def isCaseClassApply(sym: Symbol): Boolean =
+          sym.name == nme.apply && sym.is(Synthetic) && sym.owner.is(Module) && sym.owner.companionClass.is(Case)
+        def isCaseClassNew(sym: Symbol): Boolean =
+          sym.isPrimaryConstructor && sym.owner.is(Case) && sym.owner.isStatic
+        def isCaseObject(sym: Symbol): Boolean = {
+          // TODO add alias to Nil in scala package
+          sym.is(Case) && sym.is(Module)
+        }
+        val allow =
+          ctx.erasedTypes ||
+          ctx.inInlineMethod ||
+          (tree.symbol.isStatic && isCaseObject(tree.symbol) || isCaseClassApply(tree.symbol)) ||
+          isCaseClassNew(tree.symbol)
+        if (!allow) ctx.error(em"$what must be a known value", tree.pos)
+        else {
+          def checkArgs(tree: Tree): Unit = tree match {
+            case Apply(fn, args) =>
+              args.foreach(arg => checkInlineConformant(arg, isFinal, what))
+              checkArgs(fn)
+            case _ =>
+          }
+          checkArgs(tree)
+        }
     }
   }
 
   /** A hook to exclude selected symbols from double declaration check */
-  def excludeFromDoubleDeclCheck(sym: Symbol)(implicit ctx: Context) = false
+  def excludeFromDoubleDeclCheck(sym: Symbol)(implicit ctx: Context): Boolean = false
 
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = {
@@ -719,7 +742,7 @@ trait Checking {
     }
   }
 
-  def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) =
+  def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context): Unit =
     if (!ctx.isAfterTyper) {
       val called = call.tpe.classSymbol
       if (caller is Trait)
@@ -744,7 +767,7 @@ trait Checking {
     else tpt
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) =
+  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context): Unit =
     Checking.checkDerivedValueClass(clazz, stats)
 
   /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
@@ -848,7 +871,7 @@ trait Checking {
   }
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
-  def checkInInlineContext(what: String, pos: Position)(implicit ctx: Context) =
+  def checkInInlineContext(what: String, pos: Position)(implicit ctx: Context): Unit =
     if (!ctx.inInlineMethod && !ctx.isInlineContext)
       ctx.error(em"$what can only be used in an inline method", pos)
 
@@ -953,16 +976,16 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionDefOK(sym: Symbol)(implicit ctx: Context): Unit = ()
   override def checkImplicitConversionUseOK(sym: Symbol, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
-  override def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context) = ()
+  override def checkInlineConformant(tree: Tree, isFinal: Boolean, what: => String)(implicit ctx: Context): Unit = ()
   override def checkNoDoubleDeclaration(cls: Symbol)(implicit ctx: Context): Unit = ()
-  override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context) = ()
+  override def checkParentCall(call: Tree, caller: ClassSymbol)(implicit ctx: Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(implicit ctx: Context): Tree = tpt
   override def checkNotSingleton(tpt: Tree, where: String)(implicit ctx: Context): Tree = tpt
-  override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context) = ()
-  override def checkTraitInheritance(parentSym: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
-  override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: Position)(implicit ctx: Context) = ()
+  override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(implicit ctx: Context): Unit = ()
+  override def checkTraitInheritance(parentSym: Symbol, cls: ClassSymbol, pos: Position)(implicit ctx: Context): Unit = ()
+  override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(implicit ctx: Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: Position)(implicit ctx: Context): Type = tp
-  override def checkInInlineContext(what: String, pos: Position)(implicit ctx: Context) = ()
+  override def checkInInlineContext(what: String, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkFeature(base: ClassSymbol, name: TermName, description: => String, featureUseSite: Symbol, pos: Position)(implicit ctx: Context): Unit = ()
 }

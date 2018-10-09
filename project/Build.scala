@@ -35,8 +35,8 @@ object ExposedValues extends AutoPlugin {
 
 object Build {
 
-  val baseVersion = "0.10.0"
-  val scalacVersion = "2.12.6"
+  val baseVersion = "0.11.0"
+  val scalacVersion = "2.12.7"
 
   val dottyOrganization = "ch.epfl.lamp"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
@@ -380,6 +380,12 @@ object Build {
     val otherDeps = (dependencyClasspath in Compile).value.map(_.data).mkString(File.pathSeparator)
     dottyLib + File.pathSeparator + dottyInterfaces + File.pathSeparator + otherDeps
   }
+
+  lazy val semanticDBSettings = Seq(
+    baseDirectory in (Compile, run) := baseDirectory.value / "..",
+    baseDirectory in Test := baseDirectory.value / "..",
+    libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test
+  )
 
   // Settings shared between dotty-doc and dotty-doc-bootstrapped
   lazy val dottyDocSettings = Seq(
@@ -904,6 +910,8 @@ object Build {
   lazy val `dotty-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
   lazy val `dotty-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
 
+  lazy val `dotty-semanticdb` = project.in(file("semanticdb")).asDottySemanticDB(Bootstrapped)
+
   // Depend on dotty-library so that sbt projects using dotty automatically
   // depend on the dotty-library
   lazy val `scala-library` = project.
@@ -971,7 +979,7 @@ object Build {
     settings(commonSettings).
     settings(
       EclipseKeys.skipProject := true,
-      version := "0.1.5", // Keep in sync with package.json
+      version := "0.1.7-snapshot", // Keep in sync with package.json
       autoScalaLibrary := false,
       publishArtifact := false,
       includeFilter in unmanagedSources := NothingFilter | "*.ts" | "**.json",
@@ -992,10 +1000,10 @@ object Build {
         val tsc = workingDir / "node_modules" / ".bin" / "tsc"
         runProcess(Seq(tsc.getAbsolutePath, "--pretty", "--project", workingDir.getAbsolutePath), wait = true)
 
-        // Currently, vscode-dotty depends on daltonjorge.scala for syntax highlighting,
+        // vscode-dotty depends on scala-lang.scala for syntax highlighting,
         // this is not automatically installed when starting the extension in development mode
         // (--extensionDevelopmentPath=...)
-        installCodeExtension(codeCommand.value, "daltonjorge.scala")
+        installCodeExtension(codeCommand.value, "scala-lang.scala")
 
         sbt.internal.inc.Analysis.Empty
       }.dependsOn(managedResources in Compile).value,
@@ -1296,6 +1304,10 @@ object Build {
       dependsOn(dottyCompiler).
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
+
+    def asDottySemanticDB(implicit mode: Mode): Project = project.withCommonSettings.
+      dependsOn(dottyCompiler).
+      settings(semanticDBSettings)
 
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).

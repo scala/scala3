@@ -1,7 +1,7 @@
 package dotty.tools.dotc.classpath
 
 import dotty.tools.io.ClassRepresentation
-import dotty.tools.io.{AbstractFile, Path, PlainFile, VirtualDirectory}
+import dotty.tools.io.{AbstractFile, VirtualDirectory}
 import FileUtils._
 import java.net.URL
 

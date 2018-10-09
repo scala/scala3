@@ -75,17 +75,24 @@ class QuoteDriver extends Driver {
 
   override def initCtx: Context = {
     val ictx = contextBase.initialCtx
-    var classpath = System.getProperty("java.class.path")
+    ictx.settings.classpath.update(QuoteDriver.currentClasspath)(ictx)
+    ictx
+  }
+
+}
+
+object QuoteDriver {
+
+  def currentClasspath: String = {
+    val classpath0 = System.getProperty("java.class.path")
     this.getClass.getClassLoader match {
       case cl: URLClassLoader =>
         // Loads the classes loaded by this class loader
         // When executing `run` or `test` in sbt the classpath is not in the property java.class.path
         val newClasspath = cl.getURLs.map(_.getFile())
-        classpath = newClasspath.mkString("", java.io.File.pathSeparator, if (classpath == "") "" else java.io.File.pathSeparator + classpath)
-      case _ =>
+        newClasspath.mkString("", java.io.File.pathSeparator, if (classpath0 == "") "" else java.io.File.pathSeparator + classpath0)
+      case _ => classpath0
     }
-    ictx.settings.classpath.update(classpath)(ictx)
-    ictx
   }
 
 }

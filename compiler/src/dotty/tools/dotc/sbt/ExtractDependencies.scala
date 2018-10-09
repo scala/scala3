@@ -441,14 +441,14 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     }
   }
 
-  def addTypeDependency(tpe: Type)(implicit ctx: Context) = {
+  def addTypeDependency(tpe: Type)(implicit ctx: Context): Unit = {
     val traverser = new TypeDependencyTraverser {
       def addDependency(symbol: Symbol) = addMemberRefDependency(symbol)
     }
     traverser.traverse(tpe)
   }
 
-  def addPatMatDependency(tpe: Type)(implicit ctx: Context) = {
+  def addPatMatDependency(tpe: Type)(implicit ctx: Context): Unit = {
     val traverser = new TypeDependencyTraverser {
       def addDependency(symbol: Symbol) =
         if (!ignoreDependency(symbol) && symbol.is(Sealed)) {

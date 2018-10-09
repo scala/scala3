@@ -16,4 +16,6 @@ abstract class Show[T <: Tasty with Singleton](val tasty: T) {
 
   def showConstant(const: tasty.Constant)(implicit ctx: tasty.Context): String
 
+  def showSymbol(symbol: tasty.Symbol)(implicit ctx: tasty.Context): String
+
 }

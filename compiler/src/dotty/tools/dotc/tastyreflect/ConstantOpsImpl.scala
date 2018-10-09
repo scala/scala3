@@ -2,7 +2,6 @@ package dotty.tools.dotc.tastyreflect
 
 import dotty.tools.dotc.core.Constants
 
-import scala.tasty.util.Show
 
 trait ConstantOpsImpl extends scala.tasty.reflect.ConstantOps with TastyCoreImpl {
 

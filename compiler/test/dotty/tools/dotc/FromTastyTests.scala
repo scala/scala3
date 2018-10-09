@@ -5,6 +5,8 @@ package dotc
 import org.junit.{AfterClass, Test}
 import vulpix._
 
+import java.io.{File => JFile}
+
 import scala.concurrent.duration._
 
 class FromTastyTests extends ParallelTesting {
@@ -26,7 +28,7 @@ class FromTastyTests extends ParallelTesting {
     // > dotc -Ythrough-tasty -Ycheck:all <source>
 
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
-    compileTastyInDir("tests/pos", defaultOptions,
+    compileTastyInDir(s"tests${JFile.separator}pos", defaultOptions,
       fromTastyFilter = FileFilter.exclude(TestSources.posFromTastyBlacklisted),
       decompilationFilter = FileFilter.exclude(TestSources.posDecompilationBlacklisted),
       recompilationFilter = FileFilter.include(TestSources.posRecompilationWhitelist)
@@ -40,7 +42,7 @@ class FromTastyTests extends ParallelTesting {
     // > dotr Test
 
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
-    compileTastyInDir("tests/run", defaultOptions,
+    compileTastyInDir(s"tests${JFile.separator}run", defaultOptions,
       fromTastyFilter = FileFilter.exclude(TestSources.runFromTastyBlacklisted),
       decompilationFilter = FileFilter.exclude(TestSources.runDecompilationBlacklisted),
       recompilationFilter = FileFilter.include(TestSources.runRecompilationWhitelist)

@@ -9,8 +9,8 @@ import core.Contexts.Context
 import java.util.Optional
 
 object MessageContainer {
-  val nonSensicalStartTag = "<nonsensical>"
-  val nonSensicalEndTag = "</nonsensical>"
+  val nonSensicalStartTag: String = "<nonsensical>"
+  val nonSensicalEndTag: String = "</nonsensical>"
 
   implicit class MessageContext(val c: Context) extends AnyVal {
     def shouldExplain(cont: MessageContainer): Boolean = {
@@ -68,8 +68,8 @@ class MessageContainer(
    *  they look weird and are normally follow-up errors to something that was
    *  diagnosed before.
    */
-  def isNonSensical = { message; myIsNonSensical }
+  def isNonSensical: Boolean = { message; myIsNonSensical }
 
-  override def toString = s"$getClass at $pos: ${message}"
-  override def getMessage() = message
+  override def toString: String = s"$getClass at $pos: ${message}"
+  override def getMessage(): String = message
 }

@@ -7,18 +7,14 @@ package transform
 
 import dotty.tools.dotc.transform.MegaPhase._
 import ValueClasses._
-import dotty.tools.dotc.ast.{Trees, tpd}
-import scala.collection.{ mutable, immutable }
+import dotty.tools.dotc.ast.tpd
+import scala.collection.mutable
 import core._
-import dotty.tools.dotc.core.Phases.Phase
-import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
+import Types._, Contexts._, Names._, Flags._, DenotTransformers._
+import SymDenotations._, Symbols._, StdNames._, Denotations._
 import TypeErasure.{ valueErasure, ErasedValueType }
-import TypeUtils._
 import NameKinds.{ExtMethName, UniqueExtMethName}
-import util.Positions._
 import Decorators._
-import SymUtils._
 
 /**
  * Perform Step 1 in the inline classes SIP: Creates extension methods for all
@@ -47,14 +43,14 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
   /** the following two members override abstract members in Transform */
   override def phaseName: String = ExtensionMethods.name
 
-  override def runsAfter = Set(
+  override def runsAfter: Set[String] = Set(
     ElimRepeated.name,
     ProtectedAccessors.name,  // protected accessors cannot handle code that is moved from class to companion object
   )
 
-  override def runsAfterGroupsOf = Set(FirstTransform.name) // need companion objects to exist
+  override def runsAfterGroupsOf: Set[String] = Set(FirstTransform.name) // need companion objects to exist
 
-  override def changesMembers = true // the phase adds extension methods
+  override def changesMembers: Boolean = true // the phase adds extension methods
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
     case moduleClassSym: ClassDenotation if moduleClassSym is ModuleClass =>
@@ -173,7 +169,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
 }
 
 object ExtensionMethods {
-  val name = "extmethods"
+  val name: String = "extmethods"
 
   /** Generate stream of possible names for the extension version of given instance method `imeth`.
    *  If the method is not overloaded, this stream consists of just "imeth$extension".

@@ -3,12 +3,11 @@ package typer
 
 import dotty.tools.dotc.ast.{ Trees, tpd }
 import core._
-import Types._, Contexts._, Flags._, Symbols._, Annotations._, Trees._, NameOps._
+import Types._, Contexts._, Flags._, Symbols._, Trees._
 import Decorators._
 import Variances._
 import NameKinds._
 import util.Positions._
-import rewrites.Rewrites.patch
 import config.Printers.variances
 import reporting.trace
 
@@ -18,7 +17,7 @@ import reporting.trace
  */
 object VarianceChecker {
   case class VarianceError(tvar: Symbol, required: Variance)
-  def check(tree: tpd.Tree)(implicit ctx: Context) =
+  def check(tree: tpd.Tree)(implicit ctx: Context): Unit =
     new VarianceChecker()(ctx).Traverser.traverse(tree)
 }
 

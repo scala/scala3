@@ -78,8 +78,8 @@ class SiteTests extends DottyDocTest with SourceFileOps with CheckFromSource {
   }
 
   @Test def siteStructure = {
-    val assets = site.staticAssets.map(site.stripRoot(_)).toSet
-    val compd  = site.compilableFiles.map(site.stripRoot(_)).toSet
+    val assets = site.staticAssets.map(site.stripRoot(_).replace('\\','/')).toSet
+    val compd  = site.compilableFiles.map(site.stripRoot(_).replace('\\','/')).toSet
 
     val expectedAssets = Set(
       "css/toolbar.css",

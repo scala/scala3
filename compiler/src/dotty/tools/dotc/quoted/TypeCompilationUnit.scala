@@ -7,5 +7,5 @@ import scala.quoted.Type
 
 /* Compilation unit containing the contents of a quoted type */
 class TypeCompilationUnit(val tpe: Type[_]) extends CompilationUnit(NoSource) {
-  override def toString = s"Type($tpe)"
+  override def toString: String = s"Type($tpe)"
 }

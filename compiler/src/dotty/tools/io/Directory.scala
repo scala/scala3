@@ -9,9 +9,7 @@
 package dotty.tools.io
 
 import java.nio.file.{Files, Paths}
-import java.util.stream.Collectors
 
-import scala.collection.JavaConverters._
 
 /**
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''

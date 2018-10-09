@@ -8,7 +8,7 @@ object Macros {
   def impl(tasty: Tasty): Unit = {
     import tasty._
 
-    def foo(tree: Tree, term: Term, typeTree: TypeTree, parent: Parent) = {
+    def foo(tree: Tree, term: Term, typeTree: TypeTree, parent: TermOrTypeTree) = {
 
       tree match {
         case IsTerm(tree) =>

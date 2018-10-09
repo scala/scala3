@@ -24,15 +24,15 @@ class VirtualFile(val name: String, override val path: String) extends AbstractF
    */
   def this(name: String) = this(name, name)
 
-  override def hashCode = path.hashCode
-  override def equals(that: Any) = that match {
+  override def hashCode: Int = path.hashCode
+  override def equals(that: Any): Boolean = that match {
     case x: VirtualFile => x.path == path
     case _              => false
   }
 
   private[this] var content = Array.emptyByteArray
 
-  def absolute = this
+  def absolute: AbstractFile = this
 
   /** Returns null. */
   def jpath: JPath = null
@@ -92,5 +92,5 @@ class VirtualFile(val name: String, override val path: String) extends AbstractF
   /** Returns an abstract file with the given name. It does not
    *  check that it exists.
    */
-  def lookupNameUnchecked(name: String, directory: Boolean) = unsupported()
+  def lookupNameUnchecked(name: String, directory: Boolean): AbstractFile = unsupported()
 }

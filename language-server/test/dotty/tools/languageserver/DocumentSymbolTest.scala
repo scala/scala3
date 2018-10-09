@@ -8,6 +8,10 @@ import dotty.tools.languageserver.util.Code._
 
 class DocumentSymbolTest {
 
+  @Test def withErroneousTree: Unit =
+    code"class ${m1}Foo$m2 { def }"
+      .withSource.documentSymbol(m1, (m1 to m2).symInfo("Foo", SymbolKind.Class))
+
   @Test def documentSymbol0: Unit =
     code"class ${m1}Foo$m2".withSource.documentSymbol(m1, (m1 to m2).symInfo("Foo", SymbolKind.Class))
 

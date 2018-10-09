@@ -1,5 +1,5 @@
 class B extends A {
-  inline def f(x: Int): Int = inline x match { // error
+  inline def f(x: Int): Int = x match { // error
     case 0 => 1
     case _ => x
   }

@@ -6,7 +6,6 @@ import Periods._
 import Names._
 import Scopes._
 import Flags._
-import java.lang.AssertionError
 import Decorators._
 import Symbols._
 import Contexts._
@@ -14,7 +13,6 @@ import SymDenotations._
 import printing.Texts._
 import printing.Printer
 import Types._
-import Annotations._
 import util.Positions._
 import DenotTransformers._
 import StdNames._
@@ -25,11 +23,10 @@ import tpd.{Tree, TreeProvider, TreeOps}
 import ast.TreeTypeMap
 import Constants.Constant
 import reporting.diagnostic.Message
-import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
-import util.{NoSource, DotClass, Property}
+import util.{NoSource, Property}
 import scala.collection.JavaConverters._
 import scala.annotation.internal.sharable
 import config.Printers.typr
@@ -49,7 +46,7 @@ trait Symbols { this: Context =>
     new Symbol(coord, ctx.nextId).asInstanceOf[Symbol { type ThisName = N }]
 
   /** Create a class symbol without a denotation. */
-  def newNakedClassSymbol(coord: Coord = NoCoord, assocFile: AbstractFile = null)(implicit ctx: Context) =
+  def newNakedClassSymbol(coord: Coord = NoCoord, assocFile: AbstractFile = null)(implicit ctx: Context): ClassSymbol =
     new ClassSymbol(coord, assocFile, ctx.nextId)
 
 // ---- Symbol creation methods ----------------------------------
@@ -132,7 +129,7 @@ trait Symbols { this: Context =>
     newClassSymbol(owner, name, flags, completer, privateWithin, coord, assocFile)
   }
 
-  def newRefinedClassSymbol(coord: Coord = NoCoord) =
+  def newRefinedClassSymbol(coord: Coord = NoCoord): ClassSymbol =
     newCompleteClassSymbol(ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil, coord = coord)
 
   /** Create a module symbol with associated module class
@@ -187,9 +184,9 @@ trait Symbols { this: Context =>
           owner.thisType, modcls, parents, decls, TermRef(owner.thisType, module)),
         privateWithin, coord, assocFile)
 
-  val companionMethodFlags = Flags.Synthetic | Flags.Private | Flags.Method
+  val companionMethodFlags: FlagSet = Flags.Synthetic | Flags.Private | Flags.Method
 
-  def synthesizeCompanionMethod(name: Name, target: SymDenotation, owner: SymDenotation)(implicit ctx: Context) =
+  def synthesizeCompanionMethod(name: Name, target: SymDenotation, owner: SymDenotation)(implicit ctx: Context): Symbol =
     if (owner.exists && target.exists && !owner.unforcedIsAbsent && !target.unforcedIsAbsent) {
       val existing = owner.unforcedDecls.lookup(name)
 
@@ -224,7 +221,7 @@ trait Symbols { this: Context =>
   /** Define a new symbol associated with a Bind or pattern wildcard and
    *  make it gadt narrowable.
    */
-  def newPatternBoundSymbol(name: Name, info: Type, pos: Position) = {
+  def newPatternBoundSymbol(name: Name, info: Type, pos: Position): Symbol = {
     val sym = newSymbol(owner, name, Case, info, coord = pos)
     if (name.isTypeName) gadt.setBounds(sym, info.bounds)
     sym
@@ -257,7 +254,7 @@ trait Symbols { this: Context =>
    *  dummy is then the class of the template itself. By contrast, the owner of `y`
    *  would be `fld2`. There is a single local dummy per template.
    */
-  def newLocalDummy(cls: Symbol, coord: Coord = NoCoord) =
+  def newLocalDummy(cls: Symbol, coord: Coord = NoCoord): TermSymbol =
     newSymbol(cls, nme.localDummyName(cls), NonMember, NoType)
 
   /** Create an import symbol pointing back to given qualifier `expr`. */
@@ -269,15 +266,15 @@ trait Symbols { this: Context =>
     newSymbol(owner, nme.IMPORT, Synthetic | NonMember, info, coord = coord)
 
   /** Create a class constructor symbol for given class `cls`. */
-  def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
+  def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord): TermSymbol =
     newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes, cls.typeRef), privateWithin, coord)
 
   /** Create an empty default constructor symbol for given class `cls`. */
-  def newDefaultConstructor(cls: ClassSymbol) =
+  def newDefaultConstructor(cls: ClassSymbol): TermSymbol =
     newConstructor(cls, EmptyFlags, Nil, Nil)
 
   /** Create a synthetic lazy implicit value */
-  def newLazyImplicit(info: Type) =
+  def newLazyImplicit(info: Type): TermSymbol =
     newSymbol(owner, LazyImplicitName.fresh(), Lazy, info)
 
   /** Create a symbol representing a selftype declaration for class `cls`. */
@@ -311,9 +308,9 @@ trait Symbols { this: Context =>
   /** Create a new skolem symbol. This is not the same as SkolemType, even though the
    *  motivation (create a singleton referencing to a type) is similar.
    */
-  def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
+  def newSkolem(tp: Type): TermSymbol = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | NonMember | Permanent, tp)
 
-  def newErrorSymbol(owner: Symbol, name: Name, msg: => Message) = {
+  def newErrorSymbol(owner: Symbol, name: Name, msg: => Message): Symbol = {
     val errType = ErrorType(msg)
     newSymbol(owner, name, SyntheticArtifact,
         if (name.isTypeName) TypeAlias(errType) else errType)
@@ -407,7 +404,7 @@ object Symbols {
   implicit def eqSymbol: Eq[Symbol, Symbol] = Eq
 
   /** Tree attachment containing the identifiers in a tree as a sorted array */
-  val Ids = new Property.Key[Array[String]]
+  val Ids: Property.Key[Array[String]] = new Property.Key
 
   /** A Symbol represents a Scala definition/declaration or a package.
    *  @param coord  The coordinates of the symbol (a position or an index)
@@ -426,19 +423,38 @@ object Symbols {
      *
      *  @pre coord == NoCoord
      */
-    private[core] def coord_=(c: Coord) = {
+    private[core] def coord_=(c: Coord): Unit = {
       assert(myCoord == NoCoord)
       myCoord = c
     }
+
+    private[this] var myDefTree: Tree = null
+
+    /** The tree defining the symbol at pickler time, EmptyTree if none was retained */
+    def defTree: Tree =
+      if (myDefTree == null) tpd.EmptyTree else myDefTree
+
+    /** Set defining tree if this symbol retains its definition tree */
+    def defTree_=(tree: Tree)(implicit ctx: Context): Unit =
+      if (retainsDefTree) myDefTree = tree
+
+    /** Does this symbol retain its definition tree?
+     *  A good policy for this needs to balance costs and benefits, where
+     *  costs are mainly memoty leaks, in particular across runs.
+     */
+    def retainsDefTree(implicit ctx: Context): Boolean =
+      ctx.settings.YretainTrees.value ||
+      denot.owner.isTerm ||        // no risk of leaking memory after a run for these
+      denot.is(InlineOrProxy)      // need to keep inline info
 
     /** The last denotation of this symbol */
     private[this] var lastDenot: SymDenotation = _
     private[this] var checkedPeriod: Period = Nowhere
 
-    private[core] def invalidateDenotCache() = { checkedPeriod = Nowhere }
+    private[core] def invalidateDenotCache(): Unit = { checkedPeriod = Nowhere }
 
     /** Set the denotation of this symbol */
-    private[core] def denot_=(d: SymDenotation) = {
+    private[core] def denot_=(d: SymDenotation): Unit = {
       lastDenot = d
       checkedPeriod = Nowhere
     }
@@ -457,7 +473,7 @@ object Symbols {
     }
 
     /** Overridden in NoSymbol */
-    protected def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context) = {
+    protected def recomputeDenot(lastd: SymDenotation)(implicit ctx: Context): SymDenotation = {
       val newd = lastd.current.asInstanceOf[SymDenotation]
       lastDenot = newd
       newd
@@ -510,13 +526,13 @@ object Symbols {
      *  conservatively returns `false` if symbol does not yet have a denotation, or denotation
      *  is a class that is not yet read.
      */
-    final def isPrivate(implicit ctx: Context) = {
+    final def isPrivate(implicit ctx: Context): Boolean = {
       val d = lastDenot
       d != null && d.flagsUNSAFE.is(Private)
     }
 
     /** The symbol's signature if it is completed or a method, NotAMethod otherwise. */
-    final def signature(implicit ctx: Context) =
+    final def signature(implicit ctx: Context): Signature =
       if (lastDenot != null && (lastDenot.isCompleted || lastDenot.is(Method)))
         denot.signature
       else
@@ -571,7 +587,7 @@ object Symbols {
       }
 
     /** This symbol, if it exists, otherwise the result of evaluating `that` */
-    def orElse(that: => Symbol)(implicit ctx: Context) =
+    def orElse(that: => Symbol)(implicit ctx: Context): Symbol =
       if (this.exists) this else that
 
     /** If this symbol satisfies predicate `p` this symbol, otherwise `NoSymbol` */
@@ -624,21 +640,21 @@ object Symbols {
      *  the implicit conversion `sourcePos` will return the wrong result, careful!
      *  TODO: Consider changing this method return type to `SourcePosition`.
      */
-    def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
+    final def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
 
     // ParamInfo types and methods
-    def isTypeParam(implicit ctx: Context) = denot.is(TypeParam)
-    def paramName(implicit ctx: Context) = name.asInstanceOf[ThisName]
-    def paramInfo(implicit ctx: Context) = denot.info
-    def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context) = pre.memberInfo(this)
+    def isTypeParam(implicit ctx: Context): Boolean = denot.is(TypeParam)
+    def paramName(implicit ctx: Context): ThisName = name.asInstanceOf[ThisName]
+    def paramInfo(implicit ctx: Context): Type = denot.info
+    def paramInfoAsSeenFrom(pre: Type)(implicit ctx: Context): Type = pre.memberInfo(this)
     def paramInfoOrCompleter(implicit ctx: Context): Type = denot.infoOrCompleter
-    def paramVariance(implicit ctx: Context) = denot.variance
-    def paramRef(implicit ctx: Context) = denot.typeRef
+    def paramVariance(implicit ctx: Context): Int = denot.variance
+    def paramRef(implicit ctx: Context): TypeRef = denot.typeRef
 
 // -------- Printing --------------------------------------------------------
 
     /** The prefix string to be used when displaying this symbol without denotation */
-    protected def prefixString = "Symbol"
+    protected def prefixString: String = "Symbol"
 
     override def toString: String =
       if (lastDenot == null) s"Naked$prefixString#$id"
@@ -653,7 +669,7 @@ object Symbols {
     def showName(implicit ctx: Context): String = ctx.printer.nameString(this)
     def showFullName(implicit ctx: Context): String = ctx.printer.fullNameString(this)
 
-    override def hashCode() = id // for debugging.
+    override def hashCode(): Int = id // for debugging.
   }
 
   type TermSymbol = Symbol { type ThisName = TermName }
@@ -672,13 +688,13 @@ object Symbols {
       * Returns the TypeDef tree (possibly wrapped inside PackageDefs) for this class, otherwise EmptyTree.
       * This will force the info of the class.
       */
-    def tree(implicit ctx: Context): Tree = treeContaining("")
+    def rootTree(implicit ctx: Context): Tree = rootTreeContaining("")
 
     /** Same as `tree` but load tree only if `id == ""` or the tree might contain `id`.
      *  For Tasty trees this means consulting whether the name table defines `id`.
      *  For already loaded trees, we maintain the referenced ids in an attachment.
      */
-    def treeContaining(id: String)(implicit ctx: Context): Tree = {
+    def rootTreeContaining(id: String)(implicit ctx: Context): Tree = {
       denot.infoOrCompleter match {
         case _: NoCompleter =>
         case _ => denot.ensureCompleted()
@@ -696,9 +712,9 @@ object Symbols {
       }
     }
 
-    def treeOrProvider: TreeOrProvider = myTree
+    def rootTreeOrProvider: TreeOrProvider = myTree
 
-    private[dotc] def treeOrProvider_=(t: TreeOrProvider)(implicit ctx: Context): Unit =
+    private[dotc] def rootTreeOrProvider_=(t: TreeOrProvider)(implicit ctx: Context): Unit =
       myTree = t
 
     private def mightContain(tree: Tree, id: String)(implicit ctx: Context): Boolean = {
@@ -726,7 +742,7 @@ object Symbols {
     final def classDenot(implicit ctx: Context): ClassDenotation =
       denot.asInstanceOf[ClassDenotation]
 
-    override protected def prefixString = "ClassSymbol"
+    override protected def prefixString: String = "ClassSymbol"
   }
 
   @sharable object NoSymbol extends Symbol(NoCoord, 0) {

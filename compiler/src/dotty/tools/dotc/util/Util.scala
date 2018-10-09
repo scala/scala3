@@ -24,7 +24,7 @@ object Util {
   }
 
   /** An array twice the size of given array, with existing elements copied over */
-  def dble[T: ClassTag](arr: Array[T]) = {
+  def dble[T: ClassTag](arr: Array[T]): Array[T] = {
     val arr1 = new Array[T](arr.length * 2)
     Array.copy(arr, 0, arr1, 0, arr.length)
     arr1

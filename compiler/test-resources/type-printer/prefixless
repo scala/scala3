@@ -7,4 +7,4 @@ val res2: Seq[Char] = List(a, b)
 scala> Set(4, 5)
 val res3: Set[Int] = Set(4, 5)
 scala> Iterator(1)
-val res4: Iterator[Int] = non-empty iterator
+val res4: Iterator[Int] = <iterator>

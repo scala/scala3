@@ -13,7 +13,6 @@ import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
-import dotty.tools.dotc.core.Types.{TypeOf => _, _}
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.printing.SyntaxHighlighting
 import dotty.tools.dotc.reporting.MessageRendering
@@ -60,7 +59,7 @@ class ReplDriver(settings: Array[String],
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
    */
-  override def sourcesRequired = false
+  override def sourcesRequired: Boolean = false
 
   /** Create a fresh and initialized context with IDE mode enabled */
   private[this] def initialCtx = {
@@ -72,7 +71,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** the initial, empty state of the REPL session */
-  final def initialState = State(0, 0, Map.empty, rootCtx)
+  final def initialState: State = State(0, 0, Map.empty, rootCtx)
 
   /** Reset state of repl to the initial state
    *
@@ -269,7 +268,7 @@ class ReplDriver(settings: Array[String],
         typeAliases.map("// defined alias " + _.symbol.showUser) ++
         defs.map(rendering.renderMethod) ++
         vals.map(rendering.renderVal).flatten
-      ).foreach(str => out.println(SyntaxHighlighting(str)))
+      ).foreach(str => out.println(SyntaxHighlighting.highlight(str)))
 
       state.copy(valIndex = state.valIndex - vals.count(resAndUnit))
     }
@@ -284,7 +283,9 @@ class ReplDriver(settings: Array[String],
           x.symbol
       }
       .foreach { sym =>
-        out.println(SyntaxHighlighting("// defined " + sym.showUser))
+        // FIXME syntax highlighting on comment is currently not working
+        // out.println(SyntaxHighlighting.highlight("// defined " + sym.showUser))
+        out.println(SyntaxHighlighting.CommentColor + "// defined " + sym.showUser + SyntaxHighlighting.NoColor)
       }
 
 
@@ -339,14 +340,14 @@ class ReplDriver(settings: Array[String],
     case TypeOf(expr) =>
       compiler.typeOf(expr)(newRun(state)).fold(
         displayErrors,
-        res => out.println(SyntaxHighlighting(res)(state.context))
+        res => out.println(SyntaxHighlighting.highlight(res)(state.context))
       )
       state
 
     case DocOf(expr) =>
       compiler.docOf(expr)(newRun(state)).fold(
         displayErrors,
-        res => out.println(SyntaxHighlighting(res)(state.context))
+        res => out.println(SyntaxHighlighting.highlight(res)(state.context))
       )
       state
 

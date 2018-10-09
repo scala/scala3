@@ -5,7 +5,6 @@ import config.CompilerCommand
 import core.Comments.{ContextDoc, ContextDocstrings}
 import core.Contexts.{Context, ContextBase}
 import core.Mode
-import util.DotClass
 import reporting._
 import scala.util.control.NonFatal
 import fromtasty.TASTYCompiler
@@ -38,9 +37,9 @@ class Driver {
       }
     else ctx.reporter
 
-  protected def initCtx = (new ContextBase).initialCtx
+  protected def initCtx: Context = (new ContextBase).initialCtx
 
-  protected def sourcesRequired = true
+  protected def sourcesRequired: Boolean = true
 
   def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
     val ctx = rootCtx.fresh

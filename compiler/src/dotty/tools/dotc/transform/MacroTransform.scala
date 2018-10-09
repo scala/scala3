@@ -2,7 +2,6 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import typer._
 import Phases._
 import ast.Trees._
 import Contexts._
@@ -32,7 +31,7 @@ abstract class MacroTransform extends Phase {
 
   class Transformer extends TreeMap(cpy = cpyBetweenPhases) {
 
-    protected def localCtx(tree: Tree)(implicit ctx: Context) = {
+    protected def localCtx(tree: Tree)(implicit ctx: Context): FreshContext = {
       val sym = tree.symbol
       val owner = if (sym is PackageVal) sym.moduleClass else sym
       ctx.fresh.setTree(tree).setOwner(owner)
@@ -59,8 +58,6 @@ abstract class MacroTransform extends Phase {
               transform(parents)(ctx.superCallContext),
               transformSelf(self),
               transformStats(impl.body, tree.symbol))
-          case UntypedSplice(_) =>
-            tree
           case _ =>
             super.transform(tree)
         }
@@ -70,7 +67,7 @@ abstract class MacroTransform extends Phase {
           tree
       }
 
-    def transformSelf(vd: ValDef)(implicit ctx: Context) =
+    def transformSelf(vd: ValDef)(implicit ctx: Context): ValDef =
       cpy.ValDef(vd)(tpt = transform(vd.tpt))
   }
 }

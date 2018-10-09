@@ -102,30 +102,41 @@ object Splicer {
     protected def interpretLiteral(value: Any)(implicit env: Env): Object =
       value.asInstanceOf[Object]
 
+    protected def interpretVarargs(args: List[Object])(implicit env: Env): Object =
+      args.toSeq
+
     protected def interpretTastyContext()(implicit env: Env): Object =
       new TastyImpl(ctx) {
         override def rootPosition: SourcePosition = pos
       }
 
     protected def interpretStaticMethodCall(fn: Tree, args: => List[Object])(implicit env: Env): Object = {
-      val (clazz, instance) = loadModule(fn.symbol.owner)
-      val method = getMethod(clazz, fn.symbol.name, paramsSig(fn.symbol))
+      val instance = loadModule(fn.symbol.owner)
+      val method = getMethod(instance.getClass, fn.symbol.name, paramsSig(fn.symbol))
       stopIfRuntimeException(method.invoke(instance, args: _*))
+    }
+
+    protected def interpretModuleAccess(fn: Tree)(implicit env: Env): Object =
+      loadModule(fn.symbol.moduleClass)
+
+    protected def interpretNew(fn: RefTree, args: => List[Result])(implicit env: Env): Object = {
+      val clazz = loadClass(fn.symbol.owner.fullName)
+      val constr = clazz.getConstructor(paramsSig(fn.symbol): _*)
+      constr.newInstance(args: _*).asInstanceOf[Object]
     }
 
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Object =
       throw new StopInterpretation("Unexpected tree could not be interpreted: " + tree, tree.pos)
 
-    private def loadModule(sym: Symbol): (Class[_], Object) = {
+    private def loadModule(sym: Symbol): Object = {
       if (sym.owner.is(Package)) {
         // is top level object
         val moduleClass = loadClass(sym.fullName)
-        val moduleInstance = moduleClass.getField(MODULE_INSTANCE_FIELD).get(null)
-        (moduleClass, moduleInstance)
+        moduleClass.getField(MODULE_INSTANCE_FIELD).get(null)
       } else {
         // nested object in an object
         val clazz = loadClass(sym.fullNameSeparated(FlatName))
-        (clazz, clazz.getConstructor().newInstance().asInstanceOf[Object])
+        clazz.getConstructor().newInstance().asInstanceOf[Object]
       }
     }
 
@@ -133,7 +144,7 @@ object Splicer {
       try classLoader.loadClass(name.toString)
       catch {
         case _: ClassNotFoundException =>
-          val msg = s"Could not find macro class $name in classpath$extraMsg"
+          val msg = s"Could not find class $name in classpath$extraMsg"
           throw new StopInterpretation(msg, pos)
       }
     }
@@ -142,7 +153,7 @@ object Splicer {
       try clazz.getMethod(name.toString, paramClasses: _*)
       catch {
         case _: NoSuchMethodException =>
-          val msg = em"Could not find macro method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)$extraMsg"
+          val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)$extraMsg"
           throw new StopInterpretation(msg, pos)
       }
     }
@@ -161,13 +172,18 @@ object Splicer {
           sw.write("\n")
           throw new StopInterpretation(sw.toString, pos)
         case ex: InvocationTargetException =>
-          val sw = new StringWriter()
-          sw.write("An exception occurred while executing macro expansion\n")
-          sw.write(ex.getTargetException.getMessage)
-          sw.write("\n")
-          ex.getTargetException.printStackTrace(new PrintWriter(sw))
-          sw.write("\n")
-          throw new StopInterpretation(sw.toString, pos)
+          ex.getCause match {
+            case cause: scala.quoted.QuoteError =>
+              throw cause
+            case _ =>
+              val sw = new StringWriter()
+              sw.write("An exception occurred while executing macro expansion\n")
+              sw.write(ex.getTargetException.getMessage)
+              sw.write("\n")
+              ex.getTargetException.printStackTrace(new PrintWriter(sw))
+              sw.write("\n")
+              throw new StopInterpretation(sw.toString, pos)
+          }
 
       }
     }
@@ -232,11 +248,14 @@ object Splicer {
 
     def apply(tree: Tree): Boolean = interpretTree(tree)(Map.empty)
 
-    def interpretQuote(tree: tpd.Tree)(implicit env: Env): Boolean = true
-    def interpretTypeQuote(tree: tpd.Tree)(implicit env: Env): Boolean = true
-    def interpretLiteral(value: Any)(implicit env: Env): Boolean = true
-    def interpretTastyContext()(implicit env: Env): Boolean = true
-    def interpretStaticMethodCall(fn: tpd.Tree, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
+    protected def interpretQuote(tree: tpd.Tree)(implicit env: Env): Boolean = true
+    protected def interpretTypeQuote(tree: tpd.Tree)(implicit env: Env): Boolean = true
+    protected def interpretLiteral(value: Any)(implicit env: Env): Boolean = true
+    protected def interpretVarargs(args: List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
+    protected def interpretTastyContext()(implicit env: Env): Boolean = true
+    protected def interpretStaticMethodCall(fn: tpd.Tree, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
+    protected def interpretModuleAccess(fn: Tree)(implicit env: Env): Boolean = true
+    protected def interpretNew(fn: RefTree, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
 
     def unexpectedTree(tree: tpd.Tree)(implicit env: Env): Boolean = {
       // Assuming that top-level splices can only be in inline methods
@@ -254,8 +273,11 @@ object Splicer {
     protected def interpretQuote(tree: Tree)(implicit env: Env): Result
     protected def interpretTypeQuote(tree: Tree)(implicit env: Env): Result
     protected def interpretLiteral(value: Any)(implicit env: Env): Result
+    protected def interpretVarargs(args: List[Result])(implicit env: Env): Result
     protected def interpretTastyContext()(implicit env: Env): Result
     protected def interpretStaticMethodCall(fn: Tree, args: => List[Result])(implicit env: Env): Result
+    protected def interpretModuleAccess(fn: Tree)(implicit env: Env): Result
+    protected def interpretNew(fn: RefTree, args: => List[Result])(implicit env: Env): Result
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Result
 
     protected final def interpretTree(tree: Tree)(implicit env: Env): Result = tree match {
@@ -271,8 +293,17 @@ object Splicer {
       case _ if tree.symbol == defn.TastyTasty_macroContext =>
         interpretTastyContext()
 
-      case StaticMethodCall(fn, args) =>
-        interpretStaticMethodCall(fn, args.map(arg => interpretTree(arg)))
+      case Call(fn, args) =>
+        if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) {
+          interpretNew(fn, args.map(interpretTree))
+        } else if (fn.symbol.isStatic) {
+          if (fn.symbol.is(Module)) interpretModuleAccess(fn)
+          else interpretStaticMethodCall(fn, args.map(arg => interpretTree(arg)))
+        } else if (env.contains(fn.name)) {
+          env(fn.name)
+        } else {
+          unexpectedTree(tree)
+        }
 
       // Interpret `foo(j = x, i = y)` which it is expanded to
       // `val j$1 = x; val i$1 = y; foo(i = y, j = x)`
@@ -284,18 +315,21 @@ object Splicer {
         })
         interpretTree(expr)(newEnv)
       case NamedArg(_, arg) => interpretTree(arg)
-      case Ident(name) if env.contains(name) => env(name)
 
       case Inlined(EmptyTree, Nil, expansion) => interpretTree(expansion)
 
-      case _ => unexpectedTree(tree)
+      case Typed(SeqLiteral(elems, _), _) =>
+        interpretVarargs(elems.map(e => interpretTree(e)))
+
+      case _ =>
+        unexpectedTree(tree)
     }
 
-    object StaticMethodCall {
+    object Call {
       def unapply(arg: Tree): Option[(RefTree, List[Tree])] = arg match {
-        case fn: RefTree if fn.symbol.isStatic => Some((fn, Nil))
-        case Apply(StaticMethodCall(fn, args1), args2) => Some((fn, args1 ::: args2)) // TODO improve performance
-        case TypeApply(StaticMethodCall(fn, args), _) => Some((fn, args))
+        case fn: RefTree => Some((fn, Nil))
+        case Apply(Call(fn, args1), args2) => Some((fn, args1 ::: args2)) // TODO improve performance
+        case TypeApply(Call(fn, args), _) => Some((fn, args))
         case _ => None
       }
     }

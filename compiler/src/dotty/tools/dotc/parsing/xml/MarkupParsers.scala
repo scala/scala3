@@ -35,15 +35,15 @@ object MarkupParsers {
   import ast.untpd._
 
   case object MissingEndTagControl extends ControlThrowable {
-    override def getMessage = "start tag was here: "
+    override def getMessage: String = "start tag was here: "
   }
 
   case object ConfusedAboutBracesControl extends ControlThrowable {
-    override def getMessage = " I encountered a '}' where I didn't expect one, maybe this tag isn't closed <"
+    override def getMessage: String = " I encountered a '}' where I didn't expect one, maybe this tag isn't closed <"
   }
 
   case object TruncatedXMLControl extends ControlThrowable {
-    override def getMessage = "input ended while parsing XML"
+    override def getMessage: String = "input ended while parsing XML"
   }
 
   class MarkupParser(parser: Parser, final val preserveWS: Boolean) extends MarkupParserCommon {
@@ -58,10 +58,10 @@ object MarkupParsers {
 
     def mkAttributes(name: String, other: NamespaceType): AttributesType = xAttributes
 
-    val eof = false
+    def eof: Boolean = false
 
     def truncatedError(msg: String): Nothing = throw TruncatedXMLControl
-    def xHandleError(that: Char, msg: String) =
+    def xHandleError(that: Char, msg: String): Unit =
       if (ch == SU) throw TruncatedXMLControl
       else reportSyntaxError(msg)
 
@@ -73,7 +73,7 @@ object MarkupParsers {
 
     def curOffset : Int = input.charOffset - 1
     var tmppos : Position = NoPosition
-    def ch = input.ch
+    def ch: Char = input.ch
     /** this method assign the next character to ch and advances in input */
     def nextch(): Unit = { input.nextChar() }
 
@@ -84,7 +84,7 @@ object MarkupParsers {
     def mkProcInstr(position: Position, name: String, text: String): ElementType =
       parser.symbXMLBuilder.procInstr(position, name, text)
 
-    var xEmbeddedBlock = false
+    var xEmbeddedBlock: Boolean = false
 
     private[this] var debugLastStartElement = List.empty[(Int, String)]
     private def debugLastPos = debugLastStartElement.head._1
@@ -94,7 +94,7 @@ object MarkupParsers {
       reportSyntaxError("in XML content, please use '}}' to express '}'")
       throw ConfusedAboutBracesControl
     }
-    def errorNoEnd(tag: String) = {
+    def errorNoEnd(tag: String): Nothing = {
       reportSyntaxError("expected closing tag of " + tag)
       throw MissingEndTagControl
     }
@@ -114,7 +114,7 @@ object MarkupParsers {
      *                      | `"` { _ } `"`
      *                      | `{` scalablock `}`
      */
-    def xAttributes = {
+    def xAttributes: mutable.LinkedHashMap[String, Tree] = {
       val aMap = mutable.LinkedHashMap[String, Tree]()
 
       while (isNameStart(ch)) {
@@ -392,7 +392,7 @@ object MarkupParsers {
       msg => parser.syntaxError(msg, curOffset)
     )
 
-    def escapeToScala[A](op: => A, kind: String) = {
+    def escapeToScala[A](op: => A, kind: String): A = {
       xEmbeddedBlock = false
       val res = saving[List[Int], A](parser.in.sepRegions, parser.in.sepRegions = _) {
         parser.in resume LBRACE
@@ -410,7 +410,7 @@ object MarkupParsers {
      */
     def xScalaPatterns: List[Tree] = escapeToScala(parser.patterns(), "pattern")
 
-    def reportSyntaxError(pos: Int, str: String) = parser.syntaxError(str, pos)
+    def reportSyntaxError(pos: Int, str: String): Unit = parser.syntaxError(str, pos)
     def reportSyntaxError(str: String): Unit = {
       reportSyntaxError(curOffset, "in XML literal: " + str)
       nextch()

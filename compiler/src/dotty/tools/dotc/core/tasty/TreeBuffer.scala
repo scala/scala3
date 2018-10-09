@@ -51,13 +51,13 @@ class TreeBuffer extends TastyBuffer(50000) {
   }
 
   /** Write reference right adjusted into freshly reserved field. */
-  def writeRef(target: Addr) = {
+  def writeRef(target: Addr): Unit = {
     keepOffset(relative = false)
     fillAddr(reserveAddr(), target)
   }
 
   /** Fill previously reserved field with a reference */
-  def fillRef(at: Addr, target: Addr, relative: Boolean) = {
+  def fillRef(at: Addr, target: Addr, relative: Boolean): Unit = {
     val addr = if (relative) target.relativeTo(at) else target
     fillAddr(at, addr)
   }

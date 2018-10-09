@@ -19,7 +19,7 @@ trait TypeOrBoundsTreeOps extends TastyCore {
   val IsTypeTree: IsTypeTreeExtractor
   abstract class IsTypeTreeExtractor {
     def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree]
-    def unapply(parent: Parent)(implicit ctx: Context, dummy: DummyImplicit): Option[TypeTree]
+    def unapply(parent: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[TypeTree]
   }
 
   val TypeTree: TypeTreeModule
@@ -32,18 +32,18 @@ trait TypeOrBoundsTreeOps extends TastyCore {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean
     }
 
-    val TypeIdent: TypeIdentExtractor
-    abstract class TypeIdentExtractor {
+    val Ident: IdentExtractor
+    abstract class IdentExtractor {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[String]
     }
 
-    val TermSelect: TermSelectExtractor
-    abstract class TermSelectExtractor {
+    val Select: SelectExtractor
+    abstract class SelectExtractor {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(Term, String)]
     }
 
-    val TypeSelect: TypeSelectExtractor
-    abstract class TypeSelectExtractor {
+    val Project: ProjectExtractor
+    abstract class ProjectExtractor {
       def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Option[(TypeTree, String)]
     }
 
@@ -119,5 +119,5 @@ trait TypeOrBoundsTreeOps extends TastyCore {
     def unapply(typeOrBoundsTree: TypeOrBoundsTree)(implicit ctx: Context): Boolean
   }
 
-  implicit def typeTreeAsParent(term: TypeTree): Parent
+  implicit def typeTreeAsParent(term: TypeTree): TermOrTypeTree
 }

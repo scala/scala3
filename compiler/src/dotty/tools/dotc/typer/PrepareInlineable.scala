@@ -2,33 +2,22 @@ package dotty.tools
 package dotc
 package typer
 
-import dotty.tools.dotc.ast.Trees.NamedArg
-import dotty.tools.dotc.ast.{Trees, untpd, tpd, TreeTypeMap}
+import dotty.tools.dotc.ast.{Trees, untpd, tpd}
 import Trees._
 import core._
 import Flags._
 import Symbols._
 import Types._
 import Decorators._
-import Constants._
+import NameKinds._
 import StdNames.nme
 import Contexts.Context
-import Names.{Name, TermName, EmptyTermName}
-import NameOps._
-import NameKinds.{ClassifiedNameKind, InlineAccessorName, UniqueInlineName}
-import ProtoTypes.selectionProto
-import SymDenotations.SymDenotation
+import Names.Name
+import NameKinds.{InlineAccessorName, UniqueInlineName}
 import Annotations._
-import transform.{ExplicitOuter, AccessProxies}
-import Inferencing.fullyDefinedType
+import transform.AccessProxies
 import config.Printers.inlining
-import ErrorReporting.errorTree
-import collection.mutable
-import transform.TypeUtils._
-import reporting.trace
-import util.Positions.Position
 import util.Property
-import ast.TreeInfo
 
 object PrepareInlineable {
   import tpd._
@@ -49,7 +38,7 @@ object PrepareInlineable {
      *  that the inline accessor takes its receiver as first parameter. Such accessors
      *  are created by MakeInlineablePassing.
      */
-    override def passReceiverAsArg(name: Name)(implicit ctx: Context) = name match {
+    override def passReceiverAsArg(name: Name)(implicit ctx: Context): Boolean = name match {
       case InlineAccessorName(UniqueInlineName(_, _)) => true
       case _ => false
     }
@@ -57,7 +46,7 @@ object PrepareInlineable {
     /** A tree map which inserts accessors for non-public term members accessed from inlined code.
      */
     abstract class MakeInlineableMap(val inlineSym: Symbol) extends TreeMap with Insert {
-      def accessorNameKind = InlineAccessorName
+      def accessorNameKind: PrefixNameKind = InlineAccessorName
 
       /** A definition needs an accessor if it is private, protected, or qualified private
        *  and it is not part of the tree that gets inlined. The latter test is implemented
@@ -66,7 +55,7 @@ object PrepareInlineable {
        *  Constant vals don't need accessors since they are inlined in FirstTransform.
        *  Inline methods don't need accessors since they are inlined in Typer.
        */
-      def needsAccessor(sym: Symbol)(implicit ctx: Context) =
+      def needsAccessor(sym: Symbol)(implicit ctx: Context): Boolean =
         sym.isTerm &&
         (sym.is(AccessFlags) || sym.privateWithin.exists) &&
         !sym.isContainedIn(inlineSym) &&
@@ -75,7 +64,7 @@ object PrepareInlineable {
 
       def preTransform(tree: Tree)(implicit ctx: Context): Tree
 
-      def postTransform(tree: Tree)(implicit ctx: Context) = tree match {
+      def postTransform(tree: Tree)(implicit ctx: Context): Tree = tree match {
         case Assign(lhs, rhs) if lhs.symbol.name.is(InlineAccessorName) =>
           cpy.Apply(tree)(useSetter(lhs), rhs :: Nil)
         case _ =>
@@ -203,7 +192,7 @@ object PrepareInlineable {
      *  @return If there are accessors generated, a thicket consisting of the rewritten `tree`
      *          and all accessors, otherwise the original tree.
      */
-    def makeInlineable(tree: Tree)(implicit ctx: Context) = {
+    def makeInlineable(tree: Tree)(implicit ctx: Context): Tree = {
       val inlineSym = ctx.owner
       if (inlineSym.owner.isTerm)
         // Inlineable methods in local scopes can only be called in the scope they are defined,
@@ -215,10 +204,10 @@ object PrepareInlineable {
     }
   }
 
-  def isLocalOrParam(sym: Symbol, inlineMethod: Symbol)(implicit ctx: Context) =
+  def isLocalOrParam(sym: Symbol, inlineMethod: Symbol)(implicit ctx: Context): Boolean =
     sym.isContainedIn(inlineMethod) && sym != inlineMethod
 
-  def isLocal(sym: Symbol, inlineMethod: Symbol)(implicit ctx: Context) =
+  def isLocal(sym: Symbol, inlineMethod: Symbol)(implicit ctx: Context): Boolean =
     isLocalOrParam(sym, inlineMethod) && !(sym.is(Param) && sym.owner == inlineMethod)
 
   /** Register inline info for given inlineable method `sym`.
@@ -244,9 +233,8 @@ object PrepareInlineable {
               val typedBody =
                 if (ctx.reporter.hasErrors) rawBody
                 else ctx.compilationUnit.inlineAccessors.makeInlineable(rawBody)
-              if (inlined.isInlineMethod)
-                checkInlineMethod(inlined, typedBody)
-              val inlineableBody = addReferences(inlined, originalBody, typedBody)
+              checkInlineMethod(inlined, typedBody)
+              val inlineableBody = typedBody
               inlining.println(i"Body to inline for $inlined: $inlineableBody")
               inlineableBody
             } else {
@@ -258,190 +246,12 @@ object PrepareInlineable {
     }
   }
 
-  def checkInlineMethod(inlined: Symbol, body: Tree)(implicit ctx: Context) = {
+  def checkInlineMethod(inlined: Symbol, body: Tree)(implicit ctx: Context): Unit = {
     if (ctx.outer.inInlineMethod)
       ctx.error(ex"implementation restriction: nested inline methods are not supported", inlined.pos)
     if (inlined.name == nme.unapply && tupleArgs(body).isEmpty)
       ctx.warning(
         em"inline unapply method can be rewritten only if its right hand side is a tuple (e1, ..., eN)",
         body.pos)
-  }
-
-  /** Tweak untyped tree `original` so that all external references are typed
-   *  and it reflects the changes in the corresponding typed tree `typed` that
-   *  make `typed` inlineable. Concretely:
-   *
-   *   - all external references via identifiers or this-references are converted
-   *     to typed splices,
-   *   - if X gets an inline accessor in `typed`, references to X in `original`
-   *     are converted to the inline accessor name.
-   */
-  private def addReferences(inlineMethod: Symbol,
-      original: untpd.Tree, typed: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
-
-    // Maps from positions to external reference types and inline selector names.
-    object referenced extends TreeTraverser {
-      val typeAtPos = mutable.Map[Position, Type]()
-      val accessorAtPos = mutable.Map[Position, Symbol]()
-      val implicitRefTypes = mutable.Set[Type]()
-      val implicitRefs = new mutable.ListBuffer[Tree]
-
-      def registerIfContextualImplicit(tree: Tree) = tree match {
-        case tree: RefTree
-        if tree.removeAttachment(ContextualImplicit).isDefined &&
-           tree.symbol.exists &&
-           !isLocalOrParam(tree.symbol, inlineMethod) &&
-           !implicitRefTypes.contains(tree.tpe) =>
-          if (tree.existsSubTree(t => isLocal(tree.symbol, inlineMethod)))
-            ctx.warning(i"implicit reference $tree is dropped at inline site because it refers to local symbol(s)", tree.pos)
-          else {
-            implicitRefTypes += tree.tpe
-            implicitRefs += tree
-          }
-        case _ =>
-      }
-
-      def registerAccessor(tree: Tree) = {
-        inlining.println(i"accessor: $tree at ${tree.pos}")
-        accessorAtPos(tree.pos.toSynthetic) = tree.symbol
-          // Note: It's possible that during traversals several accessors are stored under the same
-          // position. This could happen for instance for implicit conersions added around a tree.
-          // or for a setter containing a getter in an op-assignment node.
-          // In general, it's always the innermost tree that holds the relevant symbol. The traversal
-          // order guarantees that the innermost tree's symbol is stored last, and thereby replaces all previously
-          // stored symbols.
-      }
-
-      def traverse(tree: Tree)(implicit ctx: Context): Unit = {
-        val sym = tree.symbol
-        tree match {
-          case Ident(nme.WILDCARD) =>
-          case _: Ident | _: This =>
-            //println(i"leaf: $tree at ${tree.pos}")
-            if (sym.exists && !isLocal(sym, inlineMethod)) {
-              if (ctx.debug) inlining.println(i"type at $tree @ ${tree.pos.toSynthetic} = ${tree.tpe}")
-              tree.tpe match {
-                case tp: NamedType if tp.prefix.member(sym.name).isOverloaded =>
-                  // refer to prefix instead of to ident directly, so that overloading can be resolved
-                  // again at expansion site
-                  typeAtPos(tree.pos.startPos) = tp.prefix
-                case _ =>
-                  typeAtPos(tree.pos.toSynthetic) = tree.tpe
-              }
-                // Note: It's possible that during traversals several types are stored under the same
-                // position. This could happen for instance for implicit conersions added around a tree.
-                // In general, it's always the innermost tree that holds the relevant type. The traversal
-                // order guarantees that the innermost tree's type is stored last, and thereby replaces all previously
-                // stored types.
-            }
-          case _: Select =>
-            sym.name match {
-              case InlineAccessorName(UniqueInlineName(_, _)) => return // was already recorded in Apply
-              case InlineAccessorName(_) => registerAccessor(tree)
-              case _ =>
-            }
-          case Apply(_: RefTree | _: TypeApply, receiver :: Nil) =>
-            sym.name match {
-              case InlineAccessorName(UniqueInlineName(_, _)) => registerAccessor(tree)
-              case _ =>
-            }
-          case _ =>
-        }
-        registerIfContextualImplicit(tree)
-        traverseChildren(tree)
-      }
-    }
-    referenced.traverse(typed)
-
-    // The untyped tree transform that applies the tweaks
-    object addRefs extends untpd.UntypedTreeMap {
-      override def transform(tree: untpd.Tree)(implicit ctx: Context): untpd.Tree = {
-
-        def adjustLeaf(tree: untpd.Tree): untpd.Tree = referenced.typeAtPos.get(tree.pos.toSynthetic) match {
-          case Some(tpe) => untpd.TypedSplice(tree.withType(tpe))
-          case none => tree
-        }
-
-        def adjustForAccessor(ref: untpd.RefTree) =
-          referenced.accessorAtPos.get(ref.pos.toSynthetic) match {
-            case Some(acc) =>
-              def accessorRef = untpd.TypedSplice(tpd.ref(acc))
-              acc.name match {
-                case InlineAccessorName(UniqueInlineName(_, _)) =>
-                  // In this case we are seeing a pair like this:
-                  //   untyped                typed
-                  //   t.x                    inline$x(t)
-                  // Drop the selection, since it is part of the accessor
-                  val Select(qual, _) = ref
-                  untpd.Apply(accessorRef, qual :: Nil)
-                case _ =>
-                  accessorRef
-              }
-            case none => ref
-          }
-
-        def adjustQualifier(tree: untpd.Tree): untpd.Tree = tree match {
-          case tree @ Ident(name1) =>
-            referenced.typeAtPos.get(tree.pos.startPos) match {
-              case Some(tp: ThisType) =>
-                val qual = untpd.TypedSplice(This(tp.cls).withPos(tree.pos.startPos))
-                cpy.Select(tree)(qual, name1)
-              case none =>
-                tree
-            }
-          case tree => tree
-        }
-
-        def isAccessorLHS(lhs: untpd.Tree): Boolean = lhs match {
-          case lhs: untpd.Apply => isAccessorLHS(lhs.fun)
-          case lhs: untpd.TypeApply => isAccessorLHS(lhs.fun)
-          case lhs: untpd.RefTree => lhs.name.is(InlineAccessorName)
-          case untpd.TypedSplice(lhs1) => lhs1.symbol.name.is(InlineAccessorName)
-          case _ => false
-        }
-
-        val tree1 = super.transform(tree)
-        tree1 match {
-          case This(_) =>
-            adjustLeaf(tree1)
-          case tree1: untpd.Ident =>
-            adjustQualifier(adjustLeaf(adjustForAccessor(tree1)))
-          case tree1: untpd.Select =>
-            adjustForAccessor(tree1)
-          case Assign(lhs, rhs) if isAccessorLHS(lhs) =>
-            cpy.Apply(tree1)(lhs, rhs :: Nil)
-          case tree: untpd.DerivedTypeTree =>
-            inlining.println(i"inlining derived $tree --> ${ctx.typer.typed(tree)}")
-            untpd.TypedSplice(ctx.typer.typed(tree))
-          case _ =>
-            tree1
-        }
-      }
-    }
-    val implicitBindings =
-      for (iref <- referenced.implicitRefs.toList) yield {
-        val localImplicit = iref.symbol.asTerm.copy(
-          owner = inlineMethod,
-          name = UniqueInlineName.fresh(iref.symbol.name.asTermName),
-          flags = Implicit | Method | Stable | iref.symbol.flags & (Inline | Erased),
-          info = iref.tpe.widen.ensureMethodic,
-          coord = inlineMethod.pos).asTerm
-        val idef = polyDefDef(localImplicit, tps => vrefss =>
-            iref.appliedToTypes(tps).appliedToArgss(vrefss))
-        if (localImplicit.is(Inline)) {
-          // produce a Body annotation for inlining
-          def untype(tree: Tree): untpd.Tree = tree match {
-            case Apply(fn, args) => untpd.cpy.Apply(tree)(untype(fn), args)
-            case TypeApply(fn, args) => untpd.cpy.TypeApply(tree)(untype(fn), args)
-            case _ => untpd.TypedSplice(tree)
-          }
-          val inlineBody = tpd.UntypedSplice(untype(idef.rhs)).withType(idef.rhs.tpe)
-          inlining.println(i"body annot for $idef: $inlineBody")
-          localImplicit.addAnnotation(ConcreteBodyAnnotation(inlineBody))
-        }
-        idef
-      }
-    val untpdSplice = tpd.UntypedSplice(addRefs.transform(original)).withType(typed.tpe)
-    seq(implicitBindings, untpdSplice)
   }
 }

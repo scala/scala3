@@ -5,30 +5,15 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc
-import dotty.tools.dotc.core.Flags.FlagSet
-import dotty.tools.dotc.transform.Erasure
-import dotty.tools.dotc.transform.SymUtils._
-import java.io.{File => JFile}
+import java.io.{File => _}
 
-import scala.collection.generic.Clearable
-import scala.collection.mutable
-import scala.reflect.ClassTag
-import dotty.tools.io.{Directory, PlainDirectory, AbstractFile}
-import scala.tools.asm.{ClassVisitor, FieldVisitor, MethodVisitor}
-import scala.tools.nsc.backend.jvm.{BCodeHelpers, BackendInterface}
 import dotty.tools.dotc.core._
-import Periods._
 import SymDenotations._
 import Contexts._
 import Types._
 import Symbols._
-import Denotations._
-import Phases._
-import java.lang.AssertionError
 import dotty.tools.dotc.util.Positions.Position
 import Decorators._
-import tpd._
 import StdNames.nme
 
 /**
@@ -46,7 +31,7 @@ class CollectEntryPoints extends MiniPhase {
 }
 
 object CollectEntryPoints{
-  def isJavaMainMethod(sym: Symbol)(implicit ctx: Context) = {
+  def isJavaMainMethod(sym: Symbol)(implicit ctx: Context): Boolean = {
     (sym.name == nme.main) && (sym.info match {
       case r@MethodTpe(_, List(defn.ArrayOf(t)), _) =>
         (t.widenDealias =:= defn.StringType) && (
@@ -56,7 +41,6 @@ object CollectEntryPoints{
   }
 
   def isJavaEntryPoint(sym: Symbol)(implicit ctx: Context): Boolean = {
-    import Types.MethodType
     val d = ctx.definitions
     val StringType = d.StringType
     // The given class has a main method.

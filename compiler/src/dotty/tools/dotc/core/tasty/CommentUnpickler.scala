@@ -1,7 +1,6 @@
 package dotty.tools.dotc.core.tasty
 
 import dotty.tools.dotc.core.Comments.Comment
-import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.tasty.TastyBuffer.Addr
 import dotty.tools.dotc.util.Positions.Position
 
@@ -12,7 +11,7 @@ import java.nio.charset.Charset
 class CommentUnpickler(reader: TastyReader) {
   import reader._
 
-  private[tasty] lazy val comments = {
+  private[tasty] lazy val comments: Map[Addr, Comment] = {
     val comments = new HashMap[Addr, Comment]
     while (!isAtEnd) {
       val addr = readAddr()

@@ -14,16 +14,16 @@ import collection.mutable
   /** The period in ms in which stack snapshots are displayed */
   final val HeartBeatPeriod = 250
 
-  var monitored = false
+  var monitored: Boolean = false
 
   @volatile private[this] var stack: List[String] = Nil
 
-  val hits = new mutable.HashMap[String, Int] {
+  val hits: mutable.HashMap[String, Int] = new mutable.HashMap[String, Int] {
     override def default(key: String): Int = 0
   }
 
   @forceInline
-  def record(fn: => String, n: => Int = 1) =
+  def record(fn: => String, n: => Int = 1): Unit =
     if (enabled) doRecord(fn, n)
 
   private def doRecord(fn: String, n: Int) =
@@ -33,10 +33,10 @@ import collection.mutable
     }
 
   @forceInline
-  def track[T](fn: String)(op: => T) =
+  def track[T](fn: String)(op: => T): T =
     if (enabled) doTrack(fn)(op) else op
 
-  def doTrack[T](fn: String)(op: => T) =
+  def doTrack[T](fn: String)(op: => T): T =
     if (monitored) {
       stack = fn :: stack
       record(fn)
@@ -45,10 +45,10 @@ import collection.mutable
     } else op
 
   @forceInline
-  def trackTime[T](fn: String)(op: => T) =
+  def trackTime[T](fn: String)(op: => T): T =
     if (enabled) doTrackTime(fn)(op) else op
 
-  def doTrackTime[T](fn: String)(op: => T) = {
+  def doTrackTime[T](fn: String)(op: => T): T = {
     def op1 = op
     if (monitored) {
       val start = System.nanoTime
@@ -57,7 +57,7 @@ import collection.mutable
   }
 
   class HeartBeat extends Thread() {
-    @volatile private[Stats] var continue = true
+    @volatile private[Stats] var continue: Boolean = true
 
     private def printStack(stack: List[String]): Unit = stack match {
       case str :: rest =>
@@ -75,7 +75,7 @@ import collection.mutable
     }
   }
 
-  def maybeMonitored[T](op: => T)(implicit ctx: Context) = {
+  def maybeMonitored[T](op: => T)(implicit ctx: Context): T = {
     if (ctx.settings.YdetailedStats.value) {
       val hb = new HeartBeat()
       if (ctx.settings.Yheartbeat.value) hb.start()

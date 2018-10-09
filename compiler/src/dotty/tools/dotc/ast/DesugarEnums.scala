@@ -4,9 +4,8 @@ package ast
 
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
+import Symbols._, StdNames._, Trees._
 import Decorators._
-import collection.mutable.ListBuffer
 import util.Property
 import typer.ErrorReporting._
 
@@ -15,14 +14,13 @@ import scala.annotation.internal.sharable
 /** Helper methods to desugar enums */
 object DesugarEnums {
   import untpd._
-  import desugar.DerivedFromParamTree
 
   @sharable object CaseKind extends Enumeration {
-    val Simple, Object, Class = Value
+    val Simple, Object, Class: Value = Value
   }
 
   /** Attachment containing the number of enum cases and the smallest kind that was seen so far. */
-  val EnumCaseCount = new Property.Key[(Int, CaseKind.Value)]
+  val EnumCaseCount: Property.Key[(Int, DesugarEnums.CaseKind.Value)] = new Property.Key
 
   /** The enumeration class that belongs to an enum case. This works no matter
    *  whether the case is still in the enum class or it has been transferred to the
@@ -66,11 +64,11 @@ object DesugarEnums {
   }
 
   /** A type tree referring to `enumClass` */
-  def enumClassRef(implicit ctx: Context) =
+  def enumClassRef(implicit ctx: Context): Tree =
     if (enumClass.exists) TypeTree(enumClass.typeRef) else TypeTree()
 
   /** Add implied flags to an enum class or an enum case */
-  def addEnumFlags(cdef: TypeDef)(implicit ctx: Context) =
+  def addEnumFlags(cdef: TypeDef)(implicit ctx: Context): TypeDef =
     if (cdef.mods.isEnumClass) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Abstract | Sealed))
     else if (isEnumCase(cdef)) cdef.withMods(cdef.mods.withFlags(cdef.mods.flags | Final))
     else cdef

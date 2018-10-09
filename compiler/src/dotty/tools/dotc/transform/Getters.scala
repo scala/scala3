@@ -7,11 +7,8 @@ import Contexts.Context
 import SymDenotations.SymDenotation
 import Types._
 import Symbols._
-import SymUtils._
-import Constants._
 import MegaPhase._
 import Flags._
-import Decorators._
 import ValueClasses._
 
 /** Performs the following rewritings for fields of a class:
@@ -52,7 +49,7 @@ import ValueClasses._
 class Getters extends MiniPhase with SymTransformer {
   import ast.tpd._
 
-  override def phaseName = Getters.name
+  override def phaseName: String = Getters.name
 
   override def transformSym(d: SymDenotation)(implicit ctx: Context): SymDenotation = {
     def noGetterNeeded =
@@ -88,5 +85,5 @@ class Getters extends MiniPhase with SymTransformer {
 }
 
 object Getters {
-  val name = "getters"
+  val name: String = "getters"
 }

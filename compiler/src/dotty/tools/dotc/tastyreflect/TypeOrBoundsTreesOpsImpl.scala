@@ -5,7 +5,6 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Types
 
-import scala.tasty.util.Show
 
 trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps with TastyCoreImpl {
 
@@ -19,14 +18,14 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
 
   def TypeTreeDeco(tpt: TypeTree): TypeTreeAPI = new TypeTreeAPI {
     def pos(implicit ctx: Context): Position = tpt.pos
-    def tpe(implicit ctx: Context): Types.Type = tpt.tpe.stripTypeVar
+    def tpe(implicit ctx: Context): Type = tpt.tpe.stripTypeVar
   }
 
   object IsTypeTree extends IsTypeTreeExtractor {
     def unapply(x: TypeOrBoundsTree)(implicit ctx: Context): Option[TypeTree] =
       if (x.isType) Some(x) else None
-    def unapply(x: Parent)(implicit ctx: Context, dummy: DummyImplicit): Option[TypeTree] =
-      if (x.isType) Some(x) else None
+    def unapply(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[TypeTree] =
+      if (termOrTypeTree.isType) Some(termOrTypeTree) else None
   }
 
   object TypeTree extends TypeTreeModule {
@@ -38,21 +37,21 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
       }
     }
 
-    object TypeIdent extends TypeIdentExtractor {
+    object Ident extends IdentExtractor {
       def unapply(x: TypeTree)(implicit ctx: Context): Option[String] = x match {
         case x: tpd.Ident if x.isType => Some(x.name.toString)
         case _ => None
       }
     }
 
-    object TermSelect extends TermSelectExtractor {
+    object Select extends SelectExtractor {
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(Term, String)] = x match {
         case x: tpd.Select if x.isType && x.qualifier.isTerm => Some(x.qualifier, x.name.toString)
         case _ => None
       }
     }
 
-    object TypeSelect extends TypeSelectExtractor {
+    object Project extends ProjectExtractor {
       def unapply(x: TypeTree)(implicit ctx: Context): Option[(TypeTree, String)] = x match {
         case x: tpd.Select if x.isType && x.qualifier.isType => Some(x.qualifier, x.name.toString)
         case _ => None
@@ -153,5 +152,5 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
     }
   }
 
-  def typeTreeAsParent(typeTree: TypeTree): Parent = typeTree
+  def typeTreeAsParent(typeTree: TypeTree): TermOrTypeTree = typeTree
 }

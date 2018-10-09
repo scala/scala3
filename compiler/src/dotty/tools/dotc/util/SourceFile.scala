@@ -4,11 +4,9 @@ package util
 
 import scala.collection.mutable.ArrayBuffer
 import dotty.tools.io._
-import annotation.tailrec
 import java.util.regex.Pattern
 import java.io.IOException
 import Chars._
-import ScriptSourceFile._
 import Positions._
 import scala.io.Codec
 import scala.annotation.internal.sharable
@@ -19,7 +17,7 @@ object ScriptSourceFile {
   @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
   private val headerStarts  = List("#!", "::#!")
 
-  def apply(file: AbstractFile, content: Array[Char]) = {
+  def apply(file: AbstractFile, content: Array[Char]): SourceFile = {
     /** Length of the script header from the given content, if there is one.
      *  The header begins with "#!" or "::#!" and ends with a line starting
      *  with "!#" or "::!#".
@@ -42,21 +40,21 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
   def this(name: String, content: String) = this(new VirtualFile(name), content.toCharArray)
 
   /** Tab increment; can be overridden */
-  def tabInc = 8
+  def tabInc: Int = 8
 
-  override def name = file.name
-  override def path = file.path
-  override def jfile = Optional.ofNullable(file.file)
+  override def name: String = file.name
+  override def path: String = file.path
+  override def jfile: Optional[JFile] = Optional.ofNullable(file.file)
 
-  override def equals(that : Any) = that match {
+  override def equals(that : Any): Boolean = that match {
     case that : SourceFile => file.path == that.file.path && start == that.start
     case _ => false
   }
-  override def hashCode = file.path.## + start.##
+  override def hashCode: Int = file.path.## + start.##
 
-  def apply(idx: Int) = content.apply(idx)
+  def apply(idx: Int): Char = content.apply(idx)
 
-  val length = content.length
+  val length: Int = content.length
 
   /** true for all source files except `NoSource` */
   def exists: Boolean = true
@@ -65,13 +63,13 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
   def underlying: SourceFile = this
 
   /** The start of this file in the underlying source file */
-  def start = 0
+  def start: Int = 0
 
   def atPos(pos: Position): SourcePosition =
     if (pos.exists) SourcePosition(underlying, pos)
     else NoSourcePosition
 
-  def isSelfContained = underlying eq this
+  def isSelfContained: Boolean = underlying eq this
 
   /** Map a position to a position in the underlying source file.
    *  For regular source files, simply return the argument.
@@ -147,11 +145,11 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) extends interfac
     pad.result()
   }
 
-  override def toString = file.toString
+  override def toString: String = file.toString
 }
 
 @sharable object NoSource extends SourceFile("<no source>", "") {
-  override def exists = false
+  override def exists: Boolean = false
   override def atPos(pos: Position): SourcePosition = NoSourcePosition
 }
 

@@ -103,6 +103,7 @@ object Plugin {
     def fromFile(inputStream: InputStream, path: Path): String = {
       val props = new Properties
       props.load(inputStream)
+      inputStream.close()
 
       val pluginClass = props.getProperty("pluginClass")
 

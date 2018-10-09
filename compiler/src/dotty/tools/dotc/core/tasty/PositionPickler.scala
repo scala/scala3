@@ -6,27 +6,25 @@ package tasty
 import ast._
 import ast.Trees._
 import ast.Trees.WithLazyField
-import TastyFormat._
 import core._
-import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._
+import Contexts._, Symbols._, Annotations._
 import collection.mutable
 import TastyBuffer._
 import util.Positions._
 
 class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Option[Addr]) {
-  val buf = new TastyBuffer(5000)
+  val buf: TastyBuffer = new TastyBuffer(5000)
   pickler.newSection("Positions", buf)
-  import buf._
   import ast.tpd._
 
   private val pickledIndices = new mutable.BitSet
 
-  def header(addrDelta: Int, hasStartDelta: Boolean, hasEndDelta: Boolean, hasPoint: Boolean) = {
+  def header(addrDelta: Int, hasStartDelta: Boolean, hasEndDelta: Boolean, hasPoint: Boolean): Int = {
     def toInt(b: Boolean) = if (b) 1 else 0
     (addrDelta << 3) | (toInt(hasStartDelta) << 2) | (toInt(hasEndDelta) << 1) | toInt(hasPoint)
   }
 
-  def picklePositions(roots: List[Tree])(implicit ctx: Context) = {
+  def picklePositions(roots: List[Tree])(implicit ctx: Context): Unit = {
     var lastIndex = 0
     var lastPos = Position(0, 0)
     def pickleDeltas(index: Int, pos: Position) = {

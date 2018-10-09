@@ -5,12 +5,10 @@ package tasty
 
 import collection.mutable
 import Names.{Name, chrs, SimpleName, DerivedName}
-import NameOps.NameDecorator
 import NameKinds._
 import Decorators._
 import TastyBuffer._
 import scala.io.Codec
-import TastyFormat._
 
 class NameBuffer extends TastyBuffer(10000) {
   import NameBuffer._

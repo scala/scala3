@@ -58,14 +58,16 @@ trait TreeOps extends TastyCore {
 
   val ClassDef: ClassDefExtractor
   abstract class ClassDefExtractor {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[Parent], Option[ValDef], List[Statement])]
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree], Option[ValDef], List[Statement])]
   }
 
   trait ClassDefAPI {
     def constructor(implicit ctx: Context): DefDef
-    def parents(implicit ctx: Context): List[Parent]
+    def parents(implicit ctx: Context): List[TermOrTypeTree]
     def self(implicit ctx: Context): Option[ValDef]
     def body(implicit ctx: Context): List[Statement]
+
+    def symbol(implicit ctx: Context): ClassSymbol
   }
   implicit def ClassDefDeco(cdef: ClassDef): ClassDefAPI
 
@@ -86,6 +88,8 @@ trait TreeOps extends TastyCore {
     def paramss(implicit ctx: Context): List[List[ValDef]]
     def returnTpt(implicit ctx: Context): TypeTree
     def rhs(implicit ctx: Context): Option[Term]
+
+    def symbol(implicit ctx: Context): DefSymbol
   }
   implicit def DefDefDeco(ddef: DefDef): DefDefAPI
 
@@ -104,6 +108,8 @@ trait TreeOps extends TastyCore {
   trait ValDefAPI {
     def tpt(implicit ctx: Context): TypeTree
     def rhs(implicit ctx: Context): Option[Term]
+
+    def symbol(implicit ctx: Context): ValSymbol
   }
   implicit def ValDefDeco(vdef: ValDef): ValDefAPI
 
@@ -121,6 +127,7 @@ trait TreeOps extends TastyCore {
 
   trait TypeDefAPI {
     def rhs(implicit ctx: Context): TypeOrBoundsTree
+    def symbol(implicit ctx: Context): TypeSymbol
   }
   implicit def TypeDefDeco(tdef: TypeDef): TypeDefAPI
 
@@ -134,6 +141,7 @@ trait TreeOps extends TastyCore {
   trait PackageDefAPI {
     def owner(implicit ctx: Context): PackageDef
     def members(implicit ctx: Context): List[Statement]
+    def symbol(implicit ctx: Context): PackageSymbol
   }
   implicit def PackageDefDeco(pdef: PackageDef): PackageDefAPI
 
@@ -147,6 +155,7 @@ trait TreeOps extends TastyCore {
   trait TermAPI {
     def tpe(implicit ctx: Context): Type
     def pos(implicit ctx: Context): Position
+    def underlyingArgument(implicit ctx: Context): Term
   }
   implicit def TermDeco(term: Term): TermAPI
 
@@ -155,7 +164,7 @@ trait TreeOps extends TastyCore {
     /** Matches any term */
     def unapply(tree: Tree)(implicit ctx: Context): Option[Term]
     /** Matches any term */
-    def unapply(parent: Parent)(implicit ctx: Context, dummy: DummyImplicit): Option[Term]
+    def unapply(parent: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[Term]
   }
 
   /** Scala term. Any tree that can go in expression position. */
@@ -285,7 +294,7 @@ trait TreeOps extends TastyCore {
 
     val Inlined: InlinedExtractor
     abstract class InlinedExtractor {
-      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[Term], List[Definition], Term)]
+      def unapply(tree: Tree)(implicit ctx: Context): Option[(Option[TermOrTypeTree], List[Definition], Term)]
     }
 
     val SelectOuter: SelectOuterExtractor
@@ -300,5 +309,5 @@ trait TreeOps extends TastyCore {
     }
   }
 
-  implicit def termAsParent(term: Term): Parent
+  implicit def termAsTermOrTypeTree(term: Term): TermOrTypeTree
 }

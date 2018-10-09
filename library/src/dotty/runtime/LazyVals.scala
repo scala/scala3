@@ -1,6 +1,5 @@
 package dotty.runtime
 
-import scala.annotation.tailrec
 import scala.forceInline
 
 /**

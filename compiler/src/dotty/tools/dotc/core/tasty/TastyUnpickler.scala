@@ -3,12 +3,10 @@ package core
 package tasty
 
 import scala.collection.mutable
-import TastyFormat._
 import TastyFormat.NameTags._
 import TastyBuffer.NameRef
-import Names.{Name, TermName, termName, EmptyTermName}
+import Names.{TermName, termName, EmptyTermName}
 import NameKinds._
-import java.util.UUID
 
 object TastyUnpickler {
   class UnpickleException(msg: String) extends RuntimeException(msg)
@@ -19,8 +17,8 @@ object TastyUnpickler {
 
   class NameTable extends (NameRef => TermName) {
     private val names = new mutable.ArrayBuffer[TermName]
-    def add(name: TermName) = names += name
-    def apply(ref: NameRef) = names(ref.index)
+    def add(name: TermName): mutable.ArrayBuffer[TermName] = names += name
+    def apply(ref: NameRef): TermName = names(ref.index)
     def contents: Iterable[TermName] = names
   }
 }
@@ -33,7 +31,7 @@ class TastyUnpickler(reader: TastyReader) {
   def this(bytes: Array[Byte]) = this(new TastyReader(bytes))
 
   private val sectionReader = new mutable.HashMap[String, TastyReader]
-  val nameAtRef = new NameTable
+  val nameAtRef: NameTable = new NameTable
 
   private def readName(): TermName = nameAtRef(readNameRef())
   private def readString(): String = readName().toString

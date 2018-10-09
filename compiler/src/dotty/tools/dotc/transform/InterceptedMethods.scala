@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 object InterceptedMethods {
-  val name = "intercepted"
+  val name: String = "intercepted"
 }
 
 /** Replace member references as follows:

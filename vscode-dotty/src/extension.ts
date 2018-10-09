@@ -4,18 +4,20 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as cpp from 'child-process-promise';
+import * as compareVersions from 'compare-versions';
 
 import { ExtensionContext } from 'vscode';
 import * as vscode from 'vscode';
 import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn,
          ServerOptions } from 'vscode-languageclient';
+import { enableOldServerWorkaround } from './compat'
 
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
 
 export function activate(context: ExtensionContext) {
   extensionContext = context
-  outputChannel = vscode.window.createOutputChannel('Dotty Language Client');
+  outputChannel = vscode.window.createOutputChannel("Dotty");
 
   const sbtArtifact = "org.scala-sbt:sbt-launch:1.2.3"
   const buildSbtFile = `${vscode.workspace.rootPath}/build.sbt`
@@ -36,7 +38,7 @@ export function activate(context: ExtensionContext) {
       run({
         module: context.asAbsolutePath('out/src/passthrough-server.js'),
         args: [ port.toString() ]
-      })
+      }, false)
     })
 
   } else {
@@ -72,11 +74,13 @@ function runLanguageServer(coursierPath: string, languageServerArtifactFile: str
     if (err) throw err
     else {
       const languageServerArtifact = data.toString().trim()
+      const languageServerVersion = languageServerArtifact.split(":")[2]
+      const isOldServer = compareVersions(languageServerVersion, "0.9.x") <= 0
       fetchWithCoursier(coursierPath, languageServerArtifact).then((languageServerClasspath) => {
         run({
           command: "java",
           args: ["-classpath", languageServerClasspath, "dotty.tools.languageserver.Main", "-stdio"]
-        })
+        }, isOldServer)
       })
     }
   })
@@ -149,7 +153,7 @@ function configureIDE(sbtClasspath: string, languageServerScalaVersion: string, 
   })
 }
 
-function run(serverOptions: ServerOptions) {
+function run(serverOptions: ServerOptions, isOldServer: boolean) {
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
       { language: 'scala', scheme: 'file', pattern: '**/*.scala' },
@@ -158,12 +162,13 @@ function run(serverOptions: ServerOptions) {
     synchronize: {
       configurationSection: 'dotty'
     },
+    outputChannel: outputChannel,
     revealOutputChannelOn: RevealOutputChannelOn.Never
   }
 
-  outputChannel.dispose()
-
-  const client = new LanguageClient('dotty', 'Dotty Language Server', serverOptions, clientOptions);
+  const client = new LanguageClient("dotty", "Dotty", serverOptions, clientOptions)
+  if (isOldServer)
+    enableOldServerWorkaround(client)
 
   // Push the disposable to the context's subscriptions so that the
   // client can be deactivated on extension deactivation

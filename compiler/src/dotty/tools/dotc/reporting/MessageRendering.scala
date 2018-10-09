@@ -6,7 +6,7 @@ import core.Contexts.Context
 import core.Decorators._
 import printing.Highlighting.{Blue, Red}
 import printing.SyntaxHighlighting
-import diagnostic.{ErrorMessageID, Message, MessageContainer, NoExplanation}
+import diagnostic.{ErrorMessageID, Message, MessageContainer}
 import diagnostic.messages._
 import util.SourcePosition
 import util.Chars.{ LF, CR, FF, SU }
@@ -62,7 +62,7 @@ trait MessageRendering {
 
     val syntax =
       if (ctx.settings.color.value != "never")
-        SyntaxHighlighting(pos.linesSlice).toArray
+        SyntaxHighlighting.highlight(new String(pos.linesSlice)).toCharArray
       else pos.linesSlice
     val lines = linesFrom(syntax)
     val (before, after) = pos.beforeAndAfterPoint
@@ -91,7 +91,7 @@ trait MessageRendering {
     * @return aligned error message
     */
   def errorMsg(pos: SourcePosition, msg: String, offset: Int)(implicit ctx: Context): String = {
-    val padding = msg.lines.foldLeft(pos.startColumnPadding) { (pad, line) =>
+    val padding = msg.linesIterator.foldLeft(pos.startColumnPadding) { (pad, line) =>
       val lineLength = stripColor(line).length
       val maxPad = math.max(0, ctx.settings.pageWidth.value - offset - lineLength) - offset
 
@@ -99,7 +99,7 @@ trait MessageRendering {
       else pad
     }
 
-    msg.lines
+    msg.linesIterator
       .map { line => " " * (offset - 1) + "|" + padding + line}
       .mkString(sys.props("line.separator"))
   }

@@ -7,7 +7,6 @@ import core.Symbols._
 import core.Flags._
 import core.Decorators._
 import MegaPhase.MiniPhase
-import ast.Trees._
 import config.Printers.transforms
 
 /** Add accessors for all protected accesses. An accessor is needed if
@@ -16,7 +15,7 @@ import config.Printers.transforms
  *  class. In this point a public access method is placed in that enclosing class.
  */
 object ProtectedAccessors {
-  val name = "protectedAccessors"
+  val name: String = "protectedAccessors"
 
   /** Is the current context's owner inside the access boundary established by `sym`? */
   def insideBoundaryOf(sym: Symbol)(implicit ctx: Context): Boolean = {
@@ -49,12 +48,11 @@ object ProtectedAccessors {
 
 class ProtectedAccessors extends MiniPhase {
   import ast.tpd._
-  import ProtectedAccessors._
 
-  override def phaseName = ProtectedAccessors.name
+  override def phaseName: String = ProtectedAccessors.name
 
   object Accessors extends AccessProxies {
-    val insert = new Insert {
+    val insert: Insert = new Insert {
       def accessorNameKind = ProtectedAccessorName
       def needsAccessor(sym: Symbol)(implicit ctx: Context) = ProtectedAccessors.needsAccessor(sym)
 

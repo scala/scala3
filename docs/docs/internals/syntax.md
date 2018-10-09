@@ -165,9 +165,9 @@ BlockResult       ::=  [FunArgMods] FunParams ‘=>’ Block
 FunParams         ::=  Bindings
                     |  id
                     |  ‘_’
-Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl}
+Expr1             ::=  ‘if’ ‘(’ Expr ‘)’ {nl}
                        Expr [[semi] ‘else’ Expr]                                If(Parens(cond), thenp, elsep?)
-                    |  [‘inline’] ‘if’ Expr ‘then’ Expr [[semi] ‘else’ Expr]    If(cond, thenp, elsep?)
+                    |  ‘if’ Expr ‘then’ Expr [[semi] ‘else’ Expr]    If(cond, thenp, elsep?)
                     |  ‘while’ ‘(’ Expr ‘)’ {nl} Expr                           WhileDo(Parens(cond), body)
                     |  ‘while’ Expr ‘do’ Expr                                   WhileDo(cond, body)
                     |  ‘do’ Expr [semi] ‘while’ Expr                            DoWhile(expr, cond)
@@ -179,8 +179,7 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl}
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
                     |  PostfixExpr [Ascription]
-                    |  [‘inline’] PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’       Match(expr, cases) -- point on match
-                    |  ‘implicit’ ‘match’ ‘{’ ImplicitCaseClauses ‘}’
+                    |  PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’                  Match(expr, cases) -- point on match
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
 Catches           ::=  ‘catch’ Expr
@@ -229,8 +228,6 @@ Guard             ::=  ‘if’ PostfixExpr
 
 CaseClauses       ::=  CaseClause { CaseClause }                                Match(EmptyTree, cases)
 CaseClause        ::=  ‘case’ (Pattern [Guard] ‘=>’ Block | INT)                CaseDef(pat, guard?, block)   // block starts at =>
-ImplicitCaseClauses ::=  ImplicitCaseClause { ImplicitCaseClause }
-ImplicitCaseClause  ::=  ‘case’ PatVar [‘:’ RefinedType] [Guard] ‘=>’ Block
 TypeCaseClauses   ::=  TypeCaseClause { TypeCaseClause }
 TypeCaseClause    ::=  ‘case’ InfixType ‘=>’ Type [nl]
 

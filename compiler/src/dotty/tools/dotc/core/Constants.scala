@@ -3,6 +3,7 @@ package core
 
 import Types._, Symbols._, Contexts._
 import printing.Printer
+import printing.Texts.Text
 
 object Constants {
 
@@ -27,15 +28,15 @@ object Constants {
     import java.lang.Double.doubleToRawLongBits
     import java.lang.Float.floatToRawIntBits
 
-    def isByteRange: Boolean  = isIntRange && Byte.MinValue <= intValue && intValue <= Byte.MaxValue
-    def isShortRange: Boolean = isIntRange && Short.MinValue <= intValue && intValue <= Short.MaxValue
-    def isCharRange: Boolean  = isIntRange && Char.MinValue <= intValue && intValue <= Char.MaxValue
-    def isIntRange: Boolean   = ByteTag <= tag && tag <= IntTag
-    def isLongRange: Boolean  = ByteTag <= tag && tag <= LongTag
-    def isFloatRange: Boolean = ByteTag <= tag && tag <= FloatTag
-    def isNumeric: Boolean    = ByteTag <= tag && tag <= DoubleTag
-    def isNonUnitAnyVal       = BooleanTag <= tag && tag <= DoubleTag
-    def isAnyVal              = UnitTag <= tag && tag <= DoubleTag
+    def isByteRange: Boolean     = isIntRange && Byte.MinValue <= intValue && intValue <= Byte.MaxValue
+    def isShortRange: Boolean    = isIntRange && Short.MinValue <= intValue && intValue <= Short.MaxValue
+    def isCharRange: Boolean     = isIntRange && Char.MinValue <= intValue && intValue <= Char.MaxValue
+    def isIntRange: Boolean      = ByteTag <= tag && tag <= IntTag
+    def isLongRange: Boolean     = ByteTag <= tag && tag <= LongTag
+    def isFloatRange: Boolean    = ByteTag <= tag && tag <= FloatTag
+    def isNumeric: Boolean       = ByteTag <= tag && tag <= DoubleTag
+    def isNonUnitAnyVal: Boolean = BooleanTag <= tag && tag <= DoubleTag
+    def isAnyVal: Boolean        = UnitTag <= tag && tag <= DoubleTag
 
     def tpe(implicit ctx: Context): Type = tag match {
       case UnitTag        => defn.UnitType
@@ -62,7 +63,7 @@ object Constants {
       case _ => false
     }
 
-    def isNaN = value match {
+    def isNaN: Boolean = value match {
       case f: Float  => f.isNaN
       case d: Double => d.isNaN
       case _ => false
@@ -188,7 +189,7 @@ object Constants {
 
     def stringValue: String = value.toString
 
-    def toText(printer: Printer) = printer.toText(this)
+    def toText(printer: Printer): Text = printer.toText(this)
 
     def typeValue: Type     = value.asInstanceOf[Type]
     def symbolValue: Symbol = value.asInstanceOf[Symbol]
@@ -219,29 +220,29 @@ object Constants {
       finalizeHash(h, length = 2)
     }
 
-    override def toString = s"Constant($value)"
-    def canEqual(x: Any) = true
-    def get     = value
-    def isEmpty = false
-    def _1      = value
+    override def toString: String = s"Constant($value)"
+    def canEqual(x: Any): Boolean = true
+    def get: Any                  = value
+    def isEmpty: Boolean          = false
+    def _1: Any                   = value
   }
 
   object Constant {
-    def apply(x: Null)         = new Constant(x, NullTag)
-    def apply(x: Unit)         = new Constant(x, UnitTag)
-    def apply(x: Boolean)      = new Constant(x, BooleanTag)
-    def apply(x: Byte)         = new Constant(x, ByteTag)
-    def apply(x: Short)        = new Constant(x, ShortTag)
-    def apply(x: Int)          = new Constant(x, IntTag)
-    def apply(x: Long)         = new Constant(x, LongTag)
-    def apply(x: Float)        = new Constant(x, FloatTag)
-    def apply(x: Double)       = new Constant(x, DoubleTag)
-    def apply(x: String)       = new Constant(x, StringTag)
-    def apply(x: Char)         = new Constant(x, CharTag)
-    def apply(x: Type)         = new Constant(x, ClazzTag)
-    def apply(x: Symbol)       = new Constant(x, EnumTag)
-    def apply(x: scala.Symbol) = new Constant(x, ScalaSymbolTag)
-    def apply(value: Any)      =
+    def apply(x: Null): Constant         = new Constant(x, NullTag)
+    def apply(x: Unit): Constant         = new Constant(x, UnitTag)
+    def apply(x: Boolean): Constant      = new Constant(x, BooleanTag)
+    def apply(x: Byte): Constant         = new Constant(x, ByteTag)
+    def apply(x: Short): Constant        = new Constant(x, ShortTag)
+    def apply(x: Int): Constant          = new Constant(x, IntTag)
+    def apply(x: Long): Constant         = new Constant(x, LongTag)
+    def apply(x: Float): Constant        = new Constant(x, FloatTag)
+    def apply(x: Double): Constant       = new Constant(x, DoubleTag)
+    def apply(x: String): Constant       = new Constant(x, StringTag)
+    def apply(x: Char): Constant         = new Constant(x, CharTag)
+    def apply(x: Type): Constant         = new Constant(x, ClazzTag)
+    def apply(x: Symbol): Constant       = new Constant(x, EnumTag)
+    def apply(x: scala.Symbol): Constant = new Constant(x, ScalaSymbolTag)
+    def apply(value: Any): Constant      =
       new Constant(value,
         value match {
           case null            => NullTag
@@ -261,6 +262,6 @@ object Constants {
         }
       )
 
-    def unapply(c: Constant) = c
+    def unapply(c: Constant): Constant = c
   }
 }

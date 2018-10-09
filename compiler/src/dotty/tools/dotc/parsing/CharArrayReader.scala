@@ -7,7 +7,7 @@ import util.Chars._
 abstract class CharArrayReader { self =>
 
   val buf: Array[Char]
-  protected def startFrom = 0
+  protected def startFrom: Int = 0
 
   /** Switch whether unicode should be decoded */
   protected def decodeUni: Boolean = true
@@ -33,24 +33,24 @@ abstract class CharArrayReader { self =>
   private[this] var lastUnicodeOffset = -1
 
   /** Is last character a unicode escape \\uxxxx? */
-  def isUnicodeEscape = charOffset == lastUnicodeOffset
+  def isUnicodeEscape: Boolean = charOffset == lastUnicodeOffset
 
   /** Advance one character; reducing CR;LF pairs to just LF */
   final def nextChar(): Unit = {
     val idx = charOffset
     lastCharOffset = idx
+    charOffset = idx + 1
     if (idx >= buf.length) {
       ch = SU
     } else {
       val c = buf(idx)
       ch = c
-      charOffset = idx + 1
       if (c == '\\') potentialUnicode()
       else if (c < ' ') { skipCR(); potentialLineEnd() }
     }
   }
 
-  def getc() = { nextChar() ; ch }
+  def getc(): Char = { nextChar() ; ch }
 
   /** Advance one character, leaving CR;LF pairs intact.
    *  This is for use in multi-line strings, so there are no
@@ -59,12 +59,12 @@ abstract class CharArrayReader { self =>
   final def nextRawChar(): Unit = {
     val idx = charOffset
     lastCharOffset = idx
+    charOffset = idx + 1
     if (idx >= buf.length) {
       ch = SU
     } else {
-      val c = buf(charOffset)
+      val c = buf(idx)
       ch = c
-      charOffset = idx + 1
       if (c == '\\') potentialUnicode()
     }
   }
@@ -117,16 +117,16 @@ abstract class CharArrayReader { self =>
     }
   }
 
-  def isAtEnd = charOffset >= buf.length
+  def isAtEnd: Boolean = charOffset >= buf.length
 
   /** A new reader that takes off at the current character position */
-  def lookaheadReader() = new CharArrayLookaheadReader
+  def lookaheadReader(): CharArrayLookaheadReader = new CharArrayLookaheadReader
 
   class CharArrayLookaheadReader extends CharArrayReader {
-    val buf = self.buf
+    val buf: Array[Char] = self.buf
     charOffset = self.charOffset
     ch = self.ch
-    override def decodeUni = self.decodeUni
-    def error(msg: String, offset: Int) = self.error(msg, offset)
+    override def decodeUni: Boolean = self.decodeUni
+    def error(msg: String, offset: Int): Unit = self.error(msg, offset)
   }
 }

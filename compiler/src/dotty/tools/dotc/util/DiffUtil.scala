@@ -5,9 +5,9 @@ import scala.collection.mutable
 
 object DiffUtil {
 
-  val EOF = new String("EOF") // Unique string up to reference
+  val EOF: String = new String("EOF") // Unique string up to reference
 
-  val ansiColorToken = '\u001b'
+  val ansiColorToken: Char = '\u001b'
 
   @tailrec private def splitTokens(str: String, acc: List[String] = Nil): List[String] = {
       if (str == "") {

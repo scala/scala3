@@ -50,17 +50,17 @@ object Chars {
   }
 
   /** Is character a line break? */
-  def isLineBreakChar(c: Char) = (c: @switch) match {
+  def isLineBreakChar(c: Char): Boolean = (c: @switch) match {
     case LF|FF|CR|SU  => true
     case _            => false
   }
 
   /** Is character a whitespace character (but not a new line)? */
-  def isWhitespace(c: Char) =
+  def isWhitespace(c: Char): Boolean =
     c == ' ' || c == '\t' || c == CR
 
   /** Can character form part of a doc comment variable $xxx? */
-  def isVarPart(c: Char) =
+  def isVarPart(c: Char): Boolean =
     '0' <= c && c <= '9' || 'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z'
 
   /** Can character start an alphanumeric Scala identifier? */
@@ -68,19 +68,19 @@ object Chars {
     (c == '_') || (c == '$') || JCharacter.isUnicodeIdentifierStart(c)
 
   /** Can character form part of an alphanumeric Scala identifier? */
-  def isIdentifierPart(c: Char) =
+  def isIdentifierPart(c: Char): Boolean =
     (c == '$') || JCharacter.isUnicodeIdentifierPart(c)
 
   /** Is character a math or other symbol in Unicode?  */
-  def isSpecial(c: Char) = {
+  def isSpecial(c: Char): Boolean = {
     val chtp = JCharacter.getType(c)
     chtp == JCharacter.MATH_SYMBOL.toInt || chtp == JCharacter.OTHER_SYMBOL.toInt
   }
 
-  def isValidJVMChar(c: Char) =
+  def isValidJVMChar(c: Char): Boolean =
     !(c == '.' || c == ';' || c =='[' || c == '/')
 
-  def isValidJVMMethodChar(c: Char) =
+  def isValidJVMMethodChar(c: Char): Boolean =
     !(c == '.' || c == ';' || c =='[' || c == '/' || c == '<' || c == '>')
 
   private final val otherLetters = Set[Char]('\u0024', '\u005F')  // '$' and '_'
@@ -88,7 +88,7 @@ object Chars {
     import JCharacter._
     Set[Byte](LOWERCASE_LETTER, UPPERCASE_LETTER, OTHER_LETTER, TITLECASE_LETTER, LETTER_NUMBER)
   }
-  def isScalaLetter(ch: Char) = letterGroups(JCharacter.getType(ch).toByte) || otherLetters(ch)
+  def isScalaLetter(ch: Char): Boolean = letterGroups(JCharacter.getType(ch).toByte) || otherLetters(ch)
 
   /** Can character form part of a Scala operator name? */
   def isOperatorPart(c : Char) : Boolean = (c: @switch) match {

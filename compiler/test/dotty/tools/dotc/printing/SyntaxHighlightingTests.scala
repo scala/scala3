@@ -1,16 +1,17 @@
 package dotty.tools.dotc.printing
 
+import dotty.tools.DottyTest
 import org.junit.Assert._
-import org.junit.Test
+import org.junit.{Ignore, Test}
 
 /** Adapted from Ammonite HighlightTests
  */
-class SyntaxHighlightingTests {
+class SyntaxHighlightingTests extends DottyTest {
   import SyntaxHighlighting._
 
   private def test(source: String, expected: String): Unit = {
-    val highlighted = SyntaxHighlighting.highlight(source)
-      .mkString
+    val testCtx = ctx.fresh.setSetting(ctx.settings.color, "always")
+    val highlighted = SyntaxHighlighting.highlight(source)(testCtx)
       .replace(NoColor,         ">")
       .replace(CommentColor,    "<C|")
       .replace(KeywordColor,    "<K|")
@@ -27,15 +28,20 @@ class SyntaxHighlightingTests {
   }
 
   @Test
+  @Ignore("Comments are currently not supported")
   def comments = {
-    test("//a", "<C|//a>")
+    test("// a", "<C|// a>")
     test("/** a */", "<C|/** a */>")
     test("/* a */", "<C|/* a */>")
   }
 
   @Test
   def types = {
+    test("type Foo", "<K|type> <T|Foo>")
+    test("type Foo =", "<K|type> <T|Foo> =")
     test("type Foo = Int", "<K|type> <T|Foo> = <T|Int>")
+    test("type A = String | Int", "<K|type> <T|A> = <T|String | Int>")
+    test("type B = String & Int", "<K|type> <T|B> = <T|String & Int>")
   }
 
   @Test
@@ -43,63 +49,82 @@ class SyntaxHighlightingTests {
     test("1", "<L|1>")
     test("1.1", "<L|1.1>")
     test("1.1.toString", "<L|1.1>.toString")
-    // test("1L", "<L|1L>")
+    test("1L", "<L|1L>")
+    test("1Lx", "<L|1L>x")
+    test("1f", "<L|1f>")
+    test("1.1f", "<L|1.1f>")
+    test("1.1fx", "1.1fx")
   }
 
   @Test
   def strings = {
     // For some reason we currently use literal color for string
     test("\"Hello\"", "<L|\"Hello\">")
-    test("s\"Hello\"", "s<L|\"Hello\">")
-    test("s\"Hello $name\"", "s<L|\"Hello <V|$name<L|\">")
-    test("raw\"Hello\"", "raw<L|\"Hello\">")
-    test("raw\"\"\"Hello\"\"\"", "raw<L|\"\"\"Hello\"\"\">")
+    test("\"\"\"Hello\"\"\"", "<L|\"\"\"Hello\"\"\">")
+
+    test("s\"Hello\"", "<L|s\"Hello\">")
+    test("s\"Hello $name\"", "<L|s\"Hello >$name<L|\">")
+    test("s\"Hello ${name}\"", "<L|s\"Hello >${name}<L|\">")
+    test("raw\"Hello\"", "<L|raw\"Hello\">")
   }
 
   @Test
   def annotations = {
-    test("@tailrec", "<T|@tailrec>")
+    test("@deprecated class Foo", "<T|@deprecated> <K|class> <T|Foo>")
+    test("@Test() class Foo", "<T|@Test()> <K|class> <T|Foo>")
+    test("@Test(\"Hello\") class Foo", "<T|@Test(\"Hello\")> <K|class> <T|Foo>")
+    test("@Test(\"Hello\")(\"World\") class Foo", "<T|@Test(\"Hello\")(\"World\")> <K|class> <T|Foo>")
+    test("@annotation.tailrec def foo = 1", "<T|@annotation.tailrec> <K|def> <V|foo> = <L|1>")
   }
 
   @Test
   def expressions = {
-    test("val x = 1 + 2 + 3", "<K|val> <V|x> = <L|1> + <L|2> + <L|3>")
-    test("if (true) 3 else 1", "<K|if> (<K|true>) <L|3> <K|else> <L|1>")
+    test("if (true) 1 else 2", "<K|if> (<L|true>) <L|1> <K|else> <L|2>")
+    test("1 + 2 + 3", "<L|1> + <L|2> + <L|3>")
   }
 
   @Test
-  def valDef = {
-    test("val a = 123", "<K|val> <V|a> = <L|123>")
-    test("var b = 123 /*Int*/", "<K|var> <V|b> = <L|123> <C|/*Int*/>")
-    test("""var c = "123" // String""", """<K|var> <V|c> = <L|"123"> <C|// String>""")
-    test("var e:Int = 123;e", "<K|var> <V|e>:<T|Int> = <L|123>;e")
-    test("def f = 123", "<K|def> <V|f> = <L|123>")
-    test("def f1(x: Int) = 123", "<K|def> <V|f1>(x: <T|Int>) = <L|123>")
-    test("def f2[T](x: T) = { 123 }", "<K|def> <V|f2>[<T|T>](x: <T|T>) = { <L|123> }")
+  def valOrDefDef = {
+    test("val",           "<K|val>")
+    test("val foo",       "<K|val> <V|foo>")
+    test("val foo =",     "<K|val> <V|foo> =")
+    test("val foo = 123", "<K|val> <V|foo> = <L|123>")
+
+    test("var",                "<K|var>")
+    test("var foo",            "<K|var> <V|foo>")
+    test("var foo:",           "<K|var> <V|foo>:")
+    test("var foo: Int",       "<K|var> <V|foo>: <T|Int>")
+    test("var foo: Int =",     "<K|var> <V|foo>: <T|Int> =")
+    test("var foo: Int = 123", "<K|var> <V|foo>: <T|Int> = <L|123>")
+
+    test("def",                          "<K|def>")
+    test("def foo",                      "<K|def> <V|foo>")
+    test("def foo(",                     "<K|def> <V|foo>(")
+    test("def foo(bar",                  "<K|def> <V|foo>(<V|bar>")
+    test("def foo(bar:",                 "<K|def> <V|foo>(<V|bar>:")
+    test("def foo(bar: Int",             "<K|def> <V|foo>(<V|bar>: <T|Int>")
+    test("def foo(bar: Int)",            "<K|def> <V|foo>(<V|bar>: <T|Int>)")
+    test("def foo(bar: Int):",           "<K|def> <V|foo>(<V|bar>: <T|Int>):")
+    test("def foo(bar: Int): Int",       "<K|def> <V|foo>(<V|bar>: <T|Int>): <T|Int>")
+    test("def foo(bar: Int): Int =",     "<K|def> <V|foo>(<V|bar>: <T|Int>): <T|Int> =")
+    test("def foo(bar: Int): Int = 123", "<K|def> <V|foo>(<V|bar>: <T|Int>): <T|Int> = <L|123>")
+
+    test("def f1(x: Int) = 123", "<K|def> <V|f1>(<V|x>: <T|Int>) = <L|123>")
+    test("def f2[T](x: T) = { 123 }", "<K|def> <V|f2>[<T|T>](<V|x>: <T|T>) = { <L|123> }")
   }
 
   @Test
-  def patternMatching = {
-    test("""val aFruit: Fruit = Apple("red", 123)""",
-      """<K|val> <V|aFruit>: <T|Fruit> = <T|Apple>(<L|"red">, <L|123>)""")
-    test("""val Apple(color, weight) = aFruit""",
-      """<K|val> <T|Apple>(<V|color>, <V|weight>) = aFruit""")
-    test("""case Apple(_, weight) => println(s"apple: $weight kgs")""",
-      """<K|case> <T|Apple>(<V|_>, <V|weight>) <T|=>> println(s<L|"apple: <V|$weight <L|kgs">)""")
-    test("""case o: Orange => println(s"orange ${o.weight} kgs")""",
-      """<K|case> <V|o>: <T|Orange> <T|=>> println(s<L|"orange <V|${o.weight}<L| kgs">)""")
-    test("""case m @ Melon(weight) => println(s"melon: ${m.weight} kgs")""",
-      """<K|case> <V|m> @ <T|Melon>(<V|weight>) <T|=>> println(s<L|"melon: <V|${m.weight}<L| kgs">)""")
+  @Ignore("TODO: Not implemented")
+  def patterns = {
+    test("val Foo(x) = foo", ???)
+    test("val foo @ Foo(x) = bar", ???)
+    test("x match { case Foo | Bar => 1 }", ???)
   }
 
   @Test
-  def unionTypes = {
-    test("type A = String|Int| Long", "<K|type> <T|A> = <T|String>|<T|Int>| <T|Long>")
-    test("type B = String |Int| Long", "<K|type> <T|B> = <T|String> |<T|Int>| <T|Long>")
-    test("type C = String | Int | Long", "<K|type> <T|C> = <T|String> | <T|Int> | <T|Long>")
-    test("type D = String&Int& Long", "<K|type> <T|D> = <T|String>&<T|Int>& <T|Long>")
-    test("type E = String &Int& Long", "<K|type> <T|E> = <T|String> &<T|Int>& <T|Long>")
-    test("type F = String & Int & Long", "<K|type> <T|F> = <T|String> & <T|Int> & <T|Long>")
-    test("fn[String|Char](input)", "fn[<T|String>|<T|Char>](input)")
+  def softKeywords = {
+    test("inline def foo = 1", "<K|inline> <K|def> <V|foo> = <L|1>")
+    test("@inline def foo = 1", "<T|@inline> <K|def> <V|foo> = <L|1>")
+    test("class inline", "<K|class> <T|inline>")
   }
 }

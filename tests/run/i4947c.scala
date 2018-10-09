@@ -1,4 +1,4 @@
-object Aux {
+object Foo {
 
   inline def track[T](f: => T): T = {
     printStack("track")
@@ -12,7 +12,7 @@ object Aux {
 }
 
 object Test {
-  import Aux._
+  import Foo._
   def main(args: Array[String]): Unit = {
     track {
       printStack("main1")

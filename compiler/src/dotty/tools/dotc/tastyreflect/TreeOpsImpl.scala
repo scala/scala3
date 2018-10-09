@@ -1,9 +1,8 @@
 package dotty.tools.dotc.tastyreflect
 
-import dotty.tools.dotc.ast.{Trees, tpd, untpd}
+import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFromSym}
 
@@ -12,7 +11,6 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
   def TreeDeco(tree: Tree): TreeAPI = new TreeAPI {
     def pos(implicit ctx: Context): Position = tree.pos
     def symbol(implicit ctx: Context): Symbol = tree.symbol
-
   }
 
   object IsPackageClause extends IsPackageClauseExtractor {
@@ -71,7 +69,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
   }
 
   object ClassDef extends ClassDefExtractor {
-    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[Parent],  Option[ValDef], List[Statement])] = tree match {
+    def unapply(tree: Tree)(implicit ctx: Context): Option[(String, DefDef, List[TermOrTypeTree],  Option[ValDef], List[Statement])] = tree match {
       case Trees.TypeDef(name, impl: tpd.Template) =>
         Some((name.toString, impl.constr, impl.parents, optional(impl.self), impl.body))
       case _ => None
@@ -84,6 +82,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
     def parents(implicit ctx: Context): List[tpd.Tree] = rhs.parents
     def self(implicit ctx: Context): Option[tpd.ValDef] = optional(rhs.self)
     def body(implicit ctx: Context): List[tpd.Tree] = rhs.body
+    def symbol(implicit ctx: Context): ClassSymbol = cdef.symbol.asClass
   }
 
   // DefDef
@@ -108,6 +107,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
     def paramss(implicit ctx: Context): List[List[ValDef]] = ddef.vparamss
     def returnTpt(implicit ctx: Context): TypeTree = ddef.tpt
     def rhs(implicit ctx: Context): Option[Tree] = optional(ddef.rhs)
+    def symbol(implicit ctx: Context): DefSymbol = ddef.symbol.asTerm
   }
 
   // ValDef
@@ -130,6 +130,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
   def ValDefDeco(vdef: ValDef): ValDefAPI = new ValDefAPI {
     def tpt(implicit ctx: Context): TypeTree = vdef.tpt
     def rhs(implicit ctx: Context): Option[Tree] = optional(vdef.rhs)
+    def symbol(implicit ctx: Context): ValSymbol = vdef.symbol.asTerm
   }
 
   // TypeDef
@@ -150,6 +151,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
 
   def TypeDefDeco(tdef: TypeDef): TypeDefAPI = new TypeDefAPI {
     def rhs(implicit ctx: Context): TypeOrBoundsTree = tdef.rhs
+    def symbol(implicit ctx: Context): TypeSymbol = tdef.symbol.asType
   }
 
   // PackageDef
@@ -162,6 +164,8 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
       if (pdef.symbol.is(core.Flags.JavaDefined)) Nil // FIXME should also support java packages
       else pdef.symbol.info.decls.iterator.map(definitionFromSym).toList
     }
+
+    def symbol(implicit ctx: Context): PackageSymbol = pdef.symbol
   }
 
   object IsPackageDef extends IsPackageDefExtractor {
@@ -183,14 +187,18 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
 
   def TermDeco(term: Term): TermAPI = new TermAPI {
     def pos(implicit ctx: Context): Position = term.pos
-    def tpe(implicit ctx: Context): Types.Type = term.tpe
+    def tpe(implicit ctx: Context): Type = term.tpe
+    def underlyingArgument(implicit ctx: Context): Term = {
+      import tpd._
+      term.underlyingArgument
+    }
   }
 
   object IsTerm extends IsTermExtractor {
     def unapply(tree: Tree)(implicit ctx: Context): Option[Term] =
       if (tree.isTerm) Some(tree) else None
-    def unapply(parent: Parent)(implicit ctx: Context, dummy: DummyImplicit): Option[Term] =
-      if (parent.isTerm) Some(parent) else None
+    def unapply(termOrTypeTree: TermOrTypeTree)(implicit ctx: Context, dummy: DummyImplicit): Option[Term] =
+      if (termOrTypeTree.isTerm) Some(termOrTypeTree) else None
   }
 
   object Term extends TermModule {
@@ -312,7 +320,7 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
     }
 
     object Inlined extends InlinedExtractor {
-      def unapply(x: Term)(implicit ctx: Context): Option[(Option[Term], List[Statement], Term)] = x match {
+      def unapply(x: Term)(implicit ctx: Context): Option[(Option[TermOrTypeTree], List[Statement], Term)] = x match {
         case x: tpd.Inlined =>
           Some((optional(x.call), x.bindings, x.expansion))
         case _ => None
@@ -380,5 +388,5 @@ trait TreeOpsImpl extends scala.tasty.reflect.TreeOps with TastyCoreImpl with He
     }
   }
 
-  def termAsParent(term: Term): Parent = term
+  def termAsTermOrTypeTree(term: Term): TermOrTypeTree = term
 }

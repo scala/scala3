@@ -5,7 +5,7 @@ package interactive
 import scala.io.Codec
 
 import ast.tpd
-import core._, core.Decorators.{sourcePos => _, _}
+import core._, core.Decorators.{sourcePos => _}
 import Contexts._, NameOps._, Symbols._, StdNames._
 import util._, util.Positions._
 
@@ -53,7 +53,7 @@ object SourceTree {
           Some(SourceTree(tree, sourceFile))
         case _ => None
       }
-      sourceTreeOfClass(sym.treeContaining(id))
+      sourceTreeOfClass(sym.rootTreeContaining(id))
     }
   }
 }

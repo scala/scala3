@@ -1,5 +1,4 @@
 package dotty
-import scala.annotation.Annotation
 
 package object tools {
   // Ensure this object is already classloaded, since it's only actually used
@@ -7,7 +6,7 @@ package object tools {
   // risks failing.
   dotty.tools.dotc.core.handleRecursive
 
-  val ListOfNil = Nil :: Nil
+  val ListOfNil: List[Nil.type] = Nil :: Nil
 
   /** True if two lists have the same length.  Since calling length on linear sequences
    *  is O(n), it is an inadvisable way to test length equality.

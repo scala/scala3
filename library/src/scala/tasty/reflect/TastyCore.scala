@@ -6,11 +6,11 @@ package scala.tasty.reflect
  *
  *  +- Tree -+- PackageClause
  *           +- Import
- *           +- Statement -+- Definition --+- ClassDef
+ *           +- Statement -+- Definition --+- PackageDef
+ *                         |               +- ClassDef
  *                         |               +- TypeDef
  *                         |               +- DefDef
  *                         |               +- ValDef
- *                         |               +- PackageDef
  *                         |
  *                         +- Term --------+- Ident
  *                                         +- Select
@@ -37,9 +37,9 @@ package scala.tasty.reflect
  *
  *
  *                         +- TypeTree ----+- Synthetic
- *                         |               +- TypeIdent
- *                         |               +- TermSelect
- *                         |               +- TypeSelect
+ *                         |               +- Ident
+ *                         |               +- Select
+ *                         |               +- Project
  *                         |               +- Singleton
  *  +- TypeOrBoundsTree ---+               +- Refined
  *                         |               +- Applied
@@ -96,10 +96,16 @@ package scala.tasty.reflect
  *
  *  +- Constant
  *
- *  +- Symbol
+ *  +- Symbol --+- PackageSymbol
+ *              +- ClassSymbol
+ *              +- TypeSymbol
+ *              +- DefSymbol
+ *              +- ValSymbol
+ *              +- BindSymbol
+ *              +- NoSymbol
  *
  *  Aliases:
- *   # Parent = Term | TypeTree
+ *   # TermOrTypeTree = Term | TypeTree
  *
  *  ```
  */
@@ -110,7 +116,7 @@ trait TastyCore {
 
   // TODO: When bootstrapped, remove and use `Term | TypeTree` type directly in other files
   /** Workaround missing `|` types in Scala 2 to represent `Term | TypeTree` */
-  type Parent /* Term | TypeTree */
+  type TermOrTypeTree /* Term | TypeTree */
 
   /** Tree representing executable code written in the source */
   type Tree
@@ -118,11 +124,11 @@ trait TastyCore {
     type Statement <: Tree
       type Import <: Statement
       type Definition <: Statement
+        type PackageDef <: Definition
         type ClassDef <: Definition
         type TypeDef <: Definition
         type DefDef <: Definition
         type ValDef <: Definition
-        type PackageDef <: Definition
       type Term <: Statement
 
   /** Branch of a pattern match or catch clause */
@@ -130,6 +136,11 @@ trait TastyCore {
 
   /** Pattern tree of the pattern part of a CaseDef */
   type Pattern
+    type Value <: Pattern
+    type Bind <: Pattern
+    type Unapply <: Pattern
+    type Alternative <: Pattern
+    type TypeTest <: Pattern
 
   /** Tree representing a type written in the source */
   type TypeOrBoundsTree
@@ -167,5 +178,12 @@ trait TastyCore {
    *  Then can be compared with == to know if the definition is the same.
    */
   type Symbol
+    type PackageSymbol <: Symbol
+    type ClassSymbol <: Symbol
+    type TypeSymbol <: Symbol
+    type DefSymbol <: Symbol
+    type ValSymbol <: Symbol
+    type BindSymbol <: Symbol
+    type NoSymbol <: Symbol
 
 }

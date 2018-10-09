@@ -224,10 +224,10 @@ final class WeakHashSet[A >: Null <: AnyRef](val initialCapacity: Int, val loadF
     }
   }
 
-  def +=(elem: A) = this + elem
+  def +=(elem: A): this.type = this + elem
 
   // from scala.reflect.internal.Set
-  override def addEntry(x: A) = { this += x }
+  override def addEntry(x: A): Unit = { this += x }
 
   // remove an element from this set and return this set
   override def -(elem: A): this.type = elem match {
@@ -250,7 +250,7 @@ final class WeakHashSet[A >: Null <: AnyRef](val initialCapacity: Int, val loadF
     }
   }
 
-  def -=(elem: A) = this - elem
+  def -=(elem: A): this.type = this - elem
 
   // empty this set
   override def clear(): Unit = {
@@ -368,7 +368,7 @@ final class WeakHashSet[A >: Null <: AnyRef](val initialCapacity: Int, val loadF
     /**
      *  Produces a diagnostic dump of the table that underlies this hash set.
      */
-    def dump = table.deep
+    def dump: IndexedSeq[Any] = table.deep
 
     /**
      * Number of buckets that hold collisions. Useful for diagnosing performance issues.
@@ -388,7 +388,7 @@ final class WeakHashSet[A >: Null <: AnyRef](val initialCapacity: Int, val loadF
     def bucketsCount: Int = table.size
   }
 
-  private[util] def diagnostics = new Diagnostics
+  private[util] def diagnostics: Diagnostics = new Diagnostics
 }
 
 /**
@@ -401,9 +401,9 @@ object WeakHashSet {
    */
   private class Entry[A](element: A, val hash:Int, var tail: Entry[A], queue: ReferenceQueue[A]) extends WeakReference[A](element, queue)
 
-  val defaultInitialCapacity = 16
-  val defaultLoadFactor = .75
+  val defaultInitialCapacity: Int = 16
+  val defaultLoadFactor: Double = .75
 
-  def apply[A >: Null <: AnyRef](initialCapacity: Int = WeakHashSet.defaultInitialCapacity, loadFactor: Double = WeakHashSet.defaultLoadFactor) =
+  def apply[A >: Null <: AnyRef](initialCapacity: Int = WeakHashSet.defaultInitialCapacity, loadFactor: Double = WeakHashSet.defaultLoadFactor): WeakHashSet[A] =
     new WeakHashSet[A](initialCapacity, defaultLoadFactor)
 }

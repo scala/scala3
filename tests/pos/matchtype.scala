@@ -17,24 +17,15 @@ object Test {
 
   erased val x2: 1 = erasedValue[T1]
 
-  inline def checkSub[T1, T2] =
-    inline typelevel.erasedValue[T1] match {
-      case _: T2 => // OK
-      case _ => error("not a subtype T1/T2")
-    }
-
-  inline def checkSame[T1, T2] = {
-    checkSub[T1, T2]
-    checkSub[T2, T1]
-  }
-
-  checkSame[T2, S[S[S[0]]]]
+  erased val y0: S[S[S[0]]] = erasedValue[T2]
+  erased val z0: T2 = erasedValue[S[S[S[0]]]]
 
   type Head[X <: Tuple] = X match {
     case (x1, _) => x1
   }
 
-  checkSame[Head[(Int, String)], Int]
+  erased val y1: Int = erasedValue[Head[(Int, String)]]
+  erased val z1: Head[(Int, String)] = 22
 
   type Concat[X <: Tuple, Y <: Tuple] <: Tuple = X match {
     case Unit => Y
@@ -57,15 +48,21 @@ object Test {
   erased val x3: String = erasedValue[Elem[(String, Int), 0]]
   erased val x4: Int = erasedValue[Elem1[(String, Int), 1]]
 
-  checkSame[Elem[(String, Int, Boolean), 0], String]
-  checkSame[Elem1[(String, Int, Boolean), 1], Int]
-  checkSame[Elem[(String, Int, Boolean), 2], Boolean]
+  erased val y2: Elem[(String, Int, Boolean), 0] = erasedValue[String]
+  erased val z2: String = erasedValue[Elem[(String, Int, Boolean), 0]]
+  erased val y3: Elem1[(String, Int, Boolean), 1] = erasedValue[Int]
+  erased val z3: Int = erasedValue[Elem1[(String, Int, Boolean), 1]]
+  erased val y4: Elem[(String, Int, Boolean), 2] = erasedValue[Boolean]
+  erased val z4: Boolean = erasedValue[Elem[(String, Int, Boolean), 2]]
 
-  checkSame[Concat[Unit, (String, Int)], (String, Int)]
-  checkSame[Concat[(Boolean, Boolean), (String, Int)], Boolean *: Boolean *: (String, Int)]
-  checkSub[(Boolean, Boolean, String, Int), Concat[(Boolean, Boolean), String *: Int *: Unit]]
+  erased val y5: Concat[Unit, (String, Int)] = erasedValue[(String, Int)]
+  erased val z5: (String, Int) = erasedValue[Concat[Unit, (String, Int)]]
+  erased val y6: Concat[(Boolean, Boolean), (String, Int)] = erasedValue[Boolean *: Boolean *: (String, Int)]
+  erased val z6: Boolean *: Boolean *: (String, Int) = erasedValue[Concat[(Boolean, Boolean), (String, Int)]]
+  erased val y7: (Boolean, Boolean, String, Int) = erasedValue[Concat[(Boolean, Boolean), String *: Int *: Unit]]
+  erased val z7: Concat[(Boolean, Boolean), String *: Int *: Unit] = erasedValue[(Boolean, Boolean, String, Int)]
 
-  inline def index[Xs <: NonEmptyTuple](xs: Xs, n: Int): Elem[Xs, n.type] = xs(n).asInstanceOf
+  def index[Xs <: NonEmptyTuple](xs: Xs, n: Int): Elem[Xs, n.type] = xs(n).asInstanceOf
 
   val test = (1, "hi", true, 2.0)
   index(test, 0): Int

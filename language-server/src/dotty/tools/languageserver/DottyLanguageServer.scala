@@ -262,7 +262,7 @@ class DottyLanguageServer extends LanguageServer
             && funSym.owner.is(CaseClass)) {
             funSym.owner.info.member(name).symbol
           } else {
-            val classTree = funSym.topLevelClass.asClass.tree
+            val classTree = funSym.topLevelClass.asClass.rootTree
             tpd.defPath(funSym, classTree).lastOption.flatMap {
               case DefDef(_, _, paramss, _, _) =>
                 paramss.flatten.find(_.name == name).map(_.symbol)
@@ -288,7 +288,7 @@ class DottyLanguageServer extends LanguageServer
             (Nil, Include.overriding)
         }
       val defs = Interactive.namedTrees(trees, include, sym)
-      defs.map(d => location(d.namePos)).asJava
+      defs.flatMap(d => location(d.namePos)).asJava
     }
   }
 
@@ -311,7 +311,7 @@ class DottyLanguageServer extends LanguageServer
         Include.references | Include.overriding | (if (includeDeclaration) Include.definitions else 0)
       val refs = Interactive.findTreesMatching(trees, includes, sym)
 
-      refs.map(ref => location(ref.namePos)).asJava
+      refs.flatMap(ref => location(ref.namePos)).asJava
     }
   }
 
@@ -331,7 +331,10 @@ class DottyLanguageServer extends LanguageServer
         Include.references | Include.definitions | Include.linkedClass | Include.overriding
       val refs = Interactive.findTreesMatching(trees, includes, sym)
 
-      val changes = refs.groupBy(ref => toUri(ref.source).toString).mapValues(_.map(ref => new TextEdit(range(ref.namePos), newName)).asJava)
+      val changes = refs.groupBy(ref => toUri(ref.source).toString)
+        .mapValues(refs =>
+          refs.flatMap(ref =>
+            range(ref.namePos).map(nameRange => new TextEdit(nameRange, newName))).asJava)
 
       new WorkspaceEdit(changes.asJava)
     }
@@ -349,9 +352,10 @@ class DottyLanguageServer extends LanguageServer
     if (sym == NoSymbol) Nil.asJava
     else {
       val refs = Interactive.namedTrees(uriTrees, Include.references | Include.overriding, sym)
-      ( for (ref <- refs if ref.namePos.exists)
-        yield new DocumentHighlight(range(ref.namePos), DocumentHighlightKind.Read)
-      ).asJava
+      (for {
+        ref <- refs
+        nameRange <- range(ref.namePos)
+      } yield new DocumentHighlight(nameRange, DocumentHighlightKind.Read)).asJava
     }
   }
 
@@ -382,7 +386,10 @@ class DottyLanguageServer extends LanguageServer
     val uriTrees = driver.openedTrees(uri)
 
     val defs = Interactive.namedTrees(uriTrees, includeReferences = false, _ => true)
-    defs.map(d => JEither.forLeft(symbolInfo(d.tree.symbol, d.namePos))).asJava
+    (for {
+      d <- defs
+      info <- symbolInfo(d.tree.symbol, d.namePos)
+    } yield JEither.forLeft(info)).asJava
   }
 
   override def symbol(params: WorkspaceSymbolParams) = computeAsync { cancelToken =>
@@ -393,7 +400,7 @@ class DottyLanguageServer extends LanguageServer
 
       val trees = driver.allTrees
       val defs = Interactive.namedTrees(trees, includeReferences = false, nameSubstring = query)
-      defs.map(d => symbolInfo(d.tree.symbol, d.namePos))
+      defs.flatMap(d => symbolInfo(d.tree.symbol, d.namePos))
     }.asJava
   }
 
@@ -427,15 +434,18 @@ object DottyLanguageServer {
   }
 
   /** Convert a SourcePosition to an lsp4j.Range */
-  def range(p: SourcePosition): lsp4j.Range =
-    new lsp4j.Range(
-      new lsp4j.Position(p.startLine, p.startColumn),
-      new lsp4j.Position(p.endLine, p.endColumn)
-    )
+  def range(p: SourcePosition): Option[lsp4j.Range] =
+    if (p.exists)
+      Some(new lsp4j.Range(
+        new lsp4j.Position(p.startLine, p.startColumn),
+        new lsp4j.Position(p.endLine, p.endColumn)
+      ))
+    else
+      None
 
   /** Convert a SourcePosition to an lsp4.Location */
-  def location(p: SourcePosition): lsp4j.Location =
-    new lsp4j.Location(toUri(p.source).toString, range(p))
+  def location(p: SourcePosition): Option[lsp4j.Location] =
+    range(p).map(r => new lsp4j.Location(toUri(p.source).toString, r))
 
   /** Convert a MessageContainer to an lsp4j.Diagnostic */
   def diagnostic(mc: MessageContainer): Option[lsp4j.Diagnostic] =
@@ -457,8 +467,9 @@ object DottyLanguageServer {
       }
 
       val code = mc.contained().errorId.errorNumber.toString
-      Some(new lsp4j.Diagnostic(
-        range(mc.pos), mc.message, severity(mc.level), /*source =*/ "", code))
+      range(mc.pos).map(r =>
+        new lsp4j.Diagnostic(
+          r, mc.message, severity(mc.level), /*source =*/ "", code))
     }
 
   /** Create an lsp4j.CompletionItem from a Symbol */
@@ -506,7 +517,7 @@ object DottyLanguageServer {
   }
 
   /** Create an lsp4j.SymbolInfo from a Symbol and a SourcePosition */
-  def symbolInfo(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): lsp4j.SymbolInformation = {
+  def symbolInfo(sym: Symbol, pos: SourcePosition)(implicit ctx: Context): Option[lsp4j.SymbolInformation] = {
     def symbolKind(sym: Symbol)(implicit ctx: Context): lsp4j.SymbolKind = {
       import lsp4j.{SymbolKind => SK}
 
@@ -531,6 +542,6 @@ object DottyLanguageServer {
       else
         null
 
-    new lsp4j.SymbolInformation(name, symbolKind(sym), location(pos), containerName)
+    location(pos).map(l => new lsp4j.SymbolInformation(name, symbolKind(sym), l, containerName))
   }
 }

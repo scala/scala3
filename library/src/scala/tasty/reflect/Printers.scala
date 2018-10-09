@@ -31,6 +31,9 @@ trait Printers { tasty: Tasty =>
   /** Adds `show` as an extension method of a `Constant` */
   implicit def ConstantShowDeco(const: Constant): ShowAPI
 
+  /** Adds `show` as an extension method of a `Symbol` */
+  implicit def SymbolShowDeco(symbol: Symbol): ShowAPI
+
   /** Define `show` as method */
   trait ShowAPI {
     /** Shows the string representation based on an implicit instance of `Show[tasty.type]`

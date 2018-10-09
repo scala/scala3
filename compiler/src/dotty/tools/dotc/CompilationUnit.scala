@@ -12,13 +12,13 @@ import dotty.tools.dotc.transform.SymUtils._
 
 class CompilationUnit(val source: SourceFile) {
 
-  override def toString = source.toString
+  override def toString: String = source.toString
 
   var untpdTree: untpd.Tree = untpd.EmptyTree
 
   var tpdTree: tpd.Tree = tpd.EmptyTree
 
-  def isJava = source.file.name.endsWith(".java")
+  def isJava: Boolean = source.file.name.endsWith(".java")
 
   /** Pickled TASTY binaries, indexed by class. */
   var pickled: Map[ClassSymbol, Array[Byte]] = Map()
@@ -29,7 +29,7 @@ class CompilationUnit(val source: SourceFile) {
   var containsQuotesOrSplices: Boolean = false
 
   /** A structure containing a temporary map for generating inline accessors */
-  val inlineAccessors = new InlineAccessors
+  val inlineAccessors: InlineAccessors = new InlineAccessors
 }
 
 object CompilationUnit {

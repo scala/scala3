@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core._
-import ast.{Trees, untpd, tpd, TreeInfo}
+import ast.{Trees, untpd, tpd}
 import util.Positions._
 import util.Stats.{track, record, monitored}
 import printing.{Showable, Printer}
@@ -13,27 +13,23 @@ import Types._
 import Flags._
 import TypeErasure.{erasure, hasStableErasure}
 import Mode.ImplicitsEnabled
-import Denotations._
 import NameOps._
 import NameKinds.LazyImplicitName
-import SymDenotations._
 import Symbols._
 import Types._
 import Decorators._
 import Names._
 import StdNames._
 import Constants._
-import Applications._
 import ProtoTypes._
 import ErrorReporting._
-import Annotations.Annotation
-import reporting.diagnostic.{Message, MessageContainer}
+import reporting.diagnostic.Message
 import Inferencing.fullyDefinedType
 import Trees._
 import Hashable._
 import util.Property
 import config.Config
-import config.Printers.{implicits, implicitsDetailed, typr}
+import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
 import reporting.trace
 
@@ -46,7 +42,7 @@ object Implicits {
   /** A reference to an implicit value to be made visible on the next nested call to
    *  inferImplicitArg with a by-name expected type.
    */
-  val DelayedImplicit = new Property.Key[TermRef]
+  val DelayedImplicit: Property.Key[TermRef] = new Property.Key
 
   /** An implicit definition `implicitRef` that is visible under a different name, `alias`.
    *  Gets generated if an implicit ref is imported via a renaming import.
@@ -206,7 +202,7 @@ object Implicits {
         }
       }
 
-    override def toString =
+    override def toString: String =
       i"OfTypeImplicits($tp), companions = ${companionRefs.toList}%, %; refs = $refs%, %."
   }
 
@@ -273,7 +269,7 @@ object Implicits {
       }
     }
 
-    override def toString = {
+    override def toString: String = {
       val own = i"(implicits: $refs%, %)"
       if (isOuterMost) own else own + "\n " + outerImplicits
     }
@@ -295,11 +291,11 @@ object Implicits {
   sealed abstract class SearchResult extends Showable {
     def tree: Tree
     def toText(printer: Printer): Text = printer.toText(this)
-    def recoverWith(other: SearchFailure => SearchResult) = this match {
+    def recoverWith(other: SearchFailure => SearchResult): SearchResult = this match {
       case _: SearchSuccess => this
       case fail: SearchFailure => other(fail)
     }
-    def isSuccess = isInstanceOf[SearchSuccess]
+    def isSuccess: Boolean = isInstanceOf[SearchSuccess]
   }
 
   /** A successful search
@@ -312,8 +308,8 @@ object Implicits {
 
   /** A failed search */
   case class SearchFailure(tree: Tree) extends SearchResult {
-    final def isAmbiguous = tree.tpe.isInstanceOf[AmbiguousImplicits]
-    final def reason = tree.tpe.asInstanceOf[SearchFailureType]
+    final def isAmbiguous: Boolean = tree.tpe.isInstanceOf[AmbiguousImplicits]
+    final def reason: SearchFailureType = tree.tpe.asInstanceOf[SearchFailureType]
   }
 
   object SearchFailure {
@@ -329,7 +325,7 @@ object Implicits {
     def expectedType: Type
     protected def argument: Tree
 
-    final protected def qualify(implicit ctx: Context) =
+    final protected def qualify(implicit ctx: Context): String =
       if (expectedType.exists)
         if (argument.isEmpty) em"match type $expectedType"
         else em"convert from ${argument.tpe} to $expectedType"
@@ -362,7 +358,7 @@ object Implicits {
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
     def explanation(implicit ctx: Context): String =
       em"both ${err.refStr(alt1.ref)} and ${err.refStr(alt2.ref)} $qualify"
-    override def whyNoConversion(implicit ctx: Context) =
+    override def whyNoConversion(implicit ctx: Context): String =
       "\nNote that implicit conversions cannot be applied because they are ambiguous;" +
       "\n" + explanation
   }
@@ -379,7 +375,7 @@ object Implicits {
                          val expectedType: Type,
                          val argument: Tree) extends SearchFailureType {
     /** same as err.refStr but always prints owner even if it is a term */
-    def show(ref: Type)(implicit ctx: Context) = ref match {
+    def show(ref: Type)(implicit ctx: Context): String = ref match {
       case ref: NamedType if ref.symbol.maybeOwner.isTerm =>
         i"${ref.symbol} in ${ref.symbol.owner}"
       case _ => err.refStr(ref)
@@ -519,7 +515,7 @@ trait ImplicitRunInfo { self: Run =>
     iscope(rootTp)
   }
 
-  protected def reset() = {
+  protected def reset(): Unit = {
     implicitScopeCache.clear()
   }
 }
@@ -909,18 +905,18 @@ trait Implicits { self: Typer =>
     private val cmpCandidates = (c1: Candidate, c2: Candidate) => compare(c1.ref, c2.ref, c1.level, c2.level)(cmpContext)
 
     /** The expected type for the searched implicit */
-    lazy val fullProto = implicitProto(pt, identity)
+    lazy val fullProto: Type = implicitProto(pt, identity)
 
-    lazy val funProto = fullProto match {
+    lazy val funProto: Type = fullProto match {
       case proto: ViewProto =>
         FunProto(untpd.TypedSplice(dummyTreeOfType(proto.argType)) :: Nil, proto.resultType)(self)
       case proto => proto
     }
 
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
-    val wildProto = implicitProto(pt, wildApprox(_))
+    val wildProto: Type = implicitProto(pt, wildApprox(_))
 
-    val isNot = wildProto.classSymbol == defn.NotClass
+    val isNot: Boolean = wildProto.classSymbol == defn.NotClass
 
       //println(i"search implicits $pt / ${eligible.map(_.ref)}")
 
@@ -1244,7 +1240,7 @@ class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
     }
   }
 
-  override def toString = s"SearchHistory(depth = $searchDepth, seen = $seen)"
+  override def toString: String = s"SearchHistory(depth = $searchDepth, seen = $seen)"
 }
 
 /** A set of term references where equality is =:= */

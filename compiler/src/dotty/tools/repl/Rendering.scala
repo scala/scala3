@@ -5,9 +5,7 @@ import java.io.{ StringWriter, PrintWriter }
 import java.lang.{ ClassLoader, ExceptionInInitializerError }
 import java.lang.reflect.InvocationTargetException
 
-import scala.util.control.NonFatal
 
-import dotc.core.Types._
 import dotc.core.Contexts.Context
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags

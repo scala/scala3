@@ -7,5 +7,5 @@ import scala.quoted.Expr
 
 /* Compilation unit containing the contents of a quoted expression */
 class ExprCompilationUnit(val expr: Expr[_]) extends CompilationUnit(NoSource) {
-  override def toString = s"Expr($expr)"
+  override def toString: String = s"Expr($expr)"
 }

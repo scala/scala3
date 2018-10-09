@@ -27,7 +27,7 @@ class Resident extends Driver {
 
   object residentCompiler extends Compiler
 
-  override def sourcesRequired = false
+  override def sourcesRequired: Boolean = false
 
   private val quit = ":q"
   private val reset = ":reset"
