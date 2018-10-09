@@ -301,7 +301,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(implicit ctx: Context) {
   private def registerType(tpe: Type): Unit = tpe match {
     case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) =>
       val proxyName = s"${tpe.cls.name}_this".toTermName
-      val proxyType = tpe.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner).widenIfUnstable
+      val proxyType = inlineCallPrefix.tpe.tryNormalize match {
+        case typeMatchResult if typeMatchResult.exists => typeMatchResult
+        case _ => tpe.asSeenFrom(inlineCallPrefix.tpe, inlinedMethod.owner).widenIfUnstable
+      }
       thisProxy(tpe.cls) = newSym(proxyName, InlineProxy, proxyType).termRef
       if (!tpe.cls.isStaticOwner)
         registerType(inlinedMethod.owner.thisType) // make sure we have a base from which to outer-select
