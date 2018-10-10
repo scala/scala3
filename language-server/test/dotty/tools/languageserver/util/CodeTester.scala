@@ -118,31 +118,31 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
     doAction(new CodeSymbol(query, symbols))
 
   /**
-   * Triggers evaluation of the worksheet specified by `marker`, verifies that the results of
-   * evaluation match `expected.
+   * Triggers running the worksheet specified by `marker`, verifies that the results of
+   * the run matches `expected`.
    *
    * @param marker   A marker a identifies the worksheet to evaluate.
    * @param expected The expected output.
    *
-   * @see dotty.tools.languageserver.util.actions.WorksheetEvaluate
+   * @see dotty.tools.languageserver.util.actions.WorksheetRun
    */
-  def evaluate(marker: CodeMarker, expected: String*): this.type =
-    doAction(new WorksheetEvaluate(marker, expected, strict = true))
+  def run(marker: CodeMarker, expected: String*): this.type =
+    doAction(new WorksheetRun(marker, expected, strict = true))
 
   /**
-   * Triggers evaluation of the worksheet specified by `marker`, verifies that each line of output
+   * Triggers running the worksheet specified by `marker`, verifies that each line of output
    * starts with `expected`.
    *
    * @param marker   A marker a identifies the worksheet to evaluate.
    * @param expected The expected starts of output.
    *
-   * @see dotty.tools.languageserver.util.actions.WorksheetEvaluate
+   * @see dotty.tools.languageserver.util.actions.WorksheetRun
    */
-  def evaluateNonStrict(marker: CodeMarker, expected: String*): this.type =
-    doAction(new WorksheetEvaluate(marker, expected, strict = false))
+  def runNonStrict(marker: CodeMarker, expected: String*): this.type =
+    doAction(new WorksheetRun(marker, expected, strict = false))
 
   /**
-   * Triggers evaluation of the worksheet specified by `marker`, then verifies that execution can be
+   * Triggers running the worksheet specified by `marker`, then verifies that execution can be
    * cancelled after `afterMs` milliseconds.
    *
    * @param marker   A marker that identifier the worksheet to evaluate.
@@ -150,7 +150,7 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
    *
    * @see dotty.tools.languageserver.util.actions.WorksheetCancel
    */
-  def cancelEvaluation(marker: CodeMarker, afterMs: Long): this.type =
+  def cancelRun(marker: CodeMarker, afterMs: Long): this.type =
     doAction(new WorksheetCancel(marker, afterMs))
 
   private def doAction(action: Action): this.type = {

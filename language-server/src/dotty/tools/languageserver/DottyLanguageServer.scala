@@ -153,7 +153,9 @@ class DottyLanguageServer extends LanguageServer
     rootUri = params.getRootUri
     assert(rootUri != null)
 
-    val c = new ServerCapabilities
+    class DottyServerCapabilities(val worksheetRunProvider: Boolean = true) extends lsp4j.ServerCapabilities
+
+    val c = new DottyServerCapabilities
     c.setTextDocumentSync(TextDocumentSyncKind.Full)
     c.setDocumentHighlightProvider(true)
     c.setDocumentSymbolProvider(true)

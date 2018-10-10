@@ -42,12 +42,14 @@
     ],
     "commands": [
       {
-        "command": "worksheet.evaluate",
-        "title": "Run worksheet"
+        "command": "dotty.worksheet.run",
+        "title": "Run worksheet",
+        "category": "Scala"
       },
       {
-        "command": "worksheet.cancel",
-        "title": "Cancel worksheet evaluation"
+        "command": "dotty.worksheet.cancel",
+        "title": "Cancel worksheet evaluation",
+        "category": "Scala"
       }
     ],
     "configurationDefaults": {

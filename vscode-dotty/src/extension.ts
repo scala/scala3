@@ -11,12 +11,14 @@ import * as vscode from 'vscode';
 import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn,
          ServerOptions } from 'vscode-languageclient';
 import { enableOldServerWorkaround } from './compat'
-
+import { WorksheetPublishOutputNotification } from './protocol'
 import * as worksheet from './worksheet'
+import * as features from './features'
+
+export let client: LanguageClient
 
 let extensionContext: ExtensionContext
 let outputChannel: vscode.OutputChannel
-export let client: LanguageClient
 
 export function activate(context: ExtensionContext) {
   extensionContext = context
@@ -29,18 +31,6 @@ export function activate(context: ExtensionContext) {
   const languageServerArtifactFile = `${vscode.workspace.rootPath}/.dotty-ide-artifact`
   const languageServerDefaultConfigFile = path.join(extensionContext.extensionPath, './out/default-dotty-ide-config')
   const coursierPath = path.join(extensionContext.extensionPath, './out/coursier');
-
-  vscode.workspace.onWillSaveTextDocument(worksheet.prepareWorksheet)
-  vscode.workspace.onDidSaveTextDocument(document => {
-    if (worksheet.isWorksheet(document)) {
-      worksheet.evaluateWorksheet(document)
-    }
-  })
-  vscode.workspace.onDidCloseTextDocument(document => {
-    if (worksheet.isWorksheet(document)) {
-      worksheet.removeWorksheet(document)
-    }
-  })
 
   if (process.env['DLS_DEV_MODE']) {
     const portFile = `${vscode.workspace.rootPath}/.dotty-ide-dev-port`
@@ -202,20 +192,12 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
   }
 
   client = new LanguageClient("dotty", "Dotty", serverOptions, clientOptions)
+  client.registerFeature(new features.WorksheetRunFeature(client))
+
   if (isOldServer)
     enableOldServerWorkaround(client)
 
-  client.onReady().then(() => {
-    client.onNotification("worksheet/publishOutput", (params) => {
-      worksheet.handleMessage(params)
-    })
-  })
-
-  vscode.commands.registerCommand(worksheet.worksheetEvaluateKey, () => {
-    worksheet.evaluateWorksheetCommand()
-  })
-
   // Push the disposable to the context's subscriptions so that the
   // client can be deactivated on extension deactivation
-  extensionContext.subscriptions.push(client.start());
+  extensionContext.subscriptions.push(client.start())
 }
