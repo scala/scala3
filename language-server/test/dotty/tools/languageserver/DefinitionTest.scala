@@ -54,6 +54,41 @@ class DefinitionTest {
       .definition(m5 to m6, List(m1 to m2))
   }
 
+  @Test def goToOverriddenDef: Unit = {
+    code"""trait T {
+             def ${m1}foo${m2}(x: String): Unit
+           }
+           trait T2 extends T {
+             def ${m3}foo${m4}(x: String): Unit = println(x)
+           }
+           class T3 extends T {
+             def ${m5}foo${m6}(x: String): Unit = println(x)
+           }
+           class C4 extends T3 {
+             override def ${m7}foo${m8}(x: String): Unit = println(x)
+           }
+           object O {
+             def hello(obj: T): Unit = {
+               obj.${m9}foo${m10}("a")
+               obj match {
+                 case c4: C4 => c4.${m11}foo${m12}("b")
+                 case t3: T3 => t3.${m13}foo${m14}("c")
+                 case t2: T2 => t2.${m15}foo${m16}("d")
+                 case t: T   => t.${m17}foo${m18}("e")
+               }
+             }
+           }""".withSource
+      .definition(m1 to m2, List(m1 to m2, m3 to m4, m5 to m6, m7 to m8))
+      .definition(m3 to m4, List(m1 to m2, m3 to m4))
+      .definition(m5 to m6, List(m1 to m2, m5 to m6, m7 to m8))
+      .definition(m7 to m8, List(m1 to m2, m5 to m6, m7 to m8))
+      .definition(m9 to m10, List(m1 to m2, m3 to m4, m5 to m6, m7 to m8))
+      .definition(m11 to m12, List(m7 to m8))
+      .definition(m13 to m14, List(m5 to m6, m7 to m8))
+      .definition(m15 to m16, List(m3 to m4))
+      .definition(m17 to m18, List(m1 to m2, m3 to m4, m5 to m6, m7 to m8))
+  }
+
   @Test def goToDefNamedArgOverload: Unit = {
 
     code"""object Foo {
