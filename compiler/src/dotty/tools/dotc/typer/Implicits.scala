@@ -927,7 +927,7 @@ trait Implicits { self: Typer =>
       val generated1 = adapt(generated, pt, locked)
 
       lazy val shadowing =
-        typed(untpd.Ident(cand.implicitRef.implicitName) withPos pos.toSynthetic)(
+        typedUnadapted(untpd.Ident(cand.implicitRef.implicitName) withPos pos.toSynthetic)(
           nestedContext().addMode(Mode.ImplicitShadowing).setExploreTyperState())
 
       /** Is candidate reference the same as the `shadowing` reference? (i.e.
