@@ -31,7 +31,7 @@ let sbtStatusBar: vscode.StatusBarItem
 
 const sbtVersion = "1.2.3"
 const sbtArtifact = `org.scala-sbt:sbt-launch:${sbtVersion}`
-const workspaceRoot = `${vscode.workspace.rootPath}`
+export const workspaceRoot = `${vscode.workspace.rootPath}`
 const disableDottyIDEFile = path.join(workspaceRoot, ".dotty-ide-disabled")
 const sbtProjectDir = path.join(workspaceRoot, "project")
 const sbtPluginFile = path.join(sbtProjectDir, "dotty-plugin.sbt")

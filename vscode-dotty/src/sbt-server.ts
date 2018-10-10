@@ -18,6 +18,8 @@ import * as rpc from 'vscode-jsonrpc'
 
 import * as vscode from 'vscode'
 
+import { workspaceRoot } from './extension'
+
 /** The result of successful `sbt/exec` call. */
 export interface ExecResult {
   status: string
@@ -89,7 +91,7 @@ function connectSocket(socket: net.Socket): net.Socket {
 
 // the port file is hardcoded to a particular location relative to the build.
 function discoverUrl(): url.Url {
-  let pf = path.join(process.cwd(), 'project', 'target', 'active.json');
+  let pf = path.join(workspaceRoot, 'project', 'target', 'active.json');
   let portfile = JSON.parse(fs.readFileSync(pf).toString());
   return url.parse(portfile.uri);
 }
