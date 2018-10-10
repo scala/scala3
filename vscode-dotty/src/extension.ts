@@ -3,7 +3,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import * as cpp from 'child-process-promise';
+import * as cpp from 'promisify-child-process';
 import * as compareVersions from 'compare-versions';
 
 import { ChildProcess } from "child_process";
@@ -224,7 +224,9 @@ function startNewSbtInstance(coursierPath: string) {
       "-Dsbt.log.noformat=true",
       "-classpath", sbtClasspath,
       "xsbt.boot.Boot"
-    ]).childProcess
+    ], {
+      cwd: workspaceRoot
+    })
 
     // Close stdin, otherwise in case of error sbt will block waiting for the
     // user input to reload or exit the build.
@@ -263,8 +265,7 @@ function fetchWithCoursier(coursierPath: string, artifact: string, extra: string
         "-p",
         artifact
       ].concat(extra)
-      const coursierPromise = cpp.spawn("java", args)
-      const coursierProc = coursierPromise.childProcess
+      const coursierProc = cpp.spawn("java", args)
 
       let classPath = ""
 
@@ -283,7 +284,7 @@ function fetchWithCoursier(coursierPath: string, artifact: string, extra: string
           throw new Error(msg)
         }
       })
-      return coursierPromise.then(() => { return classPath })
+      return coursierProc.then(() => { return classPath })
     })
 }
 

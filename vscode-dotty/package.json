@@ -71,7 +71,7 @@
     "scala-lang.scala"
   ],
   "dependencies": {
-    "child-process-promise": "^2.2.1",
+    "promisify-child-process": "^2.1.2",
     "compare-versions": "^3.4.0",
     "vscode-languageclient": "^5.1.0",
     "vscode-languageserver": "^5.1.0",
