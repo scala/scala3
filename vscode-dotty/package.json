@@ -40,6 +40,17 @@
         ]
       }
     ],
+    "configuration": {
+      "type": "object",
+      "title": "Dotty configuration",
+      "properties": {
+        "dotty.runWorksheetOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, saving a worksheet will also run it."
+        }
+      }
+    },
     "commands": [
       {
         "command": "dotty.worksheet.run",

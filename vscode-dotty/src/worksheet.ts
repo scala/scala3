@@ -44,7 +44,7 @@ class Worksheet {
    * removes redundant blank lines that have been inserted by a previous
    * run.
    */
-  prepareForRunning(): void {
+  prepareRun(): void {
     this.removeRedundantBlankLines().then(_ => this.reset())
   }
 
@@ -52,6 +52,7 @@ class Worksheet {
    * Run the worksheet in `document`, display a progress bar during the run.
    */
   run(): Thenable<{}> {
+    this.prepareRun()
     return vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: "Run the worksheet",
@@ -214,12 +215,13 @@ export class WorksheetProvider implements Disposable {
         const worksheet = this.worksheetFor(event.document)
         if (worksheet) {
           // Block file saving until the worksheet is ready to be run.
-          worksheet.prepareForRunning()
+          worksheet.prepareRun()
         }
       }),
       vscode.workspace.onDidSaveTextDocument(document => {
+        const runWorksheetOnSave = vscode.workspace.getConfiguration("dotty").get("runWorksheetOnSave")
         const worksheet = this.worksheetFor(document)
-        if (worksheet) {
+        if (runWorksheetOnSave && worksheet) {
           return worksheet.run()
         }
       }),
@@ -264,28 +266,13 @@ export class WorksheetProvider implements Disposable {
 
   /**
    * The VSCode command executed when the user select `Run worksheet`.
-   *
-   * We check whether the buffer is dirty, and if it is, we save it. Running the worksheet will then be
-   * triggered by file save.
-   * If the buffer is clean, we do the necessary preparation for worksheet (compute margin,
-   * remove blank lines, etc.) and check if the buffer has been changed by that. If it is, we save
-   * and the run will be triggered by file save.
-   * If the buffer is still clean, call `Worksheet#run`.
    */
   private runWorksheetCommand() {
     const editor = vscode.window.activeTextEditor
     if (editor) {
-      const document = editor.document
-      const worksheet = this.worksheetFor(document)
+      const worksheet = this.worksheetFor(editor.document)
       if (worksheet) {
-        if (document.isDirty) document.save() // This will trigger running the worksheet
-        else {
-          worksheet.prepareForRunning()
-          if (document.isDirty) document.save() // This will trigger running the worksheet
-          else {
-            worksheet.run()
-          }
-        }
+        worksheet.run()
       }
     }
   }
