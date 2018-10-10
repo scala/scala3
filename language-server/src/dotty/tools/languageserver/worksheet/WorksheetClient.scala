@@ -12,6 +12,6 @@ trait WorksheetClient extends LanguageClient {
    *  the specified output.
    */
   @JsonNotification("worksheet/publishOutput")
-  def publishOutput(output: WorksheetExecOutput): Unit
+  def publishOutput(output: WorksheetRunOutput): Unit
 }
 

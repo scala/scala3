@@ -1,17 +1,17 @@
 import * as vscode from 'vscode'
 
 import {
-  asWorksheetExecParams, WorksheetExecRequest, WorksheetExecParams,
+  asWorksheetRunParams, WorksheetRunRequest, WorksheetRunParams,
   WorksheetPublishOutputParams, WorksheetPublishOutputNotification
 } from './protocol'
 import { BaseLanguageClient, DocumentSelector } from 'vscode-languageclient'
 import { Disposable } from 'vscode-jsonrpc'
 
 /**
- * The command key for evaluating a worksheet. Exposed to users as
+ * The command key for running a worksheet. Exposed to users as
  * `Run worksheet`.
  */
-export const worksheetEvaluateKey = "worksheet.evaluate"
+export const worksheetRunKey = "dotty.worksheet.run"
 
 /** A worksheet managed by vscode */
 class Worksheet {
@@ -42,14 +42,14 @@ class Worksheet {
   /**
    * Reset the "worksheet state" (margin and number of inserted lines), and
    * removes redundant blank lines that have been inserted by a previous
-   * evaluation.
+   * run.
    */
   prepareForRunning(): void {
     this.removeRedundantBlankLines().then(_ => this.reset())
   }
 
   /**
-   * Run the worksheet in `document`, display a progress bar during evaluation.
+   * Run the worksheet in `document`, display a progress bar during the run.
    */
   run(): Thenable<{}> {
     return vscode.window.withProgress({
@@ -57,22 +57,22 @@ class Worksheet {
       title: "Run the worksheet",
       cancellable: true
     }, (_, token) => {
-      return this.client.sendRequest(WorksheetExecRequest.type, asWorksheetExecParams(this.document), token)
+      return this.client.sendRequest(WorksheetRunRequest.type, asWorksheetRunParams(this.document), token)
     })
   }
 
   /**
-   * Parse and display the result of evaluating part of this worksheet.
+   * Parse and display the result of running part of this worksheet.
    *
    * @param lineNumber The number of the line in the source that produced the result.
-   * @param evalResult The evaluation result.
+   * @param runResult  The result itself.
    * @param worksheet  The worksheet that receives the result.
    * @param editor     The editor where to display the result.
    * @return A `Thenable` that will insert necessary lines to fit the output
    *         and display the decorations upon completion.
    */
-  public displayResult(lineNumber: number, evalResult: string, editor: vscode.TextEditor) {
-    const resultLines = evalResult.trim().split(/\r\n|\r|\n/g)
+  public displayResult(lineNumber: number, runResult: string, editor: vscode.TextEditor) {
+    const resultLines = runResult.trim().split(/\r\n|\r|\n/g)
 
     // The line where the next decoration should be put.
     // It's the number of the line that produced the output, plus the number
@@ -145,8 +145,8 @@ class Worksheet {
   /**
    * Remove the repeated blank lines in the source.
    *
-   * Evaluating a worksheet can insert new lines in the worksheet so that the
-   * output of a line fits below the line. Before evaluation, we remove blank
+   * Running a worksheet can insert new lines in the worksheet so that the
+   * output of a line fits below the line. Before a run, we remove blank
    * lines in the worksheet to keep its length under control.
    *
    * @param worksheet The worksheet where blank lines must be removed.
@@ -213,7 +213,7 @@ export class WorksheetProvider implements Disposable {
       vscode.workspace.onWillSaveTextDocument(event => {
         const worksheet = this.worksheetFor(event.document)
         if (worksheet) {
-          // Block file saving until the worksheet is ready to be evaluated.
+          // Block file saving until the worksheet is ready to be run.
           worksheet.prepareForRunning()
         }
       }),
@@ -228,8 +228,8 @@ export class WorksheetProvider implements Disposable {
           this.worksheets.delete(document)
         }
       }),
-      vscode.commands.registerCommand(worksheetEvaluateKey, () => {
-        this.evaluateWorksheetCommand()
+      vscode.commands.registerCommand(worksheetRunKey, () => {
+        this.runWorksheetCommand()
       })
     )
     client.onNotification(WorksheetPublishOutputNotification.type, params => {
@@ -265,23 +265,23 @@ export class WorksheetProvider implements Disposable {
   /**
    * The VSCode command executed when the user select `Run worksheet`.
    *
-   * We check whether the buffer is dirty, and if it is, we save it. Evaluation will then be
+   * We check whether the buffer is dirty, and if it is, we save it. Running the worksheet will then be
    * triggered by file save.
    * If the buffer is clean, we do the necessary preparation for worksheet (compute margin,
    * remove blank lines, etc.) and check if the buffer has been changed by that. If it is, we save
-   * and the evaluation will be triggered by file save.
-   * If the buffer is still clean, call `Worksheet#evaluate`.
+   * and the run will be triggered by file save.
+   * If the buffer is still clean, call `Worksheet#run`.
    */
-  private evaluateWorksheetCommand() {
+  private runWorksheetCommand() {
     const editor = vscode.window.activeTextEditor
     if (editor) {
       const document = editor.document
       const worksheet = this.worksheetFor(document)
       if (worksheet) {
-        if (document.isDirty) document.save() // This will trigger evaluation
+        if (document.isDirty) document.save() // This will trigger running the worksheet
         else {
           worksheet.prepareForRunning()
-          if (document.isDirty) document.save() // This will trigger evaluation
+          if (document.isDirty) document.save() // This will trigger running the worksheet
           else {
             worksheet.run()
           }
@@ -291,10 +291,10 @@ export class WorksheetProvider implements Disposable {
   }
 
   /**
-   * Handle the result of evaluating part of a worksheet.
-   * This is called when we receive a `window/logMessage`.
+   * Handle the result of running part of a worksheet.
+   * This is called when we receive a `worksheet/publishOutput`.
    *
-   * @param message The result of evaluating part of a worksheet.
+   * @param message The result of running part of a worksheet.
    */
   private handleMessage(output: WorksheetPublishOutputParams) {
     const editor = vscode.window.visibleTextEditors.find(e => {

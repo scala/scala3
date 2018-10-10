@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit
 class WorksheetCancel(marker: CodeMarker, afterMs: Long) extends WorksheetAction {
 
   override def execute(): Exec[Unit] = {
-    val futureResult = triggerEvaluation(marker)
+    val futureResult = triggerRun(marker)
     Thread.sleep(afterMs)
     val cancelled = futureResult.cancel(true)
 

@@ -4,13 +4,13 @@ import { VersionedTextDocumentIdentifier } from 'vscode-languageserver-protocol'
 
 import { client } from './extension'
 
-/** The parameters for the `worksheet/exec` request. */
-export interface WorksheetExecParams {
+/** The parameters for the `worksheet/run` request. */
+export interface WorksheetRunParams {
   textDocument: VersionedTextDocumentIdentifier
 }
 
-/** The result of the `worksheet/exec` request. */
-export interface WorksheetExecResult {
+/** The result of the `worksheet/run` request. */
+export interface WorksheetRunResult {
   success: boolean
 }
 
@@ -30,15 +30,15 @@ export function asVersionedTextDocumentIdentifier(textDocument: vscode.TextDocum
 	}
 }
 
-export function asWorksheetExecParams(textDocument: vscode.TextDocument): WorksheetExecParams {
+export function asWorksheetRunParams(textDocument: vscode.TextDocument): WorksheetRunParams {
 	return {
     textDocument: asVersionedTextDocumentIdentifier(textDocument)
 	}
 }
 
-/** The `worksheet/exec` request */
-export namespace WorksheetExecRequest {
- export const type = new RequestType<WorksheetExecParams, WorksheetExecResult, void, void>("worksheet/exec")
+/** The `worksheet/run` request */
+export namespace WorksheetRunRequest {
+ export const type = new RequestType<WorksheetRunParams, WorksheetRunResult, void, void>("worksheet/run")
 }
 
 /** The `worksheet/publishOutput` notification */

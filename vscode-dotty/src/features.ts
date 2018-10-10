@@ -7,7 +7,7 @@ import { generateUuid } from 'vscode-languageclient/lib/utils/uuid'
 import { DocumentSelector } from 'vscode-languageserver-protocol'
 import { Disposable } from 'vscode-jsonrpc'
 
-import { WorksheetExecRequest } from './protocol'
+import { WorksheetRunRequest } from './protocol'
 import { WorksheetProvider } from './worksheet'
 
 // Remove this if
@@ -21,7 +21,7 @@ function ensure<T, K extends keyof T>(target: T, key: K): T[K] {
 
 export interface WorksheetClientCapabilities {
   worksheet?: {
-    exec?: {
+    run?: {
       dynamicRegistration?: boolean
     }
   }
@@ -34,13 +34,13 @@ export interface WorksheetServerCapabilities {
   worksheetRunProvider?: boolean
 }
 
-export class WorksheetExecFeature extends TextDocumentFeature<TextDocumentRegistrationOptions> {
+export class WorksheetRunFeature extends TextDocumentFeature<TextDocumentRegistrationOptions> {
   constructor(client: BaseLanguageClient) {
-    super(client, WorksheetExecRequest.type)
+    super(client, WorksheetRunRequest.type)
   }
 
   public fillClientCapabilities(capabilities: ClientCapabilities & WorksheetClientCapabilities): void {
-    ensure(ensure(capabilities, "worksheet")!, "exec")!.dynamicRegistration = true
+    ensure(ensure(capabilities, "worksheet")!, "run")!.dynamicRegistration = true
   }
 
   public initialize(capabilities: ServerCapabilities & WorksheetServerCapabilities, documentSelector: DocumentSelector): void {

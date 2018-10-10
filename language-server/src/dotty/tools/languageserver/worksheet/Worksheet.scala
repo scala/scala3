@@ -15,15 +15,15 @@ import java.util.concurrent.CancellationException
 object Worksheet {
 
   /**
-   * Evaluate `tree` as a worksheet using the REPL.
+   * Run `tree` as a worksheet using the REPL.
    *
    * @param tree          The top level object wrapping the worksheet.
    * @param sendMessage   A mean of communicating the results of evaluation back.
    * @param cancelChecker A token to check whether execution should be cancelled.
    */
-  def evaluate(tree: SourceTree,
-               sendMessage: (Int, String) => Unit,
-               cancelChecker: CancelChecker)(
+  def run(tree: SourceTree,
+          sendMessage: (Int, String) => Unit,
+          cancelChecker: CancelChecker)(
       implicit ctx: Context): Unit = synchronized {
 
     Evaluator.get(cancelChecker) match {

@@ -192,7 +192,7 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
   }
 
   client = new LanguageClient("dotty", "Dotty", serverOptions, clientOptions)
-  client.registerFeature(new features.WorksheetExecFeature(client))
+  client.registerFeature(new features.WorksheetRunFeature(client))
 
   if (isOldServer)
     enableOldServerWorkaround(client)

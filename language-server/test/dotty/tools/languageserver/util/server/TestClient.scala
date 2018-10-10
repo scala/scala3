@@ -1,6 +1,6 @@
 package dotty.tools.languageserver.util.server
 
-import dotty.tools.languageserver.worksheet.{WorksheetExecOutput, WorksheetClient}
+import dotty.tools.languageserver.worksheet.{WorksheetRunOutput, WorksheetClient}
 
 import java.util.concurrent.CompletableFuture
 
@@ -22,7 +22,7 @@ class TestClient extends WorksheetClient {
   val log = new Log[MessageParams]
   val diagnostics = new Log[PublishDiagnosticsParams]
   val telemetry = new Log[Any]
-  val worksheetOutput = new Log[WorksheetExecOutput]
+  val worksheetOutput = new Log[WorksheetRunOutput]
 
   override def logMessage(message: MessageParams) = {
     log += message
@@ -45,7 +45,7 @@ class TestClient extends WorksheetClient {
     diagnostics += diagnosticsParams
   }
 
-  override def publishOutput(output: WorksheetExecOutput) = {
+  override def publishOutput(output: WorksheetRunOutput) = {
     worksheetOutput += output
   }
 
