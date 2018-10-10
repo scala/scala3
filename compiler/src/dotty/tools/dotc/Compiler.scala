@@ -44,7 +44,6 @@ class Compiler {
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
-    List(new InlineCalls) ::        // β-reduce inline calls
     List(new ReifyQuotes) ::        // Turn quoted trees into explicit run-time data structures
     Nil
 
