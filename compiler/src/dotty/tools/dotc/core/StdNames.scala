@@ -140,8 +140,6 @@ object StdNames {
     val WHILE_PREFIX: N               = "while$"
     val DEFAULT_EXCEPTION_NAME: N     = "ex$"
     val INITIALIZER_PREFIX: N         = "initial$"
-    val COMPANION_MODULE_METHOD: N    = "companion$module"
-    val COMPANION_CLASS_METHOD: N     = "companion$class"
     val BOUNDTYPE_ANNOT: N            = "$boundType$"
     val QUOTE: N                      = "'"
     val TYPE_QUOTE: N                = "type_'"
@@ -188,6 +186,7 @@ object StdNames {
     final val EQUALS_PATTERN: N                 = "<equals>"
     final val LOCAL_CHILD: N                    = "<local child>"
     final val REPEATED_PARAM_CLASS: N           = "<repeated>"
+    final val OPAQUE_ALIAS: N                   = "<opaque>"
     final val WILDCARD_STAR: N                  = "_*"
     final val REIFY_TREECREATOR_PREFIX: N       = "$treecreator"
     final val REIFY_TYPECREATOR_PREFIX: N       = "$typecreator"
@@ -245,6 +244,7 @@ object StdNames {
 
     // Compiler-internal
     val ANYname: N                  = "<anyname>"
+    val COMPANION: N                = "<companion>"
     val CONSTRUCTOR: N              = "<init>"
     val STATIC_CONSTRUCTOR: N       = "<clinit>"
     val DEFAULT_CASE: N             = "defaultCase$"

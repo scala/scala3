@@ -14,7 +14,7 @@ import dotty.tools.dotc.core.StdNames._
 class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
   override protected def filterModTextAnnots(annots: List[untpd.Tree]): List[untpd.Tree] =
-    annots.filter(_.tpe != defn.SourceFileAnnotType)
+    super.filterModTextAnnots(annots).filter(_.tpe != defn.SourceFileAnnotType)
 
   override protected def blockToText[T >: Untyped](block: Block[T]): Text =
     block match {
@@ -48,8 +48,8 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
   override protected def templateText(tree: TypeDef, impl: Template): Text = {
     val decl =
-      if (!tree.mods.is(Module)) modText(tree.mods, tree.symbol, keywordStr(if ((tree).mods is Trait) "trait" else "class"))
-      else modText(tree.mods, tree.symbol, keywordStr("object"), suppress = Final | Module)
+      if (!tree.mods.is(Module)) modText(tree.mods, tree.symbol, keywordStr(if ((tree).mods is Trait) "trait" else "class"), isType = true)
+      else modText(tree.mods, tree.symbol, keywordStr("object"), isType = false)
     decl ~~ typeText(nameIdText(tree)) ~ withEnclosingDef(tree) { toTextTemplate(impl) } ~ ""
   }
 

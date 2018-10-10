@@ -41,18 +41,6 @@ class RestoreScopes extends MiniPhase with IdentityDenotTransformer { thisPhase 
       val cls = tree.symbol.asClass
       val pkg = cls.owner.asClass
 
-      // Bring back companion links
-      val companionClass = cls.info.decls.lookup(nme.COMPANION_CLASS_METHOD)
-      val companionModule = cls.info.decls.lookup(nme.COMPANION_MODULE_METHOD)
-
-      if (companionClass.exists) {
-        restoredDecls.enter(companionClass)
-      }
-
-      if (companionModule.exists) {
-        restoredDecls.enter(companionModule)
-      }
-
       pkg.enter(cls)
       val cinfo = cls.classInfo
       tree.symbol.copySymDenotation(

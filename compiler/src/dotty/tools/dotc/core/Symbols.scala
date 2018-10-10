@@ -186,15 +186,6 @@ trait Symbols { this: Context =>
 
   val companionMethodFlags: FlagSet = Flags.Synthetic | Flags.Private | Flags.Method
 
-  def synthesizeCompanionMethod(name: Name, target: SymDenotation, owner: SymDenotation)(implicit ctx: Context): Symbol =
-    if (owner.exists && target.exists && !owner.unforcedIsAbsent && !target.unforcedIsAbsent) {
-      val existing = owner.unforcedDecls.lookup(name)
-
-      existing.orElse{
-        ctx.newSymbol(owner.symbol, name, companionMethodFlags , ExprType(target.typeRef))
-      }
-    } else NoSymbol
-
   /** Create a package symbol with associated package class
    *  from its non-info fields and a lazy type for loading the package's members.
    */

@@ -183,6 +183,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   ERASED
                   LAZY
                   OVERRIDE
+                  OPAQUE
                   INLINE
                   MACRO                               // inline method containing toplevel splices
                   INLINEPROXY                         // symbol of binding representing an inline parameter
@@ -309,7 +310,8 @@ object TastyFormat {
   final val STABLE = 33
   final val MACRO = 34
   final val ERASED = 35
-  final val PARAMsetter = 36
+  final val OPAQUE = 36
+  final val PARAMsetter = 37
 
   // Cat. 2:    tag Nat
 
@@ -464,6 +466,7 @@ object TastyFormat {
        | INLINE
        | INLINEPROXY
        | MACRO
+       | OPAQUE
        | STATIC
        | OBJECT
        | TRAIT
@@ -522,6 +525,7 @@ object TastyFormat {
     case INLINE => "INLINE"
     case INLINEPROXY => "INLINEPROXY"
     case MACRO => "MACRO"
+    case OPAQUE => "OPAQUE"
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
     case TRAIT => "TRAIT"

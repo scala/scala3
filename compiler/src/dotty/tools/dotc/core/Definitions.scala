@@ -547,6 +547,7 @@ class Definitions {
   lazy val EqualsPatternClass: ClassSymbol = enterSpecialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, Seq(AnyType))
 
   lazy val RepeatedParamClass: ClassSymbol = enterSpecialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, Seq(ObjectType, SeqType))
+  lazy val OpaqueAliasAnnot: ClassSymbol   = enterSpecialPolyClass(tpnme.OPAQUE_ALIAS, EmptyFlags, Seq(AnyType))
 
   // fundamental classes
   lazy val StringClass: ClassSymbol                = ctx.requiredClass("java.lang.String")
@@ -1246,6 +1247,7 @@ class Definitions {
     AnyKindClass,
     RepeatedParamClass,
     ByNameParamClass2x,
+    OpaqueAliasAnnot,
     AnyValClass,
     NullClass,
     NothingClass,
