@@ -5,6 +5,7 @@ import java.io.{ StringWriter, PrintWriter }
 import java.lang.{ ClassLoader, ExceptionInInitializerError }
 import java.lang.reflect.InvocationTargetException
 
+import scala.runtime.ScalaRunTime
 
 import dotc.core.Contexts.Context
 import dotc.core.Denotations.Denotation
@@ -40,6 +41,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       myClassLoader
     }
 
+  private[this] def MaxStringElements = 1000  // no need to mkString billions of elements
+
   /** Load the value of the symbol using reflection.
    *
    *  Calling this method evaluates the expression using reflection
@@ -52,12 +55,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       resObj
         .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
         .map(_.invoke(null))
-    val string = value.map {
-      case null        => "null" // Calling .toString on null => NPE
-      case ""          => "\"\"" // Special cased for empty string, following scalac
-      case a: Array[_] => a.mkString("Array(", ", ", ")")
-      case x           => x.toString
-    }
+    val string = value.map(ScalaRunTime.replStringOf(_, MaxStringElements).trim)
     if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
       None
     else
