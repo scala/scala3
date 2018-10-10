@@ -925,20 +925,20 @@ trait Implicits { self: Typer =>
           untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),
           pt, locked)
       val generated1 = adapt(generated, pt, locked)
-      
+
       lazy val shadowing =
         typed(untpd.Ident(cand.implicitRef.implicitName) withPos pos.toSynthetic)(
           nestedContext().addMode(Mode.ImplicitShadowing).setExploreTyperState())
 
       /** Is candidate reference the same as the `shadowing` reference? (i.e.
-       *  no actual shadowoing occured). This is the case of the
+       *  no actual shadowing occured). This is the case if the
        *  underlying symbol of the shadowing reference is the same as the
        *  symbol of the candidate reference, or if they have a common type owner.
        *
        *  The second condition (same owner) is needed because the candidate reference
        *  and the potential shadowing reference are typechecked with different prototypes.
        *  so might yield different overloaded symbols. E.g. if the candidate reference
-       *  is to an implicit conversion generated from an implicit class, the shadwoing
+       *  is to an implicit conversion generated from an implicit class, the shadowing
        *  reference could go to the companion object of that class instead.
        */
       def refSameAs(shadowing: Tree): Boolean = {
