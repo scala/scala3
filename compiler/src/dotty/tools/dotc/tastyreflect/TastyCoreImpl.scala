@@ -9,6 +9,8 @@ trait TastyCoreImpl extends scala.tasty.reflect.TastyCore {
 
   type Context = core.Contexts.Context
 
+  type Settings = config.ScalaSettings
+
   type TermOrTypeTree = tpd.Tree
 
   type Tree = tpd.Tree

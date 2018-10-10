@@ -13,6 +13,7 @@ abstract class Tasty
     with PatternOps
     with PositionOps
     with Printers
+    with SettingsOps
     with SignatureOps
     with StandardDefinitions
     with SymbolOps
