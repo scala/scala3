@@ -5,7 +5,7 @@ title: "Intersection Types - More Details"
 
 ## Syntax
 
-Syntactically, an intersection type is similar to an infix type,
+Syntactically, an intersection type `S & T` is similar to an infix type,
 where the infix operator is `&`.
 
 ```
@@ -87,7 +87,7 @@ class C extends A with B {
                A & B <: T
 ```
 
-From the rules above, we can show that `&` is _commutative_: `A & B <: B & A`.
+From the rules above, we can show that `&` is _commutative_: `A & B <: B & A` for any type `A` and `B`.
 In another word, `A & B` is the same type as `B & A`, in that sense that the two types
 have the same values and are subtypes of each other.
 
