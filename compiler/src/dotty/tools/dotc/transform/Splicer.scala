@@ -318,7 +318,10 @@ object Splicer {
 
       case Inlined(EmptyTree, Nil, expansion) => interpretTree(expansion)
 
-      case Typed(SeqLiteral(elems, _), _) =>
+      case Typed(expr, _) =>
+        interpretTree(expr)
+
+      case SeqLiteral(elems, _) =>
         interpretVarargs(elems.map(e => interpretTree(e)))
 
       case _ =>
