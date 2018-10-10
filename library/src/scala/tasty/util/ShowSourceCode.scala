@@ -6,6 +6,12 @@ import scala.annotation.switch
 class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty0) {
   import tasty.{rootContext => _, _}
 
+  private[this] val color: Boolean = {
+    import tasty.rootContext
+    assert(!color) // TODO remove me, testing that tests do not use color
+    tasty.settings.color
+  }
+
   def showTree(tree: Tree)(implicit ctx: Context): String =
     (new Buffer).printTree(tree).result()
 

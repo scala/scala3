@@ -14,6 +14,7 @@ class TastyImpl(val rootContext: Contexts.Context)
     with PatternOpsImpl
     with PositionOpsImpl
     with PrintersImpl
+    with SettingsOpsImpl
     with SignatureOpsImpl
     with StandardDefinitions
     with SymbolOpsImpl
