@@ -461,7 +461,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  otherwise return Nil.
    *  Existential types in arguments are returned as TypeBounds instances.
    */
-  final def argInfos(implicit ctx: Context): List[Type] = self match {
+  final def argInfos(implicit ctx: Context): List[Type] = self.stripTypeVar.stripAnnots match {
     case AppliedType(tycon, args) => args
     case _ => Nil
   }
