@@ -49,6 +49,8 @@ sidebar:
               url: docs/reference/inline.html
             - title: Meta Programming
               url: docs/reference/principled-meta-programming.html
+            - title: Opaque Type Aliases
+              url: docs/reference/opaques.html
             - title: By-Name Implicits
               url: docs/reference/implicit-by-name-parameters.html
             - title: Auto Parameter Tupling
