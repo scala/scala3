@@ -48,7 +48,7 @@ export class WorksheetRunFeature extends TextDocumentFeature<TextDocumentRegistr
       return
     }
 
-    const selector: DocumentSelector = documentSelector || [ { language: 'scala', pattern: '**/*.sc' } ]
+    const selector: DocumentSelector = [ { language: 'scala', pattern: '**/*.sc' } ]
     this.register(this.messages, {
       id: generateUuid(),
       registerOptions: { documentSelector: selector }
