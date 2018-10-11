@@ -49,8 +49,10 @@ object Toolbox {
       showRawTree: Boolean = false,
       outDir: Option[String] = None,
       compilerArgs: List[String] = Nil
-    ): Settings =
-      new Settings(outDir, showRawTree, compilerArgs)
+    ): Settings = {
+      val colorArg = if (color) "-color:always" else "-color:never"
+      new Settings(outDir, showRawTree, colorArg :: compilerArgs)
+    }
   }
 
   class ToolboxNotFoundException(msg: String, cause: ClassNotFoundException) extends Exception(msg, cause)
