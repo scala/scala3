@@ -365,6 +365,29 @@ object SymDenotations {
       case _ => unforcedDecls.openForMutations
     }
 
+    /** If this is an opaque type alias, mark it as Deferred with empty bounds
+     *  while storing the former right-hand side in an OpaqueAlias annotation.
+     */
+    final def normalizeOpaque()(implicit ctx: Context) = {
+      def abstractRHS(tp: Type): Type = tp match {
+        case tp: HKTypeLambda => tp.derivedLambdaType(resType = abstractRHS(tp.resType))
+        case _ => defn.AnyType
+      }
+      if (is(Opaque)) {
+        info match {
+          case TypeAlias(alias) =>
+            val companion = companionNamed(name.moduleClassName).sourceModule
+            val arg =
+              if (companion.exists) RefinedType(alias, nme.COMPANION, companion.termRef)
+              else alias
+            addAnnotation(Annotation(tpd.TypeTree(defn.OpaqueAliasAnnot.typeRef.appliedTo(arg)).withPos(symbol.pos)))
+            info = TypeBounds(defn.NothingType, abstractRHS(alias))
+            setFlag(Deferred)
+          case _ =>
+        }
+      }
+    }
+
     // ------ Names ----------------------------------------------
 
     /** The expanded name of this denotation. */
@@ -1018,6 +1041,21 @@ object SymDenotations {
      */
     final def enclosingSubClass(implicit ctx: Context): Symbol =
       ctx.owner.ownersIterator.findSymbol(_.isSubClass(symbol))
+
+    /** The alias of an opaque type */
+    def opaqueAlias(implicit ctx: Context): Type = {
+      if (is(Opaque))
+        getAnnotation(defn.OpaqueAliasAnnot) match {
+          case Some(ann) =>
+            val AppliedType(_, arg :: Nil) = ann.tree.tpe
+            arg match {
+              case RefinedType(tp, nme.COMPANION, _) => tp
+              case tp => tp
+            }
+          case None => NoType
+        }
+      else NoType
+    }
 
     /** The non-private symbol whose name and type matches the type of this symbol
      *  in the given class.

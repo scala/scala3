@@ -12,6 +12,10 @@ import Constants.Constant
 import Contexts.Context
 import Symbols._
 import Decorators._
+import Annotations._
+import Annotations.ConcreteAnnotation
+import Denotations.SingleDenotation
+import SymDenotations.SymDenotation
 import scala.collection.mutable
 import DenotTransformers._
 import NameOps._
@@ -25,28 +29,37 @@ object FirstTransform {
 
 /** The first tree transform
  *   - eliminates some kinds of trees: Imports, NamedArgs
- *   - stubs out native and typelevel methods
+ *   - stubs out native methods
  *   - eliminates self tree in Template and self symbol in ClassInfo
+ *   - rewrites opaque type aliases to normal alias types
  *   - collapses all type trees to trees of class TypeTree
  *   - converts idempotent expressions with constant types
  *   - drops branches of ifs using the rules
  *          if (true) A else B    ==> A
  *          if (false) A else B   ==> B
  */
-class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
+class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = FirstTransform.name
 
-  /** eliminate self symbol in ClassInfo */
-  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
+  /** Two transforms:
+   *   1. eliminate self symbol in ClassInfo
+   *   2. Rewrite opaque type aliases to normal alias types
+   */
+  def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = sym.info match {
     case tp @ ClassInfo(_, _, _, _, self: Symbol) =>
-      tp.derivedClassInfo(selfInfo = self.info)
+      sym.copySymDenotation(info = tp.derivedClassInfo(selfInfo = self.info))
+        .copyCaches(sym, ctx.phase.next)
     case _ =>
-      tp
+      if (sym.is(Opaque)) {
+        val result = sym.copySymDenotation(info = TypeAlias(sym.opaqueAlias))
+        result.removeAnnotation(defn.OpaqueAliasAnnot)
+        result.resetFlag(Opaque | Deferred)
+        result
+      }
+      else sym
   }
-
-  override protected def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isClass
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {

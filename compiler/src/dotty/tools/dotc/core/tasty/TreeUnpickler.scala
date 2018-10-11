@@ -807,6 +807,7 @@ class TreeUnpickler(reader: TastyReader,
               case _ => rhs.tpe.toBounds
             }
             sym.resetFlag(Provisional)
+            sym.normalizeOpaque()
             TypeDef(rhs)
           }
         case PARAM =>
@@ -1072,8 +1073,9 @@ class TreeUnpickler(reader: TastyReader,
                 case _ => readTerm()
               }
               val call = ifBefore(end)(maybeCall, EmptyTree)
-              val bindings = readStats(ctx.owner, end).asInstanceOf[List[ValOrDefDef]]
-              val expansion = exprReader.readTerm() // need bindings in scope, so needs to be read before
+              val inlineCtx = tpd.inlineContext(call)
+              val bindings = readStats(ctx.owner, end)(inlineCtx).asInstanceOf[List[ValOrDefDef]]
+              val expansion = exprReader.readTerm()(inlineCtx) // need bindings in scope, so needs to be read before
               Inlined(call, bindings, expansion)
             case IF =>
               If(readTerm(), readTerm(), readTerm())
