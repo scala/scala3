@@ -598,6 +598,7 @@ class TreeUnpickler(reader: TastyReader,
           case INLINE => addFlag(Inline)
           case INLINEPROXY => addFlag(InlineProxy)
           case MACRO => addFlag(Macro)
+          case OPAQUE => addFlag(Opaque)
           case STATIC => addFlag(JavaStatic)
           case OBJECT => addFlag(Module)
           case TRAIT => addFlag(Trait)
@@ -789,12 +790,9 @@ class TreeUnpickler(reader: TastyReader,
             // The only case to check here is if `sym` is a root. In this case
             // `companion` might have been entered by the environment but it might
             // be missing from the Tasty file. So we check explicitly for that.
-            def isCodefined =
-              roots.contains(companion.denot) == seenRoots.contains(companion)
-            if (companion.exists && isCodefined) {
-              if (sym is Flags.ModuleClass) sym.registerCompanionMethod(nme.COMPANION_CLASS_METHOD, companion)
-              else sym.registerCompanionMethod(nme.COMPANION_MODULE_METHOD, companion)
-            }
+            def isCodefined = roots.contains(companion.denot) == seenRoots.contains(companion)
+
+            if (companion.exists && isCodefined) sym.registerCompanion(companion)
             TypeDef(readTemplate(localCtx))
           } else {
             sym.info = TypeBounds.empty // needed to avoid cyclic references when unpicklin rhs, see i3816.scala
@@ -809,6 +807,7 @@ class TreeUnpickler(reader: TastyReader,
               case _ => rhs.tpe.toBounds
             }
             sym.resetFlag(Provisional)
+            sym.normalizeOpaque()
             TypeDef(rhs)
           }
         case PARAM =>
@@ -1074,8 +1073,9 @@ class TreeUnpickler(reader: TastyReader,
                 case _ => readTerm()
               }
               val call = ifBefore(end)(maybeCall, EmptyTree)
-              val bindings = readStats(ctx.owner, end).asInstanceOf[List[ValOrDefDef]]
-              val expansion = exprReader.readTerm() // need bindings in scope, so needs to be read before
+              val inlineCtx = tpd.inlineContext(call)
+              val bindings = readStats(ctx.owner, end)(inlineCtx).asInstanceOf[List[ValOrDefDef]]
+              val expansion = exprReader.readTerm()(inlineCtx) // need bindings in scope, so needs to be read before
               Inlined(call, bindings, expansion)
             case IF =>
               If(readTerm(), readTerm(), readTerm())
@@ -1256,7 +1256,12 @@ class TreeUnpickler(reader: TastyReader,
   class LazyReader[T <: AnyRef](reader: TreeReader, owner: Symbol, mode: Mode, op: TreeReader => Context => T) extends Trees.Lazy[T] {
     def complete(implicit ctx: Context): T = {
       pickling.println(i"starting to read at ${reader.reader.currentAddr} with owner $owner")
-      op(reader)(ctx.withPhaseNoLater(ctx.picklerPhase).withOwner(owner).withModeBits(mode))
+      val ctx1 = ctx
+        .withPhaseNoLater(ctx.picklerPhase)
+        .withOwner(owner)
+        .withModeBits(mode)
+        .inOpaqueCompanionsAround(owner)
+      op(reader)(ctx1)
     }
   }
 

@@ -379,6 +379,24 @@ object Contexts {
       ctx.fresh.setImportInfo(new ImportInfo(implicit ctx => sym, imp.selectors, impNameOpt))
     }
 
+    /** If `owner` is a companion object of an opaque type, record the alias in the GADT bounds */
+    def maybeInOpaqueCompanionContext(owner: Symbol): Context = {
+      if (owner.is(Flags.Module, butNot = Flags.Package)) {
+        val opaq = owner.companionOpaqueType
+        val alias = opaq.opaqueAlias
+        if (alias.exists) {
+          val result = fresh.setFreshGADTBounds
+          result.gadt.setBounds(opaq, TypeAlias(alias))
+          result
+        }
+        else this
+      }
+      else this
+    }
+
+    def inOpaqueCompanionsAround(sym: Symbol) =
+      (this /: sym.ownersIterator.takeWhile(!_.is(Flags.Package)))(_.maybeInOpaqueCompanionContext(_))
+
     /** The current source file; will be derived from current
      *  compilation unit.
      */

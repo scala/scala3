@@ -646,6 +646,7 @@ class TreePickler(pickler: TastyPickler) {
       if (flags is Trait) writeByte(TRAIT)
       if (flags is Covariant) writeByte(COVARIANT)
       if (flags is Contravariant) writeByte(CONTRAVARIANT)
+      if (flags is Opaque) writeByte(OPAQUE)
     }
   }
 
@@ -656,7 +657,8 @@ class TreePickler(pickler: TastyPickler) {
       // Such annotations will be reconstituted when unpickling the child class.
       // See tests/pickling/i3149.scala
     case _ =>
-      ann.symbol == defn.BodyAnnot // inline bodies are reconstituted automatically when unpickling
+      ann.symbol == defn.BodyAnnot || ann.symbol == defn.OpaqueAliasAnnot
+      	// these are reconstituted automatically when unpickling
   }
 
   def pickleAnnotation(owner: Symbol, ann: Annotation)(implicit ctx: Context): Unit =

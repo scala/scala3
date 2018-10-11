@@ -280,7 +280,7 @@ object Types {
     final def isError(implicit ctx: Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]
 
     /** Is some part of this type produced as a repair for an error? */
-    final def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError, forceLazy = false)
+    def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError, forceLazy = false)
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     @tailrec final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = stripTypeVar match {
@@ -548,7 +548,7 @@ object Types {
         case tp: TypeRef =>
           tp.denot match {
             case d: ClassDenotation => d.findMember(name, pre, excluded)
-            case d => go(d.info)
+            case d => goTypeRef(d)
           }
         case tp: AppliedType =>
           tp.tycon match {
@@ -563,7 +563,7 @@ object Types {
             case _ =>
               go(tp.superType)
           }
-        case tp: ThisType => // ??? inline
+        case tp: ThisType =>
           goThis(tp)
         case tp: RefinedType =>
           if (name eq tp.refinedName) goRefined(tp) else go(tp.parent)
@@ -594,6 +594,11 @@ object Types {
           ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name, err.msg)
         case _ =>
           NoDenotation
+      }
+      def goTypeRef(d: Denotation) = {
+        val mbr = go(d.info)
+        if (mbr.exists) mbr
+        else followOpaqueGADT.findMember(name, pre, excluded)
       }
       def goRec(tp: RecType) =
         if (tp.parent == null) NoDenotation
@@ -1367,6 +1372,21 @@ object Types {
      */
     def deepenProto(implicit ctx: Context): Type = this
 
+    /** If this is a TypeRef or an Application of a GADT-bound type, replace the
+     *  GADT reference by its upper GADT bound. Otherwise NoType.
+     */
+    def followOpaqueGADT(implicit ctx: Context): Type = widenDealias match {
+      case site: TypeRef if site.symbol.is(Opaque) =>
+        val bounds = ctx.gadt.bounds(site.symbol)
+        if (bounds != 0) bounds.hi else NoType
+      case AppliedType(tycon, args) =>
+        val tycon1 = tycon.followOpaqueGADT
+        if (tycon1.exists) tycon1.appliedTo(args)
+        else NoType
+      case _ =>
+        NoType
+    }
+
 // ----- Substitutions -----------------------------------------------------
 
     /** Substitute all types that refer in their symbol attribute to
@@ -1526,6 +1546,9 @@ object Types {
       case TypeBounds(_, hi) => hi
       case st => st
     }
+
+    /** Same as superType, except that opaque types are treated as transparent aliases */
+    def translucentSuperType(implicit ctx: Context): Type = superType
   }
 
   // Every type has to inherit one of the following four abstract type classes.,
@@ -2180,7 +2203,21 @@ object Types {
     override def designator: Designator = myDesignator
     override protected def designator_=(d: Designator): Unit = myDesignator = d
 
-    override def underlying(implicit ctx: Context): Type = info
+    override def underlying(implicit ctx: Context): Type = {
+      if (symbol.is(Opaque)) {
+        val gadtBounds = ctx.gadt.bounds(symbol)
+        if (gadtBounds != null) return gadtBounds
+      }
+      info
+    }
+
+    override def translucentSuperType(implicit ctx: Context) = info match {
+      case TypeAlias(aliased) => aliased
+      case TypeBounds(_, hi) =>
+        if (symbol.is(Opaque)) symbol.opaqueAlias.asSeenFrom(prefix, symbol.owner)
+        else hi
+      case _ => underlying
+    }
   }
 
   final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {
@@ -2534,6 +2571,11 @@ object Types {
     def isAnd: Boolean
     def tp1: Type
     def tp2: Type
+
+    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context) =
+      if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
+      else if (isAnd) AndType.make(tp1, tp2, checkValid = true)
+      else OrType.make(tp1, tp2)
   }
 
   abstract case class AndType(tp1: Type, tp2: Type) extends AndOrType {
@@ -3295,6 +3337,13 @@ object Types {
         validSuper = if (tycon.isProvisional) Nowhere else ctx.period
       }
       cachedSuper
+    }
+
+    override def translucentSuperType(implicit ctx: Context): Type = tycon match {
+      case tycon: TypeRef if tycon.symbol.is(Opaque) =>
+        tycon.translucentSuperType.applyIfParameterized(args)
+      case _ =>
+        superType
     }
 
     override def tryNormalize(implicit ctx: Context): Type = tycon match {
