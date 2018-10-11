@@ -140,8 +140,6 @@ object StdNames {
     val WHILE_PREFIX: N               = "while$"
     val DEFAULT_EXCEPTION_NAME: N     = "ex$"
     val INITIALIZER_PREFIX: N         = "initial$"
-    val COMPANION_MODULE_METHOD: N    = "companion$module"
-    val COMPANION_CLASS_METHOD: N     = "companion$class"
     val BOUNDTYPE_ANNOT: N            = "$boundType$"
     val QUOTE: N                      = "'"
     val TYPE_QUOTE: N                = "type_'"
@@ -245,6 +243,7 @@ object StdNames {
 
     // Compiler-internal
     val ANYname: N                  = "<anyname>"
+    val COMPANION: N                = "<companion>"
     val CONSTRUCTOR: N              = "<init>"
     val STATIC_CONSTRUCTOR: N       = "<clinit>"
     val DEFAULT_CASE: N             = "defaultCase$"
