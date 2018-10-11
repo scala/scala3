@@ -442,17 +442,6 @@ class TreePickler(pickler: TastyPickler) {
         case SeqLiteral(elems, elemtpt) =>
           writeByte(REPEATED)
           withLength { pickleTree(elemtpt); elems.foreach(pickleTree) }
-        case Inlined(call, bindings, expansion) =>
-          writeByte(INLINED)
-          bindings.foreach(preRegister)
-          withLength {
-            pickleTree(expansion)
-            if (!call.isEmpty) pickleTree(call)
-            bindings.foreach { b =>
-              assert(b.isInstanceOf[DefDef] || b.isInstanceOf[ValDef])
-              pickleTree(b)
-            }
-          }
         case Bind(name, body) =>
           registerDef(tree.symbol)
           writeByte(BIND)
@@ -619,7 +608,6 @@ class TreePickler(pickler: TastyPickler) {
     if (flags is Case) writeByte(CASE)
     if (flags is Override) writeByte(OVERRIDE)
     if (flags is Inline) writeByte(INLINE)
-    if (flags is InlineProxy) writeByte(INLINEPROXY)
     if (flags is Macro) writeByte(MACRO)
     if (flags is JavaStatic) writeByte(STATIC)
     if (flags is Module) writeByte(OBJECT)
