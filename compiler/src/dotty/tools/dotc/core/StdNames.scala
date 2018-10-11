@@ -186,6 +186,7 @@ object StdNames {
     final val EQUALS_PATTERN: N                 = "<equals>"
     final val LOCAL_CHILD: N                    = "<local child>"
     final val REPEATED_PARAM_CLASS: N           = "<repeated>"
+    final val OPAQUE_ALIAS: N                   = "<opaque>"
     final val WILDCARD_STAR: N                  = "_*"
     final val REIFY_TREECREATOR_PREFIX: N       = "$treecreator"
     final val REIFY_TYPECREATOR_PREFIX: N       = "$typecreator"
