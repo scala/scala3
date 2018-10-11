@@ -136,7 +136,10 @@ public enum ErrorMessageID {
     ValueClassParameterMayNotBeCallByNameID,
     NotAnExtractorID,
     MemberWithSameNameAsStaticID,
-    PureExpressionInStatementPositionID
+    PureExpressionInStatementPositionID,
+    TraitCompanionWithMutableStaticID,
+    LazyStaticFieldID,
+    StaticOverridingNonStaticMembersID
     ;
 
     public int errorNumber() {

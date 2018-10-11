@@ -2149,4 +2149,25 @@ object messages {
       hl"""The pure expression `$stat` doesn't have any side effect and its result is not assigned elsewhere.
           |It can be removed without changing the semantics of the program. This may indicate an error.""".stripMargin
   }
+
+  case class TraitCompanionWithMutableStatic()(implicit val ctx: Context)
+    extends Message(TraitCompanionWithMutableStaticID) {
+    override def msg: String = hl"Companion of traits cannot define mutable @static fields"
+    override def kind: String = "Syntax"
+    override def explanation: String = ""
+  }
+
+  case class LazyStaticField()(implicit val ctx: Context)
+    extends Message(LazyStaticFieldID) {
+    override def msg: String = hl"Lazy @static fields are not supported"
+    override def kind: String = "Syntax"
+    override def explanation: String = ""
+  }
+
+  case class StaticOverridingNonStaticMembers()(implicit val ctx: Context)
+    extends Message(StaticOverridingNonStaticMembersID) {
+    override def msg: String = hl"@static members cannot override or implement non-static ones"
+    override def kind: String = "Syntax"
+    override def explanation: String = ""
+  }
 }
