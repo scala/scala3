@@ -21,7 +21,11 @@ case class SourceTree(tree: tpd.NameTree, source: SourceFile) {
     if (treePos.isZeroExtent || tree.name.toTermName == nme.ERROR)
       NoSourcePosition
     else {
-      val nameLength = tree.name.stripModuleClassSuffix.show.toString.length
+      // Constructors are named `<init>` in the trees, but `this` in the source.
+      val nameLength = tree.name.stripModuleClassSuffix match {
+        case nme.CONSTRUCTOR => nme.this_.toString.length
+        case other => other.show.toString.length
+      }
       val position = {
         // FIXME: This is incorrect in some cases, like with backquoted identifiers,
         //        see https://github.com/lampepfl/dotty/pull/1634#issuecomment-257079436
