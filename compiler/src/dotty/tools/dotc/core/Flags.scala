@@ -435,15 +435,20 @@ object Flags {
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
   /** Flags representing source modifiers */
-  final val SourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Abstract, Final, Inline,
-     Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic, Erased)
+  private val CommonSourceModifierFlags: FlagSet =
+    commonFlags(Private, Protected, Final, Case, Implicit, Override, JavaStatic)
+
+  final val TypeSourceModifierFlags: FlagSet =
+    CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed
+
+  final val TermSourceModifierFlags: FlagSet =
+    CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy | Erased
 
   /** Flags representing modifiers that can appear in trees */
   final val ModifierFlags: FlagSet =
-    SourceModifierFlags | Module | Param | Synthetic | Package | Local |
-    commonFlags(Mutable)
-      // | Trait is subsumed by commonFlags(Lazy) from SourceModifierFlags
+    TypeSourceModifierFlags.toCommonFlags |
+    TermSourceModifierFlags.toCommonFlags |
+    commonFlags(Module, Param, Synthetic, Package, Local, Mutable, Trait)
 
   assert(ModifierFlags.isTermFlags && ModifierFlags.isTypeFlags)
 
