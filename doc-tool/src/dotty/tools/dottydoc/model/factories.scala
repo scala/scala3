@@ -20,7 +20,7 @@ object factories {
   type TypeTree = dotty.tools.dotc.ast.Trees.Tree[Type]
 
   def flags(t: Tree)(implicit ctx: Context): List[String] =
-    (t.symbol.flags & SourceModifierFlags)
+    (t.symbol.flags & (if (t.symbol.isType) TypeSourceModifierFlags else TermSourceModifierFlags))
       .flagStrings.toList
       .filter(_ != "<trait>")
       .filter(_ != "interface")
