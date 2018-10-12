@@ -165,16 +165,10 @@ export class Tracer {
         const outputPath = path.join(storagePath, 'workspace-dump.zip');
         if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
         const output = fs.createWriteStream(outputPath);
-        output.on('end', () => {
-            this.ctx.extensionOut.appendLine('zip - data has been drained');
-        });
 
         const zip = archiver('zip');
         zip.on('error', (err) => this.logError('zip error', safeError(err)));
         zip.on('warning', (err) => this.logError('zip warning', safeError(err)));
-        zip.on('entry', (entry) => {
-            this.ctx.extensionOut.appendLine(`zip - entry: ${entry.name}`);
-        });
         zip.on('finish', () => {
             this.ctx.extensionOut.appendLine('zip - finished');
             fs.createReadStream(outputPath).pipe(
@@ -195,6 +189,8 @@ export class Tracer {
                     })
             );
         });
+
+        this.ctx.extensionOut.appendLine('zip - starting');
         zip.pipe(output);
         zip.glob('./**/*.{scala,sc,sbt,java}', { cwd: rootPath });
         zip.glob('./**/.dotty-ide{.json,-artifact}', { cwd: rootPath });
