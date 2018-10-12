@@ -7,8 +7,8 @@ title: "Intersection Types - More Details"
 
 Syntactically, an intersection type `S & T` is similar to an infix type, where
 the infix operator is `&`. `&` is treated as a soft keyword. That is, it is a
-normal identifier with the usual precedence. But a type of the form A & B is
-always recognized as an intersection type, without trying to resolve &.
+normal identifier with the usual precedence. But a type of the form `A & B` is
+always recognized as an intersection type, without trying to resolve `&`.
 
 ```
 Type              ::=  ...| InfixType
@@ -18,20 +18,29 @@ InfixType         ::=  RefinedType {id [nl] RefinedType}
 ## Subtyping Rules
 
 ```
-            T <: A    T <: B
-            ----------------
-              T <: A & B
+T <: A    T <: B
+----------------
+  T <: A & B
 
-                A <: T
-            ----------------
-               A & B <: T
+    A <: T
+----------------
+    A & B <: T
 
-                B <: T
-            ----------------
-               A & B <: T
+    B <: T
+----------------
+    A & B <: T
 ```
 
 From the rules above, we can show that `&` is _commutative_: `A & B <: B & A` for any type `A` and `B`.
+
+```
+   B <: B           A <: A
+----------       -----------
+A & B <: B       A & B <: A
+---------------------------
+       A & B  <:  B & A
+```
+
 In another word, `A & B` is the same type as `B & A`, in that sense that the two types
 have the same values and are subtypes of each other.
 
@@ -74,15 +83,18 @@ below in pseudocode:
 ```
 |S & T| = glb(|S|, |T|)
 
-glb(JArray(A), JArray(B)) = JArray(glb(A, B))
-glb(JArray(T), _)         = JArray(T)
-glb(_, JArray(T))         = JArray(T)
-glb(A, B)                 = A             if A extends B
-glb(A, B)                 = B             if B extends A
-glb(A, _)                 = A             if A is not a trait
-glb(_, B)                 = B             if B is not a trait
-glb(A, _)                 = A
+glb(JArray(A), JArray(B)) =    JArray(glb(A, B))
+glb(JArray(T), _)         =    JArray(T)
+glb(_, JArray(T))         =    JArray(T)
+glb(A, B)                 =    A                     if A extends B
+glb(A, B)                 =    B                     if B extends A
+glb(A, _)                 =    A                     if A is not a trait
+glb(_, B)                 =    B                     if B is not a trait
+glb(A, _)                 =    A
 ```
+
+In the above, we use `|T|` to mean the erased type of `T`, `JArray` means
+the type of Java Array.
 
 ## Relationship with Compound Type (`with`)
 
