@@ -26,34 +26,56 @@ They can also be invoked as plain methods. So the following holds:
 assert(circle.circumference == CircleOps.circumference(circle))
 ```
 
+
+
 ### Translation of Calls to Extension Methods
 
-The rules for resolving a selection `e.m` are augmented as follows: If `m` is not a
-member of the type `T` of `e`, and there is an implicit value `i`
-in either the current scope or in the implicit scope of `T`, and `i` defines an extension
-method named `m`, then `e.m` is expanded to `i.m(e)`. This expansion is attempted at the time where the compiler also tries an implicit conversion from `T` to a type containing `m`. If there is more than one way
-of expanding, an ambiguity error results.
+When is an extension method considered? There are two possibilities. The first (and recommended one) is by defining the extension method as a member of an implicit value. The method can then be used as an extension method wherever the implicit value is applicable. The second possibility is by making the extension method itself visible under a simple name, typically by importing it. As an example, consider an extension method `longestStrings` on `String`. We can either define it like this:
 
-So `circle.circumference` translates to `CircleOps.circumference(circle)`, provided
-`circle` has type `Circle` and `CircleOps` is an eligible implicit (i.e. it is visible at the point of call or it is defined in the companion object of `Circle`).
-
-### Extended Types
-
-Extension methods can be added to arbitrary types. For instance, the following
-object adds a `longestStrings` extension method to a `Seq[String]`:
 
 ```scala
-implicit object StringOps {
+implicit object StringSeqOps1 {
   def longestStrings(this xs: Seq[String]) = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
   }
 }
 ```
+Then
+```scala
+List("here", "is", "a", "list").longestStrings
+```
+is legal everywhere `StringSeqOps1` is available as an implicit value. Alternatively, we can define `longestStrings`
+as a member of a normal object. But then the method has to be brought into scope to be usable as an extension method.
+
+```scala
+implicit object StringSeqOps2{
+  def longestStrings(this xs: Seq[String]) = {
+    val maxLength = xs.map(_.length).max
+    xs.filter(_.length == maxLength)
+  }
+}
+import StringSeqOps2.longestStrings
+List("here", "is", "a", "list").longestStrings
+```
+The precise rules for resolving a selection to an extension method are as follows.
+
+Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type arguments `[Ts]` are optional,
+and where `T` is the expected type. The following two rewritings are tried in order:
+
+ 1. The selection is rewritten to `m[Ts](e)`.
+ 2. If the first rewriting does not typecheck with expected type `T`, and there is an implicit value `i`
+    in either the current scope or in the implicit scope of `T`, and `i` defines an extension
+    method named `m`, then selection is expanded to `i.m[Ts](e)`.
+    This second rewriting is attempted at the time where the compiler also tries an implicit conversion
+    from `T` to a type containing `m`. If there is more than one way of rewriting, an ambiguity error results.
+
+So `circle.circumference` translates to `CircleOps.circumference(circle)`, provided
+`circle` has type `Circle` and `CircleOps` is an eligible implicit (i.e. it is visible at the point of call or it is defined in the companion object of `Circle`).
 
 ### Generic Extensions
 
-The previous example extended a specific instance of a generic type. It is also possible
+The `StringSeqOps` examples extended a specific instance of a generic type. It is also possible
 to extend a generic type by adding type parameters to an extension method:
 
 ```scala
