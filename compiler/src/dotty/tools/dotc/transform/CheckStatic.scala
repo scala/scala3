@@ -8,7 +8,7 @@ import Contexts.Context
 import Symbols._
 import dotty.tools.dotc.ast.tpd
 import Decorators._
-import reporting.diagnostic.messages.{MemberWithSameNameAsStatic, MissingCompanionForStatic, StaticFieldsOnlyAllowedInObjects}
+import reporting.diagnostic.messages._
 
 /** A transformer that check that requirements of Static fields\methods are implemented:
   *  1. Only objects can have members annotated with `@static`
@@ -48,11 +48,11 @@ class CheckStatic extends MiniPhase {
         } else if (clashes.exists) {
           ctx.error(MemberWithSameNameAsStatic(), defn.pos)
          } else if (defn.symbol.is(Flags.Mutable) && companion.is(Flags.Trait)) {
-          ctx.error("Companions of traits cannot define mutable @static fields", defn.pos)
+          ctx.error(TraitCompanionWithMutableStatic(), defn.pos)
         } else if (defn.symbol.is(Flags.Lazy)) {
-          ctx.error("Lazy @static fields are not supported", defn.pos)
+          ctx.error(LazyStaticField(), defn.pos)
         } else if (defn.symbol.allOverriddenSymbols.nonEmpty) {
-          ctx.error("@static members cannot override or implement non-static ones", defn.pos)
+          ctx.error(StaticOverridingNonStaticMembers(), defn.pos)
         }
       } else hadNonStaticField = hadNonStaticField || defn.isInstanceOf[ValDef]
 
