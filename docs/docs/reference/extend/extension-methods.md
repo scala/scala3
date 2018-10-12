@@ -49,7 +49,7 @@ is legal everywhere `StringSeqOps1` is available as an implicit value. Alternati
 as a member of a normal object. But then the method has to be brought into scope to be usable as an extension method.
 
 ```scala
-implicit object StringSeqOps2{
+object StringSeqOps2{
   def longestStrings(this xs: Seq[String]) = {
     val maxLength = xs.map(_.length).max
     xs.filter(_.length == maxLength)
