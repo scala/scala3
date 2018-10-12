@@ -29,6 +29,7 @@ object Interactive {
     val definitions: Int = 8 // include definitions
     val linkedClass: Int = 16 // include `symbol.linkedClass`
     val imports: Int = 32 // include imports in the results
+    val renamingImports: Int = 64 // Include renamed symbols and renaming part of imports in the results
   }
 
   /** Does this tree define a symbol ? */
@@ -318,6 +319,7 @@ object Interactive {
     (implicit ctx: Context): List[SourceNamedTree] = safely {
     val includeReferences = (include & Include.references) != 0
     val includeImports = (include & Include.imports) != 0
+    val includeRenamingImports = (include & Include.renamingImports) != 0
     val buf = new mutable.ListBuffer[SourceNamedTree]
 
     def traverser(source: SourceFile) = {
@@ -328,7 +330,8 @@ object Interactive {
               case id: untpd.Ident =>
                 importedSymbols(imp.expr, id.name).map((_, id, None))
               case Thicket((id: untpd.Ident) :: (newName: untpd.Ident) :: Nil) =>
-                importedSymbols(imp.expr, id.name).map((_, id, Some(newName)))
+                val renaming = if (includeRenamingImports) Some(newName) else None
+                importedSymbols(imp.expr, id.name).map((_, id, renaming))
             }
           imported match {
             case Nil =>
@@ -386,9 +389,11 @@ object Interactive {
     val linkedSym = symbol.linkedClass
     val includeDeclaration = (includes & Include.definitions) != 0
     val includeLinkedClass = (includes & Include.linkedClass) != 0
+    val includeRenamingImports = (includes & Include.renamingImports) != 0
     val predicate: NameTree => Boolean = tree =>
       (  !tree.symbol.isPrimaryConstructor
       && (includeDeclaration || !Interactive.isDefinition(tree))
+      && (includeRenamingImports || !isRenamed(tree))
       && (  Interactive.matchSymbol(tree, symbol, includes)
          || (  includeDeclaration
             && includeLinkedClass
@@ -557,5 +562,18 @@ object Interactive {
      override def denot(implicit ctx: Context) = underlying.denot
      myTpe = NoType
    }
+
+  /**
+   * Is this tree using a renaming introduced by an import statement?
+   *
+   * @param tree The tree to inspect
+   * @return True, if this tree's name is different than its symbol's name, indicating that
+   *         it uses a renaming introduced by an import statement.
+   */
+  private def isRenamed(tree: NameTree)(implicit ctx: Context): Boolean = {
+    val symbol = tree.symbol
+    symbol.exists &&
+      tree.name.stripModuleClassSuffix != symbol.name.stripModuleClassSuffix
+  }
 
 }
