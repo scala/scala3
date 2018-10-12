@@ -7,7 +7,10 @@ import * as archiver from 'archiver';
 import * as WebSocket from 'ws';
 import * as request from 'request';
 
+import { extensionName } from './extension';
 import { TracingConsentCache } from './tracing-consent';
+
+const consentCommandName = `${extensionName}.adjust-consent`;
 
 export interface Ctx {
   readonly extensionContext: vscode.ExtensionContext,
@@ -24,12 +27,19 @@ export class Tracer {
 
     private tracingConsent: TracingConsentCache
 
-    private remoteTracingUrl?: string
+    private readonly remoteTracingUrl: string | undefined
+    private readonly remoteWorkspaceDumpUrl: string | undefined
+    private get isTracingEnabled(): boolean {
+        return Boolean(this.remoteWorkspaceDumpUrl || this.remoteTracingUrl);
+    }
 
     constructor(ctx: Ctx) {
         this.ctx = ctx;
 
         this.tracingConsent = new TracingConsentCache(ctx.extensionContext.workspaceState);
+
+        this.remoteWorkspaceDumpUrl = this.ctx.extensionConfig.get<string>('remoteWorkspaceDumpUrl');
+        this.remoteTracingUrl = this.ctx.extensionConfig.get<string>('remoteTracingUrl');
 
         this.machineId = (() => {
             const machineIdKey = 'tracing.machineId';
@@ -60,35 +70,82 @@ export class Tracer {
         this.sessionId = new Date().toISOString();
     }
 
-    initializeAsyncWorkspaceDump() {
-        const remoteWorkspaceDumpUrl = this.ctx.extensionConfig.get<string>('remoteWorkspaceDumpUrl');
-        if (remoteWorkspaceDumpUrl === undefined) return;
+    run(): { lspOutputChannel?: vscode.OutputChannel } {
+        const consentCommandDisposable = vscode.commands.registerCommand(consentCommandName, () => this.askForTracingConsent());
+        if (this.isTracingEnabled && this.tracingConsent.get() === 'no-answer') this.askForTracingConsent();
+        this.initializeAsyncWorkspaceDump();
+        const lspOutputChannel = this.createLspOutputChannel();
+        const statusBarItem = this.createStatusBarItem();
+        for (const disposable of [consentCommandDisposable, lspOutputChannel, statusBarItem]) {
+            if (disposable) this.ctx.extensionContext.subscriptions.push(disposable);
+        }
+        return { lspOutputChannel };
+    }
 
-        try {
-            this.asyncUploadWorkspaceDump(remoteWorkspaceDumpUrl);
-        } catch (err) {
-            this.logError('error during workspace dump', safeError(err));
+    private askForTracingConsent(): void {
+        vscode.window.showInformationMessage(
+            'Do you want to help EPFL develop Dotty LSP plugin by uploading your LSP communication? ' +
+            'PLEASE BE AWARE that the data sent contains your entire codebase and ALL the IDE actions, ' +
+            'including every single keystroke.',
+            'yes', 'no'
+        ).then((value: string | undefined) => {
+            if (value === 'yes' || value === 'no') this.tracingConsent.set(value);
+        });
+    }
+
+    private initializeAsyncWorkspaceDump() {
+        if (this.remoteWorkspaceDumpUrl === undefined) return;
+        // convince TS that this is a string
+        const definedUrl: string = this.remoteWorkspaceDumpUrl;
+
+        const doInitialize = () => {
+            try {
+                this.asyncUploadWorkspaceDump(definedUrl);
+            } catch (err) {
+                this.logError('error during workspace dump', safeError(err));
+            }
+        };
+
+        if (this.tracingConsent.get() === 'yes') {
+            doInitialize()
+        } else {
+            let didInitialize = false;
+            this.tracingConsent.subscribe(() => {
+                if (didInitialize) return;
+                didInitialize = true;
+                doInitialize();
+            })
         }
     }
 
-    createLspOutputChannel(): vscode.OutputChannel | undefined {
-        const remoteTracingUrl = this.ctx.extensionConfig.get<string>('remoteTracingUrl');
-        if (!remoteTracingUrl) return undefined;
+    private createStatusBarItem(): vscode.StatusBarItem | undefined {
+        if (!this.isTracingEnabled) return undefined;
+        const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0)
+        item.command = consentCommandName;
+        const renderStatusBarItem = () => {
+            item.text = (() => {
+                const desc = this.tracingConsent.get() === 'yes' ? 'ON' : 'OFF';
+                return `$(radio-tower) Dotty trace: ${desc}`;
+            })();
 
-        if (this.tracingConsent.get() === 'no-answer') {
-            vscode.window.showInformationMessage(
-                'Do you want to help EPFL develop this plugin by uploading your usage data? ' +
-                'PLEASE BE AWARE that this will upload all of your keystrokes and all of your code, ' +
-                'among other things.',
-                'yes', 'no'
-            ).then((value: string | undefined) => {
-                if (value === 'yes' || value === 'no') this.tracingConsent.set(value);
-            });
+            item.tooltip = (() => {
+                const desc = this.tracingConsent.get() === 'yes' ? 'consented' : 'not consented';
+                return `This workspace is configured for remote tracing of Dotty LSP and you have ${desc} to it. ` +
+                    'Click to adjust your consent.';
+            })();
         }
+        renderStatusBarItem();
+        this.tracingConsent.subscribe(renderStatusBarItem);
+        item.show();
+        return item;
+    }
+
+    private createLspOutputChannel(): vscode.OutputChannel | undefined {
+        if (!this.remoteTracingUrl) return undefined;
 
         const localLspOutputChannel = vscode.window.createOutputChannel('Dotty LSP Communication')
         try {
-            return this.createRemoteLspOutputChannel(remoteTracingUrl, localLspOutputChannel);
+            return this.createRemoteLspOutputChannel(this.remoteTracingUrl, localLspOutputChannel);
         } catch (err) {
             this.logError('error during remote output channel creation', safeError(err));
             return localLspOutputChannel;
@@ -97,6 +154,7 @@ export class Tracer {
 
     private asyncUploadWorkspaceDump(url: string) {
         const storagePath = this.ctx.extensionContext.storagePath;
+        // TODO: handle multi-root workspaces
         const rootPath = vscode.workspace.rootPath;
         if (storagePath === undefined || rootPath === undefined) {
             this.logError('Cannot start workspace dump b/c of workspace state:', { storagePath, rootPath });
@@ -106,7 +164,7 @@ export class Tracer {
         if (!fs.existsSync(storagePath)) fs.mkdirSync(storagePath);
         const outputPath = path.join(storagePath, 'workspace-dump.zip');
         if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-        let output = fs.createWriteStream(outputPath);
+        const output = fs.createWriteStream(outputPath);
         output.on('end', () => {
             this.ctx.extensionOut.appendLine('zip - data has been drained');
         });
@@ -138,7 +196,8 @@ export class Tracer {
             );
         });
         zip.pipe(output);
-        zip.glob('./**/*.{scala,sbt}', { cwd: rootPath });
+        zip.glob('./**/*.{scala,sc,sbt,java}', { cwd: rootPath });
+        zip.glob('./**/.dotty-ide{.json,-artifact}', { cwd: rootPath });
         zip.finalize();
     }
 
@@ -146,49 +205,72 @@ export class Tracer {
         remoteTracingUrl: string,
         localOutputChannel: vscode.OutputChannel
     ): vscode.OutputChannel {
-        const socketHeaders = {
-            'X-DLS-Project-ID': this.projectId,
-            'X-DLS-Client-ID': this.machineId,
-            'X-DLS-Session-ID': this.sessionId,
+        const createSocket = () => {
+            const socket = new WebSocket(remoteTracingUrl, {
+                headers: {
+                    'X-DLS-Project-ID': this.projectId,
+                    'X-DLS-Client-ID': this.machineId,
+                    'X-DLS-Session-ID': this.sessionId,
+                },
+            });
+
+            const timer = setInterval(
+                () => {
+                    if (socket.readyState === WebSocket.OPEN) {
+                        socket.send('');
+                    } else if (socket.readyState === WebSocket.CLOSED) {
+                        clearInterval(timer);
+                    }
+                },
+                10 * 1000 /*ms*/,
+            )
+
+            socket.onerror = (event) => {
+                this.logErrorWithoutNotifying(
+                    'socket error',
+                    remoteTracingUrl,
+                    new SafeJsonifier(event, (event) => ({
+                        error: safeError(event.error),
+                        message: event.message,
+                        type: event.type
+                    }))
+                );
+                vscode.window.showWarningMessage('An error occured in Dotty LSP remote tracing connection.');
+            }
+
+            socket.onclose = (event) => {
+                this.logErrorWithoutNotifying(
+                    'socket closed',
+                    remoteTracingUrl,
+                    new SafeJsonifier(event, (event) => ({
+                        wasClean: event.wasClean,
+                        code: event.code,
+                        reason: event.reason
+                    }))
+                );
+                vscode.window.showWarningMessage('Dotty LSP remote tracing connection was dropped.');
+            }
+
+            return socket;
         };
 
-        const socket = new WebSocket(remoteTracingUrl, { headers: socketHeaders });
-
-        const timer = setInterval(
-            () => {
-                if (socket.readyState === WebSocket.OPEN) {
-                    socket.send('');
-                } else if (socket.readyState === WebSocket.CLOSED) {
-                    clearInterval(timer);
+        let alreadyCreated = false;
+        let socket: WebSocket;
+        // note: creating socket lazily is important for correctness
+        // if the user did not initially give his consent on IDE start, but gives it afterwards
+        // we only want to start a connection and upload data *after* being given consent
+        const withSocket: (thunk: (socket: WebSocket) => any) => void = (thunk) => {
+            // only try to create the socket _once_ to avoid endlessly looping
+            if (!alreadyCreated) {
+                alreadyCreated = true;
+                try {
+                    socket = createSocket();
+                } catch (err) {
+                    this.logError('socket create error', safeError(err));
                 }
-            },
-            10 * 1000 /*ms*/,
-        )
+            }
 
-        socket.onerror = (event) => {
-            this.logErrorWithoutNotifying(
-                'socket error',
-                remoteTracingUrl,
-                new SafeJsonifier(event, (event) => ({
-                    error: safeError(event.error),
-                    message: event.message,
-                    type: event.type
-                }))
-            );
-            vscode.window.showWarningMessage('An error occured in Dotty LSP remote tracing connection.');
-        }
-
-        socket.onclose = (event) => {
-            this.logErrorWithoutNotifying(
-                'socket closed',
-                remoteTracingUrl,
-                new SafeJsonifier(event, (event) => ({
-                    wasClean: event.wasClean,
-                    code: event.code,
-                    reason: event.reason
-                }))
-            );
-            vscode.window.showWarningMessage('Dotty LSP remote tracing connection was dropped.');
+            if (socket) thunk(socket);
         }
 
         let log: string = '';
@@ -210,21 +292,23 @@ export class Tracer {
 
                 log += value;
                 log += '\n';
-                if (this.tracingConsent.get() === 'yes' && socket.readyState === WebSocket.OPEN) {
-                    socket.send(log, (err) => {
-                        if (err) {
-                            this.logError('socket send error', err)
-                        }
-                    });
-                    log = '';
-                }
+                if (this.tracingConsent.get() === 'yes') withSocket((socket) => {
+                    if (socket.readyState === WebSocket.OPEN) {
+                        socket.send(log, (err) => {
+                            if (err) {
+                                this.logError('socket send error', err)
+                            }
+                        });
+                        log = '';
+                    }
+                });
             },
 
             clear() { },
             show() { },
             hide() { },
             dispose() {
-                socket.close();
+                if (socket) socket.close();
                 localOutputChannel.dispose();
             }
         };

@@ -21,7 +21,7 @@ import * as rpc from 'vscode-jsonrpc'
 import * as sbtserver from './sbt-server'
 import { Tracer } from './tracer';
 
-const extensionName = 'dotty';
+export const extensionName = 'dotty';
 const extensionConfig = vscode.workspace.getConfiguration(extensionName);
 
 let extensionContext: ExtensionContext
@@ -308,8 +308,7 @@ function bootstrapSbtProject(buildSbtFileSource: string,
 
 function run(serverOptions: ServerOptions, isOldServer: boolean) {
 
-  tracer.initializeAsyncWorkspaceDump();
-  const tracingOutputChannel = tracer.createLspOutputChannel();
+  const { lspOutputChannel } = tracer.run();
 
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
@@ -321,7 +320,7 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
     synchronize: {
       configurationSection: 'dotty'
     },
-    outputChannel: tracingOutputChannel,
+    outputChannel: lspOutputChannel,
     revealOutputChannelOn: RevealOutputChannelOn.Never
   }
 
@@ -334,5 +333,4 @@ function run(serverOptions: ServerOptions, isOldServer: boolean) {
   // Push the disposable to the context's subscriptions so that the
   // client can be deactivated on extension deactivation
   extensionContext.subscriptions.push(client.start())
-  if (tracingOutputChannel) extensionContext.subscriptions.push(tracingOutputChannel);
 }
