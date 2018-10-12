@@ -991,7 +991,7 @@ trait Implicits { self: Typer =>
       }
       else {
         val generated2 =
-          if (cand.isExtension) ExtMethodApply(generated1).withType(generated1.tpe)
+          if (cand.isExtension) Applications.ExtMethodApply(generated1).withType(generated1.tpe)
           else generated1
         SearchSuccess(generated2, ref, cand.level)(ctx.typerState)
       }
