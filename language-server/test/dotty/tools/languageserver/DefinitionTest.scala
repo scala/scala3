@@ -19,6 +19,24 @@ class DefinitionTest {
       .definition(m5 to m6, List(m1 to m2))
   }
 
+  @Test def caseClassDefinition0: Unit = {
+    withSources(
+      code"""case class ${m1}Foo${m2}(x: String) {
+              def ${m3}this${m4}(x: Int) = ${m5}this${m6}(x.toString)
+             }""",
+      code"""class Bar {
+               val foo: ${m7}Foo${m8} = ${m9}Foo${m10}("hello")
+               val bar: ${m11}Foo${m12} = new ${m13}Foo${m14}(2)
+             }"""
+    ) .definition(m1 to m2, List(m1 to m2))
+      .definition(m3 to m4, List(m3 to m4))
+      .definition(m5 to m6, List(m1 to m2))
+      .definition(m7 to m8, List(m1 to m2))
+      .definition(m9 to m10, List(m1 to m2))
+      .definition(m11 to m12, List(m1 to m2))
+      .definition(m13 to m14, List(m3 to m4))
+  }
+
   @Test def valDefinition0: Unit = {
     withSources(
       code"class Foo { val ${m1}x$m2 = 0; ${m3}x$m4 }",
@@ -134,6 +152,18 @@ class DefinitionTest {
       .definition(m11 to m12, List(m1 to m2))
   }
 
+  @Test def goToParamApply: Unit = {
+    withSources(
+      code"""case class Foo(${m1}x${m2}: Int, ${m3}y${m4}: String)""",
+      code"""object Bar {
+               Foo(${m5}x${m6} = 1, ${m7}y${m8} = "hello")
+             }"""
+    ) .definition(m1 to m2, List(m1 to m2))
+      .definition(m3 to m4, List(m3 to m4))
+      .definition(m5 to m6, List(m1 to m2))
+      .definition(m7 to m8, List(m3 to m4))
+  }
+
   @Test def goToParamCopyMethod: Unit = {
 
     withSources(
@@ -145,6 +175,17 @@ class DefinitionTest {
       .definition(m3 to m4, List(m3 to m4))
       .definition(m5 to m6, List(m1 to m2))
       .definition(m7 to m8, List(m3 to m4))
+      .definition(m9 to m10, List(m3 to m4))
+  }
+
+  @Test def constructorDefinition: Unit = {
+    withSources(
+      code"class ${m1}A${m2}(x: Boolean) { def ${m3}this${m4}(x: Int) = ${m5}this${m6}(x > 0) }",
+      code"object B { val a0 = new ${m7}A${m8}(true); val a1 = new ${m9}A${m10}(0) }"
+    ) .definition(m1 to m2, List(m1 to m2))
+      .definition(m3 to m4, List(m3 to m4))
+      .definition(m5 to m6, List(m1 to m2))
+      .definition(m7 to m8, List(m1 to m2))
       .definition(m9 to m10, List(m3 to m4))
   }
 

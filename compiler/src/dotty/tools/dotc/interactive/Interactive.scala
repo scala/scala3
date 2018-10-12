@@ -76,6 +76,10 @@ object Interactive {
           }.getOrElse(fn.symbol)
         }
 
+      // For constructor calls, return the `<init>` that was selected
+      case _ :: (_:  New) :: (select: Select) :: _ =>
+        select.symbol
+
       case _ =>
         enclosingTree(path).symbol
     }
