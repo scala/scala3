@@ -5,70 +5,14 @@ title: "Intersection Types - More Details"
 
 ## Syntax
 
-Syntactically, an intersection type `S & T` is similar to an infix type,
-where the infix operator is `&`.
+Syntactically, an intersection type `S & T` is similar to an infix type, where
+the infix operator is `&`. `&` is treated as a soft keyword. That is, it is a
+normal identifier with the usual precedence. But a type of the form A & B is
+always recognized as an intersection type, without trying to resolve &.
 
 ```
 Type              ::=  ...| InfixType
 InfixType         ::=  RefinedType {id [nl] RefinedType}
-RefinedType       ::=  WithType {[nl] Refinement}
-WithType          ::=  AnnotType {‘with’ AnnotType}
-```
-
-## Type Checking
-
-The type `S & T` represents values that are of the type `S` and `T` at the same time.
-
-```scala
-trait Resettable {
-  def reset(): this.type
-}
-trait Growable[T] {
-  def add(x: T): this.type
-}
-def f(x: Resettable & Growable[String]) = {
-  x.reset()
-  x.add("first")
-}
-```
-
-The value `x` is required to be _both_ a `Resettable` and a
-`Growable[String]`.
-
-The members of an intersection type `A & B` are all the members of `A` and all
-the members of `B`.  For instance `Resettable & Growable[String]`
-has member methods `reset` and `add`.
-
-If a member appears in both `A` and `B`, its type in `A & B` is the intersection
-of its type in `A` and its type in `B`. For instance, assume the definitions:
-
-```scala
-trait A {
-  def children: List[A]
-}
-trait B {
-  def children: List[B]
-}
-val x: A & B = new C
-val ys: List[A & B] = x.children
-```
-
-The type of `children` in `A & B` is the intersection of `children`'s
-type in `A` and its type in `B`, which is `List[A] & List[B]`. This
-can be further simplified to `List[A & B]` because `List` is
-covariant.
-
-An intersection type `A & B` may not be inhabited, e.g. `Int & String` is not inhabited.
-`A & B` is just a type that represents a set of requirements for
-values of the type. At the point where a value is _constructed_, one
-must make sure that all inherited members are correctly defined.
-So if one defines a class `C` that inherits `A` and `B`, one needs
-to give at that point a definition of a `children` method with the required type.
-
-```scala
-class C extends A with B {
-  def children: List[A & B] = ???
-}
 ```
 
 ## Subtyping Rules
@@ -90,6 +34,36 @@ class C extends A with B {
 From the rules above, we can show that `&` is _commutative_: `A & B <: B & A` for any type `A` and `B`.
 In another word, `A & B` is the same type as `B & A`, in that sense that the two types
 have the same values and are subtypes of each other.
+
+If `C` is a type constructor, the join `C[A] & C[B]` is simplified by pulling the
+intersection inside the constructor, using the following two rules:
+
+- If `C` is covariant, `C[A] & C[B] ~> C[A & B]`
+- If `C` is contravariant, `C[A] & C[B] ~> C[A | B]`
+
+When `C` is covariant, `C[A & B] <: C[A] & C[B]` can be derived:
+
+```
+    A <: A                  B <: B
+  ----------               ---------
+  A & B <: A               A & B < B
+---------------         -----------------
+C[A & B] <: C[A]          C[A & B] <: C[B]
+------------------------------------------
+      C[A & B] <: C[A] & C[B]
+```
+
+When `C` is contravariant, `C[A | B] <: C[A] & C[B]` can be derived:
+
+```
+    A <: A                        B <: B
+  ----------                     ---------
+  A <: A | B                     B < A | B
+-------------------           ----------------
+C[A | B] <: C[A]              C[A | B] <: C[B]
+--------------------------------------------------
+            C[A | B] <: C[A] & C[B]
+```
 
 ## Erasure
 
