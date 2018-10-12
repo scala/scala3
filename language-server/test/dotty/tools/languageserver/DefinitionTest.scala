@@ -309,4 +309,17 @@ class DefinitionTest {
      .definition(m11 to m12, List(m3 to m4))
   }
 
+  @Test def multipleImportsPerLineWithRename: Unit = {
+    withSources(
+      code"""object A { class ${m1}B${m2}; class ${m3}C${m4} }""",
+      code"""import A.{${m5}B${m6} => ${m7}B2${m8}, ${m9}C${m10} => ${m11}C2${m12}}
+             class E"""
+    ).definition(m1 to m2, List(m1 to m2))
+     .definition(m3 to m4, List(m3 to m4))
+     .definition(m5 to m6, List(m1 to m2))
+     .definition(m7 to m8, List(m1 to m2))
+     .definition(m9 to m10, List(m3 to m4))
+     .definition(m11 to m12, List(m3 to m4))
+  }
+
 }

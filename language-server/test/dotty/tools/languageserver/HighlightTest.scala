@@ -113,4 +113,17 @@ class HighlightTest {
     .highlight(m7 to m8, (m1 to m2, DocumentHighlightKind.Read), (m3 to m4, DocumentHighlightKind.Read), (m5 to m6, DocumentHighlightKind.Read), (m7 to m8, DocumentHighlightKind.Read))
   }
 
+  @Test def multipleImportsPerLineWithRename: Unit = {
+    withSources(
+      code"""object A { class ${m1}B${m2}; class ${m3}C${m4} }
+             import A.{${m5}B${m6} => ${m7}B2${m8}, ${m9}C${m10} => ${m11}C2${m12}}
+             class E"""
+    ).highlight(m1 to m2, (m1 to m2, DocumentHighlightKind.Read), (m5 to m6, DocumentHighlightKind.Read), (m7 to m8, DocumentHighlightKind.Read))
+     .highlight(m3 to m4, (m3 to m4, DocumentHighlightKind.Read), (m9 to m10, DocumentHighlightKind.Read), (m11 to m12, DocumentHighlightKind.Read))
+     .highlight(m5 to m6, (m1 to m2, DocumentHighlightKind.Read), (m5 to m6, DocumentHighlightKind.Read), (m7 to m8, DocumentHighlightKind.Read))
+     .highlight(m7 to m8, (m1 to m2, DocumentHighlightKind.Read), (m5 to m6, DocumentHighlightKind.Read), (m7 to m8, DocumentHighlightKind.Read))
+     .highlight(m9 to m10, (m3 to m4, DocumentHighlightKind.Read), (m9 to m10, DocumentHighlightKind.Read), (m11 to m12, DocumentHighlightKind.Read))
+     .highlight(m11 to m12, (m3 to m4, DocumentHighlightKind.Read), (m9 to m10, DocumentHighlightKind.Read), (m11 to m12, DocumentHighlightKind.Read))
+  }
+
 }

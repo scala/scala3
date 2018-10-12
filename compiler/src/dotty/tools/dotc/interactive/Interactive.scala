@@ -322,20 +322,23 @@ object Interactive {
 
     def traverser(source: SourceFile) = {
       new untpd.TreeTraverser {
-        private def handleImport(imported: List[Symbol],
-                                 uexpr: untpd.Tree,
-                                 id: untpd.Ident,
-                                 rename: Option[untpd.Ident]): Unit = {
-          val expr = uexpr.asInstanceOf[tpd.Tree]
+        private def handleImport(imp: tpd.Import): Unit = {
+          val imported =
+            imp.selectors.flatMap {
+              case id: untpd.Ident =>
+                importedSymbols(imp.expr, id.name).map((_, id, None))
+              case Thicket((id: untpd.Ident) :: (newName: untpd.Ident) :: Nil) =>
+                importedSymbols(imp.expr, id.name).map((_, id, Some(newName)))
+            }
           imported match {
             case Nil =>
-              traverse(expr)
+              traverse(imp.expr)
             case syms =>
-              syms.foreach { sym =>
-                val tree = tpd.Select(expr, sym.name).withPos(id.pos)
+              syms.foreach { case (sym, name, rename) =>
+                val tree = tpd.Select(imp.expr, sym.name).withPos(name.pos)
                 val renameTree = rename.map { r =>
                   val name = if (sym.name.isTypeName) r.name.toTypeName else r.name
-                  RenameTree(name, tpd.Select(expr, sym.name)).withPos(r.pos)
+                  RenameTree(name, tpd.Select(imp.expr, sym.name)).withPos(r.pos)
                 }
                 renameTree.foreach(traverse)
                 traverse(tree)
@@ -344,12 +347,8 @@ object Interactive {
         }
         override def traverse(tree: untpd.Tree)(implicit ctx: Context) = {
           tree match {
-            case imp @ Import(uexpr, (id: untpd.Ident) :: Nil) if includeImports =>
-              val imported = importedSymbols(imp.asInstanceOf[tpd.Import])
-              handleImport(imported, uexpr, id, None)
-            case imp @ Import(uexpr, Thicket((id: untpd.Ident) :: (rename: untpd.Ident) :: Nil) :: Nil) if includeImports =>
-              val imported = importedSymbols(imp.asInstanceOf[tpd.Import])
-              handleImport(imported, uexpr, id, Some(rename))
+            case imp: untpd.Import if includeImports =>
+              handleImport(imp.asInstanceOf[tpd.Import])
             case utree: untpd.NameTree if tree.hasType =>
               val tree = utree.asInstanceOf[tpd.NameTree]
               if (tree.symbol.exists
@@ -573,23 +572,31 @@ object Interactive {
    private def importedSymbols(imp: tpd.Import,
                        selectorPredicate: untpd.Tree => Boolean = util.common.alwaysTrue)
                       (implicit ctx: Context): List[Symbol] = {
-     def lookup0(name: Name): Symbol = imp.expr.tpe.member(name).symbol
-     def lookup(name: Name): List[Symbol] = {
-       lookup0(name.toTermName) ::
-         lookup0(name.toTypeName) ::
-         lookup0(name.moduleClassName) ::
-         lookup0(name.sourceModuleName) :: Nil
-     }
-
      val symbols = imp.selectors.find(selectorPredicate) match {
        case Some(id: untpd.Ident) =>
-         lookup(id.name)
+         importedSymbols(imp.expr, id.name)
        case Some(Thicket((id: untpd.Ident) :: (_: untpd.Ident) :: Nil)) =>
-         lookup(id.name)
-       case _ => Nil
+         importedSymbols(imp.expr, id.name)
+       case _ =>
+         Nil
      }
 
      symbols.map(sourceSymbol).filter(_.exists).distinct
+   }
+
+   /**
+    * The symbols that are imported with `expr.name`
+    *
+    * @param expr The base of the import statement
+    * @param name The name that is being imported.
+    * @return All the symbols that would be imported with `expr.name`.
+    */
+   private def importedSymbols(expr: tpd.Tree, name: Name)(implicit ctx: Context): List[Symbol] = {
+     def lookup(name: Name): Symbol = expr.tpe.member(name).symbol
+       lookup(name.toTermName) ::
+         lookup(name.toTypeName) ::
+         lookup(name.moduleClassName) ::
+         lookup(name.sourceModuleName) :: Nil
    }
 
   /**

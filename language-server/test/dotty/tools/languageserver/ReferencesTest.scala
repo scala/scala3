@@ -327,4 +327,23 @@ class ReferencesTest {
     .references(m7 to m8, List(m5 to m6, m7 to m8), withDecl = false)
   }
 
+  @Test def multipleImportsPerLineWithRename: Unit = {
+    withSources(
+      code"""object A { class ${m1}B${m2}; class ${m3}C${m4} }""",
+      code"""import A.{${m5}B${m6} => ${m7}B2${m8}, ${m9}C${m10} => ${m11}C2${m12}}
+             class E"""
+    ).references(m1 to m2, List(m1 to m2, m5 to m6, m7 to m8), withDecl = true)
+     .references(m1 to m2, List(m5 to m6, m7 to m8), withDecl = false)
+     .references(m3 to m4, List(m3 to m4, m9 to m10, m11 to m12), withDecl = true)
+     .references(m3 to m4, List(m9 to m10, m11 to m12), withDecl = false)
+     .references(m5 to m6, List(m1 to m2, m5 to m6, m7 to m8), withDecl = true)
+     .references(m5 to m6, List(m5 to m6, m7 to m8), withDecl = false)
+     .references(m7 to m8, List(m1 to m2, m5 to m6, m7 to m8), withDecl = true)
+     .references(m7 to m8, List(m5 to m6, m7 to m8), withDecl = false)
+     .references(m9 to m10, List(m3 to m4, m9 to m10, m11 to m12), withDecl = true)
+     .references(m9 to m10, List(m9 to m10, m11 to m12), withDecl = false)
+     .references(m11 to m12, List(m3 to m4, m9 to m10, m11 to m12), withDecl = true)
+     .references(m11 to m12, List(m9 to m10, m11 to m12), withDecl = false)
+  }
+
 }
