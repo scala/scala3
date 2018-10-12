@@ -8,7 +8,7 @@ import scala.collection._
 import ast.{NavigateAST, Trees, tpd, untpd}
 import core._, core.Decorators.{sourcePos => _, _}
 import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
-import util.Positions._, util.SourcePosition
+import util.Positions._, util.SourceFile, util.SourcePosition
 import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
 import config.Printers.interactiv
@@ -28,6 +28,7 @@ object Interactive {
     val references: Int = 4 // include references
     val definitions: Int = 8 // include definitions
     val linkedClass: Int = 16 // include `symbol.linkedClass`
+    val imports: Int = 32 // include imports in the results
   }
 
   /** Does this tree define a symbol ? */
@@ -59,15 +60,15 @@ object Interactive {
    *
    * @see sourceSymbol
    */
-  def enclosingSourceSymbol(path: List[Tree])(implicit ctx: Context): Symbol = {
-    val sym = path match {
+  def enclosingSourceSymbols(path: List[Tree], pos: SourcePosition)(implicit ctx: Context): List[Symbol] = {
+    val syms = path match {
       // For a named arg, find the target `DefDef` and jump to the param
       case NamedArg(name, _) :: Apply(fn, _) :: _ =>
         val funSym = fn.symbol
         if (funSym.name == StdNames.nme.copy
           && funSym.is(Synthetic)
           && funSym.owner.is(CaseClass)) {
-            funSym.owner.info.member(name).symbol
+            funSym.owner.info.member(name).symbol :: Nil
         } else {
           val classTree = funSym.topLevelClass.asClass.rootTree
           val paramSymbol =
@@ -75,38 +76,29 @@ object Interactive {
               DefDef(_, _, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
               param <- paramss.flatten.find(_.name == name)
             } yield param.symbol
-          paramSymbol.getOrElse(fn.symbol)
+          paramSymbol.getOrElse(fn.symbol) :: Nil
         }
 
       // For constructor calls, return the `<init>` that was selected
       case _ :: (_:  New) :: (select: Select) :: _ =>
-        select.symbol
+        select.symbol :: Nil
+
+      case (_: Thicket) :: (imp: Import) :: _ =>
+        importedSymbols(imp, _.pos.contains(pos.pos))
+
+      case (imp: Import) :: _ =>
+        importedSymbols(imp, _.pos.contains(pos.pos))
 
       case _ =>
-        enclosingTree(path).symbol
+        enclosingTree(path).symbol :: Nil
     }
-    Interactive.sourceSymbol(sym)
-  }
 
-  /**
-   * The source symbol that is the closest to the path to `pos` in `trees`.
-   *
-   * Computes the path from the tree with position `pos` in `trees`, and extract it source
-   * symbol.
-   *
-   * @param trees The trees in which to look for a path to `pos`.
-   * @param pos   That target position of the path.
-   * @return The source symbol that is the closest to the computed path.
-   *
-   * @see sourceSymbol
-   */
-  def enclosingSourceSymbol(trees: List[SourceTree], pos: SourcePosition)(implicit ctx: Context): Symbol = {
-    enclosingSourceSymbol(pathTo(trees, pos))
+    syms.map(Interactive.sourceSymbol).filter(_.exists)
   }
 
   /** A symbol related to `sym` that is defined in source code.
    *
-   *  @see enclosingSourceSymbol
+   *  @see enclosingSourceSymbols
    */
   @tailrec def sourceSymbol(sym: Symbol)(implicit ctx: Context): Symbol =
     if (!sym.exists)
@@ -304,32 +296,60 @@ object Interactive {
    *  source code.
    */
   def namedTrees(trees: List[SourceTree], include: Include.Set, sym: Symbol)
-   (implicit ctx: Context): List[SourceTree] =
+   (implicit ctx: Context): List[SourceNamedTree] =
     if (!sym.exists)
       Nil
     else
-      namedTrees(trees, (include & Include.references) != 0, matchSymbol(_, sym, include))
+      namedTrees(trees, include, matchSymbol(_, sym, include))
 
   /** Find named trees with a non-empty position whose name contains `nameSubstring` in `trees`.
    */
   def namedTrees(trees: List[SourceTree], nameSubstring: String)
-   (implicit ctx: Context): List[SourceTree] = {
+   (implicit ctx: Context): List[SourceNamedTree] = {
     val predicate: NameTree => Boolean = _.name.toString.contains(nameSubstring)
-    namedTrees(trees, includeReferences = false, predicate)
+    namedTrees(trees, 0, predicate)
   }
 
   /** Find named trees with a non-empty position satisfying `treePredicate` in `trees`.
    *
    *  @param includeReferences  If true, include references and not just definitions
    */
-  def namedTrees(trees: List[SourceTree], includeReferences: Boolean, treePredicate: NameTree => Boolean)
-    (implicit ctx: Context): List[SourceTree] = safely {
-    val buf = new mutable.ListBuffer[SourceTree]
+  def namedTrees(trees: List[SourceTree], include: Include.Set, treePredicate: NameTree => Boolean)
+    (implicit ctx: Context): List[SourceNamedTree] = safely {
+    val includeReferences = (include & Include.references) != 0
+    val includeImports = (include & Include.imports) != 0
+    val buf = new mutable.ListBuffer[SourceNamedTree]
 
-    trees foreach { case SourceTree(topTree, source) =>
+    def traverser(source: SourceFile) = {
       new untpd.TreeTraverser {
+        private def handleImport(imported: List[Symbol],
+                                 uexpr: untpd.Tree,
+                                 id: untpd.Ident,
+                                 rename: Option[untpd.Ident]): Unit = {
+          val expr = uexpr.asInstanceOf[tpd.Tree]
+          imported match {
+            case Nil =>
+              traverse(expr)
+            case syms =>
+              syms.foreach { sym =>
+                val tree = tpd.Select(expr, sym.name).withPos(id.pos)
+                val renameTree = rename.map { r =>
+                  val name = if (sym.name.isTypeName) r.name.toTypeName else r.name
+                  RenameTree(name, tpd.Select(expr, sym.name)).withPos(r.pos)
+                }
+                renameTree.foreach(traverse)
+                traverse(tree)
+              }
+          }
+        }
         override def traverse(tree: untpd.Tree)(implicit ctx: Context) = {
           tree match {
+            case imp @ Import(uexpr, (id: untpd.Ident) :: Nil) if includeImports =>
+              val imported = importedSymbols(imp.asInstanceOf[tpd.Import])
+              handleImport(imported, uexpr, id, None)
+            case imp @ Import(uexpr, Thicket((id: untpd.Ident) :: (rename: untpd.Ident) :: Nil) :: Nil) if includeImports =>
+              val imported = importedSymbols(imp.asInstanceOf[tpd.Import])
+              handleImport(imported, uexpr, id, Some(rename))
             case utree: untpd.NameTree if tree.hasType =>
               val tree = utree.asInstanceOf[tpd.NameTree]
               if (tree.symbol.exists
@@ -338,7 +358,7 @@ object Interactive {
                    && !tree.pos.isZeroExtent
                    && (includeReferences || isDefinition(tree))
                    && treePredicate(tree))
-                buf += SourceTree(tree, source)
+                buf += SourceNamedTree(tree, source)
               traverseChildren(tree)
             case tree: untpd.Inlined =>
               traverse(tree.call)
@@ -346,8 +366,10 @@ object Interactive {
               traverseChildren(tree)
           }
         }
-      }.traverse(topTree)
+      }
     }
+
+    trees.foreach(t => traverser(t.source).traverse(t.tree))
 
     buf.toList
   }
@@ -361,9 +383,8 @@ object Interactive {
    */
   def findTreesMatching(trees: List[SourceTree],
                         includes: Include.Set,
-                        symbol: Symbol)(implicit ctx: Context): List[SourceTree] = {
+                        symbol: Symbol)(implicit ctx: Context): List[SourceNamedTree] = {
     val linkedSym = symbol.linkedClass
-    val includeReferences  = (includes & Include.references) != 0
     val includeDeclaration = (includes & Include.definitions) != 0
     val includeLinkedClass = (includes & Include.linkedClass) != 0
     val predicate: NameTree => Boolean = tree =>
@@ -377,7 +398,7 @@ object Interactive {
             )
          )
       )
-    namedTrees(trees, includeReferences, predicate)
+    namedTrees(trees, includes, predicate)
   }
 
   /** The reverse path to the node that closest encloses position `pos`,
@@ -465,10 +486,8 @@ object Interactive {
    * @param driver The driver responsible for `path`.
    * @return The definitions for the symbol at the end of `path`.
    */
-  def findDefinitions(path: List[Tree], driver: InteractiveDriver)(implicit ctx: Context): List[SourceTree] = {
-    val sym = enclosingSourceSymbol(path)
-    if (sym == NoSymbol) Nil
-    else {
+  def findDefinitions(path: List[Tree], pos: SourcePosition, driver: InteractiveDriver)(implicit ctx: Context): List[SourceNamedTree] = {
+    enclosingSourceSymbols(path, pos).flatMap { sym =>
       val enclTree = enclosingTree(path)
 
       val (trees, include) =
@@ -542,5 +561,45 @@ object Interactive {
         false
     }
   }
+
+  /**
+   * All the symbols that are imported by import statement `imp`, if it matches
+   * the predicate `selectorPredicate`.
+   *
+   * @param imp The import statement to analyze
+   * @param selectorPredicate A test to find the selector to use.
+   * @return The symbols imported.
+   */
+   private def importedSymbols(imp: tpd.Import,
+                       selectorPredicate: untpd.Tree => Boolean = util.common.alwaysTrue)
+                      (implicit ctx: Context): List[Symbol] = {
+     def lookup0(name: Name): Symbol = imp.expr.tpe.member(name).symbol
+     def lookup(name: Name): List[Symbol] = {
+       lookup0(name.toTermName) ::
+         lookup0(name.toTypeName) ::
+         lookup0(name.moduleClassName) ::
+         lookup0(name.sourceModuleName) :: Nil
+     }
+
+     val symbols = imp.selectors.find(selectorPredicate) match {
+       case Some(id: untpd.Ident) =>
+         lookup(id.name)
+       case Some(Thicket((id: untpd.Ident) :: (_: untpd.Ident) :: Nil)) =>
+         lookup(id.name)
+       case _ => Nil
+     }
+
+     symbols.map(sourceSymbol).filter(_.exists).distinct
+   }
+
+  /**
+   * Used to represent a renaming import `{foo => bar}`.
+   * We need this because the name of the tree must be the new name, but the
+   * denotation must be that of the importee.
+   */
+   private case class RenameTree(name: Name, underlying: Tree) extends NameTree {
+     override def denot(implicit ctx: Context) = underlying.denot
+     myTpe = NoType
+   }
 
 }

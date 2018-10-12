@@ -301,7 +301,7 @@ class DottyLanguageServer extends LanguageServer
     val pos = sourcePosition(driver, uri, params.getPosition)
     val path = Interactive.pathTo(driver.openedTrees(uri), pos)
 
-    val definitions = Interactive.findDefinitions(path, driver).toList
+    val definitions = Interactive.findDefinitions(path, pos, driver).toList
     definitions.flatMap(d => location(d.namePos, positionMapperFor(d.source))).asJava
   }
 
@@ -311,34 +311,37 @@ class DottyLanguageServer extends LanguageServer
 
     val includes = {
       val includeDeclaration = params.getContext.isIncludeDeclaration
-      Include.references | Include.overriding | (if (includeDeclaration) Include.definitions else 0)
+      Include.references | Include.overriding | Include.imports | (if (includeDeclaration) Include.definitions else 0)
     }
 
+    val uriTrees = driver.openedTrees(uri)
     val pos = sourcePosition(driver, uri, params.getPosition)
 
-    val (definitions, originalSymbol, originalSymbolName) = {
+    val (definitions, originalSymbols) = {
       implicit val ctx: Context = driver.currentCtx
       val path = Interactive.pathTo(driver.openedTrees(uri), pos)
-      val originalSymbol = Interactive.enclosingSourceSymbol(path)
-      val originalSymbolName = originalSymbol.name.sourceModuleName.toString
-      val definitions = Interactive.findDefinitions(path, driver)
+      val definitions = Interactive.findDefinitions(path, pos, driver)
+      val originalSymbols = Interactive.enclosingSourceSymbols(path, pos)
 
-      (definitions, originalSymbol, originalSymbolName)
+      (definitions, originalSymbols)
     }
 
     val references = {
       // Collect the information necessary to look into each project separately: representation of
       // `originalSymbol` in this project, the context and correct Driver.
-      val perProjectInfo = inProjectsSeeing(driver, definitions, originalSymbol)
+      val perProjectInfo = inProjectsSeeing(driver, definitions, originalSymbols)
 
-      perProjectInfo.flatMap { (remoteDriver, ctx, definition) =>
-        val trees = remoteDriver.sourceTreesContaining(originalSymbolName)(ctx)
-        val matches = Interactive.findTreesMatching(trees, includes, definition)(ctx)
-        matches.map(tree => location(tree.namePos(ctx), positionMapperFor(tree.source)))
+      perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
+        definitions.flatMap { definition =>
+          val name = definition.name(ctx).sourceModuleName.toString
+          val trees = remoteDriver.sourceTreesContaining(name)(ctx)
+          val matches = Interactive.findTreesMatching(trees, includes, definition)(ctx)
+          matches.map(tree => location(tree.namePos(ctx), positionMapperFor(tree.source)))
+        }
       }
     }.toList
 
-    references.flatten.asJava
+    references.flatten.distinct.asJava
   }
 
   override def rename(params: RenameParams) = computeAsync { cancelToken =>
@@ -346,25 +349,27 @@ class DottyLanguageServer extends LanguageServer
     val driver = driverFor(uri)
     implicit val ctx = driver.currentCtx
 
+    val uriTrees = driver.openedTrees(uri)
     val pos = sourcePosition(driver, uri, params.getPosition)
-    val sym = Interactive.enclosingSourceSymbol(driver.openedTrees(uri), pos)
+    val path = Interactive.pathTo(uriTrees, pos)
+    val syms = Interactive.enclosingSourceSymbols(path, pos)
+    val newName = params.getNewName
+    val includes =
+      Include.references | Include.definitions | Include.linkedClass | Include.overriding
 
-    if (sym == NoSymbol) new WorkspaceEdit()
-    else {
+    val refs = syms.flatMap { sym =>
       val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
-      val newName = params.getNewName
-      val includes =
-        Include.references | Include.definitions | Include.linkedClass | Include.overriding
-      val refs = Interactive.findTreesMatching(trees, includes, sym)
+      Interactive.findTreesMatching(trees, includes, sym)
+    }
 
-      val changes = refs.groupBy(ref => toUriOption(ref.source))
+    val changes =
+      refs.groupBy(ref => toUriOption(ref.source))
         .flatMap((uriOpt, ref) => uriOpt.map(uri => (uri.toString, ref)))
         .mapValues(refs =>
           refs.flatMap(ref =>
             range(ref.namePos, positionMapperFor(ref.source)).map(nameRange => new TextEdit(nameRange, newName))).asJava)
 
-      new WorkspaceEdit(changes.asJava)
-    }
+    new WorkspaceEdit(changes.asJava)
   }
 
   override def documentHighlight(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
@@ -374,16 +379,17 @@ class DottyLanguageServer extends LanguageServer
 
     val pos = sourcePosition(driver, uri, params.getPosition)
     val uriTrees = driver.openedTrees(uri)
-    val sym = Interactive.enclosingSourceSymbol(uriTrees, pos)
+    val path = Interactive.pathTo(uriTrees, pos)
+    val syms = Interactive.enclosingSourceSymbols(path, pos)
+    val includes = Include.definitions | Include.references | Include.imports
 
-    if (sym == NoSymbol) Nil.asJava
-    else {
-      val refs = Interactive.namedTrees(uriTrees, Include.references | Include.overriding, sym)
+    syms.flatMap { sym =>
+      val refs = Interactive.findTreesMatching(uriTrees, includes, sym)
       (for {
-        ref <- refs if !ref.tree.symbol.isPrimaryConstructor
+        ref <- refs
         nameRange <- range(ref.namePos, positionMapperFor(ref.source))
-      } yield new DocumentHighlight(nameRange, DocumentHighlightKind.Read)).asJava
-    }
+      } yield new DocumentHighlight(nameRange, DocumentHighlightKind.Read))
+    }.distinct.asJava
   }
 
   override def hover(params: TextDocumentPositionParams) = computeAsync { cancelToken =>
@@ -393,12 +399,14 @@ class DottyLanguageServer extends LanguageServer
 
     val pos = sourcePosition(driver, uri, params.getPosition)
     val trees = driver.openedTrees(uri)
+    val path = Interactive.pathTo(trees, pos)
     val tp = Interactive.enclosingType(trees, pos)
     val tpw = tp.widenTermRefExpr
 
     if (tp.isError || tpw == NoType) null // null here indicates that no response should be sent
     else {
-      val symbol = Interactive.enclosingSourceSymbol(trees, pos)
+      val symbol = Interactive.enclosingSourceSymbols(path, pos).headOption.orNull
+      if (symbol == null) return null
       val docComment = ParsedComment.docOf(symbol)
       val content = hoverContent(Some(tpw.show), docComment)
       new Hover(content, null)
@@ -412,7 +420,7 @@ class DottyLanguageServer extends LanguageServer
 
     val uriTrees = driver.openedTrees(uri)
 
-    val defs = Interactive.namedTrees(uriTrees, includeReferences = false, _ => true)
+    val defs = Interactive.namedTrees(uriTrees, 0, _ => true)
     (for {
       d <- defs if !isWorksheetWrapper(d)
       info <- symbolInfo(d.tree.symbol, d.namePos, positionMapperFor(d.source))
@@ -437,21 +445,24 @@ class DottyLanguageServer extends LanguageServer
 
     val pos = sourcePosition(driver, uri, params.getPosition)
 
-    val (definitions, originalSymbol) = {
+    val (definitions, originalSymbols) = {
       implicit val ctx: Context = driver.currentCtx
       val path = Interactive.pathTo(driver.openedTrees(uri), pos)
-      val originalSymbol = Interactive.enclosingSourceSymbol(path)
-      val definitions = Interactive.findDefinitions(path, driver)
-      (definitions, originalSymbol)
+      val originalSymbols = Interactive.enclosingSourceSymbols(path, pos)
+      val definitions = Interactive.findDefinitions(path, pos, driver)
+      (definitions, originalSymbols)
     }
 
     val implementations = {
-      val perProjectInfo = inProjectsSeeing(driver, definitions, originalSymbol)
+      val perProjectInfo = inProjectsSeeing(driver, definitions, originalSymbols)
 
-      perProjectInfo.flatMap { (remoteDriver, ctx, definition) =>
+      perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
         val trees = remoteDriver.sourceTrees(ctx)
-        val predicate = Interactive.implementationFilter(definition)(ctx)
-        val matches = Interactive.namedTrees(trees, includeReferences = false, predicate)(ctx)
+        val predicate: NameTree => Boolean = {
+          val predicates = definitions.map(Interactive.implementationFilter(_)(ctx))
+          tree => predicates.exists(_(tree))
+        }
+        val matches = Interactive.namedTrees(trees, 0, predicate)(ctx)
         matches.map(tree => location(tree.namePos(ctx), positionMapperFor(tree.source)))
       }
     }.toList
@@ -508,23 +519,23 @@ class DottyLanguageServer extends LanguageServer
   }
 
   /**
-   * Finds projects that can see any of `definitions`, translate `symbol` in their universe.
+   * Finds projects that can see any of `definitions`, translate `symbols` in their universe.
    *
    * @param baseDriver  The driver responsible for the trees in `definitions` and `symbol`.
    * @param definitions The definitions to consider when looking for projects.
-   * @param symbol      A symbol to translate in the universes of the remote projects.
+   * @param symbol      Symbols to translate in the universes of the remote projects.
    * @return A list consisting of the remote drivers, their context, and the translation of `symbol`
    *         into their universe.
    */
   private def inProjectsSeeing(baseDriver: InteractiveDriver,
                                definitions: List[SourceTree],
-                               symbol: Symbol): List[(InteractiveDriver, Context, Symbol)] = {
+                               symbols: List[Symbol]): List[(InteractiveDriver, Context, List[Symbol])] = {
     val projects = projectsSeeing(definitions)(baseDriver.currentCtx)
     projects.toList.map { config =>
       val remoteDriver = drivers(config)
       val ctx = remoteDriver.currentCtx
-      val definition = Interactive.localize(symbol, baseDriver, remoteDriver)
-      (remoteDriver, ctx, definition)
+      val definitions = symbols.map(Interactive.localize(_, baseDriver, remoteDriver))
+      (remoteDriver, ctx, definitions)
     }
   }
 
