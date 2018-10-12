@@ -70,10 +70,12 @@ object Interactive {
             funSym.owner.info.member(name).symbol
         } else {
           val classTree = funSym.topLevelClass.asClass.rootTree
-          tpd.defPath(funSym, classTree).lastOption.flatMap {
-            case DefDef(_, _, paramss, _, _) =>
-              paramss.flatten.find(_.name == name).map(_.symbol)
-          }.getOrElse(fn.symbol)
+          val paramSymbol =
+            for {
+              DefDef(_, _, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
+              param <- paramss.flatten.find(_.name == name)
+            } yield param.symbol
+          paramSymbol.getOrElse(fn.symbol)
         }
 
       // For constructor calls, return the `<init>` that was selected
