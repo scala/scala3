@@ -70,6 +70,38 @@ class RenameTest {
 
     testRenameFrom(m1)
     testRenameFrom(m2)
+    testRenameFrom(m3)
+    testRenameFrom(m4)
+  }
+
+  @Test def renameImport: Unit = {
+    def testRenameFrom(m: CodeMarker) =
+      withSources(
+        code"""object A { class ${m1}C${m2} }""",
+        code"""import A.${m3}C${m4}
+               object B"""
+      ).rename(m, "NewName", Set(m1 to m2, m3 to m4))
+
+    testRenameFrom(m1)
+    testRenameFrom(m2)
+    testRenameFrom(m3)
+    testRenameFrom(m4)
+  }
+
+  @Test def renameRenamedImport: Unit = {
+    def testRenameFrom(m: CodeMarker) =
+      withSources(
+        code"""object A { class ${m1}C${m2} }""",
+        code"""import A.{${m3}C${m4} => D}
+        object B { new ${m5}D${m6} }"""
+      ).rename(m, "NewName", Set(m1 to m2, m3 to m4))
+
+    testRenameFrom(m1)
+    testRenameFrom(m2)
+    testRenameFrom(m3)
+    testRenameFrom(m4)
+    testRenameFrom(m5)
+    testRenameFrom(m6)
   }
 
 }

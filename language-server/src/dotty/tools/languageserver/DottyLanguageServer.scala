@@ -311,7 +311,8 @@ class DottyLanguageServer extends LanguageServer
 
     val includes = {
       val includeDeclaration = params.getContext.isIncludeDeclaration
-      Include.references | Include.overriding | Include.imports | (if (includeDeclaration) Include.definitions else 0)
+      Include.references | Include.overriding | Include.imports | Include.renamingImports |
+        (if (includeDeclaration) Include.definitions else 0)
     }
 
     val uriTrees = driver.openedTrees(uri)
@@ -355,7 +356,7 @@ class DottyLanguageServer extends LanguageServer
     val syms = Interactive.enclosingSourceSymbols(path, pos)
     val newName = params.getNewName
     val includes =
-      Include.references | Include.definitions | Include.linkedClass | Include.overriding
+      Include.references | Include.definitions | Include.linkedClass | Include.overriding | Include.imports
 
     val refs = syms.flatMap { sym =>
       val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
@@ -367,7 +368,7 @@ class DottyLanguageServer extends LanguageServer
         .flatMap((uriOpt, ref) => uriOpt.map(uri => (uri.toString, ref)))
         .mapValues(refs =>
           refs.flatMap(ref =>
-            range(ref.namePos, positionMapperFor(ref.source)).map(nameRange => new TextEdit(nameRange, newName))).asJava)
+            range(ref.namePos, positionMapperFor(ref.source)).map(nameRange => new TextEdit(nameRange, newName))).distinct.asJava)
 
     new WorkspaceEdit(changes.asJava)
   }
@@ -381,7 +382,7 @@ class DottyLanguageServer extends LanguageServer
     val uriTrees = driver.openedTrees(uri)
     val path = Interactive.pathTo(uriTrees, pos)
     val syms = Interactive.enclosingSourceSymbols(path, pos)
-    val includes = Include.definitions | Include.references | Include.imports
+    val includes = Include.definitions | Include.references | Include.imports | Include.renamingImports
 
     syms.flatMap { sym =>
       val refs = Interactive.findTreesMatching(uriTrees, includes, sym)
