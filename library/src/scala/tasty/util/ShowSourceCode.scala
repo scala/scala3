@@ -2,6 +2,7 @@ package scala.tasty
 package util
 
 import scala.annotation.switch
+import scala.tasty.util.SyntaxHighlightUtils._
 
 class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty0) {
   import tasty.{rootContext => _, _}
@@ -102,18 +103,18 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printDefAnnotations(cdef)
 
         val flags = cdef.symbol.flags
-        if (flags.isImplicit) this += "implicit "
-        if (flags.isSealed) this += "sealed "
-        if (flags.isFinal && !flags.isObject) this += "final "
-        if (flags.isCase) this += "case "
+        if (flags.isImplicit) this += highlightKeyword("implicit ", color)
+        if (flags.isSealed) this += highlightKeyword("sealed ", color)
+        if (flags.isFinal && !flags.isObject) this += highlightKeyword("final ", color)
+        if (flags.isCase) this += highlightKeyword("case ", color)
 
         if (name == "package$") {
-          this += "package object " += cdef.symbol.owner.name.stripSuffix("$")
+          this += highlightKeyword("package object ", color) += highlightTypeDef(cdef.symbol.owner.name.stripSuffix("$"), color)
         }
-        else if (flags.isObject) this += "object " += name.stripSuffix("$")
-        else if (flags.isTrait) this += "trait " += name
-        else if (flags.isAbstract) this += "abstract class " += name
-        else this += "class " += name
+        else if (flags.isObject) this += highlightKeyword("object ", color) += highlightTypeDef(name.stripSuffix("$"), color)
+        else if (flags.isTrait) this += highlightKeyword("trait ", color) += highlightTypeDef(name, color)
+        else if (flags.isAbstract) this += highlightKeyword("abstract class ", color) += highlightTypeDef(name, color)
+        else this += highlightKeyword("class ", color) += highlightTypeDef(name, color)
 
         if (!flags.isObject) {
           printTargsDefs(targs)
@@ -128,7 +129,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case _ => true
         }
         if (parents1.nonEmpty)
-          this += " extends "
+          this += highlightKeyword(" extends ", color)
 
         def printParent(parent: TermOrTypeTree): Unit = parent match {
           case IsTypeTree(parent) =>
@@ -150,7 +151,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case x :: Nil => printParent(x)
           case x :: xs =>
             printParent(x)
-            this += " with "
+            this += highlightKeyword(" with ", color)
             printSeparated(xs)
         }
         printSeparated(parents1)
@@ -185,7 +186,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
               val Some(ValDef(name, tpt, _)) = self
               indented {
                 val name1 = if (name == "_") "this" else name
-                this += " " += name1 += ": "
+                this += " " += highlightValDef(name1, color) += ": "
                 printTypeTree(tpt)
                 this += " =>"
               }
@@ -209,23 +210,23 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case IsTypeDef(tdef @ TypeDef(name, rhs)) =>
         printDefAnnotations(tdef)
-        this += "type "
+        this += highlightKeyword("type ", color)
         printTargDef(tdef, isMember = true)
 
       case IsValDef(vdef @ ValDef(name, tpt, rhs)) =>
         printDefAnnotations(vdef)
 
         val flags = vdef.symbol.flags
-        if (flags.isImplicit) this += "implicit "
-        if (flags.isOverride) this += "override "
+        if (flags.isImplicit) this += highlightKeyword("implicit ", color)
+        if (flags.isOverride) this += highlightKeyword("override ", color)
 
         printProtectedOrPrivate(vdef)
 
-        if (flags.isLazy) this += "lazy "
-        if (vdef.symbol.flags.isMutable) this += "var "
-        else this += "val "
+        if (flags.isLazy) this += highlightKeyword("lazy ", color)
+        if (vdef.symbol.flags.isMutable) this += highlightKeyword("var ", color)
+        else this += highlightKeyword("val ", color)
 
-        this += name += ": "
+        this += highlightValDef(name, color) += ": "
         printTypeTree(tpt)
         rhs match {
           case Some(tree) =>
@@ -238,11 +239,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       case Term.While(cond, body) =>
         (cond, body) match {
           case (Term.Block(Term.Block(Nil, body1) :: Nil, Term.Block(Nil, cond1)), Term.Literal(Constant.Unit())) =>
-            this += "do "
-            printTree(body1) += " while "
+            this += highlightKeyword("do ", color)
+            printTree(body1) += highlightKeyword(" while ", color)
             inParens(printTree(cond1))
           case _ =>
-            this += "while "
+            this += highlightKeyword("while ", color)
             inParens(printTree(cond)) += " "
             printTree(body)
         }
@@ -253,13 +254,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         val isConstructor = name == "<init>"
 
         val flags = ddef.symbol.flags
-        if (flags.isImplicit) this += "implicit "
-        if (flags.isInline) this += "inline "
-        if (flags.isOverride) this += "override "
+        if (flags.isImplicit) this += highlightKeyword("implicit ", color)
+        if (flags.isInline) this += highlightKeyword("inline ", color)
+        if (flags.isOverride) this += highlightKeyword("override ", color)
 
         printProtectedOrPrivate(ddef)
 
-        this += "def " += (if (isConstructor) "this" else name)
+        this += highlightKeyword("def ", color) += highlightValDef((if (isConstructor) "this" else name), color)
         printTargsDefs(targs)
         val it = argss.iterator
         while (it.hasNext)
@@ -403,28 +404,28 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this
 
       case Term.If(cond, thenp, elsep) =>
-        this += "if "
+        this += highlightKeyword("if ", color)
         inParens(printTree(cond))
         this += " "
         printTree(thenp)
-        this+= " else "
+        this+= highlightKeyword(" else ", color)
         printTree(elsep)
 
       case Term.Match(selector, cases) =>
         printTree(selector)
-        this += " match"
+        this += highlightKeyword(" match", color)
         inBlock(printCases(cases, lineBreak()))
 
       case Term.Try(body, cases, finallyOpt) =>
-        this += "try "
+        this += highlightKeyword("try ", color)
         printTree(body)
         if (cases.nonEmpty) {
-          this += " catch"
+          this += highlightKeyword(" catch", color)
           inBlock(printCases(cases, lineBreak()))
         }
         finallyOpt match {
           case Some(t) =>
-            this += " finally "
+            this += highlightKeyword(" finally ", color)
             printTree(t)
           case None =>
             this
@@ -642,20 +643,20 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
                   printedPrefix = true
                 }
                 printedPrefix  |= printProtectedOrPrivate(vdef)
-                if (vdef.symbol.flags.isMutable) this += "var "
-                else if (printedPrefix || !vdef.symbol.flags.isCaseAcessor) this += "val "
+                if (vdef.symbol.flags.isMutable) this += highlightValDef("var ", color)
+                else if (printedPrefix || !vdef.symbol.flags.isCaseAcessor) this += highlightValDef("val ", color)
                 else this // val not explicitly needed
               }
           }
         case _ =>
       }
 
-      this += name += ": "
+      this += highlightValDef(name, color) += ": "
       printTypeTree(arg.tpt)
     }
 
     def printCaseDef(caseDef: CaseDef): Buffer = {
-      this += "case "
+      this += highlightValDef("case ", color)
       printPattern(caseDef.pattern)
       caseDef.guard match {
         case Some(t) =>
@@ -663,7 +664,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           printTree(t)
         case None =>
       }
-      this += " =>"
+      this += highlightValDef(" =>", color)
       indented {
         caseDef.rhs match {
           case Term.Block(stats, expr) =>
@@ -687,7 +688,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         this += name
 
       case Pattern.Bind(name, Pattern.TypeTest(tpt)) =>
-        this += name += ": "
+        this += highlightValDef(name, color) += ": "
         printTypeTree(tpt)
 
       case Pattern.Bind(name, pattern) =>
@@ -715,22 +716,22 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
 
     def printConstant(const: Constant): Buffer = const match {
-      case Constant.Unit() => this += "()"
-      case Constant.Null() => this += "null"
-      case Constant.Boolean(v) => this += v.toString
-      case Constant.Byte(v) => this += v
-      case Constant.Short(v) => this += v
-      case Constant.Int(v) => this += v
-      case Constant.Long(v) => this += v += "L"
-      case Constant.Float(v) => this += v += "f"
-      case Constant.Double(v) => this += v
-      case Constant.Char(v) => this += '\'' += escapedChar(v) += '\''
-      case Constant.String(v) => this += '"' += escapedString(v) += '"'
+      case Constant.Unit() => this += highlightLiteral("()", color)
+      case Constant.Null() => this += highlightLiteral("null", color)
+      case Constant.Boolean(v) => this += highlightLiteral(v.toString, color)
+      case Constant.Byte(v) => this += highlightLiteral(v.toString, color)
+      case Constant.Short(v) => this += highlightLiteral(v.toString, color)
+      case Constant.Int(v) => this += highlightLiteral(v.toString, color)
+      case Constant.Long(v) => this += highlightLiteral(v.toString + "L", color)
+      case Constant.Float(v) => this += highlightLiteral(v.toString + "f", color)
+      case Constant.Double(v) => this += highlightLiteral(v.toString, color)
+      case Constant.Char(v) => this += highlightString('\'' + escapedChar(v) + '\'', color)
+      case Constant.String(v) => this += highlightString('"' + escapedString(v) + '"', color)
       case Constant.ClassTag(v) =>
         this += "classOf"
         inSquare(printType(v))
       case Constant.Symbol(v) =>
-        this += "'" += v.name
+        this += highlightLiteral("'" + v.name, color)
     }
 
     def printTypeOrBoundsTree(tpt: TypeOrBoundsTree): Buffer = tpt match {
@@ -767,10 +768,10 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printType(tree.tpe)
 
       case TypeTree.Select(qual, name) =>
-        printTree(qual) += "." += name
+        printTree(qual) += "." += highlightTypeDef(name, color)
 
       case TypeTree.Project(qual, name) =>
-        printTypeTree(qual) += "#" += name
+        printTypeTree(qual) += "#" += highlightTypeDef(name, color)
 
       case TypeTree.Singleton(ref) =>
         printTree(ref)
@@ -795,25 +796,25 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case TypeTree.And(left, right) =>
         printTypeTree(left)
-        this += " & "
+        this += highlightTypeDef(" & ", color)
         printTypeTree(right)
 
       case TypeTree.Or(left, right) =>
         printTypeTree(left)
-        this += " | "
+        this += highlightTypeDef(" | ", color)
         printTypeTree(right)
 
       case TypeTree.ByName(result) =>
-        this += "=> "
+        this += highlightTypeDef("=> ", color)
         printTypeTree(result)
 
       case TypeTree.TypeLambdaTree(tparams, body) =>
         printTargsDefs(tparams)
-        this += " => "
+        this += highlightTypeDef(" => ", color)
         printTypeOrBoundsTree(body)
 
       case TypeTree.Bind(name, _) =>
-        this += name
+        this += highlightTypeDef(name, color)
 
       case _ =>
         throw new MatchError(tree.show)
@@ -845,19 +846,19 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
               this += "."
             }
         }
-        this += sym.name.stripSuffix("$")
+        this += highlightTypeDef(sym.name.stripSuffix("$"), color)
 
       case Type.TermRef(name, prefix) =>
         prefix match {
           case Type.ThisType(Types.EmptyPackage()) =>
-            this += name
+            this += highlightTypeDef(name, color)
           case IsType(prefix) =>
             printType(prefix)
             if (name != "package")
-              this += "." += name
+              this += "." += highlightTypeDef(name, color)
             this
           case NoPrefix() =>
-            this += name
+            this += highlightTypeDef(name, color)
         }
 
       case Type.TypeRef(name, prefix) =>
@@ -865,8 +866,8 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
           case NoPrefix() | Type.ThisType(Types.EmptyPackage()) =>
           case IsType(prefix) => printType(prefix) += "."
         }
-        if (name.endsWith("$")) this += name.stripSuffix("$") += ".type"
-        else this += name
+        if (name.endsWith("$")) this += highlightTypeDef(name.stripSuffix("$"), color) += ".type"
+        else this += highlightTypeDef(name, color)
 
       case tpe @ Type.Refinement(_, _, _) =>
         printRefinement(tpe)
@@ -888,23 +889,23 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
 
       case Type.AndType(left, right) =>
         printType(left)
-        this += " & "
+        this += highlightTypeDef(" & ", color)
         printType(right)
 
       case Type.OrType(left, right) =>
         printType(left)
-        this += " | "
+        this += highlightTypeDef(" | ", color)
         printType(right)
 
       case Type.ByNameType(tp) =>
-        this += " => "
+        this += highlightTypeDef(" => ", color)
         printType(tp)
 
       case Type.ThisType(tp) =>
         tp match {
           case Type.SymRef(cdef, _) if !cdef.flags.isObject =>
             printFullClassName(tp)
-            this += ".this"
+            this += highlightTypeDef(".this", color)
           case Type.TypeRef(name, prefix) if name.endsWith("$") =>
             prefix match {
               case Types.EmptyPrefix() =>
@@ -912,18 +913,18 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
                 printTypeOrBound(prefix)
                 this += "."
             }
-            this += name.stripSuffix("$")
+            this += highlightTypeDef(name.stripSuffix("$"), color)
           case _ =>
             printType(tp)
         }
 
       case Type.SuperType(thistpe, supertpe) =>
         printType(supertpe)
-        this += ".super"
+        this += highlightTypeDef(".super", color)
 
       case Type.TypeLambda(paramNames, tparams, body) =>
         inSquare(printMethodicTypeParams(paramNames, tparams))
-        this += " => "
+        this += highlightTypeDef(" => ", color)
         printTypeOrBound(body)
 
       case Type.ParamRef(lambda, idx) =>
@@ -937,7 +938,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         printType(tpe)
 
       case Type.RecursiveThis(_) =>
-        this += "this"
+        this += highlightTypeDef("this", color)
 
       case _ =>
         throw new MatchError(tpe.show)
@@ -950,11 +951,11 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
     }
 
     def printDefinitionName(sym: Definition): Buffer = sym match {
-      case ValDef(name, _, _) => this += name
-      case DefDef(name, _, _, _, _) => this += name
-      case ClassDef(name, _, _, _, _) => this += name.stripSuffix("$")
-      case TypeDef(name, _) => this += name
-      case PackageDef(name, _) => this += name
+      case ValDef(name, _, _) => this += highlightValDef(name, color)
+      case DefDef(name, _, _, _, _) => this += highlightValDef(name, color)
+      case ClassDef(name, _, _, _, _) => this += highlightTypeDef(name.stripSuffix("$"), color)
+      case TypeDef(name, _) => this += highlightTypeDef(name, color)
+      case PackageDef(name, _) => this += highlightTypeDef(name, color)
     }
 
     def printAnnotation(annot: Term): Buffer = {
@@ -1001,13 +1002,13 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
             this += lineBreak()
             info match {
               case IsTypeBounds(info) =>
-                this += "type " += name
+                this += highlightKeyword("type ", color) += highlightTypeDef(name, color)
                 printBounds(info)
               case Type.ByNameType(_) | Type.MethodType(_, _, _) | Type.TypeLambda(_, _, _) =>
-                this += "def " += name
+                this += highlightKeyword("def ", color) += highlightTypeDef(name, color)
                 printMethodicType(info)
               case IsType(info) =>
-                this += "val " += name
+                this += highlightKeyword("val ", color) += highlightValDef(name, color)
                 printMethodicType(info)
             }
           }
@@ -1070,7 +1071,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
         case _ => printFullClassName(within)
       }
       if (definition.symbol.flags.isProtected) {
-        this += "protected"
+        this += highlightKeyword("protected", color)
         definition.symbol.protectedWithin match {
           case Some(within) =>
             inSquare(printWithin(within))
@@ -1080,7 +1081,7 @@ class ShowSourceCode[T <: Tasty with Singleton](tasty0: T) extends Show[T](tasty
       } else {
         definition.symbol.privateWithin match {
           case Some(within) =>
-            this += "private"
+            this += highlightKeyword("private", color)
             inSquare(printWithin(within))
             prefixWasPrinted = true
           case _ =>
