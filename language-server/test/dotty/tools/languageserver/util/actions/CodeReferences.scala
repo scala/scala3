@@ -20,8 +20,8 @@ class CodeReferences(override val range: CodeRange,
                      withDecl: Boolean) extends ActionOnRange {
 
   override def onMarker(marker: CodeMarker): Exec[Unit] = {
-    val expectedLocations = expected.map(_.toLocation)
-    val results = server.references(marker.toReferenceParams(withDecl)).get().asScala
+    val expectedLocations = expected.map(_.toLocation).sorted
+    val results = server.references(marker.toReferenceParams(withDecl)).get().asScala.sorted
 
     assertEquals(expectedLocations, results)
   }
