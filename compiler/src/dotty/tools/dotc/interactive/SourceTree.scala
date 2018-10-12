@@ -22,9 +22,9 @@ case class SourceTree(tree: tpd.NameTree, source: SourceFile) {
       NoSourcePosition
     else {
       // Constructors are named `<init>` in the trees, but `this` in the source.
-      val nameLength = tree.name.stripModuleClassSuffix match {
+      val nameLength = tree.name match {
         case nme.CONSTRUCTOR => nme.this_.toString.length
-        case other => other.show.toString.length
+        case other => other.stripModuleClassSuffix.show.toString.length
       }
       val position = {
         // FIXME: This is incorrect in some cases, like with backquoted identifiers,
