@@ -32,7 +32,7 @@ object Toolbox {
   }
 
   /** Setting of the Toolbox instance. */
-  class Settings private (val outDir: Option[String], val showRawTree: Boolean, val compilerArgs: List[String])
+  class Settings private (val outDir: Option[String], val showRawTree: Boolean, val compilerArgs: List[String], val color: Boolean)
 
   object Settings {
 
@@ -49,10 +49,8 @@ object Toolbox {
       showRawTree: Boolean = false,
       outDir: Option[String] = None,
       compilerArgs: List[String] = Nil
-    ): Settings = {
-      val colorArg = if (color) "-color:always" else "-color:never"
-      new Settings(outDir, showRawTree, colorArg :: compilerArgs)
-    }
+    ): Settings =
+      new Settings(outDir, showRawTree, compilerArgs, color)
   }
 
   class ToolboxNotFoundException(msg: String, cause: ClassNotFoundException) extends Exception(msg, cause)
