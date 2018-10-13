@@ -47,12 +47,15 @@ final class JLineTerminal(needsTerminal: Boolean) extends java.io.Closeable {
   )(implicit ctx: Context): String = {
     import LineReader.Option._
     import LineReader._
-    val lineReader = LineReaderBuilder.builder()
+    val userHome = System.getProperty("user.home")
+    val lineReader = LineReaderBuilder
+      .builder()
       .terminal(terminal)
       .history(history)
       .completer(completer)
       .highlighter(new Highlighter)
       .parser(new Parser)
+      .variable(HISTORY_FILE, s"$userHome/.dotty_history") // Save history to file
       .variable(SECONDARY_PROMPT_PATTERN, "%M") // A short word explaining what is "missing",
                                                 // this is supplied from the EOFError.getMissing() method
       .variable(LIST_MAX, 400)                  // Ask user when number of completions exceed this limit (default is 100).
