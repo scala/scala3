@@ -26,7 +26,6 @@ import org.jline.reader._
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
-
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation
  *
@@ -115,9 +114,9 @@ class ReplDriver(settings: Array[String],
       try {
         val line = terminal.readLine(completer)
         ParseResult(line)
-      }
-      catch {
-        case _: EndOfFileException => // Ctrl+D
+      } catch {
+        case _: EndOfFileException |
+            _: UserInterruptException => // Ctrl+D or Ctrl+C
           Quit
       }
     }
