@@ -1140,7 +1140,7 @@ trait Applications extends Compatibility { self: Typer with Dynamic =>
    */
   def hasExtensionMethod(tp: Type, name: TermName, argType: Type, resultType: Type)(implicit ctx: Context) = {
     val mbr = tp.member(name).suchThat(_.is(ExtensionMethod))
-    mbr.exists && isApplicable(argType.select(name, mbr), argType :: Nil, resultType)
+    mbr.exists && isApplicable(tp.select(name, mbr), argType :: Nil, resultType)
   }
 
   /** Compare owner inheritance level.

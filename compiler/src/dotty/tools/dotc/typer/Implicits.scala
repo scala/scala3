@@ -172,7 +172,7 @@ object Implicits {
          *  Note that we always take the underlying type of a singleton type as the argument
          *  type, so that we get a reasonable implicit cache hit ratio.
          */
-        def adjustSingletonArg(tp: Type): Type = tp match {
+        def adjustSingletonArg(tp: Type): Type = tp.widenSingleton match {
           case tp: PolyType =>
             val res = adjustSingletonArg(tp.resType)
             if (res `eq` tp.resType) tp else tp.derivedLambdaType(resType = res)
@@ -198,7 +198,7 @@ object Implicits {
         else {
           val ptNorm = normalize(pt, pt) // `pt` could be implicit function types, check i2749
           val refAdjusted =
-            if (pt.isInstanceOf[ViewProto]) adjustSingletonArg(ref.widenSingleton)
+            if (pt.isInstanceOf[ViewProto]) adjustSingletonArg(ref)
             else ref
           val refNorm = normalize(refAdjusted, pt)
           if (!NoViewsAllowed.isCompatible(refNorm, ptNorm))
