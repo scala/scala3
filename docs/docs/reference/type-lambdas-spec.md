@@ -41,8 +41,18 @@ type TL1  =  [v1 X >: L1 <: U1] => R1
 type TL2  =  [v2 X >: L2 <: U2] => R2
 ```
 where `v1` and `v2` are optional variance annotations: `+`, `-`, or absent.
-Then `TL1 <: TL2`, if the type interval `L2..U2` is contained in the type interval `L1..U1` (i.e.
-`L1 <: L2` and `U2 <: U1`), and either `v2` is absent or `v1 = v2`.
+Then `TL1 <: TL2`, if
+
+ - the type interval `L2..U2` is contained in the type interval `L1..U1` (i.e.
+`L1 <: L2` and `U2 <: U1`),
+ - either `v2` is absent or `v1 = v2`
+ - `R1 <: R2`
+
+Here we have relied on alpha renaming to bring match the two bound types `X`.
+
+A partially applied type constructor such as `List` is assumed to be equivalent to
+its eta expansion. I.e, `List = `[+X] => List[X]`. This allows type constructors
+to be compared with type lambdas.
 
 ## Relationship with Parameterized Type Definitions
 
