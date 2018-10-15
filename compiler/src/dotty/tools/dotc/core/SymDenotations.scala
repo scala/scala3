@@ -543,7 +543,7 @@ object SymDenotations {
     /** Can this symbol have a companion module?
      *  This is the case if it is a class or an opaque type alias.
      */
-    final def canHaveCompanion(implicit ctx: Context) = isClass
+    final def canHaveCompanion(implicit ctx: Context) = isClass || is(Opaque)
 
     /** Is this the denotation of a self symbol of some class?
      *  This is the case if one of two conditions holds:
@@ -979,6 +979,16 @@ object SymDenotations {
      */
     final def companionModule(implicit ctx: Context): Symbol =
       if (is(Module)) sourceModule
+      else if (is(Opaque))
+        getAnnotation(defn.OpaqueAliasAnnot) match {
+          case Some(ann) =>
+            val AppliedType(_, arg :: Nil) = ann.tree.tpe
+            arg match {
+              case RefinedType(tp, _, ref) => ref.termSymbol
+              case _ => NoSymbol
+            }
+          case None => NoSymbol
+        }
       else registeredCompanion.sourceModule
 
     private def companionType(implicit ctx: Context): Symbol =
@@ -992,6 +1002,13 @@ object SymDenotations {
      */
     final def companionClass(implicit ctx: Context): Symbol =
       companionType.suchThat(_.isClass).symbol
+
+    /** The opaque type with the same (type-) name as this module or module class,
+     *  and which is also defined in the same scope and compilation unit.
+     *  NoSymbol if this type does not exist.
+     */
+    final def companionOpaqueType(implicit ctx: Context): Symbol =
+      companionType.suchThat(_.is(Opaque)).symbol
 
     final def scalacLinkedClass(implicit ctx: Context): Symbol =
       if (this is ModuleClass) companionNamed(effectiveName.toTypeName)
@@ -1690,7 +1707,8 @@ object SymDenotations {
 
             def computeTypeRef = {
               btrCache.put(tp, NoPrefix)
-              tp.symbol.denot match {
+              val tpSym = tp.symbol
+              tpSym.denot match {
                 case clsd: ClassDenotation =>
                   def isOwnThis = prefix match {
                     case prefix: ThisType => prefix.cls `eq` clsd.owner
@@ -1698,7 +1716,7 @@ object SymDenotations {
                     case _ => false
                   }
                   val baseTp =
-                    if (tp.symbol eq symbol)
+                    if (tpSym eq symbol)
                       tp
                     else if (isOwnThis)
                       if (clsd.baseClassSet.contains(symbol))
@@ -1712,7 +1730,7 @@ object SymDenotations {
                 case _ =>
                   val superTp = tp.superType
                   val baseTp = recur(superTp)
-                  if (inCache(superTp) && tp.symbol.maybeOwner.isType)
+                  if (inCache(superTp) && tpSym.maybeOwner.isType)
                     record(tp, baseTp)   // typeref cannot be a GADT, so cache is stable
                   else
                     btrCache.remove(tp)

@@ -1256,7 +1256,12 @@ class TreeUnpickler(reader: TastyReader,
   class LazyReader[T <: AnyRef](reader: TreeReader, owner: Symbol, mode: Mode, op: TreeReader => Context => T) extends Trees.Lazy[T] {
     def complete(implicit ctx: Context): T = {
       pickling.println(i"starting to read at ${reader.reader.currentAddr} with owner $owner")
-      op(reader)(ctx.withPhaseNoLater(ctx.picklerPhase).withOwner(owner).withModeBits(mode))
+      val ctx1 = ctx
+        .withPhaseNoLater(ctx.picklerPhase)
+        .withOwner(owner)
+        .withModeBits(mode)
+        .inOpaqueCompanionsAround(owner)
+      op(reader)(ctx1)
     }
   }
 

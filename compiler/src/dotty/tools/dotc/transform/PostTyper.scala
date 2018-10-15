@@ -247,7 +247,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           //     be duplicated
           //  2. To enable correct pickling (calls can share symbols with the inlined code, which
           //     would trigger an assertion when pickling).
-          val callTrace = Ident(call.symbol.topLevelClass.typeRef).withPos(call.pos)
+          val symTrace =
+            if (call.symbol.owner.companionOpaqueType.exists) call.symbol.owner
+            else call.symbol.topLevelClass
+          val callTrace =
+            Ident(symTrace.typeRef).withPos(call.pos)
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(inlineContext(call)))
         case tree: Template =>
           withNoCheckNews(tree.parents.flatMap(newPart)) {
