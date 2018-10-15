@@ -1,7 +1,8 @@
 import * as vscode from 'vscode'
+import { TextEdit } from 'vscode'
 
 import {
-  asWorksheetRunParams, WorksheetRunRequest, WorksheetRunParams,
+  asWorksheetRunParams, WorksheetRunRequest, WorksheetRunParams, WorksheetRunResult,
   WorksheetPublishOutputParams, WorksheetPublishOutputNotification
 } from './protocol'
 import { BaseLanguageClient, DocumentSelector } from 'vscode-languageclient'
@@ -41,23 +42,35 @@ class Worksheet {
 
   /**
    * Reset the "worksheet state" (margin and number of inserted lines), and
-   * removes redundant blank lines that have been inserted by a previous
-   * run.
+   * return an array of TextEdit that remove the redundant blank lines that have
+   * been inserted by a previous run.
    */
-  prepareForRunning(): void {
-    this.removeRedundantBlankLines().then(_ => this.reset())
+  prepareRun(): TextEdit[] {
+    const edits = this.removeRedundantBlankLinesEdits()
+    this.reset()
+    return edits
   }
 
   /**
    * Run the worksheet in `document`, display a progress bar during the run.
    */
-  run(): Thenable<{}> {
-    return vscode.window.withProgress({
-      location: vscode.ProgressLocation.Notification,
-      title: "Run the worksheet",
-      cancellable: true
-    }, (_, token) => {
-      return this.client.sendRequest(WorksheetRunRequest.type, asWorksheetRunParams(this.document), token)
+  run(): Promise<WorksheetRunResult> {
+    return new Promise((resolve, reject) => {
+      const textEdits = this.prepareRun()
+      const edit = new vscode.WorkspaceEdit()
+      edit.set(this.document.uri, textEdits)
+      vscode.workspace.applyEdit(edit).then(editSucceeded => {
+        if (editSucceeded) {
+          return resolve(vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Run the worksheet",
+            cancellable: true
+          }, (_, token) => this.client.sendRequest(
+            WorksheetRunRequest.type, asWorksheetRunParams(this.document), token
+          )))
+        } else
+          reject()
+      })
     })
   }
 
@@ -143,16 +156,16 @@ class Worksheet {
   }
 
   /**
-   * Remove the repeated blank lines in the source.
+   * TextEdits to remove the repeated blank lines in the source.
    *
    * Running a worksheet can insert new lines in the worksheet so that the
    * output of a line fits below the line. Before a run, we remove blank
    * lines in the worksheet to keep its length under control.
    *
    * @param worksheet The worksheet where blank lines must be removed.
-   * @return A `Thenable` removing the blank lines upon completion.
+   * @return An array of `TextEdit` that remove the blank lines.
    */
-  private removeRedundantBlankLines() {
+  private removeRedundantBlankLinesEdits(): TextEdit[] {
 
     const document = this.document
     const lineCount = document.lineCount
@@ -188,13 +201,7 @@ class Worksheet {
       addRange()
     }
 
-    return rangesToRemove.reverse().reduce((chain: Thenable<boolean>, range) => {
-      return chain.then(_ => {
-        const edit = new vscode.WorkspaceEdit()
-        edit.delete(document.uri, range)
-        return vscode.workspace.applyEdit(edit)
-      })
-    }, Promise.resolve(true))
+    return rangesToRemove.reverse().map(range => vscode.TextEdit.delete(range))
   }
 
   private hasDecoration(line: number): boolean {
@@ -213,14 +220,14 @@ export class WorksheetProvider implements Disposable {
       vscode.workspace.onWillSaveTextDocument(event => {
         const worksheet = this.worksheetFor(event.document)
         if (worksheet) {
-          // Block file saving until the worksheet is ready to be run.
-          worksheet.prepareForRunning()
+          event.waitUntil(Promise.resolve(worksheet.prepareRun()))
         }
       }),
       vscode.workspace.onDidSaveTextDocument(document => {
+        const runWorksheetOnSave = vscode.workspace.getConfiguration("dotty").get("runWorksheetOnSave")
         const worksheet = this.worksheetFor(document)
-        if (worksheet) {
-          return worksheet.run()
+        if (runWorksheetOnSave && worksheet) {
+          worksheet.run()
         }
       }),
       vscode.workspace.onDidCloseTextDocument(document => {
@@ -264,28 +271,13 @@ export class WorksheetProvider implements Disposable {
 
   /**
    * The VSCode command executed when the user select `Run worksheet`.
-   *
-   * We check whether the buffer is dirty, and if it is, we save it. Running the worksheet will then be
-   * triggered by file save.
-   * If the buffer is clean, we do the necessary preparation for worksheet (compute margin,
-   * remove blank lines, etc.) and check if the buffer has been changed by that. If it is, we save
-   * and the run will be triggered by file save.
-   * If the buffer is still clean, call `Worksheet#run`.
    */
   private runWorksheetCommand() {
     const editor = vscode.window.activeTextEditor
     if (editor) {
-      const document = editor.document
-      const worksheet = this.worksheetFor(document)
+      const worksheet = this.worksheetFor(editor.document)
       if (worksheet) {
-        if (document.isDirty) document.save() // This will trigger running the worksheet
-        else {
-          worksheet.prepareForRunning()
-          if (document.isDirty) document.save() // This will trigger running the worksheet
-          else {
-            worksheet.run()
-          }
-        }
+        worksheet.run()
       }
     }
   }
