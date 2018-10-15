@@ -25,14 +25,24 @@ class Tests {
 
   /** TODO: Produce semanticdb from TASTy for this Scala source file. */
   def getTastySemanticdb(scalaFile: Path): s.TextDocument = {
-    ???
+    val scalac = getScalacSemanticdb(scalaFile)
+    val pat = """(.*)\.scala""".r
+    val classpath = scalaFile.getParent().toString()
+    val modulename = sourceDirectory.relativize(scalaFile).getParent().getFileName().toString()
+    val sourcename =
+    scalaFile.toFile().getName().toString() match {
+      case pat(name) => name
+      case _ => ""
+      }
+    val _ = ConsumeTasty(classpath, (modulename + "." + sourcename) :: Nil, new SemanticdbConsumer)
+    return s.TextDocument(text = scalac.text)
   }
 
   /** Fails the test if the s.TextDocument from tasty and semanticdb-scalac are not the same. */
   def checkFile(filename: String): Unit = {
     val path = sourceDirectory.resolve(filename)
     val scalac = getScalacSemanticdb(path)
-    val tasty = s.TextDocument(text = scalac.text) // TODO: replace with `getTastySemanticdb(path)`
+    val tasty = getTastySemanticdb(path)
     val obtained = Semanticdbs.printTextDocument(tasty)
     val expected = Semanticdbs.printTextDocument(scalac)
     assertNoDiff(obtained, expected)
