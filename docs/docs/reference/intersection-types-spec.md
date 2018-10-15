@@ -41,7 +41,7 @@ A & B <: B       A & B <: A
        A & B  <:  B & A
 ```
 
-In another word, `A & B` is the same type as `B & A`, in that sense that the two types
+In another word, `A & B` is the same type as `B & A`, in the sense that the two types
 have the same values and are subtypes of each other.
 
 If `C` is a type constructor, the join `C[A] & C[B]` is simplified by pulling the
@@ -93,7 +93,7 @@ glb(_, B)                 =    B                     if B is not a trait
 glb(A, _)                 =    A
 ```
 
-In the above, we use `|T|` to mean the erased type of `T`, `JArray` means
+In the above, `|T|` means the erased type of `T`, `JArray` refers to
 the type of Java Array.
 
 ## Relationship with Compound Type (`with`)
