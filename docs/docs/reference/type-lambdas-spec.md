@@ -51,7 +51,7 @@ Then `TL1 <: TL2`, if
 Here we have relied on alpha renaming to bring match the two bound types `X`.
 
 A partially applied type constructor such as `List` is assumed to be equivalent to
-its eta expansion. I.e, `List = `[+X] => List[X]`. This allows type constructors
+its eta expansion. I.e, `List = [+X] => List[X]`. This allows type constructors
 to be compared with type lambdas.
 
 ## Relationship with Parameterized Type Definitions
