@@ -42,6 +42,7 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = FirstTransform.name
+  override def changesBaseTypes: Boolean = true // the phase gives new base types for opaques
 
   /** Two transforms:
    *   1. eliminate self symbol in ClassInfo
