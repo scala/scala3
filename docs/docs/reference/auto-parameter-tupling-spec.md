@@ -67,6 +67,11 @@ is typed as `ProductN[T1, ..., Tn] => Te`, then it will be transformed to
 }
 ```
 
+##### Generic tuples
+
+If we come to support generic tuples, which provide the possibility of having tuples/functions of arities larger than 22 we would need to additionally support generic tuples of the form `T1 *: T2 *: ...`.
+Translation of such a tuples would use the `apply` method on the tuple to access the elements instead of the `_N` methods of `Product`.
+
 ### Migration
 
 Code like this could not be written before, hence the new notation would not be ambigouous after addoptation.
