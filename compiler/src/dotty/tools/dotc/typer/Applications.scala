@@ -59,8 +59,17 @@ object Applications {
     extractorMemberType(tp, nme.get, errorPos).exists
 
   def productSelectorTypes(tp: Type, errorPos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
-    val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
-    sels.takeWhile(_.exists).toList
+    def tupleSelectors(n: Int, tp: Type): List[Type] = {
+      val sel = extractorMemberType(tp, nme.selectorName(n), errorPos)
+      if (sel.exists) sel :: tupleSelectors(n + 1, tp) else Nil
+    }
+    def genTupleSelectors(n: Int, tp: Type): List[Type] = tp match {
+      case tp: AppliedType if !tp.derivesFrom(defn.ProductClass) && tp.derivesFrom(defn.PairClass) =>
+        val List(head, tail) = tp.args
+        head :: genTupleSelectors(n, tail)
+      case _ => tupleSelectors(n, tp)
+    }
+    genTupleSelectors(0, tp)
   }
 
   def productArity(tp: Type)(implicit ctx: Context): Int =
