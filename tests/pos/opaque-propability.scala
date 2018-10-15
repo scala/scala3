@@ -20,9 +20,9 @@ object prob {
       implicitly[Ordering[Double]]
 
     implicit class ProbabilityOps(p1: Probability) extends AnyVal {
-      def unary_~ : Probability = Certain - p1
-      def &(p2: Probability): Probability = p1 * p2
-      def |(p2: Probability): Probability = p1 + p2 - (p1 * p2)
+      def unary_~ : Probability = asDouble(Certain) - p1
+      def &(p2: Probability): Probability = asDouble(p1) * p2
+      def |(p2: Probability): Probability = asDouble(p1) + p2 - (asDouble(p1) * p2)
 
       def isImpossible: Boolean = p1 == Never
       def isCertain: Boolean = p1 == Certain

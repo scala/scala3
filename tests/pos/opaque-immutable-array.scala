@@ -6,12 +6,12 @@ object ia {
 
   object IArray {
     inline def initialize[A](body: => Array[A]): IArray[A] = body
-    inline def size[A](ia: IArray[A]): Int = ia.length
-    inline def get[A](ia: IArray[A], i: Int): A = ia(i)
+    inline def size[A](ia: IArray[A]): Int = (ia: Array[A]).length
+    inline def get[A](ia: IArray[A], i: Int): A = (ia: Array[A])(i)
 
     // return a sorted copy of the array
     def sorted[A <: AnyRef : math.Ordering](ia: IArray[A]): IArray[A] = {
-      val arr = Arrays.copyOf(ia, ia.length)
+      val arr = Arrays.copyOf(ia, (ia: Array[A]).length)
       scala.util.Sorting.quickSort(arr)
       arr
     }
