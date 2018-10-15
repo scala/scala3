@@ -21,8 +21,8 @@ class CodeTester(workspaces: List[Workspace]) {
   private val files =
     for { workspace <- workspaces
           (source, id) <- workspace.sources.zipWithIndex } yield source match {
-      case ScalaSourceWithPositions(text, _) => testServer.openCode(text, workspace, s"Source$id.scala")
-      case WorksheetWithPositions(text, _) => testServer.openCode(text, workspace, s"Worksheet$id.sc")
+      case src @ TastyWithPositions(text, _) => testServer.openCode(text, workspace, src.sourceName(id), openInIDE = false)
+      case other => testServer.openCode(other.text, workspace, other.sourceName(id), openInIDE = true)
     }
 
   private val positions: PositionContext = getPositions(files)

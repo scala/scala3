@@ -60,6 +60,17 @@ object Code {
       WorksheetWithPositions(text, positions)
     }
 
+    /**
+     * An interpolator similar to `code`, but used for defining a source that will
+     * be unpickled from TASTY.
+     *
+     * @see code
+     */
+    def tasty(args: Embedded*): TastyWithPositions = {
+      val (text, positions) = textAndPositions(args: _*)
+      TastyWithPositions(text, positions)
+    }
+
     private def textAndPositions(args: Embedded*): (String, List[(CodeMarker, Int, Int)]) = {
       val pi = sc.parts.iterator
       val ai = args.iterator
@@ -107,7 +118,10 @@ object Code {
 
   sealed trait SourceWithPositions {
 
-     /** The code contained within the virtual source file. */
+    /** A name for this source given its index. */
+    def sourceName(index: Int): String
+
+    /** The code contained within the virtual source file. */
     def text: String
 
     /** The positions of the markers that have been set. */
@@ -124,7 +138,9 @@ object Code {
    * @param text      The code contained within the virtual source file.
    * @param positions The positions of the markers that have been set.
    */
-  case class ScalaSourceWithPositions(text: String, positions: List[(CodeMarker, Int, Int)]) extends SourceWithPositions
+  case class ScalaSourceWithPositions(text: String, positions: List[(CodeMarker, Int, Int)]) extends SourceWithPositions {
+    def sourceName(index: Int): String = s"Source$index.scala"
+  }
 
   /**
    * A virtual worksheet where several markers have been set.
@@ -132,7 +148,19 @@ object Code {
    * @param text      The code contained within the virtual source file.
    * @param positions The positions of the markers that have been set.
    */
-  case class WorksheetWithPositions(text: String, positions: List[(CodeMarker, Int, Int)]) extends SourceWithPositions
+  case class WorksheetWithPositions(text: String, positions: List[(CodeMarker, Int, Int)]) extends SourceWithPositions {
+    def sourceName(index: Int): String = s"Worksheet$index.sc"
+  }
+
+  /**
+   * A virtual source file that will not be opened in the IDE, but instead unpickled from TASTY.
+   *
+   * @param text      The code contained within the virtual source file.
+   * @param positions The positions of the markers that have been set.
+   */
+  case class TastyWithPositions(text: String, positions: List[(CodeMarker, Int, Int)]) extends SourceWithPositions {
+    def sourceName(index: Int): String = s"Source-from-tasty-$index.scala"
+  }
 
   /**
    * A group of sources belonging to the same project.

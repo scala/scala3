@@ -208,4 +208,15 @@ class DefinitionTest {
       .definition(m9 to m10, List(m3 to m4))
   }
 
+  @Test def definitionFromTasty: Unit = {
+    withSources(
+      tasty"""package mypackage
+              class ${m1}A${m2}""",
+      code"""package mypackage
+             object O {
+               new ${m3}A${m4}
+             }"""
+    ).definition(m3 to m4, List(m1 to m2))
+  }
+
 }

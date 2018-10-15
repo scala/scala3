@@ -10,7 +10,7 @@ import dotty.tools.dotc.Main
 import dotty.tools.dotc.reporting.{Reporter, ThrowingReporter}
 import dotty.tools.io.Directory
 import dotty.tools.languageserver.DottyLanguageServer
-import dotty.tools.languageserver.util.Code.Workspace
+import dotty.tools.languageserver.util.Code.{TastyWithPositions, Workspace}
 import org.eclipse.lsp4j.{ DidOpenTextDocumentParams, InitializeParams, InitializeResult, TextDocumentItem}
 
 class TestServer(testFolder: Path, workspaces: List[Workspace]) {
@@ -46,8 +46,12 @@ class TestServer(testFolder: Path, workspaces: List[Workspace]) {
           .map(elem => '"' + elem.toString.replace('\\', '/') + '"')
           .mkString("[ ", ", ", " ]")
 
-      // Compile all the dependencies of this workspace
-      workspace.dependsOn.foreach(compileWorkspaceAndDependencies)
+      if (workspace.sources.exists(_.isInstanceOf[TastyWithPositions])) {
+        compileWorkspaceAndDependencies(workspace)
+      } else {
+        // Compile all the dependencies of this workspace
+        workspace.dependsOn.foreach(compileWorkspaceAndDependencies)
+      }
 
       s"""{
          |  "id" : "${workspace.name}",
@@ -80,16 +84,21 @@ class TestServer(testFolder: Path, workspaces: List[Workspace]) {
   /** Open the code in the given file and returns the file.
    *  @param code code in file
    *  @param fileName file path in the source directory
+   *  @param openInIDE If true, send `textDocument/didOpen` to the server.
    *  @return the file opened
    */
-  def openCode(code: String, workspace: Workspace, fileName: String): TestFile = {
+  def openCode(code: String, workspace: Workspace, fileName: String, openInIDE: Boolean): TestFile = {
     val testFile = new TestFile(workspace.name + separator + fileName)
-    val dotdp = new DidOpenTextDocumentParams()
     val tdi = new TextDocumentItem()
     tdi.setUri(testFile.uri)
     tdi.setText(code)
-    dotdp.setTextDocument(tdi)
-    server.didOpen(dotdp)
+
+    if (openInIDE) {
+      val dotdp = new DidOpenTextDocumentParams()
+      dotdp.setTextDocument(tdi)
+      server.didOpen(dotdp)
+    }
+
     testFile
   }
 
@@ -127,7 +136,7 @@ class TestServer(testFolder: Path, workspaces: List[Workspace]) {
   private def compileWorkspace(workspace: Workspace): Unit = {
     val sourcesDir = sourceDirectory(workspace, wipe = true)
     val sources = workspace.sources.zipWithIndex.map { case (src, id) =>
-      val path = sourcesDir.resolve(s"Source${id}.scala").toAbsolutePath
+      val path = sourcesDir.resolve(src.sourceName(id)).toAbsolutePath
       Files.write(path, src.text.getBytes("UTF-8"))
       path.toString
     }
