@@ -20,3 +20,5 @@ is a shorthand for a plain type definition with a type-lambda as its
 right-hand side:
 
     type T = [X] => (X, X)
+
+[More details](./type-lambdas-spec.html)
