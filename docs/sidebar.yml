@@ -53,8 +53,6 @@ sidebar:
               url: docs/reference/implicit-by-name-parameters.html
             - title: Auto Parameter Tupling
               url: docs/reference/auto-parameter-tupling.html
-            - title: Auto Parameter Tupling - More Details
-              url: docs/reference/auto-parameter-tupling-spec.html
             - title: Named Type Arguments
               url: docs/reference/named-typeargs.html
             - title: Erased Terms
