@@ -18,7 +18,7 @@ xs.map {
   case (x, y) => x + y
 }
 ```
-While correct, this is inconvenient. Instead, we propose to be able to write it the following way:
+While correct, this is inconvenient. Instead, we propose to write it the following way:
 
 ```scala
 xs.map {
