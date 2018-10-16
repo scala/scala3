@@ -59,7 +59,7 @@
       },
       {
         "command": "dotty.worksheet.cancel",
-        "title": "Cancel worksheet evaluation",
+        "title": "Cancel running worksheet",
         "category": "Scala"
       }
     ],
