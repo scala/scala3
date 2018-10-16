@@ -52,7 +52,7 @@ pipeline:
     image: lampepfl/dotty:2018-10-01
     commands:
       - ./project/scripts/genDocs
-    secrets: [ bot_pass ]
+    secrets: [ bot_token ]
     when:
       event: push
       # We only generate the documentation for the master branch
