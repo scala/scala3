@@ -208,7 +208,7 @@ object StagedTuple {
           that
         case Some(1) =>
           if (thatSize.contains(0)) self
-          else stagedCons(that, self.as[Tuple1[_]], thatSize)
+          else stagedCons(that, '((~self).asInstanceOf[Tuple1[_]]._1), thatSize)
         case Some(2) =>
           val self2 = self.as[Tuple2[_, _]]
           thatSize match {
