@@ -1811,7 +1811,7 @@ class Typer extends Namer
         val tupleXXLobj = untpd.ref(defn.TupleXXLModule.termRef)
         val app = untpd.cpy.Apply(tree)(tupleXXLobj, elems1.map(untpd.TypedSplice(_)))
           .withPos(tree.pos)
-        val app1 = typed(app, pt)
+        val app1 = typed(app, defn.TupleXXLType)
         if (ctx.mode.is(Mode.Pattern)) app1
         else {
           val elemTpes = (elems, pts).zipped.map((elem, pt) =>
