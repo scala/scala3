@@ -28,6 +28,7 @@ object Printers {
   val overload: Printer = noPrinter
   val patmatch: Printer = noPrinter
   val pickling: Printer = noPrinter
+  val quotePickling: Printer = noPrinter
   val plugins: Printer = noPrinter
   val simplify: Printer = noPrinter
   val subtyping: Printer = noPrinter

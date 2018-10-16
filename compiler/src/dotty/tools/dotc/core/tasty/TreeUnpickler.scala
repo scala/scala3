@@ -4,25 +4,35 @@ package core
 package tasty
 
 import Comments.CommentsContext
-import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
-import StdNames._, Flags._, Constants._, Annotations._
+import Contexts._
+import Symbols._
+import Types._
+import Scopes._
+import SymDenotations._
+import Names._
+import NameOps._
+import StdNames._
+import Flags._
+import Constants._
+import Annotations._
 import NameKinds._
 import typer.Checking.checkNonCyclic
 import util.Positions._
-import ast.{tpd, untpd, Trees}
+import ast.{TreeTypeMap, Trees, tpd, untpd}
 import Trees._
 import Decorators._
 import transform.SymUtils._
 import TastyBuffer._
-import scala.annotation.{tailrec, switch}
+
+import scala.annotation.{switch, tailrec}
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable
 import config.Printers.pickling
 import core.quoted.PickledQuotes
+
 import scala.quoted
 import scala.quoted.Types.TreeType
 import scala.quoted.Exprs.TastyTreeExpr
-
 import scala.annotation.internal.sharable
 
 /** Unpickler for typed trees
@@ -353,8 +363,6 @@ class TreeUnpickler(reader: TastyReader,
               readTypeRef() match {
                 case binder: LambdaType => binder.paramRefs(readNat())
               }
-            case HOLE =>
-              readHole(end, isType = true).tpe
           }
         assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
         result
@@ -1166,17 +1174,32 @@ class TreeUnpickler(reader: TastyReader,
       setPos(start, tree)
     }
 
-    def readTpt()(implicit ctx: Context): Tree =
-      if (nextByte == SHAREDterm) {
-        readByte()
-        forkAt(readAddr()).readTpt()
+    def readTpt()(implicit ctx: Context): Tree = {
+      nextByte match {
+        case SHAREDterm =>
+          readByte()
+          forkAt(readAddr()).readTpt()
+        case BLOCK =>
+          readByte()
+          val end = readEnd()
+          val typeReader = fork
+          skipTree()
+          val aliases = readStats(ctx.owner, end)
+          val tpt = typeReader.readTpt()
+          Block(aliases, tpt)
+        case HOLE =>
+          readByte()
+          val end = readEnd()
+          readHole(end, isType = true)
+        case _ =>
+          if (isTypeTreeTag(nextByte)) readTerm()
+          else {
+            val start = currentAddr
+            val tp = readType()
+            if (tp.exists) setPos(start, TypeTree(tp)) else EmptyTree
+          }
       }
-      else if (isTypeTreeTag(nextByte)) readTerm()
-      else {
-        val start = currentAddr
-        val tp = readType()
-        if (tp.exists) setPos(start, TypeTree(tp)) else EmptyTree
-      }
+    }
 
     def readCases(end: Addr)(implicit ctx: Context): List[CaseDef] =
       collectWhile((nextUnsharedTag == CASEDEF) && currentAddr != end) {

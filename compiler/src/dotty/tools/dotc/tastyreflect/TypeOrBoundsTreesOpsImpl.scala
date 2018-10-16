@@ -120,6 +120,13 @@ trait TypeOrBoundsTreesOpsImpl extends scala.tasty.reflect.TypeOrBoundsTreeOps w
         case _ => None
       }
     }
+
+    object Block extends BlockExtractor {
+      def unapply(x: TypeTree)(implicit ctx: Context): Option[(List[TypeDef], TypeTree)] = x match {
+        case x: tpd.Block => Some((x.stats.map { case alias: TypeDef => alias }, x.expr))
+        case _ => None
+      }
+    }
   }
 
   // ----- TypeBoundsTrees ------------------------------------------------
