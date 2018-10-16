@@ -4,7 +4,7 @@ import scala.tasty.Tasty
 import scala.tasty.file.TastyConsumer
 import scala.tasty.util.TreeTraverser
 
-class DBConsumer extends TastyConsumer {
+class SemanticdbConsumer extends TastyConsumer {
 
   final def apply(tasty: Tasty)(root: tasty.Tree): Unit = {
     import tasty._
