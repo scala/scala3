@@ -16,9 +16,7 @@ object Test {
   val z = depfun3(d)
   val z1: d.M = z
 
-  // Reproduced here because the one from DottyPredef is lacking a Tasty tree and
-  // therefore can't be inlined when testing non-bootstrapped.
-  // But inlining `implicitly` is vital to make the definition of `ifun` below work.
+  // Reproduced here because the one from DottyPredef is lacking a parameter dependency of the return type `ev.type`
   inline final def implicitly[T](implicit ev: T): ev.type = ev
 
   type IDF = implicit (x: C) => x.M
