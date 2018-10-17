@@ -53,6 +53,7 @@ class Compiler {
     List(new FirstTransform,         // Some transformations to put trees into a canonical form
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
+         new SetRootTree,            // Set the `rootTreeOrProvider` on class symbols
          new CookComments) ::        // Cook the comments: expand variables, doc, etc.
     List(new CheckStatic,            // Check restrictions that apply to @static members
          new ElimRepeated,           // Rewrite vararg parameters and arguments
