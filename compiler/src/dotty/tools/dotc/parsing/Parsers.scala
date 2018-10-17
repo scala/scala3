@@ -2511,6 +2511,7 @@ object Parsers {
       newLineOptWhenFollowedBy(LBRACE)
       if ((name.isEmpty || parents.isEmpty) && in.token != LBRACE)
         syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token))
+      var mods1 = addMod(mods, witnessMod)
       val wdef =
         if (in.token == LBRACE) {
           val templ = templateBodyOpt(makeConstructor(tparams, vparamss), parents, isEnum = false)
@@ -2524,9 +2525,14 @@ object Parsers {
               expr()
             }
             else EmptyTree
-          DefDef(name, tparams, vparamss, constrAppsToType(parents), rhs)
+          val tpt = constrAppsToType(parents)
+          if (tparams.isEmpty && vparamss.isEmpty) {
+            mods1 |= Lazy
+            ValDef(name, tpt, rhs)
+          }
+          else DefDef(name, tparams, vparamss, tpt, rhs)
         }
-      finalizeDef(wdef, addMod(mods, witnessMod), start)
+      finalizeDef(wdef, mods1, start)
     }
 
 /* -------- TEMPLATES ------------------------------------------- */
