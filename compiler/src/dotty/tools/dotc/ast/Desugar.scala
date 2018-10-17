@@ -302,8 +302,8 @@ object desugar {
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
-    val className = checkNotReservedName(cdef).asTypeName
-    val impl @ Template(_, _, self, _) = cdef.rhs
+    val impl @ Template(constr0, parents, self, _) = cdef.rhs
+    val className = normalizeClassName(cdef, impl)
     val parents = impl.parents
     val mods = cdef.mods
     val companionMods = mods
@@ -722,9 +722,9 @@ object desugar {
    *    <module> final class name$ extends parents { self: name.type => body }
    */
   def moduleDef(mdef: ModuleDef)(implicit ctx: Context): Tree = {
-    val moduleName = checkNotReservedName(mdef).asTermName
     val impl = mdef.impl
     val mods = mdef.mods
+    val moduleName = normalizeClassName(mdef, impl).toTermName
     def isEnumCase = mods.isEnumCase
 
     def flagSourcePos(flag: FlagSet) = mods.mods.find(_.flags == flag).fold(mdef.sourcePos)(_.sourcePos)
@@ -802,18 +802,64 @@ object desugar {
       Thicket(aliasType :: companions.toList)
     }
 
-  /** The name of `mdef`, after checking that it does not redefine a Scala core class.
-   *  If it does redefine, issue an error and return a mangled name instead of the original one.
+  /** The normalized name of `mdef`. This means
+   *   1. Check that the name does not redefine a Scala core class.
+   *      If it does redefine, issue an error and return a mangled name instead of the original one.
+   *   2. If the name is missing (this can be the case for witnesses), invent one instead.
    */
-  def checkNotReservedName(mdef: MemberDef)(implicit ctx: Context): Name = {
-    val name = mdef.name
-    if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name.toTypeName)) {
+  def normalizeClassName(mdef: MemberDef, impl: Template)(implicit ctx: Context): TypeName = {
+    var name = mdef.name.toTypeName
+    if (name.isEmpty) name = s"${inventName(impl)}_witness".toTypeName
+    if (ctx.owner == defn.ScalaPackageClass && defn.reservedScalaClassNames.contains(name)) {
       def kind = if (name.isTypeName) "class" else "object"
       ctx.error(em"illegal redefinition of standard $kind $name", mdef.sourcePos)
-      name.errorName
+      name = name.errorName
     }
-    else name
+    name
   }
+
+  /** Invent a name for an anonymous witness with template `impl`.
+   */
+  private def inventName(impl: Template)(implicit ctx: Context): String =
+    if (impl.parents.isEmpty)
+      impl.body.find {
+        case dd: DefDef if dd.mods.is(Extension) => true
+        case _ => false
+      } match {
+        case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
+          s"${name}_of_${inventTypeName(vparam.tpt)}"
+        case _ =>
+          ctx.error(i"anonymous witness must have `for` part or must define at least one extension method", impl.pos)
+          nme.ERROR.toString
+      }
+    else
+      impl.parents.map(inventTypeName(_)).mkString("_")
+
+  private class NameExtractor(followArgs: Boolean) extends UntypedTreeAccumulator[String] {
+    private def extractArgs(args: List[Tree])(implicit ctx: Context): String =
+      args.map(argNameExtractor.apply("", _)).mkString("_")
+    override def apply(x: String, tree: Tree)(implicit ctx: Context): String =
+      if (x.isEmpty)
+        tree match {
+          case Select(pre, nme.CONSTRUCTOR) => foldOver(x, pre)
+          case tree: RefTree if tree.name.isTypeName => tree.name.toString
+          case tree: TypeDef => tree.name.toString
+          case tree: AppliedTypeTree if followArgs && tree.args.nonEmpty =>
+            s"${apply(x, tree.tpt)}_${extractArgs(tree.args)}"
+          case tree: LambdaTypeTree =>
+            apply(x, tree.body)
+          case tree: Tuple =>
+            if (followArgs) extractArgs(tree.trees) else "Tuple"
+          case tree: Function if tree.args.nonEmpty =>
+            if (followArgs) s"${extractArgs(tree.args)}_to_${apply("", tree.body)}" else "Function"
+          case _ => foldOver(x, tree)
+        }
+      else x
+  }
+  private val typeNameExtractor = new NameExtractor(followArgs = true)
+  private val argNameExtractor = new NameExtractor(followArgs = false)
+
+  private def inventTypeName(tree: Tree)(implicit ctx: Context): String = typeNameExtractor("", tree)
 
   /**     val p1, ..., pN: T = E
    *  ==>
