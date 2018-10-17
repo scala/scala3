@@ -3,7 +3,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import * as cpp from 'promisify-child-process';
+import * as pcp from 'promisify-child-process';
 import * as compareVersions from 'compare-versions';
 
 import { ChildProcess } from "child_process";
@@ -39,11 +39,10 @@ const sbtBuildPropertiesFile = path.join(sbtProjectDir, "build.properties")
 const sbtBuildSbtFile = path.join(workspaceRoot, "build.sbt")
 const languageServerArtifactFile = path.join(workspaceRoot, ".dotty-ide-artifact")
 
-function isUnconfiguredProject() {
-  return !(   fs.existsSync(disableDottyIDEFile)
-           || fs.existsSync(sbtPluginFile)
-           || fs.existsSync(sbtBuildPropertiesFile)
-           || fs.existsSync(sbtBuildSbtFile)
+function isConfiguredProject() {
+  return (   fs.existsSync(sbtPluginFile)
+          || fs.existsSync(sbtBuildPropertiesFile)
+          || fs.existsSync(sbtBuildSbtFile)
   )
 }
 
@@ -81,9 +80,9 @@ export function activate(context: ExtensionContext) {
       }, false)
     })
 
-  } else {
+  } else if (!fs.existsSync(disableDottyIDEFile)) {
     let configuredProject: Thenable<void> = Promise.resolve()
-    if (isUnconfiguredProject()) {
+    if (!isConfiguredProject()) {
       configuredProject = vscode.window.showInformationMessage(
         "This looks like an unconfigured Scala project. Would you like to start the Dotty IDE?",
         "Yes", "No"
@@ -220,7 +219,7 @@ function runLanguageServer(coursierPath: string, languageServerArtifactFile: str
 
 function startNewSbtInstance(coursierPath: string) {
   fetchWithCoursier(coursierPath, sbtArtifact).then((sbtClasspath) => {
-    sbtProcess = cpp.spawn("java", [
+    sbtProcess = pcp.spawn("java", [
       "-Dsbt.log.noformat=true",
       "-classpath", sbtClasspath,
       "xsbt.boot.Boot"
@@ -265,7 +264,7 @@ function fetchWithCoursier(coursierPath: string, artifact: string, extra: string
         "-p",
         artifact
       ].concat(extra)
-      const coursierProc = cpp.spawn("java", args)
+      const coursierProc = pcp.spawn("java", args)
 
       let classPath = ""
 
