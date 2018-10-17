@@ -25,7 +25,7 @@ class ScriptedTests extends ReplTest with MessageRendering {
     val lines = Source.fromFile(f).getLines().buffered
 
     assert(lines.head.startsWith(prompt),
-      s"""Each file has to start with the prompt: "$prompt"""")
+           s"""Each file has to start with the prompt: "$prompt"""")
 
     def extractInputs(prompt: String): List[String] = {
       val input = lines.next()
@@ -68,6 +68,10 @@ class ScriptedTests extends ReplTest with MessageRendering {
       inputRes.foldLeft(initialState) { (state, input) =>
         val (out, nstate) = evaluate(state, input, prompt)
         buf.append(out)
+
+        assert(out.endsWith("\n"),
+               s"Expected output of $input to end with newline")
+
         nstate
       }
       buf.flatMap(filterEmpties).mkString("\n")
