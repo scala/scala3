@@ -193,7 +193,10 @@ class Worksheet implements Disposable {
         contentText: text,
         margin: `0px 0px 0px ${margin}ch`,
         fontStyle: "italic",
-        color: "light gray",
+        // It would make more sense to use the colors of commments in the
+        // current theme, but there's no API to access this currently
+        // (https://github.com/Microsoft/vscode/issues/32813).
+        color: new vscode.ThemeColor("terminal.ansiGreen"),
       }
     })
   }
