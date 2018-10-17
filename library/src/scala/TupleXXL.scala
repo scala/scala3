@@ -1,10 +1,15 @@
 package scala
 import java.util.Arrays.{deepEquals, deepHashCode}
 
-final class TupleXXL private (es: Array[Object]) {
+final class TupleXXL private (es: Array[Object]) extends Product {
   assert(es.length > 22)
+
+  def productElement(n: Int): Any = es(n)
+  def productArity: Int = es.length
+
   override def toString = elems.mkString("(", ",", ")")
   override def hashCode = getClass.hashCode * 41 + deepHashCode(elems)
+  override def canEqual(that: Any): Boolean = that.isInstanceOf[TupleXXL]
   override def equals(that: Any) = that match {
     case that: TupleXXL => deepEquals(this.elems, that.elems)
     case _ => false
