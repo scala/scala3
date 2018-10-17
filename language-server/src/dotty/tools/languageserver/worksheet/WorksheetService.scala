@@ -13,28 +13,23 @@ import java.util.concurrent.{CompletableFuture, ConcurrentHashMap}
 @JsonSegment("worksheet")
 trait WorksheetService { thisServer: DottyLanguageServer =>
 
-  val worksheets: ConcurrentHashMap[URI, CompletableFuture[_]] = new ConcurrentHashMap()
-
   @JsonRequest
-  def run(params: WorksheetRunParams): CompletableFuture[WorksheetRunResult] = thisServer.synchronized {
-    val uri = new URI(params.textDocument.getUri)
-    val future =
-      computeAsync { cancelChecker =>
-        try {
-          val driver = driverFor(uri)
-          val sendMessage = (line: Int, msg: String) => client.publishOutput(WorksheetRunOutput(params.textDocument, line, msg))
-          runWorksheet(driver, uri, sendMessage, cancelChecker)(driver.currentCtx)
-          WorksheetRunResult(success = true)
-        } catch {
-          case _: Throwable =>
-            WorksheetRunResult(success = false)
-        } finally {
-          worksheets.remove(uri)
-        }
+  def run(params: WorksheetRunParams): CompletableFuture[WorksheetRunResult] =
+    computeAsync(synchronize = false, fun = { cancelChecker =>
+      val uri = new URI(params.textDocument.getUri)
+      try {
+        val driver = driverFor(uri)
+        val sendMessage =
+          (line: Int, msg: String) => client.publishOutput(WorksheetRunOutput(params.textDocument, line, msg))
+
+        runWorksheet(driver, uri, sendMessage, cancelChecker)(driver.currentCtx)
+        cancelChecker.checkCanceled()
+        WorksheetRunResult(success = true)
+      } catch {
+        case _: Throwable =>
+          WorksheetRunResult(success = false)
       }
-    worksheets.put(uri, future)
-    future
-  }
+    })
 
   /**
    * Run the worksheet at `uri`.
@@ -45,13 +40,13 @@ trait WorksheetService { thisServer: DottyLanguageServer =>
    * @param cancelChecker Token to check whether evaluation was cancelled
    */
   private def runWorksheet(driver: InteractiveDriver,
-                                uri: URI,
-                                sendMessage: (Int, String) => Unit,
-                                cancelChecker: CancelChecker)(
+                           uri: URI,
+                           sendMessage: (Int, String) => Unit,
+                           cancelChecker: CancelChecker)(
       implicit ctx: Context): Unit = {
-    val trees = driver.openedTrees(uri)
-    trees.headOption.foreach { tree =>
-      Worksheet.run(tree, sendMessage, cancelChecker)
+    val treeOpt = thisServer.synchronized {
+      driver.openedTrees(uri).headOption
     }
+    treeOpt.foreach(tree => Worksheet.run(tree, thisServer, sendMessage, cancelChecker))
   }
 }

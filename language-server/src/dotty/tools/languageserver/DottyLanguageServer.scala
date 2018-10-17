@@ -107,7 +107,7 @@ class DottyLanguageServer extends LanguageServer
     if (Memory.isCritical()) CompletableFutures.computeAsync { _ => restart() }
 
   /** The driver instance responsible for compiling `uri` */
-  def driverFor(uri: URI): InteractiveDriver = {
+  def driverFor(uri: URI): InteractiveDriver = thisServer.synchronized {
     val matchingConfig =
       drivers.keys.find(config => config.sourceDirectories.exists(sourceDir =>
         new File(uri.getPath).getCanonicalPath.startsWith(sourceDir.getCanonicalPath)))
@@ -133,10 +133,10 @@ class DottyLanguageServer extends LanguageServer
     CompletableFuture.completedFuture(new Object)
   }
 
-  def computeAsync[R](fun: CancelChecker => R): CompletableFuture[R] =
+  def computeAsync[R](fun: CancelChecker => R, synchronize: Boolean = true): CompletableFuture[R] =
     CompletableFutures.computeAsync { cancelToken =>
       // We do not support any concurrent use of the compiler currently.
-      thisServer.synchronized {
+      def computation(): R = {
         cancelToken.checkCanceled()
         checkMemory()
         try {
@@ -147,6 +147,10 @@ class DottyLanguageServer extends LanguageServer
             throw ex
         }
       }
+      if (synchronize)
+        thisServer.synchronized { computation() }
+      else
+        computation()
     }
 
   override def initialize(params: InitializeParams) = computeAsync { cancelToken =>
