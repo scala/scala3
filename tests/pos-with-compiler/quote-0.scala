@@ -7,7 +7,7 @@ object Macros {
   inline def assert(expr: => Boolean): Unit =
     ${ assertImpl('expr) }
 
-  def assertImpl(expr: Expr[Boolean]) =
+  def assertImpl(expr: Expr[Boolean]): Staged[Unit] =
     '{ if !($expr) then throw new AssertionError(s"failed assertion: ${${showExpr(expr)}}") }
 
 
@@ -15,7 +15,7 @@ object Macros {
 
   inline def power(inline n: Int, x: Double) = ${ powerCode(n, 'x) }
 
-  def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
+  def powerCode(n: Int, x: Expr[Double]): Staged[Double] =
     if (n == 0) '{1.0}
     else if (n == 1) x
     else if (n % 2 == 0) '{ { val y = $x * $x; ${ powerCode(n / 2, 'y) } } }
@@ -24,21 +24,23 @@ object Macros {
 
 class Test {
 
-  val program = '{
-    import Macros._
+  val tb = Toolbox.make
+  tb.run {
+    val program = '{
+      import Macros._
 
-    val x = 1
-    assert(x != 0)
+      val x = 1
+      assert(x != 0)
 
-    ${ assertImpl('{x != 0}) }
+      ${ assertImpl('{x != 0}) }
 
-    val y = math.sqrt(2.0)
+      val y = math.sqrt(2.0)
 
-    power(3, y)
+      power(3, y)
 
-    ${ powerCode(3, '{math.sqrt(2.0)}) }
+      ${ powerCode(3, '{math.sqrt(2.0)}) }
+    }
+
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)program
   }
-
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-  program.run
 }

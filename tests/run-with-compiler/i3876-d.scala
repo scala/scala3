@@ -1,15 +1,16 @@
 import scala.quoted._
+
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+    val tb = Toolbox.make(getClass.getClassLoader)
 
-    val x: Expr[Int] = '{3}
+    def x: Staged[Int] = '{3}
 
-    val f4: Expr[Int => Int] = '{
+    def f4: Staged[Int => Int] = '{
       inlineLambda
     }
-    println(f4(x).run)
-    println(f4(x).show)
+    println(tb.run(f4(implicitly)(x)))
+    println(tb.show(f4(implicitly)(x)))
   }
 
   inline def inlineLambda <: Int => Int = x => x + x

@@ -17,7 +17,7 @@ class RingInt extends Ring[Int] {
   val mul  = (x, y) => x * y
 }
 
-class RingIntExpr extends Ring[Expr[Int]] {
+class RingIntExpr(implicit st: StagingContext) extends Ring[Expr[Int]] {
   val zero = '{0}
   val one  = '{1}
   val add  = (x, y) => '{$x + $y}
@@ -36,14 +36,14 @@ class RingComplex[U](u: Ring[U]) extends Ring[Complex[U]] {
 sealed trait PV[T] {
   def expr(implicit l: Liftable[T]): Expr[T]
 }
-case class Sta[T](x: T) extends PV[T] {
+case class Sta[T](x: T)(implicit st: StagingContext) extends PV[T] {
   def expr(implicit l: Liftable[T]): Expr[T] = x
 }
 case class Dyn[T](x: Expr[T]) extends PV[T] {
   def expr(implicit l: Liftable[T]): Expr[T] = x
 }
 
-class RingPV[U: Liftable](u: Ring[U], eu: Ring[Expr[U]]) extends Ring[PV[U]] {
+class RingPV[U: Liftable](u: Ring[U], eu: Ring[Expr[U]])(implicit st: StagingContext) extends Ring[PV[U]] {
   val zero: PV[U] = Sta(u.zero)
   val one: PV[U] = Sta(u.one)
   val add = (x: PV[U], y: PV[U]) => (x, y) match {
@@ -72,7 +72,7 @@ case class Complex[T](re: T, im: T)
 
 object Complex {
   implicit def isLiftable[T: Type: Liftable]: Liftable[Complex[T]] = new Liftable[Complex[T]] {
-    def toExpr(comp: Complex[T]): Expr[Complex[T]] = '{Complex(${comp.re}, ${comp.im})}
+    def toExpr(comp: Complex[T])(implicit st: StagingContext): Expr[Complex[T]] = '{Complex(${comp.re}, ${comp.im})}
   }
 }
 
@@ -98,7 +98,7 @@ class StaticVecOps[T] extends VecOps[Int, T] {
   }
 }
 
-class ExprVecOps[T: Type] extends VecOps[Expr[Int], Expr[T]] {
+class ExprVecOps[T: Type](implicit st: StagingContext) extends VecOps[Expr[Int], Expr[T]] {
   val reduce: ((Expr[T], Expr[T]) => Expr[T], Expr[T], Vec[Expr[Int], Expr[T]]) => Expr[T] = (plus, zero, vec) => '{
     var sum = $zero
     var i = 0
@@ -116,7 +116,7 @@ class Blas1[Idx, T](r: Ring[T], ops: VecOps[Idx, T]) {
 
 object Test {
 
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+  val tb = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = {
     val arr1 = Array(0, 1, 2, 4, 8)
     val arr2 = Array(1, 0, 1, 0, 1)
@@ -141,17 +141,17 @@ object Test {
     println(res2)
     println()
 
-    val blasStaticIntExpr = new Blas1(new RingIntExpr, new StaticVecOps)
-    val resCode1 = blasStaticIntExpr.dot(
+    def blasStaticIntExpr(implicit st: StagingContext) = new Blas1(new RingIntExpr, new StaticVecOps)
+    def resCode1: Staged[Int] = blasStaticIntExpr.dot(
       vec1.map(_.toExpr),
       vec2.map(_.toExpr)
     )
-    println(resCode1.show)
-    println(resCode1.run)
+    println(tb.show(resCode1))
+    println(tb.run(resCode1))
     println()
 
-    val blasExprIntExpr = new Blas1(new RingIntExpr, new ExprVecOps)
-    val resCode2: Expr[(Array[Int], Array[Int]) => Int] = '{
+    def blasExprIntExpr(implicit st: StagingContext) = new Blas1(new RingIntExpr, new ExprVecOps)
+    def resCode2: Staged[(Array[Int], Array[Int]) => Int] = '{
       (arr1, arr2) =>
         if (arr1.length != arr2.length) throw new Exception("...")
         ${
@@ -161,21 +161,21 @@ object Test {
           )
         }
     }
-    println(resCode2.show)
-    println(resCode2.run.apply(arr1, arr2))
+    println(tb.show(resCode2))
+    println(tb.run(resCode2).apply(arr1, arr2))
     println()
 
-    val blasStaticIntPVExpr = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
-    val resCode3 = blasStaticIntPVExpr.dot(
+    def blasStaticIntPVExpr(implicit st: StagingContext) = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
+    def resCode3: Staged[Int] = blasStaticIntPVExpr.dot(
       vec1.map(i => Dyn(i)),
       vec2.map(i => Sta(i))
     ).expr
-    println(resCode3.show)
-    println(resCode3.run)
+    println(tb.show(resCode3))
+    println(tb.run(resCode3))
     println()
 
-    val blasExprIntPVExpr = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
-    val resCode4: Expr[Array[Int] => Int] = '{
+    def blasExprIntPVExpr(implicit st: StagingContext) = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
+    def resCode4: Staged[Array[Int] => Int] = '{
       arr =>
         if (arr.length != ${vec2.size}) throw new Exception("...")
         ${
@@ -186,13 +186,13 @@ object Test {
         }
 
     }
-    println(resCode4.show)
-    println(resCode4.run.apply(arr1))
+    println(tb.show(resCode4))
+    println(tb.run(resCode4).apply(arr1))
     println()
 
     import Complex.isLiftable
-    val blasExprComplexPVInt = new Blas1[Int, Complex[PV[Int]]](new RingComplex(new RingPV[Int](new RingInt, new RingIntExpr)), new StaticVecOps)
-    val resCode5: Expr[Array[Complex[Int]] => Complex[Int]] = '{
+    def blasExprComplexPVInt(implicit st: StagingContext) = new Blas1[Int, Complex[PV[Int]]](new RingComplex(new RingPV[Int](new RingInt, new RingIntExpr)), new StaticVecOps)
+    def resCode5: Staged[Array[Complex[Int]] => Complex[Int]] = '{
       arr =>
         if (arr.length != ${cmpxVec2.size}) throw new Exception("...")
         ${
@@ -203,17 +203,17 @@ object Test {
           '{Complex(${cpx.re.expr}, ${cpx.im.expr})}
         }
     }
-    println(resCode5.show)
-    println(resCode5.run.apply(cmpxArr1))
+    println(tb.show(resCode5))
+    println(tb.run(resCode5).apply(cmpxArr1))
     println()
 
-    val RingPVInt = new RingPV[Int](new RingInt, new RingIntExpr)
+    def RingPVInt(implicit st: StagingContext) = new RingPV[Int](new RingInt, new RingIntExpr)
     // Staged loop of dot product on vectors of Int or Expr[Int]
-    val dotIntOptExpr = new Blas1(RingPVInt, new StaticVecOps).dot
+    def dotIntOptExpr(implicit st: StagingContext) = new Blas1(RingPVInt, new StaticVecOps).dot
     // will generate the code '{ ((arr: scala.Array[scala.Int]) => arr.apply(1).+(arr.apply(3))) }
-    val staticVec = Vec[Int, PV[Int]](5, i => Sta((i % 2)))
-    val code = '{(arr: Array[Int]) => ${dotIntOptExpr(Vec(5, i => Dyn('{arr(${i})})), staticVec).expr} }
-    println(code.show)
+    def staticVec(implicit st: StagingContext) = Vec[Int, PV[Int]](5, i => Sta((i % 2)))
+    def code: Staged[Array[Int] => Int] = '{(arr: Array[Int]) => ${dotIntOptExpr(implicitly)(Vec(5, i => Dyn('{arr(${i})})), staticVec).expr} }
+    println(tb.show(code))
     println()
   }
 

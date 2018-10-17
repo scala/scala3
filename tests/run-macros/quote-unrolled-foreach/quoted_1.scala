@@ -7,7 +7,8 @@ object Macro {
   inline def unrolledForeach(inline unrollSize: Int, seq: Array[Int])(f: => Int => Unit): Unit = // or f: Int => Unit
     ${unrolledForeachImpl(unrollSize, 'seq, 'f)}
 
-  private def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit]): Expr[Unit] = '{
+  // FIXME add private back
+  /*private*/ def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit]): Staged[Unit] = '{
     val size = $seq.length
     assert(size % (${unrollSize}) == 0) // for simplicity of the implementation
     var i = 0

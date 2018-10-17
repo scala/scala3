@@ -11,8 +11,8 @@ object LineNumber {
 
   implicit inline def line: LineNumber = ${lineImpl}
 
-  def lineImpl(implicit reflect: Reflection): Expr[LineNumber] = {
-    import reflect._
+  def lineImpl(implicit staging: StagingContext): Expr[LineNumber] = {
+    import staging.reflection._
     '{new LineNumber(${rootPosition.startLine})}
   }
 

@@ -34,40 +34,46 @@ object PickledQuotes {
 
   /** Transform the expression into its fully spliced Tree */
   def quotedExprToTree[T](expr: quoted.Expr[T])(implicit ctx: Context): Tree = expr match {
-    case expr: TastyExpr[_] =>
-      val unpickled = unpickleExpr(expr)
-      val force = new TreeTraverser {
-        def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = traverseChildren(tree)
-      }
-      force.traverse(unpickled)
-      unpickled
     case expr: LiftedExpr[T] =>
       expr.value match {
         case value: Class[_] => ref(defn.Predef_classOf).appliedToType(classToType(value))
         case value => Literal(Constant(value))
       }
-    case expr: TastyTreeExpr[Tree] @unchecked => healOwner(expr.tree)
+    case expr: TastyTreeExpr[Tree] @unchecked =>
+      if (contextId != expr.ctxId)
+        throw new scala.quoted.QuoteError(
+          """Quote used outside of the `Staging` context where it was defined.
+            |This usualy indicated that a `run` was called within another `run` or a macro.
+          """.stripMargin)
+      healOwner(expr.tree)
     case expr: FunctionAppliedTo[_] =>
       functionAppliedTo(quotedExprToTree(expr.f), expr.args.map(arg => quotedExprToTree(arg)).toList)
   }
 
   /** Transform the expression into its fully spliced TypeTree */
   def quotedTypeToTree(expr: quoted.Type[_])(implicit ctx: Context): Tree = expr match {
-    case expr: TastyType[_] => unpickleType(expr)
     case expr: TaggedType[_] => classTagToTypeTree(expr.ct)
     case expr: TreeType[Tree] @unchecked => healOwner(expr.typeTree)
   }
 
   /** Unpickle the tree contained in the TastyExpr */
-  private def unpickleExpr(expr: TastyExpr[_])(implicit ctx: Context): Tree = {
-    val tastyBytes = TastyString.unpickle(expr.tasty)
-    unpickle(tastyBytes, expr.args, isType = false)(ctx.addMode(Mode.ReadPositions))
+  def unpickleExpr(tasty: scala.runtime.quoted.Unpickler.Pickled, args: Seq[Any])(implicit ctx: Context): Tree = {
+    val tastyBytes = TastyString.unpickle(tasty)
+    val unpickled = unpickle(tastyBytes, args, isType = false)(ctx.addMode(Mode.ReadPositions))
+    force.traverse(unpickled)
+    unpickled
   }
 
   /** Unpickle the tree contained in the TastyType */
-  private def unpickleType(ttpe: TastyType[_])(implicit ctx: Context): Tree = {
-    val tastyBytes = TastyString.unpickle(ttpe.tasty)
-    unpickle(tastyBytes, ttpe.args, isType = true)(ctx.addMode(Mode.ReadPositions))
+  def unpickleType(tasty: scala.runtime.quoted.Unpickler.Pickled, args: Seq[Any])(implicit ctx: Context): Tree = {
+    val tastyBytes = TastyString.unpickle(tasty)
+    val unpickled = unpickle(tastyBytes, args, isType = true)(ctx.addMode(Mode.ReadPositions))
+    force.traverse(unpickled)
+    unpickled
+  }
+
+  private def force = new TreeTraverser {
+    def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = traverseChildren(tree)
   }
 
   // TASTY picklingtests/pos/quoteTest.scala
@@ -193,4 +199,12 @@ object PickledQuotes {
       case _ => tree
     }
   }
+
+  /** Id of the current compilation (macros) or Expr[_] run */
+  def contextId(implicit ctx: Context): Int = {
+    def root(ctx: Context): Context =
+      if (ctx.outer != NoContext) root(ctx.outer) else ctx
+    root(ctx).hashCode
+  }
+
 }

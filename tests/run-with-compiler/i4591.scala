@@ -2,14 +2,14 @@ import scala.quoted._
 
 object Test {
 
-  def foo[T: Type](init: Expr[T]): Expr[Unit] = '{
+  def foo[T: Type](init: Expr[T]): Staged[Unit] = '{
     var x = $init
     println(x)
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    foo('{Option(9)}).run
+    val tb = Toolbox.make
+    tb.run(foo('{Option(9)}))
   }
 
 }

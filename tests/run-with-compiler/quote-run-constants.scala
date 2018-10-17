@@ -1,43 +1,40 @@
-
-import scala.quoted.autolift._
-
 import scala.quoted._
+import scala.quoted.autolift._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    def run[T](expr: Expr[T]): Unit = println(expr.run)
-    def show[T](expr: Expr[T]): Unit = println(expr.show)
+    val tb = Toolbox.make
+    import tb._
 
-    run(true)
-    run('a')
-    run('\n')
-    run('"')
-    run('\'')
-    run('\\')
-    run(1)
-    run(2)
-    run(3L)
-    run(4.0f)
-    run(5.0d)
-    run("xyz")
+    println(run(true))
+    println(run('a'))
+    println(run('\n'))
+    println(run('"'))
+    println(run('\''))
+    println(run('\\'))
+    println(run(1))
+    println(run(2))
+    println(run(3L))
+    println(run(4.0f))
+    println(run(5.0d))
+    println(run("xyz"))
 
     println("======")
 
-    show(true)
-    show('a')
-    show('\n')
-    show('"')
-    show('\'')
-    show('\\')
-    show(1)
-    show(2)
-    show(3L)
-    show(4.0f)
-    show(5.0d)
-    show("xyz")
-    show("\n\\\"'")
-    show("""abc
-         xyz""")
+    println(show(true))
+    println(show('a'))
+    println(show('\n'))
+    println(show('"'))
+    println(show('\''))
+    println(show('\\'))
+    println(show(1))
+    println(show(2))
+    println(show(3L))
+    println(show(4.0f))
+    println(show(5.0d))
+    println(show("xyz"))
+    println(show("\n\\\"'"))
+    println(show("""abc
+         xyz"""))
   }
 }

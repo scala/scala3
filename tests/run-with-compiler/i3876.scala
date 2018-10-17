@@ -1,12 +1,13 @@
 import scala.quoted._
+
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+    val tb = Toolbox.make(getClass.getClassLoader)
 
-    val x: Expr[Int] = '{3}
+    def x: Staged[Int] = '{3}
 
-    val f: Expr[Int => Int] = '{ (x: Int) => x + x }
-    println(f(x).run)
-    println(f(x).show)
+    def f: Staged[Int => Int] = '{ (x: Int) => x + x }
+    println(tb.run(f(implicitly)(x)))
+    println(tb.show(f(implicitly)(x)))
   }
 }

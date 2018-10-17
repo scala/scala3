@@ -1,3 +1,5 @@
+import scala.quoted._
+
 class Test {
-  '{ case class Foo() }
+  def f: Staged[Unit] = '{ case class Foo() }
 }

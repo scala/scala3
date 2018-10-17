@@ -29,7 +29,7 @@ prints it again in an error message if it evaluates to `false`.
     inline def assert(expr: => Boolean): Unit =
       ${ assertImpl('{ expr }) }
 
-    def assertImpl(expr: Expr[Boolean]) = '{
+    def assertImpl(expr: Expr[Boolean])(implicit staging: StagingContext): Expr[Unit] = '{
       if !(${ expr }) then
         throw new AssertionError(s"failed assertion: ${${ showExpr(expr) }}")
     }
@@ -62,6 +62,12 @@ expressions `e` and types `T` we have:
     '{${e}} = e
     ${'[T]} = T
     '[${T}] = T
+
+An `implicit staging: StagingContext` is also provided to the macro which is used to evaluate the
+quotes. It is implicitly provided by in `inline def`s. To reduce syntactic overhead, we can
+use instead:
+
+    def assertImpl(expr: Expr[Boolean]): Staged[Unit]
 
 ### Types for Quotations
 
@@ -322,7 +328,7 @@ program that calls `assert`.
       inline def assert(expr: => Boolean): Unit =
         ${ assertImpl('expr) }
 
-      def assertImpl(expr: Expr[Boolean]) =
+      def assertImpl(expr: Expr[Boolean])(implicit staging: StagingContext): Expr[Unit] =
         '{ if !($expr) then throw new AssertionError(s"failed assertion: ${$expr}") }
     }
 
@@ -383,7 +389,7 @@ statically known exponent:
 ```scala
     inline def power(inline n: Int, x: Double) = ${ powerCode(n, 'x) }
 
-    private def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
+    private def powerCode(n: Int, x: Expr[Double]): Staged[Double] =
       if (n == 0) '{ 1.0 }
       else if (n == 1) x
       else if (n % 2 == 0) '{ val y = $x * $x; ${ powerCode(n / 2, 'y) } }
@@ -447,13 +453,19 @@ we currently impose the following restrictions on the use of splices.
  4. A macro method is effectively final and it may override no other method.
 
 The framework as discussed so far allows code to be staged, i.e. be prepared
-to be executed at a later stage. To run that code, there is another method
-in class `Expr` called `run`. Note that `$` and `run` both map from `Expr[T]`
+to be executed at a later stage. To run that code, there is method prvided in 
+class `Toolbox` called `run`. Note that `$` and `run` both map from `Expr[T]`
 to `T` but only `$` is subject to the PCP, whereas `run` is just a normal method.
+    val tb: Toolbox = Toolbox.make()
+        tb.run('{ 1 + 2 })
+```
+
+Note that `$` and `run` both map from `Expr[T]` to `T` but only `$` is subject 
+to the PCP, whereas `run` is just a normal method. A runtime `Staging` context 
+is provided implicitly to enable quotation within its context.
 ```scala
-    sealed abstract class Expr[T] {
-      def run  given (toolbox: Toolbox): T       // run staged code
-      def show given (toolbox: Toolbox): String  // show staged code
+    trait Toolbox {
+      def run[T](code: implicit StagingContext => Expr[T]): T
     }
 ```
 
@@ -476,10 +488,11 @@ to the status of pattern guards in Scala, which are also required, but not verif
 
 There is also a problem with `run` in splices. Consider the following expression:
 ```scala
-    '{ (x: Int) => ${ ('x).run; 1 } }
+    val tb = Toolbox.make()
+    '{ (x: Int) => ${ tb.run('x); 1 } }
 ```
 This is again phase correct, but will lead us into trouble. Indeed, evaluating the splice will reduce the
-expression `('x).run` to `x`. But then the result
+expression `tb.run('x)` to `x`. But then the result
 ```scala
     '{ (x: Int) => ${ x; 1 } }
 ```
@@ -539,7 +552,7 @@ The `toExpr` extension method is defined in package `quoted`:
     package quoted
 
     implied LiftingOps {
-      def (x: T) toExpr[T] given (ev: Liftable[T]): Expr[T] = ev.toExpr(x)
+      def (x: T) toExpr[T] given (ev: Liftable[T]): Staged[T] = ev.toExpr(x)
     }
 ```
 The extension says that values of types implementing the `Liftable` type class can be
@@ -557,7 +570,7 @@ knowing anything about the representation of `Expr` trees. For
 instance, here is a possible instance of `Liftable[Boolean]`:
 ```scala
     implied for Liftable[Boolean] {
-      def toExpr(b: Boolean) = if (b) '{ true } else '{ false }
+      def toExpr(b: Boolean): Staged[Boolean] = if (b) '{ true } else '{ false }
     }
 ```
 Once we can lift bits, we can work our way up. For instance, here is a
@@ -565,7 +578,7 @@ possible implementation of `Liftable[Int]` that does not use the underlying
 tree machinery:
 ```scala
     implied for Liftable[Int] {
-      def toExpr(n: Int): Expr[Int] = n match {
+      def toExpr(n: Int): Staged[Int] = n match {
         case Int.MinValue    => '{ Int.MinValue }
         case _ if n < 0      => '{ - ${ toExpr(n) } }
         case 0               => '{ 0 }
@@ -578,7 +591,7 @@ Since `Liftable` is a type class, its instances can be conditional. For example,
 a `List` is liftable if its element type is:
 ```scala
     implied [T: Liftable] for Liftable[List[T]] {
-      def toExpr(xs: List[T]): Expr[List[T]] = xs match {
+      def toExpr(xs: List[T]): Staged[List[T]] = xs match {
         case x :: xs1 => '{ ${ toExpr(x) } :: ${ toExpr(xs1) } }
         case Nil => '{ Nil: List[T] }
       }
@@ -592,7 +605,7 @@ analogue of lifting.
 
 Using lifting, we can now give the missing definition of `showExpr` in the introductory example:
 ```scala
-    def showExpr[T](expr: Expr[T]): Expr[String] = {
+    def showExpr[T](expr: Expr[T]): Staged[String] = {
       val code = expr.show
       code.toExpr
     }

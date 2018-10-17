@@ -1,26 +1,23 @@
 import scala.quoted._
 import scala.quoted.autolift._
 
-/**
-  * Port of the strymonas library as described in O. Kiselyov et al., Stream fusion, to completeness (POPL 2017)
-  */
-
-object Test {
+/** Port of the strymonas library as described in O. Kiselyov et al., Stream fusion, to completeness (POPL 2017) */
+class Strymonas(implicit staging: StagingContext) {
 
   // TODO: remove as it exists in Quoted Lib
   sealed trait Var[T] {
-    def get: Expr[T]
-    def update(x: Expr[T]): Expr[Unit]
+    def get: Staged[T]
+    def update(x: Expr[T]): Staged[Unit]
   }
 
   object Var {
-    def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U]): Expr[U] = '{
+    def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U]): Staged[U] = '{
       var x = $init
       ${
         body(
           new Var[T] {
-            def get: Expr[T] = 'x
-            def update(e: Expr[T]): Expr[Unit] = '{ x = $e }
+            def get: Staged[T] = 'x
+            def update(e: Expr[T]): Staged[Unit] = '{ x = $e }
           }
         )
       }
@@ -625,78 +622,83 @@ object Test {
       Stream(Linear(prod))
     }
   }
+}
 
-  def test1() = Stream
+object Test {
+
+  def test1(strymonas: Strymonas): Staged[Int] = strymonas.Stream
     .of('{Array(1, 2, 3)})
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test2() = Stream
+  def test2(strymonas: Strymonas): Staged[Int] = strymonas.Stream
     .of('{Array(1, 2, 3)})
     .map((a: Expr[Int]) => '{ $a * 2 })
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test3() = Stream
+  def test3(strymonas: Strymonas): Staged[Int] = strymonas.Stream
     .of('{Array(1, 2, 3)})
-    .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d * $dp }))
+    .flatMap((d: Expr[Int]) => strymonas.Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d * $dp }))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test4() = Stream
+  def test4(strymonas: Strymonas): Staged[Int] = strymonas.Stream
     .of('{Array(1, 2, 3)})
     .filter((d: Expr[Int]) => '{ $d % 2 == 0 })
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test5() = Stream
+  def test5(strymonas: Strymonas): Staged[Int] = strymonas.Stream
     .of('{Array(1, 2, 3)})
     .take('{2})
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test6() = Stream
+  def test6(strymonas: Strymonas): Staged[Int] = strymonas.Stream
     .of('{Array(1, 1, 1)})
-    .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).take('{2}))
+    .flatMap((d: Expr[Int]) => strymonas.Stream.of('{Array(1, 2, 3)}).take('{2}))
     .take('{5})
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test7() = Stream
+  def test7(strymonas: Strymonas): Staged[Int] = strymonas.Stream
     .of('{Array(1, 2, 3)})
-    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}))
+    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), strymonas.Stream.of('{Array(1, 2, 3)}))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test8() = Stream
+  def test8(strymonas: Strymonas): Staged[Int] = strymonas.Stream
     .of('{Array(1, 2, 3)})
-    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp })))
+    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), strymonas.Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => strymonas.Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp })))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test9() = Stream
-    .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp }))
-    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}) )
+  def test9(strymonas: Strymonas): Staged[Int] = strymonas.Stream
+    .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => strymonas.Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp }))
+    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), strymonas.Stream.of('{Array(1, 2, 3)}) )
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test10() = Stream
-    .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp }))
-    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp })) )
+  def test10(strymonas: Strymonas): Staged[Int] = strymonas.Stream
+    .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => strymonas.Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp }))
+    .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), strymonas.Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => strymonas.Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp })) )
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    println(test1().run)
+    val tb = scala.quoted.Toolbox.make
+    import tb.run
+
+    println(run(test1(new Strymonas)))
     println
-    println(test2().run)
+    println(run(test2(new Strymonas)))
     println
-    println(test3().run)
+    println(run(test3(new Strymonas)))
     println
-    println(test4().run)
+    println(run(test4(new Strymonas)))
     println
-    println(test5().run)
+    println(run(test5(new Strymonas)))
     println
-    println(test6().run)
+    println(run(test6(new Strymonas)))
     println
-    println(test7().run)
+    println(run(test7(new Strymonas)))
     println
-    println(test8().run)
+    println(run(test8(new Strymonas)))
     println
-    println(test9().run)
+    println(run(test9(new Strymonas)))
     println
-    println(test10().run)
+    println(run(test10(new Strymonas)))
   }
 }
 

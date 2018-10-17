@@ -1,7 +1,7 @@
 import scala.quoted._
 
 object PowerMacro {
-  def power2(x: Expr[Double]) = '{
+  def power2(x: Expr[Double]): Staged[Double] = '{
     inline def power(x: Double, n: Long): Double =
       if (n == 0) 1.0
       else if (n % 2 == 0) { val y = x * x; power(y, n / 2) }

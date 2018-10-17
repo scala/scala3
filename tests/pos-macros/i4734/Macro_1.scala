@@ -5,7 +5,7 @@ object Macros {
   inline def unrolledForeach(f: Int => Int): Int =
    ${unrolledForeachImpl('f)}
 
-  def unrolledForeachImpl(f: Expr[Int => Int]): Expr[Int] = '{
+  def unrolledForeachImpl(f: Expr[Int => Int]): Staged[Int] = '{
     val size: Int = 5
     ($f)(3)
   }

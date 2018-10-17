@@ -1,5 +1,5 @@
-import scala.quoted.Type
+import scala.quoted._
 
 class Foo[T: Type] {
-  '{null.asInstanceOf[T]}
+  def foo: Staged[T] = '{null.asInstanceOf[T]}
 }

@@ -7,8 +7,8 @@ object Foo {
   inline def inspectBody(i: => Int): String =
     ${ inspectBodyImpl('i) }
 
-  def inspectBodyImpl(x: Expr[Int])(implicit reflect: Reflection): Expr[String] = {
-    import reflect._
+  def inspectBodyImpl(x: Expr[Int])(implicit staging: StagingContext): Expr[String] = {
+    import staging.reflection._
     def definitionString(tree: Tree): Expr[String] = tree.symbol match {
       case IsDefDefSymbol(sym) => sym.tree.showExtractors
       case IsValDefSymbol(sym) => sym.tree.showExtractors

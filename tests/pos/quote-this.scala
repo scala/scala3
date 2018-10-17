@@ -1,19 +1,19 @@
 import scala.quoted._
 
 class Foo {
-  def a: Expr[Int] = '{1}
-  def b: Expr[Int] = '{
+  def a: Staged[Int] = '{1}
+  def b: Staged[Int] = '{
     ${ this.a }
   }
 
-  def d: Expr[Expr[Int]] = '{ '{1} }
-  def e: Expr[Expr[Int]] = '{
+  def d: Staged[Expr[Int]] = '{ '{1} }
+  def e: Staged[Expr[Int]] = '{
     '{${${this.d}}}
   }
 
   def foo[T](x: T): T = x
 
-  def f = '{
+  def f: Staged[Int] = '{
     ${ foo[this.type](this).a }
   }
 

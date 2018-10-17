@@ -3,7 +3,7 @@ import scala.quoted._
 object Test {
 
   implicit def IntIsLiftable: Liftable[Int] = new {
-    def toExpr(n: Int): Expr[Int] = n match {
+    def toExpr(n: Int)(implicit st: StagingContext) = n match {
       case Int.MinValue    => '{Int.MinValue}
       case _ if n < 0      => '{- ${toExpr(n)}}
       case 0               => '{0}
@@ -13,16 +13,18 @@ object Test {
   }
 
   implicit def BooleanIsLiftable: Liftable[Boolean] = new {
-    implicit def toExpr(b: Boolean) =
+    def toExpr(b: Boolean)(implicit st: StagingContext) =
       if (b) '{true} else '{false}
   }
 
   implicit def ListIsLiftable[T: Liftable: Type]: Liftable[List[T]] = new {
-    def toExpr(xs: List[T]): Expr[List[T]] = xs match {
+    def toExpr(xs: List[T])(implicit st: StagingContext) = xs match {
       case x :: xs1 => '{ ${ implicitly[Liftable[T]].toExpr(x) } :: ${ toExpr(xs1) } }
       case Nil => '{Nil: List[T]}
     }
   }
+
+  implicit val dummy: StagingContext = ???
 
   true.toExpr
   1.toExpr

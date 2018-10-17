@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Test {
 
-  def a[A: Type](): Unit = {
+  def a[A: Type]()(implicit st: StagingContext): Unit = {
     b[Expr[A]]()
     a[A]()
   }

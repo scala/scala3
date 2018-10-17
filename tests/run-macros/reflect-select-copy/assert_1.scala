@@ -5,8 +5,8 @@ object scalatest {
 
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition, '{""}) }
 
-  def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(implicit refl: Reflection): Expr[Unit] = {
-    import refl._
+  def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(implicit staCtx: StagingContext): Expr[Unit] = {
+    import staCtx.reflection._
 
     cond.unseal.underlyingArgument match {
       case Apply(sel @ Select(lhs, op), rhs :: Nil) =>

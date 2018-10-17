@@ -8,8 +8,8 @@ object SourceFiles {
   implicit inline def getThisFile: String =
     ${getThisFileImpl}
 
-  private def getThisFileImpl(implicit reflect: Reflection): Expr[String] = {
-    import reflect._
+  private def getThisFileImpl(implicit staging: StagingContext): Expr[String] = {
+    import staging.reflection._
     rootContext.source.getFileName.toString
   }
 

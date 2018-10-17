@@ -2,9 +2,8 @@ import scala.quoted._
 
 class Foo {
   def foo: Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    val a: Expr[Int] = '{3}
-    val q: Expr[Int] = '{
+    def a: Staged[Int] = '{3}
+    def q: Staged[Int] = '{
       val b = 3
       ${
         println("evaluating inner quote")
@@ -13,7 +12,8 @@ class Foo {
         }
       }
     }
-    println(q.show)
+    val tb = Toolbox.make
+    println(tb.show(q))
   }
 }
 

@@ -8,8 +8,8 @@ object Macros {
   implicit inline def printOwners[T](x: => T): Unit =
     ${ impl('x) }
 
-  def impl[T](x: Expr[T])(implicit reflect: Reflection): Expr[Unit] = {
-    import reflect._
+  def impl[T](x: Expr[T])(implicit staging: StagingContext): Expr[Unit] = {
+    import staging.reflection._
 
     val buff = new StringBuilder
 
@@ -24,6 +24,7 @@ object Macros {
 
     val output = new TreeTraverser {
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
+        ctx.owner.owner
         tree match {
           case IsDefinition(tree @ DefDef(name, _, _, _, _)) =>
             buff.append(name)

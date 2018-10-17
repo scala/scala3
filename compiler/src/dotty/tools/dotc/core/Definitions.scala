@@ -745,15 +745,26 @@ class Definitions {
   lazy val QuotedMatchingBindingType: TypeRef = ctx.requiredClassRef("scala.quoted.matching.Bind")
   def QuotedMatchingBindingClass(implicit ctx: Context): ClassSymbol = QuotedMatchingBindingType.symbol.asClass
 
-  def Unpickler_unpickleExpr: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleExpr")
-  def Unpickler_liftedExpr: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.liftedExpr")
-  def Unpickler_unpickleType: TermSymbol = ctx.requiredMethod("scala.runtime.quoted.Unpickler.unpickleType")
+  lazy val UnpicklerModuleRef: TermRef = ctx.requiredModuleRef("scala.runtime.quoted.Unpickler")
+  def UnpicklerModule(implicit ctx: Context): Symbol = UnpicklerModuleRef.symbol
+  lazy val UnpicklerType: TypeRef = ctx.requiredClassRef("scala.runtime.quoted.Unpickler")
+  def UnpicklerClass(implicit ctx: Context): ClassSymbol = UnpicklerType.symbol.asClass
+
+  lazy val Unpickler_unpickleExprR: TermRef = UnpicklerModule.requiredMethodRef("unpickleExpr")
+  def Unpickler_unpickleExpr: Symbol = Unpickler_unpickleExprR.symbol
+  lazy val Unpickler_liftedExprR: TermRef = UnpicklerModule.requiredMethodRef("liftedExpr")
+  def Unpickler_liftedExpr: Symbol = Unpickler_liftedExprR.symbol
+  lazy val Unpickler_unpickleTypeR: TermRef = UnpicklerModule.requiredMethodRef("unpickleType")
+  def Unpickler_unpickleType: Symbol = Unpickler_unpickleTypeR.symbol
 
   lazy val TastyReflectionType: TypeRef = ctx.requiredClassRef("scala.tasty.Reflection")
   def TastyReflectionClass(implicit ctx: Context): ClassSymbol = TastyReflectionType.symbol.asClass
 
-  lazy val TastyReflectionModule: TermSymbol = ctx.requiredModule("scala.tasty.Reflection")
-    lazy val TastyReflection_macroContext: TermSymbol = TastyReflectionModule.requiredMethod("macroContext")
+  lazy val StagingContextType: TypeRef = ctx.requiredClassRef("scala.quoted.StagingContext")
+  def StagingContextClass(implicit ctx: Context): ClassSymbol = StagingContextType.symbol.asClass
+
+  lazy val StagingContextModule: TermSymbol = ctx.requiredModule("scala.quoted.StagingContext")
+  lazy val StagingContext_macroContext: TermSymbol = StagingContextModule.requiredMethod("macroContext")
 
   lazy val EqlType: TypeRef = ctx.requiredClassRef("scala.Eql")
   def EqlClass(implicit ctx: Context): ClassSymbol = EqlType.symbol.asClass

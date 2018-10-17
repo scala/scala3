@@ -1,5 +1,5 @@
 import collection.mutable._
-import reflect._
+import staging.reflection._
 
 
 object Test extends dotty.runtime.LegacyApp {

@@ -17,12 +17,14 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.{NameKinds, TypeErasure}
 import dotty.tools.dotc.core.Constants.Constant
+import dotty.tools.dotc.quoted.StagingImpl
 import dotty.tools.dotc.tastyreflect.ReflectionImpl
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.repl.AbstractFileClassLoader
 
+import scala.quoted.StagingContext
 import scala.reflect.ClassTag
 
 /** Utility class to splice quoted expressions */
@@ -102,7 +104,7 @@ object Splicer {
     }
 
     protected def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.quoted.Exprs.TastyTreeExpr(Inlined(EmptyTree, Nil, tree).withSpan(tree.span))
+      new scala.quoted.Exprs.TastyTreeExpr(Inlined(EmptyTree, Nil, tree).withSpan(tree.span), PickledQuotes.contextId)
 
     protected def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
       new scala.quoted.Types.TreeType(tree)
@@ -113,7 +115,10 @@ object Splicer {
     protected def interpretVarargs(args: List[Object])(implicit env: Env): Object =
       args.toSeq
 
-    protected def interpretTastyContext()(implicit env: Env): Object = ReflectionImpl(ctx, pos)
+    protected def interpretStaging()(implicit env: Env): Object =
+      new StagingImpl {
+        override val reflection = ReflectionImpl(ctx, pos)
+      }
 
     protected def interpretStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: => List[Object])(implicit env: Env): Object = {
       val (inst, clazz) =
@@ -285,7 +290,7 @@ object Splicer {
     protected def interpretLiteral(value: Any)(implicit env: Env): Boolean = true
     protected def interpretVarargs(args: List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
     protected def interpretTastyContext()(implicit env: Env): Boolean = true
-    protected def interpretQuoteContext()(implicit env: Env): Boolean = true
+    protected def interpretStaging()(implicit env: Env): Boolean = true
     protected def interpretStaticMethodCall(module: Symbol, fn: Symbol, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
     protected def interpretModuleAccess(fn: Symbol)(implicit env: Env): Boolean = true
     protected def interpretNew(fn: Symbol, args: => List[Boolean])(implicit env: Env): Boolean = args.forall(identity)
@@ -307,13 +312,13 @@ object Splicer {
     protected def interpretTypeQuote(tree: Tree)(implicit env: Env): Result
     protected def interpretLiteral(value: Any)(implicit env: Env): Result
     protected def interpretVarargs(args: List[Result])(implicit env: Env): Result
-    protected def interpretTastyContext()(implicit env: Env): Result
+    protected def interpretStaging()(implicit env: Env): Result
     protected def interpretStaticMethodCall(module: Symbol, fn: Symbol, args: => List[Result])(implicit env: Env): Result
     protected def interpretModuleAccess(fn: Symbol)(implicit env: Env): Result
     protected def interpretNew(fn: Symbol, args: => List[Result])(implicit env: Env): Result
     protected def unexpectedTree(tree: Tree)(implicit env: Env): Result
 
-    protected final def interpretTree(tree: Tree)(implicit env: Env): Result = tree match {
+    protected final def interpretTree(tree: Tree)(implicit env: Env): Result = normalized(tree) match {
       case Apply(TypeApply(fn, _), quoted :: Nil) if fn.symbol == defn.InternalQuoted_exprQuote =>
         val quoted1 = quoted match {
           case quoted: Ident if quoted.symbol.is(InlineByNameProxy) =>
@@ -330,8 +335,8 @@ object Splicer {
       case Literal(Constant(value)) =>
         interpretLiteral(value)
 
-      case _ if tree.symbol == defn.TastyReflection_macroContext =>
-        interpretTastyContext()
+      case _ if tree.symbol == defn.StagingContext_macroContext =>
+        interpretStaging()
 
       case Call(fn, args) =>
         if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) {
@@ -349,7 +354,20 @@ object Splicer {
         } else if (tree.symbol.is(InlineProxy)) {
           interpretTree(tree.symbol.defTree.asInstanceOf[ValOrDefDef].rhs)
         } else {
-          unexpectedTree(tree)
+          fn match {
+            case fn @ Select(Call(fn0, args0), _) if fn0.symbol.isStatic && fn.symbol.info.isImplicitMethod =>
+              // Call implicit function type direct method
+              interpretStaticMethodCall(fn.symbol.owner, fn0.symbol, (args0 ::: args).map(arg => interpretTree(arg)))
+            case fn @ Select(Block(stats, Call(fn0, args0)), _) if fn0.symbol.isStatic && fn.symbol.info.isImplicitMethod =>
+              val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
+                case stat: ValDef if stat.symbol.is(Synthetic) =>
+                  accEnv.updated(stat.name, interpretTree(stat.rhs)(accEnv))
+                case stat => return unexpectedTree(stat)
+              })
+              interpretStaticMethodCall(fn.symbol.owner, fn0.symbol, (args0 ::: args).map(arg => interpretTree(arg)(newEnv)))(newEnv)
+            case _ =>
+              unexpectedTree(tree)
+          }
         }
 
       // Interpret `foo(j = x, i = y)` which it is expanded to
@@ -375,7 +393,14 @@ object Splicer {
         unexpectedTree(tree)
     }
 
-    object Call {
+    private def normalized(tree: Tree): Tree = tree match {
+      case Apply(Select(Block(stats, expr), nme.apply), args) if defn.isImplicitFunctionType(expr.tpe.widenDealias) =>
+        // To allow Call.unapply to collect all the arguments and apply the implicit function type directly
+        Block(stats, expr.select(tree.symbol).appliedToArgs(args))
+      case _ => tree
+    }
+
+    private object Call {
       def unapply(arg: Tree): Option[(RefTree, List[Tree])] = arg match {
         case Select(Call(fn, args), nme.apply) if defn.isImplicitFunctionType(fn.tpe.widenDealias.finalResultType) =>
           Some((fn, args))

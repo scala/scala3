@@ -1,12 +1,10 @@
 import scala.quoted._
 
-import scala.tasty.Reflection
-
 object Macros {
 
 
-  def impl(reflect: Reflection): Unit = {
-    import reflect._
+  def impl(staging: StagingContext): Unit = {
+    import staging.reflection._
 
     def foo(tree: Tree, term: Term, typeTree: TypeTree, parent: Tree) = {
 

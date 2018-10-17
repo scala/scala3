@@ -3,13 +3,13 @@ import quoted._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    val q = f(g(Type.IntTag))
-    println(q.run)
-    println(q.show)
+    val tb = Toolbox.make
+    def q: Staged[Int] = f(g(Type.IntTag))
+    println(tb.run(q))
+    println(tb.show(q))
   }
 
-  def f(t: Type[List[Int]]): Expr[Int] = '{
+  def f(t: Type[List[Int]]): Staged[Int] = '{
     def ff: Int = {
       val a: $t = {
         type T = $t
@@ -21,5 +21,5 @@ object Test {
     ff
   }
 
-  def g[T](a: Type[T]): Type[List[T]] = '[List[$a]]
+  def g[T](a: Type[T])(implicit st: StagingContext): Type[List[T]] = '[List[$a]]
 }

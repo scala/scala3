@@ -1,15 +1,15 @@
 import scala.quoted._
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-    println(foo[Object].show)
-    println(bar[Object].show)
+    val tb = Toolbox.make(getClass.getClassLoader)
+    println(tb.show(foo[Object]))
+    println(tb.show(bar[Object]))
   }
-  def foo[H : Type]: Expr[H] = {
+  def foo[H : Type]: Staged[H] = {
     val t = '[H]
     '{ null.asInstanceOf[$t] }
   }
-  def bar[H : Type]: Expr[List[H]] = {
+  def bar[H : Type]: Staged[List[H]] = {
     val t = '[List[H]]
     '{ null.asInstanceOf[$t] }
   }

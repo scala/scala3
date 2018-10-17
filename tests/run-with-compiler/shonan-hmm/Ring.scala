@@ -15,7 +15,7 @@ trait Ring[T] {
   }
 }
 
-object RingInt extends Ring[Int] {
+class RingInt extends Ring[Int] {
   val zero = 0
   val one  = 0
   val add  = (x, y) => x + y
@@ -24,7 +24,7 @@ object RingInt extends Ring[Int] {
   override def toString(): String = "RingInt"
 }
 
-object RingIntExpr extends Ring[Expr[Int]] {
+class RingIntExpr(implicit st: StagingContext) extends Ring[Expr[Int]] {
   val zero = '{0}
   val one  = '{1}
   val add  = (x, y) => '{$x + $y}
@@ -43,7 +43,7 @@ case class RingComplex[U](u: Ring[U]) extends Ring[Complex[U]] {
   override def toString(): String = s"RingComplex($u)"
 }
 
-case class RingPV[U: Liftable](staRing: Ring[U], dynRing: Ring[Expr[U]]) extends Ring[PV[U]] {
+case class RingPV[U: Liftable](staRing: Ring[U], dynRing: Ring[Expr[U]])(implicit st: StagingContext) extends Ring[PV[U]] {
   type T = PV[U]
 
   val dyn = Dyns.dyn[U]
@@ -66,9 +66,9 @@ case class RingPV[U: Liftable](staRing: Ring[U], dynRing: Ring[Expr[U]]) extends
   }
 }
 
-class RingIntPExpr extends RingPV(RingInt, RingIntExpr)
+class RingIntPExpr(implicit st: StagingContext) extends RingPV(new RingInt, new RingIntExpr)
 
-class RingIntOPExpr extends RingIntPExpr {
+class RingIntOPExpr(implicit st: StagingContext) extends RingIntPExpr {
   override def add = (x: PV[Int], y: PV[Int]) => (x, y) match {
     case (Sta(0), y) => y
     case (x, Sta(0)) => x

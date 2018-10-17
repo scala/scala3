@@ -1,12 +1,11 @@
 package scala.quoted
 
-import scala.annotation.implicitNotFound
-
-@implicitNotFound("Could not find implicit quoted.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)`\n\n")
 trait Toolbox {
-  def run[T](expr: Expr[T]): T
-  def show[T](expr: Expr[T]): String
-  def show[T](tpe: Type[T]): String
+  def run[T](code: Staged[T]): T = runImpl(code)
+  protected def runImpl[T](code: StagingContext => Expr[T]): T // For Scala2 compat in ToolboxImpl
+
+  def show[T](code: Staged[T]): String = runImpl(ctx => { implicit val c: StagingContext = ctx; code(ctx).show.toExpr })
+  def show[T](code: StagedType[T]): String = runImpl(ctx => { implicit val c: StagingContext = ctx; code(ctx).show.toExpr })
 }
 
 object Toolbox {

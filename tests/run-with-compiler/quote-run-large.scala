@@ -1,9 +1,9 @@
 
-import scala.quoted.Exprs.TastyExpr
+import scala.quoted._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    val a = '{ // '
+    def a: Staged[Any] = '{ // '
      class Foo(x: Int) {
         override def toString(): String = s"Foo($x)"
         def foo1: Int = x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x
@@ -60,9 +60,7 @@ object Test {
       new Foo(5)
     }
 
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-
-    assert(a.asInstanceOf[TastyExpr[_]].tasty.size > 1, "Test should be testing a quote with TastyExpr encoded in more than one string")
-    a.show // Force unpiclking of the expression
+    val tb = Toolbox.make
+    tb.show(a) // Force unpiclking of the expression
   }
 }

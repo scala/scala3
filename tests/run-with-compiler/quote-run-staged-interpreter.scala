@@ -11,7 +11,7 @@ enum Exp {
 object Test {
   import Exp._
 
-  def compile(e: Exp, env: Map[String, Expr[Int]], keepLets: Boolean): Expr[Int] = {
+  def compile(e: Exp, env: Map[String, Expr[Int]], keepLets: Boolean): Staged[Int] = {
     def compileImpl(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
       case Num(n) => n
       case Plus(e1, e2) => '{${compileImpl(e1, env)} + ${compileImpl(e2, env)}}
@@ -27,30 +27,31 @@ object Test {
 
 
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+    val tb = Toolbox.make
+    import tb._
+
     val exp = Plus(Plus(Num(2), Var("x")), Num(4))
     val letExp = Let("x", Num(3), exp)
 
-    val res1 = '{ (x: Int) => ${compile(exp, Map("x" -> 'x), false)} }
+    val res1: Staged[Int => Int] = '{ (x: Int) => ${compile(exp, Map("x" -> 'x), false)} }
 
+    println(show(res1))
 
-    println(res1.show)
-
-    val fn = res1.run
+    val fn = run(res1)
     println(fn(0))
     println(fn(2))
     println(fn(3))
 
     println("---")
 
-    val res2 = compile(letExp, Map(), false)
-    println(res2.show)
-    println(res2.run)
+    def res2: Staged[Int] = compile(letExp, Map(), false)
+    println(show(res2))
+    println(run(res2))
 
     println("---")
 
-    val res3 = compile(letExp, Map(), true)
-    println(res3.show)
-    println(res3.run)
+    val res3: Staged[Int] = compile(letExp, Map(), true)
+    println(show(res3))
+    println(run(res3))
   }
 }

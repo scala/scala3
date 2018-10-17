@@ -7,14 +7,15 @@ object Test {
   inline def assert(expr: => Boolean): Unit =
     ${ assertImpl('expr) }
 
+  val tb = Toolbox.make
+  tb.run {
+    val program = '{
+      val x = 1
+      assert(x != 0)
 
-  val program = '{
-    val x = 1
-    assert(x != 0)
+      ${ assertImpl('{x != 0}) }
+    }
 
-    ${ assertImpl('{x != 0}) }
+    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)program
   }
-
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-  program.run
 }

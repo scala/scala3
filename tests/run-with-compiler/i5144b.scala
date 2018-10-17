@@ -1,16 +1,18 @@
 import scala.quoted._
 
 object Test {
-  implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
-  def eval1(ff: Expr[Int => Int]): Expr[Int] = ff('{42})
+  val tb = Toolbox.make(getClass.getClassLoader)
+  def eval1(ff: Expr[Int => Int]): Staged[Int] = ff('{42})
 
-  def peval1(): Expr[Unit] = '{
+  def peval1(): Staged[Unit] = '{
     def f(x: Int): Int = ${eval1('f)}
   }
 
   def main(args: Array[String]): Unit = {
-    val p = peval1()
-    println(p.show)
+    println(tb.show {
+      val p = peval1()
+      p
+    })
   }
 
 }

@@ -699,8 +699,8 @@ trait Implicits { self: Typer =>
       }
     }
 
-    def synthesizedTastyContext(formal: Type): Tree =
-      if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.TastyReflection_macroContext)
+    def synthesizedStaging(formal: Type): Tree =
+      if (ctx.inInlineMethod || enclosingInlineds.nonEmpty) ref(defn.StagingContext_macroContext)
       else EmptyTree
 
     /** If `formal` is of the form Eql[T, U], try to synthesize an
@@ -820,7 +820,7 @@ trait Implicits { self: Typer =>
           trySpecialCase(defn.ClassTagClass, synthesizedClassTag,
             trySpecialCase(defn.QuotedTypeClass, synthesizedTypeTag,
               trySpecialCase(defn.GenericClass, synthesizedGeneric,
-                trySpecialCase(defn.TastyReflectionClass, synthesizedTastyContext,
+                trySpecialCase(defn.StagingContextClass, synthesizedStaging,
                   trySpecialCase(defn.EqlClass, synthesizedEq,
                     trySpecialCase(defn.ValueOfClass, synthesizedValueOf, failed))))))
     }

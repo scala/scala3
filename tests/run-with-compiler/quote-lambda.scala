@@ -2,6 +2,7 @@ import scala.quoted._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    '{ (x: Int) => ${'x} }
+    val tb = Toolbox.make
+    println(tb.show('{ (x: Int) => ${'x} }))
   }
 }

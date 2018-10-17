@@ -5,21 +5,22 @@ import scala.quoted._
 object Test {
 
   def main(args: Array[String]): Unit = {
-    implicit val toolbox: scala.quoted.Toolbox = scala.quoted.Toolbox.make(getClass.getClassLoader)
+    val tb = Toolbox.make
 
     {
-      val intComplex = new RingComplex(RingInt)
+      val intComplex = new RingComplex(new RingInt)
       import intComplex._
 
       println(Complex(1, 2) * Complex(4, 2))
     }
 
-    {
-      val intExprComplex = new RingComplex(RingIntExpr)
+    tb.run {
+      val intExprComplex = new RingComplex(new RingIntExpr)
       import intExprComplex._
 
       val res = Complex('{1}, '{2}) * Complex('{4}, '{2})
       println(s"Complex(${res.re.show}, ${res.im.show})")
+      '()
     }
 
     // {
@@ -33,10 +34,12 @@ object Test {
     val arr1 = Array(Complex(1, 0), Complex(0, 4), Complex(2, 2))
     val arr2 = Array(Complex(2, 0), Complex(1, 1), Complex(1, 2))
     val out  = Array(Complex(0, 0), Complex(0, 0), Complex(0, 0))
-    Vmults.vmult(out, arr1, arr2)
-    println(out.toList)
+    tb.run {
+      Vmults.vmult(out, arr1, arr2)
+      '(println(~out.toList.toString.toExpr))
+    }
 
-    println(Vmults.vmultCA.show)
+    println(tb.show(Vmults.vmultCA))
 
     val a = Array(
       Array( 5,  0,  0,  5,  0),
@@ -54,37 +57,37 @@ object Test {
     println()
     println()
 
-    println(MVmult.mvmult_c.show)
+    println(tb.show(MVmult.mvmult_c))
     println()
     println()
     println()
 
-    println(MVmult.mvmult_mc(3, 2).show)
+    println(tb.show(MVmult.mvmult_mc(3, 2)))
     println()
     println()
     println()
 
-    println(MVmult.mvmult_ac(a).show)
+    println(tb.show(MVmult.mvmult_ac(a)))
     println()
     println()
     println()
 
-    println(MVmult.mvmult_opt(a).show)
+    println(tb.show(MVmult.mvmult_opt(a)))
     println()
     println()
     println()
 
-    println(MVmult.mvmult_roll(a).show)
+    println(tb.show(MVmult.mvmult_roll(a)))
     println()
     println()
     println()
 
-    println(MVmult.mvmult_let1(a).show)
+    println(tb.show(MVmult.mvmult_let1(a)))
     println()
     println()
     println()
 
-    println(MVmult.mvmult_let(a).show)
+    println(tb.show(MVmult.mvmult_let(a)))
   }
 }
 

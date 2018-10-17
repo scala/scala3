@@ -1,0 +1,7 @@
+start
+start in expr
+splice: Expr(4)
+end in expr
+foo
+res: 9
+end

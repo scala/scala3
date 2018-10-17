@@ -8,18 +8,18 @@ class Vmult[Idx, T, Unt](tring: Ring[T], vec: VecOp[Idx, Unt]) {
 }
 
 object Vmults {
-  def vmult(vout: Array[Complex[Int]], v1: Array[Complex[Int]], v2: Array[Complex[Int]]): Unit = {
+  def vmult(vout: Array[Complex[Int]], v1: Array[Complex[Int]], v2: Array[Complex[Int]])(implicit staging: StagingContext): Unit = {
     val n = vout.length
 
     val vout_ = OVec(n, (i, v: Complex[Int]) => vout(i) = v)
     val v1_ = Vec (n, i => v1(i))
     val v2_ = Vec (n, i => v2(i))
 
-    val V = new Vmult[Int, Complex[Int], Unit](RingComplex(RingInt), new VecSta)
+    val V = new Vmult[Int, Complex[Int], Unit](RingComplex(new RingInt), new VecSta)
     V.vmult(vout_, v1_, v2_)
   }
 
-  def vmultCA: Expr[(Array[Complex[Int]], Array[Complex[Int]], Array[Complex[Int]]) => Unit] = '{
+  def vmultCA(implicit staging: StagingContext): Expr[(Array[Complex[Int]], Array[Complex[Int]], Array[Complex[Int]]) => Unit] = '{
     (vout, v1, v2) => {
       val n = vout.length
       ${
@@ -27,7 +27,7 @@ object Vmults {
         val v1_ = Vec ('n, i => Complex.of_complex_expr('{v1($i)}))
         val v2_ = Vec ('n, i => Complex.of_complex_expr('{v2($i)}))
 
-        val V = new Vmult[Expr[Int], Complex[Expr[Int]], Expr[Unit]](RingComplex(RingIntExpr), new VecDyn)
+        val V = new Vmult[Expr[Int], Complex[Expr[Int]], Expr[Unit]](RingComplex(new RingIntExpr), new VecDyn)
         V.vmult(vout_, v1_, v2_)
       }
     }

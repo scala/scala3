@@ -14,8 +14,8 @@ object Asserts {
   inline def macroAssert(cond: => Boolean): Unit =
     ${ impl('cond) }
 
-  def impl(cond: Expr[Boolean])(implicit reflect: Reflection): Expr[Unit] = {
-    import reflect._
+  def impl(cond: Expr[Boolean])(implicit staging: StagingContext): Expr[Unit] = {
+    import staging.reflection._
 
     val tree = cond.unseal
 

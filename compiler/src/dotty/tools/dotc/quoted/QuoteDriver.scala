@@ -1,15 +1,15 @@
 package dotty.tools.dotc.quoted
 
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase, FreshContext}
-import dotty.tools.dotc.tastyreflect.ReflectionImpl
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 import dotty.tools.dotc.reporting._
-import scala.quoted.{Expr, Type}
+import scala.quoted.{Expr, StagingContext}
 import scala.quoted.Toolbox
 import java.net.URLClassLoader
+
+import dotty.tools.dotc.core.quoted.PickledQuotes
 
 /** Driver to compile quoted code
   *
@@ -20,7 +20,7 @@ class QuoteDriver(appClassloader: ClassLoader) extends Driver {
 
   private[this] val contextBase: ContextBase = new ContextBase
 
-  def run[T](expr: Expr[T], settings: Toolbox.Settings): T = {
+  def run[T](code: StagingContext => Expr[T], settings: Toolbox.Settings): T = {
     val outDir: AbstractFile = settings.outDir match {
       case Some(out) =>
         val dir = Directory(out)
@@ -34,7 +34,7 @@ class QuoteDriver(appClassloader: ClassLoader) extends Driver {
     val ctx = setToolboxSettings(ctx0.fresh.setSetting(ctx0.settings.outputDir, outDir), settings)
 
     val driver = new QuoteCompiler
-    driver.newRun(ctx).compileExpr(expr)
+    driver.newRun(ctx).compileExpr(code)
 
     assert(!ctx.reporter.hasErrors)
 
@@ -45,44 +45,6 @@ class QuoteDriver(appClassloader: ClassLoader) extends Driver {
     val inst = clazz.getConstructor().newInstance()
 
     method.invoke(inst).asInstanceOf[T]
-  }
-
-  private def doShow(tree: Tree, ctx: Context): String = {
-    implicit val c: Context = ctx
-    val tree1 =
-      if (ctx.settings.YshowRawQuoteTrees.value) tree
-      else (new TreeCleaner).transform(tree)
-    ReflectionImpl.showTree(tree1)
-  }
-
-  def show(expr: Expr[_], settings: Toolbox.Settings): String =
-    withTree(expr, doShow, settings)
-
-  def show(tpe: Type[_], settings: Toolbox.Settings): String =
-    withTypeTree(tpe, doShow, settings)
-
-  def withTree[T](expr: Expr[_], f: (Tree, Context) => T, settings: Toolbox.Settings): T = {
-    val ctx = setToolboxSettings(setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)._2.fresh, settings)
-
-    var output: Option[T] = None
-    def registerTree(tree: tpd.Tree)(ctx: Context): Unit = {
-      assert(output.isEmpty)
-      output = Some(f(tree, ctx))
-    }
-    new QuoteDecompiler(registerTree).newRun(ctx).compileExpr(expr)
-    output.getOrElse(throw new Exception("Could not extract " + expr))
-  }
-
-  def withTypeTree[T](tpe: Type[_], f: (TypTree, Context) => T, settings: Toolbox.Settings): T = {
-    val ctx = setToolboxSettings(setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)._2.fresh, settings)
-
-    var output: Option[T] = None
-    def registerTree(tree: tpd.Tree)(ctx: Context): Unit = {
-      assert(output.isEmpty)
-      output = Some(f(tree.asInstanceOf[TypTree], ctx))
-    }
-    new QuoteDecompiler(registerTree).newRun(ctx).compileType(tpe)
-    output.getOrElse(throw new Exception("Could not extract " + tpe))
   }
 
   override def initCtx: Context = {
