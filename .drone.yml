@@ -19,81 +19,81 @@ pipeline:
       # clone submodules in parallelRiRem
       - git submodule update --init --recursive --jobs 3
 
-  # TESTS:
-  # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
-  test:
-    group: test
-    image: lampepfl/dotty:2018-10-01
-    commands:
-      - cp -R . /tmp/1/ && cd /tmp/1/
-      - ./project/scripts/sbt ";compile ;test"
-      - ./project/scripts/cmdTests
+  # # TESTS:
+  # # We run tests in parallel. Tests run in a copy of the working directory to avoid conflict
+  # test:
+  #   group: test
+  #   image: lampepfl/dotty:2018-10-01
+  #   commands:
+  #     - cp -R . /tmp/1/ && cd /tmp/1/
+  #     - ./project/scripts/sbt ";compile ;test"
+  #     - ./project/scripts/cmdTests
 
-  test_bootstrapped:
-    group: test
-    image: lampepfl/dotty:2018-10-01
-    commands:
-      - cp -R . /tmp/2/ && cd /tmp/2/
-      - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
-      - ./project/scripts/bootstrapCmdTests
+  # test_bootstrapped:
+  #   group: test
+  #   image: lampepfl/dotty:2018-10-01
+  #   commands:
+  #     - cp -R . /tmp/2/ && cd /tmp/2/
+  #     - ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
+  #     - ./project/scripts/bootstrapCmdTests
 
-  test_sbt:
-    group: test
-    image: lampepfl/dotty:2018-10-01
-    commands:
-      - cp -R . /tmp/4/ && cd /tmp/4/
-      - ./project/scripts/sbt sbt-dotty/scripted
-    when:
-      # sbt scripted tests are slow and only run on nightly or deployment
-      event: [ tag, deployment ]
+  # test_sbt:
+  #   group: test
+  #   image: lampepfl/dotty:2018-10-01
+  #   commands:
+  #     - cp -R . /tmp/4/ && cd /tmp/4/
+  #     - ./project/scripts/sbt sbt-dotty/scripted
+  #   when:
+  #     # sbt scripted tests are slow and only run on nightly or deployment
+  #     event: [ tag, deployment ]
 
-  # DOCUMENTATION:
-  documentation:
-    image: lampepfl/dotty:2018-10-01
-    commands:
-      - ./project/scripts/genDocs
-    secrets: [ bot_pass ]
-    when:
-      event: push
-      # We only generate the documentation for the master branch
-      branch: master
+  # # DOCUMENTATION:
+  # documentation:
+  #   image: lampepfl/dotty:2018-10-01
+  #   commands:
+  #     - ./project/scripts/genDocs
+  #   secrets: [ bot_pass ]
+  #   when:
+  #     event: push
+  #     # We only generate the documentation for the master branch
+  #     branch: master
 
   # PUBLISHING:
   # Publishing expect NIGHTLYBUILD or RELEASEBUILD to be set. See dottyVersion in Build.scala
-  publish_nightly:
-    image: lampepfl/dotty:2018-10-01
-    environment:
-      - NIGHTLYBUILD=yes
-    commands:
-      - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
-    secrets: [ sonatype_user, sonatype_pw, pgp_pw, pgp_secret ]
-    when:
-      event: deployment
-      environment: nightly
+  # publish_nightly:
+  #   image: lampepfl/dotty:2018-10-01
+  #   environment:
+  #     - NIGHTLYBUILD=yes
+  #   commands:
+  #     - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
+  #   secrets: [ sonatype_user, sonatype_pw, pgp_pw, pgp_secret ]
+  #   when:
+  #     event: deployment
+  #     environment: nightly
 
-  publish_release:
-    image: lampepfl/dotty:2018-10-01
-    environment:
-      - RELEASEBUILD=yes
-    commands:
-      # Produces dotty-version.{tar.gz, zip}
-      - ./project/scripts/sbt dist-bootstrapped/packArchive
-      - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
-    secrets: [ sonatype_user, sonatype_pw, pgp_pw, pgp_secret ]
-    when:
-      event: tag
+  # publish_release:
+  #   image: lampepfl/dotty:2018-10-01
+  #   environment:
+  #     - RELEASEBUILD=yes
+  #   commands:
+  #     # Produces dotty-version.{tar.gz, zip}
+  #     - ./project/scripts/sbt dist-bootstrapped/packArchive
+  #     - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
+  #   secrets: [ sonatype_user, sonatype_pw, pgp_pw, pgp_secret ]
+  #   when:
+  #     event: tag
 
-  # Publish dotty-version.{tar.gz, zip} to GitHub Release
-  github_release:
-    image: plugins/github-release
-    secrets: [ github_token ]
-    draft: true
-    files:
-      - dist-bootstrapped/target/dotty-*
-    checksum:
-      - sha256
-    when:
-      event: tag
+  # # Publish dotty-version.{tar.gz, zip} to GitHub Release
+  # github_release:
+  #   image: plugins/github-release
+  #   secrets: [ github_token ]
+  #   draft: true
+  #   files:
+  #     - dist-bootstrapped/target/dotty-*
+  #   checksum:
+  #     - sha256
+  #   when:
+  #     event: tag
 
   publish_sbt_release:
     image: lampepfl/dotty:2018-10-01
@@ -106,14 +106,14 @@ pipeline:
       event: deployment
       environment: sbt_release
 
-  # NOTIFICATIONS:
-  slack:
-    image: plugins/slack
-    channel: dotty
-    secrets: [ slack_webhook ]
-    when:
-      status: [ failure ]
-      event: [ push, tag, deployment ]
+  # # NOTIFICATIONS:
+  # slack:
+  #   image: plugins/slack
+  #   channel: dotty
+  #   secrets: [ slack_webhook ]
+  #   when:
+  #     status: [ failure ]
+  #     event: [ push, tag, deployment ]
 
 branches:
   # The gh-pages branch holds the documentation and don't need to be built
