@@ -73,7 +73,7 @@ object Main {
         .setInput(in)
         .setOutput(out)
         // For debugging JSON messages:
-        // .traceMessages(new java.io.PrintWriter(System.err, true))
+        //.traceMessages(new java.io.PrintWriter(System.err, true))
         .create();
 
     val client = launcher.getRemoteProxy()

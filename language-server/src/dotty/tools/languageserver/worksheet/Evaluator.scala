@@ -28,7 +28,7 @@ private object Evaluator {
    * @param cancelChecker The token that indicates whether evaluation has been cancelled.
    * @return A JVM running the REPL.
    */
-  def get(cancelChecker: CancelChecker)(implicit ctx: Context): Option[Evaluator] = {
+  def get(cancelChecker: CancelChecker)(implicit ctx: Context): Option[Evaluator] = synchronized {
     val classpath = ctx.settings.classpath.value
     previousEvaluator match {
       case Some(cp, evaluator) if evaluator.isAlive() && cp == classpath =>
