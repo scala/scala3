@@ -7,9 +7,8 @@ title: Getting Started
 
 Requirements
 ------------
-Make sure that you are using Java 8: The output of `java -version` should
-contain `1.8`. Work to support Java 9 is
-[ongoing](https://github.com/lampepfl/dotty/pull/3138).
+Make sure that you are using Java 8 or newer. You can determine which version of the JDK is the
+default by typing `java -version` in a Terminal window.
 
 Compiling and Running
 ---------------------
