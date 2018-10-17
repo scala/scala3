@@ -60,16 +60,16 @@ pipeline:
 
   # PUBLISHING:
   # Publishing expect NIGHTLYBUILD or RELEASEBUILD to be set. See dottyVersion in Build.scala
-  publish_nightly:
-    image: lampepfl/dotty:2018-10-01
-    environment:
-      - NIGHTLYBUILD=yes
-    commands:
-      - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
-    secrets: [ sonatype_user, sonatype_pw, pgp_pw, pgp_secret ]
-    # when:
-    #   event: deployment
-    #   environment: nightly
+  # publish_nightly:
+  #   image: lampepfl/dotty:2018-10-01
+  #   environment:
+  #     - NIGHTLYBUILD=yes
+  #   commands:
+  #     - ./project/scripts/sbtPublish ";dotty-bootstrapped/publishSigned ;sonatypeRelease"
+  #   secrets: [ sonatype_user, sonatype_pw, pgp_pw, pgp_secret ]
+  #   when:
+  #     event: deployment
+  #     environment: nightly
 
   # publish_release:
   #   image: lampepfl/dotty:2018-10-01
@@ -95,16 +95,16 @@ pipeline:
   #   when:
   #     event: tag
 
-  # publish_sbt_release:
-  #   image: lampepfl/dotty:2018-10-01
-  #   environment:
-  #     - RELEASEBUILD=yes
-  #   commands:
-  #     - ./project/scripts/sbtPublish ";sbt-dotty/publishSigned ;sonatypeRelease"
-  #   secrets: [ sonatype_user, sonatype_pw, pgp_pw, pgp_secret ]
-  #   when:
-  #     event: deployment
-  #     environment: sbt_release
+  publish_sbt_release:
+    image: lampepfl/dotty:2018-10-01
+    environment:
+      - RELEASEBUILD=yes
+    commands:
+      - ./project/scripts/sbtPublish ";sbt-dotty/publishSigned ;sonatypeRelease"
+    secrets: [ sonatype_user, sonatype_pw, pgp_pw, pgp_secret ]
+    when:
+      event: deployment
+      environment: sbt_release
 
   # # NOTIFICATIONS:
   # slack:
