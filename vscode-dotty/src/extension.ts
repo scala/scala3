@@ -26,9 +26,6 @@ export let client: LanguageClient
 /** The sbt process that may have been started by this extension */
 let sbtProcess: ChildProcess | undefined
 
-/** The status bar where the show the status of sbt server */
-let sbtStatusBar: vscode.StatusBarItem
-
 const sbtVersion = "1.2.3"
 const sbtArtifact = `org.scala-sbt:sbt-launch:${sbtVersion}`
 export const workspaceRoot = `${vscode.workspace.rootPath}`
@@ -95,11 +92,14 @@ export function activate(context: ExtensionContext) {
           return Promise.reject()
         }
       })
+        .then(_ => connectToSbt(coursierPath))
+        .then(sbt => {
+          return withProgress("Configuring Dotty IDE...", configureIDE(sbt))
+           .then(_ => { sbtserver.tellSbt(outputChannel, sbt, "exit") })
+        })
     }
 
     configuredProject
-      .then(_ => connectToSbt(coursierPath))
-      .then(sbt => withProgress("Configuring Dotty IDE...", configureIDE(sbt)))
       .then(_ => runLanguageServer(coursierPath, languageServerArtifactFile))
   }
 }
@@ -109,32 +109,12 @@ export function activate(context: ExtensionContext) {
  * connection is still alive. If it dies, restart sbt server.
  */
 function connectToSbt(coursierPath: string): Thenable<rpc.MessageConnection> {
-  if (!sbtStatusBar) sbtStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right)
-  sbtStatusBar.text = "sbt server: connecting $(sync)"
-  sbtStatusBar.show()
 
   return offeringToRetry(() => {
     return withSbtInstance(coursierPath).then(connection => {
-      connection.onClose(() => markSbtDownAndReconnect(coursierPath))
-      markSbtUp()
       return connection
     })
   }, "Couldn't connect to sbt server (see log for details)")
-}
-
-/** Mark sbt server as alive in the status bar */
-function markSbtUp() {
-  sbtStatusBar.text = "sbt server: up $(check)"
-}
-
-/** Mark sbt server as dead and try to reconnect */
-function markSbtDownAndReconnect(coursierPath: string) {
-  sbtStatusBar.text = "sbt server: down $(x)"
-  if (sbtProcess) {
-    sbtProcess.kill()
-    sbtProcess = undefined
-  }
-  connectToSbt(coursierPath)
 }
 
 export function deactivate() {
