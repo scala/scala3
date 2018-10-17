@@ -1211,7 +1211,7 @@ object Parsers {
           }
 
           val finalizer =
-            if (in.token == FINALLY) { accept(FINALLY); expr() }
+            if (in.token == FINALLY) { in.nextToken(); expr() }
             else {
               if (handler.isEmpty) warning(
                 EmptyCatchAndFinallyBlock(body),
@@ -2380,6 +2380,7 @@ object Parsers {
     /** TmplDef ::=  ([`case'] ‘class’ | trait’) ClassDef
      *            |  [`case'] `object' ObjectDef
      *            |  ‘enum’ EnumDef
+     *            |  ‘witness’ WitnessDef
      */
     def tmplDef(start: Int, mods: Modifiers): Tree = {
       in.token match {
@@ -2395,6 +2396,8 @@ object Parsers {
           objectDef(start, posMods(start, mods | Case | Module))
         case ENUM =>
           enumDef(start, mods, atSpan(in.skipToken()) { Mod.Enum() })
+        case WITNESS =>
+          witnessDef(start, mods, atSpan(in.skipToken()) { Mod.Witness() })
         case _ =>
           syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
           EmptyTree
@@ -2490,6 +2493,42 @@ object Parsers {
       Template(constr, parents, Nil, EmptyValDef, Nil)
     }
 
+    /** WitnessDef  ::=  [id] [DefTypeParamClause] [‘for’ [ConstrApps]] TemplateBody
+     *                |  id [DefTypeParamClause] ‘for’ Type [‘=’ Expr]
+     */
+    def witnessDef(start: Offset, mods: Modifiers, witnessMod: Mod) = atPos(start, nameStart) {
+      val name = if (isIdent) ident() else EmptyTermName
+      val tparams = typeParamClauseOpt(ParamOwner.Def)
+      val (vparamss, _) = paramClauses()
+      for (vparams <- vparamss; vparam <- vparams)
+        if (!vparam.mods.is(Implicit)) syntaxError("witness can only have implicit parameters", vparam.pos)
+      val parents =
+        if (in.token == FOR) {
+          in.nextToken()
+          tokenSeparated(WITH, constrApp)
+        }
+        else Nil
+      newLineOptWhenFollowedBy(LBRACE)
+      if ((name.isEmpty || parents.isEmpty) && in.token != LBRACE)
+        syntaxErrorOrIncomplete(ExpectedTokenButFound(LBRACE, in.token))
+      val wdef =
+        if (in.token == LBRACE) {
+          val templ = templateBodyOpt(makeConstructor(tparams, vparamss), parents, isEnum = false)
+          if (tparams.isEmpty && vparamss.isEmpty) ModuleDef(name, templ)
+          else TypeDef(name.toTypeName, templ)
+        }
+        else {
+          val rhs =
+            if (in.token == EQUALS) {
+              in.nextToken()
+              expr()
+            }
+            else EmptyTree
+          DefDef(name, tparams, vparamss, constrAppsToType(parents), rhs)
+        }
+      finalizeDef(wdef, addMod(mods, witnessMod), start)
+    }
+
 /* -------- TEMPLATES ------------------------------------------- */
 
     /** ConstrApp         ::=  SimpleType {ParArgumentExprs}
@@ -2499,6 +2538,22 @@ object Parsers {
       val t = checkWildcard(annotType(), fallbackTree = Ident(nme.ERROR))
       if (in.token == LPAREN) parArgumentExprss(wrapNew(t))
       else t
+    }
+
+    def constrAppsToType(apps: List[Tree]): Tree = {
+      def constrType(app: Tree): Tree = app match {
+        case Apply(app1, _) =>
+          syntaxError(i"illegal type of witness alias: $app", app.pos)
+          constrType(app1)
+        case Select(app1, nme.CONSTRUCTOR) => constrType(app1)
+        case New(app1) => app1
+        case _ => TypeTree()
+      }
+      if (apps.isEmpty) TypeTree()
+      else {
+        val tpes = apps.map(constrType)
+        tpes.filterNot(_.isInstanceOf[TypeTree]).reduce(AndTypeTree)
+      }
     }
 
     /** ConstrApps ::=  ConstrApp {‘with’ ConstrApp}  (to be deprecated in 3.1)

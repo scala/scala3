@@ -341,6 +341,7 @@ object desugar {
     val isCaseClass  = mods.is(Case) && !mods.is(Module)
     val isCaseObject = mods.is(Case) && mods.is(Module)
     val isImplicit = mods.is(Implicit)
+    val isWitness = isImplicit && mods.mods.exists(_.isInstanceOf[Mod.Witness])
     val isEnum = mods.isEnumClass && !mods.is(Module)
     def isEnumCase = mods.isEnumCase
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
@@ -445,7 +446,15 @@ object desugar {
       }
 
     // new C[Ts](paramss)
-    lazy val creatorExpr = New(classTypeRef, constrVparamss nestedMap refOfDef)
+    lazy val creatorExpr = {
+      val vparamss = constrVparamss match {
+        case (vparam :: _) :: _ if vparam.mods.is(Implicit) => // add a leading () to match class parameters
+          Nil :: constrVparamss
+        case _ =>
+          constrVparamss
+      }
+      New(classTypeRef, vparamss.nestedMap(refOfDef))
+    }
 
     val copiedAccessFlags = if (ctx.scala2Setting) EmptyFlags else AccessFlags
 
@@ -660,7 +669,7 @@ object desugar {
         ctx.error(ImplicitCaseClass(cdef), cdef.sourcePos)
         Nil
       }
-      else if (arity != 1) {
+      else if (arity != 1 && !isWitness) {
         ctx.error(ImplicitClassPrimaryConstructorArity(), cdef.sourcePos)
         Nil
       }
