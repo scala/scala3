@@ -56,7 +56,7 @@ object Build {
 
   val sbtDottyName = "sbt-dotty"
   val sbtDottyVersion = {
-    val base = "0.2.5"
+    val base = "0.2.6"
     if (isRelease) base else base + "-SNAPSHOT"
   }
 
