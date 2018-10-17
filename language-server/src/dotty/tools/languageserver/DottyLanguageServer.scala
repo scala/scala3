@@ -202,10 +202,6 @@ class DottyLanguageServer extends LanguageServer
     val uri = new URI(document.getUri)
     val worksheetMode = isWorksheet(uri)
 
-    if (worksheetMode) {
-      Option(worksheets.get(uri)).foreach(_.cancel(true))
-    }
-
     thisServer.synchronized  {
       checkMemory()
 
