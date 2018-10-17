@@ -34,12 +34,22 @@ object ExposedValues extends AutoPlugin {
 }
 
 object Build {
+  val scalacVersion = "2.12.7"
 
   val baseVersion = "0.11.0"
-  val scalacVersion = "2.12.7"
+  val baseSbtDottyVersion = "0.2.6"
+
+  // Versions used by the vscode extension to create a new project
+  // This should be the latest published releases.
+  // TODO: Have the vscode extension fetch these numbers from the Internet
+  // instead of hardcoding them ?
+  val publishedDottyVersion = "0.11.0-bin-20181017-3253921-NIGHTLY" // Using a nightly for now to get worksheet support
+  val publishedSbtDottyVersion = "0.2.5"
+
 
   val dottyOrganization = "ch.epfl.lamp"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
+
 
   val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
 
@@ -56,8 +66,7 @@ object Build {
 
   val sbtDottyName = "sbt-dotty"
   val sbtDottyVersion = {
-    val base = "0.2.6"
-    if (isRelease) base else base + "-SNAPSHOT"
+    if (isRelease) baseSbtDottyVersion else baseSbtDottyVersion + "-SNAPSHOT"
   }
 
   val agentOptions = List(
@@ -992,9 +1001,11 @@ object Build {
       resourceGenerators in Compile += Def.task {
         // Resources that will be copied when bootstrapping a new project
         val buildSbtFile = baseDirectory.value / "out" / "build.sbt"
-        IO.write(buildSbtFile, s"""scalaVersion := "$dottyVersion"""")
+        IO.write(buildSbtFile,
+          s"""scalaVersion := "$publishedDottyVersion"""")
         val dottyPluginSbtFile = baseDirectory.value / "out" / "dotty-plugin.sbt"
-        IO.write(dottyPluginSbtFile, s"""addSbtPlugin("$dottyOrganization" % "$sbtDottyName" % "$sbtDottyVersion")""")
+        IO.write(dottyPluginSbtFile,
+          s"""addSbtPlugin("$dottyOrganization" % "$sbtDottyName" % "$publishedSbtDottyVersion")""")
         Seq(buildSbtFile, dottyPluginSbtFile)
       },
       compile in Compile := Def.task {
