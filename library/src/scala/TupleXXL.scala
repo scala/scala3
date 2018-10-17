@@ -9,7 +9,11 @@ final class TupleXXL private (es: Array[Object]) extends Product {
 
   override def toString = elems.mkString("(", ",", ")")
   override def hashCode = getClass.hashCode * 41 + deepHashCode(elems)
-  override def canEqual(that: Any): Boolean = that.isInstanceOf[TupleXXL]
+  override def canEqual(that: Any): Boolean = that match {
+    case that: TupleXXL => that.productArity == this.productArity
+    case _ => false
+  }
+
   override def equals(that: Any) = that match {
     case that: TupleXXL => deepEquals(this.elems, that.elems)
     case _ => false
