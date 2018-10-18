@@ -13,8 +13,6 @@ import * as vscode from 'vscode';
 import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn,
          ServerOptions } from 'vscode-languageclient';
 import { enableOldServerWorkaround } from './compat'
-import { WorksheetPublishOutputNotification } from './protocol'
-import * as worksheet from './worksheet'
 import * as features from './features'
 
 export let client: LanguageClient
