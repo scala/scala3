@@ -1,10 +1,8 @@
 abstract class Base {
-  @scala.annotation.partial
   def foo: Int
-  @scala.annotation.partial
   def bar: Int
 
-  val a = foo
+  val a = foo + bar
 }
 
 class ChildA extends Base {
@@ -15,8 +13,7 @@ class ChildA extends Base {
 
   def bar = b  // error // error
 
-  val c = this // error
-  @unchecked val d = this // ok
+  val c = this
 }
 
 @unchecked

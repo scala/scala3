@@ -1,5 +1,3 @@
-import scala.annotation.filled
-
 class Foo {
   val list = List(1, 2, 3)
 
@@ -7,11 +5,9 @@ class Foo {
     val len = list.size
   }
 
-  val bar: Bar @filled = new Bar(this)
+  val bar: Bar = new Bar(this)
   new bar.Inner            // error
 }
-
-import scala.annotation.partial
 
 class Bar(val foo: Partial[Foo]) {
   val inner = new foo.Inner   // error

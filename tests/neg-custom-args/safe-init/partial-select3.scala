@@ -1,16 +1,16 @@
 class Foo {
   val name = "child"
 
-  println(show)                // error
+  println(show)
 
   def show = println(name)
 }
 
 
-final class Bar {
+class Bar {
+  println(show)        // error
+
+  def show = println(name)   // error
+
   val name = "child"
-
-  println(show)
-
-  def show = println(name)
 }

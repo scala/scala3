@@ -1,4 +1,4 @@
-final class Foo {
+class Foo {
   def getSize(f: () => String): () => Int = () => f().size    // error
 
   val f1 = getSize(() => this.name)          // error

@@ -1,5 +1,5 @@
 trait Foo {
-  @scala.annotation.filled
+  @scala.annotation.init
   class B {
     foo(10)                    // error
   }

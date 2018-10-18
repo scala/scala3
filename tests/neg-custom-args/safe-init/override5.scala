@@ -1,5 +1,4 @@
 trait Foo {
-  @scala.annotation.partial
   def name: String
 
   val message = "hello, " + name
@@ -11,7 +10,6 @@ class Bar extends Foo {
 
 
 trait Zen {
-  @scala.annotation.init
   val name: String
 
   val message = "hello, " + name
@@ -23,7 +21,6 @@ class Tao extends Zen {
 
 
 trait Base {
-  @scala.annotation.init
   val name: String
 
   val message = "hello, " + name

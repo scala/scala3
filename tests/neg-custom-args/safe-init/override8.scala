@@ -4,7 +4,6 @@ trait Foo {
   val x = "world"
   val y = foo(5)
 
-  @partial
   def foo(n: Int): String
 }
 
@@ -34,7 +33,7 @@ class Tao {
   def foo(n: Int) =  m + msg
 }
 
-class Zen extends Tao with Foo  // error: Tao.foo needs to be `@partial`
+class Zen extends Tao with Foo  // error: Tao.foo needs to be `@init`
 
 class Lux {
   val m = "hello"

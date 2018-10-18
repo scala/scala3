@@ -1,17 +1,20 @@
-import scala.annotation.partial
-
 trait Foo {
   val x = "world"
-  foo(5)                       // error
+  foo(5)                          // ok
 
   def foo(n: Int): String
 }
 
 
-trait Bar {
-  val x = "world"
-  foo(5)
+abstract class Bar extends Foo {
+  foo(5)                          // ok
+}
 
-  @partial
-  def foo(n: Int): String
+class Qux(x: Int) extends Bar {
+  def foo(n: Int) = x + n        // ok
+}
+
+class Yun extends Bar {
+  val x: Int = 10
+  def foo(n: Int) = x + n        // error
 }

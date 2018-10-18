@@ -1,4 +1,4 @@
-final class Foo(x: Int) {
+class Foo(x: Int) {
   var title: String = _
 
   val f: () => Unit =

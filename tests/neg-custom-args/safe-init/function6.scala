@@ -1,4 +1,4 @@
-final class Foo(x: Int) {
+class Foo(x: Int) {
   var title: String = _
 
   def get(msg: String): () => String = () => {
@@ -14,7 +14,7 @@ final class Foo(x: Int) {
   println(title)                 // error
 }
 
-final class Foo2(x: Int) {
+class Foo2(x: Int) {
   var title: String = _
 
   def get(msg: String): () => String = () => {

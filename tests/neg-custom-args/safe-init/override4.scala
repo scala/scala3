@@ -1,11 +1,11 @@
 import scala.annotation.partial
-import scala.annotation.filled
+import scala.annotation.init
 import scala.collection.mutable
 
 class Foo {
   val map: mutable.Map[Int, String] = mutable.Map.empty
 
-  @filled
+  @init
   def enter(k: Int, v: String) = map(k) = v
 }
 

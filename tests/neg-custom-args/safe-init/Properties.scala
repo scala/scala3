@@ -12,11 +12,10 @@ package util
 
 import java.io.{ IOException, PrintWriter }
 import java.util.jar.Attributes.{ Name => AttributeName }
-import scala.annotation.partial
 
 private[scala] trait PropertiesTrait {
-  @partial protected def propCategory: String      // specializes the remainder of the values
-  @partial protected def pickJarBasedOn: Class[_]  // props file comes from jar containing this
+  protected def propCategory: String      // specializes the remainder of the values
+  protected def pickJarBasedOn: Class[_]  // props file comes from jar containing this
 
   /** The name of the properties file */
   protected val propFilename = "/" + propCategory + ".properties"

@@ -1,13 +1,10 @@
 object NameKinds {
-  val a = b // error
-
   abstract class NameInfo
 
   abstract class NameKind(val tag: Int) { self =>
     type ThisInfo <: Info
 
-    /** A simple info type; some subclasses of Kind define more refined versions */
-    @scala.annotation.partial
+    @scala.annotation.init
     class Info extends NameInfo { this: ThisInfo =>
       def kind = self
     }
@@ -15,8 +12,26 @@ object NameKinds {
 
   abstract class ClassifiedNameKind(tag: Int, val infoString: String) extends NameKind(tag) {
     type ThisInfo = Info
-    val info: Info @scala.annotation.filled = new Info
+    val info: Info = new Info
+    info.kind // error
+  }
+}
+
+object NameKinds {
+  abstract class NameInfo
+
+  abstract class NameKind(val tag: Int) { self =>
+    type ThisInfo <: Info
+
+    @scala.annotation.init
+    class Info extends NameInfo { this: ThisInfo =>
+      def kind = "info"
+    }
   }
 
-  val b = 0
+  abstract class ClassifiedNameKind(tag: Int, val infoString: String) extends NameKind(tag) {
+    type ThisInfo = Info
+    val info: Info = new Info
+    info.kind // ok
+  }
 }

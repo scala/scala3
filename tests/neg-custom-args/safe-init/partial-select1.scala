@@ -1,6 +1,5 @@
-import scala.annotation.filled
 class Parent {
-  val child: Child @filled = new Child(this)
+  val child: Child = new Child(this)
   child.number = 5
 
   val name = "parent"

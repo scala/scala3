@@ -1,5 +1,5 @@
 class Parent {
-  @scala.annotation.filled
+  @scala.annotation.init
   class Inner1 {
     val len = foo   // error
   }

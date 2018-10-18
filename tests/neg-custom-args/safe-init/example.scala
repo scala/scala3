@@ -1,5 +1,3 @@
-import scala.annotation.filled
-
 class Parent(x: Int) {
   var name: String = _
   var addr: String = _
@@ -9,8 +7,8 @@ class Parent(x: Int) {
   lazy val l2 = addr.size                    // error: l2 is forced at L32 before `addr` is initialized
 
   val fun: Int => Int = n => n + list.size   // ok, fun is a partial value
-  val bar: Bar @ filled = new Bar("bar", fun) // ok, Bar accepts partial value
-  bar.result                                 // error: bar is a partial value
+  val bar: Bar = new Bar("bar", fun)         // ok, Bar accepts partial value
+  bar.result                                 // error: bar depends on list
 
   val child = new Child(this)                // error: `this` is partial, while full value expected
   List(5, 9).map(n => n + list.size)         // error: partial value used as full value

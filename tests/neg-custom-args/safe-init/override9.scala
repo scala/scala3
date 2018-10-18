@@ -1,5 +1,4 @@
 trait Foo {
-  @scala.annotation.partial
   def name: String
   val message = "hello, " + name
 }

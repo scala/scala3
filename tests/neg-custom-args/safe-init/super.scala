@@ -1,6 +1,6 @@
 class Base {
   val x = 10
-  @scala.annotation.filled
+  @scala.annotation.init
   def foo: Int = x
 }
 
