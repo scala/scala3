@@ -30,4 +30,6 @@ function type of the form `((T_1, ..., T_n)) => U`.
 
 ### Reference
 
-For more info, see [Issue #897](https://github.com/lampepfl/dotty/issues/897).
+For more info see:
+* [More details](./auto-parameter-tupling-spec.html)
+* [Issue #897](https://github.com/lampepfl/dotty/issues/897).
