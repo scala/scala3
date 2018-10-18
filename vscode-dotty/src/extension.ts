@@ -13,8 +13,6 @@ import * as vscode from 'vscode';
 import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn,
          ServerOptions } from 'vscode-languageclient';
 import { enableOldServerWorkaround } from './compat'
-import { WorksheetPublishOutputNotification } from './protocol'
-import * as worksheet from './worksheet'
 import * as features from './features'
 
 export let client: LanguageClient
@@ -68,29 +66,62 @@ export function activate(context: ExtensionContext) {
     })
 
   } else if (!fs.existsSync(disableDottyIDEFile)) {
-    let configuredProject: Thenable<void> = Promise.resolve()
-    if (!isConfiguredProject()) {
-      configuredProject = vscode.window.showInformationMessage(
-        "This looks like an unconfigured Scala project. Would you like to start the Dotty IDE?",
-        "Yes", "No"
-      ).then(choice => {
-        if (choice === "Yes") {
-          bootstrapSbtProject(buildSbtFileSource, dottyPluginSbtFileSource)
-          return Promise.resolve()
-        } else if (choice === "No") {
-          fs.appendFile(disableDottyIDEFile, "", _ => {})
-          return Promise.reject()
-        }
-      })
-        .then(_ => connectToSbt(coursierPath))
-        .then(sbt => {
-          return withProgress("Configuring Dotty IDE...", configureIDE(sbt))
-           .then(_ => { sbtserver.tellSbt(outputChannel, sbt, "exit") })
-        })
-    }
 
-    configuredProject
-      .then(_ => runLanguageServer(coursierPath, languageServerArtifactFile))
+    if (!vscode.workspace.workspaceFolders) {
+      if (vscode.window.activeTextEditor) {
+        setWorkspaceAndReload(vscode.window.activeTextEditor.document)
+      }
+    } else {
+      let configuredProject: Thenable<void> = Promise.resolve()
+      if (!isConfiguredProject()) {
+        configuredProject = vscode.window.showInformationMessage(
+          "This looks like an unconfigured Scala project. Would you like to start the Dotty IDE?",
+          "Yes", "No"
+        ).then(choice => {
+          if (choice === "Yes") {
+            bootstrapSbtProject(buildSbtFileSource, dottyPluginSbtFileSource)
+            return Promise.resolve()
+          } else if (choice === "No") {
+            fs.appendFile(disableDottyIDEFile, "", _ => {})
+            return Promise.reject()
+          }
+        })
+          .then(_ => connectToSbt(coursierPath))
+          .then(sbt => {
+            return withProgress("Configuring Dotty IDE...", configureIDE(sbt))
+              .then(_ => { sbtserver.tellSbt(outputChannel, sbt, "exit") })
+          })
+      }
+
+      configuredProject
+        .then(_ => runLanguageServer(coursierPath, languageServerArtifactFile))
+    }
+  }
+}
+
+/**
+ * Find and set a workspace root if no folders are open in the workspace. If there are already
+ * folders open in the workspace, do nothing.
+ *
+ * Adding a first folder to the workspace completely reloads the extension.
+ */
+function setWorkspaceAndReload(document: vscode.TextDocument) {
+  const documentPath = path.parse(document.uri.fsPath).dir
+  const workspaceRoot = findWorkspaceRoot(documentPath) || documentPath
+  vscode.workspace.updateWorkspaceFolders(0, null, { uri: vscode.Uri.file(workspaceRoot) })
+}
+
+/**
+ * Find the closest parent of `current` that contains a `build.sbt`.
+ */
+function findWorkspaceRoot(current: string): string | undefined {
+  const build = path.join(current, "build.sbt")
+  if (fs.existsSync(build)) return current
+  else {
+    const parent = path.resolve(current, "..")
+    if (parent != current) {
+      return findWorkspaceRoot(parent)
+    }
   }
 }
 
