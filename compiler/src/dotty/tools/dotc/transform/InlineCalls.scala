@@ -24,7 +24,7 @@ class InlineCalls extends MacroTransform { thisPhase =>
 
   class InlineCallsTransformer extends Transformer {
     override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-      case _: RefTree | _: GenericApply[_] if !tree.tpe.widenDealias.isInstanceOf[MethodicType] && Inliner.isInlineable(tree) && !ctx.reporter.hasErrors =>
+      case tree if isInlineCall(tree) && !ctx.reporter.hasErrors =>
         val tree2 = super.transform(tree) // transform arguments before inlining (inline arguments and constant fold arguments)
         transform(Inliner.inlineCall(tree2, tree.tpe.widen))
       case _: MemberDef =>

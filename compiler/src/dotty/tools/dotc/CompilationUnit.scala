@@ -66,11 +66,8 @@ object CompilationUnit {
     def traverse(tree: Tree)(implicit ctx: Context): Unit = {
       if (tree.symbol.isQuote)
         containsQuotes = true
-      tree match {
-        case _: tpd.RefTree | _: Trees.GenericApply[_] if Inliner.isInlineable(tree) =>
-          containsInline = true
-        case _ =>
-      }
+      if (tpd.isInlineCall(tree))
+        containsInline = true
       traverseChildren(tree)
     }
   }
