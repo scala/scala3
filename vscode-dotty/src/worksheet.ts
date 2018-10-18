@@ -5,10 +5,10 @@ import {
 } from 'vscode'
 
 import {
-  asWorksheetRunParams, WorksheetRunRequest, WorksheetRunParams, WorksheetRunResult,
+  asWorksheetRunParams, WorksheetRunRequest, WorksheetRunResult,
   WorksheetPublishOutputParams, WorksheetPublishOutputNotification
 } from './protocol'
-import { BaseLanguageClient, DocumentSelector } from 'vscode-languageclient'
+import { BaseLanguageClient } from 'vscode-languageclient'
 import { Disposable } from 'vscode-jsonrpc'
 
 /**
@@ -23,11 +23,26 @@ export const worksheetRunKey = "dotty.worksheet.run"
  */
 export const worksheetCancelKey = "dotty.worksheet.cancel"
 
+/**
+ * A wrapper around the information that VSCode needs to display text decorations.
+ *
+ * @param decorationType    The styling options of this decoration
+ * @param decorationOptions The options of this decoraiton.
+ */
+class Decoration {
+  constructor(readonly decorationType: vscode.TextEditorDecorationType,
+              readonly decorationOptions: vscode.DecorationOptions) {
+  }
+}
+
 /** A worksheet managed by vscode */
 class Worksheet implements Disposable {
 
+  /** The version of this document the last time it was run */
+  private runVersion: number = -1
+
   /** All decorations that have been added so far */
-  private decorationTypes: vscode.TextEditorDecorationType[] = []
+  private decorations: Decoration[] = []
 
   /** The number of blank lines that have been inserted to fit the output so far. */
   private insertedLines: number = 0
@@ -62,9 +77,11 @@ class Worksheet implements Disposable {
 
   /** Remove all decorations, and resets this worksheet. */
   private reset(): void {
-    this.decorationTypes.forEach(decoration => decoration.dispose())
+    this.decorations.forEach(decoration => decoration.decorationType.dispose())
+    this.decorations = []
     this.insertedLines = 0
     this.decoratedLines.clear()
+    this.runVersion = -1
     this.margin = this.longestLine() + 5
   }
 
@@ -112,6 +129,7 @@ class Worksheet implements Disposable {
       const edit = new vscode.WorkspaceEdit()
       edit.set(this.document.uri, textEdits)
       vscode.workspace.applyEdit(edit).then(editSucceeded => {
+        this.runVersion = this.document.version
         if (editSucceeded && !token.isCancellationRequested)
           resolve(vscode.window.withProgress({
             location: ProgressLocation.Window,
@@ -135,7 +153,8 @@ class Worksheet implements Disposable {
   }
 
   /**
-   * Parse and display the result of running part of this worksheet.
+   * Parse and display the result of running part of this worksheet. The result is saved so that it
+   * can be restored if this buffer is closed.
    *
    * @param lineNumber The number of the line in the source that produced the result.
    * @param runResult  The result itself.
@@ -144,7 +163,7 @@ class Worksheet implements Disposable {
    * @return A `Thenable` that will insert necessary lines to fit the output
    *         and display the decorations upon completion.
    */
-  public displayResult(lineNumber: number, runResult: string, editor: vscode.TextEditor) {
+  public displayAndSaveResult(lineNumber: number, runResult: string, editor: vscode.TextEditor) {
     const resultLines = runResult.trim().split(/\r\n|\r|\n/g)
 
     // The line where the next decoration should be put.
@@ -160,6 +179,8 @@ class Worksheet implements Disposable {
       const editPos = new vscode.Position(actualLine + 1, 0) // add after the line
       addNewLinesEdit.insert(editor.document.uri, editPos, "\n".repeat(linesToInsert))
       this.insertedLines += linesToInsert
+      // Increase the `runVersion`, because the text edit will increase the document's version
+      this.runVersion += 1
     }
 
     return vscode.workspace.applyEdit(addNewLinesEdit).then(_ => {
@@ -167,14 +188,30 @@ class Worksheet implements Disposable {
         const decorationPosition = new vscode.Position(actualLine, 0)
         const decorationMargin = this.margin - editor.document.lineAt(actualLine).text.length
         const decorationType = this.createDecoration(decorationMargin, line)
-        this.decorationTypes.push(decorationType)
-        this.decoratedLines.add(actualLine)
+        const decorationOptions = { range: new vscode.Range(decorationPosition, decorationPosition), hoverMessage: line }
+        const decoration = new Decoration(decorationType, decorationOptions)
 
-        const decoration = { range: new vscode.Range(decorationPosition, decorationPosition), hoverMessage: line }
-        editor.setDecorations(decorationType, [decoration])
+        this.decoratedLines.add(actualLine)
+        this.decorations.push(decoration)
+
+        editor.setDecorations(decorationType, [decorationOptions])
         actualLine += 1
       }
     })
+  }
+
+  /**
+   * Restore the decorations that belong to this worksheet in `editor`. If the document has been
+   * changed, since the last run of the worksheet, the decorations won't be added.
+   *
+   * @param editor The editor where to display the decorations.
+   */
+  public restoreDecorations(editor: vscode.TextEditor) {
+    if (editor.document.version == this.runVersion) {
+      this.decorations.forEach(decoration => {
+        editor.setDecorations(decoration.decorationType, [decoration.decorationOptions])
+      })
+    }
   }
 
   /**
@@ -307,6 +344,14 @@ export class WorksheetProvider implements Disposable {
           this.worksheets.delete(document)
         }
       }),
+      vscode.window.onDidChangeActiveTextEditor(editor => {
+        if (editor) {
+          const worksheet = this.worksheetFor(editor.document)
+          if (worksheet) {
+            worksheet.restoreDecorations(editor)
+          }
+        }
+      }),
       vscode.commands.registerCommand(worksheetRunKey, () => {
         this.callOnActiveWorksheet(w => w.run())
       }),
@@ -375,7 +420,7 @@ export class WorksheetProvider implements Disposable {
     if (editor) {
       const worksheet = this.worksheetFor(editor.document)
       if (worksheet) {
-        worksheet.displayResult(output.line - 1, output.content, editor)
+        worksheet.displayAndSaveResult(output.line - 1, output.content, editor)
       }
     }
   }
