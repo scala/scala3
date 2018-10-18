@@ -106,7 +106,7 @@ export function activate(context: ExtensionContext) {
  * Adding a first folder to the workspace completely reloads the extension.
  */
 function setWorkspaceAndReload(document: vscode.TextDocument) {
-  const documentPath = path.parse(document.uri.path).dir
+  const documentPath = path.parse(document.uri.fsPath).dir
   const workspaceRoot = findWorkspaceRoot(documentPath) || documentPath
   vscode.workspace.updateWorkspaceFolders(0, null, { uri: vscode.Uri.file(workspaceRoot) })
 }
