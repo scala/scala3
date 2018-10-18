@@ -177,6 +177,22 @@ object Annotations {
         else None
     }
 
+    /** Extractor for init annotations */
+    object Call {
+      /** A regular, non-deferred Child annotation */
+      def apply(sym: Symbol)(implicit ctx: Context): Annotation = {
+        val tree = New(defn.CallAnnotType.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
+        ConcreteAnnotation(tree)
+      }
+
+      def unapply(ann: Annotation)(implicit ctx: Context): Option[Symbol] =
+        if (ann.symbol == defn.CallAnnot) {
+          val AppliedType(tycon, (arg: NamedType) :: Nil) = ann.tree.tpe
+          Some(arg.symbol)
+        }
+        else None
+    }
+
     def makeSourceFile(path: String)(implicit ctx: Context): Annotation =
       apply(defn.SourceFileAnnot, Literal(Constant(path)))
   }

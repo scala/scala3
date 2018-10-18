@@ -263,7 +263,7 @@ class Analyzer extends Indexer { analyzer =>
   def checkSuper(tree: Tree, supert: Super, env: Env)(implicit ctx: Context): Res = {
     val SuperType(thistpe, supertpe) = supert.tpe
     val thisRef = checkRef(thistpe, env, tree.pos)
-    thisRef.value.select(tree.symbol, env.heap, tree.pos, isSuper = true)
+    thisRef.value.select(tree.symbol, env.heap, tree.pos, isStaticDispatch = true)
   }
 
   object NewEx {

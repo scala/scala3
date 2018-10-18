@@ -16,6 +16,7 @@ import Denotations._
 import SymDenotations._
 import Types._
 import Decorators._
+import Annotations._
 import util.Positions._
 import Constants.Constant
 import collection.mutable
@@ -35,9 +36,14 @@ package object init {
     def isPartial(implicit ctx: Context) = sym.hasAnnotation(defn.PartialAnnot)
     def isFilled(implicit ctx: Context) = sym.hasAnnotation(defn.FilledAnnot)
     def isInit(implicit ctx: Context) = sym.hasAnnotation(defn.InitAnnot)
-    def isOverride(implicit ctx: Context) =
-      (sym.is(Method) && sym.allOverriddenSymbols.exists(sym => sym.isPartial || sym.isFilled)) ||
-      (!sym.is(Method) && sym.allOverriddenSymbols.exists(sym => sym.isPartial || sym.isFilled || sym.isInit))
+    def isCalledIn(cls: ClassSymbol)(implicit ctx: Context): Boolean =
+      cls.self.annotations.exists({
+        case Annotation.Call(mthSym) => mthSym == sym
+        case _ => false
+      }) || sym.allOverriddenSymbols.exists(_.isCalledIn(cls))
+
+    def isCalledAbove(from: ClassSymbol)(implicit ctx: Context) =
+      from.baseClasses.tail.exists(cls => sym.isCalledIn(cls))
 
     def isPrimaryConstructorFields(implicit ctx: Context) = sym.is(ParamAccessor)
 

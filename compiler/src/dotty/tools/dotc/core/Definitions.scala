@@ -812,6 +812,8 @@ class Definitions {
   def FilledAnnot(implicit ctx: Context): ClassSymbol = FilledAnnotType.symbol.asClass
   lazy val InitAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.init")
   def InitAnnot(implicit ctx: Context): ClassSymbol = InitAnnotType.symbol.asClass
+  lazy val CallAnnotType: TypeRef = ctx.requiredClassRef("scala.annotation.internal.Call")
+  def CallAnnot(implicit ctx: Context): ClassSymbol = CallAnnotType.symbol.asClass
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)

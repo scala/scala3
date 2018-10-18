@@ -2,20 +2,26 @@ trait Foo {
   val x = "world"
   foo(5)
 
-  def bar(x: Int): Int
+  def bar(x: Int): Int = 20
 
-  private def foo(n: Int): String = x + n
+  def foo(n: Int): String = x + n
 }
 
-abstract class Bar extends Foo {
+class Bar extends Foo {
   val y = "hello"
 
   foo(5)
   bar(10) // error
 
-  def foo(n: Int): String = {  // need to be private or final
+  override def foo(n: Int): String = {   // error
     println("in foo")
-    println(y.size)
-    y + x
+    y + x                // error // error
   }
+}
+
+class Qux extends Foo {
+  val y = "hello"
+
+  foo(5)
+  bar(10) // error
 }

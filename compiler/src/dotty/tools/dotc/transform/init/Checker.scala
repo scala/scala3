@@ -55,12 +55,12 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     if (cls.hasAnnotation(defn.UncheckedAnnot)) return tree
 
     def lateInitMsg(sym: Symbol) =
-      s"""|Initialization too late: $sym may be used during parent initialization.
+      s"""|Initialization too late: $sym is used during parent initialization.
           |Consider make it a class parameter."""
         .stripMargin
 
     for (decl <- cls.info.decls.toList if decl.is(AnyFlags, butNot = Method | Deferred)) {
-      if (!decl.is(ParamAccessor | Override) && decl.isOverride)
+      if (!decl.is(ParamAccessor | Override) && decl.isCalledAbove(cls))
         ctx.warning(lateInitMsg(decl), decl.pos)
     }
 
@@ -77,7 +77,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         seenClasses.addEntry(cls)
         for (mbr <- cls.info.decls)
           if (mbr.isTerm && mbr.is(Deferred | Method) &&
-              (mbr.hasAnnotation(defn.PartialAnnot) || mbr.hasAnnotation(defn.FilledAnnot)) &&
+              (mbr.hasAnnotation(defn.PartialAnnot) || mbr.hasAnnotation(defn.InitAnnot)) &&
               !membersToCheck.contains(mbr.name))
             membersToCheck = membersToCheck.updated(mbr.name, mbr.info.asSeenFrom(self, mbr.owner))
           parents(cls).foreach(addDecls)
@@ -86,7 +86,7 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
     def invalidImplementMsg(sym: Symbol) =
       s"""|@scala.annotation.partial required for ${sym.show} in ${sym.owner.show}
-          |Because the abstract method it implements is marked as `@partial` or `@filled`."""
+          |Because the abstract method it implements is marked as `@partial` or `@init`."""
         .stripMargin
 
     for (name <- membersToCheck.keys) {
@@ -97,9 +97,9 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       } {
         val mbr = mbrd.symbol
         if (mbr.owner.ne(cls) &&
-            !mbr.isOverride &&
+            !mbr.isCalledAbove(cls) &&
             !mbr.hasAnnotation(defn.PartialAnnot) &&
-            !mbr.hasAnnotation(defn.FilledAnnot) )
+            !mbr.hasAnnotation(defn.InitAnnot) )
           ctx.warning(invalidImplementMsg(mbr), cls.pos)
       }
     }
@@ -143,8 +143,8 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     //   if (!sym.is(Deferred)) ctx.warning(s"field ${sym.name} is not initialized", sym.pos)
     // }
 
-    // filled check: try commit early
-    if (obj.open) filledCheck(obj, tmpl, root.heap)
+    // init check: try commit early
+    if (obj.open) initCheck(cls, obj, tmpl, root.heap)
   }
 
   def partialCheck(cls: ClassSymbol, tmpl: tpd.Template, analyzer: Analyzer)(implicit ctx: Context) = {
@@ -169,27 +169,30 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       }
 
     def checkMethod(sym: Symbol): Unit = {
-      if (!sym.isPartial && !sym.isOverride) return
+      if (!sym.isPartial && !sym.isCalledAbove(cls)) {
+        println(s"$sym in ${sym.owner} not partial")
+        return
+      }
 
       val heap2 = heap.clone
-      var res = obj.select(sym, heap2, sym.pos)
+      var res = obj.select(sym, heap2, sym.pos, isStaticDispatch = true)
       if (!sym.info.isParameterless)
         res = res.value.apply(i => FullValue, i => NoPosition, sym.pos, heap)
 
       if (res.hasErrors) {
-        ctx.warning("Calling the partial method causes errors", sym.pos)
+        ctx.warning("Calling the method during initialization causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
       else if (res.value != FullValue) {
-        ctx.warning("Partial method must return a full value", sym.pos)
+        ctx.warning("A method called during initialization must return a fully initialized value", sym.pos)
       }
     }
 
     def checkLazy(sym: Symbol): Unit = {
-      if (!sym.isPartial && !sym.isOverride) return
+      if (!sym.isPartial && !sym.isCalledAbove(cls)) return
 
       val heap2 = heap.clone
-      val res = obj.select(sym, heap2, sym.pos)
+      val res = obj.select(sym, heap2, sym.pos, isStaticDispatch = true)
       if (res.hasErrors) {
         ctx.warning("Forcing partial lazy value causes errors", sym.pos)
         res.effects.foreach(_.report)
@@ -207,45 +210,46 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         checkLazy(vdef.symbol)
       case _ =>
     }
+
+    if (obj.open) obj.annotate(cls)
   }
 
-  def filledCheck(obj: ObjectValue, tmpl: tpd.Template, heap: Heap)(implicit ctx: Context) = {
+  def initCheck(cls: ClassSymbol, obj: ObjectValue, tmpl: tpd.Template, heap: Heap)(implicit ctx: Context) = {
     def checkMethod(sym: Symbol): Unit = {
-      if (sym.isPartial || sym.isOverride || !sym.isFilled) return
+      if (!sym.isInit) return
 
-      var res = obj.select(sym, heap, sym.pos)
+      var res = obj.select(sym, heap, sym.pos, isStaticDispatch = true)
       if (!sym.info.isParameterless)
         res = res.value.apply(i => FullValue, i => NoPosition, sym.pos, heap)
       if (res.hasErrors) {
-        ctx.warning("Calling the filled method causes errors", sym.pos)
+        ctx.warning("Calling the init method causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
       else if (res.value != FullValue) {
-        ctx.warning("Filled method must return a full value", sym.pos)
+        ctx.warning("An init method must return a full value", sym.pos)
       }
     }
 
     def checkLazy(sym: Symbol): Unit = {
-      if (sym.isPartial || sym.isOverride || !sym.isFilled) return
+      if (!sym.isInit) return
 
-      val res = obj.select(sym, heap, sym.pos)
+      val res = obj.select(sym, heap, sym.pos, isStaticDispatch = true)
       if (res.hasErrors) {
-        ctx.warning("Forcing filled lazy value causes errors", sym.pos)
+        ctx.warning("Forcing init lazy value causes errors", sym.pos)
         res.effects.foreach(_.report)
       }
       else {
         val value = res.value.widen(heap, sym.pos)
-        if (value != FullValue) ctx.warning("Filled lazy value must return a full value", sym.pos)
+        if (value != FullValue) ctx.warning("Init lazy value must return a full value", sym.pos)
       }
     }
 
     def checkValDef(sym: Symbol): Unit = {
-      if (sym.is(Flags.PrivateOrLocal) || sym.hasAnnotation(defn.UncheckedAnnot)) return
+      if (sym.is(Flags.PrivateOrLocal)) return
 
-      val isOverride = sym.allOverriddenSymbols.exists(sym => sym.isInit)
       val expected: OpaqueValue =
-        if (isOverride) FullValue
-        else sym.info.value.join(sym.value)
+        if (sym.isCalledAbove(cls)) FullValue
+        else sym.value
 
       val actual = obj.select(sym, heap, sym.pos).value.widen(heap, sym.pos)
       if (actual < expected) ctx.warning(s"Found = $actual, expected = $expected" , sym.pos)
@@ -260,6 +264,8 @@ class Checker extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         checkValDef(vdef.symbol)
       case _ =>
     }
+
+    if (obj.open) obj.annotate(cls)
   }
 
 

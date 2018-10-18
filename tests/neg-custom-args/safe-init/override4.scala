@@ -36,3 +36,7 @@ abstract class Foo2 {
   @partial
   def enter(k: Int, v: String) = map(k) = v  // error // error
 }
+
+class Qux extends Foo2 {
+  val map: mutable.Map[Int, String] = mutable.Map.empty
+}

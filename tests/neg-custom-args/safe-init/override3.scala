@@ -27,8 +27,6 @@ class Bar2 extends Foo {
   final def foo(n: Int) = "world"
 }
 
-class Bar3 extends Foo {
-  val m = "hello"
-
-  final def foo(n: Int) = m + "world"  // error // error
+class Bar3(m: String) extends Foo {
+  final def foo(n: Int) = m + "world"
 }

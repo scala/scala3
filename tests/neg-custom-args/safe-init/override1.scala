@@ -1,8 +1,8 @@
 trait Foo {
-  val x = "world"
+  val x = 20
   foo(5)                          // ok
 
-  def foo(n: Int): String
+  def foo(n: Int): Int
 }
 
 
@@ -15,6 +15,6 @@ class Qux(x: Int) extends Bar {
 }
 
 class Yun extends Bar {
-  val x: Int = 10
-  def foo(n: Int) = x + n        // error
+  override val x: Int = 10
+  def foo(n: Int) = x + n        // error // error
 }

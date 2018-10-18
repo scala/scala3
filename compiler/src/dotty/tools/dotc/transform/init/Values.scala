@@ -13,6 +13,7 @@ import Symbols._
 import Types._
 import Decorators._
 import util.Positions._
+import Annotations._
 import config.Printers.init.{ println => debug }
 import collection.mutable
 
@@ -46,7 +47,7 @@ object Value {
 /** Abstract values in analysis */
 sealed trait Value {
   /** Select a member on a value */
-  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean = false)(implicit ctx: Context): Res
+  def select(sym: Symbol, heap: Heap, pos: Position, isStaticDispatch: Boolean = false)(implicit ctx: Context): Res
 
   /** Assign on a value */
   def assign(sym: Symbol, value: Value, heap: Heap, pos: Position)(implicit ctx: Context): Res
@@ -102,7 +103,7 @@ sealed trait Value {
       case sv: SliceValue =>
         heap(sv.id).asSlice.widen
       case ov: ObjectValue =>
-        if (ov.open) FilledValue
+        if (ov.open) PartialValue
         else ov.slices.values.foldLeft(FullValue: OpaqueValue) { (acc, v) =>
           if (acc != FullValue) return FilledValue
           recur(v, heap).join(acc)
@@ -124,7 +125,7 @@ sealed trait Value {
 /** The value is absent */
 object NoValue extends Value {
   def apply(values: Int => Value, argPos: Int => Position, pos: Position, heap: Heap)(implicit ctx: Context): Res = ???
-  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = ???
+  def select(sym: Symbol, heap: Heap, pos: Position, isStaticDispatch: Boolean)(implicit ctx: Context): Res = ???
   def assign(sym: Symbol, value: Value, heap: Heap, pos: Position)(implicit ctx: Context): Res = ???
   def init(constr: Symbol, values: List[Value], argPos: List[Position], pos: Position, obj: ObjectValue, heap: Heap, indexer: Indexer)(implicit ctx: Context): Res = ???
 
@@ -142,9 +143,9 @@ case class UnionValue(val values: Set[SingleValue]) extends Value {
     }
   }
 
-  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = {
+  def select(sym: Symbol, heap: Heap, pos: Position, isStaticDispatch: Boolean)(implicit ctx: Context): Res = {
     values.foldLeft(Res()) { (acc, value) =>
-      value.select(sym, heap, pos, isSuper).join(acc)
+      value.select(sym, heap, pos, isStaticDispatch).join(acc)
     }
   }
 
@@ -187,7 +188,7 @@ abstract sealed class OpaqueValue extends SingleValue {
 }
 
 object FullValue extends OpaqueValue {
-  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res =
+  def select(sym: Symbol, heap: Heap, pos: Position, isStaticDispatch: Boolean)(implicit ctx: Context): Res =
     if (sym.is(Flags.Method)) Res(value = Value.defaultFunctionValue(sym))
     else Res()
 
@@ -214,7 +215,7 @@ object FullValue extends OpaqueValue {
 }
 
 object PartialValue extends OpaqueValue {
-  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = {
+  def select(sym: Symbol, heap: Heap, pos: Position, isStaticDispatch: Boolean)(implicit ctx: Context): Res = {
     // set state to Full, don't report same error message again
     val res = Res(value = FullValue)
 
@@ -234,7 +235,7 @@ object PartialValue extends OpaqueValue {
     }
     else {  // field select
       if (!sym.isPrimaryConstructorFields || sym.owner.is(Flags.Trait))
-        res += Generic(s"Cannot access field $sym on a partial object", pos)
+        res += Generic(s"The $sym may not be initialized", pos)
     }
 
     res
@@ -266,22 +267,22 @@ object PartialValue extends OpaqueValue {
 }
 
 object FilledValue extends OpaqueValue {
-  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = {
+  def select(sym: Symbol, heap: Heap, pos: Position, isStaticDispatch: Boolean)(implicit ctx: Context): Res = {
     val res = Res()
     if (sym.is(Flags.Method)) {
-      if (!sym.isPartial && !sym.isFilled && !sym.name.is(DefaultGetterName))
-        res += Generic(s"The $sym should be marked as `@partial` or `@filled` in order to be called", pos)
+      if (!sym.isPartial && !sym.isInit && !sym.isCalledIn(sym.owner.asClass) && !sym.name.is(DefaultGetterName))
+        res += Generic(s"The $sym should be marked as `@init` in order to be called", pos)
 
       res.value = Value.defaultFunctionValue(sym)
     }
-    else if (sym.is(Flags.Lazy)) {
+    else if (sym.is(Flags.Lazy) && !sym.isCalledIn(sym.owner.asClass)) {
       if (!sym.isPartial && !sym.isFilled)
-        res += Generic(s"The lazy field $sym should be marked as `@partial` or `@filled` in order to be accessed", pos)
+        res += Generic(s"The lazy field $sym should be marked as `@init` in order to be accessed", pos)
 
       res.value = sym.info.value
     }
     else {
-      res.value = sym.value.join(sym.info.value)
+      res.value = sym.value
     }
 
     res
@@ -299,7 +300,7 @@ object FilledValue extends OpaqueValue {
 
     val cls = constr.owner.asClass
     if (!cls.isPartial && !cls.isFilled) {
-      res += Generic(s"The nested $cls should be marked as `@partial` or `@filled` in order to be instantiated", pos)
+      res += Generic(s"The nested $cls should be marked as `@init` in order to be instantiated", pos)
       res.value = FullValue
       return res
     }
@@ -318,7 +319,7 @@ object FilledValue extends OpaqueValue {
 abstract class FunctionValue extends SingleValue { self =>
   def apply(values: Int => Value, argPos: Int => Position, pos: Position, heap: Heap)(implicit ctx: Context): Res
 
-  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = sym.name match {
+  def select(sym: Symbol, heap: Heap, pos: Position, isStaticDispatch: Boolean)(implicit ctx: Context): Res = sym.name match {
     case nme.apply | nme.lift => Res(value = this)
     case nme.compose =>
       val selectedFun = new FunctionValue() {
@@ -429,7 +430,7 @@ abstract class FunctionValue extends SingleValue { self =>
 /** A lazy value */
 abstract class LazyValue extends SingleValue {
   // not supported
-  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = ???
+  def select(sym: Symbol, heap: Heap, pos: Position, isStaticDispatch: Boolean)(implicit ctx: Context): Res = ???
   def assign(sym: Symbol, value: Value, heap: Heap, pos: Position)(implicit ctx: Context): Res = ???
   def init(constr: Symbol, values: List[Value], argPos: List[Position], pos: Position, obj: ObjectValue, heap: Heap, indexer: Indexer)(implicit ctx: Context): Res = ???
 
@@ -443,7 +444,7 @@ class SliceValue(val id: Int) extends SingleValue {
   /** not supported, impossible to apply an object value */
   def apply(values: Int => Value, argPos: Int => Position, pos: Position, heap: Heap)(implicit ctx: Context): Res = ???
 
-  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = {
+  def select(sym: Symbol, heap: Heap, pos: Position, isStaticDispatch: Boolean)(implicit ctx: Context): Res = {
     val slice = heap(id).asSlice
     val value = slice(sym)
 
@@ -467,12 +468,7 @@ class SliceValue(val id: Int) extends SingleValue {
         else Res(effects = Vector(Uninit(sym, pos)))
       }
       else {
-        val res = Res(value = value)
-
-        if (sym.is(Flags.Deferred) && !sym.hasAnnotation(defn.InitAnnot))
-          res += UseAbstractDef(sym, pos)
-
-        res
+        Res(value = value)
       }
     }
   }
@@ -505,6 +501,9 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   private var _slices: Map[ClassSymbol, Value] = Map()
   def slices: Map[ClassSymbol, Value] = _slices
 
+  private var _dynamicCalls: Set[Symbol] = Set.empty
+  def dynamicCalls: Set[Symbol] = _dynamicCalls
+
   def add(cls: ClassSymbol, value: Value) = {
     if (slices.contains(cls)) {
       _slices = _slices.updated(cls, _slices(cls).join(value))
@@ -514,7 +513,7 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
 
   // handle dynamic dispatch
   private def resolve(sym: Symbol)(implicit ctx: Context): Symbol = {
-    if (sym.isClass || sym.isConstructor || sym.isEffectivelyFinal || sym.is(Flags.Private)) sym
+    if (sym.isClass || sym.isConstructor || sym.isEffectivelyFinal) sym
     else {
       // the method may crash, see tests/pos/t7517.scala
       try sym.matchingMember(tp) catch { case _: Throwable => NoSymbol }
@@ -524,8 +523,8 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   /** not supported, impossible to apply an object value */
   def apply(values: Int => Value, argPos: Int => Position, pos: Position, heap: Heap)(implicit ctx: Context): Res = ???
 
-  def select(sym: Symbol, heap: Heap, pos: Position, isSuper: Boolean)(implicit ctx: Context): Res = {
-    val target = if (isSuper) sym else resolve(sym)
+  def select(sym: Symbol, heap: Heap, pos: Position, isStaticDispatch: Boolean)(implicit ctx: Context): Res = {
+    val target = if (isStaticDispatch) sym else resolve(sym)
 
     // select on self type
     if (!target.exists) {
@@ -537,23 +536,18 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
 
     if (this.widen(heap, pos) == FullValue) return FullValue.select(sym, heap, pos)
 
+    // remember dynamic calls
+    if (!isStaticDispatch && !target.isEffectivelyFinal) {
+      _dynamicCalls = _dynamicCalls + target
+    }
+
     val cls = target.owner.asClass
     if (slices.contains(cls)) {
-      val res = slices(cls).select(target, heap, pos)
-      // ignore field access, but field access in Scala
-      // are method calls, thus is unsafe as well
-      if (!isSuper && open && target.is(Flags.Method, butNot = Flags.Lazy) &&
-          !target.isPartial &&
-          !target.isFilled &&
-          !target.isOverride &&
-          !target.isEffectivelyFinal &&
-          !target.name.is(DefaultGetterName))
-        res += OverrideRisk(target, pos)
-      res
+      slices(cls).select(target, heap, pos)
     }
     else {
       // select on unknown super
-      assert (target.isDefinedOn(tp))
+      assert(target.isDefinedOn(tp))
       FilledValue.select(target, heap, pos)
     }
   }
@@ -590,5 +584,12 @@ class ObjectValue(val tp: Type, val open: Boolean = false) extends SingleValue {
   def show(setting: ShowSetting)(implicit ctx: Context): String = {
     val body = slices.map { case (k, v) => "[" +k.show + "]" + setting.indent(v.show(setting)) }.mkString("\n")
     "Object {\n" + setting.indent(body) + "\n}"
+  }
+
+  def annotate(cls: ClassSymbol)(implicit ctx: Context) = {
+    dynamicCalls.foreach { sym =>
+      debug(s"$sym used during initialization of $cls")
+      cls.addAnnotation(Annotation.Call(sym))
+    }
   }
 }
