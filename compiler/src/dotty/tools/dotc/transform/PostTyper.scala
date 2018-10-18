@@ -40,8 +40,7 @@ object PostTyper {
  *
  *  (10) Adds Child annotations to all sealed classes
  *
- *  (11) Minimizes `call` fields of `Inlined` nodes to just point to the toplevel
- *       class from which code was inlined.
+ *  (11) Replace RHS of `erased` (but not `inline`) members by `(???: rhs.type)`
  *
  *  The reason for making this a macro transform is that some functions (in particular
  *  super and protected accessors and instantiation checks) are naturally top-down and
@@ -183,14 +182,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         ctx.compilationUnit.containsInlineCalls = true
     }
 
-    private object dropInlines extends TreeMap {
-      override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-        case Inlined(call, _, _) =>
-          cpy.Inlined(tree)(call, Nil, Typed(ref(defn.Predef_undefined), TypeTree(tree.tpe)))
-        case _ => super.transform(tree)
-      }
-    }
-
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
@@ -218,7 +209,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 tree.fun,
                 tree.args.map(arg =>
                   if (methType.isImplicitMethod && arg.pos.isSynthetic) ref(defn.Predef_undefined)
-                  else dropInlines.transform(arg)))
+                  else arg))
             else
               tree
           methPart(app) match {
@@ -328,9 +319,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       }
 
     /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
-    *  Performed to shrink the tree that is known to be erased later.
-    */
+     *  Performed to shrink the tree that is known to be erased later.
+     */
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(implicit ctx: Context) =
-      if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
+      if (!sym.isEffectivelyErased || sym.isInlineMethod || !rhs.tpe.exists) rhs
+      else Typed(ref(defn.Predef_undefined), TypeTree(rhs.tpe))
   }
 }
