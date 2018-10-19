@@ -695,6 +695,46 @@ object desugar {
     }
   }
 
+  /** Expand
+   *
+   *    <mods> opaque type T = [Xs] => R
+   *
+   *  to
+   *
+   *    <mods> opaque type T = T.T
+   *    synthetic object T {
+   *      synthetic opaque type T >: [Xs] => R
+   *    }
+   *
+   *  The generated companion object will later (in Namer) be merged with the user-defined
+   *  companion object, and the synthetic opaque type member will go into the self type.
+   */
+  def opaqueAlias(tdef: TypeDef)(implicit ctx: Context): Tree =
+    if (tdef.rhs.isInstanceOf[TypeBoundsTree]) {
+      ctx.error(em"opaque type ${tdef.name} must be an alias type", tdef.pos)
+      tdef.withFlags(tdef.mods.flags &~ Opaque)
+    }
+    else {
+      def completeForwarder(fwd: Tree) = tdef.rhs match {
+        case LambdaTypeTree(tparams, tpt) =>
+          val tparams1 =
+            for (tparam <- tparams)
+            yield tparam.withMods(tparam.mods | Synthetic)
+          lambdaAbstract(tparams1,
+            AppliedTypeTree(fwd, tparams.map(tparam => Ident(tparam.name))))
+        case _ =>
+          fwd
+      }
+      val moduleName = tdef.name.toTermName
+      val aliasType = cpy.TypeDef(tdef)(
+        rhs = completeForwarder(Select(Ident(moduleName), tdef.name)))
+      val localType = tdef.withFlags(Synthetic | Opaque)
+      val companions = moduleDef(ModuleDef(
+        moduleName, Template(emptyConstructor, Nil, EmptyValDef, localType :: Nil))
+          .withFlags(Synthetic | Opaque))
+      Thicket(aliasType :: companions.toList)
+    }
+
   /** The name of `mdef`, after checking that it does not redefine a Scala core class.
    *  If it does redefine, issue an error and return a mangled name instead of the original one.
    */
@@ -790,7 +830,10 @@ object desugar {
 
   def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case tree: ValDef => valDef(tree)
-    case tree: TypeDef => if (tree.isClassDef) classDef(tree) else tree
+    case tree: TypeDef =>
+      if (tree.isClassDef) classDef(tree)
+      else if (tree.mods.is(Opaque, butNot = Synthetic)) opaqueAlias(tree)
+      else tree
     case tree: DefDef =>
       if (tree.name.isConstructorName) tree // was already handled by enclosing classDef
       else defDef(tree)

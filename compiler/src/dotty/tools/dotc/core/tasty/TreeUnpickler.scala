@@ -814,6 +814,7 @@ class TreeUnpickler(reader: TastyReader,
               case _ => rhs.tpe.toBounds
             }
             sym.resetFlag(Provisional)
+            sym.normalizeOpaque()
             TypeDef(rhs)
           }
         case PARAM =>

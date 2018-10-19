@@ -526,7 +526,13 @@ object Flags {
     Accessor | AbsOverride | Stable | Captured | Synchronized | Erased
 
   /** Flags that can apply to a module class */
-  final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | ImplClass | Enum
+  final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags |
+    ImplClass | Enum | Opaque
+
+  /** Flags that are copied from a synthetic companion to a user-defined one
+   *  when the two are merged. See: Namer.mergeCompanionDefs
+   */
+  final val RetainedSyntheticCompanionFlags: FlagSet = Opaque
 
   /** Packages and package classes always have these flags set */
   final val PackageCreationFlags: FlagSet =
@@ -639,6 +645,9 @@ object Flags {
   /** A Java companion object */
   final val JavaModule: FlagConjunction = allOf(JavaDefined, Module)
 
+  /** An opaque companion object */
+  final val OpaqueModule: FlagConjunction = allOf(Opaque, Module)
+
   /** A Java companion object */
   final val JavaProtected: FlagConjunction = allOf(JavaDefined, Protected)
 
@@ -675,15 +684,18 @@ object Flags {
   /** Java symbol which is `protected` and `static` */
   final val StaticProtected: FlagConjunction = allOf(JavaDefined, Protected, JavaStatic)
 
+  final val Scala2Trait: FlagConjunction = allOf(Scala2x, Trait)
+
   final val AbstractFinal: FlagConjunction = allOf(Abstract, Final)
   final val AbstractSealed: FlagConjunction = allOf(Abstract, Sealed)
+  final val AbstractAndOverride: FlagConjunction = allOf(Abstract, Override)
+
   final val SyntheticArtifact: FlagConjunction = allOf(Synthetic, Artifact)
   final val SyntheticModule: FlagConjunction = allOf(Synthetic, Module)
   final val SyntheticTermParam: FlagConjunction = allOf(Synthetic, TermParam)
   final val SyntheticTypeParam: FlagConjunction = allOf(Synthetic, TypeParam)
   final val SyntheticCase: FlagConjunction = allOf(Synthetic, Case)
-  final val AbstractAndOverride: FlagConjunction = allOf(Abstract, Override)
-  final val Scala2Trait: FlagConjunction = allOf(Scala2x, Trait)
+  final val SyntheticOpaque: FlagConjunction = allOf(Synthetic, Opaque)
 
   implicit def conjToFlagSet(conj: FlagConjunction): FlagSet =
     FlagSet(conj.bits)

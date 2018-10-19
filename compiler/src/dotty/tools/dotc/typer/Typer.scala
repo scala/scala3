@@ -1587,7 +1587,11 @@ class Typer extends Namer
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parentsWithClass = ensureFirstTreeIsClass(parents mapconserve typedParent, cdef.namePos)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
-    val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
+    var self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
+    if (cls.isOpaqueCompanion) {
+      // this is necessary to ensure selftype is correctly pickled
+      self1 = tpd.cpy.ValDef(self1)(tpt = TypeTree(cls.classInfo.selfType))
+    }
     if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1)) {
       // fail fast to avoid typing the body with an error type
       cdef.withType(UnspecifiedErrorType)

@@ -365,6 +365,23 @@ object SymDenotations {
       case _ => unforcedDecls.openForMutations
     }
 
+    /** If this is a synthetic opaque type alias, mark it as Deferred with empty bounds
+     */
+    final def normalizeOpaque()(implicit ctx: Context) = {
+      def abstractRHS(tp: Type): Type = tp match {
+        case tp: HKTypeLambda => tp.derivedLambdaType(resType = abstractRHS(tp.resType))
+        case _ => defn.AnyType
+      }
+      if (isOpaqueHelper) {
+        info match {
+          case TypeAlias(alias) =>
+            info = TypeBounds(defn.NothingType, abstractRHS(alias))
+            setFlag(Deferred)
+          case _ =>
+        }
+      }
+    }
+
     // ------ Names ----------------------------------------------
 
     /** The expanded name of this denotation. */
@@ -517,10 +534,19 @@ object SymDenotations {
     /** Is this symbol an abstract type or type parameter? */
     final def isAbstractOrParamType(implicit ctx: Context): Boolean = this is DeferredOrTypeParam
 
+    /** Is this symbol a user-defined opaque alias type? */
+    def isOpaqueAlias(implicit ctx: Context): Boolean = is(Opaque, butNot = Synthetic)
+
+    /** Is this symbol the companion of an opaque alias type? */
+    def isOpaqueCompanion(implicit ctx: Context): Boolean = is(OpaqueModule)
+
+    /** Is this symbol a synthetic opaque type inside an opaque companion object? */
+    def isOpaqueHelper(implicit ctx: Context): Boolean = is(SyntheticOpaque, butNot = Module)
+
     /** Can this symbol have a companion module?
      *  This is the case if it is a class or an opaque type alias.
      */
-    final def canHaveCompanion(implicit ctx: Context) = isClass
+    final def canHaveCompanion(implicit ctx: Context) = isClass || isOpaqueAlias
 
     /** Is this the denotation of a self symbol of some class?
      *  This is the case if one of two conditions holds:
@@ -830,10 +856,12 @@ object SymDenotations {
     /** The module implemented by this module class, NoSymbol if not applicable. */
     final def sourceModule(implicit ctx: Context): Symbol = myInfo match {
       case ClassInfo(_, _, _, _, selfType) if this is ModuleClass =>
-        selfType match {
-          case selfType: TermRef => selfType.symbol
-          case selfType: Symbol => selfType.info.asInstanceOf[TermRef].symbol
+        def sourceOfSelf(tp: Any): Symbol = tp match {
+          case tp: TermRef => tp.symbol
+          case tp: Symbol => sourceOfSelf(tp.info)
+          case tp: RefinedType => sourceOfSelf(tp.parent)
         }
+        sourceOfSelf(selfType)
       case info: LazyType =>
         info.sourceModule
       case _ =>
@@ -954,6 +982,10 @@ object SymDenotations {
      */
     final def companionModule(implicit ctx: Context): Symbol =
       if (is(Module)) sourceModule
+      else if (isOpaqueAlias)
+        info match {
+          case TypeAlias(TypeRef(TermRef(prefix, _), _)) => prefix.termSymbol
+        }
       else registeredCompanion.sourceModule
 
     private def companionType(implicit ctx: Context): Symbol =
@@ -967,6 +999,13 @@ object SymDenotations {
      */
     final def companionClass(implicit ctx: Context): Symbol =
       companionType.suchThat(_.isClass).symbol
+
+    /** The opaque type with the same (type-) name as this module or module class,
+     *  and which is also defined in the same scope and compilation unit.
+     *  NoSymbol if this type does not exist.
+     */
+    final def companionOpaqueType(implicit ctx: Context): Symbol =
+      companionType.suchThat(_.isOpaqueAlias).symbol
 
     final def scalacLinkedClass(implicit ctx: Context): Symbol =
       if (this is ModuleClass) companionNamed(effectiveName.toTypeName)
@@ -1016,6 +1055,24 @@ object SymDenotations {
      */
     final def enclosingSubClass(implicit ctx: Context): Symbol =
       ctx.owner.ownersIterator.findSymbol(_.isSubClass(symbol))
+
+    /** The alias of a synthetic opaque type that's stored in the self type of the
+     *  containing object.
+     */
+    def opaqueAlias(implicit ctx: Context): Type = {
+      if (isOpaqueHelper) {
+        owner.asClass.classInfo.selfType match {
+          case RefinedType(_, _, TypeBounds(lo, _)) =>
+            def extractAlias(tp: Type): Type = tp match {
+              case OrType(alias, _) => alias
+              case HKTypeLambda(tparams, tp) =>
+                HKTypeLambda(tparams.map(_.paramInfo), extractAlias(tp))
+            }
+            extractAlias(lo)
+        }
+      }
+      else NoType
+    }
 
     /** The non-private symbol whose name and type matches the type of this symbol
      *  in the given class.
@@ -1653,7 +1710,8 @@ object SymDenotations {
 
             def computeTypeRef = {
               btrCache.put(tp, NoPrefix)
-              tp.symbol.denot match {
+              val tpSym = tp.symbol
+              tpSym.denot match {
                 case clsd: ClassDenotation =>
                   def isOwnThis = prefix match {
                     case prefix: ThisType => prefix.cls `eq` clsd.owner
@@ -1661,7 +1719,7 @@ object SymDenotations {
                     case _ => false
                   }
                   val baseTp =
-                    if (tp.symbol eq symbol)
+                    if (tpSym eq symbol)
                       tp
                     else if (isOwnThis)
                       if (clsd.baseClassSet.contains(symbol))
