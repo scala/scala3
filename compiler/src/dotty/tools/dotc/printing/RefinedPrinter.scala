@@ -779,6 +779,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       super.toText(sym)
   }
 
+  /** String representation of symbol's kind. */
   override def kindString(sym: Symbol): String = {
     val flags = sym.flagsUNSAFE
     if (flags is Package) "package"
@@ -789,16 +790,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else super.kindString(sym)
   }
 
+  /** String representation of symbol's definition keyword */
   override protected def keyString(sym: Symbol): String = {
     val flags = sym.flagsUNSAFE
     if (sym.isType && sym.owner.isTerm) ""
     else if (sym.isPackageObject) "package object"
     else if (flags.is(Module) && flags.is(Case)) "case object"
     else if (sym.isClass && flags.is(Case)) "case class"
-    else if (flags is Module) "object"
-    else if (sym.isTerm && !flags.is(Param) && flags.is(Implicit) && (sym is Method)) "implicit def"
-    else if (sym.isTerm && !flags.is(Param) && flags.is(Implicit)) "implicit val"
-    else if (sym.isTerm && !flags.is(Param) && flags.is(Erased)) "erased val"
     else super.keyString(sym)
   }
 
