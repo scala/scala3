@@ -37,20 +37,20 @@ class DefinitionTest {
       .definition(m13 to m14, List(m3 to m4))
   }
 
-  @Test def classDefinitionDifferentWorkspace: Unit = {
-    val w0 = Workspace.withSources(
+  @Test def classDefinitionDifferentProject: Unit = {
+    val p0 = Project.withSources(
       code"""class ${m1}Foo${m2}"""
     )
 
-    val w1 = Workspace.dependingOn(w0).withSources(
+    val p1 = Project.dependingOn(p0).withSources(
       code"""class Bar { new ${m3}Foo${m4} }"""
     )
 
-    val w2 = Workspace.dependingOn(w1).withSources(
+    val p2 = Project.dependingOn(p1).withSources(
       code"""class Baz extends ${m5}Foo${m6}"""
     )
 
-    withWorkspaces(w0, w1, w2)
+    withProjects(p0, p1, p2)
       .definition(m1 to m2, List(m1 to m2))
       .definition(m3 to m4, List(m1 to m2))
       .definition(m5 to m6, List(m1 to m2))

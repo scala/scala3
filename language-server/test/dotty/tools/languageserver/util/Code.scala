@@ -110,11 +110,11 @@ object Code {
     }
   }
 
-  /** A new `CodeTester` working with a single workspace containing `sources`. */
-  def withSources(sources: SourceWithPositions*): CodeTester = withWorkspaces(Workspace(sources.toList))
+  /** A new `CodeTester` working with a single project containing `sources`. */
+  def withSources(sources: SourceWithPositions*): CodeTester = withProjects(Project(sources.toList))
 
-  /** A new `CodeTester` working with `workspaces`. */
-  def withWorkspaces(workspaces: Workspace*): CodeTester = new CodeTester(workspaces.toList)
+  /** A new `CodeTester` working with `projects`. */
+  def withProjects(projects: Project*): CodeTester = new CodeTester(projects.toList)
 
   sealed trait SourceWithPositions {
 
@@ -127,7 +127,7 @@ object Code {
     /** The positions of the markers that have been set. */
     def positions: List[(CodeMarker, Int, Int)]
 
-    /** A new `CodeTester` with only this source in the workspace. */
+    /** A new `CodeTester` with only this source in the project. */
     def withSource: CodeTester = withSources(this)
 
   }
@@ -165,40 +165,40 @@ object Code {
   /**
    * A group of sources belonging to the same project.
    *
-   * @param sources   The sources that this workspace holds.
-   * @param name      The name of this workspace
-   * @param dependsOn The other workspaces on which this workspace depend.
+   * @param sources   The sources that this project holds.
+   * @param name      The name of this project
+   * @param dependsOn The other projects on which this project depend.
    */
-  case class Workspace(sources: List[SourceWithPositions],
-                       name: String = Workspace.freshName,
-                       dependsOn: List[Workspace] = Nil) {
+  case class Project(sources: List[SourceWithPositions],
+                     name: String = Project.freshName,
+                     dependsOn: List[Project] = Nil) {
 
     /**
-     * Add `sources` to the sources of this workspace.
+     * Add `sources` to the sources of this project.
      */
-    def withSources(sources: SourceWithPositions*): Workspace = copy(sources = this.sources ::: sources.toList)
+    def withSources(sources: SourceWithPositions*): Project = copy(sources = this.sources ::: sources.toList)
 
   }
 
-  object Workspace {
+  object Project {
     private[this] val count = new java.util.concurrent.atomic.AtomicInteger()
-    private def freshName: String = s"workspace${count.incrementAndGet()}"
+    private def freshName: String = s"project${count.incrementAndGet()}"
 
     /**
-     * Creates a new workspace that depends on `workspaces`.
+     * Creates a new project that depends on `projects`.
      *
-     * @param workspaces The dependencies of the new workspace.
-     * @return An empty workspace with a dependency on the specified workspaces.
+     * @param projects The dependencies of the new project.
+     * @return An empty project with a dependency on the specified projects.
      */
-    def dependingOn(workspaces: Workspace*) = new Workspace(Nil, dependsOn = workspaces.toList)
+    def dependingOn(projects: Project*) = new Project(Nil, dependsOn = projects.toList)
 
     /**
-     * Create a new workspace with the given sources.
+     * Create a new project with the given sources.
      *
-     * @param sources The sources to add to this workspace.
-     * @return a new workspace containing the specified sources.
+     * @param sources The sources to add to this project.
+     * @return a new project containing the specified sources.
      */
-    def withSources(sources: SourceWithPositions*): Workspace = new Workspace(sources.toList)
+    def withSources(sources: SourceWithPositions*): Project = new Project(sources.toList)
   }
 
 }

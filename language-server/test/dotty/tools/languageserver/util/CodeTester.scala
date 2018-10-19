@@ -7,22 +7,22 @@ import dotty.tools.languageserver.util.server.{TestFile, TestServer}
 import org.eclipse.lsp4j.{CompletionItemKind, DocumentHighlightKind}
 
 /**
- * Simulates an LSP client for test in a workspace defined by `sources`.
+ * Simulates an LSP client for test in a project defined by `sources`.
  *
- * @param sources The list of sources in the workspace
+ * @param sources The list of sources in the project
  */
-class CodeTester(workspaces: List[Workspace]) {
+class CodeTester(projects: List[Project]) {
 
-  private val testServer = new TestServer(TestFile.testDir, workspaces)
+  private val testServer = new TestServer(TestFile.testDir, projects)
 
-  private val sources = for { workspace <- workspaces
-                              source <- workspace.sources } yield (workspace, source)
+  private val sources = for { project <- projects
+                              source <- project.sources } yield (project, source)
 
   private val files =
-    for { workspace <- workspaces
-          (source, id) <- workspace.sources.zipWithIndex } yield source match {
-      case src @ TastyWithPositions(text, _) => testServer.openCode(text, workspace, src.sourceName(id), openInIDE = false)
-      case other => testServer.openCode(other.text, workspace, other.sourceName(id), openInIDE = true)
+    for { project <- projects
+          (source, id) <- project.sources.zipWithIndex } yield source match {
+      case src @ TastyWithPositions(text, _) => testServer.openCode(text, project, src.sourceName(id), openInIDE = false)
+      case other => testServer.openCode(other.text, project, other.sourceName(id), openInIDE = true)
     }
 
   private val positions: PositionContext = getPositions(files)
@@ -165,8 +165,8 @@ class CodeTester(workspaces: List[Workspace]) {
       case ex: AssertionError =>
         val sourcesStr =
           sources.zip(files).map {
-            case ((workspace, source), file) =>
-              s"""// ${file.file} in workspace ${workspace.name}
+            case ((project, source), file) =>
+              s"""// ${file.file} in project ${project.name}
                  |${source.text}""".stripMargin
           }.mkString(System.lineSeparator)
 
