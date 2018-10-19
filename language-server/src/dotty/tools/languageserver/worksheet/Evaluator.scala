@@ -2,7 +2,8 @@ package dotty.tools.languageserver.worksheet
 
 import dotty.tools.dotc.core.Contexts.Context
 
-import java.io.{File, PrintStream}
+import java.io.{File, PrintStream, IOException}
+import java.lang.ProcessBuilder.Redirect
 
 import org.eclipse.lsp4j.jsonrpc.CancelChecker
 
@@ -57,7 +58,7 @@ private class Evaluator private (javaExec: String,
     new ProcessBuilder(
       javaExec,
       "-classpath", scala.util.Properties.javaClassPath,
-      dotty.tools.repl.WorksheetMain.getClass.getName.stripSuffix("$"),
+      ReplProcess.getClass.getName.stripSuffix("$"),
       "-classpath", userClasspath,
       "-color:never")
        .redirectErrorStream(true)
@@ -67,15 +68,12 @@ private class Evaluator private (javaExec: String,
   private val processInput = new PrintStream(process.getOutputStream())
 
   // Messages coming out of the REPL
-  private val processOutput = new ReplReader(process.getInputStream())
-  processOutput.start()
+  private val processOutput = new InputStreamConsumer(process.getInputStream())
 
   // The thread that monitors cancellation
   private val cancellationThread = new CancellationThread(cancelChecker, this)
   cancellationThread.start()
 
-  // Wait for the REPL to be ready
-  processOutput.next()
 
   /** Is the process that runs the REPL still alive? */
   def isAlive(): Boolean = process.isAlive()
@@ -86,10 +84,13 @@ private class Evaluator private (javaExec: String,
    * @param command The command to evaluate.
    * @return The result from the REPL.
    */
-  def eval(command: String): Option[String] = {
-    processInput.println(command)
+  def eval(command: String): String = {
+    processInput.print(command)
+    processInput.print(InputStreamConsumer.delimiter)
     processInput.flush()
-    processOutput.next().map(_.trim)
+
+    try processOutput.next().trim
+    catch { case _: IOException => "" }
   }
 
   /**
@@ -102,7 +103,6 @@ private class Evaluator private (javaExec: String,
 
   /** Terminate this JVM. */
   def exit(): Unit = {
-    processOutput.interrupt()
     process.destroyForcibly()
     Evaluator.previousEvaluator = None
     cancellationThread.interrupt()

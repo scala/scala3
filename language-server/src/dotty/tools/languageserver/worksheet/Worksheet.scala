@@ -49,7 +49,7 @@ object Worksheet {
           }
           queries.foreach { (line, code) =>
             cancelChecker.checkCanceled()
-            val res = evaluator.eval(code).getOrElse("")
+            val res = evaluator.eval(code)
             cancelChecker.checkCanceled()
             if (res.nonEmpty)
               sendMessage(line, res)
