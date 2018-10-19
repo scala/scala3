@@ -54,10 +54,13 @@ object Interactive {
     path.dropWhile(!_.symbol.exists).headOption.getOrElse(tpd.EmptyTree)
 
   /**
-   * The source symbol that is the closest to `path`.
+   * The source symbols that are the closest to `path`.
    *
-   * @param path The path to the tree whose symbol to extract.
-   * @return The source symbol that is the closest to `path`.
+   * If this path ends in an import, then this returns all the symbols that are imported by this
+   * import statement.
+   *
+   * @param path The path to the tree whose symbols to extract.
+   * @return The source symbols that are the closest to `path`.
    *
    * @see sourceSymbol
    */
@@ -69,7 +72,7 @@ object Interactive {
         if (funSym.name == StdNames.nme.copy
           && funSym.is(Synthetic)
           && funSym.owner.is(CaseClass)) {
-            funSym.owner.info.member(name).symbol :: Nil
+            List(funSym.owner.info.member(name).symbol)
         } else {
           val classTree = funSym.topLevelClass.asClass.rootTree
           val paramSymbol =
@@ -77,12 +80,12 @@ object Interactive {
               DefDef(_, _, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
               param <- paramss.flatten.find(_.name == name)
             } yield param.symbol
-          paramSymbol.getOrElse(fn.symbol) :: Nil
+          List(paramSymbol.getOrElse(fn.symbol))
         }
 
       // For constructor calls, return the `<init>` that was selected
       case _ :: (_:  New) :: (select: Select) :: _ =>
-        select.symbol :: Nil
+        List(select.symbol)
 
       case (_: Thicket) :: (imp: Import) :: _ =>
         importedSymbols(imp, _.pos.contains(pos.pos))
@@ -91,7 +94,7 @@ object Interactive {
         importedSymbols(imp, _.pos.contains(pos.pos))
 
       case _ =>
-        enclosingTree(path).symbol :: Nil
+        List(enclosingTree(path).symbol)
     }
 
     syms.map(Interactive.sourceSymbol).filter(_.exists)
@@ -598,10 +601,10 @@ object Interactive {
     */
    private def importedSymbols(expr: tpd.Tree, name: Name)(implicit ctx: Context): List[Symbol] = {
      def lookup(name: Name): Symbol = expr.tpe.member(name).symbol
-       lookup(name.toTermName) ::
-         lookup(name.toTypeName) ::
-         lookup(name.moduleClassName) ::
-         lookup(name.sourceModuleName) :: Nil
+       List(lookup(name.toTermName),
+            lookup(name.toTypeName),
+            lookup(name.moduleClassName),
+            lookup(name.sourceModuleName))
    }
 
   /**
