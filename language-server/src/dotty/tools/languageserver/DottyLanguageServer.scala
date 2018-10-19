@@ -311,13 +311,39 @@ class DottyLanguageServer extends LanguageServer
     val path = Interactive.pathTo(uriTrees, pos)
     val syms = Interactive.enclosingSourceSymbols(path, pos)
     val newName = params.getNewName
-    val includes =
-      Include.references | Include.definitions | Include.linkedClass | Include.overriding | Include.imports
 
-    val refs = syms.flatMap { sym =>
-      val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
-      Interactive.findTreesMatching(trees, includes, sym)
-    }
+    val refs =
+      path match {
+        // Selected a renaming in an import node
+        case Thicket(_ :: (rename: Ident) :: Nil) :: (_: Import) :: rest if rename.pos.contains(pos.pos) =>
+          val allTrees = uriTrees.map(_.tree)
+          val source = uriTrees.head.source
+          Interactive.findTreesMatchingRenaming(rename.name, rest.headOption, syms, allTrees, source)
+
+        // Selected a reference that has been renamed
+        case (nameTree: NameTree) :: rest if Interactive.isRenamed(nameTree) =>
+          val enclosing = rest.find {
+            // If we selected one of the parents of this Template for doing the renaming, then this
+            // Template cannot immediately enclose the rename we're interesting in (the renaming
+            // happening inside its body cannot be used on the parents).
+            case template: Template if template.parents.exists(_.pos.contains(pos.pos)) =>
+              false
+            case tree =>
+              Interactive.immediatelyEnclosesRenaming(nameTree.name, tree)
+          }
+          val allTrees = uriTrees.map(_.tree)
+          val source = uriTrees.head.source
+          Interactive.findTreesMatchingRenaming(nameTree.name, enclosing, syms, allTrees, source)
+
+        case _ =>
+          val includes =
+            Include.references | Include.definitions | Include.linkedClass | Include.overriding | Include.imports
+
+          syms.flatMap { sym =>
+            val trees = driver.allTreesContaining(sym.name.sourceModuleName.toString)
+            Interactive.findTreesMatching(trees, includes, sym)
+          }
+      }
 
     val changes =
       refs.groupBy(ref => toUri(ref.source).toString)

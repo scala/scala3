@@ -566,10 +566,132 @@ object Interactive {
    * @return True, if this tree's name is different than its symbol's name, indicating that
    *         it uses a renaming introduced by an import statement.
    */
-  private def isRenamed(tree: NameTree)(implicit ctx: Context): Boolean = {
+  def isRenamed(tree: NameTree)(implicit ctx: Context): Boolean = {
     val symbol = tree.symbol
-    symbol.exists &&
-      tree.name.stripModuleClassSuffix != symbol.name.stripModuleClassSuffix
+    symbol.exists && !sameName(tree.name, symbol.name)
+  }
+
+  /** Are the two names the same? */
+  def sameName(n0: Name, n1: Name): Boolean = {
+    n0.stripModuleClassSuffix.toString == n1.stripModuleClassSuffix.toString
+  }
+
+  /**
+   * Is this tree immediately enclosing an import that renames a symbol to `toName`?
+   *
+   * @param toName        The target name to check
+   * @param tree          The tree to check
+   * @return True if this tree immediately encloses an import that renames a symbol to `toName`,
+   *         false otherwise.
+   */
+  def immediatelyEnclosesRenaming(toName: Name, inTree: Tree)(implicit ctx: Context): Boolean = {
+    def isImportRenaming(tree: Tree): Boolean = {
+      tree match {
+        case Import(_, selectors) =>
+          selectors.exists {
+            case Thicket(_ :: Ident(rename) :: Nil) =>
+              rename.stripModuleClassSuffix.toString == toName.stripModuleClassSuffix.toString
+            case _ =>
+              false
+          }
+            case _ =>
+              false
+      }
+    }
+
+    inTree match {
+      case PackageDef(_, stats) =>
+        stats.exists(isImportRenaming)
+      case template: Template =>
+        template.body.exists(isImportRenaming)
+      case Block(stats, _) =>
+        stats.exists(isImportRenaming)
+      case _ =>
+        false
+    }
+  }
+
+  /**
+   * In `enclosing`, find all the references to any of `syms` that have been renamed to `toName`.
+   *
+   * If `enclosing` is empty, it means the renaming import was top-level and the whole source file
+   * should be considered. Otherwise, we can restrict the search to this tree because renaming
+   * imports are local.
+   *
+   * @param toName    The name that is set by the renaming.
+   * @param enclosing The tree that encloses the renaming import, if it exists.
+   * @param syms      The symbols to which we want to find renamed references.
+   * @param allTrees  All the trees in this source file, in case we can't find `enclosing`.
+   * @param source    The sourcefile that where to look for references.
+   * @return All the references to the symbol under the cursor that are using `toName`.
+   */
+  def findTreesMatchingRenaming(toName: Name,
+                                enclosing: Option[Tree],
+                                syms: List[Symbol],
+                                allTrees: List[Tree],
+                                source: SourceFile
+                               )(implicit ctx: Context): List[SourceNamedTree] = {
+
+    /**
+     * Remove the blocks that immediately enclose a renaming to `toName` in `inTree`.
+     *
+     * @param toName The target name of renamings.
+     * @param inTree The tree in which to remove the blocks that have such a renaming.
+     * @return A tree that has no children containing a renaming to `toName`.
+     */
+    def removeBlockWithRenaming(toName: Name, inTree: Tree): Tree = {
+      new TreeMap {
+        override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+          case pkg: PackageDef if immediatelyEnclosesRenaming(toName, pkg) =>
+            EmptyTree
+          case template: Template if immediatelyEnclosesRenaming(toName, template) =>
+            cpy.Template(template)(constr = DefDef(template.constr.symbol.asTerm), self = EmptyValDef, body = Nil)
+          case block @ Block(stats, expr) if immediatelyEnclosesRenaming(toName, block) =>
+            EmptyTree
+          case other =>
+            super.transform(other)
+        }
+      }.transform(inTree)
+    }
+
+    val trees = {
+      val trees = enclosing match {
+        case Some(pkg: PackageDef) =>
+          pkg.stats
+        case Some(template: Template) =>
+          template.body
+        case Some(block: Block) =>
+          block.expr :: block.stats
+        case _ =>
+          // No enclosing tree; we'll search in the whole file.
+          allTrees
+      }
+
+      // These trees may contain a new renaming of the same symbol to the same name, so we may
+      // have to cut some branches
+      val trimmedTrees = trees.map(removeBlockWithRenaming(toName, _))
+
+      // Some of these trees may not be `NameTrees`. Those that are not are wrapped in a
+      // synthetic val def, so that everything can go inside `SourceNamedTree`s.
+      trimmedTrees.map {
+        case tree: NameTree =>
+          SourceNamedTree(tree, source)
+        case tree =>
+          val valDef = tpd.SyntheticValDef(NameKinds.UniqueName.fresh(), tree)
+          SourceNamedTree(valDef, source)
+      }
+    }
+
+    val includes =
+      Include.references | Include.imports | Include.renamingImports
+
+    syms.flatMap { sym =>
+      Interactive.namedTrees(trees,
+        includes,
+        tree =>
+          Interactive.sameName(tree.name, toName) &&
+          (Interactive.matchSymbol(tree, sym, includes) || Interactive.matchSymbol(tree, sym.linkedClass, includes)))
+    }
   }
 
 }
