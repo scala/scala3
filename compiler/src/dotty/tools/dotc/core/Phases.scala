@@ -320,6 +320,9 @@ object Phases {
     /** Can this transform change the parents of a class? */
     def changesParents: Boolean = false
 
+    /** Can this transform change the base types of a type? */
+    def changesBaseTypes: Boolean = changesParents
+
     def exists: Boolean = true
 
     def initContext(ctx: FreshContext): Unit = ()
@@ -332,6 +335,7 @@ object Phases {
 
     private[this] var mySameMembersStartId = NoPhaseId
     private[this] var mySameParentsStartId = NoPhaseId
+    private[this] var mySameBaseTypesStartId = NoPhaseId
 
     /** The sequence position of this phase in the given context where 0
      * is reserved for NoPhase and the first real phase is at position 1.
@@ -351,6 +355,8 @@ object Phases {
       // id of first phase where all symbols are guaranteed to have the same members as in this phase
     final def sameParentsStartId: Int = mySameParentsStartId
       // id of first phase where all symbols are guaranteed to have the same parents as in this phase
+    final def sameBaseTypesStartId: Int = mySameBaseTypesStartId
+      // id of first phase where all symbols are guaranteed to have the same base tpyes as in this phase
 
     protected[Phases] def init(base: ContextBase, start: Int, end: Int): Unit = {
       if (start >= FirstPhaseId)
@@ -363,6 +369,7 @@ object Phases {
       myRefChecked   = prev.getClass == classOf[RefChecks]    || prev.refChecked
       mySameMembersStartId = if (changesMembers) id else prev.sameMembersStartId
       mySameParentsStartId = if (changesParents) id else prev.sameParentsStartId
+      mySameBaseTypesStartId = if (changesBaseTypes) id else prev.sameBaseTypesStartId
     }
 
     protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
