@@ -762,9 +762,10 @@ object SymDenotations {
      */
     def membersNeedAsSeenFrom(pre: Type)(implicit ctx: Context): Boolean =
       !(  this.isTerm
-       || this.isStaticOwner
+       || this.isStaticOwner && !this.isOpaqueCompanion
        || ctx.erasedTypes
-       || (pre eq NoPrefix) || (pre eq thisType)
+       || (pre eq NoPrefix)
+       || (pre eq thisType)
        )
 
     /** Is this symbol concrete, or that symbol deferred? */
