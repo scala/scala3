@@ -1526,6 +1526,9 @@ object Types {
       case TypeBounds(_, hi) => hi
       case st => st
     }
+
+    /** Same as superType, except that opaque types are treated as transparent aliases */
+    def translucentSuperType(implicit ctx: Context): Type = superType
   }
 
   // Every type has to inherit one of the following four abstract type classes.,
@@ -2214,6 +2217,14 @@ object Types {
 
     override def underlying(implicit ctx: Context): Type = info
 
+    override def translucentSuperType(implicit ctx: Context) = info match {
+      case TypeAlias(aliased) => aliased
+      case TypeBounds(_, hi) =>
+        if (symbol.isOpaqueHelper) symbol.opaqueAlias.asSeenFrom(prefix, symbol.owner)
+        else hi
+      case _ => underlying
+    }
+
     /** Hook that can be called from creation methods in TermRef and TypeRef */
     def validated(implicit ctx: Context): this.type = {
       this
@@ -2588,6 +2599,11 @@ object Types {
     def isAnd: Boolean
     def tp1: Type
     def tp2: Type
+
+    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context) =
+      if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
+      else if (isAnd) AndType.make(tp1, tp2, checkValid = true)
+      else OrType.make(tp1, tp2)
   }
 
   abstract case class AndType(tp1: Type, tp2: Type) extends AndOrType {
@@ -3349,6 +3365,13 @@ object Types {
         validSuper = if (tycon.isProvisional) Nowhere else ctx.period
       }
       cachedSuper
+    }
+
+    override def translucentSuperType(implicit ctx: Context): Type = tycon match {
+      case tycon: TypeRef if tycon.symbol.isOpaqueHelper =>
+        tycon.translucentSuperType.applyIfParameterized(args)
+      case _ =>
+        superType
     }
 
     override def tryNormalize(implicit ctx: Context): Type = tycon match {
