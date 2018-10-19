@@ -37,6 +37,25 @@ class DefinitionTest {
       .definition(m13 to m14, List(m3 to m4))
   }
 
+  @Test def classDefinitionDifferentProject: Unit = {
+    val p0 = Project.withSources(
+      code"""class ${m1}Foo${m2}"""
+    )
+
+    val p1 = Project.dependingOn(p0).withSources(
+      code"""class Bar { new ${m3}Foo${m4} }"""
+    )
+
+    val p2 = Project.dependingOn(p1).withSources(
+      code"""class Baz extends ${m5}Foo${m6}"""
+    )
+
+    withProjects(p0, p1, p2)
+      .definition(m1 to m2, List(m1 to m2))
+      .definition(m3 to m4, List(m1 to m2))
+      .definition(m5 to m6, List(m1 to m2))
+  }
+
   @Test def valDefinition0: Unit = {
     withSources(
       code"class Foo { val ${m1}x$m2 = 0; ${m3}x$m4 }",
@@ -187,6 +206,17 @@ class DefinitionTest {
       .definition(m5 to m6, List(m1 to m2))
       .definition(m7 to m8, List(m1 to m2))
       .definition(m9 to m10, List(m3 to m4))
+  }
+
+  @Test def definitionFromTasty: Unit = {
+    withSources(
+      tasty"""package mypackage
+              class ${m1}A${m2}""",
+      code"""package mypackage
+             object O {
+               new ${m3}A${m4}
+             }"""
+    ).definition(m3 to m4, List(m1 to m2))
   }
 
 }

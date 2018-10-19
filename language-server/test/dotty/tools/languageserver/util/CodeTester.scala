@@ -7,19 +7,24 @@ import dotty.tools.languageserver.util.server.{TestFile, TestServer}
 import org.eclipse.lsp4j.{CompletionItemKind, DocumentHighlightKind}
 
 /**
- * Simulates an LSP client for test in a workspace defined by `sources`.
+ * Simulates an LSP client for test in a project defined by `sources`.
  *
- * @param sources The list of sources in the workspace
- * @param actions Unused
+ * @param sources The list of sources in the project
  */
-class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
+class CodeTester(projects: List[Project]) {
 
-  private val testServer = new TestServer(TestFile.testDir)
+  private val testServer = new TestServer(TestFile.testDir, projects)
 
-  private val files = sources.zipWithIndex.map {
-    case (ScalaSourceWithPositions(text, _), i) => testServer.openCode(text, s"Source$i.scala")
-    case (WorksheetWithPositions(text, _), i) => testServer.openCode(text, s"Worksheet$i.sc")
-  }
+  private val sources = for { project <- projects
+                              source <- project.sources } yield (project, source)
+
+  private val files =
+    for { project <- projects
+          (source, id) <- project.sources.zipWithIndex } yield source match {
+      case src @ TastyWithPositions(text, _) => testServer.openCode(text, project, src.sourceName(id), openInIDE = false)
+      case other => testServer.openCode(other.text, project, other.sourceName(id), openInIDE = true)
+    }
+
   private val positions: PositionContext = getPositions(files)
 
   /**
@@ -158,7 +163,13 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
       action.execute()(testServer, testServer.client, positions)
     } catch {
       case ex: AssertionError =>
-        val sourcesStr = sources.zip(files).map{ case (source, file) => "// " + file.file + "\n" + source.text}.mkString("\n")
+        val sourcesStr =
+          sources.zip(files).map {
+            case ((project, source), file) =>
+              s"""// ${file.file} in project ${project.name}
+                 |${source.text}""".stripMargin
+          }.mkString(System.lineSeparator)
+
         val msg =
           s"""
             |
@@ -177,7 +188,7 @@ class CodeTester(sources: List[SourceWithPositions], actions: List[Action]) {
   private def getPositions(files: List[TestFile]): PositionContext = {
     val posSeq = {
       for {
-        (code, file) <- sources.zip(files)
+        ((_, code), file) <- sources.zip(files)
         (position, line, char) <- code.positions
       } yield position -> (file, line, char)
     }
